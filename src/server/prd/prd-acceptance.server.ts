@@ -122,6 +122,14 @@ const HARD_CODED_RESULT =
   /(due\s?date|result|total|payment|bmi|score)\s*[:=]\s*["'][^"']{3,}["']/i;
 
 const SIDEBAR_SHELL = /(SidebarProvider|<Sidebar\b|AppSidebar)/;
+const STATE_EVIDENCE: Record<string, RegExp> = {
+  empty: /(EmptyState|NoResults|length\s*===\s*0|no (results|records|items))/i,
+  loading: /(Skeleton|isLoading|isPending|loading\b)/i,
+  error: /(ErrorState|isError|Retry|try again|catch\s*\()/i,
+  validation: /(required|minLength|maxLength|setError|error\?\.|aria-invalid|invalid)/i,
+  pending: /(disabled=\{[^}]*pending|isSubmitting|isPending|busy|Saving)/i,
+  "delete-confirmation": /(AlertDialog|ConfirmDialog|confirm\(|Are you sure|delete confirmation)/i,
+};
 
 export function checkPrdStatically(
   prd: Prd,
@@ -216,6 +224,21 @@ export function checkPrdStatically(
     findings.push(...checkProductUsefulness(prd, src));
   } catch {
     /* usefulness checks must never crash the gate */
+  }
+
+  // 6. Stateful products must ship their recovery and mutation states.
+  if (prd.dataModel.length) {
+    const allSrc = src.map((f) => f.content).join("\n");
+    for (const [state, evidence] of Object.entries(STATE_EVIDENCE)) {
+      if (!evidence.test(allSrc)) {
+        findings.push({
+          criterionId: `state-${state}`,
+          severity: "blocking",
+          message: `The product contract requires a ${state} state, but the emitted data surfaces do not implement one.`,
+          repairHint: `Add a real ${state} state to the primary entity list/form flow without removing working behavior.`,
+        });
+      }
+    }
   }
 
   return { passed: !findings.some((f) => f.severity === "blocking"), findings };

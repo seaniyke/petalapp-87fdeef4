@@ -26,6 +26,25 @@ describe("deterministic PRD", () => {
       expect(deterministicPrd(brief).primaryWorkflow.steps).toHaveLength(5);
     }
   });
+
+  it("infers CRUD, ownership, roles, and states for a multi-user CRM", () => {
+    const prd = deterministicPrd("a CRM for a sales team to track leads, customers and deals");
+    expect(prd.productType).toBe("workflow-app");
+    expect(prd.needsPersistence).toBe(true);
+    expect(prd.needsAuth).toBe(true);
+    expect(prd.roles).toEqual(expect.arrayContaining(["owner", "admin", "member"]));
+    expect(prd.dataModel.map((entity) => entity.name)).toEqual(expect.arrayContaining(["Lead", "Customer", "Deal"]));
+    expect(prd.dataModel.every((entity) => entity.operations.includes("delete"))).toBe(true);
+    expect(prd.acceptance.some((criterion) => criterion.id === "state-loading")).toBe(true);
+    expect(prd.acceptance.some((criterion) => criterion.id === "permission-lead-scoped")).toBe(true);
+  });
+
+  it("keeps a single-user calculator local and free of CRUD scaffolding", () => {
+    const prd = deterministicPrd("build a mortgage calculator");
+    expect(prd.needsPersistence).toBe(false);
+    expect(prd.needsAuth).toBe(false);
+    expect(prd.dataModel).toEqual([]);
+  });
 });
 
 describe("mergePrd", () => {
