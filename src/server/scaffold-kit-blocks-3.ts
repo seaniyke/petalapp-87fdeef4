@@ -483,7 +483,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export interface ActivityItem {
   id: string;
-  actor: { name: string; avatarUrl?: string };
+  actor?: { name?: string; avatarUrl?: string } | null;
   action: React.ReactNode;
   timestamp: string;
   meta?: React.ReactNode;
@@ -497,21 +497,27 @@ export function ActivityFeed({ items, className }: { items: ActivityItem[]; clas
   }
   return (
     <ol className={cn("space-y-5", className)}>
-      {list.map((it) => (
+      {list.map((it) => {
+        const actor = {
+          name: it?.actor?.name?.trim() || "System",
+          avatarUrl: it?.actor?.avatarUrl,
+        };
+        return (
         <li key={it.id} className="flex gap-3">
           <Avatar className="h-9 w-9">
-            {it.actor.avatarUrl && <AvatarImage src={it.actor.avatarUrl} alt={it.actor.name} />}
-            <AvatarFallback>{it.actor.name.slice(0, 2).toUpperCase()}</AvatarFallback>
+            {actor.avatarUrl && <AvatarImage src={actor.avatarUrl} alt={actor.name} />}
+            <AvatarFallback>{actor.name.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-0.5">
             <div className="text-sm text-foreground">
-              <span className="font-medium">{it.actor.name}</span> {it.action}
+              <span className="font-medium">{actor.name}</span> {it.action}
             </div>
             <div className="text-xs text-muted-foreground">{it.timestamp}</div>
             {it.meta && <div className="mt-1 text-xs text-muted-foreground">{it.meta}</div>}
           </div>
         </li>
-      ))}
+        );
+      })}
     </ol>
   );
 }

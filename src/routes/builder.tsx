@@ -44,6 +44,7 @@ import {
   MAX_ATTACHMENTS_PER_MESSAGE,
 } from "@/lib/attachments";
 import { streamGenerate, streamResumeTurn } from "@/lib/stream";
+import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 import {
   persistTurnId,
   clearPersistedTurnId,
@@ -5611,6 +5612,7 @@ function Builder() {
                         : "Describe the app you want to build…"
                 }
                 rows={1}
+                maxLength={MAX_USER_PROMPT_CHARS}
                 // Enter inserts a newline here, so the soft keyboard must not
                 // advertise "send" — it would lie about what the key does.
                 enterKeyHint="enter"

@@ -93,6 +93,7 @@ import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
 import { renderAppUiBlock, renderAppScreenChecklistBlock } from "@/server/app-ui-library.server";
 import { renderAppSpecBlock } from "@/server/app-spec.server";
+import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/lib/prompt-limits";
 
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
@@ -1653,19 +1654,15 @@ async function handleGenerateRequestCore(
     return new Response("messages must not be empty", { status: 400 });
   }
 
-  // Per-message hard cap. We only enforce this on the LATEST user message
-  // (the one being sent now). History messages are bounded by the
-  // 20-message slice above. The cap exists so a single request can't
-  // submit a megabyte of prose and either OOM the parser or run up an
-  // unbounded LLM bill before we've spent the credit. Picked at 8000
-  // chars (~2000 tokens) which is generous for any plausible prompt.
-  const MAX_PROMPT_CHARS = 8000;
+  // The active instruction is preserved in full. Older history is compacted
+  // by the context-budget layer; only an exceptional memory-safety ceiling is
+  // rejected here.
   const lastContent = latestUserMessage(messages);
   const intentBrief = (body.intentBrief ?? "").trim().slice(0, 600);
-  if (lastContent.length > MAX_PROMPT_CHARS) {
+  if (promptExceedsHardCeiling(lastContent)) {
     return new Response(
       JSON.stringify({
-        error: `Your message is too long (${lastContent.length} chars, max ${MAX_PROMPT_CHARS}). Try splitting it into smaller asks.`,
+        error: `This request exceeds the ${MAX_USER_PROMPT_HARD_CEILING_CHARS.toLocaleString()} character safety ceiling. Attach the source as a file or remove repeated logs.`,
       }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
