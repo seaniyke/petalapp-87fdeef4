@@ -282,7 +282,9 @@ function safeMeta(args: unknown): TriageMeta {
       obj.scope === "tiny" || obj.scope === "small" || obj.scope === "medium" || obj.scope === "large"
         ? obj.scope
         : "small",
-    brief: typeof obj.brief === "string" ? obj.brief.slice(0, 400) : "",
+    // Preserve enough of the structured brief for downstream generation to
+    // retain entities, workflows, constraints, and acceptance details.
+    brief: typeof obj.brief === "string" ? obj.brief.slice(0, 4_000) : "",
     unknowns: Array.isArray(obj.unknowns)
       ? (obj.unknowns as unknown[]).filter((s): s is string => typeof s === "string").slice(0, 3)
       : [],
