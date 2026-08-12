@@ -19,6 +19,7 @@
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { deterministicPrd } from "./prd-deterministic";
 import type { Prd, PrdSurface, ProductType } from "./prd-types";
+import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 
 const MODEL = "google/gemini-3-flash-preview";
 
@@ -116,13 +117,32 @@ const TOOL = {
             properties: {
               name: { type: "string" },
               fields: { type: "array", items: { type: "string" } },
+              operations: { type: "array", items: { type: "string", enum: ["create", "read", "update", "delete"] } },
+              visibility: { type: "string", enum: ["owner", "role", "public"] },
+              ownerField: { type: "string" },
+              allowedRoles: { type: "array", items: { type: "string" } },
+              relationships: { type: "array", items: { type: "string" } },
             },
-            required: ["name", "fields"],
+            required: ["name", "fields", "operations", "visibility", "ownerField", "allowedRoles", "relationships"],
             additionalProperties: false,
           },
         },
         needsPersistence: { type: "boolean" },
         needsAuth: { type: "boolean" },
+        roles: { type: "array", items: { type: "string" } },
+        permissions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              role: { type: "string" },
+              entity: { type: "string" },
+              operations: { type: "array", items: { type: "string", enum: ["create", "read", "update", "delete"] } },
+            },
+            required: ["role", "entity", "operations"],
+            additionalProperties: false,
+          },
+        },
         requiredSurfaces: {
           type: "array",
           items: {
@@ -169,7 +189,7 @@ const TOOL = {
       required: [
         "productName", "purpose", "targetUser", "primaryOutcome", "productType", "domain",
         "primaryWorkflowName", "primaryWorkflowSteps", "secondaryWorkflows", "formulas",
-        "dataModel", "needsPersistence", "needsAuth", "requiredSurfaces", "excludedSurfaces",
+        "dataModel", "needsPersistence", "needsAuth", "roles", "permissions", "requiredSurfaces", "excludedSurfaces",
         "states", "navigation", "contentTone", "acceptance", "outOfScope",
       ],
       additionalProperties: false,
@@ -188,9 +208,11 @@ type RawPrd = {
   primaryWorkflowSteps?: Array<{ kind?: string; description?: string }>;
   secondaryWorkflows?: Array<{ name?: string; steps?: Array<{ kind?: string; description?: string }> }>;
   formulas?: Array<{ id?: string; statement?: string; exampleInput?: string; exampleExpected?: string }>;
-  dataModel?: Array<{ name?: string; fields?: string[] }>;
+  dataModel?: Array<{ name?: string; fields?: string[]; operations?: string[]; visibility?: string; ownerField?: string; allowedRoles?: string[]; relationships?: string[] }>;
   needsPersistence?: boolean;
   needsAuth?: boolean;
+  roles?: string[];
+  permissions?: Array<{ role?: string; entity?: string; operations?: string[] }>;
   requiredSurfaces?: string[];
   excludedSurfaces?: string[];
   states?: string[];
@@ -312,10 +334,28 @@ export function mergePrd(prior: Prd, raw: RawPrd): Prd {
     dataModel: Array.isArray(raw.dataModel)
       ? raw.dataModel
           .filter((e) => e?.name && Array.isArray(e.fields))
-          .map((e) => ({ name: String(e.name), fields: (e.fields ?? []).map(String) }))
+          .map((e) => ({
+            name: String(e.name),
+            fields: (e.fields ?? []).map(String),
+            operations: (e.operations ?? ["create", "read", "update", "delete"]).filter((op): op is "create" | "read" | "update" | "delete" => ["create", "read", "update", "delete"].includes(op)),
+            visibility: (["owner", "role", "public"].includes(e.visibility ?? "") ? e.visibility : prior.needsAuth ? "owner" : "public") as "owner" | "role" | "public",
+            ownerField: e.ownerField || (prior.needsAuth ? "user_id" : undefined),
+            allowedRoles: Array.isArray(e.allowedRoles) ? e.allowedRoles.map(String) : undefined,
+            relationships: Array.isArray(e.relationships) ? e.relationships.map(String) : [],
+          }))
       : prior.dataModel,
     needsPersistence: typeof raw.needsPersistence === "boolean" ? raw.needsPersistence : prior.needsPersistence,
     needsAuth: typeof raw.needsAuth === "boolean" ? raw.needsAuth : prior.needsAuth,
+    roles: Array.isArray(raw.roles) ? raw.roles.map(String) : prior.roles,
+    permissions: Array.isArray(raw.permissions)
+      ? raw.permissions
+          .filter((p) => p?.role && p?.entity)
+          .map((p) => ({
+            role: String(p.role),
+            entity: String(p.entity),
+            operations: (p.operations ?? []).filter((op): op is "create" | "read" | "update" | "delete" => ["create", "read", "update", "delete"].includes(op)),
+          }))
+      : prior.permissions,
     requiredSurfaces: required,
     excludedSurfaces: excluded,
     states: Array.isArray(raw.states) && raw.states.length ? raw.states.map(String) : prior.states,
@@ -345,7 +385,7 @@ export async function modelPrd(brief: string, userId?: string): Promise<Prd> {
           { role: "system", content: SYSTEM },
           {
             role: "user",
-            content: `User request:\n"""${brief.slice(0, 4000)}"""\n\nDeterministic draft to refine:\n${JSON.stringify(
+             content: `User request:\n"""${brief.slice(0, MAX_USER_PROMPT_CHARS)}"""\n\nDeterministic draft to refine:\n${JSON.stringify(
               {
                 productName: prior.productName,
                 purpose: prior.purpose,
@@ -357,6 +397,9 @@ export async function modelPrd(brief: string, userId?: string): Promise<Prd> {
                 excludedSurfaces: prior.excludedSurfaces,
                 needsPersistence: prior.needsPersistence,
                 needsAuth: prior.needsAuth,
+                 dataModel: prior.dataModel,
+                 roles: prior.roles,
+                 permissions: prior.permissions,
                 states: prior.states,
               },
               null,

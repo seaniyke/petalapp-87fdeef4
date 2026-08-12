@@ -53,7 +53,7 @@
 import type { LocalIssue } from "@/server/local-verifier";
 
 /** Limit which rules fire. Edit to disable individual rules in production. */
-const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8">([
+const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "R8" | "R9">([
   "R1",
   "R2",
   "R3",
@@ -62,6 +62,7 @@ const ENABLED_RULES = new Set<"R1" | "R2" | "R3" | "R4" | "R5" | "R6" | "R7" | "
   "R6",
   "R7",
   "R8",
+  "R9",
 ]);
 
 
@@ -850,6 +851,29 @@ function findObjectAsJsxChild(
   return issues;
 }
 
+function findUnsafeMappedNestedAccess(src: string): Array<{ chain: string }> {
+  const issues: Array<{ chain: string }> = [];
+  const mapRe = /\.map\s*\(\s*\(?\s*([A-Za-z_$][\w$]*)[^=)]*\)?\s*=>\s*/g;
+  let match: RegExpExecArray | null;
+  while ((match = mapRe.exec(src))) {
+    const item = match[1];
+    const body = src.slice(match.index + match[0].length, match.index + match[0].length + 1600);
+    const chainRe = new RegExp(`\\b${escapeRe(item)}\\.([A-Za-z_$][\\w$]*)\\.([A-Za-z_$][\\w$]*)`, "g");
+    const chain = chainRe.exec(body);
+    if (!chain) continue;
+    const nested = chain[1];
+    const before = body.slice(0, chain.index);
+    const guarded =
+      new RegExp(`\\b${escapeRe(item)}\\.${escapeRe(nested)}\\s*&&`).test(before) ||
+      new RegExp(`if\\s*\\(\\s*!?${escapeRe(item)}\\.${escapeRe(nested)}\\s*\\)`).test(before) ||
+      new RegExp(`\\b${escapeRe(item)}\\?\\.${escapeRe(nested)}\\?\\.`).test(body) ||
+      new RegExp(`\\b${escapeRe(item)}\\.${escapeRe(nested)}\\?\\.`).test(body) ||
+      new RegExp(`const\\s+${escapeRe(nested)}\\s*=`).test(before);
+    if (!guarded) issues.push({ chain: `${item}.${nested}.${chain[2]}` });
+  }
+  return issues;
+}
+
 // =============================================================================
 // Entry point
 // =============================================================================
@@ -963,6 +987,17 @@ export function lintRenderRisks(
           path: f.path,
           kind: "render-risk",
           detail: `\`{${issue.expr}}\` renders an object as a React child — will throw React error #31 ("object with keys {...}"). Render a specific field (e.g. \`{${issue.ident}.name}\`) or stringify it (\`{JSON.stringify(${issue.ident})}\`).`,
+        });
+      }
+    }
+
+    // R9 — nested join/object access inside collection callbacks.
+    if (ENABLED_RULES.has("R9")) {
+      for (const issue of findUnsafeMappedNestedAccess(f.content)) {
+        issues.push({
+          path: f.path,
+          kind: "render-risk",
+          detail: `\`${issue.chain}\` is read inside a mapped collection without guarding the nested object — normalize the row or use optional chaining before rendering`,
         });
       }
     }

@@ -233,20 +233,6 @@ const PATTERNS: Array<{
     }),
   },
   {
-    // Server-side input cap rejection (JSON 400 from /api/generate or
-    // /api/generate-image). Anchored to the exact wording emitted by those
-    // routes so we never match humanized prose.
-    test: /\b(?:your message is too long|prompt is too long)\b|max(?:imum)?\s+\d+\s*chars?/i,
-    build: (raw) => ({
-      title: "That message is a bit too long",
-      message:
-        "Try splitting it into smaller asks — Petal works best with one focused change at a time.",
-      actionLabel: "Dismiss",
-      actionKind: "dismiss",
-      technicalDetail: raw,
-    }),
-  },
-  {
     // Network/transport failures BEFORE the SSE stream — e.g. user offline,
     // publishing service unreachable. Server-classified upstream errors flow
     // through `kind: "upstream_unavailable"` instead.

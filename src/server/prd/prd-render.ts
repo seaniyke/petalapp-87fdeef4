@@ -60,11 +60,22 @@ export function renderPrdBlock(prd: Prd): string {
   out.push(`Navigation: ${prd.navigation}`);
   out.push(`Persistence: ${prd.needsPersistence ? "required" : "not required — keep it client-side"}`);
   out.push(`Accounts: ${prd.needsAuth ? "required" : "not required — do not scaffold auth"}`);
+  if (prd.roles?.length) out.push(`Roles: ${prd.roles.join(", ")}`);
 
   if (prd.dataModel.length) {
     out.push("");
     out.push("Data model:");
-    for (const e of prd.dataModel) out.push(`  - ${e.name}: ${e.fields.join(", ")}`);
+    for (const e of prd.dataModel) {
+      out.push(`  - ${e.name}: ${e.fields.join(", ")}`);
+      out.push(`    operations: ${e.operations.join(", ")}; visibility: ${e.visibility}; relationships: ${e.relationships.join(", ") || "none"}`);
+    }
+    out.push("For the primary entity, build list + search/filter + detail + create + edit + delete-with-confirm. Every relationship must be navigable. Seed 8–20 relationally valid records.");
+  }
+
+  if (prd.permissions?.length) {
+    out.push("");
+    out.push("Permissions (enforce in data access and reflect in the UI):");
+    for (const p of prd.permissions) out.push(`  - ${p.role} → ${p.entity}: ${p.operations.join(", ")}`);
   }
 
   out.push("");

@@ -74,6 +74,19 @@ export interface PrdFormula {
 export interface PrdEntity {
   name: string;
   fields: string[];
+  /** Operations the complete product must expose for this entity. */
+  operations: Array<"create" | "read" | "update" | "delete">;
+  /** How records are visible. Drives ownership and permission requirements. */
+  visibility: "owner" | "role" | "public";
+  ownerField?: string;
+  allowedRoles?: string[];
+  relationships: string[];
+}
+
+export interface PrdPermission {
+  role: string;
+  entity: string;
+  operations: Array<"create" | "read" | "update" | "delete">;
 }
 
 export interface PrdAcceptanceCriterion {
@@ -112,6 +125,9 @@ export interface Prd {
   /** True when the product needs a backend at all. */
   needsPersistence: boolean;
   needsAuth: boolean;
+  /** Product roles and their entity-level capabilities. */
+  roles: string[];
+  permissions: PrdPermission[];
 
   requiredSurfaces: PrdSurface[];
   excludedSurfaces: PrdSurface[];

@@ -14,6 +14,24 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Prd, VersionedPrd } from "./prd-types";
 
+function upgradePrd(prd: Prd): Prd {
+  const dataModel = Array.isArray(prd.dataModel)
+    ? prd.dataModel.map((entity) => ({
+        ...entity,
+        operations: entity.operations ?? ["create", "read", "update", "delete"],
+        visibility: entity.visibility ?? (prd.needsAuth ? "owner" : "public"),
+        ownerField: entity.ownerField ?? (prd.needsAuth ? "user_id" : undefined),
+        relationships: entity.relationships ?? [],
+      }))
+    : [];
+  return {
+    ...prd,
+    dataModel,
+    roles: prd.roles ?? (prd.needsAuth ? ["owner", "member"] : []),
+    permissions: prd.permissions ?? [],
+  };
+}
+
 export async function loadProjectPrd(projectId?: string | null): Promise<VersionedPrd | null> {
   if (!projectId) return null;
   try {
@@ -24,7 +42,8 @@ export async function loadProjectPrd(projectId?: string | null): Promise<Version
       .maybeSingle();
     const prd = data?.blueprint?.prd;
     if (!prd || typeof prd !== "object" || !prd.prd) return null;
-    return prd as VersionedPrd;
+    const versioned = prd as VersionedPrd;
+    return { ...versioned, prd: upgradePrd(versioned.prd) };
   } catch (e) {
     console.warn("[prd] load skipped:", e instanceof Error ? e.message : String(e));
     return null;

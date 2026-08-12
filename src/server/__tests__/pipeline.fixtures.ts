@@ -122,6 +122,16 @@ const SAFE_PROP_WITH_GUARD = `export default function SafeGuard({ items }: { ite
 }
 `;
 
+const UNSAFE_NESTED_MAP = `export default function Feed({ rows }: { rows: Array<{ actor?: { avatarUrl?: string } }> }) {
+  return <div>{rows.map((r) => <img src={r.actor.avatarUrl} />)}</div>;
+}
+`;
+
+const SAFE_NESTED_MAP = `export default function Feed({ rows }: { rows: Array<{ actor?: { avatarUrl?: string } }> }) {
+  return <div>{rows.map((r) => <img src={r.actor?.avatarUrl} />)}</div>;
+}
+`;
+
 // R2: hook called inside an if branch.
 const CONDITIONAL_HOOK_PAGE = `import { useState } from "react";
 export default function Cond({ enabled }: { enabled: boolean }) {
@@ -346,6 +356,28 @@ export const FIXTURES: PipelineFixture[] = [
       { path: "index.html", content: INDEX_HTML },
       { path: "src/main.tsx", content: MAIN_TSX },
       { path: "src/App.tsx", content: SAFE_PROP_WITH_GUARD },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: [],
+  },
+  {
+    name: "render-time crash — nested mapped object access is guarded",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
+      { path: "src/App.tsx", content: UNSAFE_NESTED_MAP },
+    ],
+    changedPaths: ["src/App.tsx"],
+    expectIssueIncludes: ["r.actor.avatarUrl"],
+  },
+  {
+    name: "clean — nested mapped object uses optional chaining",
+    files: [
+      { path: "package.json", content: PACKAGE_JSON },
+      { path: "index.html", content: INDEX_HTML },
+      { path: "src/main.tsx", content: MAIN_TSX },
+      { path: "src/App.tsx", content: SAFE_NESTED_MAP },
     ],
     changedPaths: ["src/App.tsx"],
     expectIssueIncludes: [],
