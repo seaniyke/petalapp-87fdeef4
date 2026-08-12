@@ -14,11 +14,13 @@
 import type {
   Prd,
   PrdAcceptanceCriterion,
+  PrdEntity,
   PrdFormula,
   PrdSurface,
   PrdWorkflow,
   ProductType,
 } from "./prd-types";
+import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 
 /* ============================================================
  * Domain-logic registry — products whose whole value is a formula
@@ -395,6 +397,46 @@ const PERSISTENCE = [
 ];
 const AUTH = [/\blog\s?in\b/i, /\bsign\s?(in|up)\b/i, /\bsigned[-\s]?in\b/i, /\blogged[-\s]?in\b/i, /\bmembers?\s+(area|only)\b/i, /\baccounts?\b/i, /\bauth\w*/i, /\buser\s+profiles?\b/i];
 
+const MULTI_USER = /\b(team|workspace|staff|employee|manager|admin|member|customer|client|vendor|seller|buyer|patient|student|teacher|agent|owner)s?\b/i;
+
+const ENTITY_RULES: Array<{ name: string; pattern: RegExp; fields: string[] }> = [
+  { name: "Customer", pattern: /\b(customers?|clients?)\b/i, fields: ["name:text:required", "email:text", "phone:text", "status:enum"] },
+  { name: "Lead", pattern: /\b(leads?|prospects?|opportunities?)\b/i, fields: ["name:text:required", "company:text", "stage:enum", "value_minor:integer"] },
+  { name: "Deal", pattern: /\bdeals?|pipeline\b/i, fields: ["title:text:required", "stage:enum", "value_minor:integer", "customer_id:relation"] },
+  { name: "Task", pattern: /\b(tasks?|todos?|tickets?|issues?)\b/i, fields: ["title:text:required", "status:enum", "priority:enum", "assignee_id:relation", "due_at:timestamp"] },
+  { name: "Project", pattern: /\bprojects?\b/i, fields: ["name:text:required", "status:enum", "owner_id:relation", "due_at:timestamp"] },
+  { name: "Product", pattern: /\b(products?|items?|skus?|catalog)\b/i, fields: ["name:text:required", "description:text", "price_minor:integer", "status:enum"] },
+  { name: "InventoryItem", pattern: /\b(inventory|stock|warehouse)\b/i, fields: ["product_id:relation", "quantity:integer", "reorder_level:integer", "location_id:relation"] },
+  { name: "Order", pattern: /\b(orders?|purchases?|sales)\b/i, fields: ["customer_id:relation", "status:enum", "total_minor:integer", "placed_at:timestamp"] },
+  { name: "Booking", pattern: /\b(bookings?|appointments?|reservations?)\b/i, fields: ["customer_id:relation", "starts_at:timestamp", "status:enum", "notes:text"] },
+  { name: "Invoice", pattern: /\b(invoices?|billing)\b/i, fields: ["customer_id:relation", "status:enum", "total_minor:integer", "due_at:timestamp"] },
+  { name: "Expense", pattern: /\b(expenses?|spend|budget)\b/i, fields: ["description:text:required", "amount_minor:integer", "category:enum", "incurred_at:date"] },
+  { name: "Post", pattern: /\b(posts?|articles?|content)\b/i, fields: ["author_id:relation", "body:text:required", "status:enum", "published_at:timestamp"] },
+  { name: "Message", pattern: /\b(messages?|conversations?|chat)\b/i, fields: ["sender_id:relation", "conversation_id:relation", "body:text:required", "sent_at:timestamp"] },
+  { name: "Listing", pattern: /\b(listings?|properties?|directory)\b/i, fields: ["owner_id:relation", "title:text:required", "description:text", "status:enum"] },
+  { name: "User", pattern: /\b(users?|members?|profiles?)\b/i, fields: ["display_name:text:required", "email:text", "role:enum", "avatar_url:text"] },
+];
+
+function inferEntities(brief: string, type: ProductType, needsAuth: boolean): PrdEntity[] {
+  if (!["workflow-app", "marketplace", "social", "storefront"].includes(type)) return [];
+  const matches = ENTITY_RULES.filter((rule) => rule.pattern.test(brief)).slice(0, 4);
+  if (matches.length === 0) {
+    const fallback = type === "storefront" ? ENTITY_RULES.find((r) => r.name === "Product") :
+      type === "marketplace" ? ENTITY_RULES.find((r) => r.name === "Listing") :
+      type === "social" ? ENTITY_RULES.find((r) => r.name === "Post") :
+      ENTITY_RULES.find((r) => r.name === "Task");
+    if (fallback) matches.push(fallback);
+  }
+  return matches.map((rule) => ({
+    name: rule.name,
+    fields: ["id:uuid", ...(needsAuth ? ["user_id:uuid:required"] : []), ...rule.fields, "created_at:timestamp", "updated_at:timestamp"],
+    operations: ["create", "read", "update", "delete"],
+    visibility: needsAuth ? "owner" : type === "storefront" ? "public" : "owner",
+    ownerField: needsAuth ? "user_id" : undefined,
+    relationships: rule.fields.filter((f) => f.includes(":relation")).map((f) => f.split(":")[0]),
+  }));
+}
+
 /* ============================================================
  * Product naming
  * ============================================================ */
@@ -571,6 +613,8 @@ function buildAcceptance(args: {
   required: PrdSurface[];
   excluded: PrdSurface[];
   formulas: PrdFormula[];
+  entities: PrdEntity[];
+  needsAuth: boolean;
 }): PrdAcceptanceCriterion[] {
   const out: PrdAcceptanceCriterion[] = [];
   for (const s of args.required) {
@@ -607,6 +651,31 @@ function buildAcceptance(args: {
       route: "/",
     });
   }
+  for (const entity of args.entities) {
+    for (const operation of entity.operations) {
+      out.push({
+        id: `crud-${entity.name.toLowerCase()}-${operation}`,
+        statement: `${entity.name} supports ${operation} through a visible, working user flow.`,
+        check: "interaction",
+      });
+    }
+    if (args.needsAuth && entity.visibility !== "public") {
+      out.push({
+        id: `permission-${entity.name.toLowerCase()}-scoped`,
+        statement: `${entity.name} records are scoped to their owner or an explicitly permitted role.`,
+        check: "interaction",
+      });
+    }
+  }
+  if (args.entities.length) {
+    for (const state of ["empty", "loading", "error", "validation", "pending", "success", "delete-confirmation"]) {
+      out.push({
+        id: `state-${state}`,
+        statement: `Every data surface has a working ${state} state.`,
+        check: "interaction",
+      });
+    }
+  }
   for (const s of args.excluded) {
     out.push({
       id: `no-${s}`,
@@ -627,7 +696,7 @@ function buildAcceptance(args: {
  * ============================================================ */
 
 export function deterministicPrd(brief: string): Prd {
-  const b = (brief || "").slice(0, 8000);
+  const b = (brief || "").slice(0, MAX_USER_PROMPT_CHARS);
   const calc = CALCULATORS.find((c) => c.needles.some((n) => n.test(b))) ?? null;
   const detected = detectProductType(b);
   const type: ProductType = calc ? "utility" : detected.type;
@@ -637,8 +706,9 @@ export function deterministicPrd(brief: string): Prd {
     (s, i, arr) => arr.indexOf(s) === i,
   );
 
-  const needsPersistence = PERSISTENCE.some((p) => p.test(b));
-  const needsAuth = AUTH.some((p) => p.test(b));
+  const semanticPersistence = ["workflow-app", "marketplace", "social", "storefront"].includes(type);
+  const needsPersistence = semanticPersistence || PERSISTENCE.some((p) => p.test(b));
+  const needsAuth = AUTH.some((p) => p.test(b)) || type === "marketplace" || type === "social" || (type === "workflow-app" && MULTI_USER.test(b));
 
   // Persistence/auth requested explicitly pulls surfaces back in even when the
   // product type would normally exclude them. Intent always beats the default.
@@ -658,6 +728,10 @@ export function deterministicPrd(brief: string): Prd {
 
   const workflow = calc ? utilityWorkflow(calc, b) : genericWorkflow(type, b);
   const formulas = calc?.formulas ?? [];
+  const dataModel = inferEntities(b, type, needsAuth);
+  const roles = needsAuth
+    ? Array.from(new Set(["owner", ...(MULTI_USER.test(b) ? ["admin", "member"] : ["member"])]))
+    : [];
 
   const explicitName = extractExplicitName(b);
   const fallback = fallbackIdentity(b, type);
@@ -666,7 +740,11 @@ export function deterministicPrd(brief: string): Prd {
     "empty — meaningful first-run content, never a blank panel",
     "loading — skeletons, not spinners over blank pages",
     "error — plain-English message with a retry",
+    "validation — invalid fields explain how to recover inline",
+    "pending — mutations disable duplicate submission and preserve layout",
     "success — visible confirmation of what happened",
+    ...(needsAuth ? ["permission denied — explain access without leaking private data"] : []),
+    ...(dataModel.length ? ["destructive confirmation — delete requires explicit confirmation"] : []),
   ];
 
   return {
@@ -680,9 +758,17 @@ export function deterministicPrd(brief: string): Prd {
     primaryWorkflow: workflow,
     secondaryWorkflows: [],
     formulas,
-    dataModel: [],
+    dataModel,
     needsPersistence,
     needsAuth,
+    roles,
+    permissions: dataModel.flatMap((entity) =>
+      roles.map((role) => ({
+        role,
+        entity: entity.name,
+        operations: role === "member" && entity.visibility === "role" ? ["read"] : [...entity.operations],
+      })),
+    ),
     requiredSurfaces: required,
     excludedSurfaces: excluded,
     states,
@@ -691,7 +777,7 @@ export function deterministicPrd(brief: string): Prd {
         ? "Persistent sidebar on desktop, drawer on mobile, consistent page header."
         : "Top navigation with a working mobile drawer. No sidebar.",
     contentTone: calc?.contentTone ?? "Specific to the domain, written for a real user. No lorem ipsum, no filler.",
-    acceptance: buildAcceptance({ type, required, excluded, formulas }),
+    acceptance: buildAcceptance({ type, required, excluded, formulas, entities: dataModel, needsAuth }),
     outOfScope: [],
     source: "deterministic",
     confidence: calc ? 0.95 : detected.confidence,
