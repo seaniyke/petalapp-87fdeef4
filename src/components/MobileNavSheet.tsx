@@ -17,6 +17,8 @@ import {
   BookOpen,
   LogIn,
   X,
+  Store,
+  Tag,
 } from "lucide-react";
 import {
   Sheet,
@@ -223,7 +225,7 @@ function RowLink({
   icon,
   label,
 }: {
-  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs" | "/templates" | "/packs" | "/themes" | "/changelog" | "/privacy" | "/terms";
+  to: "/" | "/projects" | "/gallery" | "/marketplace" | "/sell" | "/profile" | "/admin" | "/docs" | "/templates" | "/packs" | "/themes" | "/changelog" | "/privacy" | "/terms";
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
