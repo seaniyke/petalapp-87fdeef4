@@ -162,6 +162,7 @@ const FALLBACK_AUTH: AuthContextValue = {
   session: null,
   loading: true,
   isReady: false,
+  likelyAuthed: false,
   signOut: async () => {
     await supabase.auth.signOut();
   },
