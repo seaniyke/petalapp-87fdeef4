@@ -340,11 +340,7 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
     darkAdditions.push(`  --${tok}: ${val};`);
     addedTokens.push(tok);
   }
-  for (const tok of missingFonts) {
-    themeAdditions.push(`  --font-${tok}: var(--font-${tok});`);
-    addedTokens.push(`font-${tok}`);
-    addedThemeMappings.push(`--font-${tok}`);
-  }
+
 
   if (rootAdditions.length === 0 && themeAdditions.length === 0) {
     return { files: input, notes: [], addedTokens: [], addedThemeMappings: [] };
