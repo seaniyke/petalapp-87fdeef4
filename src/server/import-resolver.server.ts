@@ -403,7 +403,15 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       // into a visible prose block in the middle of the app.
       if (KIT_OWNED_PATH.test(stubPath)) continue;
 
-      const stub = buildStub(spec, defaultImportName(full), namedImportNames(full));
+      const defName = defaultImportName(full);
+      const composed = buildPageFromOrphans(
+        stubPath,
+        defName,
+        byPath,
+        referenced,
+        consumedOrphans,
+      );
+      const stub = composed ?? buildStub(spec, defName, namedImportNames(full));
       byPath.set(stubPath, stub);
       stubsCreated.push(stubPath);
     }
