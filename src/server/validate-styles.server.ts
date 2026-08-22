@@ -350,11 +350,38 @@ export function repairStylesCss(raw: string): { css: string; notes: string[] } |
     let depth = 0;
     let droppedJunk = 0;
     let droppedApply = 0;
+    // Multi-line comment tracking. Continuation lines of a block comment
+    // ("   Tailwind v4 also respects … */") look exactly like top-level junk
+    // but are NOT — dropping them leaves the comment unterminated, which
+    // swallows every declaration that follows (the whole font stack, in
+    // practice) and ships the app in system sans.
+    let inComment = false;
 
     for (const line of lines) {
       const t = line.trim();
-      const opens = (t.match(/\{/g) ?? []).length;
-      const closes = (t.match(/\}/g) ?? []).length;
+      const startedInComment = inComment;
+      // Update comment state from this line, scanning for /* and */ pairs.
+      {
+        let i = 0;
+        while (i < t.length) {
+          if (!inComment) {
+            const open = t.indexOf("/*", i);
+            if (open < 0) break;
+            inComment = true;
+            i = open + 2;
+          } else {
+            const close = t.indexOf("*/", i);
+            if (close < 0) break;
+            inComment = false;
+            i = close + 2;
+          }
+        }
+      }
+      // Braces inside comments must not move nesting depth either.
+      const codeOnly = startedInComment || inComment ? stripBlockComments(`${startedInComment ? "/*" : ""}${t}${inComment ? "*/" : ""}`) : t;
+      const opens = (codeOnly.match(/\{/g) ?? []).length;
+      const closes = (codeOnly.match(/\}/g) ?? []).length;
+
 
       if (unknown.size > 0 && /^@apply\b/.test(t)) {
         const utils = t.replace(/^@apply\s+/, "").replace(/[;}]\s*$/, "").split(/\s+/);
@@ -372,6 +399,8 @@ export function repairStylesCss(raw: string): { css: string; notes: string[] } |
 
       const isJunk =
         depth === 0 &&
+        !startedInComment &&
+        !inComment &&
         t.length > 0 &&
         !t.startsWith("@") &&
         !t.startsWith("/*") &&
@@ -380,6 +409,7 @@ export function repairStylesCss(raw: string): { css: string; notes: string[] } |
         opens === 0 &&
         closes === 0 &&
         !t.endsWith(",");
+
       if (isJunk) {
         droppedJunk++;
         continue;

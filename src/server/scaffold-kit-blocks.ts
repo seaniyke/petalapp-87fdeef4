@@ -388,6 +388,14 @@ import { cn } from "@/lib/utils";
  *     <Grid cols={1} md={3} gap={6}>...</Grid>
  *   </Section>
  */
+/**
+ * Nesting guard. Kit blocks render their own <Section>, and pages routinely
+ * wrap those blocks in another <Section>. Two stacked paddings produce the
+ * tall empty bands users read as "unfinished design", so a nested Section
+ * contributes no vertical padding.
+ */
+const SectionDepth = React.createContext(0);
+
 export function Section({
   eyebrow,
   title,
@@ -405,24 +413,29 @@ export function Section({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const pad = size === "sm" ? "py-12" : size === "lg" ? "py-28" : "py-20";
+  const depth = React.useContext(SectionDepth);
+  const nested = depth > 0;
+  const pad = nested ? "py-0" : size === "sm" ? "py-12" : size === "lg" ? "py-24 md:py-28" : "py-16 md:py-20";
   const a = align === "center" ? "items-center text-center" : "items-start text-left";
   const titleSize = size === "lg" ? "text-4xl md:text-5xl" : size === "sm" ? "text-2xl md:text-3xl" : "text-3xl md:text-4xl";
+  const hasHeader = Boolean(eyebrow || title || description);
   return (
-    <section className={cn("w-full", pad, className)}>
-      {(eyebrow || title || description) && (
-        <header className={cn("flex flex-col gap-3", a, "mb-10 max-w-3xl", align === "center" && "mx-auto")}>
-          {eyebrow && (
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</span>
-          )}
-          {title && (
-            <h2 className={cn("font-semibold tracking-tight text-foreground", titleSize)}>{title}</h2>
-          )}
-          {description && <p className="text-base text-muted-foreground md:text-lg">{description}</p>}
-        </header>
-      )}
-      {children}
-    </section>
+    <SectionDepth.Provider value={depth + 1}>
+      <section className={cn("w-full", pad, className)}>
+        {hasHeader && (
+          <header className={cn("flex flex-col gap-3", a, "mb-10 max-w-3xl", align === "center" && "mx-auto")}>
+            {eyebrow && (
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</span>
+            )}
+            {title && (
+              <h2 className={cn("font-display font-semibold tracking-tight text-foreground", titleSize)}>{title}</h2>
+            )}
+            {description && <p className="text-base text-muted-foreground md:text-lg">{description}</p>}
+          </header>
+        )}
+        {children}
+      </section>
+    </SectionDepth.Provider>
   );
 }
 `;
@@ -696,34 +709,53 @@ import { Container } from "@/components/ui/container";
 import { cn } from "@/lib/utils";
 
 /**
- * Editorial hero: oversized serif/display title, asymmetric layout, strong
- * negative space. Picks for: agencies, portfolios, magazines, brands with a
- * point of view. NOT for generic SaaS — use HeroCentered there.
+ * Editorial hero: oversized display title, asymmetric layout, strong negative
+ * space, optional portrait image on the right. Picks for: agencies,
+ * portfolios, magazines, brands with a point of view.
+ *
+ * Accepts the common hero vocabulary (eyebrow / description / secondaryCta /
+ * image) as well as its editorial-specific props (number / meta / lede), so a
+ * caller never loses content to a prop React would silently drop.
  */
 export function HeroEditorial({
   number,
+  eyebrow,
   title,
   lede,
+  description,
   meta,
   primaryCta,
+  secondaryCta,
+  image,
+  imageAlt,
   className,
 }: {
   /** Optional issue/section marker rendered as oversized numerals. */
   number?: React.ReactNode;
+  /** Small label above the headline. */
+  eyebrow?: React.ReactNode;
   title: React.ReactNode;
   lede?: React.ReactNode;
+  /** Alias of lede. */
+  description?: React.ReactNode;
   /** Small metadata row, e.g. "Issue 04 — Spring 2026". */
   meta?: React.ReactNode;
   primaryCta?: { label: string; href?: string; onClick?: () => void };
+  secondaryCta?: { label: string; href?: string; onClick?: () => void };
+  /** Optional portrait/product image rendered beside the copy. */
+  image?: string;
+  imageAlt?: string;
   className?: string;
 }) {
+  const body = lede ?? description;
+  const copySpan = image ? "md:col-span-7" : number != null ? "md:col-span-9" : "md:col-span-12";
   return (
-    <section className={cn("border-b border-border py-20 md:py-28", className)}>
+    <section className={cn("border-b border-border py-16 md:py-24", className)}>
       <Container size="xl">
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 items-center gap-10 md:gap-12">
           {number != null && (
             <div className="col-span-12 md:col-span-3">
-              <div className="font-serif text-7xl font-light leading-none text-foreground/80 md:text-8xl">
+              <div className="font-display text-7xl font-light leading-none text-foreground/80 md:text-8xl">
                 {number}
               </div>
               {meta && (
@@ -731,21 +763,46 @@ export function HeroEditorial({
               )}
             </div>
           )}
-          <div className={cn(number != null ? "col-span-12 md:col-span-9" : "col-span-12")}>
-            <h1 className="text-balance text-5xl font-semibold leading-[1.05] tracking-tight text-foreground md:text-7xl">
+          <div className={cn("col-span-12", copySpan)}>
+            {eyebrow && (
+              <div className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</div>
+            )}
+            <h1 className="text-balance font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
               {title}
             </h1>
-            {lede && (
-              <p className="mt-8 max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl">{lede}</p>
+            {body && (
+              <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl">{body}</p>
             )}
-            {primaryCta && (
-              <div className="mt-10">
-                <Button size="lg" variant="outline" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
-                  {primaryCta.href ? <a href={primaryCta.href}>{primaryCta.label}</a> : primaryCta.label}
-                </Button>
+            {number == null && meta && (
+              <div className="mt-6 text-xs uppercase tracking-[0.2em] text-muted-foreground">{meta}</div>
+            )}
+            {(primaryCta || secondaryCta) && (
+              <div className="mt-9 flex flex-wrap items-center gap-3">
+                {primaryCta && (
+                  <Button size="lg" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
+                    {primaryCta.href ? <a href={primaryCta.href}>{primaryCta.label}</a> : primaryCta.label}
+                  </Button>
+                )}
+                {secondaryCta && (
+                  <Button size="lg" variant="outline" onClick={secondaryCta.onClick} asChild={!!secondaryCta.href}>
+                    {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
+                  </Button>
+                )}
               </div>
             )}
           </div>
+          {image && (
+            <div className="col-span-12 md:col-span-5">
+              <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-primary/10">
+                <img
+                  src={image}
+                  alt={imageAlt ?? ""}
+                  loading="eager"
+                  className="aspect-[4/5] w-full object-cover"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </Container>
     </section>
