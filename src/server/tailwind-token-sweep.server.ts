@@ -198,13 +198,10 @@ function deriveColorValue(name: string, knownRaw: Set<string>): string {
   return pick("foreground");
 }
 
-function deriveFontValue(name: string, knownRaw: Set<string>): string {
-  if (knownRaw.has("font-sans")) return `var(--font-sans)`;
-  if (/(mono|code)/i.test(name)) return `ui-monospace, SFMono-Regular, Menlo, monospace`;
-  if (/(serif|display|heading|title)/i.test(name))
-    return `ui-serif, Georgia, Cambria, "Times New Roman", serif`;
-  return `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
-}
+// (Font derivation intentionally removed: this pass must never author a
+// `--font-*` value. The design director picks the pair; the design finisher
+// loads it. See design-finisher.server.ts.)
+
 
 function extractClassLiterals(source: string): string[] {
   const out: string[] = [];
