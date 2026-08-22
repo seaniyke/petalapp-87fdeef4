@@ -928,39 +928,131 @@ function Landing() {
             <SampleAppShowcase />
           </section>
 
-          {/* Trust strip — animated marquee of "built with Petal" categories */}
-          <section aria-label="Trusted by" className="border-y border-border/60 bg-card/30 py-6 overflow-hidden">
-            <div className="mx-auto max-w-6xl px-4 sm:px-6">
-              <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                Built with Petal · founders, designers, indie hackers
-              </p>
-              <div className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
-                <div className="flex w-max animate-marquee gap-12 whitespace-nowrap font-display text-2xl italic text-foreground/60 sm:text-3xl">
-                  {Array.from({ length: 2 }).map((_, r) => (
-                    <div key={r} className="flex gap-12">
-                      {[
-                        "booking apps",
-                        "AI copilots",
-                        "portfolios",
-                        "mobile MVPs",
-                        "internal tools",
-                        "chrome extensions",
-                        "landing pages",
-                        "APIs",
-                        "creator sites",
-                        "dashboards",
-                      ].map((t) => (
-                        <span key={`${r}-${t}`} className="flex items-center gap-6">
-                          <Star className="h-4 w-4 text-coral" />
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  ))}
-                </div>
+          {/* Proof strip — what Petal actually does, stated flat. No borrowed
+              logos, no invented customer count. */}
+          <section aria-label="What Petal covers" className="border-y border-border/60 bg-card/30">
+            <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-4">
+                {[
+                  { stat: "4", label: "Targets: web, mobile, backend, extension" },
+                  { stat: "11", label: "Specialist agents review each build" },
+                  { stat: "Never", label: "Credits expire" },
+                  { stat: "80%", label: "You keep on marketplace sales" },
+                ].map((s) => (
+                  <div key={s.label}>
+                    <dt className="font-display text-3xl font-black tracking-[-0.03em] sm:text-4xl">{s.stat}</dt>
+                    <dd className="mt-1.5 max-w-[15rem] text-xs leading-relaxed text-muted-foreground">{s.label}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </section>
+
+          {/* THE DIFFERENCE — the four things only Petal does. Asymmetric on
+              purpose: the marketplace claim gets the wide slot. */}
+          <section id="difference" className="relative px-5 py-24 sm:px-6 sm:py-32">
+            <div className="mx-auto max-w-6xl">
+              <div className="max-w-3xl">
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary">The difference</p>
+                <h2 className="mt-4 font-display text-[2.75rem] font-black leading-[0.9] tracking-[-0.045em] sm:text-6xl md:text-7xl">
+                  Everyone can generate an app.
+                  <br />
+                  <span className="italic font-normal">Four things they can't do.</span>
+                </h2>
+              </div>
+
+              <div className="mt-16 grid gap-px sm:grid-cols-5">
+                {/* Wide slot — marketplace */}
+                <Link
+                  to="/why/$slug"
+                  params={{ slug: "marketplace" }}
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-[2rem] bg-foreground p-8 text-background sm:col-span-3 sm:p-10"
+                >
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-background/50">01</span>
+                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-5xl">
+                      Sell what you build.
+                    </h3>
+                    <p className="mt-4 max-w-md text-sm leading-relaxed text-background/70 sm:text-base">
+                      List a finished project, set a price, transfer it to the buyer's workspace. Petal takes 20% and
+                      nothing else. No other AI builder has a storefront on the other side of deploy.
+                    </p>
+                  </div>
+                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-coral">
+                    How the marketplace works
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
+
+                {/* Narrow slot — pay as you build */}
+                <Link
+                  to="/why/$slug"
+                  params={{ slug: "pay-as-you-build" }}
+                  className="group flex flex-col justify-between rounded-[2rem] border border-border bg-card p-8 sm:col-span-2 sm:p-10"
+                >
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">02</span>
+                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-4xl">
+                      Pay as you build.
+                    </h3>
+                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                      Credit packs you buy once. They never expire, there is no plan to cancel, and a turn that changes
+                      nothing costs nothing.
+                    </p>
+                  </div>
+                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                    See the pricing model
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
+
+                {/* Narrow slot — agent board */}
+                <Link
+                  to="/why/$slug"
+                  params={{ slug: "agent-board" }}
+                  className="group flex flex-col justify-between rounded-[2rem] border border-border bg-card p-8 sm:col-span-2 sm:p-10"
+                >
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">03</span>
+                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-4xl">
+                      A board, not a bot.
+                    </h3>
+                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                      Product, architecture, design, security, QA — eleven specialists argue over the spec before a
+                      single file is written.
+                    </p>
+                  </div>
+                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                    Meet the board
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
+
+                {/* Wide slot — own your code */}
+                <Link
+                  to="/why/$slug"
+                  params={{ slug: "own-your-code" }}
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-accent/40 p-8 sm:col-span-3 sm:p-10"
+                >
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">04</span>
+                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-5xl">
+                      The code is yours to take.
+                    </h3>
+                    <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+                      Real React and TypeScript, two-way Git sync, your own domain. Leaving Petal should be a decision,
+                      not an escape.
+                    </p>
+                  </div>
+                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                    What you actually own
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
               </div>
             </div>
           </section>
+
 
           {/* Bento features — real product screenshots + editorial typography */}
           <section id="features" className="relative px-4 py-24 sm:px-6 sm:py-32">
