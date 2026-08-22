@@ -1283,58 +1283,85 @@ import { cn } from "@/lib/utils";
 
 type LogoEntry = string | { name?: string; src?: string; url?: string };
 
-function normalizeLogo(l: LogoEntry, i: number): { name: string; src?: string } {
-  if (typeof l === "string") return { name: \`logo-\${i + 1}\`, src: l };
-  return { name: l.name ?? \`logo-\${i + 1}\`, src: l.src ?? l.url };
+function normalizeLogo(l: LogoEntry): { name: string; src?: string } {
+  if (typeof l === "string") return { name: "", src: l };
+  return { name: l.name ?? "", src: l.src ?? l.url };
 }
 
 /**
- * Infinite-scroll logo strip. Accepts either an array of \`{ name, src }\`
- * objects or a plain string[] of image URLs.
+ * Infinite-scroll press / customer strip. Accepts either an array of
+ * \`{ name, src }\` objects or a plain string[] of image URLs.
+ *
+ * Rendering rule: a name is ALWAYS shown as a wordmark. When a \`src\` is also
+ * given it renders as a small mark next to that wordmark — never as a lone
+ * tiny image, which reads as visual noise at logo scale.
+ *
+ * Prop aliases (\`heading\`/\`title\` for \`eyebrow\`, \`duration\` for \`speed\`) are
+ * accepted so a caller never silently loses its heading.
  */
 export function LogosMarquee({
   eyebrow,
+  heading,
+  title,
   logos,
-  speed = 40,
+  speed,
+  duration,
   className,
 }: {
   eyebrow?: React.ReactNode;
+  /** Alias of eyebrow. */
+  heading?: React.ReactNode;
+  /** Alias of eyebrow. */
+  title?: React.ReactNode;
   logos: LogoEntry[];
   speed?: number;
+  /** Alias of speed. */
+  duration?: number;
   className?: string;
 }) {
-  const list = Array.isArray(logos) ? logos.map(normalizeLogo) : [];
+  const list = Array.isArray(logos) ? logos.map((l) => normalizeLogo(l)) : [];
+  const label = eyebrow ?? heading ?? title;
   return (
     <section className={cn("py-12 md:py-16", className)}>
       <Container size="xl">
-        {eyebrow && (
+        {label && (
           <p className="mb-8 text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            {eyebrow}
+            {label}
           </p>
         )}
         <div className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
-          <Marquee speed={speed}>
-            {list.map((l, i) =>
-              l.src ? (
-                <img
-                  key={i}
-                  src={l.src}
-                  alt={l.name}
-                  className="mx-8 h-7 w-auto opacity-60 grayscale"
-                  loading="lazy"
-                />
-              ) : (
-                <span key={i} className="mx-8 text-base font-semibold tracking-tight text-muted-foreground/70">
-                  {l.name}
-                </span>
-              ),
-            )}
+          <Marquee speed={speed ?? duration ?? 40}>
+            {list.map((l, i) => (
+              <div
+                key={i}
+                className="mx-8 flex shrink-0 items-center gap-2.5 opacity-70 transition-opacity hover:opacity-100"
+              >
+                {l.src && (
+                  <img
+                    src={l.src}
+                    alt={l.name || ""}
+                    className={
+                      l.name
+                        ? "h-8 w-8 shrink-0 rounded-full object-cover"
+                        : "h-8 w-auto max-w-[150px] shrink-0 object-contain"
+                    }
+                    loading="lazy"
+                  />
+                )}
+                {l.name && (
+                  <span className="whitespace-nowrap text-base font-semibold tracking-tight text-foreground/80">
+                    {l.name}
+                  </span>
+                )}
+              </div>
+            ))}
           </Marquee>
         </div>
       </Container>
     </section>
   );
 }
+
 `;
 
 // =============================================================================

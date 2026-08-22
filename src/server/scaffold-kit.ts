@@ -4352,6 +4352,12 @@ export function applyScaffoldKit(
 function shouldOverwriteDuringPatch(path: string): boolean {
   return (
     path === "vite.config.ts" ||
+    // Kit blocks are library-owned, exactly like `src/components/ui/*`. Old
+    // projects otherwise keep a stale copy of a block forever (e.g. a hero
+    // that silently drops `eyebrow`/`image`, or a logo strip that renders
+    // tiny squares) with no way to ever receive the fix. Blocks the model
+    // touched this turn are excluded by the caller via `keepPaths`.
+    path.startsWith("src/components/blocks/") ||
     path === "petal-source-plugin.mjs" ||
     path === "tsconfig.json" ||
     path === "src/lib/utils.ts" ||
@@ -4374,12 +4380,16 @@ export function applyScaffoldKitForPatch(
     backend?: { url: string; anonKey: string };
     sharedBackend?: SharedBackendKitOpts;
     target?: string;
+    /** Paths the model actually changed this turn — never clobbered. */
+    keepPaths?: Iterable<string>;
   },
 ): ProjectFile[] {
   const map = new Map<string, string>();
   for (const f of files) map.set(f.path, f.content);
+  const keep = new Set(opts?.keepPaths ?? []);
 
   for (const kit of KIT_FILES) {
+    if (keep.has(kit.path)) continue;
     if (shouldOverwriteDuringPatch(kit.path) || !map.has(kit.path)) {
       map.set(kit.path, kit.content);
     }

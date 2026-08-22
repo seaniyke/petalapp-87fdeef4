@@ -140,7 +140,7 @@ export function renderLandingChecklistBlock(): string {
 Every landing you build must include ALL of the following sections in the composed page, each in its own component file under \`src/components/sections/\`, each ≤120 lines:
   1. NavBar / SiteHeader   (with logo, primary nav, CTA button)
   2. Hero                  (variant picked from Section Library)
-  3. Social proof          (logos, marquee, stat strip, or anchor testimonial)
+  3. Social proof          (stat strip, rating line, or anchor testimonial — a logo marquee only for real named brands, always with wordmarks)
   4. Features              (bento, zigzag, tabs, sticky-scroll, or icon grid)
   5. How it works          (steps row, timeline, or diagram)
   6. Showcase              (carousel, parallax grid, or device mockups)

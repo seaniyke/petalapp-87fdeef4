@@ -414,11 +414,14 @@ export function BuildActivityCard({
           <button
             type="button"
             onClick={onOpenPreview}
-            disabled={!onOpenPreview}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-bold transition hover:bg-muted disabled:opacity-40"
+            // Preview only becomes clickable once the turn has actually
+            // finished — opening it mid-build shows a half-written app.
+            disabled={!onOpenPreview || isActive || (!isComplete && !error)}
+            title={isActive ? "Available once Petal finishes" : undefined}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-bold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-background"
           >
             <Play className="h-3.5 w-3.5" aria-hidden />
-            Preview
+            {isActive ? "Building…" : "Preview"}
           </button>
         </div>
       </div>

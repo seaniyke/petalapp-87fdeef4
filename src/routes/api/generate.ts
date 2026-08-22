@@ -3896,10 +3896,17 @@ Forbidden defaults
           // "SelectTrigger is not exported by select.tsx" forever
           // because `applyScaffoldKit` was only running on initial
           // create + at build-trigger time.
+          // Paths this turn actually rewrote: kit healing must not clobber them.
+          const patchedTouched = new Set(
+            patched
+              .filter((f) => currentFiles.find((c) => c.path === f.path)?.content !== f.content)
+              .map((f) => f.path),
+          );
           nextFiles = applyScaffoldKitForPatch(patched, {
             backend: backend ?? undefined,
             sharedBackend: sharedBackend ?? undefined,
             target: buildTarget.id,
+            keepPaths: patchedTouched,
           });
         }
         if (!nextFiles.some((f) => f.path === "index.html")) {
