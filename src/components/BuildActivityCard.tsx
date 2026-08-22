@@ -166,6 +166,43 @@ export function BuildActivityCard({
     if (!isActive && !isComplete) setThinkingLog([]);
   }, [isActive, isComplete]);
 
+  // Per-step clock. The plan is stated up front, then each step is worked one
+  // at a time — so every step carries its own working time, and the header
+  // carries the overall running time. Nothing runs "side by side".
+  const [stepClock, setStepClock] = useState<Record<number, { start: number; end?: number }>>({});
+  useEffect(() => {
+    setStepClock((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (activeStepIndex >= 0 && next[activeStepIndex] == null) {
+        next[activeStepIndex] = { start: Date.now() };
+        changed = true;
+      }
+      for (const i of doneStepIndexes ?? []) {
+        const entry = next[i];
+        if (entry && entry.end == null) {
+          next[i] = { ...entry, end: Date.now() };
+          changed = true;
+        } else if (!entry) {
+          next[i] = { start: Date.now(), end: Date.now() };
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [activeStepIndex, doneStepIndexes]);
+  useEffect(() => {
+    if (!isActive && !isComplete) setStepClock({});
+  }, [isActive, isComplete]);
+
+  const stepDuration = (i: number): string | null => {
+    const entry = stepClock[i];
+    if (!entry) return null;
+    const secs = Math.round(((entry.end ?? Date.now()) - entry.start) / 1000);
+    if (secs < 1) return null;
+    return secs < 60 ? `${secs}s` : formatElapsed(secs);
+  };
+
   // First time we saw each file stream in — gives the trace a real clock so
   // edits interleave with thoughts instead of being bolted on at the end.
   const [fileTimestamps, setFileTimestamps] = useState<Record<string, number>>({});
