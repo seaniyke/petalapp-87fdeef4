@@ -326,6 +326,52 @@ export function MobilePreviewFallback({
   );
 }
 
+/**
+ * Server-rendered snapshot of the project's current files (`/api/preview/:id`).
+ * This always works: no WebContainer, no SharedArrayBuffer, no CDN deploy. It's
+ * the floor of the preview stack so a user is never left with an empty pane.
+ */
+function SnapshotFrame({ projectId, badge }: { projectId: string; badge?: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      // Private projects need the owner's token; iframes can't set headers, so
+      // the route accepts ?t=<jwt>.
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      const token = data.session?.access_token;
+      const qs = new URLSearchParams({ v: String(Date.now()) });
+      if (token) qs.set("t", token);
+      setSrc(`/api/preview/${projectId}?${qs.toString()}`);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
+  if (!src) {
+    return <EmptyState title="Loading preview…" message="" spinning />;
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      {badge && (
+        <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full border border-border bg-card/95 px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-[var(--shadow-soft)] backdrop-blur">
+          {badge}
+        </div>
+      )}
+      <iframe
+        title="App preview"
+        src={src}
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        className="h-full w-full border-0 bg-white"
+      />
+    </div>
+  );
+}
+
 function PreviewFrame({
   src,
   iframeKey,
