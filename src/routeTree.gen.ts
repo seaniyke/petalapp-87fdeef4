@@ -27,6 +27,7 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MarketplaceIndexRouteImport } from './routes/marketplace.index'
 import { Route as BillingIndexRouteImport } from './routes/billing.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
@@ -205,6 +206,11 @@ const AuthRoute = AuthRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceIndexRoute = MarketplaceIndexRouteImport.update({
+  id: '/marketplace/',
+  path: '/marketplace/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BillingIndexRoute = BillingIndexRouteImport.update({
@@ -727,6 +733,7 @@ export interface FileRoutesByFullPath {
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/billing/': typeof BillingIndexRoute
+  '/marketplace/': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -836,6 +843,7 @@ export interface FileRoutesByTo {
   '/share/$token': typeof ShareTokenRoute
   '/admin': typeof AdminIndexRoute
   '/billing': typeof BillingIndexRoute
+  '/marketplace': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -946,6 +954,7 @@ export interface FileRoutesById {
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/billing/': typeof BillingIndexRoute
+  '/marketplace/': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -1057,6 +1066,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/admin/'
     | '/billing/'
+    | '/marketplace/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1166,6 +1176,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/admin'
     | '/billing'
+    | '/marketplace'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1275,6 +1286,7 @@ export interface FileRouteTypes {
     | '/share/$token'
     | '/admin/'
     | '/billing/'
+    | '/marketplace/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1383,6 +1395,7 @@ export interface RootRouteChildren {
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   BillingIndexRoute: typeof BillingIndexRoute
+  MarketplaceIndexRoute: typeof MarketplaceIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
   ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
@@ -1559,6 +1572,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/': {
+      id: '/marketplace/'
+      path: '/marketplace'
+      fullPath: '/marketplace/'
+      preLoaderRoute: typeof MarketplaceIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/billing/': {
@@ -2287,6 +2307,7 @@ const rootRouteChildren: RootRouteChildren = {
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
   BillingIndexRoute: BillingIndexRoute,
+  MarketplaceIndexRoute: MarketplaceIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
   ApiAdminDigestsRoute: ApiAdminDigestsRoute,
