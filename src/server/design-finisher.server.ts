@@ -238,6 +238,42 @@ function animateHeroHeadline(content: string): { content: string; changed: boole
 }
 
 // ---------------------------------------------------------------------------
+// 5. Interior surface floor
+// ---------------------------------------------------------------------------
+
+const SURFACE_FLOOR_CSS = `
+/* petal:surface-floor — interior screens are designed too, not just the landing */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+thead th {
+  text-align: left;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground, currentColor);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border, currentColor);
+}
+tbody td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border, currentColor);
+}
+tbody tr:last-child td { border-bottom: 0; }
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  border-radius: var(--radius, 0.625rem);
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+}
+`;
+
+// ---------------------------------------------------------------------------
+
 
 export function enforceDesignFinish(input: ProjectFile[]): DesignFinishResult {
   const notes: string[] = [];
