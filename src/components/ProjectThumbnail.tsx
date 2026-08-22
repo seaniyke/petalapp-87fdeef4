@@ -95,17 +95,32 @@ export function ProjectThumbnail({
   const contain = fit === "contain";
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // 0 = Microlink, 1 = WordPress mShots fallback. A single flaky provider was
+  // the real reason cards fell back to bare initials.
+  const [attempt, setAttempt] = useState(0);
   const showImage = url && !failed;
 
+  // Reset whenever the resolved target changes (e.g. a build just landed).
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+    setAttempt(0);
+  }, [url]);
+
   // The screenshot service can hang (cold render, rate limit) without ever
-  // firing onError, which left the tile showing a spinner forever — that's the
-  // "blank thumbnail" people see. Give it a hard deadline, then fall back to
-  // the gradient tile so a card is never empty.
+  // firing onError, which left the tile showing a spinner forever. Give each
+  // provider a deadline, try the backup, then fall back to the gradient tile.
   useEffect(() => {
     if (!showImage || loaded) return;
-    const t = setTimeout(() => setFailed(true), 9000);
+    const t = setTimeout(() => {
+      setAttempt((a) => {
+        if (a === 0) return 1;
+        setFailed(true);
+        return a;
+      });
+    }, 12000);
     return () => clearTimeout(t);
-  }, [showImage, loaded, url]);
+  }, [showImage, loaded, url, attempt]);
 
 
 
