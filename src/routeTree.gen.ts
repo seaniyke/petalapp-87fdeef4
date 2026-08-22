@@ -14,6 +14,7 @@ import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as ThemesRouteImport } from './routes/themes'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as SellRouteImport } from './routes/sell'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -27,12 +28,14 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MarketplaceIndexRouteImport } from './routes/marketplace.index'
 import { Route as BillingIndexRouteImport } from './routes/billing.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as RCodeRouteImport } from './routes/r.$code'
 import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
+import { Route as MarketplaceSlugRouteImport } from './routes/marketplace.$slug'
 import { Route as FeaturesSlugRouteImport } from './routes/features.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as CoffeeThanksRouteImport } from './routes/coffee.thanks'
@@ -57,6 +60,7 @@ import { Route as AdminQaRouteImport } from './routes/admin.qa'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminMobileSigningRouteImport } from './routes/admin.mobile-signing'
+import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
 import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminDigestRouteImport } from './routes/admin.digest'
@@ -142,6 +146,11 @@ const TemplatesRoute = TemplatesRouteImport.update({
   path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SellRoute = SellRouteImport.update({
+  id: '/sell',
+  path: '/sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -207,6 +216,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MarketplaceIndexRoute = MarketplaceIndexRouteImport.update({
+  id: '/marketplace/',
+  path: '/marketplace/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BillingIndexRoute = BillingIndexRouteImport.update({
   id: '/billing/',
   path: '/billing/',
@@ -235,6 +249,11 @@ const PacksSlugRoute = PacksSlugRouteImport.update({
 const PSlugRoute = PSlugRouteImport.update({
   id: '/p/$slug',
   path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceSlugRoute = MarketplaceSlugRouteImport.update({
+  id: '/marketplace/$slug',
+  path: '/marketplace/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeaturesSlugRoute = FeaturesSlugRouteImport.update({
@@ -355,6 +374,11 @@ const AdminPipelineRoute = AdminPipelineRouteImport.update({
 const AdminMobileSigningRoute = AdminMobileSigningRouteImport.update({
   id: '/admin/mobile-signing',
   path: '/admin/mobile-signing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMarketplaceRoute = AdminMarketplaceRouteImport.update({
+  id: '/admin/marketplace',
+  path: '/admin/marketplace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLedgersRoute = AdminLedgersRouteImport.update({
@@ -683,6 +707,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sell': typeof SellRoute
   '/templates': typeof TemplatesRoute
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
@@ -697,6 +722,7 @@ export interface FileRoutesByFullPath {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -721,12 +747,14 @@ export interface FileRoutesByFullPath {
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/features/$slug': typeof FeaturesSlugRoute
+  '/marketplace/$slug': typeof MarketplaceSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/billing/': typeof BillingIndexRoute
+  '/marketplace/': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -792,6 +820,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sell': typeof SellRoute
   '/templates': typeof TemplatesRoute
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
@@ -806,6 +835,7 @@ export interface FileRoutesByTo {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -830,12 +860,14 @@ export interface FileRoutesByTo {
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/features/$slug': typeof FeaturesSlugRoute
+  '/marketplace/$slug': typeof MarketplaceSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin': typeof AdminIndexRoute
   '/billing': typeof BillingIndexRoute
+  '/marketplace': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -902,6 +934,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sell': typeof SellRoute
   '/templates': typeof TemplatesRoute
   '/terms': typeof TermsRoute
   '/themes': typeof ThemesRoute
@@ -916,6 +949,7 @@ export interface FileRoutesById {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/ledgers': typeof AdminLedgersRoute
+  '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
@@ -940,12 +974,14 @@ export interface FileRoutesById {
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/features/$slug': typeof FeaturesSlugRoute
+  '/marketplace/$slug': typeof MarketplaceSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/billing/': typeof BillingIndexRoute
+  '/marketplace/': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -1013,6 +1049,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/sell'
     | '/templates'
     | '/terms'
     | '/themes'
@@ -1027,6 +1064,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
+    | '/admin/marketplace'
     | '/admin/mobile-signing'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -1051,12 +1089,14 @@ export interface FileRouteTypes {
     | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/features/$slug'
+    | '/marketplace/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/r/$code'
     | '/share/$token'
     | '/admin/'
     | '/billing/'
+    | '/marketplace/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1122,6 +1162,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/sell'
     | '/templates'
     | '/terms'
     | '/themes'
@@ -1136,6 +1177,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
+    | '/admin/marketplace'
     | '/admin/mobile-signing'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -1160,12 +1202,14 @@ export interface FileRouteTypes {
     | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/features/$slug'
+    | '/marketplace/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/r/$code'
     | '/share/$token'
     | '/admin'
     | '/billing'
+    | '/marketplace'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1231,6 +1275,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/sell'
     | '/templates'
     | '/terms'
     | '/themes'
@@ -1245,6 +1290,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/failures'
     | '/admin/ledgers'
+    | '/admin/marketplace'
     | '/admin/mobile-signing'
     | '/admin/pipeline'
     | '/admin/projects'
@@ -1269,12 +1315,14 @@ export interface FileRouteTypes {
     | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/features/$slug'
+    | '/marketplace/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/r/$code'
     | '/share/$token'
     | '/admin/'
     | '/billing/'
+    | '/marketplace/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1341,6 +1389,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SellRoute: typeof SellRoute
   TemplatesRoute: typeof TemplatesRoute
   TermsRoute: typeof TermsRoute
   ThemesRoute: typeof ThemesRoute
@@ -1355,6 +1404,7 @@ export interface RootRouteChildren {
   AdminDigestRoute: typeof AdminDigestRoute
   AdminFailuresRoute: typeof AdminFailuresRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
+  AdminMarketplaceRoute: typeof AdminMarketplaceRoute
   AdminMobileSigningRoute: typeof AdminMobileSigningRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
@@ -1378,11 +1428,13 @@ export interface RootRouteChildren {
   BillingReturnRoute: typeof BillingReturnRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   FeaturesSlugRoute: typeof FeaturesSlugRoute
+  MarketplaceSlugRoute: typeof MarketplaceSlugRoute
   PSlugRoute: typeof PSlugRoute
   RCodeRoute: typeof RCodeRoute
   ShareTokenRoute: typeof ShareTokenRoute
   AdminIndexRoute: typeof AdminIndexRoute
   BillingIndexRoute: typeof BillingIndexRoute
+  MarketplaceIndexRoute: typeof MarketplaceIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
   ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
@@ -1468,6 +1520,13 @@ declare module '@tanstack/react-router' {
       path: '/templates'
       fullPath: '/templates'
       preLoaderRoute: typeof TemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sell': {
+      id: '/sell'
+      path: '/sell'
+      fullPath: '/sell'
+      preLoaderRoute: typeof SellRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -1561,6 +1620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/marketplace/': {
+      id: '/marketplace/'
+      path: '/marketplace'
+      fullPath: '/marketplace/'
+      preLoaderRoute: typeof MarketplaceIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/billing/': {
       id: '/billing/'
       path: '/billing'
@@ -1601,6 +1667,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$slug'
       fullPath: '/p/$slug'
       preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/$slug': {
+      id: '/marketplace/$slug'
+      path: '/marketplace/$slug'
+      fullPath: '/marketplace/$slug'
+      preLoaderRoute: typeof MarketplaceSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/features/$slug': {
@@ -1769,6 +1842,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/mobile-signing'
       fullPath: '/admin/mobile-signing'
       preLoaderRoute: typeof AdminMobileSigningRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/marketplace': {
+      id: '/admin/marketplace'
+      path: '/admin/marketplace'
+      fullPath: '/admin/marketplace'
+      preLoaderRoute: typeof AdminMarketplaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/ledgers': {
@@ -2245,6 +2325,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SellRoute: SellRoute,
   TemplatesRoute: TemplatesRoute,
   TermsRoute: TermsRoute,
   ThemesRoute: ThemesRoute,
@@ -2259,6 +2340,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDigestRoute: AdminDigestRoute,
   AdminFailuresRoute: AdminFailuresRoute,
   AdminLedgersRoute: AdminLedgersRoute,
+  AdminMarketplaceRoute: AdminMarketplaceRoute,
   AdminMobileSigningRoute: AdminMobileSigningRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProjectsRoute: AdminProjectsRoute,
@@ -2282,11 +2364,13 @@ const rootRouteChildren: RootRouteChildren = {
   BillingReturnRoute: BillingReturnRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   FeaturesSlugRoute: FeaturesSlugRoute,
+  MarketplaceSlugRoute: MarketplaceSlugRoute,
   PSlugRoute: PSlugRoute,
   RCodeRoute: RCodeRoute,
   ShareTokenRoute: ShareTokenRoute,
   AdminIndexRoute: AdminIndexRoute,
   BillingIndexRoute: BillingIndexRoute,
+  MarketplaceIndexRoute: MarketplaceIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
   ApiAdminDigestsRoute: ApiAdminDigestsRoute,

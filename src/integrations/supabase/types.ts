@@ -1042,6 +1042,142 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_licenses: {
+        Row: {
+          code: string
+          created_at: string
+          name: string
+          redistribute_allowed: boolean
+          resale_allowed: boolean
+          rights: string[]
+          sort_order: number
+          summary: string
+          white_label_allowed: boolean
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          name: string
+          redistribute_allowed?: boolean
+          resale_allowed?: boolean
+          rights?: string[]
+          sort_order?: number
+          summary: string
+          white_label_allowed?: boolean
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          name?: string
+          redistribute_allowed?: boolean
+          resale_allowed?: boolean
+          rights?: string[]
+          sort_order?: number
+          summary?: string
+          white_label_allowed?: boolean
+        }
+        Relationships: []
+      }
+      marketplace_listings: {
+        Row: {
+          category: string
+          cover_url: string | null
+          created_at: string
+          creator_id: string
+          currency_code: string
+          demo_url: string | null
+          description: string
+          file_count: number
+          id: string
+          license_code: string
+          open_count: number
+          pitch: string
+          price_minor: number
+          project_id: string | null
+          published_at: string | null
+          review_note: string | null
+          screenshots: string[]
+          slug: string
+          source_files: Json
+          source_version_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          creator_id: string
+          currency_code?: string
+          demo_url?: string | null
+          description?: string
+          file_count?: number
+          id?: string
+          license_code?: string
+          open_count?: number
+          pitch?: string
+          price_minor?: number
+          project_id?: string | null
+          published_at?: string | null
+          review_note?: string | null
+          screenshots?: string[]
+          slug: string
+          source_files?: Json
+          source_version_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cover_url?: string | null
+          created_at?: string
+          creator_id?: string
+          currency_code?: string
+          demo_url?: string | null
+          description?: string
+          file_count?: number
+          id?: string
+          license_code?: string
+          open_count?: number
+          pitch?: string
+          price_minor?: number
+          project_id?: string | null
+          published_at?: string | null
+          review_note?: string | null
+          screenshots?: string[]
+          slug?: string
+          source_files?: Json
+          source_version_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_listings_license_code_fkey"
+            columns: ["license_code"]
+            isOneToOne: false
+            referencedRelation: "marketplace_licenses"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "marketplace_listings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_listings_source_version_id_fkey"
+            columns: ["source_version_id"]
+            isOneToOne: false
+            referencedRelation: "project_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_drafts: {
         Row: {
           partial_content: string
@@ -3875,6 +4011,48 @@ export type Database = {
         }[]
       }
       is_paid_plan: { Args: { _user_id: string }; Returns: boolean }
+      marketplace_get_live: {
+        Args: { p_slug: string }
+        Returns: {
+          category: string
+          cover_url: string
+          creator_id: string
+          currency_code: string
+          demo_url: string
+          description: string
+          file_count: number
+          id: string
+          license_code: string
+          open_count: number
+          pitch: string
+          price_minor: number
+          published_at: string
+          screenshots: string[]
+          slug: string
+          title: string
+        }[]
+      }
+      marketplace_list_live: {
+        Args: never
+        Returns: {
+          category: string
+          cover_url: string
+          creator_id: string
+          currency_code: string
+          demo_url: string
+          file_count: number
+          id: string
+          license_code: string
+          open_count: number
+          pitch: string
+          price_minor: number
+          published_at: string
+          screenshots: string[]
+          slug: string
+          title: string
+        }[]
+      }
+      marketplace_open_listing: { Args: { p_slug: string }; Returns: string }
       move_to_dlq: {
         Args: {
           dlq_name: string

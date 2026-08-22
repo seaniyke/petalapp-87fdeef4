@@ -1,0 +1,263 @@
+/**
+ * Petal Marketplace — client data layer (Phase 1: listing foundation).
+ *
+ * Everything here talks to real tables/RPCs:
+ *   - `marketplace_licenses`  — fixed license catalog (personal/commercial/extended)
+ *   - `marketplace_listings`  — creator products, RLS-scoped to the creator
+ *   - `marketplace_list_live` / `marketplace_get_live` — public discovery
+ *   - `marketplace_open_listing` — server-side delivery: copies the frozen
+ *     file snapshot into a NEW project owned by the signed-in user.
+ *
+ * A listing points at a FROZEN snapshot of the project's files taken at
+ * publish time, never the live project. The creator keeps building on the
+ * original; buyers get exactly what was reviewed.
+ */
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+
+export type ListingRow = Database["public"]["Tables"]["marketplace_listings"]["Row"];
+export type LicenseRow = Database["public"]["Tables"]["marketplace_licenses"]["Row"];
+
+export type PublicListing = {
+  id: string;
+  slug: string;
+  title: string;
+  pitch: string;
+  description?: string;
+  category: string;
+  cover_url: string | null;
+  screenshots: string[];
+  demo_url: string | null;
+  price_minor: number;
+  currency_code: string;
+  license_code: string;
+  open_count: number;
+  file_count: number;
+  published_at: string | null;
+  creator_id: string;
+};
+
+export const LISTING_CATEGORIES = [
+  "app",
+  "saas",
+  "website",
+  "landing-page",
+  "mobile",
+  "dashboard",
+  "business",
+  "starter",
+  "template",
+] as const;
+
+export type ListingCategory = (typeof LISTING_CATEGORIES)[number];
+
+function rpc(name: string, args: Record<string, unknown>): Promise<any> {
+  return (supabase as unknown as { rpc: (n: string, a: Record<string, unknown>) => Promise<any> })
+    .rpc(name, args);
+}
+
+/** Human price. Free listings say "Free" rather than "$0.00". */
+export function formatListingPrice(priceMinor: number, currency = "USD"): string {
+  if (!priceMinor) return "Free";
+  const amount = priceMinor / 100;
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+}
+
+export function listingSlug(title: string): string {
+  const base = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+  const suffix = Math.random().toString(36).slice(2, 7);
+  return `${base || "product"}-${suffix}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Public discovery                                                    */
+/* ------------------------------------------------------------------ */
+
+export async function listLiveListings(): Promise<PublicListing[]> {
+  const { data, error } = await rpc("marketplace_list_live", {});
+  if (error) throw error;
+  return (data ?? []) as PublicListing[];
+}
+
+export async function getLiveListing(slug: string): Promise<PublicListing | null> {
+  const { data, error } = await rpc("marketplace_get_live", { p_slug: slug });
+  if (error) throw error;
+  const rows = (data ?? []) as PublicListing[];
+  return rows[0] ?? null;
+}
+
+export async function listLicenses(): Promise<LicenseRow[]> {
+  const { data, error } = await supabase
+    .from("marketplace_licenses")
+    .select("*")
+    .order("sort_order", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Buy-free path: copy the frozen snapshot into a new project I own. */
+export async function openListingInPetal(slug: string): Promise<string> {
+  const { data, error } = await rpc("marketplace_open_listing", { p_slug: slug });
+  if (error) throw error;
+  return data as string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Creator side                                                        */
+/* ------------------------------------------------------------------ */
+
+export async function listMyListings(): Promise<ListingRow[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return [];
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .select("*")
+    .eq("creator_id", userData.user.id)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type CreateListingInput = {
+  projectId: string;
+  title: string;
+  pitch: string;
+  description?: string;
+  category: string;
+  licenseCode: string;
+  demoUrl?: string | null;
+  coverUrl?: string | null;
+};
+
+/**
+ * Freeze the project's current files into a new draft listing.
+ * The creator's project is untouched.
+ */
+export async function createListingFromProject(input: CreateListingInput): Promise<ListingRow> {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+  if (!user) throw new Error("Not signed in");
+
+  const { data: files, error: filesErr } = await supabase
+    .from("project_files")
+    .select("path, content")
+    .eq("project_id", input.projectId);
+  if (filesErr) throw filesErr;
+  if (!files || files.length === 0) {
+    throw new Error("This project has no files yet — build something first.");
+  }
+
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .insert({
+      creator_id: user.id,
+      project_id: input.projectId,
+      slug: listingSlug(input.title),
+      title: input.title,
+      pitch: input.pitch,
+      description: input.description ?? "",
+      category: input.category,
+      license_code: input.licenseCode,
+      demo_url: input.demoUrl ?? null,
+      cover_url: input.coverUrl ?? null,
+      source_files: files as unknown as Database["public"]["Tables"]["marketplace_listings"]["Insert"]["source_files"],
+      file_count: files.length,
+      status: "draft",
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Re-freeze a listing against the project's latest files. */
+export async function refreshListingSnapshot(listingId: string, projectId: string): Promise<ListingRow> {
+  const { data: files, error: filesErr } = await supabase
+    .from("project_files")
+    .select("path, content")
+    .eq("project_id", projectId);
+  if (filesErr) throw filesErr;
+
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .update({
+      source_files: (files ?? []) as never,
+      file_count: files?.length ?? 0,
+    })
+    .eq("id", listingId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateListing(
+  id: string,
+  patch: Partial<
+    Pick<
+      ListingRow,
+      "title" | "pitch" | "description" | "category" | "license_code" | "demo_url" | "cover_url" | "status"
+    >
+  >,
+): Promise<ListingRow> {
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function submitListingForReview(id: string): Promise<ListingRow> {
+  return updateListing(id, { status: "in_review" });
+}
+
+export async function deleteListing(id: string): Promise<void> {
+  const { error } = await supabase.from("marketplace_listings").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin review                                                        */
+/* ------------------------------------------------------------------ */
+
+/** Admin: every listing awaiting a decision, plus what's already live. */
+export async function listListingsForReview(): Promise<ListingRow[]> {
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .select("*")
+    .in("status", ["in_review", "live", "rejected", "delisted"])
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function decideListing(
+  id: string,
+  decision: "live" | "rejected" | "delisted",
+  note?: string,
+): Promise<ListingRow> {
+  const patch: Database["public"]["Tables"]["marketplace_listings"]["Update"] = {
+    status: decision,
+    review_note: note ?? null,
+    ...(decision === "live" ? { published_at: new Date().toISOString() } : {}),
+  };
+  const { data, error } = await supabase
+    .from("marketplace_listings")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
