@@ -1284,8 +1284,8 @@ import { cn } from "@/lib/utils";
 type LogoEntry = string | { name?: string; src?: string; url?: string };
 
 function normalizeLogo(l: LogoEntry, i: number): { name: string; src?: string } {
-  if (typeof l === "string") return { name: \`logo-\${i + 1}\`, src: l };
-  return { name: l.name ?? \`logo-\${i + 1}\`, src: l.src ?? l.url };
+  if (typeof l === "string") return { name: "", src: l };
+  return { name: l.name ?? "", src: l.src ?? l.url };
 }
 
 /**
