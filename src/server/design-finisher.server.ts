@@ -273,6 +273,17 @@ export function enforceDesignFinish(input: ProjectFile[]): DesignFinishResult {
     fixes++;
   }
 
+  // 5 — interior surface floor. Landing pages get attention; dashboards and
+  // list screens ship as raw <table>/<div> and read as an unstyled document.
+  // These rules are token-only and cost nothing when the app already styled
+  // its surfaces with utilities (utilities win on specificity).
+  if (!/petal:surface-floor/.test(css)) {
+    css += SURFACE_FLOOR_CSS;
+    fixes++;
+    notes.push("design-finisher: applied the interior surface floor (tables, cards, inputs)");
+  }
+
+
   if (css !== styles.content) {
     files = files.map((f) => (f.path === styles.path ? { ...f, content: css } : f));
   }
