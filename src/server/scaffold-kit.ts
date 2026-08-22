@@ -3488,6 +3488,7 @@ export function useForm<T extends Record<string, unknown>>(opts: {
   const [errors, setErrors] = React.useState<FormErrorMap<T>>({});
   const [touched, setTouched] = React.useState<Partial<Record<keyof T, boolean>>>({});
   const [submitting, setSubmitting] = React.useState(false);
+  const [defaults, setDefaultsState] = React.useState<T>(opts.defaults);
 
   const setValue = React.useCallback(<K extends keyof T>(name: K, value: T[K]) => {
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -3495,47 +3496,135 @@ export function useForm<T extends Record<string, unknown>>(opts: {
 
   const register = React.useCallback(<K extends keyof T & string>(name: K) => ({
     name,
-    value: values[name] as unknown as string,
+    value: (values[name] ?? "") as unknown as string,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      setValue(name, e.target.value as unknown as T[K]);
+      const next = e && e.target ? (e.target as HTMLInputElement).value : (e as unknown as string);
+      setValue(name, next as unknown as T[K]);
     },
     onBlur: () => setTouched((t) => ({ ...t, [name]: true })),
   }), [values, setValue]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const errs = opts.validate?.(values) ?? {};
+  const submitValues = async (vals: T, handler?: (values: T) => void | Promise<void>) => {
+    const errs = opts.validate?.(vals) ?? {};
     setErrors(errs);
-    const allTouched = Object.keys(values).reduce((acc, k) => ({ ...acc, [k]: true }), {});
+    const allTouched = Object.keys(vals).reduce((acc, k) => ({ ...acc, [k]: true }), {});
     setTouched(allTouched as Partial<Record<keyof T, boolean>>);
     if (Object.values(errs).some((v) => v)) return;
     setSubmitting(true);
     try {
-      await opts.onSubmit(values);
+      await (handler ?? opts.onSubmit)(vals);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const reset = (next?: T) => { setValues(next ?? opts.defaults); setErrors({}); setTouched({}); };
+  /**
+   * Dual-mode, react-hook-form compatible:
+   *   <form onSubmit={form.handleSubmit}>            // plain
+   *   <form onSubmit={form.handleSubmit(onValid)}>   // RHF style
+   */
+  const handleSubmit: any = (arg?: any) => {
+    if (typeof arg === "function") {
+      return async (e?: React.FormEvent) => {
+        e?.preventDefault?.();
+        await submitValues(values, arg);
+      };
+    }
+    const e = arg as React.FormEvent | undefined;
+    e?.preventDefault?.();
+    return submitValues(values);
+  };
 
-  return { values, errors, touched, submitting, setValue, register, handleSubmit, reset };
+  const reset = (next?: T) => { setValues(next ?? defaults); setErrors({}); setTouched({}); };
+  /** Re-seed the form (used when opening an "edit" dialog on a new record). */
+  const setDefaults = (next: Partial<T>) => {
+    const merged = { ...defaults, ...next } as T;
+    setDefaultsState(merged);
+    setValues(merged);
+    setErrors({});
+    setTouched({});
+  };
+
+  // A react-hook-form-shaped control object so shadcn-style
+  // <FormField control={form.control} render=... /> binds to
+  // the same state instead of rendering an inert, permanently-empty input.
+
+  const control = React.useMemo(() => ({
+    register: (name: string) => register(name as keyof T & string),
+    _formValues: values,
+    _defaultValues: defaults,
+    _formState: { errors },
+  }), [register, values, defaults, errors]);
+
+  const formState = {
+    isSubmitting: submitting,
+    isDirty: JSON.stringify(values) !== JSON.stringify(defaults),
+    isValid: Object.values(errors).every((v) => !v),
+    errors,
+  };
+
+  return {
+    __petalForm: true as const,
+    values,
+    errors,
+    touched,
+    submitting,
+    isSubmitting: submitting,
+    formState,
+    control,
+    defaultValues: defaults,
+    setValue,
+    setDefaults,
+    getValues: () => values,
+    watch: (name?: keyof T & string) => (name ? values[name] : values),
+    setError: (name: keyof T, message: string) => setErrors((p) => ({ ...p, [name]: message })),
+    clearErrors: () => setErrors({}),
+    register,
+    handleSubmit,
+    reset,
+  };
 }
+
+const PetalFormContext = React.createContext<any>(null);
 
 /**
  * <Form> is dual-mode.
- *  - Plain mode:  <Form onSubmit={form.handleSubmit}> ... </Form>  (renders <form>)
+ *  - Plain mode:  <Form onSubmit={form.handleSubmit}> ... </Form>
+ *  - Spread mode: <Form {...form}> ... </Form>          (our useForm object)
  *  - RHF mode:    <Form {...rhfForm}><form onSubmit={...}>…</form></Form>
- *    When it receives a react-hook-form object (it has .control/.handleSubmit)
- *    it renders a transparent wrapper instead of a nested <form>, which would
- *    be invalid HTML and swallow the inner submit.
+ *    A real react-hook-form object renders a transparent wrapper instead of a
+ *    nested <form>, which would be invalid HTML and swallow the inner submit.
  */
 export function Form(props: any) {
-  const { className, children, control, handleSubmit, formState, watch, register, ...rest } = props ?? {};
+  const {
+    className, children, control, handleSubmit, formState, watch, register,
+    // Never leak form-object fields onto the DOM node.
+    __petalForm, values, errors, touched, submitting, isSubmitting, setValue,
+    setDefaults, getValues, setError, clearErrors, reset, defaultValues, onSubmit,
+    ...rest
+  } = props ?? {};
+
+  // Our own useForm object was spread in: render a REAL form and wire submit,
+  // otherwise the submit button is dead and the dialog never saves.
+  if (__petalForm) {
+    return (
+      <PetalFormContext.Provider value={props}>
+        <form
+          className={cn("space-y-4", className)}
+          onSubmit={(e) => { e.preventDefault(); (onSubmit ?? handleSubmit)?.(e); }}
+          {...rest}
+        >
+          {children}
+        </form>
+      </PetalFormContext.Provider>
+    );
+  }
+
   const isRhf = Boolean(control || formState || (handleSubmit && watch));
   if (isRhf) return <>{children}</>;
-  return <form className={cn("space-y-4", className)} {...rest}>{children}</form>;
+  return <form className={cn("space-y-4", className)} onSubmit={onSubmit} {...rest}>{children}</form>;
 }
+
 
 function getRhfValue(control: any, name: string) {
   const values = control?._formValues ?? control?._defaultValues ?? {};
@@ -3582,6 +3671,38 @@ function getRhfError(control: any, name: string) {
   return name.split(".").reduce((acc: any, key: string) => (acc == null ? acc : acc[key]), errors);
 }
 
+/** Does this element look like a text-ish control we can bind to? */
+function isBindableInput(el: any): boolean {
+  const t = el?.type;
+  if (t === "input" || t === "textarea" || t === "select") return true;
+  const label = typeof t === "string" ? t : (t?.displayName ?? t?.name ?? "");
+  return /^(Input|Textarea|TextArea|Select|NumberInput|PasswordInput|DatePicker)$/.test(label);
+}
+
+/**
+ * Bind the first input-looking descendant to the form field. Generated pages
+ * routinely write <FormField name="x"><FormControl><Input/></FormControl></FormField>
+ * with no register() call — without this the input is inert and the form
+ * submits empty values, which reads to the user as a dead form.
+ */
+function bindFieldChildren(node: React.ReactNode, reg: any, bound: { done: boolean }): React.ReactNode {
+  return React.Children.map(node, (child: any) => {
+    if (bound.done || !React.isValidElement(child)) return child;
+    const props: any = child.props ?? {};
+    if (isBindableInput(child)) {
+      bound.done = true;
+      if (props.value !== undefined || props.onChange !== undefined || props.defaultValue !== undefined) return child;
+      return React.cloneElement(child, { ...reg, id: props.id ?? reg.name });
+    }
+    if (props.children) {
+      return React.cloneElement(child, {
+        children: bindFieldChildren(props.children, reg, bound),
+      } as any);
+    }
+    return child;
+  });
+}
+
 /**
  * FormField is dual-mode too.
  *  - Plain:  <FormField name="email" label="Email" error={...}><Input/></FormField>
@@ -3590,21 +3711,28 @@ function getRhfError(control: any, name: string) {
  * render prop silently drops the whole field from the page, so both work.
  */
 export function FormField(props: any) {
-  const { name, label, description, error, className, children, control, render } = props ?? {};
+  const { name, label, description, className, children, render } = props ?? {};
+  const ctx = React.useContext(PetalFormContext);
+  const control = props?.control ?? ctx?.control;
   const field = useRhfField(control, name);
+  const error = props?.error ?? (name ? ctx?.errors?.[name] : undefined) ?? getRhfError(control, name);
   let body: React.ReactNode = children;
   if (typeof render === "function") {
-    body = render({ field, fieldState: { error: getRhfError(control, name) }, formState: control?._formState ?? {} });
+    body = render({ field, fieldState: { error }, formState: ctx?.formState ?? control?._formState ?? {} });
+  } else if (ctx && name) {
+    body = bindFieldChildren(children, ctx.register(name), { done: false });
   }
+  const errorText = typeof error === "string" ? error : error?.message;
   return (
     <div className={cn("space-y-1.5", className)}>
       {label && <Label htmlFor={name}>{label}</Label>}
       {body}
-      {description && !error && <p className="text-xs text-muted-foreground">{description}</p>}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {description && !errorText && <p className="text-xs text-muted-foreground">{description}</p>}
+      {errorText && <p className="text-xs text-destructive">{errorText}</p>}
     </div>
   );
 }
+
 
 /** Summary of submit-time errors. Safe to render with no props. */
 export function FormErrors({ errors, className }: { errors?: Record<string, any>; className?: string }) {
