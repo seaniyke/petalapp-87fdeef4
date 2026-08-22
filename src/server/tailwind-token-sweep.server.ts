@@ -134,7 +134,7 @@ const TAILWIND_NON_TOKEN = new Set([
 ]);
 
 /** Single letters and step-ish fragments picked up from transform/offset utilities. */
-const JUNK_TOKEN_RE = /^(?:[a-z]|[a-z]-\d+|step-\d+|spacing-\d+|offset-\d+|.*-\d+)$/;
+const JUNK_TOKEN_RE = /^(?:[a-z]|[a-z]-\d+|step-\d+|spacing-\d+|offset-\d+)$/;
 
 /** Hard cap: more additions than this means the scanner mis-fired, not a real gap. */
 const MAX_INJECTED_TOKENS = 12;
