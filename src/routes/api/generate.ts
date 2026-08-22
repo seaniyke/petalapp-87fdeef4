@@ -2540,7 +2540,9 @@ Forbidden defaults
     // how it should look second.
     prdBlock +
     prdScenarioBlock +
+    orchestrationBlock +
     designTasteBlock +
+
     learningBlock +
     highStakesBlock +
     visionAddendum +
