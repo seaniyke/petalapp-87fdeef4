@@ -288,12 +288,12 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
     (t) => !parsed.rawVars.has(t) && !missingColors.includes(t),
   );
   // Fonts are owned by the design director + design finisher. This pass must
-  // never write a `--font-*` VALUE — doing so overwrote the locked display face
-  // with a system serif and made the finisher skip loading the real font.
-  // We only add a mapping when the family variable already exists.
-  const missingFonts = [...referencedFonts].filter(
-    (t) => !parsed.themeFontTokens.has(t) && parsed.rawVars.has(`font-${t}`),
-  );
+  // NEVER write a `--font-*` declaration — doing so overwrote the locked
+  // display face with a system serif and made the finisher skip loading the
+  // real font. Font utilities are left entirely alone here.
+  const missingFonts: string[] = [];
+  void referencedFonts;
+
 
   if (missingColors.length === 0 && missingFonts.length === 0 && missingRaw.length === 0) {
     return { files: input, notes: [], addedTokens: [], addedThemeMappings: [] };
