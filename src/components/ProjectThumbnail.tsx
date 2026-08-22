@@ -81,18 +81,22 @@ export function ProjectThumbnail({
   fit?: "cover" | "contain";
 }) {
   const [deployUrl, setDeployUrl] = useState<string | null>(null);
-  const needsDeployUrl = !publishedUrl && !customDomain && !subdomain && !!buildId;
+  // Every unpublished project gets a lookup — a build id is a nice hint that
+  // one exists, but cards in the drawer/gallery often don't carry it.
+  const needsDeployUrl = !publishedUrl && !customDomain && !subdomain && !!projectId;
 
   useEffect(() => {
-    if (!needsDeployUrl || !buildId) return;
+    if (!needsDeployUrl) return;
     let alive = true;
-    void fetchDeployUrl(buildId).then((url) => {
+    void fetchDeployUrl(projectId).then((url) => {
       if (alive) setDeployUrl(url);
     });
     return () => {
       alive = false;
     };
-  }, [needsDeployUrl, buildId]);
+    // `buildId` participates so a freshly finished build re-resolves.
+  }, [needsDeployUrl, projectId, buildId]);
+
 
   const url = resolveLiveUrl({
     projectId,
