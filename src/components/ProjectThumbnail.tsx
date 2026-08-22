@@ -95,8 +95,10 @@ export function ProjectThumbnail({
   const contain = fit === "contain";
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  // 0 = Microlink, 1 = WordPress mShots fallback. A single flaky provider was
-  // the real reason cards fell back to bare initials.
+  // Retry counter for the screenshot provider. We only ever use Microlink:
+  // it returns the real page screenshot or nothing. (The WordPress mShots
+  // backup was removed — while it warms a page it serves a generic WordPress
+  // "W" placeholder image, which shipped as the app's thumbnail.)
   const [attempt, setAttempt] = useState(0);
   const showImage = url && !failed;
 
@@ -108,8 +110,8 @@ export function ProjectThumbnail({
   }, [url]);
 
   // The screenshot service can hang (cold render, rate limit) without ever
-  // firing onError, which left the tile showing a spinner forever. Give each
-  // provider a deadline, try the backup, then fall back to the gradient tile.
+  // firing onError, which left the tile showing a spinner forever. Give the
+  // first render a long deadline, retry once, then fall back to the gradient.
   useEffect(() => {
     if (!showImage || loaded) return;
     const t = setTimeout(() => {
@@ -118,9 +120,10 @@ export function ProjectThumbnail({
         setFailed(true);
         return a;
       });
-    }, 12000);
+    }, attempt === 0 ? 14000 : 12000);
     return () => clearTimeout(t);
   }, [showImage, loaded, url, attempt]);
+
 
 
 
@@ -207,15 +210,14 @@ function screenshotUrl(
   fit: "cover" | "contain" = "cover",
   attempt = 0,
 ): string {
-  // Backup provider — WordPress mShots renders cold pages reliably (slower,
-  // but it never rate-limits), so a flaky Microlink call no longer costs the
-  // card its thumbnail.
-  if (attempt > 0) {
-    return `https://s.wordpress.com/mshots/v1/${encodeURIComponent(target)}?w=${fit === "contain" ? 1200 : 1280}&h=${fit === "contain" ? 900 : 800}`;
-  }
-  // Microlink free endpoint — returns the screenshot image directly. We pass
-  // viewport sized for a nice card crop and a short waitUntil so SPAs render
-  // before the snapshot is taken.
+  // Microlink free endpoint — returns the real page screenshot directly. We
+  // pass a viewport sized for a nice card crop and wait for network idle so
+  // SPAs finish rendering before the snapshot is taken.
+  //
+  // There is deliberately no second provider: mShots answers cold requests
+  // with a generic WordPress placeholder graphic, and that placeholder was
+  // being shown to users as their app's thumbnail. A real screenshot or the
+  // branded gradient tile — never someone else's logo.
   const params = new URLSearchParams({
     url: target,
     screenshot: "true",
@@ -226,8 +228,11 @@ function screenshotUrl(
     "viewport.height": fit === "contain" ? "900" : "800",
     waitUntil: "networkidle0",
   });
+  // Retry bypasses any cached failure without changing providers.
+  if (attempt > 0) params.set("force", "true");
   return `https://api.microlink.io/?${params.toString()}`;
 }
+
 
 const PALETTES = [
   { gradient: "linear-gradient(135deg,#FFD8C2 0%,#F8B4A0 50%,#E59FB7 100%)", ink: "#5B2A3A" },
