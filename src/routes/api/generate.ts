@@ -2184,6 +2184,52 @@ Forbidden defaults
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
 
   // ---------------------------------------------------------------------------
+  // Project Intelligence Context (PIC) — Engine 3.0, phases 1 & 2.
+  //
+  // One canonical understanding of the project (what it is, who it is for,
+  // what it needs) plus a committed design system contract, assembled before
+  // any code is written and reused by every later turn. Model passes run on
+  // initial/structural turns only; small edits reuse the stored context.
+  //
+  // Fully additive and fail-open: any failure leaves `picBlock` empty and the
+  // pipeline below behaves exactly as it did before.
+  // ---------------------------------------------------------------------------
+  let picBlock = "";
+  let picContext: import("@/server/pic/pic-types").ProjectIntelligenceContext | null = null;
+  if (process.env.PETAL_PIC_DISABLED !== "1") {
+    try {
+      const { assemblePic } = await import("@/server/pic/pic-assemble.server");
+      const { renderPicBlock } = await import("@/server/pic/pic-render");
+      // Structural = anything that changes product shape: the first build, a
+      // cross-cutting request, or a new page/feature.
+      const isStructural =
+        isInitial ||
+        /\b(redesign|re-?design|rebuild|new (page|screen|feature|section)|add (a )?(page|dashboard|auth|login|payment|checkout)|entire (site|website|app)|whole (site|app))\b/i.test(
+          lastUserContent || "",
+        );
+      const assembled = await assemblePic({
+        projectId: body.projectId,
+        brief: lastUserContent || lastContent,
+        isInitial,
+        isStructural,
+        memoryEntries,
+        userId,
+        turnId: turnId ?? undefined,
+        signal: request.signal,
+      });
+      picContext = assembled.pic;
+      picBlock = `\n\n${renderPicBlock(assembled.pic, { detail: isStructural ? "full" : "summary" })}\n`;
+      console.log(
+        `[pic] project=${body.projectId ?? "n/a"} rev=${assembled.pic.revision} refreshed=${assembled.refreshed} understanding=${assembled.pic.understanding.source} design=${assembled.pic.design?.source ?? "none"} structural=${isStructural}`,
+      );
+    } catch (e) {
+      console.warn("[pic] assembly skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
+  void picContext;
+
+
+  // ---------------------------------------------------------------------------
   // Petal Intelligence — multi-agent planning board.
   //
   // Convenes the specialists this turn actually deserves (a colour tweak gets
@@ -2566,6 +2612,9 @@ Forbidden defaults
     dynamic.text +
     // The product contract goes ahead of the taste blocks: what to build first,
     // how it should look second.
+    // Project Intelligence Context first: the canonical understanding and the
+    // committed design system frame everything the contract blocks add.
+    picBlock +
     prdBlock +
     prdScenarioBlock +
     orchestrationBlock +
