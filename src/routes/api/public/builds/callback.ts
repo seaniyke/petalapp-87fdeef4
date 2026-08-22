@@ -146,18 +146,29 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // Visual QA — score the deployed screenshots with a vision model and fold
     // what it sees into the same defect list the repair loop already reads.
     // The images themselves are never persisted (they are megabytes of base64).
+    //
+    // Craft QA (Engine 3.0, phase 5) runs alongside it against the committed
+    // design contract: "is this broken?" and "does this look designed?" are
+    // different questions and a single reviewer answers both badly. Craft
+    // findings are advisory by construction — they queue polish, never a
+    // rollback.
     let visualDefects: string[] = [];
     if (payload.verification?.visual?.length) {
-      visualDefects = await scoreVisualQA({
-        shots: payload.verification.visual,
-        projectId: payload.projectId,
-      }).catch(() => []);
+      const shots = payload.verification.visual;
+      const [broken, craft] = await Promise.all([
+        scoreVisualQA({ shots, projectId: payload.projectId }).catch(() => []),
+        loadCraftContract(payload.projectId)
+          .then((contract) => scoreCraftQA({ shots, contract, projectId: payload.projectId }))
+          .catch(() => [] as string[]),
+      ]);
+      visualDefects = [...broken, ...craft];
       if (visualDefects.length) {
         console.warn(
-          `[builds/callback] visual QA found ${visualDefects.length} defect(s) for ${payload.buildId}`,
+          `[builds/callback] visual QA found ${broken.length} defect(s) and craft QA ${craft.length} note(s) for ${payload.buildId}`,
         );
       }
     }
+
 
     const verification = payload.verification
       ? (() => {
