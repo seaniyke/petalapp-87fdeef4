@@ -16,8 +16,8 @@ import { resolvePrice } from "@/server/billing-pricing.server";
 const SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
 
 const Body = z.object({
-  purpose: z.enum(["plan", "pack", "addon", "runtime_topup"]),
-  itemCode: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
+  purpose: z.enum(["plan", "pack", "addon", "runtime_topup", "marketplace"]),
+  itemCode: z.string().min(1).max(80).regex(/^[a-zA-Z0-9_-]+$/),
   currency: z.enum(SUPPORTED_CURRENCIES),
   returnUrl: z.string().url().max(500),
   projectId: z.string().uuid().optional(),
@@ -89,7 +89,61 @@ export const Route = createFileRoute("/api/billing/initialize")({
           // can be either a fixed pack (custom_amount_minor unset) or a
           // user-typed custom amount.
           let price: { amountMinor: number; usdAmountCents: number };
-          if (parsed.purpose === "runtime_topup") {
+          if (parsed.purpose === "marketplace") {
+            // Marketplace products are priced per listing in USD cents by the
+            // creator. Convert into the shopper's currency at the same rate
+            // table the rest of billing uses.
+            const { data: listing } = await supabaseAdmin
+              .from("marketplace_listings")
+              .select("slug, status, price_minor, creator_id")
+              .eq("slug", parsed.itemCode)
+              .maybeSingle();
+            if (!listing || listing.status !== "live") {
+              return new Response(
+                JSON.stringify({ error: "This product isn't available." }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
+            if (listing.creator_id === userData.user.id) {
+              return new Response(
+                JSON.stringify({ error: "You already own this product." }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
+            const usdCents = Number(listing.price_minor);
+            if (usdCents <= 0) {
+              return new Response(
+                JSON.stringify({ error: "This product is free — just open it." }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
+            const { data: alreadyOwned } = await supabaseAdmin
+              .from("marketplace_purchases")
+              .select("id")
+              .eq("listing_slug", parsed.itemCode)
+              .eq("buyer_id", userData.user.id)
+              .maybeSingle();
+            if (alreadyOwned) {
+              return new Response(
+                JSON.stringify({ error: "You already own this product." }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
+            const { data: cur } = await supabaseAdmin
+              .from("billing_currencies")
+              .select("usd_rate, is_active")
+              .eq("code", parsed.currency)
+              .maybeSingle();
+            if (!cur || !cur.is_active) {
+              return new Response("Currency not available", { status: 400 });
+            }
+            const rate = Number(cur.usd_rate);
+            if (rate <= 0) return new Response("Bad currency rate", { status: 500 });
+            price = {
+              amountMinor: Math.max(1, Math.round((usdCents / 100) * rate * 100)),
+              usdAmountCents: usdCents,
+            };
+          } else if (parsed.purpose === "runtime_topup") {
             if (parsed.customAmountMinor) {
               // Custom amount: itemCode === "custom". Convert minor → USD cents.
               const { data: cur_row } = await supabaseAdmin

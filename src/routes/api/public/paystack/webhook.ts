@@ -508,6 +508,15 @@ async function handleChargeSuccess(payload: AnyEvent, origin: string): Promise<v
     } catch (e) {
       console.error("[webhook] domain_purchase failed", e);
     }
+  } else if (tx.purpose === "marketplace") {
+    await supabaseAdmin.rpc("apply_paystack_marketplace_purchase", {
+      _user_id: tx.user_id,
+      _reference: ref,
+      _listing_slug: tx.item_code,
+      _amount_minor: tx.amount_minor as never,
+      _currency_code: tx.currency_code,
+      _usd_amount_cents: tx.usd_amount_cents as never,
+    });
   } else if (tx.purpose === "plan") {
     await supabaseAdmin.rpc("apply_paystack_plan_grant", {
       _user_id: tx.user_id,
