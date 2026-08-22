@@ -250,6 +250,12 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
   for (const file of files) {
     if (!SCANNABLE.test(file.path)) continue;
     if (isBuildConfig(file.path)) continue;
+    // Petal-owned kit files are handled by the kit dependency closure, which
+    // installs by REACHABILITY. Scanning them here would install three.js,
+    // TipTap and GSAP into every project just because the kit ships those
+    // files — and their bytes are restored afterwards anyway.
+    if (isScaffoldOwnedPath(file.path)) continue;
+
 
     let src = byPath.get(file.path) ?? file.content;
 
