@@ -3900,6 +3900,7 @@ Forbidden defaults
             backend: backend ?? undefined,
             sharedBackend: sharedBackend ?? undefined,
             target: buildTarget.id,
+            keepPaths: changedPaths,
           });
         }
         if (!nextFiles.some((f) => f.path === "index.html")) {
