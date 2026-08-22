@@ -38,15 +38,15 @@ async function loadCraftContract(projectId: string): Promise<CraftContract | nul
     if (!pic) return null;
     const design = pic.design;
     return {
-      productName: pic.productName ?? null,
+      productName: pic.understanding?.domain ?? null,
       summary: pic.understanding?.summary ?? null,
       palette: design
         ? [design.colors?.primary, design.colors?.accent, design.colors?.background]
-            .map((c) => (typeof c === "string" ? c : (c as { value?: string })?.value))
+            .map((role) => role?.light)
             .filter((c): c is string => typeof c === "string" && c.length > 0)
         : null,
       typography: design
-        ? `${design.typography?.displayFamily ?? ""} / ${design.typography?.bodyFamily ?? ""}`.trim()
+        ? `${design.typography?.displayFont ?? ""} / ${design.typography?.bodyFont ?? ""}`.trim()
         : null,
       personality: design?.direction ?? null,
     };
