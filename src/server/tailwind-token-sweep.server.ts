@@ -223,11 +223,15 @@ function isCoreToken(token: string): boolean {
   if (TAILWIND_NON_TOKEN.has(token)) return true;
   // Pure numeric scale (e.g. "500").
   if (/^\d+$/.test(token)) return true;
+  // Single letters / transform + offset fragments (`translate-y`, `inset-x`,
+  // `step-2`) that the class scanner picks up but are never design tokens.
+  if (JUNK_TOKEN_RE.test(token)) return true;
   // Numbered Tailwind color: head segment matches a core palette and tail is numeric.
   const head = token.split("-")[0];
   if (TAILWIND_CORE_COLORS.has(head)) return true;
   return false;
 }
+
 
 export interface TailwindSweepResult {
   files: ProjectFile[];
