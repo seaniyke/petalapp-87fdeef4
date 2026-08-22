@@ -63,12 +63,16 @@ function readDecls(css: string): Decl[] {
   let m: RegExpExecArray | null;
   const re = new RegExp(DECL_RE.source, "g");
   while ((m = re.exec(css))) {
+    // Keep the boundary character (`\n`, `{` or `;`) out of `raw` so removing
+    // a declaration never deletes a brace or a neighbouring semicolon.
+    const lead = (m[1] ?? "").length;
     out.push({
       token: m[2],
       value: (m[3] ?? "").trim(),
-      raw: m[0].replace(/^\n/, ""),
-      index: m.index,
+      raw: m[0].slice(lead),
+      index: m.index + lead,
     });
+
   }
   return out;
 }
