@@ -25,7 +25,7 @@
 
 import type { ProjectFile } from "./generate.server";
 import { applyPaletteFloor } from "./palette-floor.server";
-import type { DesignPick } from "./palette-presets.server";
+import { pickDesignForBrief, type DesignPick } from "./palette-presets.server";
 
 export interface DesignFinishResult {
   files: ProjectFile[];
@@ -320,8 +320,17 @@ export function enforceDesignFinish(input: ProjectFile[], pick?: DesignPick): De
   const styles = findStyles(files);
   if (!styles) return { files, notes, fixes };
 
-  const display = readFamily(styles.content, "font-display") ?? DEFAULT_PAIR.display;
-  const body = readFamily(styles.content, "font-body") ?? DEFAULT_PAIR.body;
+  const brief = deriveBrief(files);
+  const resolvedPick = pick ?? (() => {
+    try {
+      return pickDesignForBrief(brief);
+    } catch {
+      return null;
+    }
+  })();
+  const fallbackPair = resolvedPick?.fontPair ?? DEFAULT_PAIR;
+  const display = readFamily(styles.content, "font-display") ?? fallbackPair.display;
+  const body = readFamily(styles.content, "font-body") ?? fallbackPair.body;
 
   // 1 + 2 — tokens and base typography.
   let css = styles.content;
@@ -334,7 +343,7 @@ export function enforceDesignFinish(input: ProjectFile[], pick?: DesignPick): De
 
   // 0 — palette floor. A stylesheet still carrying the scaffold's default
   // purple means the locked palette never landed; write a real one.
-  const palette = applyPaletteFloor(css, deriveBrief(files), pick);
+  const palette = applyPaletteFloor(css, brief, resolvedPick ?? undefined);
   if (palette.changed) {
     css = palette.css;
     fixes++;
