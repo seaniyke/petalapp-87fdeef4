@@ -125,8 +125,13 @@ function Landing() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user, isReady } = useAuth();
+  const { user, isReady, likelyAuthed } = useAuth();
   const isAuthed = !!user;
+  // The marketing page must never wait on the auth round-trip. Signed-out
+  // visitors (the overwhelming majority, and every crawler) get real content
+  // on the very first frame; returning users are detected optimistically from
+  // their stored token so they don't see the marketing hero flash.
+  const showAuthedHero = isReady ? isAuthed : likelyAuthed;
   // Hydrate the profile display name synchronously from localStorage so a
   // refresh doesn't briefly show the email-derived fallback before the async
   // profile fetch resolves. We key by user id so switching accounts is safe.
@@ -487,11 +492,9 @@ function Landing() {
         <div className="absolute inset-x-0 top-0 bottom-[-12rem] bg-grain opacity-40 sm:bottom-[-8rem]" aria-hidden />
 
         <div
-          className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${!isReady || isAuthed ? "pt-40 pb-16 sm:pt-44 sm:pb-20 md:pt-48 md:pb-24" : "pt-32 pb-20 sm:pt-36 sm:pb-28 md:pt-40 md:pb-36"}`}
+          className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${showAuthedHero ? "pt-40 pb-16 sm:pt-44 sm:pb-20 md:pt-48 md:pb-24" : "pt-32 pb-20 sm:pt-36 sm:pb-28 md:pt-40 md:pb-36"}`}
         >
-          {!isReady ? (
-            <div className="mx-auto h-[7.5rem] max-w-2xl animate-pulse rounded-2xl bg-card/50" aria-hidden="true" />
-          ) : isAuthed ? (
+          {showAuthedHero ? (
             <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
               {firstName ? (
                 <>
@@ -685,7 +688,7 @@ function Landing() {
             </div>
           </form>
 
-          {isReady && !isAuthed && (
+          {!showAuthedHero && (
             <StartIdeasPanel
               onPick={(p) => {
                 setPrompt(p);
@@ -708,7 +711,7 @@ function Landing() {
         </div>
       </section>
 
-      {!isReady ? null : isAuthed ? (
+      {showAuthedHero ? (
         <section className="relative px-5 pb-28 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             {/* Subtle divider — keeps the section visually separated from the
@@ -1479,7 +1482,7 @@ function Landing() {
                 <p className="mx-auto mt-5 max-w-xl text-base text-background/70 sm:text-lg">
                   Web, mobile, backend or extension — describe it, Petal ships it.
                 </p>
-                {!isReady ? null : user ? (
+                {showAuthedHero ? (
                   <Link
                     to="/projects"
                     className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
