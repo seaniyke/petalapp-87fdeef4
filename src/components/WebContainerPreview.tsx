@@ -176,13 +176,19 @@ export function WebContainerPreview({
           if (unsupported) {
             setError(unsupported);
             setPhase("unsupported");
+            // The in-browser runtime can't start here (no SharedArrayBuffer,
+            // locked-down mobile browser, embedded frame). That's not a dead
+            // end — hand off to the deployed/snapshot preview instead of
+            // parking the user on an error card.
+            onBootFailed?.(unsupported);
             return;
           }
           if (!isCrossOriginIsolated()) {
-            setError(
-              "This page isn't cross-origin isolated. WebContainer needs SharedArrayBuffer — refresh the page."
-            );
+            const msg =
+              "This page isn't cross-origin isolated, so the in-browser runtime can't start.";
+            setError(msg);
             setPhase("error");
+            onBootFailed?.(msg);
             return;
           }
           setPhase("booting");
