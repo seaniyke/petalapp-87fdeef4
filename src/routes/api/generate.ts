@@ -2612,6 +2612,9 @@ Forbidden defaults
     dynamic.text +
     // The product contract goes ahead of the taste blocks: what to build first,
     // how it should look second.
+    // Project Intelligence Context first: the canonical understanding and the
+    // committed design system frame everything the contract blocks add.
+    picBlock +
     prdBlock +
     prdScenarioBlock +
     orchestrationBlock +
