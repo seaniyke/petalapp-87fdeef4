@@ -374,6 +374,23 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
           rewrites.push({ path: f.path, from: spec, to: aliasForm });
           changed = true;
         }
+        // Heal a previous turn's prose placeholder page once real sections exist.
+        if (resolved !== "external" && PAGE_PATH.test(resolved)) {
+          const current = byPath.get(resolved) ?? "";
+          if (current.includes("Auto-generated stub by Petal import-resolver")) {
+            const recomposed = buildPageFromOrphans(
+              resolved,
+              defaultImportName(full),
+              byPath,
+              referenced,
+              consumedOrphans,
+            );
+            if (recomposed) {
+              byPath.set(resolved, recomposed);
+              stubsCreated.push(resolved);
+            }
+          }
+        }
         continue;
       }
 
