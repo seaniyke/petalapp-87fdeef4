@@ -35,7 +35,11 @@ export type PublicListing = {
   file_count: number;
   published_at: string | null;
   creator_id: string;
+  rating_avg?: number;
+  rating_count?: number;
+  sales_count?: number;
 };
+
 
 export const LISTING_CATEGORIES = [
   "app",
