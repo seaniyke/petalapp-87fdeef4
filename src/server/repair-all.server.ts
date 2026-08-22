@@ -115,7 +115,15 @@ export interface RepairAllOptions {
   scopeLock?: { touchedPaths: readonly string[] };
 }
 
+/**
+ * Scaffold-owned files that Petal's own RESOLVE-stage passes are allowed to
+ * rewrite (dependency pins, tsconfig excludes, Vite aliases). They are
+ * protected from the model and from cosmetic passes, never from the resolver.
+ */
+const RESOLVER_MANAGED_PATHS = ["package.json", "tsconfig.json", "vite.config.ts"] as const;
+
 export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): RepairAllResult {
+
   let files = input;
   const notes: string[] = [];
 
