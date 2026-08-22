@@ -103,6 +103,79 @@ export async function listLicenses(): Promise<LicenseRow[]> {
   return data ?? [];
 }
 
+/** Has the signed-in user already bought this product? */
+export async function ownsListing(slug: string): Promise<boolean> {
+  const { data, error } = await rpc("marketplace_owns_listing", { p_slug: slug });
+  if (error) return false;
+  return Boolean(data);
+}
+
+/** Start a hosted card checkout for a paid listing. Returns the URL to send
+ *  the buyer to. Pricing, ownership and availability are re-checked server-side. */
+export async function startListingCheckout(
+  slug: string,
+  currency = "USD",
+): Promise<string> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error("Sign in required");
+
+  const res = await fetch("/api/billing/initialize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      purpose: "marketplace",
+      itemCode: slug,
+      currency,
+      returnUrl: `${window.location.origin}/marketplace/${slug}`,
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text || "Could not start checkout";
+    try {
+      const parsed = JSON.parse(text) as { error?: string };
+      if (parsed.error) message = parsed.error;
+    } catch {
+      /* plain-text error */
+    }
+    throw new Error(message);
+  }
+  const json = (await res.json()) as { authorizationUrl?: string };
+  if (!json.authorizationUrl) throw new Error("No checkout URL returned");
+  return json.authorizationUrl;
+}
+
+/** Products I've bought. */
+export async function listMyPurchases(): Promise<
+  Database["public"]["Tables"]["marketplace_purchases"]["Row"][]
+> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return [];
+  const { data, error } = await supabase
+    .from("marketplace_purchases")
+    .select("*")
+    .eq("buyer_id", userData.user.id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Sales of my products, newest first. */
+export async function listMySales(): Promise<
+  Database["public"]["Tables"]["marketplace_purchases"]["Row"][]
+> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return [];
+  const { data, error } = await supabase
+    .from("marketplace_purchases")
+    .select("*")
+    .eq("creator_id", userData.user.id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
 /** Buy-free path: copy the frozen snapshot into a new project I own. */
 export async function openListingInPetal(slug: string): Promise<string> {
   const { data, error } = await rpc("marketplace_open_listing", { p_slug: slug });
@@ -133,6 +206,8 @@ export type CreateListingInput = {
   description?: string;
   category: string;
   licenseCode: string;
+  /** USD cents. 0 = free. */
+  priceMinor?: number;
   demoUrl?: string | null;
   coverUrl?: string | null;
 };
@@ -166,6 +241,7 @@ export async function createListingFromProject(input: CreateListingInput): Promi
       description: input.description ?? "",
       category: input.category,
       license_code: input.licenseCode,
+      price_minor: Math.max(0, Math.round(input.priceMinor ?? 0)),
       demo_url: input.demoUrl ?? null,
       cover_url: input.coverUrl ?? null,
       source_files: files as unknown as Database["public"]["Tables"]["marketplace_listings"]["Insert"]["source_files"],
@@ -204,7 +280,15 @@ export async function updateListing(
   patch: Partial<
     Pick<
       ListingRow,
-      "title" | "pitch" | "description" | "category" | "license_code" | "demo_url" | "cover_url" | "status"
+      | "title"
+      | "pitch"
+      | "description"
+      | "category"
+      | "license_code"
+      | "demo_url"
+      | "cover_url"
+      | "status"
+      | "price_minor"
     >
   >,
 ): Promise<ListingRow> {
