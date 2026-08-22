@@ -2319,7 +2319,7 @@ Forbidden defaults
       const { classifyEdit } = await import("@/server/edit-classifier.server");
       editClassification = await classifyEdit({
         prompt: lastUserContent,
-        projectPurpose: picContext?.understanding?.purpose ?? resolvedPrd?.prd?.purpose ?? null,
+        projectPurpose: picContext?.understanding?.summary ?? resolvedPrd?.prd?.purpose ?? null,
         fileCount: currentFiles.length,
         projectId: body.projectId ?? null,
         userId,
