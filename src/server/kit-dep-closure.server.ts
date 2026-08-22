@@ -225,8 +225,11 @@ export function closeKitDependencies(files: ProjectFile[]): KitDepClosureResult 
 
   const added: Record<string, string> = {};
   const unpinned: string[] = [];
-  for (const name of bare) {
+  // Expand through runtime peers: `@splinetool/react-spline` imports
+  // `@splinetool/runtime` internally, and Rollup fails the whole build on it.
+  for (const name of withRequiredPeers(bare)) {
     if (!name || deps[name] || devDeps[name]) continue;
+
     const pin = KNOWN_PACKAGES[name];
     if (!pin) {
       // No curated pin — the bare-import resolver owns emitted files, but a
