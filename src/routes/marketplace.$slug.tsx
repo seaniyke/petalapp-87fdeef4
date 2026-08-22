@@ -11,6 +11,8 @@ import {
   getLiveListing,
   listLicenses,
   openListingInPetal,
+  ownsListing,
+  startListingCheckout,
   type LicenseRow,
   type PublicListing,
 } from "@/lib/marketplace";
@@ -43,6 +45,7 @@ function ListingDetailPage() {
   const [license, setLicense] = useState<LicenseRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
+  const [owned, setOwned] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +55,10 @@ function ListingDetailPage() {
         if (cancelled) return;
         setListing(found);
         setLicense(licenses.find((l) => l.code === found?.license_code) ?? null);
+        if (found) {
+          const { data } = await supabase.auth.getUser();
+          if (data.user && !cancelled) setOwned(await ownsListing(found.slug));
+        }
       } catch (e) {
         if (!cancelled) toast.error(e instanceof Error ? e.message : "Failed to load product");
       } finally {
@@ -72,8 +79,9 @@ function ListingDetailPage() {
         navigate({ to: "/auth", search: { mode: "signin", redirect: `/marketplace/${listing.slug}` } as never });
         return;
       }
-      if (listing.price_minor > 0) {
-        toast.info("Paid checkout is coming next — this product isn't purchasable yet.");
+      if (listing.price_minor > 0 && !owned) {
+        const url = await startListingCheckout(listing.slug);
+        window.location.assign(url);
         return;
       }
       const projectId = await openListingInPetal(listing.slug);
@@ -176,14 +184,19 @@ function ListingDetailPage() {
               <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {listing.file_count} files · {listing.category.replace("-", " ")}
               </p>
+              {owned && (
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-600">
+                  <Check className="h-3.5 w-3.5" aria-hidden /> You own this
+                </p>
+              )}
 
               <Button className="mt-4 w-full" onClick={handleOpen} disabled={opening}>
                 {opening ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening…
                   </>
-                ) : listing.price_minor > 0 ? (
-                  "Buy this product"
+                ) : listing.price_minor > 0 && !owned ? (
+                  `Buy for ${formatListingPrice(listing.price_minor, listing.currency_code)}`
                 ) : (
                   "Open in Petal"
                 )}
