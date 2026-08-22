@@ -398,7 +398,13 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       if (/(?:^|\/)routeTree\.gen$/i.test(spec)) continue;
       const stubPath = specToStubPath(f.path, spec);
       if (!stubPath) continue;
-      if (byPath.has(stubPath)) continue;
+      // An earlier turn's prose placeholder is not a real page: if orphan
+      // sections now exist, re-compose it instead of leaving a dead screen.
+      const existing = byPath.get(stubPath);
+      const isPlaceholder =
+        typeof existing === "string" &&
+        existing.includes("Auto-generated stub by Petal import-resolver");
+      if (existing !== undefined && !(isPlaceholder && PAGE_PATH.test(stubPath))) continue;
       // Never stub a kit-owned path. The scaffold kit supplies these files
       // later in the pipeline; writing a "Coming together" placeholder here
       // wins the merge and turns real primitives (Toaster, auth client, utils)
