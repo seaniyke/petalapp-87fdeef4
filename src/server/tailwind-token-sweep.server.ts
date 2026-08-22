@@ -412,11 +412,8 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
       `tailwind-tokens: injected ${missingRaw.length} missing raw var(s) (${missingRaw.slice(0, 4).join(", ")}${missingRaw.length > 4 ? "…" : ""})`,
     );
   }
-  if (missingFonts.length) {
-    notes.push(
-      `tailwind-tokens: injected ${missingFonts.length} missing font token(s) (${missingFonts.join(", ")})`,
-    );
-  }
+  void missingFonts;
+
 
   return { files: out, notes, addedTokens, addedThemeMappings };
 }
