@@ -90,9 +90,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // Optimistic hint, resolved on the first client effect so SSR and hydration
+  // agree on `false` and only the post-hydration frame can flip it.
+  const [storedSession, setStoredSession] = useState(false);
+  useEffect(() => {
+    setStoredSession(hasStoredSession());
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     let subscription: { unsubscribe: () => void } | undefined;
+
+    // Never let a hanging network call keep the UI in an unknown state.
+    const timeout = window.setTimeout(() => {
+      if (mounted) setIsReady(true);
+    }, AUTH_READY_TIMEOUT_MS);
 
     supabase.auth
       .getSession()
@@ -115,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      window.clearTimeout(timeout);
       subscription?.unsubscribe();
     };
   }, []);
@@ -128,12 +141,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading: !isReady,
       isReady,
+      likelyAuthed: session ? true : isReady ? false : storedSession,
       signOut: async () => {
         await supabase.auth.signOut();
       },
     }),
-    [session, isReady],
+    [session, isReady, storedSession],
   );
+
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
