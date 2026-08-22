@@ -371,10 +371,17 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
         continue;
       }
       if (pinned) {
-        result.addedDeps[pkg] = pinned;
-        existingDeps.add(pkg);
+        // Pull in runtime peers too — a package whose internal import is
+        // missing fails the Rollup build exactly like a missing top-level one.
+        for (const name of withRequiredPeers([pkg])) {
+          const peerPin = KNOWN_PACKAGES[name];
+          if (!peerPin || existingDeps.has(name)) continue;
+          result.addedDeps[name] = peerPin;
+          existingDeps.add(name);
+        }
         continue;
       }
+
 
       // Unknown package — replace the import with local safe shims so Rollup
       // resolves AND the app still renders. Dropping the import outright left
