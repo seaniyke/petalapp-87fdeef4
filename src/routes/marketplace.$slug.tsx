@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { PetalLoader } from "@/components/PetalLoader";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { ListingRating, ListingReviews } from "@/components/marketplace/ListingReviews";
 import {
   formatListingPrice,
   getLiveListing,
@@ -69,6 +70,17 @@ function ListingDetailPage() {
       cancelled = true;
     };
   }, [slug]);
+
+  const canReview = owned || (listing !== null && listing.price_minor === 0);
+
+  async function refreshListing() {
+    try {
+      const found = await getLiveListing(slug);
+      if (found) setListing(found);
+    } catch {
+      /* rating refresh is best-effort */
+    }
+  }
 
   async function handleOpen() {
     if (!listing) return;
@@ -168,6 +180,14 @@ function ListingDetailPage() {
 
             <h1 className="mt-8 text-3xl font-bold tracking-tight sm:text-4xl">{listing.title}</h1>
             <p className="mt-3 text-base font-medium text-muted-foreground">{listing.pitch}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              <ListingRating avg={Number(listing.rating_avg ?? 0)} count={Number(listing.rating_count ?? 0)} />
+              {Number(listing.sales_count ?? 0) > 0 && (
+                <span className="text-xs font-semibold text-muted-foreground">
+                  {listing.sales_count} sold
+                </span>
+              )}
+            </div>
 
             {listing.description && (
               <div className="mt-6 whitespace-pre-wrap text-sm font-medium leading-relaxed text-foreground/90">
@@ -231,6 +251,12 @@ function ListingDetailPage() {
             </div>
           </aside>
         </div>
+
+        <ListingReviews
+          slug={listing.slug}
+          canReview={canReview}
+          onSubmitted={() => void refreshListing()}
+        />
       </main>
     </div>
   );
