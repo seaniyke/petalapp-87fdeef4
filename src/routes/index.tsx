@@ -42,7 +42,6 @@ import phoneHandImg from "@/assets/landing-phone-hand.jpg";
 import extensionImg from "@/assets/landing-extension.jpg";
 import previewImg from "@/assets/landing-preview.jpg";
 import shipImg from "@/assets/landing-ship.jpg";
-import emmaAvatar from "@/assets/testimonial-emma.jpg";
 import { toVisitorSummary } from "@/lib/visitor-summary";
 
 type ProjectFilter = "all" | "recent" | "public";
@@ -72,16 +71,16 @@ export const Route = createFileRoute("/")({
     search.focus === "composer" ? { focus: "composer" } : {},
   head: () => ({
     meta: [
-      { title: "Petal — Build web, mobile, backends & extensions with AI" },
+      { title: "Petal — Build it, ship it, then sell it" },
       {
         name: "description",
         content:
-          "Petal turns a sentence into a real product. Web apps, mobile apps for iOS + Android, backends, and Chrome extensions — one chat, live preview, ship.",
+          "Build web, mobile, backend or extension apps from one chat — then list them for sale. Credits you buy once and never lose, no subscription required.",
       },
-      { property: "og:title", content: "Petal — Build real software with AI" },
+      { property: "og:title", content: "Petal — Build it, ship it, then sell it" },
       {
         property: "og:description",
-        content: "One chat. Web, mobile, backend, or extension. Live preview, real files, shipped.",
+        content: "One chat builds it, eleven specialists review it, and the marketplace lets you sell it. Credits never expire.",
       },
     ],
   }),
@@ -1509,6 +1508,18 @@ function Landing() {
                 Petal <span className="text-muted-foreground font-normal italic">— build real software with AI.</span>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-5">
+                <Link to="/why/$slug" params={{ slug: "marketplace" }} className="hover:text-foreground">
+                  Marketplace
+                </Link>
+                <Link to="/why/$slug" params={{ slug: "pay-as-you-build" }} className="hover:text-foreground">
+                  Pricing model
+                </Link>
+                <Link to="/why/$slug" params={{ slug: "agent-board" }} className="hover:text-foreground">
+                  Agent board
+                </Link>
+                <Link to="/why/$slug" params={{ slug: "own-your-code" }} className="hover:text-foreground">
+                  Own your code
+                </Link>
                 <Link to="/coffee" className="hover:text-foreground">
                   Buy us coffee
                 </Link>
