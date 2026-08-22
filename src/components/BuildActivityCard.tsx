@@ -142,6 +142,7 @@ export function BuildActivityCard({
   onOpenPreview,
 }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(true);
 
   // Tick once a second while active so the elapsed counter updates in real
   // time. `tick` is a memo dependency on purpose — without it the elapsed
