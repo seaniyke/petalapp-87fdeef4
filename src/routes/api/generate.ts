@@ -5483,12 +5483,17 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // write is dropped by serverless runtimes once the response closes,
         // leaving turns permanently "running" and inviting reconnect loops.
         await finishTurnOnce(terminalStatus, terminalError);
-        // The browser left mid-build. The pipeline finished and the files are
-        // saved, but nobody is around to write the assistant bubble — do it
-        // here so the user returns to an answered thread, not a dead one.
-        if (clientGone && turnProjectId && recorder) {
+        // Make sure the thread always ends with an assistant reply. The client
+        // normally writes it on `done`, but a dropped socket doesn't always
+        // surface as an enqueue failure (buffered writes, a phone that slept,
+        // a different device), so `clientGone` can be false while nobody is
+        // listening. Give the client a short grace window to land its own
+        // write, then reconcile from the server — the helper no-ops when a
+        // reply already exists.
+        if (turnProjectId && recorder) {
+          await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
-          await persistAbandonedTurnReply({
+          const wroteReply = await persistAbandonedTurnReply({
             projectId: turnProjectId,
             turnId: recorder.turnId,
             status: terminalStatus,
@@ -5496,7 +5501,20 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             plan: done?.plan ?? null,
             recap: done?.recap ?? null,
             errorMessage: terminalError,
-          }).catch(() => {});
+          }).catch(() => false);
+          // We had to write the reply ourselves, which means no client was
+          // there to kick off the deploy either. Files are saved but the
+          // project would sit with no build at all — start it server-side.
+          if (wroteReply && terminalStatus === "succeeded") {
+            const auth = request.headers.get("authorization");
+            if (auth) {
+              await fetch(new URL("/api/builds/trigger", request.url).toString(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: auth },
+                body: JSON.stringify({ projectId: turnProjectId }),
+              }).catch(() => {});
+            }
+          }
         }
         try {
           controller.close();
