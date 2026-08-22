@@ -5493,7 +5493,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (turnProjectId && recorder) {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
-          await persistAbandonedTurnReply({
+          const wroteReply = await persistAbandonedTurnReply({
             projectId: turnProjectId,
             turnId: recorder.turnId,
             status: terminalStatus,
@@ -5501,7 +5501,20 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             plan: done?.plan ?? null,
             recap: done?.recap ?? null,
             errorMessage: terminalError,
-          }).catch(() => {});
+          }).catch(() => false);
+          // We had to write the reply ourselves, which means no client was
+          // there to kick off the deploy either. Files are saved but the
+          // project would sit with no build at all — start it server-side.
+          if (wroteReply && terminalStatus === "succeeded") {
+            const auth = request.headers.get("authorization");
+            if (auth) {
+              await fetch(new URL("/api/builds/trigger", request.url).toString(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: auth },
+                body: JSON.stringify({ projectId: turnProjectId }),
+              }).catch(() => {});
+            }
+          }
         }
         try {
           controller.close();
