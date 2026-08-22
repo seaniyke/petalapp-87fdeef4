@@ -42,7 +42,6 @@ import phoneHandImg from "@/assets/landing-phone-hand.jpg";
 import extensionImg from "@/assets/landing-extension.jpg";
 import previewImg from "@/assets/landing-preview.jpg";
 import shipImg from "@/assets/landing-ship.jpg";
-import emmaAvatar from "@/assets/testimonial-emma.jpg";
 import { toVisitorSummary } from "@/lib/visitor-summary";
 
 type ProjectFilter = "all" | "recent" | "public";
@@ -72,16 +71,16 @@ export const Route = createFileRoute("/")({
     search.focus === "composer" ? { focus: "composer" } : {},
   head: () => ({
     meta: [
-      { title: "Petal — Build web, mobile, backends & extensions with AI" },
+      { title: "Petal — Build it, ship it, then sell it" },
       {
         name: "description",
         content:
-          "Petal turns a sentence into a real product. Web apps, mobile apps for iOS + Android, backends, and Chrome extensions — one chat, live preview, ship.",
+          "Build web, mobile, backend or extension apps from one chat — then list them for sale. Credits you buy once and never lose, no subscription required.",
       },
-      { property: "og:title", content: "Petal — Build real software with AI" },
+      { property: "og:title", content: "Petal — Build it, ship it, then sell it" },
       {
         property: "og:description",
-        content: "One chat. Web, mobile, backend, or extension. Live preview, real files, shipped.",
+        content: "One chat builds it, eleven specialists review it, and the marketplace lets you sell it. Credits never expire.",
       },
     ],
   }),
@@ -511,28 +510,27 @@ function Landing() {
             <>
               <div className="mx-auto inline-flex flex-wrap items-center justify-center gap-2">
                 <Link
-                  to="/coffee"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-foreground backdrop-blur transition hover:border-primary/50 hover:text-primary"
+                  to="/why/$slug"
+                  params={{ slug: "pay-as-you-build" }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-medium text-foreground backdrop-blur transition hover:border-primary/50 hover:text-primary"
                 >
-                  ☕ Buy us a cup of coffee
+                  Credits that never expire — no subscription
                 </Link>
               </div>
 
-              <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-                From Idea to{" "}
-                <span className="relative inline-block whitespace-nowrap">
-                  <span className="relative z-10">App in Days.</span>
-                  <span
-                    aria-hidden
-                    className="absolute inset-x-0 bottom-[0.08em] z-0 h-[0.28em] rounded-full bg-primary/35"
-                  />
-                </span>
+              {/* One statement, one accent. The italic line carries the
+                  feeling; the roman line carries the promise. */}
+              <h1 className="mt-7 font-display text-[3rem] font-black leading-[0.88] tracking-[-0.045em] text-balance sm:text-7xl md:text-[5.75rem]">
+                Build it. Ship it.
+                <br />
+                <span className="italic font-normal text-primary">Then sell it.</span>
               </h1>
 
-
-              <p className="mx-auto mt-5 max-w-xl text-balance text-base font-medium text-muted-foreground sm:text-xl md:text-2xl">
-                Describe what you want to build. Start free with trial credits — no card required.
+              <p className="mx-auto mt-6 max-w-lg text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Describe a web app, mobile app, backend or extension. Petal builds the real thing — and Petal is the
+                only place you can put it up for sale when it's done.
               </p>
+
 
             </>
           )}
@@ -929,39 +927,131 @@ function Landing() {
             <SampleAppShowcase />
           </section>
 
-          {/* Trust strip — animated marquee of "built with Petal" categories */}
-          <section aria-label="Trusted by" className="border-y border-border/60 bg-card/30 py-6 overflow-hidden">
-            <div className="mx-auto max-w-6xl px-4 sm:px-6">
-              <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                Built with Petal · founders, designers, indie hackers
-              </p>
-              <div className="relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
-                <div className="flex w-max animate-marquee gap-12 whitespace-nowrap font-display text-2xl italic text-foreground/60 sm:text-3xl">
-                  {Array.from({ length: 2 }).map((_, r) => (
-                    <div key={r} className="flex gap-12">
-                      {[
-                        "booking apps",
-                        "AI copilots",
-                        "portfolios",
-                        "mobile MVPs",
-                        "internal tools",
-                        "chrome extensions",
-                        "landing pages",
-                        "APIs",
-                        "creator sites",
-                        "dashboards",
-                      ].map((t) => (
-                        <span key={`${r}-${t}`} className="flex items-center gap-6">
-                          <Star className="h-4 w-4 text-coral" />
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  ))}
-                </div>
+          {/* Proof strip — what Petal actually does, stated flat. No borrowed
+              logos, no invented customer count. */}
+          <section aria-label="What Petal covers" className="border-y border-border/60 bg-card/30">
+            <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-4">
+                {[
+                  { stat: "4", label: "Targets: web, mobile, backend, extension" },
+                  { stat: "11", label: "Specialist agents review each build" },
+                  { stat: "Never", label: "Credits expire" },
+                  { stat: "80%", label: "You keep on marketplace sales" },
+                ].map((s) => (
+                  <div key={s.label}>
+                    <dt className="font-display text-3xl font-black tracking-[-0.03em] sm:text-4xl">{s.stat}</dt>
+                    <dd className="mt-1.5 max-w-[15rem] text-xs leading-relaxed text-muted-foreground">{s.label}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </section>
+
+          {/* THE DIFFERENCE — the four things only Petal does. Asymmetric on
+              purpose: the marketplace claim gets the wide slot. */}
+          <section id="difference" className="relative px-5 py-24 sm:px-6 sm:py-32">
+            <div className="mx-auto max-w-6xl">
+              <div className="max-w-3xl">
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary">The difference</p>
+                <h2 className="mt-4 font-display text-[2.75rem] font-black leading-[0.9] tracking-[-0.045em] sm:text-6xl md:text-7xl">
+                  Everyone can generate an app.
+                  <br />
+                  <span className="italic font-normal">Four things they can't do.</span>
+                </h2>
+              </div>
+
+              <div className="mt-16 grid gap-4 sm:grid-cols-5">
+                {/* Wide slot — marketplace */}
+                <Link
+                  to="/why/$slug"
+                  params={{ slug: "marketplace" }}
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-[2rem] bg-foreground p-8 text-background sm:col-span-3 sm:p-10"
+                >
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-background/50">01</span>
+                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-5xl">
+                      Sell what you build.
+                    </h3>
+                    <p className="mt-4 max-w-md text-sm leading-relaxed text-background/70 sm:text-base">
+                      List a finished project, set a price, transfer it to the buyer's workspace. Petal takes 20% and
+                      nothing else. No other AI builder has a storefront on the other side of deploy.
+                    </p>
+                  </div>
+                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-coral">
+                    How the marketplace works
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
+
+                {/* Narrow slot — pay as you build */}
+                <Link
+                  to="/why/$slug"
+                  params={{ slug: "pay-as-you-build" }}
+                  className="group flex flex-col justify-between rounded-[2rem] border border-border bg-card p-8 sm:col-span-2 sm:p-10"
+                >
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">02</span>
+                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-4xl">
+                      Pay as you build.
+                    </h3>
+                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                      Credit packs you buy once. They never expire, there is no plan to cancel, and a turn that changes
+                      nothing costs nothing.
+                    </p>
+                  </div>
+                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                    See the pricing model
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
+
+                {/* Narrow slot — agent board */}
+                <Link
+                  to="/why/$slug"
+                  params={{ slug: "agent-board" }}
+                  className="group flex flex-col justify-between rounded-[2rem] border border-border bg-card p-8 sm:col-span-2 sm:p-10"
+                >
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">03</span>
+                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-4xl">
+                      A board, not a bot.
+                    </h3>
+                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                      Product, architecture, design, security, QA — eleven specialists argue over the spec before a
+                      single file is written.
+                    </p>
+                  </div>
+                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                    Meet the board
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
+
+                {/* Wide slot — own your code */}
+                <Link
+                  to="/why/$slug"
+                  params={{ slug: "own-your-code" }}
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-accent/40 p-8 sm:col-span-3 sm:p-10"
+                >
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">04</span>
+                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-5xl">
+                      The code is yours to take.
+                    </h3>
+                    <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
+                      Real React and TypeScript, two-way Git sync, your own domain. Leaving Petal should be a decision,
+                      not an escape.
+                    </p>
+                  </div>
+                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                    What you actually own
+                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </span>
+                </Link>
               </div>
             </div>
           </section>
+
 
           {/* Bento features — real product screenshots + editorial typography */}
           <section id="features" className="relative px-4 py-24 sm:px-6 sm:py-32">
@@ -1226,87 +1316,149 @@ function Landing() {
             </div>
           </section>
 
-          {/* Testimonials */}
-          <section id="testimonials" className="relative px-4 py-24 sm:px-6 sm:py-32">
-            <div
-              className="pointer-events-none absolute left-[-6rem] top-1/3 -z-10 h-96 w-96 rounded-full bg-coral/25 blur-3xl animate-blob"
-              aria-hidden
-            />
-            <div className="mx-auto max-w-6xl">
-              <div className="mx-auto max-w-3xl text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Loved by builders</p>
-                <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                  Real people. <span className="italic">Real</span> apps.
-                </h2>
-                <p className="mt-5 text-lg text-muted-foreground">
-                  Founders, designers, and non-coders shipping in an afternoon.
-                </p>
-              </div>
+          {/* Marketplace band — the differentiator gets a full spread. */}
+          <section id="marketplace" className="relative overflow-hidden border-y border-border bg-foreground text-background">
+            <div className="mx-auto max-w-6xl px-5 py-24 sm:px-6 sm:py-32">
+              <div className="grid gap-12 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-coral">The marketplace</p>
+                  <h2 className="mt-4 font-display text-[2.75rem] font-black leading-[0.9] tracking-[-0.045em] sm:text-6xl md:text-7xl">
+                    Your build has
+                    <br />
+                    <span className="italic font-normal">a resale value.</span>
+                  </h2>
+                  <p className="mt-6 max-w-lg text-base leading-relaxed text-background/70 sm:text-lg">
+                    Finish an app and it doesn't have to sit in your account. List it, price it, and hand it over to
+                    someone who needs it — files, database schema and all. You keep 80%.
+                  </p>
+                  <div className="mt-10 flex flex-wrap gap-3">
+                    <Link
+                      to="/marketplace"
+                      className="inline-flex items-center gap-2 rounded-full bg-background px-6 py-3.5 text-sm font-semibold text-foreground transition hover:-translate-y-0.5"
+                    >
+                      Browse listings <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link
+                      to="/sell"
+                      className="inline-flex items-center gap-2 rounded-full border border-background/25 px-6 py-3.5 text-sm font-semibold text-background transition hover:border-background/60"
+                    >
+                      Sell a build
+                    </Link>
+                  </div>
+                </div>
 
-              <div className="mt-16 grid gap-6 md:grid-cols-3">
+                <dl className="grid grid-cols-2 gap-8 border-t border-background/15 pt-10 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
+                  {[
+                    { stat: "80%", label: "Creator share on every sale" },
+                    { stat: "$0", label: "Listing fee" },
+                    { stat: "Full", label: "Project transfer, not a zip" },
+                    { stat: "Live", label: "Working preview on each listing" },
+                  ].map((s) => (
+                    <div key={s.label}>
+                      <dt className="font-display text-4xl font-black tracking-[-0.03em]">{s.stat}</dt>
+                      <dd className="mt-2 text-xs leading-relaxed text-background/60">{s.label}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+          </section>
+
+          {/* Pricing teaser — pay as you build, framed against subscriptions. */}
+          <section id="pricing" className="px-5 py-24 sm:px-6 sm:py-32">
+            <div className="mx-auto max-w-6xl">
+              <div className="grid gap-12 md:grid-cols-[1fr_1.1fr] md:items-start">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary">Pay as you build</p>
+                  <h2 className="mt-4 font-display text-[2.5rem] font-black leading-[0.9] tracking-[-0.045em] sm:text-5xl md:text-6xl">
+                    Buy credits once.
+                    <br />
+                    <span className="italic font-normal">Use them whenever.</span>
+                  </h2>
+                  <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
+                    A subscription is a bet that you'll build every month. Most people don't. Petal charges for the work
+                    it does and leaves the rest of your balance alone.
+                  </p>
+                  <Link
+                    to="/why/$slug"
+                    params={{ slug: "pay-as-you-build" }}
+                    className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-foreground underline-offset-4 hover:underline"
+                  >
+                    How billing works <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+
+                <ul className="space-y-px">
+                  {[
+                    {
+                      t: "Credits never expire",
+                      d: "Buy a pack, come back in six months, it's still there. No monthly reset, no clawback.",
+                    },
+                    {
+                      t: "No-op turns are free",
+                      d: "If a build produces byte-identical files, nothing is charged. You pay for changes, not for asking.",
+                    },
+                    {
+                      t: "Subscriptions stay optional",
+                      d: "Plans exist for people who want a monthly allowance. Nothing about the builder is locked behind one.",
+                    },
+                    {
+                      t: "The meter is published",
+                      d: "Backend hours, images and model spend each have a stated rate you can read before you spend.",
+                    },
+                  ].map((row) => (
+                    <li key={row.t} className="border-t border-border py-6">
+                      <div className="font-display text-xl font-bold tracking-[-0.02em]">{row.t}</div>
+                      <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">{row.d}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* FAQ — plain answers, no accordion theatre. */}
+          <section id="faq" className="px-5 pb-24 sm:px-6 sm:pb-32">
+            <div className="mx-auto max-w-6xl">
+              <h2 className="max-w-2xl font-display text-[2.25rem] font-black leading-[0.92] tracking-[-0.04em] sm:text-5xl">
+                Questions people <span className="italic font-normal">actually ask.</span>
+              </h2>
+              <div className="mt-12 grid gap-x-14 gap-y-px md:grid-cols-2">
                 {[
                   {
-                    name: "Ada Okafor",
-                    role: "Founder · Bookly",
-                    quote:
-                      "I described a booking app in one sentence. Ten minutes later I had a live URL I could send my first customer.",
-                    avatar:
-                      "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
-                    tint: "bg-coral/25",
+                    q: "Do I need a subscription?",
+                    a: "No. Buy a credit pack and build. Plans exist if you want a monthly allowance, but the builder, the marketplace and publishing all work without one.",
                   },
                   {
-                    name: "Samuel Martins",
-                    role: "Product designer",
-                    quote:
-                      "Told Petal to build a mobile app. It shipped an Expo project I could QR-scan on my phone. No Xcode, no Android Studio wars.",
-                    avatar:
-                      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=faces&auto=format&q=80",
-                    tint: "bg-mint/50",
+                    q: "What happens to unused credits?",
+                    a: "Nothing. They stay in your balance indefinitely. There is no expiry date and no monthly reset.",
                   },
                   {
-                    name: "Emma Whitfield",
-                    role: "Solo builder",
-                    quote:
-                      "I'd tried three other AI builders. Petal is the first that actually finished — landing page, auth, database, the whole thing.",
-                    avatar: emmaAvatar,
-                    tint: "bg-butter",
+                    q: "Can I really sell an app I built here?",
+                    a: "Yes. Publish it as a marketplace listing, set a price, and Petal handles checkout and transferring the project to the buyer. You keep 80% of every sale.",
                   },
-                ].map((t, i) => (
-                  <figure
-                    key={t.name}
-                    className={`group relative flex h-full flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-card p-7 shadow-[var(--shadow-soft)] transition duration-500 hover:-translate-y-2 hover:shadow-[var(--shadow-editorial)] ${i === 1 ? "md:translate-y-6" : ""}`}
-                  >
-                    <div
-                      className={`absolute -right-16 -top-16 h-40 w-40 rounded-full ${t.tint} blur-2xl transition group-hover:scale-110`}
-                      aria-hidden
-                    />
-                    <div className="relative">
-                      <div className="flex gap-0.5 text-primary">
-                        {Array.from({ length: 5 }).map((_, s) => (
-                          <Star key={s} className="h-3.5 w-3.5 fill-current" />
-                        ))}
-                      </div>
-                      <blockquote className="mt-5 font-display text-xl font-medium leading-snug tracking-[-0.01em] text-foreground">
-                        &ldquo;{t.quote}&rdquo;
-                      </blockquote>
-                    </div>
-                    <figcaption className="relative mt-8 flex items-center gap-3">
-                      <img
-                        src={t.avatar}
-                        alt={t.name}
-                        loading="lazy"
-                        className="h-12 w-12 rounded-full object-cover ring-2 ring-background"
-                      />
-                      <div className="text-sm">
-                        <div className="font-semibold">{t.name}</div>
-                        <div className="text-xs text-muted-foreground">{t.role}</div>
-                      </div>
-                    </figcaption>
-                  </figure>
+                  {
+                    q: "Is it real code or a locked-in builder?",
+                    a: "Real React and TypeScript in a real file tree. Sync it to your own Git repository, edit it locally, and deploy it wherever you like.",
+                  },
+                  {
+                    q: "What if the build breaks?",
+                    a: "Petal verifies each build in a browser before calling it done, routes any defects to the specialist that owns them, and repairs in a scoped round rather than rewriting your app.",
+                  },
+                  {
+                    q: "Can it build mobile apps?",
+                    a: "Yes — one mobile target that ships to both stores. Preview it on your phone by scanning a QR code while it builds.",
+                  },
+                ].map((f) => (
+                  <div key={f.q} className="border-t border-border py-7">
+                    <h3 className="font-display text-lg font-bold tracking-[-0.015em]">{f.q}</h3>
+                    <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+                  </div>
                 ))}
               </div>
             </div>
           </section>
+
 
           {/* Final CTA */}
           <section className="px-4 pb-20 sm:px-6 sm:pb-28">
@@ -1356,6 +1508,18 @@ function Landing() {
                 Petal <span className="text-muted-foreground font-normal italic">— build real software with AI.</span>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-5">
+                <Link to="/why/$slug" params={{ slug: "marketplace" }} className="hover:text-foreground">
+                  Marketplace
+                </Link>
+                <Link to="/why/$slug" params={{ slug: "pay-as-you-build" }} className="hover:text-foreground">
+                  Pricing model
+                </Link>
+                <Link to="/why/$slug" params={{ slug: "agent-board" }} className="hover:text-foreground">
+                  Agent board
+                </Link>
+                <Link to="/why/$slug" params={{ slug: "own-your-code" }} className="hover:text-foreground">
+                  Own your code
+                </Link>
                 <Link to="/coffee" className="hover:text-foreground">
                   Buy us coffee
                 </Link>
