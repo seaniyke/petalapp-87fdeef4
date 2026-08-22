@@ -35,7 +35,11 @@ export type PublicListing = {
   file_count: number;
   published_at: string | null;
   creator_id: string;
+  rating_avg?: number;
+  rating_count?: number;
+  sales_count?: number;
 };
+
 
 export const LISTING_CATEGORIES = [
   "app",
@@ -344,4 +348,188 @@ export async function decideListing(
     .single();
   if (error) throw error;
   return data;
+}
+
+/* ------------------------------------------------------------------ */
+/* Phase 3 — creator earnings + payouts                                */
+/* ------------------------------------------------------------------ */
+
+export type EarningRow = Database["public"]["Tables"]["marketplace_earnings"]["Row"];
+export type PayoutRow = Database["public"]["Tables"]["marketplace_payouts"]["Row"];
+
+export type CreatorSummary = {
+  sales_count: number;
+  gross_cents: number;
+  commission_cents: number;
+  net_cents: number;
+  available_cents: number;
+  requested_cents: number;
+  paid_cents: number;
+  min_payout_cents: number;
+  payouts_enabled: boolean;
+};
+
+const EMPTY_SUMMARY: CreatorSummary = {
+  sales_count: 0,
+  gross_cents: 0,
+  commission_cents: 0,
+  net_cents: 0,
+  available_cents: 0,
+  requested_cents: 0,
+  paid_cents: 0,
+  min_payout_cents: 5000,
+  payouts_enabled: false,
+};
+
+/** Lifetime earnings, plus what is payable right now. */
+export async function getCreatorSummary(): Promise<CreatorSummary> {
+  const { data, error } = await rpc("marketplace_creator_summary", {});
+  if (error) throw error;
+  const row = (data ?? [])[0] as Partial<CreatorSummary> | undefined;
+  if (!row) return EMPTY_SUMMARY;
+  return {
+    ...EMPTY_SUMMARY,
+    ...row,
+    sales_count: Number(row.sales_count ?? 0),
+    gross_cents: Number(row.gross_cents ?? 0),
+    commission_cents: Number(row.commission_cents ?? 0),
+    net_cents: Number(row.net_cents ?? 0),
+    available_cents: Number(row.available_cents ?? 0),
+    requested_cents: Number(row.requested_cents ?? 0),
+    paid_cents: Number(row.paid_cents ?? 0),
+    min_payout_cents: Number(row.min_payout_cents ?? 5000),
+    payouts_enabled: Boolean(row.payouts_enabled),
+  };
+}
+
+export async function listMyEarnings(): Promise<EarningRow[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return [];
+  const { data, error } = await supabase
+    .from("marketplace_earnings")
+    .select("*")
+    .eq("creator_id", userData.user.id)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function listMyPayouts(): Promise<PayoutRow[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) return [];
+  const { data, error } = await supabase
+    .from("marketplace_payouts")
+    .select("*")
+    .eq("creator_id", userData.user.id)
+    .order("requested_at", { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export type PayoutMethod = "bank" | "paystack" | "crypto";
+
+/** Requests a payout of the whole available balance. */
+export async function requestPayout(method: PayoutMethod, destination: string): Promise<string> {
+  const { data, error } = await rpc("marketplace_request_payout", {
+    p_method: method,
+    p_destination: destination,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function cancelPayout(id: string): Promise<void> {
+  const { error } = await rpc("marketplace_cancel_payout", { p_id: id });
+  if (error) throw error;
+}
+
+/* ------------------------------------------------------------------ */
+/* Phase 4 — reviews + admin economy controls                          */
+/* ------------------------------------------------------------------ */
+
+export type PublicReview = {
+  id: string;
+  rating: number;
+  body: string;
+  created_at: string;
+  reviewer_name: string;
+  reviewer_avatar: string | null;
+};
+
+export async function listReviews(slug: string): Promise<PublicReview[]> {
+  const { data, error } = await rpc("marketplace_list_reviews", { p_slug: slug });
+  if (error) throw error;
+  return (data ?? []) as PublicReview[];
+}
+
+export async function submitReview(slug: string, rating: number, body: string): Promise<void> {
+  const { error } = await rpc("marketplace_submit_review", {
+    p_slug: slug,
+    p_rating: rating,
+    p_body: body,
+  });
+  if (error) throw error;
+}
+
+export type MarketplaceConfig = {
+  commission_bps: number;
+  min_payout_cents: number;
+  payouts_enabled: boolean;
+};
+
+export async function getMarketplaceConfig(): Promise<MarketplaceConfig> {
+  const { data, error } = await supabase
+    .from("marketplace_config")
+    .select("commission_bps, min_payout_cents, payouts_enabled")
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    commission_bps: Number(data?.commission_bps ?? 2000),
+    min_payout_cents: Number(data?.min_payout_cents ?? 5000),
+    payouts_enabled: Boolean(data?.payouts_enabled),
+  };
+}
+
+export async function adminSetConfig(cfg: MarketplaceConfig): Promise<void> {
+  const { error } = await rpc("marketplace_admin_set_config", {
+    p_commission_bps: cfg.commission_bps,
+    p_min_payout_cents: cfg.min_payout_cents,
+    p_payouts_enabled: cfg.payouts_enabled,
+  });
+  if (error) throw error;
+}
+
+export type AdminPayoutRow = {
+  id: string;
+  creator_id: string;
+  creator_email: string | null;
+  amount_cents: number;
+  method: string;
+  destination: string;
+  status: string;
+  admin_note: string | null;
+  requested_at: string;
+  decided_at: string | null;
+  paid_at: string | null;
+};
+
+export async function adminListPayouts(status?: string): Promise<AdminPayoutRow[]> {
+  const { data, error } = await rpc("marketplace_admin_list_payouts", {
+    p_status: status ?? null,
+  });
+  if (error) throw error;
+  return (data ?? []) as AdminPayoutRow[];
+}
+
+export async function adminDecidePayout(
+  id: string,
+  decision: "approved" | "paid" | "rejected",
+  note?: string,
+): Promise<void> {
+  const { error } = await rpc("marketplace_admin_decide_payout", {
+    p_id: id,
+    p_decision: decision,
+    p_note: note ?? null,
+  });
+  if (error) throw error;
 }

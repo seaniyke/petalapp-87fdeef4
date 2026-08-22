@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { PetalLoader } from "@/components/PetalLoader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ListingRating } from "@/components/marketplace/ListingReviews";
 import {
   formatListingPrice,
   listLiveListings,
@@ -211,6 +212,11 @@ function ListingCard({ listing }: { listing: PublicListing }) {
             <Tag className="h-3.5 w-3.5" aria-hidden /> {listing.category.replace("-", " ")}
           </span>
           <span>{listing.file_count} files</span>
+          <ListingRating
+            avg={Number(listing.rating_avg ?? 0)}
+            count={Number(listing.rating_count ?? 0)}
+          />
+
           <span className="ml-auto inline-flex items-center gap-1 text-primary opacity-0 transition-opacity group-hover:opacity-100">
             View <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
           </span>

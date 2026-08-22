@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { listProjects, type ProjectRow } from "@/lib/projects";
+import { CreatorEarningsPanel } from "@/components/marketplace/CreatorEarningsPanel";
 import {
   createListingFromProject,
   deleteListing,
@@ -427,6 +428,11 @@ function SellPage() {
             </ul>
           )}
         </section>
+        <section className="mt-12">
+          <h2 className="text-lg font-bold">Earnings</h2>
+          <CreatorEarningsPanel />
+        </section>
+
         <section className="mt-12">
           <h2 className="text-lg font-bold">Sales</h2>
           {sales.length === 0 ? (

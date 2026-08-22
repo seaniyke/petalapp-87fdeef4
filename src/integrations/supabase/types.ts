@@ -1042,6 +1042,94 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_config: {
+        Row: {
+          commission_bps: number
+          id: boolean
+          min_payout_cents: number
+          payouts_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          commission_bps?: number
+          id?: boolean
+          min_payout_cents?: number
+          payouts_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          commission_bps?: number
+          id?: boolean
+          min_payout_cents?: number
+          payouts_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketplace_earnings: {
+        Row: {
+          commission_cents: number
+          created_at: string
+          creator_id: string
+          gross_cents: number
+          id: string
+          listing_id: string | null
+          listing_slug: string
+          net_cents: number
+          payout_id: string | null
+          payout_state: string
+          purchase_id: string
+        }
+        Insert: {
+          commission_cents?: number
+          created_at?: string
+          creator_id: string
+          gross_cents?: number
+          id?: string
+          listing_id?: string | null
+          listing_slug?: string
+          net_cents?: number
+          payout_id?: string | null
+          payout_state?: string
+          purchase_id: string
+        }
+        Update: {
+          commission_cents?: number
+          created_at?: string
+          creator_id?: string
+          gross_cents?: number
+          id?: string
+          listing_id?: string | null
+          listing_slug?: string
+          net_cents?: number
+          payout_id?: string | null
+          payout_state?: string
+          purchase_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_earnings_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_earnings_payout_fk"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_payouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_earnings_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: true
+            referencedRelation: "marketplace_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_licenses: {
         Row: {
           code: string
@@ -1095,7 +1183,10 @@ export type Database = {
           price_minor: number
           project_id: string | null
           published_at: string | null
+          rating_avg: number
+          rating_count: number
           review_note: string | null
+          sales_count: number
           screenshots: string[]
           slug: string
           source_files: Json
@@ -1120,7 +1211,10 @@ export type Database = {
           price_minor?: number
           project_id?: string | null
           published_at?: string | null
+          rating_avg?: number
+          rating_count?: number
           review_note?: string | null
+          sales_count?: number
           screenshots?: string[]
           slug: string
           source_files?: Json
@@ -1145,7 +1239,10 @@ export type Database = {
           price_minor?: number
           project_id?: string | null
           published_at?: string | null
+          rating_avg?: number
+          rating_count?: number
           review_note?: string | null
+          sales_count?: number
           screenshots?: string[]
           slug?: string
           source_files?: Json
@@ -1177,6 +1274,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      marketplace_payouts: {
+        Row: {
+          admin_note: string | null
+          amount_cents: number
+          creator_id: string
+          decided_at: string | null
+          destination: string
+          id: string
+          method: string
+          paid_at: string | null
+          requested_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount_cents: number
+          creator_id: string
+          decided_at?: string | null
+          destination: string
+          id?: string
+          method?: string
+          paid_at?: string | null
+          requested_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount_cents?: number
+          creator_id?: string
+          decided_at?: string | null
+          destination?: string
+          id?: string
+          method?: string
+          paid_at?: string | null
+          requested_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       marketplace_purchases: {
         Row: {
@@ -1233,6 +1372,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "marketplace_purchases_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_reviews: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          listing_id: string
+          listing_slug: string
+          rating: number
+          reviewer_id: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          listing_id: string
+          listing_slug: string
+          rating: number
+          reviewer_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+          listing_slug?: string
+          rating?: number
+          reviewer_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_reviews_listing_id_fkey"
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "marketplace_listings"
@@ -4084,6 +4264,49 @@ export type Database = {
         }[]
       }
       is_paid_plan: { Args: { _user_id: string }; Returns: boolean }
+      marketplace_admin_decide_payout: {
+        Args: { p_decision: string; p_id: string; p_note?: string }
+        Returns: undefined
+      }
+      marketplace_admin_list_payouts: {
+        Args: { p_status?: string }
+        Returns: {
+          admin_note: string
+          amount_cents: number
+          creator_email: string
+          creator_id: string
+          decided_at: string
+          destination: string
+          id: string
+          method: string
+          paid_at: string
+          requested_at: string
+          status: string
+        }[]
+      }
+      marketplace_admin_set_config: {
+        Args: {
+          p_commission_bps: number
+          p_min_payout_cents: number
+          p_payouts_enabled: boolean
+        }
+        Returns: undefined
+      }
+      marketplace_cancel_payout: { Args: { p_id: string }; Returns: undefined }
+      marketplace_creator_summary: {
+        Args: never
+        Returns: {
+          available_cents: number
+          commission_cents: number
+          gross_cents: number
+          min_payout_cents: number
+          net_cents: number
+          paid_cents: number
+          payouts_enabled: boolean
+          requested_cents: number
+          sales_count: number
+        }[]
+      }
       marketplace_get_live: {
         Args: { p_slug: string }
         Returns: {
@@ -4100,6 +4323,9 @@ export type Database = {
           pitch: string
           price_minor: number
           published_at: string
+          rating_avg: number
+          rating_count: number
+          sales_count: number
           screenshots: string[]
           slug: string
           title: string
@@ -4120,13 +4346,35 @@ export type Database = {
           pitch: string
           price_minor: number
           published_at: string
+          rating_avg: number
+          rating_count: number
+          sales_count: number
           screenshots: string[]
           slug: string
           title: string
         }[]
       }
+      marketplace_list_reviews: {
+        Args: { p_slug: string }
+        Returns: {
+          body: string
+          created_at: string
+          id: string
+          rating: number
+          reviewer_avatar: string
+          reviewer_name: string
+        }[]
+      }
       marketplace_open_listing: { Args: { p_slug: string }; Returns: string }
       marketplace_owns_listing: { Args: { p_slug: string }; Returns: boolean }
+      marketplace_request_payout: {
+        Args: { p_destination: string; p_method: string }
+        Returns: string
+      }
+      marketplace_submit_review: {
+        Args: { p_body?: string; p_rating: number; p_slug: string }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
