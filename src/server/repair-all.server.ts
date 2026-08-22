@@ -32,6 +32,8 @@ import { validateRouteGraph } from "./route-graph.server";
 import { wireOrphanPages } from "./orphan-page-wiring.server";
 
 import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
+import { repairPaletteIntegrity } from "./palette-integrity.server";
+
 import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { enforceLayoutHygiene } from "./layout-hygiene.server";
