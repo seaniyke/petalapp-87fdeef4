@@ -2167,6 +2167,39 @@ Forbidden defaults
     : null;
   const designBlock = designDirection ? renderDesignDirectionBlock(designDirection) : "";
 
+  // ---------------------------------------------------------------------------
+  // Petal Intelligence — multi-agent planning board.
+  //
+  // Convenes the specialists this turn actually deserves (a colour tweak gets
+  // none; a marketplace gets the full board), reconciles their conflicts, and
+  // returns one binding-decisions block. Fully additive: any failure returns an
+  // empty block and the pipeline below runs exactly as it did before.
+  // ---------------------------------------------------------------------------
+  let orchestrationBlock = "";
+  try {
+    const { orchestrateTurn, summarizeOrchestration } = await import(
+      "@/server/agents/orchestrator.server"
+    );
+    const orchestration = await orchestrateTurn({
+      turnId: turnId ?? `turn-${Date.now()}`,
+      prompt: lastUserContent,
+      projectId: body.projectId ?? null,
+      userId: userId ?? null,
+      target: buildTarget.id,
+      isInitial,
+      fileCount: currentFiles.length,
+      prd: resolvedPrd?.prd ?? null,
+      design: designDirection,
+    });
+    if (orchestration.block) {
+      orchestrationBlock = `\n\n### ${orchestration.block}\n`;
+    }
+    console.log(summarizeOrchestration(orchestration.telemetry));
+  } catch (e) {
+    console.warn("[orchestrator] skipped:", e instanceof Error ? e.message : String(e));
+  }
+
+
   const persistedBlueprint = !isInitial ? await loadProjectBlueprint(body.projectId) : null;
   // W4 — persisted architecture: what the code actually contains today
   // (routes + owning files, shared components, committed libraries). Keeps
@@ -2507,7 +2540,9 @@ Forbidden defaults
     // how it should look second.
     prdBlock +
     prdScenarioBlock +
+    orchestrationBlock +
     designTasteBlock +
+
     learningBlock +
     highStakesBlock +
     visionAddendum +
