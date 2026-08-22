@@ -31,9 +31,12 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { isScaffoldOwnedPath } from "./scaffold-ownership.server";
+
 import {
   COMMON_LUCIDE_ICONS,
   KNOWN_PACKAGES,
+  withRequiredPeers,
   PACKAGE_ALIASES,
   REACT_ICONS_TO_LUCIDE,
   SAFE_ICON_FALLBACK,
@@ -250,6 +253,12 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
   for (const file of files) {
     if (!SCANNABLE.test(file.path)) continue;
     if (isBuildConfig(file.path)) continue;
+    // Petal-owned kit files are handled by the kit dependency closure, which
+    // installs by REACHABILITY. Scanning them here would install three.js,
+    // TipTap and GSAP into every project just because the kit ships those
+    // files — and their bytes are restored afterwards anyway.
+    if (isScaffoldOwnedPath(file.path)) continue;
+
 
     let src = byPath.get(file.path) ?? file.content;
 
@@ -363,10 +372,17 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
         continue;
       }
       if (pinned) {
-        result.addedDeps[pkg] = pinned;
-        existingDeps.add(pkg);
+        // Pull in runtime peers too — a package whose internal import is
+        // missing fails the Rollup build exactly like a missing top-level one.
+        for (const name of withRequiredPeers([pkg])) {
+          const peerPin = KNOWN_PACKAGES[name];
+          if (!peerPin || existingDeps.has(name)) continue;
+          result.addedDeps[name] = peerPin;
+          existingDeps.add(name);
+        }
         continue;
       }
+
 
       // Unknown package — replace the import with local safe shims so Rollup
       // resolves AND the app still renders. Dropping the import outright left

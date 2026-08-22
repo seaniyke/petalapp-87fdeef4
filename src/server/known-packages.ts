@@ -79,6 +79,7 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   "rehype-raw": "^7.0.0",
   "@tiptap/react": "^2.10.0",
   "@tiptap/pm": "^2.10.0",
+  "@tiptap/core": "^2.10.0",
   "@tiptap/starter-kit": "^2.10.0",
   "@tiptap/extension-link": "^2.10.0",
   "@tiptap/extension-placeholder": "^2.10.0",
@@ -94,6 +95,7 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   "@react-three/fiber": "^8.17.10",
   "@react-three/drei": "^9.114.0",
   "@react-three/postprocessing": "^2.16.3",
+  postprocessing: "^6.36.4",
   "@splinetool/react-spline": "^4.0.0",
   "@splinetool/runtime": "^1.9.35",
   gsap: "^3.12.5",
@@ -399,4 +401,33 @@ export function nearestIcon(name: string, maxDistance = 2): string | null {
     if (d <= maxDistance && (!best || d < best.d)) best = { name: candidate, d };
   }
   return best?.name ?? null;
+}
+
+/**
+ * Runtime peers a package imports internally but does not declare as a hard
+ * dependency. Installing the package alone leaves Rollup with
+ * `failed to resolve import "@splinetool/runtime"` at build time, so every
+ * dependency writer expands through this table.
+ */
+export const REQUIRED_PEERS: Record<string, readonly string[]> = {
+  "@splinetool/react-spline": ["@splinetool/runtime"],
+  "@react-three/fiber": ["three"],
+  "@react-three/drei": ["three", "@react-three/fiber"],
+  "@react-three/postprocessing": ["three", "@react-three/fiber", "postprocessing"],
+  "@tiptap/react": ["@tiptap/pm", "@tiptap/core"],
+  "@tiptap/starter-kit": ["@tiptap/pm", "@tiptap/core"],
+  "react-day-picker": ["date-fns"],
+};
+
+/** Expand a set of package names with every runtime peer they need. */
+export function withRequiredPeers(names: Iterable<string>): string[] {
+  const out = new Set<string>();
+  const queue = [...names];
+  while (queue.length) {
+    const name = queue.shift()!;
+    if (!name || out.has(name)) continue;
+    out.add(name);
+    for (const peer of REQUIRED_PEERS[name] ?? []) queue.push(peer);
+  }
+  return [...out];
 }
