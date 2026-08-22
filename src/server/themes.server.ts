@@ -780,6 +780,10 @@ export function pickThemeForBrief(brief: string, seed?: string): ThemeKey {
     ["brutalist", [/music|club|festival|zine|gallery|underground|experimental/]],
     ["soft-pastel", [/journaling|meditation|cute|gentle|calm|breathe|mindful/]],
     ["mono-dark", [/\bai\b|gpt|llm|crypto|web3|nft|audio|video|cinem|founder|launch/]],
+    // Streaming / media clones must land dark + cinematic with a saturated
+    // accent, never a light editorial page of movie cards.
+    ["mono-dark", [/netflix|hulu|disney\+|hbo|prime video|streaming|watchlist|tv show|episodes?|movie/]],
+    ["cyberpunk-neon", [/netflix|streaming|twitch|spotify|music streaming|movie app|video platform/]],
     ["neo-brutalist", [/indie|side project|maker|no-code|nocode|product hunt|launch page|founder/]],
     ["glass-morphism", [/wallet|fintech|finance|banking|premium|apple|ios|sleek/]],
     ["terminal-green", [/cli|terminal|hacker|developer tool|devtool|security|infosec|sysadmin|ssh/]],
