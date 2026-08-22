@@ -3597,12 +3597,22 @@ function Builder() {
       setActivityVisible(true);
 
       const blockedBeforeDeploy = snap?.status === "failed";
+      // Phase E — when the QA board already assigned each finding to an owning
+      // layer, send that grouped brief instead of a flat bullet list: the fix
+      // turn then knows *what kind* of problem each finding is.
+      const routingBrief =
+        typeof (snap?.verification as { defectRouting?: { brief?: unknown } } | undefined)
+          ?.defectRouting?.brief === "string"
+          ? String(
+              (snap!.verification as { defectRouting: { brief: string } }).defectRouting.brief,
+            ).trim()
+          : "";
       const prompt = [
         blockedBeforeDeploy
           ? "Petal ran the built app in a real browser before publishing it and it does not work correctly, so the release was held back. Findings:"
           : "I opened the deployed app in a real browser and it does not work correctly. Findings:",
         "",
-        ...defects.slice(0, 15).map((d) => `- ${d}`),
+        routingBrief || defects.slice(0, 15).map((d) => `- ${d}`).join("\n"),
         "",
         "Fix the root cause of every finding in the project files. Every declared route must render useful visible content after hydration; no route may return null, an empty fragment, or a blank placeholder. Make forms and navigation controls functional. Keep the changes focused and do not redesign anything that already works.",
       ].join("\n");
