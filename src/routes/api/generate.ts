@@ -96,6 +96,7 @@ import { renderAppSpecBlock } from "@/server/app-spec.server";
 import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/lib/prompt-limits";
 
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
+import { COPY_CONTRACT_BLOCK } from "@/server/copy-slop.server";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
@@ -2508,6 +2509,7 @@ Forbidden defaults
     memoryBlock +
     preservationBlock +
     designBlock +
+    "\n\n" + COPY_CONTRACT_BLOCK + "\n\n" +
     blueprintBlock +
     appShapeBlock +
     mobileBlock +

@@ -15,6 +15,7 @@
 import type { ProjectFile } from "@/server/generate.server";
 import type { LocalIssue } from "@/server/local-verifier";
 import { LANDING_SECTION_KEYWORDS } from "./design-taste.server";
+import { findCopySlopIssues } from "./copy-slop.server";
 
 const CLICHE_PATTERNS: Array<{ rx: RegExp; label: string }> = [
   { rx: /from-purple-\d{3}\s+to-pink-\d{3}/i, label: "purple-to-pink gradient (banned AI default)" },
@@ -114,7 +115,7 @@ function findDesignContractIssues(files: ProjectFile[]): LocalIssue[] {
 }
 
 export function findAntiSamenessIssues(files: ProjectFile[]): LocalIssue[] {
-  const issues: LocalIssue[] = [...findDesignContractIssues(files)];
+  const issues: LocalIssue[] = [...findDesignContractIssues(files), ...findCopySlopIssues(files)];
   const indexRoute =
     files.find((f) => f.path === "src/routes/index.tsx") ??
     files.find((f) => f.path === "src/App.tsx") ??
