@@ -2307,8 +2307,35 @@ Forbidden defaults
   // and every app-level component so the model's `replace` snippets match
   // real bytes instead of hallucinations. Single biggest fix for the
   // "I wasn't able to apply that change" failure mode on broad asks.
-  const isCrossCutting = !isInitial && detectCrossCuttingIntent(lastUserContent);
-  const pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
+  //
+  // Engine 3.0 phase 4: the regex verdict is now only the prior. A cheap
+  // semantic classifier can WIDEN it (never shrink it), which is what catches
+  // "this looks generic" and "nothing works on my phone" — structural asks
+  // that no keyword list will ever match.
+  let editClassification: import("@/server/edit-classifier.server").EditClassification | null =
+    null;
+  if (!isInitial) {
+    try {
+      const { classifyEdit } = await import("@/server/edit-classifier.server");
+      editClassification = await classifyEdit({
+        prompt: lastUserContent,
+        projectPurpose: picContext?.understanding?.purpose ?? resolvedPrd?.prd?.purpose ?? null,
+        fileCount: currentFiles.length,
+        projectId: body.projectId ?? null,
+        userId,
+        signal: request.signal,
+      });
+      console.info(
+        `[edit-classifier] scope=${editClassification.scope} source=${editClassification.source} dims=${editClassification.dimensions.join(",")} — ${editClassification.reason}`,
+      );
+    } catch (e) {
+      console.warn("[edit-classifier] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
+  const isCrossCutting =
+    !isInitial &&
+    (detectCrossCuttingIntent(lastUserContent) || editClassification?.scope === "structural");
+  let pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
   if (isCrossCutting) {
     console.info(
       `[intent-targets] cross-cutting ask detected — pinning ${pinnedPaths.length} file(s) into prompt context`,
@@ -2330,6 +2357,7 @@ Forbidden defaults
       `[edit-intent] verb=${editIntent!.verb} resolved ${editTargetPaths.length} target file(s): ${editTargetPaths.join(", ")}`,
     );
   }
+
 
   // When the deterministic resolver comes up empty on a follow-up edit, send
   // the read-only Inspector subagent in: it greps and reads the real bytes on
