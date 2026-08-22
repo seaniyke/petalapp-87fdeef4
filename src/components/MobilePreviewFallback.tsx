@@ -190,8 +190,18 @@ export function MobilePreviewFallback({
     };
   }, [latestBuildId, projectId]);
 
-  // No project / no build yet → empty state.
+  // No project / no build yet. If we have a project we can still render the
+  // server-side snapshot of its current files — a preview should never be a
+  // spinner just because the CDN build hasn't landed.
   if (!projectId || !latestBuildId) {
+    if (projectId) {
+      return (
+        <SnapshotFrame
+          projectId={projectId}
+          badge={isGenerating ? "Building your app…" : "Snapshot preview"}
+        />
+      );
+    }
     return (
       <EmptyState
         title={isGenerating ? "Building your app…" : "Your preview will appear here"}
