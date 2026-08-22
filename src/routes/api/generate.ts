@@ -5364,9 +5364,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       ];
       let statusIdx = 0;
 
-      const recordEvent = recorder
-        ? makeSseTap((type, payload) => recorder!.record(type, payload))
-        : null;
+      // Last `result` payload seen on the wire. Used only when the client
+      // disappeared: the server then writes the assistant reply itself so the
+      // thread never ends on an unanswered prompt.
+      let lastResult: { summary?: string; plan?: string; recap?: string } | null = null;
+      const recordEvent = makeSseTap((type, payload) => {
+        if (type === "result") {
+          const p = payload as { summary?: string; plan?: string; recap?: string };
+          lastResult = {
+            summary: typeof p.summary === "string" ? p.summary : undefined,
+            plan: typeof p.plan === "string" ? p.plan : undefined,
+            recap: typeof p.recap === "string" ? p.recap : undefined,
+          };
+        }
+        recorder?.record(type, payload);
+      });
       // The browser can vanish at any moment (tab closed, phone locked,
       // proxy timeout). When it does, `controller.enqueue` starts throwing —
       // but the build itself must keep going and keep recording turn_events
