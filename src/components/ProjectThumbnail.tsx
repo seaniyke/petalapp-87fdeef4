@@ -95,8 +95,10 @@ export function ProjectThumbnail({
   const contain = fit === "contain";
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  // 0 = Microlink, 1 = WordPress mShots fallback. A single flaky provider was
-  // the real reason cards fell back to bare initials.
+  // Retry counter for the screenshot provider. We only ever use Microlink:
+  // it returns the real page screenshot or nothing. (The WordPress mShots
+  // backup was removed — while it warms a page it serves a generic WordPress
+  // "W" placeholder image, which shipped as the app's thumbnail.)
   const [attempt, setAttempt] = useState(0);
   const showImage = url && !failed;
 
@@ -108,8 +110,8 @@ export function ProjectThumbnail({
   }, [url]);
 
   // The screenshot service can hang (cold render, rate limit) without ever
-  // firing onError, which left the tile showing a spinner forever. Give each
-  // provider a deadline, try the backup, then fall back to the gradient tile.
+  // firing onError, which left the tile showing a spinner forever. Give the
+  // first render a long deadline, retry once, then fall back to the gradient.
   useEffect(() => {
     if (!showImage || loaded) return;
     const t = setTimeout(() => {
@@ -118,9 +120,10 @@ export function ProjectThumbnail({
         setFailed(true);
         return a;
       });
-    }, 12000);
+    }, attempt === 0 ? 14000 : 12000);
     return () => clearTimeout(t);
   }, [showImage, loaded, url, attempt]);
+
 
 
 
