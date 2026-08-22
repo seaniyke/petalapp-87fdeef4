@@ -506,7 +506,9 @@ function Landing() {
                   .
                 </>
               ) : (
-                `${heroGreeting}.`
+                // Without a first name the greeting's trailing comma would read
+                // "Ship it,." — drop it so the sentence closes cleanly.
+                `${heroGreeting.replace(/[,\s]+$/, "")}.`
               )}
             </h1>
           ) : (
