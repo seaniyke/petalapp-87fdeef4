@@ -69,7 +69,7 @@ function ListingDetailPage() {
     try {
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
-        navigate({ to: "/auth" });
+        navigate({ to: "/auth", search: { mode: "signin", redirect: `/marketplace/${listing.slug}` } as never });
         return;
       }
       if (listing.price_minor > 0) {
