@@ -36,6 +36,7 @@ import { isScaffoldOwnedPath } from "./scaffold-ownership.server";
 import {
   COMMON_LUCIDE_ICONS,
   KNOWN_PACKAGES,
+  withRequiredPeers,
   PACKAGE_ALIASES,
   REACT_ICONS_TO_LUCIDE,
   SAFE_ICON_FALLBACK,
