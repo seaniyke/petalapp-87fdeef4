@@ -19,6 +19,7 @@ import {
 } from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
 import { judgeDefects } from "@/server/defect-judge.server";
+import { routeJudgedDefects, summarizeRouting } from "@/server/agents/qa-board";
 
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
