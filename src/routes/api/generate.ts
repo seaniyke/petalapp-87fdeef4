@@ -5482,6 +5482,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // write is dropped by serverless runtimes once the response closes,
         // leaving turns permanently "running" and inviting reconnect loops.
         await finishTurnOnce(terminalStatus, terminalError);
+        // The browser left mid-build. The pipeline finished and the files are
+        // saved, but nobody is around to write the assistant bubble — do it
+        // here so the user returns to an answered thread, not a dead one.
+        if (clientGone && turnProjectId && recorder) {
+          const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
+          await persistAbandonedTurnReply({
+            projectId: turnProjectId,
+            turnId: recorder.turnId,
+            status: terminalStatus,
+            summary: done?.summary ?? null,
+            plan: done?.plan ?? null,
+            recap: done?.recap ?? null,
+            errorMessage: terminalError,
+          }).catch(() => {});
+        }
         try {
           controller.close();
         } catch {
