@@ -62,7 +62,7 @@ import {
 import { resolveFromUserPaste } from "@/server/integrations/user-paste-resolver.server";
 import { fetchGroundingPages, renderGroundingBlock } from "@/server/web-grounding.server";
 import { detectIntegrationRequests } from "@/lib/integration-request-intent";
-import { validateStylesCss } from "@/server/validate-styles.server";
+import { validateStylesCss, repairStylesCss } from "@/server/validate-styles.server";
 import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
@@ -4037,6 +4037,16 @@ Forbidden defaults
           if (f.path !== "src/styles.css") return f;
           const result = validateStylesCss(f.content);
           if (result.ok) return f;
+          // Repair before discarding: the stylesheet carries the locked
+          // palette and type pair, so falling back to the scaffold makes the
+          // app look generic. Only a repair that still fails gets replaced.
+          const repaired = repairStylesCss(f.content);
+          if (repaired) {
+            console.warn(
+              `[styles.css repaired] generate reason="${result.reason}" — ${repaired.notes.join("; ")}`,
+            );
+            return { ...f, content: repaired.css };
+          }
           console.warn(
             `[styles.css invalid] generate reason="${result.reason}" — falling back to scaffold default`,
           );

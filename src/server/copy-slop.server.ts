@@ -122,6 +122,10 @@ export function findCopySlop(source: string): SlopHit[] {
 function isCopyBearing(path: string): boolean {
   if (!/\.(tsx|jsx|html)$/.test(path)) return false;
   if (/\/(?:__tests__|tests?)\//.test(path)) return false;
+  // Kit library files ship with their own demo copy ("Acme", "John Doe").
+  // They are scaffold, not product writing — flagging them buries the real
+  // findings on the pages the user actually sees.
+  if (/^src\/components\/(?:examples|ui)\//.test(path)) return false;
   return true;
 }
 
