@@ -400,3 +400,32 @@ export function nearestIcon(name: string, maxDistance = 2): string | null {
   }
   return best?.name ?? null;
 }
+
+/**
+ * Runtime peers a package imports internally but does not declare as a hard
+ * dependency. Installing the package alone leaves Rollup with
+ * `failed to resolve import "@splinetool/runtime"` at build time, so every
+ * dependency writer expands through this table.
+ */
+export const REQUIRED_PEERS: Record<string, readonly string[]> = {
+  "@splinetool/react-spline": ["@splinetool/runtime"],
+  "@react-three/fiber": ["three"],
+  "@react-three/drei": ["three", "@react-three/fiber"],
+  "@react-three/postprocessing": ["three", "@react-three/fiber", "postprocessing"],
+  "@tiptap/react": ["@tiptap/pm", "@tiptap/core"],
+  "@tiptap/starter-kit": ["@tiptap/pm", "@tiptap/core"],
+  "react-day-picker": ["date-fns"],
+};
+
+/** Expand a set of package names with every runtime peer they need. */
+export function withRequiredPeers(names: Iterable<string>): string[] {
+  const out = new Set<string>();
+  const queue = [...names];
+  while (queue.length) {
+    const name = queue.shift()!;
+    if (!name || out.has(name)) continue;
+    out.add(name);
+    for (const peer of REQUIRED_PEERS[name] ?? []) queue.push(peer);
+  }
+  return [...out];
+}
