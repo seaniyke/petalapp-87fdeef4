@@ -22,7 +22,7 @@
  */
 
 import type { ProjectFile } from "./generate.server";
-import { KNOWN_PACKAGES } from "./known-packages";
+import { KNOWN_PACKAGES, withRequiredPeers } from "./known-packages";
 
 const ENTRY_CANDIDATES = [
   "src/main.tsx",
