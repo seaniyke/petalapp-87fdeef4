@@ -2995,6 +2995,76 @@ export type Database = {
         }
         Relationships: []
       }
+      project_intelligence: {
+        Row: {
+          context: Json
+          created_at: string
+          project_id: string
+          revision: number
+          updated_at: string
+        }
+        Insert: {
+          context?: Json
+          created_at?: string
+          project_id: string
+          revision?: number
+          updated_at?: string
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          project_id?: string
+          revision?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_intelligence_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_intelligence_history: {
+        Row: {
+          context: Json
+          created_at: string
+          id: string
+          project_id: string
+          revision: number
+          summary: string | null
+          turn_id: string | null
+        }
+        Insert: {
+          context: Json
+          created_at?: string
+          id?: string
+          project_id: string
+          revision: number
+          summary?: string | null
+          turn_id?: string | null
+        }
+        Update: {
+          context?: Json
+          created_at?: string
+          id?: string
+          project_id?: string
+          revision?: number
+          summary?: string | null
+          turn_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_intelligence_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_memory: {
         Row: {
           created_at: string
