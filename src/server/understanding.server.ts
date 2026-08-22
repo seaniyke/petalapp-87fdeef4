@@ -19,7 +19,7 @@
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { deterministicPrd } from "@/server/prd/prd-deterministic";
-import { resolveBuildTarget } from "@/lib/build-targets";
+import { resolveBuildTarget } from "@/lib/target-inference";
 import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 import type { BuildTargetId } from "@/lib/build-targets";
 import type { Confidence, PicUnderstanding } from "./pic/pic-types";
