@@ -9,6 +9,7 @@ import {
   Menu,
   Image as ImageIcon,
   Sparkles,
+  Store,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
