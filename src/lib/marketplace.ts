@@ -247,8 +247,11 @@ export async function decideListing(
   decision: "live" | "rejected" | "delisted",
   note?: string,
 ): Promise<ListingRow> {
-  const patch: Record<string, unknown> = { status: decision, review_note: note ?? null };
-  if (decision === "live") patch['published_at'] = new Date().toISOString();
+  const patch: Database["public"]["Tables"]["marketplace_listings"]["Update"] = {
+    status: decision,
+    review_note: note ?? null,
+    ...(decision === "live" ? { published_at: new Date().toISOString() } : {}),
+  };
   const { data, error } = await supabase
     .from("marketplace_listings")
     .update(patch)
