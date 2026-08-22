@@ -414,6 +414,26 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   // ── end of STAGE 3: POLISH ────────────────────────────────────────────
   // Layout, interaction and accessibility. Never load-bearing for the build.
 
+  // Edit-turn scope lock: revert cosmetic-stage edits to untouched files. The
+  // defect this kills is a targeted edit ("change the button label") coming
+  // back with the whole landing page restyled.
+  if (postResolve && opts?.scopeLock) {
+    const touched = new Set(opts.scopeLock.touchedPaths);
+    let reverted = 0;
+    files = files.map((f) => {
+      if (touched.has(f.path)) return f;
+      const base = postResolve.get(f.path);
+      if (base === undefined || base === f.content) return f;
+      reverted++;
+      return { ...f, content: base };
+    });
+    if (reverted > 0) {
+      notes.push(
+        `scope-lock: reverted cosmetic repairs on ${reverted} file${reverted === 1 ? "" : "s"} this edit did not touch.`,
+      );
+    }
+  }
+
   // Restore Petal-owned files byte-for-byte: no heuristic pass may alter them.
   files = files.map((f) => {
     const original = pristine.get(f.path);
