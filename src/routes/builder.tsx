@@ -3600,13 +3600,10 @@ function Builder() {
       // Phase E — when the QA board already assigned each finding to an owning
       // layer, send that grouped brief instead of a flat bullet list: the fix
       // turn then knows *what kind* of problem each finding is.
-      const routingBrief =
-        typeof (snap?.verification as { defectRouting?: { brief?: unknown } } | undefined)
-          ?.defectRouting?.brief === "string"
-          ? String(
-              (snap!.verification as { defectRouting: { brief: string } }).defectRouting.brief,
-            ).trim()
-          : "";
+      const routedBrief = (
+        snap?.verification as unknown as { defectRouting?: { brief?: unknown } } | null | undefined
+      )?.defectRouting?.brief;
+      const routingBrief = typeof routedBrief === "string" ? routedBrief.trim() : "";
       const prompt = [
         blockedBeforeDeploy
           ? "Petal ran the built app in a real browser before publishing it and it does not work correctly, so the release was held back. Findings:"
