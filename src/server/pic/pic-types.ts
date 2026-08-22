@@ -97,8 +97,9 @@ export interface PicTypography {
 }
 
 export interface PicColorRole {
-  /** HSL triplet without the hsl() wrapper, matching Petal's token format. */
+  /** CSS color value in the project's token format (oklch preferred). */
   light: string;
+  /** Dark-mode value. Falls back to the light value when unthemed. */
   dark: string;
 }
 
