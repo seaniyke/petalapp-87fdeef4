@@ -24,6 +24,8 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { applyPaletteFloor } from "./palette-floor.server";
+import type { DesignPick } from "./palette-presets.server";
 
 export interface DesignFinishResult {
   files: ProjectFile[];
@@ -289,7 +291,28 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-
 // ---------------------------------------------------------------------------
 
 
-export function enforceDesignFinish(input: ProjectFile[]): DesignFinishResult {
+/**
+ * Derive a stable brief from the project's own content so the palette floor
+ * picks the same palette on every rerun of the same app.
+ */
+function deriveBrief(files: ProjectFile[]): string {
+  const parts: string[] = [];
+  const html = files.find((f) => f.path === "index.html" || f.path.endsWith("/index.html"));
+  if (html) {
+    const title = /<title[^>]*>([^<]+)<\/title>/i.exec(html.content)?.[1];
+    const desc = /<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i.exec(html.content)?.[1];
+    if (title) parts.push(title);
+    if (desc) parts.push(desc);
+  }
+  for (const f of files) {
+    if (!/^src\/(pages|routes)\//.test(f.path)) continue;
+    for (const m of f.content.matchAll(/<h1[^>]*>\s*([^<{][^<]{0,120})</g)) parts.push(m[1].trim());
+    if (parts.length > 8) break;
+  }
+  return parts.join(" ").slice(0, 600);
+}
+
+export function enforceDesignFinish(input: ProjectFile[], pick?: DesignPick): DesignFinishResult {
   const notes: string[] = [];
   let fixes = 0;
   let files = input;
@@ -307,6 +330,15 @@ export function enforceDesignFinish(input: ProjectFile[]): DesignFinishResult {
   if (tokens.changed) {
     fixes++;
     notes.push(`design-finisher: applied the locked type pair (${display} / ${body}) to body and headings`);
+  }
+
+  // 0 — palette floor. A stylesheet still carrying the scaffold's default
+  // purple means the locked palette never landed; write a real one.
+  const palette = applyPaletteFloor(css, deriveBrief(files), pick);
+  if (palette.changed) {
+    css = palette.css;
+    fixes++;
+    notes.push(`design-finisher: applied the "${palette.label}" palette (the build shipped the scaffold default)`);
   }
 
   const depth = ensureDepthTokens(css);
