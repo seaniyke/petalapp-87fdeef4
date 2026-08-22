@@ -255,6 +255,14 @@ Calibration — two recent Petal outputs, same builder, very different results:
 ❌ BAD ("PipelinePilot", SaaS CRM): generic sparkle icon, "Streamline Your Sales" rendered as a body-sized eyebrow with no real H1, body paragraph centered in dead space, two bare text+arrow "Start Your Free Trial →" / "Learn More" links with no button chrome, DotPattern occupying ~70% of the fold, dashboard mockup buried below. Looks like a placeholder.
 The difference is composition discipline, not the kit. SaaS briefs deserve Flowy-tier execution too — pick vibes and moves that demand it.
 
+Anti-slop rules — these are hard constraints on the direction you commit to:
+1. No symmetric card triplets as the primary rhythm. If a section has three peers, break it: change one card's span, offset it vertically, or make the first one a full-width statement.
+2. Cap the palette at one accent hue plus neutrals. A second accent is allowed only as a rare highlight, never as a gradient partner.
+3. No purple/indigo-on-white gradient heroes, no glowing blurred blobs behind centered text, no floating sparkle icon as the hero graphic.
+4. Type must have a scale jump: display headings at least 3x the body size, with tight negative tracking. Even a "minimal" direction commits to one oversized element per screen.
+5. Motion is one register applied consistently — pick a single easing and duration family. Never mix a bouncy spring with a slow cinematic fade in the same app.
+6. Every section needs a reason to look different from the one above it. Alternating background tone alone is not a reason; change the layout axis, the density, or the type treatment.
+
 Be DECISIVE. One direction, executed with conviction. No hedging.`;
 
 const DIRECTOR_TOOL = {
