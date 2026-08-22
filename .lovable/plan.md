@@ -1,96 +1,124 @@
-# Petal Generation Engine 2.0 — audit and phased build
+# Petal Generation Engine 3.0 — understand the product before writing it
 
-## Part 1 — Audit of what exists today
+## 1. Current vs proposed architecture
 
-I read the live pipeline before writing this. Petal is already far past "prompt → LLM → code": there is a PRD engine, a planning board, a design director, a visual QA stage and project memory. The weaknesses are specific, and they are not the ones the brief assumes.
-
-### Current flow (verified)
+### Current (verified in code)
 
 ```text
 POST /api/generate
-  → fast-triage (build vs discuss vs clarify)
-  → PRD engine        resolvePrdForTurn  (turn 1 authors, later turns amend)
-  → design direction  design-director + themes + palette floor
-  → planning board    agents/orchestrator  (product, ux, design, architecture,
-                                            database, backend, security)
-  → prompt assembly   PRD block + design block + decision block + blueprint
-                      + architecture + hero/brand/composition contracts
+  → fast-triage (build / discuss / clarify)          regex + small model
+  → resolveBuildTarget (prompt-inferred, header fallback)
+  → PRD engine        ONLY when target === "web"     model on turn 1, regex amend later
+  → design direction  design-director + themes + palette presets
+  → planning board    agents/orchestrator            ALL agents deterministic, budget 0
+  → prompt assembly   PRD + design + decisions + blueprint + architecture + contracts
   → model streams file ops
-  → deterministic healers (~40 modules: imports, styles, palette, layout,
-                           interaction, router, kit closure, esbuild verify)
-  → builder → deploy → visual QA (screenshots → vision model → defects)
-  → repair loop (repair-all, defect-judge, scope-repair)
-  → memory writer + blueprint/architecture persistence
+  → ~40 deterministic healers (imports, styles, palette, layout, router, kit closure)
+  → esbuild verify → builder → deploy
+  → visual QA (screenshots → vision model → geometry defects only)
+  → bounded repair → memory writer + blueprint/architecture persistence
 ```
 
-### Where it actually breaks
+Four structural weaknesses, each confirmed by reading the code:
 
-1. **The planning board does not think.** Every agent in `src/server/agents/registry.ts` is `modelProfile: "deterministic"` with `budgetMicroUsd: 0`. The "UI/Design Intelligence Agent" the brief asks for exists in name only — it re-states PRD fields. Real design judgement (sidebar vs tabs, density, hierarchy) is never reasoned about.
-2. **The board is advisory, not binding.** `orchestrateTurn` returns a text block appended to the prompt. Blocking objections are counted in telemetry and then ignored — nothing gates generation on them.
-3. **Design consistency is enforced by codemods, not by a design system.** `palette-floor`, `tailwind-token-sweep`, `design-finisher` repair styling after the fact. There is no single committed, machine-checkable project design spec that every page must consume, so pages still drift and the fixes fight each other.
-4. **Edit classification is pure regex.** `prd-amend.ts`, `edit-intent.server.ts`, `intent-targets.server.ts` and `edit-scope-guard.server.ts` are keyword lists. This is exactly the class of bug we just fixed for "change the entire website design" — and the next phrasing will miss again.
-5. **No semantic impact scope.** File selection is string matching plus a route graph. Nothing computes "checkout page → checkout component → primary CTA → button tokens", and nothing declares what must stay untouched.
-6. **Memory is 30 key/value strings.** Good for tone and taste, useless as the "source of truth" the brief describes. The PRD, architecture and design system are persisted separately in `project_blueprints` with no unified read.
-7. **Visual QA only reports geometry defects.** By design it drops "generic-looking", "weak hierarchy", "inconsistent buttons" as subjective — the exact defects driving the complaint that apps look plain.
+1. **No canonical context.** PRD (`project_prds`), blueprint/architecture (`project_blueprints.blueprint`) and memory (`project_memory` key/value, 30-key cap) are three independent stores with three independent readers. Nothing assembles them.
+2. **The planning board doesn't reason.** Every agent in `agents/registry.ts` is `modelProfile: "deterministic"`, `budgetMicroUsd: 0`; the design agent restates PRD fields. Its output is an advisory prompt block — blocking objections are counted, then ignored.
+3. **Understanding is lexical past the first turn.** `prd-amend.ts`, `edit-intent.server.ts`, `intent-targets.server.ts`, `edit-scope-guard.server.ts`, `semantic-router.server.ts` are all keyword/token scoring. New phrasing silently misroutes.
+4. **Quality is enforced downstream.** Codemods repair styling after generation instead of a committed spec constraining it, and visual QA deliberately discards craft findings as subjective — the exact defects behind "apps look plain".
 
-### Root causes (short list)
+Also: the PRD only runs for `buildTarget.id === "web"`, so mobile, extension and backend builds get no product contract at all.
 
-- Determinism was chosen everywhere for cost and latency; the price is no judgement where judgement is the product.
-- Quality is enforced downstream (repair) rather than upstream (a committed spec).
-- Intent understanding is lexical, so it degrades on unseen phrasing instead of reasoning.
-
-## Part 2 — Proposed architecture
-
-One shared, persisted **Project Intelligence Context** (PIC) per project: PRD + design system + architecture + decision log + constraints. Every stage reads it; every stage may amend it; it is versioned per turn.
+### Proposed
 
 ```text
-prompt → intent classifier (semantic) → PIC load
-       → planning board (model-backed where it matters)
-       → PIC commit (PRD + design system + architecture)
-       → impact scope (affected / protected)
-       → build → heal → deploy → QA (geometry + craft) → bounded repair
-       → PIC update
+prompt
+  → SEMANTIC UNDERSTANDING (one model call, cached per turn)
+      product type · platforms · surfaces (marketing / app / both) · backend needs
+      · auth · payments · realtime · storage · roles · confidence per decision
+  → PIC LOAD (canonical, versioned per project)
+  → escalation router: micro / normal / structural / initial / complex
+  → PLANNING BOARD (model-backed where judgement matters, deterministic elsewhere)
+      conflicts resolved BEFORE generation; blocking objections gate the turn
+  → PIC COMMIT (PRD + design system contract + architecture + decisions + protected)
+  → IMPACT SCOPE (affected / dependencies / protected)
+  → BUILD in dependency order → heal → verify → deploy
+  → QA: functional defects (existing) + craft defects (new, bounded loop)
+  → PRODUCT ACCEPTANCE gate → PIC update
 ```
 
-## Part 3 — Phases
+PIC is the single assembled truth. The existing PRD, blueprint and memory stores stay and become writers/projections into it — nothing is deleted.
 
-### Phase 1 — Project Intelligence Context (foundation)
-- New `src/server/pic/` : `pic-types.ts`, `pic-store.server.ts`, `pic-render.ts`.
-- One row per project holding PRD, design system, architecture, decisions, constraints, confidence levels. Backed by a new `project_intelligence` table (migration; RLS owner-scoped + service_role grants).
-- Existing PRD store and blueprint store keep working and become writers into the PIC — no functionality removed.
+## 2. Files and modules that change
 
-### Phase 2 — Design system as a committed contract
-- New `src/server/design-system.server.ts`: turn 1 commits a full spec (type scale, spacing base, radius set, semantic colour roles, surface/shadow rules, component styling rules, density, nav pattern).
-- Persist in PIC; render as a hard contract block; every page must consume tokens only.
-- New `src/server/design-system-lint.server.ts`: fails files that hardcode colours/sizes outside the committed spec, and feeds the repair loop.
-- The design agent becomes model-backed (`balanced` profile, small budget) and produces this spec — this is the main fix for "apps look plain".
+Changed:
+- `src/routes/api/generate.ts` — insert understanding + PIC load/commit; run the PRD for every target, not just web; feed PIC into prompt assembly.
+- `src/server/agents/registry.ts`, `selection.ts`, `runtime.ts`, `orchestrator.server.ts` — model escalation per agent, conflict resolution, binding objections.
+- `src/server/prd/prd-engine.server.ts`, `prd-amend.ts` — PRD becomes a PIC section; semantic amendment with the regex path as fallback.
+- `src/server/design-director.server.ts`, `design-finisher.server.ts`, `themes.server.ts` — consume the committed design contract instead of re-deciding.
+- `src/server/visual-qa.server.ts` — split functional and craft passes.
+- `src/server/intent-targets.server.ts`, `edit-scope-guard.server.ts` — become fallbacks behind the semantic classifier.
+- `src/server/build-blueprint.server.ts`, `architecture-doc.server.ts`, `project-memory.server.ts` — write through to PIC.
 
-### Phase 3 — Model-backed planning board
-- Upgrade `product`, `ux`, `design`, `architecture` agents in `registry.ts` to escalate to a model on initial builds and on structural edits; keep deterministic paths as the fallback and for micro turns.
-- Make blocking objections real: `orchestrator.server.ts` gains a gate that either resolves the objection or narrows scope before generation, instead of only logging it.
-- Confidence levels (`confident` / `inferred` / `uncertain`) recorded per decision; only an `uncertain` decision that changes the product may raise the single clarifying question the pipeline already supports.
+New:
+- `src/server/pic/pic-types.ts`, `pic-store.server.ts`, `pic-assemble.server.ts`, `pic-render.ts`, `pic-diff.ts`
+- `src/server/understanding.server.ts` — the semantic understanding call + target/surface resolver
+- `src/server/design-system.server.ts` — model-authored design system contract
+- `src/server/design-system-lint.server.ts` — deterministic enforcement of that contract
+- `src/server/edit-classifier.server.ts`, `impact-scope.server.ts`
+- `src/server/craft-qa.server.ts`
+- `src/server/acceptance-gate.server.ts`
 
-### Phase 4 — Semantic edit understanding and impact scope
-- New `src/server/edit-classifier.server.ts`: classifies each follow-up as visual / feature-add / feature-change / bug / refactor / global, using the PIC as context. Regex path stays as a fast pre-filter and fallback.
-- New `src/server/impact-scope.server.ts`: from the classification plus the architecture graph, emits `affected[]` and `protected[]`. Protected files are excluded from write ops unless the classification says otherwise; verification targets affected files plus their dependents.
-- Retires the fragile parts of `edit-scope-guard.server.ts` only once the replacement passes.
+## 3. Database migrations
 
-### Phase 5 — Craft QA
-- Extend `visual-qa.server.ts` with a second, separate craft pass: hierarchy, consistency of buttons/cards, density, template-genericness, mobile composition. Kept distinct from the literal-defect pass so taste findings never block a build — they enter the bounded repair loop as improvements.
-- Repair entries carry problem / root cause / affected files / fix / verification, and the loop stays bounded (no change to existing caps).
+One migration, additive:
+- `project_intelligence` — `project_id` (unique), `version`, `pic` jsonb, `updated_at`. Owner-scoped RLS via the project's owner, explicit `GRANT` to `authenticated` and `service_role`.
+- `project_intelligence_history` — append-only per-turn snapshot + diff, for rollback and admin inspection.
 
-### Phase 6 — Acceptance and telemetry
-- Extend the acceptance gate so "compiles" is not "complete": product intent covered, states present, design-system lint clean, no placeholder copy, mobile pass.
-- Admin surfaces per-turn PIC diffs and agent reasoning at `/admin/pipeline`.
+No existing table is altered or dropped.
 
-## Technical notes
+## 4. Model calls and cost
 
-- Files changed: `src/server/agents/registry.ts`, `selection.ts`, `orchestrator.server.ts`, `runtime.ts`, `src/server/prd/prd-engine.server.ts`, `prd-amend.ts`, `src/server/design-director.server.ts`, `visual-qa.server.ts`, `edit-scope-guard.server.ts`, `intent-targets.server.ts`, `src/routes/api/generate.ts`.
-- New files: `src/server/pic/*`, `design-system.server.ts`, `design-system-lint.server.ts`, `edit-classifier.server.ts`, `impact-scope.server.ts`.
-- Database: one new table `project_intelligence` (owner-scoped RLS, explicit grants). No destructive migrations; existing tables keep their readers.
-- Cost: model escalation is gated by profile — micro turns stay at zero added spend; initial builds and structural edits add a bounded planning cost tracked in existing agent telemetry.
-- Risk control: every new stage is additive and fail-open, matching the current orchestrator contract — any failure degrades to today's behaviour rather than failing a build.
+| Stage | When | Model tier | Notes |
+| --- | --- | --- | --- |
+| Understanding | every non-micro turn | cheap/fast | one call, cached per turn, replaces several regex passes |
+| Design system contract | initial build + global redesign only | balanced | persisted, reused on every later turn at zero cost |
+| Design/UX/product agents | initial + structural | balanced | deterministic fallback on failure |
+| Edit classifier | normal + structural edits | cheap | regex pre-filter short-circuits obvious cases |
+| Craft QA | after deploy, non-micro | vision, existing model | second pass alongside today's functional pass |
 
-## Sequencing
+Micro edits add **zero** model calls — the deterministic path is unchanged. Initial builds add roughly two to three cheap calls plus one balanced call; this sits inside the existing per-turn cost ceiling (`turn-cost-ceiling.server.ts`) and is reported through existing agent telemetry.
 
-Phases 1–2 first (they unlock the design quality win), then 3, then 4, then 5–6. Each phase ships behind its own flag and is verified with a real end-to-end build before the next starts.
+## 5. Feature flags
+
+`PETAL_PIC`, `PETAL_UNDERSTANDING`, `PETAL_DESIGN_CONTRACT`, `PETAL_AGENTS_MODEL`, `PETAL_IMPACT_SCOPE`, `PETAL_CRAFT_QA`, `PETAL_ACCEPTANCE_GATE` — each defaults off except the phase currently shipping, each fail-open to today's behaviour, matching the existing `PETAL_ORCHESTRATOR` contract.
+
+## 6. Phases
+
+**Phase 1 — PIC foundation + semantic understanding** (ship now)
+- PIC types, store, assembler, renderer, diff; the migration above.
+- `understanding.server.ts`: one semantic pass producing product type, platforms, surfaces (marketing / application / both), backend/auth/payments/realtime/storage needs, roles, and a confidence level per decision. Feeds the target resolver so "build me a mobile banking app" resolves to mobile regardless of the stored target, and "landing page for my SaaS" never becomes a dashboard.
+- PRD runs for every target, not only web.
+- Existing PRD / blueprint / architecture / memory write through to PIC; PIC renders one prompt block replacing three overlapping ones.
+
+**Phase 2 — Design system contract + model-backed design intelligence** (ship now)
+- `design-system.server.ts` commits the full spec on the first build: fonts and pairing, type scale, line heights, spacing base, radius set, shadow and surface rules, semantic colour roles, density, navigation pattern (sidebar vs tabs vs top nav, chosen by reasoning about the product), component rules for buttons/inputs/cards/tables/modals/badges, empty/loading/error treatments, mobile nav, breakpoints, animation principles, accessibility floor.
+- Persisted in PIC and reused on every later turn, so pages cannot drift and consecutive projects don't converge on one look.
+- `design-system-lint.server.ts` enforces it deterministically and feeds violations to the repair loop.
+
+**Then stop and test.** Phases 3–6 (model-backed board with binding conflict resolution; semantic edit classifier + impact graph; craft QA; product acceptance gate) are specified above but are not implemented until Phase 1 and 2 pass the acceptance suite.
+
+## 7. Testing strategy
+
+Real end-to-end builds, one per archetype, run after each phase and compared against a pre-change baseline: marketing landing page, SaaS application, marketplace, fintech application, mobile application, web + mobile product, backend/API, browser extension. Each is then given a follow-up edit ("make the dashboard darker", "add team members", "change the entire website design") to check the edit path. Unit tests extend the existing `src/server/__tests__` suite for PIC assembly, target resolution and design-contract linting.
+
+## 8. Rollback
+
+Every flag off restores today's pipeline exactly — new modules are additive and fail-open. PIC rows are versioned with per-turn history, so a bad commit can be reverted without touching the PRD or blueprint stores, which keep working independently throughout.
+
+## 9. Success metrics
+
+Build success rate, Vite failure rate, repair invocations per build, recovery calls, generation latency, tokens per turn, functional QA defects per build, craft QA defects per build, edit success rate (did the turn do what was asked), and target-resolution accuracy across the eight archetypes. Tracked through the existing pipeline telemetry and surfaced at `/admin/pipeline`.
+
+## 10. Scope guarantee
+
+Additive throughout. The PRD engine, blueprint system, project memory, repair modules, verification, deployment, visual QA, credit system, model routing, target support, backend kits and integrations all remain in place; the only refactors are the write-throughs that make them feed PIC.
