@@ -308,3 +308,115 @@ function looksLikeBuiltInUtility(name: string): boolean {
 function truncate(s: string, n: number): string {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
+
+/* ------------------------------------------------------------------ *
+ * Repair
+ * ------------------------------------------------------------------ */
+
+/**
+ * Try to REPAIR a broken `src/styles.css` instead of throwing it away.
+ *
+ * Discarding the stylesheet means discarding the whole locked palette and
+ * type pair — the app then ships in scaffold defaults and looks generic,
+ * which is exactly the "no design, nothing special" failure users report.
+ * A single missing brace should never cost the design.
+ *
+ * Deliberately conservative: only mechanical fixes that cannot change intent.
+ *   1. Ensure `@import "tailwindcss";` is the first statement.
+ *   2. Drop stray top-level junk lines (a bare `1`, a dangling identifier).
+ *   3. Drop `@apply` declarations that reference undefined custom classes.
+ *   4. Balance braces — append missing `}`, drop extra trailing `}`.
+ *
+ * Returns null when the result still fails validation, so callers keep the
+ * existing scaffold fallback as a last resort.
+ */
+export function repairStylesCss(raw: string): { css: string; notes: string[] } | null {
+  if (typeof raw !== "string" || raw.trim().length === 0) return null;
+  const notes: string[] = [];
+  let css = raw;
+
+  // 1) Tailwind import must lead.
+  if (!TAILWIND_IMPORT.test(stripBlockComments(css).trimStart())) {
+    css = css.replace(/^\s*@import\s+["']tailwindcss["']\s*;?\s*$/gim, "");
+    css = `@import "tailwindcss";\n\n${css.trimStart()}`;
+    notes.push('restored `@import "tailwindcss";` at the top');
+  }
+
+  // 2) + 3) Line pass: drop top-level junk and unknown @apply declarations.
+  {
+    const unknown = new Set(findUnknownAppliedClasses(css));
+    const lines = css.split("\n");
+    const kept: string[] = [];
+    let depth = 0;
+    let droppedJunk = 0;
+    let droppedApply = 0;
+
+    for (const line of lines) {
+      const t = line.trim();
+      const opens = (t.match(/\{/g) ?? []).length;
+      const closes = (t.match(/\}/g) ?? []).length;
+
+      if (unknown.size > 0 && /^@apply\b/.test(t)) {
+        const utils = t.replace(/^@apply\s+/, "").replace(/[;}]\s*$/, "").split(/\s+/);
+        const survivors = utils.filter((u) => {
+          const util = u.replace(/^!/, "").split(":").pop() ?? "";
+          return !unknown.has(util);
+        });
+        if (survivors.length !== utils.length) {
+          droppedApply++;
+          if (survivors.length > 0) kept.push(`  @apply ${survivors.join(" ")};`);
+          depth += opens - closes;
+          continue;
+        }
+      }
+
+      const isJunk =
+        depth === 0 &&
+        t.length > 0 &&
+        !t.startsWith("@") &&
+        !t.startsWith("/*") &&
+        !t.startsWith("*") &&
+        !t.startsWith("//") &&
+        opens === 0 &&
+        closes === 0 &&
+        !t.endsWith(",");
+      if (isJunk) {
+        droppedJunk++;
+        continue;
+      }
+
+      kept.push(line);
+      depth = Math.max(0, depth + opens - closes);
+    }
+
+    if (droppedJunk > 0) notes.push(`dropped ${droppedJunk} stray top-level line(s)`);
+    if (droppedApply > 0) notes.push(`cleaned ${droppedApply} \`@apply\` with undefined class(es)`);
+    css = kept.join("\n");
+  }
+
+  // 4) Brace balance.
+  {
+    const noStrings = stripBlockComments(css).replace(/(["'])(?:\\.|(?!\1).)*\1/g, '""');
+    const open = (noStrings.match(/\{/g) ?? []).length;
+    const close = (noStrings.match(/\}/g) ?? []).length;
+    if (open > close) {
+      css = css.replace(/\s*$/, "") + "\n" + "}\n".repeat(open - close);
+      notes.push(`closed ${open - close} unterminated block(s)`);
+    } else if (close > open) {
+      let extra = close - open;
+      const lines = css.split("\n");
+      for (let i = lines.length - 1; i >= 0 && extra > 0; i--) {
+        if (lines[i].trim() === "}") {
+          lines.splice(i, 1);
+          extra--;
+        }
+      }
+      css = lines.join("\n");
+      notes.push(`removed ${close - open - extra} stray closing brace(s)`);
+    }
+  }
+
+  const result = validateStylesCss(css);
+  if (!result.ok) return null;
+  return { css, notes };
+}
