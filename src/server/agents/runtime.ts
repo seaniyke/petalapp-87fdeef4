@@ -87,12 +87,26 @@ async function runOne(ctx: TurnContext, name: AgentName): Promise<AgentRun> {
       detail: `${name} attempt ${run.attempts}`,
     });
     try {
-      const out = await withTimeout(
-        Promise.resolve(spec.run(agentView(ctx))),
+      const view = agentView(ctx);
+      const deterministic = await withTimeout(
+        Promise.resolve(spec.run(view)),
         spec.timeoutMs,
         name,
       );
+      // Phase 3 — model escalation. The deterministic body is the floor; on
+      // structural turns the specialist may also think for itself. Any failure
+      // (or a disabled flag) returns null and we keep the floor.
+      let out = deterministic;
+      if (shouldEscalate(spec, view)) {
+        const extra = await withTimeout(
+          runModelAgent(spec, view).catch(() => null),
+          spec.timeoutMs,
+          `${name} (model)`,
+        ).catch(() => null);
+        out = mergeAgentOutputs(deterministic, extra);
+      }
       const applied = applyOutput(ctx, name, out);
+
       run.decisions = applied.decisions;
       run.objections = applied.objections;
       run.costMicroUsd = Math.max(0, out.usage?.costMicroUsd ?? 0);
