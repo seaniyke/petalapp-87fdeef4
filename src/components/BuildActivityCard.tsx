@@ -18,6 +18,7 @@ import {
   Loader2,
   ListTree,
   Play,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
