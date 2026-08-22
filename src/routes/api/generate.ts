@@ -5483,10 +5483,15 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // write is dropped by serverless runtimes once the response closes,
         // leaving turns permanently "running" and inviting reconnect loops.
         await finishTurnOnce(terminalStatus, terminalError);
-        // The browser left mid-build. The pipeline finished and the files are
-        // saved, but nobody is around to write the assistant bubble — do it
-        // here so the user returns to an answered thread, not a dead one.
-        if (clientGone && turnProjectId && recorder) {
+        // Make sure the thread always ends with an assistant reply. The client
+        // normally writes it on `done`, but a dropped socket doesn't always
+        // surface as an enqueue failure (buffered writes, a phone that slept,
+        // a different device), so `clientGone` can be false while nobody is
+        // listening. Give the client a short grace window to land its own
+        // write, then reconcile from the server — the helper no-ops when a
+        // reply already exists.
+        if (turnProjectId && recorder) {
+          await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
           await persistAbandonedTurnReply({
             projectId: turnProjectId,
