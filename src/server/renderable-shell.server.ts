@@ -47,6 +47,162 @@ export function isMissingRootView(source: string): boolean {
   return !rendersJsx;
 }
 
+const VIEW_SOURCE = /\.(tsx|jsx)$/i;
+const KIT_OWNED =
+  /^src\/(components\/(ui|blocks|examples|fx|motion|mobile|three|content|providers|scroll|image|charts|data|forms|editor|map)\/|integrations\/|hooks\/|lib\/)/;
+const PAGE_DIR = /^src\/(pages|screens|views)\/[^/]+\.(tsx|jsx)$/i;
+const SECTION_DIR =
+  /^src\/components\/(sections|section|landing|marketing|home)\/[^/]+\.(tsx|jsx)$/i;
+const TOP_LEVEL_COMPONENT = /^src\/components\/[^/]+\.(tsx|jsx)$/i;
+
+function baseOf(path: string): string {
+  return (path.split("/").pop() ?? path).replace(/\.(tsx?|jsx?)$/i, "");
+}
+
+function pascal(base: string): string {
+  return base
+    .split(/[-_.\s]+/)
+    .filter(Boolean)
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join("");
+}
+
+function exportedName(source: string, path: string): { name: string; isDefault: boolean } | null {
+  const def = source.match(/export\s+default\s+(?:function\s+)?([A-Z][A-Za-z0-9_]*)/);
+  if (def) return { name: def[1], isDefault: true };
+  if (/export\s+default\s/.test(source)) {
+    const name = pascal(baseOf(path));
+    if (/^[A-Za-z][A-Za-z0-9]*$/.test(name)) return { name, isDefault: true };
+  }
+  const named = source.match(/export\s+(?:async\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9_]*)/);
+  if (named) return { name: named[1], isDefault: false };
+  return null;
+}
+
+function propsFree(source: string, name: string): boolean {
+  const re = new RegExp(
+    `(?:function\\s+${name}\\s*\\(([^)]*)\\)|(?:const|let)\\s+${name}\\s*(?::[^=]+)?=\\s*(?:React\\.)?(?:memo\\s*\\(\\s*)?\\(([^)]*)\\)\\s*=>)`,
+  );
+  const m = source.match(re);
+  if (!m) return true;
+  const params = (m[1] ?? m[2] ?? "").trim();
+  if (!params) return true;
+  const inner = params.replace(/^\{/, "").replace(/\}\s*(:[\s\S]*)?$/, "");
+  const parts = inner.split(/,(?![^{[]*[}\]])/).map((p) => p.trim()).filter(Boolean);
+  return parts.every((p) => p.includes("=") || p.startsWith("..."));
+}
+
+function rank(base: string): number {
+  const b = base.toLowerCase();
+  if (/hero|banner|masthead/.test(b)) return 0;
+  if (/logo|social-proof|proof|trusted|stats/.test(b)) return 1;
+  if (/feature|benefit|service|product|catalog|row|list|menu|about|story|process|how/.test(b)) return 2;
+  if (/gallery|showcase|work|portfolio/.test(b)) return 3;
+  if (/testimonial|review|quote/.test(b)) return 4;
+  if (/pricing|plan/.test(b)) return 5;
+  if (/faq|question/.test(b)) return 6;
+  if (/cta|contact|newsletter|signup|subscribe/.test(b)) return 8;
+  return 7;
+}
+
+function routeFor(base: string): string {
+  const b = base.toLowerCase();
+  if (/^(index|home|landing|main|app)$/.test(b)) return "/";
+  return "/" + b.replace(/page$/i, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+}
+
+/**
+ * Build a real root view out of the pages/sections the turn actually wrote.
+ * Returns null only when there is genuinely nothing renderable.
+ */
+export function composeRootApp(byPath: Map<string, string>): string | null {
+  const pages: Array<{ path: string; base: string; name: string; isDefault: boolean }> = [];
+  const sections: Array<{ path: string; base: string; name: string; isDefault: boolean }> = [];
+  let nav: { name: string; isDefault: boolean; path: string } | null = null;
+  let footer: { name: string; isDefault: boolean; path: string } | null = null;
+
+  for (const [p, content] of byPath) {
+    if (!VIEW_SOURCE.test(p) || KIT_OWNED.test(p)) continue;
+    if (!/<[A-Za-z]/.test(content)) continue;
+    const exp = exportedName(content, p);
+    if (!exp) continue;
+    const base = baseOf(p);
+    if (PAGE_DIR.test(p)) {
+      pages.push({ path: p, base, name: exp.name, isDefault: exp.isDefault });
+      continue;
+    }
+    if (/^(nav-?bar|navigation|site-?nav|site-?header|header)$/i.test(base)) {
+      nav = { ...exp, path: p };
+      continue;
+    }
+    if (/^(footer|site-?footer)$/i.test(base)) {
+      footer = { ...exp, path: p };
+      continue;
+    }
+    if ((SECTION_DIR.test(p) || TOP_LEVEL_COMPONENT.test(p)) && propsFree(content, exp.name)) {
+      sections.push({ path: p, base, name: exp.name, isDefault: exp.isDefault });
+    }
+  }
+
+  const imp = (m: { name: string; isDefault: boolean; path: string }) =>
+    m.isDefault
+      ? `import ${m.name} from "@/${m.path.replace(/^src\//, "").replace(/\.(tsx|jsx)$/i, "")}";`
+      : `import { ${m.name} } from "@/${m.path.replace(/^src\//, "").replace(/\.(tsx|jsx)$/i, "")}";`;
+
+  const header = `// Composed by Petal: the generation didn't ship src/App.tsx, so the\n// pages/sections it did write are mounted here.\n`;
+
+  if (pages.length > 0) {
+    const seen = new Set<string>();
+    const unique = pages.filter((p) => (seen.has(p.name) ? false : (seen.add(p.name), true)));
+    const routes = unique.map((p) => ({ ...p, route: routeFor(p.base) }));
+    if (!routes.some((r) => r.route === "/")) routes[0].route = "/";
+    const imports = [
+      `import { BrowserRouter, Routes, Route } from "react-router-dom";`,
+      ...(nav ? [imp(nav)] : []),
+      ...(footer ? [imp(footer)] : []),
+      ...routes.map((r) => imp(r)),
+    ].join("\n");
+    const routeJsx = routes
+      .map((r) => `          <Route path="${r.route}" element={<${r.name} />} />`)
+      .join("\n");
+    return (
+      `${header}${imports}\n\n` +
+      `export default function App() {\n` +
+      `  return (\n` +
+      `    <BrowserRouter>\n` +
+      `      <div className="min-h-screen bg-background text-foreground">\n` +
+      (nav ? `        <${nav.name} />\n` : "") +
+      `        <Routes>\n${routeJsx}\n        </Routes>\n` +
+      (footer ? `        <${footer.name} />\n` : "") +
+      `      </div>\n` +
+      `    </BrowserRouter>\n` +
+      `  );\n}\n`
+    );
+  }
+
+  if (sections.length === 0) return null;
+  sections.sort((a, b) => rank(a.base) - rank(b.base) || a.base.localeCompare(b.base));
+  const seen = new Set<string>();
+  const unique = sections
+    .filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)))
+    .slice(0, 14);
+  const imports = [...(nav ? [imp(nav)] : []), ...unique.map((s) => imp(s)), ...(footer ? [imp(footer)] : [])].join(
+    "\n",
+  );
+  const body = unique.map((s) => `        <${s.name} />`).join("\n");
+  return (
+    `${header}${imports}\n\n` +
+    `export default function App() {\n` +
+    `  return (\n` +
+    `    <div className="min-h-screen bg-background text-foreground">\n` +
+    (nav ? `      <${nav.name} />\n` : "") +
+    `      <main>\n${body}\n      </main>\n` +
+    (footer ? `      <${footer.name} />\n` : "") +
+    `    </div>\n` +
+    `  );\n}\n`
+  );
+}
+
 export function ensureRenderableShell(
   files: ProjectFile[],
   subtypeHint?: import("@/lib/web-subtype").WebSubtype,
