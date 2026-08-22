@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   formatListingPrice,
   listLiveListings,
+  listMyPurchases,
   type PublicListing,
 } from "@/lib/marketplace";
 
@@ -38,12 +39,18 @@ function MarketplacePage() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string>("all");
+  const [library, setLibrary] = useState<Awaited<ReturnType<typeof listMyPurchases>>>([]);
 
   useEffect(() => {
     listLiveListings()
       .then(setListings)
       .catch((e) => toast.error(e instanceof Error ? e.message : "Failed to load marketplace"))
       .finally(() => setLoading(false));
+    listMyPurchases()
+      .then(setLibrary)
+      .catch(() => {
+        /* signed out — no library */
+      });
   }, []);
 
   const categories = useMemo(() => {
@@ -124,6 +131,27 @@ function MarketplacePage() {
               ))}
             </div>
           </div>
+
+          {library.length > 0 && (
+            <section className="mt-10">
+              <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Your library
+              </h2>
+              <ul className="mt-3 flex flex-wrap gap-2">
+                {library.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      to="/marketplace/$slug"
+                      params={{ slug: p.listing_slug }}
+                      className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted/60"
+                    >
+                      {p.listing_title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <div className="mt-10">
             {loading ? (

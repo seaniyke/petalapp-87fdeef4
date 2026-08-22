@@ -1178,6 +1178,68 @@ export type Database = {
           },
         ]
       }
+      marketplace_purchases: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          creator_id: string
+          creator_net_cents: number
+          currency_code: string
+          id: string
+          license_code: string
+          listing_id: string
+          listing_slug: string
+          listing_title: string
+          platform_fee_cents: number
+          price_minor: number
+          reference: string | null
+          source: string
+          usd_amount_cents: number
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          creator_id: string
+          creator_net_cents?: number
+          currency_code?: string
+          id?: string
+          license_code: string
+          listing_id: string
+          listing_slug: string
+          listing_title: string
+          platform_fee_cents?: number
+          price_minor?: number
+          reference?: string | null
+          source?: string
+          usd_amount_cents?: number
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          creator_id?: string
+          creator_net_cents?: number
+          currency_code?: string
+          id?: string
+          license_code?: string
+          listing_id?: string
+          listing_slug?: string
+          listing_title?: string
+          platform_fee_cents?: number
+          price_minor?: number
+          reference?: string | null
+          source?: string
+          usd_amount_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_purchases_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_drafts: {
         Row: {
           partial_content: string
@@ -3855,6 +3917,17 @@ export type Database = {
         }
         Returns: string
       }
+      apply_paystack_marketplace_purchase: {
+        Args: {
+          _amount_minor: number
+          _currency_code: string
+          _listing_slug: string
+          _reference: string
+          _usd_amount_cents: number
+          _user_id: string
+        }
+        Returns: string
+      }
       apply_paystack_plan_grant: {
         Args: { _plan_code: string; _reference: string; _user_id: string }
         Returns: undefined
@@ -4053,6 +4126,7 @@ export type Database = {
         }[]
       }
       marketplace_open_listing: { Args: { p_slug: string }; Returns: string }
+      marketplace_owns_listing: { Args: { p_slug: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
