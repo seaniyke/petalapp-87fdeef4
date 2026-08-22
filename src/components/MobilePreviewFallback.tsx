@@ -258,13 +258,9 @@ export function MobilePreviewFallback({
         </div>
       );
     }
-    return (
-      <EmptyState
-        title="Building your live preview…"
-        message="Publishing to the preview CDN. This usually takes 30–90 seconds."
-        spinning
-      />
-    );
+    // Nothing deployed yet — show the snapshot of the current files rather
+    // than a spinner, so the user always sees their app.
+    return <SnapshotFrame projectId={projectId} badge="Building live preview…" />;
   }
 
   if (status === "failed") {
