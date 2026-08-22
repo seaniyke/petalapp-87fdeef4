@@ -3946,7 +3946,7 @@ function Builder() {
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground">
       {/* First-run product tour. Self-gates on localStorage so it shows once per browser. */}
       <Suspense fallback={null}>
-        <FirstRunTour suppressed={busy || discussBusy || messages.length > 0} />
+        <FirstRunTour suppressed={bootstrapping || busy || discussBusy || messages.length > 0} />
       </Suspense>
       {/* Top bar — iOS-style translucent material, never moves */}
       <div className="safe-top safe-x z-sticky sticky top-0 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65">

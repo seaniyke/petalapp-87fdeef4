@@ -20,7 +20,9 @@ import {
   type TurnContext,
 } from "./context";
 import { AGENT_REGISTRY } from "./registry";
+import { mergeAgentOutputs, runModelAgent, shouldEscalate } from "./model-agent.server";
 import { planWaves } from "./selection";
+
 
 function log(ctx: TurnContext, entry: Omit<OrchestratorLogEntry, "at">): void {
   ctx.log.push({ at: Date.now(), ...entry });
@@ -87,12 +89,26 @@ async function runOne(ctx: TurnContext, name: AgentName): Promise<AgentRun> {
       detail: `${name} attempt ${run.attempts}`,
     });
     try {
-      const out = await withTimeout(
-        Promise.resolve(spec.run(agentView(ctx))),
+      const view = agentView(ctx);
+      const deterministic = await withTimeout(
+        Promise.resolve(spec.run(view)),
         spec.timeoutMs,
         name,
       );
+      // Phase 3 — model escalation. The deterministic body is the floor; on
+      // structural turns the specialist may also think for itself. Any failure
+      // (or a disabled flag) returns null and we keep the floor.
+      let out = deterministic;
+      if (shouldEscalate(spec, view)) {
+        const extra = await withTimeout(
+          runModelAgent(spec, view).catch(() => null),
+          spec.timeoutMs,
+          `${name} (model)`,
+        ).catch(() => null);
+        out = mergeAgentOutputs(deterministic, extra);
+      }
       const applied = applyOutput(ctx, name, out);
+
       run.decisions = applied.decisions;
       run.objections = applied.objections;
       run.costMicroUsd = Math.max(0, out.usage?.costMicroUsd ?? 0);
@@ -200,29 +216,78 @@ export async function executeAgents(
 }
 
 /**
- * Reconciliation. Agents may contradict each other; precedence decides, and
- * the precedence order is fixed and explicit rather than emergent:
+ * Reconciliation (Engine 3.0, phase 3).
  *
- *   product intent > security > architecture > data > ux > design > copy
+ * Agents contradict each other; precedence decides, and the precedence order
+ * is fixed and explicit rather than emergent:
  *
- * Phase 1 resolves the only conflict class that exists today (blocking
- * objections) by promoting each one to a binding decision owned by the
- * objecting agent, so the generation prompt carries it as a requirement.
+ *   product > security > architecture > data > ux > design > qa
+ *
+ * Rules, in order:
+ *  1. A BLOCKING objection from an agent that outranks the decision's owner
+ *     supersedes that decision: the original is struck from the board so the
+ *     generation prompt can never carry both sides of a contradiction.
+ *  2. Every blocking objection is promoted to a binding decision owned by the
+ *     objecting agent, so its ask reaches the model as a requirement.
+ *  3. A blocking objection from a LOWER-ranked agent cannot strike the
+ *     decision — it is still promoted as an additional requirement, which is
+ *     how "design wants this, product owns it" resolves without a stalemate.
+ *  4. Identical asks collapse; boards routinely produce the same objection
+ *     from two specialists.
  */
+const PRECEDENCE: AgentName[] = [
+  "product",
+  "security",
+  "architecture",
+  "database",
+  "backend",
+  "ai_logic",
+  "ux",
+  "frontend",
+  "responsive",
+  "design",
+  "qa",
+];
+
+function rank(agent: AgentName): number {
+  const i = PRECEDENCE.indexOf(agent);
+  return i === -1 ? PRECEDENCE.length : i;
+}
+
 export function reconcile(ctx: TurnContext): void {
   const blocking = ctx.objections.filter((o) => o.severity === "blocking");
+  const superseded = new Set<string>();
+  const promoted: string[] = [];
+  const seenAsks = new Set<string>();
+
   for (const o of blocking) {
+    const target = ctx.decisions.find((d) => d.id === o.againstId);
+    if (target && rank(o.agent) < rank(target.agent)) superseded.add(target.id);
+
+    const key = o.ask.trim().toLowerCase();
+    if (seenAsks.has(key)) continue;
+    seenAsks.add(key);
+    promoted.push(o.ask);
     ctx.decisions.push({
       id: nextDecisionId(o.agent),
       agent: o.agent,
       kind: o.agent === "security" ? "security" : "product",
       claim: o.ask,
-      rationale: `Reconciled objection against ${o.againstId}.`,
+      rationale: target
+        ? `Reconciled: overrides ${target.id} (${target.agent}).`
+        : `Reconciled objection against ${o.againstId}.`,
       refs: [o.againstId],
     });
   }
+
+  if (superseded.size > 0) {
+    ctx.decisions = ctx.decisions.filter((d) => !superseded.has(d.id));
+  }
+
   log(ctx, {
     event: "reconciled",
-    detail: `${blocking.length} blocking objection(s) promoted to binding decisions`,
+    detail: `${promoted.length} blocking objection(s) promoted, ${superseded.size} decision(s) superseded`,
+    data: { promoted: promoted.length, superseded: superseded.size },
   });
 }
+

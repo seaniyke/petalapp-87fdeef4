@@ -2307,8 +2307,35 @@ Forbidden defaults
   // and every app-level component so the model's `replace` snippets match
   // real bytes instead of hallucinations. Single biggest fix for the
   // "I wasn't able to apply that change" failure mode on broad asks.
-  const isCrossCutting = !isInitial && detectCrossCuttingIntent(lastUserContent);
-  const pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
+  //
+  // Engine 3.0 phase 4: the regex verdict is now only the prior. A cheap
+  // semantic classifier can WIDEN it (never shrink it), which is what catches
+  // "this looks generic" and "nothing works on my phone" — structural asks
+  // that no keyword list will ever match.
+  let editClassification: import("@/server/edit-classifier.server").EditClassification | null =
+    null;
+  if (!isInitial) {
+    try {
+      const { classifyEdit } = await import("@/server/edit-classifier.server");
+      editClassification = await classifyEdit({
+        prompt: lastUserContent,
+        projectPurpose: picContext?.understanding?.summary ?? resolvedPrd?.prd?.purpose ?? null,
+        fileCount: currentFiles.length,
+        projectId: body.projectId ?? null,
+        userId,
+        signal: request.signal,
+      });
+      console.info(
+        `[edit-classifier] scope=${editClassification.scope} source=${editClassification.source} dims=${editClassification.dimensions.join(",")} — ${editClassification.reason}`,
+      );
+    } catch (e) {
+      console.warn("[edit-classifier] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
+  const isCrossCutting =
+    !isInitial &&
+    (detectCrossCuttingIntent(lastUserContent) || editClassification?.scope === "structural");
+  let pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
   if (isCrossCutting) {
     console.info(
       `[intent-targets] cross-cutting ask detected — pinning ${pinnedPaths.length} file(s) into prompt context`,
@@ -2330,6 +2357,7 @@ Forbidden defaults
       `[edit-intent] verb=${editIntent!.verb} resolved ${editTargetPaths.length} target file(s): ${editTargetPaths.join(", ")}`,
     );
   }
+
 
   // When the deterministic resolver comes up empty on a follow-up edit, send
   // the read-only Inspector subagent in: it greps and reads the real bytes on
@@ -2360,6 +2388,34 @@ Forbidden defaults
   );
   const resolvedTargetPaths =
     editTargetPaths.length > 0 ? editTargetPaths : inspectorTargets;
+
+  // Engine 3.0 phase 4 — impact graph. A targeted edit rarely stops at the
+  // file it names: whoever imports that file has to keep compiling, and
+  // whatever it imports defines the props it may use. Pin that immediate
+  // blast radius so the model edits with the callers in view instead of
+  // breaking them silently. Deterministic, capped, and skipped when we are
+  // already pinning the whole app for a cross-cutting ask.
+  if (!isInitial && !isCrossCutting && resolvedTargetPaths.length > 0) {
+    try {
+      const { computeImpact } = await import("@/server/impact-graph.server");
+      const impact = computeImpact(editablePromptFiles, resolvedTargetPaths, {
+        radius: 1,
+        max: 18,
+      });
+      const extra = impact.paths.filter(
+        (p) => !resolvedTargetPaths.includes(p) && !pinnedPaths.includes(p),
+      );
+      if (extra.length > 0) {
+        pinnedPaths = [...pinnedPaths, ...extra];
+        console.info(
+          `[impact-graph] pinned ${extra.length} neighbour(s) of ${resolvedTargetPaths.length} target(s): ${extra.slice(0, 8).join(", ")}`,
+        );
+      }
+    } catch (e) {
+      console.warn("[impact-graph] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
+
 
   const promptBudget = trimFilesForPrompt(
     editablePromptFiles,

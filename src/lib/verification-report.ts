@@ -19,7 +19,11 @@ const SPECULATIVE_FLOW_PATTERNS = [
   /Flow ".*" failed at step[\s\S]*waiting for locator\(/i,
 ];
 
-const VISUAL_DEFECT_PREFIX = /^Visual QA \(/i;
+// Screenshot-derived findings. "Craft QA" (design polish) joins "Visual QA"
+// here on purpose: a plain-looking page is never a reason to take a working
+// deployment offline — it queues a polish pass instead.
+const VISUAL_DEFECT_PREFIX = /^(?:Visual|Craft) QA \(/i;
+
 const BLOCKING_RUNTIME_PATTERNS = [
   /rendered a blank page/i,
   /threw an uncaught error/i,

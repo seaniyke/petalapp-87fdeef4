@@ -19,30 +19,41 @@ import { PetalLoader } from "@/components/PetalLoader";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Cache of build id -> deployment URL so a 60-card gallery doesn't fire the
+ * Cache of project id -> deployment URL so a 60-card gallery doesn't fire the
  * same lookup twice. Shared across every mounted thumbnail.
+ *
+ * The lookup goes through `project_screenshot_url`, a security-definer
+ * function that returns the latest READY build's public deployment URL for a
+ * project the caller may see (public, or their own). That URL is reachable by
+ * the screenshot service — unlike `/api/preview/:id`, which requires a bearer
+ * token and therefore always rendered as a blank/authwall tile.
  */
 const deployUrlCache = new Map<string, Promise<string | null>>();
 
-function fetchDeployUrl(buildId: string): Promise<string | null> {
-  const cached = deployUrlCache.get(buildId);
+function fetchDeployUrl(projectId: string, buildId?: string | null): Promise<string | null> {
+  // Keyed by build so a fresh deploy re-resolves instead of serving the URL
+  // of the previous build forever.
+  const key = `${projectId}:${buildId ?? ""}`;
+  const cached = deployUrlCache.get(key);
   if (cached) return cached;
   const p = (async () => {
     try {
-      const { data } = await supabase
-        .from("project_builds")
-        .select("status, dist_path")
-        .eq("id", buildId)
-        .maybeSingle();
-      return data?.status === "ready" && data.dist_path ? data.dist_path : null;
+      const { data } = await (
+        supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: string | null }>
+      )("project_screenshot_url", { p_project_id: projectId });
+      return typeof data === "string" && data ? data : null;
     } catch {
       return null;
     }
   })();
 
-  deployUrlCache.set(buildId, p);
+  deployUrlCache.set(key, p);
   return p;
 }
+
 
 export function ProjectThumbnail({
   projectId,
@@ -73,18 +84,22 @@ export function ProjectThumbnail({
   fit?: "cover" | "contain";
 }) {
   const [deployUrl, setDeployUrl] = useState<string | null>(null);
-  const needsDeployUrl = !publishedUrl && !customDomain && !subdomain && !!buildId;
+  // Every unpublished project gets a lookup — a build id is a nice hint that
+  // one exists, but cards in the drawer/gallery often don't carry it.
+  const needsDeployUrl = !publishedUrl && !customDomain && !subdomain && !!projectId;
 
   useEffect(() => {
-    if (!needsDeployUrl || !buildId) return;
+    if (!needsDeployUrl) return;
     let alive = true;
-    void fetchDeployUrl(buildId).then((url) => {
+    void fetchDeployUrl(projectId, buildId).then((url) => {
       if (alive) setDeployUrl(url);
     });
     return () => {
       alive = false;
     };
-  }, [needsDeployUrl, buildId]);
+    // `buildId` participates so a freshly finished build re-resolves.
+  }, [needsDeployUrl, projectId, buildId]);
+
 
   const url = resolveLiveUrl({
     projectId,
@@ -199,11 +214,14 @@ function resolveLiveUrl({
   if (publishedUrl) return publishedUrl;
   if (customDomain) return `https://${customDomain}`;
   if (subdomain) return `https://${subdomain}.${PETAL_ROOT_DOMAIN}`;
-  // Not published yet — screenshot the project's own rendered preview so the
-  // gallery always has a real thumbnail the moment a build finishes.
-  if (projectId) return `https://${PETAL_ROOT_DOMAIN}/api/preview/${projectId}`;
+  // No live URL resolved yet. We deliberately do NOT point the screenshot
+  // service at /api/preview/:id — that route requires a bearer token, so the
+  // service would capture an empty auth wall and ship it as the thumbnail.
+  // The branded gradient tile is the honest fallback until a build deploys.
+  void projectId;
   return null;
 }
+
 
 function screenshotUrl(
   target: string,

@@ -4511,6 +4511,10 @@ export type Database = {
         }
         Returns: number
       }
+      project_screenshot_url: {
+        Args: { p_project_id: string }
+        Returns: string
+      }
       public_project_build_get: {
         Args: { p_id: string }
         Returns: {

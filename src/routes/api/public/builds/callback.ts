@@ -23,6 +23,38 @@ import { routeJudgedDefects, summarizeRouting } from "@/server/agents/qa-board";
 
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
+import { scoreCraftQA, type CraftContract } from "@/server/craft-qa.server";
+
+/**
+ * Pull the committed design contract for a project so craft QA judges the app
+ * against what Petal promised to build, not against generic taste. Missing
+ * intelligence is fine — the reviewer falls back to general craft standards.
+ */
+async function loadCraftContract(projectId: string): Promise<CraftContract | null> {
+  try {
+    const { loadPic } = await import("@/server/pic/pic-store.server");
+    const stored = await loadPic(projectId);
+    const pic = stored?.pic;
+    if (!pic) return null;
+    const design = pic.design;
+    return {
+      productName: pic.understanding?.domain ?? null,
+      summary: pic.understanding?.summary ?? null,
+      palette: design
+        ? [design.colors?.primary, design.colors?.accent, design.colors?.background]
+            .map((role) => role?.light)
+            .filter((c): c is string => typeof c === "string" && c.length > 0)
+        : null,
+      typography: design
+        ? `${design.typography?.displayFont ?? ""} / ${design.typography?.bodyFont ?? ""}`.trim()
+        : null,
+      personality: design?.direction ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 
 /**
  * Browser-verification report. Kept loose on purpose: the builder owns the
@@ -146,18 +178,29 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // Visual QA — score the deployed screenshots with a vision model and fold
     // what it sees into the same defect list the repair loop already reads.
     // The images themselves are never persisted (they are megabytes of base64).
+    //
+    // Craft QA (Engine 3.0, phase 5) runs alongside it against the committed
+    // design contract: "is this broken?" and "does this look designed?" are
+    // different questions and a single reviewer answers both badly. Craft
+    // findings are advisory by construction — they queue polish, never a
+    // rollback.
     let visualDefects: string[] = [];
     if (payload.verification?.visual?.length) {
-      visualDefects = await scoreVisualQA({
-        shots: payload.verification.visual,
-        projectId: payload.projectId,
-      }).catch(() => []);
+      const shots = payload.verification.visual;
+      const [broken, craft] = await Promise.all([
+        scoreVisualQA({ shots, projectId: payload.projectId }).catch(() => []),
+        loadCraftContract(payload.projectId)
+          .then((contract) => scoreCraftQA({ shots, contract, projectId: payload.projectId }))
+          .catch(() => [] as string[]),
+      ]);
+      visualDefects = [...broken, ...craft];
       if (visualDefects.length) {
         console.warn(
-          `[builds/callback] visual QA found ${visualDefects.length} defect(s) for ${payload.buildId}`,
+          `[builds/callback] visual QA found ${broken.length} defect(s) and craft QA ${craft.length} note(s) for ${payload.buildId}`,
         );
       }
     }
+
 
     const verification = payload.verification
       ? (() => {
