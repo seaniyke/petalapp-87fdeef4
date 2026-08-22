@@ -103,7 +103,19 @@ function passIdsFromNotes(notes: string[]): string[] {
   return Array.from(ids);
 }
 
-export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
+export interface RepairAllOptions {
+  /**
+   * Edit-turn scope lock. When present, the cosmetic stages (HYGIENE + POLISH:
+   * design finisher, layout/interaction hygiene, frontend quality…) may only
+   * keep their output for files the turn actually touched. Untouched files are
+   * restored to their post-RESOLVE bytes, so a one-line copy edit can never
+   * restyle a page the user did not ask about. Build-blocking RESOLVE fixes
+   * (syntax, imports, route graph) always apply, everywhere.
+   */
+  scopeLock?: { touchedPaths: readonly string[] };
+}
+
+export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): RepairAllResult {
   let files = input;
   const notes: string[] = [];
 
