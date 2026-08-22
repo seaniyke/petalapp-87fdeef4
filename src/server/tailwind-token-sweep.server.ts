@@ -273,26 +273,45 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
     while ((m = varRe.exec(f.content))) referencedRaw.add(m[1]);
   }
 
-  const missingColors = [...referencedColors].filter(
-    (t) => !parsed.themeColorTokens.has(t),
-  );
-  const missingFonts = [...referencedFonts].filter(
-    (t) => !parsed.themeFontTokens.has(t),
-  );
+  // A token is only "missing" when NOTHING declares it: not `--color-x` in
+  // @theme, and not a bare `--x` anywhere in the stylesheet. Apps written the
+  // normal Tailwind v4 way declare `--primary`, not `--color-primary`; treating
+  // those as missing is what used to re-declare the whole palette as
+  // `--primary: var(--primary)` (circular => invalid => no colour at all).
+  const declared = (t: string) =>
+    parsed.themeColorTokens.has(t) ||
+    parsed.rawVars.has(t) ||
+    parsed.rawVars.has(`color-${t}`);
+
+  const missingColors = [...referencedColors].filter((t) => !declared(t));
   const missingRaw = [...referencedRaw].filter(
-    (t) =>
-      !parsed.rawVars.has(t) &&
-      // Don't re-inject ones we're already going to add via the color path.
-      !missingColors.includes(t),
+    (t) => !parsed.rawVars.has(t) && !missingColors.includes(t),
+  );
+  // Fonts are owned by the design director + design finisher. This pass must
+  // never write a `--font-*` VALUE — doing so overwrote the locked display face
+  // with a system serif and made the finisher skip loading the real font.
+  // We only add a mapping when the family variable already exists.
+  const missingFonts = [...referencedFonts].filter(
+    (t) => !parsed.themeFontTokens.has(t) && parsed.rawVars.has(`font-${t}`),
   );
 
   if (missingColors.length === 0 && missingFonts.length === 0 && missingRaw.length === 0) {
     return { files: input, notes: [], addedTokens: [], addedThemeMappings: [] };
   }
 
-  const knownRaw = new Set(parsed.rawVars);
-  // Pretend we know the about-to-add raw tokens so derivations don't loop.
-  for (const c of missingColors) knownRaw.add(c);
+  // Scanner sanity cap. A real app is missing a handful of semantic tokens; a
+  // flood means the class scanner mis-read core utilities.
+  const totalWanted = missingColors.length + missingRaw.length + missingFonts.length;
+  if (totalWanted > MAX_INJECTED_TOKENS) {
+    return {
+      files: input,
+      notes: [
+        `tailwind-tokens: skipped injection — ${totalWanted} candidate tokens looks like a scanner mis-fire, leaving styles.css untouched`,
+      ],
+      addedTokens: [],
+      addedThemeMappings: [],
+    };
+  }
 
   // Build the new rules.
   const rootAdditions: string[] = [];
@@ -301,8 +320,13 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
   const addedTokens: string[] = [];
   const addedThemeMappings: string[] = [];
 
+  /** Never emit `--x: var(--x)` — an invalid, self-referential declaration. */
+  const safeValue = (tok: string, val: string): string | null =>
+    val.replace(/\s+/g, "") === `var(--${tok})` ? null : val;
+
   for (const tok of missingColors) {
-    const val = deriveColorValue(tok, new Set(parsed.rawVars));
+    const val = safeValue(tok, deriveColorValue(tok, new Set(parsed.rawVars)));
+    if (!val) continue;
     rootAdditions.push(`  --${tok}: ${val};`);
     darkAdditions.push(`  --${tok}: ${val};`);
     themeAdditions.push(`  --color-${tok}: var(--${tok});`);
@@ -310,17 +334,22 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
     addedThemeMappings.push(`--color-${tok}`);
   }
   for (const tok of missingRaw) {
-    const val = deriveColorValue(tok, new Set(parsed.rawVars));
+    const val = safeValue(tok, deriveColorValue(tok, new Set(parsed.rawVars)));
+    if (!val) continue;
     rootAdditions.push(`  --${tok}: ${val};`);
     darkAdditions.push(`  --${tok}: ${val};`);
     addedTokens.push(tok);
   }
   for (const tok of missingFonts) {
-    const val = deriveFontValue(tok, new Set(parsed.rawVars));
-    themeAdditions.push(`  --font-${tok}: ${val};`);
+    themeAdditions.push(`  --font-${tok}: var(--font-${tok});`);
     addedTokens.push(`font-${tok}`);
     addedThemeMappings.push(`--font-${tok}`);
   }
+
+  if (rootAdditions.length === 0 && themeAdditions.length === 0) {
+    return { files: input, notes: [], addedTokens: [], addedThemeMappings: [] };
+  }
+
 
   // Inject into styles.css.
   let content = styles.content;
