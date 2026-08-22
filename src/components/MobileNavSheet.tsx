@@ -82,6 +82,18 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
               icon={<ImageIcon className="h-4 w-4" />}
               label="Gallery"
             />
+            <RowLink
+              to="/marketplace"
+              onClick={close}
+              icon={<Store className="h-4 w-4" />}
+              label="Marketplace"
+            />
+            <RowLink
+              to="/sell"
+              onClick={close}
+              icon={<Tag className="h-4 w-4" />}
+              label="Sell your app"
+            />
             {user && (
               <RowButton
                 onClick={() => {
