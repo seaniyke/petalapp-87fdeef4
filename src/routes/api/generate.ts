@@ -2185,7 +2185,7 @@ Forbidden defaults
       prompt: lastUserContent,
       projectId: body.projectId ?? null,
       userId: userId ?? null,
-      target: buildTarget,
+      target: buildTarget.id,
       isInitial,
       fileCount: currentFiles.length,
       prd: resolvedPrd?.prd ?? null,
