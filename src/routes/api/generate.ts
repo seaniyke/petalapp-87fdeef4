@@ -60,7 +60,8 @@ import {
   renderResolvedIntegrationsBlock,
 } from "@/server/integrations/doc-resolver.server";
 import { resolveFromUserPaste } from "@/server/integrations/user-paste-resolver.server";
-import { fetchGroundingPages, renderGroundingBlock } from "@/server/web-grounding.server";
+import { fetchGroundingPages, renderGroundingBlock, detectGroundingUrls } from "@/server/web-grounding.server";
+import { extractCloneBrief, renderCloneBriefBlock, type CloneBrief } from "@/server/site-clone.server";
 import { detectIntegrationRequests } from "@/lib/integration-request-intent";
 import { validateStylesCss, repairStylesCss } from "@/server/validate-styles.server";
 import { verifyFileLocal } from "@/server/local-verifier";
@@ -2043,7 +2044,19 @@ Forbidden defaults
   // instead of hallucinating. Failure-tolerant and bounded (2 URLs max,
   // 6s timeout each) — never blocks a turn.
   const groundingPages = await fetchGroundingPages(resolverText).catch(() => []);
-  const groundingBlock = renderGroundingBlock(groundingPages);
+  // Clone-from-URL: the text alone never made the result LOOK like the source.
+  // Read the same page's design system (palette, type, radius, section order)
+  // so "build me a site like X" inherits X's visual language instead of a
+  // generic template. Same bounded, failure-tolerant contract as grounding.
+  const cloneBriefs = (
+    await Promise.all(
+      detectGroundingUrls(resolverText).map((u) =>
+        extractCloneBrief(u).catch(() => null),
+      ),
+    )
+  ).filter((b): b is CloneBrief => b !== null);
+  const groundingBlock =
+    renderGroundingBlock(groundingPages) + renderCloneBriefBlock(cloneBriefs);
 
 
   // Project Knowledge: small piece of context the owner attached to the
