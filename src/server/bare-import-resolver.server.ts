@@ -31,6 +31,8 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { isScaffoldOwnedPath } from "./scaffold-ownership.server";
+
 import {
   COMMON_LUCIDE_ICONS,
   KNOWN_PACKAGES,
