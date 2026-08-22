@@ -58,7 +58,7 @@ const BIG_ASK_HINTS =
  * wholesale rewrite is the correct answer.
  */
 const BROAD_SURFACE_HINTS =
-  /\b((entire|whole|full|complete)\s+(website|web\s?site|site|app|application|design|look|theme|ui|page)|(every|all)\s+(page|route|screen|component)s?|site\s*-?\s*wide|app\s*-?\s*wide|(design|theme|look|style|colou?r\s*(scheme|palette)|palette|branding|aesthetic)\b.*\b(entire|whole|everything|all)|\b(new|different|fresh)\s+(design|theme|look|style|palette|branding))\b/i;
+  /\b((entire|whole|full|complete)\s+(website|web\s?site|site|app|application|design|look|theme|ui|page)|(every|all)\s+(page|route|screen|component)s?|site\s*-?\s*wide|app\s*-?\s*wide|(change|update|switch|swap|give|make)\s+[\w\s]{0,24}?\b(design|theme|look|style|colou?r\s*(scheme|palette)|palette|branding|aesthetic)\b|\b(new|different|fresh)\s+(design|theme|look|style|palette|branding))\b/i;
 
 /** A short prompt with edit verbs and no rebuild language is a small request. */
 export function isSmallEditRequest(prompt: string): boolean {
