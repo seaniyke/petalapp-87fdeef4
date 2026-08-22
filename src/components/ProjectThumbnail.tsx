@@ -95,17 +95,32 @@ export function ProjectThumbnail({
   const contain = fit === "contain";
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // 0 = Microlink, 1 = WordPress mShots fallback. A single flaky provider was
+  // the real reason cards fell back to bare initials.
+  const [attempt, setAttempt] = useState(0);
   const showImage = url && !failed;
 
+  // Reset whenever the resolved target changes (e.g. a build just landed).
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+    setAttempt(0);
+  }, [url]);
+
   // The screenshot service can hang (cold render, rate limit) without ever
-  // firing onError, which left the tile showing a spinner forever — that's the
-  // "blank thumbnail" people see. Give it a hard deadline, then fall back to
-  // the gradient tile so a card is never empty.
+  // firing onError, which left the tile showing a spinner forever. Give each
+  // provider a deadline, try the backup, then fall back to the gradient tile.
   useEffect(() => {
     if (!showImage || loaded) return;
-    const t = setTimeout(() => setFailed(true), 9000);
+    const t = setTimeout(() => {
+      setAttempt((a) => {
+        if (a === 0) return 1;
+        setFailed(true);
+        return a;
+      });
+    }, 12000);
     return () => clearTimeout(t);
-  }, [showImage, loaded, url]);
+  }, [showImage, loaded, url, attempt]);
 
 
 
@@ -122,14 +137,15 @@ export function ProjectThumbnail({
             </div>
           )}
           <img
-            src={screenshotUrl(url, fit)}
+            key={attempt}
+            src={screenshotUrl(url, fit, attempt)}
             alt=""
             loading="eager"
             decoding="async"
             fetchPriority="high"
             className={`absolute inset-0 h-full w-full ${contain ? "object-contain object-center" : "object-cover object-top"} transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
             onLoad={() => setLoaded(true)}
-            onError={() => setFailed(true)}
+            onError={() => (attempt === 0 ? setAttempt(1) : setFailed(true))}
           />
         </>
       ) : (
@@ -186,7 +202,17 @@ function resolveLiveUrl({
   return null;
 }
 
-function screenshotUrl(target: string, fit: "cover" | "contain" = "cover"): string {
+function screenshotUrl(
+  target: string,
+  fit: "cover" | "contain" = "cover",
+  attempt = 0,
+): string {
+  // Backup provider — WordPress mShots renders cold pages reliably (slower,
+  // but it never rate-limits), so a flaky Microlink call no longer costs the
+  // card its thumbnail.
+  if (attempt > 0) {
+    return `https://s.wordpress.com/mshots/v1/${encodeURIComponent(target)}?w=${fit === "contain" ? 1200 : 1280}&h=${fit === "contain" ? 900 : 800}`;
+  }
   // Microlink free endpoint — returns the screenshot image directly. We pass
   // viewport sized for a nice card crop and a short waitUntil so SPAs render
   // before the snapshot is taken.

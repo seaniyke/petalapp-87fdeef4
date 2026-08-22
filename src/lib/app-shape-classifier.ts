@@ -328,6 +328,16 @@ const RULES: Rule[] = [
     surfaces: ["landing", "public-detail"],
     cloud: ["database"],
   },
+  // — Media / streaming (Netflix, Spotify, YouTube style clones) —
+  {
+    category: "creator",
+    match:
+      /\b(netflix|hulu|disney\+?|hbo\s*max|prime\s+video|spotify|youtube|twitch|streaming\s+(app|site|service|platform)|video\s+streaming|movie\s+(app|site|streaming)|tv\s+shows?|watchlist|episodes?\s+browser|media\s+library)\b/i,
+    surfaces: ["landing", "auth", "dashboard", "public-detail", "settings"],
+    cloud: ["auth", "database", "storage", "analytics"],
+    integrations: ["tmdb"],
+    weight: 3,
+  },
   // — Local business verticals (use the existing industry-pack shape) —
   {
     category: "restaurant",
