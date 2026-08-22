@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { PetalLoader } from "@/components/PetalLoader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ListingRating } from "@/components/marketplace/ListingReviews";
 import {
   formatListingPrice,
   listLiveListings,
