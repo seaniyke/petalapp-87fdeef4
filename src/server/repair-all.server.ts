@@ -319,6 +319,11 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   // resolve?". Nothing above is cosmetic; every pass here is the difference
   // between a build and a stack trace.
   const resolveEnd = notes.length;
+  // Snapshot for the edit-turn scope lock: cosmetic stages below may not
+  // change files this turn never touched.
+  const postResolve = opts?.scopeLock
+    ? new Map(files.map((f) => [f.path, f.content]))
+    : null;
 
 
   // 6b. CSS escape/theme sanitizer — literal `\n` inside styles.css aborts
