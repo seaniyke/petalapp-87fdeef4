@@ -210,15 +210,14 @@ function screenshotUrl(
   fit: "cover" | "contain" = "cover",
   attempt = 0,
 ): string {
-  // Backup provider — WordPress mShots renders cold pages reliably (slower,
-  // but it never rate-limits), so a flaky Microlink call no longer costs the
-  // card its thumbnail.
-  if (attempt > 0) {
-    return `https://s.wordpress.com/mshots/v1/${encodeURIComponent(target)}?w=${fit === "contain" ? 1200 : 1280}&h=${fit === "contain" ? 900 : 800}`;
-  }
-  // Microlink free endpoint — returns the screenshot image directly. We pass
-  // viewport sized for a nice card crop and a short waitUntil so SPAs render
-  // before the snapshot is taken.
+  // Microlink free endpoint — returns the real page screenshot directly. We
+  // pass a viewport sized for a nice card crop and wait for network idle so
+  // SPAs finish rendering before the snapshot is taken.
+  //
+  // There is deliberately no second provider: mShots answers cold requests
+  // with a generic WordPress placeholder graphic, and that placeholder was
+  // being shown to users as their app's thumbnail. A real screenshot or the
+  // branded gradient tile — never someone else's logo.
   const params = new URLSearchParams({
     url: target,
     screenshot: "true",
@@ -229,8 +228,11 @@ function screenshotUrl(
     "viewport.height": fit === "contain" ? "900" : "800",
     waitUntil: "networkidle0",
   });
+  // Retry bypasses any cached failure without changing providers.
+  if (attempt > 0) params.set("force", "true");
   return `https://api.microlink.io/?${params.toString()}`;
 }
+
 
 const PALETTES = [
   { gradient: "linear-gradient(135deg,#FFD8C2 0%,#F8B4A0 50%,#E59FB7 100%)", ink: "#5B2A3A" },
