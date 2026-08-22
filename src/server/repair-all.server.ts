@@ -319,11 +319,27 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   // resolve?". Nothing above is cosmetic; every pass here is the difference
   // between a build and a stack trace.
   const resolveEnd = notes.length;
+
+  // Build-config files are scaffold-owned against the MODEL, not against
+  // Petal's own deterministic resolvers. The bare-import resolver, the kit
+  // dependency closure and the tsconfig/alias sync all write here on purpose —
+  // restoring their input bytes at the end of this function is what shipped
+  // Nordwell without `framer-motion`/`lenis` in package.json and then died with
+  // `Rollup failed to resolve import "framer-motion"`. Re-baseline the pristine
+  // map to the post-RESOLVE bytes for these paths so dependency installs
+  // survive, while cosmetic stages below still cannot touch them.
+  for (const path of RESOLVER_MANAGED_PATHS) {
+    if (!pristine.has(path)) continue;
+    const current = files.find((f) => f.path === path);
+    if (current) pristine.set(path, current.content);
+  }
+
   // Snapshot for the edit-turn scope lock: cosmetic stages below may not
   // change files this turn never touched.
   const postResolve = opts?.scopeLock
     ? new Map(files.map((f) => [f.path, f.content]))
     : null;
+
 
 
   // 6b. CSS escape/theme sanitizer — literal `\n` inside styles.css aborts
