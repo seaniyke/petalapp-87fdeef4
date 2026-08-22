@@ -103,7 +103,19 @@ function passIdsFromNotes(notes: string[]): string[] {
   return Array.from(ids);
 }
 
-export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
+export interface RepairAllOptions {
+  /**
+   * Edit-turn scope lock. When present, the cosmetic stages (HYGIENE + POLISH:
+   * design finisher, layout/interaction hygiene, frontend quality…) may only
+   * keep their output for files the turn actually touched. Untouched files are
+   * restored to their post-RESOLVE bytes, so a one-line copy edit can never
+   * restyle a page the user did not ask about. Build-blocking RESOLVE fixes
+   * (syntax, imports, route graph) always apply, everywhere.
+   */
+  scopeLock?: { touchedPaths: readonly string[] };
+}
+
+export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): RepairAllResult {
   let files = input;
   const notes: string[] = [];
 
@@ -307,6 +319,11 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   // resolve?". Nothing above is cosmetic; every pass here is the difference
   // between a build and a stack trace.
   const resolveEnd = notes.length;
+  // Snapshot for the edit-turn scope lock: cosmetic stages below may not
+  // change files this turn never touched.
+  const postResolve = opts?.scopeLock
+    ? new Map(files.map((f) => [f.path, f.content]))
+    : null;
 
 
   // 6b. CSS escape/theme sanitizer — literal `\n` inside styles.css aborts
@@ -396,6 +413,26 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
 
   // ── end of STAGE 3: POLISH ────────────────────────────────────────────
   // Layout, interaction and accessibility. Never load-bearing for the build.
+
+  // Edit-turn scope lock: revert cosmetic-stage edits to untouched files. The
+  // defect this kills is a targeted edit ("change the button label") coming
+  // back with the whole landing page restyled.
+  if (postResolve && opts?.scopeLock) {
+    const touched = new Set(opts.scopeLock.touchedPaths);
+    let reverted = 0;
+    files = files.map((f) => {
+      if (touched.has(f.path)) return f;
+      const base = postResolve.get(f.path);
+      if (base === undefined || base === f.content) return f;
+      reverted++;
+      return { ...f, content: base };
+    });
+    if (reverted > 0) {
+      notes.push(
+        `scope-lock: reverted cosmetic repairs on ${reverted} file${reverted === 1 ? "" : "s"} this edit did not touch.`,
+      );
+    }
+  }
 
   // Restore Petal-owned files byte-for-byte: no heuristic pass may alter them.
   files = files.map((f) => {

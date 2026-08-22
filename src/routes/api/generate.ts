@@ -3968,7 +3968,14 @@ Forbidden defaults
         // shell guard / build trigger so Rollup never sees an unresolved
         // import. See src/server/repair-all.server.ts.
         {
-          const repaired = runAllRepairs(nextFiles);
+          // On an edit turn (project already had files), lock the cosmetic
+          // repair stages to the files this turn actually touched. Otherwise a
+          // targeted ask silently restyles pages the user never mentioned.
+          const scopeLock =
+            turnBaselineFiles.length > 0
+              ? { touchedPaths: diffChangedPaths(turnBaselineFiles, nextFiles) }
+              : undefined;
+          const repaired = runAllRepairs(nextFiles, scopeLock ? { scopeLock } : undefined);
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
             nextFiles = repaired.files;
