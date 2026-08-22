@@ -30,8 +30,11 @@ import { supabase } from "@/integrations/supabase/client";
  */
 const deployUrlCache = new Map<string, Promise<string | null>>();
 
-function fetchDeployUrl(projectId: string): Promise<string | null> {
-  const cached = deployUrlCache.get(projectId);
+function fetchDeployUrl(projectId: string, buildId?: string | null): Promise<string | null> {
+  // Keyed by build so a fresh deploy re-resolves instead of serving the URL
+  // of the previous build forever.
+  const key = `${projectId}:${buildId ?? ""}`;
+  const cached = deployUrlCache.get(key);
   if (cached) return cached;
   const p = (async () => {
     try {
@@ -47,7 +50,7 @@ function fetchDeployUrl(projectId: string): Promise<string | null> {
     }
   })();
 
-  deployUrlCache.set(projectId, p);
+  deployUrlCache.set(key, p);
   return p;
 }
 
@@ -88,7 +91,7 @@ export function ProjectThumbnail({
   useEffect(() => {
     if (!needsDeployUrl) return;
     let alive = true;
-    void fetchDeployUrl(projectId).then((url) => {
+    void fetchDeployUrl(projectId, buildId).then((url) => {
       if (alive) setDeployUrl(url);
     });
     return () => {
