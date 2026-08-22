@@ -145,6 +145,13 @@ function ensureFontTokens(css: string, display: string, body: string): { css: st
     changed = true;
   }
 
+  // Tailwind's `font-sans` utility must follow the locked body face too,
+  // otherwise half the UI keeps rendering in the scaffold's Inter.
+  if (/--font-sans\s*:/.test(probe) && !new RegExp(`--font-sans\\s*:\\s*"${body}"`).test(out)) {
+    out = forceFamily(out, "font-sans", body);
+    changed = true;
+  }
+
   // Base typography floor — outside @theme so it emits real CSS.
   if (!/petal:type-floor/.test(out)) {
     out += `
