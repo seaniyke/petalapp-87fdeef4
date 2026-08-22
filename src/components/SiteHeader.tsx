@@ -98,6 +98,12 @@ export function SiteHeader() {
                 >
                   Gallery
                 </Link>
+                <Link
+                  to="/marketplace"
+                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                >
+                  Marketplace
+                </Link>
               </>
             ) : (
               <>
@@ -116,6 +122,14 @@ export function SiteHeader() {
                 >
                   <ImageIcon className="h-4 w-4" /> Gallery
                 </Link>
+                <Link
+                  to="/marketplace"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  activeProps={{ className: "bg-muted/60 text-foreground" }}
+                >
+                  <Store className="h-4 w-4" /> Marketplace
+                </Link>
+
               </>
             )}
           </nav>
