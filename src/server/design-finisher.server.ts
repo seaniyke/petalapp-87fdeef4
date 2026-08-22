@@ -41,6 +41,15 @@ const SYSTEM_FAMILIES =
   /^(ui-sans-serif|system-ui|-apple-system|sans-serif|serif|monospace|ui-serif|ui-monospace|inherit|initial|georgia|cambria|times new roman|times|arial|helvetica|segoe ui|roboto)$/i;
 
 
+/**
+ * Remove block comments before probing for declarations. Without this a
+ * commented-out `--font-display:` line reads as a real declaration and the
+ * finisher concludes the app already has a type system.
+ */
+function stripCssComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, "");
+}
+
 function findStyles(files: ProjectFile[]): ProjectFile | undefined {
   for (const p of STYLE_PATHS) {
     const f = files.find((x) => x.path === p);
@@ -50,12 +59,15 @@ function findStyles(files: ProjectFile[]): ProjectFile | undefined {
 }
 
 /** First quoted family name of a `--font-x: "Foo", ...;` declaration. */
-function readFamily(css: string, token: string): string | null {
+function readFamily(rawCss: string, token: string): string | null {
+  const css = stripCssComments(rawCss);
   const rx = new RegExp(`--${token}\\s*:\\s*([^;]+);`);
   const m = rx.exec(css);
   if (!m) return null;
   const first = (m[1] ?? "").split(",")[0]?.trim().replace(/^['"]|['"]$/g, "") ?? "";
-  if (!first || SYSTEM_FAMILIES.test(first)) return null;
+  // `--font-display: var(--font-sans)` is a pointer, not a family: treat it as
+  // unset so the locked pair wins instead of silently inheriting Inter.
+  if (!first || first.startsWith("var(") || SYSTEM_FAMILIES.test(first)) return null;
   return first;
 }
 
@@ -82,12 +94,13 @@ function alreadyLoads(content: string, display: string, body: string): boolean {
 // ---------------------------------------------------------------------------
 
 /** True when `--font-x` is declared but points at a system stack. */
-function declaredAsSystem(css: string, token: string): boolean {
+function declaredAsSystem(rawCss: string, token: string): boolean {
+  const css = stripCssComments(rawCss);
   const rx = new RegExp(`--${token}\\s*:\\s*([^;]+);`);
   const m = rx.exec(css);
   if (!m) return false;
   const first = (m[1] ?? "").split(",")[0]?.trim().replace(/^['"]|['"]$/g, "") ?? "";
-  return !first || SYSTEM_FAMILIES.test(first);
+  return !first || first.startsWith("var(") || SYSTEM_FAMILIES.test(first);
 }
 
 /** Replace every declaration of `--font-x` with the locked family. */
@@ -102,8 +115,9 @@ function ensureFontTokens(css: string, display: string, body: string): { css: st
   let out = css;
   let changed = false;
 
-  const hasDisplay = /--font-display\s*:/.test(out);
-  const hasBody = /--font-body\s*:/.test(out);
+  const probe = stripCssComments(out);
+  const hasDisplay = /--font-display\s*:/.test(probe);
+  const hasBody = /--font-body\s*:/.test(probe);
   if (!hasDisplay || !hasBody) {
     const decl =
       `${hasDisplay ? "" : `  --font-display: "${display}", ui-sans-serif, system-ui, sans-serif;\n`}` +

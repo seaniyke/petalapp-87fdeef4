@@ -388,6 +388,14 @@ import { cn } from "@/lib/utils";
  *     <Grid cols={1} md={3} gap={6}>...</Grid>
  *   </Section>
  */
+/**
+ * Nesting guard. Kit blocks render their own <Section>, and pages routinely
+ * wrap those blocks in another <Section>. Two stacked paddings produce the
+ * tall empty bands users read as "unfinished design", so a nested Section
+ * contributes no vertical padding.
+ */
+const SectionDepth = React.createContext(0);
+
 export function Section({
   eyebrow,
   title,
@@ -405,24 +413,29 @@ export function Section({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const pad = size === "sm" ? "py-12" : size === "lg" ? "py-28" : "py-20";
+  const depth = React.useContext(SectionDepth);
+  const nested = depth > 0;
+  const pad = nested ? "py-0" : size === "sm" ? "py-12" : size === "lg" ? "py-24 md:py-28" : "py-16 md:py-20";
   const a = align === "center" ? "items-center text-center" : "items-start text-left";
   const titleSize = size === "lg" ? "text-4xl md:text-5xl" : size === "sm" ? "text-2xl md:text-3xl" : "text-3xl md:text-4xl";
+  const hasHeader = Boolean(eyebrow || title || description);
   return (
-    <section className={cn("w-full", pad, className)}>
-      {(eyebrow || title || description) && (
-        <header className={cn("flex flex-col gap-3", a, "mb-10 max-w-3xl", align === "center" && "mx-auto")}>
-          {eyebrow && (
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</span>
-          )}
-          {title && (
-            <h2 className={cn("font-semibold tracking-tight text-foreground", titleSize)}>{title}</h2>
-          )}
-          {description && <p className="text-base text-muted-foreground md:text-lg">{description}</p>}
-        </header>
-      )}
-      {children}
-    </section>
+    <SectionDepth.Provider value={depth + 1}>
+      <section className={cn("w-full", pad, className)}>
+        {hasHeader && (
+          <header className={cn("flex flex-col gap-3", a, "mb-10 max-w-3xl", align === "center" && "mx-auto")}>
+            {eyebrow && (
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</span>
+            )}
+            {title && (
+              <h2 className={cn("font-display font-semibold tracking-tight text-foreground", titleSize)}>{title}</h2>
+            )}
+            {description && <p className="text-base text-muted-foreground md:text-lg">{description}</p>}
+          </header>
+        )}
+        {children}
+      </section>
+    </SectionDepth.Provider>
   );
 }
 `;
