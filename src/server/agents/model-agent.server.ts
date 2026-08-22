@@ -188,7 +188,7 @@ export async function runModelAgent(
 
   try {
     const res = await aiChatCompletions({
-      feature: "planning",
+      feature: "preflight",
       budgetAware: true,
       body: {
         model,
