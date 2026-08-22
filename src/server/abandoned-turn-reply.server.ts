@@ -75,19 +75,16 @@ export async function persistAbandonedTurnReply(
     // Already written (double-fire, or a reconnected client beat us to it).
     const { data: existing } = await client
       .from("messages")
-      .select("id, content")
+      .select("id, role, content")
       .eq("project_id", input.projectId)
       .order("created_at", { ascending: false })
       .limit(8);
     if ((existing ?? []).some((row) => row.content?.includes(input.turnId))) {
       return false;
     }
-    // If the last stored message is already an assistant reply, the client
-    // did land its own write before dying — don't stack a second bubble.
-    const newest = (existing ?? [])[0];
-    if (newest && (newest as { role?: string }).role === "assistant") {
-      // `role` isn't in the select above on older schemas; re-check safely.
-    }
+    // If the newest stored message is already an assistant reply, the client
+    // landed its own write before dying — don't stack a second bubble.
+    if ((existing ?? [])[0]?.role === "assistant") return false;
 
     const payload = JSON.stringify({
       content: bodyFor(input),
