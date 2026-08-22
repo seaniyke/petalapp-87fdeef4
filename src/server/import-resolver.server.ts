@@ -334,6 +334,8 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
   const byPath = new Map(files.map((f) => [f.path, f.content]));
   const rewrites: ImportRepairResult["rewrites"] = [];
   const stubsCreated: string[] = [];
+  const referenced = collectReferenced(byPath);
+  const consumedOrphans = new Set<string>();
 
   // We mutate `byPath` as we go (rewrites + new stubs both feed back into
   // subsequent resolution attempts on later files).
