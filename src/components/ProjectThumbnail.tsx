@@ -202,7 +202,17 @@ function resolveLiveUrl({
   return null;
 }
 
-function screenshotUrl(target: string, fit: "cover" | "contain" = "cover"): string {
+function screenshotUrl(
+  target: string,
+  fit: "cover" | "contain" = "cover",
+  attempt = 0,
+): string {
+  // Backup provider — WordPress mShots renders cold pages reliably (slower,
+  // but it never rate-limits), so a flaky Microlink call no longer costs the
+  // card its thumbnail.
+  if (attempt > 0) {
+    return `https://s.wordpress.com/mshots/v1/${encodeURIComponent(target)}?w=${fit === "contain" ? 1200 : 1280}&h=${fit === "contain" ? 900 : 800}`;
+  }
   // Microlink free endpoint — returns the screenshot image directly. We pass
   // viewport sized for a nice card crop and a short waitUntil so SPAs render
   // before the snapshot is taken.
