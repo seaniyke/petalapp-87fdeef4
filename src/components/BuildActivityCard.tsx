@@ -395,39 +395,59 @@ export function BuildActivityCard({
             ticks each one off as its files land, so the user can follow the
             work instead of watching an opaque spinner. */}
         {buildSteps && buildSteps.length > 0 && (
-          <ol className="space-y-1.5 border-t border-border/60 px-3.5 py-2.5">
-            {buildSteps.map((step, i) => {
-              const done = doneStepIndexes?.includes(i) || isComplete;
-              const active = !done && i === activeStepIndex;
-              return (
-                <li
-                  key={`${i}-${step}`}
-                  className="flex items-start gap-2 text-[12.5px] animate-fade-in motion-reduce:animate-none"
-                >
-                  <span className="mt-[3px] inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden>
-                    {done ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                    ) : active ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                    ) : (
-                      <span className="h-1.5 w-1.5 rounded-full bg-border" />
-                    )}
-                  </span>
-                  <span
-                    className={
-                      done
-                        ? "font-medium text-muted-foreground line-through decoration-muted-foreground/40"
-                        : active
-                          ? "font-bold text-foreground"
-                          : "font-medium text-muted-foreground/70"
-                    }
+          <div className="border-t border-border/60 px-3.5 py-2.5">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground/80">
+                {isComplete ? "What Petal did" : "Petal's plan"}
+              </span>
+              {elapsed > 0 && (
+                <span className="shrink-0 font-mono text-[10.5px] font-semibold text-muted-foreground/70 tabular-nums">
+                  {isComplete ? `Took ${formatElapsed(elapsed)}` : `Running for ${formatElapsed(elapsed)}`}
+                </span>
+              )}
+            </div>
+            <ol className="space-y-1.5">
+              {buildSteps.map((step, i) => {
+                const done = doneStepIndexes?.includes(i) || isComplete;
+                // Exactly one step is ever in flight — the plan is executed in
+                // stages, never side by side.
+                const active = !done && isActive && i === activeStepIndex;
+                const dur = stepDuration(i);
+                return (
+                  <li
+                    key={`${i}-${step}`}
+                    className="flex items-start gap-2 text-[12.5px] animate-fade-in motion-reduce:animate-none"
                   >
-                    {step}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
+                    <span className="mt-[3px] inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden>
+                      {done ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : active ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                      ) : (
+                        <span className="h-1.5 w-1.5 rounded-full bg-border" />
+                      )}
+                    </span>
+                    <span
+                      className={`min-w-0 flex-1 ${
+                        done
+                          ? "font-medium text-muted-foreground"
+                          : active
+                            ? "font-bold text-foreground"
+                            : "font-medium text-muted-foreground/70"
+                      }`}
+                    >
+                      {step}
+                    </span>
+                    {dur && (done || active) && (
+                      <span className="shrink-0 pt-[2px] font-mono text-[10.5px] font-semibold text-muted-foreground/60 tabular-nums">
+                        {dur}
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
         )}
         {isComplete && typeof creditsCharged === "number" && (
           <div className="border-t border-border/60 p-2">
