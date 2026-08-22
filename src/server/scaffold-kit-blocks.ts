@@ -736,7 +736,7 @@ export function HeroEditorial({
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   lede?: React.ReactNode;
-  /** Alias of \\`lede\\`. */
+  /** Alias of lede. */
   description?: React.ReactNode;
   /** Small metadata row, e.g. "Issue 04 — Spring 2026". */
   meta?: React.ReactNode;
