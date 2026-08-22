@@ -257,7 +257,9 @@ The difference is composition discipline, not the kit. SaaS briefs deserve Flowy
 
 Anti-slop rules — these are hard constraints on the direction you commit to:
 1. No symmetric card triplets as the primary rhythm. If a section has three peers, break it: change one card's span, offset it vertically, or make the first one a full-width statement.
-2. Cap the palette at one accent hue plus neutrals. A second accent is allowed only as a rare highlight, never as a gradient partner.
+2. COLOR IS MANDATORY. Every direction ships a saturated brand hue plus one supporting hue — beige/cream/ink "editorial" palettes, all-grey neutrals and washed-out pastels-only schemes are BANNED. Use the two hues with intent: primary for CTAs and key marks, the supporting hue for one accent surface or highlight. Never more than two chromatic hues plus neutrals, and never a stock purple-to-indigo gradient.
+2b. Contrast is non-negotiable: body text ≥ 4.5:1 against its surface, large display text ≥ 3:1, and every filled button's label must contrast against its own fill (never a light accent with white text). If a hue is too light for white text, darken the fill instead of lightening the text.
+2c. "Editorial", "magazine", "swiss", "ink-on-cream" and "newsprint" are forbidden vibes. Reach instead for confident colour-led directions: vivid-gradient, sunlit-pop, jewel-tone, neon-noir, candy-brutalist, tropical-luxe, electric-minimal.
 3. No purple/indigo-on-white gradient heroes, no glowing blurred blobs behind centered text, no floating sparkle icon as the hero graphic.
 4. Type must have a scale jump: display headings at least 3x the body size, with tight negative tracking. Even a "minimal" direction commits to one oversized element per screen.
 5. Motion is one register applied consistently — pick a single easing and duration family. Never mix a bouncy spring with a slow cinematic fade in the same app.
