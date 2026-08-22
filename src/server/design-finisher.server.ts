@@ -38,7 +38,8 @@ const DEFAULT_PAIR = { display: "Sora", body: "Manrope" };
 
 /** Families that don't need loading (system stacks). */
 const SYSTEM_FAMILIES =
-  /^(ui-sans-serif|system-ui|-apple-system|sans-serif|serif|monospace|ui-serif|ui-monospace|inherit|initial)$/i;
+  /^(ui-sans-serif|system-ui|-apple-system|sans-serif|serif|monospace|ui-serif|ui-monospace|inherit|initial|georgia|cambria|times new roman|times|arial|helvetica|segoe ui|roboto)$/i;
+
 
 function findStyles(files: ProjectFile[]): ProjectFile | undefined {
   for (const p of STYLE_PATHS) {
