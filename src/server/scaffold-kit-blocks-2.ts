@@ -1283,7 +1283,7 @@ import { cn } from "@/lib/utils";
 
 type LogoEntry = string | { name?: string; src?: string; url?: string };
 
-function normalizeLogo(l: LogoEntry, i: number): { name: string; src?: string } {
+function normalizeLogo(l: LogoEntry): { name: string; src?: string } {
   if (typeof l === "string") return { name: "", src: l };
   return { name: l.name ?? "", src: l.src ?? l.url };
 }
@@ -1319,7 +1319,7 @@ export function LogosMarquee({
   duration?: number;
   className?: string;
 }) {
-  const list = Array.isArray(logos) ? logos.map(normalizeLogo) : [];
+  const list = Array.isArray(logos) ? logos.map((l) => normalizeLogo(l)) : [];
   const label = eyebrow ?? heading ?? title;
   return (
     <section className={cn("py-12 md:py-16", className)}>
@@ -1339,15 +1339,20 @@ export function LogosMarquee({
                 {l.src && (
                   <img
                     src={l.src}
-                    alt=""
-                    aria-hidden
-                    className="h-8 w-8 shrink-0 rounded-full object-cover"
+                    alt={l.name || ""}
+                    className={
+                      l.name
+                        ? "h-8 w-8 shrink-0 rounded-full object-cover"
+                        : "h-8 w-auto max-w-[150px] shrink-0 object-contain"
+                    }
                     loading="lazy"
                   />
                 )}
-                <span className="whitespace-nowrap text-base font-semibold tracking-tight text-foreground/80">
-                  {l.name}
-                </span>
+                {l.name && (
+                  <span className="whitespace-nowrap text-base font-semibold tracking-tight text-foreground/80">
+                    {l.name}
+                  </span>
+                )}
               </div>
             ))}
           </Marquee>
