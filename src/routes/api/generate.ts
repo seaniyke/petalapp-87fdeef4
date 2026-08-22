@@ -161,6 +161,7 @@ import { entriesFromRepairNotes, recordRepairs, signatureOf } from "@/server/rep
 import { analyzeEditScope, scopeDisclosure } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
 import {
   proposeChangePlan,
   savePlan,
