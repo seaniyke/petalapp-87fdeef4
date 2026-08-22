@@ -511,28 +511,27 @@ function Landing() {
             <>
               <div className="mx-auto inline-flex flex-wrap items-center justify-center gap-2">
                 <Link
-                  to="/coffee"
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs text-foreground backdrop-blur transition hover:border-primary/50 hover:text-primary"
+                  to="/why/$slug"
+                  params={{ slug: "pay-as-you-build" }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-medium text-foreground backdrop-blur transition hover:border-primary/50 hover:text-primary"
                 >
-                  ☕ Buy us a cup of coffee
+                  Credits that never expire — no subscription
                 </Link>
               </div>
 
-              <h1 className="mt-6 font-display text-[2.25rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-7xl">
-                From Idea to{" "}
-                <span className="relative inline-block whitespace-nowrap">
-                  <span className="relative z-10">App in Days.</span>
-                  <span
-                    aria-hidden
-                    className="absolute inset-x-0 bottom-[0.08em] z-0 h-[0.28em] rounded-full bg-primary/35"
-                  />
-                </span>
+              {/* One statement, one accent. The italic line carries the
+                  feeling; the roman line carries the promise. */}
+              <h1 className="mt-7 font-display text-[3rem] font-black leading-[0.88] tracking-[-0.045em] text-balance sm:text-7xl md:text-[5.75rem]">
+                Build it. Ship it.
+                <br />
+                <span className="italic font-normal text-primary">Then sell it.</span>
               </h1>
 
-
-              <p className="mx-auto mt-5 max-w-xl text-balance text-base font-medium text-muted-foreground sm:text-xl md:text-2xl">
-                Describe what you want to build. Start free with trial credits — no card required.
+              <p className="mx-auto mt-6 max-w-lg text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Describe a web app, mobile app, backend or extension. Petal builds the real thing — and Petal is the
+                only place you can put it up for sale when it's done.
               </p>
+
 
             </>
           )}
