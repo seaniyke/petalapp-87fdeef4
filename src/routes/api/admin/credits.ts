@@ -689,6 +689,89 @@ export const Route = createFileRoute("/api/admin/credits")({
             });
           }
 
+          // Phase F — per-agent observability for the multi-agent planning
+          // board. One row per specialist per turn; aggregated here.
+          if (body.action === "agent_stats") {
+            const sinceHours = Math.max(1, Math.min(24 * 30, Number(body.since_hours ?? 24) | 0));
+            const since = new Date(Date.now() - sinceHours * 3_600_000).toISOString();
+            const { data: runsRaw, error: arErr } = await supabaseAdmin
+              .from("agent_runs")
+              .select("turn_id, agent, profile, complexity, status, attempts, ms, cost_micro_usd, decisions, objections, error, created_at")
+              .gte("created_at", since)
+              .order("created_at", { ascending: false })
+              .limit(10000);
+            if (arErr) return Response.json({ error: arErr.message }, { status: 500 });
+
+            const runs = (runsRaw ?? []) as Array<{
+              turn_id: string;
+              agent: string;
+              profile: string;
+              status: string;
+              ms: number;
+              cost_micro_usd: number;
+              decisions: number;
+              objections: number;
+              error: string | null;
+            }>;
+
+            const agentAgg = new Map<
+              string,
+              { agent: string; runs: number; ok: number; degraded: number; failed: number; ms: number[]; decisions: number; objections: number; costMicro: number; lastError: string | null }
+            >();
+            const profileAgg = new Map<string, number>();
+            const turnIds = new Set<string>();
+
+            for (const r of runs) {
+              turnIds.add(r.turn_id);
+              profileAgg.set(r.profile, (profileAgg.get(r.profile) ?? 0) + 1);
+              let a = agentAgg.get(r.agent);
+              if (!a) {
+                a = { agent: r.agent, runs: 0, ok: 0, degraded: 0, failed: 0, ms: [], decisions: 0, objections: 0, costMicro: 0, lastError: null };
+                agentAgg.set(r.agent, a);
+              }
+              a.runs += 1;
+              if (r.status === "ok") a.ok += 1;
+              else if (r.status === "degraded") a.degraded += 1;
+              else if (r.status === "failed") a.failed += 1;
+              a.ms.push(Number(r.ms || 0));
+              a.decisions += Number(r.decisions || 0);
+              a.objections += Number(r.objections || 0);
+              a.costMicro += Number(r.cost_micro_usd || 0);
+              if (r.error && !a.lastError) a.lastError = r.error;
+            }
+
+            const p95 = (arr: number[]) => {
+              if (!arr.length) return 0;
+              const s = [...arr].sort((x, y) => x - y);
+              return s[Math.min(s.length - 1, Math.floor(0.95 * s.length))];
+            };
+
+            return Response.json({
+              since_hours: sinceHours,
+              total_runs: runs.length,
+              total_turns: turnIds.size,
+              profiles: Array.from(profileAgg.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([profile, count]) => ({ profile, count })),
+              agent_stats: Array.from(agentAgg.values())
+                .sort((a, b) => b.runs - a.runs)
+                .map((a) => ({
+                  agent: a.agent,
+                  runs: a.runs,
+                  ok: a.ok,
+                  degraded: a.degraded,
+                  failed: a.failed,
+                  ok_pct: a.runs ? Math.round((a.ok / a.runs) * 100) : 0,
+                  avg_ms: a.runs ? Math.round(a.ms.reduce((s, n) => s + n, 0) / a.runs) : 0,
+                  p95_ms: p95(a.ms),
+                  decisions: a.decisions,
+                  objections: a.objections,
+                  cost_micro_usd: a.costMicro,
+                  last_error: a.lastError,
+                })),
+            });
+          }
+
           if (body.action === "pipeline_failures") {
             const sinceHours = Math.max(1, Math.min(24 * 30, Number(body.since_hours ?? 24) | 0));
             const since = new Date(Date.now() - sinceHours * 3_600_000).toISOString();

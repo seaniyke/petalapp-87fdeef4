@@ -2195,6 +2195,16 @@ Forbidden defaults
       orchestrationBlock = `\n\n### ${orchestration.block}\n`;
     }
     console.log(summarizeOrchestration(orchestration.telemetry));
+    // Phase F — per-agent observability. Fire-and-forget: never blocks a build.
+    void import("@/server/agents/telemetry.server")
+      .then(({ recordAgentRuns }) =>
+        recordAgentRuns({
+          telemetry: orchestration.telemetry,
+          projectId: body.projectId ?? null,
+          userId: userId ?? null,
+        }),
+      )
+      .catch(() => {});
   } catch (e) {
     console.warn("[orchestrator] skipped:", e instanceof Error ? e.message : String(e));
   }

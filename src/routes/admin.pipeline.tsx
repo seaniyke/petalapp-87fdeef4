@@ -45,6 +45,29 @@ type RecentEvent = {
   details: Record<string, unknown> | null;
 };
 
+type AgentStat = {
+  agent: string;
+  runs: number;
+  ok: number;
+  degraded: number;
+  failed: number;
+  ok_pct: number;
+  avg_ms: number;
+  p95_ms: number;
+  decisions: number;
+  objections: number;
+  cost_micro_usd: number;
+  last_error: string | null;
+};
+
+type AgentStats = {
+  since_hours: number;
+  total_runs: number;
+  total_turns: number;
+  profiles: Array<{ profile: string; count: number }>;
+  agent_stats: AgentStat[];
+};
+
 type Stats = {
   since_hours: number;
   total_events: number;
@@ -65,6 +88,7 @@ const WINDOWS = [
 function AdminPipelinePage() {
   const { ready } = useAdminGuard("/admin/pipeline");
   const [data, setData] = useState<Stats | null>(null);
+  const [agents, setAgents] = useState<AgentStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [hours, setHours] = useState(24);
 
@@ -76,6 +100,11 @@ function AdminPipelinePage() {
       .then((d) => !cancelled && setData(d))
       .catch((e) => !cancelled && toast.error(e instanceof Error ? e.message : "Load failed"))
       .finally(() => !cancelled && setLoading(false));
+    // Phase F — the multi-agent planning board's own telemetry. Loaded
+    // separately so a missing/empty table never blanks the tier report.
+    adminApi<AgentStats>({ action: "agent_stats", since_hours: hours })
+      .then((d) => !cancelled && setAgents(d))
+      .catch(() => !cancelled && setAgents(null));
     return () => {
       cancelled = true;
     };
@@ -230,6 +259,66 @@ function AdminPipelinePage() {
             </CardContent>
           </Card>
         </section>
+
+        <Card className="mb-6 border-border/60">
+          <CardContent className="p-5">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-sm font-medium tracking-tight">Planning board (agents)</h3>
+              {agents && (
+                <p className="text-[11px] text-muted-foreground">
+                  {agents.total_runs} run(s) across {agents.total_turns} turn(s)
+                  {agents.profiles.length
+                    ? ` · ${agents.profiles.map((p) => `${p.profile} ${p.count}`).join(" · ")}`
+                    : ""}
+                </p>
+              )}
+            </div>
+            {!agents ? (
+              <p className="text-xs text-muted-foreground">No agent telemetry in this window.</p>
+            ) : agents.agent_stats.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                The board did not convene in this window.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-left text-muted-foreground">
+                    <tr className="border-b border-border/60">
+                      <th className="py-2 pr-3 font-medium">Agent</th>
+                      <th className="py-2 pr-3 font-medium">Runs</th>
+                      <th className="py-2 pr-3 font-medium">OK%</th>
+                      <th className="py-2 pr-3 font-medium">Degraded</th>
+                      <th className="py-2 pr-3 font-medium">Failed</th>
+                      <th className="py-2 pr-3 font-medium">avg ms</th>
+                      <th className="py-2 pr-3 font-medium">p95 ms</th>
+                      <th className="py-2 pr-3 font-medium">Decisions</th>
+                      <th className="py-2 font-medium">Objections</th>
+                    </tr>
+                  </thead>
+                  <tbody className="font-mono tabular-nums">
+                    {agents.agent_stats.map((a) => (
+                      <tr key={a.agent} className="border-b border-border/40">
+                        <td className="py-2 pr-3 font-sans font-medium">{a.agent}</td>
+                        <td className="py-2 pr-3">{a.runs}</td>
+                        <td
+                          className={`py-2 pr-3 ${a.ok_pct >= 95 ? "text-emerald-600" : a.ok_pct >= 70 ? "text-amber-600" : "text-red-600"}`}
+                        >
+                          {a.ok_pct}%
+                        </td>
+                        <td className="py-2 pr-3 text-amber-600">{a.degraded}</td>
+                        <td className="py-2 pr-3 text-red-600">{a.failed}</td>
+                        <td className="py-2 pr-3">{a.avg_ms}</td>
+                        <td className="py-2 pr-3">{a.p95_ms}</td>
+                        <td className="py-2 pr-3">{a.decisions}</td>
+                        <td className="py-2">{a.objections}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="border-border/60">
           <CardContent className="p-5">

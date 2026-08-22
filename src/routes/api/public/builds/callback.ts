@@ -19,6 +19,7 @@ import {
 } from "@/lib/verification-report";
 import { verifySignature } from "@/server/builder.server";
 import { judgeDefects } from "@/server/defect-judge.server";
+import { routeJudgedDefects, summarizeRouting } from "@/server/agents/qa-board";
 
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
@@ -188,6 +189,20 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     console.info(
       `[builds/callback] severity tier=${partitioned.tier} blocking=${partitioned.blocking.length} visual=${partitioned.visual.length} advisory=${partitioned.advisory.length} for ${payload.buildId}`,
     );
+
+    // Phase E — QA board: give every finding an owning layer plus a scoped
+    // repair brief, so a repair round targets the layer that owns the defect
+    // instead of re-deriving the problem class from a flat list of strings.
+    const routing = routeJudgedDefects(partitioned);
+    if (routing.defects.length) console.info(summarizeRouting(routing));
+    if (verification && routing.defects.length) {
+      (verification as Record<string, unknown>).defectRouting = {
+        defects: routing.defects,
+        blockingOwners: routing.blockingOwners,
+        byOwner: routing.byOwner,
+        brief: routing.brief,
+      };
+    }
 
     if (partitioned.noise.length > 0 && verification) {
       console.warn(

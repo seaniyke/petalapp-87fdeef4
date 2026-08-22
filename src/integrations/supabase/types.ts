@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_runs: {
+        Row: {
+          agent: string
+          attempts: number
+          complexity: number
+          cost_micro_usd: number
+          created_at: string
+          decisions: number
+          error: string | null
+          id: string
+          ms: number
+          objections: number
+          optional: boolean
+          profile: string
+          project_id: string | null
+          status: string
+          turn_id: string
+          user_id: string | null
+        }
+        Insert: {
+          agent: string
+          attempts?: number
+          complexity?: number
+          cost_micro_usd?: number
+          created_at?: string
+          decisions?: number
+          error?: string | null
+          id?: string
+          ms?: number
+          objections?: number
+          optional?: boolean
+          profile: string
+          project_id?: string | null
+          status: string
+          turn_id: string
+          user_id?: string | null
+        }
+        Update: {
+          agent?: string
+          attempts?: number
+          complexity?: number
+          cost_micro_usd?: number
+          created_at?: string
+          decisions?: number
+          error?: string | null
+          id?: string
+          ms?: number
+          objections?: number
+          optional?: boolean
+          profile?: string
+          project_id?: string | null
+          status?: string
+          turn_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_call_log: {
         Row: {
           cached_prompt_tokens: number | null
