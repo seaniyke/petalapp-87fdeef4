@@ -961,7 +961,7 @@ function Landing() {
                 </h2>
               </div>
 
-              <div className="mt-16 grid gap-px sm:grid-cols-5">
+              <div className="mt-16 grid gap-4 sm:grid-cols-5">
                 {/* Wide slot — marketplace */}
                 <Link
                   to="/why/$slug"
