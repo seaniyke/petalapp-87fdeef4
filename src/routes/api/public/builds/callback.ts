@@ -23,6 +23,38 @@ import { routeJudgedDefects, summarizeRouting } from "@/server/agents/qa-board";
 
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
+import { scoreCraftQA, type CraftContract } from "@/server/craft-qa.server";
+
+/**
+ * Pull the committed design contract for a project so craft QA judges the app
+ * against what Petal promised to build, not against generic taste. Missing
+ * intelligence is fine — the reviewer falls back to general craft standards.
+ */
+async function loadCraftContract(projectId: string): Promise<CraftContract | null> {
+  try {
+    const { loadPic } = await import("@/server/pic/pic-store.server");
+    const stored = await loadPic(projectId);
+    const pic = stored?.pic;
+    if (!pic) return null;
+    const design = pic.design;
+    return {
+      productName: pic.productName ?? null,
+      summary: pic.understanding?.summary ?? null,
+      palette: design
+        ? [design.colors?.primary, design.colors?.accent, design.colors?.background]
+            .map((c) => (typeof c === "string" ? c : (c as { value?: string })?.value))
+            .filter((c): c is string => typeof c === "string" && c.length > 0)
+        : null,
+      typography: design
+        ? `${design.typography?.displayFamily ?? ""} / ${design.typography?.bodyFamily ?? ""}`.trim()
+        : null,
+      personality: design?.direction ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 
 /**
  * Browser-verification report. Kept loose on purpose: the builder owns the
