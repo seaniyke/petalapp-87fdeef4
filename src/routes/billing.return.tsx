@@ -176,11 +176,15 @@ function BillingReturn() {
           <h1 className="text-2xl font-semibold">
             {state.purpose === "domain_purchase"
               ? "Domain registered"
+              : state.purpose === "marketplace"
+              ? "Product unlocked"
               : "Payment received"}
           </h1>
           <p className="mt-2 text-muted-foreground">
             {state.purpose === "plan"
               ? "Your plan is active. We've added $5 of runtime credit so you can spin up backends, email, and domains right away."
+              : state.purpose === "marketplace"
+              ? "It's yours. We're taking you back to the product — hit \u201cOpen in Petal\u201d and it lands in your projects."
               : state.purpose === "domain_purchase"
               ? "Your domain is live. We've connected it to your project and SSL is provisioning — usually ready within a minute."
               : "Your credits have been added to your wallet."}

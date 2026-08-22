@@ -17,6 +17,8 @@ import {
   BookOpen,
   LogIn,
   X,
+  Store,
+  Tag,
 } from "lucide-react";
 import {
   Sheet,
@@ -81,6 +83,18 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
               onClick={close}
               icon={<ImageIcon className="h-4 w-4" />}
               label="Gallery"
+            />
+            <RowLink
+              to="/marketplace"
+              onClick={close}
+              icon={<Store className="h-4 w-4" />}
+              label="Marketplace"
+            />
+            <RowLink
+              to="/sell"
+              onClick={close}
+              icon={<Tag className="h-4 w-4" />}
+              label="Sell your app"
             />
             {user && (
               <RowButton
@@ -211,7 +225,7 @@ function RowLink({
   icon,
   label,
 }: {
-  to: "/" | "/projects" | "/gallery" | "/profile" | "/admin" | "/docs" | "/templates" | "/packs" | "/themes" | "/changelog" | "/privacy" | "/terms";
+  to: "/" | "/projects" | "/gallery" | "/marketplace" | "/sell" | "/profile" | "/admin" | "/docs" | "/templates" | "/packs" | "/themes" | "/changelog" | "/privacy" | "/terms";
   onClick: () => void;
   icon: React.ReactNode;
   label: string;

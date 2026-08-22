@@ -18,16 +18,21 @@ import {
   type PublicListing,
 } from "@/lib/marketplace";
 
+function titleFromSlug(slug: string): string {
+  const words = slug.replace(/-/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Product";
+}
+
 export const Route = createFileRoute("/marketplace/$slug")({
-  head: () => ({
+  head: ({ params }) => ({
     meta: [
-      { title: "Product · Petal Marketplace" },
+      { title: `${titleFromSlug(params.slug)} · Petal Marketplace` },
       {
         name: "description",
         content:
           "See what's inside this Petal product — screenshots, license terms and file count — then open it in the builder and make it yours.",
       },
-      { property: "og:title", content: "Petal Marketplace product" },
+      { property: "og:title", content: `${titleFromSlug(params.slug)} · Petal Marketplace` },
       {
         property: "og:description",
         content: "Open this ready-made app in Petal and customize it.",
@@ -93,6 +98,13 @@ function ListingDetailPage() {
       }
       if (listing.price_minor > 0 && !owned) {
         const url = await startListingCheckout(listing.slug);
+        // Remember the intent so the return trip can open the product for
+        // the buyer instead of making them find the button again.
+        try {
+          sessionStorage.setItem(`petal:mkt:pending:${listing.slug}`, "1");
+        } catch {
+          /* private mode — fall back to the manual button */
+        }
         window.location.assign(url);
         return;
       }
@@ -105,6 +117,21 @@ function ListingDetailPage() {
       setOpening(false);
     }
   }
+
+  // Coming back from a completed checkout: the listing is now owned, so
+  // deliver it straight away rather than showing an idle button.
+  useEffect(() => {
+    if (!listing || !owned || opening) return;
+    let pending = false;
+    try {
+      pending = sessionStorage.getItem(`petal:mkt:pending:${listing.slug}`) === "1";
+      if (pending) sessionStorage.removeItem(`petal:mkt:pending:${listing.slug}`);
+    } catch {
+      pending = false;
+    }
+    if (pending) void handleOpen();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing, owned]);
 
   if (loading) {
     return (

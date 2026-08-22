@@ -110,7 +110,7 @@ export function renderSectionLibraryBlock(archetypeTags: string[]): string {
   lines.push(``);
   lines.push(`RULES:`);
   lines.push(`- Never ship: centered hero + 3-column feature icon grid + 3-tier pricing cards + accordion FAQ. That is the default AI landing and it is banned.`);
-  lines.push(`- Rotate hero variant per project. If the brief is developer/AI, prefer hero-terminal or hero-split. If editorial/luxury, prefer hero-editorial. If consumer/creator, prefer hero-video or hero-bento.`);
+  lines.push(`- Rotate hero variant per project. If the brief is developer/AI, prefer hero-terminal or hero-split. If luxury/agency, prefer hero-editorial BUT restyled with saturated colour (never cream/ink). If consumer/creator, prefer hero-video or hero-bento. Whatever the variant, the hero must carry real colour.`);
   lines.push(`- Never combine feat-grid-cards + test-masonry + price-3-tier — that trio is the tell of AI-drafted output.`);
   lines.push(`- Each chosen section lives in its own file under \`src/components/sections/\`, ≤120 lines, uses semantic tokens only.`);
   lines.push(``);

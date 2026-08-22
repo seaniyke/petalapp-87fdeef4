@@ -141,15 +141,18 @@ export function BuildActivityCard({
   onOpenPreview,
 }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const elapsed = useMemo(() => totalElapsedSeconds(phases), [phases]);
 
-  // Tick once a second while active so the elapsed counter updates.
-  const [, setTick] = useState(0);
+  // Tick once a second while active so the elapsed counter updates in real
+  // time. `tick` is a memo dependency on purpose — without it the elapsed
+  // value froze at whatever it was when `phases` last changed.
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!isActive) return;
     const t = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, [isActive]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const elapsed = useMemo(() => totalElapsedSeconds(phases), [phases, tick, isActive]);
 
   // Rolling "thinking log" — ring buffer of the last few narration lines,
   // timestamped so the details trace can roll them into "Thought for Ns".
