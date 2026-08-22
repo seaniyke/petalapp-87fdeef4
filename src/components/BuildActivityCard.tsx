@@ -18,6 +18,7 @@ import {
   Loader2,
   ListTree,
   Play,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
@@ -141,6 +142,7 @@ export function BuildActivityCard({
   onOpenPreview,
 }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(true);
 
   // Tick once a second while active so the elapsed counter updates in real
   // time. `tick` is a memo dependency on purpose — without it the elapsed
@@ -394,6 +396,103 @@ export function BuildActivityCard({
             )}
           </div>
         </div>
+        {/* Live activity — the early part of a turn has no plan and no files
+            yet, so the card used to sit still for a minute. This keeps the
+            work visible: phase chips, a rolling thought feed and the files as
+            they land, all inline and expandable. */}
+        {(isActive || thinkingLog.length > 0) && (
+          <div className="border-t border-border/60 px-3.5 py-2.5">
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {phases.map((p, i) => {
+                const state =
+                  p.status === "failed"
+                    ? "failed"
+                    : p.status === "done" || isComplete
+                      ? "done"
+                      : i === phaseIndex
+                        ? "active"
+                        : "todo";
+                return (
+                  <span
+                    key={`chip-${p.id}`}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold transition-colors ${
+                      state === "failed"
+                        ? "bg-destructive/10 text-destructive"
+                        : state === "done"
+                          ? "bg-emerald-500/10 text-emerald-600"
+                          : state === "active"
+                            ? "bg-primary/12 text-primary"
+                            : "bg-muted/60 text-muted-foreground/60"
+                    }`}
+                  >
+                    {state === "done" ? (
+                      <CheckCircle2 className="h-3 w-3" aria-hidden />
+                    ) : state === "active" ? (
+                      <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                    ) : (
+                      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50" aria-hidden />
+                    )}
+                    {p.label}
+                  </span>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setFeedOpen((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 text-left"
+            >
+              <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground/80">
+                Live activity
+              </span>
+              <span className="flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-muted-foreground/70 tabular-nums">
+                {fileCount > 0 && <span>{fileCount} file{fileCount === 1 ? "" : "s"}</span>}
+                {elapsed > 0 && <span>{formatElapsed(elapsed)}</span>}
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${feedOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
+              </span>
+            </button>
+
+            {feedOpen && (
+              <div className="mt-2 space-y-1.5">
+                {thinkingLog.length === 0 && (
+                  <div className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground animate-fade-in motion-reduce:animate-none">
+                    <Loader2 className="h-3 w-3 animate-spin text-primary" aria-hidden />
+                    {currentPhase?.label ?? "Getting started"}…
+                  </div>
+                )}
+                {thinkingLog.slice(-4).map((t, idx, arr) => (
+                  <div
+                    key={t.id}
+                    className={`flex items-start gap-2 text-[12px] animate-fade-in motion-reduce:animate-none ${
+                      idx === arr.length - 1 && isActive
+                        ? "font-semibold text-foreground"
+                        : "font-medium text-muted-foreground/75"
+                    }`}
+                  >
+                    <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" aria-hidden />
+                    <span className="min-w-0 flex-1 break-words">{t.text}</span>
+                  </div>
+                ))}
+                {writtenPaths && writtenPaths.length > 0 && (
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {writtenPaths.slice(-6).map((p) => (
+                      <code
+                        key={p}
+                        className="truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground animate-fade-in motion-reduce:animate-none"
+                      >
+                        {p.split("/").pop()}
+                      </code>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {/* Plan-first checklist. Petal states the steps before it starts and
             ticks each one off as its files land, so the user can follow the
             work instead of watching an opaque spinner. */}
