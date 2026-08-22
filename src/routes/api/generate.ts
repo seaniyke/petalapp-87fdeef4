@@ -5304,12 +5304,16 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   // pipeline starts streaming. The inner core also reads the body, so we
   // clone the request to avoid consuming it twice.
   let recorder: TurnRecorderHandle | null = null;
+  // Kept in scope so the terminal path can write the assistant reply itself
+  // when the browser is gone (see persistAbandonedTurnReply below).
+  let turnProjectId: string | null = null;
   const clone = request.clone();
   try {
     const peekAuth = await authorize(clone);
     if (typeof peekAuth === "string") {
       const peekBody = (await clone.json().catch(() => null)) as Body | null;
       if (peekBody?.projectId) {
+        turnProjectId = peekBody.projectId;
         recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
       }
     }
