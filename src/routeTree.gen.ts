@@ -34,6 +34,7 @@ import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as RCodeRouteImport } from './routes/r.$code'
 import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
 import { Route as PSlugRouteImport } from './routes/p.$slug'
+import { Route as MarketplaceSlugRouteImport } from './routes/marketplace.$slug'
 import { Route as FeaturesSlugRouteImport } from './routes/features.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as CoffeeThanksRouteImport } from './routes/coffee.thanks'
@@ -241,6 +242,11 @@ const PacksSlugRoute = PacksSlugRouteImport.update({
 const PSlugRoute = PSlugRouteImport.update({
   id: '/p/$slug',
   path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceSlugRoute = MarketplaceSlugRouteImport.update({
+  id: '/marketplace/$slug',
+  path: '/marketplace/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FeaturesSlugRoute = FeaturesSlugRouteImport.update({
@@ -727,6 +733,7 @@ export interface FileRoutesByFullPath {
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/features/$slug': typeof FeaturesSlugRoute
+  '/marketplace/$slug': typeof MarketplaceSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
@@ -837,6 +844,7 @@ export interface FileRoutesByTo {
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/features/$slug': typeof FeaturesSlugRoute
+  '/marketplace/$slug': typeof MarketplaceSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
@@ -948,6 +956,7 @@ export interface FileRoutesById {
   '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/features/$slug': typeof FeaturesSlugRoute
+  '/marketplace/$slug': typeof MarketplaceSlugRoute
   '/p/$slug': typeof PSlugRoute
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
@@ -1060,6 +1069,7 @@ export interface FileRouteTypes {
     | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/features/$slug'
+    | '/marketplace/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/r/$code'
@@ -1170,6 +1180,7 @@ export interface FileRouteTypes {
     | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/features/$slug'
+    | '/marketplace/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/r/$code'
@@ -1280,6 +1291,7 @@ export interface FileRouteTypes {
     | '/coffee/thanks'
     | '/email/unsubscribe'
     | '/features/$slug'
+    | '/marketplace/$slug'
     | '/p/$slug'
     | '/packs/$slug'
     | '/r/$code'
@@ -1390,6 +1402,7 @@ export interface RootRouteChildren {
   BillingReturnRoute: typeof BillingReturnRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   FeaturesSlugRoute: typeof FeaturesSlugRoute
+  MarketplaceSlugRoute: typeof MarketplaceSlugRoute
   PSlugRoute: typeof PSlugRoute
   RCodeRoute: typeof RCodeRoute
   ShareTokenRoute: typeof ShareTokenRoute
@@ -1621,6 +1634,13 @@ declare module '@tanstack/react-router' {
       path: '/p/$slug'
       fullPath: '/p/$slug'
       preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/$slug': {
+      id: '/marketplace/$slug'
+      path: '/marketplace/$slug'
+      fullPath: '/marketplace/$slug'
+      preLoaderRoute: typeof MarketplaceSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/features/$slug': {
@@ -2302,6 +2322,7 @@ const rootRouteChildren: RootRouteChildren = {
   BillingReturnRoute: BillingReturnRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   FeaturesSlugRoute: FeaturesSlugRoute,
+  MarketplaceSlugRoute: MarketplaceSlugRoute,
   PSlugRoute: PSlugRoute,
   RCodeRoute: RCodeRoute,
   ShareTokenRoute: ShareTokenRoute,
