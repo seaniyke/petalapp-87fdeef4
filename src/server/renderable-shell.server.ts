@@ -74,6 +74,22 @@ export function ensureRenderableShell(
 
   const app = byPath.get("src/App.tsx") ?? "";
   if (isMissingRootView(app)) {
+    // ROOT-CAUSE RECOVERY: in almost every "home screen came back empty"
+    // report the model DID write real pages/sections — it just never wrote
+    // (or truncated) src/App.tsx. Compose the root view from what exists
+    // before falling back to a placeholder + turn rollback.
+    const composed = composeRootApp(byPath);
+    if (composed) {
+      byPath.set("src/App.tsx", composed);
+      fixed.push("src/App.tsx");
+      return {
+        files: Array.from(byPath, ([path, content]) => ({ path, content })),
+        fixed,
+        degraded,
+      };
+    }
+  }
+  if (isMissingRootView(app)) {
     const eyebrow =
       subtypeHint === "marketing" ? "Landing page" :
       subtypeHint === "fullstack" ? "Platform" :
