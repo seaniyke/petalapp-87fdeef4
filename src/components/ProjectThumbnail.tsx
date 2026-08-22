@@ -214,11 +214,14 @@ function resolveLiveUrl({
   if (publishedUrl) return publishedUrl;
   if (customDomain) return `https://${customDomain}`;
   if (subdomain) return `https://${subdomain}.${PETAL_ROOT_DOMAIN}`;
-  // Not published yet — screenshot the project's own rendered preview so the
-  // gallery always has a real thumbnail the moment a build finishes.
-  if (projectId) return `https://${PETAL_ROOT_DOMAIN}/api/preview/${projectId}`;
+  // No live URL resolved yet. We deliberately do NOT point the screenshot
+  // service at /api/preview/:id — that route requires a bearer token, so the
+  // service would capture an empty auth wall and ship it as the thumbnail.
+  // The branded gradient tile is the honest fallback until a build deploys.
+  void projectId;
   return null;
 }
+
 
 function screenshotUrl(
   target: string,
