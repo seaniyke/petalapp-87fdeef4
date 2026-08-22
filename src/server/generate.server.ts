@@ -114,7 +114,8 @@ COMPLETE LANDING PAGE (mandatory whenever you build or rebuild a landing/marketi
 A "complete" landing page is NOT just hero + CTA. Ship ALL of the following sections, in order, each in its own component file (≤120 lines) under \`src/components/sections/\`:
   1. <NavBar /> — brand mark (logo icon + name) on the left, 3-5 nav links, a primary CTA on the right. No theme toggle.
   2. <Hero /> — eyebrow tag, headline (one strong sentence), subhead (one supporting sentence), two CTAs (primary + secondary/ghost), and a visual (product mock, illustration, or hero image via \`petal-image://\`). No "Demo" badges.
-  3. <SocialProof /> — logo strip ("Trusted by"), star rating, or short stat row (users / volume / uptime). Use plausible numbers.
+  3. <SocialProof /> — DEFAULT to a stat row (users / volume / uptime), a star-rating line, or one anchor testimonial. Use plausible numbers.
+     Only use a scrolling logo/press strip when real, nameable brands or publications belong there, and then pass a \`name\` for every entry so it renders as a wordmark. Never ship a marquee of tiny generated square images — that reads as noise, not proof.
   4. <Features /> — 3 or 6 feature cards with lucide-react icons, short titles, one-line descriptions.
   5. <HowItWorks /> — 3 numbered steps explaining the product flow.
   6. <Showcase /> or <Stats /> — a screenshot/mockup block OR a metrics row that proves the product is real.
