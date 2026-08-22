@@ -713,10 +713,14 @@ import { Menu, X } from "lucide-react";
 
 export interface SidebarNavItem {
   id?: string;
-  label: string;
+  label?: string;
+  /** Aliases models commonly emit. */
+  name?: string;
+  title?: string;
   icon?: React.ElementType | React.ReactNode;
   to?: string;
   href?: string;
+  path?: string;
   active?: boolean;
   onClick?: () => void;
 }
@@ -728,6 +732,9 @@ export interface SidebarNavItem {
 export function SidebarShell({
   brand,
   nav,
+  navigation,
+  items: itemsProp,
+  links,
   topRight,
   children,
   footer,
@@ -735,7 +742,11 @@ export function SidebarShell({
   className,
 }: {
   brand: React.ReactNode;
-  nav: SidebarNavItem[];
+  nav?: SidebarNavItem[];
+  /** Aliases for \`nav\` — an empty sidebar is never the intended output. */
+  navigation?: SidebarNavItem[];
+  items?: SidebarNavItem[];
+  links?: SidebarNavItem[];
   topRight?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -745,7 +756,13 @@ export function SidebarShell({
 }) {
   const footerNode = footer ?? footerContent;
   const [open, setOpen] = React.useState(false);
-  const items = Array.isArray(nav) ? nav : [];
+  const source = [nav, navigation, itemsProp, links].find((c) => Array.isArray(c) && c.length > 0);
+  const items = (Array.isArray(source) ? source : []).map((it) => ({
+    ...it,
+    label: it.label ?? it.name ?? it.title ?? "",
+    to: it.to ?? it.href ?? it.path,
+  }));
+
   const renderIcon = (icon: SidebarNavItem["icon"]) => {
     if (!icon) return null;
     if (React.isValidElement(icon)) return icon;
