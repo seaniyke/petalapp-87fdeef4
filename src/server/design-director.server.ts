@@ -169,7 +169,7 @@ export type DesignDirection = {
  */
 const FX_RECIPE_DETAILS: Record<FxRecipe, string> = {
   "vivid-color":
-    "NoiseTexture overlay on hero, ShinyText on the headline, BlurFade for section reveals. No grids, no beams. Restraint is the move.",
+    "MeshGradient or a two-hue colour wash behind the hero, GradientText or AuroraText on one headline word, saturated colour-block section bands (full-bleed brand-hue panel alternating with a light tint of the supporting hue), GlowCard or MagicCard tiles, ShimmerButton primary CTA, BlurFade + SlideUp reveals. Colour carries the page — never beige, never all-neutral.",
   "modern-saas":
     "MeshGradient or soft brand-tinted wash BEHIND the hero copy (DotPattern is BANNED as the sole hero background — use it only as a secondary section divider after the fold). Product UI mockup as the hero visual, framed in BrowserMockup with 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) overlapping at the corners. Primary CTA = filled <Button size=\"lg\"> or <ShimmerButton> — NEVER a bare anchor + arrow. Secondary CTA = <Button variant=\"outline\">. BorderBeam on the primary feature card. FadeIn + SlideUp throughout.",
   "agency-portfolio":
