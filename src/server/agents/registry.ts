@@ -385,10 +385,12 @@ const aiLogic: AgentSpec = {
     const decisions: AgentOutput["decisions"] = [];
     const formulas = ctx.prd?.formulas ?? [];
     for (const f of formulas.slice(0, 6)) {
-      const rec = f as { name?: string; expression?: string };
+      const example = f.example
+        ? ` (e.g. ${f.example.input} → ${f.example.expected})`
+        : "";
       decisions.push({
         kind: "logic",
-        claim: `Implement ${rec.name ?? "rule"} exactly: ${rec.expression ?? ""}`.trim(),
+        claim: `Implement ${f.id} exactly: ${f.statement}${example}`,
       });
     }
     if (has(ctx.input.prompt, "ai ", "assistant", "chatbot", "summariz", "generate ")) {
