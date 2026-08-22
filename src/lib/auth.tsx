@@ -17,10 +17,43 @@ type AuthContextValue = {
   session: Session | null;
   loading: boolean;
   isReady: boolean;
+  /**
+   * Optimistic answer to "is this person signed in?" available on the first
+   * client frame, before `getSession()` resolves. Derived from the presence of
+   * a Supabase token in storage. Use it for LAYOUT decisions only (which hero
+   * to render) — never for anything that must be trusted.
+   */
+  likelyAuthed: boolean;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+/** True when a Supabase auth token is sitting in localStorage for this project. */
+function hasStoredSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    for (let i = 0; i < window.localStorage.length; i += 1) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const raw = window.localStorage.getItem(key);
+        if (raw && raw.length > 2) return true;
+      }
+    }
+  } catch {
+    /* storage blocked (private mode, embedded iframe) — assume signed out */
+  }
+  return false;
+}
+
+/**
+ * Hard ceiling on how long the UI is allowed to sit in an unknown auth state.
+ * `getSession()` talks to the network when it needs to refresh a token, and on
+ * a flaky connection that promise can hang indefinitely — which used to leave
+ * the landing page showing nothing but a skeleton.
+ */
+const AUTH_READY_TIMEOUT_MS = 1500;
+
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
