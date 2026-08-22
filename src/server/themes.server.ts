@@ -739,15 +739,17 @@ function seedHash(seed: string): number {
  * key in the score object ("editorial"), which is the single biggest reason
  * unrelated projects kept shipping with the same look.
  */
+// Colour-led only. Editorial / ink-on-cream / mono looks are deliberately
+// excluded: unmatched briefs should still ship a vivid, high-contrast design.
 const NEUTRAL_THEME_POOL: ThemeKey[] = [
-  "editorial",
-  "saas-cool",
-  "nordic-minimal",
+  "vibrant-gradient",
+  "sunset-gradient",
+  "bloom",
   "warm-brand",
-  "aperture",
-  "monolith",
-  "soft-pastel",
+  "saas-cool",
   "glass-morphism",
+  "botanica",
+  "soft-pastel",
 ];
 
 /**
@@ -772,7 +774,7 @@ export function pickThemeForBrief(brief: string, seed?: string): ThemeKey {
     aperture: 0, botanica: 0, monolith: 0, bloom: 0,
   };
   const bumps: Array<[ThemeKey, RegExp[]]> = [
-    ["editorial", [/blog|essay|magazine|journal|portfolio|writer|book|publication|newsletter|reader/]],
+    ["bloom", [/blog|essay|magazine|journal|portfolio|writer|book|publication|newsletter|reader/]],
     ["saas-cool", [/saas|dashboard|admin|crm|api|developer|productivity|analytics|b2b|tool|workflow/]],
     ["warm-brand", [/restaurant|cafe|coffee|bakery|wine|hotel|spa|salon|beauty|food|menu|recipe|boutique|merch|apparel|clothing|shoes|jewelry shop|gift shop|store|shop|ecommerce|e-commerce|storefront/]],
     ["brutalist", [/music|club|festival|zine|gallery|underground|experimental/]],
