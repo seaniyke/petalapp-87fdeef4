@@ -117,13 +117,31 @@ const TAILWIND_NON_TOKEN = new Set([
   "inner", "none",
   // ring sizes
   "1", "3",
-  // from/via/to positions (`from-50%`) — numeric, handled by lookahead, but the
-  // bare "current" / "transparent" already in TAILWIND_CORE_COLORS.
-  // stroke widths
+  // background sizing / clipping / attachment / repeat — core utilities, not tokens
+  "cover", "contain", "auto", "fixed", "local", "scroll", "clip", "clip-text", "clip-border",
+  "clip-padding", "clip-content", "origin-border", "origin-padding", "origin-content",
+  "no-repeat", "repeat", "repeat-x", "repeat-y", "repeat-round", "repeat-space",
+  "bottom", "top", "blend-normal", "blend-multiply", "blend-screen", "blend-overlay",
+  // table / layout utilities that collide with border-*/text-*
+  "collapse", "separate", "balance", "pretty", "nowrap", "wrap", "ellipsis", "clip-text-alt",
+  "opacity-0", "opacity-100",
+  // gradient direction utilities (bg-gradient-to-r, from-transparent…)
+  "gradient-to-r", "gradient-to-l", "gradient-to-t", "gradient-to-b",
+  "gradient-to-tr", "gradient-to-tl", "gradient-to-br", "gradient-to-bl",
+  "linear-to-r", "linear-to-l", "linear-to-t", "linear-to-b",
+  "linear-to-tr", "linear-to-tl", "linear-to-br", "linear-to-bl",
+  "conic", "radial", "none-alt",
 ]);
+
+/** Single letters and step-ish fragments picked up from transform/offset utilities. */
+const JUNK_TOKEN_RE = /^(?:[a-z]|[a-z]-\d+|step-\d+|spacing-\d+|offset-\d+|.*-\d+)$/;
+
+/** Hard cap: more additions than this means the scanner mis-fired, not a real gap. */
+const MAX_INJECTED_TOKENS = 12;
 
 // Font tokens shipped by Tailwind by default.
 const TAILWIND_CORE_FONTS = new Set(["sans", "serif", "mono"]);
+
 
 interface ParsedStyles {
   /** Tokens declared in `@theme` / `@theme inline` (without the prefix). */
