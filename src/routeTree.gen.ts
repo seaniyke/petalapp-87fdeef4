@@ -31,6 +31,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MarketplaceIndexRouteImport } from './routes/marketplace.index'
 import { Route as BillingIndexRouteImport } from './routes/billing.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as WhySlugRouteImport } from './routes/why.$slug'
 import { Route as ShareTokenRouteImport } from './routes/share.$token'
 import { Route as RCodeRouteImport } from './routes/r.$code'
 import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
@@ -229,6 +230,11 @@ const BillingIndexRoute = BillingIndexRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhySlugRoute = WhySlugRouteImport.update({
+  id: '/why/$slug',
+  path: '/why/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShareTokenRoute = ShareTokenRouteImport.update({
@@ -752,6 +758,7 @@ export interface FileRoutesByFullPath {
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
+  '/why/$slug': typeof WhySlugRoute
   '/admin/': typeof AdminIndexRoute
   '/billing/': typeof BillingIndexRoute
   '/marketplace/': typeof MarketplaceIndexRoute
@@ -865,6 +872,7 @@ export interface FileRoutesByTo {
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
+  '/why/$slug': typeof WhySlugRoute
   '/admin': typeof AdminIndexRoute
   '/billing': typeof BillingIndexRoute
   '/marketplace': typeof MarketplaceIndexRoute
@@ -979,6 +987,7 @@ export interface FileRoutesById {
   '/packs/$slug': typeof PacksSlugRoute
   '/r/$code': typeof RCodeRoute
   '/share/$token': typeof ShareTokenRoute
+  '/why/$slug': typeof WhySlugRoute
   '/admin/': typeof AdminIndexRoute
   '/billing/': typeof BillingIndexRoute
   '/marketplace/': typeof MarketplaceIndexRoute
@@ -1094,6 +1103,7 @@ export interface FileRouteTypes {
     | '/packs/$slug'
     | '/r/$code'
     | '/share/$token'
+    | '/why/$slug'
     | '/admin/'
     | '/billing/'
     | '/marketplace/'
@@ -1207,6 +1217,7 @@ export interface FileRouteTypes {
     | '/packs/$slug'
     | '/r/$code'
     | '/share/$token'
+    | '/why/$slug'
     | '/admin'
     | '/billing'
     | '/marketplace'
@@ -1320,6 +1331,7 @@ export interface FileRouteTypes {
     | '/packs/$slug'
     | '/r/$code'
     | '/share/$token'
+    | '/why/$slug'
     | '/admin/'
     | '/billing/'
     | '/marketplace/'
@@ -1432,6 +1444,7 @@ export interface RootRouteChildren {
   PSlugRoute: typeof PSlugRoute
   RCodeRoute: typeof RCodeRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  WhySlugRoute: typeof WhySlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
   BillingIndexRoute: typeof BillingIndexRoute
   MarketplaceIndexRoute: typeof MarketplaceIndexRoute
@@ -1639,6 +1652,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/why/$slug': {
+      id: '/why/$slug'
+      path: '/why/$slug'
+      fullPath: '/why/$slug'
+      preLoaderRoute: typeof WhySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/share/$token': {
@@ -2368,6 +2388,7 @@ const rootRouteChildren: RootRouteChildren = {
   PSlugRoute: PSlugRoute,
   RCodeRoute: RCodeRoute,
   ShareTokenRoute: ShareTokenRoute,
+  WhySlugRoute: WhySlugRoute,
   AdminIndexRoute: AdminIndexRoute,
   BillingIndexRoute: BillingIndexRoute,
   MarketplaceIndexRoute: MarketplaceIndexRoute,
