@@ -48,15 +48,27 @@ const SMALL_EDIT_HINTS =
   /\b(change|rename|tweak|adjust|fix|update|make|set|move|swap|replace|colou?r|font|size|bigger|smaller|bolder|padding|margin|spacing|wording|copy|text|label|title|heading|button|typo)\b/i;
 
 const BIG_ASK_HINTS =
-  /\b(rebuild|redesign|from scratch|start over|overhaul|revamp|new (app|site|page|design)|add (a )?(dashboard|auth|payments|backend)|migrate|refactor everything)\b/i;
+  /\b(rebuild|redesign|from scratch|start over|overhaul|revamp|restyle|re-?theme|new (app|site|page|design|look|theme|style)|add (a )?(dashboard|auth|payments|backend|footer|header|nav(bar)?|page|section)|migrate|refactor everything)\b/i;
+
+/**
+ * Broad surface asks: "change the entire website design", "give the whole app
+ * a new look", "update every page". These legitimately rewrite many files —
+ * treating them as small requests produced a bogus "that was a small ask, but
+ * we rewrote a file end to end" scope warning on exactly the turns where a
+ * wholesale rewrite is the correct answer.
+ */
+const BROAD_SURFACE_HINTS =
+  /\b((entire|whole|full|complete)\s+(website|web\s?site|site|app|application|design|look|theme|ui|page)|(every|all)\s+(page|route|screen|component)s?|site\s*-?\s*wide|app\s*-?\s*wide|(design|theme|look|style|colou?r\s*(scheme|palette)|palette|branding|aesthetic)\b.*\b(entire|whole|everything|all)|\b(new|different|fresh)\s+(design|theme|look|style|palette|branding))\b/i;
 
 /** A short prompt with edit verbs and no rebuild language is a small request. */
 export function isSmallEditRequest(prompt: string): boolean {
   const p = prompt.trim();
   if (p.length > 400) return false;
   if (BIG_ASK_HINTS.test(p)) return false;
+  if (BROAD_SURFACE_HINTS.test(p)) return false;
   return SMALL_EDIT_HINTS.test(p);
 }
+
 
 const bytes = (s: string) => new TextEncoder().encode(s).length;
 
