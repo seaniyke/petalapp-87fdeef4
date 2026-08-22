@@ -80,6 +80,23 @@ function alreadyLoads(content: string, display: string, body: string): boolean {
 // 1 + 2. Fonts
 // ---------------------------------------------------------------------------
 
+/** True when `--font-x` is declared but points at a system stack. */
+function declaredAsSystem(css: string, token: string): boolean {
+  const rx = new RegExp(`--${token}\\s*:\\s*([^;]+);`);
+  const m = rx.exec(css);
+  if (!m) return false;
+  const first = (m[1] ?? "").split(",")[0]?.trim().replace(/^['"]|['"]$/g, "") ?? "";
+  return !first || SYSTEM_FAMILIES.test(first);
+}
+
+/** Replace every declaration of `--font-x` with the locked family. */
+function forceFamily(css: string, token: string, family: string): string {
+  return css.replace(
+    new RegExp(`(--${token}\\s*:\\s*)[^;]+;`, "g"),
+    `$1"${family}", ui-sans-serif, system-ui, sans-serif;`,
+  );
+}
+
 function ensureFontTokens(css: string, display: string, body: string): { css: string; changed: boolean } {
   let out = css;
   let changed = false;
@@ -100,6 +117,17 @@ function ensureFontTokens(css: string, display: string, body: string): { css: st
     changed = true;
   }
 
+  // A declared-but-system family means an earlier pass clobbered the locked
+  // pair. Treat it as unset and write the real family back.
+  if (hasDisplay && declaredAsSystem(out, "font-display")) {
+    out = forceFamily(out, "font-display", display);
+    changed = true;
+  }
+  if (hasBody && declaredAsSystem(out, "font-body")) {
+    out = forceFamily(out, "font-body", body);
+    changed = true;
+  }
+
   // Base typography floor — outside @theme so it emits real CSS.
   if (!/petal:type-floor/.test(out)) {
     out += `
@@ -111,12 +139,15 @@ h1, h2, h3, .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
+h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); line-height: 1.05; font-weight: 700; }
+h2 { font-size: clamp(1.75rem, 3.2vw, 2.5rem); line-height: 1.12; font-weight: 700; }
 `;
     changed = true;
   }
 
   return { css: out, changed };
 }
+
 
 function injectLinkIntoHtml(html: string, href: string): string | null {
   if (!/<head[^>]*>/i.test(html)) return null;
