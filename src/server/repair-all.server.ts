@@ -32,6 +32,8 @@ import { validateRouteGraph } from "./route-graph.server";
 import { wireOrphanPages } from "./orphan-page-wiring.server";
 
 import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
+import { repairPaletteIntegrity } from "./palette-integrity.server";
+
 import { stubMissingAssets } from "./asset-stubber.server";
 import { enforceRuntimeContracts } from "./runtime-contract.server";
 import { enforceLayoutHygiene } from "./layout-hygiene.server";
@@ -319,6 +321,14 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   const tw = sweepTailwindTokens(files);
   files = tw.files;
   for (const n of tw.notes) notes.push(n);
+
+  // 7b. Palette integrity — no earlier pass may leave a self-referential or
+  //     flattened colour declaration behind. `--primary: var(--primary)` is
+  //     invalid CSS and silently deletes the whole brand palette.
+  const palette = repairPaletteIntegrity(files);
+  files = palette.files;
+  for (const n of palette.notes) notes.push(n);
+
 
   // 8. Asset stubber — placeholder SVGs for missing local refs; onError for external.
   const assets = stubMissingAssets(files);

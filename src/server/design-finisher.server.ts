@@ -38,7 +38,8 @@ const DEFAULT_PAIR = { display: "Sora", body: "Manrope" };
 
 /** Families that don't need loading (system stacks). */
 const SYSTEM_FAMILIES =
-  /^(ui-sans-serif|system-ui|-apple-system|sans-serif|serif|monospace|ui-serif|ui-monospace|inherit|initial)$/i;
+  /^(ui-sans-serif|system-ui|-apple-system|sans-serif|serif|monospace|ui-serif|ui-monospace|inherit|initial|georgia|cambria|times new roman|times|arial|helvetica|segoe ui|roboto)$/i;
+
 
 function findStyles(files: ProjectFile[]): ProjectFile | undefined {
   for (const p of STYLE_PATHS) {
@@ -80,6 +81,23 @@ function alreadyLoads(content: string, display: string, body: string): boolean {
 // 1 + 2. Fonts
 // ---------------------------------------------------------------------------
 
+/** True when `--font-x` is declared but points at a system stack. */
+function declaredAsSystem(css: string, token: string): boolean {
+  const rx = new RegExp(`--${token}\\s*:\\s*([^;]+);`);
+  const m = rx.exec(css);
+  if (!m) return false;
+  const first = (m[1] ?? "").split(",")[0]?.trim().replace(/^['"]|['"]$/g, "") ?? "";
+  return !first || SYSTEM_FAMILIES.test(first);
+}
+
+/** Replace every declaration of `--font-x` with the locked family. */
+function forceFamily(css: string, token: string, family: string): string {
+  return css.replace(
+    new RegExp(`(--${token}\\s*:\\s*)[^;]+;`, "g"),
+    `$1"${family}", ui-sans-serif, system-ui, sans-serif;`,
+  );
+}
+
 function ensureFontTokens(css: string, display: string, body: string): { css: string; changed: boolean } {
   let out = css;
   let changed = false;
@@ -100,6 +118,17 @@ function ensureFontTokens(css: string, display: string, body: string): { css: st
     changed = true;
   }
 
+  // A declared-but-system family means an earlier pass clobbered the locked
+  // pair. Treat it as unset and write the real family back.
+  if (hasDisplay && declaredAsSystem(out, "font-display")) {
+    out = forceFamily(out, "font-display", display);
+    changed = true;
+  }
+  if (hasBody && declaredAsSystem(out, "font-body")) {
+    out = forceFamily(out, "font-body", body);
+    changed = true;
+  }
+
   // Base typography floor — outside @theme so it emits real CSS.
   if (!/petal:type-floor/.test(out)) {
     out += `
@@ -111,12 +140,15 @@ h1, h2, h3, .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
+h1 { font-size: clamp(2.25rem, 5vw, 3.75rem); line-height: 1.05; font-weight: 700; }
+h2 { font-size: clamp(1.75rem, 3.2vw, 2.5rem); line-height: 1.12; font-weight: 700; }
 `;
     changed = true;
   }
 
   return { css: out, changed };
 }
+
 
 function injectLinkIntoHtml(html: string, href: string): string | null {
   if (!/<head[^>]*>/i.test(html)) return null;
@@ -206,6 +238,42 @@ function animateHeroHeadline(content: string): { content: string; changed: boole
 }
 
 // ---------------------------------------------------------------------------
+// 5. Interior surface floor
+// ---------------------------------------------------------------------------
+
+const SURFACE_FLOOR_CSS = `
+/* petal:surface-floor — interior screens are designed too, not just the landing */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+thead th {
+  text-align: left;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground, currentColor);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border, currentColor);
+}
+tbody td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border, currentColor);
+}
+tbody tr:last-child td { border-bottom: 0; }
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  border-radius: var(--radius, 0.625rem);
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--ring, var(--primary));
+  outline-offset: 2px;
+}
+`;
+
+// ---------------------------------------------------------------------------
+
 
 export function enforceDesignFinish(input: ProjectFile[]): DesignFinishResult {
   const notes: string[] = [];
@@ -240,6 +308,17 @@ export function enforceDesignFinish(input: ProjectFile[]): DesignFinishResult {
     css += MOTION_CSS;
     fixes++;
   }
+
+  // 5 — interior surface floor. Landing pages get attention; dashboards and
+  // list screens ship as raw <table>/<div> and read as an unstyled document.
+  // These rules are token-only and cost nothing when the app already styled
+  // its surfaces with utilities (utilities win on specificity).
+  if (!/petal:surface-floor/.test(css)) {
+    css += SURFACE_FLOOR_CSS;
+    fixes++;
+    notes.push("design-finisher: applied the interior surface floor (tables, cards, inputs)");
+  }
+
 
   if (css !== styles.content) {
     files = files.map((f) => (f.path === styles.path ? { ...f, content: css } : f));

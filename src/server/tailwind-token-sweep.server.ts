@@ -117,13 +117,31 @@ const TAILWIND_NON_TOKEN = new Set([
   "inner", "none",
   // ring sizes
   "1", "3",
-  // from/via/to positions (`from-50%`) — numeric, handled by lookahead, but the
-  // bare "current" / "transparent" already in TAILWIND_CORE_COLORS.
-  // stroke widths
+  // background sizing / clipping / attachment / repeat — core utilities, not tokens
+  "cover", "contain", "auto", "fixed", "local", "scroll", "clip", "clip-text", "clip-border",
+  "clip-padding", "clip-content", "origin-border", "origin-padding", "origin-content",
+  "no-repeat", "repeat", "repeat-x", "repeat-y", "repeat-round", "repeat-space",
+  "bottom", "top", "blend-normal", "blend-multiply", "blend-screen", "blend-overlay",
+  // table / layout utilities that collide with border-*/text-*
+  "collapse", "separate", "balance", "pretty", "nowrap", "wrap", "ellipsis", "clip-text-alt",
+  "opacity-0", "opacity-100",
+  // gradient direction utilities (bg-gradient-to-r, from-transparent…)
+  "gradient-to-r", "gradient-to-l", "gradient-to-t", "gradient-to-b",
+  "gradient-to-tr", "gradient-to-tl", "gradient-to-br", "gradient-to-bl",
+  "linear-to-r", "linear-to-l", "linear-to-t", "linear-to-b",
+  "linear-to-tr", "linear-to-tl", "linear-to-br", "linear-to-bl",
+  "conic", "radial", "none-alt",
 ]);
+
+/** Single letters and step-ish fragments picked up from transform/offset utilities. */
+const JUNK_TOKEN_RE = /^(?:[a-z]|[a-z]-\d+|step-\d+|spacing-\d+|offset-\d+)$/;
+
+/** Hard cap: more additions than this means the scanner mis-fired, not a real gap. */
+const MAX_INJECTED_TOKENS = 12;
 
 // Font tokens shipped by Tailwind by default.
 const TAILWIND_CORE_FONTS = new Set(["sans", "serif", "mono"]);
+
 
 interface ParsedStyles {
   /** Tokens declared in `@theme` / `@theme inline` (without the prefix). */
@@ -180,13 +198,10 @@ function deriveColorValue(name: string, knownRaw: Set<string>): string {
   return pick("foreground");
 }
 
-function deriveFontValue(name: string, knownRaw: Set<string>): string {
-  if (knownRaw.has("font-sans")) return `var(--font-sans)`;
-  if (/(mono|code)/i.test(name)) return `ui-monospace, SFMono-Regular, Menlo, monospace`;
-  if (/(serif|display|heading|title)/i.test(name))
-    return `ui-serif, Georgia, Cambria, "Times New Roman", serif`;
-  return `ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
-}
+// (Font derivation intentionally removed: this pass must never author a
+// `--font-*` value. The design director picks the pair; the design finisher
+// loads it. See design-finisher.server.ts.)
+
 
 function extractClassLiterals(source: string): string[] {
   const out: string[] = [];
@@ -205,11 +220,15 @@ function isCoreToken(token: string): boolean {
   if (TAILWIND_NON_TOKEN.has(token)) return true;
   // Pure numeric scale (e.g. "500").
   if (/^\d+$/.test(token)) return true;
+  // Single letters / transform + offset fragments (`translate-y`, `inset-x`,
+  // `step-2`) that the class scanner picks up but are never design tokens.
+  if (JUNK_TOKEN_RE.test(token)) return true;
   // Numbered Tailwind color: head segment matches a core palette and tail is numeric.
   const head = token.split("-")[0];
   if (TAILWIND_CORE_COLORS.has(head)) return true;
   return false;
 }
+
 
 export interface TailwindSweepResult {
   files: ProjectFile[];
@@ -255,26 +274,45 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
     while ((m = varRe.exec(f.content))) referencedRaw.add(m[1]);
   }
 
-  const missingColors = [...referencedColors].filter(
-    (t) => !parsed.themeColorTokens.has(t),
-  );
-  const missingFonts = [...referencedFonts].filter(
-    (t) => !parsed.themeFontTokens.has(t),
-  );
+  // A token is only "missing" when NOTHING declares it: not `--color-x` in
+  // @theme, and not a bare `--x` anywhere in the stylesheet. Apps written the
+  // normal Tailwind v4 way declare `--primary`, not `--color-primary`; treating
+  // those as missing is what used to re-declare the whole palette as
+  // `--primary: var(--primary)` (circular => invalid => no colour at all).
+  const declared = (t: string) =>
+    parsed.themeColorTokens.has(t) ||
+    parsed.rawVars.has(t) ||
+    parsed.rawVars.has(`color-${t}`);
+
+  const missingColors = [...referencedColors].filter((t) => !declared(t));
   const missingRaw = [...referencedRaw].filter(
-    (t) =>
-      !parsed.rawVars.has(t) &&
-      // Don't re-inject ones we're already going to add via the color path.
-      !missingColors.includes(t),
+    (t) => !parsed.rawVars.has(t) && !missingColors.includes(t),
   );
+  // Fonts are owned by the design director + design finisher. This pass must
+  // NEVER write a `--font-*` declaration — doing so overwrote the locked
+  // display face with a system serif and made the finisher skip loading the
+  // real font. Font utilities are left entirely alone here.
+  const missingFonts: string[] = [];
+  void referencedFonts;
+
 
   if (missingColors.length === 0 && missingFonts.length === 0 && missingRaw.length === 0) {
     return { files: input, notes: [], addedTokens: [], addedThemeMappings: [] };
   }
 
-  const knownRaw = new Set(parsed.rawVars);
-  // Pretend we know the about-to-add raw tokens so derivations don't loop.
-  for (const c of missingColors) knownRaw.add(c);
+  // Scanner sanity cap. A real app is missing a handful of semantic tokens; a
+  // flood means the class scanner mis-read core utilities.
+  const totalWanted = missingColors.length + missingRaw.length + missingFonts.length;
+  if (totalWanted > MAX_INJECTED_TOKENS) {
+    return {
+      files: input,
+      notes: [
+        `tailwind-tokens: skipped injection — ${totalWanted} candidate tokens looks like a scanner mis-fire, leaving styles.css untouched`,
+      ],
+      addedTokens: [],
+      addedThemeMappings: [],
+    };
+  }
 
   // Build the new rules.
   const rootAdditions: string[] = [];
@@ -283,8 +321,13 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
   const addedTokens: string[] = [];
   const addedThemeMappings: string[] = [];
 
+  /** Never emit `--x: var(--x)` — an invalid, self-referential declaration. */
+  const safeValue = (tok: string, val: string): string | null =>
+    val.replace(/\s+/g, "") === `var(--${tok})` ? null : val;
+
   for (const tok of missingColors) {
-    const val = deriveColorValue(tok, new Set(parsed.rawVars));
+    const val = safeValue(tok, deriveColorValue(tok, new Set(parsed.rawVars)));
+    if (!val) continue;
     rootAdditions.push(`  --${tok}: ${val};`);
     darkAdditions.push(`  --${tok}: ${val};`);
     themeAdditions.push(`  --color-${tok}: var(--${tok});`);
@@ -292,17 +335,18 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
     addedThemeMappings.push(`--color-${tok}`);
   }
   for (const tok of missingRaw) {
-    const val = deriveColorValue(tok, new Set(parsed.rawVars));
+    const val = safeValue(tok, deriveColorValue(tok, new Set(parsed.rawVars)));
+    if (!val) continue;
     rootAdditions.push(`  --${tok}: ${val};`);
     darkAdditions.push(`  --${tok}: ${val};`);
     addedTokens.push(tok);
   }
-  for (const tok of missingFonts) {
-    const val = deriveFontValue(tok, new Set(parsed.rawVars));
-    themeAdditions.push(`  --font-${tok}: ${val};`);
-    addedTokens.push(`font-${tok}`);
-    addedThemeMappings.push(`--font-${tok}`);
+
+
+  if (rootAdditions.length === 0 && themeAdditions.length === 0) {
+    return { files: input, notes: [], addedTokens: [], addedThemeMappings: [] };
   }
+
 
   // Inject into styles.css.
   let content = styles.content;
@@ -369,11 +413,8 @@ export function sweepTailwindTokens(input: ProjectFile[]): TailwindSweepResult {
       `tailwind-tokens: injected ${missingRaw.length} missing raw var(s) (${missingRaw.slice(0, 4).join(", ")}${missingRaw.length > 4 ? "…" : ""})`,
     );
   }
-  if (missingFonts.length) {
-    notes.push(
-      `tailwind-tokens: injected ${missingFonts.length} missing font token(s) (${missingFonts.join(", ")})`,
-    );
-  }
+  void missingFonts;
+
 
   return { files: out, notes, addedTokens, addedThemeMappings };
 }
