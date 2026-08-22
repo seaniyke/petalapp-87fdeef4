@@ -29,7 +29,7 @@ import { postBuildToRailway } from "@/server/builder.server";
 import { buildVerifyPlan } from "@/server/verify-plan.server";
 import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
 import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
-import { validateStylesCss } from "@/server/validate-styles.server";
+import { validateStylesCss, repairStylesCss } from "@/server/validate-styles.server";
 import { autofixFiles } from "@/server/stream-autofixer";
 import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
 import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
@@ -194,6 +194,13 @@ export const Route = createFileRoute("/api/builds/trigger")({
           if (f.path !== "src/styles.css") return f;
           const result = validateStylesCss(f.content);
           if (result.ok) return f;
+          const repaired = repairStylesCss(f.content);
+          if (repaired) {
+            console.warn(
+              `[styles.css repaired] project=${projectId} reason="${result.reason}" — ${repaired.notes.join("; ")}`
+            );
+            return { ...f, content: repaired.css };
+          }
           console.warn(
             `[styles.css invalid] project=${projectId} reason="${result.reason}" — falling back to scaffold default`
           );
