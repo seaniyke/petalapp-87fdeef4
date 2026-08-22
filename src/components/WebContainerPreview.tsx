@@ -46,10 +46,6 @@ export function detectUnsupportedBrowser(): string | null {
   return detectUnsupportedWebContainerBrowser();
 }
 
-const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
-
-
-
 export function WebContainerPreview({
   files,
   reloadKey,
@@ -127,8 +123,10 @@ export function WebContainerPreview({
   const pickerReadyRef = useRef(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const bootedRef = useRef(false);
+  const devStartedRef = useRef(false);
   const mountedFilesSig = useRef<string>("");
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedManifestRef = useRef<string>("");
+  const syncQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   // Subscribe to logs + server URL once.
   useEffect(() => {
@@ -158,16 +156,19 @@ export function WebContainerPreview({
   useEffect(() => {
     if (files.length === 0) return;
 
-    // Quick signature so we don't remount on identical files (e.g. parent re-render).
-    const sig = files.map((f) => `${f.path}:${f.content.length}`).join("|");
+    // Include content, not only length: two edits with equal byte counts still
+    // need to reach the running filesystem.
+    const sig = files.map((f) => `${f.path}:${f.content}`).join("\u0000");
     const isFirstBoot = !bootedRef.current;
     const filesChanged = sig !== mountedFilesSig.current;
     mountedFilesSig.current = sig;
 
     if (!isFirstBoot && !filesChanged) return;
 
-    let cancelled = false;
-    (async () => {
+    let disposed = false;
+    const requestedFiles = files;
+    const manifest = files.find((f) => f.path === "package.json")?.content ?? "";
+    const runSync = async () => {
       try {
         if (isFirstBoot) {
           bootedRef.current = true;
@@ -186,22 +187,17 @@ export function WebContainerPreview({
           }
           setPhase("booting");
           await getContainer();
+        }
+
+        await mountProject(requestedFiles);
+
+        // Dependency readiness is part of every manifest change, not merely
+        // the first component mount. This covers edits that introduce a new
+        // package after Vite is already running.
+        if (!devStartedRef.current || manifest !== mountedManifestRef.current) {
           setPhase("installing");
-          await mountProject(files);
-          // Hard cap install + dev start — surfaces an error instead of spinning forever.
-          timeoutRef.current = setTimeout(() => {
-            if (cancelled) return;
-            const msg =
-              "Setup is taking longer than 5 minutes. Check the logs below, or try reloading.";
-            setError(msg);
-            setPhase("error");
-            setShowLogs(true);
-            onBootFailed?.(msg);
-          }, INSTALL_TIMEOUT_MS);
           const code = await ensureDeps();
-          if (cancelled) return;
           if (code !== 0) {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
             const msg = `npm install failed (exit ${code}). See logs.`;
             setError(msg);
             setPhase("error");
@@ -209,23 +205,21 @@ export function WebContainerPreview({
             onBootFailed?.(msg);
             return;
           }
+          mountedManifestRef.current = manifest;
+        }
 
+        if (!devStartedRef.current) {
           setPhase("starting");
           await startDevServer();
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          // Inject the element-picker helper. Best-effort — don't fail the boot if this errors.
-          const indexHtml = files.find((f) => f.path === "index.html")?.content;
-          ensurePickerInstalled(indexHtml).catch(() => {});
-          setPhase("ready");
-        } else {
-          // Subsequent changes: just patch the filesystem, dev server hot-reloads.
-          await mountProject(files);
-          const indexHtml = files.find((f) => f.path === "index.html")?.content;
-          ensurePickerInstalled(indexHtml).catch(() => {});
+          devStartedRef.current = true;
         }
+
+        // Inject the element-picker helper. Best-effort — don't fail the boot if this errors.
+        const indexHtml = requestedFiles.find((f) => f.path === "index.html")?.content;
+        ensurePickerInstalled(indexHtml).catch(() => {});
+        if (!disposed) setPhase("ready");
       } catch (e) {
-        if (cancelled) return;
-        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (disposed) return;
         const msg = e instanceof Error ? e.message : "WebContainer failed to start.";
         setError(msg);
         setPhase("error");
@@ -233,12 +227,14 @@ export function WebContainerPreview({
         // P0-E — let the parent swap to the deployed CDN preview.
         onBootFailed?.(msg);
       }
+    };
 
-    })();
+    // React effects can fire again while boot/install is still active. Queue
+    // snapshots rather than running mount/install/dev concurrently.
+    syncQueueRef.current = syncQueueRef.current.then(runSync, runSync);
 
     return () => {
-      cancelled = true;
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      disposed = true;
     };
   }, [files]);
 

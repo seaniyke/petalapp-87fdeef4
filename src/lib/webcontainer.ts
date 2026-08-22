@@ -94,6 +94,12 @@ function filesToTree(files: ProjectFile[]): FileSystemTree {
 
 /** Mount the given files into the container, replacing whatever was there. */
 export async function mountProject(files: ProjectFile[]): Promise<void> {
+  // A prewarm owns package.json while it is installing the shared baseline.
+  // Never overwrite that manifest mid-install: npm may otherwise finish the
+  // baseline job after the real project has mounted and make callers believe
+  // the project's dependency set was installed. Waiting here makes the handoff
+  // deterministic — baseline first, real manifest second, delta install last.
+  if (prewarmPromise) await prewarmPromise;
   const wc = await getContainer();
   const tree = filesToTree(files);
   await wc.mount(tree);
@@ -480,6 +486,7 @@ async function pipeProcess(label: string, process: { output: ReadableStream<stri
 let installPromise: Promise<number> | null = null;
 let devProcess: { kill: () => void } | null = null;
 let prewarmPromise: Promise<void> | null = null;
+let dependencyQueue: Promise<number> = Promise.resolve(0);
 
 /** Run npm install. De-duplicated — concurrent calls share one promise. */
 export async function installDeps(): Promise<number> {
@@ -602,11 +609,26 @@ async function depsSatisfied(): Promise<boolean> {
  * (0 when the install was skipped).
  */
 export async function ensureDeps(): Promise<number> {
-  if (await depsSatisfied()) {
-    emitLog({ stream: "system", text: "Dependencies already present — skipping install." });
-    return 0;
-  }
-  return installDeps();
+  // Serialize every dependency reconciliation. Project files can arrive while
+  // a prewarm or prior edit is still installing; sharing that old install
+  // promise is not sufficient because it targeted an older package.json.
+  // Re-checking inside the queue guarantees the currently mounted manifest is
+  // fully represented in node_modules before this call resolves.
+  const reconcile = async (): Promise<number> => {
+    if (installPromise) await installPromise;
+    if (await depsSatisfied()) {
+      emitLog({ stream: "system", text: "Dependencies already present — skipping install." });
+      return 0;
+    }
+    const code = await installDeps();
+    if (code !== 0) return code;
+    // npm can finish successfully even if package.json changed during its run.
+    // One final check closes that race; install the remaining delta if needed.
+    if (await depsSatisfied()) return 0;
+    return installDeps();
+  };
+  dependencyQueue = dependencyQueue.then(reconcile, reconcile);
+  return dependencyQueue;
 }
 
 
@@ -682,7 +704,7 @@ export function prewarmContainer(): Promise<void> {
         },
       };
       await wc.fs.writeFile("package.json", JSON.stringify(prewarmPkg, null, 2));
-      await installDeps();
+       await ensureDeps();
       emitLog({ stream: "system", text: "Prewarm complete — dependencies ready." });
     } catch (e) {
       // Best-effort — never break the real flow.
