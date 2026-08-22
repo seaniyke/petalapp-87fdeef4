@@ -4002,7 +4002,7 @@ Forbidden defaults
         // instead: revert files, never charge credits, and ask the user to
         // retry with a more concrete prompt. index.html + main.tsx repairs
         // are still safe to keep (they only restore the mount point).
-        if (shellGuard.fixed.includes("src/App.tsx") && collected.name === "write_project") {
+        if (shellGuard.degraded.includes("src/App.tsx") && collected.name === "write_project") {
           console.warn("[renderable-shell] model emitted empty/placeholder App.tsx — failing turn");
           emitConversationalFallback(controller, encoder, {
             files: currentFiles,
