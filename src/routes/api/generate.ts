@@ -2389,6 +2389,34 @@ Forbidden defaults
   const resolvedTargetPaths =
     editTargetPaths.length > 0 ? editTargetPaths : inspectorTargets;
 
+  // Engine 3.0 phase 4 — impact graph. A targeted edit rarely stops at the
+  // file it names: whoever imports that file has to keep compiling, and
+  // whatever it imports defines the props it may use. Pin that immediate
+  // blast radius so the model edits with the callers in view instead of
+  // breaking them silently. Deterministic, capped, and skipped when we are
+  // already pinning the whole app for a cross-cutting ask.
+  if (!isInitial && !isCrossCutting && resolvedTargetPaths.length > 0) {
+    try {
+      const { computeImpact } = await import("@/server/impact-graph.server");
+      const impact = computeImpact(editablePromptFiles, resolvedTargetPaths, {
+        radius: 1,
+        max: 18,
+      });
+      const extra = impact.paths.filter(
+        (p) => !resolvedTargetPaths.includes(p) && !pinnedPaths.includes(p),
+      );
+      if (extra.length > 0) {
+        pinnedPaths = [...pinnedPaths, ...extra];
+        console.info(
+          `[impact-graph] pinned ${extra.length} neighbour(s) of ${resolvedTargetPaths.length} target(s): ${extra.slice(0, 8).join(", ")}`,
+        );
+      }
+    } catch (e) {
+      console.warn("[impact-graph] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
+
+
   const promptBudget = trimFilesForPrompt(
     editablePromptFiles,
     multiEditPromptContext || lastUserContent,
