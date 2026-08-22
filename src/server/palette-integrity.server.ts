@@ -56,7 +56,7 @@ interface Decl {
   index: number;
 }
 
-const DECL_RE = /(^|\n)[^\S\n]*--([a-zA-Z0-9-]+)\s*:\s*([^;{}]+);/g;
+const DECL_RE = /(^|[\n{;])[^\S\n]*--([a-zA-Z0-9-]+)\s*:\s*([^;{}]+);/g;
 
 function readDecls(css: string): Decl[] {
   const out: Decl[] = [];
