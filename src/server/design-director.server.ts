@@ -121,7 +121,7 @@ export type MotionIntensity = "still" | "subtle" | "expressive" | "cinematic";
  * starting palette instead of inventing effects ad-hoc.
  */
 export type FxRecipe =
-  | "calm-editorial"
+  | "vivid-color"
   | "modern-saas"
   | "agency-portfolio"
   | "cyberpunk-crypto"
@@ -168,7 +168,7 @@ export type DesignDirection = {
  * so the model doesn't have to remember the FX catalog by heart.
  */
 const FX_RECIPE_DETAILS: Record<FxRecipe, string> = {
-  "calm-editorial":
+  "vivid-color":
     "NoiseTexture overlay on hero, ShinyText on the headline, BlurFade for section reveals. No grids, no beams. Restraint is the move.",
   "modern-saas":
     "MeshGradient or soft brand-tinted wash BEHIND the hero copy (DotPattern is BANNED as the sole hero background — use it only as a secondary section divider after the fold). Product UI mockup as the hero visual, framed in BrowserMockup with 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) overlapping at the corners. Primary CTA = filled <Button size=\"lg\"> or <ShimmerButton> — NEVER a bare anchor + arrow. Secondary CTA = <Button variant=\"outline\">. BorderBeam on the primary feature card. FadeIn + SlideUp throughout.",
@@ -208,7 +208,7 @@ function pickFxRecipe(brief: string, motion: MotionIntensity): FxRecipe {
       case "content":
       case "newsletter":
       case "consultancy":
-        return "calm-editorial";
+        return "vivid-color";
       case "real-estate":
       case "restaurant":
       case "local-business":
@@ -225,7 +225,7 @@ function pickFxRecipe(brief: string, motion: MotionIntensity): FxRecipe {
         // restrained one. "modern-saas" used to be the catch-all and that's
         // exactly why generic B2B briefs shipped flat (the PipelinePilot
         // failure). agency-portfolio carries more visual conviction.
-        return motion === "still" ? "calm-editorial" : "agency-portfolio";
+        return motion === "still" ? "vivid-color" : "agency-portfolio";
     }
   } catch {
     return "agency-portfolio";
@@ -247,7 +247,7 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - palette_mood: a sentence describing the actual hues, not "modern colors". E.g. "warm cream background, burnt sienna primary, ink-black text, sage accents".
 - density: minimal / balanced / dense. Match the audience: consumer landing → minimal/balanced; data dashboards → dense; editorial → balanced with generous white space.
 - motion: still / subtle / expressive / cinematic. Default subtle. Use expressive when the brand calls for energy. Use cinematic ONLY for agency / portfolio / showcase / luxury sites where Awwwards-grade scroll choreography is the point — it pulls in Lenis smooth-scroll, GSAP ScrollTrigger, and optionally a R3F 3D hero, which is overkill for SaaS dashboards or internal tools.
-- fx_recipe: name the FX bundle this app should compose. Pick ONE of: calm-editorial, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe drives which @/components/fx primitives the builder reaches for. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
+- fx_recipe: name the FX bundle this app should compose. Pick ONE of: vivid-color, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe drives which @/components/fx primitives the builder reaches for. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
 - design_moves: 2–4 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "pill-shaped CTAs with hard shadow", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" — those aren't moves.
 
 Calibration — two recent Petal outputs, same builder, very different results:
@@ -286,7 +286,7 @@ const DIRECTOR_TOOL = {
         fx_recipe: {
           type: "string",
           enum: [
-            "calm-editorial",
+            "vivid-color",
             "modern-saas",
             "agency-portfolio",
             "cyberpunk-crypto",
@@ -552,7 +552,7 @@ export async function pickDesignDirection(args: {
     // If the model omitted fx_recipe (or picked one that contradicts a
     // cinematic motion setting), pick one deterministically from app shape.
     const VALID_RECIPES: ReadonlySet<FxRecipe> = new Set<FxRecipe>([
-      "calm-editorial", "modern-saas", "agency-portfolio", "cyberpunk-crypto",
+      "vivid-color", "modern-saas", "agency-portfolio", "cyberpunk-crypto",
       "ai-product", "playful-consumer", "luxury-brand", "data-dashboard", "awwwards-3d",
     ]);
     if (!parsed.fx_recipe || !VALID_RECIPES.has(parsed.fx_recipe)) {
