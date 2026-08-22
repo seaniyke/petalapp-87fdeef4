@@ -304,8 +304,11 @@ function buildPageFromOrphans(
 
   picks.sort((a, b) => sectionRank(a.base) - sectionRank(b.base) || a.base.localeCompare(b.base));
   const seen = new Set<string>();
-  const unique = picks.filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)));
+  const unique = picks
+    .filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)))
+    .slice(0, 14);
   for (const s of unique) consumed.add(s.path);
+
 
   const compName =
     importedName && /^[A-Z][A-Za-z0-9_]*$/.test(importedName) ? importedName : "Page";
