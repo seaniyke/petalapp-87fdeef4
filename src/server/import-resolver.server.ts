@@ -288,17 +288,19 @@ function buildPageFromOrphans(
   const picks: Array<{ path: string; base: string; name: string; isDefault: boolean }> = [];
   for (const [p, content] of byPath) {
     if (!SCANNABLE.test(p)) continue;
-    if (!p.startsWith("src/components/")) continue;
     if (KIT_OWNED_PATH.test(p)) continue;
+    if (!COMPOSABLE_SECTION_PATH.test(p) && !TOP_LEVEL_COMPONENT_PATH.test(p)) continue;
     if (referenced.has(p) || consumed.has(p)) continue;
     const base = fileBase(p);
     if (CHROME_BASENAME.test(base)) continue;
     if (!/<[A-Za-z]/.test(content)) continue; // not a renderer
     const exp = exportedComponentName(content, p);
     if (!exp) continue;
+    if (!takesNoRequiredProps(content, exp.name)) continue;
     picks.push({ path: p, base, name: exp.name, isDefault: exp.isDefault });
   }
   if (picks.length === 0) return null;
+
 
   picks.sort((a, b) => sectionRank(a.base) - sectionRank(b.base) || a.base.localeCompare(b.base));
   const seen = new Set<string>();
