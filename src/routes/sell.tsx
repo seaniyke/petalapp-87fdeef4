@@ -20,10 +20,13 @@ import { listProjects, type ProjectRow } from "@/lib/projects";
 import {
   createListingFromProject,
   deleteListing,
+  formatListingPrice,
   listLicenses,
   listMyListings,
+  listMySales,
   refreshListingSnapshot,
   submitListingForReview,
+  updateListing,
   type LicenseRow,
   type ListingRow,
   LISTING_CATEGORIES,
@@ -74,14 +77,20 @@ function SellPage() {
   const [category, setCategory] = useState<string>("app");
   const [licenseCode, setLicenseCode] = useState("personal");
   const [demoUrl, setDemoUrl] = useState("");
+  const [price, setPrice] = useState("0");
+  const [sales, setSales] = useState<
+    Awaited<ReturnType<typeof listMySales>>
+  >([]);
 
   const load = useCallback(async () => {
-    const [mine, mineProjects, lics] = await Promise.all([
+    const [mine, mineProjects, lics, mySales] = await Promise.all([
       listMyListings(),
       listProjects(),
       listLicenses(),
+      listMySales(),
     ]);
     setListings(mine);
+    setSales(mySales);
     setProjects(mineProjects);
     setLicenses(lics);
     if (lics[0]) setLicenseCode((c) => c || lics[0]!.code);
@@ -124,6 +133,7 @@ function SellPage() {
         description: description.trim(),
         category,
         licenseCode,
+        priceMinor: Math.max(0, Math.round(Number(price || "0") * 100)),
         demoUrl: demoUrl.trim() || null,
       });
       toast.success("Draft created — submit it for review when you're ready");
@@ -131,6 +141,7 @@ function SellPage() {
       setPitch("");
       setDescription("");
       setDemoUrl("");
+      setPrice("0");
       setProjectId("");
       await load();
     } catch (err) {
@@ -278,10 +289,21 @@ function SellPage() {
               />
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground">
-              Listings start free while paid checkout is being finished. You'll be able to set a
-              price before anything goes live.
-            </p>
+            <div className="grid gap-2">
+              <Label htmlFor="listing-price">Price (USD)</Label>
+              <Input
+                id="listing-price"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                type="number"
+                min={0}
+                step="1"
+                inputMode="decimal"
+              />
+              <p className="text-xs font-medium text-muted-foreground">
+                Set 0 to give it away free. Petal keeps 20% of each sale; the rest is yours.
+              </p>
+            </div>
 
             <div>
               <Button type="submit" disabled={creating}>
@@ -328,7 +350,8 @@ function SellPage() {
                         </span>
                       </div>
                       <p className="mt-1 line-clamp-1 text-xs font-medium text-muted-foreground">
-                        {l.pitch || "No pitch yet"} · {l.file_count} files
+                        {l.pitch || "No pitch yet"} · {l.file_count} files ·{" "}
+                        {formatListingPrice(Number(l.price_minor), l.currency_code)}
                       </p>
                       {l.review_note && (
                         <p className="mt-1 text-xs font-medium text-destructive">{l.review_note}</p>
@@ -359,6 +382,25 @@ function SellPage() {
                         </Button>
                       )}
                       {(l.status === "draft" || l.status === "rejected") && (
+                        <Input
+                          className="h-8 w-24"
+                          type="number"
+                          min={0}
+                          step="1"
+                          defaultValue={(Number(l.price_minor) / 100).toString()}
+                          aria-label={`Price for ${l.title} in USD`}
+                          onBlur={(e) => {
+                            const next = Math.max(0, Math.round(Number(e.target.value || "0") * 100));
+                            if (next === Number(l.price_minor)) return;
+                            void withBusy(
+                              l.id,
+                              () => updateListing(l.id, { price_minor: next }),
+                              "Price updated",
+                            );
+                          }}
+                        />
+                      )}
+                      {(l.status === "draft" || l.status === "rejected") && (
                         <Button
                           size="sm"
                           disabled={busy}
@@ -383,6 +425,44 @@ function SellPage() {
                 );
               })}
             </ul>
+          )}
+        </section>
+        <section className="mt-12">
+          <h2 className="text-lg font-bold">Sales</h2>
+          {sales.length === 0 ? (
+            <p className="mt-3 text-sm font-medium text-muted-foreground">
+              No sales yet. Once a product goes live, every purchase shows up here with your
+              earnings.
+            </p>
+          ) : (
+            <>
+              <p className="mt-2 text-sm font-bold">
+                {sales.length} sale{sales.length === 1 ? "" : "s"} ·{" "}
+                {formatListingPrice(
+                  sales.reduce((sum, s2) => sum + Number(s2.creator_net_cents), 0),
+                  "USD",
+                )}{" "}
+                earned
+              </p>
+              <ul className="mt-4 space-y-2">
+                {sales.map((s2) => (
+                  <li
+                    key={s2.id}
+                    className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold">{s2.listing_title}</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {new Date(s2.created_at).toLocaleDateString()} · {s2.source}
+                      </p>
+                    </div>
+                    <p className="text-sm font-bold tabular-nums">
+                      {formatListingPrice(Number(s2.creator_net_cents), "USD")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </section>
       </main>
