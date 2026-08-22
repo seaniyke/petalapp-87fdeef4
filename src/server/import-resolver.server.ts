@@ -196,7 +196,34 @@ function namedImportNames(line: string): string[] {
 
 /** Paths the scaffold kit owns and always writes — never stub these. */
 const KIT_OWNED_PATH =
-  /^src\/(components\/ui\/|components\/blocks\/|components\/examples\/|integrations\/|hooks\/|lib\/)/;
+  /^src\/(components\/(ui|blocks|examples|fx|motion|mobile|three|content|providers|scroll|image|charts|data|forms|editor|map)\/|integrations\/|hooks\/|lib\/)/;
+
+/**
+ * Only these paths may be auto-composed into a missing page. Kit primitives
+ * (fx/motion/mobile/three/…) are prop-driven building blocks: rendering them
+ * bare produces runtime crashes ("t is not iterable", `.split` of undefined),
+ * so page composition is restricted to the turn's own section components.
+ */
+const COMPOSABLE_SECTION_PATH =
+  /^src\/components\/(sections|section|landing|marketing|home)\/[^/]+\.(tsx|jsx)$/i;
+const TOP_LEVEL_COMPONENT_PATH = /^src\/components\/[^/]+\.(tsx|jsx)$/i;
+
+/** A component that requires props can't be rendered bare in a composed page. */
+function takesNoRequiredProps(source: string, name: string): boolean {
+  const re = new RegExp(
+    `(?:function\\s+${name}\\s*\\(([^)]*)\\)|(?:const|let)\\s+${name}\\s*(?::[^=]+)?=\\s*(?:React\\.)?(?:memo\\s*\\(\\s*)?\\(([^)]*)\\)\\s*=>)`,
+  );
+  const m = source.match(re);
+  if (!m) return false;
+  const params = (m[1] ?? m[2] ?? "").trim();
+  if (params === "") return true;
+  // `{ a = 1, b = 2 }` — every destructured prop has a default.
+  const inner = params.replace(/^\{/, "").replace(/\}\s*(:[\s\S]*)?$/, "");
+  const parts = inner.split(/,(?![^{[]*[}\]])/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return true;
+  return parts.every((p) => p.includes("=") || p.startsWith("..."));
+}
+
 
 /** A missing module that a router points at is a PAGE, not a leaf component. */
 const PAGE_PATH = /^src\/(pages|screens|views|routes)\//i;
@@ -261,22 +288,27 @@ function buildPageFromOrphans(
   const picks: Array<{ path: string; base: string; name: string; isDefault: boolean }> = [];
   for (const [p, content] of byPath) {
     if (!SCANNABLE.test(p)) continue;
-    if (!p.startsWith("src/components/")) continue;
     if (KIT_OWNED_PATH.test(p)) continue;
+    if (!COMPOSABLE_SECTION_PATH.test(p) && !TOP_LEVEL_COMPONENT_PATH.test(p)) continue;
     if (referenced.has(p) || consumed.has(p)) continue;
     const base = fileBase(p);
     if (CHROME_BASENAME.test(base)) continue;
     if (!/<[A-Za-z]/.test(content)) continue; // not a renderer
     const exp = exportedComponentName(content, p);
     if (!exp) continue;
+    if (!takesNoRequiredProps(content, exp.name)) continue;
     picks.push({ path: p, base, name: exp.name, isDefault: exp.isDefault });
   }
   if (picks.length === 0) return null;
 
+
   picks.sort((a, b) => sectionRank(a.base) - sectionRank(b.base) || a.base.localeCompare(b.base));
   const seen = new Set<string>();
-  const unique = picks.filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)));
+  const unique = picks
+    .filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)))
+    .slice(0, 14);
   for (const s of unique) consumed.add(s.path);
+
 
   const compName =
     importedName && /^[A-Z][A-Za-z0-9_]*$/.test(importedName) ? importedName : "Page";
