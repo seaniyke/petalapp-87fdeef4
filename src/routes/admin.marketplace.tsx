@@ -8,6 +8,7 @@ import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdminMarketplaceEconomy } from "@/components/marketplace/AdminMarketplaceEconomy";
 import {
   decideListing,
   formatListingPrice,
@@ -116,6 +117,7 @@ function AdminMarketplacePage() {
                 ))
               )}
             </Section>
+            <AdminMarketplaceEconomy />
           </>
         )}
       </main>
