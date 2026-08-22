@@ -19,30 +19,38 @@ import { PetalLoader } from "@/components/PetalLoader";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Cache of build id -> deployment URL so a 60-card gallery doesn't fire the
+ * Cache of project id -> deployment URL so a 60-card gallery doesn't fire the
  * same lookup twice. Shared across every mounted thumbnail.
+ *
+ * The lookup goes through `project_screenshot_url`, a security-definer
+ * function that returns the latest READY build's public deployment URL for a
+ * project the caller may see (public, or their own). That URL is reachable by
+ * the screenshot service — unlike `/api/preview/:id`, which requires a bearer
+ * token and therefore always rendered as a blank/authwall tile.
  */
 const deployUrlCache = new Map<string, Promise<string | null>>();
 
-function fetchDeployUrl(buildId: string): Promise<string | null> {
-  const cached = deployUrlCache.get(buildId);
+function fetchDeployUrl(projectId: string): Promise<string | null> {
+  const cached = deployUrlCache.get(projectId);
   if (cached) return cached;
   const p = (async () => {
     try {
-      const { data } = await supabase
-        .from("project_builds")
-        .select("status, dist_path")
-        .eq("id", buildId)
-        .maybeSingle();
-      return data?.status === "ready" && data.dist_path ? data.dist_path : null;
+      const { data } = await (
+        supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: string | null }>
+      )("project_screenshot_url", { p_project_id: projectId });
+      return typeof data === "string" && data ? data : null;
     } catch {
       return null;
     }
   })();
 
-  deployUrlCache.set(buildId, p);
+  deployUrlCache.set(projectId, p);
   return p;
 }
+
 
 export function ProjectThumbnail({
   projectId,
