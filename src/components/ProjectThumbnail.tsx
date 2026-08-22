@@ -97,6 +97,17 @@ export function ProjectThumbnail({
   const [loaded, setLoaded] = useState(false);
   const showImage = url && !failed;
 
+  // The screenshot service can hang (cold render, rate limit) without ever
+  // firing onError, which left the tile showing a spinner forever — that's the
+  // "blank thumbnail" people see. Give it a hard deadline, then fall back to
+  // the gradient tile so a card is never empty.
+  useEffect(() => {
+    if (!showImage || loaded) return;
+    const t = setTimeout(() => setFailed(true), 9000);
+    return () => clearTimeout(t);
+  }, [showImage, loaded, url]);
+
+
 
   return (
     <div

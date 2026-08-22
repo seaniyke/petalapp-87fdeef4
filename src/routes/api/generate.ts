@@ -161,6 +161,7 @@ import { entriesFromRepairNotes, recordRepairs, signatureOf } from "@/server/rep
 import { analyzeEditScope, scopeDisclosure } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
 import {
   proposeChangePlan,
   savePlan,
@@ -5304,12 +5305,16 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   // pipeline starts streaming. The inner core also reads the body, so we
   // clone the request to avoid consuming it twice.
   let recorder: TurnRecorderHandle | null = null;
+  // Kept in scope so the terminal path can write the assistant reply itself
+  // when the browser is gone (see persistAbandonedTurnReply below).
+  let turnProjectId: string | null = null;
   const clone = request.clone();
   try {
     const peekAuth = await authorize(clone);
     if (typeof peekAuth === "string") {
       const peekBody = (await clone.json().catch(() => null)) as Body | null;
       if (peekBody?.projectId) {
+        turnProjectId = peekBody.projectId;
         recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
       }
     }
@@ -5360,9 +5365,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       ];
       let statusIdx = 0;
 
-      const recordEvent = recorder
-        ? makeSseTap((type, payload) => recorder!.record(type, payload))
-        : null;
+      // Last `result` payload seen on the wire. Used only when the client
+      // disappeared: the server then writes the assistant reply itself so the
+      // thread never ends on an unanswered prompt.
+      let lastResult: { summary?: string; plan?: string; recap?: string } | null = null;
+      const recordEvent = makeSseTap((type, payload) => {
+        if (type === "result") {
+          const p = payload as { summary?: string; plan?: string; recap?: string };
+          lastResult = {
+            summary: typeof p.summary === "string" ? p.summary : undefined,
+            plan: typeof p.plan === "string" ? p.plan : undefined,
+            recap: typeof p.recap === "string" ? p.recap : undefined,
+          };
+        }
+        recorder?.record(type, payload);
+      });
       // The browser can vanish at any moment (tab closed, phone locked,
       // proxy timeout). When it does, `controller.enqueue` starts throwing —
       // but the build itself must keep going and keep recording turn_events
@@ -5466,6 +5483,21 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // write is dropped by serverless runtimes once the response closes,
         // leaving turns permanently "running" and inviting reconnect loops.
         await finishTurnOnce(terminalStatus, terminalError);
+        // The browser left mid-build. The pipeline finished and the files are
+        // saved, but nobody is around to write the assistant bubble — do it
+        // here so the user returns to an answered thread, not a dead one.
+        if (clientGone && turnProjectId && recorder) {
+          const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
+          await persistAbandonedTurnReply({
+            projectId: turnProjectId,
+            turnId: recorder.turnId,
+            status: terminalStatus,
+            summary: done?.summary ?? null,
+            plan: done?.plan ?? null,
+            recap: done?.recap ?? null,
+            errorMessage: terminalError,
+          }).catch(() => {});
+        }
         try {
           controller.close();
         } catch {
