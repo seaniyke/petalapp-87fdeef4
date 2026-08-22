@@ -320,6 +320,14 @@ export function runAllRepairs(input: ProjectFile[]): RepairAllResult {
   files = tw.files;
   for (const n of tw.notes) notes.push(n);
 
+  // 7b. Palette integrity — no earlier pass may leave a self-referential or
+  //     flattened colour declaration behind. `--primary: var(--primary)` is
+  //     invalid CSS and silently deletes the whole brand palette.
+  const palette = repairPaletteIntegrity(files);
+  files = palette.files;
+  for (const n of palette.notes) notes.push(n);
+
+
   // 8. Asset stubber — placeholder SVGs for missing local refs; onError for external.
   const assets = stubMissingAssets(files);
   files = assets.files;
