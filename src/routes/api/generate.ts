@@ -43,7 +43,7 @@ import {
   type CriticRejection,
 } from "@/server/critic-agent.server";
 
-import { applyScaffoldKit, applyScaffoldKitForPatch, STYLES_CSS } from "@/server/scaffold-kit";
+import { applyScaffoldKit, applyScaffoldKitForPatch, markKitFileCustomized, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget } from "@/lib/build-targets";
 import { resolveBuildTarget } from "@/lib/target-inference";
 import { getWebSubtypeAddendum } from "@/lib/web-subtype";
