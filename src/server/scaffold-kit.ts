@@ -4390,10 +4390,17 @@ export function applyScaffoldKitForPatch(
 
   for (const kit of KIT_FILES) {
     if (keep.has(kit.path)) continue;
+    const existing = map.get(kit.path);
+    // A block/example this project deliberately redesigned on an earlier turn
+    // carries a durable marker. Without this check the NEXT turn's kit refresh
+    // silently reverts the redesign, which reads to the user as "Petal said it
+    // changed the design but nothing changed".
+    if (existing !== undefined && isCustomizedKitFile(kit.path, existing)) continue;
     if (shouldOverwriteDuringPatch(kit.path) || !map.has(kit.path)) {
       map.set(kit.path, kit.content);
     }
   }
+
 
   let extraDeps: Record<string, string> = {};
   if (opts?.backend) {
