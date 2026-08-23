@@ -4021,12 +4021,20 @@ Forbidden defaults
               .filter((f) => currentFiles.find((c) => c.path === f.path)?.content !== f.content)
               .map((f) => f.path),
           );
+          // Stamp customized kit blocks so NEXT turn's kit refresh can't revert
+          // this redesign back to the library version.
+          patched = patched.map((f) =>
+            patchedTouched.has(f.path)
+              ? { ...f, content: markKitFileCustomized(f.path, f.content) }
+              : f,
+          );
           nextFiles = applyScaffoldKitForPatch(patched, {
             backend: backend ?? undefined,
             sharedBackend: sharedBackend ?? undefined,
             target: buildTarget.id,
             keepPaths: patchedTouched,
           });
+
         }
         if (!nextFiles.some((f) => f.path === "index.html")) {
           throw new Error("Project is missing index.html.");
