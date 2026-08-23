@@ -4316,10 +4316,14 @@ export function applyScaffoldKit(
   for (const f of aiFiles) map.set(f.path, f.content);
 
   for (const kit of KIT_FILES) {
+    const existing = map.get(kit.path);
+    // Never revert a block this project deliberately redesigned.
+    if (existing !== undefined && isCustomizedKitFile(kit.path, existing)) continue;
     if (kit.overwrite || !map.has(kit.path)) {
       map.set(kit.path, kit.content);
     }
   }
+
 
   // Backend kit + backend-only auth blocks: only injected when a backend is
   // connected to the project. All entries overwrite — these files are
@@ -4349,7 +4353,38 @@ export function applyScaffoldKit(
   return Array.from(map, ([path, content]) => ({ path, content }));
 }
 
+/**
+ * Marker written into a library-owned kit file once this project has
+ * deliberately customized it (a redesign turn rewrote the block). Kit
+ * refreshes on later turns must then leave the file alone.
+ */
+export const PETAL_CUSTOMIZED_MARKER = "petal:customized";
+
+/** Kit trees that a project is allowed to fork away from the library. */
+const CUSTOMIZABLE_KIT_PREFIXES = [
+  "src/components/blocks/",
+  "src/components/examples/",
+  "src/components/fx/",
+  "src/components/sections/",
+];
+
+export function isCustomizableKitPath(path: string): boolean {
+  return CUSTOMIZABLE_KIT_PREFIXES.some((p) => path.startsWith(p));
+}
+
+export function isCustomizedKitFile(path: string, content: string): boolean {
+  return isCustomizableKitPath(path) && content.includes(PETAL_CUSTOMIZED_MARKER);
+}
+
+/** Stamp the marker onto a kit file the model just rewrote (idempotent). */
+export function markKitFileCustomized(path: string, content: string): string {
+  if (!isCustomizableKitPath(path)) return content;
+  if (content.includes(PETAL_CUSTOMIZED_MARKER)) return content;
+  return `// ${PETAL_CUSTOMIZED_MARKER} — customized for this project; kit refreshes will not overwrite it.\n${content}`;
+}
+
 function shouldOverwriteDuringPatch(path: string): boolean {
+
   return (
     path === "vite.config.ts" ||
     // Kit blocks are library-owned, exactly like `src/components/ui/*`. Old
@@ -4390,10 +4425,17 @@ export function applyScaffoldKitForPatch(
 
   for (const kit of KIT_FILES) {
     if (keep.has(kit.path)) continue;
+    const existing = map.get(kit.path);
+    // A block/example this project deliberately redesigned on an earlier turn
+    // carries a durable marker. Without this check the NEXT turn's kit refresh
+    // silently reverts the redesign, which reads to the user as "Petal said it
+    // changed the design but nothing changed".
+    if (existing !== undefined && isCustomizedKitFile(kit.path, existing)) continue;
     if (shouldOverwriteDuringPatch(kit.path) || !map.has(kit.path)) {
       map.set(kit.path, kit.content);
     }
   }
+
 
   let extraDeps: Record<string, string> = {};
   if (opts?.backend) {
