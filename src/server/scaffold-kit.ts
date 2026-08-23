@@ -4316,10 +4316,14 @@ export function applyScaffoldKit(
   for (const f of aiFiles) map.set(f.path, f.content);
 
   for (const kit of KIT_FILES) {
+    const existing = map.get(kit.path);
+    // Never revert a block this project deliberately redesigned.
+    if (existing !== undefined && isCustomizedKitFile(kit.path, existing)) continue;
     if (kit.overwrite || !map.has(kit.path)) {
       map.set(kit.path, kit.content);
     }
   }
+
 
   // Backend kit + backend-only auth blocks: only injected when a backend is
   // connected to the project. All entries overwrite — these files are
