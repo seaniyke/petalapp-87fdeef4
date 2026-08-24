@@ -88,7 +88,15 @@ export function analyzeEditScope(
   before: ProjectFile[],
   after: ProjectFile[],
   prompt: string,
+  /**
+   * Optional verdict from the semantic edit classifier. The regexes above only
+   * see the words; the classifier sees the intent. When it says "structural",
+   * a wide rewrite is the correct answer and must never be flagged. When it
+   * says "micro", a wide rewrite is a defect even if no keyword matched.
+   */
+  classifiedScope?: "micro" | "targeted" | "structural",
 ): ScopeReport {
+
   const prev = new Map(before.map((f) => [f.path, f.content]));
   const next = new Map(after.map((f) => [f.path, f.content]));
 
