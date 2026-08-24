@@ -5194,7 +5194,13 @@ Forbidden defaults
         // rewrite is sometimes right), we disclose it and offer the undo, so
         // the user finds out from Petal rather than from a missing page.
         {
-          const scope = analyzeEditScope(turnBaselineFiles, nextFiles, lastUserContent);
+          const scope = analyzeEditScope(
+            turnBaselineFiles,
+            nextFiles,
+            lastUserContent,
+            editClassification?.scope,
+          );
+
           if (scope.flagged) {
             const note = scopeDisclosure(scope);
             summary = `${summary}${note}`;
