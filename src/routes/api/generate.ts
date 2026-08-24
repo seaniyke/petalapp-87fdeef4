@@ -2432,9 +2432,24 @@ Forbidden defaults
   const crossCuttingAddendum = isCrossCutting
     ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.\n\nCompleteness contract for this turn — a partial answer counts as a failure:\n1. If the ask mentions the design/look/theme/palette: rewrite the design tokens in \`src/styles.css\` (colours, fonts, radii, surfaces) AND restyle EVERY page and app-level component listed above so nothing is left on the old look. Touching one or two files is not a redesign.\n2. Handle EVERY separate clause in the user's message (they are often joined by "and"). If they also asked for a new element such as a footer, header, nav or section, create that component and render it on every page it belongs on in the SAME turn.\n3. In your recap, list one bullet per file you changed so the user can see the full sweep.`
 
-    : editTargetPaths.length > 0
-      ? editIntent!.briefing + inspectorAddendum
-      : inspectorAddendum;
+    : (() => {
+        // Non-structural edit. Give the model an explicit scope ceiling up
+        // front so "make the heading bigger" stops coming back as a rewrite
+        // of six files, while still demanding the full ask lands.
+        const scopeBlock = isInitial
+          ? ""
+          : renderScopeContractBlock({
+              scope: editClassification?.scope ?? "targeted",
+              dimensions: editClassification?.dimensions ?? [],
+              targetPaths: resolvedTargetPaths,
+            });
+        const base =
+          editTargetPaths.length > 0
+            ? editIntent!.briefing + inspectorAddendum
+            : inspectorAddendum;
+        return `${base}${scopeBlock}`;
+      })();
+
 
 
   const filesContext = isInitial
