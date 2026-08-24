@@ -2390,8 +2390,32 @@ Forbidden defaults
   const inspectorTargets = (inspectorReport?.targetPaths ?? []).filter((p: string) =>
     editablePromptFiles.some((f) => f.path === p),
   );
-  const resolvedTargetPaths =
+  let resolvedTargetPaths =
     editTargetPaths.length > 0 ? editTargetPaths : inspectorTargets;
+
+  // Understanding assist: the semantic classifier names the surfaces the user
+  // is talking about ("footer", "pricing", "checkout") even when they never
+  // quote a string the deterministic resolver can anchor on. Match those hints
+  // against real file names so a non-structural ask still arrives with the
+  // right file in full instead of being answered from memory.
+  if (!isInitial && !isCrossCutting && (editClassification?.hints.length ?? 0) > 0) {
+    const hintMatches = editablePromptFiles
+      .filter((f) => {
+        const name = f.path.split("/").pop()?.toLowerCase().replace(/\.[jt]sx?$/, "") ?? "";
+        return editClassification!.hints.some(
+          (h) => h.length >= 3 && (name === h || name.includes(h.replace(/\s+/g, "-"))),
+        );
+      })
+      .map((f) => f.path)
+      .filter((p) => !resolvedTargetPaths.includes(p))
+      .slice(0, 6);
+    if (hintMatches.length > 0) {
+      resolvedTargetPaths = [...resolvedTargetPaths, ...hintMatches];
+      console.info(`[edit-classifier] hint-matched target(s): ${hintMatches.join(", ")}`);
+    }
+  }
+
+
 
   // Engine 3.0 phase 4 — impact graph. A targeted edit rarely stops at the
   // file it names: whoever imports that file has to keep compiling, and
