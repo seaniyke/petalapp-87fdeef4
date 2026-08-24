@@ -159,7 +159,11 @@ import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { runAllRepairs } from "@/server/repair-all.server";
 import { TurnCostMeter } from "@/server/turn-cost-ceiling.server";
 import { entriesFromRepairNotes, recordRepairs, signatureOf } from "@/server/repair-ledger.server";
-import { analyzeEditScope, scopeDisclosure } from "@/server/edit-scope-guard.server";
+import {
+  analyzeEditScope,
+  renderScopeContractBlock,
+  scopeDisclosure,
+} from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
@@ -2386,8 +2390,32 @@ Forbidden defaults
   const inspectorTargets = (inspectorReport?.targetPaths ?? []).filter((p: string) =>
     editablePromptFiles.some((f) => f.path === p),
   );
-  const resolvedTargetPaths =
+  let resolvedTargetPaths =
     editTargetPaths.length > 0 ? editTargetPaths : inspectorTargets;
+
+  // Understanding assist: the semantic classifier names the surfaces the user
+  // is talking about ("footer", "pricing", "checkout") even when they never
+  // quote a string the deterministic resolver can anchor on. Match those hints
+  // against real file names so a non-structural ask still arrives with the
+  // right file in full instead of being answered from memory.
+  if (!isInitial && !isCrossCutting && (editClassification?.hints.length ?? 0) > 0) {
+    const hintMatches = editablePromptFiles
+      .filter((f) => {
+        const name = f.path.split("/").pop()?.toLowerCase().replace(/\.[jt]sx?$/, "") ?? "";
+        return editClassification!.hints.some(
+          (h) => h.length >= 3 && (name === h || name.includes(h.replace(/\s+/g, "-"))),
+        );
+      })
+      .map((f) => f.path)
+      .filter((p) => !resolvedTargetPaths.includes(p))
+      .slice(0, 6);
+    if (hintMatches.length > 0) {
+      resolvedTargetPaths = [...resolvedTargetPaths, ...hintMatches];
+      console.info(`[edit-classifier] hint-matched target(s): ${hintMatches.join(", ")}`);
+    }
+  }
+
+
 
   // Engine 3.0 phase 4 — impact graph. A targeted edit rarely stops at the
   // file it names: whoever imports that file has to keep compiling, and
@@ -2432,9 +2460,24 @@ Forbidden defaults
   const crossCuttingAddendum = isCrossCutting
     ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.\n\nCompleteness contract for this turn — a partial answer counts as a failure:\n1. If the ask mentions the design/look/theme/palette: rewrite the design tokens in \`src/styles.css\` (colours, fonts, radii, surfaces) AND restyle EVERY page and app-level component listed above so nothing is left on the old look. Touching one or two files is not a redesign.\n2. Handle EVERY separate clause in the user's message (they are often joined by "and"). If they also asked for a new element such as a footer, header, nav or section, create that component and render it on every page it belongs on in the SAME turn.\n3. In your recap, list one bullet per file you changed so the user can see the full sweep.`
 
-    : editTargetPaths.length > 0
-      ? editIntent!.briefing + inspectorAddendum
-      : inspectorAddendum;
+    : (() => {
+        // Non-structural edit. Give the model an explicit scope ceiling up
+        // front so "make the heading bigger" stops coming back as a rewrite
+        // of six files, while still demanding the full ask lands.
+        const scopeBlock = isInitial
+          ? ""
+          : renderScopeContractBlock({
+              scope: editClassification?.scope ?? "targeted",
+              dimensions: editClassification?.dimensions ?? [],
+              targetPaths: resolvedTargetPaths,
+            });
+        const base =
+          editTargetPaths.length > 0
+            ? editIntent!.briefing + inspectorAddendum
+            : inspectorAddendum;
+        return `${base}${scopeBlock}`;
+      })();
+
 
 
   const filesContext = isInitial
@@ -5175,7 +5218,13 @@ Forbidden defaults
         // rewrite is sometimes right), we disclose it and offer the undo, so
         // the user finds out from Petal rather than from a missing page.
         {
-          const scope = analyzeEditScope(turnBaselineFiles, nextFiles, lastUserContent);
+          const scope = analyzeEditScope(
+            turnBaselineFiles,
+            nextFiles,
+            lastUserContent,
+            editClassification?.scope,
+          );
+
           if (scope.flagged) {
             const note = scopeDisclosure(scope);
             summary = `${summary}${note}`;

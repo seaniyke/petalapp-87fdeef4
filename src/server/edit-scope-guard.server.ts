@@ -88,7 +88,15 @@ export function analyzeEditScope(
   before: ProjectFile[],
   after: ProjectFile[],
   prompt: string,
+  /**
+   * Optional verdict from the semantic edit classifier. The regexes above only
+   * see the words; the classifier sees the intent. When it says "structural",
+   * a wide rewrite is the correct answer and must never be flagged. When it
+   * says "micro", a wide rewrite is a defect even if no keyword matched.
+   */
+  classifiedScope?: "micro" | "targeted" | "structural",
 ): ScopeReport {
+
   const prev = new Map(before.map((f) => [f.path, f.content]));
   const next = new Map(after.map((f) => [f.path, f.content]));
 
@@ -120,8 +128,12 @@ export function analyzeEditScope(
     });
   }
 
-  const wasSmallRequest = isSmallEditRequest(prompt);
+  const wasSmallRequest =
+    classifiedScope === "structural"
+      ? false
+      : classifiedScope === "micro" || isSmallEditRequest(prompt);
   const isNewProject = before.length === 0;
+
 
   const shrunkPaths = deltas
     .filter(
@@ -177,4 +189,45 @@ export function scopeDisclosure(report: ScopeReport): string {
     `\n\nScope check — ${report.reason} ` +
     `If anything you had before is missing, say "undo that" and I'll roll this turn back.`
   );
+}
+
+/**
+ * Prompt-side counterpart to the post-hoc guard.
+ *
+ * The guard above only ever *disclosed* an overshoot after the fact — the user
+ * still paid for a turn that rewrote three working files to change a heading.
+ * This block goes into the system context BEFORE the model writes anything, so
+ * the surgical edit is the default and the full rewrite is the exception the
+ * user has to actually ask for.
+ *
+ * Returns "" for structural asks (the cross-cutting completeness contract owns
+ * those) and for initial builds.
+ */
+export function renderScopeContractBlock(args: {
+  scope: "micro" | "targeted" | "structural";
+  dimensions?: string[];
+  targetPaths?: string[];
+}): string {
+  if (args.scope === "structural") return "";
+  const targets = (args.targetPaths ?? []).filter(Boolean);
+  const targetLine = targets.length
+    ? `\nFiles this edit should touch: ${targets.join(", ")}. Anything outside that list needs a concrete reason (an import or type that would otherwise break).`
+    : "";
+  const dims = (args.dimensions ?? []).filter(Boolean);
+  const dimLine = dims.length ? `\nWhat is changing: ${dims.join(", ")}.` : "";
+  const ceiling =
+    args.scope === "micro"
+      ? "This is a one-thing change. Expect to edit ONE file, usually a single line or block."
+      : "This is a targeted change. Expect to edit one page/section and, at most, the few files that must follow it.";
+
+  return `\n\nEDIT SCOPE CONTRACT — read before emitting any op.
+${ceiling}${dimLine}${targetLine}
+
+Rules for this turn:
+1. Prefer \`replace\` ops with a short, exact snippet copied verbatim from the file contents shown above. Do not retype code from memory.
+2. Use a whole-file \`update\` ONLY when the change genuinely restructures that file. Never re-emit a file just to reformat it, reorder imports, rename internals, or "clean it up".
+3. Do not touch files the request did not mention and that do not have to follow the change. Untouched working code must come back byte-identical.
+4. Preserve everything already on the page — existing sections, props, routes, copy, handlers, styles and design tokens — unless the user asked for them to change. Deleting working behaviour to satisfy this request is a failure, not a simplification.
+5. If the request is genuinely ambiguous about scope, make the smaller change and say in your recap what the wider version would be. Do not silently choose the rewrite.
+6. Do the WHOLE ask though: every clause in the message must land. Small scope means few files, not a partial answer.`;
 }

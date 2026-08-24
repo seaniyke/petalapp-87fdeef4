@@ -145,3 +145,28 @@ describe("reconciliation precedence", () => {
     expect(ctx.decisions.filter((d) => /error state/i.test(d.claim))).toHaveLength(1);
   });
 });
+
+describe("edit scope contract", () => {
+  it("is silent for structural asks and strict for micro ones", async () => {
+    const { renderScopeContractBlock } = await import("@/server/edit-scope-guard.server");
+    expect(renderScopeContractBlock({ scope: "structural" })).toBe("");
+    const micro = renderScopeContractBlock({
+      scope: "micro",
+      dimensions: ["visual"],
+      targetPaths: ["src/components/Hero.tsx"],
+    });
+    expect(micro).toMatch(/one-thing change/i);
+    expect(micro).toMatch(/src\/components\/Hero\.tsx/);
+    expect(micro).toMatch(/replace/i);
+  });
+
+  it("lets the classifier decide what counts as a small request", async () => {
+    const { analyzeEditScope } = await import("@/server/edit-scope-guard.server");
+    const before = [{ path: "src/pages/Home.tsx", content: "x".repeat(2000) }];
+    const after = [{ path: "src/pages/Home.tsx", content: "y".repeat(6000) }];
+    // Prompt has no small-edit keywords, but the classifier says micro.
+    expect(analyzeEditScope(before, after, "the hero", "micro").flagged).toBe(true);
+    // Structural asks are never flagged for rewriting a lot.
+    expect(analyzeEditScope(before, after, "change the heading", "structural").flagged).toBe(false);
+  });
+});
