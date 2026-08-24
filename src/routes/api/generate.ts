@@ -159,7 +159,11 @@ import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { runAllRepairs } from "@/server/repair-all.server";
 import { TurnCostMeter } from "@/server/turn-cost-ceiling.server";
 import { entriesFromRepairNotes, recordRepairs, signatureOf } from "@/server/repair-ledger.server";
-import { analyzeEditScope, scopeDisclosure } from "@/server/edit-scope-guard.server";
+import {
+  analyzeEditScope,
+  renderScopeContractBlock,
+  scopeDisclosure,
+} from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
