@@ -128,8 +128,12 @@ export function analyzeEditScope(
     });
   }
 
-  const wasSmallRequest = isSmallEditRequest(prompt);
+  const wasSmallRequest =
+    classifiedScope === "structural"
+      ? false
+      : classifiedScope === "micro" || isSmallEditRequest(prompt);
   const isNewProject = before.length === 0;
+
 
   const shrunkPaths = deltas
     .filter(
