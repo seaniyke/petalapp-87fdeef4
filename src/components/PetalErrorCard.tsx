@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { RefreshCcw, Wrench, X, ChevronDown, Sparkles } from "lucide-react";
-import type { FriendlyError } from "@/lib/friendly-errors";
+import { isRenderableFriendlyError, type FriendlyError } from "@/lib/friendly-errors";
 
 type Props = {
   error: FriendlyError;
@@ -85,6 +85,10 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
       if (actionUnlockTimerRef.current !== null) clearTimeout(actionUnlockTimerRef.current);
     };
   }, [error.title, error.message, error.actionKind]);
+
+  // Runtime data restored from old chat rows may predate the error contract.
+  // Never paint a shell/icon when the actual card copy is missing.
+  if (!isRenderableFriendlyError(error)) return null;
 
   const runOnce = (action: (() => void) | undefined) => {
     if (!action || actionLockRef.current) return;

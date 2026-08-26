@@ -47,6 +47,34 @@ export type FriendlyError = {
   autoRetrying?: boolean;
 };
 
+const FRIENDLY_ERROR_ACTIONS = new Set<NonNullable<FriendlyError["actionKind"]>>([
+  "retry",
+  "ask-fix",
+  "dismiss",
+  "buy-credits",
+]);
+
+/**
+ * Persisted chat payloads are untrusted runtime data. Older/interrupted turns
+ * can contain `error: {}` even though the TypeScript shape requires copy.
+ * Rendering that object produces the empty amber "!" banner, so every entry
+ * point uses this guard before storing or displaying an error card.
+ */
+export function isRenderableFriendlyError(value: unknown): value is FriendlyError {
+  if (!value || typeof value !== "object") return false;
+  const error = value as Partial<FriendlyError>;
+  return (
+    typeof error.title === "string" &&
+    error.title.trim().length > 0 &&
+    typeof error.message === "string" &&
+    error.message.trim().length > 0 &&
+    typeof error.actionLabel === "string" &&
+    error.actionLabel.trim().length > 0 &&
+    typeof error.actionKind === "string" &&
+    FRIENDLY_ERROR_ACTIONS.has(error.actionKind as FriendlyError["actionKind"])
+  );
+}
+
 /**
  * F3 error contract — the single producer of user-facing failure copy.
  * `toFriendlyError` is the only function allowed to turn an exception into

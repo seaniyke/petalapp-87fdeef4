@@ -77,6 +77,7 @@ import {
   autoFixingBuild,
   friendlyBuildFailure,
   friendlyBuildServiceBusy,
+  isRenderableFriendlyError,
   isInfrastructureBuildError,
   toFriendlyError,
   PipelineError,
@@ -288,7 +289,7 @@ function isTransientFailureCardTitle(title: string | undefined): boolean {
 }
 
 function shouldPersistFriendlyError(err: FriendlyError): boolean {
-  return !isTransientFailureCardTitle(err.title);
+  return isRenderableFriendlyError(err) && !isTransientFailureCardTitle(err.title);
 }
 
 function removeBuildFailureCards(messages: ChatMessage[]): ChatMessage[] {
@@ -530,6 +531,7 @@ function Builder() {
   // "auto-fixing build") which clear themselves.
   const persistFriendlyError = useCallback(
     (err: FriendlyError) => {
+      if (!isRenderableFriendlyError(err)) return;
       setFriendlyError(err);
       if (!shouldPersistFriendlyError(err)) return;
       const projId = projectIdRef.current;
@@ -3883,7 +3885,7 @@ function Builder() {
   // is the newest thing that happened and must be the user's next action.
   let lastErrorIdx = -1;
   for (let k = messages.length - 1; k >= 0; k--) {
-    if (messages[k].role === "assistant" && messages[k].error) {
+    if (messages[k].role === "assistant" && isRenderableFriendlyError(messages[k].error)) {
       lastErrorIdx = k;
       break;
     }
@@ -3895,6 +3897,7 @@ function Builder() {
     err: { title?: string; message?: string } | null | undefined,
   ) => {
     if (!err) return true;
+    if (!isRenderableFriendlyError(err)) return true;
     // Never stack two "what now?" cards. When a plan proposal is on screen it
     // is the specific, actionable next step — the generic failure card next to
     // it is noise, so the plan wins.
