@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ProjectFile, ChatMessage } from "@/server/generate.server";
 import type { Database } from "@/integrations/supabase/types";
+import { isRenderableFriendlyError } from "@/lib/friendly-errors";
 
 export type ProjectRow = Database["public"]["Tables"]["projects"]["Row"];
 
@@ -389,9 +390,10 @@ function isInternalRepairPrompt(message: ChatMessage): boolean {
 }
 
 function encodeAssistantContent(m: ChatMessage): string {
+  const safeError = isRenderableFriendlyError(m.error) ? m.error : undefined;
   if (
     m.role !== "assistant" ||
-    (!m.plan && !m.recap && !(m.suggestions && m.suggestions.length > 0) && !m.error)
+    (!m.plan && !m.recap && !(m.suggestions && m.suggestions.length > 0) && !safeError)
   ) {
     return m.content;
   }
@@ -400,7 +402,7 @@ function encodeAssistantContent(m: ChatMessage): string {
     plan: m.plan ?? null,
     recap: m.recap ?? null,
     suggestions: m.suggestions ?? null,
-    error: m.error ?? null,
+    error: safeError ?? null,
   });
 }
 
@@ -423,7 +425,7 @@ function decodeAssistantContent(role: string, raw: string): ChatMessage {
           Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0
             ? parsed.suggestions.filter((s): s is string => typeof s === "string")
             : undefined,
-        error: parsed.error ?? undefined,
+        error: isRenderableFriendlyError(parsed.error) ? parsed.error : undefined,
       };
     } catch {
       // Fall through to plain text on corrupt payload.
@@ -439,8 +441,33 @@ export async function loadProjectMessages(projectId: string): Promise<ChatMessag
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  const decoded = (data ?? [])
-    .map((r) => ({ ...decodeAssistantContent(r.role, r.content), id: r.id }))
+  const decodedRows = (data ?? []).map((row) => ({
+    row,
+    message: { ...decodeAssistantContent(row.role, row.content), id: row.id },
+  }));
+  // Purge historical malformed structured rows while loading them. An empty
+  // assistant row has no conversational value and was the source of blank
+  // persisted error banners after refresh.
+  const emptyAssistantIds = decodedRows
+    .filter(({ message }) =>
+      message.role === "assistant" &&
+      message.content.trim().length === 0 &&
+      !message.plan?.trim() &&
+      !message.recap?.trim() &&
+      !(message.suggestions && message.suggestions.length > 0) &&
+      !message.error,
+    )
+    .map(({ row }) => row.id);
+  if (emptyAssistantIds.length > 0) {
+    const { error: cleanupError } = await supabase
+      .from("messages")
+      .delete()
+      .in("id", emptyAssistantIds);
+    if (cleanupError) console.error("Failed to remove malformed assistant messages", cleanupError);
+  }
+  const decoded = decodedRows
+    .map(({ message }) => message)
+    .filter((message) => !emptyAssistantIds.includes(message.id ?? ""))
     .filter((message) => !isInternalRepairPrompt(message));
   // Collapse back-to-back identical user prompts. These are orphans from an
   // attempt that died before it ever produced a reply (tab closed, stream

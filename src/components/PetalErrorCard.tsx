@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { RefreshCcw, Wrench, X, ChevronDown, Sparkles } from "lucide-react";
-import type { FriendlyError } from "@/lib/friendly-errors";
+import { isRenderableFriendlyError, type FriendlyError } from "@/lib/friendly-errors";
 
 type Props = {
   error: FriendlyError;
@@ -69,6 +69,10 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
   const actionLockRef = useRef(false);
   const actionUnlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const summary = summarizeTechnicalDetail(error.technicalDetail);
+
+  // Runtime data restored from old chat rows may predate the error contract.
+  // Never paint a shell/icon when the actual card copy is missing.
+  if (!isRenderableFriendlyError(error)) return null;
 
   // A mobile tap can dispatch twice before the parent has time to render its
   // busy state. Lock synchronously (state alone is not synchronous), then keep
