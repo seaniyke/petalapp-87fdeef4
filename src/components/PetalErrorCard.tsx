@@ -62,10 +62,6 @@ function summarizeTechnicalDetail(
 }
 
 export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredits }: Props) {
-  // Runtime data restored from old chat rows may predate the error contract.
-  // Never paint a shell/icon when the actual card copy is missing.
-  if (!isRenderableFriendlyError(error)) return null;
-
   const [showDetails, setShowDetails] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -89,6 +85,10 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
       if (actionUnlockTimerRef.current !== null) clearTimeout(actionUnlockTimerRef.current);
     };
   }, [error.title, error.message, error.actionKind]);
+
+  // Runtime data restored from old chat rows may predate the error contract.
+  // Never paint a shell/icon when the actual card copy is missing.
+  if (!isRenderableFriendlyError(error)) return null;
 
   const runOnce = (action: (() => void) | undefined) => {
     if (!action || actionLockRef.current) return;
