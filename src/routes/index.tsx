@@ -21,7 +21,6 @@ import {
   Rocket,
   Layers,
   Copy,
-  Eye,
   FolderPlus,
   Puzzle,
   Paperclip,
