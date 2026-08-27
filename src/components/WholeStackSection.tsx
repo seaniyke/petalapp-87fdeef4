@@ -14,7 +14,7 @@ import {
   ScrollText,
   Check,
   X,
-  Sparkles,
+  Gem,
 } from "lucide-react";
 
 type StackRow = {
@@ -149,7 +149,7 @@ export function WholeStackSection() {
         {/* Readiness score — the signature differentiator */}
         <div className="mt-8 flex flex-col items-center gap-5 rounded-[2rem] border border-border bg-gradient-to-br from-primary/10 to-transparent p-7 text-center sm:p-10">
           <span className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-            <Sparkles className="h-3.5 w-3.5" /> Only on Petal
+            <Gem className="h-3.5 w-3.5" /> Only on Petal
           </span>
           <h3 className="max-w-2xl font-display text-3xl font-black leading-[1] tracking-[-0.03em] sm:text-4xl">
             A Readiness Score that tells you if it's actually launchable

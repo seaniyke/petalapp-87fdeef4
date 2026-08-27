@@ -20,14 +20,15 @@ import {
   Eye,
   Rocket,
   Layers,
-  Wand2,
+  Copy,
+  FolderPlus,
+  Puzzle,
   Paperclip,
   Camera,
   X,
   Globe,
   Lock,
   Plus,
-  Sparkles,
   Smartphone,
   Star,
   ShieldCheck,
@@ -838,7 +839,7 @@ function Landing() {
               ) : projects.length === 0 ? (
                 <div className="relative overflow-hidden rounded-2xl border border-dashed border-border bg-card/40 p-12 text-center">
                   <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-border bg-card">
-                    <Sparkles className="h-5 w-5 text-muted-foreground" />
+                    <FolderPlus className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <h3 className="mt-5 font-display text-xl">Your workspace is empty</h3>
                   <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
@@ -1147,7 +1148,7 @@ function Landing() {
               {/* Second row — consistent full-bleed editorial cards */}
               <div className="mt-5 grid gap-5 md:grid-cols-3">
                 {[
-                  { slug: "extensions", img: extensionImg, icon: Wand2, label: "Chrome extensions", dark: true },
+                  { slug: "extensions", img: extensionImg, icon: Puzzle, label: "Chrome extensions", dark: true },
                   { slug: "preview", img: previewImg, icon: Eye, label: "Live preview", dark: false },
                   { slug: "ship", img: shipImg, icon: Rocket, label: "One-click ship", dark: true },
                 ].map((f) => (
@@ -1221,7 +1222,7 @@ function Landing() {
                   <ul className="mt-8 space-y-4 text-sm sm:text-base">
                     <li className="flex items-start gap-4">
                       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-coral/25 text-foreground">
-                        <Sparkles className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       </span>
                       <span>
                         <strong className="font-semibold">Live previews</strong> — click any project to see the real,
@@ -1230,7 +1231,7 @@ function Landing() {
                     </li>
                     <li className="flex items-start gap-4">
                       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-mint text-foreground">
-                        <Wand2 className="h-4 w-4" />
+                        <Copy className="h-4 w-4" />
                       </span>
                       <span>
                         <strong className="font-semibold">One-click remix</strong> — fork a shipped app into a fresh
