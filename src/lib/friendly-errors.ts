@@ -373,9 +373,16 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   //    all text matching — the server already decided what went wrong, so
   //    the client just renders the matching card. No more false positives
   //    from LLM-rewritten apology copy.
+  // Final safety net: every builder above must produce a renderable card.
+  // A malformed payload (empty title/message) is what produced the blank
+  // amber "!" banner bug, so anything that fails the contract falls back to
+  // the generic card with the raw detail attached.
+  const guard = (candidate: FriendlyError): FriendlyError =>
+    isRenderableFriendlyError(candidate) ? candidate : { ...GENERIC, technicalDetail: text };
+
   if (raw instanceof PipelineError) {
     const builder = KIND_TO_FRIENDLY[raw.kind];
-    if (builder && raw.kind !== "unknown") return builder(rawText);
+    if (builder && raw.kind !== "unknown") return guard(builder(rawText));
     // kind === "unknown" → fall through to regex/generic, and report so
     // we can add a new branch.
   }
@@ -384,7 +391,7 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   //    JSON 400 bodies). Never matches humanized SSE prose.
   for (const p of PATTERNS) {
     if (p.test.test(rawText)) {
-      return p.build(rawText);
+      return guard(p.build(rawText));
     }
   }
 
