@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Link2, Sparkles } from "lucide-react";
+import { Lightbulb, Compass } from "lucide-react";
 
 import { START_IDEAS, type StartIdea } from "@/lib/start-ideas";
 
@@ -44,63 +43,6 @@ const ACCENT_BG: Record<StartIdea["accent"], string> = {
   butter: "bg-butter/40 text-foreground/80",
 };
 
-/**
- * Clone from URL — paste a link and Petal reads that page's real design
- * system (palette, type pair, corner radius, section order) plus its copy,
- * then generates an ORIGINAL app in the same visual language.
- *
- * It fills the composer rather than submitting: the user still owns the
- * prompt and can add "but make it a bakery" before sending.
- */
-function CloneFromUrl({ onPick }: { onPick: (prompt: string) => void }) {
-  const [url, setUrl] = useState("");
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const raw = url.trim();
-    if (!raw) return;
-    const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    onPick(
-      `Build a site inspired by ${href} — read that page and match its design system (palette, typography, spacing, section order) and its tone of voice. Write original copy and design an original brand mark; do not reuse their logo or imagery.`,
-    );
-    setUrl("");
-  };
-
-  return (
-    <form onSubmit={submit} className="mb-5 px-4 md:px-0">
-      <label
-        htmlFor="clone-url"
-        className="mb-1.5 flex items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
-      >
-        <Link2 className="h-3.5 w-3.5 text-primary" />
-        Have a site you love? Build from it
-      </label>
-      <div className="mx-auto flex max-w-xl items-center gap-2 rounded-2xl border border-border bg-card/80 p-1.5 focus-within:border-primary/40">
-        <input
-          id="clone-url"
-          type="text"
-          inputMode="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="paste any website link"
-          className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-        />
-        <button
-          type="submit"
-          disabled={!url.trim()}
-          className="shrink-0 rounded-xl bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-40"
-        >
-          Use as reference
-        </button>
-      </div>
-      <p className="mx-auto mt-1.5 max-w-xl text-center text-[10.5px] leading-snug text-muted-foreground">
-        Petal interprets and rebuilds — it never copies logos or copyrighted
-        assets, and pages behind a login or paywall can’t be read.
-      </p>
-    </form>
-  );
-}
-
 export function StartIdeasPanel({
   onPick,
   onSwitchToCoach,
@@ -110,9 +52,8 @@ export function StartIdeasPanel({
 }) {
   return (
     <section aria-labelledby="start-ideas-heading" className="mx-auto mt-8 max-w-4xl md:px-0">
-      <CloneFromUrl onPick={onPick} />
       <div className="mb-3 flex items-center justify-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <Lightbulb className="h-3.5 w-3.5 text-primary" />
         <h2
           id="start-ideas-heading"
           className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
@@ -163,7 +104,7 @@ export function StartIdeasPanel({
             onClick={onSwitchToCoach}
             className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
-            <Sparkles className="h-3 w-3 text-lilac" />
+            <Compass className="h-3 w-3 text-lilac" />
             Not seeing what you want? Help me think →
           </button>
         </div>
