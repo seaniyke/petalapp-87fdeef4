@@ -237,10 +237,10 @@ export function SampleAppShowcase() {
         {/* Body — keyed so each panel remounts and re-runs the entrance animation */}
         <div
           key={sample.slug}
-          className="grid gap-0 md:grid-cols-[260px_1fr_1.1fr]"
+          className="grid grid-rows-[180px_180px_310px] gap-0 md:h-[430px] md:grid-cols-[260px_1fr_1.1fr] md:grid-rows-1"
         >
           {/* Chat */}
-          <div className="border-b border-border bg-sidebar p-4 text-sm md:border-b-0 md:border-r animate-fade-in">
+          <div className="overflow-hidden border-b border-border bg-sidebar p-4 text-sm md:border-b-0 md:border-r animate-fade-in">
             <div className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Chat
             </div>
@@ -260,7 +260,7 @@ export function SampleAppShowcase() {
           </div>
 
           {/* Code */}
-          <div className="border-b border-border bg-background/50 p-4 font-mono text-[11px] leading-relaxed text-foreground/80 md:border-b-0 md:border-r animate-fade-in">
+          <div className="overflow-hidden border-b border-border bg-background/50 p-4 font-mono text-[11px] leading-relaxed text-foreground/80 md:border-b-0 md:border-r animate-fade-in">
             <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {sample.fileName}
             </div>
@@ -268,7 +268,7 @@ export function SampleAppShowcase() {
           </div>
 
           {/* Preview */}
-          <div className="bg-aurora p-6 animate-fade-in">
+          <div className="overflow-hidden bg-aurora p-6 animate-fade-in">
             <div className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Preview
             </div>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PetalBrand } from "@/components/PetalBrand";
 import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
@@ -58,12 +59,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Build web, mobile, backend or extension apps from one chat — then list them for sale. Credits you buy once and never lose, no subscription required.",
+          "Petal is an app builder for web, mobile, backends, and extensions. Describe your idea, build it, publish it, and sell it.",
       },
       { property: "og:title", content: "Petal — Build it, ship it, then sell it" },
       {
         property: "og:description",
-        content: "One chat builds it, eleven specialists review it, and the marketplace lets you sell it. Credits never expire.",
+        content: "Describe your app, build it, publish it, and sell it. Your code is yours, and credits never expire.",
       },
     ],
   }),
@@ -491,10 +492,10 @@ function Landing() {
           ) : (
             <>
               <h1 className="font-landing-display text-balance text-[2.75rem] font-bold leading-[1.02] sm:text-6xl md:text-7xl">
-                Build software from a conversation.
+                Build an app from a conversation.
               </h1>
               <p className="mx-auto mt-5 max-w-xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Describe the product. Petal plans, builds, tests, and ships it.
+                Describe your app. Petal plans, builds, tests, and publishes it.
               </p>
             </>
           )}
@@ -895,13 +896,13 @@ function Landing() {
             <div className="mx-auto max-w-6xl px-5 py-7 sm:px-6">
               <dl className="grid grid-cols-2 gap-6 sm:grid-cols-4">
                 {[
-                  { stat: "4", label: "Build targets" },
-                  { stat: "11", label: "Specialist agents" },
+                  { stat: "Web + mobile", label: "Apps for every screen" },
+                  { stat: "One prompt", label: "From idea to app" },
+                  { stat: "Yours", label: "Code and project" },
                   { stat: "Never", label: "Credits expire" },
-                  { stat: "80%", label: "Creator share" },
                 ].map((item) => (
                   <div key={item.label} className="border-l border-border pl-4">
-                    <dt className="font-landing-display text-2xl font-semibold sm:text-3xl">{item.stat}</dt>
+                    <dt className="font-landing-display text-xl font-semibold sm:text-2xl">{item.stat}</dt>
                     <dd className="mt-1 text-xs text-muted-foreground">{item.label}</dd>
                   </div>
                 ))}
@@ -961,8 +962,8 @@ function Landing() {
             <div className="mx-auto flex max-w-6xl flex-col gap-10 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
                 <p className="text-sm text-background/60">Petal Marketplace</p>
-                <h2 className="font-landing-display mt-4 text-4xl font-semibold leading-tight sm:text-6xl">Software can be an asset.</h2>
-                <p className="mt-5 max-w-lg text-base text-background/70">Sell a working product, not a screenshot. Buyers receive the project and its code.</p>
+                <h2 className="font-landing-display mt-4 text-4xl font-semibold leading-tight sm:text-6xl">Your app can earn.</h2>
+                <p className="mt-5 max-w-lg text-base text-background/70">Sell a working app, not a screenshot. Buyers receive the project and its code.</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link to="/marketplace" className="inline-flex h-11 items-center gap-2 rounded-md bg-background px-5 text-sm font-semibold text-foreground">
@@ -1021,7 +1022,9 @@ function Landing() {
 
           <footer className="border-t border-border">
             <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 text-sm text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between">
-              <span className="font-landing-display font-semibold text-foreground">Petal</span>
+              <Link to="/" aria-label="Petal home">
+                <PetalBrand size="sm" />
+              </Link>
               <div className="flex flex-wrap gap-x-5 gap-y-3">
                 <Link to="/marketplace" className="hover:text-foreground">Marketplace</Link>
                 <Link to="/gallery" className="hover:text-foreground">Gallery</Link>
