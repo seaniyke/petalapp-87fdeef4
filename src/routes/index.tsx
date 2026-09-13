@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SampleAppShowcase } from "@/components/SampleAppShowcase";
-import { WholeStackSection } from "@/components/WholeStackSection";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
@@ -17,32 +16,15 @@ import { listProjects, listPublicProjects, isProjectPublic, type ProjectRow } fr
 import {
   ArrowRight,
   ArrowUp,
-  Eye,
-  Rocket,
-  Layers,
-  Copy,
   FolderPlus,
-  Puzzle,
   Paperclip,
   Camera,
   X,
   Globe,
   Lock,
   Plus,
-  Smartphone,
-  Star,
-  ShieldCheck,
-  Code2,
   Mic,
 } from "lucide-react";
-
-import webDashImg from "@/assets/landing-web-dashboard.jpg";
-import backendImg from "@/assets/landing-backend.jpg";
-import founderImg from "@/assets/landing-founder.jpg";
-import phoneHandImg from "@/assets/landing-phone-hand.jpg";
-import extensionImg from "@/assets/landing-extension.jpg";
-import previewImg from "@/assets/landing-preview.jpg";
-import shipImg from "@/assets/landing-ship.jpg";
 import { toVisitorSummary } from "@/lib/visitor-summary";
 
 type ProjectFilter = "all" | "recent" | "public";

@@ -1,4 +1,4 @@
-import { Lightbulb, Compass } from "lucide-react";
+import { Compass } from "lucide-react";
 
 import { START_IDEAS, type StartIdea } from "@/lib/start-ideas";
 
@@ -35,14 +35,6 @@ function pickLandingIdeas(): StartIdea[] {
 
 const LANDING_IDEAS = pickLandingIdeas();
 
-const ACCENT_BG: Record<StartIdea["accent"], string> = {
-  pink: "bg-primary/10 text-primary",
-  mint: "bg-mint/30 text-foreground/80",
-  lilac: "bg-lilac/30 text-foreground/80",
-  sky: "bg-sky/30 text-foreground/80",
-  butter: "bg-butter/40 text-foreground/80",
-};
-
 export function StartIdeasPanel({
   onPick,
   onSwitchToCoach,
@@ -51,61 +43,33 @@ export function StartIdeasPanel({
   onSwitchToCoach?: () => void;
 }) {
   return (
-    <section aria-labelledby="start-ideas-heading" className="mx-auto mt-8 max-w-4xl md:px-0">
-      <div className="mb-3 flex items-center justify-center gap-2">
-        <Lightbulb className="h-3.5 w-3.5 text-primary" />
-        <h2
-          id="start-ideas-heading"
-          className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
-        >
-          Need a spark? Try one of these
-        </h2>
-      </div>
-
-      {/* Mobile/tablet: horizontal swipeable rail with scroll-snap.
-          Desktop (md+): falls back to a tidy 4-col grid. */}
+    <section aria-labelledby="start-ideas-heading" className="mx-auto mt-5 max-w-3xl">
+      <h2 id="start-ideas-heading" className="sr-only">Starter ideas</h2>
       <ul
-        className="
-          flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2
-          [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden
-          [scroll-padding-left:1rem] [scroll-padding-right:1rem]
-          md:grid md:grid-cols-4 md:gap-2 md:overflow-visible md:px-0 md:pb-0
-        "
+        className="flex snap-x gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:justify-center sm:overflow-visible"
       >
         {LANDING_IDEAS.map((idea) => (
-          <li
-            key={idea.title}
-            className="snap-start shrink-0 basis-[62%] sm:basis-[42%] md:basis-auto"
-          >
+          <li key={idea.title} className="snap-start shrink-0">
             <button
               type="button"
               onClick={() => onPick(idea.prompt)}
-              className="group flex h-full w-full flex-col items-start gap-1.5 rounded-2xl border border-border bg-card/80 p-3 text-left transition hover:border-primary/40 hover:bg-card hover:shadow-[var(--shadow-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-card px-3.5 text-xs font-medium text-muted-foreground transition hover:border-foreground/25 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <span
-                className={`grid h-7 w-7 place-items-center rounded-xl ${ACCENT_BG[idea.accent]}`}
-              >
-                <idea.Icon className="h-3.5 w-3.5" />
-              </span>
-              <span className="text-xs font-medium leading-tight text-foreground">
-                {idea.title}
-              </span>
-              <span className="line-clamp-2 text-[10.5px] leading-snug text-muted-foreground">
-                {idea.prompt}
-              </span>
+              <idea.Icon className="h-3.5 w-3.5" />
+              {idea.title}
             </button>
           </li>
         ))}
       </ul>
       {onSwitchToCoach && (
-        <div className="mt-3 text-center">
+        <div className="mt-1 text-center">
           <button
             type="button"
             onClick={onSwitchToCoach}
-            className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="inline-flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground transition hover:text-foreground"
           >
-            <Compass className="h-3 w-3 text-lilac" />
-            Not seeing what you want? Help me think →
+            <Compass className="h-3.5 w-3.5" />
+            Help me shape an idea
           </button>
         </div>
       )}
