@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SampleAppShowcase } from "@/components/SampleAppShowcase";
-import { WholeStackSection } from "@/components/WholeStackSection";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
@@ -17,32 +16,15 @@ import { listProjects, listPublicProjects, isProjectPublic, type ProjectRow } fr
 import {
   ArrowRight,
   ArrowUp,
-  Eye,
-  Rocket,
-  Layers,
-  Copy,
   FolderPlus,
-  Puzzle,
   Paperclip,
   Camera,
   X,
   Globe,
   Lock,
   Plus,
-  Smartphone,
-  Star,
-  ShieldCheck,
-  Code2,
   Mic,
 } from "lucide-react";
-
-import webDashImg from "@/assets/landing-web-dashboard.jpg";
-import backendImg from "@/assets/landing-backend.jpg";
-import founderImg from "@/assets/landing-founder.jpg";
-import phoneHandImg from "@/assets/landing-phone-hand.jpg";
-import extensionImg from "@/assets/landing-extension.jpg";
-import previewImg from "@/assets/landing-preview.jpg";
-import shipImg from "@/assets/landing-ship.jpg";
 import { toVisitorSummary } from "@/lib/visitor-summary";
 
 type ProjectFilter = "all" | "recent" | "public";
@@ -481,19 +463,13 @@ function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="landing-page min-h-screen bg-background text-foreground">
       <SiteHeader />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        {/* Aurora + grain extend below the hero content so the warm wash
-            covers more of the screen on mobile (echoing Lovable's full-bleed
-            gradient feel) instead of cutting off right under the composer. */}
-        <div className="absolute inset-x-0 top-0 bottom-[-12rem] bg-aurora opacity-80 sm:bottom-[-8rem]" aria-hidden />
-        <div className="absolute inset-x-0 top-0 bottom-[-12rem] bg-grain opacity-40 sm:bottom-[-8rem]" aria-hidden />
-
+      {/* Product-first hero */}
+      <section className="border-b border-border/70">
         <div
-          className={`relative mx-auto max-w-5xl px-5 text-center sm:px-6 ${showAuthedHero ? "pt-40 pb-16 sm:pt-44 sm:pb-20 md:pt-48 md:pb-24" : "pt-32 pb-20 sm:pt-36 sm:pb-28 md:pt-40 md:pb-36"}`}
+          className={`mx-auto max-w-5xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-28 sm:pb-20 sm:pt-36" : "pb-14 pt-20 sm:pb-20 sm:pt-28"}`}
         >
           {showAuthedHero ? (
             <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
@@ -514,30 +490,12 @@ function Landing() {
             </h1>
           ) : (
             <>
-              <div className="mx-auto inline-flex flex-wrap items-center justify-center gap-2">
-                <Link
-                  to="/why/$slug"
-                  params={{ slug: "pay-as-you-build" }}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-xs font-medium text-foreground backdrop-blur transition hover:border-primary/50 hover:text-primary"
-                >
-                  Credits that never expire — no subscription
-                </Link>
-              </div>
-
-              {/* One statement, one accent. The italic line carries the
-                  feeling; the roman line carries the promise. */}
-              <h1 className="mt-7 font-display text-[3rem] font-black leading-[0.88] tracking-[-0.045em] text-balance sm:text-7xl md:text-[5.75rem]">
-                Build it. Ship it.
-                <br />
-                <span className="italic font-normal text-primary">Then sell it.</span>
+              <h1 className="font-landing-display text-balance text-[2.75rem] font-bold leading-[1.02] sm:text-6xl md:text-7xl">
+                Build software from a conversation.
               </h1>
-
-              <p className="mx-auto mt-6 max-w-lg text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Describe a web app, mobile app, backend or extension. Petal builds the real thing — and Petal is the
-                only place you can put it up for sale when it's done.
+              <p className="mx-auto mt-5 max-w-xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
+                Describe the product. Petal plans, builds, tests, and ships it.
               </p>
-
-
             </>
           )}
 
@@ -547,9 +505,9 @@ function Landing() {
               e.preventDefault();
               submit();
             }}
-            className="mx-auto mt-10 max-w-2xl"
+            className="mx-auto mt-9 max-w-3xl"
           >
-            <div className="group relative rounded-2xl border border-border bg-card/90 p-4 text-left shadow-[var(--shadow-glow)] backdrop-blur transition focus-within:border-primary focus-within:shadow-[var(--shadow-soft)]">
+            <div className="group relative rounded-xl border border-border bg-card p-3 text-left shadow-[var(--shadow-soft)] transition focus-within:border-foreground/40 focus-within:ring-1 focus-within:ring-ring">
               {mode === "coach" ? (
                 <IdeaCoach
                   isAuthed={!!user}
@@ -929,620 +887,149 @@ function Landing() {
         </section>
       ) : (
         <>
-          <section id="showcase" className="relative -mt-8 px-4 pb-16 sm:-mt-16 sm:px-6 sm:pb-24">
+          <section id="showcase" className="px-4 py-14 sm:px-6 sm:py-20">
             <SampleAppShowcase />
           </section>
 
-          {/* Proof strip — what Petal actually does, stated flat. No borrowed
-              logos, no invented customer count. */}
-          <section aria-label="What Petal covers" className="border-y border-border/60 bg-card/30">
-            <div className="mx-auto max-w-6xl px-5 py-8 sm:px-6">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-4">
+          <section aria-label="Petal product facts" className="border-y border-border bg-card/40">
+            <div className="mx-auto max-w-6xl px-5 py-7 sm:px-6">
+              <dl className="grid grid-cols-2 gap-6 sm:grid-cols-4">
                 {[
-                  { stat: "4", label: "Targets: web, mobile, backend, extension" },
-                  { stat: "11", label: "Specialist agents review each build" },
+                  { stat: "4", label: "Build targets" },
+                  { stat: "11", label: "Specialist agents" },
                   { stat: "Never", label: "Credits expire" },
-                  { stat: "80%", label: "You keep on marketplace sales" },
-                ].map((s) => (
-                  <div key={s.label}>
-                    <dt className="font-display text-3xl font-black tracking-[-0.03em] sm:text-4xl">{s.stat}</dt>
-                    <dd className="mt-1.5 max-w-[15rem] text-xs leading-relaxed text-muted-foreground">{s.label}</dd>
+                  { stat: "80%", label: "Creator share" },
+                ].map((item) => (
+                  <div key={item.label} className="border-l border-border pl-4">
+                    <dt className="font-landing-display text-2xl font-semibold sm:text-3xl">{item.stat}</dt>
+                    <dd className="mt-1 text-xs text-muted-foreground">{item.label}</dd>
                   </div>
                 ))}
               </dl>
             </div>
           </section>
 
-          {/* THE DIFFERENCE — the four things only Petal does. Asymmetric on
-              purpose: the marketplace claim gets the wide slot. */}
-          <section id="difference" className="relative px-5 py-24 sm:px-6 sm:py-32">
+          <section id="features" className="px-5 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto max-w-6xl">
-              <div className="max-w-3xl">
-                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary">The difference</p>
-                <h2 className="mt-4 font-display text-[2.75rem] font-black leading-[0.9] tracking-[-0.045em] sm:text-6xl md:text-7xl">
-                  Everyone can generate an app.
-                  <br />
-                  <span className="italic font-normal">Four things they can't do.</span>
-                </h2>
+              <div className="max-w-2xl">
+                <h2 className="font-landing-display text-4xl font-semibold leading-tight sm:text-5xl">More than a page builder.</h2>
+                <p className="mt-4 text-base text-muted-foreground">The full product path, from first prompt to ownership.</p>
               </div>
-
-              <div className="mt-16 grid gap-4 sm:grid-cols-5">
-                {/* Wide slot — marketplace */}
-                <Link
-                  to="/why/$slug"
-                  params={{ slug: "marketplace" }}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-[2rem] bg-foreground p-8 text-background sm:col-span-3 sm:p-10"
-                >
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-background/50">01</span>
-                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-5xl">
-                      Sell what you build.
-                    </h3>
-                    <p className="mt-4 max-w-md text-sm leading-relaxed text-background/70 sm:text-base">
-                      List a finished project, set a price, transfer it to the buyer's workspace. Petal takes 20% and
-                      nothing else. No other AI builder has a storefront on the other side of deploy.
-                    </p>
-                  </div>
-                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-coral">
-                    How the marketplace works
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                  </span>
-                </Link>
-
-                {/* Narrow slot — pay as you build */}
-                <Link
-                  to="/why/$slug"
-                  params={{ slug: "pay-as-you-build" }}
-                  className="group flex flex-col justify-between rounded-[2rem] border border-border bg-card p-8 sm:col-span-2 sm:p-10"
-                >
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">02</span>
-                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-4xl">
-                      Pay as you build.
-                    </h3>
-                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                      Credit packs you buy once. They never expire, there is no plan to cancel, and a turn that changes
-                      nothing costs nothing.
-                    </p>
-                  </div>
-                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-                    See the pricing model
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                  </span>
-                </Link>
-
-                {/* Narrow slot — agent board */}
-                <Link
-                  to="/why/$slug"
-                  params={{ slug: "agent-board" }}
-                  className="group flex flex-col justify-between rounded-[2rem] border border-border bg-card p-8 sm:col-span-2 sm:p-10"
-                >
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">03</span>
-                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-4xl">
-                      A board, not a bot.
-                    </h3>
-                    <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                      Product, architecture, design, security, QA — eleven specialists argue over the spec before a
-                      single file is written.
-                    </p>
-                  </div>
-                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-                    Meet the board
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                  </span>
-                </Link>
-
-                {/* Wide slot — own your code */}
-                <Link
-                  to="/why/$slug"
-                  params={{ slug: "own-your-code" }}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-accent/40 p-8 sm:col-span-3 sm:p-10"
-                >
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-muted-foreground">04</span>
-                    <h3 className="mt-5 font-display text-3xl font-black leading-[0.95] tracking-[-0.03em] sm:text-5xl">
-                      The code is yours to take.
-                    </h3>
-                    <p className="mt-4 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
-                      Real React and TypeScript, two-way Git sync, your own domain. Leaving Petal should be a decision,
-                      not an escape.
-                    </p>
-                  </div>
-                  <span className="mt-10 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-                    What you actually own
-                    <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                  </span>
-                </Link>
-              </div>
-            </div>
-          </section>
-
-
-          {/* Bento features — real product screenshots + editorial typography */}
-          <section id="features" className="relative px-4 py-24 sm:px-6 sm:py-32">
-            <div
-              className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-72 w-72 -translate-x-1/2 rounded-full bg-coral/20 blur-3xl animate-blob"
-              aria-hidden
-            />
-            <div className="mx-auto max-w-6xl">
-              <div className="mx-auto max-w-3xl text-center">
-                <p className="text-xs font-bold uppercase tracking-[0.28em] text-primary">Why Petal</p>
-                <h2 className="mt-3 font-display text-4xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                  The whole stack.
-                  <br />
-                  <span className="italic text-primary">Shipped.</span>
-                </h2>
-                <p className="mx-auto mt-5 max-w-xl text-lg font-medium text-muted-foreground">
-                  Web, mobile, backends, Chrome extensions. Database, auth, hosting, security — Petal builds every layer
-                  and puts it live. Not a mockup. A real app with a real URL.
-                </p>
-
-              </div>
-
-              <div className="mt-16 grid gap-5 md:grid-cols-3">
-                {/* Web app — now consistent with Mobile / Backend cards */}
-                <Link
-                  to="/features/$slug"
-                  params={{ slug: "web" }}
-                  className="group relative overflow-hidden rounded-[2rem] border border-border bg-foreground text-background shadow-[var(--shadow-editorial)]"
-                >
-                  <img
-                    src={webDashImg}
-                    alt="Petal-built SaaS dashboard on a laptop"
-                    loading="eager"
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
-                  <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
-                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
-                      <Globe className="h-3 w-3" /> Web apps
-                    </span>
-                  </div>
-                </Link>
-
-                {/* Mobile */}
-                <Link
-                  to="/features/$slug"
-                  params={{ slug: "mobile" }}
-                  className="group relative overflow-hidden rounded-[2rem] border border-border bg-foreground text-background"
-                >
-                  <img
-                    src={phoneHandImg}
-                    alt="Mobile app built with Petal, held in hand"
-                    loading="eager"
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-foreground/90 via-foreground/30 to-transparent" />
-                  <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
-                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur">
-                      <Smartphone className="h-3 w-3" /> Mobile
-                    </span>
-                  </div>
-                </Link>
-
-                {/* Backend */}
-                <Link
-                  to="/features/$slug"
-                  params={{ slug: "backend" }}
-                  className="group relative overflow-hidden rounded-[2rem] border border-border bg-card"
-                >
-                  <img
-                    src={backendImg}
-                    alt="Backend architecture visualisation"
-                    loading="eager"
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card/90 via-card/20 to-transparent" />
-                  <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
-                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground backdrop-blur">
-                      <Layers className="h-3 w-3" /> Backends
-                    </span>
-                  </div>
-                </Link>
-              </div>
-
-              {/* Second row — consistent full-bleed editorial cards */}
-              <div className="mt-5 grid gap-5 md:grid-cols-3">
+              <div className="mt-12 grid border-l border-t border-border sm:grid-cols-2">
                 {[
-                  { slug: "extensions", img: extensionImg, icon: Puzzle, label: "Chrome extensions", dark: true },
-                  { slug: "preview", img: previewImg, icon: Eye, label: "Live preview", dark: false },
-                  { slug: "ship", img: shipImg, icon: Rocket, label: "One-click ship", dark: true },
-                ].map((f) => (
+                  { slug: "agent-board", title: "Reviewed by specialists", body: "Product, design, security, and QA agents check the work." },
+                  { slug: "own-your-code", title: "Own the code", body: "Real React and TypeScript, ready for Git and your domain." },
+                  { slug: "pay-as-you-build", title: "Pay when you build", body: "Buy credits once. Keep them until you use them." },
+                  { slug: "marketplace", title: "Sell the result", body: "List a finished product and keep 80% of every sale." },
+                ].map((item, index) => (
                   <Link
-                    key={f.slug}
-                    to="/features/$slug"
-                    params={{ slug: f.slug }}
-                    className={`group relative overflow-hidden rounded-[2rem] border border-border ${f.dark ? "bg-foreground text-background" : "bg-card"}`}
-                  >
-                    <img
-                      src={f.img}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="absolute inset-0 h-full w-full object-cover opacity-90 transition duration-700 group-hover:scale-105"
-                    />
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-t ${f.dark ? "from-foreground/90 via-foreground/30" : "from-card/90 via-card/20"} to-transparent`}
-                    />
-                    <div className="relative flex h-full min-h-[16rem] flex-col justify-end p-6">
-                      <span
-                        className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur ${f.dark ? "bg-background/15" : "bg-background/70 text-foreground"}`}
-                      >
-                        <f.icon className="h-3 w-3" /> {f.label}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <WholeStackSection />
-
-
-          {/* Community showcase — replaces the old mobile hero (now lives on /features/mobile) */}
-          <section id="community" className="relative overflow-hidden px-4 py-24 sm:px-6 sm:py-32">
-            <div
-              className="pointer-events-none absolute right-[-6rem] top-1/3 -z-10 h-96 w-96 rounded-full bg-mint/40 blur-3xl animate-blob"
-              aria-hidden
-            />
-            <div className="mx-auto max-w-6xl">
-              <div className="grid gap-14 md:grid-cols-2 md:items-center">
-                <div className="relative">
-                  <div
-                    className="absolute -inset-6 -z-10 rounded-[3rem] bg-gradient-to-br from-coral/25 via-butter/40 to-mint/30 blur-2xl"
-                    aria-hidden
-                  />
-                  <img
-                    src={webDashImg}
-                    alt="Petal community projects preview"
-                    loading="lazy"
-                    className="w-full rounded-[2.5rem] object-cover shadow-[var(--shadow-editorial)]"
-                  />
-                  <div className="absolute -bottom-5 -right-4 rounded-2xl border border-border bg-background/95 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur animate-float">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                      <Star className="h-3.5 w-3.5 fill-current" /> Lots of apps shipped
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">Real projects, one prompt away.</p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Built with Petal</p>
-                  <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                    A whole gallery of <span className="italic">shipped</span> apps.
-                  </h2>
-                  <p className="mt-5 text-lg text-muted-foreground">
-                    Founders, designers, and solo builders open-source their Petal projects every day. Peek inside any
-                    one, then remix it into your own with a click.
-                  </p>
-                  <ul className="mt-8 space-y-4 text-sm sm:text-base">
-                    <li className="flex items-start gap-4">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-coral/25 text-foreground">
-                        <Eye className="h-4 w-4" />
-                      </span>
-                      <span>
-                        <strong className="font-semibold">Live previews</strong> — click any project to see the real,
-                        running app.
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-4">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-mint text-foreground">
-                        <Copy className="h-4 w-4" />
-                      </span>
-                      <span>
-                        <strong className="font-semibold">One-click remix</strong> — fork a shipped app into a fresh
-                        copy on your account.
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-4">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-butter text-foreground">
-                        <Rocket className="h-4 w-4" />
-                      </span>
-                      <span>
-                        <strong className="font-semibold">Ship it further</strong> — publish under your own domain in a
-                        click.
-                      </span>
-                    </li>
-                  </ul>
-                  <Link
-                    to="/gallery"
-                    className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition hover:-translate-y-0.5"
-                  >
-                    Explore the gallery <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* How it works — with founder portrait */}
-          <section id="how" className="relative px-4 py-24 sm:px-6 sm:py-32">
-            <div className="mx-auto max-w-6xl">
-              <div className="grid gap-14 md:grid-cols-2 md:items-center">
-                <div className="relative order-2 md:order-1">
-                  <div
-                    className="absolute -inset-4 -z-10 rounded-[3rem] bg-gradient-to-br from-primary/20 via-lilac/30 to-sky/30 blur-2xl"
-                    aria-hidden
-                  />
-                  <img
-                    src={founderImg}
-                    alt="A founder building with Petal"
-                    loading="lazy"
-                    className="w-full rounded-[2rem] object-cover shadow-[var(--shadow-editorial)]"
-                  />
-                  <div className="absolute -bottom-6 -right-4 max-w-[220px] rounded-2xl border border-border bg-background/90 p-4 shadow-[var(--shadow-soft)] backdrop-blur animate-float">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-primary">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Shipped in 12 min
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">"First real product I've ever launched."</p>
-                  </div>
-                </div>
-                <div className="order-1 md:order-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">How it works</p>
-                  <h2 className="mt-3 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                    Idea → live,
-                    <br />
-                    <span className="italic">in three steps.</span>
-                  </h2>
-                  <ol className="mt-10 space-y-8">
-                    {[
-                      {
-                        n: "01",
-                        t: "Describe it",
-                        d: "One sentence in plain English — web, mobile, API or extension. No setup.",
-                      },
-                      {
-                        n: "02",
-                        t: "Watch it build",
-                        d: "Petal researches, plans, writes the code, and streams a live preview while it works.",
-                      },
-                      {
-                        n: "03",
-                        t: "Ship it",
-                        d: "Publish a URL, wire a custom domain, or download a signed mobile build.",
-                      },
-                    ].map((s) => (
-                      <li key={s.n} className="group grid grid-cols-[auto_1fr] gap-6 border-t border-border pt-6">
-                        <span className="font-display text-4xl font-black text-primary transition group-hover:translate-x-1">
-                          {s.n}
-                        </span>
-                        <div>
-                          <div className="font-display text-xl font-bold">{s.t}</div>
-                          <p className="mt-1.5 text-sm text-muted-foreground">{s.d}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Marketplace band — the differentiator gets a full spread. */}
-          <section id="marketplace" className="relative overflow-hidden border-y border-border bg-foreground text-background">
-            <div className="mx-auto max-w-6xl px-5 py-24 sm:px-6 sm:py-32">
-              <div className="grid gap-12 lg:grid-cols-[1.2fr_1fr] lg:items-end">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-coral">The marketplace</p>
-                  <h2 className="mt-4 font-display text-[2.75rem] font-black leading-[0.9] tracking-[-0.045em] sm:text-6xl md:text-7xl">
-                    Your build has
-                    <br />
-                    <span className="italic font-normal">a resale value.</span>
-                  </h2>
-                  <p className="mt-6 max-w-lg text-base leading-relaxed text-background/70 sm:text-lg">
-                    Finish an app and it doesn't have to sit in your account. List it, price it, and hand it over to
-                    someone who needs it — files, database schema and all. You keep 80%.
-                  </p>
-                  <div className="mt-10 flex flex-wrap gap-3">
-                    <Link
-                      to="/marketplace"
-                      className="inline-flex items-center gap-2 rounded-full bg-background px-6 py-3.5 text-sm font-semibold text-foreground transition hover:-translate-y-0.5"
-                    >
-                      Browse listings <ArrowRight className="h-4 w-4" />
-                    </Link>
-                    <Link
-                      to="/sell"
-                      className="inline-flex items-center gap-2 rounded-full border border-background/25 px-6 py-3.5 text-sm font-semibold text-background transition hover:border-background/60"
-                    >
-                      Sell a build
-                    </Link>
-                  </div>
-                </div>
-
-                <dl className="grid grid-cols-2 gap-8 border-t border-background/15 pt-10 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
-                  {[
-                    { stat: "80%", label: "Creator share on every sale" },
-                    { stat: "$0", label: "Listing fee" },
-                    { stat: "Full", label: "Project transfer, not a zip" },
-                    { stat: "Live", label: "Working preview on each listing" },
-                  ].map((s) => (
-                    <div key={s.label}>
-                      <dt className="font-display text-4xl font-black tracking-[-0.03em]">{s.stat}</dt>
-                      <dd className="mt-2 text-xs leading-relaxed text-background/60">{s.label}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            </div>
-          </section>
-
-          {/* Pricing teaser — pay as you build, framed against subscriptions. */}
-          <section id="pricing" className="px-5 py-24 sm:px-6 sm:py-32">
-            <div className="mx-auto max-w-6xl">
-              <div className="grid gap-12 md:grid-cols-[1fr_1.1fr] md:items-start">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary">Pay as you build</p>
-                  <h2 className="mt-4 font-display text-[2.5rem] font-black leading-[0.9] tracking-[-0.045em] sm:text-5xl md:text-6xl">
-                    Buy credits once.
-                    <br />
-                    <span className="italic font-normal">Use them whenever.</span>
-                  </h2>
-                  <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-                    A subscription is a bet that you'll build every month. Most people don't. Petal charges for the work
-                    it does and leaves the rest of your balance alone.
-                  </p>
-                  <Link
+                    key={item.slug}
                     to="/why/$slug"
-                    params={{ slug: "pay-as-you-build" }}
-                    className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-foreground underline-offset-4 hover:underline"
+                    params={{ slug: item.slug }}
+                    className="group min-h-44 border-b border-r border-border p-6 transition-colors hover:bg-card sm:p-8"
                   >
-                    How billing works <ArrowRight className="h-4 w-4" />
+                    <span className="text-xs text-muted-foreground">0{index + 1}</span>
+                    <h3 className="font-landing-display mt-8 text-xl font-semibold sm:text-2xl">{item.title}</h3>
+                    <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+                    <ArrowRight className="mt-6 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Link>
-                </div>
-
-                <ul className="space-y-px">
-                  {[
-                    {
-                      t: "Credits never expire",
-                      d: "Buy a pack, come back in six months, it's still there. No monthly reset, no clawback.",
-                    },
-                    {
-                      t: "No-op turns are free",
-                      d: "If a build produces byte-identical files, nothing is charged. You pay for changes, not for asking.",
-                    },
-                    {
-                      t: "Subscriptions stay optional",
-                      d: "Plans exist for people who want a monthly allowance. Nothing about the builder is locked behind one.",
-                    },
-                    {
-                      t: "The meter is published",
-                      d: "Backend hours, images and model spend each have a stated rate you can read before you spend.",
-                    },
-                  ].map((row) => (
-                    <li key={row.t} className="border-t border-border py-6">
-                      <div className="font-display text-xl font-bold tracking-[-0.02em]">{row.t}</div>
-                      <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">{row.d}</p>
-                    </li>
-                  ))}
-                </ul>
+                ))}
               </div>
             </div>
           </section>
 
-          {/* FAQ — plain answers, no accordion theatre. */}
-          <section id="faq" className="px-5 pb-24 sm:px-6 sm:pb-32">
+          <section id="how" className="border-y border-border bg-card/40 px-5 py-20 sm:px-6 sm:py-24">
             <div className="mx-auto max-w-6xl">
-              <h2 className="max-w-2xl font-display text-[2.25rem] font-black leading-[0.92] tracking-[-0.04em] sm:text-5xl">
-                Questions people <span className="italic font-normal">actually ask.</span>
-              </h2>
-              <div className="mt-12 grid gap-x-14 gap-y-px md:grid-cols-2">
+              <h2 className="font-landing-display text-4xl font-semibold sm:text-5xl">From idea to live product.</h2>
+              <ol className="mt-10 grid gap-8 md:grid-cols-3">
                 {[
-                  {
-                    q: "Do I need a subscription?",
-                    a: "No. Buy a credit pack and build. Plans exist if you want a monthly allowance, but the builder, the marketplace and publishing all work without one.",
-                  },
-                  {
-                    q: "What happens to unused credits?",
-                    a: "Nothing. They stay in your balance indefinitely. There is no expiry date and no monthly reset.",
-                  },
-                  {
-                    q: "Can I really sell an app I built here?",
-                    a: "Yes. Publish it as a marketplace listing, set a price, and Petal handles checkout and transferring the project to the buyer. You keep 80% of every sale.",
-                  },
-                  {
-                    q: "Is it real code or a locked-in builder?",
-                    a: "Real React and TypeScript in a real file tree. Sync it to your own Git repository, edit it locally, and deploy it wherever you like.",
-                  },
-                  {
-                    q: "What if the build breaks?",
-                    a: "Petal verifies each build in a browser before calling it done, routes any defects to the specialist that owns them, and repairs in a scoped round rather than rewriting your app.",
-                  },
-                  {
-                    q: "Can it build mobile apps?",
-                    a: "Yes — one mobile target that ships to both stores. Preview it on your phone by scanning a QR code while it builds.",
-                  },
-                ].map((f) => (
-                  <div key={f.q} className="border-t border-border py-7">
-                    <h3 className="font-display text-lg font-bold tracking-[-0.015em]">{f.q}</h3>
-                    <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+                  ["01", "Describe it", "Tell Petal what to build."],
+                  ["02", "Watch it work", "Follow the plan, build, and checks."],
+                  ["03", "Ship it", "Publish, connect a domain, or export."],
+                ].map(([number, title, body]) => (
+                  <li key={number} className="border-t border-foreground pt-5">
+                    <span className="text-xs text-muted-foreground">{number}</span>
+                    <h3 className="font-landing-display mt-8 text-xl font-semibold">{title}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </section>
+
+          <section id="marketplace" className="bg-foreground px-5 py-20 text-background sm:px-6 sm:py-28">
+            <div className="mx-auto flex max-w-6xl flex-col gap-10 md:flex-row md:items-end md:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-sm text-background/60">Petal Marketplace</p>
+                <h2 className="font-landing-display mt-4 text-4xl font-semibold leading-tight sm:text-6xl">Software can be an asset.</h2>
+                <p className="mt-5 max-w-lg text-base text-background/70">Sell a working product, not a screenshot. Buyers receive the project and its code.</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link to="/marketplace" className="inline-flex h-11 items-center gap-2 rounded-md bg-background px-5 text-sm font-semibold text-foreground">
+                  Browse marketplace <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link to="/sell" className="inline-flex h-11 items-center rounded-md border border-background/30 px-5 text-sm font-semibold text-background">
+                  Sell a build
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          <section id="pricing" className="px-5 py-20 sm:px-6 sm:py-28">
+            <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-2 md:items-center">
+              <h2 className="font-landing-display text-4xl font-semibold leading-tight sm:text-6xl">Buy credits once.<br />Use them anytime.</h2>
+              <div>
+                <p className="max-w-lg text-base leading-relaxed text-muted-foreground">Subscriptions are optional. Credits never expire, and turns that change nothing cost nothing.</p>
+                <Link to="/why/$slug" params={{ slug: "pay-as-you-build" }} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold hover:text-primary">
+                  See how pricing works <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          <section id="faq" className="border-t border-border px-5 py-20 sm:px-6 sm:py-24">
+            <div className="mx-auto max-w-6xl">
+              <h2 className="font-landing-display text-3xl font-semibold sm:text-4xl">Common questions</h2>
+              <div className="mt-10 grid border-t border-border md:grid-cols-2">
+                {[
+                  ["Do I need a subscription?", "No. Credit packs work without a subscription."],
+                  ["Do credits expire?", "No. Your unused balance stays available."],
+                  ["Do I own the code?", "Yes. Sync it to Git, edit it, and deploy it elsewhere."],
+                  ["Can Petal build mobile apps?", "Yes. One mobile project can ship to iOS and Android."],
+                ].map(([question, answer]) => (
+                  <div key={question} className="border-b border-border py-6 md:pr-10 md:odd:border-r md:even:pl-10">
+                    <h3 className="font-landing-display text-base font-semibold">{question}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{answer}</p>
                   </div>
                 ))}
               </div>
             </div>
           </section>
 
-
-          {/* Final CTA */}
-          <section className="px-4 pb-20 sm:px-6 sm:pb-28">
-            <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] border border-border bg-foreground p-10 text-background shadow-[var(--shadow-editorial)] sm:p-16 md:p-20">
-              <div
-                className="pointer-events-none absolute -top-40 left-1/3 h-96 w-96 rounded-full bg-coral/60 blur-3xl animate-blob"
-                aria-hidden
-              />
-              <div
-                className="pointer-events-none absolute -bottom-40 right-0 h-96 w-96 rounded-full bg-mint/40 blur-3xl animate-blob"
-                aria-hidden
-              />
-              <div className="relative text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-background/60">Your turn</p>
-                <h2 className="mx-auto mt-4 max-w-3xl font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-                  Your next app is <span className="italic text-coral">one sentence</span> away.
-                </h2>
-                <p className="mx-auto mt-5 max-w-xl text-base text-background/70 sm:text-lg">
-                  Web, mobile, backend or extension — describe it, Petal ships it.
-                </p>
-                {showAuthedHero ? (
-                  <Link
-                    to="/projects"
-                    className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
-                  >
-                    Open my projects
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                ) : (
-                  <Link
-                    to="/auth"
-                    search={{ mode: "signup", redirect: undefined }}
-                    className="mt-10 inline-flex h-14 items-center gap-2 rounded-full bg-background px-8 text-base font-semibold text-foreground transition hover:scale-[1.02] hover:brightness-105"
-                  >
-                    Start building free
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                )}
-                <p className="mt-4 text-xs text-background/50">No credit card · Live preview</p>
-              </div>
+          <section className="px-5 pb-20 sm:px-6 sm:pb-28">
+            <div className="mx-auto max-w-6xl border border-border bg-card px-6 py-14 text-center sm:px-10 sm:py-20">
+              <h2 className="font-landing-display text-4xl font-semibold sm:text-5xl">Start with one sentence.</h2>
+              <Link
+                to="/auth"
+                search={{ mode: "signup", redirect: undefined }}
+                className="mt-8 inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 text-sm font-semibold text-background transition hover:opacity-90"
+              >
+                Start building <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </section>
 
-          <footer className="border-t border-border bg-card/40">
-            <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-10 text-sm text-muted-foreground sm:px-6 md:flex-row">
-              <div className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground">
-                Petal <span className="text-muted-foreground font-normal italic">— build real software with AI.</span>
+          <footer className="border-t border-border">
+            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 text-sm text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between">
+              <span className="font-landing-display font-semibold text-foreground">Petal</span>
+              <div className="flex flex-wrap gap-x-5 gap-y-3">
+                <Link to="/marketplace" className="hover:text-foreground">Marketplace</Link>
+                <Link to="/gallery" className="hover:text-foreground">Gallery</Link>
+                <Link to="/changelog" className="hover:text-foreground">What's new</Link>
+                <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
+                <Link to="/terms" className="hover:text-foreground">Terms</Link>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-5">
-                <Link to="/why/$slug" params={{ slug: "marketplace" }} className="hover:text-foreground">
-                  Marketplace
-                </Link>
-                <Link to="/why/$slug" params={{ slug: "pay-as-you-build" }} className="hover:text-foreground">
-                  Pricing model
-                </Link>
-                <Link to="/why/$slug" params={{ slug: "agent-board" }} className="hover:text-foreground">
-                  Agent board
-                </Link>
-                <Link to="/why/$slug" params={{ slug: "own-your-code" }} className="hover:text-foreground">
-                  Own your code
-                </Link>
-                <Link to="/coffee" className="hover:text-foreground">
-                  Buy us coffee
-                </Link>
-                <Link to="/invest" className="hover:text-foreground">
-                  Invest
-                </Link>
-                <Link to="/changelog" className="hover:text-foreground">
-                  What's new
-                </Link>
-                <Link to="/privacy" className="hover:text-foreground">
-                  Privacy
-                </Link>
-                <Link to="/terms" className="hover:text-foreground">
-                  Terms
-                </Link>
-                <span>© {new Date().getFullYear()} Petal, A Kesh Technologies Limited Company</span>
-              </div>
+              <span>© {new Date().getFullYear()} Petal</span>
             </div>
           </footer>
         </>

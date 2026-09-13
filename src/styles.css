@@ -274,6 +274,14 @@
       radial-gradient(50% 40% at 20% 90%, oklch(0.78 0.13 25 / 0.4), transparent 60%);
   }
   .text-balance { text-wrap: balance; }
+  .landing-page {
+    font-family: "DM Sans", var(--font-sans);
+    letter-spacing: 0;
+  }
+  .landing-page .font-landing-display {
+    font-family: "Space Grotesk", var(--font-sans);
+    letter-spacing: 0;
+  }
   /* iOS safe-area helpers — opt-in so we don't change desktop spacing.
      Requires `viewport-fit=cover` on the viewport meta (set in __root.tsx). */
   .safe-top { padding-top: env(safe-area-inset-top); }
