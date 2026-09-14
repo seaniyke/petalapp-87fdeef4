@@ -254,7 +254,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // Severity is judged semantically (W2) with the regex partition as the
     // deterministic prior and fallback — see `defect-judge.server.ts`.
     const partitioned = await judgeDefects({
-      defects: verification?.defects,
+      defects: verification?.defects ?? (acceptance.ran ? acceptance.defects : undefined),
       projectId: payload.projectId,
     });
     console.info(
