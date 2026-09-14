@@ -315,10 +315,15 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
       .from("projects")
       .update({ backend_type: BACKEND_TYPE.SHARED })
       .eq("id", parsed.data.projectId);
+    // Upstream capacity/billing problems are ours, not the user's — never
+    // leak Petal's own provider billing state into their app.
+    const ours = /402|overdue|quota|limit reached|free tier/i.test(msg);
     return new Response(
       JSON.stringify({
-        error: `Couldn't create your backend: ${msg.slice(0, 300)}`,
-        code: "provision_failed",
+        error: ours
+          ? "Petal can't add a dedicated database right now. Your app keeps its shared database and we're on it."
+          : `Couldn't create your backend: ${msg.slice(0, 300)}`,
+        code: ours ? "capacity_reached" : "provision_failed",
       }),
       { status: 502, headers: { "Content-Type": "application/json" } },
     );
