@@ -188,6 +188,8 @@ fastify.get("/healthz", async () => ({
   execModes: ["inspect", "codemod", "install", "test"],
   // Presence tells the app that /build can run post-deploy browser verification.
   verify: true,
+  // Presence tells the app that /browse (steerable browser) is available.
+  browse: true,
   // Progress-based liveness: a build is only ever stopped for going silent.
   active: [...activeBeats.entries()].map(([buildId, hb]) => ({
     buildId,
