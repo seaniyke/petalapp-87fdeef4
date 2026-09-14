@@ -1,7 +1,7 @@
 /**
  * Mobile hamburger sheet — replicates the avatar dropdown + marketing nav so
  * mobile users have a single discoverable entry point to every product
- * surface. Reuses BillingSheet / CloudBalanceSheet via callback props (does
+ * surface. Reuses BillingSheet via a callback prop (does
  * not mount its own copies — the parent SiteHeader owns those instances).
  */
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -10,7 +10,6 @@ import {
   House,
   CreditCard,
   Megaphone,
-  Wallet,
   User as UserIcon,
   Settings,
   LogOut,
@@ -38,10 +37,9 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onOpenBilling: () => void;
-  onOpenCloudBalance: () => void;
 };
 
-export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudBalance }: Props) {
+export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
   const { user, isReady, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
@@ -119,14 +117,6 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
                 }}
                 icon={<CreditCard className="h-4 w-4" />}
                 label="Plans & credits"
-              />
-              <RowButton
-                onClick={() => {
-                  close();
-                  onOpenCloudBalance();
-                }}
-                icon={<Wallet className="h-4 w-4" />}
-                label="Cloud & AI balance"
               />
               <RowLink
                 to="/profile"

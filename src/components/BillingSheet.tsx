@@ -58,14 +58,15 @@ import {
 import { toast } from "sonner";
 import petalLogo from "@/assets/petal-logo.png";
 import { CryptoCheckoutPanel } from "@/components/CryptoCheckoutPanel";
+import { fetchCreditUsage, formatCredits, type CreditUsage } from "@/lib/credit-usage";
+import { fetchProjectUsage, formatUsdCents, type ProjectUsageRow } from "@/lib/runtime-wallet";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenCloudBalance?: () => void;
 };
 
-export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) {
+export function BillingSheet({ open, onOpenChange }: Props) {
   const { user } = useAuth();
   const { wallet, plans, plan, breakdown } = useWallet();
   const [packs, setPacks] = useState<CreditPack[]>([]);
@@ -348,9 +349,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 </h3>
                 {currentPlanCode === "free" ? (
                   <p className="text-xs text-muted-foreground">
-                    {payAsYouGo
-                      ? "Your credits keep paid features on."
-                      : "Subscribe monthly, or just buy credits."}
+                    {payAsYouGo ? "Credits keep paid features on." : "Subscribe, or just buy credits."}
                   </p>
                 ) : renewsLabel ? (
                   <p className="text-xs text-muted-foreground">
@@ -374,7 +373,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 </PlanFeature>
               ) : null}
 
-              <PlanFeature>Top up any time, no subscription</PlanFeature>
+              <PlanFeature>Credits cover builds, Cloud and AI</PlanFeature>
               {payAsYouGo && <PlanFeature>Credits unlock paid features</PlanFeature>}
               {currentPlanCode === "business" && (
                 <PlanFeature>Priority support</PlanFeature>
@@ -442,7 +441,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                   !dailyCap
                     ? "Not on this plan"
                     : monthlyFreeRemaining === 0
-                      ? `Monthly free limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
+                      ? `Monthly limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
                       : `Back to ${dailyCap} ${dailyResetText ?? "soon"}${
                           plan?.monthly_free_cap
                             ? ` · ${monthlyFreeRemaining} free left this month`
@@ -456,9 +455,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 label="Monthly"
                 sub={
                   planMonthlyCap
-                    ? `Back to ${planMonthlyCap.toLocaleString()} in ${
-                        monthlyResetDays ?? 0
-                      } ${monthlyResetDays === 1 ? "day" : "days"}`
+                    ? `Refills in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
                     : "Not on this plan"
                 }
                 value={breakdown.monthly}
@@ -470,6 +467,9 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               />
             </div>
           </div>
+
+          {/* Where credits go */}
+          <UsageCard userId={user?.id ?? null} open={open} />
 
           {/* 4. Currency picker */}
           <div>
@@ -504,12 +504,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
             <div className="mb-3">
               <h3 className="text-sm font-semibold">Top up credits</h3>
               <p className="text-xs text-muted-foreground">
-                Pay as you go — buy credits once, no subscription needed. Your paid
-                features stay unlocked while you have credits. Purchased credits
-                never expire.
+                Buy once, never expires. Same credits as a plan.
               </p>
-
-
             </div>
 
             <TopupPicker
@@ -557,9 +553,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
           <section ref={plansRef} className="scroll-mt-4">
             <div className="mb-3">
               <h3 className="text-sm font-semibold">Or subscribe monthly</h3>
-              <p className="text-xs text-muted-foreground">
-                Pick a plan for monthly credits that refill automatically.
-              </p>
+              <p className="text-xs text-muted-foreground">Credits refill every month.</p>
             </div>
 
             {paid.length > 1 && (
@@ -652,18 +646,6 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
           </section>
 
 
-          {onOpenCloudBalance && (
-            <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-              Looking for runtime usage?{" "}
-              <button
-                type="button"
-                onClick={onOpenCloudBalance}
-                className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
-              >
-                Open Cloud &amp; AI balance →
-              </button>
-            </div>
-          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -702,6 +684,78 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
 }
 
 // -------------------- Sub-components --------------------
+
+/** Month-to-date credit usage: builds vs Cloud vs AI, plus per-project spend. */
+function UsageCard({ userId, open }: { userId: string | null; open: boolean }) {
+  const [usage, setUsage] = useState<CreditUsage | null>(null);
+  const [projects, setProjects] = useState<ProjectUsageRow[]>([]);
+  const [showProjects, setShowProjects] = useState(false);
+
+  useEffect(() => {
+    if (!open || !userId) return;
+    let cancelled = false;
+    Promise.all([fetchCreditUsage(userId), fetchProjectUsage(userId)])
+      .then(([u, p]) => {
+        if (cancelled) return;
+        setUsage(u);
+        setProjects(p.filter((x) => x.spentCents > 0 || x.capCents != null));
+      })
+      .catch((e: unknown) => console.warn("[BillingSheet] usage fetch failed", e));
+    return () => {
+      cancelled = true;
+    };
+  }, [open, userId]);
+
+  if (!usage) return null;
+
+  return (
+    <div className="rounded-2xl bg-muted/40 p-5">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-base font-semibold">Used this month</h3>
+        <span className="text-base font-semibold tabular-nums">
+          {formatCredits(usage.totalCredits)}
+        </span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <span>Builds {formatCredits(usage.buildCredits)}</span>
+        <span>Cloud {formatCredits(usage.cloudCredits)}</span>
+        <span>AI {formatCredits(usage.aiCredits)}</span>
+      </div>
+
+      {projects.length > 0 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setShowProjects((v) => !v)}
+            className="text-xs font-medium text-foreground underline underline-offset-2 hover:text-primary"
+          >
+            {showProjects ? "Hide projects" : "By project"}
+          </button>
+          {showProjects && (
+            <ul className="mt-2 space-y-1.5">
+              {projects.map((p) => (
+                <li key={p.projectId} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="min-w-0 truncate">
+                    {p.title}
+                    {p.paused && <span className="ml-1 text-amber-600">paused</span>}
+                  </span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {formatCredits(centsToCreditsClient(p.spentCents))}
+                    {p.capCents != null && ` / cap ${formatUsdCents(p.capCents)}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function centsToCreditsClient(cents: number): number {
+  return Math.round((cents / 100 / 0.05) * 100) / 100;
+}
 
 function PlanFeature({ children }: { children: React.ReactNode }) {
   return (
@@ -788,11 +842,10 @@ function PlanCard({
             : ""}
         </PlanFeature>
 
-        <PlanFeature>$5 free Cloud + AI credit (one-time, on first upgrade)</PlanFeature>
-        <PlanFeature>Petal Cloud — backend, database, auth &amp; storage</PlanFeature>
-        <PlanFeature>Petal AI — call Gemini &amp; GPT-5 with no API key</PlanFeature>
-        <PlanFeature>Custom domains &amp; transactional email</PlanFeature>
-        <PlanFeature>On-demand credit top-ups</PlanFeature>
+        <PlanFeature>100 bonus credits on first upgrade</PlanFeature>
+        <PlanFeature>Backend, database, auth &amp; storage</PlanFeature>
+        <PlanFeature>AI models, no API key</PlanFeature>
+        <PlanFeature>Custom domains &amp; email</PlanFeature>
         {plan.code === "business" && <PlanFeature>Priority support</PlanFeature>}
       </ul>
 

@@ -285,7 +285,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
               </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {backend?.errorMessage ||
-                  "Your Cloud balance ran out and the 48-hour grace period ended. Top up to bring your data back online — your tables and rows are preserved."}
+                  "You ran out of credits and the 48-hour grace period ended. Top up to bring your data back online — your tables and rows are preserved."}
               </div>
             </div>
           </div>
@@ -296,7 +296,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
               className="inline-flex items-center gap-1.5"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Top up Cloud balance
+              Top up credits
             </Button>
           </div>
         </div>
@@ -340,7 +340,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
             <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="flex-1 text-[11px] leading-snug">
               <span className="font-medium text-foreground">
-                Cloud balance is empty
+                You are out of credits
               </span>{" "}
               <span className="text-muted-foreground">
                 — backend pauses in {graceHoursLeft}{" "}

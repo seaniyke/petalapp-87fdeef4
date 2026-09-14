@@ -62,7 +62,7 @@ export async function describeCryptoItem(
   }
   return {
     label: `$${(usdAmountCents / 100).toFixed(2)} Cloud + AI top-up`,
-    creditsLabel: `$${(usdAmountCents / 100).toFixed(2)} runtime balance`,
+    creditsLabel: `${Math.round(usdAmountCents / 5)} credits`,
   };
 }
 

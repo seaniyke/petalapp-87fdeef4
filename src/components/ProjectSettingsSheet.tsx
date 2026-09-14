@@ -46,7 +46,7 @@ import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
 // ProjectMemorySection is intentionally not imported — memory is internal.
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
-import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
+import { BillingSheet } from "@/components/BillingSheet";
 import { useWallet } from "@/hooks/use-wallet";
 import { Switch } from "@/components/ui/switch";
 import { builderDraftKeys, clearDraft, readDraft, writeDraft } from "@/lib/draft-storage";
@@ -110,7 +110,7 @@ export function ProjectSettingsSheet({
   });
   const [saving, setSaving] = useState(false);
   const [cloudOpen, setCloudOpen] = useState(false);
-  const [balanceOpen, setBalanceOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
   const [domainsOpen, setDomainsOpen] = useState(false);
   const [seoOpen, setSeoOpen] = useState(false);
 
@@ -337,18 +337,18 @@ export function ProjectSettingsSheet({
       </SheetContent>
     </Sheet>
 
-    {/* Per-project Cloud hub + Cloud & AI balance, mounted as siblings of
-        the settings sheet so their portals/focus-traps don't fight. */}
+    {/* Per-project Cloud hub, mounted as a sibling of the settings sheet so
+        its portal/focus-trap doesn't fight. */}
     <CloudPanelSheet
       open={cloudOpen}
       onOpenChange={setCloudOpen}
       projectId={project.id}
       onOpenBalance={() => {
         setCloudOpen(false);
-        setBalanceOpen(true);
+        setBillingOpen(true);
       }}
     />
-    <CloudBalanceSheet open={balanceOpen} onOpenChange={setBalanceOpen} />
+    <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
 
     {/* SEO & sharing — reuses the same editor the publish flow opens. */}
     <WebsiteInfoSheet

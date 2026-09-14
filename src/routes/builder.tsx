@@ -140,7 +140,6 @@ import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
 import { PublishSheet } from "@/components/PublishSheet";
 import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
-import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 // Backend / email / payments no longer use banner chips — Petal asks inline.
@@ -615,7 +614,6 @@ function Builder() {
   const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
-  const [cloudBalanceOpen, setCloudBalanceOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [shieldOpen, setShieldOpen] = useState(false);
   const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
@@ -4192,7 +4190,7 @@ function Builder() {
               projectId={project.id}
               onOpenBalance={() => {
                 setCloudPanelOpen(false);
-                setCloudBalanceOpen(true);
+                setBillingOpen(true);
               }}
             />
           </LazySheet>
@@ -4249,24 +4247,7 @@ function Builder() {
             />
           </LazySheet>
           <LazySheet open={billingOpen}>
-            <BillingSheet
-              open={billingOpen}
-              onOpenChange={setBillingOpen}
-              onOpenCloudBalance={() => {
-                setBillingOpen(false);
-                setCloudBalanceOpen(true);
-              }}
-            />
-          </LazySheet>
-          <LazySheet open={cloudBalanceOpen}>
-            <CloudBalanceSheet
-              open={cloudBalanceOpen}
-              onOpenChange={setCloudBalanceOpen}
-              onOpenBilling={() => {
-                setCloudBalanceOpen(false);
-                setBillingOpen(true);
-              }}
-            />
+            <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
           </LazySheet>
           <LazySheet open={shieldOpen}>
             <PetalShieldSheet

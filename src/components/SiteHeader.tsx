@@ -15,7 +15,6 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
-import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { PetalBrand } from "@/components/PetalBrand";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -36,7 +35,6 @@ export function SiteHeader() {
   const { user, isReady, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
-  const [cloudBalanceOpen, setCloudBalanceOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -147,17 +145,6 @@ export function SiteHeader() {
               />
             ) : user ? (
               <>
-                {/* Desktop-only Cloud quick action mirrors the Credits pill */}
-                <button
-                  type="button"
-                  onClick={() => setCloudBalanceOpen(true)}
-                  aria-label="Open Cloud and AI balance"
-                  className="hidden h-9 items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/60 md:inline-flex"
-                >
-                  <Wallet className="h-3.5 w-3.5" />
-                  <span className="hidden text-xs text-muted-foreground lg:inline">Cloud</span>
-                </button>
-                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -184,9 +171,6 @@ export function SiteHeader() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => navigate({ to: "/projects" })}>
                       <FolderOpen className="mr-2 h-4 w-4" /> My projects
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setCloudBalanceOpen(true)}>
-                      <Wallet className="mr-2 h-4 w-4" /> Cloud &amp; AI balance
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setBillingOpen(true)}>
                       <CreditCard className="mr-2 h-4 w-4" /> Plans &amp; credits
@@ -248,24 +232,8 @@ export function SiteHeader() {
         open={mobileNavOpen}
         onOpenChange={setMobileNavOpen}
         onOpenBilling={() => setBillingOpen(true)}
-        onOpenCloudBalance={() => setCloudBalanceOpen(true)}
       />
-      <CloudBalanceSheet
-        open={cloudBalanceOpen}
-        onOpenChange={setCloudBalanceOpen}
-        onOpenBilling={() => {
-          setCloudBalanceOpen(false);
-          setBillingOpen(true);
-        }}
-      />
-      <BillingSheet
-        open={billingOpen}
-        onOpenChange={setBillingOpen}
-        onOpenCloudBalance={() => {
-          setBillingOpen(false);
-          setCloudBalanceOpen(true);
-        }}
-      />
+      <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
     </>
   );
 }

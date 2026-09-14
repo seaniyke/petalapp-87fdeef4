@@ -232,7 +232,7 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     return new Response(
       JSON.stringify({
         error:
-          "Your Cloud balance is $0. Top up to enable Cloud on this project.",
+          "You have no credits left. Top up to enable Cloud on this project.",
         code: "balance_empty",
         currentCents: totalBalance,
         requiredCents: 1,

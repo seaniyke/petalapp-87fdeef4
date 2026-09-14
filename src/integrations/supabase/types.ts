@@ -5038,6 +5038,13 @@ export type Database = {
         Returns: undefined
       }
       runtime_apply_monthly_grant: { Args: never; Returns: undefined }
+      runtime_cap_check: {
+        Args: { _amount_cents: number; _project_id: string; _user_id: string }
+        Returns: {
+          ok: boolean
+          reason: string
+        }[]
+      }
       set_user_plan: {
         Args: {
           _current_period_end?: string
