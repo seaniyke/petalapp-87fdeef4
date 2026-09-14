@@ -306,7 +306,7 @@ export function WebContainerPreview({
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [onPick, onRuntimeError, crashReason]);
+  }, [onPick, onRoute, onRuntimeError, crashReason]);
 
   // Reset the picker-ready flag whenever the iframe is hard-reloaded — the
   // new document needs to send `petal:pick:ready` again to be considered live.
