@@ -375,6 +375,14 @@ export const Route = createFileRoute("/api/triage")({
             ? "\n\n" + highStakesClarifyInstruction(highStakes.domain)
             : "";
 
+        // Ask policy: decided deterministically BEFORE the model call so a
+        // question never even streams to the user when this turn should act.
+        const askPolicy = decideAskPolicy(lastUserText, messages);
+        const askBlock =
+          "\n\n" +
+          SENIOR_ENGINEER_POSTURE +
+          (askPolicy.forceAction ? "\n\n" + noAskInstruction(askPolicy.reason) : "");
+
         // Deterministic language pre-detect — runs zero-cost before the LLM
         // and commits the model to African languages it sometimes hedges on
         // (Yoruba/Igbo/Amharic).
