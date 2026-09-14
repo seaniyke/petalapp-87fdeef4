@@ -5533,6 +5533,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             userId: peekAuth,
             turnId: recorder.turnId,
             inheritAttempts: typeof resume === "number" ? resume : 0,
+            isAutoFix: Boolean(peekBody.isAutoFix),
           });
         }
       }
