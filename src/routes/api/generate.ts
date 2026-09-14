@@ -2760,6 +2760,8 @@ Forbidden defaults
     highStakesBlock +
     visionAddendum +
     backendGateBlock +
+    intentActions.promptBlock +
+
     astPatchBlock +
     filesContext;
 
