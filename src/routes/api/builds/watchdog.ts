@@ -39,6 +39,8 @@ import {
 } from "@/server/integrations/env-injector.server";
 
 const MAX_RETRIES = 2;
+/** Quiet time, not age: a build that keeps reporting progress is never stuck,
+ *  however long it runs. Only silence counts against it. */
 const MIN_STUCK_MS = 80_000; // small grace below the 90s client trigger
 
 const BodySchema = z.object({ buildId: z.string().uuid() });
@@ -80,7 +82,7 @@ export const Route = createFileRoute("/api/builds/watchdog")({
 
         const { data: build } = await supabaseAdmin
           .from("project_builds")
-          .select("id, project_id, status, retry_count, created_at")
+          .select("id, project_id, status, retry_count, created_at, last_progress_at")
           .eq("id", buildId)
           .maybeSingle();
         if (!build) return Response.json({ ok: false, reason: "not_found" }, { status: 404 });
@@ -88,7 +90,8 @@ export const Route = createFileRoute("/api/builds/watchdog")({
           return Response.json({ ok: true, action: "noop", reason: "not_active" });
         }
 
-        const ageMs = Date.now() - new Date(build.created_at).getTime();
+        const quietSince = build.last_progress_at ?? build.created_at;
+        const ageMs = Date.now() - new Date(quietSince).getTime();
         if (ageMs < MIN_STUCK_MS) {
           return Response.json({ ok: true, action: "noop", reason: "not_stuck_yet" });
         }

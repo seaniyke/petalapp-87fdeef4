@@ -30,6 +30,7 @@ import {
 } from "./fs-helpers.js";
 import { buildAndDeploy, BuildError, VerificationBlockedError } from "./build.js";
 import { runExecSession, ExecError, MAX_COMMANDS_PER_SESSION } from "./exec.js";
+import { Heartbeat, withInactivity } from "./progress.js";
 import {
   runInstallSession,
   runTestSession,
@@ -41,7 +42,7 @@ import {
   MAX_ROUTES,
   MAX_FLOWS,
   MAX_STEPS_PER_FLOW,
-  VERIFY_TIMEOUT_MS,
+  VERIFY_QUIET_MS,
   type VerifyPlan,
   type VerifyReport,
 } from "./verify.js";
@@ -54,8 +55,11 @@ const CALLBACK_URL = process.env.PETAL_CALLBACK_URL; // https://app.example.com/
 
 const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT_BUILDS ?? 3);
 const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 50);
-/** Hard ceiling on a single job so a wedged install can never leak a slot. */
-const JOB_TIMEOUT_MS = Number(process.env.JOB_TIMEOUT_MS ?? 22 * 60 * 1000);
+/**
+ * A job is never cut off for taking long — only for going silent. This is the
+ * quiet window (no heartbeat at all) after which we treat it as wedged.
+ */
+const JOB_QUIET_MS = Number(process.env.JOB_QUIET_MS ?? 10 * 60 * 1000);
 /** Inspection/codemod sessions get their own pool so they never starve deploys. */
 const MAX_CONCURRENT_EXEC = Number(process.env.MAX_CONCURRENT_EXEC ?? 4);
 const MAX_EXEC_QUEUE = Number(process.env.MAX_EXEC_QUEUE ?? 30);
@@ -177,6 +181,12 @@ fastify.get("/healthz", async () => ({
   execModes: ["inspect", "codemod", "install", "test"],
   // Presence tells the app that /build can run post-deploy browser verification.
   verify: true,
+  // Progress-based liveness: a build is only ever stopped for going silent.
+  active: [...activeBeats.entries()].map(([buildId, hb]) => ({
+    buildId,
+    ...hb.snapshot(),
+    quietMs: hb.quietFor(),
+  })),
 }));
 
 fastify.post("/build", async (req, reply) => {
@@ -319,15 +329,8 @@ fastify.post("/exec", async (req, reply) => {
 });
 
 
-function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`Build exceeded ${Math.round(ms / 1000)}s and was cancelled`)),
-      ms,
-    );
-    p.then(resolve, reject).finally(() => clearTimeout(timer));
-  });
-}
+/** Live progress of every in-flight build, surfaced on /healthz. */
+const activeBeats = new Map<string, Heartbeat>();
 
 /**
  * Petal v3 — Phase D. Warm workspaces are opt-out (`WARM_WORKSPACES=0`) so a
@@ -353,6 +356,13 @@ async function runBuildInner(body: BuildBody): Promise<void> {
   // Declared outside the try so the failure path can forward the exact
   // defects that blocked the deploy.
   let verification: VerifyReport | undefined;
+  const heartbeat = new Heartbeat("preparing the workspace");
+  activeBeats.set(body.buildId, heartbeat);
+  // Tell Petal we are alive on a fixed cadence. This is what lets the app
+  // keep a long build running instead of reaping it on a wall clock.
+  const beatTimer = setInterval(() => {
+    void postHeartbeat(body.buildId, body.projectId, heartbeat.snapshot().label);
+  }, HEARTBEAT_INTERVAL_MS);
   try {
     if (WARM_WORKSPACES) {
       try {
@@ -387,7 +397,11 @@ async function runBuildInner(body: BuildBody): Promise<void> {
       ? async (baseUrl: string): Promise<VerifyReport> => {
           const plan: VerifyPlan = { baseUrl, ...body.verify! };
           try {
-            const report = await withTimeout(runVerification(plan), VERIFY_TIMEOUT_MS);
+            const report = await withInactivity(
+              runVerification(plan, heartbeat),
+              VERIFY_QUIET_MS,
+              heartbeat,
+            );
             log.info(
               { ok: report.ok, defects: report.defects.length },
               "Pre-deploy verification finished",
@@ -411,14 +425,15 @@ async function runBuildInner(body: BuildBody): Promise<void> {
         }
       : undefined;
 
-    const result = await withTimeout(
+    const result = await withInactivity(
       buildAndDeploy(
         dir,
         body.projectId,
         { apiToken: CF_API_TOKEN!, accountId: CF_ACCOUNT_ID! },
-        preDeployCheck ? { preDeployCheck } : {},
+        preDeployCheck ? { preDeployCheck, heartbeat } : { heartbeat },
       ),
-      JOB_TIMEOUT_MS,
+      JOB_QUIET_MS,
+      heartbeat,
     );
 
     log.info({ url: result.url, durationMs: result.durationMs }, "Build succeeded");
@@ -446,6 +461,8 @@ async function runBuildInner(body: BuildBody): Promise<void> {
       ...(err instanceof VerificationBlockedError && verification ? { verification } : {}),
     }).catch((e) => log.error({ err: String(e) }, "Callback also failed"));
   } finally {
+    clearInterval(beatTimer);
+    activeBeats.delete(body.buildId);
     if (warmed) {
       // Keep node_modules for the next turn; drop only the build output.
       await releaseWorkspace(body.projectId);
@@ -466,6 +483,46 @@ function stripScreenshots(report: VerifyReport): VerifyReport {
     flows: report.flows.map(({ screenshot: _s, ...rest }) => rest),
     ...(report.auth ? { auth: { ...report.auth, screenshot: undefined } } : {}),
   };
+}
+
+const HEARTBEAT_INTERVAL_MS = Number(process.env.HEARTBEAT_INTERVAL_MS ?? 20_000);
+/** Derived from the callback URL: /api/builds/callback -> /api/public/builds/heartbeat */
+const HEARTBEAT_URL = (() => {
+  try {
+    const u = new URL(CALLBACK_URL!);
+    u.pathname = "/api/public/builds/heartbeat";
+    return u.toString();
+  } catch {
+    return null;
+  }
+})();
+
+/**
+ * Best-effort liveness ping. Never throws and never blocks the build: a
+ * missed heartbeat only shortens the app's patience, it cannot fail a job.
+ */
+async function postHeartbeat(
+  buildId: string,
+  projectId: string,
+  label: string,
+): Promise<void> {
+  if (!HEARTBEAT_URL) return;
+  try {
+    const body = JSON.stringify({ buildId, projectId, label: label.slice(0, 120) });
+    const { timestamp, signature } = sign(SHARED_SECRET!, body);
+    await fetch(HEARTBEAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-petal-timestamp": timestamp,
+        "x-petal-signature": signature,
+      },
+      body,
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    /* liveness is advisory */
+  }
 }
 
 type Callback =

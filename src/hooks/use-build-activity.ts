@@ -32,11 +32,17 @@ export type BuildSnapshot = {
   status: "pending" | "building" | "ready" | "failed";
   distPath: string | null;
   errorMessage: string | null;
-  /** When the build row was first observed by this client. Used to escalate
-   *  copy ("almost there", "taking longer", "still working") and to surface
-   *  a friendly "deploy stalled" card after a long wait — independent of the
-   *  server-side reaper which only kicks in after 20 minutes. */
+  /** When the build row was first observed by this client. Drives the elapsed
+   *  timer shown to the user. */
   observedAt: number;
+  /** When the build last showed progress. A build is never treated as stuck
+   *  for taking long — only for going quiet — so this is the clock the stall
+   *  escalation reads. */
+  progressAt: number;
+  /** Plain-language description of what the build service is doing right now,
+   *  e.g. "installing dependencies", "opening /pricing". Null before the first
+   *  progress report arrives. */
+  progressLabel: string | null;
   /** Post-deploy browser check: null when the build predates verification or
    *  the run was skipped. `defects` is already human-readable. */
   verification: { ok: boolean; defects: string[]; skipped?: string } | null;
@@ -68,6 +74,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
     let cancelled = false;
     let terminalSince: number | null = null;
     let latestStatus: BuildSnapshot["status"] = "pending";
+    let latestProgressAt = Date.now();
     const startedAt = Date.now();
     let watchdogPokedAt = 0;
 
@@ -84,6 +91,8 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
             distPath: null,
             errorMessage: null,
             observedAt: Date.now(),
+            progressAt: Date.now(),
+            progressLabel: null,
             verification: null,
           },
     );
@@ -114,37 +123,52 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       dist_path: string | null;
       error_message: string | null;
       created_at?: string | null;
+      last_progress_at?: string | null;
+      progress_label?: string | null;
       verification?: unknown;
     }, buildId = latestBuildId) => {
       if (cancelled) return;
       setSnap((prev) => {
         const sameBuild = prev?.buildId === buildId;
         const createdAt = data.created_at ? new Date(data.created_at).getTime() : NaN;
+        const progressAt = data.last_progress_at
+          ? new Date(data.last_progress_at).getTime()
+          : NaN;
         const next: BuildSnapshot = {
           buildId,
           status: (data.status as BuildSnapshot["status"]) ?? "pending",
           distPath: data.dist_path ?? null,
           errorMessage: data.error_message ?? null,
-          // Preserve the very first observation timestamp across updates so
-          // the long-wait escalation timer is stable for the whole deploy.
+          // Preserve the very first observation so the elapsed timer is stable.
           observedAt:
             sameBuild && prev
               ? prev.observedAt
               : Number.isFinite(createdAt)
                 ? createdAt
                 : Date.now(),
+          // Progress resets the quiet clock. Without a progress report we fall
+          // back to creation, so an unresponsive build still escalates.
+          progressAt: Number.isFinite(progressAt)
+            ? progressAt
+            : Number.isFinite(createdAt)
+              ? createdAt
+              : Date.now(),
+          progressLabel: data.progress_label ?? (sameBuild && prev ? prev.progressLabel : null),
           verification: readVerification(data.verification),
         };
         if (next.status === "ready" || next.status === "failed") {
           if (terminalSince == null) terminalSince = Date.now();
         }
         latestStatus = next.status;
+        latestProgressAt = next.progressAt;
         // Avoid pointless re-renders when polling returns identical rows.
         if (
           sameBuild && prev &&
           prev.status === next.status &&
           prev.distPath === next.distPath &&
           prev.errorMessage === next.errorMessage &&
+          prev.progressAt === next.progressAt &&
+          prev.progressLabel === next.progressLabel &&
           (prev.verification?.defects.length ?? -1) === (next.verification?.defects.length ?? -1)
         ) {
           return prev;
@@ -153,7 +177,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       });
     };
 
-    const BUILD_COLUMNS = "status, dist_path, error_message, verification, created_at";
+    const BUILD_COLUMNS = "status, dist_path, error_message, verification, created_at, last_progress_at, progress_label";
 
     const fetchOnce = async () => {
       const { data } = await supabase
@@ -217,11 +241,13 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       if (terminalSince != null && Date.now() - terminalSince > 30_000) return;
       void fetchOnce();
       if (elapsed > 15_000 && terminalSince == null) void fetchProjectLatestBuild();
-      // If an active build has not completed after ~90s, poke the watchdog.
-      // This includes `building`: a successful deploy with a dropped callback
-      // otherwise remains stranded forever.
+      // If an active build has gone quiet for ~90s, poke the watchdog. Long
+      // builds that keep reporting progress are left alone: only silence — a
+      // dropped callback or a dead worker — counts as stuck.
+      const quietMs = Date.now() - latestProgressAt;
       if (
         elapsed > 90_000 &&
+        quietMs > 90_000 &&
         terminalSince == null &&
         (latestStatus === "pending" || latestStatus === "building")
       ) {

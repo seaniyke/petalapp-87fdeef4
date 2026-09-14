@@ -19,6 +19,15 @@ import { join } from "node:path";
 import { healMaterializedProject } from "./fs-helpers.js";
 import { startPreviewServer } from "./preview-server.js";
 import { partitionVerificationDefects } from "./verification-report.js";
+import { Heartbeat } from "./progress.js";
+
+/**
+ * How long a child process may stay completely silent before we call it
+ * wedged. Generous on purpose: a large npm install on a cold cache can pause
+ * for minutes between lines, and killing that is the exact failure this
+ * change exists to prevent.
+ */
+const QUIET_MS = Number(process.env.STAGE_QUIET_MS ?? 6 * 60 * 1000);
 
 /**
  * Result of the pre-deploy browser check. Kept structural rather than importing
@@ -173,10 +182,25 @@ function projectNameFor(projectId: string): string {
   return `petal-${id}`;
 }
 
+/**
+ * Spawn a child process and wait for it — for as long as it keeps talking.
+ *
+ * `quietMs` is an *inactivity* window, not a wall clock: every chunk of
+ * stdout/stderr resets it and beats the shared heartbeat. A slow npm install
+ * that prints progress runs to completion no matter how long it takes; a
+ * genuinely wedged process (no output at all for the quiet window) is killed.
+ */
 function run(
   cmd: string,
   args: string[],
-  opts: { cwd: string; env: Record<string, string>; timeoutMs?: number }
+  opts: {
+    cwd: string;
+    env: Record<string, string>;
+    /** Kill only after this long with zero output. */
+    quietMs?: number;
+    heartbeat?: Heartbeat;
+    label?: string;
+  }
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, {
@@ -186,22 +210,52 @@ function run(
     });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (d) => (stdout += d.toString()));
-    child.stderr.on("data", (d) => (stderr += d.toString()));
+    let settled = false;
+    let lastOutputAt = Date.now();
 
-    const timeout = opts.timeoutMs
-      ? setTimeout(() => {
+    const quietMs = opts.quietMs ?? 0;
+    const onOutput = () => {
+      lastOutputAt = Date.now();
+      opts.heartbeat?.beat(opts.label);
+    };
+    child.stdout.on("data", (d) => {
+      stdout += d.toString();
+      onOutput();
+    });
+    child.stderr.on("data", (d) => {
+      stderr += d.toString();
+      onOutput();
+    });
+
+    const watchdog = quietMs
+      ? setInterval(() => {
+          if (settled) return;
+          if (Date.now() - lastOutputAt < quietMs) return;
+          settled = true;
+          clearInterval(watchdog!);
           child.kill("SIGTERM");
-          reject(new BuildError(`Command timed out after ${opts.timeoutMs}ms: ${cmd}`, stdout + stderr));
-        }, opts.timeoutMs)
+          reject(
+            new BuildError(
+              `${opts.label ?? cmd} produced no output for ${Math.round(
+                quietMs / 1000,
+              )}s and looked wedged`,
+              stdout + stderr,
+            ),
+          );
+        }, Math.max(5_000, Math.min(30_000, Math.floor(quietMs / 6))))
       : null;
 
     child.on("error", (err) => {
-      if (timeout) clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
+      if (watchdog) clearInterval(watchdog);
       reject(err);
     });
     child.on("close", (code) => {
-      if (timeout) clearTimeout(timeout);
+      if (settled) return;
+      settled = true;
+      if (watchdog) clearInterval(watchdog);
+      opts.heartbeat?.beat(opts.label);
       resolve({ code: code ?? -1, stdout, stderr });
     });
   });
@@ -214,13 +268,16 @@ function run(
  */
 async function runTypecheck(
   projectDir: string,
-  env: Record<string, string>
+  env: Record<string, string>,
+  heartbeat: Heartbeat,
 ): Promise<string | null> {
   try {
     const res = await run("npx", ["tsc", "--noEmit", "--pretty", "false"], {
       cwd: projectDir,
       env,
-      timeoutMs: 90 * 1000,
+      quietMs: QUIET_MS,
+      heartbeat,
+      label: "checking types",
     });
     if (res.code === 0) return null;
     const lines = (res.stdout + "\n" + res.stderr)
@@ -243,10 +300,12 @@ export async function buildAndDeploy(
   projectDir: string,
   projectId: string,
   cloudflare: { apiToken: string; accountId: string },
-  options: { preDeployCheck?: PreDeployCheck } = {},
+  options: { preDeployCheck?: PreDeployCheck; heartbeat?: Heartbeat } = {},
 ): Promise<BuildResult> {
 
   const startedAt = Date.now();
+  const heartbeat = options.heartbeat ?? new Heartbeat("installing dependencies");
+  heartbeat.beat("installing dependencies");
   const projectName = projectNameFor(projectId);
 
   const env = {
@@ -274,7 +333,9 @@ export async function buildAndDeploy(
     {
       cwd: projectDir,
       env,
-      timeoutMs: 4 * 60 * 1000, // 4 min
+      quietMs: QUIET_MS,
+      heartbeat,
+      label: "installing dependencies",
     }
   );
 
@@ -303,13 +364,16 @@ export async function buildAndDeploy(
   //     This is deliberately NON-FATAL: a type error that rollup can still
   //     bundle must never cost the user a working preview. We only surface the
   //     diagnostics, and attach them to the failure when vite does blow up.
-  const typecheck = await runTypecheck(projectDir, env);
+  const typecheck = await runTypecheck(projectDir, env, heartbeat);
 
   // 2) Build with vite (project's own script).
+  heartbeat.beat("compiling the app");
   const build = await run("npx", ["vite", "build"], {
     cwd: projectDir,
     env,
-    timeoutMs: 3 * 60 * 1000, // 3 min
+    quietMs: QUIET_MS,
+    heartbeat,
+    label: "compiling the app",
   });
   if (build.code !== 0) {
     const viteLogs = build.stdout + "\n" + build.stderr;
@@ -344,6 +408,7 @@ export async function buildAndDeploy(
   //     A verifier that cannot run is not a build failure: the bundle is real
   //     either way, so we deploy and report the check as skipped.
   if (options.preDeployCheck) {
+    heartbeat.beat("testing the app in a browser");
     let verification: PreDeployReport | undefined;
     const preview = await startPreviewServer(distDir);
     try {
@@ -368,6 +433,7 @@ export async function buildAndDeploy(
   //    surfaces the "already exists" case as an opaque `code: 8000000` unknown
   //    error on some accounts, which is indistinguishable from a real failure.
   //    GET-then-POST is unambiguous: 200 = exists, 404 = create it.
+  heartbeat.beat("publishing the app");
   await ensurePagesProject(projectName, cloudflare);
 
   // 4) Deploy to Cloudflare Pages. --branch=main makes this a production deploy
@@ -387,7 +453,9 @@ export async function buildAndDeploy(
     {
       cwd: projectDir,
       env,
-      timeoutMs: 3 * 60 * 1000,
+      quietMs: QUIET_MS,
+      heartbeat,
+      label: "publishing the app",
     }
   );
 

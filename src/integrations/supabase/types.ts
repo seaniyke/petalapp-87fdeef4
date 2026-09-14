@@ -2775,7 +2775,9 @@ export type Database = {
           dist_path: string | null
           error_message: string | null
           id: string
+          last_progress_at: string | null
           last_retry_at: string | null
+          progress_label: string | null
           project_id: string
           ready_at: string | null
           retry_count: number
@@ -2787,7 +2789,9 @@ export type Database = {
           dist_path?: string | null
           error_message?: string | null
           id?: string
+          last_progress_at?: string | null
           last_retry_at?: string | null
+          progress_label?: string | null
           project_id: string
           ready_at?: string | null
           retry_count?: number
@@ -2799,7 +2803,9 @@ export type Database = {
           dist_path?: string | null
           error_message?: string | null
           id?: string
+          last_progress_at?: string | null
           last_retry_at?: string | null
+          progress_label?: string | null
           project_id?: string
           ready_at?: string | null
           retry_count?: number
@@ -3975,7 +3981,9 @@ export type Database = {
           ended_at: string | null
           error_message: string | null
           id: string
+          last_progress_at: string | null
           last_seq: number
+          progress_label: string | null
           project_id: string
           started_at: string
           status: string
@@ -3987,7 +3995,9 @@ export type Database = {
           ended_at?: string | null
           error_message?: string | null
           id?: string
+          last_progress_at?: string | null
           last_seq?: number
+          progress_label?: string | null
           project_id: string
           started_at?: string
           status?: string
@@ -3999,7 +4009,9 @@ export type Database = {
           ended_at?: string | null
           error_message?: string | null
           id?: string
+          last_progress_at?: string | null
           last_seq?: number
+          progress_label?: string | null
           project_id?: string
           started_at?: string
           status?: string
