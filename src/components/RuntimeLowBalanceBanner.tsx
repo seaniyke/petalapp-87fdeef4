@@ -60,11 +60,11 @@ export function RuntimeLowBalanceBanner({ projectId }: Props) {
 
   let message: string;
   if (paused) {
-    message = "Runtime paused — your project hit its spend cap. Top up to bring it back online.";
+    message = "Paused — this project hit its spend cap. Raise the cap or top up to bring it back.";
   } else if (isEmpty) {
-    message = "Top up to start using Cloud + AI. First top-up unlocks $5/mo free Cloud credit.";
+    message = "You're out of credits. Top up to keep building and keep your apps running.";
   } else {
-    message = `Cloud + AI balance is low (${formatCents(totalCents)}). Top up to keep your apps running.`;
+    message = `Credits running low (about ${Math.round(totalCents / 5)} left). Top up to keep going.`;
   }
 
   // Paused = blocking. Keep the full-width banner so users can't miss it.
