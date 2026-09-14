@@ -154,9 +154,9 @@ import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 // BuildTargetChips import removed — chip rail retired from the composer.
 import { DevicePreviewFrame } from "@/components/DevicePreviewFrame";
-const SnackPreview = lazy(() =>
-  import("@/components/SnackPreview").then((m) => ({ default: m.SnackPreview })),
-);
+// SnackPreview (Expo Snack web-player) retired: mobile apps are the same
+// React build wrapped in a Capacitor shell, so the phone frame shows the
+// real preview rather than a separate React Native player.
 const MobilePublishSheet = lazy(() =>
   import("@/components/MobilePublishSheet").then((m) => ({ default: m.MobilePublishSheet })),
 );
@@ -5312,21 +5312,11 @@ function Builder() {
                   }`}
                 >
                   <DevicePreviewFrame mode={getBuildTarget(buildTarget).preview}>
-                    {/* For mobile build targets we use Expo Snack (Bolt /
-                        Rork pattern) — the web-player iframe renders the
-                        RN code with hot-reload, and the QR opens the same
-                        session in Expo Go on a real device. */}
-                    {(buildTarget === "mobile" || buildTarget === "ios" || buildTarget === "android") && files.length ? (
-                      <Suspense
-                        fallback={
-                          <div className="grid h-full place-items-center text-xs text-muted-foreground">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          </div>
-                        }
-                      >
-                        <SnackPreview files={files} projectName={project?.title ?? "Petal preview"} />
-                      </Suspense>
-                    ) : useDeployedFallback ? (
+                    {/* Mobile builds are the same React app wrapped in a
+                        Capacitor native shell, so the preview is the real
+                        build rendered inside the phone chrome above — not a
+                        separate RN player. */}
+                    {useDeployedFallback ? (
                       <Suspense
                         fallback={
                           <div className="grid h-full place-items-center text-xs text-muted-foreground">

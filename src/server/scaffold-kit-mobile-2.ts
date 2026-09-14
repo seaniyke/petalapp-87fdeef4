@@ -458,6 +458,27 @@ export function MobileErrorState({
 }
 `;
 
+/**
+ * Re-export shims so common path guesses resolve to the real module.
+ * Each is a one-line `export *` — no duplicated implementation.
+ */
+const ALIAS_SHIMS: KitFile[] = (
+  [
+    ["mobile-empty-state", "mobile-states"],
+    ["mobile-error-state", "mobile-states"],
+    ["mobile-list-skeleton", "mobile-states"],
+    ["mobile-skeleton", "mobile-states"],
+    ["empty-state", "mobile-states"],
+    ["list-group", "list-row"],
+    ["floating-action-button", "fab"],
+    ["sticky-action-bar", "fab"],
+  ] as const
+).map(([alias, real]) => ({
+  path: `src/components/mobile/${alias}.tsx`,
+  content: `export * from "@/components/mobile/${real}";\n`,
+  overwrite: true,
+}));
+
 export const KIT_BLOCK_FILES_MOBILE_2: KitFile[] = [
   { path: "src/components/mobile/list-row.tsx", content: LIST_ROW, overwrite: true },
   { path: "src/components/mobile/segmented-control.tsx", content: SEGMENTED, overwrite: true },
@@ -465,4 +486,9 @@ export const KIT_BLOCK_FILES_MOBILE_2: KitFile[] = [
   { path: "src/components/mobile/fab.tsx", content: FAB, overwrite: true },
   { path: "src/components/mobile/swipe-row.tsx", content: SWIPE_ROW, overwrite: true },
   { path: "src/components/mobile/mobile-states.tsx", content: MOBILE_STATES, overwrite: true },
+  // Alias shims. The generator frequently imports one file per component
+  // (`@/components/mobile/mobile-empty-state`) instead of the real grouped
+  // module, and an unresolvable import reverts the whole turn. These
+  // re-exports make every reasonable guess resolve.
+  ...ALIAS_SHIMS,
 ];

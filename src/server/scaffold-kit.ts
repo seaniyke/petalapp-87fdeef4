@@ -18,6 +18,7 @@ import type { ProjectFile } from "./generate.server";
 import { backendKit, BACKEND_DEPS } from "./backend-kit";
 import { sharedBackendKit, type SharedBackendKitOpts } from "./shared-backend-kit";
 import { extensionKit } from "./scaffold-kit-extension";
+import { mobileShellKit, MOBILE_SHELL_DEPS } from "./scaffold-kit-mobile-shell";
 import { EXAMPLES_PACK } from "./examples-pack";
 import { EXAMPLES_PACK_2 } from "./examples-pack-2";
 import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
@@ -4304,6 +4305,11 @@ function mergePackageJson(
  * (pre-configured client, auth provider, storage helpers) so the AI can
  * import from `@/integrations/backend/*` without setting anything up.
  */
+/** Mobile build target ids, including the legacy per-platform ones. */
+function isMobileTargetId(target?: string): boolean {
+  return target === "mobile" || target === "ios" || target === "android";
+}
+
 export function applyScaffoldKit(
   aiFiles: ProjectFile[],
   opts?: {
@@ -4345,6 +4351,14 @@ export function applyScaffoldKit(
   // reproduce. Additive only — never clobber a popup/background the AI wrote.
   if (opts?.target === "extension") {
     for (const f of extensionKit()) if (!map.has(f.path)) map.set(f.path, f.content);
+  }
+
+  // Mobile target: Petal ships this app to the App Store / Play Store by
+  // wrapping the built web app in a Capacitor shell, so the native config
+  // and Capacitor deps must exist even if the model never mentions them.
+  if (isMobileTargetId(opts?.target)) {
+    for (const f of mobileShellKit()) if (!map.has(f.path)) map.set(f.path, f.content);
+    extraDeps = { ...extraDeps, ...MOBILE_SHELL_DEPS };
   }
 
   // Always fix package.json (merge deps + any backend deps).
@@ -4452,6 +4466,11 @@ export function applyScaffoldKitForPatch(
   // reproduce. Additive only — never clobber a popup/background the AI wrote.
   if (opts?.target === "extension") {
     for (const f of extensionKit()) if (!map.has(f.path)) map.set(f.path, f.content);
+  }
+
+  if (isMobileTargetId(opts?.target)) {
+    for (const f of mobileShellKit()) if (!map.has(f.path)) map.set(f.path, f.content);
+    extraDeps = { ...extraDeps, ...MOBILE_SHELL_DEPS };
   }
 
   map.set("package.json", mergePackageJson(map.get("package.json"), extraDeps));
