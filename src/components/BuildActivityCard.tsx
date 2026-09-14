@@ -231,6 +231,33 @@ export function BuildActivityCard({
   }, [writtenPaths]);
 
 
+  // The same chronological trace the Details sheet renders — built here so the
+  // card can tail it live instead of showing a separate, thinner feed.
+  const trace = useMemo(
+    () =>
+      buildTrace({
+        phases,
+        thoughts: thinkingLog,
+        writtenPaths,
+        fileTimestamps,
+        completedPaths,
+        fileChanges,
+        timelineEvents,
+      }),
+    [phases, thinkingLog, writtenPaths, fileTimestamps, completedPaths, fileChanges, timelineEvents],
+  );
+
+  // Credits: the settled number once it exists, otherwise the running estimate
+  // the server streams as soon as token usage is known.
+  const creditsShown =
+    typeof creditsCharged === "number"
+      ? creditsCharged
+      : typeof creditsEstimate === "number"
+        ? creditsEstimate
+        : null;
+  const liveCreditLabel =
+    creditsShown != null && creditsShown > 0 ? `${creditsShown.toFixed(2)} credits used` : null;
+
   const currentPhase: Phase =
     phases.find((p) => p.status === "active") ??
     [...phases].reverse().find((p) => p.status === "done") ??
