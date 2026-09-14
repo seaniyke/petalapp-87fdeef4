@@ -411,6 +411,18 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     }
     // The build never shipped — the user keeps their credits.
     await refundRolledBackBuild(payload.projectId, payload.buildId);
+    const failedBlocking = Array.isArray(failedVerification?.blocking)
+      ? (failedVerification.blocking as string[])
+      : [];
+    await recordBuildOutcome({
+      projectId: payload.projectId,
+      buildId: payload.buildId,
+      shipped: false,
+      blockingDefects: failedBlocking.length
+        ? failedBlocking
+        : [payload.errorMessage.slice(0, 500)],
+      reason: "build failed",
+    });
   }
 
 
