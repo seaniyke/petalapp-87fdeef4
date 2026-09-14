@@ -2170,6 +2170,18 @@ function Builder() {
       }
       const proj = await ensureProject();
       if (!proj) {
+        // The project row could not be created (permissions, network, a
+        // database rule). Never swallow this: an auto-sent prompt from the
+        // landing page would otherwise vanish with an empty thread. Say what
+        // happened and hand the text back to the composer so nothing is lost.
+        setFriendlyError({
+          title: "Couldn't start this project",
+          message:
+            "Petal couldn't create the project just now, so nothing was sent. Your text is back in the composer — try again in a moment.",
+          actionLabel: "Try again",
+          actionKind: "retry",
+        });
+        setInput((prev) => (prev.trim() ? prev : text));
         releaseTurnLock();
         return;
       }
