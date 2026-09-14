@@ -173,6 +173,13 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         })
         .eq("id", payload.buildId);
       await refundRolledBackBuild(payload.projectId, payload.buildId);
+      await recordBuildOutcome({
+        projectId: payload.projectId,
+        buildId: payload.buildId,
+        shipped: false,
+        blockingDefects: [`The deployed app did not respond correctly: ${probe.reason}`],
+        reason: "deploy probe failed",
+      });
       return new Response("ok", { status: 200 });
     }
 
