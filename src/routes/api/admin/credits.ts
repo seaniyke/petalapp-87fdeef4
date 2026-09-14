@@ -21,6 +21,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { economicsValues } from "@/server/economics-config.server";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -1393,6 +1394,179 @@ export const Route = createFileRoute("/api/admin/credits")({
             }
 
             return Response.json({ ok: true, status: "confirmed" });
+          }
+
+          // ----- ECONOMICS (internal only) -----
+          // Reads the turn economics record written by the generation
+          // pipeline. Every number is labelled by how it was obtained:
+          // measured, estimated, or unknown. Nothing here is ever shown to a
+          // customer, and nothing is silently treated as zero.
+          if (body.action === "economics") {
+            const days = Number(body.since_days ?? 30);
+            const since = new Date(Date.now() - days * 86_400_000).toISOString();
+
+            const { data: turnsRaw, error: turnsErr } = await supabaseAdmin
+              .from("turn_economics")
+              .select(
+                "turn_id, user_id, project_id, feature, credits_charged, ai_cost_usd, image_cost_usd, build_cost_usd, variable_cost_usd, cost_basis, result, build_ms, verify_ms, created_at",
+              )
+              .gte("created_at", since)
+              .order("created_at", { ascending: false })
+              .limit(5000);
+            if (turnsErr) return Response.json({ error: turnsErr.message }, { status: 500 });
+            const turns = (turnsRaw ?? []) as unknown as Array<{
+              turn_id: string;
+              user_id: string | null;
+              project_id: string | null;
+              feature: string | null;
+              credits_charged: number | null;
+              ai_cost_usd: number | null;
+              image_cost_usd: number | null;
+              build_cost_usd: number | null;
+              variable_cost_usd: number | null;
+              cost_basis: string | null;
+              result: string | null;
+              build_ms: number | null;
+              verify_ms: number | null;
+            }>;
+
+            const basis: Record<string, number> = { actual: 0, estimated: 0, unknown: 0 };
+            let credits = 0;
+            let variableCost = 0;
+            let costKnownTurns = 0;
+            const byFeature: Record<string, { turns: number; credits: number; cost: number }> = {};
+            const byProject = new Map<string, { turns: number; credits: number; cost: number }>();
+            for (const t of turns) {
+              const b = t.cost_basis ?? "unknown";
+              basis[b] = (basis[b] ?? 0) + 1;
+              credits += Number(t.credits_charged ?? 0);
+              const cost = Number(t.variable_cost_usd ?? 0);
+              if (b !== "unknown") {
+                variableCost += cost;
+                costKnownTurns += 1;
+              }
+              const f = t.feature ?? "unknown";
+              byFeature[f] ??= { turns: 0, credits: 0, cost: 0 };
+              byFeature[f].turns += 1;
+              byFeature[f].credits += Number(t.credits_charged ?? 0);
+              byFeature[f].cost += b === "unknown" ? 0 : cost;
+              if (t.project_id) {
+                const cur = byProject.get(t.project_id) ?? { turns: 0, credits: 0, cost: 0 };
+                cur.turns += 1;
+                cur.credits += Number(t.credits_charged ?? 0);
+                cur.cost += b === "unknown" ? 0 : cost;
+                byProject.set(t.project_id, cur);
+              }
+            }
+
+            // Build outcomes over the same window, straight from the build table.
+            const { data: buildsRaw } = await supabaseAdmin
+              .from("project_builds")
+              .select("id, status, created_at, updated_at")
+              .gte("created_at", since)
+              .limit(5000);
+            const builds = (buildsRaw ?? []) as unknown as Array<{
+              status: string;
+              created_at: string;
+              updated_at: string | null;
+            }>;
+            const durations: number[] = [];
+            let ready = 0;
+            let failed = 0;
+            for (const b of builds) {
+              if (b.status === "ready") ready += 1;
+              if (b.status === "failed") failed += 1;
+              if (b.updated_at) {
+                const ms = new Date(b.updated_at).getTime() - new Date(b.created_at).getTime();
+                if (ms > 0 && ms < 3_600_000) durations.push(ms);
+              }
+            }
+            durations.sort((a, z) => a - z);
+            const pct = (p: number) =>
+              durations.length ? durations[Math.min(durations.length - 1, Math.floor(durations.length * p))] : null;
+
+            // AI call coverage — how much of the model spend we can actually
+            // see, rather than infer.
+            const { data: callsRaw } = await supabaseAdmin
+              .from("ai_call_log")
+              .select("cost_basis, cost_usd_micro, provider, model")
+              .gte("created_at", since)
+              .limit(20000);
+            const calls = (callsRaw ?? []) as unknown as Array<{
+              cost_basis: string | null;
+              cost_usd_micro: number | null;
+              provider: string | null;
+              model: string | null;
+            }>;
+            const callBasis: Record<string, number> = { actual: 0, estimated: 0, unknown: 0 };
+            const byModel: Record<string, { calls: number; cost: number }> = {};
+            for (const c of calls) {
+              const b = c.cost_basis ?? "unknown";
+              callBasis[b] = (callBasis[b] ?? 0) + 1;
+              const key = `${c.provider ?? "?"}/${c.model ?? "?"}`;
+              byModel[key] ??= { calls: 0, cost: 0 };
+              byModel[key].calls += 1;
+              byModel[key].cost += Number(c.cost_usd_micro ?? 0) / 1_000_000;
+            }
+
+            const cfg = await economicsValues();
+            const costPerCredit = credits > 0 && costKnownTurns > 0 ? variableCost / credits : null;
+            const target = cfg.target_variable_cost_per_credit_usd;
+
+            const alerts: string[] = [];
+            const coveragePct = turns.length
+              ? Math.round(((turns.length - (basis.unknown ?? 0)) / turns.length) * 100)
+              : 0;
+            if (coveragePct < 80) {
+              alerts.push(
+                `Cost is only known for ${coveragePct}% of turns — treat the figures below as partial.`,
+              );
+            }
+            if (costPerCredit !== null && costPerCredit > target) {
+              alerts.push(
+                `Measured cost per credit ($${costPerCredit.toFixed(4)}) is above the $${target.toFixed(2)} target.`,
+              );
+            }
+            if (builds.length && failed / builds.length > 0.2) {
+              alerts.push(
+                `${Math.round((failed / builds.length) * 100)}% of builds failed — failed builds cost money and earn none.`,
+              );
+            }
+
+            const projects = Array.from(byProject.entries())
+              .sort((a, z) => z[1].cost - a[1].cost)
+              .slice(0, 20)
+              .map(([project_id, v]) => ({ project_id, ...v }));
+
+            return Response.json({
+              since_days: days,
+              coverage: {
+                turns: turns.length,
+                by_basis: basis,
+                known_pct: coveragePct,
+                ai_calls: calls.length,
+                ai_calls_by_basis: callBasis,
+              },
+              totals: {
+                credits_charged: Math.round(credits * 100) / 100,
+                variable_cost_usd: Math.round(variableCost * 10000) / 10000,
+                cost_per_credit_usd: costPerCredit,
+                target_cost_per_credit_usd: target,
+              },
+              by_feature: byFeature,
+              by_model: byModel,
+              builds: {
+                total: builds.length,
+                ready,
+                failed,
+                p50_ms: pct(0.5),
+                p90_ms: pct(0.9),
+                p95_ms: pct(0.95),
+              },
+              top_projects: projects,
+              config: cfg,
+              alerts,
+            });
           }
 
           return Response.json({ error: "Unknown action" }, { status: 400 });
