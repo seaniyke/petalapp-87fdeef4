@@ -2992,6 +2992,7 @@ Forbidden defaults
       chosenBy,
       projectId: body.projectId ?? null,
       userId,
+      turnId: logicalTurnId,
     },
   });
 
@@ -3116,6 +3117,7 @@ Forbidden defaults
               chosenBy: "structured_retry",
               projectId: body.projectId ?? null,
               userId,
+              turnId: logicalTurnId,
             },
           });
           if (!retry.ok || !retry.body) throw e;
@@ -3143,6 +3145,7 @@ Forbidden defaults
                   encoder,
                   projectId: body.projectId ?? null,
                   userId,
+                  turnId: logicalTurnId,
                 }).catch((recoveryErr) => {
                   console.warn(
                     "[generate] tool recovery failed:",
@@ -3301,6 +3304,7 @@ Forbidden defaults
                     chosenBy: `chunk_round_${req.round}`,
                     projectId: body.projectId ?? null,
                     userId,
+                    turnId: logicalTurnId,
                   },
                 });
                 if (!res.ok || !res.body) return null;
@@ -3436,6 +3440,7 @@ Forbidden defaults
               turnId: logicalTurnId,
               projectId: body.projectId ?? null,
               userId,
+              turnId: logicalTurnId,
               model,
               reason: "empty_ops",
               isInitial,
@@ -3536,6 +3541,7 @@ Forbidden defaults
                   chosenBy: "op_repair_round",
                   projectId: body.projectId ?? null,
                   userId,
+                  turnId: logicalTurnId,
                 },
               });
               if (!res.ok || !res.body) return [];
@@ -3672,6 +3678,7 @@ Forbidden defaults
               turnId: logicalTurnId,
               projectId: body.projectId ?? null,
               userId,
+              turnId: logicalTurnId,
               model,
               reason: blockReason,
               isInitial,
@@ -3911,6 +3918,7 @@ Forbidden defaults
                     chosenBy: "per_file_rewrite",
                     projectId: body.projectId ?? null,
                     userId,
+                    turnId: logicalTurnId,
                   },
                 });
                 if (!rewrite.ok || !rewrite.body) {
@@ -3972,6 +3980,7 @@ Forbidden defaults
                   turnId: logicalTurnId,
                   projectId: body.projectId ?? null,
                   userId,
+                  turnId: logicalTurnId,
                   model,
                   reason: "all_ops_failed",
                   isInitial,
@@ -4160,6 +4169,7 @@ Forbidden defaults
                 gate.rejected.map((r) => ({
                   projectId: body.projectId ?? null,
                   userId,
+                  turnId: logicalTurnId,
                   phase: "pre_build" as const,
                   passId: "write-gate",
                   signature: signatureOf(r.detail),
