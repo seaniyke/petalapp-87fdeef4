@@ -2191,6 +2191,14 @@ const presets = {
 
 export type GridPreset = keyof typeof presets;
 
+/**
+ * Common shape of every preset. Indexing \`presets\` directly yields a union of
+ * literal object types, and TypeScript rejects \`p.sm\` when one member lacks
+ * \`sm\` (TS2339) — which failed real builds. Reading through this type keeps
+ * every optional breakpoint accessible.
+ */
+type GridPresetValue = { cols: Cols; sm?: Cols; md?: Cols; lg?: Cols; gap: Gap };
+
 export interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Named layout preset. Explicit cols/sm/md/lg/gap override preset values. */
   preset?: GridPreset;
@@ -2212,7 +2220,7 @@ export interface GridProps extends React.HTMLAttributes<HTMLDivElement> {
  */
 export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
   ({ className, preset, cols, sm, md, lg, gap, ...props }, ref) => {
-    const p = preset ? presets[preset] : undefined;
+    const p: GridPresetValue | undefined = preset ? presets[preset] : undefined;
     const _cols = (cols ?? p?.cols ?? 1) as Cols;
     const _sm = (sm ?? p?.sm) as Cols | undefined;
     const _md = (md ?? p?.md) as Cols | undefined;

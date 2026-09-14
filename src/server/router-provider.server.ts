@@ -436,7 +436,11 @@ function removeNestedBrowserRouters(
       content = content.replace(wrapper, (_full, children: string) => {
         removed++;
         changed = true;
-        return children;
+        // The wrapper was often the ONLY parent element: dropping it bare
+        // leaves adjacent siblings and the build dies with "JSX expressions
+        // must have one parent element". A fragment is always valid here,
+        // including when there is a single child.
+        return `<>${children}</>`;
       });
       content = removeUnusedProviderImport(content, local);
     }
