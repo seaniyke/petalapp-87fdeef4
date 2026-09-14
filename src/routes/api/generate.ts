@@ -81,6 +81,7 @@ import {
   hadRecentProviderPaymentFailure,
 } from "@/server/ai-provider.server";
 import { priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import { recordTurnEconomics } from "@/server/turn-economics.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
   loadProjectMemory,
@@ -5190,6 +5191,27 @@ Forbidden defaults
             `[credits] internal recovery turn not billed project=${body.projectId ?? "none"} amount=${priced.amount}`,
           );
         }
+
+        // Internal economics record for this turn. Admin-only accounting:
+        // what the customer paid next to what the turn cost Petal, with the
+        // cost explicitly marked actual / estimated / unknown. Best-effort —
+        // never allowed to affect the build or the charge.
+        void recordTurnEconomics({
+          turnId: logicalTurnId,
+          userId,
+          projectId: body.projectId ?? null,
+          feature: "generate",
+          creditsCharged: finalCharged,
+          agentRounds: agentLoopUsages.length,
+          isAutoFix: Boolean(body.isAutoFix),
+          result: failedEditTurn ? "no_op" : "generated",
+          metadata: {
+            priced_amount: priced.amount,
+            usage_missing: priced.usageMissing,
+            clamped: priced.clamped,
+            model,
+          },
+        });
 
 
 
