@@ -67,7 +67,7 @@ import { validateStylesCss, repairStylesCss } from "@/server/validate-styles.ser
 import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
-import { checkGenerateRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
+import { checkGenerateRateLimit, rateLimitResponse, secretsMatch } from "@/server/rate-limit.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   aiChatCompletions,
@@ -166,6 +166,7 @@ import {
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import { openTurnCompletion, markStage } from "@/server/turn-completion.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
 import {
   proposeChangePlan,
@@ -215,6 +216,10 @@ type Body = {
   /** Canonical restatement from triage. Supplementary context only; the
    * original user message remains authoritative for detail. */
   intentBrief?: string;
+  /** Set by the autonomous resume worker: how many repair rounds this request
+   *  has already spent, so the server-owned budget carries across turns
+   *  instead of resetting every time a new turn row is opened. */
+  autoResumeAttempts?: number;
 };
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
@@ -546,6 +551,18 @@ function makeSseTap(onEvent: (type: string, payload: unknown) => void) {
 }
 
 async function authorize(request: Request): Promise<string | Response> {
+  // Internal caller (the autonomous resume worker). There is no user session
+  // behind a scheduled repair round, so the worker proves itself with the
+  // shared builder secret and names the user it acts for. Every downstream
+  // credit and ownership check still runs against that user id.
+  const internalSecret = request.headers.get("x-petal-internal-secret");
+  const internalUser = request.headers.get("x-petal-internal-user");
+  if (internalSecret && internalUser) {
+    const expected = process.env.BUILDER_SHARED_SECRET;
+    if (expected && secretsMatch(internalSecret, expected)) return internalUser;
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
@@ -5506,6 +5523,19 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       if (peekBody?.projectId) {
         turnProjectId = peekBody.projectId;
         recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
+        // Open the server-owned completion record for this request. From here
+        // the loop's authority lives in the database, not in the tab: stage,
+        // attempts and outstanding defects survive a closed browser.
+        if (recorder) {
+          const resume = (peekBody as { autoResumeAttempts?: number }).autoResumeAttempts;
+          await openTurnCompletion({
+            projectId: peekBody.projectId,
+            userId: peekAuth,
+            turnId: recorder.turnId,
+            inheritAttempts: typeof resume === "number" ? resume : 0,
+            isAutoFix: Boolean(peekBody.isAutoFix),
+          });
+        }
       }
     }
   } catch {
@@ -5680,6 +5710,19 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // listening. Give the client a short grace window to land its own
         // write, then reconcile from the server — the helper no-ops when a
         // reply already exists.
+        if (turnProjectId) {
+          // Hand the request over to the build stage, or close it honestly.
+          await markStage(
+            turnProjectId,
+            terminalStatus === "succeeded" ? "building" : "blocked",
+            terminalStatus === "succeeded"
+              ? {}
+              : {
+                  terminal_reason:
+                    terminalError?.slice(0, 500) ?? "the build stopped before it finished",
+                },
+          );
+        }
         if (turnProjectId && recorder) {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;

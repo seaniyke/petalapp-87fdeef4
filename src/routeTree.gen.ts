@@ -106,6 +106,7 @@ import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
 import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
 import { Route as ApiPublicEmailResendWebhookRouteImport } from './routes/api/public/email/resend-webhook'
+import { Route as ApiPublicCronTurnResumeRouteImport } from './routes/api/public/cron/turn-resume'
 import { Route as ApiPublicCronSubscriptionRenewalReminderRouteImport } from './routes/api/public/cron/subscription-renewal-reminder'
 import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
@@ -613,6 +614,11 @@ const ApiPublicEmailResendWebhookRoute =
     path: '/api/public/email/resend-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronTurnResumeRoute = ApiPublicCronTurnResumeRouteImport.update({
+  id: '/api/public/cron/turn-resume',
+  path: '/api/public/cron/turn-resume',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronSubscriptionRenewalReminderRoute =
   ApiPublicCronSubscriptionRenewalReminderRouteImport.update({
     id: '/api/public/cron/subscription-renewal-reminder',
@@ -801,6 +807,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/cron/subscription-renewal-reminder': typeof ApiPublicCronSubscriptionRenewalReminderRoute
+  '/api/public/cron/turn-resume': typeof ApiPublicCronTurnResumeRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
@@ -915,6 +922,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/cron/subscription-renewal-reminder': typeof ApiPublicCronSubscriptionRenewalReminderRoute
+  '/api/public/cron/turn-resume': typeof ApiPublicCronTurnResumeRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
@@ -1030,6 +1038,7 @@ export interface FileRoutesById {
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
   '/api/public/cron/subscription-renewal-reminder': typeof ApiPublicCronSubscriptionRenewalReminderRoute
+  '/api/public/cron/turn-resume': typeof ApiPublicCronTurnResumeRoute
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
@@ -1146,6 +1155,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
     | '/api/public/cron/subscription-renewal-reminder'
+    | '/api/public/cron/turn-resume'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
@@ -1260,6 +1270,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
     | '/api/public/cron/subscription-renewal-reminder'
+    | '/api/public/cron/turn-resume'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
@@ -1374,6 +1385,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
     | '/api/public/cron/subscription-renewal-reminder'
+    | '/api/public/cron/turn-resume'
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
@@ -1485,6 +1497,7 @@ export interface RootRouteChildren {
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
   ApiPublicCronSelfLearningDigestRoute: typeof ApiPublicCronSelfLearningDigestRoute
   ApiPublicCronSubscriptionRenewalReminderRoute: typeof ApiPublicCronSubscriptionRenewalReminderRoute
+  ApiPublicCronTurnResumeRoute: typeof ApiPublicCronTurnResumeRoute
   ApiPublicEmailResendWebhookRoute: typeof ApiPublicEmailResendWebhookRoute
   ApiPublicEmailSendRoute: typeof ApiPublicEmailSendRoute
   ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
@@ -2179,6 +2192,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicEmailResendWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/turn-resume': {
+      id: '/api/public/cron/turn-resume'
+      path: '/api/public/cron/turn-resume'
+      fullPath: '/api/public/cron/turn-resume'
+      preLoaderRoute: typeof ApiPublicCronTurnResumeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/subscription-renewal-reminder': {
       id: '/api/public/cron/subscription-renewal-reminder'
       path: '/api/public/cron/subscription-renewal-reminder'
@@ -2430,6 +2450,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronSelfLearningDigestRoute: ApiPublicCronSelfLearningDigestRoute,
   ApiPublicCronSubscriptionRenewalReminderRoute:
     ApiPublicCronSubscriptionRenewalReminderRoute,
+  ApiPublicCronTurnResumeRoute: ApiPublicCronTurnResumeRoute,
   ApiPublicEmailResendWebhookRoute: ApiPublicEmailResendWebhookRoute,
   ApiPublicEmailSendRoute: ApiPublicEmailSendRoute,
   ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,

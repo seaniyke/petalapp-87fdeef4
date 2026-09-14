@@ -3119,6 +3119,71 @@ export type Database = {
         }
         Relationships: []
       }
+      project_turn_completion: {
+        Row: {
+          accepted: boolean
+          attempts: number
+          created_at: string
+          defect_fingerprint: string | null
+          evidence: Json
+          id: string
+          last_build_id: string | null
+          max_attempts: number
+          outstanding_defects: Json
+          project_id: string
+          resume_after: string | null
+          stage: string
+          terminal_reason: string | null
+          turn_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted?: boolean
+          attempts?: number
+          created_at?: string
+          defect_fingerprint?: string | null
+          evidence?: Json
+          id?: string
+          last_build_id?: string | null
+          max_attempts?: number
+          outstanding_defects?: Json
+          project_id: string
+          resume_after?: string | null
+          stage?: string
+          terminal_reason?: string | null
+          turn_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted?: boolean
+          attempts?: number
+          created_at?: string
+          defect_fingerprint?: string | null
+          evidence?: Json
+          id?: string
+          last_build_id?: string | null
+          max_attempts?: number
+          outstanding_defects?: Json
+          project_id?: string
+          resume_after?: string | null
+          stage?: string
+          terminal_reason?: string | null
+          turn_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_turn_completion_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_versions: {
         Row: {
           created_at: string

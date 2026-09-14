@@ -24,6 +24,7 @@ import { routeJudgedDefects, summarizeRouting } from "@/server/agents/qa-board";
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
 import { scoreCraftQA, type CraftContract } from "@/server/craft-qa.server";
+import { recordBuildOutcome } from "@/server/turn-completion.server";
 
 /**
  * Pull the committed design contract for a project so craft QA judges the app
@@ -172,6 +173,13 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         })
         .eq("id", payload.buildId);
       await refundRolledBackBuild(payload.projectId, payload.buildId);
+      await recordBuildOutcome({
+        projectId: payload.projectId,
+        buildId: payload.buildId,
+        shipped: false,
+        blockingDefects: [`The deployed app did not respond correctly: ${probe.reason}`],
+        reason: "deploy probe failed",
+      });
       return new Response("ok", { status: 200 });
     }
 
@@ -297,6 +305,13 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         return new Response("Could not save build status", { status: 503 });
       }
       await refundRolledBackBuild(payload.projectId, payload.buildId);
+      await recordBuildOutcome({
+        projectId: payload.projectId,
+        buildId: payload.buildId,
+        shipped: false,
+        blockingDefects: partitioned.blocking,
+        reason: "browser check found a runtime failure",
+      });
       return new Response("ok", {
         status: 200,
         headers: { "Content-Type": "text/plain" },
@@ -333,6 +348,17 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       console.error("Builder callback could not update project build", projectUpdateError.message);
       return new Response("Could not save project status", { status: 503 });
     }
+
+    // Acceptance: the build shipped and the browser check found nothing
+    // blocking. This is the only path that closes a request as delivered, and
+    // it carries the proof with it.
+    await recordBuildOutcome({
+      projectId: payload.projectId,
+      buildId: payload.buildId,
+      shipped: true,
+      blockingDefects: [],
+      evidence: verification ? buildEvidence(verification) : ["Deployed URL served a real app"],
+    });
   } else {
     // status === "failed"
     const message = payload.logs
@@ -385,6 +411,18 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     }
     // The build never shipped — the user keeps their credits.
     await refundRolledBackBuild(payload.projectId, payload.buildId);
+    const failedBlocking = Array.isArray(failedVerification?.blocking)
+      ? (failedVerification.blocking as string[])
+      : [];
+    await recordBuildOutcome({
+      projectId: payload.projectId,
+      buildId: payload.buildId,
+      shipped: false,
+      blockingDefects: failedBlocking.length
+        ? failedBlocking
+        : [payload.errorMessage.slice(0, 500)],
+      reason: "build failed",
+    });
   }
 
 

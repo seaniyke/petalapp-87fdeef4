@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CompletionStatusCard } from "@/components/CompletionStatusCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BuildCostSummary } from "@/components/BuildCostSummary";
 
@@ -124,6 +125,10 @@ export function BuildDetailsSheet({
               : `Worked for ${formatDuration(elapsed)}`}
           </p>
         </SheetHeader>
+
+        <div className="border-b border-border/60 px-4 py-3">
+          <CompletionStatusCard />
+        </div>
 
         <Tabs defaultValue="timeline" className="flex min-h-0 flex-1 flex-col">
           <div className="px-4 pt-3">
