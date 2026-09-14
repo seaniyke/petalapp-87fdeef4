@@ -149,7 +149,7 @@ export async function openTurnCompletion(args: {
           user_id: args.userId,
           turn_id: args.turnId,
           stage: "generating",
-          attempts: args.inheritAttempts ?? 0,
+          attempts,
           outstanding_defects: [],
           terminal_reason: null,
           resume_after: null,
