@@ -53,15 +53,9 @@ async function hibernateIdleBackends(): Promise<{
     }
 
     try {
-      await pauseForProject(b.project_id);
-      await supabaseAdmin
-        .from("project_backends")
-        .update({
-          status: "paused",
-          paused_at: new Date().toISOString(),
-          error_message: "Paused after 7 days of inactivity. Top up to bring it back online.",
-        })
-        .eq("project_id", b.project_id);
+      // pauseForProject records the reason and the matching message, and an
+      // idle pause wakes itself up the next time the owner opens the app.
+      await pauseForProject(b.project_id, "idle");
       await supabaseAdmin
         .from("projects")
         .update({ runtime_paused: true })
