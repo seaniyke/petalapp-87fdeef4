@@ -1211,7 +1211,11 @@ function Builder() {
   const silentDeployRetriedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!isDeploying || friendlyError || busy) return;
-    if (deployElapsed < 240) return;
+    // Silence, not duration. A build that keeps reporting progress ("compiling
+    // the app", "opening /pricing") is working and must never be retried out
+    // from under itself, however long it takes.
+    const quietSeconds = (Date.now() - (effectiveBuildSnap?.progressAt ?? 0)) / 1000;
+    if (deployElapsed < 240 || quietSeconds < 240) return;
     const buildId = project?.latest_build_id;
     if (!buildId) return;
     let cancelled = false;
@@ -1239,12 +1243,12 @@ function Builder() {
           "Your code is ready — the publishing service hasn't reported back yet. You can retry the deploy or keep editing while we wait.",
         actionLabel: "Retry deploy",
         actionKind: "retry",
-        technicalDetail: `Deploy elapsed ${deployElapsed}s with no callback (after silent retry)`,
+        technicalDetail: `No progress for ${Math.round(quietSeconds)}s (elapsed ${deployElapsed}s, after silent retry)`,
       });
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deployElapsed, isDeploying, busy]);
+  }, [deployElapsed, isDeploying, busy, effectiveBuildSnap?.progressAt]);
 
 
   // Subscribe to `projects` row changes so when the build callback writes a
@@ -4774,6 +4778,7 @@ function Builder() {
                 creditsEstimate={liveCreditsEstimate}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
+                deployProgressLabel={effectiveBuildSnap?.progressLabel ?? null}
                 onStop={undefined}
                 onRetry={
                   // The "Publishing is taking longer" stall card and the

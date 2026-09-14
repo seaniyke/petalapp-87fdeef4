@@ -102,6 +102,8 @@ type Props = {
   fileChanges?: Record<string, FileChange>;
   /** Seconds we've been waiting on the deploy phase. */
   deployElapsedSec?: number;
+  /** What the build service reported it is doing right now, in plain words. */
+  deployProgressLabel?: string | null;
   /** Live pipeline timeline pushed by the server. */
   timelineEvents?: TimelineEntry[];
   /** Credits actually charged for this turn. */
@@ -137,6 +139,7 @@ export function BuildActivityCard({
   finalFileLines,
   fileChanges,
   deployElapsedSec,
+  deployProgressLabel,
   timelineEvents,
   creditsCharged,
   creditsEstimate,
@@ -277,6 +280,9 @@ export function BuildActivityCard({
     else if (latestCycleProgress) subCaption = latestCycleProgress;
     else if (filesWritten && filesWritten > 0)
       subCaption = `${filesWritten} file${filesWritten === 1 ? "" : "s"} so far`;
+  } else if (currentPhase?.id === "deploying" && deployProgressLabel) {
+    // Live word from the build service always beats a generic reassurance.
+    subCaption = deployProgressLabel;
   } else if (currentPhase?.id === "deploying" && typeof deployElapsedSec === "number") {
     if (deployElapsedSec >= 90) {
       subCaption = "Still on it — your code is safe, keep editing.";

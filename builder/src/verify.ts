@@ -26,6 +26,7 @@
  */
 import { chromium, type Browser, type Page, type ConsoleMessage } from "playwright";
 import { isTransientEdgeStatus } from "./deploy-status.js";
+import { Heartbeat } from "./progress.js";
 
 export class VerifyError extends Error {}
 
@@ -149,7 +150,12 @@ const NAV_TIMEOUT_MS = 45_000;
 const SETTLE_MS = 1_200;
 const STEP_TIMEOUT_MS = 15_000;
 const MAX_WAIT_MS = 8_000;
-export const VERIFY_TIMEOUT_MS = Number(process.env.VERIFY_TIMEOUT_MS ?? 8 * 60 * 1000);
+/**
+ * Browser checks are never cut off for taking long — only for going silent.
+ * Each route, step, and screenshot beats the heartbeat; this is the quiet
+ * window after which the session is treated as hung.
+ */
+export const VERIFY_QUIET_MS = Number(process.env.VERIFY_QUIET_MS ?? 4 * 60 * 1000);
 const ROUTE_RETRY_DELAYS_MS = [2_000, 4_000, 8_000];
 
 /** Console noise that says nothing about whether the app works. */
@@ -707,7 +713,10 @@ function summarizeDefects(report: VerifyReport): string[] {
   return Array.from(new Set(defects)).slice(0, 40);
 }
 
-export async function runVerification(plan: VerifyPlan): Promise<VerifyReport> {
+export async function runVerification(
+  plan: VerifyPlan,
+  heartbeat: Heartbeat = new Heartbeat("checking the app"),
+): Promise<VerifyReport> {
   if (!/^https:\/\//i.test(plan.baseUrl)) {
     throw new VerifyError("baseUrl must be an https URL");
   }
@@ -741,14 +750,17 @@ export async function runVerification(plan: VerifyPlan): Promise<VerifyReport> {
     // Pass 1 — anonymous crawl.
     const routes = plan.routes.length ? plan.routes.slice(0, MAX_ROUTES) : ["/"];
     for (const path of routes) {
+      heartbeat.beat(`opening ${path}`);
       report.routes.push(await visitRoute(page, watch, plan.baseUrl, path, { screenshots }));
     }
 
     // Pass 2 — sign up and re-crawl the gated routes as a real user.
     if (plan.auth) {
+      heartbeat.beat("checking sign-up and sign-in");
       report.auth = await runAuth(page, watch, plan.baseUrl, plan.auth, screenshots);
       if (report.auth.signedIn) {
         for (const path of plan.auth.protectedRoutes.slice(0, MAX_ROUTES)) {
+          heartbeat.beat(`opening ${path} as a signed-in user`);
           report.routes.push(
             await visitRoute(page, watch, plan.baseUrl, path, { screenshots, authed: true }),
           );
@@ -762,12 +774,14 @@ export async function runVerification(plan: VerifyPlan): Promise<VerifyReport> {
     const signedIn = Boolean(report.auth?.signedIn);
     for (const flow of (plan.flows ?? []).slice(0, MAX_FLOWS)) {
       if (flow.requiresAuth && !signedIn) continue;
+      heartbeat.beat(`running "${flow.name}"`);
       report.flows.push(await runFlow(page, watch, plan.baseUrl, flow, screenshots));
     }
 
     // Pass 4 — visual QA capture (mobile + desktop). Never fails the build.
     if (plan.visual) {
       try {
+        heartbeat.beat("taking screenshots");
         report.visual = await captureVisual(browser, plan);
       } catch {
         /* visual QA is advisory */
