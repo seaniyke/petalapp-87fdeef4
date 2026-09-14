@@ -293,8 +293,14 @@ export function shouldRunAgentLoop(args: {
   isCrossCutting: boolean;
   prompt: string;
   fileCount: number;
+  /** Phase 3 — let the first build inspect and check its own output too. */
+  allowInitial?: boolean;
 }): boolean {
-  if (args.isInitial) return false;
+  // The first build has no prior snapshot to grep, but it can still read back
+  // what it is about to emit against and run the static verifier, which is
+  // exactly where the "partial frontend, no backend wiring" class of failure
+  // used to escape. Kept behind a flag with its own tighter round cap.
+  if (args.isInitial) return args.allowInitial === true;
   if (args.fileCount < 2) return false;
   if (args.isCrossCutting) return true;
 
