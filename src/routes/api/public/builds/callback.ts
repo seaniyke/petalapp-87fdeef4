@@ -538,3 +538,66 @@ export const Route = createFileRoute("/api/public/builds/callback")({
     },
   },
 });
+
+/**
+ * Phase 5 — drive the Test Lab over the freshly deployed app.
+ *
+ * Scope comes from the turn: the most recent recorded edit tells us which
+ * files changed, so an edit only re-runs the must-work checks plus the pages
+ * it touched. A first build (no edit record) gets the whole plan.
+ *
+ * Everything here is best-effort. Any failure leaves no recorded run, which
+ * the readiness gate reads as "no Test Lab evidence" — unverified, not ready.
+ */
+async function runTestLabForBuild(args: {
+  projectId: string;
+  buildId: string;
+  url: string;
+}): Promise<void> {
+  const { isBrowseConfigured } = await import("@/server/browse-client.server");
+  if (!isBrowseConfigured()) return;
+
+  const { data: rows } = await supabaseAdmin
+    .from("project_files")
+    .select("path, content")
+    .eq("project_id", args.projectId);
+  const files = (rows ?? []) as Array<{ path: string; content: string }>;
+  if (!files.length) return;
+
+  let changedPaths: string[] = [];
+  let turnId: string | null = null;
+  try {
+    const { listEdits } = await import("@/server/edit-history.server");
+    const recent = await listEdits(args.projectId, 1);
+    const latest = recent?.[0] as
+      | { changed_paths?: string[] | null; turn_id?: string | null }
+      | undefined;
+    if (latest) {
+      changedPaths = latest.changed_paths ?? [];
+      turnId = latest.turn_id ?? null;
+    }
+  } catch {
+    /* no edit record — treat as a full run */
+  }
+
+  const { buildVerifyPlan } = await import("@/server/verify-plan.server");
+  const verify = await buildVerifyPlan({
+    files,
+    projectId: args.projectId,
+    skipFlows: true,
+  }).catch(() => null);
+
+  const { runTestLab } = await import("@/server/test-lab.server");
+  const outcome = await runTestLab({
+    projectId: args.projectId,
+    buildId: args.buildId,
+    turnId,
+    baseUrl: args.url,
+    files,
+    verify,
+    changedPaths,
+  });
+  if (!outcome.ran) {
+    console.info(`[builds/callback] test lab skipped for ${args.buildId}: ${outcome.reason}`);
+  }
+}
