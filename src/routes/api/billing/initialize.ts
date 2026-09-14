@@ -12,6 +12,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { initializeTransaction, getEnvironment, fetchPlan, createPlan } from "@/server/paystack.server";
 import { resolvePrice } from "@/server/billing-pricing.server";
+import { enforcePurchaseMinimum } from "@/server/purchase-minimum.server";
 
 const SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
 
@@ -195,6 +196,22 @@ export const Route = createFileRoute("/api/billing/initialize")({
             }
           } else {
             price = await resolvePrice(parsed.purpose, parsed.itemCode, parsed.currency);
+          }
+
+          // Commercial floor: credit purchases and balance top-ups must clear
+          // the ₦5,000 equivalent. Subscriptions, add-ons and marketplace
+          // items are priced on their own terms and are not covered.
+          if (parsed.purpose === "pack" || parsed.purpose === "runtime_topup") {
+            const minCheck = await enforcePurchaseMinimum({
+              usdAmountCents: price.usdAmountCents,
+              currency: parsed.currency,
+            });
+            if (!minCheck.ok) {
+              return new Response(
+                JSON.stringify({ error: minCheck.message, code: "below_minimum" }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
           }
 
           // For plan checkouts, we need a Paystack plan whose amount EXACTLY
