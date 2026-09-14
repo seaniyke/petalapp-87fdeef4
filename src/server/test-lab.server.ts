@@ -16,7 +16,7 @@
  * Fails open everywhere: a Test Lab problem must never turn a healthy deploy
  * into a failed one. When it cannot run, it says so and records nothing.
  */
-import type { ProjectFile } from "@/lib/projects";
+import type { ProjectFile } from "@/server/generate.server";
 import {
   buildTestPlan,
   rank,
