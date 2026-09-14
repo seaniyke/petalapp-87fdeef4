@@ -1813,11 +1813,8 @@ function Builder() {
     };
   }, [project?.id]);
 
-  // Reset chip dismissals when switching projects.
-  useEffect(() => {
-    setDismissedBackendChips(new Set());
-    setDismissedDomainChips(new Set());
-  }, [project?.id]);
+
+
 
   useEffect(() => {
     return () => {
