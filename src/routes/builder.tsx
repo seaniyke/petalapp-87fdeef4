@@ -4759,6 +4759,7 @@ function Builder() {
                 finalFileLines={finalFileLines}
                 timelineEvents={timelineEvents}
                 creditsCharged={lastBuildCredits}
+                creditsEstimate={liveCreditsEstimate}
                 fileChanges={fileChanges}
                 deployElapsedSec={deployElapsed}
                 onStop={undefined}
