@@ -163,28 +163,39 @@ export async function runCompletenessPass(args: {
 
   try {
     const res = await aiChatCompletions({
-      model: args.model,
-      messages: [
-        { role: "system", content: SYSTEM },
-        {
-          role: "user",
-          content:
-            `Original request:\n${args.userRequest}\n\n` +
-            `STILL MISSING:\n${args.unmet.map((u, i) => `${i + 1}. ${u.text}`).join("\n")}\n\n` +
-            `Files:\n\n${candidates.map((f) => `--- ${f.path} ---\n${f.content}`).join("\n\n")}`,
-        },
-      ],
-      tools: [PATCH_FILES_TOOL],
-      tool_choice: { type: "function", function: { name: "patch_files" } },
-      temperature: 0.2,
-      max_tokens: 8000,
-      ...(args.projectId ? { projectId: args.projectId } : {}),
-      ...(args.userId ? { userId: args.userId } : {}),
-      ...(args.signal ? { signal: args.signal } : {}),
-    } as Parameters<typeof aiChatCompletions>[0]);
-
-    const call = res?.choices?.[0]?.message?.tool_calls?.[0];
-    const rawArgs = call?.function?.arguments;
+      feature: "generate",
+      timeoutTier: "default",
+      signal: args.signal,
+      meta: {
+        projectId: args.projectId ?? null,
+        userId: args.userId ?? null,
+        phase: "edit-completeness",
+      },
+      body: {
+        model: args.model,
+        messages: [
+          { role: "system", content: SYSTEM },
+          {
+            role: "user",
+            content:
+              `Original request:\n${args.userRequest}\n\n` +
+              `STILL MISSING:\n${args.unmet.map((u, i) => `${i + 1}. ${u.text}`).join("\n")}\n\n` +
+              `Files:\n\n${candidates.map((f) => `--- ${f.path} ---\n${f.content}`).join("\n\n")}`,
+          },
+        ],
+        tools: [PATCH_FILES_TOOL],
+        tool_choice: { type: "function", function: { name: "patch_files" } },
+        max_tokens: 8000,
+        stream: false,
+      },
+    });
+    if (!res.ok) return idle;
+    const json = (await res.json()) as {
+      choices?: Array<{
+        message?: { tool_calls?: Array<{ function?: { arguments?: string } }> };
+      }>;
+    };
+    const rawArgs = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!rawArgs) return idle;
     const parsed = JSON.parse(rawArgs) as { ops?: FileOp[] };
     const allowed = new Set(candidates.map((f) => f.path));
