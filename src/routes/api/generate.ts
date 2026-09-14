@@ -2002,7 +2002,8 @@ Forbidden defaults
   // exactly as it would have been.
   const intentActions = await resolveIntentActions({
     projectId: body.projectId,
-    prompt: lastUserContent,
+    prompt: latestUserMessage(messages),
+
     hasBackend: Boolean(backend),
     hasSharedBackend: Boolean(sharedBackend),
   });
