@@ -2667,10 +2667,12 @@ export type Database = {
         Row: {
           anon_key: string
           created_at: string
+          delete_warned_at: string | null
           error_message: string | null
           health_checked_at: string | null
           id: string
           last_active_at: string | null
+          pause_reason: string | null
           paused_at: string | null
           project_id: string
           provider: string
@@ -2682,10 +2684,12 @@ export type Database = {
         Insert: {
           anon_key: string
           created_at?: string
+          delete_warned_at?: string | null
           error_message?: string | null
           health_checked_at?: string | null
           id?: string
           last_active_at?: string | null
+          pause_reason?: string | null
           paused_at?: string | null
           project_id: string
           provider?: string
@@ -2697,10 +2701,12 @@ export type Database = {
         Update: {
           anon_key?: string
           created_at?: string
+          delete_warned_at?: string | null
           error_message?: string | null
           health_checked_at?: string | null
           id?: string
           last_active_at?: string | null
+          pause_reason?: string | null
           paused_at?: string | null
           project_id?: string
           provider?: string

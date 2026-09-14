@@ -74,11 +74,11 @@ async function runHourlyCharges(): Promise<{
     });
     if (result.ok) {
       charged++;
-      // Bump activity so idle hibernation doesn't pause active backends.
-      await supabaseAdmin
-        .from("project_backends")
-        .update({ last_active_at: new Date().toISOString() })
-        .eq("project_id", p.id);
+      // NOTE: billing must never count as activity. Stamping last_active_at
+      // here made every paid backend look permanently in use, so idle
+      // hibernation could never fire and unused databases billed forever.
+      // Activity comes from real signals only (app requests, status checks,
+      // migrations).
       continue;
     }
     blocked++;
@@ -94,15 +94,11 @@ async function runHourlyCharges(): Promise<{
       : null;
     if (graceUntil != null && graceUntil <= nowMs) {
       try {
-        await pauseForProject(p.id);
+        await pauseForProject(p.id, "unpaid");
         await supabaseAdmin
           .from("projects")
           .update({ runtime_paused: true })
           .eq("id", p.id);
-        await supabaseAdmin
-          .from("project_backends")
-          .update({ status: "paused", paused_at: new Date().toISOString() })
-          .eq("project_id", p.id);
         pausedExpired++;
       } catch (e) {
         console.warn(

@@ -1,0 +1,3 @@
+DELETE FROM public.project_backend_secrets WHERE project_id IN ('896de0c4-7e1e-4649-9fb1-e3eb45bb077b','146a8ea6-ce5f-4f2d-82b5-f941d560ba9c','5d9a9493-dd9b-4dac-9d75-49abadd98dec');
+DELETE FROM public.project_backends WHERE project_id IN ('896de0c4-7e1e-4649-9fb1-e3eb45bb077b','146a8ea6-ce5f-4f2d-82b5-f941d560ba9c','5d9a9493-dd9b-4dac-9d75-49abadd98dec');
+UPDATE public.projects SET backend_type = 'shared', runtime_paused = false, runtime_grace_until = NULL WHERE id IN ('896de0c4-7e1e-4649-9fb1-e3eb45bb077b','146a8ea6-ce5f-4f2d-82b5-f941d560ba9c','5d9a9493-dd9b-4dac-9d75-49abadd98dec');
