@@ -4928,7 +4928,19 @@ Forbidden defaults
             try {
               const fixOut = await runPostStreamAutofix(nextFiles, stillBad);
               nextFiles = fixOut.files;
-              if (fixOut.result.usage) agentLoopUsages.push(fixOut.result.usage);
+              if (fixOut.result.usage) {
+                agentLoopUsages.push(fixOut.result.usage);
+                if (!body.isAutoFix) {
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "credits_estimate",
+                        credits: priceTurn([collected.usage ?? null, ...agentLoopUsages]).amount,
+                      }),
+                    ),
+                  );
+                }
+              }
               repairMeter.charge(
                 `autofix_cycle_${cycleNum}`,
                 "google/gemini-2.5-flash-lite",
