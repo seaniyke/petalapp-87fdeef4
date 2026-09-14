@@ -209,9 +209,9 @@ export const getAdminTestRuns = createServerFn({ method: "GET" })
     if (projectIds.length) {
       const { data: projects } = await supabaseAdmin
         .from("projects")
-        .select("id, name")
+        .select("id, slug, site_title")
         .in("id", projectIds);
-      for (const p of projects ?? []) names.set(p.id, p.name ?? null);
+      for (const p of projects ?? []) names.set(p.id, p.site_title ?? p.slug ?? null);
     }
 
     const runs: AdminTestRunRow[] = list.map((r) => ({
