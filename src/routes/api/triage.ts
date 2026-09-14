@@ -524,8 +524,17 @@ export const Route = createFileRoute("/api/triage")({
                           );
                         }
                       }
+                      // If the model reached for "clarify" on a turn that must
+                      // act, hold the reply back entirely — a question the
+                      // user never sees is better than one we retract.
+                      if (
+                        askPolicy.forceAction &&
+                        partialField(argsBuf, "mode") === "clarify"
+                      ) {
+                        replySuppressed = true;
+                      }
                       const replyNow = partialField(argsBuf, "reply");
-                      if (replyNow.length > replyEmitted.length) {
+                      if (!replySuppressed && replyNow.length > replyEmitted.length) {
                         const tail = replyNow.slice(replyEmitted.length);
                         replyEmitted = replyNow;
                         controller.enqueue(
