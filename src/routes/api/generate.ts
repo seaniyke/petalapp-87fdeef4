@@ -67,7 +67,7 @@ import { validateStylesCss, repairStylesCss } from "@/server/validate-styles.ser
 import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
-import { checkGenerateRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
+import { checkGenerateRateLimit, rateLimitResponse, secretsMatch } from "@/server/rate-limit.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   aiChatCompletions,
