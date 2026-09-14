@@ -46,6 +46,7 @@ import { ManagedBackendCard } from "@/components/ManagedBackendCard";
 import { LabsSection } from "@/components/LabsSection";
 // ProjectMemorySection is intentionally not imported — memory is internal.
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
+import { BillingSheet } from "@/components/BillingSheet";
 import { useWallet } from "@/hooks/use-wallet";
 import { Switch } from "@/components/ui/switch";
 import { builderDraftKeys, clearDraft, readDraft, writeDraft } from "@/lib/draft-storage";
@@ -109,6 +110,7 @@ export function ProjectSettingsSheet({
   });
   const [saving, setSaving] = useState(false);
   const [cloudOpen, setCloudOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(false);
   const [domainsOpen, setDomainsOpen] = useState(false);
   const [seoOpen, setSeoOpen] = useState(false);
 
@@ -346,6 +348,7 @@ export function ProjectSettingsSheet({
         setBillingOpen(true);
       }}
     />
+    <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
 
     {/* SEO & sharing — reuses the same editor the publish flow opens. */}
     <WebsiteInfoSheet
