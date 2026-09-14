@@ -437,15 +437,15 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
 
             <div className="mt-5 space-y-3">
               <CreditRow
-                label="Daily credits"
+                label="Daily"
                 sub={
                   !dailyCap
-                    ? "Not included on this plan"
+                    ? "Not on this plan"
                     : monthlyFreeRemaining === 0
-                      ? `Monthly free cap reached (${plan?.monthly_free_cap}) — resets in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
-                      : `Resets to ${dailyCap} credits ${dailyResetText ?? "soon"}${
+                      ? `Monthly free limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
+                      : `Back to ${dailyCap} ${dailyResetText ?? "soon"}${
                           plan?.monthly_free_cap
-                            ? ` · ${monthlyFreeRemaining} of ${plan.monthly_free_cap} free credits left this month`
+                            ? ` · ${monthlyFreeRemaining} free left this month`
                             : ""
                         }`
                 }
@@ -453,23 +453,19 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               />
 
               <CreditRow
-                label="Monthly credits"
+                label="Monthly"
                 sub={
                   planMonthlyCap
-                    ? `Resets to ${planMonthlyCap.toLocaleString()} in ${
+                    ? `Back to ${planMonthlyCap.toLocaleString()} in ${
                         monthlyResetDays ?? 0
                       } ${monthlyResetDays === 1 ? "day" : "days"}`
-                    : "Not included on this plan"
+                    : "Not on this plan"
                 }
                 value={breakdown.monthly}
               />
               <CreditRow
-                label="Extra credits"
-                sub={
-                  breakdown.topup > 0
-                    ? `${breakdown.topup} purchased credits — yours forever, they never expire`
-                    : "Top up to add extra credits"
-                }
+                label="Extra"
+                sub={breakdown.topup > 0 ? "Never expire" : "Top up to add more"}
                 value={breakdown.topup}
               />
             </div>
