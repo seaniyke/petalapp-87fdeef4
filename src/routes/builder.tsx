@@ -393,6 +393,7 @@ function Builder() {
   const [designCaption, setDesignCaption] = useState<string>("");
   const [filesWritten, setFilesWritten] = useState<number>(0);
   const [lastBuildCredits, setLastBuildCredits] = useState<number | null>(null);
+  const [liveCreditsEstimate, setLiveCreditsEstimate] = useState<number | null>(null);
   // Snapshot of `files` captured at the start of the current turn. Drives the
   // "Review changes" per-file diff drawer surfaced on the BuildActivityCard
   // success line — so users can accept/reject individual files from a turn
@@ -2463,6 +2464,9 @@ function Builder() {
               setActivityVisible(true);
               setLatestCycleProgress(sanitizeNarrative(message));
             },
+            // Running estimate while the turn is still in flight. The settled
+            // figure on the result event replaces it.
+            onCreditsEstimate: (credits) => setLiveCreditsEstimate(credits),
             onPlanDelta: (d) => {
               partialPlan += d;
               setStreamingPlan((s) => s + d);
