@@ -48,7 +48,7 @@ export async function evaluateCostCeiling(userId: string): Promise<CeilingVerdic
     const ceilingUsd = await economicsValue("free_user_monthly_cost_ceiling_usd");
     const { data, error } = await supabaseAdmin
       .from("turn_economics")
-      .select("variable_cost_usd, cost_basis")
+      .select("variable_cost_usd_micro, cost_basis")
       .eq("user_id", userId)
       .gte("created_at", startOfMonthIso())
       .limit(2000);
@@ -56,14 +56,14 @@ export async function evaluateCostCeiling(userId: string): Promise<CeilingVerdic
 
     let total = 0;
     for (const row of (data ?? []) as unknown as Array<{
-      variable_cost_usd: number | null;
+      variable_cost_usd_micro: number | null;
       cost_basis: string | null;
     }>) {
       // An unknown-cost turn contributes nothing rather than a made-up
       // number. That biases the ceiling towards leniency, which is the
       // direction we want to be wrong in.
       if (row.cost_basis === "unknown") continue;
-      total += Number(row.variable_cost_usd ?? 0);
+      total += Number(row.variable_cost_usd_micro ?? 0) / 1_000_000;
     }
 
     const monthCostUsd = Math.round(total * 10000) / 10000;
