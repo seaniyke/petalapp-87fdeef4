@@ -47,6 +47,7 @@ describe("test lab scoping", () => {
 
   it("recognises backend edits as not cosmetic", () => {
     expect(isCosmeticEdit(["src/server/orders.server.ts"])).toBe(false);
-    expect(isCosmeticEdit(["src/components/Hero.tsx"])).toBe(true);
+    expect(isCosmeticEdit(["src/styles.css"])).toBe(true);
+    expect(isCosmeticEdit(["src/components/Hero.tsx"])).toBe(false);
   });
 });

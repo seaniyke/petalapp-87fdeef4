@@ -58,14 +58,13 @@ export interface TestLabResult {
 const NOT_RUN = (reason: string): TestLabResult => ({ ran: false, reason, results: [] });
 
 /** Paths that can only change how something looks. */
-const COSMETIC = /\.(css|scss)$|tailwind|theme|styles?\b/i;
+const COSMETIC = /\.(css|scss)$|tailwind\.config|(^|\/)(theme|styles?)\.[tj]sx?$/i;
 /** Paths that can change data, auth or server behaviour. */
 const BACKEND = /(^|\/)(server|api|integrations|supabase|migrations|lib\/(auth|db))/i;
 
 export function isCosmeticEdit(changedPaths: string[]): boolean {
   if (!changedPaths.length) return false;
-  return !changedPaths.some((p) => BACKEND.test(p)) &&
-    changedPaths.every((p) => COSMETIC.test(p) || /\.(tsx|jsx)$/.test(p));
+  return !changedPaths.some((p) => BACKEND.test(p)) && changedPaths.every((p) => COSMETIC.test(p));
 }
 
 const tokensOf = (value: string) =>
