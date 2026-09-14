@@ -308,9 +308,23 @@ export async function updateRecord(opts: {
   ownerKey: string | null;
   data: Record<string, unknown>;
 }): Promise<RecordRow | null> {
+  // A partial update must MERGE. Apps send only the fields they changed
+  // ({ done: true }); replacing the whole object would silently erase every
+  // other field on the record.
+  const { data: current } = await supabaseAdmin
+    .from("shared_app_records")
+    .select("data")
+    .eq("project_id", opts.projectId)
+    .eq("id", opts.id)
+    .maybeSingle();
+  const merged = {
+    ...((current?.data as Record<string, unknown> | null) ?? {}),
+    ...opts.data,
+  };
+
   let q = supabaseAdmin
     .from("shared_app_records")
-    .update({ data: opts.data as never })
+    .update({ data: merged as never })
     .eq("project_id", opts.projectId)
     .eq("id", opts.id);
   // Ownership is ALWAYS enforced. A caller with no end-user token may only
