@@ -652,18 +652,6 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
           </section>
 
 
-          {onOpenCloudBalance && (
-            <div className="mt-6 rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-              Looking for runtime usage?{" "}
-              <button
-                type="button"
-                onClick={onOpenCloudBalance}
-                className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
-              >
-                Open Cloud &amp; AI balance →
-              </button>
-            </div>
-          )}
         </div>
       </SheetContent>
     </Sheet>
