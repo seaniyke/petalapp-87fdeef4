@@ -413,6 +413,8 @@ interface TelemetryArgs {
   // P1-5 — per-project / per-user attribution.
   projectId?: string | null;
   userId?: string | null;
+  /** Economics: links this call to the user turn that caused it. */
+  turnId?: string | null;
 }
 
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
@@ -436,6 +438,10 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       chosen_by: args.chosenBy ?? null,
       project_id: args.projectId ?? null,
       user_id: args.userId ?? null,
+      turn_id: args.turnId ?? null,
+      // No usage is known at insert time: a cost we cannot determine is
+      // recorded as unknown, never as a fake zero.
+      cost_basis: "unknown",
     });
   } catch (err) {
     // Never break the AI call because logging failed.
@@ -567,6 +573,8 @@ export interface AiCallMeta {
   projectId?: string | null;
   /** P1-5: user who triggered this AI call. */
   userId?: string | null;
+  /** Economics: the user turn this call belongs to. */
+  turnId?: string | null;
 }
 
 /**
@@ -738,6 +746,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       chosenBy: `${opts.meta?.chosenBy ?? "unknown"}_provider_failover`,
       projectId: opts.meta?.projectId ?? null,
       userId: opts.meta?.userId ?? null,
+      turnId: opts.meta?.turnId ?? null,
     });
     if (alt.ok) return alt;
     primary = alt;
@@ -775,6 +784,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       chosenBy: opts.meta?.chosenBy ?? null,
       projectId: opts.meta?.projectId ?? null,
       userId: opts.meta?.userId ?? null,
+      turnId: opts.meta?.turnId ?? null,
     });
     return primary;
   }
@@ -800,6 +810,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     chosenBy: opts.meta?.chosenBy ?? null,
     projectId: opts.meta?.projectId ?? null,
     userId: opts.meta?.userId ?? null,
+    turnId: opts.meta?.turnId ?? null,
   });
 
   const fallbackBody = { ...opts.body, model: fallback };
@@ -821,6 +832,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     chosenBy: opts.meta?.chosenBy ?? null,
     projectId: opts.meta?.projectId ?? null,
     userId: opts.meta?.userId ?? null,
+    turnId: opts.meta?.turnId ?? null,
   });
 
   return retried;
