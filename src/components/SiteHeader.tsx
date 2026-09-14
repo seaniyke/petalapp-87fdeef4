@@ -15,7 +15,6 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 
-import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { PetalBrand } from "@/components/PetalBrand";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -36,7 +35,6 @@ export function SiteHeader() {
   const { user, isReady, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
-  const [cloudBalanceOpen, setCloudBalanceOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -248,24 +246,8 @@ export function SiteHeader() {
         open={mobileNavOpen}
         onOpenChange={setMobileNavOpen}
         onOpenBilling={() => setBillingOpen(true)}
-        onOpenCloudBalance={() => setCloudBalanceOpen(true)}
       />
-      <CloudBalanceSheet
-        open={cloudBalanceOpen}
-        onOpenChange={setCloudBalanceOpen}
-        onOpenBilling={() => {
-          setCloudBalanceOpen(false);
-          setBillingOpen(true);
-        }}
-      />
-      <BillingSheet
-        open={billingOpen}
-        onOpenChange={setBillingOpen}
-        onOpenCloudBalance={() => {
-          setBillingOpen(false);
-          setCloudBalanceOpen(true);
-        }}
-      />
+      <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
     </>
   );
 }

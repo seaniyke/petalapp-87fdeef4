@@ -17,11 +17,10 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 
 type Props = {
   onOpenBilling: () => void;
-  onOpenCloudBalance: () => void;
   onOpenCloud: () => void;
 };
 
-export function AccountHubGrid({ onOpenBilling, onOpenCloudBalance, onOpenCloud }: Props) {
+export function AccountHubGrid({ onOpenBilling, onOpenCloud }: Props) {
   const { isAdmin } = useIsAdmin();
 
   return (
@@ -40,13 +39,7 @@ export function AccountHubGrid({ onOpenBilling, onOpenCloudBalance, onOpenCloud 
           onClick={onOpenBilling}
           icon={<CreditCard className="h-5 w-5" />}
           title="Plans & credits"
-          description="Upgrade plan, view AI message credits and top up."
-        />
-        <CardButton
-          onClick={onOpenCloudBalance}
-          icon={<Wallet className="h-5 w-5" />}
-          title="Cloud & AI balance"
-          description="Runtime balance, project caps and Cloud/AI usage."
+          description="Balance, usage, top-ups and plans — one place."
         />
         <CardLink
           to="/billing"

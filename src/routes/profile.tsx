@@ -11,7 +11,6 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { AccountHubGrid } from "@/components/AccountHubGrid";
 import { InviteFriendsCard } from "@/components/InviteFriendsCard";
 import { BillingSheet } from "@/components/BillingSheet";
-import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
 import { toast } from "sonner";
 
@@ -34,7 +33,6 @@ function ProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [economyMode, setEconomyMode] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
-  const [cloudOpen, setCloudOpen] = useState(false);
   const [cloudPanelOpen, setCloudPanelOpen] = useState(false);
 
   useEffect(() => {
@@ -214,33 +212,17 @@ function ProfilePage() {
 
         <AccountHubGrid
           onOpenBilling={() => setBillingOpen(true)}
-          onOpenCloudBalance={() => setCloudOpen(true)}
           onOpenCloud={() => setCloudPanelOpen(true)}
         />
       </div>
 
-      <BillingSheet
-        open={billingOpen}
-        onOpenChange={setBillingOpen}
-        onOpenCloudBalance={() => {
-          setBillingOpen(false);
-          setCloudOpen(true);
-        }}
-      />
-      <CloudBalanceSheet
-        open={cloudOpen}
-        onOpenChange={setCloudOpen}
-        onOpenBilling={() => {
-          setCloudOpen(false);
-          setBillingOpen(true);
-        }}
-      />
+      <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
       <CloudPanelSheet
         open={cloudPanelOpen}
         onOpenChange={setCloudPanelOpen}
         onOpenBalance={() => {
           setCloudPanelOpen(false);
-          setCloudOpen(true);
+          setBillingOpen(true);
         }}
       />
     </div>

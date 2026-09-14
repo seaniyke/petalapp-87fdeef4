@@ -38,10 +38,9 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onOpenBilling: () => void;
-  onOpenCloudBalance: () => void;
 };
 
-export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudBalance }: Props) {
+export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
   const { user, isReady, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
@@ -119,14 +118,6 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
                 }}
                 icon={<CreditCard className="h-4 w-4" />}
                 label="Plans & credits"
-              />
-              <RowButton
-                onClick={() => {
-                  close();
-                  onOpenCloudBalance();
-                }}
-                icon={<Wallet className="h-4 w-4" />}
-                label="Cloud & AI balance"
               />
               <RowLink
                 to="/profile"
