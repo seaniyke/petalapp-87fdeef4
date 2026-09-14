@@ -13,7 +13,7 @@ function result(over: Partial<CaseResult> & Pick<CaseResult, "caseKey">): CaseRe
   return {
     title: "Home page loads",
     priority: "P0",
-    category: "route",
+    category: "load",
     status: "passed",
     consoleErrors: [],
     pageErrors: [],
