@@ -1408,7 +1408,8 @@ export const Route = createFileRoute("/api/admin/credits")({
             const { data: turnsRaw, error: turnsErr } = await supabaseAdmin
               .from("turn_economics")
               .select(
-                "turn_id, user_id, project_id, feature, credits_charged, ai_cost_usd, image_cost_usd, build_cost_usd, variable_cost_usd, cost_basis, result, build_ms, verify_ms, created_at",
+                // Costs are stored in micro-dollars (bigint) to keep them exact.
+                "turn_id, user_id, project_id, feature, credits_charged, ai_cost_usd_micro, other_cost_usd_micro, build_cost_usd_micro, variable_cost_usd_micro, cost_basis, result, build_ms, verify_ms, created_at",
               )
               .gte("created_at", since)
               .order("created_at", { ascending: false })
@@ -1420,10 +1421,10 @@ export const Route = createFileRoute("/api/admin/credits")({
               project_id: string | null;
               feature: string | null;
               credits_charged: number | null;
-              ai_cost_usd: number | null;
-              image_cost_usd: number | null;
-              build_cost_usd: number | null;
-              variable_cost_usd: number | null;
+              ai_cost_usd_micro: number | null;
+              other_cost_usd_micro: number | null;
+              build_cost_usd_micro: number | null;
+              variable_cost_usd_micro: number | null;
               cost_basis: string | null;
               result: string | null;
               build_ms: number | null;
@@ -1440,7 +1441,7 @@ export const Route = createFileRoute("/api/admin/credits")({
               const b = t.cost_basis ?? "unknown";
               basis[b] = (basis[b] ?? 0) + 1;
               credits += Number(t.credits_charged ?? 0);
-              const cost = Number(t.variable_cost_usd ?? 0);
+              const cost = Number(t.variable_cost_usd_micro ?? 0) / 1_000_000;
               if (b !== "unknown") {
                 variableCost += cost;
                 costKnownTurns += 1;
