@@ -136,7 +136,8 @@ const SURFACES = [
 const KIND_PATTERNS: Array<{ kind: ChangeKind; re: RegExp }> = [
   {
     kind: "responsive",
-    re: /\b(mobile|phone|tablet|responsive|small screens?|breakpoints?)\b/i,
+    // "phone number" / "phone call" is contact content, not a screen size.
+    re: /\b(mobile|phones?(?!\s*(?:numbers?|calls?|lines?))|tablet|responsive|small screens?|breakpoints?)\b/i,
   },
   {
     kind: "data",
@@ -302,4 +303,54 @@ export function renderChangeSetBlock(cs: ChangeSet): string {
     "Answering only the first item is a failed turn. In your recap, account for every numbered item above.",
   );
   return lines.join("\n");
+}
+
+/** Petal-owned files the model is never handed as an edit target. */
+function isKitFile(path: string): boolean {
+  return (
+    path.startsWith("src/components/ui/") ||
+    path.startsWith("src/components/blocks/") ||
+    path.startsWith("src/components/examples/") ||
+    path.startsWith("src/components/mobile/") ||
+    path.startsWith("src/integrations/")
+  );
+}
+
+/**
+ * A requested surface sometimes only exists inside a Petal-owned kit file — the
+ * app's navbar is `src/components/blocks/nav-bar.tsx`, which the model may not
+ * edit. Left alone, "shrink the navbar" simply cannot land: the model has no
+ * file to change and the audit records an honest but avoidable miss.
+ *
+ * So we tell it where the component is used and that the change must be made at
+ * the call site (props, className, a wrapper), which every kit block supports.
+ */
+export function kitTargetGuidance(
+  cs: ChangeSet,
+  files: Array<{ path: string; content: string }>,
+): string {
+  const notes: string[] = [];
+  for (const item of cs.items) {
+    const target = item.target?.toLowerCase().replace(/\s+/g, "");
+    if (!target || target.length < 3) continue;
+    const kitMatches = files
+      .filter((f) => isKitFile(f.path))
+      .filter((f) => {
+        const base = f.path.split("/").pop()!.replace(/\.[jt]sx?$/, "").replace(/[-_]/g, "");
+        return base.includes(target) || target.includes(base);
+      })
+      .slice(0, 2);
+    if (kitMatches.length === 0) continue;
+    const appMatches = files.filter(
+      (f) => !isKitFile(f.path) && kitMatches.some((k) => f.content.includes(k.path.replace(/^src\//, "@/").replace(/\.[jt]sx?$/, ""))),
+    );
+    if (appMatches.length === 0) continue;
+    notes.push(
+      `- "${item.text}" concerns ${kitMatches.map((k) => k.path).join(", ")}, which you must NOT edit. ` +
+        `Make the change where it is used instead (${appMatches.slice(0, 3).map((f) => f.path).join(", ")}) ` +
+        `via props, a className, or a wrapper element. Saying it cannot be done is not an option.`,
+    );
+  }
+  if (notes.length === 0) return "";
+  return `\n\nTARGETS THAT LIVE IN PETAL-OWNED COMPONENTS:\n${notes.join("\n")}`;
 }

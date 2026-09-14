@@ -46,10 +46,18 @@ function addedText(before: ProjectFile[], after: ProjectFile[]): { text: string;
       continue;
     }
     const oldLines = new Set(old.split("\n").map((l) => l.trim()));
-    for (const line of f.content.split("\n")) {
+    const newLines = f.content.split("\n");
+    newLines.forEach((line, i) => {
       const t = line.trim();
-      if (t && !oldLines.has(t)) chunks.push(t);
-    }
+      if (!t || oldLines.has(t)) return;
+      // Two lines of context: an edit like `className="py-0"` only names the
+      // component it belongs to on the line above (`<NavBar`), and without
+      // that the audit would call a landed change unmet.
+      for (let j = Math.max(0, i - 2); j <= i; j++) {
+        const c = newLines[j]!.trim();
+        if (c) chunks.push(c);
+      }
+    });
   }
   for (const f of before) {
     if (!after.some((a) => a.path === f.path)) paths.push(f.path);

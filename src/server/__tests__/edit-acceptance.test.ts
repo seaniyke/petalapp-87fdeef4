@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { extractChangeSet, renderChangeSetBlock } from "@/server/change-set.server";
+import { extractChangeSet, renderChangeSetBlock, kitTargetGuidance } from "@/server/change-set.server";
 import { auditChangeSet, unmetDisclosure } from "@/server/edit-audit.server";
 import { resolveWithFocus, focusFromTurn, isTopicChange, type EditFocus } from "@/server/edit-focus.server";
 import type { ProjectFile } from "@/server/generate.server";
@@ -242,5 +242,43 @@ describe("the checklist reaches the model", () => {
     expect(block).toMatch(/REQUESTED CHANGES/);
     expect(block).toMatch(/MUST NOT CHANGE/);
     expect(block.toLowerCase()).toContain("navbar");
+  });
+});
+
+describe("root-cause fixes found by the live run", () => {
+  it("a phone number in the footer is content work, not a screen-size tweak", () => {
+    const cs = extractChangeSet("add a phone number to the footer");
+    expect(cs.items[0]!.kind).not.toBe("responsive");
+  });
+
+  it("still treats a real screen-size ask as responsive", () => {
+    const cs = extractChangeSet("fix the hero on mobile");
+    expect(cs.items[0]!.kind).toBe("responsive");
+  });
+
+  it("tells the model where to change a surface that lives in a Petal-owned component", () => {
+    const cs = extractChangeSet("shrink the navbar");
+    const files = [
+      { path: "src/components/blocks/nav-bar.tsx", content: "export function NavBar() {}" },
+      { path: "src/App.tsx", content: 'import { NavBar } from "@/components/blocks/nav-bar";' },
+    ];
+    const block = kitTargetGuidance(cs, files);
+    expect(block).toMatch(/nav-bar/);
+    expect(block).toMatch(/src\/App\.tsx/);
+  });
+
+  it("says nothing when the target is ordinary app code", () => {
+    const cs = extractChangeSet("shrink the navbar");
+    expect(kitTargetGuidance(cs, [{ path: "src/pages/Home.tsx", content: "<nav />" }])).toBe("");
+  });
+});
+
+describe("audit sees a change made at a component's call site", () => {
+  it("counts a navbar tweak applied as a prop on <NavBar", () => {
+    const cs = extractChangeSet("shrink the navbar so it is less tall");
+    const before = [{ path: "src/App.tsx", content: '<NavBar\n  brand={x}\n/>' }];
+    const after = [{ path: "src/App.tsx", content: '<NavBar\n  brand={x}\n  className="py-0"\n/>' }];
+    const res = auditChangeSet({ changeSet: cs, before, after });
+    expect(res.unmet).toHaveLength(0);
   });
 });
