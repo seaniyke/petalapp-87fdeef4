@@ -57,6 +57,7 @@ import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminTestLabRouteImport } from './routes/admin.test-lab'
 import { Route as AdminQaRouteImport } from './routes/admin.qa'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
@@ -364,6 +365,11 @@ const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTestLabRoute = AdminTestLabRouteImport.update({
+  id: '/admin/test-lab',
+  path: '/admin/test-lab',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminQaRoute = AdminQaRouteImport.update({
@@ -759,6 +765,7 @@ export interface FileRoutesByFullPath {
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
+  '/admin/test-lab': typeof AdminTestLabRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
@@ -877,6 +884,7 @@ export interface FileRoutesByTo {
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
+  '/admin/test-lab': typeof AdminTestLabRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
@@ -996,6 +1004,7 @@ export interface FileRoutesById {
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
+  '/admin/test-lab': typeof AdminTestLabRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
@@ -1116,6 +1125,7 @@ export interface FileRouteTypes {
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
+    | '/admin/test-lab'
     | '/admin/users'
     | '/admin/waitlist'
     | '/api/backend'
@@ -1234,6 +1244,7 @@ export interface FileRouteTypes {
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
+    | '/admin/test-lab'
     | '/admin/users'
     | '/admin/waitlist'
     | '/api/backend'
@@ -1352,6 +1363,7 @@ export interface FileRouteTypes {
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
+    | '/admin/test-lab'
     | '/admin/users'
     | '/admin/waitlist'
     | '/api/backend'
@@ -1471,6 +1483,7 @@ export interface RootRouteChildren {
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminQaRoute: typeof AdminQaRoute
+  AdminTestLabRoute: typeof AdminTestLabRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminWaitlistRoute: typeof AdminWaitlistRoute
   ApiBackendRoute: typeof ApiBackendRoute
@@ -1887,6 +1900,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/test-lab': {
+      id: '/admin/test-lab'
+      path: '/admin/test-lab'
+      fullPath: '/admin/test-lab'
+      preLoaderRoute: typeof AdminTestLabRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/qa': {
@@ -2447,6 +2467,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProjectsRoute: AdminProjectsRoute,
   AdminQaRoute: AdminQaRoute,
+  AdminTestLabRoute: AdminTestLabRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminWaitlistRoute: AdminWaitlistRoute,
   ApiBackendRoute: ApiBackendRoute,
