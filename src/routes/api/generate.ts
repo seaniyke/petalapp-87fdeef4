@@ -5506,6 +5506,18 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       if (peekBody?.projectId) {
         turnProjectId = peekBody.projectId;
         recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
+        // Open the server-owned completion record for this request. From here
+        // the loop's authority lives in the database, not in the tab: stage,
+        // attempts and outstanding defects survive a closed browser.
+        if (recorder) {
+          const resume = (peekBody as { autoResumeAttempts?: number }).autoResumeAttempts;
+          await openTurnCompletion({
+            projectId: peekBody.projectId,
+            userId: peekAuth,
+            turnId: recorder.turnId,
+            inheritAttempts: typeof resume === "number" ? resume : 0,
+          });
+        }
       }
     }
   } catch {
