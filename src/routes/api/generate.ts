@@ -2429,6 +2429,33 @@ Forbidden defaults
       console.warn("[edit-focus] skipped:", e instanceof Error ? e.message : String(e));
     }
   }
+  // Phase 4 — the page the user is actually looking at (and any element they
+  // picked) becomes explicit context, and the files rendering that page get
+  // pinned so they survive prompt trimming.
+  let viewBlock = "";
+  if (!isInitial && body.viewContext) {
+    try {
+      const { renderViewContext, routeCandidatePaths } = await import(
+        "@/server/view-context.server"
+      );
+      const viewPaths = routeCandidatePaths(
+        body.viewContext,
+        currentFiles.map((f) => f.path),
+      );
+      viewBlock = renderViewContext(body.viewContext, viewPaths);
+      const picked = body.viewContext.element?.sourceFile;
+      for (const p of [...viewPaths, ...(picked ? [picked] : [])]) {
+        if (!pinnedPaths.includes(p)) pinnedPaths.push(p);
+      }
+      if (viewBlock) {
+        console.info(
+          `[view-context] ${body.viewContext.path ?? "(no route)"} — pinned ${viewPaths.length} file(s)`,
+        );
+      }
+    } catch (e) {
+      console.warn("[view-context] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
   const changeSetBlock = isInitial ? "" : renderChangeSetBlock(turnChangeSet);
   if (turnChangeSet.items.length > 1) {
     console.info(
