@@ -40,6 +40,7 @@ const TERMINAL: CompletionStage[] = [
 /** Default autonomous rounds per user request, enforced server-side. */
 export { MAX_REPAIR_ATTEMPTS as MAX_COMPLETION_ATTEMPTS } from "@/lib/repair-budget";
 import { MAX_REPAIR_ATTEMPTS } from "@/lib/repair-budget";
+import type { Readiness } from "@/server/readiness.server";
 const MAX_COMPLETION_ATTEMPTS = MAX_REPAIR_ATTEMPTS;
 
 /**
