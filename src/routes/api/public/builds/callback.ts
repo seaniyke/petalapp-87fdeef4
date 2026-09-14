@@ -393,6 +393,15 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // Test Lab ran for this build, its must-work results decide the verdict —
     // and "could not check" never counts as ready. With no run recorded the
     // readiness helper reproduces the previous rule exactly.
+    // Phase 5 — run the Test Lab against the app that is now live, scoped to
+    // what this turn changed. Fails open: a testing problem never fails a
+    // healthy deploy, it just leaves the verdict unverified.
+    await runTestLabForBuild({
+      projectId: payload.projectId,
+      buildId: payload.buildId,
+      url: payload.url,
+    }).catch((err) => console.warn("[builds/callback] test lab failed", err));
+
     const labCases = await loadCasesForBuild(payload.buildId);
     const readiness = evaluateReadiness({
       shipped: true,
