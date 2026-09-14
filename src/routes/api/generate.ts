@@ -216,6 +216,10 @@ type Body = {
   /** Canonical restatement from triage. Supplementary context only; the
    * original user message remains authoritative for detail. */
   intentBrief?: string;
+  /** Set by the autonomous resume worker: how many repair rounds this request
+   *  has already spent, so the server-owned budget carries across turns
+   *  instead of resetting every time a new turn row is opened. */
+  autoResumeAttempts?: number;
 };
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
