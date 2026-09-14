@@ -47,6 +47,8 @@ export interface BrowseReport {
   consoleErrors: string[];
   pageErrors: string[];
   failedRequests: string[];
+  /** Requests the safety guard refused (payments, email, SMS). */
+  suppressed?: string[];
 }
 
 export class BrowseUnavailableError extends Error {}

@@ -20,6 +20,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { BrowseReport } from "@/server/browse-client.server";
 import type { TestCase, TestPriority } from "@/server/test-plan.server";
+import { redactAll, redactWithIdentity } from "./test-safety.server";
 
 export type TestStatus = "passed" | "failed" | "blocked" | "skipped";
 export type RunStatus = "running" | "passed" | "failed" | "blocked";
