@@ -195,6 +195,7 @@ import { guardBackendClaims } from "@/lib/backend-claim-guard";
 import { runProjectMigrations } from "@/lib/managed-migrations.functions";
 import { loadRecoveryState, saveRecoveryState } from "@/lib/recovery-budget";
 import { useLatestReadyBuild } from "@/hooks/use-latest-ready-build";
+import { MAX_REPAIR_ATTEMPTS } from "@/lib/repair-budget";
 
 const WebContainerPreview = lazy(() =>
   import("@/components/WebContainerPreview").then((m) => ({ default: m.WebContainerPreview })),
@@ -883,7 +884,7 @@ function Builder() {
   // nothing and meaningfully lifts the "shipped working code in one user
   // turn" rate. Caps the runaway risk because each attempt also has to
   // pass startedBuildIdsRef + handledBuildIds gating.
-  const MAX_AUTO_FIX_ATTEMPTS = 3;
+  const MAX_AUTO_FIX_ATTEMPTS = MAX_REPAIR_ATTEMPTS;
   const startedBuildIdsRef = useRef<Set<string>>(new Set());
   // Synchronous submission lock.
   //
@@ -956,7 +957,7 @@ function Builder() {
   // reloaded or discarded by the OS, which let a returning user walk back
   // into the exact repair chain Petal had already stopped.
   // ---------------------------------------------------------------------
-  const MAX_TURN_AUTO_RECOVERIES = 3;
+  const MAX_TURN_AUTO_RECOVERIES = MAX_REPAIR_ATTEMPTS;
   const turnRecoveryRef = useRef<{ key: string | null; used: number }>({
     key: null,
     used: 0,

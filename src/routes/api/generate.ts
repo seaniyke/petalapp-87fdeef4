@@ -157,6 +157,7 @@ import {
   type FileBudgetIssue,
 } from "@/server/file-budget.server";
 import { pickBestModel } from "@/server/smart-router.server";
+import { evaluateCostCeiling } from "@/server/cost-ceiling.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
 import { applyContextBudget, type BudgetMessage } from "@/server/context-budget.server";
 import { expandBriefIfVague } from "@/server/brief-expander.server";
@@ -2899,6 +2900,18 @@ Forbidden defaults
   console.log(
     `[phase-router] phase=${phaseTag.phase} (${phaseTag.confidence}/${phaseTag.source}) tier=${tier} chosenBy=${chosenBy} → ${model}`,
   );
+
+  // Graceful degradation for free accounts past the month's cost ceiling:
+  // keep building, but on the cheap model. Never surfaced to the user, never
+  // applied to paid accounts, and skipped entirely if the cost is unknown.
+  const ceiling = await evaluateCostCeiling(userId);
+  if (ceiling.degrade && model !== MODEL_FAST) {
+    console.log(
+      `[cost-ceiling] degrading model for free account: $${ceiling.monthCostUsd} >= $${ceiling.ceilingUsd}`,
+    );
+    model = MODEL_FAST;
+    chosenBy = `${chosenBy}+cost_ceiling`;
+  }
 
   // "deep" preset enables extended reasoning on the gateway. Models
   // that don't support `reasoning` simply ignore the field, so this
