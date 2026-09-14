@@ -227,6 +227,22 @@ type Body = {
    *  has already spent, so the server-owned budget carries across turns
    *  instead of resetting every time a new turn row is opened. */
   autoResumeAttempts?: number;
+  /** What the user is looking at in the preview when they sent the message:
+   *  the currently open route and, when picked, the selected element. Used to
+   *  resolve "this page" / "this button" instead of guessing. */
+  viewContext?: {
+    path?: string;
+    title?: string;
+    heading?: string | null;
+    element?: {
+      tag?: string;
+      text?: string;
+      id?: string | null;
+      classes?: string | null;
+      sourceFile?: string | null;
+      sourceLine?: string | null;
+    } | null;
+  };
 };
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
