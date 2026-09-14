@@ -226,6 +226,24 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         })()
       : null;
 
+    // Phase 4 — backend acceptance. The browser check proves pages render;
+    // this proves the app's own database queries actually work with the key
+    // it ships with. Findings join the same defect list the judge consumes.
+    const acceptance = backendAcceptanceEnabled()
+      ? await runBackendAcceptance({ projectId: payload.projectId })
+      : { defects: [], evidence: [], ran: false };
+    if (acceptance.ran && verification) {
+      verification.defects = sanitizeVerificationDefects([
+        ...verification.defects,
+        ...acceptance.defects,
+      ]);
+      verification.ok = verification.defects.length === 0;
+      (verification as Record<string, unknown>).backendAcceptance = {
+        defects: acceptance.defects,
+        evidence: acceptance.evidence,
+      };
+    }
+
     // A successful upload is only a candidate. Blank routes, uncaught errors,
     // and failed required flows fail closed so consumers that ask for the last
     // healthy build keep showing the previous working preview. Visual-only
