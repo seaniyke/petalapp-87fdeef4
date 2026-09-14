@@ -349,8 +349,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 {currentPlanCode === "free" ? (
                   <p className="text-xs text-muted-foreground">
                     {payAsYouGo
-                      ? "Pay as you go — your purchased credits keep paid features unlocked."
-                      : "Subscribe for monthly credits, or just buy credits once — no subscription needed."}
+                      ? "Your credits keep paid features on."
+                      : "Subscribe monthly, or just buy credits."}
                   </p>
                 ) : renewsLabel ? (
                   <p className="text-xs text-muted-foreground">
