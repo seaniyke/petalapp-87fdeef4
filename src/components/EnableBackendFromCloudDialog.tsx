@@ -148,9 +148,8 @@ export function EnableBackendFromCloudDialog({
               <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
                 <p className="font-medium text-foreground">Want a dedicated backend?</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Upgrade for your own isolated database project with unlimited
-                  rows, storage and SQL access. We'll add $5 of runtime credit to
-                  get you started.
+                  Upgrade for your own isolated database with unlimited rows,
+                  storage and SQL access. We'll add 100 bonus credits.
                 </p>
               </div>
             </div>
@@ -160,7 +159,7 @@ export function EnableBackendFromCloudDialog({
               <div className="rounded-xl border border-border bg-muted/30 p-4">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Cloud balance
+                    Credits
                   </span>
                   <span
                     className={`text-2xl font-semibold tabular-nums ${
@@ -171,8 +170,8 @@ export function EnableBackendFromCloudDialog({
                   </span>
                 </div>
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  Backends cost $0.04/hr while active. Idle dedicated projects
-                  auto-pause after 7 days to save credits.
+                  A backend costs under 1 credit an hour while active, and
+                  auto-pauses after 7 days idle.
                 </p>
               </div>
 
@@ -180,7 +179,7 @@ export function EnableBackendFromCloudDialog({
                 <div className="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                   <p className="font-medium text-foreground">
-                    Your Cloud balance is $0. Top up to enable Cloud on this project.
+                    You have no credits left. Top up to enable Cloud on this project.
                   </p>
                 </div>
               )}

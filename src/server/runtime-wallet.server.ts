@@ -168,14 +168,22 @@ export async function getRuntimeBalance(userId: string): Promise<RuntimeBalance>
   const { data } = await supabaseAdmin
     .from("user_wallets")
     .select(
-      "runtime_free_balance_cents, runtime_topup_balance_cents, runtime_free_reset_at, workspace_cap_cents",
+      "monthly_credits_remaining, topup_credits_remaining, runtime_free_reset_at, workspace_cap_cents",
     )
     .eq("user_id", userId)
     .maybeSingle();
 
+  // One balance: Cloud + AI is paid with Petal Credits. Reported here as the
+  // internal cost capacity those credits buy, so cent-denominated gates and
+  // caps keep working unchanged.
+  const perCreditUsd = 0.05;
+  const credits =
+    Number(data?.monthly_credits_remaining ?? 0) + Number(data?.topup_credits_remaining ?? 0);
+  const capacityCents = Math.floor(credits * perCreditUsd * 100);
+
   return {
-    freeBalanceCents: Number(data?.runtime_free_balance_cents ?? 0),
-    topupBalanceCents: Number(data?.runtime_topup_balance_cents ?? 0),
+    freeBalanceCents: 0,
+    topupBalanceCents: capacityCents,
     freeResetAt:
       data?.runtime_free_reset_at ??
       new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),

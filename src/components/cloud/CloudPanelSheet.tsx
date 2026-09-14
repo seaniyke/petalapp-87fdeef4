@@ -5,7 +5,7 @@
  *
  * Two modes:
  *  - Workspace mode (no projectId): shows AI usage across the workspace
- *    + a link to the Cloud & AI balance sheet. Per-project views render
+ *    + a link to the credits sheet. Per-project views render
  *    a "pick a project" prompt.
  *  - Project mode (projectId set): all sub-views are scoped to that
  *    project (database, users, storage, secrets, advanced, etc.).
@@ -55,7 +55,7 @@ type View =
 type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  /** Open the existing Cloud & AI balance sheet */
+  /** Open the credits sheet */
   onOpenBalance: () => void;
   /** When set, sub-views are scoped to this project's managed backend. */
   projectId?: string;
@@ -244,7 +244,7 @@ function CloudHome({
       />
       <Row
         icon={<Wallet className="h-4 w-4" />}
-        title="Cloud & AI balance"
+        title="Plans & credits"
         description=""
         trailing={<ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
         onClick={onOpenBalance}
