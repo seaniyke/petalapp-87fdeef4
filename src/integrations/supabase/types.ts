@@ -3158,6 +3158,143 @@ export type Database = {
         }
         Relationships: []
       }
+      project_test_cases: {
+        Row: {
+          actual: string | null
+          attempt: number
+          case_key: string
+          category: string
+          console_errors: Json
+          created_at: string
+          duration_ms: number | null
+          evidence: Json
+          expected: string | null
+          failed_requests: Json
+          id: string
+          page_errors: Json
+          priority: string
+          project_id: string
+          reason: string | null
+          run_id: string
+          status: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          actual?: string | null
+          attempt?: number
+          case_key: string
+          category?: string
+          console_errors?: Json
+          created_at?: string
+          duration_ms?: number | null
+          evidence?: Json
+          expected?: string | null
+          failed_requests?: Json
+          id?: string
+          page_errors?: Json
+          priority?: string
+          project_id: string
+          reason?: string | null
+          run_id: string
+          status?: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          actual?: string | null
+          attempt?: number
+          case_key?: string
+          category?: string
+          console_errors?: Json
+          created_at?: string
+          duration_ms?: number | null
+          evidence?: Json
+          expected?: string | null
+          failed_requests?: Json
+          id?: string
+          page_errors?: Json
+          priority?: string
+          project_id?: string
+          reason?: string | null
+          run_id?: string
+          status?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_test_cases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_test_cases_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "project_test_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_test_runs: {
+        Row: {
+          base_url: string | null
+          blocked_reason: string | null
+          budget: string
+          build_id: string | null
+          created_at: string
+          finished_at: string | null
+          id: string
+          project_id: string
+          started_at: string
+          status: string
+          totals: Json
+          turn_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          base_url?: string | null
+          blocked_reason?: string | null
+          budget?: string
+          build_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          project_id: string
+          started_at?: string
+          status?: string
+          totals?: Json
+          turn_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string | null
+          blocked_reason?: string | null
+          budget?: string
+          build_id?: string | null
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          project_id?: string
+          started_at?: string
+          status?: string
+          totals?: Json
+          turn_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_test_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_turn_completion: {
         Row: {
           accepted: boolean
