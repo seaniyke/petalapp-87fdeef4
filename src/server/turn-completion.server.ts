@@ -114,8 +114,26 @@ export async function openTurnCompletion(args: {
   turnId: string;
   /** Carried over when this turn is itself an autonomous repair round. */
   inheritAttempts?: number;
+  /**
+   * True when Petal started this turn itself to fix its own output. A repair
+   * continues the previous request's budget; a message the user actually typed
+   * starts a fresh one.
+   */
+  isAutoFix?: boolean;
 }): Promise<CompletionRecord | null> {
   try {
+    let attempts = args.inheritAttempts ?? 0;
+    if (args.isAutoFix) {
+      const previous = await loadOpenCompletion(args.projectId);
+      if (previous && previous.turn_id !== args.turnId) {
+        const spent =
+          previous.stage === "needs_repair" || previous.stage === "repairing"
+            ? previous.attempts + 1
+            : previous.attempts;
+        attempts = Math.max(attempts, spent);
+      }
+    }
+
     await supabaseAdmin
       .from("project_turn_completion")
       .update({ stage: "superseded", terminal_reason: "a newer request took over" })
