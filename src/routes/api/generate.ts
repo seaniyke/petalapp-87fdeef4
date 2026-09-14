@@ -5172,7 +5172,7 @@ Forbidden defaults
                 model,
                 projectId: body.projectId ?? undefined,
                 userId,
-                signal: req.signal,
+                signal: abortSignal,
               });
               if (pass.ran && pass.files.length > 0) {
                 nextFiles = pass.files;

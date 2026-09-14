@@ -107,7 +107,7 @@ export function auditChangeSet(args: {
 /** Plain-language note appended to the turn summary when items did not land. */
 export function unmetDisclosure(
   unmet: ChangeItem[],
-  violations: PreserveViolation[] = [],
+  violations: AuditResult["violations"] = [],
 ): string {
   let out = "";
   if (unmet.length > 0) {
