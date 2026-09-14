@@ -2471,6 +2471,8 @@ function Builder() {
             autoPlan: opts.autoPlan,
             intentBrief: canonicalIntentBrief || text,
             buildTarget,
+            viewContext: previewViewRef.current ?? undefined,
+
 
           },
           {
