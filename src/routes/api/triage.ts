@@ -43,6 +43,12 @@ import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high
 import { detectLanguage, renderLanguageHint } from "@/server/lang-detect.server";
 import { checkCreditBalance } from "@/server/credits.server";
 import { fastTriage } from "@/server/fast-triage.server";
+import {
+  decideAskPolicy,
+  noAskInstruction,
+  stripQuestions,
+  SENIOR_ENGINEER_POSTURE,
+} from "@/server/ask-policy.server";
 
 type Body = {
   messages: ChatMessage[];
