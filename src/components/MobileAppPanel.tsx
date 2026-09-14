@@ -100,7 +100,7 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             Mobile builds are included with paid plans. Each build is metered
-            from your runtime balance (~$0.20 unsigned, ~$0.40 signed).
+            from your credits (about 4 credits unsigned, 8 signed).
           </p>
           <Button
             type="button"
@@ -140,7 +140,7 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
           toast.error("Upgrade required to build mobile apps");
           setBillingOpen(true);
         } else if (res.reason === "insufficient_balance") {
-          toast.error("Top up your runtime balance to start a build");
+          toast.error("Top up credits to start a build");
         } else if (res.reason === "signing_required") {
           toast.error("Add a signing certificate to run a signed build");
         } else {

@@ -6,7 +6,7 @@
  *     until they upgrade.
  *   - Paid plan + balance > $0 → "Enable backend". Hourly usage drains the
  *     wallet; if it hits $0 the project enters a 48h grace period.
- *   - Paid plan + balance == $0 → "Top up Cloud balance".
+ *   - Paid plan + balance == $0 → "Top up credits".
  *
  * The first paid-plan upgrade auto-grants $5 of runtime credit, so a brand
  * new paying user lands here with money in the wallet and one click away.
@@ -252,7 +252,7 @@ export function EnableBackendFromCloudDialog({
                 className="inline-flex items-center gap-1.5"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                Top up Cloud balance
+                Top up credits
               </Button>
             )}
           </DialogFooter>

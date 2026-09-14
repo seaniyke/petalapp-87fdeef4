@@ -296,7 +296,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
               className="inline-flex items-center gap-1.5"
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Top up Cloud balance
+              Top up credits
             </Button>
           </div>
         </div>

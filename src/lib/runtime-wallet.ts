@@ -8,6 +8,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { nextMonthlyResetAt } from "@/lib/billing";
+import { USD_PER_CREDIT } from "@/lib/credit-usage";
 
 export type RuntimeWallet = {
   freeBalanceCents: number;
@@ -47,23 +48,25 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
   const { data } = await supabase
     .from("user_wallets")
     .select(
-      "runtime_free_balance_cents, runtime_topup_balance_cents, runtime_free_reset_at, workspace_cap_cents, runtime_topup_qualified_at",
+      "monthly_credits_remaining, topup_credits_remaining, workspace_cap_cents, runtime_topup_qualified_at",
     )
     .eq("user_id", userId)
     .maybeSingle();
 
-  // Phase 4 #23 — `runtime_free_reset_at` is a date-only stamp for the period
-  // the balance currently belongs to, so echoing it straight through showed
-  // users a reset date in the past. The next boundary is the first UTC day of
-  // next month, derived from the clock.
   const nextReset = nextMonthlyResetAt();
-
   const qualifiedAt = (data as { runtime_topup_qualified_at?: string | null } | null)
     ?.runtime_topup_qualified_at ?? null;
 
+  // One balance: Cloud + AI is paid with Petal Credits. Callers that gate on
+  // "can this user afford runtime work" think in cents, so the credit balance
+  // is reported as the cost capacity it buys.
+  const credits =
+    Number(data?.monthly_credits_remaining ?? 0) + Number(data?.topup_credits_remaining ?? 0);
+  const capacityCents = Math.floor(credits * USD_PER_CREDIT * 100);
+
   return {
-    freeBalanceCents: Number(data?.runtime_free_balance_cents ?? 0),
-    topupBalanceCents: Number(data?.runtime_topup_balance_cents ?? 0),
+    freeBalanceCents: 0,
+    topupBalanceCents: capacityCents,
     freeResetAt: nextReset.toISOString().slice(0, 10),
     workspaceCapCents:
       data?.workspace_cap_cents == null ? null : Number(data.workspace_cap_cents),
