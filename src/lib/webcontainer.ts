@@ -124,7 +124,7 @@ export async function mountProject(files: ProjectFile[]): Promise<void> {
  *   - The script always re-emits `petal:pick:ready` to the parent so the
  *     parent can immediately re-push the current `pickActive` state.
  */
-const PICKER_VERSION = 2;
+const PICKER_VERSION = 3;
 const PICKER_SCRIPT = `(() => {
   var VERSION = ${PICKER_VERSION};
   // If a same-or-newer copy already attached its handlers in this document,
