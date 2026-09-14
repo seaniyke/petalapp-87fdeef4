@@ -1,6 +1,7 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth";
+import { ConsentBanner } from "@/components/ConsentBanner";
 
 import appCss from "../styles.css?url";
 
@@ -70,8 +71,10 @@ export const Route = createRootRoute({
         async: true,
       },
       {
+        // Consent Mode v2: every signal defaults to "denied" until the
+        // ConsentBanner updates it after the visitor chooses.
         children:
-          "window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', 'G-3DLEXWLWEW');",
+          "window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});gtag('js', new Date());gtag('config', 'G-3DLEXWLWEW');",
       },
     ],
   }),
@@ -115,6 +118,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           {children}
           <Toaster />
+          <ConsentBanner />
         </AuthProvider>
         <Scripts />
       </body>
