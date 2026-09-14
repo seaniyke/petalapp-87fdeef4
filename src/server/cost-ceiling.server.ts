@@ -63,7 +63,7 @@ export async function evaluateCostCeiling(userId: string): Promise<CeilingVerdic
       // number. That biases the ceiling towards leniency, which is the
       // direction we want to be wrong in.
       if (row.cost_basis === "unknown") continue;
-      total += Number(row.variable_cost_usd ?? 0);
+      total += Number(row.variable_cost_usd_micro ?? 0) / 1_000_000;
     }
 
     const monthCostUsd = Math.round(total * 10000) / 10000;
