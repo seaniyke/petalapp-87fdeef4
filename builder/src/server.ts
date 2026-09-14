@@ -328,6 +328,100 @@ fastify.post("/exec", async (req, reply) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// /browse — steerable browser session.
+//
+// The Test Lab's eyes and hands. Unlike /build's fixed verification script,
+// this executes an agent-chosen batch of actions against a *running* app and
+// returns everything observed, so the next batch can be decided from evidence.
+// Stateless per request: no session is retained between calls.
+// ---------------------------------------------------------------------------
+
+const BrowseActionSchema = z.object({
+  action: z.enum([
+    "goto",
+    "click",
+    "type",
+    "choose",
+    "press",
+    "scroll",
+    "wait",
+    "text",
+    "html",
+    "a11y",
+    "screenshot",
+  ]),
+  path: z.string().max(512).optional(),
+  selector: z.string().max(512).optional(),
+  value: z.string().max(512).optional(),
+  key: z.string().max(32).optional(),
+  to: z.enum(["top", "bottom"]).optional(),
+  px: z.number().int().min(-20_000).max(20_000).optional(),
+  ms: z.number().int().min(0).max(10_000).optional(),
+  width: z.number().int().min(320).max(2560).optional(),
+  fullPage: z.boolean().optional(),
+  optional: z.boolean().optional(),
+});
+const BrowseBodySchema = z.object({
+  projectId: z.string().uuid(),
+  sessionId: z.string().uuid(),
+  baseUrl: z.string().url().max(512),
+  actions: z.array(BrowseActionSchema).min(1).max(MAX_ACTIONS),
+  viewport: z
+    .object({
+      width: z.number().int().min(320).max(2560),
+      height: z.number().int().min(400).max(2000),
+    })
+    .optional(),
+});
+
+fastify.post("/browse", async (req, reply) => {
+  const ts = req.headers["x-petal-timestamp"] as string | undefined;
+  const sig = req.headers["x-petal-signature"] as string | undefined;
+  const raw = (req as unknown as { rawBody: string }).rawBody;
+  if (!verify(SHARED_SECRET, raw, ts, sig)) {
+    req.log.warn({ ts }, "Rejected browse: bad signature");
+    return reply.code(401).send({ error: "Invalid signature" });
+  }
+
+  const parsed = BrowseBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.code(400).send({ error: "Invalid body", details: parsed.error.flatten() });
+  }
+  const body = parsed.data;
+
+  try {
+    await acquireExecSlot();
+  } catch {
+    return reply.code(503).send({ error: "Browser pool is busy, please retry" });
+  }
+
+  const log = fastify.log.child({ projectId: body.projectId, sessionId: body.sessionId });
+  const heartbeat = new Heartbeat("opening the browser");
+  try {
+    const report = await withInactivity(
+      runBrowseSession(
+        {
+          baseUrl: body.baseUrl,
+          actions: body.actions as BrowseAction[],
+          viewport: body.viewport,
+        },
+        heartbeat,
+      ),
+      BROWSE_QUIET_MS,
+      heartbeat,
+    );
+    log.info({ steps: report.steps.length, ok: report.ok }, "Browse session finished");
+    return reply.code(200).send(report);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.warn({ err: message }, "Browse session failed");
+    return reply.code(err instanceof BrowseError ? 400 : 500).send({ error: message });
+  } finally {
+    releaseExecSlot();
+  }
+});
+
 
 /** Live progress of every in-flight build, surfaced on /healthz. */
 const activeBeats = new Map<string, Heartbeat>();
