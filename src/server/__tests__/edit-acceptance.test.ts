@@ -272,3 +272,13 @@ describe("root-cause fixes found by the live run", () => {
     expect(kitTargetGuidance(cs, [{ path: "src/pages/Home.tsx", content: "<nav />" }])).toBe("");
   });
 });
+
+describe("audit sees a change made at a component's call site", () => {
+  it("counts a navbar tweak applied as a prop on <NavBar", () => {
+    const cs = extractChangeSet("shrink the navbar so it is less tall");
+    const before = [{ path: "src/App.tsx", content: '<NavBar\n  brand={x}\n/>' }];
+    const after = [{ path: "src/App.tsx", content: '<NavBar\n  brand={x}\n  className="py-0"\n/>' }];
+    const res = auditChangeSet({ changeSet: cs, before, after });
+    expect(res.unmet).toHaveLength(0);
+  });
+});
