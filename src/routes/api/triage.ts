@@ -437,7 +437,8 @@ export const Route = createFileRoute("/api/triage")({
               knowledgeBlock +
               memoryBlock +
               highStakesBlock +
-              langBlock,
+              langBlock +
+              askBlock,
           },
           ...messages.map((m) => ({
             role: m.role,
