@@ -447,6 +447,9 @@ export async function streamResumeTurn(
           case "tool":
             handlers.onTool?.(evt.name as "write_project" | "patch_files");
             break;
+          case "credits_estimate":
+            handlers.onCreditsEstimate?.((evt.credits as number) ?? 0);
+            break;
           case "phase":
             handlers.onPhase?.(evt.phase as "thinking" | "designing" | "writing" | "polishing");
             break;
