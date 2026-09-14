@@ -43,10 +43,22 @@ export function isFocusFresh(focus: EditFocus | null, now = Date.now()): boolean
   return Boolean(focus && now - focus.at < FOCUS_TTL_MS);
 }
 
+/**
+ * Element words that never identify a place on their own — there is a button
+ * on every page. They still need the previous turn to be resolvable.
+ */
+const GENERIC_TARGETS = new Set([
+  "button","buttons","cta","heading","headline","title","subtitle","text","image","photo","illustration","card","cards","icon","background","colors","colours","palette","font","typography","spacing","logo","menu","form","table",
+]);
+
+function isGeneric(target: string | null): boolean {
+  return target !== null && GENERIC_TARGETS.has(target.toLowerCase());
+}
+
 /** True when the message leans on the previous turn to be understood. */
 export function needsFocus(prompt: string, changeSet: ChangeSet): boolean {
-  const namedTarget = changeSet.items.some((i) => i.target !== null);
-  if (namedTarget) return false;
+  const specific = changeSet.items.some((i) => i.target !== null && !isGeneric(i.target));
+  if (specific) return false;
   return BARE_REFERENCE.test(prompt) || CONTINUATION.test(prompt);
 }
 
@@ -55,7 +67,9 @@ export function isTopicChange(prompt: string, changeSet: ChangeSet, focus: EditF
   if (!focus) return true;
   if (TOPIC_SHIFT.test(prompt)) return true;
   const focusToken = focus.target.toLowerCase();
-  const targets = changeSet.items.map((i) => i.target?.toLowerCase()).filter(Boolean) as string[];
+  const targets = changeSet.items
+    .map((i) => i.target?.toLowerCase())
+    .filter((t): t is string => Boolean(t) && !GENERIC_TARGETS.has(t!));
   if (targets.length === 0) return false;
   return !targets.some((t) => t.includes(focusToken) || focusToken.includes(t));
 }
