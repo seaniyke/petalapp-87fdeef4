@@ -38,7 +38,9 @@ const TERMINAL: CompletionStage[] = [
 ];
 
 /** Default autonomous rounds per user request, enforced server-side. */
-export const MAX_COMPLETION_ATTEMPTS = 3;
+export { MAX_REPAIR_ATTEMPTS as MAX_COMPLETION_ATTEMPTS } from "@/lib/repair-budget";
+import { MAX_REPAIR_ATTEMPTS } from "@/lib/repair-budget";
+const MAX_COMPLETION_ATTEMPTS = MAX_REPAIR_ATTEMPTS;
 
 /**
  * How long the server waits before taking over a repair itself. The browser
