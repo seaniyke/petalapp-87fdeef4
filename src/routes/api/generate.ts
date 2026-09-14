@@ -166,6 +166,7 @@ import {
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import { openTurnCompletion, markStage } from "@/server/turn-completion.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
 import {
   proposeChangePlan,
