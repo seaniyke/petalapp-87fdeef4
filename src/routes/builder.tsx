@@ -2430,6 +2430,8 @@ function Builder() {
         // first genuine work event. A propose-only turn therefore shows the
         // approval plan as its first substantial surface. ─────────────────
         setIntentBuild(true);
+        setLiveCreditsEstimate(null);
+
 
         await streamGenerate(
           {
