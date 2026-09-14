@@ -53,6 +53,7 @@ import { resolveBuildTarget } from "@/lib/target-inference";
 import { getWebSubtypeAddendum } from "@/lib/web-subtype";
 
 import { lookupBackendForGenerate, lookupSharedBackendForGenerate } from "@/server/backend-connector.server";
+import { resolveIntentActions } from "@/server/intent-actions.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import {
   loadInstalledCodes,
@@ -1993,9 +1994,24 @@ Forbidden defaults
 
   // Look up the project's attached backend (BYO Supabase). When present,
   // we both inject the pre-configured client and tell the AI it exists.
-  const backend = body.projectId ? await lookupBackendForGenerate(body.projectId) : null;
-  const sharedBackend =
+  let backend = body.projectId ? await lookupBackendForGenerate(body.projectId) : null;
+  let sharedBackend =
     !backend && body.projectId ? await lookupSharedBackendForGenerate(body.projectId) : null;
+
+  // Intent → action. The inline "Enable X" cards were removed; Petal now acts
+  // on the same detection itself. Best-effort: any failure leaves the turn
+  // exactly as it would have been.
+  const intentActions = await resolveIntentActions({
+    projectId: body.projectId,
+    prompt: latestUserMessage(messages),
+
+    hasBackend: Boolean(backend),
+    hasSharedBackend: Boolean(sharedBackend),
+  });
+  if (intentActions.enabledSharedBackend && body.projectId) {
+    sharedBackend = await lookupSharedBackendForGenerate(body.projectId);
+  }
+
 
   const sharedBackendBlock = sharedBackend
     ? `\n\n### Backend (Petal Cloud, shared tier) is connected\nThis project has a FREE shared backend: a real database + user accounts, no SQL and no migrations. Use the pre-configured client — never call createClient, never import @supabase/supabase-js, never write SQL or emit a MIGRATION block.\n\nImports:\n- import { db, auth } from "@/integrations/backend/client"\n- import { useAuth, AuthProvider } from "@/integrations/backend/auth"\n\nData API (collections are created on first write):\n- await db.list<T>("tasks", { mine: true, limit: 50 }) -> { records }\n- await db.create("tasks", { title, done: false })\n- await db.update("tasks", id, { done: true })\n- await db.remove("tasks", id)\nEach record is { id, collection, user_id, data, created_at, updated_at } — your fields live under \`record.data\`.\n\nAuth: auth.signUp / auth.signIn / auth.signOut, or useAuth() for { user, loading }. Wrap the app once with <AuthProvider>.\nLimits: 5,000 rows and 25 collections. Never overwrite anything under src/integrations/backend/ — protected.\n`
@@ -2152,7 +2168,7 @@ Forbidden defaults
   // ships the backend.
   const backendGate = decideBackendGate({
     isInitial,
-    hasBackendConnected: Boolean(backend),
+    hasBackendConnected: Boolean(backend) || Boolean(sharedBackend),
     userPrompt: lastUserContent,
   });
   const backendGateBlock = backendGate.gated ? renderBackendGateBlock() : "";
@@ -2744,6 +2760,8 @@ Forbidden defaults
     highStakesBlock +
     visionAddendum +
     backendGateBlock +
+    intentActions.promptBlock +
+
     astPatchBlock +
     filesContext;
 
