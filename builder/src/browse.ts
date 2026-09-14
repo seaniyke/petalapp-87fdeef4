@@ -175,8 +175,10 @@ async function runAction(
       return { ok: true, data: clip(html, MAX_HTML_CHARS) };
     }
     case "a11y": {
-      const snapshot = await page.accessibility.snapshot({ interestingOnly: true });
-      return { ok: true, data: clip(JSON.stringify(snapshot ?? {}, null, 1), MAX_A11Y_CHARS) };
+      // Playwright's YAML aria snapshot — roles + names, no styling noise. It
+      // is the cheapest faithful description of "what a user can act on".
+      const snapshot = await page.locator("body").ariaSnapshot({ timeout: STEP_TIMEOUT_MS });
+      return { ok: true, data: clip(snapshot ?? "", MAX_A11Y_CHARS) };
     }
     case "screenshot": {
       if (shotsTaken.count >= MAX_SCREENSHOTS) {
