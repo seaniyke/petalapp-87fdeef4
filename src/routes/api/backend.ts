@@ -220,15 +220,14 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
   //    drained their wallet hit the balance_empty branch.
   const { data: wallet } = await supabaseAdmin
     .from("user_wallets")
-    .select("plan_code, topup_credits_remaining, monthly_credits_remaining, daily_credits_remaining")
+    .select("plan_code, topup_credits_remaining, monthly_credits_remaining")
     .eq("user_id", userId)
     .maybeSingle();
   const planCode = String(wallet?.plan_code ?? "free");
   // One balance: a backend is funded by Petal Credits like everything else.
   const totalBalance =
     Number(wallet?.topup_credits_remaining ?? 0) +
-    Number(wallet?.monthly_credits_remaining ?? 0) +
-    Number(wallet?.daily_credits_remaining ?? 0);
+    Number(wallet?.monthly_credits_remaining ?? 0);
 
   // Full access = paid plan OR purchased (pay-as-you-go) credits remaining.
   const topupCredits = Number(
