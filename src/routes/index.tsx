@@ -913,13 +913,13 @@ function Landing() {
           <section id="features" className="px-5 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto max-w-6xl">
               <div className="max-w-2xl">
-                <h2 className="font-landing-display text-4xl font-semibold leading-tight sm:text-5xl">More than a page builder.</h2>
-                <p className="mt-4 text-base text-muted-foreground">The full product path, from first prompt to ownership.</p>
+                <h2 className="font-landing-display text-4xl font-semibold leading-tight sm:text-5xl">Build a complete app.</h2>
+                <p className="mt-4 text-base text-muted-foreground">Petal takes your idea from a description to an app you can publish and own.</p>
               </div>
               <div className="mt-12 grid border-l border-t border-border sm:grid-cols-2">
                 {[
-                  { slug: "agent-board", title: "Reviewed by specialists", body: "Product, design, security, and QA agents check the work." },
-                  { slug: "own-your-code", title: "Own the code", body: "Real React and TypeScript, ready for Git and your domain." },
+                  { slug: "agent-board", title: "Checked by a team of AI reviewers", body: "Different AI reviewers check the plan, design, security, and quality of your app." },
+                  { slug: "own-your-code", title: "Your app belongs to you", body: "Download it, connect your own web address, or keep building it anywhere." },
                   { slug: "pay-as-you-build", title: "Pay when you build", body: "Buy credits once. Keep them until you use them." },
                   { slug: "marketplace", title: "Sell the result", body: "List a finished product and keep 80% of every sale." },
                 ].map((item, index) => (
@@ -941,7 +941,7 @@ function Landing() {
 
           <section id="how" className="border-y border-border bg-card/40 px-5 py-20 sm:px-6 sm:py-24">
             <div className="mx-auto max-w-6xl">
-              <h2 className="font-landing-display text-4xl font-semibold sm:text-5xl">From idea to live product.</h2>
+              <h2 className="font-landing-display text-4xl font-semibold sm:text-5xl">From idea to a live app.</h2>
               <ol className="mt-10 grid gap-8 md:grid-cols-3">
                 {[
                   ["01", "Describe it", "Tell Petal what to build."],

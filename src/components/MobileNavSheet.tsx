@@ -7,7 +7,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   FolderOpen,
-  Sparkles,
+  House,
+  CreditCard,
+  Megaphone,
   Wallet,
   User as UserIcon,
   Settings,
@@ -67,7 +69,7 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
           )}
 
           <Section title="Product">
-            <RowLink to="/" onClick={close} icon={<Sparkles className="h-4 w-4" />} label="Home" />
+            <RowLink to="/" onClick={close} icon={<House className="h-4 w-4" />} label="Home" />
             {user && (
               <RowLink
                 to="/projects"
@@ -115,7 +117,7 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
                   close();
                   onOpenBilling();
                 }}
-                icon={<Sparkles className="h-4 w-4" />}
+                icon={<CreditCard className="h-4 w-4" />}
                 label="Plans & credits"
               />
               <RowButton
@@ -153,7 +155,7 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, onOpenCloudB
             <RowLink
               to="/changelog"
               onClick={close}
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<Megaphone className="h-4 w-4" />}
               label="What's new"
             />
           </Section>

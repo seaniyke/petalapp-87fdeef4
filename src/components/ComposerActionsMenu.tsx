@@ -7,7 +7,7 @@
  * Mobile-first: the trigger is ~28px tall so the composer can keep the send
  * button + attach button on the same row without crowding at 430px.
  */
-import { Hammer, MessageSquare, Sparkles, ClipboardList, ChevronDown, Check } from "lucide-react";
+import { Hammer, MessageSquare, BrainCircuit, ClipboardList, ChevronDown, Check } from "lucide-react";
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -67,7 +67,7 @@ export function ComposerActionsMenu({
       <PopoverContent
         align="start"
         sideOffset={8}
-        className="w-72 rounded-2xl border-border bg-card p-1.5 shadow-[var(--shadow-soft)]"
+        className="w-72 rounded-lg border-border bg-card p-1.5 shadow-[var(--shadow-soft)]"
         role="menu"
       >
         <div className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -102,7 +102,7 @@ export function ComposerActionsMenu({
         <ul className="flex flex-col gap-0.5">
           <ToggleRow
             active={deepThink}
-            Icon={Sparkles}
+            Icon={BrainCircuit}
             label="Deep think"
             hint="Strongest model + extended reasoning. One-shot, costs more."
             onClick={() => onDeepThinkChange(!deepThink)}
@@ -141,12 +141,12 @@ function ModeRow({
         aria-checked={active}
         onClick={onClick}
         className={cn(
-          "flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-left transition",
+          "flex w-full items-start gap-3 rounded-md px-2.5 py-2.5 text-left transition",
           "hover:bg-muted/70 focus:outline-none focus-visible:bg-muted",
           active && "bg-muted/60",
         )}
       >
-        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-foreground/10 text-foreground/80">
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md bg-foreground/10 text-foreground/80">
           <Icon className="h-3.5 w-3.5" />
         </span>
         <span className="min-w-0 flex-1">
@@ -180,14 +180,14 @@ function ToggleRow({
         aria-checked={active}
         onClick={onClick}
         className={cn(
-          "flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-left transition",
+          "flex w-full items-start gap-3 rounded-md px-2.5 py-2.5 text-left transition",
           "hover:bg-muted/70 focus:outline-none focus-visible:bg-muted",
           active && "bg-muted/60",
         )}
       >
         <span
           className={cn(
-            "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl",
+            "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md",
             active ? "bg-primary/15 text-primary" : "bg-foreground/10 text-foreground/70",
           )}
         >

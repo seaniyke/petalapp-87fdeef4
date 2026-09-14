@@ -7,7 +7,7 @@
  * emits `does not provide an export named 'DIFFERENCES'` — which aborts
  * hydration for the entire app, not just this page.
  */
-import { Store, Wallet, Users, Code2, type LucideIcon } from "lucide-react";
+import { Store, Wallet, Bot, Code2, type LucideIcon } from "lucide-react";
 
 /**
  * The four things Petal does that the rest of the category does not.
@@ -85,29 +85,29 @@ export const DIFFERENCES: Record<string, Difference> = {
   },
   "agent-board": {
     slug: "agent-board",
-    eyebrow: "The agent board",
-    title: "A board of specialists",
-    titleItalic: "reviews the build before code is written.",
-    lede: "One model writing everything is how you get an app that looks right and behaves wrong.",
-    icon: Users,
+    eyebrow: "AI review team",
+    title: "Several AI reviewers check your app",
+    titleItalic: "before Petal builds it.",
+    lede: "Petal uses different AI reviewers for planning, design, security, and testing. No human reviewer is involved.",
+    icon: Bot,
     blocks: [
       {
-        heading: "Specialists, not one prompt",
-        body: "Product, architecture, design, database, backend, security, responsive and QA each get their own pass. They write typed decisions and objections into a shared brief, and the brief gets reconciled before a single file is touched.",
+        heading: "Each AI reviewer has one job",
+        body: "Separate AI reviewers look at the plan, design, data, security, mobile layout, and testing. Petal combines their feedback before it starts building.",
       },
       {
-        heading: "Objections actually block",
-        body: "When the security specialist flags a table with no row-level policy, or the responsive specialist flags a layout that overflows at 390px, that is a binding objection. It has to be answered in the spec, not discovered by you after deploy.",
+        heading: "Problems are caught early",
+        body: "If an AI reviewer spots a security risk or a screen that will not fit on a phone, Petal must address it before the build continues.",
       },
       {
-        heading: "Defects get an owner",
-        body: "After the build, findings are classified and routed to the specialist that owns them — runtime to frontend, policy to security, dead links to architecture. Repairs are scoped instead of a blanket \u201ctry again\u201d that rewrites your whole app.",
+        heading: "Fixes stay focused",
+        body: "After the build, Petal sends each problem to the right AI reviewer. It fixes the affected part instead of rebuilding your whole app.",
       },
     ],
     proof: [
-      { stat: "11", label: "Specialist agents" },
-      { stat: "Pre-code", label: "When review happens" },
-      { stat: "Scoped", label: "Repair rounds" },
+      { stat: "AI", label: "Reviews the work" },
+      { stat: "Before", label: "Checks start before the build" },
+      { stat: "Focused", label: "Fixes only what needs fixing" },
     ],
     cta: { label: "Start a build", to: "/" },
   },

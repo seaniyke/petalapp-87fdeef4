@@ -5,7 +5,7 @@
  * BillingSheet (upgrade plans or top up via Paystack).
  */
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Coins } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -43,7 +43,7 @@ export function CreditBadge() {
               tone,
             )}
           >
-            <Sparkles className="h-3.5 w-3.5" />
+            <Coins className="h-3.5 w-3.5" />
             <span className="tabular-nums">{formatCredits(breakdown.total)}</span>
             <span className="hidden text-xs text-muted-foreground sm:inline">credits</span>
           </button>
