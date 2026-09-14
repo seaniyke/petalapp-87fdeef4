@@ -2380,6 +2380,46 @@ Forbidden defaults
       console.warn("[edit-classifier] skipped:", e instanceof Error ? e.message : String(e));
     }
   }
+
+  // Edit Intelligence phase 1 + 3 — turn the message into an explicit change
+  // set (every clause, plus anything the user said to preserve), and resolve
+  // bare references ("the button too") against what the last turn changed.
+  // Both are deterministic; the change set is audited against the real diff
+  // after the edit lands.
+  const { extractChangeSet, renderChangeSetBlock } = await import("@/server/change-set.server");
+  const turnChangeSet = isInitial
+    ? { items: [], preserve: [], multi: false }
+    : extractChangeSet(lastUserContent);
+  let focusBlock = "";
+  let focusPinnedPaths: string[] = [];
+  if (!isInitial && body.projectId) {
+    try {
+      const { loadEditFocus } = await import("@/server/edit-history.server");
+      const { resolveWithFocus } = await import("@/server/edit-focus.server");
+      const priorFocus = await loadEditFocus(body.projectId);
+      const resolved = resolveWithFocus({
+        prompt: lastUserContent,
+        changeSet: turnChangeSet,
+        focus: priorFocus,
+      });
+      if (resolved.applied) {
+        focusBlock = resolved.block;
+        focusPinnedPaths = resolved.pinnedPaths;
+        console.info(
+          `[edit-focus] resolved against previous turn (${priorFocus?.target}) — pinning ${focusPinnedPaths.length} file(s)`,
+        );
+      }
+    } catch (e) {
+      console.warn("[edit-focus] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
+  const changeSetBlock = isInitial ? "" : renderChangeSetBlock(turnChangeSet);
+  if (turnChangeSet.items.length > 1) {
+    console.info(
+      `[change-set] ${turnChangeSet.items.length} requested change(s), ${turnChangeSet.preserve.length} preservation rule(s)`,
+    );
+  }
+
   const isCrossCutting =
     !isInitial &&
     (detectCrossCuttingIntent(lastUserContent) || editClassification?.scope === "structural");
@@ -2388,6 +2428,11 @@ Forbidden defaults
     console.info(
       `[intent-targets] cross-cutting ask detected — pinning ${pinnedPaths.length} file(s) into prompt context`,
     );
+  }
+  for (const p of focusPinnedPaths) {
+    if (!pinnedPaths.includes(p) && editablePromptFiles.some((f) => f.path === p)) {
+      pinnedPaths.push(p);
+    }
   }
   // Targeted-edit resolution — "change the hero headline", "remove the second
   // pricing card", "rename Get Started to Try free". We match the user's
