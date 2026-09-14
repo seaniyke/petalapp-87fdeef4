@@ -36,7 +36,9 @@ export type SpendReason =
   | "ai_build_charge"
   // Cloud + AI meter paid out of the credit balance when the separate
   // runtime wallet is empty (see runtime-credit-fallback.server.ts).
-  | "runtime_fallback";
+  | "runtime_fallback"
+  // Cloud + AI meter charged directly to the single credit balance.
+  | "runtime_charge";
 
 export type SpendCreditOptions = {
   userId: string;

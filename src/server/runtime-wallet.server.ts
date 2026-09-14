@@ -130,8 +130,8 @@ export async function chargeRuntime(opts: ChargeRuntimeOptions): Promise<ChargeR
       project_id: opts.projectId ?? null,
       meter: opts.meter,
       delta_cents: -cents,
-      free_balance_after: 0,
-      topup_balance_after: 0,
+      free_after_cents: 0,
+      topup_after_cents: 0,
       metadata: {
         ...(opts.metadata ?? {}),
         paid_with_credits: credits,
