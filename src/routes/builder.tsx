@@ -144,26 +144,14 @@ import { CloudBalanceSheet } from "@/components/CloudBalanceSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 // Backend / email / payments no longer use banner chips — Petal asks inline.
-import { CapabilityAskInline } from "@/components/CapabilityAskInline";
-import { detectCapabilityAsk } from "@/lib/intent-registry";
 // ContinueBuildingChip removed — see retired completion-UI cleanup.
-import { AddDomainSuggestionChip } from "@/components/AddDomainSuggestionChip";
-import { EnableSeoSuggestionChip } from "@/components/EnableSeoSuggestionChip";
 
-import { AddPageSuggestionChip } from "@/components/AddPageSuggestionChip";
-import { EnableMobileSuggestionChip } from "@/components/EnableMobileSuggestionChip";
-import { EnableAnalyticsSuggestionChip } from "@/components/EnableAnalyticsSuggestionChip";
-import { EnableAiFeatureSuggestionChip } from "@/components/EnableAiFeatureSuggestionChip";
-import { EnableStorageSuggestionChip } from "@/components/EnableStorageSuggestionChip";
-import { EnableRealtimeSuggestionChip } from "@/components/EnableRealtimeSuggestionChip";
-import { EnableCronSuggestionChip } from "@/components/EnableCronSuggestionChip";
 
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import petalLogo from "@/assets/petal-logo.png";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
-import { detectBackendIntentInTurn } from "@/lib/backend-intent";
 // BuildTargetChips import removed — chip rail retired from the composer.
 import { DevicePreviewFrame } from "@/components/DevicePreviewFrame";
 const SnackPreview = lazy(() =>
@@ -178,15 +166,6 @@ import {
   getBuildTarget,
 } from "@/lib/build-targets";
 
-import { detectDomainIntentInTurn } from "@/lib/domain-intent";
-import { detectSeoIntentInTurn } from "@/lib/seo-intent";
-import { detectAddPageIntentInTurn } from "@/lib/add-page-intent";
-import { detectMobileIntentInTurn } from "@/lib/mobile-intent";
-import { detectAnalyticsIntentInTurn } from "@/lib/analytics-intent";
-import { detectAiFeatureIntentInTurn } from "@/lib/ai-feature-intent";
-import { detectStorageIntentInTurn } from "@/lib/storage-intent";
-import { detectRealtimeIntentInTurn } from "@/lib/realtime-intent";
-import { detectCronIntentInTurn } from "@/lib/cron-intent";
 import { getManagedProvisionStatus, getProjectBackend } from "@/lib/projects";
 import { listDomains } from "@/lib/domains";
 import { useWallet } from "@/hooks/use-wallet";
