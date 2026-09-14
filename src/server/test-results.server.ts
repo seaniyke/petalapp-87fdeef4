@@ -20,7 +20,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { BrowseReport } from "@/server/browse-client.server";
 import type { TestCase, TestPriority } from "@/server/test-plan.server";
-import { redactAll, redactWithIdentity } from "./test-safety.server";
+import { redactAll, redactSecrets, redactWithIdentity } from "./test-safety.server";
 
 export type TestStatus = "passed" | "failed" | "blocked" | "skipped";
 export type RunStatus = "running" | "passed" | "failed" | "blocked";
@@ -34,6 +34,8 @@ export interface CaseEvidence {
   pageText?: string;
   /** Accessibility snapshot, when the case asked for one. */
   a11y?: string;
+  /** Requests refused during the case so nothing real was charged or sent. */
+  suppressed?: string[];
 }
 
 export interface CaseResult {
@@ -118,8 +120,8 @@ export function judgeCase(
   const fail = (reason: string, actual?: string): CaseResult => ({
     ...base,
     status: "failed",
-    reason,
-    actual: trim(actual, 600),
+    reason: redactWithIdentity(reason, identity),
+    actual: trim(redactWithIdentity(actual, identity) || undefined, 600),
   });
 
   // The session itself could not run — nothing was proven either way.
@@ -129,7 +131,7 @@ export function judgeCase(
       ...base,
       status: "blocked",
       reason: firstGoto?.error
-        ? `Could not open the page: ${trim(firstGoto.error, 300)}`
+        ? `Could not open the page: ${trim(redactSecrets(firstGoto.error), 300)}`
         : "The app could not be reached",
     };
   }
