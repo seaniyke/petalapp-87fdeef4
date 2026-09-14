@@ -363,7 +363,7 @@ export async function refreshStatus(projectId: string): Promise<{
  */
 export type PauseReason = "idle" | "unpaid" | "expired";
 
-const PAUSE_MESSAGES: Record<PauseReason, string> = {
+export const PAUSE_MESSAGES: Record<PauseReason, string> = {
   idle: "Paused because the app went unused for 7 days. It wakes up automatically when you open it.",
   unpaid: "Paused because you ran out of credits. Top up to bring it back online.",
   expired: "Backend slot expired — renew to reactivate.",
