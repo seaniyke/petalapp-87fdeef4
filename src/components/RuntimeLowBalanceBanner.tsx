@@ -133,7 +133,3 @@ export function RuntimeLowBalanceBanner({ projectId }: Props) {
     </>
   );
 }
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
