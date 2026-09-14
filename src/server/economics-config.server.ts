@@ -20,7 +20,9 @@ export type EconomicsKey =
   | "image_generation_usd"
   | "min_purchase_ngn"
   | "target_gross_margin_pct"
-  | "free_user_monthly_cost_ceiling_usd";
+  | "free_user_monthly_cost_ceiling_usd"
+  | "max_active_dedicated_backends"
+  | "dedicated_retention_days";
 
 export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   target_variable_cost_per_credit_usd: 0.05,
@@ -31,6 +33,8 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   min_purchase_ngn: 5000,
   target_gross_margin_pct: 60,
   free_user_monthly_cost_ceiling_usd: 1.5,
+  max_active_dedicated_backends: 25,
+  dedicated_retention_days: 30,
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;

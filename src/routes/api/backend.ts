@@ -19,11 +19,14 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+  activeManagedCount,
+  deleteForProject,
   ensureUpstreamProjectRef,
   provisionForProject,
   refreshStatus,
   restoreForProject,
 } from "@/server/managed-backend.server";
+import { economicsValue } from "@/server/economics-config.server";
 
 /**
  * Plans that gate access to managed backend / email / domains. Free users
@@ -111,6 +114,20 @@ async function handleStatus(userId: string, body: unknown): Promise<Response> {
     .maybeSingle();
 
   if (providerRow?.provider === "managed_petal") {
+    // An app paused purely for being unused wakes itself the moment its owner
+    // comes back. Pauses caused by an empty wallet still need a top-up.
+    const { data: pausedRow } = await supabaseAdmin
+      .from("project_backends")
+      .select("status, pause_reason")
+      .eq("project_id", parsed.data.projectId)
+      .maybeSingle();
+    if (pausedRow?.status === "paused" && pausedRow.pause_reason === "idle") {
+      await restoreForProject(parsed.data.projectId);
+      await supabaseAdmin
+        .from("projects")
+        .update({ runtime_paused: false })
+        .eq("id", parsed.data.projectId);
+    }
     await refreshStatus(parsed.data.projectId);
     // Any status check counts as activity; keeps hibernation at bay.
     await supabaseAdmin
@@ -203,13 +220,15 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
   //    drained their wallet hit the balance_empty branch.
   const { data: wallet } = await supabaseAdmin
     .from("user_wallets")
-    .select("plan_code, topup_credits_remaining, runtime_topup_balance_cents, runtime_free_balance_cents")
+    .select("plan_code, topup_credits_remaining, monthly_credits_remaining, daily_credits_remaining")
     .eq("user_id", userId)
     .maybeSingle();
   const planCode = String(wallet?.plan_code ?? "free");
-  const topup = Number(wallet?.runtime_topup_balance_cents ?? 0);
-  const free = Number(wallet?.runtime_free_balance_cents ?? 0);
-  const totalBalance = topup + free;
+  // One balance: a backend is funded by Petal Credits like everything else.
+  const totalBalance =
+    Number(wallet?.topup_credits_remaining ?? 0) +
+    Number(wallet?.monthly_credits_remaining ?? 0) +
+    Number(wallet?.daily_credits_remaining ?? 0);
 
   // Full access = paid plan OR purchased (pay-as-you-go) credits remaining.
   const topupCredits = Number(
@@ -234,10 +253,24 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
         error:
           "You have no credits left. Top up to enable Cloud on this project.",
         code: "balance_empty",
-        currentCents: totalBalance,
-        requiredCents: 1,
+        currentCredits: totalBalance,
+        requiredCredits: 1,
       }),
       { status: 402, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // Ceiling on live dedicated databases — each one costs us money for as long
+  // as it exists, so we never create an unbounded number of them.
+  const maxActive = await economicsValue("max_active_dedicated_backends");
+  if ((await activeManagedCount()) >= maxActive) {
+    return new Response(
+      JSON.stringify({
+        error:
+          "Petal is at capacity for dedicated databases right now. Your app keeps its shared database and we'll have room shortly.",
+        code: "capacity_reached",
+      }),
+      { status: 503, headers: { "Content-Type": "application/json" } },
     );
   }
 
@@ -377,17 +410,42 @@ async function handleDisconnect(userId: string, body: unknown): Promise<Response
   if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
-  const { error } = await supabaseAdmin
+
+  // A Petal-provisioned database must be removed upstream too, otherwise we
+  // keep paying for a database nobody can reach. Data is exported into the
+  // project's files first.
+  const { data: row } = await supabaseAdmin
     .from("project_backends")
-    .delete()
-    .eq("project_id", parsed.data.projectId);
-  if (error) return new Response(error.message, { status: 500 });
+    .select("provider")
+    .eq("project_id", parsed.data.projectId)
+    .maybeSingle();
+  let backupPath: string | null = null;
+  if (row?.provider === "managed_petal") {
+    try {
+      const res = await deleteForProject(parsed.data.projectId);
+      backupPath = res.backupPath;
+    } catch (e) {
+      return new Response(
+        JSON.stringify({
+          error: `Couldn't remove the database: ${(e as Error).message.slice(0, 200)}`,
+          code: "delete_failed",
+        }),
+        { status: 502, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  } else {
+    const { error } = await supabaseAdmin
+      .from("project_backends")
+      .delete()
+      .eq("project_id", parsed.data.projectId);
+    if (error) return new Response(error.message, { status: 500 });
+  }
   // Reset the project's backend tier to shared so it can be re-enabled later.
   await supabaseAdmin
     .from("projects")
     .update({ backend_type: BACKEND_TYPE.SHARED, runtime_grace_until: null, runtime_paused: false })
     .eq("id", parsed.data.projectId);
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, backupPath });
 }
 
 /* ---------------- Managed-backend actions ---------------- */
