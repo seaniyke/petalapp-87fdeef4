@@ -333,6 +333,58 @@ export async function finishTestRun(args: {
   return status;
 }
 
+/**
+ * The recorded cases for a build's most recent test run, rehydrated as
+ * `CaseResult`s. Used by the readiness gate; returns an empty list when no run
+ * exists for the build, which callers treat as "no Test Lab evidence".
+ */
+export async function loadCasesForBuild(buildId: string): Promise<CaseResult[]> {
+  try {
+    const { data: runs } = await supabaseAdmin
+      .from("project_test_runs")
+      .select("id")
+      .eq("build_id", buildId)
+      .order("started_at", { ascending: false })
+      .limit(1);
+    const runId = runs?.[0]?.id;
+    if (!runId) return [];
+
+    const { data: rows } = await supabaseAdmin
+      .from("project_test_cases")
+      .select(
+        "case_key,title,priority,category,status,expected,actual,reason,url,duration_ms,console_errors,page_errors,failed_requests,evidence",
+      )
+      .eq("run_id", runId);
+
+    return (rows ?? []).map((row) => {
+      const r = row as Record<string, unknown>;
+      const list = (v: unknown) => (Array.isArray(v) ? (v as string[]) : []);
+      return {
+        caseKey: String(r.case_key),
+        title: String(r.title ?? ""),
+        priority: r.priority as CaseResult["priority"],
+        category: String(r.category ?? ""),
+        status: r.status as CaseResult["status"],
+        expected: (r.expected as string | null) ?? undefined,
+        actual: (r.actual as string | null) ?? undefined,
+        reason: (r.reason as string | null) ?? undefined,
+        url: (r.url as string | null) ?? undefined,
+        durationMs: (r.duration_ms as number | null) ?? undefined,
+        consoleErrors: list(r.console_errors),
+        pageErrors: list(r.page_errors),
+        failedRequests: list(r.failed_requests),
+        images: [],
+        evidence: (r.evidence ?? {}) as CaseResult["evidence"],
+      } satisfies CaseResult;
+    });
+  } catch (err) {
+    console.warn("[test-results] loadCasesForBuild failed", err);
+    return [];
+  }
+}
+
+
+
 /** Signed URLs for the UI. Evidence lives in a private bucket. */
 export async function signEvidence(paths: string[], expiresIn = 3_600): Promise<string[]> {
   if (!paths.length) return [];

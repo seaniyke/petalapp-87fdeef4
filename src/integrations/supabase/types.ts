@@ -3307,12 +3307,14 @@ export type Database = {
           max_attempts: number
           outstanding_defects: Json
           project_id: string
+          readiness: Json
           resume_after: string | null
           stage: string
           terminal_reason: string | null
           turn_id: string
           updated_at: string
           user_id: string
+          verdict: string | null
         }
         Insert: {
           accepted?: boolean
@@ -3325,12 +3327,14 @@ export type Database = {
           max_attempts?: number
           outstanding_defects?: Json
           project_id: string
+          readiness?: Json
           resume_after?: string | null
           stage?: string
           terminal_reason?: string | null
           turn_id: string
           updated_at?: string
           user_id: string
+          verdict?: string | null
         }
         Update: {
           accepted?: boolean
@@ -3343,12 +3347,14 @@ export type Database = {
           max_attempts?: number
           outstanding_defects?: Json
           project_id?: string
+          readiness?: Json
           resume_after?: string | null
           stage?: string
           terminal_reason?: string | null
           turn_id?: string
           updated_at?: string
           user_id?: string
+          verdict?: string | null
         }
         Relationships: [
           {

@@ -40,6 +40,7 @@ const TERMINAL: CompletionStage[] = [
 /** Default autonomous rounds per user request, enforced server-side. */
 export { MAX_REPAIR_ATTEMPTS as MAX_COMPLETION_ATTEMPTS } from "@/lib/repair-budget";
 import { MAX_REPAIR_ATTEMPTS } from "@/lib/repair-budget";
+import type { Readiness } from "@/server/readiness.server";
 const MAX_COMPLETION_ATTEMPTS = MAX_REPAIR_ATTEMPTS;
 
 /**
@@ -206,9 +207,12 @@ export async function markStage(
 
 /**
  * The acceptance decision. A turn is only "delivered" when the build shipped
- * AND the browser check proved the app actually works — routes rendered, the
- * declared user flows completed, no blocking defect left. Anything short of
- * that keeps the record open so the loop (client or server) continues.
+ * AND the app was proven to work.
+ *
+ * Phase 6: when a readiness verdict is supplied (Test Lab ran for this build)
+ * it decides acceptance — "we could not check" is never accepted as ready.
+ * Without a verdict the original rule applies unchanged, so builds that never
+ * reach the Test Lab path behave exactly as before.
  */
 export async function recordBuildOutcome(args: {
   projectId: string;
@@ -217,13 +221,20 @@ export async function recordBuildOutcome(args: {
   blockingDefects: string[];
   evidence?: string[];
   reason?: string | null;
+  readiness?: Readiness | null;
 }): Promise<void> {
   try {
     const open = await loadOpenCompletion(args.projectId);
     if (!open) return;
 
-    const accepted = args.shipped && args.blockingDefects.length === 0;
+    const readiness = args.readiness ?? null;
+    const accepted = readiness
+      ? readiness.accepted
+      : args.shipped && args.blockingDefects.length === 0;
     const fingerprint = fingerprintDefects(args.blockingDefects);
+    const verdictPatch = readiness
+      ? { verdict: readiness.verdict, readiness: readiness as unknown }
+      : {};
 
     if (accepted) {
       await supabaseAdmin
@@ -237,6 +248,26 @@ export async function recordBuildOutcome(args: {
           evidence: args.evidence ?? [],
           terminal_reason: null,
           resume_after: null,
+          ...verdictPatch,
+        } as never)
+        .eq("id", open.id);
+      return;
+    }
+
+    // Nothing a further round can fix: we were unable to check the app at all.
+    // Keeping the record open would spend the budget on a wall.
+    if (readiness?.verdict === "unverified") {
+      await supabaseAdmin
+        .from("project_turn_completion")
+        .update({
+          stage: "blocked",
+          accepted: false,
+          outstanding_defects: readiness.reasons.slice(0, 40),
+          defect_fingerprint: fingerprint,
+          last_build_id: args.buildId,
+          terminal_reason: readiness.reasons[0] ?? "Petal could not finish checking the app",
+          resume_after: null,
+          ...verdictPatch,
         } as never)
         .eq("id", open.id);
       return;
