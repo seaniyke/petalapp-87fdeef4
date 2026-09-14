@@ -35,7 +35,9 @@ function asStrings(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
 }
 
-export function CompletionStatusCard({ projectId }: { projectId: string | undefined }) {
+export function CompletionStatusCard() {
+  const search = useSearch({ strict: false }) as { id?: string };
+  const projectId = typeof search?.id === "string" ? search.id : undefined;
   const [row, setRow] = useState<Row | null>(null);
 
   useEffect(() => {
