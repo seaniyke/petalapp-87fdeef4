@@ -476,6 +476,7 @@ export const Route = createFileRoute("/api/triage")({
             let argsBuf = ""; // accumulating tool-call arguments JSON
             let replyEmitted = "";
             let earlyIntentSent = false;
+            let replySuppressed = false;
 
             try {
               while (true) {
