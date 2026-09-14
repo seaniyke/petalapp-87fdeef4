@@ -5140,6 +5140,79 @@ Forbidden defaults
           );
         }
 
+        // Edit Intelligence phase 1/2/6 — did every requested change actually
+        // land? The prompt asks for all of them; this checks the real diff.
+        // Anything missing gets ONE focused pass (inside the existing repair
+        // budget); whatever still hasn't landed is disclosed rather than
+        // reported as success. Preservation violations are surfaced too.
+        if (!isInitial && turnChangeSet.items.length > 0) {
+          try {
+            const { auditChangeSet, unmetDisclosure, runCompletenessPass } = await import(
+              "@/server/edit-audit.server"
+            );
+            let audit = auditChangeSet({
+              changeSet: turnChangeSet,
+              before: turnBaselineFiles,
+              after: nextFiles,
+            });
+            if (audit.unmet.length > 0) {
+              controller.enqueue(
+                encoder.encode(
+                  sse({ type: "status", message: "Checking every part of your request landed." }),
+                ),
+              );
+              const pass = await runCompletenessPass({
+                userRequest: lastUserContent,
+                unmet: audit.unmet,
+                files: nextFiles,
+                candidatePaths: (pinnedPaths.length > 0
+                  ? pinnedPaths
+                  : nextFiles.map((f) => f.path)
+                ).slice(0, 8),
+                model,
+                projectId: body.projectId ?? undefined,
+                userId,
+                signal: req.signal,
+              });
+              if (pass.ran && pass.files.length > 0) {
+                nextFiles = pass.files;
+                audit = auditChangeSet({
+                  changeSet: turnChangeSet,
+                  before: turnBaselineFiles,
+                  after: nextFiles,
+                });
+              }
+            }
+            if (audit.unmet.length > 0 || audit.violations.length > 0) {
+              summary = `${summary}${unmetDisclosure(audit.unmet, audit.violations)}`;
+            }
+            if (body.projectId) {
+              const { recordEdit } = await import("@/server/edit-history.server");
+              const { focusFromTurn } = await import("@/server/edit-focus.server");
+              await recordEdit({
+                projectId: body.projectId,
+                turnId: logicalTurnId ?? null,
+                userRequest: lastUserContent,
+                changeSet: turnChangeSet,
+                audit,
+                focus: focusFromTurn({
+                  changeSet: turnChangeSet,
+                  changedPaths: audit.changedPaths,
+                }),
+                revertTo: {
+                  paths: audit.changedPaths,
+                  files: turnBaselineFiles
+                    .filter((f) => audit.changedPaths.includes(f.path))
+                    .map((f) => ({ path: f.path, content: f.content ?? "" })),
+                },
+              });
+            }
+          } catch (e) {
+            console.warn("[edit-audit] skipped:", e instanceof Error ? e.message : String(e));
+          }
+        }
+
+
         await saveProjectBlueprint(
           body.projectId,
           makeBuildBlueprint({
