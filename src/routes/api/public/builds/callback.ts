@@ -143,7 +143,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   // Defends against a compromised builder or a bug that scrambles ids.
   const { data: existing } = await supabaseAdmin
     .from("project_builds")
-    .select("id, project_id")
+    .select("id, project_id, created_at")
     .eq("id", payload.buildId)
     .maybeSingle();
   if (!existing) {
@@ -155,6 +155,23 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     console.warn("Builder callback project mismatch", payload.buildId);
     return new Response("Project mismatch", { status: 400 });
   }
+
+  // Internal economics: how long this build occupied the builder, and how
+  // long the browser check ran. Used to value build compute per request.
+  const buildMs = existing.created_at
+    ? Date.now() - new Date(existing.created_at).getTime()
+    : null;
+  const verifyMs =
+    typeof payload.verification?.durationMs === "number"
+      ? payload.verification.durationMs
+      : null;
+  void attachBuildEconomicsByProject({
+    projectId: payload.projectId,
+    buildId: payload.buildId,
+    buildMs,
+    verifyMs,
+    result: payload.status === "ready" ? "ready" : "failed",
+  });
 
   if (payload.status === "ready") {
     // AI Generation Bible §8 — the builder's own "ready" is a claim, not
