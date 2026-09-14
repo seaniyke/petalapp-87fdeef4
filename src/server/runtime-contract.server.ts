@@ -23,6 +23,7 @@
  * sub-5ms-per-file budget as the other passes.
  */
 
+import { rewriteOpeningTags } from "./jsx-tag-scan.server";
 import type { ProjectFile } from "./generate.server";
 
 const SCANNABLE = /\.(tsx|jsx)$/;
@@ -103,20 +104,24 @@ function injectDialogTitles(file: ProjectFile): { file: ProjectFile; count: numb
 
 // ---------- C. Controlled <Select> without onValueChange ----------
 
-const SELECT_TAG_RE = /<Select\b([^>]*)>/g;
-
 function injectSelectNoop(file: ProjectFile): { file: ProjectFile; count: number } {
   if (!SCANNABLE.test(file.path)) return { file, count: 0 };
-  let count = 0;
-  const next = file.content.replace(SELECT_TAG_RE, (full, attrs) => {
-    if (!/\bvalue\s*=/.test(attrs)) return full;
-    if (/\bonValueChange\s*=/.test(attrs)) return full;
-    if (/\bdefaultValue\s*=/.test(attrs)) return full; // uncontrolled, fine
-    count++;
-    return `<Select${attrs} onValueChange={() => {}}>`;
-  });
-  if (count === 0) return { file, count: 0 };
-  return { file: { path: file.path, content: next }, count };
+  // Must use the brace-aware scanner: `<Select value={x} onChange={(v) => f(v)}>`
+  // contains a `>` inside an attribute, and a `[^>]*` regex would splice the
+  // injected prop into the middle of the arrow function (TS1005/TS1382).
+  const { content, fixes } = rewriteOpeningTags(
+    file.content,
+    (name) => name === "Select",
+    (tag) => {
+      if (tag.selfClosing) return null;
+      if (!/\bvalue\s*=/.test(tag.attrs)) return null;
+      if (/\bonValueChange\s*=/.test(tag.attrs)) return null;
+      if (/\bdefaultValue\s*=/.test(tag.attrs)) return null; // uncontrolled, fine
+      return `<Select${tag.attrs} onValueChange={() => {}}>`;
+    },
+  );
+  if (fixes === 0) return { file, count: 0 };
+  return { file: { path: file.path, content }, count: fixes };
 }
 
 // ---------- composition ----------

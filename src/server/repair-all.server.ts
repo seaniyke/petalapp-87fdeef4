@@ -30,6 +30,8 @@ import { closeKitDependencies, syncTsconfigExcludes } from "./kit-dep-closure.se
 import { normalizeJsxExtensions } from "./extension-normalizer.server";
 import { validateRouteGraph } from "./route-graph.server";
 import { wireOrphanPages } from "./orphan-page-wiring.server";
+import { pruneJunkPages } from "./junk-page-pruner.server";
+import { fixExportShape } from "./export-shape-fixer.server";
 
 import { sweepTailwindTokens } from "./tailwind-token-sweep.server";
 import { repairPaletteIntegrity } from "./palette-integrity.server";
@@ -313,6 +315,18 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
 
   // 5d. Orphan-page wiring — a page file no router imports is an unreachable
   //     page. Wire it up BEFORE the route-graph pass so it sees the new routes.
+  // 5b. Export-shape — a page default-imported but only named-exported is a
+  //     hard Rollup failure; add the missing default export instead.
+  const exportShape = fixExportShape(files);
+  files = exportShape.files;
+  for (const n of exportShape.notes) notes.push(n);
+
+  // 5c. Junk-page pruner — drop placeholder pages named after code concepts
+  //     (Hooks, Main, UseAxe) so wiring never routes them into the app.
+  const junk = pruneJunkPages(files);
+  files = junk.files;
+  for (const n of junk.notes) notes.push(n);
+
   const orphan = wireOrphanPages(files);
   files = orphan.files;
   for (const n of orphan.notes) notes.push(n);
