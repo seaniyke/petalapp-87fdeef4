@@ -1,13 +1,12 @@
 /**
  * Account hub — 2x2 grid of section cards rendered on /profile so the form
- * page also acts as a settings hub. Reuses BillingSheet and CloudBalanceSheet
+ * page also acts as a settings hub. Reuses BillingSheet
  * (mounted by the parent route) via callback props.
  */
 import { Link } from "@tanstack/react-router";
 import {
   Cloud,
   CreditCard,
-  Wallet,
   FolderOpen,
   Settings,
   ArrowRight,

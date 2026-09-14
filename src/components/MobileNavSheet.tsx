@@ -1,7 +1,7 @@
 /**
  * Mobile hamburger sheet — replicates the avatar dropdown + marketing nav so
  * mobile users have a single discoverable entry point to every product
- * surface. Reuses BillingSheet / CloudBalanceSheet via callback props (does
+ * surface. Reuses BillingSheet via a callback prop (does
  * not mount its own copies — the parent SiteHeader owns those instances).
  */
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -10,7 +10,6 @@ import {
   House,
   CreditCard,
   Megaphone,
-  Wallet,
   User as UserIcon,
   Settings,
   LogOut,
