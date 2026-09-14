@@ -105,13 +105,24 @@ export function auditChangeSet(args: {
 }
 
 /** Plain-language note appended to the turn summary when items did not land. */
-export function unmetDisclosure(unmet: ChangeItem[]): string {
-  if (unmet.length === 0) return "";
-  const list = unmet.map((i) => `- ${i.text}`).join("\n");
-  return (
-    `\n\nOne part of your message didn't land yet:\n${list}\n` +
-    `Say the word and I'll do just that part next.`
-  );
+export function unmetDisclosure(
+  unmet: ChangeItem[],
+  violations: PreserveViolation[] = [],
+): string {
+  let out = "";
+  if (unmet.length > 0) {
+    const list = unmet.map((i) => `- ${i.text}`).join("\n");
+    out +=
+      `\n\n${unmet.length === 1 ? "One part" : `${unmet.length} parts`} of your message didn't land yet:\n${list}\n` +
+      `Say the word and I'll do just that part next.`;
+  }
+  if (violations.length > 0) {
+    const list = violations
+      .map((v) => `- ${v.preserve.text} (${v.paths.slice(0, 3).join(", ")})`)
+      .join("\n");
+    out += `\n\nHeads up — I touched something you asked me to leave alone:\n${list}`;
+  }
+  return out;
 }
 
 export interface CompletenessPassResult {
