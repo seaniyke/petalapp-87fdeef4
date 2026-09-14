@@ -101,7 +101,7 @@ export const DIFFERENCES: Record<string, Difference> = {
       },
       {
         heading: "Fixes stay focused",
-        body: "After the build, findings are classified and routed to the specialist that owns them — runtime to frontend, policy to security, dead links to architecture. Repairs are scoped instead of a blanket \u201ctry again\u201d that rewrites your whole app.",
+        body: "After the build, Petal sends each problem to the right AI reviewer. It fixes the affected part instead of rebuilding your whole app.",
       },
     ],
     proof: [
