@@ -547,6 +547,18 @@ function makeSseTap(onEvent: (type: string, payload: unknown) => void) {
 }
 
 async function authorize(request: Request): Promise<string | Response> {
+  // Internal caller (the autonomous resume worker). There is no user session
+  // behind a scheduled repair round, so the worker proves itself with the
+  // shared builder secret and names the user it acts for. Every downstream
+  // credit and ownership check still runs against that user id.
+  const internalSecret = request.headers.get("x-petal-internal-secret");
+  const internalUser = request.headers.get("x-petal-internal-user");
+  if (internalSecret && internalUser) {
+    const expected = process.env.BUILDER_SHARED_SECRET;
+    if (expected && secretsMatch(internalSecret, expected)) return internalUser;
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
