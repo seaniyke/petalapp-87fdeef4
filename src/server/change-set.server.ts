@@ -166,7 +166,7 @@ const CHANGE_VERB =
 
 /** Clauses that describe something that must NOT change. */
 const PRESERVE_RE =
-  /\b(?:but\s+)?(?:don'?t|do not|never|without)\s+(?:change|changing|touch|touching|alter|altering|modify|modifying|break|breaking|remove|removing|move|moving)\b|\bkeep\s+(?:the\s+)?[^,.;]{2,60}?\s+(?:as is|as-is|the same|unchanged|intact|where (?:it|they) (?:is|are))\b|\bleave\s+(?:the\s+)?[^,.;]{2,60}?\s+alone\b|\bpreserv(?:e|ing)\b|\bkeep\s+(?:the\s+)?(?:current|existing)\b/i;
+  /\b(?:but\s+)?(?:don'?t|do not|never|without)\s+(?:change|changing|touch|touching|alter|altering|modify|modifying|break|breaking|remove|removing|move|moving)\b|\bkeep\s+(?:the\s+)?[^,.;]{2,60}?\s+(?:exactly\s+)?(?:as is|as-is|as (?:it|they) (?:is|are)|the same|unchanged|untouched|intact|where (?:it|they) (?:is|are))\b|\bleave\s+(?:the\s+)?[^,.;]{2,60}?\s+(?:alone|as (?:it|they) (?:is|are)|untouched)\b|\bpreserv(?:e|ing)\b|\bkeep\s+(?:the\s+)?(?:current|existing)\b/i;
 
 function splitClauses(prompt: string): string[] {
   const normalised = prompt
