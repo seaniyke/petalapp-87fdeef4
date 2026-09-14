@@ -8,6 +8,8 @@ type Handlers = {
   onSummaryDelta?: (delta: string) => void;
   onRecapDelta?: (delta: string) => void;
   onTool?: (name: "write_project" | "patch_files") => void;
+  /** Running (not yet settled) credit estimate for this turn. */
+  onCreditsEstimate?: (credits: number) => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
@@ -233,6 +235,9 @@ export async function streamGenerate(
           case "tool":
             handlers.onTool?.(evt.name);
             break;
+          case "credits_estimate":
+            handlers.onCreditsEstimate?.(evt.credits);
+            break;
           case "phase":
             handlers.onPhase?.(evt.phase);
             break;
@@ -441,6 +446,9 @@ export async function streamResumeTurn(
             break;
           case "tool":
             handlers.onTool?.(evt.name as "write_project" | "patch_files");
+            break;
+          case "credits_estimate":
+            handlers.onCreditsEstimate?.((evt.credits as number) ?? 0);
             break;
           case "phase":
             handlers.onPhase?.(evt.phase as "thinking" | "designing" | "writing" | "polishing");

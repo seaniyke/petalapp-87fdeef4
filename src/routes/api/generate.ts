@@ -3103,6 +3103,25 @@ Forbidden defaults
           );
         }
         let collected = await relayAndCollect(upstream, controller, encoder);
+        // Running credit estimate. The main completion's usage is known the
+        // moment the model stream ends — long before verify + deploy finish —
+        // so the card can show "N credits used" while work is still going
+        // instead of only revealing the cost at the very end. Auto-fix turns
+        // are on Petal's tab and never show a number.
+        if (!body.isAutoFix) {
+          try {
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  type: "credits_estimate",
+                  credits: priceTurn([collected.usage ?? null]).amount,
+                }),
+              ),
+            );
+          } catch {
+            /* estimate is cosmetic — never break the stream over it */
+          }
+        }
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "polishing" })));
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Applying changes…" })));
 
@@ -4909,7 +4928,19 @@ Forbidden defaults
             try {
               const fixOut = await runPostStreamAutofix(nextFiles, stillBad);
               nextFiles = fixOut.files;
-              if (fixOut.result.usage) agentLoopUsages.push(fixOut.result.usage);
+              if (fixOut.result.usage) {
+                agentLoopUsages.push(fixOut.result.usage);
+                if (!body.isAutoFix) {
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "credits_estimate",
+                        credits: priceTurn([collected.usage ?? null, ...agentLoopUsages]).amount,
+                      }),
+                    ),
+                  );
+                }
+              }
               repairMeter.charge(
                 `autofix_cycle_${cycleNum}`,
                 "google/gemini-2.5-flash-lite",

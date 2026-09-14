@@ -19,10 +19,13 @@ import {
   ListTree,
   Play,
   ChevronDown,
+  Clock,
+  Coins,
   type LucideIcon,
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
-import { formatDuration, type ThoughtTick } from "@/lib/build-trace";
+import { buildTrace, formatDuration, type ThoughtTick } from "@/lib/build-trace";
+import { BuildTimeline } from "@/components/BuildTimeline";
 
 import { pathToNarration } from "@/lib/path-narration";
 import type { FriendlyError } from "@/lib/friendly-errors";
@@ -103,6 +106,8 @@ type Props = {
   timelineEvents?: TimelineEntry[];
   /** Credits actually charged for this turn. */
   creditsCharged?: number | null;
+  /** Running credit estimate streamed mid-turn, before settlement. */
+  creditsEstimate?: number | null;
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
@@ -134,6 +139,7 @@ export function BuildActivityCard({
   deployElapsedSec,
   timelineEvents,
   creditsCharged,
+  creditsEstimate,
   onRetry,
   onAskFix,
   onDismissError,
@@ -226,6 +232,33 @@ export function BuildActivityCard({
     });
   }, [writtenPaths]);
 
+
+  // The same chronological trace the Details sheet renders — built here so the
+  // card can tail it live instead of showing a separate, thinner feed.
+  const trace = useMemo(
+    () =>
+      buildTrace({
+        phases,
+        thoughts: thinkingLog,
+        writtenPaths,
+        fileTimestamps,
+        completedPaths,
+        fileChanges,
+        timelineEvents,
+      }),
+    [phases, thinkingLog, writtenPaths, fileTimestamps, completedPaths, fileChanges, timelineEvents],
+  );
+
+  // Credits: the settled number once it exists, otherwise the running estimate
+  // the server streams as soon as token usage is known.
+  const creditsShown =
+    typeof creditsCharged === "number"
+      ? creditsCharged
+      : typeof creditsEstimate === "number"
+        ? creditsEstimate
+        : null;
+  const liveCreditLabel =
+    creditsShown != null && creditsShown > 0 ? `${creditsShown.toFixed(2)} credits used` : null;
 
   const currentPhase: Phase =
     phases.find((p) => p.status === "active") ??
@@ -438,6 +471,30 @@ export function BuildActivityCard({
               })}
             </div>
 
+            {/* Running meter — time and cost, visible the whole way through so
+                nobody has to guess how long this has taken or what it cost. */}
+            <div className="mb-2 flex items-center justify-between gap-2 rounded-xl bg-muted/50 px-2.5 py-1.5">
+              <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-muted-foreground tabular-nums">
+                <Clock className="h-3 w-3" aria-hidden />
+                {isComplete
+                  ? `Took ${formatElapsed(elapsed)}`
+                  : `Running for ${formatElapsed(elapsed)}`}
+              </span>
+              <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-muted-foreground tabular-nums">
+                {fileCount > 0 && (
+                  <span>
+                    {fileCount} file{fileCount === 1 ? "" : "s"}
+                  </span>
+                )}
+                {liveCreditLabel && (
+                  <span className="inline-flex items-center gap-1">
+                    <Coins className="h-3 w-3" aria-hidden />
+                    {liveCreditLabel}
+                  </span>
+                )}
+              </span>
+            </div>
+
             <button
               type="button"
               onClick={() => setFeedOpen((v) => !v)}
@@ -446,48 +503,28 @@ export function BuildActivityCard({
               <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground/80">
                 Live activity
               </span>
-              <span className="flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-muted-foreground/70 tabular-nums">
-                {fileCount > 0 && <span>{fileCount} file{fileCount === 1 ? "" : "s"}</span>}
-                {elapsed > 0 && <span>{formatElapsed(elapsed)}</span>}
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform ${feedOpen ? "rotate-180" : ""}`}
-                  aria-hidden
-                />
-              </span>
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-muted-foreground/70 transition-transform ${feedOpen ? "rotate-180" : ""}`}
+                aria-hidden
+              />
             </button>
 
             {feedOpen && (
-              <div className="mt-2 space-y-1.5">
-                {thinkingLog.length === 0 && (
+              <div className="mt-2">
+                {trace.length === 0 ? (
                   <div className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground animate-fade-in motion-reduce:animate-none">
                     <Loader2 className="h-3 w-3 animate-spin text-primary" aria-hidden />
                     {currentPhase?.label ?? "Getting started"}…
                   </div>
-                )}
-                {thinkingLog.slice(-4).map((t, idx, arr) => (
-                  <div
-                    key={t.id}
-                    className={`flex items-start gap-2 text-[12px] animate-fade-in motion-reduce:animate-none ${
-                      idx === arr.length - 1 && isActive
-                        ? "font-semibold text-foreground"
-                        : "font-medium text-muted-foreground/75"
-                    }`}
-                  >
-                    <span className="mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" aria-hidden />
-                    <span className="min-w-0 flex-1 break-words">{t.text}</span>
-                  </div>
-                ))}
-                {writtenPaths && writtenPaths.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {writtenPaths.slice(-6).map((p) => (
-                      <code
-                        key={p}
-                        className="truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground animate-fade-in motion-reduce:animate-none"
-                      >
-                        {p.split("/").pop()}
-                      </code>
-                    ))}
-                  </div>
+                ) : (
+                  <BuildTimeline
+                    trace={trace}
+                    isActive={isActive}
+                    latestPath={latestPath}
+                    designCaption={designCaption}
+                    tail={6}
+                    autoScroll
+                  />
                 )}
               </div>
             )}
