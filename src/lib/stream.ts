@@ -235,6 +235,9 @@ export async function streamGenerate(
           case "tool":
             handlers.onTool?.(evt.name);
             break;
+          case "credits_estimate":
+            handlers.onCreditsEstimate?.(evt.credits);
+            break;
           case "phase":
             handlers.onPhase?.(evt.phase);
             break;
