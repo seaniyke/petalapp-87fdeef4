@@ -239,6 +239,26 @@ export async function runBrowseSession(
       viewport: plan.viewport ?? { width: 1440, height: 900 },
       ignoreHTTPSErrors: true,
     });
+    // Safety net: nothing a test does may charge a card, send an email or
+    // reach a human. Enforced at the network layer, above the app's own code.
+    await context.route("**/*", async (route) => {
+      const req = route.request();
+      const decision = guardRequest({
+        url: req.url(),
+        method: req.method(),
+        baseUrl: plan.baseUrl,
+      });
+      if (decision.allow) return route.continue();
+      if (decision.note && suppressed.length < MAX_LOG_ENTRIES && !suppressed.includes(decision.note)) {
+        suppressed.push(decision.note);
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, petalTestSuppressed: true }),
+      });
+    });
+
     const page = await context.newPage();
 
     page.on("console", (msg: ConsoleMessage) => {
