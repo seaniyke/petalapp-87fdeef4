@@ -2450,6 +2450,35 @@ Forbidden defaults
       pinnedPaths.push(p);
     }
   }
+  // Phase 4 — the page the user is actually looking at (and any element they
+  // picked) becomes explicit context, and the files rendering that page get
+  // pinned so they survive prompt trimming.
+  let viewBlock = "";
+  if (!isInitial && body.viewContext) {
+    try {
+      const { renderViewContext, routeCandidatePaths } = await import(
+        "@/server/view-context.server"
+      );
+      const viewPaths = routeCandidatePaths(
+        body.viewContext,
+        editablePromptFiles.map((f) => f.path),
+      );
+      viewBlock = renderViewContext(body.viewContext, viewPaths);
+      const picked = body.viewContext.element?.sourceFile;
+      for (const p of [...viewPaths, ...(picked ? [picked] : [])]) {
+        if (!pinnedPaths.includes(p) && editablePromptFiles.some((f) => f.path === p)) {
+          pinnedPaths.push(p);
+        }
+      }
+      if (viewBlock) {
+        console.info(
+          `[view-context] ${body.viewContext.path ?? "(no route)"} — pinned ${viewPaths.length} file(s)`,
+        );
+      }
+    } catch (e) {
+      console.warn("[view-context] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
   // Targeted-edit resolution — "change the hero headline", "remove the second
   // pricing card", "rename Get Started to Try free". We match the user's
   // literal anchors (quoted copy, component names, routes, file names,
