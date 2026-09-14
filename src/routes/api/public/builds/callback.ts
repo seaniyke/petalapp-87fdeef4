@@ -305,6 +305,13 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         return new Response("Could not save build status", { status: 503 });
       }
       await refundRolledBackBuild(payload.projectId, payload.buildId);
+      await recordBuildOutcome({
+        projectId: payload.projectId,
+        buildId: payload.buildId,
+        shipped: false,
+        blockingDefects: partitioned.blocking,
+        reason: "browser check found a runtime failure",
+      });
       return new Response("ok", {
         status: 200,
         headers: { "Content-Type": "text/plain" },
