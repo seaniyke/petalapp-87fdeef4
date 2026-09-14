@@ -25,6 +25,8 @@ import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
 import { scoreCraftQA, type CraftContract } from "@/server/craft-qa.server";
 import { recordBuildOutcome } from "@/server/turn-completion.server";
+import { runBackendAcceptance } from "@/server/backend-acceptance.server";
+import { backendAcceptanceEnabled } from "@/server/completion-flags.server";
 
 /**
  * Pull the committed design contract for a project so craft QA judges the app
