@@ -193,14 +193,14 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
                   )}
                   <div className="mt-2 text-xs text-muted-foreground">
                     {qualified
-                      ? `One-time grant. Shared across Cloud and AI. ${formatUsdCents(freeUsedCents)} used so far.`
-                      : `Upgrade to a paid plan or top up once to unlock $${(monthlyGrant / 100).toFixed(0)} free Cloud + AI credit.`}
+                      ? `${formatUsdCents(freeUsedCents)} used`
+                      : `Top up once to unlock $${(monthlyGrant / 100).toFixed(0)} free.`}
                   </div>
                 </div>
                 <div className="border-t border-border/60" />
-                <UsageRow label="Cloud" usedCents={split.cloudCents} hint="Backend hosting, database & domains" />
+                <UsageRow label="Cloud" usedCents={split.cloudCents} hint="Hosting, database, domains" />
                 <div className="border-t border-border/60" />
-                <UsageRow label="AI" usedCents={split.aiCents} hint="Petal AI calls & image generation" />
+                <UsageRow label="AI" usedCents={split.aiCents} hint="AI calls and images" />
               </div>
 
               {/* Project breakdown */}
