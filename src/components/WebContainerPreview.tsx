@@ -50,6 +50,7 @@ export function WebContainerPreview({
   files,
   reloadKey,
   onPick,
+  onRoute,
   onRuntimeError,
   onAskRepair,
   onBootFailed,
@@ -63,6 +64,9 @@ export function WebContainerPreview({
   reloadKey: number;
   /** Called when a user picks an element via the in-iframe overlay. */
   onPick?: (el: PickedElement) => void;
+  /** Called whenever the running app navigates, so Petal knows which page of
+   *  the app the user is looking at when they ask for an edit. */
+  onRoute?: (route: { path: string; title: string; heading: string | null }) => void;
   /** Called when the running app throws a runtime error or unhandled rejection. */
   onRuntimeError?: (err: RuntimeError) => void;
   /** Plan #3 — user clicked "Ask Petal to repair" on the crash fallback. */
@@ -269,6 +273,10 @@ export function WebContainerPreview({
         setPickerWarning(null);
         return;
       }
+      if (data.type === "petal:preview:route" && data.payload) {
+        onRoute?.(data.payload as { path: string; title: string; heading: string | null });
+        return;
+      }
       if ((data.type === "petal:runtime:error" || data.type === "petal:preview:blank") && data.payload) {
         const payload = data.payload as RuntimeError;
         onRuntimeError?.(payload);
@@ -298,7 +306,7 @@ export function WebContainerPreview({
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [onPick, onRuntimeError, crashReason]);
+  }, [onPick, onRoute, onRuntimeError, crashReason]);
 
   // Reset the picker-ready flag whenever the iframe is hard-reloaded — the
   // new document needs to send `petal:pick:ready` again to be considered live.

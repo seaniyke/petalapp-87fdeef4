@@ -6,7 +6,7 @@ const GUARD_PATH = "public/__petal_guard.js";
 // copy, (b) the tag's data attribute, (c) a window global, and (d) every
 // error report — so a crash coming from an out-of-date cached guard is
 // immediately identifiable instead of looking like a live-code bug.
-const GUARD_VERSION = 9;
+const GUARD_VERSION = 10;
 const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
@@ -208,6 +208,33 @@ function buildGuardScript(opts: GuardOptions): string {
     post("petal:preview:blank", payload);
     showOverlay("This preview rendered blank.", message, stack);
   }
+
+  // Report which page of the app is on screen, so an edit aimed at "this
+  // page" lands on the route the user is actually looking at.
+  var lastRoute = null;
+  function reportRoute() {
+    try {
+      var path = location.pathname + (location.hash || "");
+      if (path === lastRoute) return;
+      lastRoute = path;
+      var h1 = document.querySelector("h1");
+      parent.postMessage({ type: "petal:preview:route", payload: {
+        path: String(path).slice(0, 300),
+        title: (document.title || "").slice(0, 120),
+        heading: h1 ? (h1.textContent || "").trim().slice(0, 120) : null,
+      } }, "*");
+    } catch (_) {}
+  }
+  try {
+    var _push = history.pushState;
+    var _replace = history.replaceState;
+    history.pushState = function () { _push.apply(this, arguments); setTimeout(reportRoute, 40); };
+    history.replaceState = function () { _replace.apply(this, arguments); setTimeout(reportRoute, 40); };
+  } catch (_) {}
+  window.addEventListener("popstate", function () { setTimeout(reportRoute, 40); });
+  window.addEventListener("hashchange", function () { setTimeout(reportRoute, 40); });
+  setTimeout(reportRoute, 300);
+  setTimeout(reportRoute, 1800);
 
   setTimeout(checkBlank, 2500);
   setTimeout(checkBlank, 6500);

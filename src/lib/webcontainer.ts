@@ -124,7 +124,7 @@ export async function mountProject(files: ProjectFile[]): Promise<void> {
  *   - The script always re-emits `petal:pick:ready` to the parent so the
  *     parent can immediately re-push the current `pickActive` state.
  */
-const PICKER_VERSION = 2;
+const PICKER_VERSION = 3;
 const PICKER_SCRIPT = `(() => {
   var VERSION = ${PICKER_VERSION};
   // If a same-or-newer copy already attached its handlers in this document,
@@ -234,6 +234,37 @@ const PICKER_SCRIPT = `(() => {
     if (label && label.parentNode) label.parentNode.removeChild(label);
     document.documentElement.style.cursor = '';
   };
+  // Tell Petal which page of the app the user is actually looking at, so an
+  // edit like "make this page's header smaller" targets the right route
+  // instead of guessing. Reported on load and on every in-app navigation.
+  var lastRoute = null;
+  function reportRoute() {
+    try {
+      var path = location.pathname + (location.hash || '');
+      if (path === lastRoute) return;
+      lastRoute = path;
+      var h1 = document.querySelector('h1');
+      parent.postMessage({
+        type: 'petal:preview:route',
+        payload: {
+          path: String(path).slice(0, 300),
+          title: (document.title || '').slice(0, 120),
+          heading: h1 ? (h1.textContent || '').trim().slice(0, 120) : null,
+        },
+      }, '*');
+    } catch (_) {}
+  }
+  try {
+    var _push = history.pushState;
+    var _replace = history.replaceState;
+    history.pushState = function () { _push.apply(this, arguments); setTimeout(reportRoute, 40); };
+    history.replaceState = function () { _replace.apply(this, arguments); setTimeout(reportRoute, 40); };
+  } catch (_) {}
+  window.addEventListener('popstate', function () { setTimeout(reportRoute, 40); });
+  window.addEventListener('hashchange', function () { setTimeout(reportRoute, 40); });
+  setTimeout(reportRoute, 300);
+  setTimeout(reportRoute, 1500);
+
   parent.postMessage({ type: 'petal:pick:ready' }, '*');
 })();`;
 

@@ -665,6 +665,14 @@ function Builder() {
     sourceLine: string | null;
   };
   const [pickedElement, setPickedElement] = useState<PickedElement | null>(null);
+  // Phase 4 — what the user is currently looking at in the preview. Kept in a
+  // ref (not state) so tracking navigation never re-renders the builder, and
+  // read at send time so "this page" resolves to the page on screen.
+  const previewViewRef = useRef<{
+    path?: string;
+    title?: string;
+    heading?: string | null;
+  } | null>(null);
   const [pickInstruction, setPickInstruction] = useState("");
   /**
    * Submit handler for the picker dialog. First tries a deterministic
@@ -2471,6 +2479,8 @@ function Builder() {
             autoPlan: opts.autoPlan,
             intentBrief: canonicalIntentBrief || text,
             buildTarget,
+            viewContext: previewViewRef.current ?? undefined,
+
 
           },
           {
@@ -5349,6 +5359,9 @@ function Builder() {
                           onPick={(el) => {
                             setPickedElement(el);
                             setPickInstruction("");
+                          }}
+                          onRoute={(route) => {
+                            previewViewRef.current = route;
                           }}
                           onRuntimeError={(err) => {
                             // Only surface fresh errors. If the same message is

@@ -227,6 +227,22 @@ type Body = {
    *  has already spent, so the server-owned budget carries across turns
    *  instead of resetting every time a new turn row is opened. */
   autoResumeAttempts?: number;
+  /** What the user is looking at in the preview when they sent the message:
+   *  the currently open route and, when picked, the selected element. Used to
+   *  resolve "this page" / "this button" instead of guessing. */
+  viewContext?: {
+    path?: string;
+    title?: string;
+    heading?: string | null;
+    element?: {
+      tag?: string;
+      text?: string;
+      id?: string | null;
+      classes?: string | null;
+      sourceFile?: string | null;
+      sourceLine?: string | null;
+    } | null;
+  };
 };
 
 const PATCH_CONTEXT_FILE_LIMIT = 24;
@@ -2434,6 +2450,35 @@ Forbidden defaults
       pinnedPaths.push(p);
     }
   }
+  // Phase 4 — the page the user is actually looking at (and any element they
+  // picked) becomes explicit context, and the files rendering that page get
+  // pinned so they survive prompt trimming.
+  let viewBlock = "";
+  if (!isInitial && body.viewContext) {
+    try {
+      const { renderViewContext, routeCandidatePaths } = await import(
+        "@/server/view-context.server"
+      );
+      const viewPaths = routeCandidatePaths(
+        body.viewContext,
+        editablePromptFiles.map((f) => f.path),
+      );
+      viewBlock = renderViewContext(body.viewContext, viewPaths);
+      const picked = body.viewContext.element?.sourceFile;
+      for (const p of [...viewPaths, ...(picked ? [picked] : [])]) {
+        if (!pinnedPaths.includes(p) && editablePromptFiles.some((f) => f.path === p)) {
+          pinnedPaths.push(p);
+        }
+      }
+      if (viewBlock) {
+        console.info(
+          `[view-context] ${body.viewContext.path ?? "(no route)"} — pinned ${viewPaths.length} file(s)`,
+        );
+      }
+    } catch (e) {
+      console.warn("[view-context] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
   // Targeted-edit resolution — "change the hero headline", "remove the second
   // pricing card", "rename Get Started to Try free". We match the user's
   // literal anchors (quoted copy, component names, routes, file names,
@@ -2573,7 +2618,7 @@ Forbidden defaults
     ? ""
     : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
         .map((f) => `--- ${f.path} ---\n${f.content}`)
-        .join("\n\n")}${crossCuttingAddendum}${focusBlock}${changeSetBlock}`;
+        .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
   // Build the chat-completion messages. The LAST user turn may carry
