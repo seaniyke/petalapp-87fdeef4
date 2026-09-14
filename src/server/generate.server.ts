@@ -544,6 +544,14 @@ export type StreamEvent =
   | { type: "summary_delta"; delta: string }
   | { type: "recap_delta"; delta: string }
   | { type: "tool"; name: "write_project" | "patch_files" }
+  /**
+   * Running credit estimate for THIS turn, emitted as soon as token usage
+   * for a billable sub-call is known and again after each extra round. It
+   * is an estimate on purpose — the authoritative number is the
+   * `creditsCharged` on the final result/turn_outcome event after
+   * settlement. Never emitted for auto-fix turns (those are on Petal's tab).
+   */
+  | { type: "credits_estimate"; credits: number }
   // One agent-tool invocation (inspector search/read, codemod script, check).
   | { type: "tool_step"; tool: string; label: string; isError?: boolean }
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }

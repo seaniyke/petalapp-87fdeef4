@@ -8,6 +8,8 @@ type Handlers = {
   onSummaryDelta?: (delta: string) => void;
   onRecapDelta?: (delta: string) => void;
   onTool?: (name: "write_project" | "patch_files") => void;
+  /** Running (not yet settled) credit estimate for this turn. */
+  onCreditsEstimate?: (credits: number) => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
