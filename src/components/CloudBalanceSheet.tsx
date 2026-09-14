@@ -150,9 +150,7 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base font-semibold">Cloud + AI</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Pay-as-you-go. Top-ups never expire.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Top-ups never expire.</p>
                   </div>
                 </div>
                 <div className="mt-5 flex items-end justify-between">
