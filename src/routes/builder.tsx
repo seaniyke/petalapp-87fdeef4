@@ -4190,7 +4190,7 @@ function Builder() {
               projectId={project.id}
               onOpenBalance={() => {
                 setCloudPanelOpen(false);
-                setCloudBalanceOpen(true);
+                setBillingOpen(true);
               }}
             />
           </LazySheet>

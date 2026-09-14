@@ -145,17 +145,6 @@ export function SiteHeader() {
               />
             ) : user ? (
               <>
-                {/* Desktop-only Cloud quick action mirrors the Credits pill */}
-                <button
-                  type="button"
-                  onClick={() => setCloudBalanceOpen(true)}
-                  aria-label="Open Cloud and AI balance"
-                  className="hidden h-9 items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/60 md:inline-flex"
-                >
-                  <Wallet className="h-3.5 w-3.5" />
-                  <span className="hidden text-xs text-muted-foreground lg:inline">Cloud</span>
-                </button>
-                
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
@@ -182,9 +171,6 @@ export function SiteHeader() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={() => navigate({ to: "/projects" })}>
                       <FolderOpen className="mr-2 h-4 w-4" /> My projects
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setCloudBalanceOpen(true)}>
-                      <Wallet className="mr-2 h-4 w-4" /> Cloud &amp; AI balance
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setBillingOpen(true)}>
                       <CreditCard className="mr-2 h-4 w-4" /> Plans &amp; credits
