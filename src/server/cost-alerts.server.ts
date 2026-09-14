@@ -41,21 +41,18 @@ export type CostAlertReport = {
 type TurnRow = {
   project_id: string | null;
   credits_charged: number | null;
-  variable_cost_usd: number | null;
+  variable_cost_usd_micro: number | null;
   cost_basis: string | null;
 };
 
 export async function buildCostAlertReport(windowDays = 1): Promise<CostAlertReport> {
   const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
-  const cfg = await economicsValues([
-    "target_variable_cost_per_credit_usd",
-    "target_gross_margin_pct",
-  ]);
+  const cfg = await economicsValues();
   const target = cfg["target_variable_cost_per_credit_usd"] ?? 0.05;
 
   const { data: turnsData } = await supabaseAdmin
     .from("turn_economics")
-    .select("project_id, credits_charged, variable_cost_usd, cost_basis")
+    .select("project_id, credits_charged, variable_cost_usd_micro, cost_basis")
     .gte("created_at", since);
   const turns = (turnsData ?? []) as TurnRow[];
 
@@ -67,7 +64,7 @@ export async function buildCostAlertReport(windowDays = 1): Promise<CostAlertRep
     credits += Number(t.credits_charged ?? 0);
     if (t.cost_basis && t.cost_basis !== "unknown") {
       known++;
-      const c = Number(t.variable_cost_usd ?? 0);
+      const c = Number(t.variable_cost_usd_micro ?? 0) / 1_000_000;
       cost += c;
       if (t.project_id) byProject.set(t.project_id, (byProject.get(t.project_id) ?? 0) + c);
     }
