@@ -23,6 +23,7 @@
  */
 import { chromium, type Browser, type ConsoleMessage, type Page } from "playwright";
 import { Heartbeat } from "./progress.js";
+import { guardRequest } from "./browse-safety.js";
 
 export class BrowseError extends Error {}
 
@@ -75,6 +76,8 @@ export interface BrowseReport {
   consoleErrors: string[];
   pageErrors: string[];
   failedRequests: string[];
+  /** Requests refused by the safety guard — recorded, never hidden. */
+  suppressed: string[];
 }
 
 export interface BrowsePlan {
@@ -227,6 +230,7 @@ export async function runBrowseSession(
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   const failedRequests: string[] = [];
+  const suppressed: string[] = [];
   const steps: BrowseStepResult[] = [];
   const shotsTaken = { count: 0 };
 
@@ -313,6 +317,7 @@ export async function runBrowseSession(
       consoleErrors,
       pageErrors,
       failedRequests,
+      suppressed,
     };
   } finally {
     if (browser) await browser.close().catch(() => {});
