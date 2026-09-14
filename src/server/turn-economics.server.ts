@@ -243,3 +243,47 @@ export async function recordTurnRefund(turnId: string, credits: number): Promise
     console.warn("[turn-economics] refund record failed", err);
   }
 }
+
+/**
+ * Attach build cost to the turn that most likely produced it.
+ *
+ * `project_builds` carries no turn id today, so we match the newest economics
+ * record for the project that has no build attached yet, within an hour. The
+ * match is recorded in metadata as a heuristic so nobody later mistakes it for
+ * a hard link.
+ */
+export async function attachBuildEconomicsByProject(args: {
+  projectId: string;
+  buildId: string;
+  buildMs?: number | null;
+  verifyMs?: number | null;
+  result: "ready" | "failed" | "rolled_back";
+}): Promise<void> {
+  try {
+    const since = new Date(Date.now() - 60 * 60_000).toISOString();
+    const { data } = await supabaseAdmin
+      .from("turn_economics")
+      .select("turn_id")
+      .eq("project_id", args.projectId)
+      .is("build_id", null)
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const turnId = data?.[0]?.turn_id;
+    if (!turnId) return;
+    await attachBuildEconomics({
+      turnId,
+      projectId: args.projectId,
+      buildId: args.buildId,
+      buildMs: args.buildMs ?? null,
+      verifyMs: args.verifyMs ?? null,
+      result: args.result,
+    });
+    await supabaseAdmin
+      .from("turn_economics")
+      .update({ metadata: { build_link: "heuristic_recent_project_turn" } as never })
+      .eq("turn_id", turnId);
+  } catch (err) {
+    console.warn("[turn-economics] build attach by project failed", err);
+  }
+}

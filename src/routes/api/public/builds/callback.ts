@@ -27,6 +27,7 @@ import { scoreCraftQA, type CraftContract } from "@/server/craft-qa.server";
 import { recordBuildOutcome } from "@/server/turn-completion.server";
 import { runBackendAcceptance } from "@/server/backend-acceptance.server";
 import { backendAcceptanceEnabled } from "@/server/completion-flags.server";
+import { attachBuildEconomicsByProject } from "@/server/turn-economics.server";
 
 /**
  * Pull the committed design contract for a project so craft QA judges the app
