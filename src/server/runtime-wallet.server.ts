@@ -44,77 +44,117 @@ export type ChargeRuntimeResult =
       message?: string;
     };
 
-/** Atomically charge the runtime wallet. Returns ok:false with a reason
- *  the caller can surface — never throws on cap/balance issues. */
+/** Charge a Cloud/AI meter to the single Petal Credits balance.
+ *
+ *  Order of operations:
+ *    1. spend caps (project + workspace) are checked first — a cap is a
+ *       deliberate ceiling and always blocks, whatever the balance is;
+ *    2. the meter cost in cents is converted to credits at the central rate
+ *       and charged to the credit balance;
+ *    3. the meter tick is recorded in `runtime_ledger` in cents so per-meter,
+ *       per-project economics, caps and the admin dashboard keep working.
+ *
+ *  Never throws on cap/balance issues — returns ok:false with a reason. */
 export async function chargeRuntime(opts: ChargeRuntimeOptions): Promise<ChargeRuntimeResult> {
   if (!Number.isFinite(opts.cents) || opts.cents <= 0) {
-    // A non-positive charge is a caller bug. Report the REAL balance so UI
-    // built from freeAfter/topupAfter doesn't render a phantom "$0.00".
     console.warn("[runtime-wallet] ignoring non-positive charge", {
       meter: opts.meter,
       cents: opts.cents,
     });
-    try {
-      const bal = await getRuntimeBalance(opts.userId);
-      return { ok: true, freeAfter: bal.freeBalanceCents, topupAfter: bal.topupBalanceCents };
-    } catch {
-      return { ok: true, freeAfter: 0, topupAfter: 0 };
-    }
+    return { ok: true, freeAfter: 0, topupAfter: 0 };
   }
   const cents = Math.round(opts.cents);
   try {
-    const { data, error } = await supabaseAdmin.rpc("charge_runtime", {
+    const { data: capData, error: capError } = await supabaseAdmin.rpc("runtime_cap_check", {
       _user_id: opts.userId,
       _project_id: opts.projectId ?? (null as never),
-      _meter: opts.meter,
       _amount_cents: cents as never,
-      _metadata: (opts.metadata as never) ?? {},
     });
-    if (error) {
-      console.error("[runtime-wallet] charge_runtime RPC error", error);
+    if (capError) {
+      console.error("[runtime-wallet] runtime_cap_check RPC error", capError);
       return {
         ok: false,
         reason: "internal_error",
         freeAfter: 0,
         topupAfter: 0,
-        message: error.message,
+        message: capError.message,
       };
     }
-    const row = Array.isArray(data) ? data[0] : data;
-    const free = Number(row?.free_after ?? 0);
-    const topup = Number(row?.topup_after ?? 0);
-    if (row?.ok) {
-      return { ok: true, freeAfter: free, topupAfter: topup };
+    const capRow = Array.isArray(capData) ? capData[0] : capData;
+    if (capRow && capRow.ok === false) {
+      const reason = (capRow.reason ?? "workspace_cap_exceeded") as
+        | "project_cap_exceeded"
+        | "workspace_cap_exceeded";
+      return { ok: false, reason, freeAfter: 0, topupAfter: 0 };
     }
-    const reason = (row?.reason ?? "insufficient_balance") as
-      | "insufficient_balance"
-      | "project_cap_exceeded"
-      | "workspace_cap_exceeded";
-    // One balance for the customer: an empty runtime wallet falls back to
-    // Petal Credits when the unified-balance flag is on. Spend caps are a
-    // deliberate ceiling and are never bypassed here.
-    if (reason === "insufficient_balance") {
-      const { chargeCreditsForRuntime } = await import(
-        "@/server/runtime-credit-fallback.server"
-      );
-      const fb = await chargeCreditsForRuntime({
-        userId: opts.userId,
-        projectId: opts.projectId ?? null,
-        meter: opts.meter,
-        cents,
-        metadata: opts.metadata,
-      });
-      if (fb.handled && fb.ok) {
-        return { ok: true, freeAfter: free, topupAfter: topup, paidWithCredits: fb.credits };
+
+    const { centsToCredits } = await import("@/server/runtime-credit-fallback.server");
+    const { spendCredit } = await import("@/server/credits.server");
+    const credits = await centsToCredits(cents);
+    const spend = await spendCredit({
+      userId: opts.userId,
+      amount: credits,
+      reason: "runtime_charge",
+      projectId: opts.projectId ?? null,
+      metadata: {
+        ...(opts.metadata ?? {}),
+        runtime_meter: opts.meter,
+        runtime_cents: cents,
+      },
+    });
+    if (!spend.ok) {
+      if (spend.reason === "insufficient_credits") {
+        // Keep the existing 48h grace behaviour so a project isn't killed the
+        // moment a balance runs out.
+        if (opts.projectId) {
+          await supabaseAdmin
+            .from("projects")
+            .update({ runtime_grace_until: new Date(Date.now() + 48 * 3600_000).toISOString() })
+            .eq("id", opts.projectId)
+            .is("runtime_grace_until", null);
+        }
+        return { ok: false, reason: "insufficient_balance", freeAfter: 0, topupAfter: 0 };
       }
+      return {
+        ok: false,
+        reason: "internal_error",
+        freeAfter: 0,
+        topupAfter: 0,
+        message: spend.message,
+      };
     }
-    return { ok: false, reason, freeAfter: free, topupAfter: topup };
+
+    // Usage record in cents — the source of truth for economics and caps.
+    await supabaseAdmin.from("runtime_ledger").insert({
+      user_id: opts.userId,
+      project_id: opts.projectId ?? null,
+      meter: opts.meter,
+      delta_cents: -cents,
+      free_balance_after: 0,
+      topup_balance_after: 0,
+      metadata: {
+        ...(opts.metadata ?? {}),
+        paid_with_credits: credits,
+        credit_ledger_id: spend.ledgerId,
+      } as never,
+    });
+
+    if (opts.projectId) {
+      await supabaseAdmin
+        .from("projects")
+        .update({ runtime_grace_until: null })
+        .eq("id", opts.projectId)
+        .not("runtime_grace_until", "is", null);
+    }
+
+    return { ok: true, freeAfter: 0, topupAfter: 0, paidWithCredits: credits };
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown error";
-    console.error("[runtime-wallet] charge_runtime threw", e);
+    console.error("[runtime-wallet] chargeRuntime threw", e);
     return { ok: false, reason: "internal_error", freeAfter: 0, topupAfter: 0, message };
   }
 }
+
 
 export type RuntimeBalance = {
   freeBalanceCents: number;
