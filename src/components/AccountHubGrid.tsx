@@ -6,7 +6,7 @@
 import { Link } from "@tanstack/react-router";
 import {
   Cloud,
-  Sparkles,
+  CreditCard,
   Wallet,
   FolderOpen,
   Settings,
@@ -38,7 +38,7 @@ export function AccountHubGrid({ onOpenBilling, onOpenCloudBalance, onOpenCloud 
         />
         <CardButton
           onClick={onOpenBilling}
-          icon={<Sparkles className="h-5 w-5" />}
+          icon={<CreditCard className="h-5 w-5" />}
           title="Plans & credits"
           description="Upgrade plan, view AI message credits and top up."
         />

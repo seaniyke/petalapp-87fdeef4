@@ -7,7 +7,7 @@
  * opens a popover with a short hint on each option; "Help me think" carries a
  * muted "½ credit/turn" suffix so pricing is honest at the moment of choice.
  */
-import { Hammer, MessageSquare, Sparkles, ChevronDown, Check } from "lucide-react";
+import { Hammer, MessageSquare, Lightbulb, ChevronDown, Check } from "lucide-react";
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ const OPTIONS: Option[] = [
   {
     value: "coach",
     label: "Help me think",
-    Icon: Sparkles,
+    Icon: Lightbulb,
     hint: "Brainstorm an app idea.",
     tint: "bg-lilac/40 text-foreground/80",
   },
@@ -86,7 +86,7 @@ export function ComposerModePicker({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="w-64 rounded-2xl border-border bg-card p-1.5 shadow-[var(--shadow-soft)] backdrop-blur-xl"
+        className="w-64 rounded-lg border-border bg-card p-1.5 shadow-[var(--shadow-soft)]"
         role="menu"
       >
         <ul className="flex flex-col gap-0.5">
@@ -101,14 +101,14 @@ export function ComposerModePicker({
                   aria-checked={isActive}
                   onClick={() => { onChange(opt.value); setOpen(false); }}
                   className={cn(
-                    "group flex w-full items-start gap-2.5 rounded-xl px-2 py-2 text-left transition",
+                    "group flex w-full items-start gap-3 rounded-md px-2.5 py-2.5 text-left transition",
                     "hover:bg-muted/70 focus:outline-none focus-visible:bg-muted",
                     isActive && "bg-muted/60",
                   )}
                 >
                   <span
                     className={cn(
-                      "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-xl",
+                      "mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-md",
                       opt.tint,
                     )}
                   >

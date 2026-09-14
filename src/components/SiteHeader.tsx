@@ -8,7 +8,7 @@ import {
   Wallet,
   Menu,
   Image as ImageIcon,
-  Sparkles,
+  CreditCard,
   Store,
 } from "lucide-react";
 
@@ -189,7 +189,7 @@ export function SiteHeader() {
                       <Wallet className="mr-2 h-4 w-4" /> Cloud &amp; AI balance
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setBillingOpen(true)}>
-                      <Settings className="mr-2 h-4 w-4" /> Plans &amp; credits
+                      <CreditCard className="mr-2 h-4 w-4" /> Plans &amp; credits
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}>
                       <UserIcon className="mr-2 h-4 w-4" /> Profile
