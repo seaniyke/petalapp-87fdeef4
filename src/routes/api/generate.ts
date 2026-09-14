@@ -2380,6 +2380,46 @@ Forbidden defaults
       console.warn("[edit-classifier] skipped:", e instanceof Error ? e.message : String(e));
     }
   }
+
+  // Edit Intelligence phase 1 + 3 — turn the message into an explicit change
+  // set (every clause, plus anything the user said to preserve), and resolve
+  // bare references ("the button too") against what the last turn changed.
+  // Both are deterministic; the change set is audited against the real diff
+  // after the edit lands.
+  const { extractChangeSet, renderChangeSetBlock } = await import("@/server/change-set.server");
+  const turnChangeSet = isInitial
+    ? { items: [], preserve: [], multi: false }
+    : extractChangeSet(lastUserContent);
+  let focusBlock = "";
+  let focusPinnedPaths: string[] = [];
+  if (!isInitial && body.projectId) {
+    try {
+      const { loadEditFocus } = await import("@/server/edit-history.server");
+      const { resolveWithFocus } = await import("@/server/edit-focus.server");
+      const priorFocus = await loadEditFocus(body.projectId);
+      const resolved = resolveWithFocus({
+        prompt: lastUserContent,
+        changeSet: turnChangeSet,
+        focus: priorFocus,
+      });
+      if (resolved.applied) {
+        focusBlock = resolved.block;
+        focusPinnedPaths = resolved.pinnedPaths;
+        console.info(
+          `[edit-focus] resolved against previous turn (${priorFocus?.target}) — pinning ${focusPinnedPaths.length} file(s)`,
+        );
+      }
+    } catch (e) {
+      console.warn("[edit-focus] skipped:", e instanceof Error ? e.message : String(e));
+    }
+  }
+  const changeSetBlock = isInitial ? "" : renderChangeSetBlock(turnChangeSet);
+  if (turnChangeSet.items.length > 1) {
+    console.info(
+      `[change-set] ${turnChangeSet.items.length} requested change(s), ${turnChangeSet.preserve.length} preservation rule(s)`,
+    );
+  }
+
   const isCrossCutting =
     !isInitial &&
     (detectCrossCuttingIntent(lastUserContent) || editClassification?.scope === "structural");
@@ -2388,6 +2428,11 @@ Forbidden defaults
     console.info(
       `[intent-targets] cross-cutting ask detected — pinning ${pinnedPaths.length} file(s) into prompt context`,
     );
+  }
+  for (const p of focusPinnedPaths) {
+    if (!pinnedPaths.includes(p) && editablePromptFiles.some((f) => f.path === p)) {
+      pinnedPaths.push(p);
+    }
   }
   // Targeted-edit resolution — "change the hero headline", "remove the second
   // pricing card", "rename Get Started to Try free". We match the user's
@@ -2528,7 +2573,7 @@ Forbidden defaults
     ? ""
     : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
         .map((f) => `--- ${f.path} ---\n${f.content}`)
-        .join("\n\n")}${crossCuttingAddendum}`;
+        .join("\n\n")}${crossCuttingAddendum}${focusBlock}${changeSetBlock}`;
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
   // Build the chat-completion messages. The LAST user turn may carry
@@ -5094,6 +5139,79 @@ Forbidden defaults
             encoder.encode(sse({ type: "status", message: "Added preview crash protection." })),
           );
         }
+
+        // Edit Intelligence phase 1/2/6 — did every requested change actually
+        // land? The prompt asks for all of them; this checks the real diff.
+        // Anything missing gets ONE focused pass (inside the existing repair
+        // budget); whatever still hasn't landed is disclosed rather than
+        // reported as success. Preservation violations are surfaced too.
+        if (!isInitial && turnChangeSet.items.length > 0) {
+          try {
+            const { auditChangeSet, unmetDisclosure, runCompletenessPass } = await import(
+              "@/server/edit-audit.server"
+            );
+            let audit = auditChangeSet({
+              changeSet: turnChangeSet,
+              before: turnBaselineFiles,
+              after: nextFiles,
+            });
+            if (audit.unmet.length > 0) {
+              controller.enqueue(
+                encoder.encode(
+                  sse({ type: "status", message: "Checking every part of your request landed." }),
+                ),
+              );
+              const pass = await runCompletenessPass({
+                userRequest: lastUserContent,
+                unmet: audit.unmet,
+                files: nextFiles,
+                candidatePaths: (pinnedPaths.length > 0
+                  ? pinnedPaths
+                  : nextFiles.map((f) => f.path)
+                ).slice(0, 8),
+                model,
+                projectId: body.projectId ?? undefined,
+                userId,
+                signal: abortSignal,
+              });
+              if (pass.ran && pass.files.length > 0) {
+                nextFiles = pass.files;
+                audit = auditChangeSet({
+                  changeSet: turnChangeSet,
+                  before: turnBaselineFiles,
+                  after: nextFiles,
+                });
+              }
+            }
+            if (audit.unmet.length > 0 || audit.violations.length > 0) {
+              summary = `${summary}${unmetDisclosure(audit.unmet, audit.violations)}`;
+            }
+            if (body.projectId) {
+              const { recordEdit } = await import("@/server/edit-history.server");
+              const { focusFromTurn } = await import("@/server/edit-focus.server");
+              await recordEdit({
+                projectId: body.projectId,
+                turnId: logicalTurnId ?? null,
+                userRequest: lastUserContent,
+                changeSet: turnChangeSet,
+                audit,
+                focus: focusFromTurn({
+                  changeSet: turnChangeSet,
+                  changedPaths: audit.changedPaths,
+                }),
+                revertTo: {
+                  paths: audit.changedPaths,
+                  files: turnBaselineFiles
+                    .filter((f) => audit.changedPaths.includes(f.path))
+                    .map((f) => ({ path: f.path, content: f.content ?? "" })),
+                },
+              });
+            }
+          } catch (e) {
+            console.warn("[edit-audit] skipped:", e instanceof Error ? e.message : String(e));
+          }
+        }
+
 
         await saveProjectBlueprint(
           body.projectId,
