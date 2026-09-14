@@ -20,6 +20,7 @@ export default defineConfig({
       "src/server/__tests__/test-safety.test.ts",
       "src/server/__tests__/test-lab-view.test.ts",
       "src/server/__tests__/test-lab-scope.test.ts",
+      "src/server/__tests__/ask-policy.test.ts",
       "src/server/__tests__/test-cost.test.ts",
       "src/server/__tests__/test-the-tester.test.ts",
       "src/server/__tests__/test-results.test.ts",
