@@ -2881,6 +2881,65 @@ export type Database = {
           },
         ]
       }
+      project_edit_history: {
+        Row: {
+          audit: Json
+          build_id: string | null
+          change_set: Json
+          changed_paths: Json
+          complete: boolean
+          created_at: string
+          focus: Json | null
+          id: string
+          preserve: Json
+          project_id: string
+          revert_to: Json | null
+          turn_id: string | null
+          updated_at: string
+          user_request: string
+        }
+        Insert: {
+          audit?: Json
+          build_id?: string | null
+          change_set?: Json
+          changed_paths?: Json
+          complete?: boolean
+          created_at?: string
+          focus?: Json | null
+          id?: string
+          preserve?: Json
+          project_id: string
+          revert_to?: Json | null
+          turn_id?: string | null
+          updated_at?: string
+          user_request?: string
+        }
+        Update: {
+          audit?: Json
+          build_id?: string | null
+          change_set?: Json
+          changed_paths?: Json
+          complete?: boolean
+          created_at?: string
+          focus?: Json | null
+          id?: string
+          preserve?: Json
+          project_id?: string
+          revert_to?: Json | null
+          turn_id?: string | null
+          updated_at?: string
+          user_request?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_edit_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_files: {
         Row: {
           content: string
