@@ -387,14 +387,22 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       return new Response("Could not save project status", { status: 503 });
     }
 
-    // Acceptance: the build shipped and the browser check found nothing
-    // blocking. This is the only path that closes a request as delivered, and
-    // it carries the proof with it.
+    // Acceptance (phase 6): shipping is necessary, not sufficient. When the
+    // Test Lab ran for this build, its must-work results decide the verdict —
+    // and "could not check" never counts as ready. With no run recorded the
+    // readiness helper reproduces the previous rule exactly.
+    const labCases = await loadCasesForBuild(payload.buildId);
+    const readiness = evaluateReadiness({
+      shipped: true,
+      blockingDefects: [],
+      results: labCases,
+    });
     await recordBuildOutcome({
       projectId: payload.projectId,
       buildId: payload.buildId,
       shipped: true,
       blockingDefects: [],
+      readiness,
       evidence: verification ? buildEvidence(verification) : ["Deployed URL served a real app"],
     });
   } else {
