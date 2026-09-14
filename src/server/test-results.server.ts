@@ -322,7 +322,7 @@ export async function finishTestRun(args: {
       .from("project_test_runs")
       .update({
         status,
-        totals,
+        totals: { ...totals },
         blocked_reason: args.blockedReason ?? null,
         finished_at: new Date().toISOString(),
       })
@@ -341,7 +341,7 @@ export async function signEvidence(paths: string[], expiresIn = 3_600): Promise<
       .from(EVIDENCE_BUCKET)
       .createSignedUrls(paths, expiresIn);
     if (error) throw error;
-    return (data ?? []).map((d) => d.signedUrl).filter(Boolean);
+    return (data ?? []).map((d) => d.signedUrl).filter((u): u is string => Boolean(u));
   } catch (err) {
     console.warn("[test-results] signEvidence failed", err);
     return [];
