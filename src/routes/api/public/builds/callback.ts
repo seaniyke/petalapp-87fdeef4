@@ -24,6 +24,7 @@ import { routeJudgedDefects, summarizeRouting } from "@/server/agents/qa-board";
 import { probeDeployedUrl } from "@/server/deploy-verify.server";
 import { scoreVisualQA } from "@/server/visual-qa.server";
 import { scoreCraftQA, type CraftContract } from "@/server/craft-qa.server";
+import { recordBuildOutcome } from "@/server/turn-completion.server";
 
 /**
  * Pull the committed design contract for a project so craft QA judges the app
