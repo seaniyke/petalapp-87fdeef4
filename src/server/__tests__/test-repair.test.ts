@@ -25,7 +25,7 @@ function result(over: Partial<CaseResult> & Pick<CaseResult, "caseKey">): CaseRe
 }
 
 function testCase(id: string, priority: TestCase["priority"] = "P0"): TestCase {
-  return { id, title: id, priority, category: "route", actions: [], expect: {} as never };
+  return { id, title: id, priority, category: "load", actions: [], expect: {} as never };
 }
 
 describe("interventionFor", () => {
