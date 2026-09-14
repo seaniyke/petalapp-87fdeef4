@@ -2429,7 +2429,10 @@ Forbidden defaults
       console.warn("[edit-focus] skipped:", e instanceof Error ? e.message : String(e));
     }
   }
-  const changeSetBlock = isInitial ? "" : renderChangeSetBlock(turnChangeSet);
+  const { kitTargetGuidance } = await import("@/server/change-set.server");
+  const changeSetBlock = isInitial
+    ? ""
+    : `${renderChangeSetBlock(turnChangeSet)}${kitTargetGuidance(turnChangeSet, currentFiles)}`;
   if (turnChangeSet.items.length > 1) {
     console.info(
       `[change-set] ${turnChangeSet.items.length} requested change(s), ${turnChangeSet.preserve.length} preservation rule(s)`,
