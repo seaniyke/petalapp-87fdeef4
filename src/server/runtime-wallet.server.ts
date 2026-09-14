@@ -31,7 +31,7 @@ export type ChargeRuntimeOptions = {
 };
 
 export type ChargeRuntimeResult =
-  | { ok: true; freeAfter: number; topupAfter: number }
+  | { ok: true; freeAfter: number; topupAfter: number; paidWithCredits?: number }
   | {
       ok: false;
       reason:
@@ -90,6 +90,24 @@ export async function chargeRuntime(opts: ChargeRuntimeOptions): Promise<ChargeR
       | "insufficient_balance"
       | "project_cap_exceeded"
       | "workspace_cap_exceeded";
+    // One balance for the customer: an empty runtime wallet falls back to
+    // Petal Credits when the unified-balance flag is on. Spend caps are a
+    // deliberate ceiling and are never bypassed here.
+    if (reason === "insufficient_balance") {
+      const { chargeCreditsForRuntime } = await import(
+        "@/server/runtime-credit-fallback.server"
+      );
+      const fb = await chargeCreditsForRuntime({
+        userId: opts.userId,
+        projectId: opts.projectId ?? null,
+        meter: opts.meter,
+        cents,
+        metadata: opts.metadata,
+      });
+      if (fb.handled && fb.ok) {
+        return { ok: true, freeAfter: free, topupAfter: topup, paidWithCredits: fb.credits };
+      }
+    }
     return { ok: false, reason, freeAfter: free, topupAfter: topup };
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown error";

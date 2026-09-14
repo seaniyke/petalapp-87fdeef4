@@ -33,7 +33,10 @@ export type SpendReason =
   | "ai_transcribe_charge"
   | "ai_build_hold"
   | "ai_build_topup"
-  | "ai_build_charge";
+  | "ai_build_charge"
+  // Cloud + AI meter paid out of the credit balance when the separate
+  // runtime wallet is empty (see runtime-credit-fallback.server.ts).
+  | "runtime_fallback";
 
 export type SpendCreditOptions = {
   userId: string;
