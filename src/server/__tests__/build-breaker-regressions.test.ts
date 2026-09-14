@@ -9,6 +9,7 @@ import { KIT_FILES } from "../scaffold-kit";
 import { fixMissingRouterProvider } from "../router-provider.server";
 import { pruneJunkPages } from "../junk-page-pruner.server";
 import { fixExportShape } from "../export-shape-fixer.server";
+import { enforceRuntimeContracts } from "../runtime-contract.server";
 
 describe("grid kit", () => {
   it("reads presets through a common type so optional breakpoints compile", () => {
@@ -82,5 +83,28 @@ describe("export shape", () => {
       { path: "src/pages/Home.tsx", content: `export default function Home() {\n  return <div />;\n}\n` },
     ]);
     expect(out.fixes).toBe(0);
+  });
+});
+
+describe("select onValueChange injection", () => {
+  it("does not splice into an arrow function inside an attribute", () => {
+    const src = [
+      "export default function Edit() {",
+      "  return (",
+      "    <Select",
+      '      value={form.watch("status")}',
+      "      onChange={(value) => form.setValue(\"status\", value)}",
+      "    >",
+      "      <div />",
+      "    </Select>",
+      "  );",
+      "}",
+      "",
+    ].join("\n");
+    const out = enforceRuntimeContracts([{ path: "src/pages/Edit.tsx", content: src }]);
+    const content = out.files[0].content;
+    expect(content).not.toMatch(/onChange=\{\(value\) = /);
+    expect(content).toContain("onValueChange={() => {}}");
+    expect(content).toContain("onChange={(value) => form.setValue");
   });
 });
