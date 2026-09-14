@@ -139,9 +139,15 @@ describe("the repaired app passes and only then is called ready", () => {
     expect(readiness.accepted).toBe(true);
   });
 
-  it("nothing accepts a build that never got tested", () => {
-    const readiness = evaluateReadiness({ shipped: true, blockingDefects: [], results: [] });
+  it("a must-work check that could not be run is never an acceptance", () => {
+    const blockedP0 = { ...results.find((r) => r.priority === "P0")!, status: "blocked" as const };
+    const readiness = evaluateReadiness({
+      shipped: true,
+      blockingDefects: [],
+      results: [blockedP0, ...results.filter((r) => r.caseKey !== blockedP0.caseKey)],
+    });
     expect(readiness.accepted).toBe(false);
+    expect(readiness.verdict).toBe("unverified");
   });
 });
 

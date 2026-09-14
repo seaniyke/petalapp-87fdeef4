@@ -115,8 +115,11 @@ export function defectsFromResults(results: CaseResult[]): {
     parts.push(`— ${r.reason ?? "check failed"}`);
     if (r.expected) parts.push(`(expected: ${r.expected})`);
     if (r.actual) parts.push(`(saw: ${r.actual.slice(0, 200)})`);
+    // Both matter, and they usually say different things: the page error is
+    // the symptom, the failed request is often the cause (a wrong table name,
+    // a 404 endpoint). Dropping either sends the fixer guessing.
     if (r.pageErrors[0]) parts.push(`(page error: ${r.pageErrors[0].slice(0, 200)})`);
-    else if (r.failedRequests[0])
+    if (r.failedRequests[0])
       parts.push(`(failed request: ${r.failedRequests[0].slice(0, 200)})`);
     const line = parts.join(" ");
     (r.priority === "P0" ? blocking : advisory).push(line);
