@@ -2618,7 +2618,7 @@ Forbidden defaults
     ? ""
     : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
         .map((f) => `--- ${f.path} ---\n${f.content}`)
-        .join("\n\n")}${crossCuttingAddendum}${focusBlock}${changeSetBlock}`;
+        .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
   // Build the chat-completion messages. The LAST user turn may carry
