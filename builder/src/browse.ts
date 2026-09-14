@@ -23,6 +23,7 @@
  */
 import { chromium, type Browser, type ConsoleMessage, type Page } from "playwright";
 import { Heartbeat } from "./progress.js";
+import { guardRequest } from "./browse-safety.js";
 
 export class BrowseError extends Error {}
 
@@ -75,6 +76,8 @@ export interface BrowseReport {
   consoleErrors: string[];
   pageErrors: string[];
   failedRequests: string[];
+  /** Requests refused by the safety guard — recorded, never hidden. */
+  suppressed: string[];
 }
 
 export interface BrowsePlan {
@@ -227,6 +230,7 @@ export async function runBrowseSession(
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   const failedRequests: string[] = [];
+  const suppressed: string[] = [];
   const steps: BrowseStepResult[] = [];
   const shotsTaken = { count: 0 };
 
@@ -239,6 +243,26 @@ export async function runBrowseSession(
       viewport: plan.viewport ?? { width: 1440, height: 900 },
       ignoreHTTPSErrors: true,
     });
+    // Safety net: nothing a test does may charge a card, send an email or
+    // reach a human. Enforced at the network layer, above the app's own code.
+    await context.route("**/*", async (route) => {
+      const req = route.request();
+      const decision = guardRequest({
+        url: req.url(),
+        method: req.method(),
+        baseUrl: plan.baseUrl,
+      });
+      if (decision.allow) return route.continue();
+      if (decision.note && suppressed.length < MAX_LOG_ENTRIES && !suppressed.includes(decision.note)) {
+        suppressed.push(decision.note);
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ ok: true, petalTestSuppressed: true }),
+      });
+    });
+
     const page = await context.newPage();
 
     page.on("console", (msg: ConsoleMessage) => {
@@ -293,6 +317,7 @@ export async function runBrowseSession(
       consoleErrors,
       pageErrors,
       failedRequests,
+      suppressed,
     };
   } finally {
     if (browser) await browser.close().catch(() => {});

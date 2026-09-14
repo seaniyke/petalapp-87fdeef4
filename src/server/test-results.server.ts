@@ -20,6 +20,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { BrowseReport } from "@/server/browse-client.server";
 import type { TestCase, TestPriority } from "@/server/test-plan.server";
+import { redactAll, redactSecrets, redactWithIdentity } from "./test-safety.server";
 
 export type TestStatus = "passed" | "failed" | "blocked" | "skipped";
 export type RunStatus = "running" | "passed" | "failed" | "blocked";
@@ -33,6 +34,8 @@ export interface CaseEvidence {
   pageText?: string;
   /** Accessibility snapshot, when the case asked for one. */
   a11y?: string;
+  /** Requests refused during the case so nothing real was charged or sent. */
+  suppressed?: string[];
 }
 
 export interface CaseResult {
@@ -70,17 +73,28 @@ const trim = (value: string | undefined, max = MAX_TEXT) =>
  *   - an error screen appeared                     -> failed
  *   - the expected text/URL is absent              -> failed
  */
-export function judgeCase(testCase: TestCase, report: BrowseReport): CaseResult {
+export function judgeCase(
+  testCase: TestCase,
+  report: BrowseReport,
+  /** The run's throwaway identity, so its password never reaches storage. */
+  identity?: { password?: string } | null,
+): CaseResult {
   const images = report.steps
     .filter((s) => s.image)
     .slice(0, 4)
     .map((s) => ({ data: s.image!, width: s.width }));
 
-  const pageText = report.steps
-    .filter((s) => s.action === "text" && s.ok && s.data)
-    .map((s) => s.data!)
-    .join("\n");
-  const a11y = report.steps.find((s) => s.action === "a11y" && s.ok)?.data;
+  // Everything textual that leaves this function is scrubbed of credentials
+  // before it is stored, prompted with, or shown.
+  const scrub = (value: string | undefined) => redactWithIdentity(value, identity) || undefined;
+
+  const pageText = scrub(
+    report.steps
+      .filter((s) => s.action === "text" && s.ok && s.data)
+      .map((s) => s.data!)
+      .join("\n"),
+  );
+  const a11y = scrub(report.steps.find((s) => s.action === "a11y" && s.ok)?.data);
 
   const base: CaseResult = {
     caseKey: testCase.id,
@@ -91,18 +105,23 @@ export function judgeCase(testCase: TestCase, report: BrowseReport): CaseResult 
     expected: testCase.expect.textIncludes ?? testCase.expect.urlIncludes,
     url: report.finalUrl,
     durationMs: report.durationMs,
-    consoleErrors: report.consoleErrors.slice(0, MAX_LIST),
-    pageErrors: report.pageErrors.slice(0, MAX_LIST),
-    failedRequests: report.failedRequests.slice(0, MAX_LIST),
+    consoleErrors: redactAll(report.consoleErrors).slice(0, MAX_LIST),
+    pageErrors: redactAll(report.pageErrors).slice(0, MAX_LIST),
+    failedRequests: redactAll(report.failedRequests).slice(0, MAX_LIST),
     images,
-    evidence: { screenshots: [], pageText: trim(pageText), a11y: trim(a11y, 8_000) },
+    evidence: {
+      screenshots: [],
+      pageText: trim(pageText),
+      a11y: trim(a11y, 8_000),
+      ...(report.suppressed?.length ? { suppressed: redactAll(report.suppressed) } : {}),
+    },
   };
 
   const fail = (reason: string, actual?: string): CaseResult => ({
     ...base,
     status: "failed",
-    reason,
-    actual: trim(actual, 600),
+    reason: redactWithIdentity(reason, identity),
+    actual: trim(redactWithIdentity(actual, identity) || undefined, 600),
   });
 
   // The session itself could not run — nothing was proven either way.
@@ -112,7 +131,7 @@ export function judgeCase(testCase: TestCase, report: BrowseReport): CaseResult 
       ...base,
       status: "blocked",
       reason: firstGoto?.error
-        ? `Could not open the page: ${trim(firstGoto.error, 300)}`
+        ? `Could not open the page: ${trim(redactSecrets(firstGoto.error), 300)}`
         : "The app could not be reached",
     };
   }
