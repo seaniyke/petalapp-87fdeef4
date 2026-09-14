@@ -48,7 +48,7 @@ export async function evaluateCostCeiling(userId: string): Promise<CeilingVerdic
     const ceilingUsd = await economicsValue("free_user_monthly_cost_ceiling_usd");
     const { data, error } = await supabaseAdmin
       .from("turn_economics")
-      .select("variable_cost_usd, cost_basis")
+      .select("variable_cost_usd_micro, cost_basis")
       .eq("user_id", userId)
       .gte("created_at", startOfMonthIso())
       .limit(2000);
@@ -56,7 +56,7 @@ export async function evaluateCostCeiling(userId: string): Promise<CeilingVerdic
 
     let total = 0;
     for (const row of (data ?? []) as unknown as Array<{
-      variable_cost_usd: number | null;
+      variable_cost_usd_micro: number | null;
       cost_basis: string | null;
     }>) {
       // An unknown-cost turn contributes nothing rather than a made-up
