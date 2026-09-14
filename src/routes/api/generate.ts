@@ -1029,6 +1029,7 @@ async function structuredRetryCompletion(args: {
     chosenBy: string;
     projectId?: string | null;
     userId?: string | null;
+    turnId?: string | null;
   };
 }): Promise<Response> {
   const bodyBase = {
@@ -3146,7 +3147,6 @@ Forbidden defaults
                   encoder,
                   projectId: body.projectId ?? null,
                   userId,
-                  turnId: logicalTurnId,
                 }).catch((recoveryErr) => {
                   console.warn(
                     "[generate] tool recovery failed:",
@@ -3441,7 +3441,6 @@ Forbidden defaults
               turnId: logicalTurnId,
               projectId: body.projectId ?? null,
               userId,
-              turnId: logicalTurnId,
               model,
               reason: "empty_ops",
               isInitial,
@@ -3679,7 +3678,6 @@ Forbidden defaults
               turnId: logicalTurnId,
               projectId: body.projectId ?? null,
               userId,
-              turnId: logicalTurnId,
               model,
               reason: blockReason,
               isInitial,
@@ -3981,7 +3979,6 @@ Forbidden defaults
                   turnId: logicalTurnId,
                   projectId: body.projectId ?? null,
                   userId,
-                  turnId: logicalTurnId,
                   model,
                   reason: "all_ops_failed",
                   isInitial,
