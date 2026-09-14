@@ -2912,6 +2912,7 @@ Forbidden defaults
       isCrossCutting,
       prompt: lastUserContent,
       fileCount: currentFiles.length,
+      allowInitial: initialBuildToolsEnabled(),
     })
   ) {
     agentLoop = await runAgentLoop({
@@ -2921,6 +2922,7 @@ Forbidden defaults
       projectId: body.projectId ?? "unknown",
       userId,
       signal: abortSignal,
+      maxRounds: isInitial ? INITIAL_BUILD_MAX_ROUNDS : undefined,
     });
     if (agentLoop.steps.length > 0) {
       console.info(
