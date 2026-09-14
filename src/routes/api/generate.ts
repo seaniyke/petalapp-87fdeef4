@@ -38,6 +38,10 @@ import {
   type ChatMessage as AgentChatMessage,
 } from "@/server/agent-loop.server";
 import {
+  initialBuildToolsEnabled,
+  INITIAL_BUILD_MAX_ROUNDS,
+} from "@/server/completion-flags.server";
+import {
   runCritic,
   criticDisclosure,
   type CriticRejection,
