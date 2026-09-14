@@ -7,6 +7,7 @@
  * still fails and why it stopped. No claim without evidence.
  */
 import { useEffect, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { CheckCircle2, CircleAlert, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
