@@ -132,7 +132,7 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
           <SheetHeader className="border-b border-border/60 px-5 py-4">
             <SheetTitle className="text-lg font-semibold">Cloud &amp; AI balance</SheetTitle>
             <SheetDescription className="text-xs text-muted-foreground">
-              Pay-as-you-go for everything that runs after your code is built
+              What your live app uses
             </SheetDescription>
           </SheetHeader>
 
