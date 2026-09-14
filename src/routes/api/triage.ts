@@ -589,6 +589,28 @@ export const Route = createFileRoute("/api/triage")({
                 meta.mode = "explain";
               }
 
+              // Hard ask policy: this turn was never allowed to ask. Convert a
+              // stray clarify into real work and answer with the assumption
+              // instead of a question.
+              if (meta.mode === "clarify" && askPolicy.forceAction) {
+                console.warn(`[triage] clarify blocked (${askPolicy.reason}) → acting`);
+                meta.mode = fileCount === 0 ? "build" : "edit";
+                meta.scope = fileCount === 0 ? "large" : meta.scope === "tiny" ? "small" : meta.scope;
+                meta.suggestions = [];
+                meta.unknowns = [];
+                const replacement = stripQuestions(
+                  meta.brief && !meta.brief.includes("?")
+                    ? `Got it — ${meta.brief.charAt(0).toLowerCase()}${meta.brief.slice(1)} On it…`
+                    : "On it…",
+                );
+                if (replySuppressed || /\?/.test(replyEmitted)) {
+                  controller.enqueue(
+                    encoder.encode(sse({ type: "reply_delta", delta: replacement })),
+                  );
+                  replyEmitted = replacement;
+                }
+              }
+
               controller.enqueue(encoder.encode(sse({ type: "meta", meta })));
               controller.enqueue(
                 encoder.encode(sse({ type: "intent", intent: modeToIntent(meta.mode) })),
