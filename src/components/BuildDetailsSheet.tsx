@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CompletionStatusCard } from "@/components/CompletionStatusCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BuildCostSummary } from "@/components/BuildCostSummary";
 
