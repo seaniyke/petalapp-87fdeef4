@@ -175,7 +175,7 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
               {/* Free grant + per-meter usage */}
               <div className="space-y-4 rounded-2xl bg-muted/40 p-5">
                 <div>
-                  <h4 className="text-sm font-semibold">Free Cloud + AI credit</h4>
+                  <h4 className="text-sm font-semibold">Free credit</h4>
                   <div className="mt-2 text-xl font-semibold tabular-nums">
                     {qualified
                       ? `${formatUsdCents(freeRemainingCents)} left of ${formatUsdCents(monthlyGrant)}`
