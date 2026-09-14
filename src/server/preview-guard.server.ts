@@ -209,6 +209,33 @@ function buildGuardScript(opts: GuardOptions): string {
     showOverlay("This preview rendered blank.", message, stack);
   }
 
+  // Report which page of the app is on screen, so an edit aimed at "this
+  // page" lands on the route the user is actually looking at.
+  var lastRoute = null;
+  function reportRoute() {
+    try {
+      var path = location.pathname + (location.hash || "");
+      if (path === lastRoute) return;
+      lastRoute = path;
+      var h1 = document.querySelector("h1");
+      parent.postMessage({ type: "petal:preview:route", payload: {
+        path: String(path).slice(0, 300),
+        title: (document.title || "").slice(0, 120),
+        heading: h1 ? (h1.textContent || "").trim().slice(0, 120) : null,
+      } }, "*");
+    } catch (_) {}
+  }
+  try {
+    var _push = history.pushState;
+    var _replace = history.replaceState;
+    history.pushState = function () { _push.apply(this, arguments); setTimeout(reportRoute, 40); };
+    history.replaceState = function () { _replace.apply(this, arguments); setTimeout(reportRoute, 40); };
+  } catch (_) {}
+  window.addEventListener("popstate", function () { setTimeout(reportRoute, 40); });
+  window.addEventListener("hashchange", function () { setTimeout(reportRoute, 40); });
+  setTimeout(reportRoute, 300);
+  setTimeout(reportRoute, 1800);
+
   setTimeout(checkBlank, 2500);
   setTimeout(checkBlank, 6500);
 })();
