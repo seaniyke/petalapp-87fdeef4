@@ -2168,7 +2168,7 @@ Forbidden defaults
   // ships the backend.
   const backendGate = decideBackendGate({
     isInitial,
-    hasBackendConnected: Boolean(backend),
+    hasBackendConnected: Boolean(backend) || Boolean(sharedBackend),
     userPrompt: lastUserContent,
   });
   const backendGateBlock = backendGate.gated ? renderBackendGateBlock() : "";
