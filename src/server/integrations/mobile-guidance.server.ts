@@ -19,13 +19,20 @@
 
 import { detectMobileIntent } from "@/lib/mobile-intent";
 
-export function renderMobileGuidanceBlock(text: string | null | undefined): string {
+export function renderMobileGuidanceBlock(
+  text: string | null | undefined,
+  opts?: { force?: boolean },
+): string {
   const intent = detectMobileIntent(text);
-  if (!intent.detected) return "";
+  // `force` is set when the resolved build target is already mobile: later
+  // turns ("add a filter") carry no mobile wording, and without this the
+  // guidance drops out and the app drifts back to a desktop layout.
+  if (!intent.detected && !opts?.force) return "";
+  const signal = intent.detected ? intent.reason : "build target = mobile";
 
   return `
 
-### Mobile target detected (signal: "${intent.reason}")
+### Mobile target detected (signal: "${signal}")
 The user wants this shipped as a real iOS / Android app. Petal wraps the
 web app with **Capacitor** and builds signed binaries on Codemagic — the
 user never installs Xcode, a JDK, or fastlane. Generate code that is
@@ -89,16 +96,16 @@ async function takePhoto() {
 - Mouse-only events (\`onMouseEnter\`, \`onContextMenu\`). Use touch / long-press.
 
 **Native-feel UI craft (this is what separates a real app from a website in a phone frame)**
-Compose from the Petal mobile kit instead of hand-rolling — these already exist in every project:
+Compose from the Petal mobile kit instead of hand-rolling — these already exist in every project. Import from the exact module named below; there is NO file-per-component layout, so \`@/components/mobile/mobile-empty-state\` does not exist:
 | Need | Component |
 |---|---|
-| Screen shell (header + tabs + safe area) | \`MobileScreen\`, \`SafeArea\`, \`MobileHeader\`, \`BottomTabBar\` |
+| Screen shell (header + tabs + safe area) | \`MobileScreen\` (\`@/components/mobile/mobile-screen\`), \`SafeArea\`, \`MobileHeader\`, \`BottomTabBar\` |
 | Grouped settings / record lists | \`ListGroup\` + \`ListRow\` from \`@/components/mobile/list-row\` |
 | 2-4 mutually exclusive views | \`SegmentedControl\` |
 | Contextual actions, filters, pickers | \`ActionSheet\` (bottom sheet, opaque, scroll-locked) |
-| Primary create action | \`FloatingActionButton\`; forms use \`StickyActionBar\` |
+| Primary create action | \`FloatingActionButton\`; forms use \`StickyActionBar\` (both from \`@/components/mobile/fab\`) |
 | Delete / archive on a row | \`SwipeRow\` |
-| Loading / empty / error | \`MobileListSkeleton\`, \`MobileEmptyState\`, \`MobileErrorState\` |
+| Loading / empty / error | \`MobileListSkeleton\`, \`MobileEmptyState\`, \`MobileErrorState\` (all three from \`@/components/mobile/mobile-states\`) |
 | Refresh | \`PullToRefresh\` |
 
 Hard rules for every mobile screen:
@@ -118,9 +125,10 @@ Hard rules for every mobile screen:
 - Bundle id format: \`com.<owner>.<app>\` (lowercase, no dashes in the
   middle segment).
 
-If the user explicitly asks for "Expo" or "React Native" instead of
-Capacitor, stop and explain that Petal currently ships native via
-Capacitor, and ask whether they want to proceed with that or wait. Do
-NOT silently scaffold a React Native project — Petal cannot build it.
+If the user explicitly asks for "Expo" or "React Native", build the app
+exactly as described above and say in one sentence that Petal ships
+native through Capacitor — one React codebase, real App Store and Play
+Store binaries. Never scaffold an Expo / React Native project: Petal's
+build pipeline cannot compile it and the turn will be wasted.
 `;
 }

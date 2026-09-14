@@ -48,7 +48,7 @@ import {
 } from "@/server/critic-agent.server";
 
 import { applyScaffoldKit, applyScaffoldKitForPatch, markKitFileCustomized, STYLES_CSS } from "@/server/scaffold-kit";
-import { getBuildTarget } from "@/lib/build-targets";
+import { getBuildTarget, isMobileTarget } from "@/lib/build-targets";
 import { resolveBuildTarget } from "@/lib/target-inference";
 import { getWebSubtypeAddendum } from "@/lib/web-subtype";
 
@@ -1302,10 +1302,14 @@ function validateTargetShape(
   }
 
   if (targetId === "mobile" || targetId === "ios" || targetId === "android") {
-    const hasExpo = hasAny((p) => p === "app.json") || hasAny((p) => p.startsWith("app/")) || hasAny((p) => p.startsWith("mobile/"));
-    const hasRNImport = files.some((f) => /from\s+["']react-native["']/.test(f.content) || /from\s+["']expo-/.test(f.content));
-    if (!hasExpo && !hasRNImport) {
-      return "I started building this as a mobile app (Expo / React Native) but the output came back as a web app, so I rolled it back. Re-send the prompt with 'mobile app' or 'iOS/Android app' so I lock onto the native scaffold.";
+    // Mobile ships as the same React app wrapped in a Capacitor native shell
+    // (see scaffold-kit-mobile-shell.ts + mobile-codemagic-template.server.ts).
+    // `capacitor.config.ts` is scaffold-injected, so the only real failure
+    // mode here is the generic "no renderable app" case the web guard covers.
+    // Never roll a mobile turn back for not being Expo — that path does not
+    // exist in Petal's store pipeline.
+    if (!hasAny((p) => p.startsWith("src/pages/")) && !has("src/App.tsx")) {
+      return "I started building this as a mobile app but the output had no screens in it, so I rolled it back rather than hand you an empty app. Re-send the prompt and name the screens you want (e.g. 'home feed, add item, profile') and I'll build them.";
     }
     return null;
   }
@@ -2666,7 +2670,12 @@ Forbidden defaults
     const { renderMobileGuidanceBlock } = await import(
       "@/server/integrations/mobile-guidance.server"
     );
-    mobileBlock = renderMobileGuidanceBlock(lastUserText);
+    // Force the block on when the resolved build target IS mobile, even if
+    // the wording of this particular turn ("add a filter") carries no mobile
+    // signal — otherwise follow-up turns drift back to desktop layouts.
+    mobileBlock = renderMobileGuidanceBlock(lastUserText, {
+      force: isMobileTarget(buildTarget.id),
+    });
   } catch {
     // Never block a build on guidance failure.
   }
