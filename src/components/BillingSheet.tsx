@@ -349,8 +349,8 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
                 {currentPlanCode === "free" ? (
                   <p className="text-xs text-muted-foreground">
                     {payAsYouGo
-                      ? "Pay as you go — your purchased credits keep paid features unlocked."
-                      : "Subscribe for monthly credits, or just buy credits once — no subscription needed."}
+                      ? "Your credits keep paid features on."
+                      : "Subscribe monthly, or just buy credits."}
                   </p>
                 ) : renewsLabel ? (
                   <p className="text-xs text-muted-foreground">
@@ -370,16 +370,12 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               {plan?.daily_free_credits ? (
                 <PlanFeature>
                   {plan.daily_free_credits} free credits a day
-                  {plan.monthly_free_cap
-                    ? ` — up to ${Math.floor(plan.monthly_free_cap / plan.daily_free_credits)} days a month (${plan.monthly_free_cap} max)`
-                    : ""}
+                  {plan.monthly_free_cap ? ` · ${plan.monthly_free_cap} a month` : ""}
                 </PlanFeature>
               ) : null}
 
-              <PlanFeature>On-demand credit top-ups (no subscription needed)</PlanFeature>
-              {payAsYouGo && (
-                <PlanFeature>Paid features unlocked by your credit balance</PlanFeature>
-              )}
+              <PlanFeature>Top up any time, no subscription</PlanFeature>
+              {payAsYouGo && <PlanFeature>Credits unlock paid features</PlanFeature>}
               {currentPlanCode === "business" && (
                 <PlanFeature>Priority support</PlanFeature>
               )}
@@ -424,7 +420,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
             </div>
             {subStatus?.hasPaystackSubscription && subStatus.cancelAtPeriodEnd && (
               <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                Subscription cancelled — access continues until the period ends.
+                Cancelled — access lasts until the period ends.
               </p>
             )}
           </div>
@@ -441,15 +437,15 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
 
             <div className="mt-5 space-y-3">
               <CreditRow
-                label="Daily credits"
+                label="Daily"
                 sub={
                   !dailyCap
-                    ? "Not included on this plan"
+                    ? "Not on this plan"
                     : monthlyFreeRemaining === 0
-                      ? `Monthly free cap reached (${plan?.monthly_free_cap}) — resets in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
-                      : `Resets to ${dailyCap} credits ${dailyResetText ?? "soon"}${
+                      ? `Monthly free limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
+                      : `Back to ${dailyCap} ${dailyResetText ?? "soon"}${
                           plan?.monthly_free_cap
-                            ? ` · ${monthlyFreeRemaining} of ${plan.monthly_free_cap} free credits left this month`
+                            ? ` · ${monthlyFreeRemaining} free left this month`
                             : ""
                         }`
                 }
@@ -457,23 +453,19 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
               />
 
               <CreditRow
-                label="Monthly credits"
+                label="Monthly"
                 sub={
                   planMonthlyCap
-                    ? `Resets to ${planMonthlyCap.toLocaleString()} in ${
+                    ? `Back to ${planMonthlyCap.toLocaleString()} in ${
                         monthlyResetDays ?? 0
                       } ${monthlyResetDays === 1 ? "day" : "days"}`
-                    : "Not included on this plan"
+                    : "Not on this plan"
                 }
                 value={breakdown.monthly}
               />
               <CreditRow
-                label="Extra credits"
-                sub={
-                  breakdown.topup > 0
-                    ? `${breakdown.topup} purchased credits — yours forever, they never expire`
-                    : "Top up to add extra credits"
-                }
+                label="Extra"
+                sub={breakdown.topup > 0 ? "Never expire" : "Top up to add more"}
                 value={breakdown.topup}
               />
             </div>

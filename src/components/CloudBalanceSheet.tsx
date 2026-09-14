@@ -132,7 +132,7 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
           <SheetHeader className="border-b border-border/60 px-5 py-4">
             <SheetTitle className="text-lg font-semibold">Cloud &amp; AI balance</SheetTitle>
             <SheetDescription className="text-xs text-muted-foreground">
-              Pay-as-you-go for everything that runs after your code is built
+              What your live app uses
             </SheetDescription>
           </SheetHeader>
 
@@ -150,9 +150,7 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base font-semibold">Cloud + AI</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Pay-as-you-go. Top-ups never expire.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Top-ups never expire.</p>
                   </div>
                 </div>
                 <div className="mt-5 flex items-end justify-between">
@@ -177,7 +175,7 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
               {/* Free grant + per-meter usage */}
               <div className="space-y-4 rounded-2xl bg-muted/40 p-5">
                 <div>
-                  <h4 className="text-sm font-semibold">Free Cloud + AI credit</h4>
+                  <h4 className="text-sm font-semibold">Free credit</h4>
                   <div className="mt-2 text-xl font-semibold tabular-nums">
                     {qualified
                       ? `${formatUsdCents(freeRemainingCents)} left of ${formatUsdCents(monthlyGrant)}`
@@ -195,14 +193,14 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
                   )}
                   <div className="mt-2 text-xs text-muted-foreground">
                     {qualified
-                      ? `One-time grant. Shared across Cloud and AI. ${formatUsdCents(freeUsedCents)} used so far.`
-                      : `Upgrade to a paid plan or top up once to unlock $${(monthlyGrant / 100).toFixed(0)} free Cloud + AI credit.`}
+                      ? `${formatUsdCents(freeUsedCents)} used`
+                      : `Top up once to unlock $${(monthlyGrant / 100).toFixed(0)} free.`}
                   </div>
                 </div>
                 <div className="border-t border-border/60" />
-                <UsageRow label="Cloud" usedCents={split.cloudCents} hint="Backend hosting, database & domains" />
+                <UsageRow label="Cloud" usedCents={split.cloudCents} hint="Hosting, database, domains" />
                 <div className="border-t border-border/60" />
-                <UsageRow label="AI" usedCents={split.aiCents} hint="Petal AI calls & image generation" />
+                <UsageRow label="AI" usedCents={split.aiCents} hint="AI calls and images" />
               </div>
 
               {/* Project breakdown */}
@@ -236,20 +234,14 @@ export function CloudBalanceSheet({ open, onOpenChange, onOpenBilling }: Props) 
                 />
               )}
 
-              <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-                Cloud + AI is pay-as-you-go from your top-up balance. Top-ups never expire.
-              </p>
               {onOpenBilling && (
-                <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                  Looking for AI message credits?{" "}
-                  <button
-                    type="button"
-                    onClick={onOpenBilling}
-                    className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
-                  >
-                    Open Plans &amp; credits →
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={onOpenBilling}
+                  className="px-1 text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Plans &amp; credits →
+                </button>
               )}
             </div>
           )}
