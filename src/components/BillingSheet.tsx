@@ -420,7 +420,7 @@ export function BillingSheet({ open, onOpenChange, onOpenCloudBalance }: Props) 
             </div>
             {subStatus?.hasPaystackSubscription && subStatus.cancelAtPeriodEnd && (
               <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                Subscription cancelled — access continues until the period ends.
+                Cancelled — access lasts until the period ends.
               </p>
             )}
           </div>
