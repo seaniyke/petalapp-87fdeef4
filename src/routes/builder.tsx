@@ -5360,6 +5360,9 @@ function Builder() {
                             setPickedElement(el);
                             setPickInstruction("");
                           }}
+                          onRoute={(route) => {
+                            previewViewRef.current = route;
+                          }}
                           onRuntimeError={(err) => {
                             // Only surface fresh errors. If the same message is
                             // already showing (and not yet sent for fixing), keep
