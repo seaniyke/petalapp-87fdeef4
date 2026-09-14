@@ -28,6 +28,8 @@ import {
   getApiKeys as mgmtGetKeys,
   pauseProject as mgmtPause,
   restoreProject as mgmtRestore,
+  deleteProject as mgmtDelete,
+  runQuery as mgmtRunQuery,
   projectUrl,
 } from "@/server/supabase-mgmt.server";
 
@@ -53,6 +55,8 @@ async function setBackend(
     service_role_key: string | null;
     supabase_project_ref: string | null;
     error_message: string | null;
+    pause_reason: string | null;
+    delete_warned_at: string | null;
     paused_at: string | null;
     health_checked_at: string | null;
     provisioning_started_at: string | null;
@@ -351,7 +355,24 @@ export async function refreshStatus(projectId: string): Promise<{
   };
 }
 
-export async function pauseForProject(projectId: string): Promise<void> {
+/**
+ * Why a dedicated database was paused. "idle" means nobody used the app;
+ * "unpaid" means the owner ran out of credits through the grace window.
+ * The reason decides both the message the user sees and whether opening the
+ * app is allowed to wake it back up automatically.
+ */
+export type PauseReason = "idle" | "unpaid" | "expired";
+
+const PAUSE_MESSAGES: Record<PauseReason, string> = {
+  idle: "Paused because the app went unused for 7 days. It wakes up automatically when you open it.",
+  unpaid: "Paused because you ran out of credits. Top up to bring it back online.",
+  expired: "Backend slot expired — renew to reactivate.",
+};
+
+export async function pauseForProject(
+  projectId: string,
+  reason: PauseReason = "expired",
+): Promise<void> {
   const { data: row } = await supabaseAdmin
     .from("project_backends")
     .select("supabase_project_ref, provider")
@@ -366,7 +387,8 @@ export async function pauseForProject(projectId: string): Promise<void> {
   await setBackend(projectId, {
     status: "paused",
     paused_at: new Date().toISOString(),
-    error_message: "Backend slot expired — renew to reactivate.",
+    pause_reason: reason,
+    error_message: PAUSE_MESSAGES[reason],
   });
 }
 
@@ -386,8 +408,113 @@ export async function restoreForProject(projectId: string): Promise<void> {
   await setBackend(projectId, {
     status: "provisioning",
     paused_at: null,
+    pause_reason: null,
+    delete_warned_at: null,
     error_message: null,
   });
+}
+
+/**
+ * How many dedicated Supabase projects we currently keep alive. Used as a
+ * ceiling before provisioning another one — every live project costs money
+ * whether or not the app behind it is being used.
+ */
+export async function activeManagedCount(): Promise<number> {
+  const { count } = await supabaseAdmin
+    .from("project_backends")
+    .select("project_id", { count: "exact", head: true })
+    .eq("provider", "managed_petal")
+    .in("status", ["provisioning", "ready"]);
+  return count ?? 0;
+}
+
+/**
+ * Dump every row of a managed project's public tables into a JSON file stored
+ * in the Petal project's own files, so deleting the upstream database never
+ * loses the user's data outright. Best-effort and size-capped.
+ */
+export async function exportManagedData(projectId: string): Promise<string | null> {
+  const { data: row } = await supabaseAdmin
+    .from("project_backends")
+    .select("supabase_project_ref, provider, status")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (!row?.supabase_project_ref || row.provider !== "managed_petal") return null;
+  if (row.status !== "ready") return null; // a paused project can't answer queries
+
+  try {
+    const tables = (await mgmtRunQuery(
+      row.supabase_project_ref,
+      "select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name",
+    )) as { table_name: string }[];
+
+    const dump: Record<string, unknown[]> = {};
+    for (const t of tables.slice(0, 50)) {
+      const name = String(t.table_name).replace(/[^a-zA-Z0-9_]/g, "");
+      if (!name) continue;
+      try {
+        dump[name] = await mgmtRunQuery(
+          row.supabase_project_ref,
+          `select * from public."${name}" limit 5000`,
+        );
+      } catch {
+        dump[name] = [];
+      }
+    }
+
+    const path = `backups/backend-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
+    const content = JSON.stringify({ exportedAt: new Date().toISOString(), tables: dump }, null, 2);
+    if (content.length > 4_000_000) return null;
+    await supabaseAdmin
+      .from("project_files")
+      .upsert({ project_id: projectId, path, content }, { onConflict: "project_id,path" });
+    return path;
+  } catch (e) {
+    console.warn("[managed-backend] export failed", projectId, (e as Error).message);
+    return null;
+  }
+}
+
+/**
+ * Permanently remove the upstream Supabase project and Petal's record of it.
+ * Exports the data first unless the caller opts out. Idempotent.
+ */
+export async function deleteForProject(
+  projectId: string,
+  opts: { exportFirst?: boolean } = {},
+): Promise<{ deletedRef: string | null; backupPath: string | null }> {
+  const { data: row } = await supabaseAdmin
+    .from("project_backends")
+    .select("supabase_project_ref, provider")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (!row || row.provider !== "managed_petal") {
+    return { deletedRef: null, backupPath: null };
+  }
+
+  let backupPath: string | null = null;
+  if (opts.exportFirst !== false) {
+    backupPath = await exportManagedData(projectId);
+  }
+
+  if (row.supabase_project_ref) {
+    try {
+      await mgmtDelete(row.supabase_project_ref);
+    } catch (e) {
+      const msg = (e as Error).message ?? "";
+      // A 404 means it is already gone upstream — that is success for us.
+      if (!/404|not found/i.test(msg)) throw e;
+    }
+  }
+
+  await supabaseAdmin.from("project_backend_secrets").delete().eq("project_id", projectId);
+  await supabaseAdmin.from("project_backends").delete().eq("project_id", projectId);
+  await supabaseAdmin
+    .from("projects")
+    .update({ backend_type: "shared", runtime_grace_until: null, runtime_paused: false })
+    .eq("id", projectId);
+
+  return { deletedRef: row.supabase_project_ref ?? null, backupPath };
 }
 
 function sleep(ms: number): Promise<void> {
