@@ -81,6 +81,7 @@ import {
   hadRecentProviderPaymentFailure,
 } from "@/server/ai-provider.server";
 import { priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import { recordTurnEconomics } from "@/server/turn-economics.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
   loadProjectMemory,
@@ -1028,6 +1029,7 @@ async function structuredRetryCompletion(args: {
     chosenBy: string;
     projectId?: string | null;
     userId?: string | null;
+    turnId?: string | null;
   };
 }): Promise<Response> {
   const bodyBase = {
@@ -2992,6 +2994,7 @@ Forbidden defaults
       chosenBy,
       projectId: body.projectId ?? null,
       userId,
+      turnId: logicalTurnId,
     },
   });
 
@@ -3116,6 +3119,7 @@ Forbidden defaults
               chosenBy: "structured_retry",
               projectId: body.projectId ?? null,
               userId,
+              turnId: logicalTurnId,
             },
           });
           if (!retry.ok || !retry.body) throw e;
@@ -3301,6 +3305,7 @@ Forbidden defaults
                     chosenBy: `chunk_round_${req.round}`,
                     projectId: body.projectId ?? null,
                     userId,
+                    turnId: logicalTurnId,
                   },
                 });
                 if (!res.ok || !res.body) return null;
@@ -3536,6 +3541,7 @@ Forbidden defaults
                   chosenBy: "op_repair_round",
                   projectId: body.projectId ?? null,
                   userId,
+                  turnId: logicalTurnId,
                 },
               });
               if (!res.ok || !res.body) return [];
@@ -3911,6 +3917,7 @@ Forbidden defaults
                     chosenBy: "per_file_rewrite",
                     projectId: body.projectId ?? null,
                     userId,
+                    turnId: logicalTurnId,
                   },
                 });
                 if (!rewrite.ok || !rewrite.body) {
@@ -4160,6 +4167,7 @@ Forbidden defaults
                 gate.rejected.map((r) => ({
                   projectId: body.projectId ?? null,
                   userId,
+                  turnId: logicalTurnId,
                   phase: "pre_build" as const,
                   passId: "write-gate",
                   signature: signatureOf(r.detail),
@@ -5095,6 +5103,13 @@ Forbidden defaults
           completionTokens: collected.usage?.completion_tokens ?? null,
           totalTokens: collected.usage?.total_tokens ?? null,
           cachedPromptTokens,
+          // OpenRouter returns a real USD amount on the usage object when
+          // available; when it doesn't, the estimate is labelled as such.
+          actualCostUsd:
+            typeof (collected.usage as { cost?: unknown } | undefined)?.cost === "number"
+              ? ((collected.usage as { cost: number }).cost)
+              : null,
+          turnId: logicalTurnId,
           staticPrefixChars: staticPrefixText.length,
           staticPrefixHash,
           filesSent: isInitial ? 0 : (promptBudget.files?.length ?? 0),
@@ -5173,6 +5188,27 @@ Forbidden defaults
             `[credits] internal recovery turn not billed project=${body.projectId ?? "none"} amount=${priced.amount}`,
           );
         }
+
+        // Internal economics record for this turn. Admin-only accounting:
+        // what the customer paid next to what the turn cost Petal, with the
+        // cost explicitly marked actual / estimated / unknown. Best-effort —
+        // never allowed to affect the build or the charge.
+        void recordTurnEconomics({
+          turnId: logicalTurnId,
+          userId,
+          projectId: body.projectId ?? null,
+          feature: "generate",
+          creditsCharged: finalCharged,
+          agentRounds: agentLoopUsages.length,
+          isAutoFix: Boolean(body.isAutoFix),
+          result: failedEditTurn ? "no_op" : "generated",
+          metadata: {
+            priced_amount: priced.amount,
+            usage_missing: priced.usageMissing,
+            clamped: priced.clamped,
+            model,
+          },
+        });
 
 
 

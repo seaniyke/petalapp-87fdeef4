@@ -413,6 +413,8 @@ interface TelemetryArgs {
   // P1-5 — per-project / per-user attribution.
   projectId?: string | null;
   userId?: string | null;
+  /** Economics: links this call to the user turn that caused it. */
+  turnId?: string | null;
 }
 
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
@@ -436,6 +438,10 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       chosen_by: args.chosenBy ?? null,
       project_id: args.projectId ?? null,
       user_id: args.userId ?? null,
+      turn_id: args.turnId ?? null,
+      // No usage is known at insert time: a cost we cannot determine is
+      // recorded as unknown, never as a fake zero.
+      cost_basis: "unknown",
     });
   } catch (err) {
     // Never break the AI call because logging failed.
@@ -461,6 +467,11 @@ export async function updateLastCallUsage(args: {
   completionTokens: number | null;
   totalTokens: number | null;
   cachedPromptTokens?: number | null;
+  /** Provider-reported USD cost for this call, when the gateway returns one
+   *  (OpenRouter does). When present it is recorded as ACTUAL cost; otherwise
+   *  we fall back to the internal price table and mark it ESTIMATED. */
+  actualCostUsd?: number | null;
+  turnId?: string | null;
   staticPrefixChars?: number | null;
   staticPrefixHash?: string | null;
   filesSent?: number | null;
@@ -489,6 +500,9 @@ export async function updateLastCallUsage(args: {
       completion_tokens: number | null;
       total_tokens: number | null;
       cost_usd_micro?: number | null;
+      cost_basis?: string;
+      cost_source?: string | null;
+      turn_id?: string | null;
       cached_prompt_tokens?: number | null;
       static_prefix_chars?: number | null;
       static_prefix_hash?: string | null;
@@ -498,12 +512,25 @@ export async function updateLastCallUsage(args: {
       completion_tokens: args.completionTokens,
       total_tokens: args.totalTokens,
     };
-    const cost = estimateCostUsdMicro(
-      args.model,
-      args.promptTokens,
-      args.completionTokens,
-    );
-    if (cost != null) patch.cost_usd_micro = cost;
+    // Prefer the provider's own number. Only fall back to the internal price
+    // table when the gateway gave us nothing, and always say which it was.
+    if (args.actualCostUsd != null && Number.isFinite(args.actualCostUsd)) {
+      patch.cost_usd_micro = Math.round(args.actualCostUsd * 1_000_000);
+      patch.cost_basis = "actual";
+      patch.cost_source = "provider";
+    } else {
+      const cost = estimateCostUsdMicro(
+        args.model,
+        args.promptTokens,
+        args.completionTokens,
+      );
+      if (cost != null) {
+        patch.cost_usd_micro = cost;
+        patch.cost_basis = "estimated";
+        patch.cost_source = "price_table";
+      }
+    }
+    if (args.turnId) patch.turn_id = args.turnId;
     if (args.cachedPromptTokens != null) patch.cached_prompt_tokens = args.cachedPromptTokens;
     if (args.staticPrefixChars != null) patch.static_prefix_chars = args.staticPrefixChars;
     if (args.staticPrefixHash != null) patch.static_prefix_hash = args.staticPrefixHash;
@@ -567,6 +594,8 @@ export interface AiCallMeta {
   projectId?: string | null;
   /** P1-5: user who triggered this AI call. */
   userId?: string | null;
+  /** Economics: the user turn this call belongs to. */
+  turnId?: string | null;
 }
 
 /**
@@ -738,6 +767,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       chosenBy: `${opts.meta?.chosenBy ?? "unknown"}_provider_failover`,
       projectId: opts.meta?.projectId ?? null,
       userId: opts.meta?.userId ?? null,
+      turnId: opts.meta?.turnId ?? null,
     });
     if (alt.ok) return alt;
     primary = alt;
@@ -775,6 +805,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       chosenBy: opts.meta?.chosenBy ?? null,
       projectId: opts.meta?.projectId ?? null,
       userId: opts.meta?.userId ?? null,
+      turnId: opts.meta?.turnId ?? null,
     });
     return primary;
   }
@@ -800,6 +831,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     chosenBy: opts.meta?.chosenBy ?? null,
     projectId: opts.meta?.projectId ?? null,
     userId: opts.meta?.userId ?? null,
+    turnId: opts.meta?.turnId ?? null,
   });
 
   const fallbackBody = { ...opts.body, model: fallback };
@@ -821,6 +853,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     chosenBy: opts.meta?.chosenBy ?? null,
     projectId: opts.meta?.projectId ?? null,
     userId: opts.meta?.userId ?? null,
+    turnId: opts.meta?.turnId ?? null,
   });
 
   return retried;

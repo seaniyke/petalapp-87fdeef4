@@ -76,6 +76,8 @@ export type Database = {
           cached_prompt_tokens: number | null
           chosen_by: string | null
           completion_tokens: number | null
+          cost_basis: string
+          cost_source: string | null
           cost_usd_micro: number | null
           created_at: string
           error_message: string | null
@@ -95,12 +97,15 @@ export type Database = {
           static_prefix_hash: string | null
           status: number
           total_tokens: number | null
+          turn_id: string | null
           user_id: string | null
         }
         Insert: {
           cached_prompt_tokens?: number | null
           chosen_by?: string | null
           completion_tokens?: number | null
+          cost_basis?: string
+          cost_source?: string | null
           cost_usd_micro?: number | null
           created_at?: string
           error_message?: string | null
@@ -120,12 +125,15 @@ export type Database = {
           static_prefix_hash?: string | null
           status: number
           total_tokens?: number | null
+          turn_id?: string | null
           user_id?: string | null
         }
         Update: {
           cached_prompt_tokens?: number | null
           chosen_by?: string | null
           completion_tokens?: number | null
+          cost_basis?: string
+          cost_source?: string | null
           cost_usd_micro?: number | null
           created_at?: string
           error_message?: string | null
@@ -145,6 +153,7 @@ export type Database = {
           static_prefix_hash?: string | null
           status?: number
           total_tokens?: number | null
+          turn_id?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -906,6 +915,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      economics_config: {
+        Row: {
+          description: string | null
+          key: string
+          unit: string
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          unit?: string
+          updated_at?: string
+          value: number
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          unit?: string
+          updated_at?: string
+          value?: number
+        }
+        Relationships: []
       }
       email_send_log: {
         Row: {
@@ -3792,6 +3825,113 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      turn_economics: {
+        Row: {
+          agent_rounds: number
+          ai_calls: number
+          ai_cost_usd_micro: number | null
+          build_cost_usd_micro: number | null
+          build_id: string | null
+          build_ms: number | null
+          cached_prompt_tokens: number
+          completion_tokens: number
+          cost_basis: string
+          created_at: string
+          credits_charged: number
+          credits_refunded: number
+          deploy_ms: number | null
+          feature: string
+          id: string
+          images_generated: number
+          is_auto_fix: boolean
+          metadata: Json
+          models: Json
+          other_cost_usd_micro: number | null
+          project_id: string | null
+          prompt_tokens: number
+          providers: Json
+          result: string | null
+          retry_count: number
+          turn_id: string
+          updated_at: string
+          user_id: string | null
+          variable_cost_usd_micro: number | null
+          verify_ms: number | null
+        }
+        Insert: {
+          agent_rounds?: number
+          ai_calls?: number
+          ai_cost_usd_micro?: number | null
+          build_cost_usd_micro?: number | null
+          build_id?: string | null
+          build_ms?: number | null
+          cached_prompt_tokens?: number
+          completion_tokens?: number
+          cost_basis?: string
+          created_at?: string
+          credits_charged?: number
+          credits_refunded?: number
+          deploy_ms?: number | null
+          feature?: string
+          id?: string
+          images_generated?: number
+          is_auto_fix?: boolean
+          metadata?: Json
+          models?: Json
+          other_cost_usd_micro?: number | null
+          project_id?: string | null
+          prompt_tokens?: number
+          providers?: Json
+          result?: string | null
+          retry_count?: number
+          turn_id: string
+          updated_at?: string
+          user_id?: string | null
+          variable_cost_usd_micro?: number | null
+          verify_ms?: number | null
+        }
+        Update: {
+          agent_rounds?: number
+          ai_calls?: number
+          ai_cost_usd_micro?: number | null
+          build_cost_usd_micro?: number | null
+          build_id?: string | null
+          build_ms?: number | null
+          cached_prompt_tokens?: number
+          completion_tokens?: number
+          cost_basis?: string
+          created_at?: string
+          credits_charged?: number
+          credits_refunded?: number
+          deploy_ms?: number | null
+          feature?: string
+          id?: string
+          images_generated?: number
+          is_auto_fix?: boolean
+          metadata?: Json
+          models?: Json
+          other_cost_usd_micro?: number | null
+          project_id?: string | null
+          prompt_tokens?: number
+          providers?: Json
+          result?: string | null
+          retry_count?: number
+          turn_id?: string
+          updated_at?: string
+          user_id?: string | null
+          variable_cost_usd_micro?: number | null
+          verify_ms?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turn_economics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       turn_events: {
         Row: {
