@@ -31,7 +31,7 @@ export type ChargeRuntimeOptions = {
 };
 
 export type ChargeRuntimeResult =
-  | { ok: true; freeAfter: number; topupAfter: number }
+  | { ok: true; freeAfter: number; topupAfter: number; paidWithCredits?: number }
   | {
       ok: false;
       reason:
