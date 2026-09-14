@@ -136,6 +136,22 @@ export async function streamGenerate(
     intentBrief?: string;
     /** Build target chip (web / android / ios / backend / extension). */
     buildTarget?: string;
+    /** What the user is currently looking at in the preview: the open route
+     *  and, when one was picked, the selected element. Lets "this page" /
+     *  "this button" resolve to the right place instead of a guess. */
+    viewContext?: {
+      path?: string;
+      title?: string;
+      heading?: string | null;
+      element?: {
+        tag?: string;
+        text?: string;
+        id?: string | null;
+        classes?: string | null;
+        sourceFile?: string | null;
+        sourceLine?: string | null;
+      } | null;
+    };
   },
   handlers: Handlers,
   signal?: AbortSignal,
