@@ -30,6 +30,13 @@ import {
 } from "./fs-helpers.js";
 import { buildAndDeploy, BuildError, VerificationBlockedError } from "./build.js";
 import { runExecSession, ExecError, MAX_COMMANDS_PER_SESSION } from "./exec.js";
+import {
+  runBrowseSession,
+  BrowseError,
+  BROWSE_QUIET_MS,
+  MAX_ACTIONS,
+  type BrowseAction,
+} from "./browse.js";
 import { Heartbeat, withInactivity } from "./progress.js";
 import {
   runInstallSession,
