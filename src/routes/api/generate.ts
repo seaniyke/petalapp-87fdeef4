@@ -5693,6 +5693,19 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // listening. Give the client a short grace window to land its own
         // write, then reconcile from the server — the helper no-ops when a
         // reply already exists.
+        if (turnProjectId) {
+          // Hand the request over to the build stage, or close it honestly.
+          await markStage(
+            turnProjectId,
+            terminalStatus === "succeeded" ? "building" : "blocked",
+            terminalStatus === "succeeded"
+              ? {}
+              : {
+                  terminal_reason:
+                    terminalError?.slice(0, 500) ?? "the build stopped before it finished",
+                },
+          );
+        }
         if (turnProjectId && recorder) {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
