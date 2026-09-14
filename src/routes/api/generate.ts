@@ -53,6 +53,7 @@ import { resolveBuildTarget } from "@/lib/target-inference";
 import { getWebSubtypeAddendum } from "@/lib/web-subtype";
 
 import { lookupBackendForGenerate, lookupSharedBackendForGenerate } from "@/server/backend-connector.server";
+import { resolveIntentActions } from "@/server/intent-actions.server";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import {
   loadInstalledCodes,
