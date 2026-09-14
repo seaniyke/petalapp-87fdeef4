@@ -113,6 +113,7 @@ import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/ap
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
 import { Route as ApiPublicCronCryptoVerifyRouteImport } from './routes/api/public/cron/crypto-verify'
+import { Route as ApiPublicCronCostAlertsRouteImport } from './routes/api/public/cron/cost-alerts'
 import { Route as ApiPublicCronBenchmarkRouteImport } from './routes/api/public/cron/benchmark'
 import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
 import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
@@ -655,6 +656,11 @@ const ApiPublicCronCryptoVerifyRoute =
     path: '/api/public/cron/crypto-verify',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronCostAlertsRoute = ApiPublicCronCostAlertsRouteImport.update({
+  id: '/api/public/cron/cost-alerts',
+  path: '/api/public/cron/cost-alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCronBenchmarkRoute = ApiPublicCronBenchmarkRouteImport.update({
   id: '/api/public/cron/benchmark',
   path: '/api/public/cron/benchmark',
@@ -809,6 +815,7 @@ export interface FileRoutesByFullPath {
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
+  '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
@@ -925,6 +932,7 @@ export interface FileRoutesByTo {
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
+  '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
@@ -1042,6 +1050,7 @@ export interface FileRoutesById {
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
+  '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
@@ -1160,6 +1169,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/verify'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/benchmark'
+    | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
@@ -1276,6 +1286,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/verify'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/benchmark'
+    | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
@@ -1392,6 +1403,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/verify'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/benchmark'
+    | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
@@ -1505,6 +1517,7 @@ export interface RootRouteChildren {
   ApiPublicCoffeeVerifyRoute: typeof ApiPublicCoffeeVerifyRoute
   ApiPublicCronBackendHibernateRoute: typeof ApiPublicCronBackendHibernateRoute
   ApiPublicCronBenchmarkRoute: typeof ApiPublicCronBenchmarkRoute
+  ApiPublicCronCostAlertsRoute: typeof ApiPublicCronCostAlertsRoute
   ApiPublicCronCryptoVerifyRoute: typeof ApiPublicCronCryptoVerifyRoute
   ApiPublicCronMobileCertExpiryRoute: typeof ApiPublicCronMobileCertExpiryRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
@@ -2254,6 +2267,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronCryptoVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/cost-alerts': {
+      id: '/api/public/cron/cost-alerts'
+      path: '/api/public/cron/cost-alerts'
+      fullPath: '/api/public/cron/cost-alerts'
+      preLoaderRoute: typeof ApiPublicCronCostAlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/benchmark': {
       id: '/api/public/cron/benchmark'
       path: '/api/public/cron/benchmark'
@@ -2465,6 +2485,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCoffeeVerifyRoute: ApiPublicCoffeeVerifyRoute,
   ApiPublicCronBackendHibernateRoute: ApiPublicCronBackendHibernateRoute,
   ApiPublicCronBenchmarkRoute: ApiPublicCronBenchmarkRoute,
+  ApiPublicCronCostAlertsRoute: ApiPublicCronCostAlertsRoute,
   ApiPublicCronCryptoVerifyRoute: ApiPublicCronCryptoVerifyRoute,
   ApiPublicCronMobileCertExpiryRoute: ApiPublicCronMobileCertExpiryRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
