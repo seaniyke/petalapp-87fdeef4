@@ -13,6 +13,7 @@ export default defineConfig({
       "src/lib/friendly-errors.test.ts",
       "src/server/__tests__/runtime-credit-fallback.test.ts",
       "src/server/__tests__/build-breaker-regressions.test.ts",
+      "src/server/__tests__/browse-client.test.ts",
       "src/server/__tests__/{agents-orchestrator,agents-qa-board,copy-slop,app-ui-library,backend-quality,billing-fairness,builder-deployment-readiness,chunked-generation,css-escape-fixer,document-head,file-budget,frontend-quality,html-injectors-integration,kit-customization,kit-dep-closure,prd-engine,prd-golden-corpus,preemit-gate,preview-guard-markup,product-principles,renderable-shell,repair-safety,design-variety,composition-contract,palette-integrity,design-floor,pic-engine,engine3-phase345,import-resolver-page-compose,scope-jsx-prose,scope-repair,sibling-resolver,tier-local-verify,tool-args-salvage,visual-qa,write-gate}.test.ts",
     ],
   },
