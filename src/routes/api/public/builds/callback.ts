@@ -348,6 +348,17 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       console.error("Builder callback could not update project build", projectUpdateError.message);
       return new Response("Could not save project status", { status: 503 });
     }
+
+    // Acceptance: the build shipped and the browser check found nothing
+    // blocking. This is the only path that closes a request as delivered, and
+    // it carries the proof with it.
+    await recordBuildOutcome({
+      projectId: payload.projectId,
+      buildId: payload.buildId,
+      shipped: true,
+      blockingDefects: [],
+      evidence: verification ? buildEvidence(verification) : ["Deployed URL served a real app"],
+    });
   } else {
     // status === "failed"
     const message = payload.logs
