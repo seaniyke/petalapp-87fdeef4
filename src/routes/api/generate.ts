@@ -5105,6 +5105,13 @@ Forbidden defaults
           completionTokens: collected.usage?.completion_tokens ?? null,
           totalTokens: collected.usage?.total_tokens ?? null,
           cachedPromptTokens,
+          // OpenRouter returns a real USD amount on the usage object when
+          // available; when it doesn't, the estimate is labelled as such.
+          actualCostUsd:
+            typeof (collected.usage as { cost?: unknown } | undefined)?.cost === "number"
+              ? ((collected.usage as { cost: number }).cost)
+              : null,
+          turnId: logicalTurnId,
           staticPrefixChars: staticPrefixText.length,
           staticPrefixHash,
           filesSent: isInitial ? 0 : (promptBudget.files?.length ?? 0),
