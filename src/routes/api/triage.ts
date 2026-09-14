@@ -43,6 +43,12 @@ import { detectHighStakesIntent, highStakesClarifyInstruction } from "@/lib/high
 import { detectLanguage, renderLanguageHint } from "@/server/lang-detect.server";
 import { checkCreditBalance } from "@/server/credits.server";
 import { fastTriage } from "@/server/fast-triage.server";
+import {
+  decideAskPolicy,
+  noAskInstruction,
+  stripQuestions,
+  SENIOR_ENGINEER_POSTURE,
+} from "@/server/ask-policy.server";
 
 type Body = {
   messages: ChatMessage[];
@@ -369,6 +375,14 @@ export const Route = createFileRoute("/api/triage")({
             ? "\n\n" + highStakesClarifyInstruction(highStakes.domain)
             : "";
 
+        // Ask policy: decided deterministically BEFORE the model call so a
+        // question never even streams to the user when this turn should act.
+        const askPolicy = decideAskPolicy(lastUserText, messages);
+        const askBlock =
+          "\n\n" +
+          SENIOR_ENGINEER_POSTURE +
+          (askPolicy.forceAction ? "\n\n" + noAskInstruction(askPolicy.reason) : "");
+
         // Deterministic language pre-detect — runs zero-cost before the LLM
         // and commits the model to African languages it sometimes hedges on
         // (Yoruba/Igbo/Amharic).
@@ -423,7 +437,8 @@ export const Route = createFileRoute("/api/triage")({
               knowledgeBlock +
               memoryBlock +
               highStakesBlock +
-              langBlock,
+              langBlock +
+              askBlock,
           },
           ...messages.map((m) => ({
             role: m.role,
@@ -461,6 +476,7 @@ export const Route = createFileRoute("/api/triage")({
             let argsBuf = ""; // accumulating tool-call arguments JSON
             let replyEmitted = "";
             let earlyIntentSent = false;
+            let replySuppressed = false;
 
             try {
               while (true) {
@@ -509,8 +525,17 @@ export const Route = createFileRoute("/api/triage")({
                           );
                         }
                       }
+                      // If the model reached for "clarify" on a turn that must
+                      // act, hold the reply back entirely — a question the
+                      // user never sees is better than one we retract.
+                      if (
+                        askPolicy.forceAction &&
+                        partialField(argsBuf, "mode") === "clarify"
+                      ) {
+                        replySuppressed = true;
+                      }
                       const replyNow = partialField(argsBuf, "reply");
-                      if (replyNow.length > replyEmitted.length) {
+                      if (!replySuppressed && replyNow.length > replyEmitted.length) {
                         const tail = replyNow.slice(replyEmitted.length);
                         replyEmitted = replyNow;
                         controller.enqueue(
@@ -562,6 +587,28 @@ export const Route = createFileRoute("/api/triage")({
                   `[triage] downgrading "${meta.mode}" → "explain" (bare question, conf=${meta.confidence})`,
                 );
                 meta.mode = "explain";
+              }
+
+              // Hard ask policy: this turn was never allowed to ask. Convert a
+              // stray clarify into real work and answer with the assumption
+              // instead of a question.
+              if (meta.mode === "clarify" && askPolicy.forceAction) {
+                console.warn(`[triage] clarify blocked (${askPolicy.reason}) → acting`);
+                meta.mode = fileCount === 0 ? "build" : "edit";
+                meta.scope = fileCount === 0 ? "large" : meta.scope === "tiny" ? "small" : meta.scope;
+                meta.suggestions = [];
+                meta.unknowns = [];
+                const replacement = stripQuestions(
+                  meta.brief && !meta.brief.includes("?")
+                    ? `Got it — ${meta.brief.charAt(0).toLowerCase()}${meta.brief.slice(1)} On it…`
+                    : "On it…",
+                );
+                if (replySuppressed || /\?/.test(replyEmitted)) {
+                  controller.enqueue(
+                    encoder.encode(sse({ type: "reply_delta", delta: replacement })),
+                  );
+                  replyEmitted = replacement;
+                }
               }
 
               controller.enqueue(encoder.encode(sse({ type: "meta", meta })));
