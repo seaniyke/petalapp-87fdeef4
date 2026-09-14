@@ -400,7 +400,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       projectId: payload.projectId,
       buildId: payload.buildId,
       url: payload.url,
-    }).catch((err) => console.warn("[builds/callback] test lab failed", err));
+    }).catch((err: unknown) => console.warn("[builds/callback] test lab failed", err));
 
     const labCases = await loadCasesForBuild(payload.buildId);
     const readiness = evaluateReadiness({
