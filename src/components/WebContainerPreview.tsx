@@ -273,6 +273,10 @@ export function WebContainerPreview({
         setPickerWarning(null);
         return;
       }
+      if (data.type === "petal:preview:route" && data.payload) {
+        onRoute?.(data.payload as { path: string; title: string; heading: string | null });
+        return;
+      }
       if ((data.type === "petal:runtime:error" || data.type === "petal:preview:blank") && data.payload) {
         const payload = data.payload as RuntimeError;
         onRuntimeError?.(payload);
