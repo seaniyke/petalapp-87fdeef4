@@ -467,6 +467,11 @@ export async function updateLastCallUsage(args: {
   completionTokens: number | null;
   totalTokens: number | null;
   cachedPromptTokens?: number | null;
+  /** Provider-reported USD cost for this call, when the gateway returns one
+   *  (OpenRouter does). When present it is recorded as ACTUAL cost; otherwise
+   *  we fall back to the internal price table and mark it ESTIMATED. */
+  actualCostUsd?: number | null;
+  turnId?: string | null;
   staticPrefixChars?: number | null;
   staticPrefixHash?: string | null;
   filesSent?: number | null;
@@ -495,6 +500,9 @@ export async function updateLastCallUsage(args: {
       completion_tokens: number | null;
       total_tokens: number | null;
       cost_usd_micro?: number | null;
+      cost_basis?: string;
+      cost_source?: string | null;
+      turn_id?: string | null;
       cached_prompt_tokens?: number | null;
       static_prefix_chars?: number | null;
       static_prefix_hash?: string | null;
@@ -504,12 +512,25 @@ export async function updateLastCallUsage(args: {
       completion_tokens: args.completionTokens,
       total_tokens: args.totalTokens,
     };
-    const cost = estimateCostUsdMicro(
-      args.model,
-      args.promptTokens,
-      args.completionTokens,
-    );
-    if (cost != null) patch.cost_usd_micro = cost;
+    // Prefer the provider's own number. Only fall back to the internal price
+    // table when the gateway gave us nothing, and always say which it was.
+    if (args.actualCostUsd != null && Number.isFinite(args.actualCostUsd)) {
+      patch.cost_usd_micro = Math.round(args.actualCostUsd * 1_000_000);
+      patch.cost_basis = "actual";
+      patch.cost_source = "provider";
+    } else {
+      const cost = estimateCostUsdMicro(
+        args.model,
+        args.promptTokens,
+        args.completionTokens,
+      );
+      if (cost != null) {
+        patch.cost_usd_micro = cost;
+        patch.cost_basis = "estimated";
+        patch.cost_source = "price_table";
+      }
+    }
+    if (args.turnId) patch.turn_id = args.turnId;
     if (args.cachedPromptTokens != null) patch.cached_prompt_tokens = args.cachedPromptTokens;
     if (args.staticPrefixChars != null) patch.static_prefix_chars = args.staticPrefixChars;
     if (args.staticPrefixHash != null) patch.static_prefix_hash = args.staticPrefixHash;
