@@ -725,15 +725,27 @@ export async function executeAgentTool(args: {
         signal,
       });
 
-    default:
+    default: {
+      // Observed failure: the model invented `write_file`, got a bare "unknown
+      // tool" back, and abandoned the build with only a data module written.
+      // Name the right surface instead of just refusing.
+      const writeish = /^(write|create|edit|update|save|apply)_?(file|files|code)?$/i.test(call.name);
       return {
         label: `Unknown tool: ${call.name}`,
         isError: true,
-        output: `There is no tool named "${call.name}". Available tools: ${allAgentTools()
-          .map((t) => t.function.name)
-          .join(", ")}.`,
+        output:
+          `There is no tool named "${call.name}". Available tools: ${allAgentTools()
+            .map((t) => t.function.name)
+            .join(", ")}.` +
+          (writeish
+            ? `\n\nThese tools only inspect the project. To create or change files, emit the edits ` +
+              `through your normal file-writing response (the patch_files tool) — not a tool call here. ` +
+              `Write every screen the app routes to; do not stop after data or setup files.`
+            : ""),
       };
+    }
   }
+
 }
 
 /**
