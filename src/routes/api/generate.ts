@@ -5212,7 +5212,7 @@ Forbidden defaults
             files: nextFiles,
             design: picContext?.design ?? null,
             model,
-            userRequest: userMessage,
+            userRequest: lastUserContent,
             projectId: body.projectId ?? undefined,
             userId,
             signal: abortSignal,
