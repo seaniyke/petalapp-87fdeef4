@@ -24,6 +24,7 @@ import {
   INTERRUPTED_MARKER,
   type CompletionRecord,
 } from "@/server/turn-completion.server";
+import { recoverApplyingCreditPauses } from "@/server/credit-pause.server";
 
 /** Never run more than a couple of repairs per tick — this costs money. */
 const MAX_PER_TICK = 3;
@@ -123,9 +124,30 @@ export async function handleTurnResume(request: Request): Promise<Response> {
     console.warn("[cron/turn-resume] memory sweep failed:", (e as Error).message);
   }
 
+  let creditPausesRecovered = 0;
+  try {
+    const recovered = await recoverApplyingCreditPauses(MAX_PER_TICK);
+    creditPausesRecovered = recovered.length;
+    const secret = process.env.BUILDER_SHARED_SECRET;
+    if (secret) {
+      const origin = new URL(request.url).origin;
+      await Promise.all(recovered.map(async (projectId) => {
+        const { data: project } = await supabaseAdmin.from("projects").select("owner_id").eq("id", projectId).maybeSingle();
+        if (!project?.owner_id) return;
+        await fetch(new URL("/api/builds/trigger", origin), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret, "x-petal-internal-user": project.owner_id },
+          body: JSON.stringify({ projectId }),
+        }).catch(() => undefined);
+      }));
+    }
+  } catch (e) {
+    console.warn("[cron/turn-resume] credit checkpoint sweep failed:", (e as Error).message);
+  }
+
   const pending = await listResumable(MAX_PER_TICK);
   if (!pending.length) {
-    return Response.json({ ok: true, checked: 0, resumed: 0, memoryReplayed });
+    return Response.json({ ok: true, checked: 0, resumed: 0, memoryReplayed, creditPausesRecovered });
   }
 
   const origin = new URL(request.url).origin;

@@ -131,3 +131,15 @@ export async function resumeCreditPausesForUser(userId: string): Promise<string[
   }
   return resumed;
 }
+
+/** Recover checkpoints charged by a worker that stopped before files landed. */
+export async function recoverApplyingCreditPauses(limit = 3): Promise<string[]> {
+  const { data } = await supabaseAdmin.from("credit_paused_turns").select("id")
+    .eq("status", "applying").order("claimed_at", { ascending: true }).limit(limit);
+  const resumed: string[] = [];
+  for (const row of data ?? []) {
+    const result = await resumeCreditPause(row.id);
+    if (result.ok && result.projectId) resumed.push(result.projectId);
+  }
+  return resumed;
+}
