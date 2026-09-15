@@ -22,7 +22,10 @@ export type EconomicsKey =
   | "target_gross_margin_pct"
   | "free_user_monthly_cost_ceiling_usd"
   | "max_active_dedicated_backends"
-  | "dedicated_retention_days";
+  | "dedicated_retention_days"
+  | "auto_upgrade_row_pct"
+  | "auto_upgrade_user_count"
+  | "auto_upgrade_min_credits";
 
 export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   target_variable_cost_per_credit_usd: 0.05,
