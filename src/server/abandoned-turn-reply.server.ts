@@ -55,10 +55,13 @@ function bodyFor(input: AbandonedTurnReply): string {
       "Finished this build while you were away — your files are saved and the preview is up to date."
     );
   }
+  // Transient failures never reach here — those are queued for silent
+  // completion instead. What's left is something the user has to know about,
+  // phrased without blaming their connection.
   const detail = input.errorMessage?.trim();
   return detail
-    ? `This build didn't finish: ${detail.slice(0, 300)}`
-    : "This build didn't finish. Nothing was charged — ask again and Petal will pick it back up.";
+    ? `Petal couldn't finish this one: ${detail.slice(0, 300)}`
+    : "Petal couldn't finish this one. Nothing was charged — send it again and it'll pick up from here.";
 }
 
 /**

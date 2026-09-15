@@ -21,6 +21,7 @@ import {
   claimResumeAttempt,
   listResumable,
   markBlocked,
+  INTERRUPTED_MARKER,
   type CompletionRecord,
 } from "@/server/turn-completion.server";
 
@@ -28,6 +29,11 @@ import {
 const MAX_PER_TICK = 3;
 
 function repairBrief(record: CompletionRecord): string {
+  // An interrupted request never produced a broken build — it just stopped.
+  // Re-run what the user actually asked for, silently.
+  if (record.evidence.includes(INTERRUPTED_MARKER)) {
+    return record.outstanding_defects[0] ?? "";
+  }
   const defects = record.outstanding_defects.slice(0, 10);
   return [
     "Your last build is not usable yet. Petal's own checks found these problems:",
@@ -49,9 +55,18 @@ async function resumeOne(record: CompletionRecord, origin: string): Promise<stri
   const claimed = await claimResumeAttempt(record);
   if (!claimed) return "skipped";
 
+  // An interrupted FIRST build has no files yet — that's expected, not a
+  // reason to stop. Only a repair round genuinely needs existing files.
+  const interrupted = record.evidence.includes(INTERRUPTED_MARKER);
   const files = await loadFiles(record.project_id);
-  if (!files.length) {
+  if (!files.length && !interrupted) {
     await markBlocked(record.id, "Petal could not find the project's files to repair.");
+    return "blocked";
+  }
+
+  const brief = repairBrief(record);
+  if (!brief.trim()) {
+    await markBlocked(record.id, "Petal could not tell what was left to finish.");
     return "blocked";
   }
 
@@ -64,7 +79,7 @@ async function resumeOne(record: CompletionRecord, origin: string): Promise<stri
       "x-petal-internal-user": record.user_id,
     },
     body: JSON.stringify({
-      messages: [{ role: "user", content: repairBrief(record) }],
+      messages: [{ role: "user", content: brief }],
       currentFiles: files,
       projectId: record.project_id,
       isAutoFix: true,

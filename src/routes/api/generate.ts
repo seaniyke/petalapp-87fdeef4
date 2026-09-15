@@ -94,7 +94,12 @@ import {
   makeProtectedGlobMatcher,
 } from "@/server/preservation-rules";
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
-import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
+import {
+  runSelfCheck,
+  humanizeBuildError,
+  classifyRawError,
+  isTransientFailure,
+} from "@/server/self-recovery.server";
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
@@ -173,7 +178,11 @@ import {
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
-import { openTurnCompletion, markStage } from "@/server/turn-completion.server";
+import {
+  openTurnCompletion,
+  markStage,
+  markInterruptedForResume,
+} from "@/server/turn-completion.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
 import {
   proposeChangePlan,
@@ -5786,6 +5795,40 @@ Forbidden defaults
   });
 }
 
+/**
+ * Read an `error` payload out of one complete SSE block, if that is what it
+ * is. Used to hold back failures Petal is about to retry itself.
+ */
+function errorPayloadOf(block: string): { message: string; raw: string } | null {
+  if (!block.includes('"type":"error"')) return null;
+  const data = block
+    .split("\n")
+    .filter((l) => l.startsWith("data:"))
+    .map((l) => l.slice(5).trim())
+    .join("");
+  if (!data) return null;
+  try {
+    const parsed = JSON.parse(data) as { type?: string; message?: string; raw?: string };
+    if (parsed.type !== "error") return null;
+    return { message: parsed.message ?? "", raw: parsed.raw ?? "" };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Wording for a failure the user genuinely has to know about. Never blames
+ * their connection — by the time this is shown, Petal has already decided the
+ * request cannot be finished on its own.
+ */
+function humanizeStreamFailure(raw: string): string {
+  const kind = classifyRawError(raw);
+  if (kind === "credits_exhausted" || kind === "provider_credits_exhausted") {
+    return raw;
+  }
+  return "Petal couldn't finish this one. Nothing was charged — send it again and it'll pick up from here.";
+}
+
 async function handleGenerateRequest(request: Request): Promise<Response> {
   // Peek auth + projectId so we can open a `turns` row BEFORE the inner
   // pipeline starts streaming. The inner core also reads the body, so we
@@ -5794,6 +5837,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   // Kept in scope so the terminal path can write the assistant reply itself
   // when the browser is gone (see persistAbandonedTurnReply below).
   let turnProjectId: string | null = null;
+  // The request we would need to re-run if this turn dies mid-generation.
+  let turnUserRequest = "";
   const clone = request.clone();
   try {
     const peekAuth = await authorize(clone);
@@ -5801,6 +5846,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       const peekBody = (await clone.json().catch(() => null)) as Body | null;
       if (peekBody?.projectId) {
         turnProjectId = peekBody.projectId;
+        const msgs = (peekBody as { messages?: Array<{ role?: string; content?: unknown }> })
+          .messages;
+        const lastUser = Array.isArray(msgs)
+          ? [...msgs].reverse().find((m) => m?.role === "user")
+          : null;
+        if (lastUser && typeof lastUser.content === "string") {
+          turnUserRequest = lastUser.content;
+        }
         recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
         // Open the server-owned completion record for this request. From here
         // the loop's authority lives in the database, not in the tab: stage,
@@ -5901,6 +5954,29 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
 
       let terminalStatus: "succeeded" | "failed" | "aborted" = "succeeded";
       let terminalError: string | null = null;
+      // Set when this turn has been queued to finish itself server-side. The
+      // user is told nothing: no error card, no retry button, no "connection
+      // dropped" line. The resume worker carries the request to completion.
+      let silentRecovery = false;
+
+      /**
+       * Queue the turn for silent completion when the failure is one Petal can
+       * simply run again. Returns true when the caller should stay quiet.
+       */
+      const recoverSilently = async (raw: string, userCancelled: boolean): Promise<boolean> => {
+        if (silentRecovery) return true;
+        if (!turnProjectId || !turnUserRequest) return false;
+        if (!isTransientFailure(classifyRawError(raw), raw, userCancelled)) return false;
+        const queued = await markInterruptedForResume({
+          projectId: turnProjectId,
+          userRequest: turnUserRequest,
+        }).catch(() => false);
+        if (!queued) return false;
+        silentRecovery = true;
+        emit({ type: "recovering" });
+        emit({ type: "status", message: "Still working — Petal is finishing this off." });
+        return true;
+      };
 
       try {
         // Announce the turn id FIRST so the client can persist it locally
@@ -5946,33 +6022,59 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
           terminalStatus = "failed";
           terminalError = raw.slice(0, 500);
-          emit({
-            type: "error",
-            message: raw || "Petal couldn't start that build. Please try again.",
-            kind: classifyRawError(raw),
-            raw: raw.slice(0, 500),
-          });
+          if (!(await recoverSilently(raw, false))) {
+            emit({
+              type: "error",
+              message: raw || "Petal couldn't start that build. Please try again.",
+              kind: classifyRawError(raw),
+              raw: raw.slice(0, 500),
+            });
+          }
           return;
         }
 
         const reader = response.body.getReader();
+        // The inner pipeline reports its own failures as `error` SSE events
+        // rather than by throwing, so transient ones have to be caught on the
+        // wire. Frame the stream into whole SSE blocks, and hold back any
+        // error we are about to retry ourselves — the user should never see a
+        // failure Petal is already finishing on its own.
+        const decoder = new TextDecoder();
+        let sseBuffer = "";
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          // Keep draining even after the client is gone: the bytes still go
-          // to the turn recorder, which is what a reconnecting tab replays.
-          push(value);
+          sseBuffer += decoder.decode(value, { stream: true });
+          let cut = sseBuffer.indexOf("\n\n");
+          while (cut !== -1) {
+            const block = sseBuffer.slice(0, cut + 2);
+            sseBuffer = sseBuffer.slice(cut + 2);
+            const failure = errorPayloadOf(block);
+            if (failure && (await recoverSilently(failure.raw || failure.message, false))) {
+              terminalStatus = "failed";
+              terminalError = (failure.raw || failure.message).slice(0, 500);
+            } else {
+              // Keep pushing even after the client is gone: the bytes still go
+              // to the turn recorder, which is what a reconnecting tab replays.
+              push(encoder.encode(block));
+            }
+            cut = sseBuffer.indexOf("\n\n");
+          }
         }
+        if (sseBuffer) push(encoder.encode(sseBuffer));
       } catch (e) {
         const raw = e instanceof Error ? e.message : "Generation failed.";
-        terminalStatus = workController.signal.aborted ? "aborted" : "failed";
+        const userCancelled = workController.signal.aborted;
+        terminalStatus = userCancelled ? "aborted" : "failed";
         terminalError = raw.slice(0, 500);
-        emit({
-          type: "error",
-          message: "The connection dropped while Petal was building. Reconnecting and retrying is safe — no credits were charged for this failed attempt.",
-          kind: classifyRawError(raw),
-          raw: raw.slice(0, 500),
-        });
+        if (!(await recoverSilently(raw, userCancelled))) {
+          emit({
+            type: "error",
+            message: humanizeStreamFailure(raw),
+            kind: classifyRawError(raw),
+            raw: raw.slice(0, 500),
+          });
+        }
       } finally {
         if (pingTimer) clearInterval(pingTimer);
         if (statusTimer) clearInterval(statusTimer);
@@ -5989,7 +6091,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // listening. Give the client a short grace window to land its own
         // write, then reconcile from the server — the helper no-ops when a
         // reply already exists.
-        if (turnProjectId) {
+        if (turnProjectId && !silentRecovery) {
           // Hand the request over to the build stage, or close it honestly.
           await markStage(
             turnProjectId,
@@ -6002,7 +6104,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
                 },
           );
         }
-        if (turnProjectId && recorder) {
+        // A turn queued for silent completion must not write a reply at all:
+        // the resumed run owns the conversation, and a "this didn't finish"
+        // bubble is exactly what we are removing.
+        if (turnProjectId && recorder && !silentRecovery) {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
           const wroteReply = await persistAbandonedTurnReply({

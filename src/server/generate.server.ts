@@ -540,6 +540,12 @@ export type PatchFilesArgs = { plan?: string; summary: string; recap?: string; o
 /** Stream events emitted from /api/generate to the client. */
 export type StreamEvent =
   | { type: "status"; message: string }
+  /**
+   * The turn hit a transient failure (model call dropped, worker restart) and
+   * has been queued to finish itself server-side. Purely informational for the
+   * client: it keeps the working state instead of showing a failure.
+   */
+  | { type: "recovering" }
   | { type: "plan_delta"; delta: string }
   | { type: "summary_delta"; delta: string }
   | { type: "recap_delta"; delta: string }

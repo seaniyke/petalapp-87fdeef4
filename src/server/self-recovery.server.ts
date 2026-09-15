@@ -86,6 +86,42 @@ export function classifyRawError(rawMessage: string): ErrorKind {
   return "unknown";
 }
 
+/**
+ * Is this failure one Petal can simply run again?
+ *
+ * Transient = the model call, the network or the worker fell over. Those are
+ * picked back up silently instead of being reported. Anything the user has to
+ * act on (out of credits, signed out, they pressed stop) is NOT transient and
+ * still surfaces normally.
+ */
+const TRANSIENT_KINDS = new Set<ErrorKind>([
+  "upstream_timeout",
+  "upstream_unavailable",
+  "rate_limit",
+  "truncated_response",
+]);
+
+const TRANSIENT_RAW =
+  /fetch failed|network error|load failed|socket hang up|terminated|stream idle|ECONNRESET|ETIMEDOUT|ENOTFOUND|connection (closed|reset|dropped)|worker (restart|exceeded)|request stole it|error code:\s*1016/i;
+
+export function isTransientFailure(
+  kind: ErrorKind,
+  rawMessage: string,
+  userCancelled = false,
+): boolean {
+  if (userCancelled) return false;
+  if (
+    kind === "credits_exhausted" ||
+    kind === "provider_credits_exhausted" ||
+    kind === "unauthorized" ||
+    kind === "aborted"
+  ) {
+    return false;
+  }
+  if (TRANSIENT_KINDS.has(kind)) return true;
+  return TRANSIENT_RAW.test(rawMessage || "");
+}
+
 
 
 /* ──────────────────────────────────────────────────────────────────────

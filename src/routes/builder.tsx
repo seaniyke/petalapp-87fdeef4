@@ -259,7 +259,7 @@ function isVerificationCardTitle(title: string | undefined): boolean {
 function isTransientFailureCardTitle(title: string | undefined): boolean {
   if (!title) return false;
   return (
-    title.startsWith("Petal lost the connection") ||
+    title.startsWith("Petal is picking this back up") ||
     title.startsWith("Petal is reconnecting") ||
     title.startsWith("Build service is briefly unavailable") ||
     title.startsWith("Couldn't reach the publishing service") ||
@@ -490,6 +490,12 @@ function Builder() {
   }, [project?.id]);
 
   const [activityVisible, setActivityVisible] = useState(false);
+  /**
+   * True while the server is finishing an interrupted turn on its own. The
+   * working state stays on screen and a watcher below picks up the reply the
+   * resumed run writes into the thread.
+   */
+  const [awaitingSilentResume, setAwaitingSilentResume] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   /** Build id the browser-check card was raised for, so it can be retracted. */
   const verificationCardBuildIdRef = useRef<string | null>(null);
@@ -2043,6 +2049,58 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, bootstrapping]);
 
+  // ── Silent resume watcher ────────────────────────────────────────────────
+  //
+  // When the server takes a turn over, it finishes it and writes the reply
+  // into the thread itself. Poll for that reply so the open tab shows the
+  // finished result without the user doing anything — and without ever being
+  // told that something was interrupted.
+  useEffect(() => {
+    if (!awaitingSilentResume || !project?.id) return;
+    const pid = project.id;
+    const baseline = messages.length;
+    const startedAt = Date.now();
+    let stopped = false;
+
+    const tick = async () => {
+      if (stopped) return;
+      // Give up quietly after 15 minutes; the reply still lands on reload.
+      if (Date.now() - startedAt > 15 * 60_000) {
+        setAwaitingSilentResume(false);
+        setActivityVisible(false);
+        return;
+      }
+      try {
+        const ms = await loadProjectMessages(pid);
+        if (stopped) return;
+        const grew = ms.length > baseline;
+        const endsWithAssistant = ms[ms.length - 1]?.role === "assistant";
+        if (grew && endsWithAssistant) {
+          const fs = await loadProjectFiles(pid).catch(() => null);
+          if (stopped) return;
+          if (fs) setFiles(fs);
+          setMessages(ms);
+          setStreamingAssistant("");
+          setStreamingPlan("");
+          setStreamingRecap("");
+          setLatestCycleProgress(undefined);
+          setActivityVisible(false);
+          setAwaitingSilentResume(false);
+        }
+      } catch {
+        /* keep waiting */
+      }
+    };
+
+    const timer = window.setInterval(() => void tick(), 8_000);
+    void tick();
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingSilentResume, project?.id]);
+
 
   // Auto-send the prompt from the landing page once, after bootstrap.
   // Note: project may be null here when arriving with ?prompt but no ?id —
@@ -2366,6 +2424,9 @@ function Builder() {
       let resultSuggestions: string[] = [];
       let resultVerdict: string | undefined;
       // (resultHandoff removed along with the Continue-building chip.)
+      // Set when the server told us it is finishing this turn itself. No
+      // failure is shown; the working state simply continues.
+      let silentlyRecovering = false;
       let streamError: string | null = null;
       let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
       let streamErrorRaw: string | undefined;
@@ -2608,6 +2669,16 @@ function Builder() {
               streamErrorRaw = raw;
               if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
+            onRecovering: () => {
+              // Petal is finishing this server-side. Drop anything the stream
+              // may already have flagged and keep the working state on screen.
+              silentlyRecovering = true;
+              streamError = null;
+              streamErrorKind = undefined;
+              streamErrorRaw = undefined;
+              setActivityVisible(true);
+              setLatestCycleProgress("Still working — Petal is finishing this off.");
+            },
             onTurnId: (turnId) => {
               // Persist immediately so a tab-close in the next 200ms still
               // lets us reconnect on return. Keyed per-project so opening a
@@ -2660,6 +2731,12 @@ function Builder() {
 
         if (controller.signal.aborted) return;
         if (planFallbackRequested) return;
+        if (silentlyRecovering) {
+          // The server owns this turn now and will finish it. Stay in the
+          // working state and let the watcher below surface the result.
+          setAwaitingSilentResume(true);
+          return;
+        }
         if (streamError) {
           // Preserve the server-classified kind across the throw boundary so
           // toFriendlyError can render the right card without regexing the
@@ -2984,15 +3061,10 @@ function Builder() {
           claimAutoRecovery()
         ) {
           transientGenerateRecoveryRef.current.attempts += 1; persistRecovery(projectIdRef.current);
+          // Silent by design: Petal just runs it again. Telling the user a
+          // connection dropped is noise they can do nothing about.
           setActivityVisible(true);
-          setFriendlyError({
-            title: "Petal is reconnecting",
-            message:
-              "The build connection dropped before changes were saved. No action needed — Petal is retrying once with a safer path.",
-            actionLabel: "Working on it",
-            actionKind: "dismiss",
-            technicalDetail: msg,
-          });
+          setLatestCycleProgress("Still working — Petal is finishing this off.");
           setPhases(advanceTo(defaultPhases(), "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
