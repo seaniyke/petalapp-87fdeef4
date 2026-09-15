@@ -24,7 +24,6 @@ import {
   Lock,
   Plus,
   Mic,
-  Check,
   Code2,
   ShieldCheck,
   Store,
@@ -504,14 +503,11 @@ function Landing() {
             </h1>
           ) : (
             <>
-              <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary sm:mb-5 sm:text-xs">
-                From first sentence to shipped product
-              </p>
               <h1 className="heading-editorial mx-auto max-w-5xl text-balance text-[2.7rem] sm:text-7xl md:text-[5.6rem]">
-                Say what you need.<br /><em>Ship what you imagined.</em>
+                Build an app from<br />a conversation.
               </h1>
               <p className="mx-auto mt-5 max-w-2xl text-balance text-[0.94rem] leading-relaxed text-muted-foreground sm:mt-7 sm:text-xl">
-                Petal turns a conversation into a polished web or mobile app—with the pages, data, accounts, payments, and finish it needs to work in the real world.
+                Describe your app. Petal plans, builds, tests, and publishes it.
               </p>
             </>
           )}
@@ -686,17 +682,6 @@ function Landing() {
                   });
                 }}
               />
-              <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-medium text-muted-foreground">
-                {[
-                  "Web and mobile",
-                  "Your code",
-                  "Credits never expire",
-                ].map((item) => (
-                  <span key={item} className="inline-flex items-center gap-1.5">
-                    <Check className="h-3.5 w-3.5 text-primary" /> {item}
-                  </span>
-                ))}
-              </div>
             </>
           )}
         </div>
