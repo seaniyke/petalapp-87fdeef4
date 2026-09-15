@@ -61,6 +61,40 @@ Return {"defects":[]} when the screens look correct.`;
 
 type RawDefect = { kind?: unknown; where?: unknown; detail?: unknown };
 
+/**
+ * Pick a representative spread of shots instead of the first N.
+ *
+ * The builder captures route-major, width-minor, so a naive `slice(0, 4)`
+ * would hand the reviewer four phone screenshots of the same two pages and
+ * nothing else. Round-robin across widths first, then routes, so every screen
+ * size and as many distinct pages as possible get reviewed.
+ */
+export function pickShotSpread(shots: VisualShot[], max: number): VisualShot[] {
+  const valid = shots.filter((s) => s && typeof s.image === "string" && s.image.startsWith("data:image/"));
+  if (valid.length <= max) return valid;
+
+  const byWidth = new Map<number, VisualShot[]>();
+  for (const s of valid) {
+    const list = byWidth.get(s.width);
+    if (list) list.push(s);
+    else byWidth.set(s.width, [s]);
+  }
+  const widths = Array.from(byWidth.keys()).sort((a, b) => a - b);
+  const out: VisualShot[] = [];
+  for (let i = 0; out.length < max; i++) {
+    let progressed = false;
+    for (const w of widths) {
+      const pick = byWidth.get(w)![i];
+      if (!pick) continue;
+      progressed = true;
+      out.push(pick);
+      if (out.length >= max) break;
+    }
+    if (!progressed) break;
+  }
+  return out;
+}
+
 function str(v: unknown, max: number): string {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
 }
