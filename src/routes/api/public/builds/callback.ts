@@ -30,6 +30,7 @@ import { loadCasesForBuild } from "@/server/test-results.server";
 import { runBackendAcceptance } from "@/server/backend-acceptance.server";
 import { backendAcceptanceEnabled } from "@/server/completion-flags.server";
 import { attachBuildEconomicsByProject } from "@/server/turn-economics.server";
+import { warmProjectThumbnail } from "@/server/project-thumbnail.server";
 
 /**
  * Pull the committed design contract for a project so craft QA judges the app
@@ -397,6 +398,11 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       console.error("Builder callback could not update project build", projectUpdateError.message);
       return new Response("Could not save project status", { status: 503 });
     }
+
+    // Capture the app's preview image once, now that it is live, so gallery
+    // and project cards never render a screenshot on demand. Best-effort: if
+    // the worker cuts this short, the cron sweep backfills it.
+    warmProjectThumbnail(payload.projectId, payload.buildId);
 
     // Acceptance (phase 6): shipping is necessary, not sufficient. When the
     // Test Lab ran for this build, its must-work results decide the verdict —

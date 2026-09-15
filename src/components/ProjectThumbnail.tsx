@@ -1,59 +1,82 @@
 /**
- * Project thumbnail used by the gallery, projects page, and projects drawer.
+ * Project thumbnail used by the gallery, project pages, the projects drawer
+ * and the homepage showcase.
  *
- * Behavior:
- *   - If the project has a published URL (custom domain or
- *     <slug>.buildwithpetal.com), we render a real screenshot using
- *     Microlink's free screenshot endpoint. No API key required.
- *   - If the screenshot fails to load OR the project hasn't been published
- *     yet, we fall back to a deterministic gradient tile with the project's
- *     initials — fast, attractive, and always works.
+ * Previews are captured ONCE per build and stored as a real image file in
+ * Petal's own storage (see `src/server/project-thumbnail.server.ts`). This
+ * component only ever renders that saved image, so tiles appear instantly on
+ * every visit instead of asking a screenshot service to re-render the app
+ * live while the user waits.
  *
- * Microlink free tier serves the image directly via:
- *   https://api.microlink.io/?url=<URL>&screenshot=true&meta=false&embed=screenshot.url
- * It caches results aggressively, so repeat visits are instant.
+ * When no saved preview exists yet, we show the branded gradient tile and
+ * quietly ask the server to capture one; it swaps in as soon as it lands
+ * (and is instant for everyone afterwards).
  */
 import { useEffect, useState } from "react";
-import { PETAL_ROOT_DOMAIN } from "@/lib/petal-subdomain";
-import { PetalLoader } from "@/components/PetalLoader";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  getSavedThumbnails,
+  ensureSavedThumbnail,
+} from "@/lib/project-thumbnail.functions";
+
+/** projectId -> saved image URL (or null when we know there isn't one yet). */
+const savedCache = new Map<string, string | null>();
+/** Projects we've already asked the server to capture this session. */
+const captureRequested = new Set<string>();
+
+type Waiter = { id: string; resolve: (url: string | null) => void };
+let queue: Waiter[] = [];
+let queueTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * Cache of project id -> deployment URL so a 60-card gallery doesn't fire the
- * same lookup twice. Shared across every mounted thumbnail.
- *
- * The lookup goes through `project_screenshot_url`, a security-definer
- * function that returns the latest READY build's public deployment URL for a
- * project the caller may see (public, or their own). That URL is reachable by
- * the screenshot service — unlike `/api/preview/:id`, which requires a bearer
- * token and therefore always rendered as a blank/authwall tile.
+ * Micro-batch the lookups: a 60-card gallery makes ONE request for all its
+ * saved previews instead of sixty.
  */
-const deployUrlCache = new Map<string, Promise<string | null>>();
-
-function fetchDeployUrl(projectId: string, buildId?: string | null): Promise<string | null> {
-  // Keyed by build so a fresh deploy re-resolves instead of serving the URL
-  // of the previous build forever.
-  const key = `${projectId}:${buildId ?? ""}`;
-  const cached = deployUrlCache.get(key);
-  if (cached) return cached;
-  const p = (async () => {
-    try {
-      const { data } = await (
-        supabase.rpc as unknown as (
-          fn: string,
-          args: Record<string, unknown>,
-        ) => Promise<{ data: string | null }>
-      )("project_screenshot_url", { p_project_id: projectId });
-      return typeof data === "string" && data ? data : null;
-    } catch {
-      return null;
-    }
-  })();
-
-  deployUrlCache.set(key, p);
-  return p;
+function lookupSaved(projectId: string): Promise<string | null> {
+  if (savedCache.has(projectId)) {
+    return Promise.resolve(savedCache.get(projectId) ?? null);
+  }
+  return new Promise((resolve) => {
+    queue.push({ id: projectId, resolve });
+    if (queueTimer) return;
+    queueTimer = setTimeout(() => {
+      const batch = queue;
+      queue = [];
+      queueTimer = null;
+      const ids = [...new Set(batch.map((w) => w.id))];
+      void getSavedThumbnails({ data: { projectIds: ids } })
+        .then((res) => {
+          const map = res?.thumbnails ?? {};
+          for (const id of ids) savedCache.set(id, map[id]?.url ?? null);
+          for (const w of batch) w.resolve(savedCache.get(w.id) ?? null);
+        })
+        .catch(() => {
+          for (const w of batch) w.resolve(null);
+        });
+    }, 40);
+  });
 }
 
+/**
+ * Ask the server to capture a preview for a project that doesn't have one.
+ * Best-effort and at most once per project per session.
+ */
+async function requestCapture(
+  projectId: string,
+  buildId?: string | null,
+): Promise<string | null> {
+  if (captureRequested.has(projectId)) return null;
+  captureRequested.add(projectId);
+  try {
+    const res = await ensureSavedThumbnail({
+      data: { projectId, buildId: buildId ?? null },
+    });
+    const url = res?.url ?? null;
+    if (url) savedCache.set(projectId, url);
+    return url;
+  } catch {
+    return null;
+  }
+}
 
 export function ProjectThumbnail({
   projectId,
@@ -74,122 +97,69 @@ export function ProjectThumbnail({
   customDomain?: string | null;
   /** Explicit override — used by callers that already resolved the URL. */
   publishedUrl?: string | null;
-  /**
-   * The project's published (or latest) build id. When the project has no
-   * subdomain or custom domain we resolve this build's deployment URL and
-   * screenshot that, so every shipped app has a real thumbnail.
-   */
+  /** The project's published (or latest) build id, so a fresh deploy re-captures. */
   buildId?: string | null;
   /** "cover" crops to fill (grid tiles); "contain" shows the whole page (detail hero). */
   fit?: "cover" | "contain";
 }) {
-  const [deployUrl, setDeployUrl] = useState<string | null>(null);
-  // Every unpublished project gets a lookup — a build id is a nice hint that
-  // one exists, but cards in the drawer/gallery often don't carry it.
-  const needsDeployUrl = !publishedUrl && !customDomain && !subdomain && !!projectId;
+  // These stay in the public API because every call site passes them; the
+  // server resolves the live URL itself when it captures.
+  void subdomain;
+  void customDomain;
+  void publishedUrl;
+
+  const [src, setSrc] = useState<string | null>(
+    () => savedCache.get(projectId) ?? null,
+  );
+  const [loaded, setLoaded] = useState(false);
+  const contain = fit === "contain";
 
   useEffect(() => {
-    if (!needsDeployUrl) return;
+    if (!projectId) return;
     let alive = true;
-    void fetchDeployUrl(projectId, buildId).then((url) => {
-      if (alive) setDeployUrl(url);
-    });
+    setLoaded(false);
+    setSrc(savedCache.get(projectId) ?? null);
+
+    void (async () => {
+      const found = await lookupSaved(projectId);
+      if (!alive) return;
+      if (found) {
+        setSrc(found);
+        return;
+      }
+      // Nothing saved yet — capture in the background and swap it in.
+      const captured = await requestCapture(projectId, buildId);
+      if (alive && captured) setSrc(captured);
+    })();
+
     return () => {
       alive = false;
     };
-    // `buildId` participates so a freshly finished build re-resolves.
-  }, [needsDeployUrl, projectId, buildId]);
-
-
-  const url = resolveLiveUrl({
-    projectId,
-    subdomain,
-    customDomain,
-    publishedUrl: publishedUrl ?? deployUrl,
-  });
-  const contain = fit === "contain";
-  const [failed, setFailed] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  // Retry counter for the screenshot provider. We only ever use Microlink:
-  // it returns the real page screenshot or nothing. (The WordPress mShots
-  // backup was removed — while it warms a page it serves a generic WordPress
-  // "W" placeholder image, which shipped as the app's thumbnail.)
-  const [attempt, setAttempt] = useState(0);
-  const showImage = url && !failed;
-
-  // Reset whenever the resolved target changes (e.g. a build just landed).
-  useEffect(() => {
-    setFailed(false);
-    setLoaded(false);
-    setAttempt(0);
-  }, [url]);
-
-  // The screenshot service can hang (cold render, rate limit) without ever
-  // firing onError, which left the tile showing a spinner forever. Cold
-  // renders routinely take 20-40s, so the first attempt gets a generous
-  // deadline, then we retry with a cache-bypass, then fall back to the
-  // gradient.
-  useEffect(() => {
-    if (!showImage || loaded) return;
-    const t = setTimeout(() => {
-      setAttempt((a) => {
-        if (a < 2) return a + 1;
-        setFailed(true);
-        return a;
-      });
-    }, attempt === 0 ? 30000 : 20000);
-    return () => clearTimeout(t);
-  }, [showImage, loaded, url, attempt]);
-
-  // A transient cold-render failure used to stick the gradient tile forever.
-  // Give the provider one more chance a little later — by then its cache is
-  // warm and the retry is cheap.
-  useEffect(() => {
-    if (!failed) return;
-    const t = setTimeout(() => {
-      setFailed(false);
-      setLoaded(false);
-      setAttempt(1);
-    }, 60000);
-    return () => clearTimeout(t);
-  }, [failed, url]);
-
-
-
+  }, [projectId, buildId]);
 
   return (
     <div
       className={`relative overflow-hidden ${contain ? "bg-muted/30" : ""} ${className}`}
       aria-hidden
     >
-      {showImage ? (
-        <>
-          {!loaded && (
-            <div className="absolute inset-0 grid place-items-center bg-muted/40">
-              <PetalLoader size={28} />
-            </div>
-          )}
-          <img
-            key={attempt}
-            // SSR renders this <img> in the HTML, so the browser can finish
-            // loading it before React hydrates — in which case onLoad never
-            // fires and the tile would stay invisible behind the loader.
-            // The ref catches the already-complete case on mount.
-            ref={(el) => {
-              if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
-            }}
-            src={screenshotUrl(url, fit, attempt)}
-            alt=""
-            loading="eager"
-            decoding="async"
-            fetchPriority="high"
-            className={`absolute inset-0 h-full w-full ${contain ? "object-contain object-center" : "object-cover object-top"} transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
-            onLoad={() => setLoaded(true)}
-            onError={() => (attempt < 2 ? setAttempt(attempt + 1) : setFailed(true))}
-          />
-        </>
-      ) : (
-        <Fallback projectId={projectId} title={title} />
+      {/* The branded tile sits underneath, so there is never a blank box or a
+          spinner — the saved image simply fades over it once decoded. */}
+      <Fallback projectId={projectId} title={title} />
+      {src && (
+        <img
+          // A saved image may already be in the browser cache before React
+          // hydrates, in which case onLoad never fires.
+          ref={(el) => {
+            if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
+          }}
+          src={src}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className={`absolute inset-0 h-full w-full ${contain ? "object-contain object-center bg-muted/30" : "object-cover object-top"} transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setLoaded(true)}
+          onError={() => setLoaded(false)}
+        />
       )}
     </div>
   );
@@ -221,58 +191,6 @@ function Fallback({ projectId, title }: { projectId: string; title?: string }) {
     </div>
   );
 }
-
-function resolveLiveUrl({
-  projectId,
-  subdomain,
-  customDomain,
-  publishedUrl,
-}: {
-  projectId?: string;
-  subdomain?: string | null;
-  customDomain?: string | null;
-  publishedUrl?: string | null;
-}): string | null {
-  if (publishedUrl) return publishedUrl;
-  if (customDomain) return `https://${customDomain}`;
-  if (subdomain) return `https://${subdomain}.${PETAL_ROOT_DOMAIN}`;
-  // No live URL resolved yet. We deliberately do NOT point the screenshot
-  // service at /api/preview/:id — that route requires a bearer token, so the
-  // service would capture an empty auth wall and ship it as the thumbnail.
-  // The branded gradient tile is the honest fallback until a build deploys.
-  void projectId;
-  return null;
-}
-
-
-function screenshotUrl(
-  target: string,
-  fit: "cover" | "contain" = "cover",
-  attempt = 0,
-): string {
-  // Microlink free endpoint — returns the real page screenshot directly. We
-  // pass a viewport sized for a nice card crop and wait for network idle so
-  // SPAs finish rendering before the snapshot is taken.
-  //
-  // There is deliberately no second provider: mShots answers cold requests
-  // with a generic WordPress placeholder graphic, and that placeholder was
-  // being shown to users as their app's thumbnail. A real screenshot or the
-  // branded gradient tile — never someone else's logo.
-  const params = new URLSearchParams({
-    url: target,
-    screenshot: "true",
-    meta: "false",
-    embed: "screenshot.url",
-    "viewport.width": fit === "contain" ? "1200" : "1280",
-    // 4:3 for contained hero cards so the whole page fits the box with no crop.
-    "viewport.height": fit === "contain" ? "900" : "800",
-    waitUntil: "networkidle0",
-  });
-  // Retry bypasses any cached failure without changing providers.
-  if (attempt > 0) params.set("force", "true");
-  return `https://api.microlink.io/?${params.toString()}`;
-}
-
 
 const PALETTES = [
   { gradient: "linear-gradient(135deg,#FFD8C2 0%,#F8B4A0 50%,#E59FB7 100%)", ink: "#5B2A3A" },
