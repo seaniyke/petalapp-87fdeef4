@@ -364,6 +364,53 @@ export async function claimResumeAttempt(
   return !error && Boolean(data);
 }
 
+/**
+ * Marker written into `evidence` when a request died mid-generation (model
+ * call dropped, worker restart) rather than producing a broken build. The
+ * resume worker reads it and re-runs the ORIGINAL request instead of a
+ * defect-repair brief — the user never asked for a repair, they asked for
+ * the thing that got interrupted.
+ */
+export const INTERRUPTED_MARKER = "interrupted_generation";
+
+/**
+ * Queue an interrupted request for silent server-side completion.
+ *
+ * Nothing is shown to the user: the cron worker picks the record up after a
+ * short grace window (the open tab gets first refusal) and finishes the
+ * request. Returns false when there is no open record or the attempt budget
+ * is already spent, in which case the caller falls back to normal reporting.
+ */
+export async function markInterruptedForResume(args: {
+  projectId: string;
+  userRequest: string;
+  /** How long to let an open tab finish on its own first. */
+  graceMs?: number;
+}): Promise<boolean> {
+  try {
+    const open = await loadOpenCompletion(args.projectId);
+    if (!open) return false;
+    if (open.attempts >= open.max_attempts) return false;
+    const request = args.userRequest.trim();
+    if (!request) return false;
+
+    const { error } = await supabaseAdmin
+      .from("project_turn_completion")
+      .update({
+        stage: "needs_repair",
+        outstanding_defects: [request.slice(0, 4000)],
+        evidence: [INTERRUPTED_MARKER],
+        terminal_reason: null,
+        resume_after: new Date(Date.now() + (args.graceMs ?? 30_000)).toISOString(),
+      } as never)
+      .eq("id", open.id);
+    return !error;
+  } catch (e) {
+    console.warn("[turn-completion] interrupt write failed", (e as Error).message);
+    return false;
+  }
+}
+
 /** Give up honestly, naming what still fails. */
 export async function markBlocked(
   recordId: string,
