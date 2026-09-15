@@ -2058,7 +2058,7 @@ function Builder() {
   useEffect(() => {
     if (!awaitingSilentResume || !project?.id) return;
     const pid = project.id;
-    const baseline = messagesRef.current?.length ?? 0;
+    const baseline = messages.length;
     const startedAt = Date.now();
     let stopped = false;
 
