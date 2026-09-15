@@ -122,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) return;
         setSession(data.session);
         setIsReady(true);
+        clearAuthHint();
         claimReferral(data.session);
 
         const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
@@ -132,7 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subscription = sub.subscription;
       })
       .catch(() => {
-        if (mounted) setIsReady(true);
+        if (mounted) {
+          setIsReady(true);
+          clearAuthHint();
+        }
       });
 
     return () => {
