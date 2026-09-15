@@ -72,6 +72,7 @@ import { validateStylesCss, repairStylesCss } from "@/server/validate-styles.ser
 import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { saveCreditPause } from "@/server/credit-pause.server";
 import { checkGenerateRateLimit, rateLimitResponse, secretsMatch } from "@/server/rate-limit.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -5473,7 +5474,21 @@ Forbidden defaults
           );
         }
         if (!body.isAutoFix && !failedEditTurn) {
-
+          const finalBalance = await checkCreditBalance({ userId, amount: priced.amount });
+          if (!finalBalance.ok && finalBalance.reason === "insufficient_credits" && body.projectId && logicalTurnId) {
+            const checkpointId = await saveCreditPause({
+              turnId: logicalTurnId,
+              projectId: body.projectId,
+              userId,
+              requiredCredits: priced.amount,
+              baselineFiles: turnBaselineFiles,
+              candidateFiles: nextFiles,
+              originalRequest: lastUserContent,
+              resultPayload: { summary, plan, recap, creditsCharged: 0 },
+            });
+            controller.enqueue(encoder.encode(sse({ type: "credits_paused", checkpointId, requiredCredits: priced.amount })));
+            return;
+          }
           // Single atomic settlement. `settle_build_charge` is idempotent on
           // the turn id (a retried request can never double-charge), drains
           // whatever is actually available — including the daily/monthly FREE

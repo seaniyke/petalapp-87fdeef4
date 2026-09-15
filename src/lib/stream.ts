@@ -258,6 +258,12 @@ export async function streamGenerate(
           case "credits_estimate":
             handlers.onCreditsEstimate?.(evt.credits);
             break;
+          case "credits_paused":
+            handlers.onCreditsPaused?.({
+              checkpointId: evt.checkpointId,
+              requiredCredits: evt.requiredCredits,
+            });
+            break;
           case "phase":
             handlers.onPhase?.(evt.phase);
             break;
@@ -547,7 +553,7 @@ export async function streamResumeTurn(
             handlers.onRecovering?.();
             break;
           case "done":
-            handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted") ?? "succeeded");
+            handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted" | "awaiting_credits") ?? "succeeded");
             return true;
         }
       }
