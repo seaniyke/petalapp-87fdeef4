@@ -24,7 +24,6 @@ import {
   Lock,
   Plus,
   Mic,
-  Check,
   Code2,
   ShieldCheck,
   Store,
