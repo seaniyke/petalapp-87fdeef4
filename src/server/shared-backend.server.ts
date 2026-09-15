@@ -18,6 +18,7 @@
  * Server-only. Never import from client code.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { storeFor } from "@/server/project-store.server";
 
 /** Hard limits so one free app can't eat the shared instance. */
 export const SHARED_LIMITS = {
