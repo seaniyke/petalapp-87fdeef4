@@ -655,6 +655,8 @@ export const Route = createFileRoute("/api/backend")({
             return handleSharedStatus(auth, body);
           case "disable-shared":
             return handleDisableShared(auth, body);
+          case "auto-upgrade":
+            return handleAutoUpgradePreference(auth, body);
           default:
             return new Response("Unknown action", { status: 400 });
         }
