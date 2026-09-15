@@ -5795,6 +5795,40 @@ Forbidden defaults
   });
 }
 
+/**
+ * Read an `error` payload out of one complete SSE block, if that is what it
+ * is. Used to hold back failures Petal is about to retry itself.
+ */
+function errorPayloadOf(block: string): { message: string; raw: string } | null {
+  if (!block.includes('"type":"error"')) return null;
+  const data = block
+    .split("\n")
+    .filter((l) => l.startsWith("data:"))
+    .map((l) => l.slice(5).trim())
+    .join("");
+  if (!data) return null;
+  try {
+    const parsed = JSON.parse(data) as { type?: string; message?: string; raw?: string };
+    if (parsed.type !== "error") return null;
+    return { message: parsed.message ?? "", raw: parsed.raw ?? "" };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Wording for a failure the user genuinely has to know about. Never blames
+ * their connection — by the time this is shown, Petal has already decided the
+ * request cannot be finished on its own.
+ */
+function humanizeStreamFailure(raw: string): string {
+  const kind = classifyRawError(raw);
+  if (kind === "credits_exhausted" || kind === "provider_credits_exhausted") {
+    return raw;
+  }
+  return "Petal couldn't finish this one. Nothing was charged — send it again and it'll pick up from here.";
+}
+
 async function handleGenerateRequest(request: Request): Promise<Response> {
   // Peek auth + projectId so we can open a `turns` row BEFORE the inner
   // pipeline starts streaming. The inner core also reads the body, so we
