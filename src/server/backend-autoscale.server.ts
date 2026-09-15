@@ -347,10 +347,21 @@ export async function runGrowthWatcher(limit = 10): Promise<WatchSummary> {
     .eq("auto_upgrade_opt_out", false);
   if (error) throw new Error(`list shared projects: ${error.message}`);
 
+  // Apps that asked for something the starter database can't do (file
+  // storage, direct SQL) jump the size thresholds.
+  const pending = new Set<string>();
+  const { data: requests } = await supabaseAdmin
+    .from("project_upgrade_events")
+    .select("project_id")
+    .eq("status", "requested")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  for (const r of requests ?? []) pending.add(r.project_id as string);
+
   for (const p of projects ?? []) {
     if (summary.upgraded >= limit) break;
     summary.checked++;
-    const result = await considerUpgrade(p.id);
+    const result = await considerUpgrade(p.id, pending.has(p.id));
     if (result.upgraded) summary.upgraded++;
     else if (result.error) summary.errors++;
     else if (result.blocked) summary.blocked++;
