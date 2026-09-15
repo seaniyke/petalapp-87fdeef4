@@ -5240,6 +5240,7 @@ Forbidden defaults
                   changeSet: turnChangeSet,
                   before: turnBaselineFiles,
                   after: nextFiles,
+                  memory: memoryEntries,
                 });
               }
             }
