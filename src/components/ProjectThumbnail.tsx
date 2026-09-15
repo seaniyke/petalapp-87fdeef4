@@ -125,19 +125,34 @@ export function ProjectThumbnail({
   }, [url]);
 
   // The screenshot service can hang (cold render, rate limit) without ever
-  // firing onError, which left the tile showing a spinner forever. Give the
-  // first render a long deadline, retry once, then fall back to the gradient.
+  // firing onError, which left the tile showing a spinner forever. Cold
+  // renders routinely take 20-40s, so the first attempt gets a generous
+  // deadline, then we retry with a cache-bypass, then fall back to the
+  // gradient.
   useEffect(() => {
     if (!showImage || loaded) return;
     const t = setTimeout(() => {
       setAttempt((a) => {
-        if (a === 0) return 1;
+        if (a < 2) return a + 1;
         setFailed(true);
         return a;
       });
-    }, attempt === 0 ? 14000 : 12000);
+    }, attempt === 0 ? 30000 : 20000);
     return () => clearTimeout(t);
   }, [showImage, loaded, url, attempt]);
+
+  // A transient cold-render failure used to stick the gradient tile forever.
+  // Give the provider one more chance a little later — by then its cache is
+  // warm and the retry is cheap.
+  useEffect(() => {
+    if (!failed) return;
+    const t = setTimeout(() => {
+      setFailed(false);
+      setLoaded(false);
+      setAttempt(1);
+    }, 60000);
+    return () => clearTimeout(t);
+  }, [failed, url]);
 
 
 
@@ -156,6 +171,13 @@ export function ProjectThumbnail({
           )}
           <img
             key={attempt}
+            // SSR renders this <img> in the HTML, so the browser can finish
+            // loading it before React hydrates — in which case onLoad never
+            // fires and the tile would stay invisible behind the loader.
+            // The ref catches the already-complete case on mount.
+            ref={(el) => {
+              if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
+            }}
             src={screenshotUrl(url, fit, attempt)}
             alt=""
             loading="eager"
@@ -163,7 +185,7 @@ export function ProjectThumbnail({
             fetchPriority="high"
             className={`absolute inset-0 h-full w-full ${contain ? "object-contain object-center" : "object-cover object-top"} transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
             onLoad={() => setLoaded(true)}
-            onError={() => (attempt === 0 ? setAttempt(1) : setFailed(true))}
+            onError={() => (attempt < 2 ? setAttempt(attempt + 1) : setFailed(true))}
           />
         </>
       ) : (
