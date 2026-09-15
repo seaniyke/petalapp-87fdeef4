@@ -208,10 +208,11 @@ describe("query provider", () => {
 });
 
 describe("font utility @apply", () => {
-  it("flags font-body when no --font-body token exists", async () => {
+  it("drops font-body when no --font-body token exists", async () => {
     const { repairStylesCss } = await import("@/server/validate-styles.server");
-    const css = "@import \"tailwindcss\";\n@theme { --font-display: Inter; }\nbody { @apply font-body font-display font-bold; }";
+    const css = '@import "tailwindcss";\n@layer base {\n  .dark { --background: #000; }\n}\nhtml {\n  @apply antialiased font-body;\n}\n';
     const repaired = repairStylesCss(css);
-    expect(repaired!.css).toContain("@apply font-display font-bold;");
+    expect(repaired!.css).toContain("@apply antialiased;");
+    expect(repaired!.css).not.toContain("font-body");
   });
 });
