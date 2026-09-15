@@ -1650,12 +1650,51 @@ async function runFinalParseGuard(
   }
 
   if (!report.ok) {
+    // Salvage before surrender. Observed on a real build: two of eight files
+    // came back truncated (an unterminated string, unbalanced braces), the
+    // repair rounds made no progress, and the ENTIRE turn was rolled back —
+    // the user got nothing at all for a complete app.
+    //
+    // A small number of bad files is not a bad turn. Drop just those (or
+    // restore their pre-turn content), re-run deterministic repairs so the
+    // import resolver keeps the app resolving, and ship the rest. The
+    // placeholder-completion pass downstream then writes the dropped screens
+    // for real.
+    const badPaths = Array.from(new Set(report.issues.map((i) => i.path))).filter(Boolean);
+    const salvageable = badPaths.length > 0 && badPaths.length <= 4 && badPaths.length < gated.length;
+    if (salvageable) {
+      try {
+        const bad = new Set(badPaths);
+        const priorByPath = new Map(priorFiles.map((f) => [f.path, f.content] as const));
+        const kept = gated.filter((f) => !bad.has(f.path));
+        for (const p of badPaths) {
+          const previous = priorByPath.get(p);
+          if (previous !== undefined) kept.push({ path: p, content: previous });
+        }
+        const repaired = runAllRepairs(kept).files;
+        const recheck = await runPreEmitGate(
+          repaired,
+          changedPaths.filter((p) => !bad.has(p)),
+          { maxRounds: 0, prd },
+        );
+        if (recheck.report.ok) {
+          console.log(`[preemit-gate] salvaged turn by quarantining ${badPaths.length} file(s)`);
+          controller.enqueue(
+            encoder.encode(sse({ type: "status", message: "Rewriting a screen that came out wrong…" })),
+          );
+          return { ok: true, files: recheck.files };
+        }
+      } catch (e) {
+        console.warn("[preemit-gate] salvage failed:", e instanceof Error ? e.message : String(e));
+      }
+    }
     // Don't throw — let the caller revert to the prior good files and reply
     // conversationally. A failed gate is NOT an infra error; it just means
     // this turn's edits weren't safe to ship.
     return { ok: false, detail: formatGateIssues(report.issues, 3) };
   }
   return { ok: true, files: gated };
+
 }
 
 
