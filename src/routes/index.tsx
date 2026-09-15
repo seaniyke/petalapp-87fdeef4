@@ -1127,8 +1127,8 @@ function Landing() {
                     Company
                   </h3>
                   <ul className="space-y-2.5 text-muted-foreground">
-                    <li><Link to="/features/sell" className="transition-colors hover:text-foreground">Features</Link></li>
-                    <li><Link to="/why/sell" className="transition-colors hover:text-foreground">Why Petal</Link></li>
+                    <li><Link to="/features/$slug" params={{ slug: "sell" }} className="transition-colors hover:text-foreground">Features</Link></li>
+                    <li><Link to="/why/$slug" params={{ slug: "sell" }} className="transition-colors hover:text-foreground">Why Petal</Link></li>
                     <li><Link to="/invest" className="transition-colors hover:text-foreground">Invest</Link></li>
                     <li><Link to="/coffee" className="transition-colors hover:text-foreground">Support us</Link></li>
                   </ul>
