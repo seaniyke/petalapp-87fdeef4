@@ -5199,10 +5199,41 @@ Forbidden defaults
           );
         }
 
+        // Placeholder-page completion. When the model routed to screens it
+        // never wrote, the import resolver stubs them so the build resolves —
+        // without this gate the turn ships an app whose every page is an empty
+        // prose block and still reports success. Runs BEFORE design
+        // enforcement so the new screens are linted too. Fails open.
+        try {
+          const { completePlaceholderPages } = await import(
+            "@/server/design/page-completion.server"
+          );
+          const completed = await completePlaceholderPages({
+            files: nextFiles,
+            design: picContext?.design ?? null,
+            model,
+            userRequest: userMessage,
+            projectId: body.projectId ?? undefined,
+            userId,
+            signal: abortSignal,
+          });
+          if (completed.completedPaths.length > 0) {
+            nextFiles = completed.files;
+            controller.enqueue(
+              encoder.encode(
+                sse({ type: "status", message: "Filled in the screens that were still empty." }),
+              ),
+            );
+          }
+        } catch (e) {
+          console.warn("[page-completion] skipped:", e instanceof Error ? e.message : String(e));
+        }
+
         // Design contract enforcement — the project's committed design system
         // is checked against the code we are about to ship. Structural turns
         // get ONE focused repair pass for hard violations (raw colours, hex
         // values, missing tokens); small edits lint-and-log only. Fails open.
+
         try {
           const { enforceDesignContract } = await import("@/server/design/design-enforce.server");
           const enforced = await enforceDesignContract({
