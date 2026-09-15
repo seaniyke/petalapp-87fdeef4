@@ -21,6 +21,7 @@ import {
   claimResumeAttempt,
   listResumable,
   markBlocked,
+  INTERRUPTED_MARKER,
   type CompletionRecord,
 } from "@/server/turn-completion.server";
 
