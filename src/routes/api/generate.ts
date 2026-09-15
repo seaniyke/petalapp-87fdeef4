@@ -94,7 +94,12 @@ import {
   makeProtectedGlobMatcher,
 } from "@/server/preservation-rules";
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
-import { runSelfCheck, humanizeBuildError, classifyRawError } from "@/server/self-recovery.server";
+import {
+  runSelfCheck,
+  humanizeBuildError,
+  classifyRawError,
+  isTransientFailure,
+} from "@/server/self-recovery.server";
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
@@ -173,7 +178,11 @@ import {
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
-import { openTurnCompletion, markStage } from "@/server/turn-completion.server";
+import {
+  openTurnCompletion,
+  markStage,
+  markInterruptedForResume,
+} from "@/server/turn-completion.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
 import {
   proposeChangePlan,
