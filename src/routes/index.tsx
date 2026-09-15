@@ -27,7 +27,6 @@ import {
   Check,
   Code2,
   ShieldCheck,
-  Smartphone,
   Store,
   Sparkles,
 } from "lucide-react";
@@ -978,7 +977,7 @@ function Landing() {
                 {[
                   { slug: "agent-board", icon: ShieldCheck, title: "Reviewed before it ships", body: "Specialist AI reviewers check the plan, design, security, and quality—not just whether the page loads." },
                   { slug: "own-your-code", icon: Code2, title: "Built to remain yours", body: "Sync the code to Git, use your own web address, export it, or keep shaping it in Petal." },
-                  { slug: "mobile", icon: Smartphone, title: "One idea, every screen", body: "Build for the web or create one mobile project that can ship to both iOS and Android." },
+                  { slug: "pay-as-you-build", icon: Sparkles, title: "Pay for progress, not promises", body: "Buy credits when you need them. They never expire, and turns that change nothing cost nothing." },
                   { slug: "marketplace", icon: Store, title: "A product you can sell", body: "List a finished build in the marketplace and keep 80% of every sale." },
                 ].map((item, index) => (
                   <Link
