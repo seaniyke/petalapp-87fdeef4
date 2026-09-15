@@ -586,12 +586,21 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
     if (wrapped) {
       const next = ensureBrowserRouterImport(wrapped);
       notes.push(`router-provider: wrapped root render in <BrowserRouter> (${entry.path})`);
-      return {
-        files: files.map((f) => (f.path === entry.path ? { ...f, content: next } : f)),
-        notes,
-      };
+      let out = files.map((f) => (f.path === entry.path ? { ...f, content: next } : f));
+      // Safety net: the entry now owns the provider, so any provider further
+      // down the live tree is a nested router and crashes the app at render.
+      const graph = live ?? reachableFrom(entry.path, new Map(out.map((f) => [f.path, f] as const)));
+      const deduped = removeNestedBrowserRouters(out, entry.path, graph);
+      if (deduped.removed > 0) {
+        out = deduped.files;
+        notes.push(
+          `router-provider: removed ${deduped.removed} nested <BrowserRouter> wrapper(s) after wrapping the entry`,
+        );
+      }
+      return { files: out, notes };
     }
   }
+
 
   // Fallback: wrap the default-exported App component's returned JSX.
   const app = code.find((f) => /src\/App\.(tsx|jsx)$/i.test(f.path));
