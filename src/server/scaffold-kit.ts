@@ -3489,15 +3489,20 @@ import { cn } from "@/lib/utils";
 export type FormErrorMap<T> = { [K in keyof T]?: string };
 
 export function useForm<T extends Record<string, unknown>>(opts: {
-  defaults: T;
+  /** Initial values. defaultValues is accepted as a react-hook-form alias. */
+  defaults?: T;
+  defaultValues?: T;
   validate?: (values: T) => FormErrorMap<T>;
-  onSubmit: (values: T) => void | Promise<void>;
+  onSubmit?: (values: T) => void | Promise<void>;
 }) {
-  const [values, setValues] = React.useState<T>(opts.defaults);
+  // Accept either spelling and never start from undefined: reading
+  // values[name] off an undefined object crashes the whole page.
+  const initial = (opts.defaults ?? opts.defaultValues ?? ({} as T)) as T;
+  const [values, setValues] = React.useState<T>(initial);
   const [errors, setErrors] = React.useState<FormErrorMap<T>>({});
   const [touched, setTouched] = React.useState<Partial<Record<keyof T, boolean>>>({});
   const [submitting, setSubmitting] = React.useState(false);
-  const [defaults, setDefaultsState] = React.useState<T>(opts.defaults);
+  const [defaults, setDefaultsState] = React.useState<T>(initial);
 
   const setValue = React.useCallback(<K extends keyof T>(name: K, value: T[K]) => {
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -3505,7 +3510,7 @@ export function useForm<T extends Record<string, unknown>>(opts: {
 
   const register = React.useCallback(<K extends keyof T & string>(name: K) => ({
     name,
-    value: (values[name] ?? "") as unknown as string,
+    value: ((values ?? ({} as T))[name] ?? "") as unknown as string,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       const next = e && e.target ? (e.target as HTMLInputElement).value : (e as unknown as string);
       setValue(name, next as unknown as T[K]);
@@ -3521,7 +3526,7 @@ export function useForm<T extends Record<string, unknown>>(opts: {
     if (Object.values(errs).some((v) => v)) return;
     setSubmitting(true);
     try {
-      await (handler ?? opts.onSubmit)(vals);
+      await (handler ?? opts.onSubmit)?.(vals);
     } finally {
       setSubmitting(false);
     }

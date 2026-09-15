@@ -29,7 +29,30 @@ const TIMEOUT_MS = 30_000;
 /** Below this a "page" is a host error page or an empty shell, not an app. */
 const MIN_BODY_BYTES = 200;
 
+/**
+ * Hosting-edge statuses that mean "the deployment is still propagating", not
+ * "the app is broken". A single 522 here used to throw away a perfectly good
+ * build and keep the stale preview live.
+ */
+const TRANSIENT_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 530]);
+const ATTEMPTS = 4;
+const RETRY_DELAY_MS = 4_000;
+
+/** Probe the deployed URL, tolerating edge propagation noise. */
 export async function probeDeployedUrl(url: string): Promise<DeployProbeResult> {
+  let last: DeployProbeResult = await probeOnce(url);
+  for (let attempt = 2; attempt <= ATTEMPTS && !last.ok; attempt++) {
+    const retryable =
+      last.reason === "unreachable" ||
+      (last.reason === "http_error" && TRANSIENT_STATUSES.has(last.status ?? 0));
+    if (!retryable) return last;
+    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * (attempt - 1)));
+    last = await probeOnce(url);
+  }
+  return last;
+}
+
+async function probeOnce(url: string): Promise<DeployProbeResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {

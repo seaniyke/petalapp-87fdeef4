@@ -69,6 +69,62 @@ export interface ExportShapeResult {
   fixes: number;
 }
 
+/** Named imports present in a file: spec -> imported names. */
+const NAMED_IMPORT = /import\s+(?!type\s)\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
+
+function exportsName(src: string, name: string): boolean {
+  if (new RegExp(`export\\s+(?:async\\s+)?(?:function|const|let|var|class|type|interface|enum)\\s+${name}\\b`).test(src)) return true;
+  const braced = /export\s*\{([^}]+)\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = braced.exec(src))) {
+    for (const piece of m[1].split(",")) {
+      const alias = piece.trim().split(/\s+as\s+/i).pop()?.trim();
+      if (alias === name) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Reverse mismatch: a page imports `{ AuthSignInCard }` from a module that only
+ * has `export default`. Rollup keeps the build green but the binding is
+ * undefined at runtime, so the page renders blank. Re-export the default under
+ * the requested name — safe, and fixes every importer at once.
+ */
+function aliasDefaultExports(files: ProjectFile[], byPath: Map<string, ProjectFile>) {
+  const aliases = new Map<string, Set<string>>();
+  for (const f of files) {
+    if (!CODE.test(f.path)) continue;
+    NAMED_IMPORT.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = NAMED_IMPORT.exec(f.content))) {
+      const spec = m[2];
+      if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
+      const targetPath = resolve(f.path, spec, byPath);
+      if (!targetPath || !CODE.test(targetPath)) continue;
+      const target = byPath.get(targetPath)!;
+      if (hasStarReexport(target.content) || !hasDefaultExport(target.content)) continue;
+      for (const raw of m[1].split(",")) {
+        const name = raw.trim().split(/\s+as\s+/i)[0]?.trim();
+        if (!name || !/^[A-Z][A-Za-z0-9_]*$/.test(name)) continue;
+        if (exportsName(target.content, name)) continue;
+        if (!aliases.has(targetPath)) aliases.set(targetPath, new Set());
+        aliases.get(targetPath)!.add(name);
+      }
+    }
+  }
+  return aliases;
+}
+
+/** The identifier a module default-exports, when it has a name. */
+function defaultExportIdentifier(src: string): string | null {
+  const fn = /export\s+default\s+(?:async\s+)?(?:function|class)\s+([A-Za-z_$][\w$]*)/.exec(src);
+  if (fn) return fn[1];
+  const ident = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;/.exec(src);
+  if (ident) return ident[1];
+  return null;
+}
+
 export function fixExportShape(files: ProjectFile[]): ExportShapeResult {
   const byPath = new Map(files.map((f) => [f.path, f] as const));
   const additions = new Map<string, string>(); // target path -> component name
@@ -93,22 +149,52 @@ export function fixExportShape(files: ProjectFile[]): ExportShapeResult {
     }
   }
 
-  if (additions.size === 0) return { files, notes: [], fixes: 0 };
+  const aliases = aliasDefaultExports(files, byPath);
 
-  const next = files.map((f) => {
+  if (additions.size === 0 && aliases.size === 0) return { files, notes: [], fixes: 0 };
+
+  let next = files.map((f) => {
     const pick = additions.get(f.path);
     if (!pick) return f;
     return { ...f, content: `${f.content.replace(/\s*$/, "")}\n\nexport default ${pick};\n` };
   });
 
+  if (aliases.size > 0) {
+    next = next.map((f) => {
+      const names = aliases.get(f.path);
+      if (!names || names.size === 0) return f;
+      const local = defaultExportIdentifier(f.content);
+      if (!local) return f;
+      const decls = [...names]
+        .filter((n) => n !== local)
+        .map((n) => `export const ${n} = ${local};`)
+        .join("\n");
+      if (!decls) return f;
+      return {
+        ...f,
+        content: `${f.content.replace(/\s*$/, "")}\n\n// Petal: named aliases so existing imports of this module resolve.\n${decls}\n`,
+      };
+    });
+  }
+
+  const notesExtra: string[] = [];
+  if (aliases.size > 0) {
+    notesExtra.push(
+      `export-shape: aliased the default export under ${[...aliases.values()].reduce((a, s) => a + s.size, 0)} named import(s)`,
+    );
+  }
+
+  if (additions.size === 0) return { files: next, notes: notesExtra, fixes: aliases.size };
+
   return {
     files: next,
     notes: [
+      ...notesExtra,
       `export-shape: added a default export to ${additions.size} file(s) that were default-imported (${[...additions.keys()]
         .map((p) => p.split("/").pop())
         .slice(0, 3)
         .join(", ")})`,
     ],
-    fixes: additions.size,
+    fixes: additions.size + aliases.size,
   };
 }
