@@ -27,7 +27,7 @@ import { Heartbeat } from "./progress.js";
  * for minutes between lines, and killing that is the exact failure this
  * change exists to prevent.
  */
-const QUIET_MS = Number(process.env.STAGE_QUIET_MS ?? 6 * 60 * 1000);
+const QUIET_MS = Number(process.env.STAGE_QUIET_MS ?? 14 * 60 * 1000);
 
 /**
  * Result of the pre-deploy browser check. Kept structural rather than importing
@@ -77,7 +77,7 @@ export class VerificationBlockedError extends BuildError {
 // after only ~39 seconds despite advertising a 75-second timeout, turning a
 // healthy upload into a failed deployment. Keep polling for the full five
 // minute propagation window instead.
-const DEPLOY_READY_TIMEOUT_MS = 10 * 60_000;
+const DEPLOY_READY_TIMEOUT_MS = 25 * 60_000;
 const DEPLOY_READY_POLL_MS = 10_000;
 const TRANSIENT_DEPLOY_STATUSES = new Set([404, 408, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524]);
 
@@ -509,10 +509,10 @@ export async function buildAndDeploy(
  */
 async function cfFetch(url: string, init: RequestInit = {}): Promise<Response> {
   let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await new Promise((r) => setTimeout(r, 1_000 * attempt));
+  for (let attempt = 0; attempt < 6; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, Math.min(8_000, 1_500 * attempt)));
     try {
-      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(25_000) });
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(90_000) });
       if (res.status >= 500 || res.status === 429) {
         lastError = new Error(`Cloudflare responded ${res.status}`);
         continue;

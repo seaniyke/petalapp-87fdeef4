@@ -152,16 +152,16 @@ export interface VerifyReport {
 export const MAX_ROUTES = 12;
 export const MAX_FLOWS = 4;
 export const MAX_STEPS_PER_FLOW = 20;
-const NAV_TIMEOUT_MS = 45_000;
+const NAV_TIMEOUT_MS = 90_000;
 const SETTLE_MS = 1_200;
-const STEP_TIMEOUT_MS = 15_000;
+const STEP_TIMEOUT_MS = 30_000;
 const MAX_WAIT_MS = 8_000;
 /**
  * Browser checks are never cut off for taking long — only for going silent.
  * Each route, step, and screenshot beats the heartbeat; this is the quiet
  * window after which the session is treated as hung.
  */
-export const VERIFY_QUIET_MS = Number(process.env.VERIFY_QUIET_MS ?? 4 * 60 * 1000);
+export const VERIFY_QUIET_MS = Number(process.env.VERIFY_QUIET_MS ?? 9 * 60 * 1000);
 const ROUTE_RETRY_DELAYS_MS = [2_000, 4_000, 8_000];
 
 /** Console noise that says nothing about whether the app works. */

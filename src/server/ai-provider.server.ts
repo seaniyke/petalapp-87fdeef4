@@ -874,7 +874,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
  * If the caller passes its own `signal`, we honor BOTH — whichever fires
  * first wins (AbortSignal.any is supported in Workers + Node ≥ 20).
  */
-const DEFAULT_TIMEOUT_MS = 120_000;
+const DEFAULT_TIMEOUT_MS = 300_000;
 
 /**
  * Last time an upstream model call came back HTTP 402 ("not enough credits").
