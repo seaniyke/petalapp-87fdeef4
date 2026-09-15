@@ -27,16 +27,18 @@ export function ensureQueryProvider(files: ProjectFile[]): {
   );
   if (!usesQuery) return { files, notes: [] };
 
-  // Already provided anywhere in the tree? Nothing to do.
-  if (files.some((f) => typeof f.content === "string" && f.content.includes("<QueryClientProvider"))) {
-    return { files, notes: [] };
-  }
-
   const root = files.find((f) => ROOT_CANDIDATES.includes(f.path));
   if (!root || typeof root.content !== "string") return { files, notes: [] };
 
+  // "Provided" means provided ON THE RENDER PATH. The scaffold ships an
+  // unused `app-providers.tsx` that contains <QueryClientProvider>, so a
+  // project-wide search always matched and the root never got wrapped — the
+  // exact crash this pass exists to prevent.
+  if (alreadyProvided(root, files)) return { files, notes: [] };
+
   const appTag = /<App\s*\/>/;
   if (!appTag.test(root.content)) return { files, notes: [] };
+
 
   let content = root.content.replace(
     appTag,
