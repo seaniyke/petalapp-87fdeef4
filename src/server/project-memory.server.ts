@@ -12,18 +12,29 @@
  * - Key/value rows (not a JSON blob) so individual facts can be added,
  *   updated or removed without rewriting the whole memory.
  * - Hard cap of MAX_KEYS keys per project. The writer is told to merge,
- *   not append, and we trim oldest-updated keys if the cap is exceeded.
- * - Every read AND every write goes through a Supabase client built from
- *   the user's JWT, so RLS policies on `project_memory` enforce ownership.
- *   No service-role keys here.
+ *   not append — and when the cap trims old rows, the trimmed facts are
+ *   condensed into the rolling `notes` digest instead of being deleted.
+ *   Nothing is ever silently dropped.
+ * - Guaranteed delivery: the writer's input is persisted onto the turn
+ *   row (`turns.pending_memory`) BEFORE the turn ends. The inline writer
+ *   runs right after the build for speed; if the worker dies first, the
+ *   turn-resume cron replays the pending entry with the service role.
+ *   Fire-and-forget became write-then-process.
+ * - Interactive reads/writes go through a Supabase client built from the
+ *   user's JWT, so RLS policies on `project_memory` enforce ownership.
+ *   The cron replay is trusted server-side work and uses the admin
+ *   client; ownership was already established when the turn was saved.
  */
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 
 const MAX_KEYS = 30;
 const MAX_VALUE_LEN = 400;
 const MAX_KEY_LEN = 60;
+/** The `notes` digest is the project's long-term memory — much longer than
+ *  a single fact, but still bounded so prompts stay compact. */
+const NOTES_DIGEST_MAX = 2000;
 
 /** Suggested keys — the writer is told to prefer these, but free to invent more. */
 export const SUGGESTED_KEYS = [
@@ -37,10 +48,12 @@ export const SUGGESTED_KEYS = [
   "dont_do", // things they explicitly rejected
   "language", // ISO-ish tag (en, fr, pidgin) the user writes in
   "name", // app or business name if revealed
-  "notes", // catch-all for anything that doesn't fit
+  "notes", // rolling digest of older facts that aged out of their own key
 ];
 
 export type MemoryEntry = { key: string; value: string };
+
+type MemoryClient = SupabaseClient<Database>;
 
 function userClient(jwt: string) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -52,6 +65,11 @@ function userClient(jwt: string) {
     global: { headers: { Authorization: `Bearer ${jwt}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+}
+
+async function adminClient(): Promise<MemoryClient> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
 }
 
 /** Load all memory rows for a project. Returns [] on error so memory is
@@ -109,8 +127,8 @@ export async function loadProjectMemoryBlock(
  *
  *  Goal: cheaply distill the user's latest turn (+ existing memory) into a
  *  small set of merge instructions: upsert these keys, delete those keys.
- *  The writer is told to be conservative — if nothing notable changed,
- *  it returns an empty plan and we do nothing.
+ *  The writer records any stable fact the user stated or confirmed; empty
+ *  plans are only for pure greetings and status chatter.
  *  ────────────────────────────────────────────────────────────────────── */
 
 type MergePlan = {
@@ -118,26 +136,25 @@ type MergePlan = {
   deletes: string[];
 };
 
-const MEMORY_WRITER_SYSTEM = `You maintain a small, durable memory about a project the user is building with Petal (a friendly app builder).
+export const MEMORY_WRITER_SYSTEM = `You maintain a small, durable memory about a project the user is building with Petal (a friendly app builder).
 
 You are given:
 1. The CURRENT memory (a list of key/value facts).
 2. The user's LATEST message and Petal's reply on this turn.
 3. A list of SUGGESTED keys you should prefer when applicable.
 
-Your job: return a SHORT merge plan via the "merge_memory" tool.
+Your job: return a merge plan via the "merge_memory" tool.
 
 Rules:
-- Only record STABLE facts about the project: who it's for, what it is, the mood/tone they want, hard requirements, things they've explicitly rejected.
-- Do NOT record: greetings, temporary states, build statuses, file paths, frameworks, how Petal feels.
+- Record ANY stable fact about the project that the user stated or confirmed: what the app is, who it's for, its name, the mood/tone/palette they want, hard requirements, things they explicitly rejected, decisions they approved.
+- When in doubt, record it. Forgetting a real preference is worse than storing an extra fact.
+- Do NOT record: greetings, temporary states, build statuses, file paths, frameworks, how Petal feels, or one-off questions with no project content.
 - Prefer the SUGGESTED keys. Invent a new key only when nothing in the suggested list fits.
 - Each value MUST be a single short sentence (under 200 chars), in the user's own words where possible.
 - If a key already exists and the user has REFINED or CONTRADICTED it, upsert the new value (overwrites).
 - If the user explicitly rejected something previously stored ("stop using purple", "no carousel"), upsert a "dont_do" entry AND delete any contradicted key.
-- If nothing notable changed, return empty arrays — do not invent facts.
-- Never produce more than 6 upserts and 3 deletes per turn.
-
-Be honest and conservative. An empty plan is a great answer.`;
+- Return empty arrays ONLY when the message carries no project content at all (pure greeting, thanks, status check).
+- Never produce more than 6 upserts and 3 deletes per turn.`;
 
 const MERGE_TOOL = {
   type: "function" as const,
@@ -182,26 +199,83 @@ function sanitizeValue(v: string): string {
 }
 
 /**
- * Run the memory writer for one turn. Best-effort — failures are logged
- * and swallowed so a memory hiccup never breaks the user's build.
+ * Condense facts into the rolling `notes` digest. Newest facts first; when
+ * the digest exceeds the cap, the OLDEST segments fall off the front — the
+ * newest facts are never dropped.
  */
-export async function updateProjectMemory(args: {
-  jwt: string;
-  projectId: string;
-  userMessage: string;
-  assistantSummary: string;
-}): Promise<void> {
-  const { jwt, projectId, userMessage, assistantSummary } = args;
+export function mergeNotesDigest(existing: string, additions: string[]): string {
+  const segments = [
+    ...additions.map((a) => a.trim()).filter(Boolean),
+    ...existing.split("; ").map((s) => s.trim()).filter(Boolean),
+  ];
+  const seen = new Set<string>();
+  const kept: string[] = [];
+  for (const seg of segments) {
+    const dedupe = seg.toLowerCase();
+    if (seen.has(dedupe)) continue;
+    seen.add(dedupe);
+    kept.push(seg);
+  }
+  let out = kept.join("; ");
+  while (out.length > NOTES_DIGEST_MAX && kept.length > 1) {
+    kept.pop(); // drop the oldest segment
+    out = kept.join("; ") + " …";
+  }
+  return out.slice(0, NOTES_DIGEST_MAX);
+}
 
-  // Skip outright if there's nothing meaningful to learn from.
+type MemoryRow = { id: string; key: string; value: string; updated_at?: string };
+
+/**
+ * Decide which rows must go when the cap is exceeded, and what the `notes`
+ * digest should become. Pure — unit-tested without a database. Rows are
+ * newest-first. The digest always keeps a slot; trimmed facts are merged
+ * into it instead of being deleted.
+ */
+export function planTrim(
+  rows: MemoryRow[],
+  maxKeys: number = MAX_KEYS,
+): { deleteIds: string[]; notesUpsert: string | null } {
+  if (rows.length <= maxKeys) return { deleteIds: [], notesUpsert: null };
+  const existingNotes = rows.find((r) => r.key === "notes")?.value ?? "";
+  const nonNotes = rows.filter((r) => r.key !== "notes");
+  const keep = nonNotes.slice(0, maxKeys - 1);
+  const trim = nonNotes.slice(maxKeys - 1);
+  if (trim.length === 0) return { deleteIds: [], notesUpsert: null };
+  const additions = trim.map((r) => `${r.key}: ${r.value}`);
+  return {
+    deleteIds: trim.map((r) => r.id),
+    notesUpsert: mergeNotesDigest(existingNotes, additions),
+  };
+}
+
+/** The whole writer run against any authorized client. Returns true when
+ *  the turn was fully processed (even if the plan was empty) — false means
+ *  "try again later" (model error, DB error), which the outbox relies on. */
+async function runMemoryWriter(
+  supabase: MemoryClient,
+  args: { projectId: string; userMessage: string; assistantSummary: string },
+): Promise<boolean> {
+  const { projectId, userMessage, assistantSummary } = args;
+
   const trimmedUser = (userMessage ?? "").trim();
-  if (trimmedUser.length < 4) return;
+  if (trimmedUser.length < 4) return true;
 
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return;
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return true;
 
   let existing: MemoryEntry[] = [];
   try {
-    existing = await loadProjectMemory(jwt, projectId);
+    const { data, error } = await supabase
+      .from("project_memory")
+      .select("key, value")
+      .eq("project_id", projectId)
+      .order("updated_at", { ascending: false })
+      .limit(MAX_KEYS);
+    if (error) {
+      console.warn("[project-memory] load failed:", error.message);
+    } else {
+      existing = (data ?? []).map((r) => ({ key: r.key, value: r.value }));
+    }
   } catch {
     /* keep going with empty memory */
   }
@@ -234,7 +308,7 @@ export async function updateProjectMemory(args: {
     });
     if (!resp.ok) {
       console.warn("[project-memory] writer http error", resp.status);
-      return;
+      return false;
     }
     const json = (await resp.json()) as {
       choices?: Array<{
@@ -244,22 +318,19 @@ export async function updateProjectMemory(args: {
       }>;
     };
     const argsStr = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!argsStr) return;
+    if (!argsStr) return true; // model chose not to call the tool — nothing to retry
     plan = JSON.parse(argsStr) as MergePlan;
   } catch (e) {
     console.warn("[project-memory] writer threw:", e);
-    return;
+    return false;
   }
 
-  if (!plan) return;
+  if (!plan) return true;
   const upserts = Array.isArray(plan.upserts) ? plan.upserts : [];
   const deletes = Array.isArray(plan.deletes) ? plan.deletes : [];
-  if (upserts.length === 0 && deletes.length === 0) return;
+  if (upserts.length === 0 && deletes.length === 0) return true;
 
-  // Apply with the user's JWT so RLS approves the writes.
   try {
-    const supabase = userClient(jwt);
-
     const cleanUpserts = upserts
       .map((u) => {
         const key = sanitizeKey(u.key ?? "");
@@ -287,19 +358,132 @@ export async function updateProjectMemory(args: {
       if (error) console.warn("[project-memory] delete failed:", error.message);
     }
 
-    // Enforce the cap: if we now exceed MAX_KEYS, trim the oldest-updated.
+    // Enforce the cap WITHOUT losing anything: overflow facts are condensed
+    // into the rolling `notes` digest, and only then are their rows removed.
     const { data: all } = await supabase
       .from("project_memory")
-      .select("id, updated_at")
+      .select("id, key, value, updated_at")
       .eq("project_id", projectId)
       .order("updated_at", { ascending: false });
-    if (all && all.length > MAX_KEYS) {
-      const toTrim = all.slice(MAX_KEYS).map((r) => r.id);
-      if (toTrim.length > 0) {
-        await supabase.from("project_memory").delete().in("id", toTrim);
-      }
+    const trim = planTrim((all ?? []) as MemoryRow[]);
+    if (trim.notesUpsert) {
+      const { error } = await supabase
+        .from("project_memory")
+        .upsert(
+          { project_id: projectId, key: "notes", value: trim.notesUpsert },
+          { onConflict: "project_id,key" },
+        );
+      if (error) console.warn("[project-memory] digest upsert failed:", error.message);
     }
+    if (trim.deleteIds.length > 0) {
+      const { error } = await supabase
+        .from("project_memory")
+        .delete()
+        .in("id", trim.deleteIds);
+      if (error) console.warn("[project-memory] trim failed:", error.message);
+    }
+    return true;
   } catch (e) {
     console.warn("[project-memory] write threw:", e);
+    return false;
+  }
+}
+
+/**
+ * Run the memory writer for one turn, as the signed-in user (RLS).
+ * Returns true when the turn was fully processed — the caller uses this to
+ * clear the durable outbox entry. Never throws.
+ */
+export async function updateProjectMemory(args: {
+  jwt: string;
+  projectId: string;
+  userMessage: string;
+  assistantSummary: string;
+}): Promise<boolean> {
+  try {
+    const supabase = userClient(args.jwt);
+    return await runMemoryWriter(supabase, args);
+  } catch (e) {
+    console.warn("[project-memory] writer setup threw:", e);
+    return false;
+  }
+}
+
+/** ──────────────────────────────────────────────────────────────────────
+ *  Durable outbox — the guarantee that no turn's memory is lost.
+ *
+ *  generate.ts saves the writer's input onto the turn row BEFORE the turn
+ *  ends. The inline writer clears it on success. The turn-resume cron
+ *  replays whatever is left, with the service role (ownership was already
+ *  established when the turn was created).
+ *  ────────────────────────────────────────────────────────────────────── */
+
+export type PendingMemory = {
+  userMessage: string;
+  assistantSummary: string;
+};
+
+export async function savePendingMemory(
+  turnId: string,
+  input: PendingMemory,
+): Promise<void> {
+  try {
+    const supabase = await adminClient();
+    const { error } = await supabase
+      .from("turns")
+      .update({ pending_memory: input })
+      .eq("id", turnId);
+    if (error) console.warn("[project-memory] outbox save failed:", error.message);
+  } catch (e) {
+    console.warn("[project-memory] outbox save threw:", e);
+  }
+}
+
+export async function clearPendingMemory(turnId: string): Promise<void> {
+  try {
+    const supabase = await adminClient();
+    await supabase.from("turns").update({ pending_memory: null }).eq("id", turnId);
+  } catch {
+    /* best-effort */
+  }
+}
+
+/**
+ * Replay pending memory writes. Called by the turn-resume cron. Processes
+ * oldest-first so nothing queues forever. Returns how many were replayed.
+ */
+export async function sweepPendingMemories(limit = 5): Promise<number> {
+  try {
+    const supabase = await adminClient();
+    const { data, error } = await supabase
+      .from("turns")
+      .select("id, project_id, pending_memory")
+      .not("pending_memory", "is", null)
+      .order("started_at", { ascending: true })
+      .limit(limit);
+    if (error || !data || data.length === 0) return 0;
+
+    let replayed = 0;
+    for (const row of data) {
+      const pending = row.pending_memory as unknown as PendingMemory | null;
+      if (!pending || typeof pending.userMessage !== "string") {
+        await clearPendingMemory(row.id);
+        continue;
+      }
+      const done = await runMemoryWriter(supabase, {
+        projectId: row.project_id,
+        userMessage: pending.userMessage,
+        assistantSummary:
+          typeof pending.assistantSummary === "string" ? pending.assistantSummary : "",
+      });
+      if (done) {
+        await clearPendingMemory(row.id);
+        replayed += 1;
+      }
+    }
+    return replayed;
+  } catch (e) {
+    console.warn("[project-memory] sweep threw:", e);
+    return 0;
   }
 }
