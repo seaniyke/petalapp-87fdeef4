@@ -17,7 +17,7 @@
  *  - Off switch: PETAL_CRAFT_QA=0.
  */
 import { aiChatCompletions } from "@/server/ai-provider.server";
-import type { VisualShot } from "@/server/visual-qa.server";
+import { pickShotSpread, type VisualShot } from "@/server/visual-qa.server";
 
 const MODEL = "google/gemini-2.5-flash";
 const MAX_SHOTS = 4;
@@ -129,9 +129,7 @@ export async function scoreCraftQA(args: {
   signal?: AbortSignal;
 }): Promise<string[]> {
   if (!craftQaEnabled()) return [];
-  const shots = (args.shots ?? [])
-    .filter((s) => s && typeof s.image === "string" && s.image.startsWith("data:image/"))
-    .slice(0, MAX_SHOTS);
+  const shots = pickShotSpread(args.shots ?? [], MAX_SHOTS);
   if (shots.length === 0) return [];
 
   const content: unknown[] = [
