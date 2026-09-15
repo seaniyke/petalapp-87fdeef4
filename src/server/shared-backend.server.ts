@@ -460,7 +460,9 @@ export async function sharedUsage(projectId: string): Promise<{
     store.client.from(store.records).select("collection").eq("project_id", projectId).limit(500),
   ]);
   const collections = Array.from(
-    new Set((cols ?? []).map((c: { collection: string }) => c.collection)),
+    new Set(
+      ((cols ?? []) as { collection: string }[]).map((c) => String(c.collection)),
+    ),
   );
   return { rows: rows ?? 0, users: users ?? 0, collections };
 }
