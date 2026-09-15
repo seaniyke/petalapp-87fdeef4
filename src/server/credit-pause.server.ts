@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import type { ProjectFile } from "@/server/generate.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
+import { markStage } from "@/server/turn-completion.server";
 
 export type CreditPauseRow = {
   id: string;
@@ -70,7 +71,7 @@ export async function parkCreditPause(id: string, userId: string): Promise<boole
 export async function resumeCreditPause(id: string): Promise<{ ok: boolean; reason?: "not_ready" | "project_changed" | "apply_failed"; projectId?: string; turnId?: string }> {
   const { data: before } = await supabaseAdmin.from("credit_paused_turns").select("*").eq("id", id).maybeSingle();
   const pause = before as CreditPauseRow | null;
-  if (!pause || !["awaiting_credits", "parked"].includes(pause.status)) return { ok: false, reason: "not_ready" };
+  if (!pause || !["awaiting_credits", "parked", "applying"].includes(pause.status)) return { ok: false, reason: "not_ready" };
 
   const { data: current } = await supabaseAdmin.from("project_files").select("path,content").eq("project_id", pause.project_id);
   if (projectFilesHash((current ?? []) as ProjectFile[]) !== pause.baseline_hash) {
@@ -78,8 +79,16 @@ export async function resumeCreditPause(id: string): Promise<{ ok: boolean; reas
     return { ok: false, reason: "project_changed", projectId: pause.project_id };
   }
 
-  const { data: claimed, error: claimError } = await supabaseAdmin.rpc("claim_credit_paused_turn", { _checkpoint_id: id });
-  const claim = (Array.isArray(claimed) ? claimed[0] : claimed) as unknown as {
+  const alreadyClaimed = pause.status === "applying";
+  const { data: claimed, error: claimError } = alreadyClaimed
+    ? { data: null, error: null }
+    : await supabaseAdmin.rpc("claim_credit_paused_turn", { _checkpoint_id: id });
+  const claim = (alreadyClaimed ? {
+    checkpoint_id: pause.id,
+    project_id: pause.project_id,
+    turn_id: pause.turn_id,
+    candidate_files: pause.candidate_files,
+  } : (Array.isArray(claimed) ? claimed[0] : claimed)) as unknown as {
     checkpoint_id: string; project_id: string; turn_id: string; candidate_files: ProjectFile[];
   } | undefined;
   if (claimError || !claim) return { ok: false, reason: "not_ready" };
@@ -92,6 +101,7 @@ export async function resumeCreditPause(id: string): Promise<{ ok: boolean; reas
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("credit_paused_turns").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", id).eq("status", "applying");
     await supabaseAdmin.from("turns").update({ status: "succeeded", ended_at: new Date().toISOString(), credits_charged: pause.required_credits }).eq("id", claim.turn_id);
+    await markStage(claim.project_id, "building");
     const payload = pause.result_payload;
     await persistAbandonedTurnReply({
       projectId: claim.project_id,
@@ -103,13 +113,17 @@ export async function resumeCreditPause(id: string): Promise<{ ok: boolean; reas
     });
     return { ok: true, projectId: claim.project_id, turnId: claim.turn_id };
   } catch (error) {
-    await supabaseAdmin.from("credit_paused_turns").update({ status: "failed", last_error: error instanceof Error ? error.message.slice(0, 500) : "Apply failed" }).eq("id", id).eq("status", "applying");
+    // Keep the charged checkpoint recoverable. Re-applying the complete file
+    // snapshot is idempotent; a payment callback or cron retry can finish it.
+    await supabaseAdmin.from("credit_paused_turns").update({ last_error: error instanceof Error ? error.message.slice(0, 500) : "Apply failed" }).eq("id", id).eq("status", "applying");
     return { ok: false, reason: "apply_failed", projectId: claim.project_id };
   }
 }
 
 export async function resumeCreditPausesForUser(userId: string): Promise<string[]> {
-  const pauses = await listCreditPauses(userId);
+  const { data } = await supabaseAdmin.from("credit_paused_turns").select("*").eq("user_id", userId)
+    .in("status", ["awaiting_credits", "parked", "applying"]).order("created_at", { ascending: true });
+  const pauses = (data ?? []) as unknown as CreditPauseRow[];
   const resumed: string[] = [];
   for (const pause of pauses) {
     const result = await resumeCreditPause(pause.id);

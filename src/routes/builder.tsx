@@ -2029,8 +2029,20 @@ function Builder() {
           onTimeline: (entry) => {
             setTimelineEvents((prev) => (prev.length >= 30 ? prev : [...prev, entry]));
           },
-          onDone: async () => {
-            clearPersistedTurnId(pid);
+          onCreditsPaused: (pause) => {
+            setCreditPause({
+              id: pause.checkpointId,
+              turnId: persisted.turnId,
+              projectId: pid,
+              requiredCredits: pause.requiredCredits,
+              status: "awaiting_credits",
+              createdAt: new Date().toISOString(),
+            });
+            setActivityVisible(false);
+          },
+          onDone: async (status) => {
+            if (status !== "awaiting_credits") clearPersistedTurnId(pid);
+            if (status === "awaiting_credits") return;
             // Refresh files + messages from the source of truth so the
             // resumed UI matches whatever the pipeline actually persisted.
             try {
@@ -2458,6 +2470,7 @@ function Builder() {
       // Set when the server told us it is finishing this turn itself. No
       // failure is shown; the working state simply continues.
       let silentlyRecovering = false;
+      let pausedForCredits = false;
       let streamError: string | null = null;
       let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
       let streamErrorRaw: string | undefined;
@@ -2586,6 +2599,7 @@ function Builder() {
             // figure on the result event replaces it.
             onCreditsEstimate: (credits) => setLiveCreditsEstimate(credits),
             onCreditsPaused: (pause) => {
+              pausedForCredits = true;
               setCreditPause({
                 id: pause.checkpointId,
                 turnId: "",
@@ -2779,6 +2793,7 @@ function Builder() {
           setAwaitingSilentResume(true);
           return;
         }
+        if (pausedForCredits) return;
         if (streamError) {
           // Preserve the server-classified kind across the throw boundary so
           // toFriendlyError can render the right card without regexing the
