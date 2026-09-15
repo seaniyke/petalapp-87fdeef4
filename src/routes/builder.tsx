@@ -490,6 +490,12 @@ function Builder() {
   }, [project?.id]);
 
   const [activityVisible, setActivityVisible] = useState(false);
+  /**
+   * True while the server is finishing an interrupted turn on its own. The
+   * working state stays on screen and a watcher below picks up the reply the
+   * resumed run writes into the thread.
+   */
+  const [awaitingSilentResume, setAwaitingSilentResume] = useState(false);
   const [friendlyError, setFriendlyError] = useState<FriendlyError | null>(null);
   /** Build id the browser-check card was raised for, so it can be retracted. */
   const verificationCardBuildIdRef = useRef<string | null>(null);
