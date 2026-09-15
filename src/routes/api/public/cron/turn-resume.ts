@@ -113,9 +113,19 @@ export async function handleTurnResume(request: Request): Promise<Response> {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Memory outbox first: replay any turn whose memory write was lost when
+  // its worker ended. Cheap, and guarantees no turn is ever forgotten.
+  let memoryReplayed = 0;
+  try {
+    const { sweepPendingMemories } = await import("@/server/project-memory.server");
+    memoryReplayed = await sweepPendingMemories(5);
+  } catch (e) {
+    console.warn("[cron/turn-resume] memory sweep failed:", (e as Error).message);
+  }
+
   const pending = await listResumable(MAX_PER_TICK);
   if (!pending.length) {
-    return Response.json({ ok: true, checked: 0, resumed: 0 });
+    return Response.json({ ok: true, checked: 0, resumed: 0, memoryReplayed });
   }
 
   const origin = new URL(request.url).origin;
