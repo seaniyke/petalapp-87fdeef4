@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { deterministicUnderstanding, renderUnderstandingBlock } from "@/server/understanding.server";
 import {
   deterministicDesignSystem,
+  designSystemFromDirection,
   renderDesignSystemBlock,
   renderDesignTokensCss,
 } from "@/server/design/design-system.server";
+import { fallbackDesignDirection } from "@/server/design-director.server";
 import {
   lintDesignSystem,
   renderDesignLintFeedback,
@@ -64,6 +66,23 @@ describe("design system contract", () => {
     expect(block).toContain("DESIGN SYSTEM CONTRACT");
     expect(block).toContain(ds.typography.displayFont);
     expect(block).toContain("Empty states:");
+  });
+
+  it("derives the canonical contract from the director instead of voting again", () => {
+    const direction = fallbackDesignDirection("premium restaurant with reservations", "restaurant-1");
+    const committed = designSystemFromDirection(PORTAL, u, direction, "restaurant-1");
+    expect(committed.direction).toBe(direction.vibe);
+    expect(committed.typography.displayFont).toBe(direction.display_font);
+    expect(committed.typography.bodyFont).toBe(direction.body_font);
+    expect(committed.imagery).toContain(direction.design_moves[0]);
+  });
+
+  it("uses category-specific fallback composition instead of generic cards", () => {
+    const restaurant = fallbackDesignDirection("premium restaurant reservations", "r1");
+    const fintech = fallbackDesignDirection("fintech banking dashboard", "f1");
+    expect(restaurant.design_moves.join(" ")).toMatch(/food|venue|menu/i);
+    expect(fintech.design_moves.join(" ")).toMatch(/balance|transaction|KPI/i);
+    expect(fintech.density).toBe("dense");
   });
 });
 

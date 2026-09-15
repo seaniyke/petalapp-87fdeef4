@@ -136,6 +136,15 @@ const VerifyPlanSchema = z.object({
     .max(MAX_FLOWS)
     .optional(),
   screenshots: z.boolean().optional(),
+  // Petal deliberately prioritises substantial interior routes (dashboard,
+  // detail, settings) and three responsive widths. Keep this field in the
+  // parsed plan instead of letting Zod strip it and falling back to route order.
+  visual: z
+    .object({
+      widths: z.array(z.number().int().min(320).max(1920)).max(3).optional(),
+      routes: z.array(z.string().max(256)).max(4).optional(),
+    })
+    .optional(),
 });
 
 const FileSchema = z.object({

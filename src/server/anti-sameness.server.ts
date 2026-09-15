@@ -8,8 +8,9 @@
  * existing generation-quality-gate can surface them in the same shape
  * as other quality warnings.
  *
- * NEVER blocks generation. Emits informational notes only — the model
- * uses them in the next turn if the user complains.
+ * Findings feed the focused post-stream quality repair. The pass remains
+ * fail-open, but weak composition is corrected before the first deployment
+ * instead of waiting for a user complaint.
  */
 
 import type { ProjectFile } from "@/server/generate.server";

@@ -3650,14 +3650,19 @@ function Builder() {
         snap?.verification as unknown as { defectRouting?: { brief?: unknown } } | null | undefined
       )?.defectRouting?.brief;
       const routingBrief = typeof routedBrief === "string" ? routedBrief.trim() : "";
+      const visualOnly = defects.every((defect) => /^(?:Visual|Craft) QA \(/i.test(defect));
       const prompt = [
-        blockedBeforeDeploy
+        visualOnly
+          ? "Petal reviewed the deployed app at phone, tablet, and desktop widths. It works, but the visual craft is below the committed design standard. Findings:"
+          : blockedBeforeDeploy
           ? "Petal ran the built app in a real browser before publishing it and it does not work correctly, so the release was held back. Findings:"
           : "I opened the deployed app in a real browser and it does not work correctly. Findings:",
         "",
         routingBrief || defects.slice(0, 15).map((d) => `- ${d}`).join("\n"),
         "",
-        "Fix the root cause of every finding in the project files. Every declared route must render useful visible content after hydration; no route may return null, an empty fragment, or a blank placeholder. Make forms and navigation controls functional. Keep the changes focused and do not redesign anything that already works.",
+        visualOnly
+          ? "Run one focused polish pass. Fix every evidenced composition, hierarchy, imagery, density, typography, and responsive-craft finding while preserving working behavior, routes, and the committed design direction. Do not add generic filler or unrelated features."
+          : "Fix the root cause of every finding in the project files. Every declared route must render useful visible content after hydration; no route may return null, an empty fragment, or a blank placeholder. Make forms and navigation controls functional. Keep the changes focused and do not redesign anything that already works.",
       ].join("\n");
       void send(prompt, { isRetry: false, isAutoFix: true });
     },

@@ -17,6 +17,7 @@ import { loadProjectPrd } from "@/server/prd/prd-store.server";
 import { loadPic, savePic } from "./pic-store.server";
 import type { MemoryEntry } from "@/server/project-memory.server";
 import type { ProjectIntelligenceContext, PicUnderstanding } from "./pic-types";
+import type { DesignDirection } from "@/server/design-director.server";
 
 const LOCK_KEYS = new Set(["dont_do", "must_have", "locked", "always"]);
 
@@ -55,6 +56,8 @@ export interface AssemblePicArgs {
   userId?: string;
   turnId?: string;
   signal?: AbortSignal;
+  /** Canonical visual decision authored before PIC assembly. */
+  designDirection?: DesignDirection | null;
 }
 
 export interface AssembledPic {
@@ -90,15 +93,17 @@ export async function assemblePic(args: AssemblePicArgs): Promise<AssembledPic> 
   // Design is committed once. Later turns inherit it so the product does not
   // drift; a redesign request is handled by clearing it upstream.
   const design =
-    base.design ??
-    (await commitDesignSystem({
+    args.designDirection || !base.design
+      ? await commitDesignSystem({
       brief: args.brief,
       understanding,
       seed: projectId ?? args.brief,
       userId: args.userId,
       projectId,
       signal: args.signal,
-    }));
+      direction: args.designDirection,
+        })
+      : base.design;
 
   const prd = (await loadProjectPrd(projectId))?.prd ?? base.prd;
 

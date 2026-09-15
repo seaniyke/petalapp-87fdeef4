@@ -2333,6 +2333,7 @@ Forbidden defaults
         userId,
         turnId: turnId ?? undefined,
         signal: request.signal,
+        designDirection,
       });
       picContext = assembled.pic;
       picBlock = `\n\n${renderPicBlock(assembled.pic, { detail: isStructural ? "full" : "summary" })}\n`;
@@ -4817,7 +4818,9 @@ Forbidden defaults
           },
         });
 
-        const generationQualityIssues = findGenerationQualityIssues(nextFiles, detectedWebSubtype);
+        const generationQualityIssues = findGenerationQualityIssues(nextFiles, detectedWebSubtype, {
+          template: designDirection?.template,
+        });
         if (generationQualityIssues.length > 0) {
           console.warn(
             `[generation-quality] ${generationQualityIssues.length} issue(s):`,
