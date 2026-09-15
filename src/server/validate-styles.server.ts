@@ -207,6 +207,11 @@ function findUnknownAppliedClasses(src: string): string[] {
   // with "Cannot apply unknown utility class". We catch it deterministically.
   const themeColors = new Set<string>();
   for (const m of src.matchAll(/--color-([a-zA-Z_][\w-]*)\s*:/g)) themeColors.add(m[1]);
+  // Font-family tokens registered in @theme (`--font-display: …`) become
+  // `font-display` utilities. An @apply of a font utility with no matching
+  // token is a hard Tailwind v4 build error ("Cannot apply unknown utility").
+  const themeFonts = new Set<string>();
+  for (const m of src.matchAll(/--font-([a-zA-Z_][\w-]*)\s*:/g)) themeFonts.add(m[1]);
 
   // Color-family utility prefixes — when the suffix is a custom name, it must
   // resolve to a `--color-<suffix>` token registered in @theme.
@@ -226,6 +231,11 @@ function findUnknownAppliedClasses(src: string): string[] {
     "purple","fuchsia","pink","rose",
   ]);
 
+  // Variant / state markers are NOT utilities. Tailwind v4 aborts the build on
+  // `@apply dark` even when the stylesheet also declares a `.dark { … }` theme
+  // block (seen in production: `html { @apply antialiased font-body dark; }`).
+  const NEVER_APPLYABLE = new Set(["dark", "light", "group", "peer"]);
+
   const unknown = new Set<string>();
   // Capture the entire class list inside each `@apply …;`
   for (const m of src.matchAll(/@apply\s+([^;}{]+)[;}]/g)) {
@@ -237,8 +247,23 @@ function findUnknownAppliedClasses(src: string): string[] {
       const segments = tok.split(":");
       const util = segments[segments.length - 1];
       if (!util) continue;
+      if (NEVER_APPLYABLE.has(util)) {
+        unknown.add(util);
+        continue;
+      }
       // If it's defined locally, it's fine.
       if (defined.has(util)) continue;
+
+      // Font-family utility check: `font-body`, `font-display`, …
+      if (util.startsWith("font-")) {
+        const tail = util.slice(5);
+        const builtin = /^(?:sans|serif|mono|thin|extralight|light|normal|medium|semibold|bold|extrabold|black|italic|not-italic|\[.*\])$/;
+        if (!builtin.test(tail) && !themeFonts.has(tail)) {
+          unknown.add(util);
+          continue;
+        }
+        continue;
+      }
 
       // Color-family utility check: `border-muted-foreground`, `bg-coral`, …
       // Strip any `/<opacity>` suffix (e.g. `bg-primary/10`).

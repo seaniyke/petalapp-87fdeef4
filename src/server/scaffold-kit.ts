@@ -3889,7 +3889,27 @@ import { cn } from "@/lib/utils";
  * All three accept the same props. Colors come from semantic tokens
  * via CSS variables on the wrapping ChartContainer (--chart-1 etc.).
  */
-export type ChartPoint = { x: string | number; y: number };
+export type ChartPoint = {
+  x?: string | number;
+  y?: number;
+  /** Aliases accepted so common data shapes just work. */
+  label?: string | number;
+  name?: string | number;
+  value?: number;
+  count?: number;
+  total?: number;
+};
+
+/** Accept {x,y}, {label,value}, {name,value}, {label,count} — never render NaN. */
+function normalizePoints(data: ChartPoint[] | undefined | null): { x: string | number; y: number }[] {
+  return (Array.isArray(data) ? data : []).map((d) => {
+    const raw = d ?? ({} as ChartPoint);
+    const yRaw = raw.y ?? raw.value ?? raw.count ?? raw.total;
+    const y = typeof yRaw === "number" && Number.isFinite(yRaw) ? yRaw : 0;
+    const x = raw.x ?? raw.label ?? raw.name ?? "";
+    return { x, y };
+  });
+}
 export type ChartProps = React.HTMLAttributes<HTMLDivElement> & {
   data: ChartPoint[];
   /** 1..5 — selects the semantic chart color token. */
@@ -3908,7 +3928,7 @@ const DEFAULT_COLORS: Record<number, string> = {
   5: "oklch(0.6 0.18 320)",
 };
 
-function useDimensions(data: ChartPoint[]) {
+function useDimensions(data: { y: number }[]) {
   const max = Math.max(1, ...data.map((d) => d.y));
   const min = Math.min(0, ...data.map((d) => d.y));
   return { max, min };
@@ -3922,7 +3942,8 @@ export function ChartContainer({ className, children, ...props }: React.HTMLAttr
   );
 }
 
-export function LineChart({ data, color = 1, xAxis = true, className, ...props }: ChartProps) {
+export function LineChart({ data: rawData, color = 1, xAxis = true, className, ...props }: ChartProps) {
+  const data = normalizePoints(rawData);
   const { max, min } = useDimensions(data);
   const stroke = DEFAULT_COLORS[color];
   const w = 100;
@@ -3948,7 +3969,8 @@ export function LineChart({ data, color = 1, xAxis = true, className, ...props }
   );
 }
 
-export function AreaChart({ data, color = 1, xAxis = true, className, ...props }: ChartProps) {
+export function AreaChart({ data: rawData, color = 1, xAxis = true, className, ...props }: ChartProps) {
+  const data = normalizePoints(rawData);
   const { max, min } = useDimensions(data);
   const stroke = DEFAULT_COLORS[color];
   const w = 100;
@@ -3983,7 +4005,8 @@ export function AreaChart({ data, color = 1, xAxis = true, className, ...props }
   );
 }
 
-export function BarChart({ data, color = 1, xAxis = true, className, ...props }: ChartProps) {
+export function BarChart({ data: rawData, color = 1, xAxis = true, className, ...props }: ChartProps) {
+  const data = normalizePoints(rawData);
   const { max } = useDimensions(data);
   const fill = DEFAULT_COLORS[color];
   const w = 100;

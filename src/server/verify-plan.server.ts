@@ -85,12 +85,22 @@ function normalize(path: string): string | null {
   return p || "/";
 }
 
+/**
+ * Kit files that ship with every project. Their demo markup contains route
+ * strings (`/about`, `/posts`, …) that the app itself never mounts, so
+ * scanning them made the browser check crawl phantom pages and fail the deploy
+ * with "rendered a blank page".
+ */
+const NON_ROUTING_DIR_RE =
+  /^src\/components\/(examples|blocks|ui|content)\/|^src\/(lib|hooks|integrations)\//;
+
 /** Every statically-visitable route the project declares, "/" first. */
 export function collectRoutes(files: ProjectFile[]): string[] {
   const found = new Set<string>();
   for (const f of files) {
     if (!/\.(tsx|jsx|ts|js)$/.test(f.path)) continue;
     if (/\/(node_modules|dist)\//.test(f.path)) continue;
+    if (NON_ROUTING_DIR_RE.test(f.path)) continue;
     for (const re of [ROUTE_PATH_RE, FILE_ROUTE_RE, OBJECT_ROUTE_RE]) {
       re.lastIndex = 0;
       let m: RegExpExecArray | null;

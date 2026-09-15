@@ -141,10 +141,17 @@ export const Route = createFileRoute("/api/builds/trigger")({
             .eq("id", project.latest_build_id)
             .maybeSingle();
           const latestCreatedAt = latest ? new Date(latest.created_at).getTime() : 0;
+          const inFlight = latest?.status === "pending" || latest?.status === "building";
+          // Concurrency guard: a job that started seconds ago is still writing
+          // the same turn's files. Starting a second Railway job for the same
+          // project makes both compete for the one container and they time out
+          // mid-verification. Reuse the running job; the next trigger (after it
+          // settles) picks up any newer edits.
+          const justStarted = inFlight && Date.now() - latestCreatedAt < 120_000;
           if (
             latest &&
-            (latest.status === "pending" || latest.status === "building" || latest.status === "ready") &&
-            latestCreatedAt >= newestFileWrite
+            (inFlight || latest.status === "ready") &&
+            (justStarted || latestCreatedAt >= newestFileWrite)
           ) {
             return Response.json({
               buildId: latest.id,

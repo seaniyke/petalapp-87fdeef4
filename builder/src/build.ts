@@ -502,6 +502,29 @@ export async function buildAndDeploy(
  * This sidesteps wrangler's habit of mapping "already exists" to an opaque
  * `code: 8000000` error on some accounts, which blocked every redeploy.
  */
+/**
+ * Cloudflare API calls occasionally abort at the network layer on Railway
+ * ("The operation was aborted due to timeout"). That is infrastructure noise,
+ * not a broken app, so retry a few times before burning the user's build.
+ */
+async function cfFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 1_000 * attempt));
+    try {
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(25_000) });
+      if (res.status >= 500 || res.status === 429) {
+        lastError = new Error(`Cloudflare responded ${res.status}`);
+        continue;
+      }
+      return res;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+}
+
 async function ensurePagesProject(
   projectName: string,
   cloudflare: { apiToken: string; accountId: string }
@@ -514,7 +537,7 @@ async function ensurePagesProject(
 
   const projectUrl = `${base}/${projectName}`;
   const projectExists = async (): Promise<boolean> => {
-    const response = await fetch(projectUrl, { headers });
+    const response = await cfFetch(projectUrl, { headers });
     if (response.ok) return true;
     if (response.status === 404 || response.status === 410) return false;
 
@@ -538,7 +561,7 @@ async function ensurePagesProject(
       if (await projectExists()) return;
     }
 
-    const createRes = await fetch(base, {
+    const createRes = await cfFetch(base, {
       method: "POST",
       headers,
       body: JSON.stringify({
