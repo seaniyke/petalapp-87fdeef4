@@ -210,7 +210,50 @@ function hasProvider(content: string): boolean {
  * conservative dominance check: when uncertain we wrap at the entry, where
  * the provider is guaranteed to be an ancestor of every consumer.
  */
+/**
+ * JSX returned by a SPECIFIC component in a module.
+ *
+ * Taking the first `return (` in the file was the real cause of duplicate
+ * routers: a helper component declared above `App` won the match, the
+ * dominance check concluded no provider existed, and the pass injected a
+ * second <BrowserRouter> at the entry — a hard runtime crash
+ * ("You cannot render a <Router> inside another <Router>").
+ */
+function componentReturnJsx(content: string, component: string): string {
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const starts: number[] = [];
+  const push = (i: number | undefined) => {
+    if (typeof i === "number" && i >= 0) starts.push(i);
+  };
+
+  push(
+    new RegExp(
+      `(?:export\\s+default\\s+)?(?:function|const|let|var|class)\\s+${esc(component)}\\b`,
+    ).exec(content)?.index,
+  );
+  // `export default Name;` — follow the alias to its declaration.
+  const aliased = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;/.exec(content)?.[1];
+  if (aliased && aliased !== component) {
+    push(
+      new RegExp(`(?:function|const|let|var|class)\\s+${esc(aliased)}\\b`).exec(content)?.index,
+    );
+  }
+  push(/export\s+default\s+(?:function|class|\()/.exec(content)?.index);
+
+  for (const start of starts) {
+    const seg = content.slice(start);
+    const jsx =
+      /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(seg)?.[1] ??
+      /return\s+(<[^;]+>)\s*;?/.exec(seg)?.[1] ??
+      /=>\s*(<[^;]+>)/.exec(seg)?.[1] ??
+      "";
+    if (jsx) return jsx;
+  }
+  return "";
+}
+
 function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFile>): boolean {
+
   const visited = new Set<string>();
 
   /**
@@ -233,13 +276,10 @@ function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFil
     const target = resolveImport(path, spec, byPath);
     if (!target) return false;
     const targetContent = byPath.get(target)?.content ?? "";
-    const returned =
-      /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(targetContent)?.[1] ??
-      /return\s+(<[^;]+>)\s*;?/.exec(targetContent)?.[1] ??
-      /=>\s*(<[^;]+>)/.exec(targetContent)?.[1] ??
-      "";
+    const returned = componentReturnJsx(targetContent, component);
     return returned ? inspect(target, returned, depth + 1) : false;
   }
+
 
   function inspect(path: string, jsx: string, depth: number): boolean {
     if (depth > 6 || visited.has(path)) return false;
@@ -546,12 +586,21 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
     if (wrapped) {
       const next = ensureBrowserRouterImport(wrapped);
       notes.push(`router-provider: wrapped root render in <BrowserRouter> (${entry.path})`);
-      return {
-        files: files.map((f) => (f.path === entry.path ? { ...f, content: next } : f)),
-        notes,
-      };
+      let out = files.map((f) => (f.path === entry.path ? { ...f, content: next } : f));
+      // Safety net: the entry now owns the provider, so any provider further
+      // down the live tree is a nested router and crashes the app at render.
+      const graph = live ?? reachableFrom(entry.path, new Map(out.map((f) => [f.path, f] as const)));
+      const deduped = removeNestedBrowserRouters(out, entry.path, graph);
+      if (deduped.removed > 0) {
+        out = deduped.files;
+        notes.push(
+          `router-provider: removed ${deduped.removed} nested <BrowserRouter> wrapper(s) after wrapping the entry`,
+        );
+      }
+      return { files: out, notes };
     }
   }
+
 
   // Fallback: wrap the default-exported App component's returned JSX.
   const app = code.find((f) => /src\/App\.(tsx|jsx)$/i.test(f.path));

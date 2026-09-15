@@ -355,3 +355,38 @@ assert.ok(
 );
 
 console.log("router-repairs: mixed-family assertion passed");
+
+// Regression (real fintech build): a helper component declared ABOVE the
+// default-exported App made the dominance check read the WRONG return, so the
+// pass injected a second router at the entry and the preview crashed with
+// "You cannot render a <Router> inside another <Router>".
+const helperAboveAppWithRouter = fixMissingRouterProvider([
+  {
+    path: "src/main.tsx",
+    content:
+      'import React from "react";\nimport ReactDOM from "react-dom/client";\nimport App from "./App";\nclass Boundary extends React.Component { render() { return this.props.children; } }\nReactDOM.createRoot(document.getElementById("root")!).render(<React.StrictMode><Boundary><App /></Boundary></React.StrictMode>);\n',
+  },
+  {
+    path: "src/App.tsx",
+    content:
+      'import { BrowserRouter as Router, Routes, Route } from "@/components/ui/router";\nimport Dashboard from "./routes/dashboard";\nfunction Authenticated({ children }: { children: React.ReactNode }) {\n  return (\n    <div className="shell">{children}</div>\n  );\n}\nexport default function App() {\n  return (\n    <Router>\n      <Routes>\n        <Route path="/" element={<Authenticated><Dashboard /></Authenticated>} />\n      </Routes>\n    </Router>\n  );\n}\n',
+  },
+  {
+    path: "src/routes/dashboard.tsx",
+    content: 'export default function Dashboard() { return <div>dash</div>; }\n',
+  },
+]);
+const fintechMain =
+  helperAboveAppWithRouter.files.find((f) => f.path === "src/main.tsx")?.content ?? "";
+const fintechApp =
+  helperAboveAppWithRouter.files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+assert.ok(
+  !/<BrowserRouter>/.test(fintechMain),
+  "entry must not gain a second router when App already owns one below a helper",
+);
+assert.ok(/<Router>/.test(fintechApp), "App's own router must be preserved");
+const providerCount =
+  (/<BrowserRouter[\s>]/.test(fintechMain) ? 1 : 0) + (/<Router[\s>]/.test(fintechApp) ? 1 : 0);
+assert.equal(providerCount, 1, "exactly one router provider must be mounted");
+
+console.log("router-repairs: helper-above-App duplicate router assertion passed");

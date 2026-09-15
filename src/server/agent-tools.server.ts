@@ -12,6 +12,8 @@
  * caller's project array.
  */
 import type { ProjectFile } from "@/server/generate.server";
+import { isScaffoldAbsorbedPath, isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
+
 import {
   runExecSession,
   runInstallSession,
@@ -281,14 +283,23 @@ function readFileTool(
       .filter((f) => f.path.toLowerCase().includes(want.split("/").pop()?.toLowerCase() ?? "\u0000"))
       .slice(0, 8)
       .map((f) => f.path);
+    // Scaffold-owned files (index.html, styles.css, the UI kit) are merged in
+    // later in the pipeline, so they are legitimately absent here. Saying only
+    // "no file" made the model treat a healthy project as broken and stall.
+    const kitOwned = isScaffoldOwnedPath(want) || isScaffoldAbsorbedPath(want);
     return {
-      label: `Could not read ${path}`,
-      isError: true,
-      output:
-        `No file at "${path}".` +
-        (near.length ? `\nDid you mean one of:\n${near.join("\n")}` : ""),
+      // A scaffold file is not an error the user should watch scroll past.
+      label: kitOwned ? `${path} is part of the starter setup` : `Could not read ${path}`,
+      isError: !kitOwned,
+      output: kitOwned
+        ? `"${path}" is supplied by the project scaffold and is added automatically after your turn. ` +
+          `It is not missing and you must not author it. Continue with the app's own source files.`
+        : `No file at "${path}".` +
+          (near.length ? `\nDid you mean one of:\n${near.join("\n")}` : ""),
     };
+
   }
+
 
   const lines = file.content.split("\n");
   const from = Math.max(1, startLine ?? 1);
@@ -716,15 +727,27 @@ export async function executeAgentTool(args: {
         signal,
       });
 
-    default:
+    default: {
+      // Observed failure: the model invented `write_file`, got a bare "unknown
+      // tool" back, and abandoned the build with only a data module written.
+      // Name the right surface instead of just refusing.
+      const writeish = /^(write|create|edit|update|save|apply)_?(file|files|code)?$/i.test(call.name);
       return {
         label: `Unknown tool: ${call.name}`,
         isError: true,
-        output: `There is no tool named "${call.name}". Available tools: ${allAgentTools()
-          .map((t) => t.function.name)
-          .join(", ")}.`,
+        output:
+          `There is no tool named "${call.name}". Available tools: ${allAgentTools()
+            .map((t) => t.function.name)
+            .join(", ")}.` +
+          (writeish
+            ? `\n\nThese tools only inspect the project. To create or change files, emit the edits ` +
+              `through your normal file-writing response (the patch_files tool) — not a tool call here. ` +
+              `Write every screen the app routes to; do not stop after data or setup files.`
+            : ""),
       };
+    }
   }
+
 }
 
 /**

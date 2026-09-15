@@ -1613,8 +1613,11 @@ async function runFinalParseGuard(
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
   prd?: import("@/server/prd/prd-types").Prd | null,
+  /** Files as they were before this turn — the safe content to fall back to. */
+  priorFiles: ProjectFile[] = [],
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
+
 
   const { files: gated, report } = await runPreEmitGate(files, changedPaths, {
     maxRounds: 2,
@@ -1647,12 +1650,51 @@ async function runFinalParseGuard(
   }
 
   if (!report.ok) {
+    // Salvage before surrender. Observed on a real build: two of eight files
+    // came back truncated (an unterminated string, unbalanced braces), the
+    // repair rounds made no progress, and the ENTIRE turn was rolled back —
+    // the user got nothing at all for a complete app.
+    //
+    // A small number of bad files is not a bad turn. Drop just those (or
+    // restore their pre-turn content), re-run deterministic repairs so the
+    // import resolver keeps the app resolving, and ship the rest. The
+    // placeholder-completion pass downstream then writes the dropped screens
+    // for real.
+    const badPaths = Array.from(new Set(report.issues.map((i) => i.path))).filter(Boolean);
+    const salvageable = badPaths.length > 0 && badPaths.length <= 4 && badPaths.length < gated.length;
+    if (salvageable) {
+      try {
+        const bad = new Set(badPaths);
+        const priorByPath = new Map(priorFiles.map((f) => [f.path, f.content] as const));
+        const kept = gated.filter((f) => !bad.has(f.path));
+        for (const p of badPaths) {
+          const previous = priorByPath.get(p);
+          if (previous !== undefined) kept.push({ path: p, content: previous });
+        }
+        const repaired = runAllRepairs(kept).files;
+        const recheck = await runPreEmitGate(
+          repaired,
+          changedPaths.filter((p) => !bad.has(p)),
+          { maxRounds: 0, prd },
+        );
+        if (recheck.report.ok) {
+          console.log(`[preemit-gate] salvaged turn by quarantining ${badPaths.length} file(s)`);
+          controller.enqueue(
+            encoder.encode(sse({ type: "status", message: "Rewriting a screen that came out wrong…" })),
+          );
+          return { ok: true, files: recheck.files };
+        }
+      } catch (e) {
+        console.warn("[preemit-gate] salvage failed:", e instanceof Error ? e.message : String(e));
+      }
+    }
     // Don't throw — let the caller revert to the prior good files and reply
     // conversationally. A failed gate is NOT an infra error; it just means
     // this turn's edits weren't safe to ship.
     return { ok: false, detail: formatGateIssues(report.issues, 3) };
   }
   return { ok: true, files: gated };
+
 }
 
 
@@ -5152,9 +5194,11 @@ Forbidden defaults
             resolvedPrd.amendment === "contradiction")
             ? resolvedPrd.prd
             : null,
-
-
+          // Pre-turn files: a handful of broken outputs get quarantined back
+          // to these instead of throwing the whole turn away.
+          currentFiles,
         );
+
         if (!guardOut.ok) {
           // Final-parse-guard couldn't repair this turn's edits. Revert
           // to the prior good files and reply conversationally — no
@@ -5199,10 +5243,41 @@ Forbidden defaults
           );
         }
 
+        // Placeholder-page completion. When the model routed to screens it
+        // never wrote, the import resolver stubs them so the build resolves —
+        // without this gate the turn ships an app whose every page is an empty
+        // prose block and still reports success. Runs BEFORE design
+        // enforcement so the new screens are linted too. Fails open.
+        try {
+          const { completePlaceholderPages } = await import(
+            "@/server/design/page-completion.server"
+          );
+          const completed = await completePlaceholderPages({
+            files: nextFiles,
+            design: picContext?.design ?? null,
+            model,
+            userRequest: lastUserContent,
+            projectId: body.projectId ?? undefined,
+            userId,
+            signal: abortSignal,
+          });
+          if (completed.completedPaths.length > 0) {
+            nextFiles = completed.files;
+            controller.enqueue(
+              encoder.encode(
+                sse({ type: "status", message: "Filled in the screens that were still empty." }),
+              ),
+            );
+          }
+        } catch (e) {
+          console.warn("[page-completion] skipped:", e instanceof Error ? e.message : String(e));
+        }
+
         // Design contract enforcement — the project's committed design system
         // is checked against the code we are about to ship. Structural turns
         // get ONE focused repair pass for hard violations (raw colours, hex
         // values, missing tokens); small edits lint-and-log only. Fails open.
+
         try {
           const { enforceDesignContract } = await import("@/server/design/design-enforce.server");
           const enforced = await enforceDesignContract({
