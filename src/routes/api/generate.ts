@@ -5911,6 +5911,29 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
 
       let terminalStatus: "succeeded" | "failed" | "aborted" = "succeeded";
       let terminalError: string | null = null;
+      // Set when this turn has been queued to finish itself server-side. The
+      // user is told nothing: no error card, no retry button, no "connection
+      // dropped" line. The resume worker carries the request to completion.
+      let silentRecovery = false;
+
+      /**
+       * Queue the turn for silent completion when the failure is one Petal can
+       * simply run again. Returns true when the caller should stay quiet.
+       */
+      const recoverSilently = async (raw: string, userCancelled: boolean): Promise<boolean> => {
+        if (silentRecovery) return true;
+        if (!turnProjectId || !turnUserRequest) return false;
+        if (!isTransientFailure(classifyRawError(raw), raw, userCancelled)) return false;
+        const queued = await markInterruptedForResume({
+          projectId: turnProjectId,
+          userRequest: turnUserRequest,
+        }).catch(() => false);
+        if (!queued) return false;
+        silentRecovery = true;
+        emit({ type: "recovering" });
+        emit({ type: "status", message: "Still working — Petal is finishing this off." });
+        return true;
+      };
 
       try {
         // Announce the turn id FIRST so the client can persist it locally
