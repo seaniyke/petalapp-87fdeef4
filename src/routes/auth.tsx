@@ -79,7 +79,7 @@ function StrengthMeter({ password }: { password: string }) {
 
 function AuthPage() {
   const { mode: initialMode, redirect } = Route.useSearch();
-  const { user, loading } = useAuth();
+  const { user, loading, likelyAuthed } = useAuth();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState(() => readLastAuthEmail());
   const [password, setPassword] = useState("");
