@@ -232,6 +232,63 @@ function pickFxRecipe(brief: string, motion: MotionIntensity): FxRecipe {
   }
 }
 
+/** A category-specific floor for timeouts and unconfigured design models. */
+export function fallbackDesignDirection(brief: string, seed?: string): DesignDirection {
+  const cleanBrief = (brief ?? "").trim();
+  const theme = pickThemeForBrief(cleanBrief, seed ?? cleanBrief);
+  const font = pickFontDefault(cleanBrief) ?? {
+    display: THEMES[theme].display_font,
+    body: THEMES[theme].body_font,
+    reason: "theme",
+  };
+  const shape = classifyAppShape(cleanBrief);
+  const appLike = ["fintech", "crypto", "saas", "internal-tool", "marketplace"].includes(
+    shape.category,
+  );
+  const movesByCategory: Partial<Record<ShapeCategory, string[]>> = {
+    fintech: [
+      "account balance and cash-flow story above the fold",
+      "mixed-span KPI composition with tabular numerals and trend context",
+      "dense transaction surface with status, counterparty and meaningful actions",
+    ],
+    restaurant: [
+      "full-bleed food or venue photography as the opening composition",
+      "editorial menu storytelling with chef, provenance and signature dishes",
+      "reservation details and service atmosphere woven through the page",
+    ],
+    booking: [
+      "availability and trust cues visible before the first scroll",
+      "date, guest and price choices composed as one clear booking journey",
+      "destination imagery paired with useful availability metadata",
+    ],
+    marketplace: [
+      "merchandise-led opening with search and category discovery",
+      "varied listing rhythm with real imagery, price and seller trust cues",
+      "saved, recent and recommended states that make the marketplace feel active",
+    ],
+  };
+  const designMoves = movesByCategory[shape.category] ?? [
+    "one unmistakable product-specific visual moment above the fold",
+    "asymmetric hierarchy with one dominant surface and supporting evidence",
+    "complete content states using believable domain data rather than filler",
+  ];
+  const motion: MotionIntensity = shape.category === "restaurant" ? "expressive" : "subtle";
+
+  return {
+    vibe: `${shape.category}-${theme}`,
+    rationale: `A category-specific ${shape.category} direction that foregrounds the product's real content and primary journey.`,
+    display_font: font.display,
+    body_font: font.body,
+    palette_mood: `${THEMES[theme].description} Use one saturated primary and one supporting hue with accessible contrast.`,
+    density: appLike ? "dense" : "balanced",
+    motion,
+    fx_recipe: pickFxRecipe(cleanBrief, motion),
+    design_moves: designMoves,
+    theme,
+    template: pickTemplateForBrief(cleanBrief, seed ?? cleanBrief),
+  };
+}
+
 const DIRECTOR_SYSTEM = `You are Petal's Design Director. Before the builder writes any code, you commit to ONE bold, specific visual direction for the app.
 
 You are NOT a generic stylist. You reject defaults: no Inter+purple-gradient SaaS, no evenly-spaced rounded cards on white, no "modern minimal" without conviction. Pick a direction with a real point of view.
@@ -411,14 +468,26 @@ export async function pickDesignDirection(args: {
   const cached = readDirectionFromMemory(args.memoryEntries);
   if (cached) return cached;
 
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return null;
-
   const trimmedBrief = (args.brief ?? "").trim().slice(0, 1500);
   // Seed for tie-breaking theme/template picks. Per-project, so two different
   // projects with similarly generic briefs don't land on an identical design
   // system, while re-running a turn on one project stays consistent.
   const designSeed = args.projectId ?? trimmedBrief;
   if (trimmedBrief.length < 4) return null;
+  const fallback = () => fallbackDesignDirection(trimmedBrief, designSeed);
+  const persist = (picked: DesignDirection): DesignDirection => {
+    if (args.projectId) {
+      void saveDirectionToMemory({
+        jwt: args.jwt,
+        projectId: args.projectId,
+        direction: picked,
+      }).catch(() => {});
+    }
+    return picked;
+  };
+  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+    return persist(fallback());
+  }
 
   // Compact memory context — only the keys that actually inform aesthetic choices.
   const relevantKeys = new Set([
@@ -458,28 +527,6 @@ export async function pickDesignDirection(args: {
    * system sans with default taste. A picked-by-rule direction is always
    * better than no direction, so a timeout now degrades instead of failing.
    */
-  const fallbackDirection = (): DesignDirection => {
-    const theme = pickThemeForBrief(trimmedBrief, designSeed);
-    const pair = fontDefault ?? { display: "Sora", body: "Manrope", reason: "general app" };
-    const motion: MotionIntensity = "subtle";
-    return {
-      vibe: `${theme}-modern`,
-      rationale: "Deterministic direction (the design model did not respond in time).",
-      display_font: pair.display,
-      body_font: pair.body,
-      palette_mood: `${theme} palette with one confident accent`,
-      density: "balanced",
-      motion,
-      fx_recipe: pickFxRecipe(trimmedBrief, motion),
-      design_moves: [
-        "oversized display headline with tight tracking",
-        "layered surfaces: gradient hero, elevated cards, soft shadows",
-      ],
-      theme,
-      template: pickTemplateForBrief(trimmedBrief, designSeed),
-    };
-  };
-
   let direction: DesignDirection | null = null;
   try {
     // SOFT TIMEOUT (18s). The director must not block the whole build — that
@@ -502,7 +549,7 @@ export async function pickDesignDirection(args: {
     });
     if (!resp.ok) {
       console.warn("[design-director] http error", resp.status, "— using deterministic direction");
-      return fallbackDirection();
+      return persist(fallback());
     }
     const json = (await resp.json()) as {
       choices?: Array<{
@@ -510,7 +557,7 @@ export async function pickDesignDirection(args: {
       }>;
     };
     const argsStr = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!argsStr) return fallbackDirection();
+    if (!argsStr) return persist(fallback());
     const parsed = JSON.parse(argsStr) as DesignDirection;
     // Validate the bare minimum so a malformed call can't poison the prompt.
     if (
@@ -521,7 +568,7 @@ export async function pickDesignDirection(args: {
       !Array.isArray(parsed.design_moves) ||
       parsed.design_moves.length < 2
     ) {
-      return fallbackDirection();
+      return persist(fallback());
     }
     // Part B — substitute generic font choices with the domain default.
     // Triggers when the model returned display == body, both generic, or
@@ -564,7 +611,7 @@ export async function pickDesignDirection(args: {
     direction = parsed;
   } catch (e) {
     console.warn("[design-director] threw:", e, "— using deterministic direction");
-    return fallbackDirection();
+    return persist(fallback());
   }
 
   // Best-effort persistence — never blocks.
