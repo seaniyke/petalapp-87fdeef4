@@ -5,7 +5,6 @@
  * BillingSheet (upgrade plans or top up via Paystack).
  */
 import { useState } from "react";
-import { Coins } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
