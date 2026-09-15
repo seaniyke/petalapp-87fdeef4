@@ -53,6 +53,7 @@ import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-imag
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
+import { Route as ApiCreditPausesRouteImport } from './routes/api/credit-pauses'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
@@ -347,6 +348,11 @@ const ApiDomainsRoute = ApiDomainsRouteImport.update({
 const ApiDiscussRoute = ApiDiscussRouteImport.update({
   id: '/api/discuss',
   path: '/api/discuss',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCreditPausesRoute = ApiCreditPausesRouteImport.update({
+  id: '/api/credit-pauses',
+  path: '/api/credit-pauses',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCoachRoute = ApiCoachRouteImport.update({
@@ -784,6 +790,7 @@ export interface FileRoutesByFullPath {
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
+  '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
@@ -905,6 +912,7 @@ export interface FileRoutesByTo {
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
+  '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
@@ -1027,6 +1035,7 @@ export interface FileRoutesById {
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
+  '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRouteWithChildren
   '/api/generate': typeof ApiGenerateRoute
@@ -1150,6 +1159,7 @@ export interface FileRouteTypes {
     | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
+    | '/api/credit-pauses'
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
@@ -1271,6 +1281,7 @@ export interface FileRouteTypes {
     | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
+    | '/api/credit-pauses'
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
@@ -1392,6 +1403,7 @@ export interface FileRouteTypes {
     | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
+    | '/api/credit-pauses'
     | '/api/discuss'
     | '/api/domains'
     | '/api/generate'
@@ -1514,6 +1526,7 @@ export interface RootRouteChildren {
   AdminWaitlistRoute: typeof AdminWaitlistRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiCoachRoute: typeof ApiCoachRoute
+  ApiCreditPausesRoute: typeof ApiCreditPausesRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiDomainsRoute: typeof ApiDomainsRouteWithChildren
   ApiGenerateRoute: typeof ApiGenerateRoute
@@ -1900,6 +1913,13 @@ declare module '@tanstack/react-router' {
       path: '/api/discuss'
       fullPath: '/api/discuss'
       preLoaderRoute: typeof ApiDiscussRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/credit-pauses': {
+      id: '/api/credit-pauses'
+      path: '/api/credit-pauses'
+      fullPath: '/api/credit-pauses'
+      preLoaderRoute: typeof ApiCreditPausesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/coach': {
@@ -2514,6 +2534,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminWaitlistRoute: AdminWaitlistRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiCoachRoute: ApiCoachRoute,
+  ApiCreditPausesRoute: ApiCreditPausesRoute,
   ApiDiscussRoute: ApiDiscussRoute,
   ApiDomainsRoute: ApiDomainsRouteWithChildren,
   ApiGenerateRoute: ApiGenerateRoute,
