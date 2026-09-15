@@ -87,6 +87,12 @@ export function auditChangeSet(args: {
   changeSet: ChangeSet;
   before: ProjectFile[];
   after: ProjectFile[];
+  /**
+   * Remembered project facts (project_memory). `dont_do` and `must_have`
+   * entries are enforced as audit findings: a remembered rule broken by this
+   * diff is reported exactly like a preservation violation.
+   */
+  memory?: Array<{ key: string; value: string }>;
 }): AuditResult {
   const { text, paths } = addedText(args.before, args.after);
   const met: ChangeItem[] = [];
@@ -107,6 +113,49 @@ export function auditChangeSet(args: {
     if (token.length < 4) continue;
     const hit = paths.filter((path) => path.toLowerCase().replace(/[-_]/g, "").includes(token));
     if (hit.length > 0) violations.push({ preserve: p, paths: hit });
+  }
+
+  // Remembered rules. A token the user explicitly asked for THIS turn
+  // overrides the memory (the memory block says the same), so tokens named
+  // in the current change set are never flagged.
+  const requestBlob = args.changeSet.items.map((i) => i.text).join(" ").toLowerCase();
+  const memory = args.memory ?? [];
+  if (memory.length > 0) {
+    const beforeText = args.before.map((f) => f.content).join("\n").toLowerCase();
+    const afterText = args.after.map((f) => f.content).join("\n").toLowerCase();
+    for (const m of memory) {
+      if (m.key !== "dont_do" && m.key !== "must_have") continue;
+      const tokens = Array.from(
+        new Set(m.value.toLowerCase().match(/[a-z0-9][a-z0-9'-]{3,}/g) ?? []),
+      ).filter((t) => !requestBlob.includes(t));
+      if (m.key === "dont_do") {
+        const hit = tokens.find((t) => text.includes(t));
+        if (hit) {
+          violations.push({
+            preserve: {
+              text: `Remembered rule — you asked me never to: ${m.value}`,
+              target: hit,
+            },
+            paths: [],
+          });
+        }
+      } else {
+        // must_have: only flag when the turn REMOVED it (present before,
+        // gone after). An untouched must-have is not a finding.
+        const gone = tokens.find(
+          (t) => t.length >= 5 && beforeText.includes(t) && !afterText.includes(t),
+        );
+        if (gone) {
+          violations.push({
+            preserve: {
+              text: `Remembered must-have may have been removed: ${m.value}`,
+              target: gone,
+            },
+            paths: [],
+          });
+        }
+      }
+    }
   }
 
   return { met, unmet, violations, changedPaths: paths };

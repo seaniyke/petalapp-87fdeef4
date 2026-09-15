@@ -84,8 +84,10 @@ import { priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import { recordTurnEconomics } from "@/server/turn-economics.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
+  clearPendingMemory,
   loadProjectMemory,
   renderMemoryBlock,
+  savePendingMemory,
   updateProjectMemory,
 } from "@/server/project-memory.server";
 import {
@@ -5211,6 +5213,7 @@ Forbidden defaults
               changeSet: turnChangeSet,
               before: turnBaselineFiles,
               after: nextFiles,
+              memory: memoryEntries,
             });
             if (audit.unmet.length > 0) {
               controller.enqueue(
@@ -5237,6 +5240,7 @@ Forbidden defaults
                   changeSet: turnChangeSet,
                   before: turnBaselineFiles,
                   after: nextFiles,
+                  memory: memoryEntries,
                 });
               }
             }
@@ -5623,17 +5627,26 @@ Forbidden defaults
         // trip the cool-off.
         recordModelOutcome(typeof model === "string" ? model : null, true);
 
-        // Memory writer — fire-and-forget. Distills the user's latest
-        // turn (+ Petal's summary) into durable facts saved to
-        // project_memory. Failures are logged inside; never block the
-        // user's reply or fail the build.
+        // Memory writer — durable outbox first, then the fast inline
+        // attempt. The writer's input is saved onto the turn row BEFORE the
+        // turn ends, so if this worker dies right after responding, the
+        // turn-resume cron replays it and the turn is never forgotten.
+        // Failures are logged inside; never block the reply or the build.
         if (body.projectId && userJwt) {
+          void savePendingMemory(logicalTurnId, {
+            userMessage: lastUserContent,
+            assistantSummary: summary,
+          });
           void updateProjectMemory({
             jwt: userJwt,
             projectId: body.projectId,
             userMessage: lastUserContent,
             assistantSummary: summary,
-          }).catch((e) => console.warn("[project-memory] writer rejected:", e));
+          })
+            .then(async (done) => {
+              if (done) await clearPendingMemory(logicalTurnId);
+            })
+            .catch((e) => console.warn("[project-memory] writer rejected:", e));
         }
       } catch (e) {
         const raw = e instanceof Error ? e.message : "Generation failed.";
