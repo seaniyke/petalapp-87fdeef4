@@ -1087,19 +1087,78 @@ function Landing() {
             </div>
           </section>
 
-          <footer className="border-t border-border">
-            <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 text-sm text-muted-foreground sm:px-6 md:flex-row md:items-center md:justify-between">
-              <Link to="/" aria-label="Petal home">
-                <PetalBrand size="sm" />
-              </Link>
-              <div className="flex flex-wrap gap-x-5 gap-y-3">
-                <Link to="/marketplace" className="hover:text-foreground">Marketplace</Link>
-                <Link to="/gallery" className="hover:text-foreground">Gallery</Link>
-                <Link to="/changelog" className="hover:text-foreground">What's new</Link>
-                <Link to="/privacy" className="hover:text-foreground">Privacy</Link>
-                <Link to="/terms" className="hover:text-foreground">Terms</Link>
+          <footer className="border-t border-border bg-card/40">
+            <div className="mx-auto max-w-7xl px-5 py-12 sm:px-6 sm:py-16">
+              {/* Brand block + entry CTA */}
+              <div className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
+                <div className="max-w-sm">
+                  <Link to="/" aria-label="Petal home" className="inline-flex">
+                    <PetalBrand size="sm" />
+                  </Link>
+                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                    Turn sentences into shipped products. Web and mobile,
+                    your code, credits that never expire.
+                  </p>
+                </div>
+                <Link
+                  to="/auth"
+                  search={{ mode: "signup", redirect: undefined }}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl bg-foreground px-5 text-sm font-medium text-background shadow-[var(--shadow-soft)] ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20"
+                >
+                  Get started <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
-              <span>© {new Date().getFullYear()} Petal</span>
+
+              {/* Link columns */}
+              <div className="grid grid-cols-2 gap-8 py-10 text-sm sm:grid-cols-4">
+                <div className="space-y-3">
+                  <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-foreground/80">
+                    Product
+                  </h3>
+                  <ul className="space-y-2.5 text-muted-foreground">
+                    <li><Link to="/gallery" className="transition-colors hover:text-foreground">Gallery</Link></li>
+                    <li><Link to="/marketplace" className="transition-colors hover:text-foreground">Marketplace</Link></li>
+                    <li><Link to="/changelog" className="transition-colors hover:text-foreground">What's new</Link></li>
+                    <li><Link to="/docs" className="transition-colors hover:text-foreground">Docs</Link></li>
+                  </ul>
+                </div>
+                <div className="space-y-3">
+                  <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-foreground/80">
+                    Company
+                  </h3>
+                  <ul className="space-y-2.5 text-muted-foreground">
+                    <li><Link to="/features/sell" className="transition-colors hover:text-foreground">Features</Link></li>
+                    <li><Link to="/why/sell" className="transition-colors hover:text-foreground">Why Petal</Link></li>
+                    <li><Link to="/invest" className="transition-colors hover:text-foreground">Invest</Link></li>
+                    <li><Link to="/coffee" className="transition-colors hover:text-foreground">Support us</Link></li>
+                  </ul>
+                </div>
+                <div className="space-y-3">
+                  <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-foreground/80">
+                    Legal
+                  </h3>
+                  <ul className="space-y-2.5 text-muted-foreground">
+                    <li><Link to="/privacy" className="transition-colors hover:text-foreground">Privacy</Link></li>
+                    <li><Link to="/terms" className="transition-colors hover:text-foreground">Terms</Link></li>
+                  </ul>
+                </div>
+                <div className="space-y-3">
+                  <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-foreground/80">
+                    Build with Petal
+                  </h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Start from a single sentence — no setup, no lock-in.
+                  </p>
+                </div>
+              </div>
+
+              {/* Bottom bar */}
+              <div className="flex flex-col items-center gap-3 border-t border-border pt-8 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+                <span>© {new Date().getFullYear()} Petal</span>
+                <span className="text-muted-foreground/70">
+                  Powered by Petal Cloud & Petal AI
+                </span>
+              </div>
             </div>
           </footer>
         </>
