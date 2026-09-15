@@ -319,6 +319,28 @@ function prdScenarioContext(prd: Prd): string {
   return lines.join("\n");
 }
 
+/**
+ * The routes worth looking at: home first, then the interior screens most
+ * likely to carry real layout (dashboard, list, detail, settings), then
+ * whatever is left. Auth screens are skipped — the signed-in pass covers them.
+ */
+function pickVisualRoutes(routes: string[], max = 4): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const push = (r: string) => {
+    if (out.length >= max || seen.has(r)) return;
+    seen.add(r);
+    out.push(r);
+  };
+  const interesting =
+    /(dashboard|home|feed|browse|explore|shop|products?|listings?|orders?|bookings?|projects?|settings|profile|account|pricing|checkout|detail)/i;
+
+  if (routes.includes("/")) push("/");
+  for (const r of routes) if (interesting.test(r)) push(r);
+  for (const r of routes) if (!/(login|signin|sign-up|signup|auth|register|404)/i.test(r)) push(r);
+  return out;
+}
+
 export async function buildVerifyPlan(args: {
   files: ProjectFile[];
   projectId: string;
