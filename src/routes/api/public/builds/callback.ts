@@ -83,7 +83,9 @@ const VerificationSchema = z
           image: z.string().max(2_000_000),
         }),
       )
-      .max(6)
+      // Keep this aligned with builder/src/verify.ts VISUAL_MAX_SHOTS.
+      // Three widths across four routes is the normal quality-review payload.
+      .max(12)
       .optional(),
     skipped: z.string().max(500).optional(),
   })
@@ -370,7 +372,14 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         // user: "completed" without proof is exactly the claim we stopped
         // trusting from the builder.
         verification: verification
-          ? ({ ...verification, ok: true, evidence: buildEvidence(verification) } as never)
+          ? ({
+              ...verification,
+              // Runtime-safe visual findings do not take the deployment
+              // offline, but they must remain actionable so the existing
+              // silent repair loop actually consumes the craft review.
+              ok: partitioned.visual.length === 0,
+              evidence: buildEvidence(verification),
+            } as never)
           : null,
       })
       .eq("id", payload.buildId);

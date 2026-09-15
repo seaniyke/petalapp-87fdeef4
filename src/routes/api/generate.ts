@@ -2333,6 +2333,7 @@ Forbidden defaults
         userId,
         turnId: turnId ?? undefined,
         signal: request.signal,
+        designDirection,
       });
       picContext = assembled.pic;
       picBlock = `\n\n${renderPicBlock(assembled.pic, { detail: isStructural ? "full" : "summary" })}\n`;

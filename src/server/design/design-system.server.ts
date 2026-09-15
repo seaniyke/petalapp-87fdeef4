@@ -24,6 +24,7 @@ import type {
   NavPattern,
   PicColorRole,
 } from "@/server/pic/pic-types";
+import type { DesignDirection } from "@/server/design-director.server";
 
 const MODEL = "google/gemini-3-flash-preview";
 
@@ -122,6 +123,57 @@ export function deterministicDesignSystem(
       loadingStates: "Skeletons matching final layout dimensions. Never a centred spinner on a full page.",
       errorStates: "Plain-language message + retry action. Never a raw error string.",
     },
+    source: "deterministic",
+  };
+}
+
+/**
+ * Translate the Design Director's persisted decision into the canonical PIC
+ * contract. This removes the old second aesthetic vote where PIC could choose
+ * different fonts, colours, density and motion moments after the director.
+ */
+export function designSystemFromDirection(
+  brief: string,
+  understanding: PicUnderstanding,
+  direction: DesignDirection,
+  seed?: string,
+): PicDesignSystem {
+  const base = deterministicDesignSystem(brief, understanding, {
+    seed,
+    theme: direction.theme,
+  });
+  const density: PicDesignSystem["density"] =
+    direction.density === "minimal"
+      ? "spacious"
+      : direction.density === "dense"
+        ? "compact"
+        : "comfortable";
+  const motionLevel: PicDesignSystem["motion"]["level"] =
+    direction.motion === "still"
+      ? "none"
+      : direction.motion === "subtle"
+        ? "subtle"
+        : "expressive";
+
+  return {
+    ...base,
+    direction: direction.vibe,
+    rationale: direction.rationale,
+    typography: {
+      ...base.typography,
+      displayFont: direction.display_font,
+      bodyFont: direction.body_font,
+      scale: TYPE_SCALES[density],
+    },
+    density,
+    motion: {
+      level: motionLevel,
+      principles:
+        direction.motion === "still"
+          ? "No decorative motion; hierarchy, typography and composition carry the experience."
+          : `${base.motion.principles} Use the committed ${direction.fx_recipe ?? " restrained"} motion language consistently.`,
+    },
+    imagery: `${base.imagery} Palette mood: ${direction.palette_mood}. Signature moves: ${direction.design_moves.join("; ")}.`,
     source: "deterministic",
   };
 }
@@ -227,7 +279,17 @@ export async function commitDesignSystem(args: {
   userId?: string;
   projectId?: string | null;
   signal?: AbortSignal;
+  /** The Design Director is the sole visual owner when present. */
+  direction?: DesignDirection | null;
 }): Promise<PicDesignSystem> {
+  if (args.direction) {
+    return designSystemFromDirection(
+      args.brief,
+      args.understanding,
+      args.direction,
+      args.seed,
+    );
+  }
   const prior = deterministicDesignSystem(args.brief, args.understanding, { seed: args.seed });
   if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return prior;
 
