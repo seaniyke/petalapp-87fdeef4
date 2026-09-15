@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { PetalBrand } from "@/components/PetalBrand";
-import { SampleAppShowcase } from "@/components/SampleAppShowcase";
 import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
@@ -25,6 +24,11 @@ import {
   Lock,
   Plus,
   Mic,
+  Check,
+  Code2,
+  ShieldCheck,
+  Store,
+  Sparkles,
 } from "lucide-react";
 import { toVisitorSummary } from "@/lib/visitor-summary";
 
@@ -66,6 +70,8 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Describe your app, build it, publish it, and sell it. Your code is yours, and credits never expire.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Landing,
@@ -241,9 +247,10 @@ function Landing() {
     };
   }, [isReady, isAuthed]);
 
-  // Lazy-fetch the community Public list the first time the user opens it.
+  // Public work is the most honest proof on the signed-out homepage, and also
+  // powers the Public filter for returning users.
   useEffect(() => {
-    if (projectFilter !== "public") return;
+    if (showAuthedHero && projectFilter !== "public") return;
     if (communityPublic !== null) return;
     let cancelled = false;
     setCommunityLoading(true);
@@ -260,7 +267,7 @@ function Landing() {
     return () => {
       cancelled = true;
     };
-  }, [projectFilter, communityPublic]);
+  }, [projectFilter, communityPublic, showAuthedHero]);
 
   // When the user clicks "+ New project" on /projects we route them here with
   // ?focus=composer. Drop the cursor in the textarea and scroll it into view
@@ -471,9 +478,12 @@ function Landing() {
       <SiteHeader />
 
       {/* Product-first hero */}
-      <section className="border-b border-border/70">
+      <section className="relative overflow-hidden border-b border-border/70">
+        {!showAuthedHero && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-[var(--gradient-editorial)] opacity-70" aria-hidden />
+        )}
         <div
-          className={`mx-auto max-w-5xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-28 sm:pb-20 sm:pt-36" : "pb-14 pt-20 sm:pb-20 sm:pt-28"}`}
+          className={`relative mx-auto max-w-6xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-28 sm:pb-20 sm:pt-36" : "pb-12 pt-10 sm:pb-24 sm:pt-24"}`}
         >
           {showAuthedHero ? (
             <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
@@ -494,11 +504,14 @@ function Landing() {
             </h1>
           ) : (
             <>
-              <h1 className="font-landing-display text-balance text-[2.75rem] font-bold leading-[1.02] sm:text-6xl md:text-7xl">
-                Build an app from a conversation.
+              <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary sm:mb-5 sm:text-xs">
+                From first sentence to shipped product
+              </p>
+              <h1 className="heading-editorial mx-auto max-w-5xl text-balance text-[2.7rem] sm:text-7xl md:text-[5.6rem]">
+                Say what you need.<br /><em>Ship what you imagined.</em>
               </h1>
-              <p className="mx-auto mt-5 max-w-xl text-balance text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Describe your app. Petal plans, builds, tests, and publishes it.
+              <p className="mx-auto mt-5 max-w-2xl text-balance text-[0.94rem] leading-relaxed text-muted-foreground sm:mt-7 sm:text-xl">
+                Petal turns a conversation into a polished web or mobile app—with the pages, data, accounts, payments, and finish it needs to work in the real world.
               </p>
             </>
           )}
@@ -509,9 +522,9 @@ function Landing() {
               e.preventDefault();
               submit();
             }}
-            className="mx-auto mt-9 max-w-3xl"
+            className="mx-auto mt-7 max-w-3xl sm:mt-10"
           >
-            <div className="group relative rounded-xl border border-border bg-card p-3 text-left shadow-[var(--shadow-soft)] transition focus-within:border-foreground/40 focus-within:ring-1 focus-within:ring-ring">
+            <div className="group relative rounded-2xl border border-foreground/15 bg-card p-3 text-left shadow-[var(--shadow-editorial)] transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-ring/20">
               {mode === "coach" ? (
                 <IdeaCoach
                   isAuthed={!!user}
@@ -654,24 +667,37 @@ function Landing() {
           </form>
 
           {!showAuthedHero && (
-            <StartIdeasPanel
-              onPick={(p) => {
-                setPrompt(p);
-                requestAnimationFrame(() => {
-                  const el = textareaRef.current;
-                  if (!el) return;
-                  el.focus();
-                  el.setSelectionRange(p.length, p.length);
-                  el.scrollIntoView({ behavior: "smooth", block: "center" });
-                });
-              }}
-              onSwitchToCoach={() => {
-                setMode("coach");
-                requestAnimationFrame(() => {
-                  document.querySelector("form")?.scrollIntoView({ behavior: "smooth", block: "center" });
-                });
-              }}
-            />
+            <>
+              <StartIdeasPanel
+                onPick={(p) => {
+                  setPrompt(p);
+                  requestAnimationFrame(() => {
+                    const el = textareaRef.current;
+                    if (!el) return;
+                    el.focus();
+                    el.setSelectionRange(p.length, p.length);
+                    el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  });
+                }}
+                onSwitchToCoach={() => {
+                  setMode("coach");
+                  requestAnimationFrame(() => {
+                    document.querySelector("form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  });
+                }}
+              />
+              <div className="mx-auto mt-8 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-medium text-muted-foreground">
+                {[
+                  "Web and mobile",
+                  "Your code",
+                  "Credits never expire",
+                ].map((item) => (
+                  <span key={item} className="inline-flex items-center gap-1.5">
+                    <Check className="h-3.5 w-3.5 text-primary" /> {item}
+                  </span>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </section>
@@ -891,49 +917,79 @@ function Landing() {
         </section>
       ) : (
         <>
-          <section id="showcase" className="px-4 py-14 sm:px-6 sm:py-20">
-            <SampleAppShowcase />
-          </section>
+          <section id="showcase" className="px-5 py-20 sm:px-6 sm:py-28">
+            <div className="mx-auto max-w-6xl">
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+                <div className="max-w-3xl">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Made with Petal</p>
+                  <h2 className="heading-editorial mt-4 text-5xl sm:text-6xl">Real ideas. <em>Real builds.</em></h2>
+                  <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground">
+                    Explore public projects made in Petal. Open one, see it working, then make it your own.
+                  </p>
+                </div>
+                <Link to="/gallery" className="inline-flex h-11 items-center gap-2 self-start rounded-md border border-foreground/20 px-5 text-sm font-semibold transition hover:bg-foreground hover:text-background sm:self-auto">
+                  Explore the gallery <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
 
-          <section aria-label="Petal product facts" className="border-y border-border bg-card/40">
-            <div className="mx-auto max-w-6xl px-5 py-7 sm:px-6">
-              <dl className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-                {[
-                  { stat: "Web + mobile", label: "Apps for every screen" },
-                  { stat: "One prompt", label: "From idea to app" },
-                  { stat: "Yours", label: "Code and project" },
-                  { stat: "Never", label: "Credits expire" },
-                ].map((item) => (
-                  <div key={item.label} className="border-l border-border pl-4">
-                    <dt className="font-landing-display text-xl font-semibold sm:text-2xl">{item.stat}</dt>
-                    <dd className="mt-1 text-xs text-muted-foreground">{item.label}</dd>
+              {communityLoading || communityPublic === null ? (
+                <div className="mt-12 grid gap-5 md:grid-cols-3">
+                  {Array.from({ length: 3 }).map((_, i) => <div key={i} className="aspect-[4/3] animate-pulse rounded-lg bg-muted" />)}
+                </div>
+              ) : communityPublic.length > 0 ? (
+                <div className="mt-12 grid gap-5 md:grid-cols-3">
+                  {communityPublic.slice(0, 3).map((project, index) => (
+                    <Link key={project.id} to="/p/$slug" params={{ slug: project.slug }} className={`group block ${index === 0 ? "md:col-span-2 md:row-span-2" : ""}`}>
+                      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-[var(--shadow-soft)] transition duration-300 group-hover:-translate-y-1 group-hover:shadow-[var(--shadow-editorial)]">
+                        <ProjectThumbnail projectId={project.id} title={project.title} subdomain={project.subdomain} buildId={project.published_build_id ?? project.latest_build_id} className={index === 0 ? "h-64 sm:h-80 md:h-[28rem]" : "h-40 md:h-[12rem]"} />
+                        <div className="flex items-center justify-between gap-4 border-t border-border p-4">
+                          <div className="min-w-0">
+                            <h3 className="truncate font-display text-lg font-semibold">{project.title}</h3>
+                            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{toVisitorSummary(project.summary, project.title)}</p>
+                          </div>
+                          <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" />
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-12 grid overflow-hidden rounded-lg border border-border bg-foreground text-background md:grid-cols-[0.8fr_1.2fr]">
+                  <div className="p-8 sm:p-12">
+                    <p className="text-xs uppercase tracking-[0.18em] text-background/60">A complete product</p>
+                    <h3 className="font-display mt-4 text-3xl font-semibold">Not another empty prototype.</h3>
+                    <p className="mt-4 text-sm leading-relaxed text-background/70">Petal plans the full journey, builds every screen, connects the working parts, checks the result, and gets it ready to publish.</p>
                   </div>
-                ))}
-              </dl>
+                  <div className="grid grid-cols-2 gap-px bg-background/15">
+                    {["Plan", "Build", "Test", "Publish"].map((label, i) => <div key={label} className="bg-foreground p-7"><span className="text-xs text-background/50">0{i + 1}</span><p className="mt-8 font-display text-xl">{label}</p></div>)}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
           <section id="features" className="px-5 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto max-w-6xl">
-              <div className="max-w-2xl">
-                <h2 className="font-landing-display text-4xl font-semibold leading-tight sm:text-5xl">Build a complete app.</h2>
-                <p className="mt-4 text-base text-muted-foreground">Petal takes your idea from a description to an app you can publish and own.</p>
+              <div className="max-w-3xl">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Everything between idea and launch</p>
+                <h2 className="heading-editorial mt-4 text-5xl sm:text-6xl">The whole product.<br /><em>Not just the first screen.</em></h2>
+                <p className="mt-5 max-w-xl text-base text-muted-foreground">Petal makes the screens people see and the systems that make them useful.</p>
               </div>
-              <div className="mt-12 grid border-l border-t border-border sm:grid-cols-2">
+              <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
                 {[
-                  { slug: "agent-board", title: "Checked by a team of AI reviewers", body: "Different AI reviewers check the plan, design, security, and quality of your app." },
-                  { slug: "own-your-code", title: "Your app belongs to you", body: "Download it, connect your own web address, or keep building it anywhere." },
-                  { slug: "pay-as-you-build", title: "Pay when you build", body: "Buy credits once. Keep them until you use them." },
-                  { slug: "marketplace", title: "Sell the result", body: "List a finished product and keep 80% of every sale." },
+                  { slug: "agent-board", icon: ShieldCheck, title: "Reviewed before it ships", body: "Specialist AI reviewers check the plan, design, security, and quality—not just whether the page loads." },
+                  { slug: "own-your-code", icon: Code2, title: "Built to remain yours", body: "Sync the code to Git, use your own web address, export it, or keep shaping it in Petal." },
+                  { slug: "pay-as-you-build", icon: Sparkles, title: "Pay for progress, not promises", body: "Buy credits when you need them. They never expire, and turns that change nothing cost nothing." },
+                  { slug: "marketplace", icon: Store, title: "A product you can sell", body: "List a finished build in the marketplace and keep 80% of every sale." },
                 ].map((item, index) => (
                   <Link
                     key={item.slug}
                     to="/why/$slug"
                     params={{ slug: item.slug }}
-                    className="group min-h-44 border-b border-r border-border p-6 transition-colors hover:bg-card sm:p-8"
+                    className="group min-h-64 bg-background p-7 transition-colors hover:bg-card sm:p-9"
                   >
-                    <span className="text-xs text-muted-foreground">0{index + 1}</span>
-                    <h3 className="font-landing-display mt-8 text-xl font-semibold sm:text-2xl">{item.title}</h3>
+                    <div className="flex items-center justify-between"><item.icon className="h-5 w-5 text-primary" /><span className="text-xs text-muted-foreground">0{index + 1}</span></div>
+                    <h3 className="font-landing-display mt-14 text-2xl font-semibold sm:text-3xl">{item.title}</h3>
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">{item.body}</p>
                     <ArrowRight className="mt-6 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </Link>
@@ -942,39 +998,47 @@ function Landing() {
             </div>
           </section>
 
-          <section id="how" className="border-y border-border bg-card/40 px-5 py-20 sm:px-6 sm:py-24">
+          <section id="how" className="border-y border-border bg-foreground px-5 py-20 text-background sm:px-6 sm:py-28">
             <div className="mx-auto max-w-6xl">
-              <h2 className="font-landing-display text-4xl font-semibold sm:text-5xl">From idea to a live app.</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">A clear path from prompt to product</p>
+              <h2 className="heading-editorial mt-4 max-w-3xl text-5xl sm:text-6xl">You describe it.<br /><em>Petal does the heavy lifting.</em></h2>
               <ol className="mt-10 grid gap-8 md:grid-cols-3">
                 {[
-                  ["01", "Describe it", "Tell Petal what to build."],
-                  ["02", "Watch it work", "Follow the plan, build, and checks."],
-                  ["03", "Ship it", "Publish, connect a domain, or export."],
+                  ["01", "Start with the outcome", "Describe who the app is for, what it should do, and how it should feel."],
+                  ["02", "Shape it in conversation", "Watch the plan, pages, features, and checks come together. Ask for changes in plain language."],
+                  ["03", "Put it in people’s hands", "Publish it, connect your web address, export the code, or package the mobile app."],
                 ].map(([number, title, body]) => (
-                  <li key={number} className="border-t border-foreground pt-5">
-                    <span className="text-xs text-muted-foreground">{number}</span>
-                    <h3 className="font-landing-display mt-8 text-xl font-semibold">{title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+                  <li key={number} className="border-t border-background/25 pt-5">
+                    <span className="text-xs text-background/50">{number}</span>
+                    <h3 className="font-landing-display mt-8 text-2xl font-semibold">{title}</h3>
+                    <p className="mt-3 text-sm leading-relaxed text-background/65">{body}</p>
                   </li>
                 ))}
               </ol>
             </div>
           </section>
 
-          <section id="marketplace" className="bg-foreground px-5 py-20 text-background sm:px-6 sm:py-28">
-            <div className="mx-auto flex max-w-6xl flex-col gap-10 md:flex-row md:items-end md:justify-between">
-              <div className="max-w-2xl">
-                <p className="text-sm text-background/60">Petal Marketplace</p>
-                <h2 className="font-landing-display mt-4 text-4xl font-semibold leading-tight sm:text-6xl">Your app can earn.</h2>
-                <p className="mt-5 max-w-lg text-base text-background/70">Sell a working app, not a screenshot. Buyers receive the project and its code.</p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/marketplace" className="inline-flex h-11 items-center gap-2 rounded-md bg-background px-5 text-sm font-semibold text-foreground">
+          <section id="marketplace" className="px-5 py-20 sm:px-6 sm:py-28">
+            <div className="mx-auto grid max-w-6xl overflow-hidden rounded-lg border border-border bg-card md:grid-cols-2">
+              <div className="p-8 sm:p-12">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Petal Marketplace</p>
+                <h2 className="heading-editorial mt-4 text-5xl sm:text-6xl">Build it once.<br /><em>Sell it whole.</em></h2>
+                <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground">Sell a working product—not a screenshot. Buyers receive the project and its code, while you keep 80% of every sale.</p>
+                <div className="mt-8 flex flex-wrap gap-3">
+                <Link to="/marketplace" className="inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 text-sm font-semibold text-background">
                   Browse marketplace <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link to="/sell" className="inline-flex h-11 items-center rounded-md border border-background/30 px-5 text-sm font-semibold text-background">
+                <Link to="/sell" className="inline-flex h-11 items-center rounded-md border border-border px-5 text-sm font-semibold">
                   Sell a build
                 </Link>
+                </div>
+              </div>
+              <div className="grid min-h-80 place-items-center bg-[var(--gradient-editorial)] p-8">
+                <div className="w-full max-w-sm border border-foreground/15 bg-background p-6 shadow-[var(--shadow-editorial)]">
+                  <div className="flex items-center justify-between"><Sparkles className="h-5 w-5 text-primary" /><span className="text-xs text-muted-foreground">Complete project</span></div>
+                  <p className="font-display mt-16 text-3xl font-semibold">Your next product can become someone else’s head start.</p>
+                  <div className="mt-8 flex items-end justify-between border-t border-border pt-5"><span className="text-sm text-muted-foreground">Creator share</span><span className="font-display text-4xl font-semibold">80%</span></div>
+                </div>
               </div>
             </div>
           </section>
