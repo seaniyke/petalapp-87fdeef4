@@ -210,7 +210,50 @@ function hasProvider(content: string): boolean {
  * conservative dominance check: when uncertain we wrap at the entry, where
  * the provider is guaranteed to be an ancestor of every consumer.
  */
+/**
+ * JSX returned by a SPECIFIC component in a module.
+ *
+ * Taking the first `return (` in the file was the real cause of duplicate
+ * routers: a helper component declared above `App` won the match, the
+ * dominance check concluded no provider existed, and the pass injected a
+ * second <BrowserRouter> at the entry — a hard runtime crash
+ * ("You cannot render a <Router> inside another <Router>").
+ */
+function componentReturnJsx(content: string, component: string): string {
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const starts: number[] = [];
+  const push = (i: number | undefined) => {
+    if (typeof i === "number" && i >= 0) starts.push(i);
+  };
+
+  push(
+    new RegExp(
+      `(?:export\\s+default\\s+)?(?:function|const|let|var|class)\\s+${esc(component)}\\b`,
+    ).exec(content)?.index,
+  );
+  // `export default Name;` — follow the alias to its declaration.
+  const aliased = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;/.exec(content)?.[1];
+  if (aliased && aliased !== component) {
+    push(
+      new RegExp(`(?:function|const|let|var|class)\\s+${esc(aliased)}\\b`).exec(content)?.index,
+    );
+  }
+  push(/export\s+default\s+(?:function|class|\()/.exec(content)?.index);
+
+  for (const start of starts) {
+    const seg = content.slice(start);
+    const jsx =
+      /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(seg)?.[1] ??
+      /return\s+(<[^;]+>)\s*;?/.exec(seg)?.[1] ??
+      /=>\s*(<[^;]+>)/.exec(seg)?.[1] ??
+      "";
+    if (jsx) return jsx;
+  }
+  return "";
+}
+
 function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFile>): boolean {
+
   const visited = new Set<string>();
 
   /**
