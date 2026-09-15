@@ -67,7 +67,9 @@ export function ConsentBanner() {
       return;
     }
     el.style.setProperty("padding-bottom", "var(--consent-banner-space, 11rem)");
-    return () => el.style.removeProperty("padding-bottom");
+    return () => {
+      el.style.removeProperty("padding-bottom");
+    };
   }, [visible]);
 
   if (!visible) return null;
