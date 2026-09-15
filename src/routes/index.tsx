@@ -70,6 +70,8 @@ export const Route = createFileRoute("/")({
         property: "og:description",
         content: "Describe your app, build it, publish it, and sell it. Your code is yours, and credits never expire.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Landing,
@@ -481,7 +483,7 @@ function Landing() {
           <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-[var(--gradient-editorial)] opacity-70" aria-hidden />
         )}
         <div
-          className={`relative mx-auto max-w-6xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-28 sm:pb-20 sm:pt-36" : "pb-16 pt-16 sm:pb-24 sm:pt-24"}`}
+          className={`relative mx-auto max-w-6xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-28 sm:pb-20 sm:pt-36" : "pb-12 pt-10 sm:pb-24 sm:pt-24"}`}
         >
           {showAuthedHero ? (
             <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
@@ -502,13 +504,13 @@ function Landing() {
             </h1>
           ) : (
             <>
-              <p className="mb-5 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+              <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary sm:mb-5 sm:text-xs">
                 From first sentence to shipped product
               </p>
-              <h1 className="heading-editorial mx-auto max-w-5xl text-balance text-[3.25rem] sm:text-7xl md:text-[5.6rem]">
+              <h1 className="heading-editorial mx-auto max-w-5xl text-balance text-[2.7rem] sm:text-7xl md:text-[5.6rem]">
                 Say what you need.<br /><em>Ship what you imagined.</em>
               </h1>
-              <p className="mx-auto mt-7 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground sm:text-xl">
+              <p className="mx-auto mt-5 max-w-2xl text-balance text-[0.94rem] leading-relaxed text-muted-foreground sm:mt-7 sm:text-xl">
                 Petal turns a conversation into a polished web or mobile app—with the pages, data, accounts, payments, and finish it needs to work in the real world.
               </p>
             </>
@@ -520,7 +522,7 @@ function Landing() {
               e.preventDefault();
               submit();
             }}
-            className="mx-auto mt-10 max-w-3xl"
+            className="mx-auto mt-7 max-w-3xl sm:mt-10"
           >
             <div className="group relative rounded-2xl border border-foreground/15 bg-card p-3 text-left shadow-[var(--shadow-editorial)] transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-ring/20">
               {mode === "coach" ? (
