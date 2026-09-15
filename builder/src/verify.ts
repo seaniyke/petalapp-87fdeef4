@@ -24,7 +24,13 @@
  * are willing to have executed, and every seeded account is tagged with the
  * PETAL_TEST_TAG below so it can be identified and cleaned up later.
  */
-import { chromium, type Browser, type Page, type ConsoleMessage } from "playwright";
+import {
+  chromium,
+  type Browser,
+  type BrowserContext,
+  type Page,
+  type ConsoleMessage,
+} from "playwright";
 import { isTransientEdgeStatus } from "./deploy-status.js";
 import { Heartbeat } from "./progress.js";
 
