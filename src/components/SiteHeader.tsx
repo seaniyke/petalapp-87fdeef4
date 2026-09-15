@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function SiteHeader() {
-  const { user, isReady, signOut } = useAuth();
+  const { user, isReady, likelyAuthed, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const [billingOpen, setBillingOpen] = useState(false);
@@ -138,7 +138,11 @@ export function SiteHeader() {
 
 
 
-            {!isReady ? (
+            {/* Only a RETURNING visitor (token in storage) waits behind a
+                placeholder. A first-time visitor has nothing to resolve, so
+                showing them a pulsing grey pill for a second is pure noise —
+                they get the real signed-out call to action immediately. */}
+            {!isReady && likelyAuthed ? (
               <div
                 aria-hidden="true"
                 className="h-9 w-24 rounded-full bg-muted/40 animate-pulse"
