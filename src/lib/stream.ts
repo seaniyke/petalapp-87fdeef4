@@ -10,6 +10,7 @@ type Handlers = {
   onTool?: (name: "write_project" | "patch_files") => void;
   /** Running (not yet settled) credit estimate for this turn. */
   onCreditsEstimate?: (credits: number) => void;
+  onCreditsPaused?: (pause: { checkpointId: string; requiredCredits: number }) => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onDesignVibe?: (vibe: string, rationale: string) => void;
   onFileProgress?: (written: number, latestPath?: string) => void;
@@ -109,7 +110,7 @@ type Handlers = {
   onTurnId?: (turnId: string) => void;
   /** Fired once at the end of every turn (success, failure, or abort).
    *  The client should clear any persisted turn_id on receipt. */
-  onDone?: (status: "succeeded" | "failed" | "aborted") => void;
+  onDone?: (status: "succeeded" | "failed" | "aborted" | "awaiting_credits") => void;
   /** The turn hit a transient failure and is finishing itself server-side.
    *  The client stays in its working state and shows no failure. */
   onRecovering?: () => void;
@@ -256,6 +257,12 @@ export async function streamGenerate(
             break;
           case "credits_estimate":
             handlers.onCreditsEstimate?.(evt.credits);
+            break;
+          case "credits_paused":
+            handlers.onCreditsPaused?.({
+              checkpointId: evt.checkpointId,
+              requiredCredits: evt.requiredCredits,
+            });
             break;
           case "phase":
             handlers.onPhase?.(evt.phase);
@@ -472,6 +479,9 @@ export async function streamResumeTurn(
           case "credits_estimate":
             handlers.onCreditsEstimate?.((evt.credits as number) ?? 0);
             break;
+          case "credits_paused":
+            handlers.onCreditsPaused?.({ checkpointId: (evt.checkpointId as string) ?? "", requiredCredits: (evt.requiredCredits as number) ?? 0 });
+            break;
           case "phase":
             handlers.onPhase?.(evt.phase as "thinking" | "designing" | "writing" | "polishing");
             break;
@@ -543,7 +553,7 @@ export async function streamResumeTurn(
             handlers.onRecovering?.();
             break;
           case "done":
-            handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted") ?? "succeeded");
+            handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted" | "awaiting_credits") ?? "succeeded");
             return true;
         }
       }

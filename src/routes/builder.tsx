@@ -142,6 +142,8 @@ import { RenameProjectDialog } from "@/components/RenameProjectDialog";
 import { BillingSheet } from "@/components/BillingSheet";
 import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
+import { CreditPauseBanner } from "@/components/CreditPauseBanner";
+import { getCreditPause, updateCreditPause, type CreditPause } from "@/lib/credit-pauses";
 // Backend / email / payments no longer use banner chips — Petal asks inline.
 // ContinueBuildingChip removed — see retired completion-UI cleanup.
 
@@ -620,6 +622,7 @@ function Builder() {
   const [projectsDrawerOpen, setProjectsDrawerOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
+  const [creditPause, setCreditPause] = useState<CreditPause | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [shieldOpen, setShieldOpen] = useState(false);
   const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
@@ -655,6 +658,34 @@ function Builder() {
     (currentWallet?.plan_code && currentWallet.plan_code !== "free") ||
     Number(currentWallet?.topup_credits_remaining ?? 0) > 0 ||
     (!!currentPlan && currentPlan.code !== "free");
+
+  useEffect(() => {
+    if (!project?.id || bootstrapping) return;
+    let cancelled = false;
+    void getCreditPause(project.id).then((pause) => {
+      if (!cancelled) setCreditPause(pause);
+    });
+    return () => { cancelled = true; };
+  }, [project?.id, bootstrapping]);
+
+  useEffect(() => {
+    if (!creditPause || creditBreakdown.total < creditPause.requiredCredits) return;
+    let cancelled = false;
+    void updateCreditPause(creditPause.id, "resume").then(async (result) => {
+      if (cancelled || !result.ok || !project?.id) return;
+      setCreditPause(null);
+      const [savedFiles, savedMessages] = await Promise.all([
+        loadProjectFiles(project.id), loadProjectMessages(project.id),
+      ]);
+      if (cancelled) return;
+      setFiles(savedFiles);
+      setMessages(savedMessages);
+      setPhases((p) => advanceTo(p, "deploying"));
+      setActivityVisible(true);
+      await triggerBuild(project.id).catch(() => undefined);
+    });
+    return () => { cancelled = true; };
+  }, [creditPause, creditBreakdown.total, project?.id]);
 
   const [previewHasUpdate, setPreviewHasUpdate] = useState(false);
   // Visual element edit (Phase 5): selected element from the preview iframe.
@@ -1998,8 +2029,20 @@ function Builder() {
           onTimeline: (entry) => {
             setTimelineEvents((prev) => (prev.length >= 30 ? prev : [...prev, entry]));
           },
-          onDone: async () => {
-            clearPersistedTurnId(pid);
+          onCreditsPaused: (pause) => {
+            setCreditPause({
+              id: pause.checkpointId,
+              turnId: persisted.turnId,
+              projectId: pid,
+              requiredCredits: pause.requiredCredits,
+              status: "awaiting_credits",
+              createdAt: new Date().toISOString(),
+            });
+            setActivityVisible(false);
+          },
+          onDone: async (status) => {
+            if (status !== "awaiting_credits") clearPersistedTurnId(pid);
+            if (status === "awaiting_credits") return;
             // Refresh files + messages from the source of truth so the
             // resumed UI matches whatever the pipeline actually persisted.
             try {
@@ -2427,6 +2470,7 @@ function Builder() {
       // Set when the server told us it is finishing this turn itself. No
       // failure is shown; the working state simply continues.
       let silentlyRecovering = false;
+      let pausedForCredits = false;
       let streamError: string | null = null;
       let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
       let streamErrorRaw: string | undefined;
@@ -2554,6 +2598,18 @@ function Builder() {
             // Running estimate while the turn is still in flight. The settled
             // figure on the result event replaces it.
             onCreditsEstimate: (credits) => setLiveCreditsEstimate(credits),
+            onCreditsPaused: (pause) => {
+              pausedForCredits = true;
+              setCreditPause({
+                id: pause.checkpointId,
+                turnId: "",
+                projectId: proj.id,
+                requiredCredits: pause.requiredCredits,
+                status: "awaiting_credits",
+                createdAt: new Date().toISOString(),
+              });
+              setActivityVisible(false);
+            },
             onPlanDelta: (d) => {
               partialPlan += d;
               setStreamingPlan((s) => s + d);
@@ -2685,8 +2741,8 @@ function Builder() {
               // different project doesn't see a stale id.
               persistTurnId(proj.id, turnId);
             },
-            onDone: () => {
-              clearPersistedTurnId(proj.id);
+            onDone: (status) => {
+              if (status !== "awaiting_credits") clearPersistedTurnId(proj.id);
             },
             onPlanProposed: (plan) => {
               // Stop the build flow here; user must approve before we patch.
@@ -2737,6 +2793,7 @@ function Builder() {
           setAwaitingSilentResume(true);
           return;
         }
+        if (pausedForCredits) return;
         if (streamError) {
           // Preserve the server-classified kind across the throw boundary so
           // toFriendlyError can render the right card without regexing the
@@ -4223,6 +4280,18 @@ function Builder() {
 
       {/* Low-balance banner — pinned inside the sticky top stack so it never scrolls away. */}
       <RuntimeLowBalanceBanner projectId={project?.id ?? null} />
+      {creditPause && creditPause.status === "awaiting_credits" && (
+        <CreditPauseBanner
+          requiredCredits={creditPause.requiredCredits}
+          onFinishOff={() => {
+            void updateCreditPause(creditPause.id, "park");
+            clearPersistedTurnId(creditPause.projectId);
+            setCreditPause(null);
+            setActivityVisible(false);
+          }}
+          onBuyCredits={() => setBillingOpen(true)}
+        />
+      )}
 
       {/* Mobile Chat/Preview toggle now lives as a single round button in the header (Lovable-style). */}
       </div>
@@ -4324,7 +4393,11 @@ function Builder() {
             />
           </LazySheet>
           <LazySheet open={billingOpen}>
-            <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+            <BillingSheet
+              open={billingOpen}
+              onOpenChange={setBillingOpen}
+              returnTo={creditPause ? `/builder?id=${encodeURIComponent(creditPause.projectId)}` : undefined}
+            />
           </LazySheet>
           <LazySheet open={shieldOpen}>
             <PetalShieldSheet

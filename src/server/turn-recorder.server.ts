@@ -21,7 +21,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-type TurnStatus = "running" | "succeeded" | "failed" | "aborted";
+type TurnStatus = "running" | "awaiting_credits" | "succeeded" | "failed" | "aborted";
 
 type AdminClient = SupabaseClient<Database>;
 

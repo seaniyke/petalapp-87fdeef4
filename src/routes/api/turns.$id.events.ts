@@ -26,7 +26,7 @@ import type { Database } from "@/integrations/supabase/types";
 type TurnRow = {
   id: string;
   user_id: string;
-  status: "running" | "succeeded" | "failed" | "aborted";
+  status: "running" | "awaiting_credits" | "succeeded" | "failed" | "aborted";
   last_seq: number;
   started_at: string;
 };

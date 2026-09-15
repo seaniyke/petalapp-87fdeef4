@@ -64,9 +64,10 @@ import { fetchProjectUsage, formatUsdCents, type ProjectUsageRow } from "@/lib/r
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  returnTo?: string;
 };
 
-export function BillingSheet({ open, onOpenChange }: Props) {
+export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
   const { user } = useAuth();
   const { wallet, plans, plan, breakdown } = useWallet();
   const [packs, setPacks] = useState<CreditPack[]>([]);
@@ -208,7 +209,10 @@ export function BillingSheet({ open, onOpenChange }: Props) {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Sign in required");
-      const returnUrl = `${window.location.origin}/billing/return`;
+      const returnPath = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//")
+        ? `?returnTo=${encodeURIComponent(returnTo)}`
+        : "";
+      const returnUrl = `${window.location.origin}/billing/return${returnPath}`;
       const res = await fetch("/api/billing/initialize", {
         method: "POST",
         headers: {

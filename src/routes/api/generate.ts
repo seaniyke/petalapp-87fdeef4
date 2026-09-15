@@ -72,6 +72,7 @@ import { validateStylesCss, repairStylesCss } from "@/server/validate-styles.ser
 import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { saveCreditPause } from "@/server/credit-pause.server";
 import { checkGenerateRateLimit, rateLimitResponse, secretsMatch } from "@/server/rate-limit.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -5473,7 +5474,21 @@ Forbidden defaults
           );
         }
         if (!body.isAutoFix && !failedEditTurn) {
-
+          const finalBalance = await checkCreditBalance({ userId, amount: priced.amount });
+          if (!finalBalance.ok && finalBalance.reason === "insufficient_credits" && body.projectId && logicalTurnId) {
+            const checkpointId = await saveCreditPause({
+              turnId: logicalTurnId,
+              projectId: body.projectId,
+              userId,
+              requiredCredits: priced.amount,
+              baselineFiles: turnBaselineFiles,
+              candidateFiles: nextFiles,
+              originalRequest: lastUserContent,
+              resultPayload: { summary, plan, recap, creditsCharged: 0 },
+            });
+            controller.enqueue(encoder.encode(sse({ type: "credits_paused", checkpointId, requiredCredits: priced.amount })));
+            return;
+          }
           // Single atomic settlement. `settle_build_charge` is idempotent on
           // the turn id (a retried request can never double-charge), drains
           // whatever is actually available — including the daily/monthly FREE
@@ -5934,6 +5949,17 @@ function errorPayloadOf(block: string): { message: string; raw: string } | null 
   }
 }
 
+function creditPausePayloadOf(block: string): { checkpointId: string } | null {
+  if (!block.includes('"type":"credits_paused"')) return null;
+  const data = block.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trim()).join("");
+  try {
+    const parsed = JSON.parse(data) as { type?: string; checkpointId?: string };
+    return parsed.type === "credits_paused" && parsed.checkpointId ? { checkpointId: parsed.checkpointId } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Wording for a failure the user genuinely has to know about. Never blames
  * their connection — by the time this is shown, Petal has already decided the
@@ -5998,7 +6024,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   // `running` forever — 400 of them, which made every derived metric useless.
   let turnClosed = false;
   const finishTurnOnce = async (
-    status: "succeeded" | "failed" | "aborted",
+    status: "succeeded" | "failed" | "aborted" | "awaiting_credits",
     errorMessage: string | null,
   ): Promise<void> => {
     if (!recorder || turnClosed) return;
@@ -6070,7 +6096,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       };
 
 
-      let terminalStatus: "succeeded" | "failed" | "aborted" = "succeeded";
+      let terminalStatus: "succeeded" | "failed" | "aborted" | "awaiting_credits" = "succeeded";
       let terminalError: string | null = null;
       // Set when this turn has been queued to finish itself server-side. The
       // user is told nothing: no error card, no retry button, no "connection
@@ -6168,6 +6194,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             const block = sseBuffer.slice(0, cut + 2);
             sseBuffer = sseBuffer.slice(cut + 2);
             const failure = errorPayloadOf(block);
+            const creditPause = creditPausePayloadOf(block);
+            if (creditPause) {
+              terminalStatus = "awaiting_credits";
+              terminalError = "Waiting for credits";
+            }
             if (failure && (await recoverSilently(failure.raw || failure.message, false))) {
               terminalStatus = "failed";
               terminalError = (failure.raw || failure.message).slice(0, 500);
@@ -6209,7 +6240,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // listening. Give the client a short grace window to land its own
         // write, then reconcile from the server — the helper no-ops when a
         // reply already exists.
-        if (turnProjectId && !silentRecovery) {
+        if (turnProjectId && !silentRecovery && terminalStatus !== "awaiting_credits") {
           // Hand the request over to the build stage, or close it honestly.
           await markStage(
             turnProjectId,
@@ -6225,7 +6256,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // A turn queued for silent completion must not write a reply at all:
         // the resumed run owns the conversation, and a "this didn't finish"
         // bubble is exactly what we are removing.
-        if (turnProjectId && recorder && !silentRecovery) {
+        if (turnProjectId && recorder && !silentRecovery && terminalStatus !== "awaiting_credits") {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
           const wroteReply = await persistAbandonedTurnReply({

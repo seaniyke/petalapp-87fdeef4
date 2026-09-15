@@ -22,6 +22,7 @@ import {
   formatMinorAmount,
 } from "@/server/billing-email.server";
 import { startDomainRegistration } from "@/server/domain-purchase.server";
+import { resumeCreditPausesForUser } from "@/server/credit-pause.server";
 
 const Query = z.object({
   reference: z.string().min(4).max(128).regex(/^[a-zA-Z0-9_-]+$/),
@@ -175,6 +176,18 @@ export const Route = createFileRoute("/api/billing/verify")({
               })
               .eq("reference", q.reference)
               .eq("status", "pending");
+
+            if (tx.purpose === "pack" || tx.purpose === "plan") {
+              const resumedProjects = await resumeCreditPausesForUser(tx.user_id);
+              const secret = process.env.BUILDER_SHARED_SECRET;
+              if (secret) {
+                await Promise.all(resumedProjects.map((projectId) => fetch(new URL("/api/builds/trigger", request.url), {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret, "x-petal-internal-user": tx.user_id },
+                  body: JSON.stringify({ projectId }),
+                }).catch(() => undefined)));
+              }
+            }
 
             // Send branded receipt — fire-and-forget. Idempotency key is
             // the reference, so a verify+webhook race only sends one email.

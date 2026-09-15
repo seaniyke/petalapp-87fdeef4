@@ -26,6 +26,7 @@ import {
   billingItemLabel,
   formatMinorAmount,
 } from "@/server/billing-email.server";
+import { resumeCreditPausesForUser } from "@/server/credit-pause.server";
 
 type AnyEvent = {
   event: string;
@@ -538,6 +539,18 @@ async function handleChargeSuccess(payload: AnyEvent, origin: string): Promise<v
     })
     .eq("reference", ref)
     .eq("status", "pending");
+
+  if (tx.purpose === "pack" || tx.purpose === "plan") {
+    const resumedProjects = await resumeCreditPausesForUser(tx.user_id);
+    const secret = process.env.BUILDER_SHARED_SECRET;
+    if (secret) {
+      await Promise.all(resumedProjects.map((projectId) => fetch(`${origin}/api/builds/trigger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret, "x-petal-internal-user": tx.user_id },
+        body: JSON.stringify({ projectId }),
+      }).catch(() => undefined)));
+    }
+  }
 
   const successKey2 = `billing-success-${ref}`;
   console.info("[paystack webhook] enqueueing email", { template: "payment-success", userId: tx.user_id, idempotencyKey: successKey2 });
