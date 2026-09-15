@@ -327,3 +327,29 @@ describe("duplicate router providers", () => {
     expect(app).toContain("<Routes>");
   });
 });
+
+describe("route coverage", () => {
+  it("flags a page file that no route registers", async () => {
+    const { assessRouteCoverage } = await import("../chunked-generation.server");
+    const a = assessRouteCoverage({
+      expectedRoutes: ["/signin", "/dashboard"],
+      files: [
+        { path: "src/pages/Signin.tsx", content: "" },
+        { path: "src/pages/Dashboard.tsx", content: "" },
+      ],
+      routerSource: '<Route path="/" element={<Home />} />',
+    });
+    expect(a.needed).toBe(true);
+    expect(a.remainingSteps.join(" ")).toContain("/signin");
+  });
+
+  it("accepts registered routes", async () => {
+    const { assessRouteCoverage } = await import("../chunked-generation.server");
+    const a = assessRouteCoverage({
+      expectedRoutes: ["/dashboard"],
+      files: [{ path: "src/pages/Dashboard.tsx", content: "" }],
+      routerSource: '<Route path="/dashboard" element={<Dashboard />} />',
+    });
+    expect(a.needed).toBe(false);
+  });
+});
