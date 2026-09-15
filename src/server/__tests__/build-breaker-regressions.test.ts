@@ -216,3 +216,30 @@ describe("font utility @apply", () => {
     expect(repaired!.css).not.toContain("font-body");
   });
 });
+
+describe("named import of a default-only module", () => {
+  it("adds a named alias so the component is not undefined", async () => {
+    const { fixExportShape } = await import("@/server/export-shape-fixer.server");
+    const { files } = fixExportShape([
+      { path: "src/pages/auth/sign-in.tsx", content: 'import { AuthSignInCard } from "@/components/examples/auth-sign-in-card";\nexport default function P(){ return <AuthSignInCard />; }\n' },
+      { path: "src/components/examples/auth-sign-in-card.tsx", content: 'export default function SignInCard(){ return null; }\n' },
+    ] as never);
+    const target = files.find((f) => f.path === "src/components/examples/auth-sign-in-card.tsx")!;
+    expect(target.content).toContain("export const AuthSignInCard = SignInCard;");
+  });
+});
+
+describe("unwritten route promises", () => {
+  it("detects promissory router comments in the app shell", async () => {
+    const { findUnwrittenRoutePromises } = await import("@/server/design/unwritten-routes.server");
+    const { shell, promises } = findUnwrittenRoutePromises([
+      {
+        path: "src/App.tsx",
+        content:
+          'import { Routes, Route } from "@/components/ui/router";\nfunction App(){return (<Routes><Route path="/" element={<Hero/>} />{/* Authentication routes will be added here */}{/* Dashboard routes will be added here */}</Routes>);}\nexport default App;\n',
+      },
+    ] as never);
+    expect(shell?.path).toBe("src/App.tsx");
+    expect(promises.length).toBe(2);
+  });
+});

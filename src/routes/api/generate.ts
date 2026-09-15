@@ -5277,6 +5277,35 @@ Forbidden defaults
           console.warn("[page-completion] skipped:", e instanceof Error ? e.message : String(e));
         }
 
+        // Unwritten-route completion. The shell sometimes routes only the
+        // landing page and leaves "auth routes will be added here" comments —
+        // the build stays green and the verifier only ever sees "/", so the
+        // user gets a fraction of the product they asked for. Fails open.
+        try {
+          const { completeUnwrittenRoutes } = await import(
+            "@/server/design/unwritten-routes.server"
+          );
+          const routed = await completeUnwrittenRoutes({
+            files: nextFiles,
+            design: picContext?.design ?? null,
+            model,
+            userRequest: lastUserContent,
+            projectId: body.projectId ?? undefined,
+            userId,
+            signal: abortSignal,
+          });
+          if (routed.writtenPaths.length > 0) {
+            nextFiles = routed.files;
+            controller.enqueue(
+              encoder.encode(
+                sse({ type: "status", message: "Built the screens that were still missing." }),
+              ),
+            );
+          }
+        } catch (e) {
+          console.warn("[unwritten-routes] skipped:", e instanceof Error ? e.message : String(e));
+        }
+
         // Design contract enforcement — the project's committed design system
         // is checked against the code we are about to ship. Structural turns
         // get ONE focused repair pass for hard violations (raw colours, hex
