@@ -369,3 +369,55 @@ export async function runGrowthWatcher(limit = 10): Promise<WatchSummary> {
 
   return summary;
 }
+
+/**
+ * Note that an app asked for something the starter database can't do.
+ *
+ * Provisioning takes minutes, so we never do it inside a chat turn. The
+ * request is recorded and the watcher picks it up on its next sweep, ahead
+ * of the size thresholds. Best-effort — a failure here never affects the turn.
+ */
+export async function requestCapabilityUpgrade(
+  projectId: string,
+  capability: string,
+): Promise<void> {
+  try {
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("backend_type, auto_upgrade_opt_out")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (!project || project.backend_type !== "shared" || project.auto_upgrade_opt_out) return;
+
+    // Don't pile up duplicates for the same app.
+    const { data: existing } = await supabaseAdmin
+      .from("project_upgrade_events")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("status", "requested")
+      .limit(1);
+    if (existing && existing.length > 0) return;
+
+    await supabaseAdmin.from("project_upgrade_events").insert({
+      project_id: projectId,
+      reason: "capability",
+      status: "requested",
+      detail: capability.slice(0, 200),
+    });
+  } catch (err) {
+    console.warn("[autoscale] capability request failed", projectId, err);
+  }
+}
+
+/** Clear a satisfied capability request. */
+export async function clearCapabilityRequests(projectId: string): Promise<void> {
+  try {
+    await supabaseAdmin
+      .from("project_upgrade_events")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("status", "requested");
+  } catch {
+    /* best-effort */
+  }
+}
