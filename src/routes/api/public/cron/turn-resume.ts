@@ -28,6 +28,11 @@ import {
 const MAX_PER_TICK = 3;
 
 function repairBrief(record: CompletionRecord): string {
+  // An interrupted request never produced a broken build — it just stopped.
+  // Re-run what the user actually asked for, silently.
+  if (record.evidence.includes(INTERRUPTED_MARKER)) {
+    return record.outstanding_defects[0] ?? "";
+  }
   const defects = record.outstanding_defects.slice(0, 10);
   return [
     "Your last build is not usable yet. Petal's own checks found these problems:",
