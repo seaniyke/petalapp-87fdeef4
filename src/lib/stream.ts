@@ -110,6 +110,9 @@ type Handlers = {
   /** Fired once at the end of every turn (success, failure, or abort).
    *  The client should clear any persisted turn_id on receipt. */
   onDone?: (status: "succeeded" | "failed" | "aborted") => void;
+  /** The turn hit a transient failure and is finishing itself server-side.
+   *  The client stays in its working state and shows no failure. */
+  onRecovering?: () => void;
 };
 
 /** Stream a generation request to /api/generate. Resolves once the stream ends. */
