@@ -93,8 +93,8 @@ export async function assemblePic(args: AssemblePicArgs): Promise<AssembledPic> 
   // Design is committed once. Later turns inherit it so the product does not
   // drift; a redesign request is handled by clearing it upstream.
   const design =
-    base.design ??
-    (await commitDesignSystem({
+    args.designDirection || !base.design
+      ? await commitDesignSystem({
       brief: args.brief,
       understanding,
       seed: projectId ?? args.brief,
@@ -102,7 +102,8 @@ export async function assemblePic(args: AssemblePicArgs): Promise<AssembledPic> 
       projectId,
       signal: args.signal,
       direction: args.designDirection,
-    }));
+        })
+      : base.design;
 
   const prd = (await loadProjectPrd(projectId))?.prd ?? base.prd;
 
