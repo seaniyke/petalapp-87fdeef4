@@ -55,9 +55,18 @@ async function resumeOne(record: CompletionRecord, origin: string): Promise<stri
   const claimed = await claimResumeAttempt(record);
   if (!claimed) return "skipped";
 
+  // An interrupted FIRST build has no files yet — that's expected, not a
+  // reason to stop. Only a repair round genuinely needs existing files.
+  const interrupted = record.evidence.includes(INTERRUPTED_MARKER);
   const files = await loadFiles(record.project_id);
-  if (!files.length) {
+  if (!files.length && !interrupted) {
     await markBlocked(record.id, "Petal could not find the project's files to repair.");
+    return "blocked";
+  }
+
+  const brief = repairBrief(record);
+  if (!brief.trim()) {
+    await markBlocked(record.id, "Petal could not tell what was left to finish.");
     return "blocked";
   }
 
