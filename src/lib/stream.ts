@@ -335,6 +335,9 @@ export async function streamGenerate(
             turnId = evt.turnId;
             handlers.onTurnId?.(evt.turnId);
             break;
+          case "recovering":
+            handlers.onRecovering?.();
+            break;
           case "done":
             sawDone = true;
             handlers.onDone?.(evt.status);
@@ -535,6 +538,9 @@ export async function streamResumeTurn(
               evt.kind as never,
               evt.raw as string | undefined,
             );
+            break;
+          case "recovering":
+            handlers.onRecovering?.();
             break;
           case "done":
             handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted") ?? "succeeded");
