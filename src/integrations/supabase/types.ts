@@ -758,6 +758,75 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_paused_turns: {
+        Row: {
+          baseline_hash: string
+          candidate_files: Json
+          claimed_at: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          original_request: string
+          project_id: string
+          required_credits: number
+          result_payload: Json
+          status: string
+          turn_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          baseline_hash: string
+          candidate_files: Json
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          original_request?: string
+          project_id: string
+          required_credits: number
+          result_payload?: Json
+          status?: string
+          turn_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          baseline_hash?: string
+          candidate_files?: Json
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          original_request?: string
+          project_id?: string
+          required_credits?: number
+          result_payload?: Json
+          status?: string
+          turn_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_paused_turns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_paused_turns_turn_id_fkey"
+            columns: ["turn_id"]
+            isOneToOne: true
+            referencedRelation: "turns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crypto_payments: {
         Row: {
           admin_note: string | null
@@ -4779,6 +4848,16 @@ export type Database = {
       check_credit_balance: {
         Args: { _amount: number; _user_id: string }
         Returns: boolean
+      }
+      claim_credit_paused_turn: {
+        Args: { _checkpoint_id: string }
+        Returns: {
+          candidate_files: Json
+          checkpoint_id: string
+          project_id: string
+          result_payload: Json
+          turn_id: string
+        }[]
       }
       credit_runtime: {
         Args: {
