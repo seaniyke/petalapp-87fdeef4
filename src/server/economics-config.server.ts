@@ -38,6 +38,9 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   free_user_monthly_cost_ceiling_usd: 1.5,
   max_active_dedicated_backends: 25,
   dedicated_retention_days: 30,
+  auto_upgrade_row_pct: 80,
+  auto_upgrade_user_count: 50,
+  auto_upgrade_min_credits: 20,
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
