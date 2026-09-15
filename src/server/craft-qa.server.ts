@@ -20,7 +20,7 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
 import { pickShotSpread, type VisualShot } from "@/server/visual-qa.server";
 
 const MODEL = "google/gemini-2.5-flash";
-const MAX_SHOTS = 4;
+const MAX_SHOTS = 6;
 const MAX_DEFECTS = 6;
 
 /** Craft categories. Anything outside this list is dropped as taste. */

@@ -23,7 +23,7 @@ export interface VisualShot {
 }
 
 const MODEL = "google/gemini-2.5-flash";
-const MAX_SHOTS = 6;
+const MAX_SHOTS = 8;
 const MAX_DEFECTS = 8;
 
 /** Only these categories are actionable from a still image. */
