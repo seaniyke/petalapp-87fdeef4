@@ -2673,6 +2673,12 @@ function Builder() {
 
         if (controller.signal.aborted) return;
         if (planFallbackRequested) return;
+        if (silentlyRecovering) {
+          // The server owns this turn now and will finish it. Stay in the
+          // working state and let the watcher below surface the result.
+          setAwaitingSilentResume(true);
+          return;
+        }
         if (streamError) {
           // Preserve the server-classified kind across the throw boundary so
           // toFriendlyError can render the right card without regexing the
