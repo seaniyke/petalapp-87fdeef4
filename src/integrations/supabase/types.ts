@@ -3429,6 +3429,50 @@ export type Database = {
           },
         ]
       }
+      project_thumbnails: {
+        Row: {
+          build_id: string | null
+          captured_at: string
+          created_at: string
+          height: number | null
+          project_id: string
+          storage_path: string | null
+          updated_at: string
+          url: string
+          width: number | null
+        }
+        Insert: {
+          build_id?: string | null
+          captured_at?: string
+          created_at?: string
+          height?: number | null
+          project_id: string
+          storage_path?: string | null
+          updated_at?: string
+          url: string
+          width?: number | null
+        }
+        Update: {
+          build_id?: string | null
+          captured_at?: string
+          created_at?: string
+          height?: number | null
+          project_id?: string
+          storage_path?: string | null
+          updated_at?: string
+          url?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_thumbnails_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_turn_completion: {
         Row: {
           accepted: boolean
