@@ -288,14 +288,16 @@ function readFileTool(
     // "no file" made the model treat a healthy project as broken and stall.
     const kitOwned = isScaffoldOwnedPath(want) || isScaffoldAbsorbedPath(want);
     return {
-      label: `Could not read ${path}`,
-      isError: true,
+      // A scaffold file is not an error the user should watch scroll past.
+      label: kitOwned ? `${path} is part of the starter setup` : `Could not read ${path}`,
+      isError: !kitOwned,
       output: kitOwned
         ? `"${path}" is supplied by the project scaffold and is added automatically after your turn. ` +
           `It is not missing and you must not author it. Continue with the app's own source files.`
         : `No file at "${path}".` +
           (near.length ? `\nDid you mean one of:\n${near.join("\n")}` : ""),
     };
+
   }
 
 
