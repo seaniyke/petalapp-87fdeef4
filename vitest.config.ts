@@ -25,6 +25,7 @@ export default defineConfig({
       "src/server/__tests__/test-the-tester.test.ts",
       "src/server/__tests__/test-results.test.ts",
       "src/server/__tests__/managed-backend-lifecycle.test.ts",
+      "src/server/__tests__/backend-autoscale.test.ts",
       "src/server/__tests__/change-set.test.ts",
       "src/server/__tests__/view-context.test.ts",
       "src/server/__tests__/edit-focus.test.ts",

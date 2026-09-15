@@ -118,6 +118,7 @@ import { Route as ApiPublicCronCostAlertsRouteImport } from './routes/api/public
 import { Route as ApiPublicCronBenchmarkRouteImport } from './routes/api/public/cron/benchmark'
 import { Route as ApiPublicCronBackendReapRouteImport } from './routes/api/public/cron/backend-reap'
 import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
+import { Route as ApiPublicCronBackendAutoscaleRouteImport } from './routes/api/public/cron/backend-autoscale'
 import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
 import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
 import { Route as ApiPublicCoffeeCryptoRouteImport } from './routes/api/public/coffee/crypto'
@@ -686,6 +687,12 @@ const ApiPublicCronBackendHibernateRoute =
     path: '/api/public/cron/backend-hibernate',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronBackendAutoscaleRoute =
+  ApiPublicCronBackendAutoscaleRouteImport.update({
+    id: '/api/public/cron/backend-autoscale',
+    path: '/api/public/cron/backend-autoscale',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCoffeeVerifyRoute = ApiPublicCoffeeVerifyRouteImport.update({
   id: '/api/public/coffee/verify',
   path: '/api/public/coffee/verify',
@@ -835,6 +842,7 @@ export interface FileRoutesByFullPath {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
@@ -955,6 +963,7 @@ export interface FileRoutesByTo {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
@@ -1076,6 +1085,7 @@ export interface FileRoutesById {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
@@ -1198,6 +1208,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
     | '/api/public/cron/benchmark'
@@ -1318,6 +1329,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
     | '/api/public/cron/benchmark'
@@ -1438,6 +1450,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
     | '/api/public/cron/benchmark'
@@ -1555,6 +1568,7 @@ export interface RootRouteChildren {
   ApiPublicCoffeeCryptoRoute: typeof ApiPublicCoffeeCryptoRoute
   ApiPublicCoffeeInitializeRoute: typeof ApiPublicCoffeeInitializeRoute
   ApiPublicCoffeeVerifyRoute: typeof ApiPublicCoffeeVerifyRoute
+  ApiPublicCronBackendAutoscaleRoute: typeof ApiPublicCronBackendAutoscaleRoute
   ApiPublicCronBackendHibernateRoute: typeof ApiPublicCronBackendHibernateRoute
   ApiPublicCronBackendReapRoute: typeof ApiPublicCronBackendReapRoute
   ApiPublicCronBenchmarkRoute: typeof ApiPublicCronBenchmarkRoute
@@ -2343,6 +2357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronBackendHibernateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/backend-autoscale': {
+      id: '/api/public/cron/backend-autoscale'
+      path: '/api/public/cron/backend-autoscale'
+      fullPath: '/api/public/cron/backend-autoscale'
+      preLoaderRoute: typeof ApiPublicCronBackendAutoscaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/coffee/verify': {
       id: '/api/public/coffee/verify'
       path: '/api/public/coffee/verify'
@@ -2547,6 +2568,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCoffeeCryptoRoute: ApiPublicCoffeeCryptoRoute,
   ApiPublicCoffeeInitializeRoute: ApiPublicCoffeeInitializeRoute,
   ApiPublicCoffeeVerifyRoute: ApiPublicCoffeeVerifyRoute,
+  ApiPublicCronBackendAutoscaleRoute: ApiPublicCronBackendAutoscaleRoute,
   ApiPublicCronBackendHibernateRoute: ApiPublicCronBackendHibernateRoute,
   ApiPublicCronBackendReapRoute: ApiPublicCronBackendReapRoute,
   ApiPublicCronBenchmarkRoute: ApiPublicCronBenchmarkRoute,

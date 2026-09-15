@@ -121,6 +121,21 @@ export async function resolveIntentActions(
     }
   }
 
+  // File uploads and direct SQL genuinely need a real database. Note the
+  // need; the growth watcher moves the app onto its own database on its next
+  // sweep. Provisioning takes minutes, so it never blocks this turn.
+  if (args.projectId && intents.includes("storage")) {
+    try {
+      const { requestCapabilityUpgrade } = await import("@/server/backend-autoscale.server");
+      await requestCapabilityUpgrade(args.projectId, "storage");
+    } catch (e) {
+      console.warn(
+        "[intent-actions] capability upgrade request failed:",
+        e instanceof Error ? e.message : String(e),
+      );
+    }
+  }
+
   const briefs = intents
     .map((i) => CAPABILITY_BRIEF[i])
     .filter((b): b is string => Boolean(b));

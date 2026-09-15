@@ -3431,6 +3431,47 @@ export type Database = {
           },
         ]
       }
+      project_upgrade_events: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: string
+          project_id: string
+          reason: string
+          rows_count: number | null
+          status: string
+          users_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          project_id: string
+          reason: string
+          rows_count?: number | null
+          status: string
+          users_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          project_id?: string
+          reason?: string
+          rows_count?: number | null
+          status?: string
+          users_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_upgrade_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_versions: {
         Row: {
           created_at: string
@@ -3471,6 +3512,8 @@ export type Database = {
       }
       projects: {
         Row: {
+          auto_upgrade_notified_at: string | null
+          auto_upgrade_opt_out: boolean
           backend_type: string
           created_at: string
           custom_instructions: string | null
@@ -3501,6 +3544,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_upgrade_notified_at?: string | null
+          auto_upgrade_opt_out?: boolean
           backend_type?: string
           created_at?: string
           custom_instructions?: string | null
@@ -3531,6 +3576,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_upgrade_notified_at?: string | null
+          auto_upgrade_opt_out?: boolean
           backend_type?: string
           created_at?: string
           custom_instructions?: string | null

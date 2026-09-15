@@ -617,6 +617,29 @@ async function handleDisableShared(userId: string, body: unknown): Promise<Respo
 }
 
 
+/**
+ * POST /api/backend?action=auto-upgrade  { projectId, enabled }
+ *
+ * Automatic upgrades are on by default — the owner never has to choose a
+ * tier. This lets someone who'd rather stay on the starter database opt out,
+ * and change their mind later.
+ */
+async function handleAutoUpgradePreference(userId: string, body: unknown): Promise<Response> {
+  const parsed = z
+    .object({ projectId: z.string().uuid(), enabled: z.boolean() })
+    .safeParse(body);
+  if (!parsed.success) return new Response(parsed.error.message, { status: 400 });
+  const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
+  if (ownerErr) return ownerErr;
+
+  const { error } = await supabaseAdmin
+    .from("projects")
+    .update({ auto_upgrade_opt_out: !parsed.data.enabled })
+    .eq("id", parsed.data.projectId);
+  if (error) return new Response(error.message, { status: 500 });
+  return Response.json({ ok: true, autoUpgrade: parsed.data.enabled });
+}
+
 export const Route = createFileRoute("/api/backend")({
   server: {
     handlers: {
@@ -655,6 +678,8 @@ export const Route = createFileRoute("/api/backend")({
             return handleSharedStatus(auth, body);
           case "disable-shared":
             return handleDisableShared(auth, body);
+          case "auto-upgrade":
+            return handleAutoUpgradePreference(auth, body);
           default:
             return new Response("Unknown action", { status: 400 });
         }
