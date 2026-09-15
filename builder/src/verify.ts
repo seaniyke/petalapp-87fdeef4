@@ -24,7 +24,13 @@
  * are willing to have executed, and every seeded account is tagged with the
  * PETAL_TEST_TAG below so it can be identified and cleaned up later.
  */
-import { chromium, type Browser, type Page, type ConsoleMessage } from "playwright";
+import {
+  chromium,
+  type Browser,
+  type BrowserContext,
+  type Page,
+  type ConsoleMessage,
+} from "playwright";
 import { isTransientEdgeStatus } from "./deploy-status.js";
 import { Heartbeat } from "./progress.js";
 
@@ -290,22 +296,34 @@ function resetWatch(watch: PageWatch) {
 }
 
 /** Visual QA caps — the callback body is signed and parsed whole. */
-const VISUAL_MAX_SHOTS = 6;
-const VISUAL_MAX_BYTES = 1_400_000;
-const VISUAL_DEFAULT_WIDTHS = [390, 1440];
+const VISUAL_MAX_SHOTS = 12;
+const VISUAL_MAX_BYTES = 2_600_000;
+/** Phone, tablet, desktop. A design is only verified when all three are seen. */
+const VISUAL_DEFAULT_WIDTHS = [390, 820, 1440];
+const VISUAL_MAX_ROUTES = 4;
 
 /**
- * Capture a handful of compressed screenshots at mobile and desktop widths.
+ * Capture compressed screenshots at phone, tablet and desktop widths.
  * These are scored by a vision model on the Petal side against the frontend
  * craft rules; any defects it finds join the repair loop.
+ *
+ * When sign-in succeeded, the captured session is reused so gated screens
+ * (dashboards, settings, account) are reviewed too instead of only ever
+ * showing the login form.
  */
-async function captureVisual(browser: Browser, plan: VerifyPlan): Promise<VisualShot[]> {
+async function captureVisual(
+  browser: Browser,
+  plan: VerifyPlan,
+  storageState?: Awaited<ReturnType<BrowserContext["storageState"]>>,
+): Promise<VisualShot[]> {
   const widths = (plan.visual?.widths?.length ? plan.visual.widths : VISUAL_DEFAULT_WIDTHS)
     .filter((w) => Number.isFinite(w) && w >= 320 && w <= 2000)
     .slice(0, 3);
-  const routes = (plan.visual?.routes?.length ? plan.visual.routes : plan.routes.slice(0, 2))
+  const routes = (
+    plan.visual?.routes?.length ? plan.visual.routes : plan.routes.slice(0, VISUAL_MAX_ROUTES)
+  )
     .filter((p) => typeof p === "string" && p.startsWith("/"))
-    .slice(0, 3);
+    .slice(0, VISUAL_MAX_ROUTES);
   if (!widths.length || !routes.length) return [];
 
   const shots: VisualShot[] = [];
@@ -317,6 +335,7 @@ async function captureVisual(browser: Browser, plan: VerifyPlan): Promise<Visual
       deviceScaleFactor: 1,
       isMobile: width < 700,
       hasTouch: width < 700,
+      ...(storageState ? { storageState } : {}),
       userAgent:
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 PetalVerifier",
     });
@@ -778,11 +797,14 @@ export async function runVerification(
       report.flows.push(await runFlow(page, watch, plan.baseUrl, flow, screenshots));
     }
 
-    // Pass 4 — visual QA capture (mobile + desktop). Never fails the build.
+    // Pass 4 — visual QA capture (phone, tablet, desktop). When sign-in
+    // worked, the session is reused so gated screens are reviewed too.
+    // Never fails the build.
     if (plan.visual) {
       try {
         heartbeat.beat("taking screenshots");
-        report.visual = await captureVisual(browser, plan);
+        const state = signedIn ? await context.storageState().catch(() => undefined) : undefined;
+        report.visual = await captureVisual(browser, plan, state);
       } catch {
         /* visual QA is advisory */
       }
