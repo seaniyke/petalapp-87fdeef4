@@ -290,22 +290,34 @@ function resetWatch(watch: PageWatch) {
 }
 
 /** Visual QA caps — the callback body is signed and parsed whole. */
-const VISUAL_MAX_SHOTS = 6;
-const VISUAL_MAX_BYTES = 1_400_000;
-const VISUAL_DEFAULT_WIDTHS = [390, 1440];
+const VISUAL_MAX_SHOTS = 12;
+const VISUAL_MAX_BYTES = 2_600_000;
+/** Phone, tablet, desktop. A design is only verified when all three are seen. */
+const VISUAL_DEFAULT_WIDTHS = [390, 820, 1440];
+const VISUAL_MAX_ROUTES = 4;
 
 /**
- * Capture a handful of compressed screenshots at mobile and desktop widths.
+ * Capture compressed screenshots at phone, tablet and desktop widths.
  * These are scored by a vision model on the Petal side against the frontend
  * craft rules; any defects it finds join the repair loop.
+ *
+ * When sign-in succeeded, the captured session is reused so gated screens
+ * (dashboards, settings, account) are reviewed too instead of only ever
+ * showing the login form.
  */
-async function captureVisual(browser: Browser, plan: VerifyPlan): Promise<VisualShot[]> {
+async function captureVisual(
+  browser: Browser,
+  plan: VerifyPlan,
+  storageState?: Awaited<ReturnType<BrowserContext["storageState"]>>,
+): Promise<VisualShot[]> {
   const widths = (plan.visual?.widths?.length ? plan.visual.widths : VISUAL_DEFAULT_WIDTHS)
     .filter((w) => Number.isFinite(w) && w >= 320 && w <= 2000)
     .slice(0, 3);
-  const routes = (plan.visual?.routes?.length ? plan.visual.routes : plan.routes.slice(0, 2))
+  const routes = (
+    plan.visual?.routes?.length ? plan.visual.routes : plan.routes.slice(0, VISUAL_MAX_ROUTES)
+  )
     .filter((p) => typeof p === "string" && p.startsWith("/"))
-    .slice(0, 3);
+    .slice(0, VISUAL_MAX_ROUTES);
   if (!widths.length || !routes.length) return [];
 
   const shots: VisualShot[] = [];
@@ -317,6 +329,7 @@ async function captureVisual(browser: Browser, plan: VerifyPlan): Promise<Visual
       deviceScaleFactor: 1,
       isMobile: width < 700,
       hasTouch: width < 700,
+      ...(storageState ? { storageState } : {}),
       userAgent:
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 PetalVerifier",
     });
