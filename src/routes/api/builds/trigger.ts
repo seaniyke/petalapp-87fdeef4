@@ -43,6 +43,13 @@ import {
 const BodySchema = z.object({ projectId: z.string().uuid() });
 
 async function authorize(request: Request): Promise<string | Response> {
+  const internalSecret = request.headers.get("x-petal-internal-secret");
+  const internalUser = request.headers.get("x-petal-internal-user");
+  if (internalSecret && internalUser) {
+    const expected = process.env.BUILDER_SHARED_SECRET;
+    if (expected && internalSecret === expected) return internalUser;
+    return new Response("Unauthorized", { status: 401 });
+  }
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {

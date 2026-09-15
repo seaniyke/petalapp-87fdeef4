@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Json } from "@/integrations/supabase/types";
 import type { ProjectFile } from "@/server/generate.server";
+import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
 
 export type CreditPauseRow = {
   id: string;
@@ -91,6 +92,15 @@ export async function resumeCreditPause(id: string): Promise<{ ok: boolean; reas
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("credit_paused_turns").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", id).eq("status", "applying");
     await supabaseAdmin.from("turns").update({ status: "succeeded", ended_at: new Date().toISOString(), credits_charged: pause.required_credits }).eq("id", claim.turn_id);
+    const payload = pause.result_payload;
+    await persistAbandonedTurnReply({
+      projectId: claim.project_id,
+      turnId: claim.turn_id,
+      status: "succeeded",
+      summary: typeof payload.summary === "string" ? payload.summary : "Credits received — I finished and saved your build.",
+      plan: typeof payload.plan === "string" ? payload.plan : null,
+      recap: typeof payload.recap === "string" ? payload.recap : null,
+    });
     return { ok: true, projectId: claim.project_id, turnId: claim.turn_id };
   } catch (error) {
     await supabaseAdmin.from("credit_paused_turns").update({ status: "failed", last_error: error instanceof Error ? error.message.slice(0, 500) : "Apply failed" }).eq("id", id).eq("status", "applying");
