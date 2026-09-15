@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import type { ProjectFile } from "@/server/generate.server";
 
 export type CreditPauseRow = {
@@ -42,8 +43,8 @@ export async function saveCreditPause(input: {
     user_id: input.userId,
     required_credits: input.requiredCredits,
     baseline_hash: projectFilesHash(input.baselineFiles),
-    candidate_files: input.candidateFiles,
-    result_payload: input.resultPayload,
+    candidate_files: input.candidateFiles as unknown as Json,
+    result_payload: input.resultPayload as Json,
     original_request: input.originalRequest,
   }).select("id").single();
   if (error || !data) throw new Error(error?.message ?? "Could not save the build checkpoint");
@@ -56,7 +57,7 @@ export async function listCreditPauses(userId: string, projectId?: string): Prom
   if (projectId) query = query.eq("project_id", projectId);
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []) as CreditPauseRow[];
+  return (data ?? []) as unknown as CreditPauseRow[];
 }
 
 export async function parkCreditPause(id: string, userId: string): Promise<boolean> {
@@ -77,7 +78,7 @@ export async function resumeCreditPause(id: string): Promise<{ ok: boolean; reas
   }
 
   const { data: claimed, error: claimError } = await supabaseAdmin.rpc("claim_credit_paused_turn", { _checkpoint_id: id });
-  const claim = (Array.isArray(claimed) ? claimed[0] : claimed) as {
+  const claim = (Array.isArray(claimed) ? claimed[0] : claimed) as unknown as {
     checkpoint_id: string; project_id: string; turn_id: string; candidate_files: ProjectFile[];
   } | undefined;
   if (claimError || !claim) return { ok: false, reason: "not_ready" };
