@@ -318,6 +318,7 @@ export async function considerUpgrade(
       return { upgraded: false, blocked: decision.blocked ?? undefined };
     }
     const result = await upgradeProject(projectId, decision.reason);
+    if (result.ok) await clearCapabilityRequests(projectId);
     return result.ok ? { upgraded: true } : { upgraded: false, error: result.error };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
