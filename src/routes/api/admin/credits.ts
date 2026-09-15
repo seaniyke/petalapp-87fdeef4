@@ -1297,6 +1297,72 @@ export const Route = createFileRoute("/api/admin/credits")({
             });
           }
 
+          // ----- SHARED TIER / AUTO-UPGRADE -----
+          if (body.action === "shared_tier") {
+            const [{ data: sharedProjects }, { data: records }, { data: users }, { data: events }] =
+              await Promise.all([
+                supabaseAdmin
+                  .from("projects")
+                  .select("id, title, auto_upgrade_opt_out")
+                  .eq("backend_type", "shared"),
+                supabaseAdmin.from("shared_app_records").select("project_id").limit(20000),
+                supabaseAdmin.from("shared_app_users").select("project_id").limit(20000),
+                supabaseAdmin
+                  .from("project_upgrade_events")
+                  .select("project_id, reason, status, detail, created_at")
+                  .order("created_at", { ascending: false })
+                  .limit(50),
+              ]);
+
+            const rowCount = new Map<string, number>();
+            for (const r of (records ?? []) as Array<{ project_id: string }>) {
+              rowCount.set(r.project_id, (rowCount.get(r.project_id) ?? 0) + 1);
+            }
+            const userCount = new Map<string, number>();
+            for (const u of (users ?? []) as Array<{ project_id: string }>) {
+              userCount.set(u.project_id, (userCount.get(u.project_id) ?? 0) + 1);
+            }
+
+            const ROW_LIMIT = 5000;
+            const ROW_TRIGGER = ROW_LIMIT * 0.8;
+            const USER_TRIGGER = 50;
+
+            const apps = ((sharedProjects ?? []) as Array<{
+              id: string;
+              title: string | null;
+              auto_upgrade_opt_out: boolean;
+            }>).map((p) => {
+              const rows = rowCount.get(p.id) ?? 0;
+              const endUsers = userCount.get(p.id) ?? 0;
+              return {
+                project_id: p.id,
+                title: p.title ?? "Untitled",
+                rows,
+                users: endUsers,
+                pct_of_limit: Math.round((rows / ROW_LIMIT) * 100),
+                candidate: rows >= ROW_TRIGGER || endUsers >= USER_TRIGGER,
+                opted_out: p.auto_upgrade_opt_out,
+              };
+            });
+
+            apps.sort((a, b) => b.rows - a.rows || b.users - a.users);
+
+            const blocked = ((events ?? []) as Array<{ status: string; detail: string | null }>).filter(
+              (e) => e.status === "blocked",
+            );
+
+            return Response.json({
+              shared_apps: apps.length,
+              total_rows: Array.from(rowCount.values()).reduce((a, b) => a + b, 0),
+              total_end_users: Array.from(userCount.values()).reduce((a, b) => a + b, 0),
+              candidates: apps.filter((a) => a.candidate).length,
+              blocked_by_credits: blocked.filter((e) => e.detail === "no_credits").length,
+              blocked_by_capacity: blocked.filter((e) => e.detail === "at_capacity").length,
+              top: apps.slice(0, 15),
+              recent_events: events ?? [],
+            });
+          }
+
           // ----- CRYPTO PAYMENTS -----
           if (body.action === "crypto_payments") {
             const status = String(body.status ?? "pending");
