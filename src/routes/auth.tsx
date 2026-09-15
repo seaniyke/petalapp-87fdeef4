@@ -79,7 +79,7 @@ function StrengthMeter({ password }: { password: string }) {
 
 function AuthPage() {
   const { mode: initialMode, redirect } = Route.useSearch();
-  const { user, loading } = useAuth();
+  const { user, loading, likelyAuthed } = useAuth();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState(() => readLastAuthEmail());
   const [password, setPassword] = useState("");
@@ -196,7 +196,12 @@ function AuthPage() {
     }
   }
 
-  if (loading || user) {
+  // The sign-in form is public, so there is nothing to wait for unless this
+  // visitor might already be signed in (a token sits in storage) — in which
+  // case we're about to redirect them and a flash of the form would be wrong.
+  // Everyone else, including the server render and every first-time visitor,
+  // gets the form on the first frame instead of an empty gradient.
+  if (user || (loading && likelyAuthed)) {
     return (
       <div className="relative min-h-screen overflow-hidden bg-background">
         <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />

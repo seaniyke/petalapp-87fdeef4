@@ -56,6 +56,22 @@ export function ConsentBanner() {
     setVisible(false);
   };
 
+  // The banner is fixed to the bottom of the viewport, so on a phone it sits
+  // on top of whatever the page put there (on /templates that was the category
+  // filters). Reserving the same height at the end of the document means the
+  // page can always be scrolled clear of it.
+  useEffect(() => {
+    const el = document.body;
+    if (!visible) {
+      el.style.removeProperty("padding-bottom");
+      return;
+    }
+    el.style.setProperty("padding-bottom", "var(--consent-banner-space, 11rem)");
+    return () => {
+      el.style.removeProperty("padding-bottom");
+    };
+  }, [visible]);
+
   if (!visible) return null;
 
   return (
