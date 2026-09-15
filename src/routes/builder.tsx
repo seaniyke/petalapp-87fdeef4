@@ -3003,15 +3003,10 @@ function Builder() {
           claimAutoRecovery()
         ) {
           transientGenerateRecoveryRef.current.attempts += 1; persistRecovery(projectIdRef.current);
+          // Silent by design: Petal just runs it again. Telling the user a
+          // connection dropped is noise they can do nothing about.
           setActivityVisible(true);
-          setFriendlyError({
-            title: "Petal is reconnecting",
-            message:
-              "The build connection dropped before changes were saved. No action needed — Petal is retrying once with a safer path.",
-            actionLabel: "Working on it",
-            actionKind: "dismiss",
-            technicalDetail: msg,
-          });
+          setLatestCycleProgress("Still working — Petal is finishing this off.");
           setPhases(advanceTo(defaultPhases(), "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
