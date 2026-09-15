@@ -233,13 +233,10 @@ function providerDominatesRoot(entryPath: string, byPath: Map<string, ProjectFil
     const target = resolveImport(path, spec, byPath);
     if (!target) return false;
     const targetContent = byPath.get(target)?.content ?? "";
-    const returned =
-      /return\s*\(\s*([\s\S]*?)\s*\)\s*;?/.exec(targetContent)?.[1] ??
-      /return\s+(<[^;]+>)\s*;?/.exec(targetContent)?.[1] ??
-      /=>\s*(<[^;]+>)/.exec(targetContent)?.[1] ??
-      "";
+    const returned = componentReturnJsx(targetContent, component);
     return returned ? inspect(target, returned, depth + 1) : false;
   }
+
 
   function inspect(path: string, jsx: string, depth: number): boolean {
     if (depth > 6 || visited.has(path)) return false;
