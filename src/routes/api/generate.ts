@@ -5794,6 +5794,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   // Kept in scope so the terminal path can write the assistant reply itself
   // when the browser is gone (see persistAbandonedTurnReply below).
   let turnProjectId: string | null = null;
+  // The request we would need to re-run if this turn dies mid-generation.
+  let turnUserRequest = "";
   const clone = request.clone();
   try {
     const peekAuth = await authorize(clone);
@@ -5801,6 +5803,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       const peekBody = (await clone.json().catch(() => null)) as Body | null;
       if (peekBody?.projectId) {
         turnProjectId = peekBody.projectId;
+        const msgs = (peekBody as { messages?: Array<{ role?: string; content?: unknown }> })
+          .messages;
+        const lastUser = Array.isArray(msgs)
+          ? [...msgs].reverse().find((m) => m?.role === "user")
+          : null;
+        if (lastUser && typeof lastUser.content === "string") {
+          turnUserRequest = lastUser.content;
+        }
         recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
         // Open the server-owned completion record for this request. From here
         // the loop's authority lives in the database, not in the tab: stage,
