@@ -178,7 +178,7 @@ export function ProjectThumbnail({
             fetchPriority="high"
             className={`absolute inset-0 h-full w-full ${contain ? "object-contain object-center" : "object-cover object-top"} transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
             onLoad={() => setLoaded(true)}
-            onError={() => (attempt === 0 ? setAttempt(1) : setFailed(true))}
+            onError={() => (attempt < 2 ? setAttempt(attempt + 1) : setFailed(true))}
           />
         </>
       ) : (
