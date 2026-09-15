@@ -30,7 +30,7 @@ import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Rating } from "@/components/ui/rating";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 type LogoGridEntry = string | { name?: string; src?: string; url?: string };
 
@@ -101,7 +101,7 @@ import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Marquee } from "@/components/ui/marquee";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface MarqueeTestimonial {
   quote: string;
@@ -169,7 +169,7 @@ const TESTIMONIALS_QUOTE_HERO = `import * as React from "react";
 import { Quote } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Single oversized pull-quote. Editorial / agency / brand storytelling.
@@ -232,7 +232,7 @@ import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Single-product pricing card. For lifetime deals, digital downloads,
@@ -377,7 +377,7 @@ export function FaqAccordion({
 
 const FAQ_TWO_COLUMN = `import * as React from "react";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface FaqColumnItem {
   q?: React.ReactNode;
@@ -441,7 +441,7 @@ const CTA_CENTERED = `import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Simple centered CTA band. Use as the closing section before the footer.
@@ -505,7 +505,7 @@ const CTA_SPLIT = `import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Two-column CTA: heading + description on the left, action buttons on the
@@ -562,7 +562,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { GradientBlob } from "@/components/ui/gradient-blob";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 type CtaLike = {
   label?: React.ReactNode;
@@ -656,7 +656,7 @@ export function CtaGradientBand({
 const FOOTER_COLUMNS = `import * as React from "react";
 import { Container } from "@/components/ui/container";
 import { Github, Twitter, Instagram, Facebook, Linkedin, Youtube, Globe, Mail, Circle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface FooterColumn {
   title: string;
@@ -744,7 +744,7 @@ export function FooterColumns({
       <Container size="xl">
         <div className="grid gap-10 md:grid-cols-12">
           <div className="md:col-span-4">
-            {brandNode && <div className="text-base font-semibold text-foreground">{brandNode}</div>}
+            {brandNode && <div className="text-base font-semibold text-foreground">{slotNode(brandNode)}</div>}
             {taglineNode && <p className="mt-2 max-w-xs text-sm text-muted-foreground">{taglineNode}</p>}
 
             {socials.length > 0 && (
@@ -790,7 +790,7 @@ export function FooterColumns({
 
 const FOOTER_MINIMAL = `import * as React from "react";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Single-row minimal footer: brand on the left, link list + copyright on the
@@ -811,7 +811,7 @@ export function FooterMinimal({
     <footer className={cn("border-t border-border py-10", className)}>
       <Container size="xl">
         <div className="flex flex-col items-center justify-between gap-6 md:flex-row md:gap-4">
-          <div className="text-sm font-semibold text-foreground">{brand}</div>
+          <div className="text-sm font-semibold text-foreground">{slotNode(brand)}</div>
           {links && links.length > 0 && (
             <ul className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
               {links.map((l, i) => (
@@ -835,7 +835,7 @@ const FOOTER_NEWSLETTER = `import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface FooterColumn {
   title: string;
@@ -901,7 +901,7 @@ export function FooterNewsletter({
         </div>
         <div className="mt-10 grid gap-8 md:grid-cols-12">
           <div className="md:col-span-4">
-            <div className="text-base font-semibold text-foreground">{brand}</div>
+            <div className="text-base font-semibold text-foreground">{slotNode(brand)}</div>
             {tagline && <p className="mt-2 max-w-xs text-sm text-muted-foreground">{tagline}</p>}
           </div>
           {columns && columns.length > 0 && (
@@ -940,7 +940,7 @@ const NAV_BAR = `import * as React from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface NavLink {
   label: string;
@@ -972,7 +972,7 @@ export function NavBar({
   links?: NavLink[];
   navLinks?: NavLink[];
   items?: NavLink[];
-  cta?: React.ReactNode;
+  cta?: React.ReactNode | { label?: React.ReactNode; href?: string; onClick?: () => void };
   brandHref?: string;
   className?: string;
 }) {
@@ -997,14 +997,14 @@ export function NavBar({
     <header className={cn("sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur", className)}>
       <Container size="xl">
         <div className="flex h-14 items-center justify-between">
-          <a href={brandHref} className="text-base font-semibold text-foreground">{brandNode}</a>
+          <a href={brandHref} className="text-base font-semibold text-foreground">{slotNode(brandNode)}</a>
           <nav className="hidden items-center gap-6 md:flex">
             {navItems.map((l, i) => (
               <a key={i} href={l.href} className="text-sm text-muted-foreground transition hover:text-foreground">
                 {l.label}
               </a>
             ))}
-            {cta}
+            {slotNode(cta)}
           </nav>
 
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)} aria-label="Toggle menu">
@@ -1023,7 +1023,7 @@ export function NavBar({
                 {l.label}
               </a>
             ))}
-            {cta && <div className="px-2 pt-2">{cta}</div>}
+            {cta ? <div className="px-2 pt-2">{slotNode(cta)}</div> : null}
           </nav>
 
         )}
@@ -1037,7 +1037,7 @@ const NAV_WITH_CTA = `import * as React from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface NavLink {
   label: string;
@@ -1068,7 +1068,7 @@ export function NavWithCta({
     <header className={cn("sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur", className)}>
       <Container size="xl">
         <div className="flex h-16 items-center justify-between gap-6">
-          <a href={brandHref} className="text-base font-semibold text-foreground">{brand}</a>
+          <a href={brandHref} className="text-base font-semibold text-foreground">{slotNode(brand)}</a>
           <nav className="hidden flex-1 items-center justify-center gap-8 md:flex">
             {links.map((l, i) => (
               <a key={i} href={l.href} className="text-sm font-medium text-muted-foreground transition hover:text-foreground">
@@ -1123,7 +1123,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface NavLink {
   label: string;
@@ -1157,7 +1157,7 @@ export function NavWithSearch({
     <header className={cn("sticky top-0 z-40 w-full border-b border-border bg-background/85 backdrop-blur", className)}>
       <Container size="xl">
         <div className="flex h-16 items-center gap-4">
-          <a href={brandHref} className="text-base font-semibold text-foreground">{brand}</a>
+          <a href={brandHref} className="text-base font-semibold text-foreground">{slotNode(brand)}</a>
           <form
             className="relative ml-2 hidden flex-1 max-w-md md:block"
             onSubmit={(e) => {
@@ -1228,7 +1228,7 @@ export function NavWithSearch({
 
 const LOGOS_GRID = `import * as React from "react";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Static centered logo grid. Pair with a short eyebrow ("Trusted by teams at").
@@ -1279,7 +1279,7 @@ export function LogosGrid({
 const LOGOS_MARQUEE = `import * as React from "react";
 import { Container } from "@/components/ui/container";
 import { Marquee } from "@/components/ui/marquee";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 type LogoEntry = string | { name?: string; src?: string; url?: string };
 
@@ -1370,7 +1370,7 @@ export function LogosMarquee({
 
 const STATS_BAND = `import * as React from "react";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface StatItem {
   value: React.ReactNode;
@@ -1417,7 +1417,7 @@ const STATS_GRID = `import * as React from "react";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Stat } from "@/components/ui/stat";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface StatGridItem {
   label: string;
@@ -1466,7 +1466,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AreaChart } from "@/components/ui/chart";
 import { Container } from "@/components/ui/container";
 import { Stat } from "@/components/ui/stat";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface StatsChartKpi {
   label: string;

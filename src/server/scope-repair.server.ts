@@ -211,6 +211,34 @@ function addImports(src: string, mod: string, names: string[]): string {
   return lines.join("\n");
 }
 
+/**
+ * `import type { Square } from "lucide-react"` compiles cleanly but erases the
+ * binding at runtime, so the rendered page dies with
+ * `ReferenceError: Square is not defined`. Move names that are plainly values
+ * — a lucide icon, or anything used as `<Name …/>` — into a value import.
+ */
+export function promoteTypeOnlyValueImports(src: string): string {
+  const typeImportRe = /import\s+type\s*\{([^}]*)\}\s*from\s*["']([^"']+)["'];?/g;
+  return src.replace(typeImportRe, (stmt, inside: string, mod: string) => {
+    const keep: string[] = [];
+    const promote: string[] = [];
+    for (const raw of inside.split(",")) {
+      const piece = raw.trim();
+      if (!piece) continue;
+      const local = (piece.split(/\s+as\s+/i).pop() ?? piece).trim();
+      const original = piece.split(/\s+as\s+/i)[0]!.trim();
+      const usedAsElement = new RegExp(`<${local}\\b`).test(src);
+      const isIcon = mod === "lucide-react" && COMMON_LUCIDE_ICONS.has(original);
+      if (usedAsElement || isIcon) promote.push(piece);
+      else keep.push(piece);
+    }
+    if (promote.length === 0) return stmt;
+    const valueLine = `import { ${promote.join(", ")} } from "${mod}";`;
+    if (keep.length === 0) return valueLine;
+    return `import type { ${keep.join(", ")} } from "${mod}";\n${valueLine}`;
+  });
+}
+
 export function repairScopeLeaks(input: ProjectFile[]): ScopeRepairResult {
   const routerModule = detectRouterModule(input);
   const deps = depsOf(input);
@@ -225,11 +253,19 @@ export function repairScopeLeaks(input: ProjectFile[]): ScopeRepairResult {
 
   const files = input.map((file) => {
     if (!SCANNABLE.test(file.path)) return file;
-    const src = file.content;
+    let src = file.content;
     if (!src || src.length > 400_000) return file;
+
+    const promoted = promoteTypeOnlyValueImports(src);
+    if (promoted !== src) {
+      src = promoted;
+      fixes += 1;
+      notes.push(`scope-repair: promoted type-only value import(s) in ${file.path}`);
+    }
 
     const declared = collectDeclared(src);
     const used = collectUsed(src);
+
 
     const byModule = new Map<string, string[]>();
     for (const name of used) {
@@ -241,7 +277,7 @@ export function repairScopeLeaks(input: ProjectFile[]): ScopeRepairResult {
       if (!list.includes(name)) list.push(name);
       byModule.set(mod, list);
     }
-    if (byModule.size === 0) return file;
+    if (byModule.size === 0) return src === file.content ? file : { ...file, content: src };
 
     let next = src;
     const added: string[] = [];

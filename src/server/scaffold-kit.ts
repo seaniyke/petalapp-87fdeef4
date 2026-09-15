@@ -280,11 +280,50 @@ body {
 `;
 
 
-const UTILS_TS = `import { clsx, type ClassValue } from "clsx";
+const UTILS_TS = `import * as React from "react";
+import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+type SlotLike = {
+  label?: unknown;
+  text?: unknown;
+  title?: unknown;
+  children?: unknown;
+  href?: string;
+  onClick?: () => void;
+};
+
+/**
+ * Render any "node-ish" prop safely.
+ *
+ * A caller may pass { label, href } where a ReactNode is expected. Rendering
+ * that object directly crashes the whole page with "Objects are not valid as
+ * a React child". slotNode turns it into a real link/button instead.
+ */
+export function slotNode(value: unknown): React.ReactNode {
+  if (value === null || value === undefined || typeof value === "boolean") return null;
+  if (typeof value === "string" || typeof value === "number") return value;
+  if (React.isValidElement(value)) return value;
+  if (Array.isArray(value)) {
+    return value.map((v, i) => React.createElement(React.Fragment, { key: i }, slotNode(v)));
+  }
+  if (typeof value === "object") {
+    const o = value as SlotLike;
+    const label = slotNode(o.label ?? o.text ?? o.title ?? o.children);
+    if (label === null) return null;
+    const cls =
+      "inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90";
+    if (typeof o.href === "string") return React.createElement("a", { href: o.href, className: cls }, label);
+    if (typeof o.onClick === "function") {
+      return React.createElement("button", { type: "button", onClick: o.onClick, className: cls }, label);
+    }
+    return label;
+  }
+  return null;
 }
 `;
 

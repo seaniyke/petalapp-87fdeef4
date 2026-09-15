@@ -555,6 +555,24 @@ export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFi
   );
   if (!anyConsumer) return { files, notes };
 
+  // Hard invariant, checked before anything else: when the ENTRY already
+  // renders a router provider, any provider in a reachable descendant is
+  // illegal nesting and crashes the app with "You cannot render a <Router>
+  // inside another <Router>". Earlier this only ran on paths that also
+  // wrapped or detected dominance, so an entry provider plus an App-level
+  // <BrowserRouter> shipped untouched.
+  if (entryPath && live && hasProvider(byPath.get(entryPath)?.content ?? "")) {
+    const normalized = removeNestedBrowserRouters(files, entryPath, live);
+    if (normalized.removed > 0) {
+      notes.push(
+        `router-provider: removed ${normalized.removed} nested <BrowserRouter> wrapper(s) below the entry provider`,
+      );
+      return { files: normalized.files, notes };
+    }
+    return { files, notes };
+  }
+
+
   // Reachability is insufficient: a provider in a Header, modal, or sibling
   // branch does not provide context to Routes/Link elsewhere. Only skip the
   // repair when the provider dominates the root render.
