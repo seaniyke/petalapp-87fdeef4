@@ -26,6 +26,24 @@ export const Route = createFileRoute("/admin/cloud-cost")({
   component: AdminCloudCostPage,
 });
 
+type SharedTier = {
+  shared_apps: number;
+  total_rows: number;
+  total_end_users: number;
+  candidates: number;
+  blocked_by_credits: number;
+  blocked_by_capacity: number;
+  top: {
+    project_id: string;
+    title: string;
+    rows: number;
+    users: number;
+    pct_of_limit: number;
+    candidate: boolean;
+    opted_out: boolean;
+  }[];
+};
+
 type CloudCost = {
   total_backends: number;
   by_status: { ready?: number; provisioning?: number; paused?: number; failed?: number };
@@ -40,12 +58,16 @@ type CloudCost = {
 function AdminCloudCostPage() {
   const { ready } = useAdminGuard("/admin/cloud-cost");
   const [data, setData] = useState<CloudCost | null>(null);
+  const [shared, setShared] = useState<SharedTier | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;
     setLoading(true);
+    adminApi<SharedTier>({ action: "shared_tier" })
+      .then((d) => !cancelled && setShared(d))
+      .catch(() => undefined);
     adminApi<CloudCost>({ action: "cloud_cost" })
       .then((d) => !cancelled && setData(d))
       .catch((e) => !cancelled && toast.error(e instanceof Error ? e.message : "Load failed"))
@@ -147,6 +169,67 @@ function AdminCloudCostPage() {
                     </div>
                   ))}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="mt-6">
+          <Card className="border-border/60">
+            <CardContent className="p-5">
+              <div className="mb-4 flex items-end justify-between">
+                <h3 className="text-sm font-medium tracking-tight">Shared tier &amp; auto-upgrade</h3>
+                {shared ? (
+                  <span className="text-xs text-muted-foreground">
+                    {shared.shared_apps} apps · {shared.total_rows} rows ·{" "}
+                    {shared.total_end_users} app users
+                  </span>
+                ) : null}
+              </div>
+              {!shared ? (
+                <div className="h-24 animate-pulse rounded bg-muted/40" />
+              ) : (
+                <>
+                  <div className="mb-4 grid grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <div className="font-mono text-lg tabular-nums">{shared.candidates}</div>
+                      <div className="text-xs text-muted-foreground">Upgrade candidates</div>
+                    </div>
+                    <div>
+                      <div className="font-mono text-lg tabular-nums">
+                        {shared.blocked_by_credits}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Blocked: credits</div>
+                    </div>
+                    <div>
+                      <div className="font-mono text-lg tabular-nums">
+                        {shared.blocked_by_capacity}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Blocked: capacity</div>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    {shared.top.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No shared-tier data yet.</p>
+                    ) : (
+                      shared.top.map((a) => (
+                        <div
+                          key={a.project_id}
+                          className="flex items-center justify-between gap-3 text-sm"
+                        >
+                          <span className="truncate text-muted-foreground">
+                            {a.title}
+                            {a.opted_out ? " · opted out" : ""}
+                          </span>
+                          <span className="shrink-0 font-mono text-xs tabular-nums">
+                            {a.rows} rows ({a.pct_of_limit}%) · {a.users} users
+                            {a.candidate ? " · ready" : ""}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
