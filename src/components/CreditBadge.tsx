@@ -5,7 +5,6 @@
  * BillingSheet (upgrade plans or top up via Paystack).
  */
 import { useState } from "react";
-import { Coins } from "lucide-react";
 import {
   HoverCard,
   HoverCardContent,
@@ -39,11 +38,10 @@ export function CreditBadge() {
             aria-label={`${formatCredits(breakdown.total)} credits remaining. Open billing.`}
             onClick={() => setSheetOpen(true)}
             className={cn(
-              "inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors hover:opacity-90",
+              "inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors hover:opacity-90",
               tone,
             )}
           >
-            <Coins className="h-3.5 w-3.5" />
             <span className="tabular-nums">{formatCredits(breakdown.total)}</span>
             <span className="hidden text-xs text-muted-foreground sm:inline">credits</span>
           </button>
