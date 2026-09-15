@@ -5199,6 +5199,33 @@ Forbidden defaults
           );
         }
 
+        // Design contract enforcement — the project's committed design system
+        // is checked against the code we are about to ship. Structural turns
+        // get ONE focused repair pass for hard violations (raw colours, hex
+        // values, missing tokens); small edits lint-and-log only. Fails open.
+        try {
+          const { enforceDesignContract } = await import("@/server/design/design-enforce.server");
+          const enforced = await enforceDesignContract({
+            files: nextFiles,
+            design: picContext?.design ?? null,
+            model,
+            repair: isInitial || isCrossCutting,
+            projectId: body.projectId ?? undefined,
+            userId,
+            signal: abortSignal,
+          });
+          if (enforced.repaired) {
+            nextFiles = enforced.files;
+            controller.enqueue(
+              encoder.encode(
+                sse({ type: "status", message: "Aligned the styling with your app's design system." }),
+              ),
+            );
+          }
+        } catch (e) {
+          console.warn("[design-lint] skipped:", e instanceof Error ? e.message : String(e));
+        }
+
         // Edit Intelligence phase 1/2/6 — did every requested change actually
         // land? The prompt asks for all of them; this checks the real diff.
         // Anything missing gets ONE focused pass (inside the existing repair
