@@ -245,9 +245,10 @@ export async function listRecords(opts: {
   limit?: number;
   offset?: number;
 }): Promise<RecordRow[]> {
+  const store = await storeFor(opts.projectId);
   const limit = Math.min(opts.limit ?? 50, SHARED_LIMITS.maxPageSize);
-  let q = supabaseAdmin
-    .from("shared_app_records")
+  let q = store.client
+    .from(store.records)
     .select("id, collection, owner_key, data, created_at, updated_at")
     .eq("project_id", opts.projectId)
     .eq("collection", opts.collection)
@@ -275,21 +276,30 @@ export async function createRecord(opts: {
   ownerKey: string | null;
   data: Record<string, unknown>;
 }): Promise<RecordRow> {
+  const store = await storeFor(opts.projectId);
   if (JSON.stringify(opts.data).length > SHARED_LIMITS.maxBytesPerRecord) {
     throw new Error("Record is too large for the shared tier.");
   }
-  const { count } = await supabaseAdmin
-    .from("shared_app_records")
-    .select("id", { count: "exact", head: true })
-    .eq("project_id", opts.projectId);
-  if ((count ?? 0) >= SHARED_LIMITS.maxRowsPerProject) {
-    throw new Error(
-      "This project hit the shared tier row limit. Upgrade to a dedicated backend for unlimited rows.",
-    );
+  // The row ceiling only applies to the shared database. An app with its own
+  // database has no Petal-imposed limit.
+  if (!store.dedicated) {
+    const { count } = await store.client
+      .from(store.records)
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", opts.projectId);
+    if ((count ?? 0) >= SHARED_LIMITS.maxRowsPerProject) {
+      // Never-break guarantee: this is the ceiling of the starter database,
+      // not a dead end. The growth watcher upgrades apps well before this
+      // point; if it couldn't (no credits, at capacity) the app keeps serving
+      // everything it already has and only new writes are refused.
+      throw new Error(
+        "This app's starter database is full. It keeps working with the data it has — add credits and Petal will move it onto its own database automatically.",
+      );
+    }
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("shared_app_records")
+  const { data, error } = await store.client
+    .from(store.records)
     .insert({
       project_id: opts.projectId,
       collection: opts.collection,
@@ -308,11 +318,12 @@ export async function updateRecord(opts: {
   ownerKey: string | null;
   data: Record<string, unknown>;
 }): Promise<RecordRow | null> {
+  const store = await storeFor(opts.projectId);
   // A partial update must MERGE. Apps send only the fields they changed
   // ({ done: true }); replacing the whole object would silently erase every
   // other field on the record.
-  const { data: current } = await supabaseAdmin
-    .from("shared_app_records")
+  const { data: current } = await store.client
+    .from(store.records)
     .select("data")
     .eq("project_id", opts.projectId)
     .eq("id", opts.id)
@@ -322,9 +333,9 @@ export async function updateRecord(opts: {
     ...opts.data,
   };
 
-  let q = supabaseAdmin
-    .from("shared_app_records")
-    .update({ data: merged as never })
+  let q = store.client
+    .from(store.records)
+    .update({ data: merged as never, updated_at: new Date().toISOString() })
     .eq("project_id", opts.projectId)
     .eq("id", opts.id);
   // Ownership is ALWAYS enforced. A caller with no end-user token may only
@@ -344,8 +355,9 @@ export async function deleteRecord(opts: {
   id: string;
   ownerKey: string | null;
 }): Promise<boolean> {
-  let q = supabaseAdmin
-    .from("shared_app_records")
+  const store = await storeFor(opts.projectId);
+  let q = store.client
+    .from(store.records)
     .delete()
     .eq("project_id", opts.projectId)
     .eq("id", opts.id);
@@ -364,9 +376,10 @@ export async function signUpUser(opts: {
   password: string;
   displayName?: string | null;
 }): Promise<{ id: string; email: string; displayName: string | null }> {
+  const store = await storeFor(opts.projectId);
   const password_hash = await hashPassword(opts.password);
-  const { data, error } = await supabaseAdmin
-    .from("shared_app_users")
+  const { data, error } = await store.client
+    .from(store.users)
     .insert({
       project_id: opts.projectId,
       email: opts.email.toLowerCase(),
@@ -391,8 +404,9 @@ export async function signInUser(opts: {
   email: string;
   password: string;
 }): Promise<{ id: string; email: string; displayName: string | null } | null> {
-  const { data } = await supabaseAdmin
-    .from("shared_app_users")
+  const store = await storeFor(opts.projectId);
+  const { data } = await store.client
+    .from(store.users)
     .select("id, email, display_name, password_hash")
     .eq("project_id", opts.projectId)
     .eq("email", opts.email.toLowerCase())
@@ -411,8 +425,9 @@ export async function getUserById(
   projectId: string,
   userId: string,
 ): Promise<{ id: string; email: string; displayName: string | null } | null> {
-  const { data } = await supabaseAdmin
-    .from("shared_app_users")
+  const store = await storeFor(projectId);
+  const { data } = await store.client
+    .from(store.users)
     .select("id, email, display_name")
     .eq("project_id", projectId)
     .eq("id", userId)
@@ -431,17 +446,20 @@ export async function sharedUsage(projectId: string): Promise<{
   users: number;
   collections: string[];
 }> {
+  const store = await storeFor(projectId);
   const [{ count: rows }, { count: users }, { data: cols }] = await Promise.all([
-    supabaseAdmin
-      .from("shared_app_records")
+    store.client
+      .from(store.records)
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
-    supabaseAdmin
-      .from("shared_app_users")
+    store.client
+      .from(store.users)
       .select("id", { count: "exact", head: true })
       .eq("project_id", projectId),
-    supabaseAdmin.from("shared_app_records").select("collection").eq("project_id", projectId).limit(500),
+    store.client.from(store.records).select("collection").eq("project_id", projectId).limit(500),
   ]);
-  const collections = Array.from(new Set((cols ?? []).map((c) => c.collection as string)));
+  const collections = Array.from(
+    new Set((cols ?? []).map((c: { collection: string }) => c.collection)),
+  );
   return { rows: rows ?? 0, users: users ?? 0, collections };
 }
