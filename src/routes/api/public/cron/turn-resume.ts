@@ -79,7 +79,7 @@ async function resumeOne(record: CompletionRecord, origin: string): Promise<stri
       "x-petal-internal-user": record.user_id,
     },
     body: JSON.stringify({
-      messages: [{ role: "user", content: repairBrief(record) }],
+      messages: [{ role: "user", content: brief }],
       currentFiles: files,
       projectId: record.project_id,
       isAutoFix: true,
