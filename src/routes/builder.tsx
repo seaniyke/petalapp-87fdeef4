@@ -259,7 +259,7 @@ function isVerificationCardTitle(title: string | undefined): boolean {
 function isTransientFailureCardTitle(title: string | undefined): boolean {
   if (!title) return false;
   return (
-    title.startsWith("Petal lost the connection") ||
+    title.startsWith("Petal is picking this back up") ||
     title.startsWith("Petal is reconnecting") ||
     title.startsWith("Build service is briefly unavailable") ||
     title.startsWith("Couldn't reach the publishing service") ||
