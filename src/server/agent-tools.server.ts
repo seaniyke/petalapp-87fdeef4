@@ -281,14 +281,21 @@ function readFileTool(
       .filter((f) => f.path.toLowerCase().includes(want.split("/").pop()?.toLowerCase() ?? "\u0000"))
       .slice(0, 8)
       .map((f) => f.path);
+    // Scaffold-owned files (index.html, styles.css, the UI kit) are merged in
+    // later in the pipeline, so they are legitimately absent here. Saying only
+    // "no file" made the model treat a healthy project as broken and stall.
+    const kitOwned = isScaffoldOwnedPath(want) || isScaffoldAbsorbedPath(want);
     return {
       label: `Could not read ${path}`,
       isError: true,
-      output:
-        `No file at "${path}".` +
-        (near.length ? `\nDid you mean one of:\n${near.join("\n")}` : ""),
+      output: kitOwned
+        ? `"${path}" is supplied by the project scaffold and is added automatically after your turn. ` +
+          `It is not missing and you must not author it. Continue with the app's own source files.`
+        : `No file at "${path}".` +
+          (near.length ? `\nDid you mean one of:\n${near.join("\n")}` : ""),
     };
   }
+
 
   const lines = file.content.split("\n");
   const from = Math.max(1, startLine ?? 1);
