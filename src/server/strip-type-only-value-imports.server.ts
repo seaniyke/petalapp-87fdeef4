@@ -32,7 +32,14 @@ interface FileExports {
 
 type StubReason = "type-only" | "missing";
 
-function collectExports(src: string): FileExports {
+const STUB_BLOCK_RE =
+  /\/\/ Auto-injected runtime stub:[\s\S]*?\n\s*export const [A-Za-z_$][\w$]*: any = \((?:props: any|\.\.\._args: any\[\])\)[^\n]*\n?/g;
+
+function collectExports(rawSrc: string): FileExports {
+  // A previously auto-injected passthrough stub is not a real export: ignore
+  // it so a later pass can redirect the import to the module that really
+  // implements the name instead of keeping the no-op stub forever.
+  const src = rawSrc.replace(STUB_BLOCK_RE, "");
   const value = new Set<string>();
   const typeOnly = new Set<string>();
   let hasStar = false;
@@ -113,6 +120,12 @@ function resolveImportPath(
   return null;
 }
 
+/** `src/integrations/backend/auth.tsx` → `@/integrations/backend/auth` */
+function aliasSpecifier(path: string): string {
+  const withoutExt = path.replace(/\.(tsx|ts|jsx|js)$/, "").replace(/\/index$/, "");
+  return withoutExt.startsWith("src/") ? "@/" + withoutExt.slice(4) : "./" + withoutExt;
+}
+
 export function stripTypeOnlyValueImports(files: ProjectFile[]): {
   files: ProjectFile[];
   stripped: { file: string; spec: string; names: string[] }[];
@@ -128,12 +141,37 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
     return e;
   };
 
+  // Index of which modules actually export a given name as a runtime value.
+  // Used to REDIRECT a wrong-module import (e.g. `useAuth` imported from
+  // `@/integrations/backend/client` when it lives in `…/backend/auth`)
+  // instead of stubbing it out, which silently breaks the feature at runtime.
+  const valueExporters = new Map<string, string[]>();
+  for (const f of files) {
+    if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
+    for (const name of collectExports(f.content).value) {
+      const list = valueExporters.get(name);
+      if (list) list.push(f.path);
+      else valueExporters.set(name, [f.path]);
+    }
+  }
+
+  const findRedirect = (name: string, target: string, importer: string): string | null => {
+    const all = (valueExporters.get(name) ?? []).filter((p) => p !== target && p !== importer);
+    if (all.length === 0) return null;
+    const dirOf = (p: string) => p.slice(0, p.lastIndexOf("/"));
+    const sameDir = all.filter((p) => dirOf(p) === dirOf(target));
+    const pick = sameDir.length === 1 ? sameDir[0] : all.length === 1 ? all[0] : null;
+    return pick ? aliasSpecifier(pick) : null;
+  };
+
   const stripped: { file: string; spec: string; names: string[] }[] = [];
   const out: ProjectFile[] = files.map((f) => ({ ...f }));
   const outByPath = new Map(out.map((f) => [f.path, f]));
 
   // Track stubs to inject per target file: targetPath -> name -> reason.
   const stubs = new Map<string, Map<string, StubReason>>();
+  // Track import rewrites per importing file: statement -> replacement.
+  const rewrites = new Map<string, Array<{ from: string; to: string }>>();
 
   // Match named-value imports (skip `import type …`).
   const importRe = /import\s+(?!type\b)([^"';]+?)\s+from\s+["']([^"']+)["'];?/g;
@@ -146,6 +184,7 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
     let m: RegExpExecArray | null;
     importRe.lastIndex = 0;
     while ((m = importRe.exec(f.content))) {
+      const statement = m[0];
       const clause = m[1];
       const spec = m[2];
       if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
@@ -161,6 +200,7 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
       const inside = clause.slice(braceStart + 1, braceEnd);
 
       const needStub: Array<{ name: string; reason: StubReason }> = [];
+      const redirected: Array<{ name: string; spec: string }> = [];
       for (const raw of inside.split(",")) {
         const piece = raw.trim();
         if (!piece) continue;
@@ -168,11 +208,49 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
         const original = piece.split(/\s+as\s+/i)[0].trim();
         if (!/^[A-Za-z_$][\w$]*$/.test(original)) continue;
         if (exp.value.has(original)) continue;
+        const redirect = exp.typeOnly.has(original)
+          ? null
+          : findRedirect(original, target, f.path);
+        if (redirect) {
+          redirected.push({ name: piece, spec: redirect });
+          continue;
+        }
         needStub.push({
           name: original,
           reason: exp.typeOnly.has(original) ? "type-only" : "missing",
         });
       }
+
+      if (redirected.length > 0) {
+        // Drop the redirected names from the original clause and re-import
+        // them from the module that really exports them.
+        const kept = inside
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .filter((piece) => !redirected.some((r) => r.name === piece));
+        const before = clause.slice(0, braceStart).trim().replace(/,$/, "");
+        const after = clause.slice(braceEnd + 1).trim();
+        const parts: string[] = [];
+        if (kept.length > 0 || (!before && !after)) {
+          const head = before ? `${before}, ` : "";
+          if (kept.length > 0) parts.push(`import ${head}{ ${kept.join(", ")} } from "${spec}";`);
+          else if (before) parts.push(`import ${before} from "${spec}";`);
+        } else if (before) {
+          parts.push(`import ${before} from "${spec}";`);
+        }
+        const bySpec = new Map<string, string[]>();
+        for (const r of redirected) {
+          const list = bySpec.get(r.spec);
+          if (list) list.push(r.name);
+          else bySpec.set(r.spec, [r.name]);
+        }
+        for (const [s, names] of bySpec) parts.push(`import { ${names.join(", ")} } from "${s}";`);
+        const list = rewrites.get(f.path) ?? [];
+        list.push({ from: statement, to: parts.join("\n") });
+        rewrites.set(f.path, list);
+      }
+
       if (needStub.length === 0) continue;
 
       let targetStubs = stubs.get(target);
@@ -185,6 +263,12 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
     }
   }
 
+  for (const [path, list] of rewrites) {
+    const file = outByPath.get(path);
+    if (!file) continue;
+    for (const r of list) file.content = file.content.replace(r.from, r.to);
+  }
+
   // Inject stubs into target files and promote the name from typeOnly→value
   // so subsequent passes (and future calls) see it as a value export.
   for (const [target, names] of stubs) {
@@ -194,6 +278,8 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
     const lines: string[] = [];
     for (const [n, reason] of names) {
       if (exp.value.has(n)) continue;
+      // Never inject the same stub twice (stubs are ignored by collectExports).
+      if (new RegExp(`export const ${n}: any =`).test(file.content)) continue;
       const reasonText = reason === "type-only"
         ? "was declared only as a type/interface"
         : "was imported as a named value but is not exported by this module";
@@ -201,8 +287,13 @@ export function stripTypeOnlyValueImports(files: ProjectFile[]): {
         `// Auto-injected runtime stub: \`${n}\` ${reasonText} ` +
         `but imported as a value. Renders children as a passthrough so the preview does not crash.`,
       );
+      // A missing HOOK must not be stubbed as a component: callers destructure
+      // its result (`const { user } = useAuth()`), and a component stub returns
+      // null, which crashes the page with "Cannot destructure property of null".
       lines.push(
-        `export const ${n}: any = (props: any) => (props && props.children) ? props.children : null;`,
+        /^use[A-Z]/.test(n)
+          ? `export const ${n}: any = (..._args: any[]) => ({});`
+          : `export const ${n}: any = (props: any) => (props && props.children) ? props.children : null;`,
       );
       exp.value.add(n);
       exp.typeOnly.delete(n);

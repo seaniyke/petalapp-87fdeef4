@@ -27,8 +27,13 @@ export interface ImportSyntaxFixResult {
 
 const SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
 
-/** `from` misspellings the model emits often enough to be worth healing. */
-const FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)\s+(?:form|fom|frm|rom|form)\s+(['"])/gm;
+/**
+ * `from` misspellings and mis-emissions the model produces often enough to be
+ * worth healing. Includes `=>` / `=` / `:` written where `from` belongs
+ * (seen in production: `import { Spinner } => '@/components/ui/spinner';`).
+ */
+const FROM_TYPOS =
+  /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
 
 /** `import <clause> '…'` with the keyword missing entirely. */
 const MISSING_FROM_PATTERNS: RegExp[] = [

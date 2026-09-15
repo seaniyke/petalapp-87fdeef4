@@ -108,3 +108,111 @@ describe("select onValueChange injection", () => {
     expect(content).toContain("onChange={(value) => form.setValue");
   });
 });
+
+import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
+
+describe("redirect", () => {
+  it("redirects useAuth to the module that exports it", () => {
+    const files = [
+      { path: "src/integrations/backend/client.ts", content: "export const db = {};\nexport const auth = {};\n" },
+      { path: "src/integrations/backend/auth.tsx", content: "export function AuthProvider(){return null}\nexport function useAuth(){return {user:null}}\n" },
+      { path: "src/pages/dashboard.tsx", content: 'import { db, useAuth } from "@/integrations/backend/client";\nexport default function D(){ const {user}=useAuth(); return null }\n' },
+    ];
+    const { files: out } = stripTypeOnlyValueImports(files as any);
+    const dash = out.find((f) => f.path === "src/pages/dashboard.tsx")!.content;
+    expect(dash).toContain('import { db } from "@/integrations/backend/client";');
+    expect(dash).toContain('import { useAuth } from "@/integrations/backend/auth";');
+    expect(out.find((f) => f.path === "src/integrations/backend/client.ts")!.content).not.toContain("runtime stub");
+  });
+});
+
+describe("import keyword typos", () => {
+  it("heals `=>` written where `from` belongs", async () => {
+    const { repairImportSyntax } = await import("@/server/import-syntax-fixer.server");
+    const { out } = repairImportSyntax("import { Spinner } => '@/components/ui/spinner';\n");
+    expect(out).toBe("import { Spinner } from '@/components/ui/spinner';\n");
+  });
+  it("leaves valid imports untouched", async () => {
+    const { repairImportSyntax } = await import("@/server/import-syntax-fixer.server");
+    const src = "import { A } from '@/a';\nimport type { B } from '@/b';\nconst f = () => 'x';\n";
+    expect(repairImportSyntax(src).out).toBe(src);
+  });
+});
+
+describe("@apply dark", () => {
+  it("drops variant markers that Tailwind cannot apply", async () => {
+    const m = await import("@/server/validate-styles.server");
+    const css = '@import "tailwindcss";\n@theme { --font-body: Inter; }\n@layer base {\n  .dark { --background: #000; }\n}\nhtml {\n  @apply antialiased font-body dark;\n}\n';
+    expect(m.validateStylesCss(css).ok).toBe(false);
+    const repaired = m.repairStylesCss(css);
+    expect(repaired).toBeTruthy();
+    expect(repaired!.css).toContain("@apply antialiased font-body;");
+    expect(repaired!.css).not.toMatch(/@apply[^;]*\bdark\b/);
+  });
+});
+
+describe("glued from typos", () => {
+  it("heals `nfrom` and keeps valid imports intact", async () => {
+    const { repairImportSyntax } = await import("@/server/import-syntax-fixer.server");
+    const src = "import React nfrom 'react';\nimport { z } from 'zod';\n";
+    const { out } = repairImportSyntax(src);
+    expect(out).toContain("import React from 'react';");
+    expect(out).toContain("import { z } from 'zod';");
+  });
+});
+
+describe("route collection", () => {
+  it("ignores demo routes inside kit component files", async () => {
+    const { collectRoutes } = await import("@/server/verify-plan.server");
+    const routes = collectRoutes([
+      { path: "src/App.tsx", content: '<Route path="/" /><Route path="/dashboard" />' },
+      { path: "src/components/examples/blog.tsx", content: '<Route path="/posts" />' },
+      { path: "src/components/blocks/nav-bar.tsx", content: '<Route path="/about" />' },
+    ] as never);
+    expect(routes).toEqual(["/", "/dashboard"]);
+  });
+});
+
+describe("missing hook stubs", () => {
+  it("stubs a missing hook as a callable returning an object", async () => {
+    const { stripTypeOnlyValueImports } = await import("@/server/strip-type-only-value-imports.server");
+    const { files } = stripTypeOnlyValueImports([
+      { path: "src/lib/forms.ts", content: "export const Form: any = null;\n" },
+      { path: "src/pages/x.tsx", content: 'import { useThing } from "@/lib/forms";\nexport default function X(){ const { a } = useThing(); return <div>{a}</div>; }\n' },
+    ] as never);
+    const lib = files.find((f) => f.path === "src/lib/forms.ts")!;
+    expect(lib.content).toContain("export const useThing: any = (..._args: any[]) => ({});");
+  });
+});
+
+describe("chained from junk", () => {
+  it("heals `=> from` written between the clause and the module", async () => {
+    const { repairImportSyntax } = await import("@/server/import-syntax-fixer.server");
+    const { out } = repairImportSyntax('import { Button } => from "@/x";\nimport A from "b";\n');
+    expect(out).toContain('import { Button } from "@/x";');
+    expect(out).toContain('import A from "b";');
+  });
+});
+
+describe("query provider", () => {
+  it("wraps the app root when pages use TanStack Query", async () => {
+    const { ensureQueryProvider } = await import("@/server/ensure-query-provider.server");
+    const { files } = ensureQueryProvider([
+      { path: "src/main.tsx", content: 'import App from "./App";\ncreateRoot(el).render(<App />);\n' },
+      { path: "src/pages/d.tsx", content: 'import { useQuery } from "@tanstack/react-query";\nexport default function D(){ useQuery({}); return null; }\n' },
+    ] as never);
+    const main = files.find((f) => f.path === "src/main.tsx")!;
+    expect(main.content).toContain("<QueryClientProvider client={queryClient}>");
+    expect(main.content).toContain("new QueryClient()");
+  });
+});
+
+describe("font utility @apply", () => {
+  it("drops font-body when no --font-body token exists", async () => {
+    const { repairStylesCss } = await import("@/server/validate-styles.server");
+    const css = '@import "tailwindcss";\n@layer base {\n  .dark { --background: #000; }\n}\nhtml {\n  @apply antialiased font-body;\n}\n';
+    const repaired = repairStylesCss(css);
+    expect(repaired!.css).toContain("@apply antialiased;");
+    expect(repaired!.css).not.toContain("font-body");
+  });
+});

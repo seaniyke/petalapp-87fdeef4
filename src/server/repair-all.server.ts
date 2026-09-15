@@ -60,6 +60,7 @@ import { fixSourceEscapes } from "./source-escape-fixer.server";
 import { fixMarkdownFences } from "./markdown-fence-fixer.server";
 
 import { fixImportSyntax } from "./import-syntax-fixer.server";
+import { ensureQueryProvider } from "./ensure-query-provider.server";
 import { fixJsxAttrLiterals } from "./jsx-attr-literal-fixer.server";
 
 export interface RepairAllResult {
@@ -176,6 +177,12 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   notes.push(...revealedFences.notes);
 
 
+
+  // 0a-4. TanStack Query without a provider crashes every page that queries
+  // ("No QueryClient set"). Mount it at the app root deterministically.
+  const queryProvider = ensureQueryProvider(files);
+  files = queryProvider.files;
+  notes.push(...queryProvider.notes);
 
   // 0. Build-config import repair. Config files are deliberately excluded
   // from model edits and bare-import stripping, so deterministic healing is
