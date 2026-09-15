@@ -274,3 +274,56 @@ describe("query provider on the render path", () => {
     expect(files.find((f) => f.path === "src/main.tsx")!.content).not.toContain("<QueryClientProvider");
   });
 });
+
+describe("nested react-router paths", () => {
+  it("resolves child routes against their parent path", async () => {
+    const { collectRoutes } = await import("../verify-plan.server");
+    const app = `
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Landing />} />
+        </Route>
+        <Route path="/auth" element={<Layout />}>
+          <Route path="sign-in" element={<SignIn />} />
+          <Route path="sign-up" element={<SignUp />} />
+        </Route>
+      </Routes>`;
+    const routes = collectRoutes([{ path: "src/App.tsx", content: app }]);
+    expect(routes).toContain("/auth/sign-in");
+    expect(routes).toContain("/auth/sign-up");
+    expect(routes).not.toContain("/sign-in");
+  });
+});
+
+describe("type-only value imports", () => {
+  it("promotes a lucide icon imported as a type", async () => {
+    const { promoteTypeOnlyValueImports } = await import("../scope-repair.server");
+    const out = promoteTypeOnlyValueImports(
+      'import type { Square, LucideIcon } from "lucide-react";\nconst a = { icon: Square };\n',
+    );
+    expect(out).toContain('import { Square } from "lucide-react";');
+    expect(out).toContain('import type { LucideIcon } from "lucide-react";');
+  });
+});
+
+describe("duplicate router providers", () => {
+  it("removes an App-level BrowserRouter when the entry already renders one", async () => {
+    const { fixMissingRouterProvider } = await import("../router-provider.server");
+    const files = [
+      {
+        path: "src/main.tsx",
+        content:
+          'import { BrowserRouter } from "react-router-dom";\nimport App from "./App";\ncreateRoot(document.getElementById("root")!).render(\n  <BrowserRouter>\n    <App />\n  </BrowserRouter>\n);\n',
+      },
+      {
+        path: "src/App.tsx",
+        content:
+          'import { BrowserRouter, Routes, Route } from "@/components/ui/router";\nexport default function App() {\n  return (\n    <BrowserRouter>\n      <Routes>\n        <Route path="/" element={<Home />} />\n      </Routes>\n    </BrowserRouter>\n  );\n}\n',
+      },
+    ];
+    const out = fixMissingRouterProvider(files);
+    const app = out.files.find((f) => f.path === "src/App.tsx")!.content;
+    expect(app).not.toContain("<BrowserRouter>");
+    expect(app).toContain("<Routes>");
+  });
+});

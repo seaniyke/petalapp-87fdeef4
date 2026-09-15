@@ -260,7 +260,7 @@ export function ForgotPasswordCard({
 // =============================================================================
 
 const STAT_CARD = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
@@ -310,7 +310,7 @@ export function StatCard({
 `;
 
 const KPI_GRID = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /** Responsive grid wrapper for <StatCard /> tiles. */
 export function KpiGrid({
@@ -329,7 +329,7 @@ export function KpiGrid({
 `;
 
 const COMPARISON_TABLE = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Check, Minus } from "lucide-react";
 
 export interface ComparisonColumn {
@@ -389,7 +389,7 @@ export function ComparisonTable({
 `;
 
 const PRICING_TABLE = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -478,7 +478,7 @@ export function PricingTable({
 `;
 
 const ACTIVITY_FEED = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export interface ActivityItem {
@@ -528,7 +528,7 @@ export function ActivityFeed({ items, className }: { items: ActivityItem[]; clas
 // =============================================================================
 
 const MULTI_STEP_WIZARD = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Check } from "lucide-react";
@@ -591,7 +591,7 @@ export function MultiStepWizard({
 `;
 
 const FILE_UPLOAD_DROPZONE = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
 
@@ -658,7 +658,7 @@ export function FileUploadDropzone({
 `;
 
 const EMPTY_STATE_CTA = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 /** Generic empty-state with primary CTA. Use for "no items yet" screens. */
@@ -706,7 +706,7 @@ export function EmptyStateCta({
 // =============================================================================
 
 const SIDEBAR_SHELL = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Menu, X } from "lucide-react";
@@ -773,7 +773,7 @@ export function SidebarShell({
     <div className={cn("min-h-screen bg-background", className)}>
       <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 border-r border-border bg-card transition-transform md:translate-x-0", open ? "translate-x-0" : "-translate-x-full")}>
         <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-          <div className="flex-1 truncate font-semibold text-foreground">{brand}</div>
+          <div className="flex-1 truncate font-semibold text-foreground">{slotNode(brand)}</div>
           <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setOpen(false)}><X className="h-4 w-4" /></Button>
         </div>
         <ScrollArea className="h-[calc(100vh-3.5rem-3rem)]">
@@ -794,7 +794,7 @@ export function SidebarShell({
           <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setOpen(true)}><Menu className="h-4 w-4" /></Button>
           {/* The brand lockup must stay visible on mobile — a top bar with
               only a hamburger and empty space reads as a broken page. */}
-          <div className="min-w-0 flex-1 truncate font-semibold text-foreground md:hidden">{brand}</div>
+          <div className="min-w-0 flex-1 truncate font-semibold text-foreground md:hidden">{slotNode(brand)}</div>
           <div className="hidden flex-1 md:block" />
           {topRight}
         </header>
@@ -806,7 +806,7 @@ export function SidebarShell({
 `;
 
 const SECTION_HEADER = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /** Section header with title, description, and optional actions. */
 export function SectionHeader({
@@ -817,7 +817,7 @@ export function SectionHeader({
 }: {
   title: React.ReactNode;
   description?: React.ReactNode;
-  actions?: React.ReactNode;
+  actions?: React.ReactNode | { label?: React.ReactNode; href?: string; onClick?: () => void };
   className?: string;
 }) {
   return (
@@ -826,14 +826,14 @@ export function SectionHeader({
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex items-center gap-2">{slotNode(actions)}</div>}
     </div>
   );
 }
 `;
 
 const FILTER_BAR = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 
@@ -868,7 +868,7 @@ export function FilterBar({
 // =============================================================================
 
 const PRODUCT_CARD = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -908,7 +908,7 @@ export function ProductCard({ name, price, imageSrc, imageAlt, href, badge, meta
 `;
 
 const CART_LINE_ITEM = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2 } from "lucide-react";
 
@@ -954,7 +954,7 @@ export function CartLineItem({ name, variant, imageSrc, unitPrice, quantity, onC
 `;
 
 const CHECKOUT_SUMMARY = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";

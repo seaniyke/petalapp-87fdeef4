@@ -63,7 +63,6 @@ const MAX_ROUTES = 12;
 const MAX_FLOWS = 4;
 const MAX_STEPS = 20;
 
-const ROUTE_PATH_RE = /<Route\b[^>]*\bpath\s*=\s*(?:["']([^"']+)["']|\{\s*["']([^"']+)["']\s*\})/g;
 const FILE_ROUTE_RE = /createFileRoute\(\s*["']([^"']+)["']\s*\)/g;
 const OBJECT_ROUTE_RE = /\bpath\s*:\s*["'](\/[^"']*)["']/g;
 
@@ -94,6 +93,67 @@ function normalize(path: string): string | null {
 const NON_ROUTING_DIR_RE =
   /^src\/components\/(examples|blocks|ui|content)\/|^src\/(lib|hooks|integrations)\//;
 
+/**
+ * Resolve `<Route>` paths against their parents.
+ *
+ * React Router nests: `<Route path="/auth"><Route path="sign-in" /></Route>`
+ * mounts `/auth/sign-in`. Reading each `path` in isolation produced
+ * `/sign-in`, so the browser check visited a URL the app never mounts and
+ * failed the deploy with "rendered a blank page".
+ */
+export function collectJsxRoutes(src: string): string[] {
+  const out: string[] = [];
+  const stack: string[] = [];
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] !== "<") continue;
+    if (src.startsWith("</Route", i)) {
+      const gt = src.indexOf(">", i);
+      if (gt === -1) break;
+      stack.pop();
+      i = gt;
+      continue;
+    }
+    if (!/^<Route\b/.test(src.slice(i, i + 7))) continue;
+    // Walk to this tag's own ">" — attribute values can embed JSX
+    // (`element={<Layout />}`) and quotes, so depth/quote tracking is
+    // required; a plain regex closed the tag at the first inner ">".
+    let j = i + 6;
+    let depth = 0;
+    let quote: string | null = null;
+    let end = -1;
+    for (; j < src.length; j++) {
+      const c = src[j]!;
+      if (quote) {
+        if (c === quote) quote = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === "`") quote = c;
+      else if (c === "{") depth++;
+      else if (c === "}") depth--;
+      else if (c === ">" && depth === 0) {
+        end = j;
+        break;
+      }
+    }
+    if (end === -1) break;
+    const attrs = src.slice(i + 6, end);
+    const selfClosing = attrs.trimEnd().endsWith("/");
+    const pm = /\bpath\s*=\s*(?:["']([^"']*)["']|\{\s*["']([^"']*)["']\s*\})/.exec(attrs);
+    const isIndex = /\bindex\b/.test(attrs) && !pm;
+    const parent = stack.length > 0 ? stack[stack.length - 1]! : "";
+    let full = parent;
+    if (pm) {
+      const raw = (pm[1] ?? pm[2] ?? "").trim();
+      full = raw.startsWith("/") ? raw : `${parent}/${raw}`;
+    }
+    if (pm || isIndex) out.push(full || "/");
+    if (!selfClosing) stack.push(full);
+    i = end;
+  }
+  return out;
+}
+
+
 /** Every statically-visitable route the project declares, "/" first. */
 export function collectRoutes(files: ProjectFile[]): string[] {
   const found = new Set<string>();
@@ -101,7 +161,11 @@ export function collectRoutes(files: ProjectFile[]): string[] {
     if (!/\.(tsx|jsx|ts|js)$/.test(f.path)) continue;
     if (/\/(node_modules|dist)\//.test(f.path)) continue;
     if (NON_ROUTING_DIR_RE.test(f.path)) continue;
-    for (const re of [ROUTE_PATH_RE, FILE_ROUTE_RE, OBJECT_ROUTE_RE]) {
+    for (const raw of collectJsxRoutes(f.content)) {
+      const p = normalize(raw);
+      if (p) found.add(p);
+    }
+    for (const re of [FILE_ROUTE_RE, OBJECT_ROUTE_RE]) {
       re.lastIndex = 0;
       let m: RegExpExecArray | null;
       while ((m = re.exec(f.content)) !== null) {
@@ -113,6 +177,7 @@ export function collectRoutes(files: ProjectFile[]): string[] {
       }
     }
   }
+
   found.add("/");
   const all = [...found];
   // "/" first, then shortest paths — the marketing surface before deep pages.

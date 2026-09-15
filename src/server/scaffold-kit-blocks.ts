@@ -32,7 +32,7 @@ type KitFile = ProjectFile & { overwrite: boolean };
 // =============================================================================
 
 const MARQUEE = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Infinite horizontal scroller. Duplicates children so the loop is seamless.
@@ -73,7 +73,7 @@ export function Marquee({
 `;
 
 const KBD = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /** Keyboard shortcut pill: <Kbd>⌘K</Kbd> */
 export function Kbd({ className, children, ...props }: React.HTMLAttributes<HTMLElement>) {
@@ -93,7 +93,7 @@ export function Kbd({ className, children, ...props }: React.HTMLAttributes<HTML
 
 const CODE_BLOCK = `import * as React from "react";
 import { Check, Copy } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Read-only code block with copy button. Not a syntax highlighter — keep it
@@ -138,7 +138,7 @@ export function CodeBlock({
 `;
 
 const EMPTY_STATE = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Standardized empty/zero state. Use whenever a list, table, or panel has
@@ -155,7 +155,7 @@ export function EmptyState({
   icon?: React.ComponentType<{ className?: string }>;
   title: string;
   description?: string;
-  action?: React.ReactNode;
+  action?: React.ReactNode | { label?: React.ReactNode; href?: string; onClick?: () => void };
   className?: string;
 }) {
   return (
@@ -167,7 +167,7 @@ export function EmptyState({
       )}
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       {description && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>}
-      {action && <div className="mt-5">{action}</div>}
+      {action && <div className="mt-5">{slotNode(action)}</div>}
     </div>
   );
 }
@@ -175,7 +175,7 @@ export function EmptyState({
 
 const STAT = `import * as React from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Single KPI atom. Compose into a Grid for stat bands.
@@ -224,7 +224,7 @@ export function Stat({
 `;
 
 const TIMELINE = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface TimelineItem {
   title: React.ReactNode;
@@ -264,7 +264,7 @@ export function Timeline({ items, className }: { items: TimelineItem[]; classNam
 const FEATURE_ICON = `import * as React from "react";
 import * as LucideIcons from "lucide-react";
 import { Circle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Bordered/tinted icon tile. Use as the leading mark of a feature card.
@@ -317,7 +317,7 @@ export function FeatureIcon(props: {
 `;
 
 const GRADIENT_TEXT = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Inline gradient headline. Wraps a span with a from/to gradient using
@@ -344,7 +344,7 @@ export function GradientText({
 `;
 
 const GRADIENT_BLOB = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Decorative blurred gradient blob for hero backgrounds. Position-absolute
@@ -378,7 +378,7 @@ export function GradientBlob({
 `;
 
 const SECTION = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Standard section wrapper with eyebrow + heading + description. Use this
@@ -441,7 +441,7 @@ export function Section({
 `;
 
 const DIVIDER = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Labeled or plain divider. With a label it becomes "—— or ——" style.
@@ -466,7 +466,7 @@ export function Divider({
 
 const RATING = `import * as React from "react";
 import { Star } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Read-only star rating. Half-star is rendered via overflow-clip overlay so
@@ -504,7 +504,7 @@ export function Rating({
 `;
 
 const PROSE = `import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Long-form typography wrapper. Apply to article bodies, MDX output,
@@ -548,7 +548,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { GradientBlob } from "@/components/ui/gradient-blob";
 import { GradientText } from "@/components/ui/gradient-text";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Centered hero with optional eyebrow + dual CTA. Default landing-page hero —
@@ -627,7 +627,7 @@ const HERO_SPLIT_IMAGE = `import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Two-column hero: copy on the left, hero image / screenshot on the right.
@@ -706,7 +706,7 @@ export function HeroSplitImage({
 const HERO_EDITORIAL = `import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Editorial hero: oversized display title, asymmetric layout, strong negative
@@ -823,7 +823,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { GradientBlob } from "@/components/ui/gradient-blob";
 import { GradientText } from "@/components/ui/gradient-text";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Vivid centered hero with layered gradient blobs + subtle grid backdrop.
@@ -896,7 +896,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Two-column hero with a SELF-CONTAINED dashboard mock on the right —
@@ -1020,7 +1020,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Centered hero with a faux product screenshot floating below — browser
@@ -1124,7 +1124,7 @@ const FEATURES_GRID_3 = `import * as React from "react";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { FeatureIcon } from "@/components/ui/feature-icon";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface FeatureItem {
   icon?: React.ComponentType<{ className?: string }> | string;
@@ -1176,7 +1176,7 @@ const FEATURES_BENTO = `import * as React from "react";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { FeatureIcon } from "@/components/ui/feature-icon";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface BentoItem {
   icon?: React.ComponentType<{ className?: string }> | string;
@@ -1261,7 +1261,7 @@ const FEATURES_ALTERNATING = `import * as React from "react";
 import { Check } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
-import { cn } from "@/lib/utils";
+import { cn, slotNode } from "@/lib/utils";
 
 export interface AlternatingFeature {
   eyebrow?: string;

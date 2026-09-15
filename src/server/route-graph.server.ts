@@ -25,6 +25,8 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { collectJsxRoutes } from "./verify-plan.server";
+
 
 const SCANNABLE = /\.(tsx|jsx)$/;
 const isAppSource = (path: string) =>
@@ -210,15 +212,15 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
     if (!isAppSource(f.path)) continue;
     let m: RegExpExecArray | null;
 
-    // declared paths
-    const rePath = new RegExp(ROUTE_PATH_RE.source, "g");
+    // declared paths (nested <Route> paths resolved against their parents)
     let fileHasRoot = false;
-    while ((m = rePath.exec(f.content))) {
-      const p = normalizeTarget(m[1] ?? m[2] ?? "");
+    for (const raw of collectJsxRoutes(f.content)) {
+      const p = normalizeTarget(raw);
       if (!p) continue;
       declaredPaths.push(p);
       if (p === "/") fileHasRoot = true;
     }
+
     if (fileHasRoot) rootDeclFiles.push(f.path);
 
     // component definitions (Pascal-case)

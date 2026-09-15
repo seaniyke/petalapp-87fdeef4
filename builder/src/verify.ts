@@ -131,6 +131,8 @@ export interface AuthFinding {
   attempted: boolean;
   signedUp: boolean;
   signedIn: boolean;
+  /** Sign-up succeeded but the backend requires email confirmation first. */
+  confirmationRequired?: boolean;
   error?: string;
   screenshot?: string;
 }
@@ -263,16 +265,50 @@ interface PageWatch {
   failedRequests: string[];
 }
 
+/**
+ * Production React reports crashes as "Minified React error #31" plus an
+ * encoded args list. Left as-is, the repair pass sees no actionable text and
+ * retries the identical build. Translate the ones we actually hit.
+ */
+const REACT_ERROR_TEXT: Record<string, string> = {
+  "31": "Objects are not valid as a React child. A component rendered a plain object where a string/element was expected — usually a { label, href } style prop passed into a slot that renders its value directly.",
+  "130": "Element type is invalid: a component rendered undefined — usually a wrong import (default vs named) or a missing export.",
+  "137": "A text node cannot appear as a child of <table>/<tbody>: check whitespace between table elements.",
+  "185": "Too many re-renders: a setState call runs during render — move it into an event handler or useEffect.",
+  "418": "Hydration mismatch: server and client rendered different markup.",
+  "425": "Hydration text mismatch: the rendered text differs between server and client.",
+};
+
+function decodeReactError(text: string): string {
+  const m = /Minified React error #(\d+)/.exec(text);
+  if (!m) return text;
+  const explain = REACT_ERROR_TEXT[m[1]!];
+  const args = [...text.matchAll(/args\[\]=([^&\s]+)/g)]
+    .map((a) => {
+      try {
+        return decodeURIComponent(a[1]!);
+      } catch {
+        return a[1]!;
+      }
+    })
+    .filter(Boolean);
+  const parts = [`React error #${m[1]}`];
+  if (explain) parts.push(explain);
+  if (args.length > 0) parts.push(`details: ${args.join(", ")}`);
+  return parts.join(" — ");
+}
+
 function watchPage(page: Page): PageWatch {
   const watch: PageWatch = { consoleErrors: [], pageErrors: [], failedRequests: [] };
   page.on("console", (msg: ConsoleMessage) => {
     if (msg.type() !== "error") return;
-    const text = truncate(msg.text());
+    const text = truncate(decodeReactError(msg.text()));
     if (isNoise(text) || watch.consoleErrors.includes(text)) return;
     if (watch.consoleErrors.length < 12) watch.consoleErrors.push(text);
   });
+
   page.on("pageerror", (err) => {
-    const text = truncate(err.message);
+    const text = truncate(decodeReactError(err.message));
     if (watch.pageErrors.includes(text)) return;
     if (watch.pageErrors.length < 12) watch.pageErrors.push(text);
   });
@@ -605,9 +641,21 @@ async function runAuth(
     }
 
     if (!finding.signedIn) {
-      finding.error =
-        (await readAuthError(page)) ??
-        "Submitted the sign-up and sign-in forms but never reached a signed-in state.";
+      // Email confirmation is a legitimate product choice, not a defect: the
+      // account was created and the app told the user to check their inbox.
+      // Treating it as a failure blocked otherwise healthy deploys.
+      const body = (await page.textContent("body").catch(() => "")) ?? "";
+      if (
+        /confirm(ation)?\s+(link|email)|check\s+your\s+(e-?mail|inbox)|verify\s+your\s+e-?mail|we(?:'ve| have)?\s+sent\s+you\s+an?\s+e-?mail/i.test(
+          body,
+        )
+      ) {
+        finding.confirmationRequired = true;
+      } else {
+        finding.error =
+          (await readAuthError(page)) ??
+          "Submitted the sign-up and sign-in forms but never reached a signed-in state.";
+      }
     }
     finding.screenshot = await shot(page, screenshots);
   } catch (err) {
@@ -715,7 +763,7 @@ function summarizeDefects(report: VerifyReport): string[] {
     for (const f of r.failedRequests.slice(0, 3)) defects.push(`${where} request failed: ${f}`);
   }
 
-  if (report.auth?.attempted && !report.auth.signedIn) {
+  if (report.auth?.attempted && !report.auth.signedIn && !report.auth.confirmationRequired) {
     defects.push(
       `Sign-up/sign-in did not produce a signed-in session: ${report.auth.error ?? "unknown reason"}`,
     );
