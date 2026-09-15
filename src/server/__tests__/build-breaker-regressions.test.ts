@@ -243,3 +243,34 @@ describe("unwritten route promises", () => {
     expect(promises.length).toBe(2);
   });
 });
+
+describe("query provider on the render path", () => {
+  it("wraps the root even when an unused providers module exists", async () => {
+    const { ensureQueryProvider } = await import("@/server/ensure-query-provider.server");
+    const { files } = ensureQueryProvider([
+      { path: "src/main.tsx", content: 'import App from "./App";\ncreateRoot(el).render(<App />);\n' },
+      { path: "src/pages/P.tsx", content: 'import { useQuery } from "@tanstack/react-query";\n' },
+      {
+        path: "src/components/providers/app-providers.tsx",
+        content: 'import { QueryClientProvider } from "@tanstack/react-query";\nexport function AppProviders({children}){return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;}\n',
+      },
+    ] as never);
+    expect(files.find((f) => f.path === "src/main.tsx")!.content).toContain("<QueryClientProvider");
+  });
+
+  it("leaves the root alone when it renders a providers component", async () => {
+    const { ensureQueryProvider } = await import("@/server/ensure-query-provider.server");
+    const { files } = ensureQueryProvider([
+      {
+        path: "src/main.tsx",
+        content: 'import App from "./App";\nimport { AppProviders } from "@/components/providers/app-providers";\ncreateRoot(el).render(<AppProviders><App /></AppProviders>);\n',
+      },
+      { path: "src/pages/P.tsx", content: 'import { useQuery } from "@tanstack/react-query";\n' },
+      {
+        path: "src/components/providers/app-providers.tsx",
+        content: 'export function AppProviders({children}){return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;}\n',
+      },
+    ] as never);
+    expect(files.find((f) => f.path === "src/main.tsx")!.content).not.toContain("<QueryClientProvider");
+  });
+});

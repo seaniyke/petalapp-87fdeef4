@@ -66,7 +66,7 @@ const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 50);
  * A job is never cut off for taking long — only for going silent. This is the
  * quiet window (no heartbeat at all) after which we treat it as wedged.
  */
-const JOB_QUIET_MS = Number(process.env.JOB_QUIET_MS ?? 10 * 60 * 1000);
+const JOB_QUIET_MS = Number(process.env.JOB_QUIET_MS ?? 30 * 60 * 1000);
 /** Inspection/codemod sessions get their own pool so they never starve deploys. */
 const MAX_CONCURRENT_EXEC = Number(process.env.MAX_CONCURRENT_EXEC ?? 4);
 const MAX_EXEC_QUEUE = Number(process.env.MAX_EXEC_QUEUE ?? 30);
