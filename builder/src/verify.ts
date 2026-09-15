@@ -797,11 +797,14 @@ export async function runVerification(
       report.flows.push(await runFlow(page, watch, plan.baseUrl, flow, screenshots));
     }
 
-    // Pass 4 — visual QA capture (mobile + desktop). Never fails the build.
+    // Pass 4 — visual QA capture (phone, tablet, desktop). When sign-in
+    // worked, the session is reused so gated screens are reviewed too.
+    // Never fails the build.
     if (plan.visual) {
       try {
         heartbeat.beat("taking screenshots");
-        report.visual = await captureVisual(browser, plan);
+        const state = signedIn ? await context.storageState().catch(() => undefined) : undefined;
+        report.visual = await captureVisual(browser, plan, state);
       } catch {
         /* visual QA is advisory */
       }

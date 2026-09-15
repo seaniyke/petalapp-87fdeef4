@@ -338,9 +338,11 @@ export async function buildVerifyPlan(args: {
 
   const plan: VerifyPlan = { routes, screenshots: false };
 
-  // Visual QA: home plus the most substantial secondary route, captured at a
-  // phone and a desktop width. Scored by a vision model in the callback.
-  plan.visual = { widths: [390, 1440], routes: routes.slice(0, 2) };
+  // Visual QA: home plus the most substantial interior routes, captured at
+  // phone, tablet and desktop widths. Scored by a vision model in the
+  // callback. Two routes at two widths was never enough to prove a design —
+  // interior screens and the tablet breakpoint went entirely unreviewed.
+  plan.visual = { widths: [390, 820, 1440], routes: pickVisualRoutes(routes) };
 
   try {
     const auth = detectAuth(args.files, routes);
