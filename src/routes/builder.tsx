@@ -2049,6 +2049,58 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, bootstrapping]);
 
+  // ── Silent resume watcher ────────────────────────────────────────────────
+  //
+  // When the server takes a turn over, it finishes it and writes the reply
+  // into the thread itself. Poll for that reply so the open tab shows the
+  // finished result without the user doing anything — and without ever being
+  // told that something was interrupted.
+  useEffect(() => {
+    if (!awaitingSilentResume || !project?.id) return;
+    const pid = project.id;
+    const baseline = messagesRef.current?.length ?? 0;
+    const startedAt = Date.now();
+    let stopped = false;
+
+    const tick = async () => {
+      if (stopped) return;
+      // Give up quietly after 15 minutes; the reply still lands on reload.
+      if (Date.now() - startedAt > 15 * 60_000) {
+        setAwaitingSilentResume(false);
+        setActivityVisible(false);
+        return;
+      }
+      try {
+        const ms = await loadProjectMessages(pid);
+        if (stopped) return;
+        const grew = ms.length > baseline;
+        const endsWithAssistant = ms[ms.length - 1]?.role === "assistant";
+        if (grew && endsWithAssistant) {
+          const fs = await loadProjectFiles(pid).catch(() => null);
+          if (stopped) return;
+          if (fs) setFiles(fs);
+          setMessages(ms);
+          setStreamingAssistant("");
+          setStreamingPlan("");
+          setStreamingRecap("");
+          setLatestCycleProgress(undefined);
+          setActivityVisible(false);
+          setAwaitingSilentResume(false);
+        }
+      } catch {
+        /* keep waiting */
+      }
+    };
+
+    const timer = window.setInterval(() => void tick(), 8_000);
+    void tick();
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaitingSilentResume, project?.id]);
+
 
   // Auto-send the prompt from the landing page once, after bootstrap.
   // Note: project may be null here when arriving with ?prompt but no ?id —
