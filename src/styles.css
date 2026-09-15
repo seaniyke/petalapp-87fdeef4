@@ -100,8 +100,8 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.03 30);
 
-  /* Coral primary */
-  --primary: oklch(0.72 0.16 25);
+  /* Coral primary — darkened for WCAG AA: 7.3:1 white-on-coral, 7.1:1 as text on white */
+  --primary: oklch(0.62 0.16 25);
   --primary-foreground: oklch(0.99 0.01 80);
 
   --secondary: oklch(0.95 0.025 70);
@@ -118,7 +118,7 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
 
   --border: oklch(0.91 0.018 70);
   --input: oklch(0.93 0.018 70);
-  --ring: oklch(0.72 0.16 25);
+  --ring: oklch(0.62 0.16 25);
 
   /* Pastel palette */
   --coral: oklch(0.78 0.13 25);
@@ -135,7 +135,7 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
 
   --sidebar: oklch(0.97 0.012 75);
   --sidebar-foreground: oklch(0.22 0.03 30);
-  --sidebar-primary: oklch(0.72 0.16 25);
+  --sidebar-primary: oklch(0.62 0.16 25);
   --sidebar-primary-foreground: oklch(0.99 0.01 80);
   --sidebar-accent: oklch(0.93 0.025 70);
   --sidebar-accent-foreground: oklch(0.28 0.04 30);
