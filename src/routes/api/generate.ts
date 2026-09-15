@@ -5194,9 +5194,11 @@ Forbidden defaults
             resolvedPrd.amendment === "contradiction")
             ? resolvedPrd.prd
             : null,
-
-
+          // Pre-turn files: a handful of broken outputs get quarantined back
+          // to these instead of throwing the whole turn away.
+          currentFiles,
         );
+
         if (!guardOut.ok) {
           // Final-parse-guard couldn't repair this turn's edits. Revert
           // to the prior good files and reply conversationally — no
