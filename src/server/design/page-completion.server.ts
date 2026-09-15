@@ -129,7 +129,7 @@ export async function completePlaceholderPages(args: {
   try {
     const res = await aiChatCompletions({
       feature: "generate",
-      timeoutTier: "long",
+      timeoutTier: "default",
       signal: args.signal,
       meta: {
         projectId: args.projectId ?? null,
