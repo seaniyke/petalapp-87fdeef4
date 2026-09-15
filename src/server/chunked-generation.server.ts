@@ -187,6 +187,12 @@ export function assessRouteCoverage(args: {
    * an existing page is not a missing page, so those routes count as covered.
    */
   existingPaths?: string[];
+  /**
+   * Router source (entry + App + emitted files). A page file that no
+   * <Route path="..."> registers is unreachable, which reads to the user as
+   * a missing screen — so an unregistered route counts as not delivered.
+   */
+  routerSource?: string;
 }): ChunkAssessment {
   const deliveredPaths = pathsOf(args);
   const emitted = deliveredPaths.length;
@@ -211,7 +217,17 @@ export function assessRouteCoverage(args: {
       continue;
     }
     if (/[:$*]/.test(slug)) continue; // dynamic params — covered by their parent
-    if (!haystack.includes(slug)) missing.push(route);
+    if (!haystack.includes(slug)) {
+      missing.push(route);
+      continue;
+    }
+    if (args.routerSource) {
+      const registered = new RegExp(
+        `path\\s*[=:]\\s*["'\`][^"'\`]*${slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        "i",
+      ).test(args.routerSource);
+      if (!registered) missing.push(route);
+    }
   }
 
   const unique = Array.from(new Set(missing)).slice(0, 8);

@@ -3421,9 +3421,15 @@ Forbidden defaults
               ...(parsed.files ?? []).map((f) => f.content ?? ""),
               ...(parsed.ops ?? []).map((o) => ("content" in o ? String(o.content ?? "") : "")),
             ].join("\n");
+            // Every shape a promised destination takes: <Link to="/x">,
+            // <a href="/x">, and { href: "/x" } / { to: "/x" } nav data. The
+            // attribute form was missing, so a header with Sign In / Sign Up
+            // links and no pages behind them shipped as a "complete" app.
             const linkRoutes = [
               ...Array.from(emittedSource.matchAll(/\bto\s*=\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
+              ...Array.from(emittedSource.matchAll(/\bhref\s*=\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
               ...Array.from(emittedSource.matchAll(/\bhref\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
+              ...Array.from(emittedSource.matchAll(/\bto\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
             ].map((m) => m[1] ?? "");
             const expectedRoutes = Array.from(
               new Set([...plannedRoutes, ...stepRoutes, ...linkRoutes].map((r) => r.toLowerCase())),
@@ -3436,6 +3442,14 @@ Forbidden defaults
                 files: parsed.files,
                 // Edit turns build on top of what already shipped.
                 existingPaths: isInitial ? [] : currentFiles.map((f) => f.path),
+                routerSource: [
+                  emittedSource,
+                  ...(isInitial
+                    ? []
+                    : currentFiles
+                        .filter((f) => /src\/(App|main|router)\.(t|j)sx?$/i.test(f.path))
+                        .map((f) => f.content ?? "")),
+                ].join("\n"),
               });
               if (coverage.needed) chunkAssessment = coverage;
             }
