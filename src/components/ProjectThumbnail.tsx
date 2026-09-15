@@ -171,6 +171,13 @@ export function ProjectThumbnail({
           )}
           <img
             key={attempt}
+            // SSR renders this <img> in the HTML, so the browser can finish
+            // loading it before React hydrates — in which case onLoad never
+            // fires and the tile would stay invisible behind the loader.
+            // The ref catches the already-complete case on mount.
+            ref={(el) => {
+              if (el && el.complete && el.naturalWidth > 0) setLoaded(true);
+            }}
             src={screenshotUrl(url, fit, attempt)}
             alt=""
             loading="eager"
