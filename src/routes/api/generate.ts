@@ -84,8 +84,10 @@ import { priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import { recordTurnEconomics } from "@/server/turn-economics.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
+  clearPendingMemory,
   loadProjectMemory,
   renderMemoryBlock,
+  savePendingMemory,
   updateProjectMemory,
 } from "@/server/project-memory.server";
 import {
@@ -5211,6 +5213,7 @@ Forbidden defaults
               changeSet: turnChangeSet,
               before: turnBaselineFiles,
               after: nextFiles,
+              memory: memoryEntries,
             });
             if (audit.unmet.length > 0) {
               controller.enqueue(
