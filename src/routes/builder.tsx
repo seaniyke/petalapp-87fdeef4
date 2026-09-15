@@ -2611,6 +2611,16 @@ function Builder() {
               streamErrorRaw = raw;
               if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
+            onRecovering: () => {
+              // Petal is finishing this server-side. Drop anything the stream
+              // may already have flagged and keep the working state on screen.
+              silentlyRecovering = true;
+              streamError = null;
+              streamErrorKind = undefined;
+              streamErrorRaw = undefined;
+              setActivityVisible(true);
+              setLatestCycleProgress("Still working — Petal is finishing this off.");
+            },
             onTurnId: (turnId) => {
               // Persist immediately so a tab-close in the next 200ms still
               // lets us reconnect on return. Keyed per-project so opening a
