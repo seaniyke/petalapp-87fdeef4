@@ -254,12 +254,11 @@ export async function notifyOwner(
       .eq("id", projectId)
       .maybeSingle();
     if (!project?.owner_id) return false;
-    const { data: profile } = await supabaseAdmin
-      .from("profiles")
-      .select("email")
-      .eq("id", project.owner_id)
-      .maybeSingle();
-    const email = (profile as { email?: string } | null)?.email;
+    // Email lives on the auth user, not the profile row.
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(
+      project.owner_id,
+    );
+    const email = authUser?.user?.email ?? undefined;
     if (!email) return false;
     const title = project.title ?? "Your app";
 
