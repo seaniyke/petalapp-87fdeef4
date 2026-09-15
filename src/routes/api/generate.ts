@@ -1613,8 +1613,11 @@ async function runFinalParseGuard(
   controller: ReadableStreamDefaultController<Uint8Array>,
   encoder: TextEncoder,
   prd?: import("@/server/prd/prd-types").Prd | null,
+  /** Files as they were before this turn — the safe content to fall back to. */
+  priorFiles: ProjectFile[] = [],
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
+
 
   const { files: gated, report } = await runPreEmitGate(files, changedPaths, {
     maxRounds: 2,
