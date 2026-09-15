@@ -5956,33 +5956,59 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
           terminalStatus = "failed";
           terminalError = raw.slice(0, 500);
-          emit({
-            type: "error",
-            message: raw || "Petal couldn't start that build. Please try again.",
-            kind: classifyRawError(raw),
-            raw: raw.slice(0, 500),
-          });
+          if (!(await recoverSilently(raw, false))) {
+            emit({
+              type: "error",
+              message: raw || "Petal couldn't start that build. Please try again.",
+              kind: classifyRawError(raw),
+              raw: raw.slice(0, 500),
+            });
+          }
           return;
         }
 
         const reader = response.body.getReader();
+        // The inner pipeline reports its own failures as `error` SSE events
+        // rather than by throwing, so transient ones have to be caught on the
+        // wire. Frame the stream into whole SSE blocks, and hold back any
+        // error we are about to retry ourselves — the user should never see a
+        // failure Petal is already finishing on its own.
+        const decoder = new TextDecoder();
+        let sseBuffer = "";
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          // Keep draining even after the client is gone: the bytes still go
-          // to the turn recorder, which is what a reconnecting tab replays.
-          push(value);
+          sseBuffer += decoder.decode(value, { stream: true });
+          let cut = sseBuffer.indexOf("\n\n");
+          while (cut !== -1) {
+            const block = sseBuffer.slice(0, cut + 2);
+            sseBuffer = sseBuffer.slice(cut + 2);
+            const failure = errorPayloadOf(block);
+            if (failure && (await recoverSilently(failure.raw || failure.message, false))) {
+              terminalStatus = "failed";
+              terminalError = (failure.raw || failure.message).slice(0, 500);
+            } else {
+              // Keep pushing even after the client is gone: the bytes still go
+              // to the turn recorder, which is what a reconnecting tab replays.
+              push(encoder.encode(block));
+            }
+            cut = sseBuffer.indexOf("\n\n");
+          }
         }
+        if (sseBuffer) push(encoder.encode(sseBuffer));
       } catch (e) {
         const raw = e instanceof Error ? e.message : "Generation failed.";
-        terminalStatus = workController.signal.aborted ? "aborted" : "failed";
+        const userCancelled = workController.signal.aborted;
+        terminalStatus = userCancelled ? "aborted" : "failed";
         terminalError = raw.slice(0, 500);
-        emit({
-          type: "error",
-          message: "The connection dropped while Petal was building. Reconnecting and retrying is safe — no credits were charged for this failed attempt.",
-          kind: classifyRawError(raw),
-          raw: raw.slice(0, 500),
-        });
+        if (!(await recoverSilently(raw, userCancelled))) {
+          emit({
+            type: "error",
+            message: humanizeStreamFailure(raw),
+            kind: classifyRawError(raw),
+            raw: raw.slice(0, 500),
+          });
+        }
       } finally {
         if (pingTimer) clearInterval(pingTimer);
         if (statusTimer) clearInterval(statusTimer);
