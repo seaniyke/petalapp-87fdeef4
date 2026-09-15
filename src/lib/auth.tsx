@@ -101,9 +101,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
     let subscription: { unsubscribe: () => void } | undefined;
 
+    // The pre-paint auth-hint script hides the landing page for returning
+    // users; the moment the session question is settled (either way) the page
+    // is allowed to paint again.
+    const clearAuthHint = () => {
+      document.documentElement.removeAttribute("data-petal-auth-hint");
+    };
+
     // Never let a hanging network call keep the UI in an unknown state.
     const timeout = window.setTimeout(() => {
-      if (mounted) setIsReady(true);
+      if (mounted) {
+        setIsReady(true);
+        clearAuthHint();
+      }
     }, AUTH_READY_TIMEOUT_MS);
 
     supabase.auth
@@ -112,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) return;
         setSession(data.session);
         setIsReady(true);
+        clearAuthHint();
         claimReferral(data.session);
 
         const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
@@ -122,7 +133,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         subscription = sub.subscription;
       })
       .catch(() => {
-        if (mounted) setIsReady(true);
+        if (mounted) {
+          setIsReady(true);
+          clearAuthHint();
+        }
       });
 
     return () => {

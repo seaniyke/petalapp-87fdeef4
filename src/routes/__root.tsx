@@ -98,6 +98,16 @@ const themeInitScript = `(function(){try{var k='petal:theme';var v=localStorage.
 // `/assets/*.css` link exists: in dev (and whenever CSS is inlined) Vite
 // injects <style> tags instead, so the old link-only heuristic fired on every
 // load and forced a wasteful full reload of the builder.
+// Pre-paint auth hint: a signed-in user refreshing the landing page used to
+// see the marketing hero for one frame before React hydrated and the session
+// resolved. The server can't know about the session, so the SSR HTML is always
+// the marketing page — but a returning user has an `sb-*-auth-token` key in
+// localStorage. This script runs before first paint and flags <html>; CSS then
+// keeps the landing's auth-sensitive UI hidden until AuthProvider resolves the
+// real session and removes the flag. Signed-out visitors and crawlers have no
+// token, so they get the marketing page immediately, fully visible.
+const authHintScript = `(function(){try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('sb-')===0&&k.indexOf('-auth-token')>0&&localStorage.getItem(k)){document.documentElement.setAttribute('data-petal-auth-hint','1');return}}}catch(e){}})();`;
+
 const stylesheetRecoveryScript = `(function(){var key='petal:reloaded-after-style-miss';function reload(){try{if(sessionStorage.getItem(key)==='1')return;sessionStorage.setItem(key,'1');}catch(e){}var u=new URL(location.href);u.searchParams.set('__petal_css_recover',Date.now().toString(36));location.replace(u.toString());}function styled(){try{var v=getComputedStyle(document.documentElement).getPropertyValue('--background');if(v&&v.trim())return true;}catch(e){}try{var sheets=[].slice.call(document.styleSheets||[]);for(var i=0;i<sheets.length;i++){try{if(sheets[i].cssRules&&sheets[i].cssRules.length)return true;}catch(e){return true;}}}catch(e){}return false;}window.addEventListener('error',function(e){var t=e&&e.target;if(!t||t.tagName!=='LINK')return;var rel=(t.getAttribute('rel')||'').toLowerCase();var href=t.getAttribute('href')||'';if(rel.indexOf('stylesheet')!==-1&&(href.indexOf('/assets/')===0||href.indexOf(location.origin+'/assets/')===0)&&!styled())reload();},true);window.addEventListener('load',function(){setTimeout(function(){if(!styled()){reload();return;}try{sessionStorage.removeItem(key);}catch(e){}},1200);});})();`;
 
 // AuthProvider lives in the SHELL, not in `component`. The shell wraps every
@@ -111,6 +121,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: authHintScript }} />
         <script dangerouslySetInnerHTML={{ __html: stylesheetRecoveryScript }} />
         <HeadContent />
       </head>

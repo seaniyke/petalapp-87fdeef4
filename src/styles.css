@@ -2,6 +2,14 @@
 @source "../src";
 @import "tw-animate-css";
 
+/* While a returning user's session is still resolving, keep the landing page's
+   auth-sensitive UI from painting the signed-out marketing view. The attribute
+   is set pre-paint by an inline script and removed by AuthProvider once the
+   session is known. visibility (not display) keeps layout stable. */
+html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
+  visibility: hidden;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

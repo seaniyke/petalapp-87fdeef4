@@ -464,7 +464,10 @@ function Landing() {
   };
 
   return (
-    <div className="landing-page min-h-screen bg-background text-foreground">
+    // data-auth-hint-hide: a pre-paint script flags returning users (stored
+    // session token) on <html>; CSS keeps this tree invisible until
+    // AuthProvider resolves the session, so the marketing hero never flashes.
+    <div data-auth-hint-hide className="landing-page min-h-screen bg-background text-foreground">
       <SiteHeader />
 
       {/* Product-first hero */}
