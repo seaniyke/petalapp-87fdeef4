@@ -5,6 +5,7 @@ import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { findDeadMobileNav, findDeadButtons } from "@/server/interaction-hygiene.server";
 import { lintProductPrinciples } from "@/server/product-principles.server";
 import { isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
+import { TEMPLATES, type TemplateKey } from "@/server/templates.server";
 
 
 function appEntrypoint(files: ProjectFile[]): ProjectFile | undefined {
@@ -14,6 +15,7 @@ function appEntrypoint(files: ProjectFile[]): ProjectFile | undefined {
 export function findGenerationQualityIssues(
   files: ProjectFile[],
   subtype?: WebSubtype,
+  opts: { template?: TemplateKey | null } = {},
 ): LocalIssue[] {
   const issues: LocalIssue[] = [];
   if (!subtype) return issues;
@@ -93,6 +95,45 @@ export function findGenerationQualityIssues(
     issues.push(...findAntiSamenessIssues(files));
   } catch {
     /* never block on scan failure */
+  }
+
+  // A template is a product outcome contract, not merely a route suggestion.
+  // Check for domain surfaces the user would immediately notice are absent.
+  const template = opts.template ? TEMPLATES[opts.template] : null;
+  if (template) {
+    const signals: Partial<Record<TemplateKey, Array<[string, RegExp]>>> = {
+      restaurant: [
+        ["food or venue imagery", /<img\b|backgroundImage|petal-image:\/\//i],
+        ["a real menu surface", /menu|dish|course|starter|entrée|dessert/i],
+        ["reservation details or flow", /reserv|party.?size|date.*time|opening hours/i],
+        ["story, chef, venue or provenance content", /chef|story|provenance|ingredient|venue|hospitality/i],
+      ],
+      "dashboard-app": [
+        ["account or KPI overview", /Kpi|StatCard|balance|revenue|pipeline|metric|overview/i],
+        ["substantial records or activity", /<table\b|Table|transaction|activity|recent|tbody/i],
+        ["status or trend context", /status|trend|delta|increase|decrease|progress/i],
+      ],
+      "neobank-demo": [
+        ["account and balance hierarchy", /balance|account|available|cash.?flow/i],
+        ["transaction history", /transaction|merchant|transfer|payment|tbody|Table/i],
+        ["money actions", /send|transfer|pay|deposit|withdraw/i],
+      ],
+      marketplace: [
+        ["listing imagery", /<img\b|backgroundImage|petal-image:\/\//i],
+        ["search or category discovery", /search|filter|categor|browse/i],
+        ["listing facts and trust cues", /price|rating|review|seller|location/i],
+      ],
+    };
+    const missing = (signals[template.key] ?? []).filter(([, rx]) => !rx.test(joined));
+    if (missing.length) {
+      issues.push({
+        path: appEntrypoint(files)?.path ?? "src/App.tsx",
+        kind: "render-risk",
+        detail: `product-depth: the ${template.key} output is visibly incomplete — missing ${missing
+          .map(([label]) => label)
+          .join(", ")}. Add these as composed, domain-specific surfaces using coherent data and the committed design direction; do not add generic filler cards.`,
+      });
+    }
   }
 
   // Web standards scan: dead hamburger menus and buttons wired to nothing are

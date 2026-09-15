@@ -4818,7 +4818,9 @@ Forbidden defaults
           },
         });
 
-        const generationQualityIssues = findGenerationQualityIssues(nextFiles, detectedWebSubtype);
+        const generationQualityIssues = findGenerationQualityIssues(nextFiles, detectedWebSubtype, {
+          template: designDirection?.template,
+        });
         if (generationQualityIssues.length > 0) {
           console.warn(
             `[generation-quality] ${generationQualityIssues.length} issue(s):`,

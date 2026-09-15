@@ -700,12 +700,38 @@ export function renderTemplateCatalog(): string {
 export function renderTemplatePlanBlock(key: TemplateKey): string {
   const t = TEMPLATES[key];
   if (!t) return "";
+  const assetPlan = (() => {
+    switch (key) {
+      case "restaurant":
+        return "hero venue/food photograph, 4–6 real dish/atmosphere images, chef or provenance image; use petal-image:// prompts rather than blank gradients";
+      case "marketplace":
+      case "ecommerce-store":
+      case "rental-marketplace":
+        return "consistent listing/product image set, one campaign or category image, useful thumbnails on every repeated item";
+      case "event-booking":
+      case "booking-appointments":
+      case "vacation-rental":
+      case "tour-operator":
+        return "destination/provider hero, repeated offering imagery, trust/profile image, and a clear visual for the selected booking";
+      case "dashboard-app":
+      case "neobank-demo":
+      case "trading-dashboard-demo":
+      case "expense-tracker":
+      case "invoicing-app":
+        return "no decorative stock-photo dependency; use information-rich charts, account/KPI hierarchy, status signals, and believable tabular data";
+      default:
+        return "one product-specific hero visual plus consistent imagery for repeated content; never leave an image-shaped empty gradient or generic placeholder";
+    }
+  })();
   return (
     `\n\n### App Template (committed before this build — execute it)\n` +
     `Scope this MVP as a "${t.key}" app: ${t.description}\n` +
     `- Routes to scaffold (use these paths exactly): ${t.routes.join(", ")}\n` +
     `- Lean on these kit blocks where possible: ${t.blocks.join(", ")}\n` +
     `- Features the user almost certainly wants:\n${t.features.map((f) => `  - ${f}`).join("\n")}\n` +
+    `- Asset plan: ${assetPlan}.\n` +
+    `- Before coding, privately map every route above to: its purpose, dominant content, primary action, required states, shared data source, desktop composition, and mobile transformation. Then implement that map; do not emit the private plan.\n` +
+    `- Cross-page coherence: repeated entities must keep the same names, images, prices/statuses and facts across cards, detail screens, dashboards and checkout.\n` +
     `Do NOT mention the template name in any user-facing copy or comment. The user should never see the word "${t.key}".\n`
   );
 }
