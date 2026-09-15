@@ -558,6 +558,7 @@ export type StreamEvent =
    * settlement. Never emitted for auto-fix turns (those are on Petal's tab).
    */
   | { type: "credits_estimate"; credits: number }
+  | { type: "credits_paused"; checkpointId: string; requiredCredits: number }
   // One agent-tool invocation (inspector search/read, codemod script, check).
   | { type: "tool_step"; tool: string; label: string; isError?: boolean }
   | { type: "phase"; phase: "thinking" | "designing" | "writing" | "polishing" }
@@ -765,7 +766,7 @@ export type StreamEvent =
   | { type: "turn_id"; turnId: string }
   /** Sent ONCE at the end of every turn (success, failure, or abort) so
    *  resumers know to stop tailing turn_events and unwind UI state. */
-  | { type: "done"; status: "succeeded" | "failed" | "aborted" };
+  | { type: "done"; status: "succeeded" | "failed" | "aborted" | "awaiting_credits" };
 
 /** Structured failure codes for SSE `error` events. Every value here MUST
  *  have a matching entry in `KIND_TO_FRIENDLY` on the client; the smoke
