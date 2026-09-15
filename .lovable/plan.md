@@ -1,35 +1,67 @@
-# Shared vs dedicated database — which users get what
+# Shared vs dedicated database — automatic, not a user choice
 
-## The recommendation (plain language)
+## Your instinct is right
 
-**Every new app starts on the shared database. Dedicated is an upgrade the user chooses, never the default.**
+The user should never have to understand the difference. Every app starts on the shared database. When an app actually grows into needing its own, Petal upgrades it — quietly, funded by the credits the user already holds.
 
-Why:
+So: **no choice screen, no "pick a tier"**. Just an app that outgrows its starter database and gets moved.
 
-- **Money flows one way.** A dedicated database costs Petal real money every hour it's alive (billed to the user at 4¢/hr). A shared app costs Petal almost nothing — it lives inside one database we already run. Provisioning dedicated for every casual "to-do list" app means Petal bankrolls thousands of idle databases for users who may never pay.
-- **Casual apps don't need it.** The shared tier already gives a generated app sign-up/sign-in, per-user data, and full create/read/update/delete — we proved this live. Its limits (5,000 rows, 25 collections, 32KB per record) comfortably cover every "not very serious" app.
-- **The free organisation can't take it anyway.** The new "Petal Cloud" organisation is on Supabase's free plan: only 2 databases can exist at once. Auto-provisioning per user would exhaust that instantly. Dedicated-at-scale requires the organisation on a paid plan (~$25/mo), which makes the economics above even more important.
-- **Serious apps tell us they're serious.** A user who hits the row limit, needs file storage, or wants their own database is a user with a real project — and is on a paid plan with credits. That's exactly when dedicated makes sense, and the upgrade path already exists.
+## Why shared-first is still the rule
 
-So "not serious → shared, serious → dedicated" is correct, but the signal shouldn't be us guessing seriousness. The signals are: the user explicitly enables it, their data outgrows the shared limits, or they need a capability the shared tier doesn't have.
+- A dedicated database costs Petal money every hour it exists. A shared app costs almost nothing — it lives inside one database we already run.
+- The shared tier already gives a generated app sign-in, per-user data, and full save/load (proven live). Its limits (5,000 rows, 25 collections, 32KB per record) cover any early-stage app.
+- Most apps never grow past that. Provisioning up front means paying for thousands of databases that never see a second user.
 
-## What already works (no changes needed)
+## When Petal upgrades automatically
 
-- Every generated app defaults to the shared tier — zero provisioning cost.
-- Row-limit hits already return "upgrade to a dedicated backend for unlimited rows".
-- Enabling dedicated is paid-plan gated, checks the user's credit balance, respects the 25-database cap, and the full lifecycle (charge → sleep → wake → delete) is built and tested.
+An app is moved to its own database when it crosses any real growth signal:
 
-## What this plan changes (small guardrails)
+- Row count passes a threshold (proposed: 80% of the shared limit).
+- End-user count passes a threshold (proposed: 50 real signed-up users).
+- The app needs something shared can't do: file storage, its own SQL, direct database access.
 
-1. **Per-user shared app cap.** One user can have at most N apps on the shared tier (proposed N = 10, configurable via `economics_config`). Prevents one free account from filling the shared instance with throwaway apps.
-2. **Shared tier abuse limits become config.** Move the current hardcoded limits (5,000 rows / 25 collections / 32KB records) into `economics_config` so they can be tuned without a deploy.
-3. **Upgrade prompt at the limit.** When an app hits a shared limit, the error response already says to upgrade — surface that in the builder UI as a one-tap "Upgrade this app's database" action that opens the existing enable flow, instead of only an API error.
-4. **Admin visibility.** The admin economics view gains a small shared-tier panel: apps on shared, total rows, apps near their limit (top candidates for a dedicated upgrade).
+Plus two gates that are about money, not size:
 
-## Org decision for you (not code)
+- The owner must have enough credits to cover the running cost, with a small buffer.
+- The owner is told before it happens — a short note that the app is growing and its database is being upgraded, with the ongoing credit cost stated plainly. They can decline and stay shared.
 
-The new "Petal Cloud" organisation should go on a paid Supabase plan before real users enable dedicated databases — on free, only 2 databases can exist and they pause after 7 idle days, which would break paying users' apps. That's a billing action only you can take in the Supabase dashboard; no code change needed.
+If credits run short, the app **stays on shared and keeps working** — it never breaks, it just doesn't upgrade, and the owner sees why.
+
+## What happens during an upgrade
+
+1. A dedicated database is created.
+2. The app's existing rows and end-user accounts are copied across.
+3. The generated app's data layer switches over — same code shape either way, so nothing in the app needs rewriting.
+4. Shared rows are kept for a short window, then cleared.
+
+If any step fails, the app stays on shared and nothing is lost.
+
+## Deleting databases without getting billed
+
+Short answer: yes, but with a caveat worth knowing.
+
+- Deleting a database stops its cost from that moment. There's no exit fee.
+- Hours already used are still charged — a database that lived 6 hours costs 6 hours. That's exactly how Petal already meters it at 4¢/hr, and it's what your users pay too.
+- On a free organisation there is no bill at all, but only 2 databases can exist at once — which is why the organisation must move to a paid plan before real users start upgrading.
+- Everything that prevents waste is already built: unused databases sleep after 7 days, sleeping ones are deleted after 30 with a week's warning, disconnecting removes the database upstream after exporting its data, and there's a cap of 25 live at once.
+
+So the only cost that can ever accumulate is databases genuinely in use, and every idle path already ends in deletion.
+
+## What this plan builds
+
+1. **Growth watcher.** A daily job scores every shared app against the upgrade signals and flags candidates. Thresholds live in `economics_config` so they're tunable without a deploy.
+2. **Automatic upgrade with migration.** Provision, copy rows and end users across, switch the app over, verify, then clear the shared copy. Any failure rolls back to shared.
+3. **Credit gate and notice.** Check the owner's balance plus a buffer before upgrading; email/notify the owner with the cost and a way to decline.
+4. **Capability-triggered upgrade.** Asking Petal for file storage or direct SQL on a shared app triggers the same upgrade path instead of an error.
+5. **Never-break guarantee.** Hitting a shared limit while an upgrade isn't possible returns a clear, calm message and the app keeps running on what it has.
+6. **Admin visibility.** A shared-tier panel: apps on shared, rows, upgrade candidates, blocked-by-credits.
+
+## Needs your decision
+
+- The upgrade thresholds (my suggestion: 80% of the row limit, or 50 end users).
+- Whether the owner is asked first or simply told. My suggestion: **told**, with a decline option — asking puts the choice back on them, which is what you're trying to avoid.
+- Moving the "Petal Cloud" organisation to a paid Supabase plan before this goes live. On free, only 2 databases can exist and they pause after 7 idle days — that would break paying users' apps. This is a billing action only you can take.
 
 ## Out of scope
 
-No pricing changes. No changes to the dedicated lifecycle built and tested earlier. No migration of existing shared apps.
+No pricing changes (4¢/hr, paid-plan gating, ₦5,000 minimum, Paystack all stay). No changes to the dedicated lifecycle already built and tested. No migration of existing apps except through the new automatic path.
