@@ -12,6 +12,8 @@
  * caller's project array.
  */
 import type { ProjectFile } from "@/server/generate.server";
+import { isScaffoldAbsorbedPath, isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
+
 import {
   runExecSession,
   runInstallSession,
