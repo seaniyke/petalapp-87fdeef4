@@ -4238,6 +4238,7 @@ export type Database = {
           id: string
           last_progress_at: string | null
           last_seq: number
+          pending_memory: Json | null
           progress_label: string | null
           project_id: string
           started_at: string
@@ -4252,6 +4253,7 @@ export type Database = {
           id?: string
           last_progress_at?: string | null
           last_seq?: number
+          pending_memory?: Json | null
           progress_label?: string | null
           project_id: string
           started_at?: string
@@ -4266,6 +4268,7 @@ export type Database = {
           id?: string
           last_progress_at?: string | null
           last_seq?: number
+          pending_memory?: Json | null
           progress_label?: string | null
           project_id?: string
           started_at?: string
