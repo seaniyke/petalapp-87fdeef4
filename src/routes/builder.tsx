@@ -2366,6 +2366,9 @@ function Builder() {
       let resultSuggestions: string[] = [];
       let resultVerdict: string | undefined;
       // (resultHandoff removed along with the Continue-building chip.)
+      // Set when the server told us it is finishing this turn itself. No
+      // failure is shown; the working state simply continues.
+      let silentlyRecovering = false;
       let streamError: string | null = null;
       let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
       let streamErrorRaw: string | undefined;
