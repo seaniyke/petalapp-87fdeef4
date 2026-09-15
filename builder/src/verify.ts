@@ -736,9 +736,15 @@ export async function runVerification(
   plan: VerifyPlan,
   heartbeat: Heartbeat = new Heartbeat("checking the app"),
 ): Promise<VerifyReport> {
-  if (!/^https:\/\//i.test(plan.baseUrl)) {
-    throw new VerifyError("baseUrl must be an https URL");
+  // Verification runs against the freshly built dist served on a loopback
+  // port, so http://127.0.0.1:PORT is the NORMAL case. Requiring https here
+  // silently skipped every browser check — no routes, no screenshots, no
+  // visual QA — on real builds. Only remote URLs must be https.
+  const isLoopback = /^http:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?(\/|$)/i.test(plan.baseUrl);
+  if (!isLoopback && !/^https:\/\//i.test(plan.baseUrl)) {
+    throw new VerifyError("baseUrl must be an https URL (or a loopback address)");
   }
+
   const started = Date.now();
   const screenshots = Boolean(plan.screenshots);
   const report: VerifyReport = {
