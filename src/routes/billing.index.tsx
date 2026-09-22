@@ -132,6 +132,8 @@ function BillingDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
+  const payments = usePaged(data?.items ?? [], 10);
+
 
   const load = useCallback(async () => {
     const { data: session } = await supabase.auth.getSession();
