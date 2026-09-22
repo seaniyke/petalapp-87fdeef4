@@ -5662,6 +5662,11 @@ Forbidden defaults
             design: picContext?.design ?? null,
             model,
             repair: isInitial || isCrossCutting,
+            // Judge only what this turn touched, unless it built the app.
+            changedPaths:
+              isInitial || isCrossCutting
+                ? null
+                : diffChangedPaths(turnBaselineFiles, nextFiles),
             projectId: body.projectId ?? undefined,
             userId,
             signal: abortSignal,
