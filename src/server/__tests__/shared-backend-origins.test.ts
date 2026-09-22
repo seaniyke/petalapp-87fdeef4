@@ -22,7 +22,7 @@ describe("shared backend client", () => {
   });
 
   it("falls through to a backup only on an outage, not on a real answer", () => {
-    expect(client.content).toContain("res.status === 503");
+    expect(client.content).toContain("RETRY_STATUS");
     expect(client.content).toContain("rememberBase(base)");
   });
 });
