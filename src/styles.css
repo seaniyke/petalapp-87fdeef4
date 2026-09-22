@@ -62,13 +62,10 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --font-display: "Fraunces", "DM Serif Display", Georgia, serif;
-  --font-brand: "Space Grotesk", "Inter Tight", system-ui, sans-serif;
-  /* iOS-leaning sans stack: real SF Pro on Apple devices, Inter Tight elsewhere.
-     Inter Tight is a slightly narrower, more confident Inter — feels closer to
-     SF Pro than the standard Inter. */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter Tight",
-    "Inter", "Geist", system-ui, sans-serif;
+  /* Single typeface across the whole product: DM Sans. */
+  --font-display: "DM Sans", system-ui, sans-serif;
+  --font-brand: "DM Sans", system-ui, sans-serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
   --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Menlo", monospace;
 
   /* iOS-style surface shadows: soft, taller, with a faint inset top highlight. */
@@ -288,7 +285,7 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
     letter-spacing: 0;
   }
   .landing-page .font-landing-display {
-    font-family: "Space Grotesk", var(--font-sans);
+    font-family: var(--font-sans);
     letter-spacing: 0;
   }
   /* iOS safe-area helpers — opt-in so we don't change desktop spacing.
