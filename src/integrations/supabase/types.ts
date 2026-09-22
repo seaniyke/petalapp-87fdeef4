@@ -2900,6 +2900,71 @@ export type Database = {
           },
         ]
       }
+      project_compute: {
+        Row: {
+          awake_since: string | null
+          billed_through: string | null
+          created_at: string
+          environment_id: string | null
+          error_message: string | null
+          id: string
+          last_active_at: string | null
+          metadata: Json
+          owner_id: string
+          project_id: string
+          provider: string
+          region: string | null
+          service_id: string | null
+          service_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          awake_since?: string | null
+          billed_through?: string | null
+          created_at?: string
+          environment_id?: string | null
+          error_message?: string | null
+          id?: string
+          last_active_at?: string | null
+          metadata?: Json
+          owner_id: string
+          project_id: string
+          provider?: string
+          region?: string | null
+          service_id?: string | null
+          service_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          awake_since?: string | null
+          billed_through?: string | null
+          created_at?: string
+          environment_id?: string | null
+          error_message?: string | null
+          id?: string
+          last_active_at?: string | null
+          metadata?: Json
+          owner_id?: string
+          project_id?: string
+          provider?: string
+          region?: string | null
+          service_id?: string | null
+          service_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_compute_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_domains: {
         Row: {
           created_at: string
