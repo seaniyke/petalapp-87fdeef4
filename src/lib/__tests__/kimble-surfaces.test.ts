@@ -88,3 +88,14 @@ describe("prompt blocks", () => {
     }
   });
 });
+
+describe("edit instructions never open a Kimble screen", () => {
+  it("ignores a back button on the sign up page", () => {
+    expect(detectSurfaceIntent("Add back button on the sign up page")).toBeNull();
+    expect(detectSurfaceIntent("add a back arrow to the signup page")).toBeNull();
+    expect(detectSurfaceIntent("change the colour of the login button")).toBeNull();
+  });
+  it("still opens the users screen for a real question", () => {
+    expect(detectSurfaceIntent("how many users signed up?")?.surface.id).toBe("cloud.users");
+  });
+});
