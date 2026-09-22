@@ -418,6 +418,9 @@ export function BuildActivityCard({
       {isComplete ? (
         <BuildResultCard
           credits={creditsCharged}
+          files={fileCount}
+          pictures={imageUrls.length}
+          seconds={elapsed}
           summary={resultSummary}
           showPreview={showPreviewAction}
           onPreview={onOpenPreview}
