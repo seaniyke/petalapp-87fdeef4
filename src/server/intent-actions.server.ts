@@ -19,6 +19,11 @@
  */
 
 import { detectIntents, type SimpleIntentId } from "@/lib/intent-registry";
+import {
+  detectSurfaceIntent,
+  renderSurfaceBlock,
+  type SurfaceId,
+} from "@/lib/kimble-surfaces";
 
 /** Capabilities that require a database / server before they can work. */
 const BACKEND_IMPLYING: SimpleIntentId[] = [
