@@ -383,6 +383,26 @@ function Builder() {
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
+  // The project's source is fetched in the background so the conversation can
+  // paint immediately — a large project is hundreds of files of text and used
+  // to gate the whole screen behind that one download. Anything that needs the
+  // real source (sending a turn, discussing) awaits `waitForFiles()` first.
+  const filesRef = useRef<ProjectFile[]>([]);
+  const filesReadyRef = useRef<Promise<unknown> | null>(null);
+  useEffect(() => {
+    filesRef.current = files;
+  }, [files]);
+  const waitForFiles = useCallback(async (): Promise<ProjectFile[]> => {
+    if (filesReadyRef.current) {
+      try {
+        await filesReadyRef.current;
+      } catch {
+        /* a failed background load falls through to whatever we already have */
+      }
+    }
+    return filesRef.current;
+  }, []);
+
   const [input, setInput] = useState("");
   // Tracks `messages.length` at the moment the user answered or skipped the
   // most recent clarifying question. The question card stays actionable until
@@ -1751,29 +1771,38 @@ function Builder() {
     (async () => {
       try {
         if (searchId) {
-          const p = await getProject(searchId);
+          // Everything the screen needs starts at once — waiting for the
+          // project row before asking for its conversation turned one round
+          // trip into two. The source download starts here too but does NOT
+          // gate the screen.
+          const filesPromise = loadProjectFiles(searchId).catch(() => [] as ProjectFile[]);
+          filesReadyRef.current = filesPromise;
+          const [p, ms, draft] = await Promise.all([
+            getProject(searchId),
+            loadProjectMessages(searchId),
+            loadMessageDraft(searchId),
+          ]);
           if (!p) {
             toast.error("Project not found");
             navigate({ to: "/projects" });
             return;
           }
-          // Load files + messages + any in-flight assistant draft in parallel.
-          // The draft (if present) means a previous tab was streaming a reply
-          // when the page reloaded — we rehydrate it into the streaming bubble
-          // so the user doesn't think their message vanished.
-          const [fs, ms, draft] = await Promise.all([
-            loadProjectFiles(p.id),
-            loadProjectMessages(p.id),
-            loadMessageDraft(p.id),
-          ]);
           if (cancelled) return;
           setProject(p);
-          setFiles(fs);
           setMessages(removeTransientFailureCards(ms));
           void deleteAssistantErrorMessages(p.id, (err) =>
             isTransientFailureCardTitle(err.title),
           ).catch(() => {});
-          setActiveFile(fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null);
+          // The source arrives on its own schedule; the chat is already usable.
+          void filesPromise.then((fs) => {
+            if (cancelled) return;
+            filesRef.current = fs;
+            setFiles(fs);
+            setActiveFile(
+              (prev) => prev ?? fs.find((f) => f.path === "index.html")?.path ?? fs[0]?.path ?? null,
+            );
+          });
+
           if (draft && !readPersistedTurn(p.id)) {
             // Show the partial reply as a normal (non-collapsed) assistant
             // message tagged so the user understands it was rescued from a
@@ -2431,12 +2460,17 @@ function Builder() {
       // the strongest model on every subsequent turn. They can re-toggle.
       if (deepThink && !opts.isAutoFix) setDeepThink(false);
       setBusy(true);
+      // The source may still be arriving in the background (the screen no
+      // longer waits for it). A turn must never run against a half-loaded
+      // project, so settle it here — by now it is almost always done.
+      const files = await waitForFiles();
       // Snapshot files BEFORE the turn mutates them, so the post-turn
       // "Review changes" diff drawer has a clean baseline. Skip on auto-fix
       // / auto-continue — those aren't user-visible turns.
       if (!opts.isAutoFix && !opts.isInternalRepair && !opts.isAutoContinue) {
         preTurnFilesRef.current = files.map((f) => ({ path: f.path, content: f.content }));
       }
+
       // Clear any stale "couldn't auto-fix" / build-failure card the moment
       // Kimble starts working again. It's confusing to show a give-up card
       // next to an active "Kimble is working" indicator.
@@ -3411,7 +3445,8 @@ function Builder() {
       try {
         const { reply, openSurface } = await requestDiscussion({
           messages: nextMessages,
-          currentFiles: files,
+          currentFiles: await waitForFiles(),
+
           customInstructions: proj.custom_instructions ?? undefined,
         });
         const assistantMsg: ChatMessage = {
