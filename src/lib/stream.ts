@@ -116,6 +116,12 @@ type Handlers = {
   /** The turn hit a transient failure and is finishing itself server-side.
    *  The client stays in its working state and shows no failure. */
   onRecovering?: () => void;
+  /** The connection dropped mid-turn AND the quick reconnect attempts were
+   *  exhausted (e.g. the phone went offline for minutes). The turn is still
+   *  running server-side under this id — the caller should stay in a calm
+   *  waiting state and let the auto-reconnect watcher resume it, instead of
+   *  showing an error card. */
+  onReconnectDeferred?: (turnId: string) => void;
 };
 
 /** Stream a generation request to /api/generate. Resolves once the stream ends. */
@@ -140,6 +146,10 @@ export async function streamGenerate(
     /** Canonical restatement produced by triage. Planning, generation and QA
      * use this same contract so the turn cannot drift from the user's ask. */
     intentBrief?: string;
+    /** Client-minted turn id (UUID). Persisted before the request goes out so
+     *  even a drop before the first response byte leaves a resumable handle.
+     *  The server adopts it as the turn row id and dedupes retried sends. */
+    turnId?: string;
     /** Build target chip (web / android / ios / backend / extension). */
     buildTarget?: string;
     /** What the user is currently looking at in the preview: the open route
@@ -184,6 +194,20 @@ export async function streamGenerate(
   }
 
   if (!resp.ok || !resp.body) {
+    // 409 + x-kimble-turn-id: this exact turn was already accepted by the
+    // server (a retried send after a pre-first-byte drop). Attach to the
+    // running turn instead of failing or starting a second build.
+    if (resp.status === 409) {
+      const existingTurnId = resp.headers.get("x-kimble-turn-id");
+      if (existingTurnId) {
+        const completed = await streamResumeTurn(existingTurnId, 0, handlers, signal);
+        if (completed) return;
+        if (handlers.onReconnectDeferred) {
+          handlers.onReconnectDeferred(existingTurnId);
+          return;
+        }
+      }
+    }
     const text = await resp.text().catch(() => "");
     // Dedicated "Buy credits" card instead of the generic fallback.
     throwIfCreditsExhausted(resp, text);
@@ -404,6 +428,13 @@ export async function streamGenerate(
       return;
     }
     if (await resumeAcceptedTurn()) return;
+    // Long offline gap: the turn is alive server-side but we couldn't
+    // reattach within the quick-retry budget. Hand off to the watcher
+    // instead of surfacing an error for a build that is still running.
+    if (turnId && handlers.onReconnectDeferred) {
+      handlers.onReconnectDeferred(turnId);
+      return;
+    }
     throw e;
   }
 
@@ -421,6 +452,12 @@ export async function streamGenerate(
   if (!sawDone && !sawResult && (await resumeAcceptedTurn())) return;
   if (sawResult && !sawDone) handlers.onDone?.("succeeded");
   if (!sawDone && !sawResult) {
+    // Same long-offline handoff as the catch path above: with a known turn
+    // id, an interrupted stream is a waiting state, never an error card.
+    if (turnId && handlers.onReconnectDeferred) {
+      handlers.onReconnectDeferred(turnId);
+      return;
+    }
     throw new Error("The build is still running, but Kimble could not reconnect to its progress stream.");
   }
 }
