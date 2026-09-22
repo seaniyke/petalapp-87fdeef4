@@ -20,6 +20,7 @@ export type CreditUsage = {
   buildCredits: number;
   cloudCredits: number;
   aiCredits: number;
+  computeCredits: number;
   totalCredits: number;
 };
 
