@@ -109,6 +109,7 @@ import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
 import {
+  keepChatPhotos,
   loadProjectPictures,
   renderProjectPictureBlock,
 } from "@/server/registry/project-pictures.server";
