@@ -507,6 +507,8 @@ export function BuildActivityCard({
           </button>
         </div>
       </div>
+      )}
+
 
       <BuildDetailsSheet
         open={detailsOpen}
