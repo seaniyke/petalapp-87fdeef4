@@ -89,7 +89,6 @@ import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { CopyMessageButton } from "@/components/CopyMessageButton";
 import { useBuildStatusLabel } from "@/hooks/use-build-status-label";
-import { NextStepsCard } from "@/components/NextStepsCard";
 import { SuggestionChecklist } from "@/components/SuggestionChecklist";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
 import { tryParseQuickEdit, applyQuickEditToFile } from "@/lib/quick-edit";
