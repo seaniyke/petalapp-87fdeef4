@@ -51,9 +51,11 @@ export async function fetchCreditUsage(userId: string): Promise<CreditUsage> {
 
   let cloudCredits = 0;
   let aiCredits = 0;
+  let computeCredits = 0;
   for (const r of runtime ?? []) {
     const credits = centsToCredits(Math.abs(Number(r.delta_cents)));
     if (r.meter === "app_ai" || r.meter === "image_gen") aiCredits += credits;
+    else if (r.meter === "compute_hour") computeCredits += credits;
     else cloudCredits += credits;
   }
 
@@ -69,7 +71,8 @@ export async function fetchCreditUsage(userId: string): Promise<CreditUsage> {
     buildCredits: round(buildCredits),
     cloudCredits: round(cloudCredits),
     aiCredits: round(aiCredits),
-    totalCredits: round(buildCredits + cloudCredits + aiCredits),
+    computeCredits: round(computeCredits),
+    totalCredits: round(buildCredits + cloudCredits + aiCredits + computeCredits),
   };
 }
 
