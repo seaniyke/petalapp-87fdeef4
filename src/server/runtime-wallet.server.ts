@@ -14,6 +14,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type RuntimeMeter =
   | "backend_hour"
+  | "compute_hour"
   | "image_gen"
   | "app_ai"
   | "domain"
