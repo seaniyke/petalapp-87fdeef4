@@ -134,7 +134,10 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <ThemeToggle variant="icon" className="hidden sm:grid" />
+            <span className="hidden sm:inline-flex">
+              <ThemeToggle variant="icon" />
+            </span>
+
 
 
 
@@ -204,19 +207,19 @@ export function SiteHeader() {
                 <Link
                   to="/auth"
                   search={{ mode: "signin", redirect: undefined }}
-                  className="hidden h-9 items-center rounded-full px-4 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground sm:inline-flex"
+                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground sm:px-4"
                 >
                   Sign in
                 </Link>
                 <Link
                   to="/auth"
                   search={{ mode: "signup", redirect: undefined }}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-foreground px-4 text-sm font-medium text-background shadow-[var(--shadow-soft)] ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20"
+                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-foreground px-3.5 text-sm font-semibold text-background shadow-[var(--shadow-soft)] ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20 sm:px-5"
                 >
-                  <UserIcon className="h-3.5 w-3.5" />
                   Get started
                 </Link>
               </>
+
             )}
 
             {/* Mobile hamburger — sits at the far right on small screens */}
