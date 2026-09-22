@@ -401,6 +401,14 @@ function BillingDashboard() {
               ))}
             </ul>
           )}
+          <Pager
+            page={payments.page}
+            pageCount={payments.pageCount}
+            total={payments.total}
+            pageSize={payments.pageSize}
+            onPage={payments.setPage}
+            noun="payments"
+          />
         </div>
       </main>
 
