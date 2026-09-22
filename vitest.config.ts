@@ -16,6 +16,7 @@ export default defineConfig({
       "src/server/__tests__/verify-scope.test.ts",
       "src/server/__tests__/build-reconcile.test.ts",
       "src/server/__tests__/builder-callback-fallback.test.ts",
+      "src/server/__tests__/router-provider-comma.test.ts",
       "src/server/__tests__/auth-api-align.test.ts",
       "src/server/__tests__/cloud-tier.test.ts",
       "src/server/__tests__/compute-billing.test.ts",
