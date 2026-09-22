@@ -17,11 +17,19 @@ if (!CLOUDFLARE_API_TOKEN || !CLOUDFLARE_ACCOUNT_ID || !CLOUDFLARE_SAAS_ZONE_ID)
 }
 
 const SCRIPT = "petal-subdomain-router";
+// `*/*` sends every hostname on the SaaS zone — including customer domains
+// arriving via Cloudflare for SaaS — to the router. Routes without a script
+// are deliberate bypasses for Kimble's own marketing hosts.
+//
+// Note: `fallback.kimble.cloud` is NOT bypassed. Cloudflare for SaaS uses it
+// as the fallback origin, so the router must stay in front of it.
 const ROUTES = [
   { pattern: "*/*", script: SCRIPT },
   { pattern: "buildwithpetal.com/*" },
   { pattern: "www.buildwithpetal.com/*" },
   { pattern: "fallback.buildwithpetal.com/*" },
+  { pattern: "kimble.cloud/*" },
+  { pattern: "www.kimble.cloud/*" },
 ];
 
 const cf = (p, init = {}) =>
@@ -105,4 +113,4 @@ for (const route of ROUTES) {
   console.log(`✓ Route ${route.pattern} created`);
 }
 
-console.log("\nAll set. Test with:  curl -I https://<slug>.buildwithpetal.com");
+console.log("\nAll set. Test with:  curl -I https://<slug>.kimble.cloud");
