@@ -35,6 +35,7 @@ type Row = {
   industry: string | null;
   mood: string | null;
   style: string | null;
+  location: string | null;
   orientation: string;
   aspect_ratio: string;
   has_people: boolean;
@@ -49,6 +50,7 @@ const BLANK = {
   industry: "",
   mood: "",
   style: "photography",
+  location: "",
   orientation: "landscape",
   aspect_ratio: "16:9",
   has_people: false,
@@ -76,7 +78,7 @@ function AdminPicturesPage() {
     const { data, error } = await supabase
       .from("design_pictures")
       .select(
-        "id,url,subject,industry,mood,style,orientation,aspect_ratio,has_people,tags,license,active",
+        "id,url,subject,industry,mood,style,location,orientation,aspect_ratio,has_people,tags,license,active",
       )
       .order("created_at", { ascending: false })
       .limit(500);
@@ -104,6 +106,7 @@ function AdminPicturesPage() {
       industry: draft.industry.trim() || null,
       mood: draft.mood.trim() || null,
       style: draft.style.trim() || null,
+      location: draft.location.trim() || null,
       orientation: draft.orientation,
       aspect_ratio: draft.aspect_ratio,
       has_people: draft.has_people,
@@ -193,6 +196,11 @@ function AdminPicturesPage() {
               onChange={(e) => setDraft({ ...draft, style: e.target.value })}
             />
             <Input
+              placeholder="Location"
+              value={draft.location}
+              onChange={(e) => setDraft({ ...draft, location: e.target.value })}
+            />
+            <Input
               placeholder="Tags, comma separated"
               value={draft.tags}
               onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
@@ -250,7 +258,7 @@ function AdminPicturesPage() {
                 />
                 <p className="text-sm font-medium">{row.subject}</p>
                 <p className="text-xs text-muted-foreground">
-                  {[row.industry, row.mood, row.style, row.aspect_ratio]
+                  {[row.industry, row.mood, row.style, row.location, row.aspect_ratio]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
