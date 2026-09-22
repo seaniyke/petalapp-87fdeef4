@@ -1492,17 +1492,26 @@ function Builder() {
       setPhases((p) => markFailed(completeThrough(p, "polishing"), "deploying"));
 
       // Infrastructure failures (build service unreachable, Cloudflare 403,
-      // upstream 5xx) are NOT the user's code. Don't burn auto-fix attempts
-      // forwarding the raw error to the AI — there's nothing in the project
-      // files to fix. Show a calm "service is briefly unavailable" card and
-      // let the user retry the deploy when they're ready.
+      // upstream 5xx) are NOT the user's code. There is nothing in the project
+      // files to fix, so never burn an auto-fix attempt on one. The service
+      // blip heals itself: re-run the exact same deploy once, silently, and
+      // only speak up if the second attempt also can't reach the service.
       if (isInfrastructureBuildError(effectiveBuildSnap.errorMessage)) {
         if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
         persistRecovery(project?.id);
         if (busy) return;
+        if (buildId && !infraRetriedBuildIdsRef.current.has(buildId)) {
+          infraRetriedBuildIdsRef.current.add(buildId);
+          setFriendlyError(null);
+          setMessages(removeBuildFailureCards);
+          setActivityVisible(true);
+          const t = setTimeout(() => retryDeployRef.current?.(), 1500);
+          return () => clearTimeout(t);
+        }
         persistFriendlyError(friendlyBuildServiceBusy(effectiveBuildSnap.errorMessage));
         return;
       }
+
 
       // The pre-deploy browser check is what stopped this build: nothing was
       // uploaded, and the failure carries the exact runtime defects. That is a
