@@ -102,6 +102,8 @@ export function computeVerifyScope(args: {
   const byPath = new Map(args.files.map((f) => [f.path, f.content]));
   const routeSet = new Set<string>();
   const componentSeeds: string[] = [];
+  /** Routes the change is actually on, without the home ride-along. */
+  const primaryRoutes = new Set<string>();
   let sawVisual = false;
 
   for (const path of changed) {
@@ -110,7 +112,10 @@ export function computeVerifyScope(args: {
     const content = byPath.get(path) ?? "";
     const declared = routesDeclaredIn(path, content);
     if (declared.length) {
-      for (const r of declared) routeSet.add(normalizeRoute(r));
+      for (const r of declared) {
+        routeSet.add(normalizeRoute(r));
+        primaryRoutes.add(normalizeRoute(r));
+      }
       // A brand-new route file means routing itself changed — verify home too.
       routeSet.add("/");
     } else {
