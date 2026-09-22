@@ -14,12 +14,10 @@ import {
   Settings,
   LogOut,
   Image as ImageIcon,
-  Plus,
   BookOpen,
   LogIn,
   X,
   Store,
-  Tag,
 } from "lucide-react";
 import {
   Sheet,
@@ -90,22 +88,6 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
               icon={<Store className="h-4 w-4" />}
               label="Marketplace"
             />
-            <RowLink
-              to="/sell"
-              onClick={close}
-              icon={<Tag className="h-4 w-4" />}
-              label="Sell your app"
-            />
-            {user && (
-              <RowButton
-                onClick={() => {
-                  close();
-                  navigate({ to: "/", search: { focus: "composer" } });
-                }}
-                icon={<Plus className="h-4 w-4" />}
-                label="New project"
-              />
-            )}
           </Section>
 
           {isReady && user && (
