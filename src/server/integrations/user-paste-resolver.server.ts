@@ -162,28 +162,25 @@ Rules:
 - NEVER invent endpoints, fields, or env var names that are not visible in the supplied source. If the source is thin, say so explicitly inside the brief and emit only what you can verify.`;
 
 async function aiSynth(input: SynthInput): Promise<SynthJson | null> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return null;
+  if (!process.env.OPENROUTER_API_KEY) return null;
   const userMsg =
     input.kind === "url"
       ? `Source URL: ${input.url}\n\nFetched content (truncated):\n"""\n${input.body}\n"""`
       : `The user pasted the following code/cURL snippet(s) and asked to integrate the underlying API. Treat these as ground truth:\n"""\n${input.combined}\n"""`;
   try {
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+    const { aiChatCompletions } = await import("@/server/ai-provider.server");
+    const r = await aiChatCompletions({
+      feature: "discuss",
+      body: {
         messages: [
           { role: "system", content: SYNTH_SYSTEM },
           { role: "user", content: userMsg },
         ],
         temperature: 0.1,
         response_format: { type: "json_object" },
-      }),
+        max_tokens: 2048,
+      },
+      meta: { chosenBy: "user_paste_resolver" },
     });
     if (!r.ok) return null;
     const json = (await r.json()) as {
