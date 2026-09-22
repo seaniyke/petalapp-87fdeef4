@@ -579,7 +579,7 @@ export async function streamResumeTurn(
             handlers.onRecovering?.();
             break;
           case "done":
-            handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted" | "awaiting_credits") ?? "succeeded");
+            handlers.onDone?.((evt.status as "succeeded" | "failed" | "aborted" | "awaiting_credits" | "plan_proposed") ?? "succeeded");
             return true;
         }
       }
