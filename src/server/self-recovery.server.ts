@@ -21,10 +21,12 @@
  */
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import { defaultUtilityModel } from "@/lib/ai-model-config";
 import type { ErrorKind } from "@/server/generate.server";
 
-const SELF_CHECK_MODEL = "google/gemini-3-flash-preview";
-const HUMANIZE_MODEL = "google/gemini-3-flash-preview";
+// Short classification work — the central utility tier owns the actual slug.
+const SELF_CHECK_MODEL = defaultUtilityModel();
+const HUMANIZE_MODEL = defaultUtilityModel();
 
 /* ──────────────────────────────────────────────────────────────────────
  * 0. Server-side raw-error classifier
