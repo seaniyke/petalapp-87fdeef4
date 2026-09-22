@@ -187,6 +187,14 @@ import {
   scopeDisclosure,
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
+import {
+  estimateTokens,
+  promptTokenCeiling,
+  anchoredWindows,
+  readErrorFrame,
+  userFacingProviderMessage,
+  type ProviderError,
+} from "@/server/prompt-budget.server";
 import { normalizeClientTurnId, startTurn, turnBelongsToUser, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
   openTurnCompletion,
