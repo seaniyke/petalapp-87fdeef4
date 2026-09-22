@@ -18,6 +18,7 @@ export type ResourceKind =
   | "footer"
   | "section"
   | "decoration"
+  | "illustration"
   | "picture";
 
 /** Common metadata every registry record carries. */

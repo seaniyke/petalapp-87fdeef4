@@ -26,6 +26,7 @@ export interface LibraryPicture {
   aspect_ratio: string;
   has_people: boolean;
   style: string | null;
+  location: string | null;
   tags: string[];
   source: string;
   license: string;
@@ -41,7 +42,7 @@ export async function loadPictureLibrary(force = false): Promise<LibraryPicture[
     const { data, error } = await supabaseAdmin
       .from("design_pictures")
       .select(
-        "id,url,subject,industry,mood,tone,colors,orientation,aspect_ratio,has_people,style,tags,source,license",
+        "id,url,subject,industry,mood,tone,colors,orientation,aspect_ratio,has_people,style,location,tags,source,license",
       )
       .eq("active", true)
       .limit(2000);
@@ -98,7 +99,7 @@ export function scorePicture(pic: LibraryPicture, words: string[], briefTags: st
     if (want.has(tag)) score += 3;
     else if (tags.has(tag)) score += 2;
   }
-  for (const field of [pic.industry, pic.mood, pic.style, pic.tone]) {
+  for (const field of [pic.industry, pic.mood, pic.style, pic.tone, pic.location]) {
     if (!field) continue;
     const f = field.toLowerCase();
     if (want.has(f)) score += 2;
