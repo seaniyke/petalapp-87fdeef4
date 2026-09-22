@@ -32,7 +32,7 @@ import { pathToNarration } from "@/lib/path-narration";
 import type { FriendlyError } from "@/lib/friendly-errors";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { BuildDetailsSheet, type FileChange } from "@/components/BuildDetailsSheet";
-import { BuildCostSummary } from "@/components/BuildCostSummary";
+import { BuildResultCard } from "@/components/BuildResultCard";
 
 import { ELAPSED_VISIBLE_AFTER_SEC, formatElapsed } from "@/hooks/use-build-status-label";
 
@@ -120,6 +120,17 @@ type Props = {
   onReviewChanges?: () => void;
   /** Jumps the workspace to the live preview. */
   onOpenPreview?: () => void;
+  /** Opens the publish panel from the finished-result card. */
+  onPublish?: () => void;
+  /** Focuses the composer from the finished-result card. */
+  onKeepBuilding?: () => void;
+  /** One short line describing what this turn changed. */
+  resultSummary?: string | null;
+  /** Follow-up ideas offered under "Keep building". */
+  suggestions?: string[];
+  onSuggest?: (prompt: string) => void;
+  /** False when the preview is already on screen. */
+  showPreviewAction?: boolean;
 };
 
 export function BuildActivityCard({
