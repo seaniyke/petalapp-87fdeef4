@@ -57,6 +57,8 @@ export type TimelineEntry = {
   outcome: "ok" | "fixed" | "skipped" | "failed";
   message: string;
   count?: number;
+  /** Public URL when this entry is a picture that just landed. */
+  url?: string;
   ts: number;
 };
 
