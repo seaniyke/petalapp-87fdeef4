@@ -6076,7 +6076,28 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (lastUser && typeof lastUser.content === "string") {
           turnUserRequest = lastUser.content;
         }
-        recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
+        // Client-minted turn id: the phone persists it before sending, so a
+        // drop before the first response byte is still resumable. If a row
+        // with this id already exists for this user, this request is a
+        // retried send — tell the client to attach to the running turn
+        // instead of starting (and charging for) a second build.
+        const rawClientTurnId = (peekBody as { turnId?: unknown }).turnId;
+        const clientTurnId =
+          typeof rawClientTurnId === "string" &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawClientTurnId)
+            ? rawClientTurnId
+            : undefined;
+        if (clientTurnId && (await turnBelongsToUser(clientTurnId, peekAuth))) {
+          return new Response("Turn already accepted", {
+            status: 409,
+            headers: { "x-kimble-turn-id": clientTurnId },
+          });
+        }
+        recorder = await startTurn({
+          projectId: peekBody.projectId,
+          userId: peekAuth,
+          turnId: clientTurnId,
+        });
         // Open the server-owned completion record for this request. From here
         // the loop's authority lives in the database, not in the tab: stage,
         // attempts and outstanding defects survive a closed browser.

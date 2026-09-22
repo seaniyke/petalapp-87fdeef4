@@ -57,9 +57,13 @@ export type TurnRecorderHandle = {
 export async function startTurn(opts: {
   projectId: string;
   userId: string;
+  /** Client-minted id (UUID). Lets the phone persist a resumable handle
+   *  before the request goes out, and makes a retried send dedupe instead
+   *  of double-building. */
+  turnId?: string;
 }): Promise<TurnRecorderHandle> {
   const client = getAdminClient();
-  const turnId = crypto.randomUUID();
+  const turnId = opts.turnId ?? crypto.randomUUID();
 
   if (!client) {
     return makeNoop(turnId);
@@ -160,6 +164,25 @@ export async function startTurn(opts: {
       }
     },
   };
+}
+
+/** True when a turn row with this id already exists AND belongs to this
+ *  user. Used to dedupe a retried send that carries a client-minted turn
+ *  id: the original build keeps running and the retry attaches to it. */
+export async function turnBelongsToUser(turnId: string, userId: string): Promise<boolean> {
+  const client = getAdminClient();
+  if (!client) return false;
+  try {
+    const { data } = await client
+      .from("turns")
+      .select("id")
+      .eq("id", turnId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
 }
 
 function makeNoop(turnId: string): TurnRecorderHandle {
