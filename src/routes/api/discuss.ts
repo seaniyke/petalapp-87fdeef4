@@ -24,6 +24,7 @@ import {
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
+import { detectSurfaceIntent, renderSurfaceBlock } from "@/lib/kimble-surfaces";
 
 
 type Body = {
