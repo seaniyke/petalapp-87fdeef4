@@ -55,6 +55,8 @@ import { fixCssEscapes } from "./css-escape-fixer.server";
 import { fixBlockProps } from "./block-props.server";
 import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity, ensureBrandMarkWired } from "./brand-identity.server";
+import { alignAuthApi } from "./auth-api-align.server";
+
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
 import { fixMarkdownFences } from "./markdown-fence-fixer.server";
