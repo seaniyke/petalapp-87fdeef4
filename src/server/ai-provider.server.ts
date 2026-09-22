@@ -791,6 +791,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       primary.status >= 500);
 
   if (!shouldRetry) {
+    // Non-streamed calls carry their usage in the body. Read it from a clone so
+    // the caller still gets an unconsumed Response, and log real token counts
+    // instead of NULLs. Streamed calls are backfilled by updateLastCallUsage.
+    const usage = await usageFromResponse(primary, body);
     // Fire-and-forget telemetry; do NOT await — keep latency tight.
     void recordTelemetry({
       feature: opts.feature,
@@ -807,9 +811,16 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       projectId: opts.meta?.projectId ?? null,
       userId: opts.meta?.userId ?? null,
       turnId: opts.meta?.turnId ?? null,
+      promptTokens: usage?.promptTokens ?? null,
+      completionTokens: usage?.completionTokens ?? null,
+      totalTokens: usage?.totalTokens ?? null,
+      costUsdMicro: usage
+        ? estimateCostUsdMicro(primaryModel, usage.promptTokens, usage.completionTokens)
+        : null,
     });
     return primary;
   }
+
 
   // Drain the failed response so we can safely discard it.
   try {
