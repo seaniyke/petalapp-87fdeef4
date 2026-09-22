@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { humanizeActivity, latestActivityLine } from "@/lib/activity-language";
+import {
+  humanizeActivity,
+  idleLine,
+  latestActivityLine,
+  pick,
+  pictureLine,
+} from "@/lib/activity-language";
+import { humanFileName } from "@/components/build/FileStack";
 
 describe("humanizeActivity", () => {
   it("says what image generation actually did, in plain words", () => {
