@@ -23,7 +23,7 @@ import {
   getUserById,
   issueUserToken,
   listRecords,
-  resolveProjectByKey,
+  resolveProjectAccess,
   signInUser,
   signUpUser,
   updateRecord,
