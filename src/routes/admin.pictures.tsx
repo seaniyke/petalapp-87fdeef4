@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { AdminTabs } from "@/components/AdminTabs";
+import { Pager, usePaged } from "@/components/Pager";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
@@ -414,7 +415,7 @@ function AdminPicturesPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((row) => (
+          {paged.slice.map((row) => (
             <Card key={row.id} className={row.active ? "" : "opacity-60"}>
               <CardContent className="space-y-2 p-3">
                 <img

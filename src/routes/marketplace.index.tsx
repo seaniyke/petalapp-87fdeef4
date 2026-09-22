@@ -4,6 +4,7 @@ import { ArrowUpRight, Search, Store, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { PetalLoader } from "@/components/PetalLoader";
+import { Pager, usePaged } from "@/components/Pager";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ListingRating } from "@/components/marketplace/ListingReviews";
@@ -162,11 +163,22 @@ function MarketplacePage() {
             ) : filtered.length === 0 ? (
               <EmptyState hasListings={listings.length > 0} />
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {filtered.map((l) => (
-                  <ListingCard key={l.id} listing={l} />
-                ))}
-              </div>
+              <>
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {paged.slice.map((l) => (
+                    <ListingCard key={l.id} listing={l} />
+                  ))}
+                </div>
+                <Pager
+                  page={paged.page}
+                  pageCount={paged.pageCount}
+                  total={paged.total}
+                  pageSize={paged.pageSize}
+                  onPage={paged.setPage}
+                  noun="apps"
+                  className="mt-6 rounded-2xl border border-border"
+                />
+              </>
             )}
           </div>
         </div>
