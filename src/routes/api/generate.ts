@@ -3078,11 +3078,15 @@ Forbidden defaults
   // pairings, section library, header patterns, icon vocabulary, imagery
   // rules). Every capability added here made EVERY request heavier; a
   // targeted non-visual edit now carries none of it.
+  const editScopeForPrompt = editClassification?.scope ?? "targeted";
   const skipDesignManual =
     !isInitial &&
     !isCrossCutting &&
-    (editClassification?.scope ?? "targeted") === "targeted" &&
-    !(editClassification?.dimensions ?? []).includes("visual");
+    // A one-thing ask never needs the whole design manual, even a visual one:
+    // "make this button green" is not a redesign.
+    (editScopeForPrompt === "micro" ||
+      (editScopeForPrompt === "targeted" &&
+        !(editClassification?.dimensions ?? []).includes("visual")));
   try {
     if (skipDesignManual) {
       designTasteBlock = "";
