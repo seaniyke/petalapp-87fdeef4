@@ -77,6 +77,9 @@ function creditLabel(credits: number | null | undefined): string | null {
 
 export function BuildResultCard({
   credits,
+  files = 0,
+  pictures = 0,
+  seconds = 0,
   summary,
   showPreview = true,
   onPreview,
