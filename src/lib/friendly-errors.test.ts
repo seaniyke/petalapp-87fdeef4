@@ -40,6 +40,6 @@ describe("isInfrastructureBuildError", () => {
   });
 
   it("does not misclassify an app compile error", () => {
-    expect(isInfrastructureBuildError("src/App.tsx: Unexpected token")) .toBe(false);
+    expect(isInfrastructureBuildError("src/App.tsx: Unexpected token")).toBe(false);
   });
 });
