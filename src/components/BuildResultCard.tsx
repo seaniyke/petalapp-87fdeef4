@@ -118,6 +118,7 @@ export function BuildResultCard({
               {summary}
             </p>
           )}
+          <Stats files={files} pictures={pictures} seconds={seconds} />
         </div>
       </div>
 
