@@ -128,7 +128,31 @@ export const auth = {
   signOut() {
     setToken(null);
   },
+
+  // --- Parity aliases: same names + \`{ error }\` shape as the dedicated tier,
+  // so page code written against either backend works unchanged.
+  async signInWithPassword(email: string, password: string): Promise<{ error: Error | null; user: PetalUser | null }> {
+    try {
+      const user = await auth.signIn(email, password);
+      return { error: null, user };
+    } catch (e) {
+      return { error: e instanceof Error ? e : new Error("Sign in failed"), user: null };
+    }
+  },
+  async signUpWithPassword(
+    email: string,
+    password: string,
+    name?: string,
+  ): Promise<{ error: Error | null; user: PetalUser | null }> {
+    try {
+      const user = await auth.signUp(email, password, name);
+      return { error: null, user };
+    } catch (e) {
+      return { error: e instanceof Error ? e : new Error("Sign up failed"), user: null };
+    }
+  },
 };
+
 `;
 }
 
