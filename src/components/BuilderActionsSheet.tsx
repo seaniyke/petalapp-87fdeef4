@@ -23,7 +23,7 @@ import {
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme, type Theme } from "@/hooks/use-theme";
 import { formatCredits } from "@/lib/format-credits";
-import { actionsForSurface, type BuilderAction } from "@/lib/builder-actions";
+import { groupedActions, type BuilderAction } from "@/lib/builder-actions";
 import { cn } from "@/lib/utils";
 
 type Props = {
