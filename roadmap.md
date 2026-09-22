@@ -8,3 +8,5 @@
 - [x] Safe editing (exact-match replace with loud failure) confirmed already in place in generate.server.ts.
 - [x] Motion personality per project + selective design-memory injection (design direction persisted per project; full block on structural turns, compact identity-only block on small edits).
 - [ ] Before/after measurement across five real builds (plan phase 6).
+- [x] Token-as-billing-unit idea: dropped by user; credits stay.
+- [x] System health test: 576 tests green, typecheck clean, OpenRouter/DeepSeek live 200, 6 key pages load with no console errors, build service healthy (0 queued).
