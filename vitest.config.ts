@@ -10,6 +10,7 @@ export default defineConfig({
     include: [
       "src/lib/preview-state.test.ts",
       "src/components/__tests__/one-result-card.test.ts",
+      "src/server/__tests__/shared-backend-origins.test.ts",
       "src/server/__tests__/openrouter-only.test.ts",
       "src/server/__tests__/utility-model-tier.test.ts",
       "src/server/__tests__/verify-scope.test.ts",
