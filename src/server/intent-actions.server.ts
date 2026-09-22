@@ -19,6 +19,11 @@
  */
 
 import { detectIntents, type SimpleIntentId } from "@/lib/intent-registry";
+import {
+  detectSurfaceIntent,
+  renderSurfaceBlock,
+  type SurfaceId,
+} from "@/lib/kimble-surfaces";
 
 /** Capabilities that require a database / server before they can work. */
 const BACKEND_IMPLYING: SimpleIntentId[] = [
@@ -74,6 +79,12 @@ export interface ResolvedIntentActions {
    * its own. Null when there is nothing to say.
    */
   userNote: string | null;
+  /**
+   * The part of Kimble itself the user is asking for ("I want a domain",
+   * "who signed up?"). The builder opens it. Null when the turn is only about
+   * building the app, which is the common case.
+   */
+  surface: SurfaceId | null;
 }
 
 const EMPTY: ResolvedIntentActions = {
@@ -81,6 +92,7 @@ const EMPTY: ResolvedIntentActions = {
   enabledSharedBackend: false,
   promptBlock: "",
   userNote: null,
+  surface: null,
 };
 
 export async function resolveIntentActions(
@@ -88,13 +100,27 @@ export async function resolveIntentActions(
 ): Promise<ResolvedIntentActions> {
   if (!flagEnabled()) return EMPTY;
 
+  // Product intent — a separate read from the app-building one below, and the
+  // only one that can fire on a message with no build intent at all.
+  let surfaceBlock = "";
+  let surface: SurfaceId | null = null;
+  try {
+    const signal = detectSurfaceIntent(args.prompt);
+    if (signal) {
+      surface = signal.surface.id;
+      surfaceBlock = renderSurfaceBlock(signal);
+    }
+  } catch {
+    /* fail open — the turn behaves exactly as it does today */
+  }
+
   let intents: SimpleIntentId[] = [];
   try {
     intents = detectIntents(args.prompt, null);
   } catch {
-    return EMPTY;
+    return { ...EMPTY, surface, promptBlock: surfaceBlock };
   }
-  if (intents.length === 0) return EMPTY;
+  if (intents.length === 0) return { ...EMPTY, surface, promptBlock: surfaceBlock };
 
   const needsBackend = intents.some((i) => BACKEND_IMPLYING.includes(i));
   let enabledSharedBackend = false;
@@ -176,7 +202,10 @@ export async function resolveIntentActions(
   return {
     intents,
     enabledSharedBackend,
-    promptBlock: lines.length > 0 ? `\n\n${lines.join("\n")}\n` : "",
-    userNote,
+    promptBlock: (lines.length > 0 ? `\n\n${lines.join("\n")}\n` : "") + surfaceBlock,
+    // The surface is opening on screen, so the "you have to do this yourself"
+    // line would be said twice. The surface block already covers it.
+    userNote: surface ? null : userNote,
+    surface,
   };
 }

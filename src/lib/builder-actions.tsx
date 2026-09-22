@@ -78,6 +78,14 @@ export interface BuilderActionContext {
   openConnectors: () => void;
   openRename: () => void;
   openPalette: () => void;
+  /** Domains sub-sheet (inside project settings). */
+  openDomains: () => void;
+  /** Mobile builds section (inside project settings). */
+  openMobile: () => void;
+  /** Credits & plan. */
+  openCredits: () => void;
+  /** Website info — title, description, social preview. */
+  openWebsiteInfo: () => void;
   reloadPreview: () => void;
   exportCode: () => void;
 }
@@ -193,6 +201,20 @@ export function createBuilderActions(ctx: BuilderActionContext): BuilderAction[]
       label: "Rename project",
       icon: Pencil,
       run: ctx.openRename,
+      surfaces: ["desktop-menu", "mobile-more"],
+    },
+    {
+      id: "domains",
+      label: "Domains",
+      icon: Globe,
+      run: ctx.openDomains,
+      surfaces: ["desktop-menu", "mobile-more"],
+    },
+    {
+      id: "credits",
+      label: "Credits & plan",
+      icon: CreditCard,
+      run: ctx.openCredits,
       surfaces: ["desktop-menu", "mobile-more"],
     },
     {

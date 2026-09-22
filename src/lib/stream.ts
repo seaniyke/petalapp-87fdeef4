@@ -108,6 +108,8 @@ type Handlers = {
    *  this id (e.g. to localStorage keyed by projectId) so it can silently
    *  reconnect via /api/turns/$id/events after a tab close or refresh. */
   onTurnId?: (turnId: string) => void;
+  /** The message asked for a part of Kimble itself — open that area. */
+  onOpenSurface?: (surface: string) => void;
   /** Fired once at the end of every turn (success, failure, or abort).
    *  The client should clear any persisted turn_id on receipt. */
   onDone?: (status: "succeeded" | "failed" | "aborted" | "awaiting_credits") => void;
@@ -363,6 +365,9 @@ export async function streamGenerate(
             break;
           case "plan_scope_violation":
             handlers.onPlanScopeViolation?.(evt.droppedPaths);
+            break;
+          case "open_surface":
+            handlers.onOpenSurface?.(evt.surface);
             break;
           case "turn_outcome":
             handlers.onTurnOutcome?.({

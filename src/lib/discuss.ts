@@ -10,8 +10,13 @@
 import { supabase } from "@/integrations/supabase/client";
 import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
+import type { SurfaceId } from "@/lib/kimble-surfaces";
 
-export type DiscussResult = { reply: string };
+export type DiscussResult = {
+  reply: string;
+  /** A part of Kimble the message asked for; the builder opens it. */
+  openSurface?: SurfaceId | null;
+};
 
 export async function requestDiscussion(
   body: {
@@ -40,7 +45,7 @@ export async function requestDiscussion(
     throwIfCreditsExhausted(resp, text);
     throw new Error(text || `Request failed (${resp.status})`);
   }
-  const json = (await resp.json()) as { reply?: string };
+  const json = (await resp.json()) as { reply?: string; openSurface?: SurfaceId | null };
   if (!json.reply) throw new Error("Empty reply from AI.");
-  return { reply: json.reply };
+  return { reply: json.reply, openSurface: json.openSurface ?? null };
 }

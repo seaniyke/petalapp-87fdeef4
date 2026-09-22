@@ -685,6 +685,12 @@ export type StreamEvent =
       blockedPaths?: string[];
       reason?: string;
     }
+  /**
+   * The message asked for a part of Kimble itself (domains, credits, the app's
+   * users…). The builder opens that area. A UI hint only — nothing is
+   * charged, started or written.
+   */
+  | { type: "open_surface"; surface: string }
   | {
       type: "result";
       files: ProjectFile[];

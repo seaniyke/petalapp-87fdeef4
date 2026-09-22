@@ -55,6 +55,7 @@ import { getWebSubtypeAddendum } from "@/lib/web-subtype";
 
 import { lookupBackendForGenerate, lookupSharedBackendForGenerate } from "@/server/backend-connector.server";
 import { resolveIntentActions } from "@/server/intent-actions.server";
+import { detectSurfaceIntent } from "@/lib/kimble-surfaces";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import {
   loadInstalledCodes,
@@ -6193,6 +6194,17 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // and use it to reconnect if the tab/phone is closed mid-build.
         if (recorder) {
           emit({ type: "turn_id", turnId: recorder.turnId });
+        }
+        // The message asked for a part of Kimble itself — tell the builder to
+        // open it. Purely a UI hint: nothing is charged, started or written,
+        // and a detection failure leaves the turn exactly as it is today.
+        try {
+          const surfaceSignal = detectSurfaceIntent(turnUserRequest);
+          if (surfaceSignal) {
+            emit({ type: "open_surface", surface: surfaceSignal.surface.id });
+          }
+        } catch {
+          /* ignore */
         }
         emit({ type: "phase", phase: "thinking" });
         emit({ type: "status", message: "Opening the project and preparing the edit…" });

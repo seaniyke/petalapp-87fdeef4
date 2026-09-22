@@ -24,6 +24,7 @@ import {
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { renderCurrentDateBlock } from "@/server/dynamic-prompts.server";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
+import { detectSurfaceIntent, renderSurfaceBlock } from "@/lib/kimble-surfaces";
 
 
 type Body = {
@@ -185,8 +186,21 @@ export const Route = createFileRoute("/api/discuss")({
           hasBackend: Boolean(backend),
         });
 
+        // Product intent — the user asking for a part of Kimble itself. The
+        // area opens on their screen, and Kimble answers as its owner.
+        const surfaceSignal = (() => {
+          try {
+            return detectSurfaceIntent(
+              lastUserIdx >= 0 ? messages[lastUserIdx].content : "",
+            );
+          } catch {
+            return null;
+          }
+        })();
+        const surfaceBlock = renderSurfaceBlock(surfaceSignal);
+
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + dateBlock + capabilitiesBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + dateBlock + capabilitiesBlock + surfaceBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
@@ -272,7 +286,7 @@ export const Route = createFileRoute("/api/discuss")({
         // Charge ONCE, after success. If the wallet emptied between the
         // pre-flight check and now, we still deliver the reply (the user
         // already received it) and log a warning.
-        return Response.json({ reply: cleanReply });
+        return Response.json({ reply: cleanReply, openSurface: surfaceSignal?.surface.id ?? null });
       },
     },
   },

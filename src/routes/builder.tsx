@@ -125,6 +125,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { LazySheet } from "@/components/LazySheet";
 import { createBuilderActions, actionsForSurface } from "@/lib/builder-actions";
+import { emitOpenSurface, onOpenSurface } from "@/lib/surface-events";
+import type { SurfaceId } from "@/lib/kimble-surfaces";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 import { PartialRevertDialog } from "@/components/PartialRevertDialog";
@@ -630,6 +632,10 @@ function Builder() {
   // Destinations reachable from the mobile menu's "More" group.
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [cloudPanelOpen, setCloudPanelOpen] = useState(false);
+  // Which Cloud sub-view to land on when Kimble opens it from chat.
+  const [cloudInitialView, setCloudInitialView] = useState<
+    "home" | "database" | "users" | "storage" | "secrets" | "logs" | "ai"
+  >("home");
   const [agentIntegrationsOpen, setAgentIntegrationsOpen] = useState(false);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
   const [connectorsOpen, setConnectorsOpen] = useState(false);
@@ -2735,6 +2741,10 @@ function Builder() {
               setActivityVisible(true);
               setLatestCycleProgress("Still working — Kimble is finishing this off.");
             },
+            onOpenSurface: (surface) => {
+              // Kimble read the message as asking for one of its own areas.
+              emitOpenSurface({ projectId: proj.id, surface: surface as SurfaceId });
+            },
             onTurnId: (turnId) => {
               // Persist immediately so a tab-close in the next 200ms still
               // lets us reconnect on return. Keyed per-project so opening a
@@ -3309,7 +3319,7 @@ function Builder() {
       }
 
       try {
-        const { reply } = await requestDiscussion({
+        const { reply, openSurface } = await requestDiscussion({
           messages: nextMessages,
           currentFiles: files,
           customInstructions: proj.custom_instructions ?? undefined,
@@ -3323,6 +3333,7 @@ function Builder() {
           setLastDiscussIndex(updated.length - 1);
           return updated;
         });
+        if (openSurface) emitOpenSurface({ projectId: proj.id, surface: openSurface });
         // User message already saved above — only write the assistant reply.
         try {
           await appendMessages(proj.id, [assistantMsg]);
@@ -3907,6 +3918,16 @@ function Builder() {
         openConnectors: () => setConnectorsOpen(true),
         openRename: () => setRenameOpen(true),
         openPalette: () => setPaletteOpen(true),
+        openDomains: () => {
+          setSettingsScrollTo("domains");
+          setSettingsOpen(true);
+        },
+        openMobile: () => {
+          setSettingsScrollTo("mobile");
+          setSettingsOpen(true);
+        },
+        openCredits: () => setBillingOpen(true),
+        openWebsiteInfo: () => setSeoOpen(true),
         reloadPreview: () => {
           setView("preview");
           setMobileTab("preview");
@@ -3922,6 +3943,95 @@ function Builder() {
   );
   const desktopToolbarActions = actionsForSurface(builderActions, "desktop-toolbar");
   const desktopMenuActions = actionsForSurface(builderActions, "desktop-menu");
+
+  // Kimble asked for one of its own areas to be opened (the user said "I want
+  // a domain", "who signed up?", "how many credits do I have left?"). Opening
+  // is silent and reversible: no charge, no provisioning, no writes.
+  const openKimbleSurface = useCallback(
+    (surface: SurfaceId) => {
+      const runAction = (id: string) => {
+        const action = builderActions.find((a) => a.id === id);
+        if (action && !action.disabled) action.run();
+      };
+      const openCloudAt = (view: typeof cloudInitialView) => {
+        setCloudInitialView(view);
+        setCloudPanelOpen(true);
+      };
+      switch (surface) {
+        case "domains":
+          return runAction("domains");
+        case "publish":
+          return setPublishOpen(true);
+        case "credits":
+          return setBillingOpen(true);
+        case "cloud":
+          return openCloudAt("home");
+        case "cloud.database":
+          return openCloudAt("database");
+        case "cloud.users":
+          return openCloudAt("users");
+        case "cloud.storage":
+          return openCloudAt("storage");
+        case "cloud.secrets":
+          return openCloudAt("secrets");
+        case "cloud.logs":
+          return openCloudAt("logs");
+        case "cloud.ai":
+          return openCloudAt("ai");
+        case "payments":
+          return runAction("payments");
+        case "integrations":
+          return runAction("connectors");
+        case "analytics":
+          return runAction("analytics");
+        case "website-info":
+          return setSeoOpen(true);
+        case "mobile":
+          setSettingsScrollTo("mobile");
+          return setSettingsOpen(true);
+        case "history":
+          return setHistoryOpen(true);
+        case "code":
+          return runAction("code");
+        case "share":
+          return setSharePreviewOpen(true);
+        case "security":
+          return setShieldOpen(true);
+        case "settings":
+          return setSettingsOpen(true);
+      }
+    },
+    [builderActions],
+  );
+
+  // Never interrupt: if something is already open, or the user is mid-build,
+  // the request is dropped rather than stacked on top of their screen.
+  const anySheetOpen =
+    settingsOpen ||
+    publishOpen ||
+    billingOpen ||
+    cloudPanelOpen ||
+    paymentsOpen ||
+    connectorsOpen ||
+    analyticsOpen ||
+    seoOpen ||
+    historyOpen ||
+    sharePreviewOpen ||
+    shieldOpen ||
+    actionsOpen ||
+    paletteOpen;
+  const anySheetOpenRef = useRef(anySheetOpen);
+  anySheetOpenRef.current = anySheetOpen;
+
+  useEffect(
+    () =>
+      onOpenSurface(({ projectId: forProject, surface }) => {
+        if (forProject && project?.id && forProject !== project.id) return;
+        if (anySheetOpenRef.current) return;
+        openKimbleSurface(surface);
+      }),
+    [openKimbleSurface, project?.id],
+  );
 
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
 
@@ -4334,6 +4444,7 @@ function Builder() {
               open={cloudPanelOpen}
               onOpenChange={setCloudPanelOpen}
               projectId={project.id}
+              initialView={cloudInitialView}
               onOpenBalance={() => {
                 setCloudPanelOpen(false);
                 setBillingOpen(true);

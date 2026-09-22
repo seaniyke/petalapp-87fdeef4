@@ -20,3 +20,4 @@
 - [x] Kimble Compute: per-project Railway containers (project_compute, railway.server.ts, compute.server.ts, hourly meter cron, sleep/reap)
 - [x] Kimble Cloud tier intelligence: resolveCloudTier picks Kimble / Kimble + / Kimble Compute from app intent + growth; recorded per project, never downgraded
 - [ ] Kimble Compute needs RAILWAY_COMPUTE_PROJECT_ID, RAILWAY_COMPUTE_ENVIRONMENT_ID and a default container image before it can provision
+- [x] Kimble opens its own areas from chat: kimble-surfaces.ts (surface map + deterministic detector), surface-events.ts, open_surface stream event, discuss openSurface field, owner-voice prompt block, builder openers for domains/credits/mobile/Cloud sub-views (verified live: credits, app users, domains all open)
