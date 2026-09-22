@@ -24,6 +24,7 @@ import type { ProjectFile } from "@/server/generate.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import type { Prd } from "@/server/prd/prd-types";
 import { prdBrowserScenarios } from "@/server/prd/prd-acceptance.server";
+import { computeVerifyScope, type VerifyScope } from "@/server/verify-scope.server";
 
 const MODEL = "google/gemini-2.5-flash-lite";
 
@@ -56,6 +57,8 @@ export interface VerifyPlan {
   screenshots?: boolean;
   /** Visual QA capture request (mobile + desktop screenshots for vision scoring). */
   visual?: { widths?: number[]; routes?: string[] };
+  /** How this plan was scoped (recorded for debugging; the builder ignores it). */
+  scope?: { tier: "full" | "routes" | "minimal"; reason: string };
 }
 
 /** Mirrors the builder's caps so we never send a plan it will reject. */
@@ -424,6 +427,14 @@ export async function buildVerifyPlan(args: {
   skipFlows?: boolean;
   /** The persisted product contract, when the project has one. */
   prd?: Prd | null;
+  /**
+   * Files this turn actually changed. When supplied, verification is scoped to
+   * the routes those changes can affect (see verify-scope.server.ts). Visual QA
+   * is never disabled — only narrowed.
+   */
+  changedPaths?: string[] | null;
+  /** First build of a project, or a publish: always verify everything. */
+  forceFull?: boolean;
   signal?: AbortSignal;
 }): Promise<VerifyPlan> {
   let routes: string[];
@@ -435,11 +446,30 @@ export async function buildVerifyPlan(args: {
 
   const plan: VerifyPlan = { routes, screenshots: false };
 
+  let scope: VerifyScope;
+  try {
+    scope = computeVerifyScope({
+      files: args.files,
+      changedPaths: args.changedPaths,
+      knownRoutes: routes,
+      forceFull: args.forceFull,
+    });
+  } catch {
+    scope = { tier: "full", routes: [], widths: [390, 820, 1440], skipFlows: false, reason: "scope failed" };
+  }
+  if (scope.tier !== "full" && scope.routes.length) {
+    plan.routes = scope.routes;
+  }
+  plan.scope = { tier: scope.tier, reason: scope.reason };
+
   // Visual QA: home plus the most substantial interior routes, captured at
   // phone, tablet and desktop widths. Scored by a vision model in the
   // callback. Two routes at two widths was never enough to prove a design —
   // interior screens and the tablet breakpoint went entirely unreviewed.
-  plan.visual = { widths: [390, 820, 1440], routes: pickVisualRoutes(routes) };
+  plan.visual = {
+    widths: scope.widths,
+    routes: scope.tier === "full" ? pickVisualRoutes(routes) : scope.routes,
+  };
 
   try {
     const auth = detectAuth(args.files, routes);
@@ -448,13 +478,14 @@ export async function buildVerifyPlan(args: {
       plan.auth = { ...auth, ...identity };
       // Gated routes are verified in the signed-in pass, not the anonymous one,
       // where they would only ever report "redirected to login".
-      plan.routes = routes.filter((r) => !auth.protectedRoutes.includes(r));
+      plan.routes = plan.routes.filter((r) => !auth.protectedRoutes.includes(r));
+      if (plan.routes.length === 0) plan.routes = ["/"];
     }
   } catch {
     /* auth detection is best-effort */
   }
 
-  if (!args.skipFlows) {
+  if (!args.skipFlows && !scope.skipFlows) {
     const flows = await draftFlows({
       files: args.files,
       routes,

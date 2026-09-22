@@ -14,6 +14,7 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { reconcileDocumentHeadOps } from "@/server/document-head.server";
+import { runWithTurnContext } from "@/server/turn-context.server";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,
@@ -6024,12 +6025,15 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   // Kept in scope so the terminal path can write the assistant reply itself
   // when the browser is gone (see persistAbandonedTurnReply below).
   let turnProjectId: string | null = null;
+  // Owner of this turn — used to attribute every AI call it makes.
+  let turnUserId: string | null = null;
   // The request we would need to re-run if this turn dies mid-generation.
   let turnUserRequest = "";
   const clone = request.clone();
   try {
     const peekAuth = await authorize(clone);
     if (typeof peekAuth === "string") {
+      turnUserId = peekAuth;
       const peekBody = (await clone.json().catch(() => null)) as Body | null;
       if (peekBody?.projectId) {
         turnProjectId = peekBody.projectId;
@@ -6200,10 +6204,16 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // crashes Undici while reading its internal `window` slot.
         // `workController` is intentionally detached from `request.signal`:
         // a closed tab must not cancel a build the user already paid for.
-        const response = await handleGenerateRequestCore(
-          request,
-          recorder?.turnId,
-          workController.signal,
+        // Every AI call made anywhere inside the pipeline inherits this
+        // turn/project/user, so utility calls stop landing in telemetry
+        // with null attribution.
+        const response = await runWithTurnContext(
+          {
+            turnId: recorder?.turnId ?? null,
+            projectId: turnProjectId,
+            userId: turnUserId,
+          },
+          () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal),
         );
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);

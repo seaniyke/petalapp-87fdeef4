@@ -478,6 +478,12 @@ async function usageFromResponse(
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { currentTurnContext } = await import("@/server/turn-context.server");
+    // Ambient turn attribution: explicit meta always wins, but a call made
+    // anywhere inside a turn (preflight, triage, memory, design, recovery)
+    // still lands on the right turn/project/user without threading arguments
+    // through every call site.
+    const ambient = currentTurnContext();
     const hasUsage = (args.promptTokens ?? 0) > 0 || (args.completionTokens ?? 0) > 0;
     await supabaseAdmin.from("ai_call_log").insert({
       feature: args.feature,
@@ -495,9 +501,9 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       prompt_chars: args.promptChars ?? null,
       had_attachments: args.hadAttachments ?? false,
       chosen_by: args.chosenBy ?? null,
-      project_id: args.projectId ?? null,
-      user_id: args.userId ?? null,
-      turn_id: args.turnId ?? null,
+      project_id: args.projectId ?? ambient.projectId ?? null,
+      user_id: args.userId ?? ambient.userId ?? null,
+      turn_id: args.turnId ?? ambient.turnId ?? null,
       // Kimble always pays with its own gateway key today; per-user keys would
       // record "user" here.
       key_owner: "platform",
