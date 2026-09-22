@@ -907,7 +907,7 @@ function effectiveSignal(
 }
 
 async function dispatch(
-  provider: Provider,
+  _provider: Provider,
   body: Record<string, unknown>,
   signal: AbortSignal | undefined,
   tierOverride?: AiCallTimeoutTier,
