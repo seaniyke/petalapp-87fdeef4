@@ -4,7 +4,7 @@
  * surface. Reuses BillingSheet via a callback prop (does
  * not mount its own copies — the parent SiteHeader owns those instances).
  */
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   FolderOpen,
   House,
