@@ -365,6 +365,7 @@ export async function streamGenerate(
               outcome: evt.outcome,
               message: evt.message,
               count: evt.count,
+              url: evt.url,
               ts: evt.ts,
             });
             break;
@@ -602,6 +603,7 @@ export async function streamResumeTurn(
               outcome: evt.outcome as never,
               message: (evt.message as string) ?? "",
               count: evt.count as number | undefined,
+              url: evt.url as string | undefined,
               ts: (evt.ts as number) ?? Date.now(),
             });
             break;
