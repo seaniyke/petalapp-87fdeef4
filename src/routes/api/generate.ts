@@ -109,6 +109,7 @@ import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
 import {
+  keepChatPhotos,
   loadProjectPictures,
   renderProjectPictureBlock,
 } from "@/server/registry/project-pictures.server";
@@ -2919,9 +2920,13 @@ Forbidden defaults
     /* never block a build on taste-block failure */
   }
 
-  // Photos the owner uploaded for this project outrank anything generated.
+  // Photos someone attached in chat become real photos of this project, and
+  // they outrank anything generated.
   let ownPhotoBlock = "";
   try {
+    if (hasVisionTurn) {
+      await keepChatPhotos(body.projectId ?? null, messages[lastUserIdx]?.attachments);
+    }
     ownPhotoBlock = renderProjectPictureBlock(await loadProjectPictures(body.projectId ?? null));
   } catch {
     /* a photo lookup must never block a build */
