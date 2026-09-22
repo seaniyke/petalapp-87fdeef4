@@ -171,8 +171,76 @@ export type ActivityLike = {
   outcome: ActivityOutcome;
   message: string;
   count?: number;
+  /** Public URL when this event is a picture that just landed. */
+  url?: string;
   ts: number;
 };
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Personality: the same true fact, said a few different ways.
+ * A turn picks its phrasing from a seed so one build reads consistently,
+ * but two builds never read identically.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/** Small stable hash → index. Pure, no randomness at render time. */
+export function pick<T>(options: readonly T[], seed: string | number): T {
+  const s = String(seed);
+  let h = 7;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return options[Math.abs(h) % options.length] as T;
+}
+
+/** Live lines while a picture is being made or has just landed. */
+export function pictureLine(index: number): string {
+  return pick(
+    [
+      "That picture came out well",
+      "Another picture, done",
+      "Fresh artwork, just landed",
+      "Made a picture for your app",
+    ],
+    `pic-${index}`,
+  );
+}
+
+/**
+ * Short in-character asides for the seconds where nothing new has landed,
+ * so the card never freezes on a stale line. Phase-aware and never a
+ * promise about progress.
+ */
+const IDLE_LINES: Record<string, readonly string[]> = {
+  thinking: [
+    "Working out the order of things…",
+    "Reading your brief once more…",
+    "Deciding which parts to touch…",
+  ],
+  designing: [
+    "Trying a layout in my head…",
+    "Lining up spacing and type…",
+    "Settling on the colours…",
+  ],
+  writing: [
+    "Still shaping this one…",
+    "Getting the details right…",
+    "Writing it out properly…",
+  ],
+  polishing: [
+    "Reading it back line by line…",
+    "Making sure nothing broke…",
+    "Tidying the loose ends…",
+  ],
+  deploying: [
+    "Putting it online…",
+    "Nearly there…",
+    "Packing it up for the web…",
+  ],
+};
+
+export function idleLine(phaseId: string, seed: number): string | null {
+  const lines = IDLE_LINES[phaseId];
+  if (!lines) return null;
+  return pick(lines, `${phaseId}-${seed}`);
+}
 
 /**
  * The newest thing Kimble did, in plain words — or null if nothing has
