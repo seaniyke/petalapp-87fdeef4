@@ -10,7 +10,7 @@ const direction: DesignDirection = {
   display_font: "Fraunces",
   body_font: "Karla",
   palette_mood: "ember and bone",
-  density: "airy",
+  density: "balanced",
   motion: "expressive",
   fx_recipe: "luxury-brand",
   theme: "sunset-ember",
