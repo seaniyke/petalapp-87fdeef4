@@ -185,6 +185,19 @@ export const Route = createFileRoute("/api/discuss")({
           hasBackend: Boolean(backend),
         });
 
+        // Product intent — the user asking for a part of Kimble itself. The
+        // area opens on their screen, and Kimble answers as its owner.
+        const surfaceSignal = (() => {
+          try {
+            return detectSurfaceIntent(
+              lastUserIdx >= 0 ? messages[lastUserIdx].content : "",
+            );
+          } catch {
+            return null;
+          }
+        })();
+        const surfaceBlock = renderSurfaceBlock(surfaceSignal);
+
         const chatMessages = [
           { role: "system", content: DISCUSS_SYSTEM_PROMPT + dateBlock + capabilitiesBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
