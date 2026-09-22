@@ -186,6 +186,7 @@ import {
   renderScopeContractBlock,
   scopeDisclosure,
 } from "@/server/edit-scope-guard.server";
+import { buildEditBoundary } from "@/server/edit-boundary.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { ensureBrandIdentity } from "@/server/brand-identity.server";
 import {
