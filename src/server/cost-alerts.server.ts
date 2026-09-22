@@ -146,7 +146,7 @@ export function renderCostAlertHtml(r: CostAlertReport): string {
     .join("");
   const cpc = r.costPerCreditUsd == null ? "unknown" : `$${r.costPerCreditUsd.toFixed(4)}`;
   return `<div style="font-family:system-ui,sans-serif;max-width:640px">
-  <h2 style="margin:0 0 4px">Petal · Cost alerts</h2>
+  <h2 style="margin:0 0 4px">Kimble · Cost alerts</h2>
   <p style="color:#666;margin:0 0 16px">Last ${r.windowDays} day(s) · ${r.turns} turns · cost known for ${r.knownPct.toFixed(0)}%</p>
   <p style="margin:0 0 16px">Credits charged <strong>${r.creditsCharged.toFixed(2)}</strong> · known variable cost <strong>$${r.variableCostUsd.toFixed(2)}</strong> · cost per credit <strong>${cpc}</strong> (target $${r.targetCostPerCreditUsd.toFixed(4)})</p>
   ${rows ? `<table style="width:100%;border-collapse:collapse">${rows}</table>` : `<p style="color:#067647">No alerts — everything is within thresholds.</p>`}

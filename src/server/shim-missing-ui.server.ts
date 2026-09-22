@@ -49,7 +49,7 @@ function buildShim(names: string[], hasDefault: boolean, modulePath: string): st
   const uniq = Array.from(new Set(names));
   const exportLines = uniq.map((n) => `export const ${n}: any = Shim;`).join("\n");
   return `// Auto-generated shim for "${modulePath}". The model imported a
-// primitive that the Petal scaffold does not ship. Rather than blank the
+// primitive that the Kimble scaffold does not ship. Rather than blank the
 // preview, we render a passthrough <div> so the page mounts. Replace with
 // a real implementation when needed.
 import * as React from "react";

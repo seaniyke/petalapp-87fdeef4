@@ -29,7 +29,7 @@ export function ConnectorsSheet({ open, onOpenChange, projectId }: Props) {
             <Plug className="h-4 w-4" /> Connectors
           </SheetTitle>
           <SheetDescription>
-            Connect your app to the services it needs. Petal wires the SDK and
+            Connect your app to the services it needs. Kimble wires the SDK and
             asks for any keys it needs along the way.
           </SheetDescription>
         </SheetHeader>

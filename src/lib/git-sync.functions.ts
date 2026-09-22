@@ -170,7 +170,7 @@ export const pushProjectToGit = createServerFn({ method: "POST" })
           fullName: link.repo_full_name,
           branch: link.branch,
           files: files.map((f) => ({ path: f.path, content: f.content ?? "" })),
-          message: data.message?.trim() || `Sync from Petal — ${new Date().toISOString()}`,
+          message: data.message?.trim() || `Sync from Kimble — ${new Date().toISOString()}`,
         });
         await supabaseAdmin
           .from("project_git_links")

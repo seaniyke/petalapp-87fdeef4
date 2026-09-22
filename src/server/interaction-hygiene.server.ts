@@ -1,7 +1,7 @@
 /**
  * Interaction hygiene pass — "the site looks right but nothing works".
  *
- * Observed on shipped Petal apps:
+ * Observed on shipped Kimble apps:
  *
  *   A. `<form>` with no `onSubmit` — pressing Enter or clicking the submit
  *      button does a full-page GET, so the app appears to reset/do nothing.

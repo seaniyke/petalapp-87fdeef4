@@ -12,13 +12,13 @@ import { rememberReferral } from "@/lib/referral";
 export const Route = createFileRoute("/r/$code")({
   head: () => ({
     meta: [
-      { title: "You've been invited to Petal" },
+      { title: "You've been invited to Kimble" },
       {
         name: "description",
         content:
-          "Your friend saved you a spot in line for Petal — describe an app in a sentence and watch it get built.",
+          "Your friend saved you a spot in line for Kimble — describe an app in a sentence and watch it get built.",
       },
-      { property: "og:title", content: "You've been invited to Petal" },
+      { property: "og:title", content: "You've been invited to Kimble" },
       {
         property: "og:description",
         content: "Skip ahead in line and start building apps from a sentence.",

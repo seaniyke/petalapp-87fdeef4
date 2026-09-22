@@ -32,21 +32,21 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "Petal — Build real apps with AI" },
+      { title: "Kimble — Build real apps with AI" },
       {
         name: "description",
         content:
-          "Petal turns conversations into working web apps. Chat, preview, and ship — no setup required.",
+          "Kimble turns conversations into working web apps. Chat, preview, and ship — no setup required.",
       },
-      { name: "author", content: "Petal" },
-      { property: "og:title", content: "Petal — Build real apps with AI" },
+      { name: "author", content: "Kimble" },
+      { property: "og:title", content: "Kimble — Build real apps with AI" },
       {
         property: "og:description",
         content: "Turn conversations into working web apps in minutes.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Petal — Build real apps with AI" },
+      { name: "twitter:title", content: "Kimble — Build real apps with AI" },
       {
         name: "twitter:description",
         content: "Turn conversations into working web apps in minutes.",

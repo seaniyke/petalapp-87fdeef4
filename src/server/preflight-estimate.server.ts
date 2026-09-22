@@ -1,5 +1,5 @@
 /**
- * Pre-flight cost estimator (Petal "before-you-send").
+ * Pre-flight cost estimator (Kimble "before-you-send").
  *
  * Differentiator: Bolt/Lovable users frequently complain about credits burning
  * on retries with no warning. We surface an estimated cost + duration BEFORE

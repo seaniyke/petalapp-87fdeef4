@@ -1,5 +1,5 @@
 /**
- * Generates a short, product-style project title from what Petal actually
+ * Generates a short, product-style project title from what Kimble actually
  * built — never the raw user prompt. Used by the builder (auto-title) and by
  * the gallery reseed action.
  */

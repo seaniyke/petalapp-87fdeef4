@@ -3,14 +3,14 @@ import { createFileRoute } from '@tanstack/react-router'
 const EMAIL_TEMPLATE_TITLES: Record<string, string> = {
   signup: 'Confirm your email',
   invite: "You're invited",
-  magiclink: 'Sign in to Petal',
+  magiclink: 'Sign in to Kimble',
   recovery: 'Reset your password',
   email_change: 'Confirm your new email',
   reauthentication: 'Verification code',
 }
 
 // Configuration
-const SITE_NAME = "Petal"
+const SITE_NAME = "Kimble"
 const ROOT_DOMAIN = "buildwithpetal.com"
 
 // Sample data for preview mode ONLY (not used in actual email sending).

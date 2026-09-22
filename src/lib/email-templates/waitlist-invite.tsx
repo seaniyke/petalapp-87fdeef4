@@ -18,16 +18,16 @@ function WaitlistInvite({ name, email, signInUrl }: Props) {
   const href = signInUrl || `${SITE_URL}/auth?mode=signup`;
   return (
     <PetalEmailLayout
-      preview="Your Petal invite is here 🌸"
+      preview="Your Kimble invite is here 🌸"
       heading="You're in."
-      cta={{ label: "Sign in to Petal", href }}
+      cta={{ label: "Sign in to Kimble", href }}
     >
       <Text style={text}>
-        {first ? `Hey ${first} —` : "Hey —"} your spot on the Petal waitlist just
+        {first ? `Hey ${first} —` : "Hey —"} your spot on the Kimble waitlist just
         opened. You can sign in and start building right now.
       </Text>
       <Text style={text}>
-        Describe what you want in a sentence and Petal ships it: web apps, mobile
+        Describe what you want in a sentence and Kimble ships it: web apps, mobile
         apps, backends and Chrome extensions.
       </Text>
       <Text style={muted}>
@@ -40,7 +40,7 @@ function WaitlistInvite({ name, email, signInUrl }: Props) {
 
 export const template = {
   component: WaitlistInvite,
-  subject: "Your Petal invite is here 🌸",
+  subject: "Your Kimble invite is here 🌸",
   displayName: "Waitlist invite",
   previewData: { name: "Ada Lovelace", email: "ada@example.com" },
 } satisfies TemplateEntry;

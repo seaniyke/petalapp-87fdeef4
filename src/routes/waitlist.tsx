@@ -34,16 +34,16 @@ export const Route = createFileRoute("/waitlist")({
   }),
   head: () => ({
     meta: [
-      { title: "Your spot in line · Petal" },
+      { title: "Your spot in line · Kimble" },
       {
         name: "description",
         content:
-          "Track your place in the Petal waitlist and jump the queue by inviting friends.",
+          "Track your place in the Kimble waitlist and jump the queue by inviting friends.",
       },
-      { property: "og:title", content: "Your spot in line · Petal" },
+      { property: "og:title", content: "Your spot in line · Kimble" },
       {
         property: "og:description",
-        content: "Invite friends, move up the Petal waitlist, start building sooner.",
+        content: "Invite friends, move up the Kimble waitlist, start building sooner.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -89,7 +89,7 @@ function WaitlistStatusPage() {
     if (!status) return;
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
-        await navigator.share({ title: "Petal", text: shareText(status.referral_code), url: link });
+        await navigator.share({ title: "Kimble", text: shareText(status.referral_code), url: link });
         return;
       } catch {
         /* user cancelled */
@@ -104,7 +104,7 @@ function WaitlistStatusPage() {
       <div className="relative mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-16 sm:px-8">
         <Link to="/" className="mb-8 inline-flex items-center gap-2.5">
           <img src="/kimble-logo.png" alt="" aria-hidden className="h-9 w-9 object-contain" />
-          <span className="font-display text-2xl font-black tracking-[-0.035em]">Petal</span>
+          <span className="font-display text-2xl font-black tracking-[-0.035em]">Kimble</span>
         </Link>
 
         {loading ? (

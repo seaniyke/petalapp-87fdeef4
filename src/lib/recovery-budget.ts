@@ -1,11 +1,11 @@
 /**
  * Persisted automatic-recovery state.
  *
- * Petal's self-healing paths (build auto-fix, no-edit escalation, transient
+ * Kimble's self-healing paths (build auto-fix, no-edit escalation, transient
  * retry, post-deploy browser verification) all shared one in-memory budget.
  * That budget lived in refs, so leaving the tab and coming back — or iOS
  * discarding a backgrounded tab and reloading it — reset the counters AND the
- * "already handled this build id" sets. Petal then happily started the whole
+ * "already handled this build id" sets. Kimble then happily started the whole
  * repair chain again on a build it had already reacted to, which is what makes
  * a single user request look like an endless loop of fix attempts.
  *
@@ -21,7 +21,7 @@ export type RecoveryState = {
   used: number;
   /** Build-failure auto-fix attempts. */
   autoFixAttempts: number;
-  /** Build ids whose failure Petal already reacted to. */
+  /** Build ids whose failure Kimble already reacted to. */
   handledBuildIds: string[];
   /** Build ids whose browser-verification defects were already fed back. */
   verifyHandledBuildIds: string[];

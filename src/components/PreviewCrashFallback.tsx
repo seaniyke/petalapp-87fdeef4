@@ -5,7 +5,7 @@ import { AlertTriangle, FileCode2, RotateCw, Wrench } from "lucide-react";
  *
  * Renders in place of the live iframe when the preview hits a hard runtime
  * crash (2+ runtime errors in <5s). Shows a friendly summary of the crash
- * plus actions: hard-reload the preview, or ask Petal to repair.
+ * plus actions: hard-reload the preview, or ask Kimble to repair.
  *
  * Note on "snapshot": the preview iframe is cross-origin (WebContainer dev
  * server runs on a different origin), so `canvas.drawImage(iframe)` is
@@ -45,7 +45,7 @@ export function PreviewCrashFallback({
         </div>
         <p className="text-xs font-medium leading-relaxed text-muted-foreground">
           {cause} Your code is safe — only the live preview stopped. Reload first; if it happens
-          again, let Petal fix it.
+          again, let Kimble fix it.
         </p>
 
 
@@ -83,7 +83,7 @@ export function PreviewCrashFallback({
               className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:opacity-90"
             >
               <Wrench className="h-3.5 w-3.5" />
-              Ask Petal to fix it
+              Ask Kimble to fix it
             </button>
           )}
           {culprit && onOpenFile && (
@@ -106,7 +106,7 @@ export function PreviewCrashFallback({
 function plainCause(reason: string): string {
   const r = reason.toLowerCase();
   if (r.includes("syntaxerror") || r.includes("unexpected token"))
-    return "There's a typo in the code Petal just wrote.";
+    return "There's a typo in the code Kimble just wrote.";
   if (r.includes("failed to resolve") || r.includes("cannot find module"))
     return "A file or package the app imports is missing.";
   if (r.includes("invariant failed"))

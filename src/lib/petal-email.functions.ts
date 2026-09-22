@@ -1,5 +1,5 @@
 /**
- * Server functions for managing Petal Email subscriptions from the dashboard UI.
+ * Server functions for managing Kimble Email subscriptions from the dashboard UI.
  */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -69,7 +69,7 @@ export const getPetalEmailStatus = createServerFn({ method: "POST" })
     };
   });
 
-/** Enable Petal Email for a project. Returns the API token ONCE. */
+/** Enable Kimble Email for a project. Returns the API token ONCE. */
 export const enablePetalEmailForProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { projectId: string }) => ProjectIdInput.parse(input))

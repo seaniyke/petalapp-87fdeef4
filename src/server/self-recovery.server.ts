@@ -1,7 +1,7 @@
 /**
  * Layer 5 — Self-Recovery.
  *
- * Two best-effort post-build checks that turn Petal from "ship and hope"
+ * Two best-effort post-build checks that turn Kimble from "ship and hope"
  * into something that notices when it's drifted from the brief.
  *
  *  1. runSelfCheck — after a successful build, asks a small model to
@@ -48,13 +48,13 @@ export function classifyRawError(rawMessage: string): ErrorKind {
   // Those words appear in many non-user-initiated failures (AbortError from
   // upstream gateway timeouts, "stream aborted by provider", "request
   // aborted: tool_call missing", etc.) and inferring user intent from text
-  // produces the "You stopped Petal" misattribution we hit in the wild.
+  // produces the "You stopped Kimble" misattribution we hit in the wild.
   // True user-cancel must be set by the catch site from
   // `request.signal.aborted` — never inferred from prose. Until that's
   // wired, "aborted" is only emitted when the catch site sets it explicitly.
   if (/\b401\b|unauthori[sz]ed|not signed in/i.test(t)) return "unauthorized";
   if (/rate.?limit|\b429\b/i.test(t)) return "rate_limit";
-  // Provider-side exhaustion FIRST. When Petal's own model gateway runs dry
+  // Provider-side exhaustion FIRST. When Kimble's own model gateway runs dry
   // it says "AI credits exhausted … Settings → Workspace → Usage" — that is
   // OUR account, not the user's wallet. Telling the user to buy credits for
   // an outage we caused is both wrong and unfixable by them.
@@ -87,7 +87,7 @@ export function classifyRawError(rawMessage: string): ErrorKind {
 }
 
 /**
- * Is this failure one Petal can simply run again?
+ * Is this failure one Kimble can simply run again?
  *
  * Transient = the model call, the network or the worker fell over. Those are
  * picked back up silently instead of being reported. Anything the user has to
@@ -139,7 +139,7 @@ export type SelfCheckVerdict = {
   suggestions: string[];
 };
 
-const SELF_CHECK_SYSTEM = `You are Petal's QA partner. A build just finished. Your job is to honestly compare the user's brief against what Petal produced (described by Petal's own one-line summary + the list of files written) and decide if the result really lands the brief — AND to suggest the most useful next moves.
+const SELF_CHECK_SYSTEM = `You are Kimble's QA partner. A build just finished. Your job is to honestly compare the user's brief against what Kimble produced (described by Kimble's own one-line summary + the list of files written) and decide if the result really lands the brief — AND to suggest the most useful next moves.
 
 Be HONEST and CONCISE. You are not the cheerleader — you are the friend who says "hey, you forgot the contact form" or "next, you'd want a real signup flow".
 
@@ -259,9 +259,9 @@ export type FriendlyError = {
   suggestions: string[];
 };
 
-const HUMANIZE_SYSTEM = `You translate raw build errors from Petal (an AI app builder) into ONE friendly sentence the user can act on, plus 0–3 short follow-up prompts they could tap to recover.
+const HUMANIZE_SYSTEM = `You translate raw build errors from Kimble (an AI app builder) into ONE friendly sentence the user can act on, plus 0–3 short follow-up prompts they could tap to recover.
 
-Audience: non-technical builders. NEVER mention file paths, stack traces, model names, tokens, JSON schemas, or "the AI" as a third party. Speak as Petal, in first person, calm and accountable: "I couldn't…", "Let me try…".
+Audience: non-technical builders. NEVER mention file paths, stack traces, model names, tokens, JSON schemas, or "the AI" as a third party. Speak as Kimble, in first person, calm and accountable: "I couldn't…", "Let me try…".
 
 Rules:
 - message: ONE sentence, ≤ 200 chars, plain English, no code. Avoid words like "tool call", "schema", "tokens", "endpoint".

@@ -36,7 +36,7 @@ const ALLOWED_KINDS = new Set([
   "generic-layout",
 ]);
 
-const RULES = `You are Petal's craft reviewer. You are shown screenshots of a freshly generated app that shipped WITHOUT crashes — your job is judging whether it looks designed.
+const RULES = `You are Kimble's craft reviewer. You are shown screenshots of a freshly generated app that shipped WITHOUT crashes — your job is judging whether it looks designed.
 
 Report a craft defect only when the screenshot proves it:
 - flat-hero: the first screen is a centered headline + paragraph + button with no imagery, product visual, layered composition or depth

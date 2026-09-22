@@ -43,7 +43,7 @@ export const Route = createFileRoute("/share/$token")({
   component: SharePage,
   head: () => ({
     meta: [
-      { title: "Shared preview · Petal" },
+      { title: "Shared preview · Kimble" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -182,7 +182,7 @@ function SharePage() {
       {/* Top bar */}
       <header className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-semibold">Petal Preview</span>
+          <span className="font-semibold">Kimble Preview</span>
           <span className="text-muted-foreground">·</span>
           <span className="font-mono text-xs text-muted-foreground">
             {state.displayHost}
@@ -280,7 +280,7 @@ function SharePage() {
       <footer className="border-t border-border bg-card px-4 py-2 text-center text-[11px] text-muted-foreground">
         Built with{" "}
         <a href="/" className="font-medium text-foreground hover:underline">
-          Petal
+          Kimble
         </a>
       </footer>
     </div>

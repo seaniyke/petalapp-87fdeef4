@@ -6,13 +6,13 @@ import { TrendingUp, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
 export const Route = createFileRoute("/invest")({
   head: () => ({
     meta: [
-      { title: "Invest in Petal — $40,000 for 10%" },
+      { title: "Invest in Kimble — $40,000 for 10%" },
       {
         name: "description",
         content:
-          "Petal is raising $40,000 for 10% equity. Join the early investor waitlist and we'll follow up with the paperwork.",
+          "Kimble is raising $40,000 for 10% equity. Join the early investor waitlist and we'll follow up with the paperwork.",
       },
-      { property: "og:title", content: "Invest in Petal" },
+      { property: "og:title", content: "Invest in Kimble" },
       {
         property: "og:description",
         content: "Back the AI builder for web, mobile, backends and extensions.",
@@ -70,10 +70,10 @@ function InvestPage() {
               <TrendingUp className="h-3.5 w-3.5" /> Early investor round
             </div>
             <h1 className="mt-6 font-display text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
-              Invest in Petal.
+              Invest in Kimble.
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
-              Petal is raising <strong className="text-foreground">$40,000 for 10% equity</strong>{" "}
+              Kimble is raising <strong className="text-foreground">$40,000 for 10% equity</strong>{" "}
               to grow the AI builder for web, mobile, backends and Chrome
               extensions. Join the investor waitlist and we'll follow up with
               the deck and paperwork.
@@ -132,7 +132,7 @@ function InvestPage() {
                     to="/"
                     className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
                   >
-                    Back to Petal <ArrowRight className="h-4 w-4" />
+                    Back to Kimble <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               ) : (

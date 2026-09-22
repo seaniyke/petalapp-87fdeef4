@@ -40,7 +40,7 @@ export function detectCrossCuttingIntent(prompt: string): boolean {
 }
 
 
-/** Files Petal may freely edit — excludes scaffold/kit-owned trees. */
+/** Files Kimble may freely edit — excludes scaffold/kit-owned trees. */
 function isAppOwned(path: string): boolean {
   if (path.startsWith("src/components/ui/")) return false;
   if (path.startsWith("src/components/blocks/")) return false;

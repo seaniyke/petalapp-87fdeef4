@@ -89,7 +89,7 @@ export function CloudLogsView({ projectId }: { projectId: string }) {
           title={result.reason === "NO_BACKEND" ? "No backend yet" : "Backend is starting"}
           description={
             result.reason === "NO_BACKEND"
-              ? "Enable Petal Cloud for this project to see API, database and auth logs here."
+              ? "Enable Kimble Cloud for this project to see API, database and auth logs here."
               : "Your backend is still provisioning. Logs appear once it's ready."
           }
         />

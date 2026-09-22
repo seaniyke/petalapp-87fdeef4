@@ -1,7 +1,7 @@
 /**
  * Project Intelligence Context (PIC) — the canonical understanding of a project.
  *
- * Petal already knew things about a project, but it knew them in three
+ * Kimble already knew things about a project, but it knew them in three
  * unrelated places: the PRD (`project_blueprints.blueprint.prd`), the
  * blueprint/architecture (same column, sibling keys) and project memory
  * (key/value rows). Nothing assembled them, so every stage re-derived —
@@ -19,7 +19,7 @@
 import type { Prd } from "@/server/prd/prd-types";
 import type { BuildTargetId } from "@/lib/build-targets";
 
-/** How sure Petal is about a decision it made on the user's behalf. */
+/** How sure Kimble is about a decision it made on the user's behalf. */
 export type Confidence = "confident" | "inferred" | "uncertain";
 
 export interface PicDecision {
@@ -28,7 +28,7 @@ export interface PicDecision {
   /** The decision, in one sentence. */
   value: string;
   confidence: Confidence;
-  /** Why Petal decided this. */
+  /** Why Kimble decided this. */
   rationale?: string;
   /** Turn that made the decision. */
   turnId?: string;
@@ -202,13 +202,13 @@ export interface ProjectIntelligenceContext {
   architecture: PicArchitecture | null;
   security: PicSecurity | null;
   acceptanceCriteria: string[];
-  /** Decisions Petal made, with confidence. Newest last. */
+  /** Decisions Kimble made, with confidence. Newest last. */
   decisions: PicDecision[];
   /** Decisions the user locked in ("keep the sidebar", "always Paystack"). */
   protectedDecisions: string[];
   /** Paths the pipeline must not rewrite without an explicit request. */
   protectedFiles: string[];
-  /** Open questions Petal chose not to ask. */
+  /** Open questions Kimble chose not to ask. */
   unresolved: string[];
   /** One line per turn: what changed. Capped. */
   history: Array<{ at: string; turnId?: string; summary: string }>;

@@ -1,7 +1,7 @@
 /**
  * Game intent detector. Mirrors mobile-intent / payment-intent.
  *
- * Fires when the user wants Petal to build a game (any genre). Classifies
+ * Fires when the user wants Kimble to build a game (any genre). Classifies
  * the genre when possible and notes whether the prompt asks for multiplayer,
  * realtime, physics, or 3D so the game-guidance block can recommend the
  * right libraries (Phaser vs React+Zustand vs three.js, etc.).

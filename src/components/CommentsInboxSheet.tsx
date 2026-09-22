@@ -213,7 +213,7 @@ export function CommentsInboxSheet({
                       }}
                     >
                       <Send className="mr-1 h-3 w-3" />
-                      Ask Petal to fix
+                      Ask Kimble to fix
                     </Button>
                   )}
                   <Button

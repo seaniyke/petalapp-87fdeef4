@@ -6,7 +6,7 @@
  * concrete oklch tokens that the model writes into src/styles.css.
  *
  * The user never sees the theme name. To them it just feels like
- * "Petal nailed the look on turn one." Internally this dramatically
+ * "Kimble nailed the look on turn one." Internally this dramatically
  * cuts the failure mode where every project converges on the same
  * Inter + indigo gradient SaaS look.
  *

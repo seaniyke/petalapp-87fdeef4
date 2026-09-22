@@ -1,7 +1,7 @@
 /**
  * MobileAppPanel — Zero-config native shell setup + build dispatch.
  *
- * Petal owns the GitHub mirror + Codemagic app, so users just click
+ * Kimble owns the GitHub mirror + Codemagic app, so users just click
  * "Build iOS" / "Build Android". No bundle id or Codemagic id needed.
  *
  * States:
@@ -166,7 +166,7 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
         <div className="font-medium text-foreground">{status?.bundleId}</div>
         <div className="text-muted-foreground">
           {status?.provisioned
-            ? "Managed by Petal · ready to build"
+            ? "Managed by Kimble · ready to build"
             : "Will be provisioned on first build"}
         </div>
       </div>

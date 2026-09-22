@@ -1,7 +1,7 @@
 /**
  * Phase 5 — golden regression corpus.
  *
- * Ten structurally different prompts. Each asserts the PRD shape Petal must
+ * Ten structurally different prompts. Each asserts the PRD shape Kimble must
  * derive BEFORE it writes a file: product type, required surfaces, forbidden
  * surfaces, and whether the product's value is a computation.
  *

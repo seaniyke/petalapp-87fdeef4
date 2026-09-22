@@ -1,5 +1,5 @@
 /**
- * PartialRevertDialog — Petal "Time Machine" per-file revert.
+ * PartialRevertDialog — Kimble "Time Machine" per-file revert.
  *
  * Differentiator vs Lovable / Bolt / v0:
  *  - Their history is all-or-nothing (revert the entire snapshot).

@@ -1,6 +1,6 @@
 /**
  * Crypto checkout — pay for a plan, a credit pack or a Cloud + AI top-up by
- * sending crypto to one of Petal's public wallets.
+ * sending crypto to one of Kimble's public wallets.
  *
  * POST /api/billing/crypto  — record a submission (status: pending)
  * GET  /api/billing/crypto  — list the caller's own submissions

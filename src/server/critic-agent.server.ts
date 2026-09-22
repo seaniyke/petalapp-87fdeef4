@@ -1,7 +1,7 @@
 /**
  * Critic subagent — the last gate before bytes hit the project.
  *
- * Petal's other agents *produce*: the inspector finds ground truth, the agent
+ * Kimble's other agents *produce*: the inspector finds ground truth, the agent
  * loop codemods, the emit call writes ops. Nothing until now looked at the
  * proposed diff and asked the only question that matters: "is this obviously
  * wrong?"
@@ -223,7 +223,7 @@ function diffDigest(ops: FileOp[], files: ProjectFile[]): string {
     .slice(0, 24_000);
 }
 
-const SYSTEM_PROMPT = `You are Petal's Critic: the last review before a proposed code change is written to a user's live app.
+const SYSTEM_PROMPT = `You are Kimble's Critic: the last review before a proposed code change is written to a user's live app.
 
 You are shown the user's request and the exact ops about to be applied. Your only job is to catch changes that are CLEARLY WRONG — the ones a careful engineer would refuse at review.
 

@@ -7,7 +7,7 @@
  *    make the CTA larger and give the section a more premium feel — but
  *    don't touch the pricing."
  *
- * That is five requested changes plus one preservation constraint. Petal used
+ * That is five requested changes plus one preservation constraint. Kimble used
  * to send the whole sentence to the model and hope every clause landed; when
  * three of five landed the turn still reported success, and the user had to
  * come back with "you forgot the navbar".
@@ -227,7 +227,7 @@ function keywordsFor(text: string, target: string | null): string[] {
 
 /**
  * Split a user message into the complete set of requested changes plus the
- * things they explicitly asked Petal to leave alone.
+ * things they explicitly asked Kimble to leave alone.
  */
 export function extractChangeSet(prompt: string): ChangeSet {
   const items: ChangeItem[] = [];
@@ -305,7 +305,7 @@ export function renderChangeSetBlock(cs: ChangeSet): string {
   return lines.join("\n");
 }
 
-/** Petal-owned files the model is never handed as an edit target. */
+/** Kimble-owned files the model is never handed as an edit target. */
 function isKitFile(path: string): boolean {
   return (
     path.startsWith("src/components/ui/") ||
@@ -317,7 +317,7 @@ function isKitFile(path: string): boolean {
 }
 
 /**
- * A requested surface sometimes only exists inside a Petal-owned kit file — the
+ * A requested surface sometimes only exists inside a Kimble-owned kit file — the
  * app's navbar is `src/components/blocks/nav-bar.tsx`, which the model may not
  * edit. Left alone, "shrink the navbar" simply cannot land: the model has no
  * file to change and the audit records an honest but avoidable miss.

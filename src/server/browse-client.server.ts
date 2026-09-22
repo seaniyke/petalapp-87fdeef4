@@ -1,7 +1,7 @@
 /**
  * Worker-side client for the builder's steerable browser (`/browse`).
  *
- * Petal runs on Cloudflare Workers — no processes, no Chromium. Every real
+ * Kimble runs on Cloudflare Workers — no processes, no Chromium. Every real
  * browser interaction happens on the Railway builder, which already ships
  * Playwright for post-build verification. This module is the only door to
  * that surface; the Test Lab's agent tools go through it.

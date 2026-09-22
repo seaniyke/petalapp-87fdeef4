@@ -1,5 +1,5 @@
 /**
- * Crypto wallets Petal accepts coffee tips on.
+ * Crypto wallets Kimble accepts coffee tips on.
  *
  * These are public receiving addresses — safe to ship in the client bundle.
  * Replace the placeholders with the real wallets; any entry left as an empty

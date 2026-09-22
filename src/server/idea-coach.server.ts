@@ -28,7 +28,7 @@ export type CoachTurnInput = {
 };
 
 export type CoachExchange = {
-  /** Question Petal asked. */
+  /** Question Kimble asked. */
   question: string;
   /** What the user answered (chip label or freeform). */
   answer: string;
@@ -49,7 +49,7 @@ export type CoachTurnOutput = {
 
 export const MAX_COACH_TURNS = 4;
 
-const COACH_SYSTEM_PROMPT = `You are Petal's Idea Coach — a warm, briskly efficient brainstorming partner that helps a stuck user land on a single specific app idea they can build right now.
+const COACH_SYSTEM_PROMPT = `You are Kimble's Idea Coach — a warm, briskly efficient brainstorming partner that helps a stuck user land on a single specific app idea they can build right now.
 
 The user is sitting in front of an AI app builder and doesn't know what to make. Your only job is to ask 1-3 sharp questions, then hand back a concrete build prompt they can submit as-is.
 

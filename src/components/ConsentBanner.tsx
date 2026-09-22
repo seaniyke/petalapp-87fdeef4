@@ -82,7 +82,7 @@ export function ConsentBanner() {
     >
       <div className="mx-auto flex w-full max-w-xl flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-lg sm:flex-row sm:items-center">
         <p className="flex-1 text-xs leading-relaxed text-muted-foreground">
-          Petal uses cookies to understand how the site is used and to improve
+          Kimble uses cookies to understand how the site is used and to improve
           it. Accept to allow analytics and ads measurement, or decline to keep
           tracking off.
         </p>

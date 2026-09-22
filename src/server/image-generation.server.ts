@@ -154,7 +154,7 @@ export async function generatePetalImage(
       ...(usingOpenrouter
         ? {
             "HTTP-Referer": "https://buildwithpetal.com",
-            "X-Title": "Petal",
+            "X-Title": "Kimble",
           }
         : {}),
     },

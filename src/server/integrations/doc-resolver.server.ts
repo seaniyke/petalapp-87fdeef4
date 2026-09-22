@@ -1,7 +1,7 @@
 /**
  * Universal Integration Resolver — Layer E.
  *
- * When a user asks Petal to "add Twilio" / "integrate Mapbox" / "use OpenAI",
+ * When a user asks Kimble to "add Twilio" / "integrate Mapbox" / "use OpenAI",
  * this module fetches a compact, prompt-ready summary of the third-party
  * service so the LLM generates code grounded in real, current SDK signatures
  * instead of training-data memory.

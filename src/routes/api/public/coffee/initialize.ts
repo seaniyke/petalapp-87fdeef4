@@ -1,7 +1,7 @@
 /**
  * POST /api/public/coffee/initialize
  *
- * Public "Buy us a coffee" checkout. Anyone (signed in or not) can tip Petal
+ * Public "Buy us a coffee" checkout. Anyone (signed in or not) can tip Kimble
  * a small amount via Paystack. Kept OFF the paystack_transactions table so
  * the existing webhook / wallet flow is not affected — tips write to their
  * own `coffee_tips` table and are confirmed via /api/public/coffee/verify.

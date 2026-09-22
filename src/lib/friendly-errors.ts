@@ -40,7 +40,7 @@ export type FriendlyError = {
   /** Original technical detail — hidden behind a "Show details" disclosure. */
   technicalDetail?: string;
   /**
-   * Design Bible §10 — "If Petal retries automatically, the card says so and
+   * Design Bible §10 — "If Kimble retries automatically, the card says so and
    * shows no retry button." Set this ONLY when the pipeline genuinely retries
    * without the user tapping anything. Copy and behaviour must agree.
    */
@@ -87,7 +87,7 @@ export function isRenderableFriendlyError(value: unknown): value is FriendlyErro
 export function friendlyErrorText(raw: unknown, fallback: string): string {
   try {
     const friendly = toFriendlyError(raw);
-    return friendly.title === "Petal hit a build issue" ? fallback : friendly.message;
+    return friendly.title === "Kimble hit a build issue" ? fallback : friendly.message;
   } catch {
     return fallback;
   }
@@ -113,8 +113,8 @@ export class PipelineError extends Error {
 }
 
 const GENERIC: FriendlyError = {
-  title: "Petal hit a build issue",
-  message: "Petal couldn't finish this pass safely. Retry and it will use a narrower edit path instead of guessing.",
+  title: "Kimble hit a build issue",
+  message: "Kimble couldn't finish this pass safely. Retry and it will use a narrower edit path instead of guessing.",
   actionLabel: "Try again",
   actionKind: "retry",
 };
@@ -125,7 +125,7 @@ const GENERIC: FriendlyError = {
  */
 const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   no_files_emitted: (raw) => ({
-    title: "Petal needs a bit more to go on",
+    title: "Kimble needs a bit more to go on",
     message:
       "I couldn't tell what to build from that. Try describing the app in a sentence or two — what it does, who uses it, and one or two key features.",
     actionLabel: "Try again",
@@ -133,7 +133,7 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     technicalDetail: raw,
   }),
   no_edit_emitted: (raw) => ({
-    title: "Petal needs a sharper target",
+    title: "Kimble needs a sharper target",
     message:
       "Tell me the exact element or behavior to change (e.g. 'make the header sticky' or 'change the CTA color to teal') and I'll apply it precisely.",
     actionLabel: "Try again",
@@ -141,26 +141,26 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     technicalDetail: raw,
   }),
   // C7 — copy must match the button. These paths do NOT auto-retry, so the
-  // copy no longer promises that Petal will. It tells the user what tapping
+  // copy no longer promises that Kimble will. It tells the user what tapping
   // the button will do instead.
   generation_incomplete: (raw) => ({
-    title: "Petal didn’t finish the update",
+    title: "Kimble didn’t finish the update",
     message:
-      "Petal started the work but the generated files didn’t pass the final check, so nothing was changed. Tap below and Petal will redo it as a smaller, safer edit.",
+      "Kimble started the work but the generated files didn’t pass the final check, so nothing was changed. Tap below and Kimble will redo it as a smaller, safer edit.",
     actionLabel: "Retry safely",
     actionKind: "retry",
     technicalDetail: raw,
   }),
   truncated_response: (raw) => ({
-    title: "Petal's reply got cut off",
+    title: "Kimble's reply got cut off",
     message:
-      "The model ran out of room mid-build before the files were complete. Tap below and Petal will rebuild it in smaller chunks.",
+      "The model ran out of room mid-build before the files were complete. Tap below and Kimble will rebuild it in smaller chunks.",
     actionLabel: "Retry safely",
     actionKind: "retry",
     technicalDetail: raw,
   }),
   rate_limit: (raw) => ({
-    title: "Petal needs a quick breather",
+    title: "Kimble needs a quick breather",
     message: "We're getting a lot of requests right now. Try again in a moment.",
     actionLabel: "Try again",
     actionKind: "retry",
@@ -169,15 +169,15 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   credits_exhausted: (raw) => ({
     title: "You're out of credits",
     message:
-      "Your credit balance is empty, so Petal couldn't run this build. Top up to keep generating — your project is safe and nothing was charged.",
+      "Your credit balance is empty, so Kimble couldn't run this build. Top up to keep generating — your project is safe and nothing was charged.",
     actionLabel: "Buy credits",
     actionKind: "buy-credits",
     technicalDetail: raw,
   }),
   provider_credits_exhausted: (raw) => ({
-    title: "Petal's AI is temporarily unavailable",
+    title: "Kimble's AI is temporarily unavailable",
     message:
-      "This one is on us, not you — Petal's model provider is briefly out of capacity. Nothing was charged and your project is untouched. Try again shortly.",
+      "This one is on us, not you — Kimble's model provider is briefly out of capacity. Nothing was charged and your project is untouched. Try again shortly.",
     actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,
@@ -185,15 +185,15 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   upstream_unavailable: (raw) => ({
     title: "The AI was briefly unreachable",
     message:
-      "Petal couldn't reach the model just now — usually clears in a few seconds. Tap to try again.",
+      "Kimble couldn't reach the model just now — usually clears in a few seconds. Tap to try again.",
     actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,
   }),
   upstream_timeout: (raw) => ({
-    title: "Petal ran out of time before saving changes",
+    title: "Kimble ran out of time before saving changes",
     message:
-      "Petal took too long on this turn, so nothing was charged and no files were changed. Tap below to run it again on a tighter build path.",
+      "Kimble took too long on this turn, so nothing was charged and no files were changed. Tap below to run it again on a tighter build path.",
     actionLabel: "Try again",
     actionKind: "retry",
     technicalDetail: raw,
@@ -207,7 +207,7 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
   }),
   aborted: (raw) => ({
     title: "Stopped",
-    message: "You stopped Petal. Send another message when you're ready.",
+    message: "You stopped Kimble. Send another message when you're ready.",
     actionLabel: "Dismiss",
     actionKind: "dismiss",
     technicalDetail: raw,
@@ -244,7 +244,7 @@ const PATTERNS: Array<{
     // this regex catches any plain Error that slips through — e.g. a
     // triage/discuss/coach 402 surfaced as `new Error(text)` where `text`
     // is `{"error":"You're out of credits..."}`. Without this the user
-    // sees the generic "Petal hit a build issue" card instead of the
+    // sees the generic "Kimble hit a build issue" card instead of the
     // dedicated "Buy credits" CTA.
     test: /\bout of credits\b|credits?\s+exhaust|insufficient.*(credit|balance)/i,
     build: (raw) => KIND_TO_FRIENDLY.credits_exhausted(raw),
@@ -252,8 +252,8 @@ const PATTERNS: Array<{
   {
     test: /\b(?:load failed|typeerror:\s*load failed|operation was aborted|lock:sb-.*auth-token|request stole it|error code:\s*1016)\b/i,
     build: (raw) => ({
-      title: "Petal is picking this back up",
-      message: "Nothing is wrong with your app. Tap retry and Petal continues from here.",
+      title: "Kimble is picking this back up",
+      message: "Nothing is wrong with your app. Tap retry and Kimble continues from here.",
       actionLabel: "Try again",
       actionKind: "retry",
       technicalDetail: raw,
@@ -266,7 +266,7 @@ const PATTERNS: Array<{
     test: /could not reach build|reach builder|build service|fetch failed|network error|failed to fetch/i,
     build: (raw) => ({
       title: "Couldn't reach the publishing service",
-      message: "Petal can build it, but it can't go online right now. We'll keep trying.",
+      message: "Kimble can build it, but it can't go online right now. We'll keep trying.",
       actionLabel: "Try again",
       actionKind: "retry",
       technicalDetail: raw,
@@ -277,7 +277,7 @@ const PATTERNS: Array<{
     test: /missing index\.html/i,
     build: (raw) => ({
       title: "Something's missing",
-      message: "Petal forgot to add the main page. Let's try once more.",
+      message: "Kimble forgot to add the main page. Let's try once more.",
       actionLabel: "Try again",
       actionKind: "retry",
       technicalDetail: raw,
@@ -289,9 +289,9 @@ const PATTERNS: Array<{
     // friendlyBuildFailure / triggerBuild rejection — never with a `kind`.
     test: /Unterminated (?:string|regular expression|template)|Unexpected end of file/i,
     build: (raw) => ({
-      title: "Petal's reply got cut off",
+      title: "Kimble's reply got cut off",
       message:
-        "The AI ran out of room mid-file. Tap below and Petal will retry with smaller, safer chunks — no extra credits.",
+        "The AI ran out of room mid-file. Tap below and Kimble will retry with smaller, safer chunks — no extra credits.",
       actionLabel: "Retry safely",
       actionKind: "retry",
       technicalDetail: raw,
@@ -309,7 +309,7 @@ const PATTERNS: Array<{
       const where = line ? `${file}, line ${line}` : file;
       return {
         title: "One line of code came out malformed",
-        message: `Petal wrote something the build can't read in ${where}. Tap below and Petal will rewrite just that line — no extra credits.`,
+        message: `Kimble wrote something the build can't read in ${where}. Tap below and Kimble will rewrite just that line — no extra credits.`,
         actionLabel: "Fix that line",
         actionKind: "ask-fix",
         technicalDetail: raw,
@@ -324,7 +324,7 @@ const PATTERNS: Array<{
       const file = m?.[1] ?? "a missing file";
       return {
         title: "One file went missing",
-        message: `Petal referenced \`${file}\` but didn't create it. Tap below and Petal will add it in one targeted fix.`,
+        message: `Kimble referenced \`${file}\` but didn't create it. Tap below and Kimble will add it in one targeted fix.`,
         actionLabel: "Add the missing file",
         actionKind: "ask-fix",
         technicalDetail: raw,
@@ -338,8 +338,8 @@ const PATTERNS: Array<{
       const m = raw.match(/Rollup failed to resolve import\s+["']([^"']+)["']/i);
       const pkg = m?.[1] ?? "an external package";
       return {
-        title: "That feature needs a package Petal didn't include",
-        message: `\`${pkg}\` isn't in the project. Tap below and Petal will swap it for a built-in alternative.`,
+        title: "That feature needs a package Kimble didn't include",
+        message: `\`${pkg}\` isn't in the project. Tap below and Kimble will swap it for a built-in alternative.`,
         actionLabel: "Use a built-in alternative",
         actionKind: "ask-fix",
         technicalDetail: raw,
@@ -352,7 +352,7 @@ const PATTERNS: Array<{
     build: (raw) => ({
       title: "A styling rule isn't quite right",
       message:
-        "Petal wrote a CSS rule the build doesn't accept. Tap below and Petal will rewrite it with safe defaults.",
+        "Kimble wrote a CSS rule the build doesn't accept. Tap below and Kimble will rewrite it with safe defaults.",
       actionLabel: "Fix the styles",
       actionKind: "ask-fix",
       technicalDetail: raw,
@@ -407,7 +407,7 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
  * (stream.ts, triage.ts, discuss.ts, coach.ts). Call AFTER reading the
  * response body. Throws PipelineError("credits_exhausted") when the server
  * signals an empty wallet so the UI renders the dedicated "Buy credits"
- * card instead of the generic "Petal hit a build issue" fallback.
+ * card instead of the generic "Kimble hit a build issue" fallback.
  */
 export function throwIfCreditsExhausted(resp: Response, rawText: string): void {
   if (resp.status !== 402) return;
@@ -421,10 +421,10 @@ export function throwIfCreditsExhausted(resp: Response, rawText: string): void {
   throw new PipelineError(friendly, "credits_exhausted", rawText);
 }
 
-/** Shown while Petal is auto-fixing a failed build (Phase 2).
- *  This is purely informational — there's no action button because Petal is
+/** Shown while Kimble is auto-fixing a failed build (Phase 2).
+ *  This is purely informational — there's no action button because Kimble is
  *  already on it. After 2 attempts we fall back to `friendlyBuildFailure`
- *  with the manual "Ask Petal to fix it" button.
+ *  with the manual "Ask Kimble to fix it" button.
  *
  *  Auto-fix runs are FREE — the server skips the credit charge for these
  *  turns (see `isAutoFix` in /api/generate). We say so explicitly here so
@@ -433,12 +433,12 @@ export function autoFixingBuild(attempt: number): FriendlyError {
   return {
     title:
       attempt === 1
-        ? "Petal spotted a build error and is fixing it"
-        : "Petal is taking another shot at the fix",
+        ? "Kimble spotted a build error and is fixing it"
+        : "Kimble is taking another shot at the fix",
     message:
       attempt === 1
-        ? "No action needed — Petal is reading the build log and patching the code. This fix is on us, no credits used."
-        : "The first attempt didn't fully resolve it. Petal is trying a different angle. Still free — no credits charged for auto-fixes.",
+        ? "No action needed — Kimble is reading the build log and patching the code. This fix is on us, no credits used."
+        : "The first attempt didn't fully resolve it. Kimble is trying a different angle. Still free — no credits charged for auto-fixes.",
     actionLabel: "Working on it",
     actionKind: "dismiss",
     // This one really is automatic — the card says so and renders no button.
@@ -447,7 +447,7 @@ export function autoFixingBuild(attempt: number): FriendlyError {
 }
 
 /** Friendly copy specifically for a failed Cloudflare Pages build, shown
- *  AFTER Petal's free auto-fix attempts have been exhausted. At this
+ *  AFTER Kimble's free auto-fix attempts have been exhausted. At this
  *  point the user has to opt in to another manual fix pass or open Discuss
  *  mode to investigate.
  *
@@ -479,7 +479,7 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
     return {
       title: "A styling rule isn't quite right",
       message:
-        "Your app is safe — one CSS rule is stopping the build. Tap “Try one more fix” and Petal will repair it using this exact error.",
+        "Your app is safe — one CSS rule is stopping the build. Tap “Try one more fix” and Kimble will repair it using this exact error.",
       actionLabel: "Try one more fix",
       actionKind: "ask-fix",
 
@@ -490,7 +490,7 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
   return {
     title: "One thing is blocking the build",
     message:
-      "Nothing is lost — your app and chat are safe. Tap “Try one more fix” and Petal will send this exact error back to itself for a targeted pass. If it still fails, just tell Petal what you wanted in the box below.",
+      "Nothing is lost — your app and chat are safe. Tap “Try one more fix” and Kimble will send this exact error back to itself for a targeted pass. If it still fails, just tell Kimble what you wanted in the box below.",
     actionLabel: "Try one more fix",
     actionKind: "ask-fix",
     technicalDetail: tail,
@@ -528,7 +528,7 @@ export function friendlyBuildServiceBusy(rawLog: string | null | undefined): Fri
   return {
     title: "Build service is briefly unavailable",
     message:
-      "Your edit was saved, but the live preview couldn't refresh just now. Retry the build in a moment — don't ask Petal to rewrite the app.",
+      "Your edit was saved, but the live preview couldn't refresh just now. Retry the build in a moment — don't ask Kimble to rewrite the app.",
     actionLabel: "Retry build",
     actionKind: "retry",
     technicalDetail: tail,

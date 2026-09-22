@@ -1,5 +1,5 @@
 /**
- * Turns Petal's build narration ("I've scaffolded a professional, multi-page
+ * Turns Kimble's build narration ("I've scaffolded a professional, multi-page
  * website for your construction company…") into copy a *visitor* enjoys
  * reading ("A professional, multi-page website for a construction company…").
  *
@@ -44,6 +44,6 @@ export function toVisitorSummary(
 
 function fallback(title?: string | null): string {
   return title
-    ? `${title} — a live app built with Petal. Open it, or remix it into your own.`
-    : "A live app built with Petal. Open it, or remix it into your own.";
+    ? `${title} — a live app built with Kimble. Open it, or remix it into your own.`
+    : "A live app built with Kimble. Open it, or remix it into your own.";
 }

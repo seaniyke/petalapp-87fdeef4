@@ -1,5 +1,5 @@
 /**
- * iOS-inspired notification card for "Petal got confused"-class errors.
+ * iOS-inspired notification card for "Kimble got confused"-class errors.
  *
  * Used in two places:
  *  1. Live in the BuildActivityCard while a generation is in flight.
@@ -102,7 +102,7 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
     }, 3_000);
   };
 
-  // Design Bible §10 / C7 — when Petal retries on its own, the card states it
+  // Design Bible §10 / C7 — when Kimble retries on its own, the card states it
   // and offers no button. Copy and behaviour never disagree.
   const autoRetrying = error.autoRetrying === true;
   const isAskFix = !autoRetrying && error.actionKind === "ask-fix";
@@ -167,7 +167,7 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
               {autoRetrying && (
                 <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-foreground/12 bg-background/60 px-3 text-[12.5px] font-medium text-muted-foreground">
                   <RefreshCcw className="h-3.5 w-3.5 animate-spin [animation-duration:2.4s] motion-reduce:animate-none" />
-                  Petal is retrying automatically
+                  Kimble is retrying automatically
                 </span>
               )}
               {isRetry && onRetry && (

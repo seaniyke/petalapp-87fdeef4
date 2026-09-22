@@ -154,7 +154,7 @@ export function applyContextBudget(
   //
   // Recency is the WRONG axis to drop on: the oldest messages are where the
   // user stated their brand, their constraints and their rejections, and
-  // dropping those makes Petal re-propose ideas the user already refused.
+  // dropping those makes Kimble re-propose ideas the user already refused.
   // The bible fixes the order — keep, in this priority:
   //
   //   1. the system prompt                       (rules, tokens, contracts)
@@ -228,7 +228,7 @@ export function applyContextBudget(
 }
 
 /**
- * Does this message state something Petal must keep obeying for the rest of
+ * Does this message state something Kimble must keep obeying for the rest of
  * the project? Constraints outrank recency (§10) — a brand colour stated in
  * message 2 governs message 40.
  */

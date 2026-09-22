@@ -64,7 +64,7 @@ export const Route = createFileRoute("/api/admin/paystack-plans")({
             try {
               const price = await resolvePrice("plan", p.code, ccy);
               const result = await createPlan({
-                name: `Petal ${p.name} (${ccy})`,
+                name: `Kimble ${p.name} (${ccy})`,
                 amountMinor: price.amountMinor,
                 currency: ccy,
                 interval: (p as { paystack_interval?: string }).paystack_interval ?? "monthly",

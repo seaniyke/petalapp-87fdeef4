@@ -25,7 +25,7 @@
  * Safety:
  *   - We do not overwrite an existing user-authored `.env.production`. If the
  *     user has one, we merge: their lines win, integration lines fill the gaps.
- *   - Comments in the generated file mark the managed block so Petal can
+ *   - Comments in the generated file mark the managed block so Kimble can
  *     re-render it on the next install/uninstall without clobbering manual
  *     edits.
  */

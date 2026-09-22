@@ -1,7 +1,7 @@
 /**
  * Admin · Test Lab
  *
- * The internal view of what Petal actually proved about the apps it shipped:
+ * The internal view of what Kimble actually proved about the apps it shipped:
  * every recent test run across projects, with pass / fail / could-not-check
  * counts. Customers see the plain-language card on their build; this page is
  * where we watch whether the Test Lab itself is doing its job.
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/admin/test-lab")({
   head: () => ({
     meta: [
       { title: "Admin · Test Lab" },
-      { name: "description", content: "Internal view of Petal Test Lab runs across projects." },
+      { name: "description", content: "Internal view of Kimble Test Lab runs across projects." },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -69,7 +69,7 @@ function AdminTestLabPage() {
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
         <h1 className="font-display text-2xl tracking-[-0.02em]">Test Lab</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          What Petal proved about shipped apps — runs, checks and gaps.
+          What Kimble proved about shipped apps — runs, checks and gaps.
         </p>
         <AdminTabs />
 

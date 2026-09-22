@@ -17,7 +17,7 @@
  *
  * Test identities: every seeded account uses the reserved `petal-verify+…`
  * local part and a random password, so accounts created in the user's own
- * backend are always identifiable as Petal's and never collide across builds.
+ * backend are always identifiable as Kimble's and never collide across builds.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
@@ -204,14 +204,14 @@ function detectAuth(files: ProjectFile[], routes: string[]) {
   return { signupPath, loginPath, protectedRoutes };
 }
 
-/** A throwaway identity that is obviously Petal's, and unique per build. */
+/** A throwaway identity that is obviously Kimble's, and unique per build. */
 export function makeTestIdentity(projectId: string) {
   const tag = `${projectId.slice(0, 8)}-${randomUUID().slice(0, 8)}`;
   return {
     email: `petal-verify+${tag}@petal-qa.dev`,
     // Mixed classes so it clears any reasonable strength validator.
     password: `Pv-${randomBytes(9).toString("base64url")}9aA!`,
-    name: "Petal Verify",
+    name: "Kimble Verify",
   };
 }
 

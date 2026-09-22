@@ -1,7 +1,7 @@
 /**
  * Web grounding — "Build from real content".
  *
- * When a user pastes a URL and asks Petal to build a landing page LIKE it,
+ * When a user pastes a URL and asks Kimble to build a landing page LIKE it,
  * CLONE it, RECREATE it, use it as INSPIRATION, or grab COPY / TEXT from it,
  * we fetch the page(s), strip to plain text, and inject the content as a
  * grounding block. The main model then writes real, up-to-date copy grounded
@@ -80,7 +80,7 @@ async function fetchOne(url: string): Promise<GroundedPage | null> {
 }
 
 /**
- * Detect URLs the user wants Petal to ground the build in. Returns [] unless
+ * Detect URLs the user wants Kimble to ground the build in. Returns [] unless
  * the prompt shows explicit clone/copy/inspired-by intent.
  */
 export function detectGroundingUrls(prompt: string): string[] {

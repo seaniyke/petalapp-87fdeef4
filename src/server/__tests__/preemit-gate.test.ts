@@ -1,5 +1,5 @@
 /**
- * Petal v3 Phase A — pre-emit gate contract tests.
+ * Kimble v3 Phase A — pre-emit gate contract tests.
  *
  * These lock the properties that make the gate safe to run on every turn:
  * it must not block on things nobody can fix, it must never hand back a

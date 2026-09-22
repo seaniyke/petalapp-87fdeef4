@@ -1,12 +1,12 @@
 /**
- * Petal Intelligence — orchestrator entry point.
+ * Kimble Intelligence — orchestrator entry point.
  *
  * One call, one turn. The generation pipeline hands in the prompt plus the
  * contracts it already has (PRD, design direction); the orchestrator selects
  * a profile, convenes the right specialists, reconciles their conflicts, and
  * returns a prompt block plus telemetry.
  *
- * Contract with the rest of Petal:
+ * Contract with the rest of Kimble:
  *  - Additive. It never mutates project files and never throws into the
  *    caller. Any internal failure degrades to `{ ok: false, block: "" }` and
  *    the existing pipeline runs exactly as before.

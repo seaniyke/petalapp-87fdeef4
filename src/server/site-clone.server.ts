@@ -2,7 +2,7 @@
  * Clone-from-URL — design-system extraction.
  *
  * `web-grounding.server.ts` already fetches a page's *text* so the model can
- * write real copy. That is only half of a clone: the reason Petal's "make me
+ * write real copy. That is only half of a clone: the reason Kimble's "make me
  * a site like X" output looked nothing like X is that we threw away every
  * visual signal on the page — its palette, its type pair, its section order.
  *
@@ -19,7 +19,7 @@
  * not pretend otherwise:
  *   - No site discovery/cataloguing. The user hands us a URL.
  *   - No auth-walled, paywalled or heavily client-rendered content.
- *   - No copying of logos, imagery or other copyrighted assets — Petal
+ *   - No copying of logos, imagery or other copyrighted assets — Kimble
  *     regenerates an original brand mark and original copy.
  *   - Not pixel-perfect. This is an interpretation, not a copy.
  *

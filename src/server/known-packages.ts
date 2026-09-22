@@ -1,5 +1,5 @@
 /**
- * Curated registry of npm packages Petal is willing to auto-install when
+ * Curated registry of npm packages Kimble is willing to auto-install when
  * a generated file imports them. Each entry is pinned to a known-good
  * semver range so `bun install` never resolves to a surprise major.
  *
@@ -9,7 +9,7 @@
  *   2. Pick a stable major; use a caret range so patches flow.
  *   3. Review quarterly — drop anything we no longer recommend.
  *
- * This is the SINGLE source of truth for "what is Petal willing to ship
+ * This is the SINGLE source of truth for "what is Kimble willing to ship
  * without the user asking?". If a generated app imports something that
  * isn't here, the import-resolver strips it instead of guessing.
  */
@@ -40,7 +40,7 @@ export const KNOWN_PACKAGES: Record<string, string> = {
   "class-variance-authority": "^0.7.1",
 
   // shadcn / Radix primitives the kit already ships are NOT listed here —
-  // they're guaranteed by the scaffold. Only put packages Petal is willing
+  // they're guaranteed by the scaffold. Only put packages Kimble is willing
   // to install ON DEMAND.
 
   // Common UI helpers the model loves to reach for

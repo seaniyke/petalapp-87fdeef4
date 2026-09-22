@@ -79,7 +79,7 @@ describe("document head reconciliation (A1)", () => {
     const out = reconcileDocumentHeadOps(files(), ops);
     expect(out.ops).toHaveLength(0);
     expect(out.files[0].content).toContain('<div id="root">');
-    expect(out.notes.join(" ")).toMatch(/managed by Petal/);
+    expect(out.notes.join(" ")).toMatch(/managed by Kimble/);
   });
 
   it("is idempotent", () => {

@@ -118,7 +118,7 @@ export function renderAppSpecBlock(brief: string): string {
   if (spec.reporting) lines.push("  Reporting is involved: every metric must be computed from the seeded data, never hard-coded.");
 
   return `\n\n[Spec-first — model the data BEFORE writing screens]
-This brief describes a real product with real data. Petal read it and extracted these candidates (they are a starting point, not a limit — confirm, correct, and extend them from the user's actual words):
+This brief describes a real product with real data. Kimble read it and extracted these candidates (they are a starting point, not a limit — confirm, correct, and extend them from the user's actual words):
 ${lines.join("\n")}
 
 Before you emit any file, decide and state — in at most 5 short lines at the top of your reply — the following:

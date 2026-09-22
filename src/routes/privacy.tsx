@@ -4,10 +4,10 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
-      { title: "Privacy · Petal" },
-      { name: "description", content: "How Petal collects, uses, and protects your data." },
-      { property: "og:title", content: "Privacy · Petal" },
-      { property: "og:description", content: "Petal's privacy policy." },
+      { title: "Privacy · Kimble" },
+      { name: "description", content: "How Kimble collects, uses, and protects your data." },
+      { property: "og:title", content: "Privacy · Kimble" },
+      { property: "og:description", content: "Kimble's privacy policy." },
     ],
   }),
   component: PrivacyPage,
@@ -27,7 +27,7 @@ function PrivacyPage() {
         <div className="prose prose-neutral mt-12 max-w-none dark:prose-invert prose-headings:font-display prose-headings:tracking-tight">
           <h2>1. Who we are</h2>
           <p>
-            Petal (“we”, “us”) operates buildwithpetal.com and helps you build web apps, mobile apps,
+            Kimble (“we”, “us”) operates buildwithpetal.com and helps you build web apps, mobile apps,
             backends, and Chrome extensions from natural language. This policy explains what we collect
             and how we use it.
           </p>
@@ -35,7 +35,7 @@ function PrivacyPage() {
           <h2>2. What we collect</h2>
           <ul>
             <li><strong>Account data</strong> — email, name, and (if you sign in with Google) your profile photo.</li>
-            <li><strong>Project data</strong> — the prompts you send, the code Petal generates, and the files in your projects.</li>
+            <li><strong>Project data</strong> — the prompts you send, the code Kimble generates, and the files in your projects.</li>
             <li><strong>Usage data</strong> — pages you visit, features you use, and error reports needed to keep the product running.</li>
             <li><strong>Billing data</strong> — handled by our payment processors (Paystack, Stripe). We never see your full card number.</li>
           </ul>
@@ -43,19 +43,19 @@ function PrivacyPage() {
           <h2>3. How we use it</h2>
           <p>
             To run the service, personalise your experience, secure your account, fix bugs, and improve
-            Petal. We use aggregated, non-identifying signals to prioritise the roadmap.
+            Kimble. We use aggregated, non-identifying signals to prioritise the roadmap.
           </p>
 
           <h2>4. AI model providers</h2>
           <p>
             Prompts and code snippets may be sent to model providers (OpenAI, Anthropic, Google, and our
-            Petal AI Gateway) strictly to generate a response. We do not permit providers to train on
+            Kimble AI Gateway) strictly to generate a response. We do not permit providers to train on
             your data.
           </p>
 
           <h2>5. Sharing</h2>
           <p>
-            We share data only with the processors we need to run Petal (hosting, database, email,
+            We share data only with the processors we need to run Kimble (hosting, database, email,
             payments, analytics), under strict contracts. We never sell your data.
           </p>
 

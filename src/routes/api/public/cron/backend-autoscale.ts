@@ -3,7 +3,7 @@
  *
  * Runs daily over every app still on the shared database and upgrades the
  * ones that have outgrown it onto their own database. Bounded per run so a
- * sweep can never exhaust Petal's dedicated-database capacity in one go.
+ * sweep can never exhaust Kimble's dedicated-database capacity in one go.
  *
  * Auth: requires `x-petal-cron-secret` matching `BUILDER_SHARED_SECRET`.
  */

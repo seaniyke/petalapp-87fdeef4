@@ -1,9 +1,9 @@
 /**
- * Public ingest for runtime crashes from deployed Petal apps.
+ * Public ingest for runtime crashes from deployed Kimble apps.
  *
  * The preview-guard script injected into every published build POSTs
  * here when window.onerror fires, an unhandled promise rejection
- * surfaces, or the app rendered blank. This is how Petal sees crashes
+ * surfaces, or the app rendered blank. This is how Kimble sees crashes
  * in CDN-hosted previews where postMessage to a parent iframe is
  * unavailable (e.g. user opening their app directly on the
  * `*.lovable.app` URL or a custom domain).

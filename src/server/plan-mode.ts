@@ -86,7 +86,7 @@ const PLAN_TOOL = {
   },
 };
 
-const PLAN_SYSTEM_PROMPT = `You are Petal's planning step.
+const PLAN_SYSTEM_PROMPT = `You are Kimble's planning step.
 
 You are NOT writing code. You are deciding the SMALLEST set of files needed to satisfy the user's request, then returning a structured plan via the propose_change_plan tool.
 
@@ -322,10 +322,10 @@ export function renderApprovedPlanBlock(plan: PlanProposal): string {
 }
 
 /**
- * Plan Mode v2 — should Petal propose a plan *without* being asked?
+ * Plan Mode v2 — should Kimble propose a plan *without* being asked?
  *
  * The composer's "Plan first" toggle only ever fired when a user found it,
- * which meant the common case was Petal deciding silently and the user seeing
+ * which meant the common case was Kimble deciding silently and the user seeing
  * scope only after files moved. Competitors show a plan by default for work
  * that is big enough to be worth reviewing. This is that gate.
  *

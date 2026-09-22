@@ -90,7 +90,7 @@ export function SiteHeader() {
                 >
                   How it works
                 </a>
-                {/* Templates / Packs / Themes intentionally hidden — Petal picks them automatically. */}
+                {/* Templates / Packs / Themes intentionally hidden — Kimble picks them automatically. */}
                 <Link
                   to="/gallery"
                   className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
@@ -113,7 +113,7 @@ export function SiteHeader() {
                 >
                   <FolderOpen className="h-4 w-4" /> Projects
                 </Link>
-                {/* Templates / Packs / Themes intentionally hidden — Petal picks them automatically. */}
+                {/* Templates / Packs / Themes intentionally hidden — Kimble picks them automatically. */}
                 <Link
                   to="/gallery"
                   className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"

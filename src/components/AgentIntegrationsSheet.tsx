@@ -1,7 +1,7 @@
 /**
  * AgentIntegrationsSheet — let AI agents talk to the app being built.
  *
- * Same pattern as Payments: these are things Petal builds *into* the user's
+ * Same pattern as Payments: these are things Kimble builds *into* the user's
  * project from a prompt (an MCP server, an agent-callable API, webhooks an
  * assistant can trigger), so each card sends a precise build instruction.
  */

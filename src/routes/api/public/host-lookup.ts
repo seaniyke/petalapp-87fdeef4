@@ -2,7 +2,7 @@
  * Public hostname → routing target lookup.
  *
  * Called by the edge Worker bound to the SaaS zone to figure out what to do
- * with an incoming request. Handles both Petal subdomains and customer-owned
+ * with an incoming request. Handles both Kimble subdomains and customer-owned
  * custom hostnames. Returns:
  *   - `{ kind: "proxy", target: "https://...pages.dev" }` — proxy to that URL
  *   - `{ kind: "unpublished" | "private" }` — render placeholder
@@ -26,7 +26,7 @@ function pagesProjectName(projectId: string): string {
 
 const PETAL_ROOT = "buildwithpetal.com";
 
-/** Site meta the worker injects into served HTML so each Petal app gets a
+/** Site meta the worker injects into served HTML so each Kimble app gets a
  *  proper title/favicon/social card without the user having to wire it up. */
 type SiteMeta = {
   title: string | null;

@@ -5,12 +5,12 @@
  *  render non-empty. Failed deploys never overwrite the last known-good
  *  preview."
  *
- * Until this existed, Petal marked a build "ready" purely because the external
+ * Until this existed, Kimble marked a build "ready" purely because the external
  * builder said so. When the builder's own report was optimistic — a 502 from
  * the static host, an empty `<div id="root">` from a crashed bundle — the user
  * got a white screen labelled "Live".
  *
- * This is an independent, server-side second opinion: fetch the URL Petal is
+ * This is an independent, server-side second opinion: fetch the URL Kimble is
  * about to point users at, and check it actually serves an app.
  */
 
@@ -110,7 +110,7 @@ async function probeOnce(url: string): Promise<DeployProbeResult> {
       reason: "unreachable",
       message: aborted
         ? "The deployed app didn't respond in time."
-        : "Petal couldn't reach the deployed app.",
+        : "Kimble couldn't reach the deployed app.",
     };
   } finally {
     clearTimeout(timer);

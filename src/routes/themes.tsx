@@ -13,13 +13,13 @@ import { THEME_PRESETS, SNIPPETS, type Snippet } from "@/lib/themes-and-snippets
 export const Route = createFileRoute("/themes")({
   head: () => ({
     meta: [
-      { title: "Themes & snippets · Petal" },
+      { title: "Themes & snippets · Kimble" },
       {
         name: "description",
         content:
-          "Apply opinionated theme presets and drop-in feature snippets to any Petal project — without rewriting your app.",
+          "Apply opinionated theme presets and drop-in feature snippets to any Kimble project — without rewriting your app.",
       },
-      { property: "og:title", content: "Petal Themes & Snippets" },
+      { property: "og:title", content: "Kimble Themes & Snippets" },
       {
         property: "og:description",
         content:

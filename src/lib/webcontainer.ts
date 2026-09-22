@@ -234,7 +234,7 @@ const PICKER_SCRIPT = `(() => {
     if (label && label.parentNode) label.parentNode.removeChild(label);
     document.documentElement.style.cursor = '';
   };
-  // Tell Petal which page of the app the user is actually looking at, so an
+  // Tell Kimble which page of the app the user is actually looking at, so an
   // edit like "make this page's header smaller" targets the right route
   // instead of guessing. Reported on load and on every in-app navigation.
   var lastRoute = null;

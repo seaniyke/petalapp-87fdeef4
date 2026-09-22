@@ -8,7 +8,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Reset password · Petal" },
+      { title: "Reset password · Kimble" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -84,8 +84,8 @@ function ResetPasswordPage() {
 
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <img src={petalLogo} alt="Petal" className="h-8 w-8 object-contain" />
-          <span className="font-display text-xl font-semibold tracking-tight text-foreground">Petal</span>
+          <img src={petalLogo} alt="Kimble" className="h-8 w-8 object-contain" />
+          <span className="font-display text-xl font-semibold tracking-tight text-foreground">Kimble</span>
         </Link>
 
         <div className="rounded-2xl border border-border bg-card/95 p-8 shadow-[var(--shadow-soft)] backdrop-blur">

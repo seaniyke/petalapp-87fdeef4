@@ -99,7 +99,7 @@ export function IntegrationsSection({ projectId }: { projectId: string }) {
 
   async function handleRemove(entry: CatalogEntry) {
     const ok = window.confirm(
-      `Remove ${entry.name}? This deletes the files Petal added during install. Your other code stays untouched.`,
+      `Remove ${entry.name}? This deletes the files Kimble added during install. Your other code stays untouched.`,
     );
     if (!ok) return;
     const res = await authedFetch("/api/integrations", {
@@ -125,7 +125,7 @@ export function IntegrationsSection({ projectId }: { projectId: string }) {
         <Plug className="h-4 w-4" /> Integrations
       </h3>
       <p className="mb-4 text-xs text-muted-foreground">
-        Add APIs, email, and analytics to this project. Petal writes the
+        Add APIs, email, and analytics to this project. Kimble writes the
         scaffold files and keeps your secrets server-side.
       </p>
 

@@ -202,7 +202,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //     invalid declaration (a stray `1`, an unbalanced brace, a missing
         //     `@import "tailwindcss";`). We never want one bad character in a
         //     stylesheet to take the whole deploy down — the user can keep
-        //     iterating on the rest of the app, and Petal can fix the CSS on
+        //     iterating on the rest of the app, and Kimble can fix the CSS on
         //     the next turn.
         const styleSafeFiles = aliasFixed.map((f) => {
           if (f.path !== "src/styles.css") return f;
@@ -283,7 +283,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
           );
         }
 
-        // 2f) Decide whether to ship the "Powered by Petal" badge. Free-plan
+        // 2f) Decide whether to ship the "Powered by Kimble" badge. Free-plan
         //     projects always get it; paid-plan owners may opt out via
         //     project settings. Actual injection happens inside
         //     postBuildToRailway so EVERY build pathway shows the badge by
@@ -400,7 +400,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
   },
 });
 
-// "Powered by Petal" badge injection now lives in
+// "Powered by Kimble" badge injection now lives in
 // src/server/petal-badge.server.ts and is applied inside postBuildToRailway,
 // so every build pathway gets it by default. This route only decides whether
 // to opt out (paid plans that toggled the badge off in project settings).

@@ -6,7 +6,7 @@
  * Storage lives on `projects.site_title|site_description|site_icon_url|
  * site_og_image_url` (added in migration 20260429*). When any of those are
  * blank the worker falls back to the project's build-time `title` / `summary`
- * and the default Petal logo as the favicon — see
+ * and the default Kimble logo as the favicon — see
  * `src/routes/api/public/host-lookup.ts` for the read path.
  *
  * Auth: bearer token in the `Authorization` header. Owner of the project

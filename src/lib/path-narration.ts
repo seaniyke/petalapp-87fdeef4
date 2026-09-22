@@ -1,5 +1,5 @@
 /**
- * Turn a file path Petal is currently writing into a single warm,
+ * Turn a file path Kimble is currently writing into a single warm,
  * human sentence — so the activity card "talks" while building, instead
  * of dumping a raw `src/routes/foo.tsx` path at the user.
  *

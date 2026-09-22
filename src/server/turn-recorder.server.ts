@@ -1,7 +1,7 @@
 /**
  * Server-owned turn lifecycle + event log.
  *
- * Why this exists: a Petal build can run for 30–60s. If the user closes the
+ * Why this exists: a Kimble build can run for 30–60s. If the user closes the
  * tab/phone, the SSE connection dies — but we want the pipeline to keep
  * running and the returning client to pick up *exactly* where it left off.
  *

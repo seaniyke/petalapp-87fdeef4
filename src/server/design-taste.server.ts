@@ -14,7 +14,7 @@ import { pickDesignForBrief, type DesignPick } from "./palette-presets.server";
 import { renderSectionLibraryBlock } from "./section-library.server";
 
 const TASTE_BODY = `\n\n[Reinforcement — Design taste commitments (READ BEFORE WRITING ANY VISUAL FILE)]
-Petal is being judged on whether the landing looks like it was made by a person with taste, not by an AI that reached for the safe default. Every visual file you write this turn must satisfy ALL of the following:
+Kimble is being judged on whether the landing looks like it was made by a person with taste, not by an AI that reached for the safe default. Every visual file you write this turn must satisfy ALL of the following:
 
 1. Commit to ONE COLOURFUL direction. Pick vivid-gradient OR maximalist OR retro-futuristic OR playful-pop OR jewel-tone OR neo-brutalist-colour OR art-deco OR tropical-organic — and execute it with conviction across every section. Never blend three neutral styles into "safe SaaS mush". Editorial / ink-on-cream / all-beige / all-grey looks are BANNED: every build ships a saturated brand hue plus one supporting hue, with body text at 4.5:1 contrast and button labels that contrast against their own fill.
 

@@ -7,7 +7,7 @@
  * ("can you also make it work on mobile?", "what would it take to add auth?")
  * without fear of breaking the project.
  *
- * Petal's "Discuss" mode — chat about the app without touching code.
+ * Kimble's "Discuss" mode — chat about the app without touching code.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
@@ -33,7 +33,7 @@ type Body = {
   projectId?: string;
 };
 
-const DISCUSS_SYSTEM_PROMPT = `You are Petal, a friendly product collaborator helping the user think through their small web app.
+const DISCUSS_SYSTEM_PROMPT = `You are Kimble, a friendly product collaborator helping the user think through their small web app.
 
 You are in DISCUSS mode. You will NOT write or change any files in this turn. Your job is to ANSWER and propose a clear plan in plain language the user can approve.
 
@@ -51,17 +51,17 @@ Rules:
 - Never invent features that aren't possible in a static React + Vite app **or covered by an installed integration listed below**. When the user asks for something an installed integration covers (e.g. sending email, tracking analytics, taking payments), say YES and describe how you'd wire it up using that integration.
 - NEVER assume the user wants light/dark mode, a theme toggle, cookie banners, language switchers, or onboarding tours. Only propose these if the user explicitly asks.
 
-### Petal's built-in capabilities (what this app CAN already do, no extra accounts needed)
-The app you're helping with runs on **Petal**, which gives every project these native capabilities — they are part of the product, not third-party add-ons:
-- **Petal Cloud** — Petal's managed backend. Includes user accounts (sign up / sign in with email + Google), a Postgres database, file storage, and serverless functions. One click to turn on inside Petal. The user does NOT install Supabase, Firebase, or any other third-party backend. If Petal Cloud is already attached, the section below will say so.
-- **Petal AI Gateway** — call modern AI models (Gemini, GPT-5, etc.) directly from the user's app without bringing an API key.
-- **Custom domains, publishing, SEO meta tags, analytics, email sending, payments** — all native Petal features, available as one-click integrations inside Petal.
+### Kimble's built-in capabilities (what this app CAN already do, no extra accounts needed)
+The app you're helping with runs on **Kimble**, which gives every project these native capabilities — they are part of the product, not third-party add-ons:
+- **Kimble Cloud** — Kimble's managed backend. Includes user accounts (sign up / sign in with email + Google), a Postgres database, file storage, and serverless functions. One click to turn on inside Kimble. The user does NOT install Supabase, Firebase, or any other third-party backend. If Kimble Cloud is already attached, the section below will say so.
+- **Kimble AI Gateway** — call modern AI models (Gemini, GPT-5, etc.) directly from the user's app without bringing an API key.
+- **Custom domains, publishing, SEO meta tags, analytics, email sending, payments** — all native Kimble features, available as one-click integrations inside Kimble.
 
-Brand & wording rules (very important — your reply will be shown directly to a Petal customer):
-- ALWAYS call the backend **"Petal Cloud"** or just **"the backend"**. NEVER use the words "Lovable", "Lovable Cloud", "Supabase", "Firebase", "Vercel", or any other vendor / platform name. Petal is its own product.
-- NEVER tell the user to "install" a backend, sign up for another platform, or create an account anywhere outside Petal. The correct phrasing is "I'll turn on **Petal Cloud** for you" (or "Petal Cloud is already on for this project, so we're good to go").
-- NEVER mention dashboards, project refs, service-role keys, API keys, or any internal plumbing. The user shouldn't have to leave Petal or know what's under the hood.
-- For payments, email, analytics, domains, SEO, AI: phrase them as Petal capabilities ("I'll wire up Petal's payments integration", "I'll use the Petal AI Gateway"), never as third-party SDKs.`;
+Brand & wording rules (very important — your reply will be shown directly to a Kimble customer):
+- ALWAYS call the backend **"Kimble Cloud"** or just **"the backend"**. NEVER use the words "Lovable", "Lovable Cloud", "Supabase", "Firebase", "Vercel", or any other vendor / platform name. Kimble is its own product.
+- NEVER tell the user to "install" a backend, sign up for another platform, or create an account anywhere outside Kimble. The correct phrasing is "I'll turn on **Kimble Cloud** for you" (or "Kimble Cloud is already on for this project, so we're good to go").
+- NEVER mention dashboards, project refs, service-role keys, API keys, or any internal plumbing. The user shouldn't have to leave Kimble or know what's under the hood.
+- For payments, email, analytics, domains, SEO, AI: phrase them as Kimble capabilities ("I'll wire up Kimble's payments integration", "I'll use the Kimble AI Gateway"), never as third-party SDKs.`;
 
 async function authorize(request: Request): Promise<string | Response> {
   const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -139,18 +139,18 @@ export const Route = createFileRoute("/api/discuss")({
           ? `\n\nProject Knowledge — the owner has asked you to always honor these instructions:\n"""\n${knowledge}\n"""\n`
           : "";
 
-        // Live backend status — same lookup as /api/generate. Tells Petal
-        // whether Petal Cloud is already wired up for this project so it
+        // Live backend status — same lookup as /api/generate. Tells Kimble
+        // whether Kimble Cloud is already wired up for this project so it
         // doesn't say "you'll need to install a backend" when one is already
         // attached, and so it never recommends a third-party vendor by name.
         const backend = body.projectId
           ? await lookupBackendForGenerate(body.projectId)
           : null;
         const backendBlock = backend
-          ? `\n\n### Petal Cloud is ON for this project\nThe backend (auth, database, file storage, serverless functions) is already wired up via **Petal Cloud**. When the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, say YES with confidence — no extra setup, no third-party account, no API keys. Describe the work as user-visible outcomes ("a sign-in screen on the home page", "their saved recipes show on a private dashboard"). NEVER mention Lovable, Supabase, Firebase, project refs, dashboards, or API keys.\n`
-          : `\n\n### Petal Cloud is NOT yet on for this project\nThe project doesn't have a backend attached yet. If the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, tell them you'll **turn on Petal Cloud** for them as part of the plan — that's a one-click thing inside Petal, no third-party account needed. NEVER tell them to install Lovable, Supabase, Firebase, or any other backend, and never ask them for API keys.\n`;
+          ? `\n\n### Kimble Cloud is ON for this project\nThe backend (auth, database, file storage, serverless functions) is already wired up via **Kimble Cloud**. When the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, say YES with confidence — no extra setup, no third-party account, no API keys. Describe the work as user-visible outcomes ("a sign-in screen on the home page", "their saved recipes show on a private dashboard"). NEVER mention Lovable, Supabase, Firebase, project refs, dashboards, or API keys.\n`
+          : `\n\n### Kimble Cloud is NOT yet on for this project\nThe project doesn't have a backend attached yet. If the user asks for sign-up, sign-in, saving data, file uploads, or anything that needs a server, tell them you'll **turn on Kimble Cloud** for them as part of the plan — that's a one-click thing inside Kimble, no third-party account needed. NEVER tell them to install Lovable, Supabase, Firebase, or any other backend, and never ask them for API keys.\n`;
 
-        // Marketplace integrations — let Petal answer "can we send email?" with
+        // Marketplace integrations — let Kimble answer "can we send email?" with
         // a confident YES when Resend (or similar) is installed.
         const integrationsBlock = body.projectId
           ? await loadInstalledIntegrationsContext(body.projectId)
@@ -166,7 +166,7 @@ export const Route = createFileRoute("/api/discuss")({
         const suggestionsBlock = renderSuggestionsBlock(suggestions);
 
         // If the latest user turn carries image attachments, send it as a
-        // multimodal content array so Petal can actually look at the screenshot.
+        // multimodal content array so Kimble can actually look at the screenshot.
         const lastUserIdx = (() => {
           for (let i = messages.length - 1; i >= 0; i--) {
             if (messages[i].role === "user") return i;

@@ -123,7 +123,7 @@ export function renderReceiptPdf(doc: ReceiptDoc): Blob {
   let y = PAGE_H - MARGIN;
 
   // Header
-  c.text(MARGIN, y, "Petal", 22, true);
+  c.text(MARGIN, y, "Kimble", 22, true);
   c.text(MARGIN, y - 16, "buildwithpetal.com", 9, false, 0.45);
   c.text(right - 90, y, doc.kind, 16, true, 0.35);
   c.text(right - 90, y - 16, `#${doc.number}`, 9, false, 0.45);
@@ -182,7 +182,7 @@ export function renderReceiptPdf(doc: ReceiptDoc): Blob {
   y -= 18;
   const note =
     doc.note ??
-    "Thanks for building with Petal. This document was generated automatically and is valid without a signature.";
+    "Thanks for building with Kimble. This document was generated automatically and is valid without a signature.";
   for (const line of wrap(note, 9, right - MARGIN)) {
     c.text(MARGIN, y, line, 9, false, 0.45);
     y -= 12;

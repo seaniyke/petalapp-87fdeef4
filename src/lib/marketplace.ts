@@ -1,5 +1,5 @@
 /**
- * Petal Marketplace — client data layer (Phase 1: listing foundation).
+ * Kimble Marketplace — client data layer (Phase 1: listing foundation).
  *
  * Everything here talks to real tables/RPCs:
  *   - `marketplace_licenses`  — fixed license catalog (personal/commercial/extended)

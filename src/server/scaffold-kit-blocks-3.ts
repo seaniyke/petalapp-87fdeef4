@@ -1,5 +1,5 @@
 /**
- * Phase-3 expansion of the Petal scaffold (workstream B).
+ * Phase-3 expansion of the Kimble scaffold (workstream B).
  *
  * What's new vs blocks-1 / blocks-2:
  *   - Auth blocks live in a separate backend-only export so no-backend

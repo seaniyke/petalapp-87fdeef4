@@ -42,7 +42,7 @@ export function CloudAdvancedView({ projectId, onDisconnected }: Props) {
       <div className="rounded-2xl bg-muted/40 p-5">
         <div className="text-sm font-semibold">Instance size</div>
         <p className="mt-1 text-xs text-muted-foreground">
-          All Petal Cloud projects run on our shared baseline tier today.
+          All Kimble Cloud projects run on our shared baseline tier today.
           Dedicated sizing will arrive soon — reach out if you need more
           headroom in the meantime.
         </p>

@@ -1,7 +1,7 @@
 /**
  * Service activation event bus.
  *
- * When a service (Petal Email, managed backend, custom domain, etc.) is
+ * When a service (Kimble Email, managed backend, custom domain, etc.) is
  * enabled from anywhere in the app, fire `emitServiceEnabled(...)`. The
  * builder route listens and streams a friendly assistant message into the
  * active chat — letting users feel the activation rather than just seeing a
@@ -16,7 +16,7 @@ export type ServiceEnabledDetail = {
   projectId: string;
   /** Short slug identifying the service (used for icon / phrasing). */
   service: ServiceKind;
-  /** Human-readable service name, e.g. "Petal Email". */
+  /** Human-readable service name, e.g. "Kimble Email". */
   label: string;
   /** Optional one-line summary of what just got turned on. */
   summary?: string;

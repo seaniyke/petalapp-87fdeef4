@@ -8,7 +8,7 @@
  *   - which kit blocks to lean on
  *   - which sections / features the user almost certainly wants
  *
- * The user NEVER sees the template name. To them it just feels like Petal
+ * The user NEVER sees the template name. To them it just feels like Kimble
  * "got" the kind of app they were describing. Internally this drastically
  * cuts the failure mode where every project converges on a generic
  * landing-page-with-three-feature-cards.

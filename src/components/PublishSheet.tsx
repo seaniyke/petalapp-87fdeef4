@@ -124,7 +124,7 @@ export function PublishSheet({
   const [visitors, setVisitors] = useState<VisitorStatsResult | null>(null);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
 
-  // Petal subdomain (`<slug>.buildwithpetal.com`) — claim/edit flow. The
+  // Kimble subdomain (`<slug>.buildwithpetal.com`) — claim/edit flow. The
   // slug lives on `projects.subdomain`; we keep a local draft for the
   // input and debounce availability checks against /api/subdomain.
   const currentSlug = (project as ProjectRow & { subdomain: string | null }).subdomain ?? null;
@@ -355,7 +355,7 @@ export function PublishSheet({
     }
   }
 
-  /* ---------------- Petal subdomain (slug) flow ---------------- */
+  /* ---------------- Kimble subdomain (slug) flow ---------------- */
 
   // Open the editor with a sensible default: keep what's there, or suggest
   // one from the project title.
@@ -536,7 +536,7 @@ export function PublishSheet({
                   : "Published"}
             </h2>
             {hasPublishedBuild && resolved.source === "deployment" && (
-              <p className="text-xs text-muted-foreground">Live on the Petal subdomain</p>
+              <p className="text-xs text-muted-foreground">Live on the Kimble subdomain</p>
             )}
             {hasPublishedBuild && resolved.source === "custom_domain" && (
               <p className="text-xs text-muted-foreground">Live on your custom domain</p>
@@ -602,7 +602,7 @@ export function PublishSheet({
         </div>
 
         {/* Website URL — combined card holding both the primary URL and the
-            Petal subdomain. We collapse the two into one block so the sheet
+            Kimble subdomain. We collapse the two into one block so the sheet
             stays scannable: primary URL on top, subdomain row underneath when
             it differs from the primary (or is being claimed/edited). */}
         <div className="mt-5 space-y-2">
@@ -651,7 +651,7 @@ export function PublishSheet({
               )}
             </div>
 
-            {/* Petal subdomain — secondary row inside the same card.
+            {/* Kimble subdomain — secondary row inside the same card.
                 Skip it when the primary URL already IS the petal subdomain
                 (i.e. there's no custom domain), unless the user is editing. */}
             {(() => {
@@ -666,7 +666,7 @@ export function PublishSheet({
                   <div className="flex items-center justify-between border-t border-border px-3 py-2 text-[11px]">
                     <span className="inline-flex items-center gap-1 text-muted-foreground">
                       <CheckCircle2 className="h-3 w-3 text-primary" />
-                      Petal subdomain claimed
+                      Kimble subdomain claimed
                     </span>
                     <button
                       type="button"
@@ -685,7 +685,7 @@ export function PublishSheet({
                     <div className="flex items-center justify-between px-3 py-2.5">
                       <span className="truncate text-sm">
                         <span className="text-[11px] uppercase tracking-wide text-muted-foreground/80">
-                          Petal subdomain ·{" "}
+                          Kimble subdomain ·{" "}
                         </span>
                         <span className="font-medium text-foreground">{currentSlug}</span>
                         <span className="text-muted-foreground">.{PETAL_ROOT_DOMAIN}</span>
@@ -709,7 +709,7 @@ export function PublishSheet({
                     >
                       <span className="text-sm">
                         <span className="text-[11px] uppercase tracking-wide text-muted-foreground/80">
-                          Petal subdomain ·{" "}
+                          Kimble subdomain ·{" "}
                         </span>
                         <span className="font-medium text-foreground">your-slug</span>
                         <span className="text-muted-foreground">.{PETAL_ROOT_DOMAIN}</span>
@@ -736,7 +736,7 @@ export function PublishSheet({
                           }
                           placeholder="your-slug"
                           className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60"
-                          aria-label="Petal subdomain slug"
+                          aria-label="Kimble subdomain slug"
                         />
                         <span className="flex shrink-0 items-center px-3 text-sm text-muted-foreground">
                           .{PETAL_ROOT_DOMAIN}
@@ -842,7 +842,7 @@ export function PublishSheet({
         {/* Website info — title / description / favicon / social image used
             by the subdomain worker to render <head> tags on the published
             site. Defaults to the project's build-time title/summary and the
-            Petal logo until the user customises any of it. */}
+            Kimble logo until the user customises any of it. */}
         <button
           type="button"
           onClick={() => setWebsiteInfoOpen(true)}

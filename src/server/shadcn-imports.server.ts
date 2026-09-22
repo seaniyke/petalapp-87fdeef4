@@ -24,7 +24,7 @@
 import type { ProjectFile } from "@/server/generate.server";
 
 /**
- * Named exports of every shadcn ui module Petal ships in src/components/ui/.
+ * Named exports of every shadcn ui module Kimble ships in src/components/ui/.
  * Source of truth: the components scaffolded by scaffold-kit.ts.
  *
  * If you add a new ui/<x>.tsx component to the scaffold, add its named

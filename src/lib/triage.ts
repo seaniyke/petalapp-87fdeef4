@@ -59,7 +59,7 @@ export async function streamTriage(
     currentFiles: ProjectFile[];
     customInstructions?: string;
     /** Lets the server load this project's memory and inject it into the
-     *  triage prompt — so Petal feels like it remembers the project. */
+     *  triage prompt — so Kimble feels like it remembers the project. */
     projectId?: string;
   },
   handlers: Handlers,

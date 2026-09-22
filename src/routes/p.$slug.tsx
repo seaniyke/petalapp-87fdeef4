@@ -33,11 +33,11 @@ export const Route = createFileRoute("/p/$slug")({
     return { project, published };
   },
   head: ({ loaderData }) => {
-    const title = loaderData?.project?.title ?? "Petal project";
+    const title = loaderData?.project?.title ?? "Kimble project";
     const description = toVisitorSummary(loaderData?.project?.summary, title);
     return {
       meta: [
-        { title: `${title} · Petal` },
+        { title: `${title} · Kimble` },
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },

@@ -20,11 +20,11 @@ describe("detectCapabilityAsk", () => {
   });
 
   it("ignores questions about the capability", () => {
-    expect(detectCapabilityAsk("payment", "can Petal do subscriptions?")).toBeNull();
+    expect(detectCapabilityAsk("payment", "can Kimble do subscriptions?")).toBeNull();
     expect(detectCapabilityAsk("backend", "does this support authentication?")).toBeNull();
   });
 
-  it("never reads Petal's own reply", () => {
+  it("never reads Kimble's own reply", () => {
     // Only one argument exists — the user's text. Assistant text cannot leak in.
     expect(detectCapabilityAsk("payment", null)).toBeNull();
     expect(detectCapabilityAsk("payment", "")).toBeNull();

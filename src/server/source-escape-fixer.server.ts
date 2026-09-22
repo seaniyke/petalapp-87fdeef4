@@ -10,7 +10,7 @@
  *
  * The model emitted the two characters `\` + `n` — a JSON escape that was
  * never decoded — *between* tokens. esbuild aborts the whole build with
- * `ERROR: Syntax error "n"`, the deploy fails, and Petal burns auto-fix
+ * `ERROR: Syntax error "n"`, the deploy fails, and Kimble burns auto-fix
  * attempts on a problem no LLM edit can reliably see.
  *
  * The repair is purely mechanical and provably safe: we walk the file with a

@@ -207,7 +207,7 @@ export function MobilePreviewFallback({
         title={isGenerating ? "Building your app…" : "Your preview will appear here"}
         message={
           isGenerating
-            ? "Petal is generating files. The build will start as soon as they're ready."
+            ? "Kimble is generating files. The build will start as soon as they're ready."
             : "Send a message in the Chat tab to generate your first version."
         }
         spinning={isGenerating}
@@ -291,7 +291,7 @@ export function MobilePreviewFallback({
             <div className="min-w-0">
               <h3 className="font-display text-base leading-tight">Build failed</h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                Your code didn't compile. Send a message asking Petal to fix it, or check the
+                Your code didn't compile. Send a message asking Kimble to fix it, or check the
                 logs below.
               </p>
             </div>

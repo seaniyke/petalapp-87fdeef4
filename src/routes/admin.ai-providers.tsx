@@ -2,13 +2,13 @@
  * /admin/ai-providers — operator console for AI routing.
  *
  * Per feature you can choose:
- *   - Provider (Auto / Petal / OpenRouter)
+ *   - Provider (Auto / Kimble / OpenRouter)
  *   - Primary model (free text, validated server-side)
  *   - Fallback model (retried once on 429/402/5xx)
  *
  * Plus a 7-day cost & usage rollup at the top.
  *
- * Image gen is hard-pinned to Petal AI and shown as locked.
+ * Image gen is hard-pinned to Kimble AI and shown as locked.
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -147,7 +147,7 @@ const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recomme
   },
   image: {
     label: "Image generation",
-    blurb: "Nano-banana / Gemini image gen. Routable through Petal AI or OpenRouter.",
+    blurb: "Nano-banana / Gemini image gen. Routable through Kimble AI or OpenRouter.",
     recommended: { lovable: "google/gemini-2.5-flash-image", openrouter: "google/gemini-2.5-flash-image" },
     fallback: "google/gemini-2.5-flash-image",
   },
@@ -237,7 +237,7 @@ function AiProvidersPage() {
       toast.success(
         choice === "auto"
           ? `${FEATURE_DETAILS[feature].label}: cleared override`
-          : `${FEATURE_DETAILS[feature].label} → ${choice === "openrouter" ? "OpenRouter" : "Petal AI"}`,
+          : `${FEATURE_DETAILS[feature].label} → ${choice === "openrouter" ? "OpenRouter" : "Kimble AI"}`,
       );
       await refresh();
     } catch (e) {
@@ -429,7 +429,7 @@ function AiProvidersPage() {
               </li>
               <li>
                 Always set a fallback model. The helper retries once on 429/402/5xx so
-                OpenRouter outages don't break Petal.
+                OpenRouter outages don't break Kimble.
               </li>
             </ul>
           </CardContent>
@@ -738,7 +738,7 @@ function FeatureRow({
               disabled={row.locked || saving}
               onClick={() => onProviderChange("lovable")}
             >
-              Petal
+              Kimble
             </SegBtn>
             <SegBtn
               active={current === "openrouter"}
@@ -852,7 +852,7 @@ function ProviderBadge({ provider }: { provider: "lovable" | "openrouter" }) {
           : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
       }`}
     >
-      {isLovable ? "Petal" : "OpenRouter"}
+      {isLovable ? "Kimble" : "OpenRouter"}
     </span>
   );
 }

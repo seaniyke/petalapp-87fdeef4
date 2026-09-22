@@ -13,7 +13,7 @@
  *
  * It is deliberately deterministic (no model call): the phrase list is the
  * contract, so the same input always produces the same findings, and the same
- * list can be enforced against Petal's own marketing copy in tests.
+ * list can be enforced against Kimble's own marketing copy in tests.
  */
 
 import type { ProjectFile } from "@/server/generate.server";

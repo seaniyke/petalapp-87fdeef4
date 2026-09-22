@@ -2,7 +2,7 @@
  * Project memory client-callable server functions.
  *
  * Surfaces the per-project memory rows (`project_memory`) to the UI so
- * users can see "what Petal remembers" and forget individual entries.
+ * users can see "what Kimble remembers" and forget individual entries.
  * Reads/writes go through the authenticated Supabase client; RLS
  * enforces ownership.
  */

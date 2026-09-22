@@ -23,7 +23,7 @@ import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 
 const MODEL = "google/gemini-3-flash-preview";
 
-const SYSTEM = `You are Petal's product architect. You turn a user's one-line app request into a precise internal PRD that an engineering pipeline will build and then verify against.
+const SYSTEM = `You are Kimble's product architect. You turn a user's one-line app request into a precise internal PRD that an engineering pipeline will build and then verify against.
 
 You are given a deterministic draft produced by rules. Improve it. Keep what is right, fix what is wrong, fill what is blank.
 
@@ -304,7 +304,7 @@ export function mergePrd(prior: Prd, raw: RawPrd): Prd {
 
   return {
     version: 1,
-    productName: name && !looksLikeCategory ? name : prior.productName || name || "Petal Build",
+    productName: name && !looksLikeCategory ? name : prior.productName || name || "Kimble Build",
     purpose: (raw.purpose ?? "").trim() || prior.purpose,
     targetUser: (raw.targetUser ?? "").trim() || prior.targetUser,
     primaryOutcome: (raw.primaryOutcome ?? "").trim() || prior.primaryOutcome,

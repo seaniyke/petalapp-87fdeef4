@@ -1,5 +1,5 @@
 /**
- * Inline chat card: "Petal needs an API key."
+ * Inline chat card: "Kimble needs an API key."
  *
  * Streamed by the AI as `<lov-add-secret name="..." instructions="..." link="..." />`,
  * extracted by MarkdownMessage, and rendered here. Stays mounted across
@@ -31,7 +31,7 @@ export function SecretRequestCard(props: {
 
   const fulfill = useMutation({
     mutationFn: async () => {
-      if (!resolvedId) throw new Error("This secret request expired — ask Petal again.");
+      if (!resolvedId) throw new Error("This secret request expired — ask Kimble again.");
       return fulfillSecretRequest({ data: { requestId: resolvedId, value } });
     },
     onSuccess: () => { setDone(true); setValue(""); setError(null); },
@@ -87,7 +87,7 @@ export function SecretRequestCard(props: {
     <div className="my-2 rounded-xl border bg-card p-3 text-sm">
       <div className="flex items-center gap-2 font-medium">
         <Lock className="h-4 w-4 text-muted-foreground" />
-        Petal needs <code className="rounded bg-muted px-1">{props.name}</code>
+        Kimble needs <code className="rounded bg-muted px-1">{props.name}</code>
       </div>
       {props.instructions ? (
         <p className="mt-1 text-muted-foreground">{props.instructions}</p>

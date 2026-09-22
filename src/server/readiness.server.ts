@@ -69,7 +69,7 @@ export function evaluateReadiness(args: {
       ...base,
       verdict: "not_ready",
       reasons: [
-        "Petal opened the app and hit a fault that stops it working.",
+        "Kimble opened the app and hit a fault that stops it working.",
         ...args.blockingDefects.slice(0, 8),
       ],
     };
@@ -81,7 +81,7 @@ export function evaluateReadiness(args: {
     return {
       ...base,
       verdict: "unverified",
-      reasons: [args.intervention.message, "Petal could not finish checking the app."],
+      reasons: [args.intervention.message, "Kimble could not finish checking the app."],
     };
   }
 
@@ -112,7 +112,7 @@ export function evaluateReadiness(args: {
       unverified: titles(notRun),
       reasons: [
         args.budgetSpent
-          ? "Petal tried to fix this and the problem is still there."
+          ? "Kimble tried to fix this and the problem is still there."
           : "Something important in the app is not working yet.",
         ...failed
           .slice(0, 6)
@@ -128,7 +128,7 @@ export function evaluateReadiness(args: {
       checked: titles(passed),
       unverified: titles(notRun),
       reasons: [
-        "Petal could not check everything that has to work, so it is not calling the app ready.",
+        "Kimble could not check everything that has to work, so it is not calling the app ready.",
         ...notRun.slice(0, 6).map((r) => `${r.title} — ${r.reason ?? "could not be tested"}`),
       ],
     };
@@ -147,7 +147,7 @@ export function evaluateReadiness(args: {
     verdict: "ready",
     accepted: true,
     checked: titles(passed),
-    reasons: ["Petal opened the app and confirmed the important things work."],
+    reasons: ["Kimble opened the app and confirmed the important things work."],
   };
 }
 
@@ -155,10 +155,10 @@ export function evaluateReadiness(args: {
 export function readinessHeadline(readiness: Readiness): string {
   switch (readiness.verdict) {
     case "ready":
-      return "Your app is ready — Petal checked it.";
+      return "Your app is ready — Kimble checked it.";
     case "not_ready":
       return "Your app is not ready yet.";
     default:
-      return "Petal could not finish checking your app.";
+      return "Kimble could not finish checking your app.";
   }
 }

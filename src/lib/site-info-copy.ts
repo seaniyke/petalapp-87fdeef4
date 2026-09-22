@@ -1,7 +1,7 @@
 /**
  * Pure copy helpers for a project's published website info.
  *
- * Petal narrates its build summaries in first person ("I've built the core of
+ * Kimble narrates its build summaries in first person ("I've built the core of
  * your Due Date Companion!"). That voice must never leak into a page's
  * <meta description>, so everything here rewrites it into app-facing copy.
  */
@@ -9,7 +9,7 @@
 const NARRATION =
   /^\s*(i(?:'|’)?ve|i have|i|we(?:'|’)?ve|we)\s+(just\s+)?(built|created|scaffolded|set\s?up|made|added|updated|shipped|put together)\b[^.!?]*[.!?]\s*/i;
 
-/** True when the text reads like Petal talking about its own work. */
+/** True when the text reads like Kimble talking about its own work. */
 export function isAssistantNarration(text: string): boolean {
   return /\b(i(?:'|’)?ve|i have|i've|i built|i created|i added)\b/i.test(text.slice(0, 160));
 }

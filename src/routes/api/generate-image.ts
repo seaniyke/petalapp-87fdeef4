@@ -2,7 +2,7 @@
  * Public image generation endpoint.
  *
  * Two callers, two policies:
- *   1. The Petal builder (authenticated owner, when the AI is making an app).
+ *   1. The Kimble builder (authenticated owner, when the AI is making an app).
  *      → Sends `Authorization: Bearer <supabase-jwt>`. We validate the token,
  *        charge ONE credit pre-flight via `spendCredit`, and refund on any
  *        downstream failure so the user isn't charged for a broken image.

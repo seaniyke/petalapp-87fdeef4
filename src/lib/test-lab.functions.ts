@@ -1,5 +1,5 @@
 /**
- * Test Lab reads — what Petal checked on your app, and the proof.
+ * Test Lab reads — what Kimble checked on your app, and the proof.
  *
  * Two audiences, two shapes:
  *  - `getProjectTestRun` is for the person who owns the project. Plain
@@ -54,12 +54,12 @@ export function runHeadline(
   totals: { passed: number; failed: number; blocked: number; skipped: number },
 ): string {
   const checked = totals.passed + totals.failed + totals.blocked;
-  if (status === "running") return "Petal is checking your app right now.";
+  if (status === "running") return "Kimble is checking your app right now.";
   if (totals.failed > 0) {
     return `${totals.failed} of ${checked} checks did not pass — the details are below.`;
   }
   if (totals.blocked > 0) {
-    return `Petal could not finish ${totals.blocked} check${totals.blocked === 1 ? "" : "s"}, so it has not claimed those work.`;
+    return `Kimble could not finish ${totals.blocked} check${totals.blocked === 1 ? "" : "s"}, so it has not claimed those work.`;
   }
   if (checked === 0) return "No checks were run for this build.";
   return `All ${checked} checks passed on your live app.`;

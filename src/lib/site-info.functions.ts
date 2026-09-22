@@ -1,7 +1,7 @@
 /**
  * AI authoring for a project's published "Website info".
  *
- * Petal's build summaries are written to the user ("I've built the core of
+ * Kimble's build summaries are written to the user ("I've built the core of
  * your app…"), which is the wrong voice for a <meta description>. This server
  * function rewrites what was built into a real product title + description
  * that describes the APP, never the assistant's work.

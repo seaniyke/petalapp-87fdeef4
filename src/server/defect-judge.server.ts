@@ -66,7 +66,7 @@ export interface JudgedDefects {
   reasons: Record<string, string>;
 }
 
-const RULES = `You are Petal's release reviewer. You are given findings from an automated browser check of a freshly generated web app, plus the user's request.
+const RULES = `You are Kimble's release reviewer. You are given findings from an automated browser check of a freshly generated web app, plus the user's request.
 Label each finding with exactly one severity:
 
 - "blocking": the app is genuinely broken for a normal user — blank/erroring page, uncaught runtime error, a primary navigation link or form that does nothing, the main requested feature missing or non-functional, an HTTP 5xx on a real page.

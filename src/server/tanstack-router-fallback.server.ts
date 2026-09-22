@@ -11,7 +11,7 @@
  * / `createRouter()` anywhere in the graph that context is `null`, so the
  * very first render throws — the build succeeds, only the browser sees it.
  *
- * Generated Petal apps standardise on react-router-dom. When a build ends up
+ * Generated Kimble apps standardise on react-router-dom. When a build ends up
  * with TanStack consumers but no TanStack router, the safe deterministic fix
  * is to point those imports at a tiny compatibility shim implemented on top
  * of react-router-dom. The existing router-provider pass then guarantees a

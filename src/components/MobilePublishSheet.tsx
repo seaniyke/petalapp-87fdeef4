@@ -2,7 +2,7 @@
  * MobilePublishSheet — "Ship your app" surface for the mobile target.
  *
  * Honest model:
- *   - Petal runs EAS Build on its own Expo org → user gets .apk / .ipa
+ *   - Kimble runs EAS Build on its own Expo org → user gets .apk / .ipa
  *     with zero account setup. (Same model as Bolt/Rork's free path.)
  *   - Direct install on Android: free, just sideload the .apk.
  *   - Play Store: $25 one-time Google Play Console fee.
@@ -140,7 +140,7 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
             <Smartphone className="h-4 w-4" /> Ship your mobile app
           </SheetTitle>
           <SheetDescription>
-            Petal builds your app on its own infrastructure — no Expo
+            Kimble builds your app on its own infrastructure — no Expo
             account, no SDK install. You'll get a download link as soon
             as the build finishes (5–10 min).
           </SheetDescription>
@@ -155,7 +155,7 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
             <p className="text-[12.5px] text-muted-foreground">
               Install directly on any Android phone — no store account
               required. For Play Store submission later: $25 one-time
-              Google Play Console fee (your account, not Petal's).
+              Google Play Console fee (your account, not Kimble's).
             </p>
             <button
               type="button"
@@ -187,7 +187,7 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
                 <div className="mt-0.5 opacity-90">
                   $99/yr from Apple. There's no way around this — Apple
                   requires the app owner's own developer account for
-                  every app on the store. Petal can't legally do this on
+                  every app on the store. Kimble can't legally do this on
                   your behalf.
                 </div>
                 <a
@@ -218,7 +218,7 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
 
           {!ready && (
             <p className="text-[11.5px] text-muted-foreground">
-              Petal's mobile build pipeline is being finalized. The Build
+              Kimble's mobile build pipeline is being finalized. The Build
               buttons unlock once it's live — no action needed on your end.
             </p>
           )}

@@ -1,5 +1,5 @@
 /**
- * Petal scaffold kit — the "house style" UI library that gets injected into
+ * Kimble scaffold kit — the "house style" UI library that gets injected into
  * every newly generated project. Mirrors how Lovable/v0/Base44 work: instead
  * of asking the LLM to emit 12 component files verbatim every turn (slow,
  * expensive, and unreliable), we let the AI emit only app-specific files and
@@ -1930,7 +1930,7 @@ export function ThemeToggle() {
 `;
 
 const ROUTER = `/**
- * Thin, opinionated re-export of react-router-dom for the Petal kit.
+ * Thin, opinionated re-export of react-router-dom for the Kimble kit.
  *
  * Use this for any multi-page app. Define <Route> children once in App.tsx,
  * use <Link to="/about"> for navigation, useNavigate() for programmatic moves,
@@ -4201,7 +4201,7 @@ export const KIT_FILES: KitFile[] = [
   ...KIT_BLOCK_FILES_4,
   // Mobile-feel primitives: SafeArea/MobileHeader/BottomTabBar/PullToRefresh
   // + MobileScreen wrapper + ExampleMobileApp shell. Use when the user asks
-  // for a native iOS/Android app (Petal ships as Capacitor under the hood).
+  // for a native iOS/Android app (Kimble ships as Capacitor under the hood).
   ...KIT_BLOCK_FILES_MOBILE,
   ...KIT_BLOCK_FILES_MOBILE_2,
   // Phase 10 — Motion baseline. framer-motion primitives every app can compose:
@@ -4428,7 +4428,7 @@ export function applyScaffoldKit(
     for (const f of extensionKit()) if (!map.has(f.path)) map.set(f.path, f.content);
   }
 
-  // Mobile target: Petal ships this app to the App Store / Play Store by
+  // Mobile target: Kimble ships this app to the App Store / Play Store by
   // wrapping the built web app in a Capacitor shell, so the native config
   // and Capacitor deps must exist even if the model never mentions them.
   if (isMobileTargetId(opts?.target)) {
@@ -4517,7 +4517,7 @@ export function applyScaffoldKitForPatch(
     const existing = map.get(kit.path);
     // A block/example this project deliberately redesigned on an earlier turn
     // carries a durable marker. Without this check the NEXT turn's kit refresh
-    // silently reverts the redesign, which reads to the user as "Petal said it
+    // silently reverts the redesign, which reads to the user as "Kimble said it
     // changed the design but nothing changed".
     if (existing !== undefined && isCustomizedKitFile(kit.path, existing)) continue;
     if (shouldOverwriteDuringPatch(kit.path) || !map.has(kit.path)) {

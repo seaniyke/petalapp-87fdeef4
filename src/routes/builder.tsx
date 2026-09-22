@@ -144,7 +144,7 @@ import { ProjectsDrawer } from "@/components/ProjectsDrawer";
 import { RuntimeLowBalanceBanner } from "@/components/RuntimeLowBalanceBanner";
 import { CreditPauseBanner } from "@/components/CreditPauseBanner";
 import { getCreditPause, updateCreditPause, type CreditPause } from "@/lib/credit-pauses";
-// Backend / email / payments no longer use banner chips — Petal asks inline.
+// Backend / email / payments no longer use banner chips — Kimble asks inline.
 // ContinueBuildingChip removed — see retired completion-UI cleanup.
 
 
@@ -233,15 +233,15 @@ function isBuildFailureCardTitle(title: string | undefined): boolean {
   if (!title) return false;
   return (
     title.startsWith("One thing is blocking the build") ||
-    title.startsWith("Petal got a bit confused") ||
-    title.startsWith("Petal hit a build issue") ||
-    title.startsWith("Petal didn’t apply the change") ||
-    title.startsWith("Petal didn't apply the change") ||
-    title.startsWith("Petal didn’t finish the update") ||
-    title.startsWith("Petal's reply got cut off") ||
-    title.startsWith("Petal is trying another way") ||
-    title.startsWith("Petal is reconnecting") ||
-    title.startsWith("Petal couldn't auto-fix") ||
+    title.startsWith("Kimble got a bit confused") ||
+    title.startsWith("Kimble hit a build issue") ||
+    title.startsWith("Kimble didn’t apply the change") ||
+    title.startsWith("Kimble didn't apply the change") ||
+    title.startsWith("Kimble didn’t finish the update") ||
+    title.startsWith("Kimble's reply got cut off") ||
+    title.startsWith("Kimble is trying another way") ||
+    title.startsWith("Kimble is reconnecting") ||
+    title.startsWith("Kimble couldn't auto-fix") ||
     title.startsWith("Build needs one more pass") ||
     title.startsWith("Build service") ||
     title.startsWith("A styling rule") ||
@@ -261,8 +261,8 @@ function isVerificationCardTitle(title: string | undefined): boolean {
 function isTransientFailureCardTitle(title: string | undefined): boolean {
   if (!title) return false;
   return (
-    title.startsWith("Petal is picking this back up") ||
-    title.startsWith("Petal is reconnecting") ||
+    title.startsWith("Kimble is picking this back up") ||
+    title.startsWith("Kimble is reconnecting") ||
     title.startsWith("Build service is briefly unavailable") ||
     title.startsWith("Couldn't reach the publishing service") ||
     title.startsWith("Publishing is taking")
@@ -312,8 +312,8 @@ export const Route = createFileRoute("/builder")({
   }),
   head: () => ({
     meta: [
-      { title: "Builder · Petal" },
-      { name: "description", content: "Chat with Petal to build a working web app." },
+      { title: "Builder · Kimble" },
+      { name: "description", content: "Chat with Kimble to build a working web app." },
     ],
   }),
   component: Builder,
@@ -415,7 +415,7 @@ function Builder() {
   // when no model-written narration / path narration is more recent — keeps
   // the activity card alive during silent verifier or autofix gaps.
   const [latestCycleProgress, setLatestCycleProgress] = useState<string | undefined>(undefined);
-  // Ordered, deduped list of every path Petal streams during the writing phase.
+  // Ordered, deduped list of every path Kimble streams during the writing phase.
   // Drives the per-file progress list in BuildActivityCard.
   const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
   // Set of paths whose `"content"` string has fully closed during streaming.
@@ -438,7 +438,7 @@ function Builder() {
   // Drives the expanded "Build steps" panel inside BuildActivityCard.
   const [timelineEvents, setTimelineEvents] = useState<TimelineEntry[]>([]);
   // Live, token-by-token assistant reply rendered in the chat thread while busy.
-  // This mirrors what Lovable/Bolt/v0 do — the user sees Petal "talking" in real
+  // This mirrors what Lovable/Bolt/v0 do — the user sees Kimble "talking" in real
   // time, not just a structured timeline. Cleared when the run completes.
   const [streamingAssistant, setStreamingAssistant] = useState<string>("");
   // Structured streaming segments — render alongside the live summary so the
@@ -513,7 +513,7 @@ function Builder() {
   const lazyCreatedProjectIdRef = useRef<string | null>(null);
 
   // Wraps setFriendlyError + persists the error as an assistant message so the
-  // "Petal got confused" card survives a page refresh. Use this for genuine
+  // "Kimble got confused" card survives a page refresh. Use this for genuine
   // failures the user should still see after reload — NOT for transient
   // self-healing toasts ("trying another way", "publishing taking longer",
   // "auto-fixing build") which clear themselves.
@@ -585,7 +585,7 @@ function Builder() {
   // so we can render an "Apply this plan" button under it.
   const [lastDiscussIndex, setLastDiscussIndex] = useState<number | null>(null);
   const [discussBusy, setDiscussBusy] = useState(false);
-  // Message queue: prompts the user types while Petal is busy. Each entry
+  // Message queue: prompts the user types while Kimble is busy. Each entry
   // remembers which mode it was queued in so the dispatch is faithful.
   type QueuedMessage = { id: string; text: string; mode: "build" | "discuss" };
   const [pendingQueue, setPendingQueue] = useState<QueuedMessage[]>([]);
@@ -641,7 +641,7 @@ function Builder() {
   const [hasBackend, setHasBackend] = useState<boolean | null>(null);
   const backendReadyPollRef = useRef<number | null>(null);
   const [hasDomain, setHasDomain] = useState<boolean | null>(null);
-  // Inline capability suggestion chips were removed — Petal acts on the
+  // Inline capability suggestion chips were removed — Kimble acts on the
   // intent itself, so there is nothing left to dismiss.
 
   const {
@@ -777,7 +777,7 @@ function Builder() {
     lineno: number | null;
     colno: number | null;
     kind: "error" | "unhandledrejection" | "blank";
-    /** When the user already asked Petal to fix this exact error. */
+    /** When the user already asked Kimble to fix this exact error. */
     fixed: boolean;
   };
   const [runtimeError, setRuntimeError] = useState<RuntimeErrorState | null>(null);
@@ -787,7 +787,7 @@ function Builder() {
   // first auto-send consumes them.
   const [pendingAttachments, setPendingAttachments] = useState<ChatAttachment[]>([]);
   const initialAttachmentsRef = useRef<ChatAttachment[]>([]);
-  // "Deep think" toggle — when on, Petal uses the strongest model + extended
+  // "Deep think" toggle — when on, Kimble uses the strongest model + extended
   // reasoning effort. Costs more credits and is slower, but produces better
   // results on hard refactors / multi-file features. One-shot: auto-resets
   // after the next send so users don't accidentally pay for it forever.
@@ -806,7 +806,7 @@ function Builder() {
     allowedPaths: Set<string>;
     /** Original prompt the user submitted, replayed on approve. */
     sourcePrompt: string;
-    /** Petal proposed this on its own (Plan Mode v2) rather than on request. */
+    /** Kimble proposed this on its own (Plan Mode v2) rather than on request. */
     auto: boolean;
   } | null>(null);
   // Plan Mode survives reloads: the proposal is written to localStorage while
@@ -923,7 +923,7 @@ function Builder() {
   // explicitly started are eligible. Old failed builds loaded from the DB must
   // never auto-run on page open, and retries are capped across the whole fix
   // chain (not reset for every new failed build id).
-  // 2026-05-04: bumped 2 → 3. Auto-fix runs are FREE (charged to Petal, not
+  // 2026-05-04: bumped 2 → 3. Auto-fix runs are FREE (charged to Kimble, not
   // the user — see api/generate.ts), so a third attempt costs the user
   // nothing and meaningfully lifts the "shipped working code in one user
   // turn" rate. Caps the runaway risk because each attempt also has to
@@ -988,18 +988,18 @@ function Builder() {
   // ---------------------------------------------------------------------
   // Unified automatic-recovery budget.
   //
-  // Petal has four independent self-healing paths (build-failure auto-fix,
+  // Kimble has four independent self-healing paths (build-failure auto-fix,
   // no-edit escalation, transient-connection retry, post-deploy browser
   // verification). Each used to carry its own counter, and some reset
   // whenever a build went green — so a single user edit could chain them
   // forever: fix -> deploy -> verifier finds a defect -> fix -> deploy...
   // One shared budget per USER turn makes the behaviour predictable: at most
   // MAX_TURN_AUTO_RECOVERIES silent repair turns per thing the user asked
-  // for, after which Petal stops and hands control back with a clear card.
+  // for, after which Kimble stops and hands control back with a clear card.
   //
   // The budget is PERSISTED per project: refs alone reset when the tab is
   // reloaded or discarded by the OS, which let a returning user walk back
-  // into the exact repair chain Petal had already stopped.
+  // into the exact repair chain Kimble had already stopped.
   // ---------------------------------------------------------------------
   const MAX_TURN_AUTO_RECOVERIES = MAX_REPAIR_ATTEMPTS;
   const turnRecoveryRef = useRef<{ key: string | null; used: number }>({
@@ -1023,7 +1023,7 @@ function Builder() {
   }, []);
   /**
    * Restore the persisted budget once per project. Called before any
-   * self-healing decision so a reload can never hand Petal a fresh budget.
+   * self-healing decision so a reload can never hand Kimble a fresh budget.
    */
   const hydrateRecovery = useCallback((projectId: string | null | undefined) => {
     if (!projectId || recoveryHydratedForRef.current === projectId) return;
@@ -1068,7 +1068,7 @@ function Builder() {
   // When a user starts a new AI turn or retries a stalled deploy, the previous
   // `latest_build_id` is no longer the thing the chat should react to. Without
   // this, an old pending deploy can keep re-opening the "Publishing is taking
-  // longer" card while Petal is already fixing or rebuilding newer code.
+  // longer" card while Kimble is already fixing or rebuilding newer code.
   const [supersededBuildIds, setSupersededBuildIds] = useState<Set<string>>(() => new Set());
   const supersededBuildIdsRef = useRef<Set<string>>(new Set());
   const supersedeBuildId = useCallback((id: string | null | undefined) => {
@@ -1171,7 +1171,7 @@ function Builder() {
     return () => window.clearTimeout(t);
   }, [awaitingBuild, effectiveBuildSnap?.status]);
 
-  // Single source of truth for "Petal is currently working." Used to gate
+  // Single source of truth for "Kimble is currently working." Used to gate
   // EVERY actionable chip/card so users never see a button while a turn or
   // deploy is still in flight (matches Lovable's behavior). Covers:
   //   - busy: AI generation streaming
@@ -1182,7 +1182,7 @@ function Builder() {
 
   // Pending clarifying question gate. When the LAST message is an assistant
   // turn that BOTH carries `suggestions` AND ends with a real question mark
-  // in its body, Petal is asking the user to choose. Until the user sends an
+  // in its body, Kimble is asking the user to choose. Until the user sends an
   // answer or taps "Skip question" the composer is hard-blocked and the
   // SuggestionChecklist is the only way to proceed.
   //
@@ -1362,7 +1362,7 @@ function Builder() {
     };
   }, [project?.id]);
 
-  // Listen for service activations (Petal Email, managed backend, custom
+  // Listen for service activations (Kimble Email, managed backend, custom
   // domain, …) fired from anywhere in the app. Stream a friendly assistant
   // announcement into the active chat so the activation feels like part of
   // the build, not a silent toast that vanishes.
@@ -1410,7 +1410,7 @@ function Builder() {
               "sign-in/sign-up, and replace any in-memory or mock data with real persisted data. " +
               "If a feature was blocked earlier because there was no backend, finish it now.";
             // Tiny delay so the user visually registers the activation banner
-            // before Petal starts typing again.
+            // before Kimble starts typing again.
             setTimeout(() => {
               void sendRef.current?.(followUp, { isAutoContinue: true });
             }, 600);
@@ -1426,13 +1426,13 @@ function Builder() {
 
   // Reflect Cloudflare build state into the phase timeline + friendly errors.
   // On failure: auto-trigger the fix loop (Phase 2) up to MAX_AUTO_FIX_ATTEMPTS
-  // before surfacing the manual "Ask Petal to fix it" button.
+  // before surfacing the manual "Ask Kimble to fix it" button.
   useEffect(() => {
     if (!effectiveBuildSnap) return;
     const buildId = project?.latest_build_id ?? null;
 
     // Restore any persisted recovery state for this project first. Without
-    // this, reopening the tab hands Petal a blank slate and it re-runs repair
+    // this, reopening the tab hands Kimble a blank slate and it re-runs repair
     // turns it had already spent (or already refused) for the same build.
     hydrateRecovery(project?.id);
 
@@ -1444,7 +1444,7 @@ function Builder() {
       // The build succeeded — any FriendlyError still on screen is stale
       // (a generation-time hiccup that nonetheless produced a working app,
       // a stalled-deploy warning that just resolved, or an auto-fix card
-      // that completed). Showing "Petal got a bit confused" next to a
+      // that completed). Showing "Kimble got a bit confused" next to a
       // green "READY — what's next?" panel is contradictory UX.
       // We deliberately keep build-failure-shaped errors out of this clear
       // by only running it when status is "ready" — failed builds take the
@@ -1527,7 +1527,7 @@ function Builder() {
       if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
       persistRecovery(project?.id);
 
-      // Don't surface the manual-fix card while Petal is actively working or
+      // Don't surface the manual-fix card while Kimble is actively working or
       // while a replacement deploy has just been requested. The failed build
       // row can arrive during that transition; showing that card beside
       // "Putting your app online…" is the exact confusing state we're avoiding.
@@ -1757,7 +1757,7 @@ function Builder() {
               "\n\n_(This reply was being written when the page was refreshed. The build itself may still be running — check the activity card or send a follow-up.)_";
             const rescued: ChatMessage = {
               role: "assistant",
-              content: (draft.partial_content || "Petal was writing a reply…") + rescuedNote,
+              content: (draft.partial_content || "Kimble was writing a reply…") + rescuedNote,
               plan: draft.partial_plan || undefined,
               recap: draft.partial_recap || undefined,
             };
@@ -2002,7 +2002,7 @@ function Builder() {
           onFileValidated: (path, ok, errors) => {
             // Plan #2 — live structural-validation signal. Surface the
             // first issue as a cycle-progress sub-caption so the user
-            // sees Petal noticed it; repair happens in the post-stream
+            // sees Kimble noticed it; repair happens in the post-stream
             // autofix tier.
             if (!ok && errors && errors.length > 0) {
               setLatestCycleProgress(
@@ -2219,18 +2219,18 @@ function Builder() {
         isRetry?: boolean;
         attachments?: ChatAttachment[];
         forceBuild?: boolean;
-        /** Internal auto-fix run (Petal repairing its own failed build).
+        /** Internal auto-fix run (Kimble repairing its own failed build).
          *  Suppresses the giant error-log prompt from the visible chat and is
-         *  paid by Petal rather than charging the user again. */
+         *  paid by Kimble rather than charging the user again. */
         isAutoFix?: boolean;
         /** Machine-authored repair instruction. It reaches the model but must
          * never appear in or be persisted to the user's conversation. */
         isInternalRepair?: boolean;
         /** Internal recovery run after the model produced no usable edits.
-         *  Petal escalates automatically; the user should not have to pick a
+         *  Kimble escalates automatically; the user should not have to pick a
          *  different path manually. */
         autoEscalate?: boolean;
-        /** Internal auto-continue run (Petal picking the build back up after
+        /** Internal auto-continue run (Kimble picking the build back up after
          *  the user enables a service mid-flow, e.g. managed backend). The
          *  visible thread shows a friendly system note instead of the raw
          *  internal prompt. Credits ARE charged — this is real product work. */
@@ -2241,7 +2241,7 @@ function Builder() {
         approvedPlanId?: string;
         /** Plan Mode v1 — user's edited subset of approved file paths. */
         allowedPaths?: string[];
-        /** Plan Mode v2 — false skips Petal's automatic plan proposal. */
+        /** Plan Mode v2 — false skips Kimble's automatic plan proposal. */
         autoPlan?: boolean;
         /** Re-running a prompt that is already visible/persisted in the thread
          *  (e.g. approving or skipping a proposed plan). Prevents a duplicate
@@ -2272,7 +2272,7 @@ function Builder() {
         setFriendlyError({
           title: "You're out of credits",
           message:
-            "Your balance is empty, so Petal can't run this turn. Top up to keep building — your project is safe and nothing was charged.",
+            "Your balance is empty, so Kimble can't run this turn. Top up to keep building — your project is safe and nothing was charged.",
           actionLabel: "Buy credits",
           actionKind: "buy-credits",
         });
@@ -2288,7 +2288,7 @@ function Builder() {
         setFriendlyError({
           title: "Couldn't start this project",
           message:
-            "Petal couldn't create the project just now, so nothing was sent. Your text is back in the composer — try again in a moment.",
+            "Kimble couldn't create the project just now, so nothing was sent. Your text is back in the composer — try again in a moment.",
           actionLabel: "Try again",
           actionKind: "retry",
         });
@@ -2361,7 +2361,7 @@ function Builder() {
 
         if (opts.isAutoFix || opts.isInternalRepair) {
           // Autofix is silent. The activity card already shows progress;
-          // a chat-level "Petal noticed a build error" note was redundant
+          // a chat-level "Kimble noticed a build error" note was redundant
           // noise that made our seams visible. The AI still receives the
           // full error-log prompt via `nextMessages` above.
         } else if (opts.isAutoContinue) {
@@ -2398,15 +2398,15 @@ function Builder() {
         preTurnFilesRef.current = files.map((f) => ({ path: f.path, content: f.content }));
       }
       // Clear any stale "couldn't auto-fix" / build-failure card the moment
-      // Petal starts working again. It's confusing to show a give-up card
-      // next to an active "Petal is working" indicator.
+      // Kimble starts working again. It's confusing to show a give-up card
+      // next to an active "Kimble is working" indicator.
       setFriendlyError((prev) =>
         prev && (prev.title?.includes("auto-fix") || prev.title?.includes("Build")) ? null : prev,
       );
 
       // Persist the user message to the DB *before* the stream starts. If the
       // user refreshes mid-build (which can take 30–60s) we still want to show
-      // them what they just asked Petal — losing the prompt entirely is the
+      // them what they just asked Kimble — losing the prompt entirely is the
       // single most disorienting failure mode here. The assistant reply is
       // persisted later, after a successful stream. Auto-fix runs are NOT
       // persisted (they're transient internal turns).
@@ -2421,7 +2421,7 @@ function Builder() {
 
       // Fresh activity feed for this run — but DO NOT remount/reset it during
       // an internal retry. Keeping the same card mounted avoids the visible
-      // flash users saw when Petal auto-recovered from no-file/cut-off streams.
+      // flash users saw when Kimble auto-recovered from no-file/cut-off streams.
       if (!opts.isRetry) setPhases(defaultPhases());
       setDesignCaption("");
       setFilesWritten(0);
@@ -2484,7 +2484,7 @@ function Builder() {
       let partialPreamble = "";
       let canonicalIntentBrief = "";
 
-      // Persist Petal's in-flight reply to the DB at most every ~600ms so a
+      // Persist Kimble's in-flight reply to the DB at most every ~600ms so a
       // browser refresh during the build rehydrates the streaming bubble
       // instead of leaving the user staring at their own prompt.
       const draftWriter = createDraftWriter(proj.id);
@@ -2497,7 +2497,7 @@ function Builder() {
       try {
         // ── Step 1: triage ────────────────────────────────────────────────
         // Classify the user's message as chat | clarify | build and stream
-        // a warm preamble while we decide. This is what makes Petal feel
+        // a warm preamble while we decide. This is what makes Kimble feel
         // human instead of jumping straight into the build pipeline for
         // every message — including conversational ones like "hi" or "thanks".
         //
@@ -2508,7 +2508,7 @@ function Builder() {
         if (!opts.forceBuild) {
           // Finish classification before generation. Starting from the early
           // `intent` frame allowed an auto-plan decision to arrive after the
-          // activity card, making Petal appear to build before asking approval.
+          // activity card, making Kimble appear to build before asking approval.
           const triage = await streamTriage(
             {
               messages: nextMessages,
@@ -2562,7 +2562,7 @@ function Builder() {
 
         await streamGenerate(
           {
-            // Strip transient system notes ("Petal is auto-fixing…") before
+            // Strip transient system notes ("Kimble is auto-fixing…") before
             // sending — they're UI-only, the AI shouldn't see them.
             messages: nextMessages.filter((m) => m.role !== "system"),
             currentFiles: files,
@@ -2636,7 +2636,7 @@ function Builder() {
                   return path;
                 });
                 // Append to ordered, deduped list so the user sees each file
-                // appear in the activity card as Petal writes it.
+                // appear in the activity card as Kimble writes it.
                 setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
               }
             },
@@ -2694,7 +2694,7 @@ function Builder() {
               }
               // Two-phase gate: backend chips proposed by the server take
               // precedence over self_check suggestions. They're the next
-              // action Petal wants the user to confirm.
+              // action Kimble wants the user to confirm.
               if (extras?.suggestions && extras.suggestions.length > 0) {
                 resultSuggestions = extras.suggestions;
               }
@@ -2726,14 +2726,14 @@ function Builder() {
               if (sugg && sugg.length > 0) errorSuggestions = sugg;
             },
             onRecovering: () => {
-              // Petal is finishing this server-side. Drop anything the stream
+              // Kimble is finishing this server-side. Drop anything the stream
               // may already have flagged and keep the working state on screen.
               silentlyRecovering = true;
               streamError = null;
               streamErrorKind = undefined;
               streamErrorRaw = undefined;
               setActivityVisible(true);
-              setLatestCycleProgress("Still working — Petal is finishing this off.");
+              setLatestCycleProgress("Still working — Kimble is finishing this off.");
             },
             onTurnId: (turnId) => {
               // Persist immediately so a tab-close in the next 200ms still
@@ -2945,7 +2945,7 @@ function Builder() {
 
         // Compute final per-file line counts for the activity card. We only
 
-        // surface counts for files Petal actually wrote in this run, so the
+        // surface counts for files Kimble actually wrote in this run, so the
         // list matches what the user just saw stream in.
         setFinalFileLines(() => {
           const map: Record<string, number> = {};
@@ -2958,7 +2958,7 @@ function Builder() {
         // Diff against the pre-run snapshot. `files` (closure-captured at
         // function entry) is the "before" state — `files2` is the "after".
         // We surface added / modified / deleted with line +/- so users see
-        // exactly what Petal touched, not just total file sizes.
+        // exactly what Kimble touched, not just total file sizes.
         const beforeMap = new Map(files.map((f) => [f.path, f.content]));
         const afterMap = new Map(files2.map((f) => [f.path, f.content]));
         const changes: Record<
@@ -3094,9 +3094,9 @@ function Builder() {
           noEditRecoveryRef.current.attempts += 1; persistRecovery(projectIdRef.current);
           setActivityVisible(true);
           setFriendlyError({
-            title: "Petal is trying another way",
+            title: "Kimble is trying another way",
             message:
-              "No action needed — Petal is automatically retrying with a safer edit path.",
+              "No action needed — Kimble is automatically retrying with a safer edit path.",
             actionLabel: "Working on it",
             actionKind: "dismiss",
           });
@@ -3118,10 +3118,10 @@ function Builder() {
           claimAutoRecovery()
         ) {
           transientGenerateRecoveryRef.current.attempts += 1; persistRecovery(projectIdRef.current);
-          // Silent by design: Petal just runs it again. Telling the user a
+          // Silent by design: Kimble just runs it again. Telling the user a
           // connection dropped is noise they can do nothing about.
           setActivityVisible(true);
-          setLatestCycleProgress("Still working — Petal is finishing this off.");
+          setLatestCycleProgress("Still working — Kimble is finishing this off.");
           setPhases(advanceTo(defaultPhases(), "thinking"));
           setTimeout(() => {
             void sendRef.current?.(text, {
@@ -3152,16 +3152,16 @@ function Builder() {
         });
         setPhases((p) => markFailed(p));
 
-        // Preserve whatever Petal had said before failing. Without this, the
+        // Preserve whatever Kimble had said before failing. Without this, the
         // streaming bubble disappears in the `finally` below and the user is
         // left staring at their own prompt with no context — they don't know
-        // whether Petal even started thinking. We persist it locally only;
+        // whether Kimble even started thinking. We persist it locally only;
         // it's not written to the DB because the run failed and `lastUserPrompt`
         // remains set so the retry replays the same user message cleanly.
         const preambleTrim = partialPreamble.trim();
         const trimmed = partialAssistant.trim();
         const rescued = [preambleTrim, trimmed].filter(Boolean).join("\n\n");
-        // If Petal had partial output OR Layer 5 produced retry suggestions,
+        // If Kimble had partial output OR Layer 5 produced retry suggestions,
         // append a single message that carries both — the chips piggyback on
         // the existing assistant-suggestions render path (line ~1741).
         const rescuedLooksLikeDone = looksLikeCompletedEditClaim(rescued);
@@ -3247,7 +3247,7 @@ function Builder() {
     sendRef.current = send;
   }, [send]);
 
-  // Discuss mode: ask Petal a question without touching files. The reply is
+  // Discuss mode: ask Kimble a question without touching files. The reply is
   // appended as a normal assistant message and tagged so we can show an
   // "Apply this plan" button under it.
   const discuss = useCallback(
@@ -3293,7 +3293,7 @@ function Builder() {
       setDiscussBusy(true);
       // Discuss mode never runs the build pipeline — hide any leftover
       // activity card from a previous build turn so it doesn't look like
-      // Petal is "working" on a deploy when it's just chatting.
+      // Kimble is "working" on a deploy when it's just chatting.
       setActivityVisible(false);
       setPhases(defaultPhases());
 
@@ -3337,7 +3337,7 @@ function Builder() {
         // Roll back the unanswered user message so the chat doesn't look stuck.
         setMessages((prev) => prev.slice(0, -1));
         // Also drop the prompt from the DB so the next reload doesn't
-        // resurrect a question Petal never answered.
+        // resurrect a question Kimble never answered.
         if (userMsgPersisted) {
           try {
             await truncateMessagesToCount(proj.id, messages.length);
@@ -3354,7 +3354,7 @@ function Builder() {
   );
 
   // Apply the most recent Discuss reply by switching to Build mode and asking
-  // Petal to implement what it just proposed.
+  // Kimble to implement what it just proposed.
   const applyDiscussedPlan = useCallback(() => {
     if (lastDiscussIndex == null) return;
     const plan = messages[lastDiscussIndex]?.content?.trim();
@@ -3366,13 +3366,13 @@ function Builder() {
     );
   }, [lastDiscussIndex, messages, send]);
 
-  // Either dispatch the prompt now (if Petal is free) or queue it. The queue
+  // Either dispatch the prompt now (if Kimble is free) or queue it. The queue
   // remembers the mode the user picked when they typed it, so a discuss-mode
   // queued message stays a discussion even if mode changes later.
-  // Short affirmations a user types when Petal has just proposed a plan in
+  // Short affirmations a user types when Kimble has just proposed a plan in
   // Discuss mode (e.g. "go", "yes please", "do it"). When detected, we treat
   // the message as an Apply, not as another round of discussion — otherwise
-  // Petal answers "great, here's the plan again…" and the user gets stuck.
+  // Kimble answers "great, here's the plan again…" and the user gets stuck.
   const APPLY_AFFIRMATIONS = useMemo(
     () =>
       /^(go|go!|yes|yep|yeah|yes please|please|ok|okay|sure|do it|let'?s go|let'?s do it|ship it|build it|apply|apply it|apply this plan|approved|proceed|sounds good|👍|✅)\.?\!?$/i,
@@ -3396,7 +3396,7 @@ function Builder() {
       }
       lastSubmitRef.current = { text: trimmed, at: now };
 
-      // Non-blocking question UX: if Petal asked something, the user can
+      // Non-blocking question UX: if Kimble asked something, the user can
       // still type freely. Typing past the chips is treated as a free-text
       // answer/continuation — we just dismiss the checklist so it doesn't
       // re-render stale chips after the next turn.
@@ -3413,9 +3413,9 @@ function Builder() {
         setInput("");
         return;
       }
-      // Discuss-mode shortcut: if Petal just proposed a plan and the user
+      // Discuss-mode shortcut: if Kimble just proposed a plan and the user
       // replies with a short "go"/"yes"/"do it", apply the plan instead of
-      // looping in discussion. This matches how Petal phrases its plans
+      // looping in discussion. This matches how Kimble phrases its plans
       // ("Reply *go* and I'll make these changes").
       if (
         mode === "discuss" &&
@@ -3433,7 +3433,7 @@ function Builder() {
   );
 
 
-  // Auto-dequeue the next prompt as soon as Petal frees up. `turnLockTick`
+  // Auto-dequeue the next prompt as soon as Kimble frees up. `turnLockTick`
   // is in the dep list on purpose: the lock is a ref, so releasing it while
   // `busy` is already false would otherwise leave this effect with nothing to
   // re-run on and the queue would never drain.
@@ -3585,7 +3585,7 @@ function Builder() {
 
   const retry = useCallback(() => {
     // If the last failure left a real bundler/build error log behind, the
-    // user's original prompt won't help — Petal needs to *see* the error.
+    // user's original prompt won't help — Kimble needs to *see* the error.
     // Route through askPetalToFix (via ref to avoid declaration ordering)
     // so the next turn includes the log tail. Falls back to replaying the
     // original ask when there's no log (e.g. transient network failure).
@@ -3688,7 +3688,7 @@ function Builder() {
 
       // The automatic repair budget prevents loops. A deliberate user tap is
       // different: it authorizes one fresh recovery chain, but the repair is
-      // still an internal Petal fix and must not charge for the same request.
+      // still an internal Kimble fix and must not charge for the same request.
       if (manual) beginUserTurn(project.id);
       setFriendlyError(null);
       setMessages((prev) =>
@@ -3710,9 +3710,9 @@ function Builder() {
       const visualOnly = defects.every((defect) => /^(?:Visual|Craft) QA \(/i.test(defect));
       const prompt = [
         visualOnly
-          ? "Petal reviewed the deployed app at phone, tablet, and desktop widths. It works, but the visual craft is below the committed design standard. Findings:"
+          ? "Kimble reviewed the deployed app at phone, tablet, and desktop widths. It works, but the visual craft is below the committed design standard. Findings:"
           : blockedBeforeDeploy
-          ? "Petal ran the built app in a real browser before publishing it and it does not work correctly, so the release was held back. Findings:"
+          ? "Kimble ran the built app in a real browser before publishing it and it does not work correctly, so the release was held back. Findings:"
           : "I opened the deployed app in a real browser and it does not work correctly. Findings:",
         "",
         routingBrief || defects.slice(0, 15).map((d) => `- ${d}`).join("\n"),
@@ -3770,12 +3770,12 @@ function Builder() {
         title: VERIFICATION_CARD_TITLE,
         message: `${
           snap.status === "failed"
-            ? "Petal held this release back because a browser check found"
+            ? "Kimble held this release back because a browser check found"
             : "Your app is live, but a browser check found"
         }: ${defects
           .slice(0, 3)
-          .join("; ")}. Petal paused automatic fixes for this request — tap below to keep going.`,
-        actionLabel: "Ask Petal to fix it",
+          .join("; ")}. Kimble paused automatic fixes for this request — tap below to keep going.`,
+        actionLabel: "Ask Kimble to fix it",
         actionKind: "ask-fix",
       });
       return;
@@ -3786,7 +3786,7 @@ function Builder() {
 
   // Retract the browser-check card as soon as a build ships clean. The card is
   // persisted so it survives reloads, which means a defect found on build N
-  // used to keep nagging ("Ask Petal to fix it") long after build N+1 fixed it
+  // used to keep nagging ("Ask Kimble to fix it") long after build N+1 fixed it
   // and the preview was visibly working. Anything the current build did not
   // flag is not the user's problem.
   useEffect(() => {
@@ -3996,7 +3996,7 @@ function Builder() {
       break;
     }
   }
-  // An error card is only ever shown when Petal has stopped working. While a
+  // An error card is only ever shown when Kimble has stopped working. While a
   // turn is in flight (generating, deploying, awaiting a build) we never show
   // a failure card — it may be about to be resolved by the very work running.
   const shouldHideErrorCard = (
@@ -4015,7 +4015,7 @@ function Builder() {
     if (isVerifierInternalDefect(err.message ?? "")) return true;
     // "Publishing is taking longer than usual" is an advisory ABOUT the work in
     // flight — it is only meaningful while deploying, so it is exempt from the
-    // working-state gate. Everything else waits until Petal has stopped.
+    // working-state gate. Everything else waits until Kimble has stopped.
     const isDeployAdvisory = err.title?.startsWith("Publishing is taking") ?? false;
     if (isDeployAdvisory) return isLive;
     if (petalIsWorking) return true;
@@ -4520,7 +4520,7 @@ function Builder() {
               }
 
 
-              // System notes (e.g. "Petal is auto-fixing the build")
+              // System notes (e.g. "Kimble is auto-fixing the build")
               // render as a small centered chip, not a chat bubble — they're
               // status updates, not part of the conversation.
               if (m.role === "system" || m.system) {
@@ -4533,7 +4533,7 @@ function Builder() {
                 );
               }
               const isUser = m.role === "user";
-              // Only allow revert if Petal already replied to this user
+              // Only allow revert if Kimble already replied to this user
               // message (so a snapshot exists) and we're not mid-generation.
               const hasReply = isUser && messages[i + 1]?.role === "assistant";
               const canRevert = hasReply && !petalIsWorking;
@@ -4558,7 +4558,7 @@ function Builder() {
                           className="h-5 w-5 shrink-0 rounded-full object-cover ring-1 ring-border"
                         />
                         <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">
-                          Petal
+                          Kimble
                         </span>
                         {m.role === "assistant" && i === lastDiscussIndex && (
                           <span className="text-[11px] font-medium text-muted-foreground">
@@ -4628,7 +4628,7 @@ function Builder() {
 
 
                         {/* Post-build "what's next?" card. Only on the latest
-                            assistant message, only when Petal is idle and
+                            assistant message, only when Kimble is idle and
                             there's a real app to show. Gives users a clear
                             three-tap next step instead of a silent prompt.
                             Quick-reply suggestions are tucked inside the
@@ -4636,13 +4636,13 @@ function Builder() {
                             and the user has one obvious place to look for
                             ideas. */}
                         {/* Post-build "what's next?" card. Only on the latest
-                            assistant message, only when Petal is fully idle
+                            assistant message, only when Kimble is fully idle
                             AND the deploy has reached a terminal state. We
                             must not show "READY — WHAT'S NEXT?" while the
                             Cloudflare deploy is still running ("Putting your
                             app online…") — the app isn't actually ready yet. */}
                          {/* Honest "done": only show "READY — what's next?"
-                             when (a) Petal is fully idle, (b) we have a
+                             when (a) Kimble is fully idle, (b) we have a
                              successful build row (`isLive`), and (c) no
                              friendly error is still pinned. Without the
                              `isLive` check the card flashes in for the
@@ -4690,7 +4690,7 @@ function Builder() {
                           );
                         })()}
                         {/* Inline capability chips ("Enable storage",
-                            "Connect a domain", …) were removed. Petal now
+                            "Connect a domain", …) were removed. Kimble now
                             detects the same intents server-side and acts on
                             them during the build instead of asking the user
                             to tap a card. See
@@ -4718,7 +4718,7 @@ function Builder() {
                         onClick={() => void prepareRevertToMessage(i)}
                         disabled={revertingIndex !== null || revertPreparing !== null}
                         className="absolute -top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 shadow-[var(--shadow-soft)] transition group-hover:opacity-100 hover:text-foreground disabled:opacity-40"
-                        title="Preview & revert the project to right after Petal's reply to this message"
+                        title="Preview & revert the project to right after Kimble's reply to this message"
                       >
                         {revertingIndex === i || revertPreparing === i ? (
                           <Loader2 className="h-2.5 w-2.5 animate-spin" />
@@ -4781,7 +4781,7 @@ function Builder() {
                   </div>
                 );
               })()}
-            {/* Live, token-by-token reply while Petal works. Promoted to a real
+            {/* Live, token-by-token reply while Kimble works. Promoted to a real
                 message in `messages` once the run completes.
 
                 UX rule: when the app is not live yet, hide the past-tense
@@ -5032,7 +5032,7 @@ function Builder() {
             }}
             className="safe-bottom safe-x shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
           >
-            {/* Queued messages — shown when the user typed while Petal was busy. */}
+            {/* Queued messages — shown when the user typed while Kimble was busy. */}
             {pendingQueue.length > 0 && (
               <div className="mb-2 space-y-1">
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -5174,12 +5174,12 @@ function Builder() {
                   const isAutoFixing =
                     busy && friendlyError?.actionLabel === "Working on it";
                   if (isAutoFixing)
-                    return "Petal is fixing the build — free · keep typing if you'd like";
+                    return "Kimble is fixing the build — free · keep typing if you'd like";
                   if (busy || discussBusy) return null;
                   if (pendingAttachments.length > 0)
                     return `${pendingAttachments.length} image${pendingAttachments.length > 1 ? "s" : ""} attached`;
                   if (mode === "discuss") return "Chat only · no file changes";
-                  return "Petal will edit files";
+                  return "Kimble will edit files";
                 })()}
               </span>
               {project?.custom_instructions && (
@@ -5270,7 +5270,7 @@ function Builder() {
                   busy || discussBusy
                     ? "Type to queue your next message…"
                     : mode === "discuss"
-                      ? "Ask Petal anything about your app…"
+                      ? "Ask Kimble anything about your app…"
                       : files.length
                         ? "Ask for a change…"
                         : "Describe the app you want to build…"
@@ -5611,7 +5611,7 @@ function Builder() {
         title="Revert to this message"
         description={
           revertPreview
-            ? `Restore the project to right after Petal's reply to "${revertPreview.label}". Any later messages and edits will be removed. Your current state is saved as a snapshot first — this is non-destructive.`
+            ? `Restore the project to right after Kimble's reply to "${revertPreview.label}". Any later messages and edits will be removed. Your current state is saved as a snapshot first — this is non-destructive.`
             : ""
         }
         currentFiles={files}
@@ -5663,7 +5663,7 @@ function Builder() {
               <div>
                 <h3 className="font-display text-lg">Edit this element</h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Tell Petal what to change. We'll include the element's details automatically.
+                  Tell Kimble what to change. We'll include the element's details automatically.
                 </p>
               </div>
               <button
@@ -5720,7 +5720,7 @@ function Builder() {
                   onClick={() => void runPickerSubmit()}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
                 >
-                  <Wand2 className="h-3.5 w-3.5" /> Send to Petal
+                  <Wand2 className="h-3.5 w-3.5" /> Send to Kimble
                 </button>
               </div>
             </div>
@@ -5739,7 +5739,7 @@ function EmptyPreview() {
       </div>
       <h3 className="mt-4 font-display text-2xl">Your app will appear here</h3>
       <p className="mt-2 text-sm text-muted-foreground">
-        Send a message in the chat to generate your first project. Petal will write the files and
+        Send a message in the chat to generate your first project. Kimble will write the files and
         reload this preview automatically.
       </p>
       <Link

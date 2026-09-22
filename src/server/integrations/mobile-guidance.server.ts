@@ -1,7 +1,7 @@
 /**
  * Layer K — Mobile generation guidance.
  *
- * Petal already ships a mobile pipeline (Capacitor + Codemagic) that wraps
+ * Kimble already ships a mobile pipeline (Capacitor + Codemagic) that wraps
  * the React web app into a signed iOS / Android binary. What was missing
  * was the *generation-time* knowledge: when the user wants a real mobile
  * app, the LLM needs different rules than for a desktop web app.
@@ -12,7 +12,7 @@
  *   - Capacitor plugin equivalents for common web APIs (camera, geo, share,
  *     push, haptics, filesystem, browser, storage, network)
  *   - which web APIs to AVOID because they fail or feel wrong in a webview
- *   - the existing Petal mobile primitives the model can compose from
+ *   - the existing Kimble mobile primitives the model can compose from
  *
  * Pure function. No IO. Safe in client or server.
  */
@@ -33,7 +33,7 @@ export function renderMobileGuidanceBlock(
   return `
 
 ### Mobile target detected (signal: "${signal}")
-The user wants this shipped as a real iOS / Android app. Petal wraps the
+The user wants this shipped as a real iOS / Android app. Kimble wraps the
 web app with **Capacitor** and builds signed binaries on Codemagic — the
 user never installs Xcode, a JDK, or fastlane. Generate code that is
 mobile-first AND Capacitor-ready.
@@ -96,7 +96,7 @@ async function takePhoto() {
 - Mouse-only events (\`onMouseEnter\`, \`onContextMenu\`). Use touch / long-press.
 
 **Native-feel UI craft (this is what separates a real app from a website in a phone frame)**
-Compose from the Petal mobile kit instead of hand-rolling — these already exist in every project. Import from the exact module named below; there is NO file-per-component layout, so \`@/components/mobile/mobile-empty-state\` does not exist:
+Compose from the Kimble mobile kit instead of hand-rolling — these already exist in every project. Import from the exact module named below; there is NO file-per-component layout, so \`@/components/mobile/mobile-empty-state\` does not exist:
 | Need | Component |
 |---|---|
 | Screen shell (header + tabs + safe area) | \`MobileScreen\` (\`@/components/mobile/mobile-screen\`), \`SafeArea\`, \`MobileHeader\`, \`BottomTabBar\` |
@@ -126,9 +126,9 @@ Hard rules for every mobile screen:
   middle segment).
 
 If the user explicitly asks for "Expo" or "React Native", build the app
-exactly as described above and say in one sentence that Petal ships
+exactly as described above and say in one sentence that Kimble ships
 native through Capacitor — one React codebase, real App Store and Play
-Store binaries. Never scaffold an Expo / React Native project: Petal's
+Store binaries. Never scaffold an Expo / React Native project: Kimble's
 build pipeline cannot compile it and the turn will be wasted.
 `;
 }

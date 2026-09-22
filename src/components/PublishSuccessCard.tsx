@@ -23,7 +23,7 @@ export function PublishingCard({ isUpdate }: { isUpdate: boolean }) {
         {isUpdate ? "Updating your project" : "Publishing your project"}
       </h3>
       <p className="mx-auto mt-2 max-w-[19rem] text-[15px] font-medium leading-snug text-muted-foreground">
-        This can take a minute or two. You can close this and keep chatting with Petal.
+        This can take a minute or two. You can close this and keep chatting with Kimble.
       </p>
     </div>
   );
@@ -102,7 +102,7 @@ export function PublishSuccessCard({
 }) {
   const [copied, setCopied] = useState(false);
   const shareText = isUpdate ? `Just shipped an update to ${title}` : `I just built ${title} 🌸`;
-  // Never surface Petal's own build narration ("I've built…") as the site's
+  // Never surface Kimble's own build narration ("I've built…") as the site's
   // description — visitors want to know what the app does.
   const raw = (description ?? "").trim();
   const cleanDescription = raw && isAssistantNarration(raw) ? describeAppFallback(raw) : raw;
@@ -182,7 +182,7 @@ export function PublishSuccessCard({
             <span className="grid h-4 w-4 place-items-center rounded-full border border-current text-[10px]">
               i
             </span>
-            Ask Petal to edit your title, description &amp; icon
+            Ask Kimble to edit your title, description &amp; icon
           </button>
         )}
       </div>

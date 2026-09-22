@@ -1,5 +1,5 @@
 /**
- * Petal Shield — static security analyzer for the user's project files.
+ * Kimble Shield — static security analyzer for the user's project files.
  *
  * Differentiator: Bolt/Lovable/v0/Replit have all been hit by the "12 security
  * issues with vibe-coded apps" wave. We catch the most common offenders BEFORE

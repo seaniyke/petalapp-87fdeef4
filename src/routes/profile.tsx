@@ -18,7 +18,7 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
   head: () => ({
     meta: [
-      { title: "Your Profile · Petal" },
+      { title: "Your Profile · Kimble" },
       { name: "description", content: "Set your display name and avatar." },
     ],
   }),
@@ -119,7 +119,7 @@ function ProfilePage() {
             Your <em>profile.</em>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">
-            Set how Petal greets you and what shows on your projects.
+            Set how Kimble greets you and what shows on your projects.
           </p>
         </div>
       </div>

@@ -11,8 +11,8 @@
  * in-memory meter keyed by turn — a turn lives inside one request, so there is
  * nothing to persist and nothing to race.
  *
- * Repair spend is Petal's cost, never the user's (§12), so the ceiling exists
- * to protect Petal's margin and to stop pathological loops — it must never be
+ * Repair spend is Kimble's cost, never the user's (§12), so the ceiling exists
+ * to protect Kimble's margin and to stop pathological loops — it must never be
  * surfaced as "you ran out".
  */
 

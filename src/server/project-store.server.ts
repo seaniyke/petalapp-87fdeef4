@@ -7,7 +7,7 @@
  * provision a dedicated Supabase project, copy its rows across and point this
  * resolver at the new home. The app's own code never changes.
  *
- *   shared     -> Petal's own Postgres, tables `shared_app_records` /
+ *   shared     -> Kimble's own Postgres, tables `shared_app_records` /
  *                 `shared_app_users`, every query filtered by `project_id`.
  *   dedicated  -> the project's own Supabase project, mirror tables
  *                 `app_records` / `app_users` with an identical shape.
@@ -144,7 +144,7 @@ ALTER TABLE public.app_records ENABLE ROW LEVEL SECURITY;
  * every statement is IF NOT EXISTS, so it is safe to re-run.
  *
  * RLS is enabled with no policies on purpose: all traffic arrives through
- * Petal's API using the service role, which bypasses RLS, so nothing is
+ * Kimble's API using the service role, which bypasses RLS, so nothing is
  * reachable with the anon key by accident.
  */
 export async function ensureDedicatedSchema(ref: string): Promise<void> {

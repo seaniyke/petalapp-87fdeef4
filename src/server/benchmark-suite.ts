@@ -3,7 +3,7 @@
  *
  * Fifteen prompts that never change. Their whole value is that they are
  * frozen: a score is only comparable to yesterday's score if the question was
- * identical. Do NOT reword these to make Petal look better — add a new case
+ * identical. Do NOT reword these to make Kimble look better — add a new case
  * with a new id instead, and let the old one keep its history.
  *
  * Each case carries its own PRD-style acceptance criteria. Those criteria are

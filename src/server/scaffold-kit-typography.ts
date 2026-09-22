@@ -10,7 +10,7 @@ import type { ProjectFile } from "./generate.server";
 
 type KitFile = ProjectFile & { overwrite: boolean };
 
-const FONTS_DOC = `# Typography — Petal house rules
+const FONTS_DOC = `# Typography — Kimble house rules
 
 The scaffold ships a self-hosted, variable-font typography system. **Do not
 use Google Fonts \`<link>\` tags** — they cause CLS, leak IP to Google, and

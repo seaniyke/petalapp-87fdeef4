@@ -36,16 +36,16 @@ import {
 export const Route = createFileRoute("/sell")({
   head: () => ({
     meta: [
-      { title: "Sell your app · Petal Marketplace" },
+      { title: "Sell your app · Kimble Marketplace" },
       {
         name: "description",
         content:
-          "Turn a project you built on Petal into a product other people can buy, open and customize.",
+          "Turn a project you built on Kimble into a product other people can buy, open and customize.",
       },
-      { property: "og:title", content: "Sell your app on Petal" },
+      { property: "og:title", content: "Sell your app on Kimble" },
       {
         property: "og:description",
-        content: "List a Petal project as a product in the marketplace.",
+        content: "List a Kimble project as a product in the marketplace.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -302,7 +302,7 @@ function SellPage() {
                 inputMode="decimal"
               />
               <p className="text-xs font-medium text-muted-foreground">
-                Set 0 to give it away free. Petal keeps 20% of each sale; the rest is yours.
+                Set 0 to give it away free. Kimble keeps 20% of each sale; the rest is yours.
               </p>
             </div>
 

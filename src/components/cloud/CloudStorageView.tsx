@@ -125,7 +125,7 @@ function BucketList({
       <div className="p-4">
         <CloudEmptyState
           title="No backend yet"
-          description="Enable Petal Cloud to use file storage for images, documents and uploads."
+          description="Enable Kimble Cloud to use file storage for images, documents and uploads."
         />
       </div>
     );

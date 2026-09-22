@@ -24,7 +24,7 @@ type StackRow = {
 };
 
 /**
- * The twelve layers Petal actually handles. Order matters: it reads as a
+ * The twelve layers Kimble actually handles. Order matters: it reads as a
  * descent from "the part everyone sees" down to "the part that keeps you up
  * at night".
  */
@@ -71,7 +71,7 @@ export function WholeStackSection() {
             </span>
           </h2>
           <p className="mx-auto mt-5 max-w-xl text-lg font-medium text-muted-foreground">
-            It never is. Here's the whole stack Petal handles for you — the twelve things that usually turn a weekend
+            It never is. Here's the whole stack Kimble handles for you — the twelve things that usually turn a weekend
             idea into a six-month project.
           </p>
         </div>
@@ -93,9 +93,9 @@ export function WholeStackSection() {
             </p>
           </div>
 
-          {/* What Petal actually does */}
+          {/* What Kimble actually does */}
           <div className="rounded-[2rem] border border-border bg-foreground p-6 text-background shadow-[var(--shadow-editorial)] sm:p-8">
-            <h3 className="text-center text-lg font-black tracking-tight sm:text-xl">What Petal actually does</h3>
+            <h3 className="text-center text-lg font-black tracking-tight sm:text-xl">What Kimble actually does</h3>
             <ul className="mt-6 space-y-2">
               {STACK.map((row) => (
                 <li
@@ -117,9 +117,9 @@ export function WholeStackSection() {
         <div className="mt-20 overflow-hidden rounded-[2rem] border border-border bg-card">
           <div className="grid grid-cols-[minmax(0,1fr)_5rem_5rem] items-center gap-2 border-b border-border bg-muted/50 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_7rem_7rem] sm:px-8">
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
-              Petal vs frontend-only tools
+              Kimble vs frontend-only tools
             </span>
-            <span className="text-center text-sm font-black tracking-tight text-primary">Petal</span>
+            <span className="text-center text-sm font-black tracking-tight text-primary">Kimble</span>
             <span className="text-center text-sm font-bold tracking-tight text-muted-foreground">Others</span>
           </div>
           {COMPARISON.map((row) => (
@@ -149,7 +149,7 @@ export function WholeStackSection() {
         {/* Readiness score — the signature differentiator */}
         <div className="mt-8 flex flex-col items-center gap-5 rounded-[2rem] border border-border bg-gradient-to-br from-primary/10 to-transparent p-7 text-center sm:p-10">
           <span className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-            <Gem className="h-3.5 w-3.5" /> Only on Petal
+            <Gem className="h-3.5 w-3.5" /> Only on Kimble
           </span>
           <h3 className="max-w-2xl font-display text-3xl font-black leading-[1] tracking-[-0.03em] sm:text-4xl">
             A Readiness Score that tells you if it's actually launchable

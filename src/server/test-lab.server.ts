@@ -143,7 +143,7 @@ async function runCase(args: {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return blockedResult(args.testCase, `Petal could not open the app to check this: ${message}`);
+    return blockedResult(args.testCase, `Kimble could not open the app to check this: ${message}`);
   }
   return judgeCase(args.testCase, report, args.plan.identity ?? null);
 }

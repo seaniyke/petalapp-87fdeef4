@@ -1,5 +1,5 @@
 /**
- * Petal Intelligence — agent registry.
+ * Kimble Intelligence — agent registry.
  *
  * Every specialist is declared here with the same shape: purpose,
  * capabilities, dependencies, model profile, budget, and whether the turn can

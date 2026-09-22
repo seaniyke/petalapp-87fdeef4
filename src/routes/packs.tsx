@@ -13,13 +13,13 @@ import { INDUSTRY_PACKS } from "@/lib/industry-packs";
 export const Route = createFileRoute("/packs")({
   head: () => ({
     meta: [
-      { title: "Industry Packs · Petal" },
+      { title: "Industry Packs · Kimble" },
       {
         name: "description",
         content:
           "Opinionated multi-page starters for restaurants, real estate, fitness studios, consultancies and newsletters. Full briefs, palettes, and Cloud features included.",
       },
-      { property: "og:title", content: "Petal Industry Packs" },
+      { property: "og:title", content: "Kimble Industry Packs" },
       {
         property: "og:description",
         content:
@@ -45,7 +45,7 @@ function PacksGallery() {
           <p className="mt-3 text-muted-foreground">
             Multi-page briefs tuned for a specific kind of business. Each
             pack ships with the page list, palette, typography pairing, and
-            the Cloud features Petal will turn on for you.
+            the Cloud features Kimble will turn on for you.
           </p>
         </header>
 

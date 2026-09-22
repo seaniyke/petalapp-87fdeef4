@@ -1,5 +1,5 @@
 /**
- * Tracks the in-flight Petal turn for each project in localStorage so the
+ * Tracks the in-flight Kimble turn for each project in localStorage so the
  * UI can silently reattach after a tab close, refresh, or device switch.
  *
  * The server is the source of truth for whether a turn is still running

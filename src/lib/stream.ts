@@ -88,7 +88,7 @@ type Handlers = {
     summary: string;
     risk: "low" | "medium" | "high";
     files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
-    /** Petal proposed this on its own rather than because "Plan first" was on. */
+    /** Kimble proposed this on its own rather than because "Plan first" was on. */
     auto?: boolean;
   }) => void;
   /** Plan Mode v2 — auto-plan was wanted but could not be produced. The client
@@ -124,7 +124,7 @@ export async function streamGenerate(
     model?: "fast" | "smart" | "best" | "deep";
     customInstructions?: string;
     projectId?: string;
-    /** When true, this is a silent internal recovery triggered by Petal after
+    /** When true, this is a silent internal recovery triggered by Kimble after
      *  its own failure. It remains balance-gated but is not charged again. */
     isAutoFix?: boolean;
     /** Plan Mode — propose a plan first instead of generating immediately. */
@@ -395,7 +395,7 @@ export async function streamGenerate(
   if (!sawDone && !sawResult && (await resumeAcceptedTurn())) return;
   if (sawResult && !sawDone) handlers.onDone?.("succeeded");
   if (!sawDone && !sawResult) {
-    throw new Error("The build is still running, but Petal could not reconnect to its progress stream.");
+    throw new Error("The build is still running, but Kimble could not reconnect to its progress stream.");
   }
 }
 

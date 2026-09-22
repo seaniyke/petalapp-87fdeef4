@@ -263,7 +263,7 @@ export function buildTestPlan(args: {
     projectId: args.projectId,
     cases: rank(deduped).slice(0, MAX_CASES),
     identity: auth
-      ? { email: auth.email, password: auth.password, name: auth.name ?? "Petal Verify" }
+      ? { email: auth.email, password: auth.password, name: auth.name ?? "Kimble Verify" }
       : undefined,
     auth: auth
       ? {

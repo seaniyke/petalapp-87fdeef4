@@ -155,7 +155,7 @@ async function verifyTron(p: VerifiablePayment): Promise<VerifyOutcome> {
   if (!match) {
     return {
       kind: "mismatch",
-      note: "That transaction doesn't pay Petal's TRON address.",
+      note: "That transaction doesn't pay Kimble's TRON address.",
     };
   }
 
@@ -202,7 +202,7 @@ async function verifyEthereum(p: VerifiablePayment): Promise<VerifyOutcome> {
       (i) => i.to?.hash && eq(i.to.hash, p.wallet_address),
     );
     if (!match) {
-      return { kind: "mismatch", note: "That transaction doesn't pay Petal's ERC-20 address." };
+      return { kind: "mismatch", note: "That transaction doesn't pay Kimble's ERC-20 address." };
     }
     const decimals = Number(match.total?.decimals ?? 6);
     const amount = Number(match.total?.value ?? 0) / Math.pow(10, decimals);
@@ -210,7 +210,7 @@ async function verifyEthereum(p: VerifiablePayment): Promise<VerifyOutcome> {
   }
 
   if (!tx.to?.hash || !eq(tx.to.hash, p.wallet_address)) {
-    return { kind: "mismatch", note: "That transaction doesn't pay Petal's ETH address." };
+    return { kind: "mismatch", note: "That transaction doesn't pay Kimble's ETH address." };
   }
   if (!prices.eth) {
     return { kind: "pending", confirmations, note: "Waiting on an ETH price quote." };
@@ -242,7 +242,7 @@ async function verifyBitcoin(p: VerifiablePayment): Promise<VerifyOutcome> {
     .filter((o) => o.scriptpubkey_address && eq(o.scriptpubkey_address, p.wallet_address))
     .reduce((s, o) => s + Number(o.value ?? 0), 0);
   if (sats <= 0) {
-    return { kind: "mismatch", note: "That transaction doesn't pay Petal's BTC address." };
+    return { kind: "mismatch", note: "That transaction doesn't pay Kimble's BTC address." };
   }
 
   let confirmations = 0;

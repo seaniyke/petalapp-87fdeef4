@@ -81,7 +81,7 @@ async function cfFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
  *
  * `sslMethod`:
  *   - `"http"` (default) — correct Cloudflare for SaaS flow for normal
- *     customer hostnames. Once the A/CNAME points at Petal, Cloudflare serves
+ *     customer hostnames. Once the A/CNAME points at Kimble, Cloudflare serves
  *     the DCV token automatically and issues SSL without user-managed TXT.
  *   - `"txt"` — reserved for wildcard/pre-validation flows where HTTP DCV is
  *     not possible.

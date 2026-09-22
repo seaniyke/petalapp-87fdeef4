@@ -57,7 +57,7 @@ export async function fetchRuntimeWallet(userId: string): Promise<RuntimeWallet>
   const qualifiedAt = (data as { runtime_topup_qualified_at?: string | null } | null)
     ?.runtime_topup_qualified_at ?? null;
 
-  // One balance: Cloud + AI is paid with Petal Credits. Callers that gate on
+  // One balance: Cloud + AI is paid with Kimble Credits. Callers that gate on
   // "can this user afford runtime work" think in cents, so the credit balance
   // is reported as the cost capacity it buys.
   const credits =

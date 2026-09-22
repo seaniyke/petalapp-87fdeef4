@@ -134,7 +134,7 @@ export function createBuilderActions(ctx: BuilderActionContext): BuilderAction[]
     {
       id: "security",
       label: "Security",
-      title: "Petal Shield — security audit",
+      title: "Kimble Shield — security audit",
       icon: ShieldCheck,
       run: ctx.openSecurity,
       surfaces: ["desktop-toolbar", "mobile-more"],

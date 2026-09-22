@@ -1,5 +1,5 @@
 /**
- * Petal Intelligence — model escalation for the planning board (Engine 3.0, phase 3).
+ * Kimble Intelligence — model escalation for the planning board (Engine 3.0, phase 3).
  *
  * Phase 1 agents are deterministic: they restate the PRD as decisions. That is
  * cheap and reliable, but it can only ever repeat what an upstream pass already
@@ -124,7 +124,7 @@ function boardDigest(ctx: AgentView): string {
 
 function systemPrompt(spec: AgentSpec): string {
   return [
-    `You are Petal's ${spec.name} specialist on a multi-agent build board.`,
+    `You are Kimble's ${spec.name} specialist on a multi-agent build board.`,
     `Your remit: ${spec.purpose}`,
     `You own: ${spec.capabilities.join(", ")}.`,
     "",

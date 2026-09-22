@@ -1,9 +1,9 @@
 /**
- * Build-target registry — what the user is asking Petal to build.
+ * Build-target registry — what the user is asking Kimble to build.
  *
  * Single dropdown under the composer ("Build a web app ▾"). Selection
  * rides every generate request as `x-petal-target` and gets mirrored
- * into the system prompt as a hard constraint so Petal scaffolds the
+ * into the system prompt as a hard constraint so Kimble scaffolds the
  * right stack.
  *
  * Mobile is intentionally ONE target — Expo / React Native is "one
@@ -59,8 +59,8 @@ export const BUILD_TARGETS: BuildTarget[] = [
     glyph: "📱",
     preview: "mobile",
     systemPromptAddendum: [
-      "BUILD TARGET: Mobile app — one React codebase that Petal wraps in a Capacitor native shell and builds into real iOS (.ipa) and Android (.apk/.aab) binaries.",
-      "- Stack is the SAME React + Vite + Tailwind scaffold as web. Do NOT scaffold Expo, react-native, expo-router, or NativeWind — Petal's store pipeline cannot build them.",
+      "BUILD TARGET: Mobile app — one React codebase that Kimble wraps in a Capacitor native shell and builds into real iOS (.ipa) and Android (.apk/.aab) binaries.",
+      "- Stack is the SAME React + Vite + Tailwind scaffold as web. Do NOT scaffold Expo, react-native, expo-router, or NativeWind — Kimble's store pipeline cannot build them.",
       "- Design for a phone first (390×844). Every screen must look intentional at that width; wider screens simply center the content in a max-w-md column.",
       "- Navigation is a fixed bottom tab bar (3-5 tabs) plus a sticky top header with back. No desktop sidebars, no top nav bars, no hover-only affordances.",
       "- Compose from the mobile primitives that ALREADY exist in the project. These are the only valid import paths — never invent one file per component:",
@@ -79,7 +79,7 @@ export const BUILD_TARGETS: BuildTarget[] = [
       "- Tap targets ≥ 44px, `active:scale-[0.98]` instead of hover, safe-area padding on full-screen containers.",
       "- Native capabilities go through Capacitor plugins (`@capacitor/haptics`, `@capacitor/preferences`, `@capacitor/app`, `@capacitor/status-bar`, `@capacitor/camera`, `@capacitor/geolocation`, `@capacitor/share`, `@capacitor/push-notifications`) behind a `Capacitor.isNativePlatform()` check with a working web fallback.",
       "- Never use `window.alert`/`confirm`/`print`, `window.open`, or mouse-only events — they break or look broken inside a webview.",
-      "- `capacitor.config.ts` is Petal-managed; do not emit it.",
+      "- `capacitor.config.ts` is Kimble-managed; do not emit it.",
     ].join("\n"),
   },
   {

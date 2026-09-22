@@ -26,16 +26,16 @@ function titleFromSlug(slug: string): string {
 export const Route = createFileRoute("/marketplace/$slug")({
   head: ({ params }) => ({
     meta: [
-      { title: `${titleFromSlug(params.slug)} · Petal Marketplace` },
+      { title: `${titleFromSlug(params.slug)} · Kimble Marketplace` },
       {
         name: "description",
         content:
-          "See what's inside this Petal product — screenshots, license terms and file count — then open it in the builder and make it yours.",
+          "See what's inside this Kimble product — screenshots, license terms and file count — then open it in the builder and make it yours.",
       },
-      { property: "og:title", content: `${titleFromSlug(params.slug)} · Petal Marketplace` },
+      { property: "og:title", content: `${titleFromSlug(params.slug)} · Kimble Marketplace` },
       {
         property: "og:description",
-        content: "Open this ready-made app in Petal and customize it.",
+        content: "Open this ready-made app in Kimble and customize it.",
       },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -245,7 +245,7 @@ function ListingDetailPage() {
                 ) : listing.price_minor > 0 && !owned ? (
                   `Buy for ${formatListingPrice(listing.price_minor, listing.currency_code)}`
                 ) : (
-                  "Open in Petal"
+                  "Open in Kimble"
                 )}
               </Button>
 

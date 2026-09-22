@@ -345,7 +345,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
           <div className="rounded-2xl bg-muted/40 p-5">
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-coral/30 to-primary/20 p-1.5">
-                <img src={petalLogo} alt="Petal" className="h-full w-full object-contain" />
+                <img src={petalLogo} alt="Kimble" className="h-full w-full object-contain" />
               </div>
               <div className="flex-1">
                 <h3 className="text-base font-semibold">

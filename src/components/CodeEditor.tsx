@@ -1,5 +1,5 @@
 /**
- * CodeEditor — CodeMirror surface with Petal's own syntax theme.
+ * CodeEditor — CodeMirror surface with Kimble's own syntax theme.
  *
  * We ship a hand-tuned light/dark palette (rather than the stock CodeMirror
  * look) so code reads like part of the product: warm paper in light mode,

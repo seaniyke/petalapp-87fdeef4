@@ -2,7 +2,7 @@
  * Builds the AI system-prompt block for installed integrations.
  *
  * Mirrors the existing `backendBlock` pattern in `/api/generate`: when a
- * project has integrations installed, we tell Petal exactly which helpers
+ * project has integrations installed, we tell Kimble exactly which helpers
  * exist, where they live, and how to call them. Without this, the AI
  * happily reinvents `fetch("api.resend.com")` calls and hardcodes keys
  * even though the marketplace already wired everything up.

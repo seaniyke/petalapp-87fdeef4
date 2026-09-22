@@ -4,10 +4,10 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const Route = createFileRoute("/terms")({
   head: () => ({
     meta: [
-      { title: "Terms · Petal" },
-      { name: "description", content: "The rules for using Petal." },
-      { property: "og:title", content: "Terms · Petal" },
-      { property: "og:description", content: "Petal's terms of service." },
+      { title: "Terms · Kimble" },
+      { name: "description", content: "The rules for using Kimble." },
+      { property: "og:title", content: "Terms · Kimble" },
+      { property: "og:description", content: "Kimble's terms of service." },
     ],
   }),
   component: TermsPage,
@@ -25,15 +25,15 @@ function TermsPage() {
         <p className="mt-4 text-sm text-muted-foreground">Effective January 1, 2026 · Last updated November 2026</p>
 
         <div className="prose prose-neutral mt-12 max-w-none dark:prose-invert prose-headings:font-display prose-headings:tracking-tight">
-          <h2>1. Using Petal</h2>
+          <h2>1. Using Kimble</h2>
           <p>
-            By using Petal you agree to these terms. You must be at least 13 (or the age of digital
-            consent in your country) and use Petal only for lawful purposes.
+            By using Kimble you agree to these terms. You must be at least 13 (or the age of digital
+            consent in your country) and use Kimble only for lawful purposes.
           </p>
 
           <h2>2. Your projects</h2>
           <p>
-            You own the code Petal writes for you and everything you upload. We keep a limited licence
+            You own the code Kimble writes for you and everything you upload. We keep a limited licence
             to host, display, and back up your projects so the service can run.
           </p>
 
@@ -53,7 +53,7 @@ function TermsPage() {
           <h2>5. AI output</h2>
           <p>
             AI-generated code and content can be wrong, incomplete, or unsuitable for a specific use
-            case. Always review what Petal ships before running it in production.
+            case. Always review what Kimble ships before running it in production.
           </p>
 
           <h2>6. Termination</h2>
@@ -64,13 +64,13 @@ function TermsPage() {
 
           <h2>7. Limitation of liability</h2>
           <p>
-            Petal is provided “as is”. To the maximum extent permitted by law we're not liable for lost
+            Kimble is provided “as is”. To the maximum extent permitted by law we're not liable for lost
             profits, data loss, or indirect damages arising from your use of the service.
           </p>
 
           <h2>8. Changes</h2>
           <p>
-            We may update these terms. Material changes are announced in-app; continuing to use Petal
+            We may update these terms. Material changes are announced in-app; continuing to use Kimble
             after a change means you accept it.
           </p>
 

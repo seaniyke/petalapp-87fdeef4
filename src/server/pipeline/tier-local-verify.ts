@@ -32,7 +32,7 @@ interface RunArgs {
   parsedOps: FileOp[] | undefined;
   /**
    * Explicit model-authored paths for a fresh project. `nextFiles` already
-   * contains Petal's injected kit by the time this tier runs, so diffing the
+   * contains Kimble's injected kit by the time this tier runs, so diffing the
    * whole graph would incorrectly classify hundreds of immutable scaffold
    * files as user changes and make their advisory diagnostics block the app.
    */

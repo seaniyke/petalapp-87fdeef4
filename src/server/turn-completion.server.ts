@@ -15,7 +15,7 @@
  * in `project_turn_completion`. A scheduled worker can pick up any record that
  * is still unfinished after the grace window and carry it to completion.
  *
- * Everything here fails open: a write that throws logs and returns. Petal's
+ * Everything here fails open: a write that throws logs and returns. Kimble's
  * existing behaviour must never regress because bookkeeping had a bad day.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -118,7 +118,7 @@ export async function openTurnCompletion(args: {
   /** Carried over when this turn is itself an autonomous repair round. */
   inheritAttempts?: number;
   /**
-   * True when Petal started this turn itself to fix its own output. A repair
+   * True when Kimble started this turn itself to fix its own output. A repair
    * continues the previous request's budget; a message the user actually typed
    * starts a fresh one.
    */
@@ -265,7 +265,7 @@ export async function recordBuildOutcome(args: {
           outstanding_defects: readiness.reasons.slice(0, 40),
           defect_fingerprint: fingerprint,
           last_build_id: args.buildId,
-          terminal_reason: readiness.reasons[0] ?? "Petal could not finish checking the app",
+          terminal_reason: readiness.reasons[0] ?? "Kimble could not finish checking the app",
           resume_after: null,
           ...verdictPatch,
         } as never)
@@ -287,8 +287,8 @@ export async function recordBuildOutcome(args: {
           defect_fingerprint: fingerprint,
           last_build_id: args.buildId,
           terminal_reason: stalled
-            ? "the same problem came back after a fix, so Petal stopped instead of repeating itself"
-            : "Petal used all of its automatic repair attempts for this request",
+            ? "the same problem came back after a fix, so Kimble stopped instead of repeating itself"
+            : "Kimble used all of its automatic repair attempts for this request",
           resume_after: null,
         } as never)
         .eq("id", open.id);
@@ -345,7 +345,7 @@ export async function claimResumeAttempt(
       .from("project_turn_completion")
       .update({
         stage: "budget_spent",
-        terminal_reason: "Petal used all of its automatic repair attempts for this request",
+        terminal_reason: "Kimble used all of its automatic repair attempts for this request",
       } as never)
       .eq("id", record.id);
     return false;

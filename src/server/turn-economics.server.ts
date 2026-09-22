@@ -2,7 +2,7 @@
  * Per-turn economics recording.
  *
  * One row per user request in `turn_economics`, holding what the customer was
- * charged alongside what the turn actually cost Petal in variable spend.
+ * charged alongside what the turn actually cost Kimble in variable spend.
  *
  * Honesty rules (non-negotiable):
  *   - A cost we could not determine is recorded as NULL with cost_basis

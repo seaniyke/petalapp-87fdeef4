@@ -24,7 +24,7 @@ import {
 import { secretsMatch } from "@/server/rate-limit.server";
 
 const RESEND_API = "https://api.resend.com";
-const SENDER = "Petal <noreply@buildwithpetal.com>";
+const SENDER = "Kimble <noreply@buildwithpetal.com>";
 
 function unauthorized() {
   return new Response("Unauthorized", { status: 401 });
@@ -95,7 +95,7 @@ async function runDigest(opts: { skipEmail?: boolean } = {}) {
   }
 
   const html = renderDigestHtml(digest);
-  const subject = `Petal · Daily digest · ${digest.periodDate} · ${digest.totals.turns} turns`;
+  const subject = `Kimble · Daily digest · ${digest.periodDate} · ${digest.totals.turns} turns`;
 
   let emailError: string | null = null;
   try {

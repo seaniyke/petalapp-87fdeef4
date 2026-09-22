@@ -1,5 +1,5 @@
 /**
- * Phase-1 expansion of the Petal scaffold: atoms + section blocks.
+ * Phase-1 expansion of the Kimble scaffold: atoms + section blocks.
  *
  * Why this file exists separately from scaffold-kit.ts:
  *  - scaffold-kit.ts is already ~3,800 lines of inline component source.
@@ -11,7 +11,7 @@
  *    here in isolation.
  *
  * EVERY file shipped from here is `overwrite: true` — these are canonical
- * Petal primitives, not user code, and we want stale forks to get refreshed.
+ * Kimble primitives, not user code, and we want stale forks to get refreshed.
  *
  * Constraints honored on every block:
  *  - ≤ 120 lines / 6 KB so the file-budget gate (180 lines) never reverts

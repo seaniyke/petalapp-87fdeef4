@@ -246,7 +246,7 @@ function AdminCloudCostPage() {
                   <h3 className="font-medium tracking-tight">Cost optimization notes</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
                     Dedicated managed backends are gated to paid users. Idle dedicated projects are
-                    paused after 7 days of inactivity. Shared backends stay inside Petal Cloud and
+                    paused after 7 days of inactivity. Shared backends stay inside Kimble Cloud and
                     do not spawn a new Supabase project.
                   </p>
                 </div>

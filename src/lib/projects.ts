@@ -123,7 +123,7 @@ export function disconnectProjectBackend(projectId: string): Promise<{ ok: true 
   return backendApi<{ ok: true }>("disconnect", { projectId });
 }
 
-/** Poll the provisioning status of a Petal-managed backend. */
+/** Poll the provisioning status of a Kimble-managed backend. */
 export function getManagedProvisionStatus(projectId: string): Promise<ManagedProvisionStatus> {
   return backendApi<ManagedProvisionStatus>("provision-status", { projectId });
 }
@@ -139,7 +139,7 @@ export function getManagedCredentials(projectId: string): Promise<ManagedCredent
 }
 
 /**
- * Enable a Petal-managed backend funded by the user's Cloud balance.
+ * Enable a Kimble-managed backend funded by the user's Cloud balance.
  *
  * Server-side guards:
  *   - Free plan → 402 with `code: "plan_upgrade_required"`. UI opens BillingSheet.
@@ -164,7 +164,7 @@ export type SharedBackendInfo = {
   limits?: { maxRowsPerProject: number; maxCollections: number; maxPageSize: number };
 };
 
-/** Free tier: a shared backend that lives inside Petal Cloud (no dedicated project). */
+/** Free tier: a shared backend that lives inside Kimble Cloud (no dedicated project). */
 export async function enableSharedBackend(projectId: string): Promise<SharedBackendInfo> {
   return backendApi<SharedBackendInfo>("enable-shared", { projectId });
 }

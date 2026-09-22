@@ -2,7 +2,7 @@
  * POST /api/public/coffee/crypto
  *
  * Records a crypto coffee tip. Anyone can submit the transaction hash after
- * sending to one of Petal's public wallets; the row lands in `coffee_tips`
+ * sending to one of Kimble's public wallets; the row lands in `coffee_tips`
  * with method = "crypto" and status = "pending" so an admin can confirm it
  * on-chain. No funds move through this endpoint.
  */

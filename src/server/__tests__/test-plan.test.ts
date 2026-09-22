@@ -21,7 +21,7 @@ const verify: VerifyPlan = {
     loginPath: "/auth",
     email: "petal-verify+x@petal-qa.dev",
     password: "Pv-secret9aA!",
-    name: "Petal Verify",
+    name: "Kimble Verify",
     protectedRoutes: ["/dashboard"],
   },
   flows: [

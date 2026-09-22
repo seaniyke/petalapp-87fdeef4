@@ -119,7 +119,7 @@ export interface RepairAllOptions {
 }
 
 /**
- * Scaffold-owned files that Petal's own RESOLVE-stage passes are allowed to
+ * Scaffold-owned files that Kimble's own RESOLVE-stage passes are allowed to
  * rewrite (dependency pins, tsconfig excludes, Vite aliases). They are
  * protected from the model and from cosmetic passes, never from the resolver.
  */
@@ -131,7 +131,7 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   const notes: string[] = [];
 
   // Scaffold-owned files (UI kit, examples pack, content kit, generated
-  // integrations) are authored by Petal and already parse. Heuristic repair
+  // integrations) are authored by Kimble and already parse. Heuristic repair
   // passes have no business rewriting them — when they do, the "fix" is what
   // breaks the build (e.g. an aria-label spliced into the middle of a JSX
   // opening tag). They stay in `files` so import-graph passes can still see
@@ -350,7 +350,7 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   const resolveEnd = notes.length;
 
   // Build-config files are scaffold-owned against the MODEL, not against
-  // Petal's own deterministic resolvers. The bare-import resolver, the kit
+  // Kimble's own deterministic resolvers. The bare-import resolver, the kit
   // dependency closure and the tsconfig/alias sync all write here on purpose —
   // restoring their input bytes at the end of this function is what shipped
   // Nordwell without `framer-motion`/`lenis` in package.json and then died with
@@ -479,7 +479,7 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
     }
   }
 
-  // Restore Petal-owned files byte-for-byte: no heuristic pass may alter them.
+  // Restore Kimble-owned files byte-for-byte: no heuristic pass may alter them.
   files = files.map((f) => {
     const original = pristine.get(f.path);
     return original !== undefined && original !== f.content ? { ...f, content: original } : f;

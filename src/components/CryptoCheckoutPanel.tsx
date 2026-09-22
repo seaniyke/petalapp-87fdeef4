@@ -250,7 +250,7 @@ export function CryptoCheckoutPanel({
       <div className="mt-3 flex flex-col items-center gap-3 rounded-xl border border-border bg-background/60 p-3 sm:flex-row">
         <img
           src={qrUrl(wallet.address)}
-          alt={`QR code for Petal's ${wallet.asset} address`}
+          alt={`QR code for Kimble's ${wallet.asset} address`}
           width={104}
           height={104}
           loading="lazy"

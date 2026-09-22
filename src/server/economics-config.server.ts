@@ -1,7 +1,7 @@
 /**
  * Internal economics configuration.
  *
- * Every internal rate Petal uses to value its own variable cost lives in the
+ * Every internal rate Kimble uses to value its own variable cost lives in the
  * `economics_config` table so margins can be tuned without a code change.
  * The constants below are DEFAULTS ONLY — they exist so behaviour is identical
  * on day one and so a config read failure can never break a build.

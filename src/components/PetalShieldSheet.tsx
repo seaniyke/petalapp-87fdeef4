@@ -1,5 +1,5 @@
 /**
- * Petal Shield UI — security audit panel triggered from the builder header.
+ * Kimble Shield UI — security audit panel triggered from the builder header.
  *
  * Shows the Shield Score (A–F), groups findings by severity, and lets the user
  * copy a fix-it prompt straight into the composer. No backend dependency —
@@ -68,7 +68,7 @@ export function PetalShieldSheet({
   }, [report]);
 
   function buildFixPrompt(f: ShieldFinding) {
-    return `Fix Petal Shield finding: ${f.title}\n\nFile: ${f.file}${f.line ? `:${f.line}` : ""}\n${f.snippet ? `Snippet: ${f.snippet}\n` : ""}How: ${f.fix}`;
+    return `Fix Kimble Shield finding: ${f.title}\n\nFile: ${f.file}${f.line ? `:${f.line}` : ""}\n${f.snippet ? `Snippet: ${f.snippet}\n` : ""}How: ${f.fix}`;
   }
 
   function copy(f: ShieldFinding) {
@@ -85,7 +85,7 @@ export function PetalShieldSheet({
         <SheetHeader className="space-y-1">
           <SheetTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            Petal Shield
+            Kimble Shield
           </SheetTitle>
           <SheetDescription>
             Automated security audit of your project. Runs locally — no data leaves your browser.
@@ -182,7 +182,7 @@ export function PetalShieldSheet({
                             {copiedId === f.id ? (
                               <><Check className="mr-1 h-3 w-3" /> Copied</>
                             ) : onSendFixPrompt ? (
-                              "Ask Petal to fix"
+                              "Ask Kimble to fix"
                             ) : (
                               <><Copy className="mr-1 h-3 w-3" /> Copy fix</>
                             )}

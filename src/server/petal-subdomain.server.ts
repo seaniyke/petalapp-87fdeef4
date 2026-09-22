@@ -1,8 +1,8 @@
 /**
- * Petal subdomain — claim/release `<slug>.buildwithpetal.com` for a project.
+ * Kimble subdomain — claim/release `<slug>.buildwithpetal.com` for a project.
  *
  * Implementation re-uses our existing **Cloudflare for SaaS** pipeline (see
- * `cloudflare-saas.server.ts`). A Petal subdomain is just a custom hostname
+ * `cloudflare-saas.server.ts`). A Kimble subdomain is just a custom hostname
  * we register on the user's behalf — Cloudflare handles SSL automatically and
  * `host-routing.server.ts` already proxies any registered hostname to the
  * project's Cloudflare Pages deployment.
@@ -149,7 +149,7 @@ export async function claimSubdomain(args: {
   }
 
   // Clean up any stale `project_domains` row from the previous CF for SaaS
-  // attempt for this hostname. Petal subdomains don't live in project_domains
+  // attempt for this hostname. Kimble subdomains don't live in project_domains
   // anymore — they're identified by `projects.subdomain` alone.
   const { data: stale } = await supabaseAdmin
     .from("project_domains")
@@ -167,7 +167,7 @@ export async function claimSubdomain(args: {
 }
 
 /**
- * Release the project's current Petal subdomain (if any). Removes the
+ * Release the project's current Kimble subdomain (if any). Removes the
  * hostname from Cloudflare, deletes the `project_domains` row, and clears
  * `projects.subdomain`. Best-effort: if Cloudflare delete fails we still
  * clear local state so the user isn't stuck.

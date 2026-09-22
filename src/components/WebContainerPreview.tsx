@@ -64,12 +64,12 @@ export function WebContainerPreview({
   reloadKey: number;
   /** Called when a user picks an element via the in-iframe overlay. */
   onPick?: (el: PickedElement) => void;
-  /** Called whenever the running app navigates, so Petal knows which page of
+  /** Called whenever the running app navigates, so Kimble knows which page of
    *  the app the user is looking at when they ask for an edit. */
   onRoute?: (route: { path: string; title: string; heading: string | null }) => void;
   /** Called when the running app throws a runtime error or unhandled rejection. */
   onRuntimeError?: (err: RuntimeError) => void;
-  /** Plan #3 — user clicked "Ask Petal to repair" on the crash fallback. */
+  /** Plan #3 — user clicked "Ask Kimble to repair" on the crash fallback. */
   onAskRepair?: (reason: string) => void;
   /** P0-E — WebContainer boot/install/dev rejected. Parent should fall
    *  back to the deployed CDN preview instead of leaving the user on the

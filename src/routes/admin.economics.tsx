@@ -1,7 +1,7 @@
 /**
  * Admin → Economics.
  *
- * Internal only. Shows what a turn actually costs Petal against what it
+ * Internal only. Shows what a turn actually costs Kimble against what it
  * charged, and is honest about how much of that is measured versus inferred.
  * Nothing on this page is ever surfaced to a customer.
  */

@@ -34,7 +34,7 @@ describe("automatic upgrade", () => {
     expect(src).toContain('blocked: "no_credits"');
   });
 
-  it("respects Petal's own capacity ceiling", () => {
+  it("respects Kimble's own capacity ceiling", () => {
     expect(src).toContain('economicsValue("max_active_dedicated_backends")');
     expect(src).toContain('blocked: "at_capacity"');
   });

@@ -1,7 +1,7 @@
 /**
  * RuntimeTopupModal — kept as a thin compatibility wrapper.
  *
- * Petal now has ONE balance: Petal Credits. Cloud and AI usage is charged to
+ * Kimble now has ONE balance: Kimble Credits. Cloud and AI usage is charged to
  * the same credits as builds, so "top up" always means the credits screen.
  * Existing call sites (backend enable, mobile builds, low-balance prompts)
  * keep their props; the minimum/reason hints are no longer needed because

@@ -13,7 +13,7 @@ export const Route = createFileRoute("/coffee/thanks")({
   validateSearch: SearchSchema,
   head: () => ({
     meta: [
-      { title: "Thank you — Petal" },
+      { title: "Thank you — Kimble" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -91,7 +91,7 @@ function ThanksPage() {
                 Thank you. Really.
               </h1>
               <p className="mt-4 max-w-md text-base text-muted-foreground sm:text-lg">
-                Your tip lands directly with the team building Petal. Every
+                Your tip lands directly with the team building Kimble. Every
                 coffee keeps the servers warm and the next feature shipping.
                 We won't forget it.
               </p>
@@ -100,13 +100,13 @@ function ThanksPage() {
                   to="/"
                   className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition hover:brightness-105"
                 >
-                  Back to Petal <ArrowRight className="h-4 w-4" />
+                  Back to Kimble <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   to="/invest"
                   className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium hover:bg-muted"
                 >
-                  Want to invest in Petal?
+                  Want to invest in Kimble?
                 </Link>
               </div>
             </>

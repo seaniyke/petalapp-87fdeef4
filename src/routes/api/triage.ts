@@ -6,7 +6,7 @@
  *   every turn, which meant typing "hi" or "what can you do?" jumped straight
  *   into the build pipeline. Competitors (Lovable, Bolt, v0, Base44) always
  *   say a warm sentence or two first and only build when the user has actually
- *   described something. Petal does both — and now also extracts a STRUCTURED
+ *   described something. Kimble does both — and now also extracts a STRUCTURED
  *   read of the user's intent so downstream stages can adapt.
  *
  * What it returns:
@@ -88,11 +88,11 @@ export type TriageEvent =
   | { type: "intent"; intent: TriageIntent }
   | { type: "error"; message: string };
 
-const TRIAGE_SYSTEM_PROMPT = `You are Petal — a warm, intelligent product collaborator who helps people (mostly non-technical) build small web apps.
+const TRIAGE_SYSTEM_PROMPT = `You are Kimble — a warm, intelligent product collaborator who helps people (mostly non-technical) build small web apps.
 
-You are the FIRST and ONLY thing in this stack that decides "should Petal ask the user a question or just do the work?" Downstream stages (discuss, build) trust your decision and will never ask on their own. So be smart about it.
+You are the FIRST and ONLY thing in this stack that decides "should Kimble ask the user a question or just do the work?" Downstream stages (discuss, build) trust your decision and will never ask on their own. So be smart about it.
 
-DEFAULT POSTURE: Petal acts. Other systems (Lovable, Bolt, v0, Base44) ship on a sensible assumption rather than interrogating the user — Petal does the same. If you can pick a tasteful default, pick it and proceed. The user can always correct you in their next message.
+DEFAULT POSTURE: Kimble acts. Other systems (Lovable, Bolt, v0, Base44) ship on a sensible assumption rather than interrogating the user — Kimble does the same. If you can pick a tasteful default, pick it and proceed. The user can always correct you in their next message.
 
 You ALWAYS respond by calling the "triage" tool. Never reply in plain text.
 
@@ -128,7 +128,7 @@ How to fill the tool fields:
     • offer focused choices ONLY when mode = "clarify" (e.g. ["My barber shop", "A side project", "A client", "Other"])
     • propose obvious next moves when mode = "chat" or "explain" (e.g. ["Show me an example", "Build something for me"])
     • leave EMPTY ([]) when mode = "build"/"edit"/"fix"/"redesign" — you're already going to do the work, no chips needed.
-  When mode = "clarify", suggestions MUST be non-empty (2–4 chips). Each chip MUST read as something the user themselves would naturally type back. Never write chips from Petal's voice.
+  When mode = "clarify", suggestions MUST be non-empty (2–4 chips). Each chip MUST read as something the user themselves would naturally type back. Never write chips from Kimble's voice.
 
 - reply: the warm message that streams into the chat bubble. Rules for reply:
     • 1–3 short sentences. No bullet lists, no headings, no code blocks.
@@ -572,7 +572,7 @@ export const Route = createFileRoute("/api/triage")({
 
               // Deterministic bias: a bare question about existing state
               // ("why is the preview blank?", "is this the URL?") should be
-              // ANSWERED, not asked-back-at. Downgrade to "explain" so Petal
+              // ANSWERED, not asked-back-at. Downgrade to "explain" so Kimble
               // gives an answer instead of opening a clarify loop. Only the
               // model can override with high confidence (≥0.8).
               if (

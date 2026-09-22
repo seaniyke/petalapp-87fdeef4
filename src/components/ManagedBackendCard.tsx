@@ -1,5 +1,5 @@
 /**
- * ManagedBackendCard — UI for the Petal-managed Supabase backend.
+ * ManagedBackendCard — UI for the Kimble-managed Supabase backend.
  *
  * Renders one of these states:
  *   - not-purchased: pitch + "Enable backend" CTA -> opens
@@ -120,7 +120,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     try {
       const c = await getManagedCredentials(projectId);
       const text = [
-        `# Petal Cloud backend credentials for project ${projectId}`,
+        `# Kimble Cloud backend credentials for project ${projectId}`,
         `# Generated ${new Date().toISOString()}`,
         ``,
         `SUPABASE_URL=${c.supabaseUrl}`,
@@ -156,16 +156,16 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
     return (
       <>
         <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
-          <p className="text-sm font-medium">Add Petal Cloud backend</p>
+          <p className="text-sm font-medium">Add Kimble Cloud backend</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Dedicated auth, database and file storage — fully managed by Petal.
+            Dedicated auth, database and file storage — fully managed by Kimble.
           </p>
           <Button
             size="sm"
             onClick={() => setEnableOpen(true)}
             className="mt-3"
           >
-            Enable Petal Cloud
+            Enable Kimble Cloud
           </Button>
         </div>
         <EnableBackendFromCloudDialog
@@ -324,7 +324,7 @@ export function ManagedBackendCard({ projectId, backend, onChanged }: Props) {
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
           <div className="flex-1 text-sm">
             <div className="flex items-center gap-2">
-              <span className="font-medium">Petal Cloud connected</span>
+              <span className="font-medium">Kimble Cloud connected</span>
               <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                 {tierLabel}
               </span>

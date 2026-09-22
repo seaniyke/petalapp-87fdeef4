@@ -1,7 +1,7 @@
 /**
  * Ask policy — "act like a senior engineer, don't interrogate".
  *
- * Petal's ONLY question gate is `/api/triage` (mode = "clarify"). In practice
+ * Kimble's ONLY question gate is `/api/triage` (mode = "clarify"). In practice
  * the model reached for clarify far too often: it asked about colours, brand,
  * scope, "do you want auth?", and — worst — asked again right after the user
  * had just answered a question. A senior engineer doesn't do that: they read
@@ -17,7 +17,7 @@
  */
 
 export type AskDecision = {
-  /** True ⇒ Petal must act this turn, never ask. */
+  /** True ⇒ Kimble must act this turn, never ask. */
   forceAction: boolean;
   /** Short machine reason, for logs only. */
   reason:

@@ -15,16 +15,16 @@ import { useIsAdmin } from "@/hooks/use-is-admin";
 export const Route = createFileRoute("/gallery")({
   head: () => ({
     meta: [
-      { title: "Gallery · Petal" },
+      { title: "Gallery · Kimble" },
       {
         name: "description",
         content:
-          "Discover apps the Petal community is building. Open any project, peek inside, and remix it as your own.",
+          "Discover apps the Kimble community is building. Open any project, peek inside, and remix it as your own.",
       },
-      { property: "og:title", content: "Petal Gallery" },
+      { property: "og:title", content: "Kimble Gallery" },
       {
         property: "og:description",
-        content: "Discover and remix apps built on Petal.",
+        content: "Discover and remix apps built on Kimble.",
       },
     ],
   }),
@@ -59,7 +59,7 @@ function GalleryPage() {
               Built by the community
             </p>
             <h1 className="heading-editorial mt-4 text-5xl sm:text-6xl md:text-7xl">
-              The <em>Petal</em> Gallery.
+              The <em>Kimble</em> Gallery.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               Real apps shipped by real people — from a single sentence. Open one to

@@ -141,7 +141,7 @@ export function EnableBackendFromCloudDialog({
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Your app gets a real database, user sign-up/sign-in and a REST
-                  API hosted inside Petal Cloud. Up to 5,000 rows and 25
+                  API hosted inside Kimble Cloud. Up to 5,000 rows and 25
                   collections.
                 </p>
               </div>

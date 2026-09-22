@@ -250,13 +250,13 @@ export function classifyDevServerFailure(text: string): string | null {
   const missing = /Cannot find (?:module|package) ['"]([^'"]+)['"]|Failed to resolve import ["']([^"']+)["']/i.exec(t);
   if (missing) {
     const name = missing[1] ?? missing[2];
-    return `The app imports "${name}" but that package isn't installed. Ask Petal to install it or remove the import.`;
+    return `The app imports "${name}" but that package isn't installed. Ask Kimble to install it or remove the import.`;
   }
   if (/EADDRINUSE/i.test(t)) {
     return "The dev server port is already in use inside the sandbox. Reload the preview to restart it.";
   }
   if (/JavaScript heap out of memory|FATAL ERROR:.*heap/i.test(t)) {
-    return "The dev server ran out of memory while building. Reload the preview, and ask Petal to simplify the heaviest page if it repeats.";
+    return "The dev server ran out of memory while building. Reload the preview, and ask Kimble to simplify the heaviest page if it repeats.";
   }
   if (/\b(SyntaxError|Unexpected token|Expected .* but found)\b/i.test(t)) {
     return `The dev server couldn't parse your code: ${t.slice(0, 160)}`;

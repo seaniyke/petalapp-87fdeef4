@@ -2,7 +2,7 @@
  * Industry Packs — opinionated, multi-page starters tuned per industry.
  *
  * Each pack composes a *richer* prompt than a single template: page list,
- * sections-per-page, theme direction, and the Cloud features Petal should
+ * sections-per-page, theme direction, and the Cloud features Kimble should
  * suggest enabling (auth/email/payments/etc). The detail page assembles this
  * into one prompt and ships the user into the builder.
  *

@@ -248,7 +248,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
         <div className="mb-3 flex items-start gap-2 rounded-xl border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <p>
-            Publish your project first. Once it's live on the Petal subdomain,
+            Publish your project first. Once it's live on the Kimble subdomain,
             you can connect your own domain here.
           </p>
         </div>
@@ -278,7 +278,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
             <code className="rounded bg-background px-1 py-0.5 text-[11px]">
               acme.com
             </code>{" "}
-            instead of the default Petal subdomain. Petal issues a free SSL
+            instead of the default Kimble subdomain. Kimble issues a free SSL
             certificate automatically.
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -303,7 +303,7 @@ export function DomainsSection({ projectId, hasPublishedBuild }: Props) {
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
             Already own a domain? Connecting it is free. Don't have one? Buy
-            one through Petal — starting from $12/year, auto-renews.
+            one through Kimble — starting from $12/year, auto-renews.
           </p>
         </div>
       ) : (
@@ -583,7 +583,7 @@ function AddDomainDialog({
       const cleaned = hostname.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
       const d = await addDomain(projectId, cleaned);
       onAdded(d);
-      toast.success("Domain added — now point your DNS at Petal");
+      toast.success("Domain added — now point your DNS at Kimble");
       emitServiceEnabled({
         projectId,
         service: "domain",
@@ -703,7 +703,7 @@ function DnsRecordsDialog({
       const result = await checkDomainDns(projectId, domain.id);
       setDiagnosis(result);
       if (result.allOk) {
-        toast.success("DNS looks good — Petal should pick it up shortly");
+        toast.success("DNS looks good — Kimble should pick it up shortly");
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "DNS check failed");
@@ -747,7 +747,7 @@ function DnsRecordsDialog({
             note={
               isApex
                 ? "Namecheap: use ALIAS/ANAME for @. Do not use an A record here."
-                : "Routes traffic to Petal — required before SSL can be issued."
+                : "Routes traffic to Kimble — required before SSL can be issued."
             }
           />
           {(() => {
@@ -772,7 +772,7 @@ function DnsRecordsDialog({
             <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-[11px] leading-relaxed text-green-700 dark:text-green-300">
               <p className="font-medium">SSL validation is automatic.</p>
               <p className="mt-1 text-muted-foreground">
-                For this domain, only the routing record above is required. Once it points to Petal, SSL validates automatically.
+                For this domain, only the routing record above is required. Once it points to Kimble, SSL validates automatically.
               </p>
             </div>
           )}
@@ -966,7 +966,7 @@ function DiagnosisPanel({ result }: { result: DnsCheckResult }) {
       </ul>
       {result.allOk ? (
         <p className="mt-2 text-[11px] text-green-700 dark:text-green-300">
-          ✓ All records resolve correctly. Petal typically picks this up
+          ✓ All records resolve correctly. Kimble typically picks this up
           within a few minutes — tap "Check status" above to refresh.
         </p>
       ) : (

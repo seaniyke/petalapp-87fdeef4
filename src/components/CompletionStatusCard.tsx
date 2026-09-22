@@ -1,9 +1,9 @@
 /**
  * Honest completion status for the current request.
  *
- * Petal used to report "done" the moment the code compiled. This card shows
+ * Kimble used to report "done" the moment the code compiled. This card shows
  * the server-owned record instead: what stage the request is at, the proof
- * collected when it succeeded, and — when Petal stopped short — exactly what
+ * collected when it succeeded, and — when Kimble stopped short — exactly what
  * still fails and why it stopped. No claim without evidence.
  */
 import { useEffect, useState } from "react";

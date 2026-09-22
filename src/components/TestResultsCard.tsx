@@ -1,9 +1,9 @@
 /**
- * What Petal checked on your app — in plain language, with the proof.
+ * What Kimble checked on your app — in plain language, with the proof.
  *
  * This is the customer-facing half of the Test Lab. It never shows raw agent
  * traces, selectors or stack internals: one headline, the checks that matter,
- * and the screenshots Petal took while driving the live app. A check Petal
+ * and the screenshots Kimble took while driving the live app. A check Kimble
  * could not run says so — it is never counted as working.
  */
 import { useEffect, useState } from "react";
@@ -58,7 +58,7 @@ function CaseRow({ item }: { item: TestCaseView }) {
           )}
           {item.suppressed.length > 0 && (
             <p>
-              Petal blocked {item.suppressed.length} request
+              Kimble blocked {item.suppressed.length} request
               {item.suppressed.length === 1 ? "" : "s"} so nothing real was charged or sent.
             </p>
           )}
@@ -121,7 +121,7 @@ export function TestResultsCard() {
         ) : (
           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
         )}
-        <span>What Petal checked</span>
+        <span>What Kimble checked</span>
       </div>
 
       <p className="mt-2 text-muted-foreground">{run.headline}</p>

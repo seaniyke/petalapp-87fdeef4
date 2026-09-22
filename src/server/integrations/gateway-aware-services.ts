@@ -1,7 +1,7 @@
 /**
  * Layer H — Gateway-aware services map.
  *
- * Some third-party services Petal supports are best accessed through the
+ * Some third-party services Kimble supports are best accessed through the
  * Lovable connector gateway (OAuth refresh, no raw token handling) instead of
  * the vendor SDK directly. The doc-resolver appends a hint to the prompt
  * block whenever a resolved integration matches one of these slugs so the

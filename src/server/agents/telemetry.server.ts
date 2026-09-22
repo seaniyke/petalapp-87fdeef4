@@ -1,5 +1,5 @@
 /**
- * Petal Intelligence — Phase F: per-agent observability.
+ * Kimble Intelligence — Phase F: per-agent observability.
  *
  * Every board sitting writes one row per specialist into `agent_runs`, so we
  * can answer the questions that decide whether this layer earns its keep:

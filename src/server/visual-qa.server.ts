@@ -39,7 +39,7 @@ const ALLOWED_KINDS = new Set([
   "transparent-overlay",
 ]);
 
-const RULES = `You are Petal's visual QA reviewer. You are shown screenshots of a freshly generated web app.
+const RULES = `You are Kimble's visual QA reviewer. You are shown screenshots of a freshly generated web app.
 Report ONLY defects that are visibly provable in the image. Be strict but literal — never guess about behaviour you cannot see.
 
 Report a defect when you see:

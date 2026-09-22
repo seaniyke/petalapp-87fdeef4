@@ -8,16 +8,16 @@ import { Coffee, Heart, Loader2, ArrowRight, CreditCard, Bitcoin } from "lucide-
 export const Route = createFileRoute("/coffee")({
   head: () => ({
     meta: [
-      { title: "Buy Petal a coffee — support early access" },
+      { title: "Buy Kimble a coffee — support early access" },
       {
         name: "description",
         content:
-          "Petal is in early access, built by a small team. If you like what we're doing, buy us a coffee — it keeps the servers warm.",
+          "Kimble is in early access, built by a small team. If you like what we're doing, buy us a coffee — it keeps the servers warm.",
       },
-      { property: "og:title", content: "Buy Petal a coffee" },
+      { property: "og:title", content: "Buy Kimble a coffee" },
       {
         property: "og:description",
-        content: "Support Petal while we're in early access. Every tip helps.",
+        content: "Support Kimble while we're in early access. Every tip helps.",
       },
     ],
   }),
@@ -120,16 +120,16 @@ function CoffeePage() {
               <Coffee className="h-3.5 w-3.5 text-primary" /> Support the makers
             </div>
             <h1 className="heading-editorial mt-7 text-5xl sm:text-6xl md:text-7xl">
-              Buy Petal <em>a cup of coffee.</em>
+              Buy Kimble <em>a cup of coffee.</em>
             </h1>
             <p className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Petal is built by a small team. If it saved you time or made you smile, drop a tip — it keeps the servers
+              Kimble is built by a small team. If it saved you time or made you smile, drop a tip — it keeps the servers
               warm and the features shipping.
             </p>
             <p className="mt-4 text-sm text-muted-foreground">
               Want to go bigger?{" "}
               <Link to="/invest" className="font-medium text-primary hover:underline">
-                Invest in Petal
+                Invest in Kimble
               </Link>
               .
             </p>
@@ -272,7 +272,7 @@ function CoffeePage() {
                 rows={3}
                 maxLength={280}
                 className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                placeholder="What did you build with Petal?"
+                placeholder="What did you build with Kimble?"
               />
             </div>
 

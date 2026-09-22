@@ -256,7 +256,7 @@ describe("root-cause fixes found by the live run", () => {
     expect(cs.items[0]!.kind).toBe("responsive");
   });
 
-  it("tells the model where to change a surface that lives in a Petal-owned component", () => {
+  it("tells the model where to change a surface that lives in a Kimble-owned component", () => {
     const cs = extractChangeSet("shrink the navbar");
     const files = [
       { path: "src/components/blocks/nav-bar.tsx", content: "export function NavBar() {}" },

@@ -34,7 +34,7 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in · Petal" },
+      { title: "Sign in · Kimble" },
       { name: "description", content: "Sign in to keep your projects across sessions." },
     ],
   }),
@@ -266,7 +266,7 @@ function AuthPage() {
                 className="h-10 w-10 object-contain transition-transform group-hover:-rotate-6"
               />
               <span className="font-display text-3xl font-black tracking-[-0.035em] text-foreground">
-                Petal
+                Kimble
               </span>
             </Link>
 
@@ -278,7 +278,7 @@ function AuthPage() {
                 From a whisper of an idea to <em>a shipped app</em> — in one chat.
               </h2>
               <p className="mt-6 max-w-md text-base leading-relaxed text-foreground/75">
-                Web, mobile, backends, extensions. Petal listens, plans, builds, and
+                Web, mobile, backends, extensions. Kimble listens, plans, builds, and
                 deploys — while you watch it happen.
               </p>
             </div>
@@ -312,7 +312,7 @@ function AuthPage() {
             >
               <img src="/kimble-logo.png" alt="" aria-hidden className="h-8 w-8 object-contain" />
               <span className="font-display text-2xl font-black tracking-[-0.03em] text-foreground">
-                Petal
+                Kimble
               </span>
             </Link>
 
@@ -464,7 +464,7 @@ function AuthPage() {
                   </>
                 ) : mode === "signin" ? (
                   <>
-                    New to Petal?{" "}
+                    New to Kimble?{" "}
                     <button onClick={() => switchMode("signup")} className="font-semibold text-foreground underline-offset-2 hover:underline">
                       Create an account
                     </button>

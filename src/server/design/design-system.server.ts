@@ -1,7 +1,7 @@
 /**
  * Phase 2 — Design System Contract.
  *
- * Petal's look used to be enforced *after* the fact: the model wrote whatever
+ * Kimble's look used to be enforced *after* the fact: the model wrote whatever
  * it wanted and a stack of codemods (token sweep, palette floor, design
  * finisher) tried to drag it back. That is why output drifted — repair can fix
  * a wrong colour, it cannot invent a coherent system.
@@ -178,7 +178,7 @@ export function designSystemFromDirection(
   };
 }
 
-const SYSTEM = `You are Petal's design systems lead. You commit a complete design system BEFORE any code is written, so every page of the product is consistent by construction.
+const SYSTEM = `You are Kimble's design systems lead. You commit a complete design system BEFORE any code is written, so every page of the product is consistent by construction.
 
 Rules:
 - Reason from the product, its users and its domain. A clinical portal and a music festival site must not receive similar systems.

@@ -5,7 +5,7 @@
  * renders a compact "Lessons learned" block to append to the generate
  * system prompt. This is the missing feedback loop: the digest cron writes
  * top failure signatures + recommendations to the database every day, but
- * until now nothing read them back into the prompt — so Petal kept making
+ * until now nothing read them back into the prompt — so Kimble kept making
  * the same mistakes the digest had already flagged.
  *
  * Behavior:
@@ -72,7 +72,7 @@ export async function renderLearningBlock(): Promise<string> {
         for (const r of recs) lines.push(`- ${String(r).slice(0, 280)}`);
       }
       if (lines.length > 0) {
-        text = `\n\n[Lessons learned — last digest ${data.period_date}]\nThese are real failure modes Petal hit recently. Read them, and do NOT reproduce them this turn.\n${lines.join("\n")}`;
+        text = `\n\n[Lessons learned — last digest ${data.period_date}]\nThese are real failure modes Kimble hit recently. Read them, and do NOT reproduce them this turn.\n${lines.join("\n")}`;
       }
     }
   } catch (e) {

@@ -1,7 +1,7 @@
 /**
  * Lovable-style clarifying-question card.
  *
- * Petal asks at most one question per turn and ships 2–4 short answer options.
+ * Kimble asks at most one question per turn and ships 2–4 short answer options.
  * This card renders them as radio rows (single-select), plus a "Write your
  * own…" row with an inline input. Footer has prev/next arrows (disabled in
  * single-question mode for visual parity), a muted "Skip all" link, and a

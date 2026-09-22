@@ -2,7 +2,7 @@
  * Mobile build orchestration — Codemagic provider.
  *
  * Tier 2 — wraps the web app as a native shell using Capacitor (hidden
- * from users) and offloads .ipa / .aab builds to Codemagic so Petal
+ * from users) and offloads .ipa / .aab builds to Codemagic so Kimble
  * doesn't need to own a Mac fleet.
  *
  * Auth: Codemagic REST API uses a personal/team API token in the
@@ -29,7 +29,7 @@ export interface MobileBuildRequest {
   kind: MobileBuildKind;
   /** Reverse-DNS bundle id, e.g. com.acme.todoapp */
   bundleId: string;
-  /** Codemagic appId — created once per Petal project, persisted in mobile_apps. */
+  /** Codemagic appId — created once per Kimble project, persisted in mobile_apps. */
   codemagicAppId: string;
   /** Workflow id defined in the codemagic.yaml of the petal-mobile-shell template. */
   workflowId: string;
@@ -52,7 +52,7 @@ export interface MobileBuildResult {
 
 export interface BuildProvider {
   name: "codemagic";
-  /** Petal-owned: create a Codemagic app pointing at our mirror repo. */
+  /** Kimble-owned: create a Codemagic app pointing at our mirror repo. */
   createApp(args: {
     projectId: string;
     githubFullName: string;
@@ -119,7 +119,7 @@ export const codemagicProvider: BuildProvider = {
   name: "codemagic",
 
   /**
-   * Create a Codemagic app pointing at the Petal-owned GitHub mirror repo.
+   * Create a Codemagic app pointing at the Kimble-owned GitHub mirror repo.
    * Codemagic uses the repo's `codemagic.yaml` to discover workflows, so as
    * long as the mirror contains that file (we commit it on first push) the
    * `petal-default` / `petal-default-signed` workflows are auto-registered.

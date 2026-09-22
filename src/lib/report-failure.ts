@@ -2,7 +2,7 @@
  * Best-effort failure reporter.
  *
  * Fires only when `toFriendlyError` falls through to the generic
- * "Petal got a bit confused" branch — i.e. the cases we DON'T have a pattern
+ * "Kimble got a bit confused" branch — i.e. the cases we DON'T have a pattern
  * for. Insert goes through the public /api/public/track-failure route so it
  * works even when the user's session has expired or the page is being
  * unloaded.

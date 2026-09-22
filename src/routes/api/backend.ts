@@ -2,7 +2,7 @@
  * BYO backend connector — HTTP endpoints.
  *
  * v1 of the hybrid backend story: lets a user attach an existing Supabase
- * project to one of their Petal projects. v2 will add a managed provisioner
+ * project to one of their Kimble projects. v2 will add a managed provisioner
  * that writes to the same `project_backends` table with a different `provider`.
  * Generated apps and downstream code are unchanged — that's the point.
  *
@@ -224,7 +224,7 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     .eq("user_id", userId)
     .maybeSingle();
   const planCode = String(wallet?.plan_code ?? "free");
-  // One balance: a backend is funded by Petal Credits like everything else.
+  // One balance: a backend is funded by Kimble Credits like everything else.
   const totalBalance =
     Number(wallet?.topup_credits_remaining ?? 0) +
     Number(wallet?.monthly_credits_remaining ?? 0);
@@ -266,7 +266,7 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     return new Response(
       JSON.stringify({
         error:
-          "Petal is at capacity for dedicated databases right now. Your app keeps its shared database and we'll have room shortly.",
+          "Kimble is at capacity for dedicated databases right now. Your app keeps its shared database and we'll have room shortly.",
         code: "capacity_reached",
       }),
       { status: 503, headers: { "Content-Type": "application/json" } },
@@ -316,12 +316,12 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
       .update({ backend_type: BACKEND_TYPE.SHARED })
       .eq("id", parsed.data.projectId);
     // Upstream capacity/billing problems are ours, not the user's — never
-    // leak Petal's own provider billing state into their app.
+    // leak Kimble's own provider billing state into their app.
     const ours = /402|overdue|quota|limit reached|free tier/i.test(msg);
     return new Response(
       JSON.stringify({
         error: ours
-          ? "Petal can't add a dedicated database right now. Your app keeps its shared database and we're on it."
+          ? "Kimble can't add a dedicated database right now. Your app keeps its shared database and we're on it."
           : `Couldn't create your backend: ${msg.slice(0, 300)}`,
         code: ours ? "capacity_reached" : "provision_failed",
       }),
@@ -415,7 +415,7 @@ async function handleDisconnect(userId: string, body: unknown): Promise<Response
   const ownerErr = await assertOwnsProject(parsed.data.projectId, userId);
   if (ownerErr) return ownerErr;
 
-  // A Petal-provisioned database must be removed upstream too, otherwise we
+  // A Kimble-provisioned database must be removed upstream too, otherwise we
   // keep paying for a database nobody can reach. Data is exported into the
   // project's files first.
   const { data: row } = await supabaseAdmin
@@ -563,7 +563,7 @@ async function handleManagedCredentials(userId: string, body: unknown): Promise<
 /* ---------------- Shared-tier actions ---------------- */
 
 /**
- * Free tier: a real database, auth and REST API that lives inside Petal Cloud
+ * Free tier: a real database, auth and REST API that lives inside Kimble Cloud
  * instead of spawning a dedicated Supabase project. No plan or balance gate.
  */
 async function handleEnableShared(userId: string, body: unknown): Promise<Response> {
