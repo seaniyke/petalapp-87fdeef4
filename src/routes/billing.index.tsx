@@ -352,7 +352,7 @@ function BillingDashboard() {
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {data.items.map((item) => (
+              {payments.slice.map((item) => (
                 <li
                   key={`${item.method}-${item.id}`}
                   className="flex flex-wrap items-center gap-3 p-4"
