@@ -3046,18 +3046,25 @@ function Builder() {
           // The user message was already persisted up-front (see send() entry)
           // so we only need to write the assistant reply now.
           const persistMsgs: ChatMessage[] = [assistantMsg];
+          // Every write here is idempotent, so a dropped socket (Wi-Fi → LTE
+          // hand-off mid-turn) must be retried, never reported. Surfacing it
+          // put a "Kimble is picking this back up" card under a finished
+          // recap and left the deploy unstarted.
           await Promise.all([
-            saveProjectFiles(proj.id, files2),
-            appendMessages(proj.id, persistMsgs),
-            maybeAutoTitleProject(proj, summary2, text),
-            createVersion(proj.id, files2, {
-              origin: "auto",
-              label: text.slice(0, 60),
-              summary: summary2,
-            }),
+            retryTransient(() => saveProjectFiles(proj.id, files2)),
+            retryTransient(() => appendMessages(proj.id, persistMsgs)),
+            retryTransient(() => maybeAutoTitleProject(proj, summary2, text)),
+            retryTransient(() =>
+              createVersion(proj.id, files2, {
+                origin: "auto",
+                label: text.slice(0, 60),
+                summary: summary2,
+              }),
+            ),
           ]);
           setHistoryKey((k) => k + 1);
-          const refreshed = await getProject(proj.id);
+          // A refresh read is cosmetic — never let it fail the turn.
+          const refreshed = await retryTransient(() => getProject(proj.id)).catch(() => null);
           if (refreshed) setProject(refreshed);
 
           // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
