@@ -1,5 +1,5 @@
 /**
- * Kimble subdomain — claim/release `<slug>.buildwithpetal.com` for a project.
+ * Kimble subdomain — claim/release `<slug>.kimble.cloud` for a project.
  *
  * Implementation re-uses our existing **Cloudflare for SaaS** pipeline (see
  * `cloudflare-saas.server.ts`). A Kimble subdomain is just a custom hostname
@@ -8,9 +8,9 @@
  * project's Cloudflare Pages deployment.
  *
  * Why this works without an extra DNS step:
- *   `*.buildwithpetal.com` already resolves through our zone (this is the
+ *   `*.kimble.cloud` already resolves through our zone (this is the
  *   same zone we register customer custom hostnames on). When we POST a new
- *   custom hostname like `acme.buildwithpetal.com`, Cloudflare provisions
+ *   custom hostname like `acme.kimble.cloud`, Cloudflare provisions
  *   the cert *and* serves it on the apex, because the hostname lives inside
  *   our own SaaS zone. No CNAME for the user to add, no extra DNS record
  *   for us to create — the SaaS zone is already authoritative.
@@ -27,7 +27,19 @@
 import { deleteCustomHostname } from "@/server/cloudflare-saas.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export const PETAL_ROOT_DOMAIN = "buildwithpetal.com";
+export const PETAL_ROOT_DOMAIN = "kimble.cloud";
+
+/**
+ * Older apps were handed `<slug>.buildwithpetal.com`. That zone still routes
+ * (the edge router resolves both roots), so nothing goes dark — but any
+ * hostname bookkeeping has to look under both roots.
+ */
+export const LEGACY_ROOT_DOMAINS = ["buildwithpetal.com"] as const;
+
+/** Every hostname a slug may be registered under, new root first. */
+export function slugHostnames(slug: string): string[] {
+  return [PETAL_ROOT_DOMAIN, ...LEGACY_ROOT_DOMAINS].map((root) => `${slug}.${root}`);
+}
 
 /** Mirror of the DB trigger's reserved list (cheap UX validation). */
 const RESERVED = new Set<string>([
@@ -36,7 +48,7 @@ const RESERVED = new Set<string>([
   "static", "assets", "cdn", "docs", "help", "support", "status",
   "blog", "shop", "store", "pay", "billing", "auth", "login", "signup",
   "register", "account", "dashboard", "console", "portal", "manage",
-  "petal", "buildwithpetal", "lovable", "about", "contact", "pricing",
+  "petal", "buildwithpetal", "kimble", "lovable", "about", "contact", "pricing",
   "terms", "privacy", "legal", "security", "changelog", "roadmap",
   "preview", "staging", "dev", "test", "qa", "demo", "sandbox",
   "beta", "alpha", "edge", "workers", "pages", "cf", "cloudflare",
@@ -108,10 +120,10 @@ export async function isSlugAvailable(
 }
 
 /**
- * Claim `<slug>.buildwithpetal.com` for a project.
+ * Claim `<slug>.kimble.cloud` for a project.
  *
  * Implementation: just persist the slug. The actual request routing is
- * handled by an edge Worker bound to `*.buildwithpetal.com/*` (see
+ * handled by an edge Worker bound to `*.kimble.cloud/*` (see
  * `subdomain-worker/`), which calls `/api/public/host-lookup` to resolve
  * `<slug>` → project → pages.dev URL on every request.
  *
@@ -154,7 +166,7 @@ export async function claimSubdomain(args: {
   const { data: stale } = await supabaseAdmin
     .from("project_domains")
     .select("id, provider_hostname_id")
-    .eq("hostname", hostname)
+    .in("hostname", slugHostnames(slug))
     .maybeSingle();
   if (stale) {
     if (stale.provider_hostname_id) {
@@ -179,12 +191,10 @@ export async function releaseSubdomain(projectId: string): Promise<void> {
     .eq("id", projectId)
     .maybeSingle();
   if (!project?.subdomain) return;
-  const hostname = `${project.subdomain}.${PETAL_ROOT_DOMAIN}`;
-
   const { data: domain } = await supabaseAdmin
     .from("project_domains")
     .select("id, provider_hostname_id")
-    .eq("hostname", hostname)
+    .in("hostname", slugHostnames(project.subdomain))
     .maybeSingle();
 
   if (domain?.provider_hostname_id) {

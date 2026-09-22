@@ -1,10 +1,10 @@
 /**
  * Client helpers for `/api/subdomain` — claim/check/release a Kimble subdomain
- * (`<slug>.buildwithpetal.com`) for a project.
+ * (`<slug>.kimble.cloud`) for a project.
  */
 import { supabase } from "@/integrations/supabase/client";
 
-export const PETAL_ROOT_DOMAIN = "buildwithpetal.com";
+export const PETAL_ROOT_DOMAIN = "kimble.cloud";
 
 export type CheckResult = {
   available: boolean;
