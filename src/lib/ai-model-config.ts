@@ -40,8 +40,17 @@ export const DEFAULT_FALLBACK_MODEL = "deepseek/deepseek-v3.2";
  */
 export const DEFAULT_IMAGE_MODEL = "google/gemini-2.5-flash-image";
 
+/**
+ * Utility tier — short classification / summarisation calls (triage, preflight,
+ * phase classification, memory, titles, error humanising). They read a small
+ * prompt and emit a few hundred tokens, so the cheapest tool-capable DeepSeek
+ * input price wins. $0.040/M in (vs $0.089/M on the build model), 1.3M ctx.
+ */
+export const DEFAULT_UTILITY_MODEL = "deepseek/deepseek-v4-flash-0731";
+
 /** Cost guard: hard ceiling on output tokens for short utility calls. */
 export const UTILITY_MAX_OUTPUT_TOKENS = 1024;
+
 
 function env(name: string): string | undefined {
   if (typeof process === "undefined" || !process.env) return undefined;
