@@ -3710,7 +3710,7 @@ function Builder() {
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
     setAwaitingBuild(true);
-    void triggerBuild(project.id)
+    void retryTransient(() => triggerBuild(project.id))
       .then(async (build) => {
         restoreBuildId(build.buildId);
         startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
@@ -3719,12 +3719,20 @@ function Builder() {
       })
       .catch((err: unknown) => {
         setAwaitingBuild(false);
+        const raw = err instanceof Error ? err.message : String(err);
         persistFriendlyError(
-          toFriendlyError(err, { surface: "build", projectId: project.id }),
+          isInfrastructureBuildError(raw)
+            ? friendlyBuildServiceBusy(raw)
+            : toFriendlyError(err, { surface: "build", projectId: project.id }),
         );
         setPhases((p) => markFailed(p, "deploying"));
       });
   }, [project?.id, project?.latest_build_id, supersedeBuildId, restoreBuildId]);
+
+  useEffect(() => {
+    retryDeployRef.current = retryDeploy;
+  }, [retryDeploy]);
+
 
   const askPetalToFix = useCallback(
     (opts: { isAuto?: boolean } = {}) => {
