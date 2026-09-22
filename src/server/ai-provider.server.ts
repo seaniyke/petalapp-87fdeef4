@@ -912,6 +912,17 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     projectId: opts.meta?.projectId ?? null,
     userId: opts.meta?.userId ?? null,
     turnId: opts.meta?.turnId ?? null,
+    promptTokens: retryUsage?.promptTokens ?? null,
+    completionTokens: retryUsage?.completionTokens ?? null,
+    totalTokens: retryUsage?.totalTokens ?? null,
+    costUsdMicro: retryUsage
+      ? estimateCostUsdMicro(
+          fallbackModel,
+          retryUsage.promptTokens,
+          retryUsage.completionTokens,
+        )
+      : null,
+
   });
 
   return retried;
