@@ -19,6 +19,7 @@ import { createHash } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { OPENROUTER_CHAT_URL, defaultImageModel } from "@/lib/ai-model-config";
 import { findLibraryPicture } from "./registry/pictures.server";
+import { findProjectPicture } from "./registry/project-pictures.server";
 import type { ProjectFile } from "./generate.server";
 
 const BUCKET = "petal-images";
@@ -195,6 +196,8 @@ export async function resolvePetalImagePlaceholders(
   /** Called as soon as each picture is ready, so the build card can show it
    *  landing live instead of announcing a number at the end. */
   onImage?: (image: { url: string; slug: string; index: number }) => void,
+  /** When set, the owner's own uploaded photos are searched first. */
+  projectId?: string | null,
 ): Promise<{ files: ProjectFile[]; resolved: number; failed: number; urls: string[] }> {
   // 1. Collect all unique placeholders across the project.
   const slugs = new Set<string>();
@@ -231,7 +234,20 @@ export async function resolvePetalImagePlaceholders(
     while (queue.length) {
       const slug = queue.shift();
       if (!slug) return;
-      // Curated library first. A good match is faster, cheaper and more
+      // The owner's own photos first — a real photograph of the real
+      // business beats anything curated or generated.
+      try {
+        const own = await findProjectPicture(projectId, slugToPrompt(slug));
+        if (own) {
+          urlMap.set(slug, own.url);
+          resolved += 1;
+          announce(slug, own.url);
+          continue;
+        }
+      } catch {
+        // Never let a photo lookup stop a build.
+      }
+      // Curated library next. A good match is faster, cheaper and more
       // consistent than generating; a weak match is skipped so quality
       // never drops for the sake of a saving.
       try {
