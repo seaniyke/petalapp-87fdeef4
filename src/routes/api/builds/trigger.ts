@@ -372,11 +372,12 @@ export const Route = createFileRoute("/api/builds/trigger")({
           // A missing or unreadable history row means "verify everything".
           let changedPaths: string[] | null = null;
           let forceFull = true;
+          let editScope: "micro" | "targeted" | "structural" | null = null;
           try {
             const [{ data: lastEdit }, { count: priorBuilds }] = await Promise.all([
               supabaseAdmin
                 .from("project_edit_history")
-                .select("changed_paths")
+                .select("changed_paths, user_request")
                 .eq("project_id", projectId)
                 .order("created_at", { ascending: false })
                 .limit(1)
@@ -391,6 +392,15 @@ export const Route = createFileRoute("/api/builds/trigger")({
             if (Array.isArray(raw)) {
               changedPaths = raw.filter((p): p is string => typeof p === "string");
             }
+            // How big the ask itself read. Deterministic prior only — the same
+            // function the generation turn used, so the finishing pass is sized
+            // to the request without another model call.
+            if (typeof lastEdit?.user_request === "string" && lastEdit.user_request.trim()) {
+              const { classifyEditDeterministic } = await import(
+                "@/server/edit-classifier.server"
+              );
+              editScope = classifyEditDeterministic(lastEdit.user_request).scope;
+            }
             forceFull = !priorBuilds || priorBuilds === 0;
           } catch {
             /* fall back to a full sweep */
@@ -402,6 +412,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
             prd: storedPrd?.prd ?? null,
             changedPaths,
             forceFull,
+            editScope,
           }).catch(() => undefined);
           await postBuildToRailway({ projectId, buildId: build.id, files: withEnv, hideBadge, verify });
         } catch (e) {

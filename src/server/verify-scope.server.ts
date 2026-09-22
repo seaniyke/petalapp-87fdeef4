@@ -18,7 +18,7 @@
  */
 import { computeImpact, buildImportGraph } from "@/server/impact-graph.server";
 
-export type VerifyScopeTier = "full" | "routes" | "minimal";
+export type VerifyScopeTier = "full" | "routes" | "minimal" | "micro";
 
 export interface VerifyScope {
   tier: VerifyScopeTier;
@@ -28,6 +28,12 @@ export interface VerifyScope {
   widths: number[];
   /** Skip the model-drafted write flows (saves an AI call + browser time). */
   skipFlows: boolean;
+  /**
+   * Skip screenshot capture and the vision-model design review entirely. Only
+   * set for `micro`: a one-thing change to one page is checked for real
+   * breakage (page errors, blank screen, broken images) and nothing else.
+   */
+  skipVisualScoring?: boolean;
   /** Human-readable reason, recorded on the build for debugging. */
   reason: string;
 }
@@ -72,6 +78,12 @@ export function computeVerifyScope(args: {
   knownRoutes: string[];
   /** First build of a project, or a publish — always verified in full. */
   forceFull?: boolean;
+  /**
+   * How big the request itself read (edit-classifier.server.ts). A one-thing
+   * ask that touched one page earns the `micro` tier: load that page once and
+   * look for real breakage, nothing else.
+   */
+  editScope?: "micro" | "targeted" | "structural" | null;
 }): VerifyScope {
   const full = (reason: string): VerifyScope => ({
     tier: "full",
@@ -90,6 +102,8 @@ export function computeVerifyScope(args: {
   const byPath = new Map(args.files.map((f) => [f.path, f.content]));
   const routeSet = new Set<string>();
   const componentSeeds: string[] = [];
+  /** Routes the change is actually on, without the home ride-along. */
+  const primaryRoutes = new Set<string>();
   let sawVisual = false;
 
   for (const path of changed) {
@@ -98,7 +112,10 @@ export function computeVerifyScope(args: {
     const content = byPath.get(path) ?? "";
     const declared = routesDeclaredIn(path, content);
     if (declared.length) {
-      for (const r of declared) routeSet.add(normalizeRoute(r));
+      for (const r of declared) {
+        routeSet.add(normalizeRoute(r));
+        primaryRoutes.add(normalizeRoute(r));
+      }
       // A brand-new route file means routing itself changed — verify home too.
       routeSet.add("/");
     } else {
@@ -112,7 +129,10 @@ export function computeVerifyScope(args: {
     const graph = buildImportGraph(args.files);
     for (const dependent of impact.dependents) {
       const content = byPath.get(dependent) ?? "";
-      for (const r of routesDeclaredIn(dependent, content)) routeSet.add(normalizeRoute(r));
+      for (const r of routesDeclaredIn(dependent, content)) {
+        routeSet.add(normalizeRoute(r));
+        primaryRoutes.add(normalizeRoute(r));
+      }
     }
     // A shared component with no route dependents we can see is a hub risk.
     if (impact.dependents.length === 0 && graph.size > 0) {
@@ -131,6 +151,22 @@ export function computeVerifyScope(args: {
     };
   }
   if (routes.length === 0) return full("could not map the change to routes");
+
+  // Micro: a one-thing ask that moved exactly one page-level file. Load that
+  // page once and look for real breakage. No screenshots, no design grading,
+  // no test sign-up, no write flows.
+  const primary = [...primaryRoutes].filter((r) => args.knownRoutes.includes(r));
+  if (args.editScope === "micro" && changed.length === 1 && primary.length === 1) {
+    return {
+      tier: "micro",
+      routes: [primary[0]],
+      widths: [1440],
+      skipFlows: true,
+      skipVisualScoring: true,
+      reason: `one-thing change on ${primary[0]}`,
+    };
+  }
+
   if (routes.length >= 4) return full("change affects most of the app");
 
   return {

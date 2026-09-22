@@ -58,7 +58,7 @@ export interface VerifyPlan {
   /** Visual QA capture request (mobile + desktop screenshots for vision scoring). */
   visual?: { widths?: number[]; routes?: string[] };
   /** How this plan was scoped (recorded for debugging; the builder ignores it). */
-  scope?: { tier: "full" | "routes" | "minimal"; reason: string };
+  scope?: { tier: "full" | "routes" | "minimal" | "micro"; reason: string };
 }
 
 /** Mirrors the builder's caps so we never send a plan it will reject. */
@@ -435,6 +435,8 @@ export async function buildVerifyPlan(args: {
   changedPaths?: string[] | null;
   /** First build of a project, or a publish: always verify everything. */
   forceFull?: boolean;
+  /** How big the request read (edit-classifier). Unlocks the `micro` tier. */
+  editScope?: "micro" | "targeted" | "structural" | null;
   signal?: AbortSignal;
 }): Promise<VerifyPlan> {
   let routes: string[];
@@ -453,6 +455,7 @@ export async function buildVerifyPlan(args: {
       changedPaths: args.changedPaths,
       knownRoutes: routes,
       forceFull: args.forceFull,
+      editScope: args.editScope ?? null,
     });
   } catch {
     scope = { tier: "full", routes: [], widths: [390, 820, 1440], skipFlows: false, reason: "scope failed" };
@@ -466,23 +469,33 @@ export async function buildVerifyPlan(args: {
   // phone, tablet and desktop widths. Scored by a vision model in the
   // callback. Two routes at two widths was never enough to prove a design —
   // interior screens and the tablet breakpoint went entirely unreviewed.
-  plan.visual = {
-    widths: scope.widths,
-    routes: scope.tier === "full" ? pickVisualRoutes(routes) : scope.routes,
-  };
+  //
+  // Micro is the exception: a one-thing change to one page is checked for real
+  // breakage only. No screenshots means no vision call and no craft-repair
+  // round in the callback, which is most of what made tiny edits feel slow.
+  if (!scope.skipVisualScoring) {
+    plan.visual = {
+      widths: scope.widths,
+      routes: scope.tier === "full" ? pickVisualRoutes(routes) : scope.routes,
+    };
+  }
 
-  try {
-    const auth = detectAuth(args.files, routes);
-    if (auth) {
-      const identity = makeTestIdentity(args.projectId);
-      plan.auth = { ...auth, ...identity };
-      // Gated routes are verified in the signed-in pass, not the anonymous one,
-      // where they would only ever report "redirected to login".
-      plan.routes = plan.routes.filter((r) => !auth.protectedRoutes.includes(r));
-      if (plan.routes.length === 0) plan.routes = ["/"];
+  // Signing a throwaway user in costs a full sign-up round trip. A micro edit
+  // never justifies it.
+  if (scope.tier !== "micro") {
+    try {
+      const auth = detectAuth(args.files, routes);
+      if (auth) {
+        const identity = makeTestIdentity(args.projectId);
+        plan.auth = { ...auth, ...identity };
+        // Gated routes are verified in the signed-in pass, not the anonymous one,
+        // where they would only ever report "redirected to login".
+        plan.routes = plan.routes.filter((r) => !auth.protectedRoutes.includes(r));
+        if (plan.routes.length === 0) plan.routes = ["/"];
+      }
+    } catch {
+      /* auth detection is best-effort */
     }
-  } catch {
-    /* auth detection is best-effort */
   }
 
   if (!args.skipFlows && !scope.skipFlows) {

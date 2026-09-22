@@ -186,6 +186,7 @@ import {
   renderScopeContractBlock,
   scopeDisclosure,
 } from "@/server/edit-scope-guard.server";
+import { buildEditBoundary } from "@/server/edit-boundary.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
 import { ensureBrandIdentity } from "@/server/brand-identity.server";
 import {
@@ -2777,6 +2778,8 @@ Forbidden defaults
 
 
 
+  /** Import neighbours of the resolved targets — writable on a targeted edit. */
+  let impactNeighbourPaths: string[] = [];
   // Engine 3.0 phase 4 — impact graph. A targeted edit rarely stops at the
   // file it names: whoever imports that file has to keep compiling, and
   // whatever it imports defines the props it may use. Pin that immediate
@@ -2790,6 +2793,7 @@ Forbidden defaults
         radius: 1,
         max: 18,
       });
+      impactNeighbourPaths = impact.paths.filter((p) => !resolvedTargetPaths.includes(p));
       const extra = impact.paths.filter(
         (p) => !resolvedTargetPaths.includes(p) && !pinnedPaths.includes(p),
       );
@@ -3074,11 +3078,15 @@ Forbidden defaults
   // pairings, section library, header patterns, icon vocabulary, imagery
   // rules). Every capability added here made EVERY request heavier; a
   // targeted non-visual edit now carries none of it.
+  const editScopeForPrompt = editClassification?.scope ?? "targeted";
   const skipDesignManual =
     !isInitial &&
     !isCrossCutting &&
-    (editClassification?.scope ?? "targeted") === "targeted" &&
-    !(editClassification?.dimensions ?? []).includes("visual");
+    // A one-thing ask never needs the whole design manual, even a visual one:
+    // "make this button green" is not a redesign.
+    (editScopeForPrompt === "micro" ||
+      (editScopeForPrompt === "targeted" &&
+        !(editClassification?.dimensions ?? []).includes("visual")));
   try {
     if (skipDesignManual) {
       designTasteBlock = "";
@@ -3984,12 +3992,28 @@ Forbidden defaults
           // this" can never drift apart. `package.json` is in it: dependency
           // changes are owned by the bare import resolver, which writes a real
           // resolved version instead of a guessed one.
+          // Edit boundary — a small ask may not rewrite a page it never named.
+          // Built once per turn; stands down for initial builds, cross-cutting
+          // work and anything we could not confidently resolve to target files.
+          const editBoundary = buildEditBoundary({
+            scope: editClassification?.scope ?? null,
+            targetPaths: resolvedTargetPaths,
+            neighbourPaths: impactNeighbourPaths,
+            existingPaths: currentFiles.map((f) => f.path),
+            disabled: isInitial || isCrossCutting,
+          });
+          if (editBoundary.enforced) {
+            console.info(`[edit-boundary] ${editBoundary.describe()}`);
+          }
+
           const isProtectedPath = (p: string) =>
             isScaffoldOwnedPath(p) ||
             matchesUserProtectedGlob(p) ||
             // Plan Mode v1 — when a plan was approved, ANY file outside its
             // allow-list is treated as protected and dropped.
-            (allowedPathSet !== null && !allowedPathSet.has(p));
+            (allowedPathSet !== null && !allowedPathSet.has(p)) ||
+            // A file the request never pointed at, on a small edit.
+            !editBoundary.allows(p);
 
           // Honesty ledger — every path the model asked to change that did
           // NOT end up byte-different after apply + recovery. Surfaced to the
@@ -5638,6 +5662,11 @@ Forbidden defaults
             design: picContext?.design ?? null,
             model,
             repair: isInitial || isCrossCutting,
+            // Judge only what this turn touched, unless it built the app.
+            changedPaths:
+              isInitial || isCrossCutting
+                ? null
+                : diffChangedPaths(turnBaselineFiles, nextFiles),
             projectId: body.projectId ?? undefined,
             userId,
             signal: abortSignal,

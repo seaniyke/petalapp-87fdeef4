@@ -63,4 +63,40 @@ describe("change-aware verification scope", () => {
     });
     expect(s.tier).toBe("full");
   });
+
+  it("gives a one-thing change on one page the quick check", () => {
+    const s = computeVerifyScope({
+      files,
+      changedPaths: ["src/routes/pricing.tsx"],
+      knownRoutes,
+      editScope: "micro",
+    });
+    expect(s.tier).toBe("micro");
+    expect(s.routes).toEqual(["/pricing"]);
+    expect(s.widths).toEqual([1440]);
+    expect(s.skipFlows).toBe(true);
+    expect(s.skipVisualScoring).toBe(true);
+  });
+
+  it("keeps the quick check for a one-thing change to a shared piece", () => {
+    const s = computeVerifyScope({
+      files,
+      changedPaths: ["src/components/Hero.tsx"],
+      knownRoutes,
+      editScope: "micro",
+    });
+    expect(s.tier).toBe("micro");
+    expect(s.routes).toEqual(["/"]);
+  });
+
+  it("does not shortcut when a small ask moved more than one file", () => {
+    const s = computeVerifyScope({
+      files,
+      changedPaths: ["src/routes/pricing.tsx", "src/components/Hero.tsx"],
+      knownRoutes,
+      editScope: "micro",
+    });
+    expect(s.tier).toBe("routes");
+    expect(s.skipVisualScoring).toBeFalsy();
+  });
 });
