@@ -383,6 +383,26 @@ function Builder() {
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
+  // The project's source is fetched in the background so the conversation can
+  // paint immediately — a large project is hundreds of files of text and used
+  // to gate the whole screen behind that one download. Anything that needs the
+  // real source (sending a turn, discussing) awaits `waitForFiles()` first.
+  const filesRef = useRef<ProjectFile[]>([]);
+  const filesReadyRef = useRef<Promise<unknown> | null>(null);
+  useEffect(() => {
+    filesRef.current = files;
+  }, [files]);
+  const waitForFiles = useCallback(async (): Promise<ProjectFile[]> => {
+    if (filesReadyRef.current) {
+      try {
+        await filesReadyRef.current;
+      } catch {
+        /* a failed background load falls through to whatever we already have */
+      }
+    }
+    return filesRef.current;
+  }, []);
+
   const [input, setInput] = useState("");
   // Tracks `messages.length` at the moment the user answered or skipped the
   // most recent clarifying question. The question card stays actionable until
