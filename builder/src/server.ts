@@ -59,6 +59,7 @@ const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const CALLBACK_URL = process.env.PETAL_CALLBACK_URL; // https://app.example.com/api/builds/callback
+const CALLBACK_FALLBACK_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app";
 
 const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT_BUILDS ?? 3);
 const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 50);
@@ -610,6 +611,27 @@ const HEARTBEAT_URL = (() => {
 })();
 
 /**
+ * The public brand domain can briefly point at an older app deployment while
+ * DNS/edge caches converge. Builder callbacks are control-plane traffic, so
+ * they must have a stable project URL fallback instead of depending on that
+ * presentation domain alone.
+ */
+export function callbackCandidates(configuredUrl: string): string[] {
+  const urls = [configuredUrl];
+  try {
+    const configured = new URL(configuredUrl);
+    const stable = new URL(configuredUrl);
+    stable.protocol = "https:";
+    stable.host = new URL(CALLBACK_FALLBACK_ORIGIN).host;
+    urls.push(stable.toString());
+  } catch {
+    // Startup already validates that a callback value exists. If it is not a
+    // URL, retain the configured value so the normal error remains diagnostic.
+  }
+  return [...new Set(urls)];
+}
+
+/**
  * Best-effort liveness ping. Never throws and never blocks the build: a
  * missed heartbeat only shortens the app's patience, it cannot fail a job.
  */
@@ -659,33 +681,33 @@ async function postCallback(payload: Callback): Promise<void> {
   const body = JSON.stringify(payload);
   const delays = [0, 1_000, 3_000, 8_000, 15_000];
   let lastError = "Callback did not complete";
+  const candidates = callbackCandidates(CALLBACK_URL!);
 
   for (const delay of delays) {
     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
-    // Sign each attempt with a fresh timestamp. Reusing the first signature
-    // can make a later retry fail the callback endpoint's five-minute window.
-    const { timestamp, signature } = sign(SHARED_SECRET!, body);
-    try {
-      const res = await fetch(CALLBACK_URL!, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-petal-timestamp": timestamp,
-          "x-petal-signature": signature,
-        },
-        body,
-        signal: AbortSignal.timeout(20_000),
-      });
-      if (res.ok) return;
-      const responseBody = await res.text().catch(() => "");
-      lastError = `Callback POST failed: ${res.status} ${responseBody}`;
-      // Invalid payload/signature responses are deterministic; retries cannot
-      // repair them. Auth, rate-limit and server failures can be transient.
-      if (res.status >= 400 && res.status < 500 && res.status !== 401 && res.status !== 408 && res.status !== 429) {
-        break;
+    for (const callbackUrl of candidates) {
+      // Sign each attempt with a fresh timestamp. Reusing the first signature
+      // can make a later retry fail the callback endpoint's five-minute window.
+      const { timestamp, signature } = sign(SHARED_SECRET!, body);
+      try {
+        const res = await fetch(callbackUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-petal-timestamp": timestamp,
+            "x-petal-signature": signature,
+          },
+          body,
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (res.ok) return;
+        const responseBody = await res.text().catch(() => "");
+        lastError = `Callback POST failed: ${res.status} ${responseBody}`;
+        // A stale public deployment commonly answers 404/500 while the stable
+        // project URL is healthy. Always try every candidate before waiting.
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
       }
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
     }
   }
 

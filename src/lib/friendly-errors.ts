@@ -510,6 +510,11 @@ export function isInfrastructureBuildError(rawLog: string | null | undefined): b
   const s = rawLog.toLowerCase();
   return (
     s.includes("could not reach build service") ||
+    s.includes("build service didn't respond") ||
+    s.includes("build service did not respond") ||
+    s.includes("build service stopped responding") ||
+    s.includes("builder unreachable") ||
+    s.includes("build queue is full") ||
     s.includes("builder rejected request") ||
     s.includes("failed to reach builder") ||
     s.includes("operation was aborted") ||
