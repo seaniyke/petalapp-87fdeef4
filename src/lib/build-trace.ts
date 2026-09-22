@@ -11,6 +11,7 @@
  */
 
 import type { Phase } from "@/lib/build-phases";
+import { humanizeActivity } from "@/lib/activity-language";
 
 export type ThoughtTick = { id: number; text: string; ts: number };
 
@@ -45,8 +46,12 @@ export type TraceEntry =
       kind: "check";
       key: string;
       ts: number;
+      /** Plain-English headline for what Kimble did. */
       message: string;
+      /** Plain-English explanation of why that step exists. */
       detail: string;
+      /** Internal pipeline step id, kept for debugging/telemetry only. */
+      step: string;
       outcome: "ok" | "fixed" | "skipped" | "failed";
     };
 
@@ -112,12 +117,16 @@ export function buildTrace(input: BuildTraceInput): TraceEntry[] {
   });
 
   (input.timelineEvents ?? []).forEach((ev, i) => {
+    // The pipeline speaks in step ids; the card speaks human. Translate once,
+    // here, so every surface that renders the trace says the same thing.
+    const human = humanizeActivity(ev.step, ev.outcome, ev.message, ev.count);
     raw.push({
       kind: "check",
       key: `c-${ev.step}-${ev.ts}-${i}`,
       ts: ev.ts,
-      message: ev.message,
-      detail: ev.step.replace(/_/g, " "),
+      message: human.title,
+      detail: human.detail ?? ev.message,
+      step: ev.step,
       outcome: ev.outcome,
     });
   });

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import { buildTrace, formatDuration, type ThoughtTick } from "@/lib/build-trace";
+import { latestActivityLine } from "@/lib/activity-language";
 import { BuildTimeline } from "@/components/BuildTimeline";
 
 import { pathToNarration } from "@/lib/path-narration";
@@ -305,6 +306,20 @@ export function BuildActivityCard({
     (!subCaption || currentPhase?.id === "thinking" || currentPhase?.id === "polishing")
   ) {
     subCaption = latestCycleProgress;
+  }
+  // The phase rail is a rough map of the turn; the pipeline is the ground
+  // truth. If Kimble just did something real (made pictures, checked privacy,
+  // repaired a file), that always wins the caption — otherwise the card says
+  // "Shipping it" while it is plainly still making images.
+  if (isActive) {
+    const lastEvent = timelineEvents?.[timelineEvents.length - 1];
+    const lastFileTs = writtenPaths?.length
+      ? Math.max(0, ...writtenPaths.map((p) => fileTimestamps[p] ?? 0))
+      : 0;
+    if (lastEvent && lastEvent.ts >= lastFileTs) {
+      const live = latestActivityLine(timelineEvents);
+      if (live) subCaption = live;
+    }
   }
 
   // ─── Error state ─────────────────────────────────────────────────────────
