@@ -78,9 +78,22 @@ export const SCAFFOLD_ABSORBED_PATHS = new Set(["index.html", "src/main.tsx"]);
 /** Extra prefixes that are exempt from verifier blocking but not from writes. */
 const VERIFIER_EXEMPT_PREFIXES = ["src/integrations/"] as const;
 
+/**
+ * `src/hooks/use-axe.ts` and `src/hooks/use-axe.tsx` are the same kit file.
+ * Matching on the literal string let the `.tsx` spelling slip past ownership
+ * entirely: the scaffold rewrote it with the canonical (smaller) version and
+ * the scope guard then told the user "a file shrank by more than half" about
+ * a file they never wrote. Compare TS/TSX-insensitively.
+ */
+function ownershipVariants(path: string): string[] {
+  if (path.endsWith(".tsx")) return [path, `${path.slice(0, -4)}.ts`];
+  if (path.endsWith(".ts")) return [path, `${path}x`];
+  return [path];
+}
+
 /** May the model write this path? `false` means the op is refused/reworked. */
 export function isScaffoldOwnedPath(path: string): boolean {
-  if (SCAFFOLD_OWNED_PATHS.has(path)) return true;
+  if (ownershipVariants(path).some((p) => SCAFFOLD_OWNED_PATHS.has(p))) return true;
   return SCAFFOLD_OWNED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
