@@ -187,7 +187,7 @@ async function tryAiSynth(slug: string, displayName: string): Promise<ResolvedIn
   try {
     const { aiChatCompletions } = await import("@/server/ai-provider.server");
     const r = await aiChatCompletions({
-      feature: "docs" as never,
+      feature: "discuss",
       body: {
         messages: [
           {
@@ -201,7 +201,7 @@ async function tryAiSynth(slug: string, displayName: string): Promise<ResolvedIn
           },
         ],
         temperature: 0.2,
-        max_tokens: UTILITY_MAX_OUTPUT_TOKENS,
+        max_tokens: 1024,
       },
       meta: { chosenBy: "doc_resolver" },
     });
