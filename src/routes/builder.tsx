@@ -382,8 +382,10 @@ function Builder() {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [input, setInput] = useState("");
   // Tracks `messages.length` at the moment the user answered or skipped the
-  // most recent clarifying question. The composer stays hard-blocked until
-  // this matches the current message count.
+  // most recent clarifying question. The question card stays actionable until
+  // this matches the current message count. (The composer itself is NOT
+  // blocked — typing an answer there counts as answering; only the BUILD
+  // pipeline stops while a question is pending.)
   const [answeredQuestionAt, setAnsweredQuestionAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
@@ -1189,12 +1191,13 @@ function Builder() {
   // Pending clarifying question gate. When the LAST message is an assistant
   // turn that BOTH carries `suggestions` AND ends with a real question mark
   // in its body, Kimble is asking the user to choose. Until the user sends an
-  // answer or taps "Skip question" the composer is hard-blocked and the
-  // SuggestionChecklist is the only way to proceed.
+  // answer or taps "Skip question" the build pipeline waits — the question
+  // card is the pending state. The composer stays enabled on purpose: typing
+  // a reply there IS answering the question (pendingQuestion folds it in).
   //
   // Suggestions WITHOUT a "?" in the text are post-build next-step ideas
-  // (from self-check) and must NOT block the composer — otherwise a happy
-  // path build silently locks the user out. Keep this in sync with the
+  // (from self-check) and must NOT gate anything — otherwise a happy-path
+  // build would look like an unanswered question. Keep this in sync with the
   // SuggestionChecklist render gate below (~line 3326).
   const _lastMsg = messages[messages.length - 1];
   const _lastMsgHasQuestion =
@@ -2460,6 +2463,11 @@ function Builder() {
       let resultRecap: string | undefined;
       let planFallbackStarted = false;
       let planFallbackRequested = false;
+      /** Set when the server proposed a plan this turn. The proposal IS the
+       *  end of the turn — Kimble is now waiting for the user's answer, so
+       *  the post-stream path must unwind quietly instead of throwing the
+       *  fake "model stopped responding" timeout. */
+      let planProposedThisTurn = false;
       let resultNoFileChanges = false;
       // Iteration Standard — the server's byte-diffed verdict for this turn.
       let turnOutcome: {
@@ -2756,6 +2764,7 @@ function Builder() {
             },
             onPlanProposed: (plan) => {
               // Stop the build flow here; user must approve before we patch.
+              planProposedThisTurn = true;
               setProposedPlan({
                 planId: plan.planId,
                 summary: plan.summary,
@@ -2797,6 +2806,14 @@ function Builder() {
 
         if (controller.signal.aborted) return;
         if (planFallbackRequested) return;
+        if (planProposedThisTurn) {
+          // Kimble asked for plan approval and is waiting. Unwind quietly:
+          // no result is expected, so none of the failure paths below apply.
+          setStreamingPreamble("");
+          setLatestCycleProgress(undefined);
+          clearPersistedTurnId(proj.id);
+          return;
+        }
         if (silentlyRecovering) {
           // The server owns this turn now and will finish it. Stay in the
           // working state and let the watcher below surface the result.
@@ -4703,9 +4720,10 @@ function Builder() {
                         <CopyMessageButton text={sanitizeNarrative(m.content)} />
                         {/* Required clarifying-question answer card. Renders
                             whenever the latest assistant turn carries
-                            `suggestions`, before AND after a build. The
-                            composer is hard-blocked above until the user
-                            sends an answer or taps Skip. */}
+                            `suggestions`, before AND after a build. The build
+                            pipeline waits until the user answers or taps Skip;
+                            the composer stays enabled so a typed reply counts
+                            as the answer. */}
                         {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && (() => {
                           // Only render the radio-style "Pick an option" card
                           // for REAL clarifying questions — i.e. the assistant
@@ -5095,7 +5113,7 @@ function Builder() {
             <div ref={chatEndRef} />
 
           </div>
-          {proposedPlan && !discussBusy && !isDeploying && !awaitingBuild && (
+          {proposedPlan && !petalIsWorking && (
             <PlanProposalCard
               plan={proposedPlan}
               onToggle={(path, checked) =>

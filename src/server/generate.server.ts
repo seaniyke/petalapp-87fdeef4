@@ -770,9 +770,11 @@ export type StreamEvent =
    *  the id locally and use it to silently reconnect after a tab close,
    *  refresh, or device switch (see /api/turns/$id/events). */
   | { type: "turn_id"; turnId: string }
-  /** Sent ONCE at the end of every turn (success, failure, or abort) so
-   *  resumers know to stop tailing turn_events and unwind UI state. */
-  | { type: "done"; status: "succeeded" | "failed" | "aborted" | "awaiting_credits" };
+  /** Sent ONCE at the end of every turn (success, failure, abort, credit
+   *  pause, or plan proposal) so resumers know to stop tailing turn_events
+   *  and unwind UI state. "plan_proposed" = Kimble asked for approval and is
+   *  waiting; the turn is OVER, not interrupted — never reconnect/retry it. */
+  | { type: "done"; status: "succeeded" | "failed" | "aborted" | "awaiting_credits" | "plan_proposed" };
 
 /** Structured failure codes for SSE `error` events. Every value here MUST
  *  have a matching entry in `KIND_TO_FRIENDLY` on the client; the smoke

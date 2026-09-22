@@ -1867,6 +1867,12 @@ async function handleGenerateRequestCore(
               }),
             ),
           );
+          // Terminal frame: a proposal is a COMPLETED turn now waiting on the
+          // user. Without it the client reads the clean EOF as a dropped
+          // build and tries to reconnect to a turn that never existed.
+          controller.enqueue(
+            planEncoder.encode(sse({ type: "done", status: "plan_proposed" })),
+          );
         } catch (e) {
           const raw = e instanceof Error ? e.message : "Planning failed.";
           console.error("[/api/generate] plan_proposal failed", raw);
@@ -1887,6 +1893,11 @@ async function handleGenerateRequestCore(
                   raw: raw.slice(0, 240),
                 }),
               ),
+            );
+            // Keep the terminal frame so the client surfaces THIS error
+            // instead of a generic "could not reconnect" one.
+            controller.enqueue(
+              planEncoder.encode(sse({ type: "done", status: "failed" })),
             );
           }
         } finally {
@@ -6132,7 +6143,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       // disappeared: the server then writes the assistant reply itself so the
       // thread never ends on an unanswered prompt.
       let lastResult: { summary?: string; plan?: string; recap?: string } | null = null;
+      // Plan Mode short-circuit: the inner pipeline proposed a plan and ended
+      // the stream on purpose. That is a COMPLETED turn waiting on the user's
+      // approval — no build ran, no files changed, and the plan card on the
+      // client IS the reply. The finally block below must not write a
+      // "Finished this build while you were away" bubble or kick off a deploy.
+      let planProposed = false;
       const recordEvent = makeSseTap((type, payload) => {
+        if (type === "plan_proposed") planProposed = true;
         if (type === "result") {
           const p = payload as { summary?: string; plan?: string; recap?: string };
           lastResult = {
@@ -6324,7 +6342,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // listening. Give the client a short grace window to land its own
         // write, then reconcile from the server — the helper no-ops when a
         // reply already exists.
-        if (turnProjectId && !silentRecovery && terminalStatus !== "awaiting_credits") {
+        if (turnProjectId && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
           // Hand the request over to the build stage, or close it honestly.
           await markStage(
             turnProjectId,
@@ -6340,7 +6358,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // A turn queued for silent completion must not write a reply at all:
         // the resumed run owns the conversation, and a "this didn't finish"
         // bubble is exactly what we are removing.
-        if (turnProjectId && recorder && !silentRecovery && terminalStatus !== "awaiting_credits") {
+        if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
           const wroteReply = await persistAbandonedTurnReply({
