@@ -2332,13 +2332,7 @@ Forbidden defaults
     try {
       const { assemblePic } = await import("@/server/pic/pic-assemble.server");
       const { renderPicBlock } = await import("@/server/pic/pic-render");
-      // Structural = anything that changes product shape: the first build, a
-      // cross-cutting request, or a new page/feature.
-      const isStructural =
-        isInitial ||
-        /\b(redesign|re-?design|rebuild|new (page|screen|feature|section)|add (a )?(page|dashboard|auth|login|payment|checkout)|entire (site|website|app)|whole (site|app))\b/i.test(
-          lastUserContent || "",
-        );
+      const isStructural = isStructuralTurn;
       const assembled = await assemblePic({
         projectId: body.projectId,
         brief: lastUserContent || lastContent,
