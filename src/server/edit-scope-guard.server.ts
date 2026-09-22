@@ -73,7 +73,12 @@ export function isSmallEditRequest(prompt: string): boolean {
 
 const bytes = (s: string) => new TextEncoder().encode(s).length;
 
-/** Files whose size legitimately swings on tiny asks (generated/config). */
+/**
+ * Files whose size legitimately swings on tiny asks (generated/config), plus
+ * everything the Kimble scaffold owns and rewrites deterministically. A kit
+ * file replaced by its canonical version is Kimble's own housekeeping — never
+ * "working code was dropped", and never something to warn the user about.
+ */
 function isVolatilePath(path: string): boolean {
   return (
     path === "package.json" ||
@@ -81,7 +86,9 @@ function isVolatilePath(path: string): boolean {
     path.endsWith(".lock") ||
     path.endsWith(".json") ||
     path.includes("vite.config") ||
-    path.includes("tailwind.config")
+    path.includes("tailwind.config") ||
+    isScaffoldOwnedPath(path) ||
+    isScaffoldAbsorbedPath(path)
   );
 }
 
