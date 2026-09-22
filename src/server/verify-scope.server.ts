@@ -129,7 +129,10 @@ export function computeVerifyScope(args: {
     const graph = buildImportGraph(args.files);
     for (const dependent of impact.dependents) {
       const content = byPath.get(dependent) ?? "";
-      for (const r of routesDeclaredIn(dependent, content)) routeSet.add(normalizeRoute(r));
+      for (const r of routesDeclaredIn(dependent, content)) {
+        routeSet.add(normalizeRoute(r));
+        primaryRoutes.add(normalizeRoute(r));
+      }
     }
     // A shared component with no route dependents we can see is a hub risk.
     if (impact.dependents.length === 0 && graph.size > 0) {
@@ -148,6 +151,22 @@ export function computeVerifyScope(args: {
     };
   }
   if (routes.length === 0) return full("could not map the change to routes");
+
+  // Micro: a one-thing ask that moved exactly one page-level file. Load that
+  // page once and look for real breakage. No screenshots, no design grading,
+  // no test sign-up, no write flows.
+  const primary = [...primaryRoutes].filter((r) => args.knownRoutes.includes(r));
+  if (args.editScope === "micro" && changed.length === 1 && primary.length === 1) {
+    return {
+      tier: "micro",
+      routes: [primary[0]],
+      widths: [1440],
+      skipFlows: true,
+      skipVisualScoring: true,
+      reason: `one-thing change on ${primary[0]}`,
+    };
+  }
+
   if (routes.length >= 4) return full("change affects most of the app");
 
   return {
