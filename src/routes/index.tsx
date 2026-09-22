@@ -77,9 +77,9 @@ export const Route = createFileRoute("/")({
 });
 
 const samplePrompts = [
-  "A mobile habit tracker for iOS and Android",
+  "A web app with sign-in and a dashboard",
+  "A mobile app for iOS and Android",
   "A Chrome extension that summarises any page",
-  "A backend API for a booking system",
   "A landing page for my coffee shop",
 ];
 
@@ -482,7 +482,7 @@ function Landing() {
           <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-[var(--gradient-editorial)] opacity-70" aria-hidden />
         )}
         <div
-          className={`relative mx-auto max-w-6xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-28 sm:pb-20 sm:pt-36" : "pb-12 pt-10 sm:pb-24 sm:pt-24"}`}
+          className={`relative mx-auto max-w-6xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-32 sm:pb-20 sm:pt-40" : "pb-12 pt-16 sm:pb-24 sm:pt-32"}`}
         >
           {showAuthedHero ? (
             <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
