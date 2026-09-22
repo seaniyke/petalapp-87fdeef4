@@ -2790,6 +2790,7 @@ Forbidden defaults
         radius: 1,
         max: 18,
       });
+      impactNeighbourPaths = impact.paths.filter((p) => !resolvedTargetPaths.includes(p));
       const extra = impact.paths.filter(
         (p) => !resolvedTargetPaths.includes(p) && !pinnedPaths.includes(p),
       );
