@@ -1099,6 +1099,12 @@ function Builder() {
   // it can invoke either variant without stale-closure issues.
   const askPetalToFixRef = useRef<(() => void) | null>(null);
   const askPetalToFixManualRef = useRef<(() => void) | null>(null);
+  /** Re-run the deploy without re-prompting the AI. Declared as a ref because
+   *  the build-status effect above needs it before `retryDeploy` exists. */
+  const retryDeployRef = useRef<(() => void) | null>(null);
+  /** Build ids whose infrastructure hiccup we already retried automatically,
+   *  so a service blip heals itself once and never loops. */
+  const infraRetriedBuildIdsRef = useRef<Set<string>>(new Set());
   // Survives error-card remounts, so one tap can start only one repair turn.
   const repairActionInFlightRef = useRef(false);
   // Phase 3 — track the build id we last surfaced an "Update available" toast
@@ -1486,17 +1492,26 @@ function Builder() {
       setPhases((p) => markFailed(completeThrough(p, "polishing"), "deploying"));
 
       // Infrastructure failures (build service unreachable, Cloudflare 403,
-      // upstream 5xx) are NOT the user's code. Don't burn auto-fix attempts
-      // forwarding the raw error to the AI — there's nothing in the project
-      // files to fix. Show a calm "service is briefly unavailable" card and
-      // let the user retry the deploy when they're ready.
+      // upstream 5xx) are NOT the user's code. There is nothing in the project
+      // files to fix, so never burn an auto-fix attempt on one. The service
+      // blip heals itself: re-run the exact same deploy once, silently, and
+      // only speak up if the second attempt also can't reach the service.
       if (isInfrastructureBuildError(effectiveBuildSnap.errorMessage)) {
         if (buildId) autoFixRef.current.handledBuildIds.add(buildId);
         persistRecovery(project?.id);
         if (busy) return;
+        if (buildId && !infraRetriedBuildIdsRef.current.has(buildId)) {
+          infraRetriedBuildIdsRef.current.add(buildId);
+          setFriendlyError(null);
+          setMessages(removeBuildFailureCards);
+          setActivityVisible(true);
+          const t = setTimeout(() => retryDeployRef.current?.(), 1500);
+          return () => clearTimeout(t);
+        }
         persistFriendlyError(friendlyBuildServiceBusy(effectiveBuildSnap.errorMessage));
         return;
       }
+
 
       // The pre-deploy browser check is what stopped this build: nothing was
       // uploaded, and the failure carries the exact runtime defects. That is a
@@ -3695,7 +3710,7 @@ function Builder() {
     setPhases((p) => advanceTo(p, "deploying"));
     setActivityVisible(true);
     setAwaitingBuild(true);
-    void triggerBuild(project.id)
+    void retryTransient(() => triggerBuild(project.id))
       .then(async (build) => {
         restoreBuildId(build.buildId);
         startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
@@ -3704,12 +3719,20 @@ function Builder() {
       })
       .catch((err: unknown) => {
         setAwaitingBuild(false);
+        const raw = err instanceof Error ? err.message : String(err);
         persistFriendlyError(
-          toFriendlyError(err, { surface: "build", projectId: project.id }),
+          isInfrastructureBuildError(raw)
+            ? friendlyBuildServiceBusy(raw)
+            : toFriendlyError(err, { surface: "build", projectId: project.id }),
         );
         setPhases((p) => markFailed(p, "deploying"));
       });
   }, [project?.id, project?.latest_build_id, supersedeBuildId, restoreBuildId]);
+
+  useEffect(() => {
+    retryDeployRef.current = retryDeploy;
+  }, [retryDeploy]);
+
 
   const askPetalToFix = useCallback(
     (opts: { isAuto?: boolean } = {}) => {
