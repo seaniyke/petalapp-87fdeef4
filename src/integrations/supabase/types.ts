@@ -911,6 +911,66 @@ export type Database = {
         }
         Relationships: []
       }
+      design_pictures: {
+        Row: {
+          active: boolean
+          aspect_ratio: string
+          colors: string[]
+          created_at: string
+          has_people: boolean
+          id: string
+          industry: string | null
+          license: string
+          mood: string | null
+          orientation: string
+          source: string
+          style: string | null
+          subject: string
+          tags: string[]
+          tone: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          aspect_ratio?: string
+          colors?: string[]
+          created_at?: string
+          has_people?: boolean
+          id?: string
+          industry?: string | null
+          license?: string
+          mood?: string | null
+          orientation?: string
+          source?: string
+          style?: string | null
+          subject: string
+          tags?: string[]
+          tone?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          active?: boolean
+          aspect_ratio?: string
+          colors?: string[]
+          created_at?: string
+          has_people?: boolean
+          id?: string
+          industry?: string | null
+          license?: string
+          mood?: string | null
+          orientation?: string
+          source?: string
+          style?: string | null
+          subject?: string
+          tags?: string[]
+          tone?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       domain_slots: {
         Row: {
           addon_code: string
