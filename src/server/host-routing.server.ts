@@ -23,6 +23,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const RESERVED_EXACT = new Set([
   "buildwithpetal.com",
   "www.buildwithpetal.com",
+  "fallback.buildwithpetal.com",
+  "kimble.cloud",
+  "www.kimble.cloud",
+  "fallback.kimble.cloud",
   "petalapp.lovable.app",
   "localhost",
 ]);

@@ -57,7 +57,7 @@ export class DomainSlotRequiredError extends Error {
  * registrar supports it (Namecheap does), because pointing an apex A record at
  * Lovable's generic IP bypasses Kimble's Cloudflare for SaaS hostname routing.
  */
-export const PETAL_DOMAIN_CNAME_TARGET = "fallback.buildwithpetal.com";
+export const PETAL_DOMAIN_CNAME_TARGET = "fallback.kimble.cloud";
 export const PETAL_DOMAIN_APEX_ALIAS_TARGET = PETAL_DOMAIN_CNAME_TARGET;
 
 /** @deprecated Do not use for Kimble SaaS domains — prefer PETAL_DOMAIN_APEX_ALIAS_TARGET. */

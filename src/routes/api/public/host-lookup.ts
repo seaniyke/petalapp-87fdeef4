@@ -24,7 +24,11 @@ function pagesProjectName(projectId: string): string {
   return `petal-${id}`;
 }
 
-const PETAL_ROOT = "buildwithpetal.com";
+/**
+ * Roots whose subdomains are Kimble-claimed slugs (never customer domains).
+ * Both are live: the original SaaS root and the current brand root.
+ */
+const PETAL_ROOTS = ["buildwithpetal.com", "kimble.cloud"];
 
 /** Site meta the worker injects into served HTML so each Kimble app gets a
  *  proper title/favicon/social card without the user having to wire it up. */
@@ -44,9 +48,12 @@ async function lookup(host: string): Promise<Result> {
   const h = host.toLowerCase().split(":")[0];
   let projectId: string | null = null;
 
-  if (h.endsWith(`.${PETAL_ROOT}`)) {
-    const slug = h.slice(0, -1 - PETAL_ROOT.length);
+  const root = PETAL_ROOTS.find((r) => h.endsWith(`.${r}`));
+  if (root) {
+    const slug = h.slice(0, -1 - root.length);
     if (!slug || slug.includes(".")) return { kind: "unknown" };
+    // Infrastructure hosts are never project slugs.
+    if (slug === "www" || slug === "fallback") return { kind: "unknown" };
     const { data: project } = await supabaseAdmin
       .from("projects")
       .select("id")

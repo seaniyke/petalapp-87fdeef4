@@ -21,8 +21,14 @@
  * Plain JS (not TS) because Cloudflare's plain script API doesn't transpile.
  */
 
-const PETAL_ROOT = "buildwithpetal.com";
-const CONTROL_PLANE = "https://buildwithpetal.com";
+/**
+ * Kimble's own hosts — never a customer app. Covers both the original SaaS
+ * root and the current brand root, plus each one's `fallback.` origin host
+ * (Cloudflare for SaaS sends customer traffic through it, but a direct visit
+ * to the fallback host itself is not an app).
+ */
+const PETAL_ROOTS = ["buildwithpetal.com", "kimble.cloud"];
+const CONTROL_PLANE = "https://kimble.cloud";
 const HOP_BY_HOP = new Set([
   "host",
   "connection",
@@ -58,7 +64,7 @@ function placeholder(kind) {
   const isPrivate = kind === "private";
   const isUnknown = kind === "unknown";
   const title = isUnknown
-    ? "This Petal app doesn't exist"
+    ? "This Kimble app doesn't exist"
     : isPrivate
       ? "This site is private"
       : "This site isn't published yet";
@@ -93,7 +99,7 @@ function placeholder(kind) {
     <span class="badge">${isUnknown ? "Not found" : isPrivate ? "Private" : "Coming soon"}</span>
     <h1>${title}</h1>
     <p>${body}</p>
-    <div class="footer">Built with Petal</div>
+    <div class="footer">Built with Kimble</div>
   </main>
 </body>
 </html>`;
@@ -221,7 +227,7 @@ class SiteMetaInjector {
   }
   element(el) {
     const m = this.meta || {};
-    const iconUrl = m.iconUrl || `${CONTROL_PLANE}/petal-logo.png`;
+    const iconUrl = m.iconUrl || `${CONTROL_PLANE}/kimble-logo.png`;
     const parts = [];
     parts.push(`<link rel="icon" href="${escapeAttr(iconUrl)}" />`);
     parts.push(`<link rel="apple-touch-icon" href="${escapeAttr(iconUrl)}" />`);
@@ -248,11 +254,11 @@ export default {
     const url = new URL(request.url);
     const host = url.host.toLowerCase();
 
-    if (
-      host === `www.${PETAL_ROOT}` ||
-      host === `fallback.${PETAL_ROOT}` ||
-      host === PETAL_ROOT
-    ) {
+    const reserved = PETAL_ROOTS.some(
+      (root) =>
+        host === root || host === `www.${root}` || host === `fallback.${root}`,
+    );
+    if (reserved) {
       return new Response("Not found", { status: 404 });
     }
 
