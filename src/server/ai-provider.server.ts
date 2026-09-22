@@ -174,21 +174,15 @@ export function invalidateProviderCache(): void {
 
 // ---------------- Resolution ----------------
 
-async function resolveProvider(feature: AiFeature): Promise<Provider> {
-  const settings = await loadDbSettings();
-  const dbChoice = settings.get(feature)?.provider;
-  if (dbChoice) return dbChoice;
-
-  const envOverride = process.env[featureOverrideEnv(feature)]?.toLowerCase();
-  const envGlobal = process.env.AI_PROVIDER?.toLowerCase();
-  const explicit = envOverride || envGlobal;
-  if (explicit) return explicit === "openrouter" ? "openrouter" : "lovable";
-
-  // No explicit configuration: prefer OpenRouter whenever its key is present.
-  // The old default was an unconditional "lovable", which meant a funded
-  // OpenRouter account was never touched and every call died on the Lovable
-  // gateway's own credit balance (HTTP 402) — an outage users could not fix.
-  return process.env.OPENROUTER_API_KEY ? "openrouter" : "lovable";
+/**
+ * OPENROUTER-ONLY. Kimble has a single AI provider: OpenRouter.
+ *
+ * Legacy DB rows (`ai_provider_settings.provider = 'lovable'`) and legacy env
+ * vars (`AI_PROVIDER`, `AI_PROVIDER_<FEATURE>`) are intentionally ignored so a
+ * stale configuration row cannot silently re-open a direct-provider path.
+ */
+async function resolveProvider(_feature: AiFeature): Promise<Provider> {
+  return "openrouter";
 }
 
 /** Public: resolve which provider a given feature is configured to use.
