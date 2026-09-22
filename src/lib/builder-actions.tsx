@@ -79,7 +79,6 @@ export interface BuilderActionContext {
   openSettings: () => void;
   openCode: () => void;
   openHistory: () => void;
-  /** The owner's own photos for this project. */
   openSecurity: () => void;
   openComments: () => void;
   openSeo: () => void;
