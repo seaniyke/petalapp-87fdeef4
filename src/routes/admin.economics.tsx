@@ -180,6 +180,38 @@ function AdminEconomicsPage() {
               </CardContent>
             </Card>
 
+            {data.ai_rollup && (
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="mb-2 text-sm font-medium">AI per turn</h2>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {[
+                      { label: "Turns measured", value: String(data.ai_rollup.turns) },
+                      { label: "AI calls / turn", value: data.ai_rollup.avg_calls_per_turn.toFixed(2) },
+                      { label: "Input tokens / turn", value: data.ai_rollup.avg_input_tokens.toLocaleString() },
+                      { label: "Output tokens / turn", value: data.ai_rollup.avg_output_tokens.toLocaleString() },
+                      {
+                        label: "Cache hit",
+                        value: data.ai_rollup.cache_hit_pct === null ? "—" : `${data.ai_rollup.cache_hit_pct}%`,
+                      },
+                      { label: "Retries / turn", value: data.ai_rollup.retries_per_turn.toFixed(2) },
+                      { label: "Call error rate", value: `${data.ai_rollup.error_rate_pct}%` },
+                      { label: "Cost / turn", value: usd(data.ai_rollup.avg_cost_per_turn_usd) },
+                    ].map((s) => (
+                      <div key={s.label}>
+                        <div className="text-xs text-muted-foreground">{s.label}</div>
+                        <div className="text-lg font-semibold">{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {data.ai_rollup.calls_without_usage_pct}% of AI calls still report no token
+                    usage — those are excluded from the token and cost figures above.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardContent className="p-4">
                 <h2 className="mb-2 text-sm font-medium">By feature</h2>
