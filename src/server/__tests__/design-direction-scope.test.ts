@@ -13,7 +13,7 @@ const direction: DesignDirection = {
   density: "balanced",
   motion: "expressive",
   fx_recipe: "luxury-brand",
-  theme: "sunset-ember",
+  theme: "warm-brand",
   template: "restaurant",
   design_moves: ["oversized menu numerals", "full-bleed dish photography"],
 } as DesignDirection;
