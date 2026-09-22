@@ -5,12 +5,57 @@
  * one headline, one line of plain summary, three actions, and everything
  * else tucked behind "Details".
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, Eye, Rocket, Wand2, ChevronRight } from "lucide-react";
+
+/** Counts up to `value` on mount — the small reward beat at the end of a turn. */
+function useCountUp(value: number, ms = 600) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (value <= 0) return;
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      setN(value);
+      return;
+    }
+    const start = Date.now();
+    const t = setInterval(() => {
+      const p = Math.min(1, (Date.now() - start) / ms);
+      setN(Math.round(value * (1 - Math.pow(1 - p, 3))));
+      if (p >= 1) clearInterval(t);
+    }, 40);
+    return () => clearInterval(t);
+  }, [value, ms]);
+  return n;
+}
+
+function Stats({ files, pictures, seconds }: { files: number; pictures: number; seconds: number }) {
+  const f = useCountUp(files);
+  const p = useCountUp(pictures);
+  const bits: string[] = [];
+  if (pictures > 0) bits.push(`${p} picture${pictures === 1 ? "" : "s"}`);
+  if (files > 0) bits.push(`${f} file${files === 1 ? "" : "s"}`);
+  if (seconds > 0)
+    bits.push(seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`);
+  if (bits.length === 0) return null;
+  return (
+    <p className="mt-1 text-[11.5px] font-semibold tabular-nums text-muted-foreground/80">
+      {bits.join(" · ")}
+    </p>
+  );
+}
 
 type Props = {
   /** Credits charged for this turn, if settled. */
   credits?: number | null;
+  /** Files written this turn. */
+  files?: number;
+  /** Pictures made this turn. */
+  pictures?: number;
+  /** How long the turn took, in seconds. */
+  seconds?: number;
   /** One short line describing what changed. */
   summary?: string | null;
   /** Hide "See it live" when the preview is already on screen. */
