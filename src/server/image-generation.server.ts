@@ -266,5 +266,5 @@ export async function resolvePetalImagePlaceholders(
     return updated === f.content ? f : { ...f, content: updated };
   });
 
-  return { files: next, resolved, failed };
+  return { files: next, resolved, failed, urls: liveUrls };
 }
