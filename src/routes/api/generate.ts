@@ -6243,7 +6243,7 @@ Forbidden defaults
           emitConversationalFallback(controller, encoder, {
             files: currentFiles,
             summary:
-              "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A short note like 'make the header sticky' or 'change the CTA color to teal' is usually enough for me to land it precisely.",
+              "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
           });
         } else {
           controller.enqueue(
