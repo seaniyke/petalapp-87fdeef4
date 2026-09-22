@@ -124,7 +124,7 @@ import { retryTransient } from "@/lib/retry-transient";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { LazySheet } from "@/components/LazySheet";
-import { createBuilderActions, actionsForSurface } from "@/lib/builder-actions";
+import { createBuilderActions, actionsForSurface, groupedActions } from "@/lib/builder-actions";
 import { emitOpenSurface, onOpenSurface } from "@/lib/surface-events";
 import type { SurfaceId } from "@/lib/kimble-surfaces";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
