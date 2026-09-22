@@ -191,7 +191,10 @@ export async function generatePetalImage(
  *  image generation call. */
 export async function resolvePetalImagePlaceholders(
   files: ProjectFile[],
-): Promise<{ files: ProjectFile[]; resolved: number; failed: number }> {
+  /** Called as soon as each picture is ready, so the build card can show it
+   *  landing live instead of announcing a number at the end. */
+  onImage?: (image: { url: string; slug: string; index: number }) => void,
+): Promise<{ files: ProjectFile[]; resolved: number; failed: number; urls: string[] }> {
   // 1. Collect all unique placeholders across the project.
   const slugs = new Set<string>();
   for (const f of files) {
