@@ -187,6 +187,15 @@ import {
   scopeDisclosure,
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
+import { ensureBrandIdentity } from "@/server/brand-identity.server";
+import {
+  estimateTokens,
+  promptTokenCeiling,
+  anchoredWindows,
+  readErrorFrame,
+  userFacingProviderMessage,
+  type ProviderError,
+} from "@/server/prompt-budget.server";
 import { normalizeClientTurnId, startTurn, turnBelongsToUser, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
   openTurnCompletion,
@@ -391,34 +400,65 @@ function detectMultiEditIntent(prompt: string): boolean {
   return explicitMulti || enumeratedItems >= 2 || connectorCount >= 3;
 }
 
+export interface PromptBudgetOptions {
+  /** Hard ceiling in tokens. Nothing may push the file block past this. */
+  tokenCeiling?: number;
+  /** 1-based anchor lines per path — large files are sent as windows. */
+  anchors?: Record<string, number[]>;
+  /** Multiplier applied when re-issuing a refused turn with less context. */
+  shrink?: number;
+}
+
+export interface PromptBudgetResult {
+  files: ProjectFile[];
+  omitted: number;
+  /** Estimated tokens the file block costs. Logged next to `files_sent`. */
+  estimatedTokens: number;
+  /** True when the ceiling — not relevance — decided what was dropped. */
+  ceilingHit: boolean;
+}
+
+/** Default ceiling for the file block when the caller doesn't compute one. */
+const DEFAULT_FILE_BLOCK_TOKEN_CEILING = 60_000;
+
 function trimFilesForPrompt(
   files: ProjectFile[],
   latestPrompt = "",
   pinnedPaths: string[] = [],
-  // Paths resolved as the literal target of a targeted edit. These are never
-  // truncated: the model has to quote their bytes verbatim in `replace` ops,
-  // and a "...trimmed for context budget..." tail is exactly how a targeted
-  // edit turns into a hallucinated snippet that fails to match.
+  // Paths resolved as the literal target of a targeted edit. These are sent in
+  // full whenever the budget allows: the model has to quote their bytes
+  // verbatim in `replace` ops. When the budget does NOT allow it they are sent
+  // as anchored windows — never head-truncated, which is what used to make
+  // `replace` snippets miss the tail of a file.
   fullPaths: string[] = [],
-): { files: ProjectFile[]; omitted: number } {
+  options: PromptBudgetOptions = {},
+): PromptBudgetResult {
 
   const multiEditIntent = detectMultiEditIntent(latestPrompt);
   const full = new Set(fullPaths);
   const pinned = new Set([...pinnedPaths, ...fullPaths]);
+  const shrink = options.shrink ?? 1;
+  const anchors = options.anchors ?? {};
 
   // Cross-cutting intents need a larger budget — the whole point of pinning
   // is so the model sees every page/component at once.
   const expandForPinned = pinned.size > 0;
-  const fileLimit = expandForPinned
-    ? Math.max(MULTI_EDIT_CONTEXT_FILE_LIMIT, pinned.size + 8)
-    : multiEditIntent
-      ? MULTI_EDIT_CONTEXT_FILE_LIMIT
-      : PATCH_CONTEXT_FILE_LIMIT;
-  const charLimit = expandForPinned
-    ? Math.max(MULTI_EDIT_CONTEXT_CHAR_LIMIT * 2, MULTI_EDIT_CONTEXT_CHAR_LIMIT)
-    : multiEditIntent
-      ? MULTI_EDIT_CONTEXT_CHAR_LIMIT
-      : PATCH_CONTEXT_CHAR_LIMIT;
+  const fileLimit = Math.max(
+    4,
+    Math.round(
+      (expandForPinned
+        ? Math.max(MULTI_EDIT_CONTEXT_FILE_LIMIT, pinned.size + 8)
+        : multiEditIntent
+          ? MULTI_EDIT_CONTEXT_FILE_LIMIT
+          : PATCH_CONTEXT_FILE_LIMIT) * shrink,
+    ),
+  );
+  // The real ceiling. Unlike the old character budget this is measured in the
+  // unit the model actually enforces, and NOTHING is exempt from it.
+  const tokenCeiling = Math.max(
+    6_000,
+    Math.round((options.tokenCeiling ?? DEFAULT_FILE_BLOCK_TOKEN_CEILING) * shrink),
+  );
   const terms = latestPrompt
     .toLowerCase()
     .split(/[^a-z0-9]+/)
@@ -442,33 +482,66 @@ function trimFilesForPrompt(
     return 9;
   };
   const picked: ProjectFile[] = [];
-  let used = 0;
+  let usedTokens = 0;
+  let ceilingHit = false;
+  // Priority order: edit targets, pins, then relevance. Pinning decides WHO
+  // gets the budget first — it no longer exempts anyone from it.
   for (const file of [...files].sort(
     (a, b) =>
       (isPromptRelevant(a) ? 3 : rank(a.path)) - (isPromptRelevant(b) ? 3 : rank(b.path)) ||
       rank(a.path) - rank(b.path) ||
       a.path.localeCompare(b.path),
   )) {
-    if (picked.length >= fileLimit && !pinned.has(file.path)) break;
+    if (picked.length >= fileLimit) break;
+    if (usedTokens >= tokenCeiling) {
+      ceilingHit = true;
+      break;
+    }
     const isPinned = pinned.has(file.path);
-    const limit = full.has(file.path)
-      ? Number.POSITIVE_INFINITY
-      : isPinned || isPromptRelevant(file)
-        ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
-        : LARGE_FILE_CONTEXT_CHAR_LIMIT;
+    const isFull = full.has(file.path);
+    const remaining = tokenCeiling - usedTokens;
 
-    const content =
-      file.content.length > limit
-        ? `${file.content.slice(0, limit)}\n\n/* ...trimmed for context budget... */`
-        : file.content;
-    const cost = file.path.length + content.length + 32;
-    // Pinned files bypass the soft char budget — they were chosen
-    // explicitly because the model NEEDS to see their bytes.
-    if (!isPinned && picked.length > 0 && used + cost > charLimit) continue;
+    // Send the part, not the whole file: anything with known anchors and more
+    // bytes than its share of the budget goes out as merged windows around the
+    // lines that matter, with the gaps and their real line numbers marked.
+    const fileAnchors = anchors[file.path];
+    const softLimit = isPinned || isPromptRelevant(file)
+      ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
+      : LARGE_FILE_CONTEXT_CHAR_LIMIT;
+
+    let content = file.content;
+    if (!isFull && content.length > softLimit) {
+      content = fileAnchors?.length
+        ? anchoredWindows(content, { lines: fileAnchors, pad: 45, maxLines: 420 })
+        : `${content.slice(0, softLimit)}\n\n/* ...trimmed for context budget... */`;
+    } else if (isFull && estimateTokens(content) > remaining && fileAnchors?.length) {
+      content = anchoredWindows(content, { lines: fileAnchors, pad: 60, maxLines: 500 });
+    }
+
+    const cost = estimateTokens(`${file.path}\n${content}`) + 8;
+    if (picked.length > 0 && usedTokens + cost > tokenCeiling) {
+      ceilingHit = true;
+      // An edit target that still doesn't fit gets its windows; if there are
+      // no anchors we'd rather drop it than blow the ceiling and be refused.
+      if (isFull && fileAnchors?.length) {
+        const windowed = anchoredWindows(file.content, { lines: fileAnchors, pad: 30, maxLines: 200 });
+        const windowCost = estimateTokens(`${file.path}\n${windowed}`) + 8;
+        if (usedTokens + windowCost <= tokenCeiling) {
+          picked.push({ path: file.path, content: windowed });
+          usedTokens += windowCost;
+        }
+      }
+      continue;
+    }
     picked.push({ path: file.path, content });
-    used += cost;
+    usedTokens += cost;
   }
-  return { files: picked, omitted: Math.max(0, files.length - picked.length) };
+  return {
+    files: picked,
+    omitted: Math.max(0, files.length - picked.length),
+    estimatedTokens: usedTokens,
+    ceilingHit,
+  };
 }
 
 function compactManifest(files: ProjectFile[]): string {
@@ -657,6 +730,12 @@ type ParsedTool = {
     cache_read_input_tokens?: number;
     cache_creation_input_tokens?: number;
   } | null;
+  /**
+   * Upstream refusal carried INSIDE a 200 stream. OpenRouter reports upstream
+   * failures as `{"error": {...}}` frames with no `choices`; before this the
+   * reader skipped them and the turn looked empty instead of refused.
+   */
+  providerError?: ProviderError | null;
 };
 
 function isTruncatedFinishReason(reason: string | null | undefined): boolean {
@@ -797,6 +876,14 @@ async function relayAndCollect(
       try {
         json = JSON.parse(payload);
       } catch {
+        continue;
+      }
+      // A refusal arrives as a 200 stream frame carrying `error` and no
+      // `choices`. Capture it — skipping it is what made refused turns look
+      // empty and got the identical oversized request re-sent twice.
+      const frameError = readErrorFrame(json);
+      if (frameError) {
+        tool.providerError = frameError;
         continue;
       }
       // Capture token usage. The Lovable AI gateway emits a final SSE chunk
@@ -1558,10 +1645,58 @@ function deterministicHeroBackgroundFallback(args: {
   };
 }
 
+/**
+ * "Add a logo" is a first-class capability, not a model gamble.
+ *
+ * When the app has no brand mark, build one from its own name and palette and
+ * wire it everywhere a mark belongs — header/footer surfaces, the placeholder
+ * glyphs standing in for it, and the site icon.
+ */
+function deterministicBrandMarkFallback(args: {
+  currentFiles: ProjectFile[];
+  latestUserContent: string;
+}): ParsedProjectPayload | null {
+  if (!/\b(logo|brand ?mark|wordmark|monogram|favicon|app icon)\b/i.test(args.latestUserContent)) {
+    return null;
+  }
+  let result: { files: ProjectFile[]; notes: string[] };
+  try {
+    result = ensureBrandIdentity(args.currentFiles);
+  } catch {
+    return null;
+  }
+  const before = new Map(args.currentFiles.map((f) => [f.path, f.content]));
+  const ops = result.files
+    .filter((f) => before.get(f.path) !== f.content)
+    .map((f) => ({
+      op: before.has(f.path) ? ("update" as const) : ("create" as const),
+      path: f.path,
+      content: f.content,
+    }));
+  if (ops.length === 0) return null;
+
+  const summary = "Added a logo built from the app's own name and colours, and used it across the header, footer and site icon.";
+  const recap = ops.map((o) => `- ${o.op === "create" ? "Added" : "Updated"} ${o.path}`).join("\n");
+  return {
+    parsed: {
+      plan: "Create the brand mark and wire it into every surface that shows a logo.",
+      summary,
+      ops: ops as ParsedProjectPayload["parsed"]["ops"],
+      recap,
+    },
+    summary,
+    plan: "Create the brand mark and wire it into every surface that shows a logo.",
+    recap,
+  };
+}
+
 function deterministicPatchFallback(args: {
   currentFiles: ProjectFile[];
   latestUserContent: string;
 }): ParsedProjectPayload | null {
+  const brandMark = deterministicBrandMarkFallback(args);
+  if (brandMark) return brandMark;
+
   const heroBackground = deterministicHeroBackgroundFallback(args);
   if (heroBackground) return heroBackground;
 
@@ -2662,11 +2797,30 @@ Forbidden defaults
   }
 
 
+  // Anchors let large files travel as windows around the exact lines that
+  // matter instead of whole files — the single biggest reduction for a
+  // targeted edit, and it keeps the tail of a file reachable.
+  const promptAnchors: Record<string, number[]> = {};
+  for (const target of editIntent?.targets ?? []) {
+    const lines = target.anchors.map((a) => a.line).filter((n) => Number.isFinite(n));
+    if (lines.length) promptAnchors[target.path] = lines;
+  }
+  // Hard ceiling for the file block, derived from the model's own context
+  // window minus the output reservation. Nothing is exempt from it.
+  // The concrete model is picked further down, so budget against the smallest
+  // window in the pool — being conservative here is the point.
+  const fileBlockCeiling = Math.round(
+    promptTokenCeiling({ model: null, completionBudgetTokens: 16_000 }) * 0.55,
+  );
   const promptBudget = trimFilesForPrompt(
     editablePromptFiles,
     multiEditPromptContext || lastUserContent,
     pinnedPaths,
     resolvedTargetPaths,
+    { tokenCeiling: fileBlockCeiling, anchors: promptAnchors },
+  );
+  console.info(
+    `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`,
   );
   const inspectorAddendum = inspectorReport
     ? (() => {
@@ -2697,11 +2851,15 @@ Forbidden defaults
 
 
 
-  const filesContext = isInitial
-    ? ""
-    : `\n\nEditable app file manifest (all app-owned files Kimble may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
-        .map((f) => `--- ${f.path} ---\n${f.content}`)
-        .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
+  // Built from a budget result so a refused (too-large) turn can be re-issued
+  // immediately with a smaller one instead of repeating the same request.
+  const renderFilesContext = (budget: PromptBudgetResult): string =>
+    isInitial
+      ? ""
+      : `\n\nEditable app file manifest (all app-owned files Kimble may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${budget.omitted} lower-priority files omitted for speed. Some large files are shown as the regions around the lines that matter, with the untouched ranges marked — quote only bytes you can actually see. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${budget.files
+          .map((f) => `--- ${f.path} ---\n${f.content}`)
+          .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
+  const filesContext = renderFilesContext(promptBudget);
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
   // Build the chat-completion messages. The LAST user turn may carry
@@ -2904,12 +3062,23 @@ Forbidden defaults
   // Marketing/fullstack get the landing taste; app/fullstack get the
   // product-UI taste. Additive, cache-safe (lives in the dynamic suffix).
   let designTasteBlock = "";
+  // A one-line change does not need the full design manual (palette, type
+  // pairings, section library, header patterns, icon vocabulary, imagery
+  // rules). Every capability added here made EVERY request heavier; a
+  // targeted non-visual edit now carries none of it.
+  const skipDesignManual =
+    !isInitial &&
+    !isCrossCutting &&
+    (editClassification?.scope ?? "targeted") === "targeted" &&
+    !(editClassification?.dimensions ?? []).includes("visual");
   try {
-    if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
+    if (skipDesignManual) {
+      designTasteBlock = "";
+    } else if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
       const taste = renderDesignTasteBlock(lastUserText || "");
       designTasteBlock = taste.text + renderLandingChecklistBlock();
     }
-    if (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack") {
+    if (!skipDesignManual && (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack")) {
       const appUi = renderAppUiBlock(lastUserText || "");
       designTasteBlock += appUi.text + renderAppScreenChecklistBlock();
       // The PRD supersedes the keyword-scraped app spec. Only fall back to the
@@ -3298,6 +3467,90 @@ Forbidden defaults
           );
         }
         let collected = await relayAndCollect(upstream, controller, encoder);
+
+        // ── The service refused ───────────────────────────────────────────
+        // A refusal used to look like an empty reply, so the identical
+        // request went out twice more. Now we read the refusal and answer it:
+        // too big → send less and go again; busy → switch model and go again.
+        if (collected.providerError && !collected.name && !collected.text.trim()) {
+          const refusal = collected.providerError;
+          console.warn(
+            `[provider-refusal] kind=${refusal.kind} code=${refusal.code ?? "-"} msg=${refusal.message}`,
+          );
+          const reissue = async (
+            nextMessages: typeof finalMessages,
+            nextModel: string,
+            why: string,
+          ) => {
+            const retryUpstream = await aiChatCompletions({
+              feature: "generate",
+              budgetAware: true,
+              body: {
+                model: nextModel,
+                messages: nextMessages,
+                tools: [tool],
+                tool_choice: { type: "function", function: { name: tool.function.name } },
+                max_tokens: maxCompletionTokens,
+                stream: true,
+                ...reasoningField,
+              },
+              timeoutTier: isInitial ? "stream_first_build" : "stream",
+              signal: abortSignal,
+              meta: {
+                phase: phaseTag.phase,
+                promptChars: lastUserContent.length,
+                hadAttachments: hasVisionTurn,
+                chosenBy: why,
+                projectId: body.projectId ?? null,
+                userId,
+                turnId: logicalTurnId,
+              },
+            });
+            if (!retryUpstream.ok || !retryUpstream.body) return null;
+            return relayAndCollect(retryUpstream, controller, encoder);
+          };
+
+          if (refusal.kind === "context_overflow" && !isInitial) {
+            controller.enqueue(
+              encoder.encode(sse({ type: "status", message: "Narrowing in on the files that matter…" })),
+            );
+            const smaller = trimFilesForPrompt(
+              editablePromptFiles,
+              multiEditPromptContext || lastUserContent,
+              pinnedPaths,
+              resolvedTargetPaths,
+              { tokenCeiling: fileBlockCeiling, anchors: promptAnchors, shrink: 0.45 },
+            );
+            const smallerContext = renderFilesContext(smaller);
+            const nextMessages = finalMessages.map((m) =>
+              typeof m.content === "string" && m.content.includes(filesContext) && filesContext
+                ? { ...m, content: m.content.replace(filesContext, smallerContext) }
+                : m,
+            ) as typeof finalMessages;
+            console.info(
+              `[provider-refusal] re-issuing with ${smaller.files.length} files / ~${smaller.estimatedTokens} tokens (was ${promptBudget.files.length} / ~${promptBudget.estimatedTokens})`,
+            );
+            const retried = await reissue(nextMessages, model, "refusal_retry:smaller_context");
+            if (retried) collected = retried;
+          } else if (refusal.kind === "capacity" || refusal.kind === "unknown") {
+            controller.enqueue(
+              encoder.encode(sse({ type: "status", message: "Picking this back up…" })),
+            );
+            const backupModel = model === MODEL_BEST ? MODEL_FAST : MODEL_BEST;
+            const retried = await reissue(finalMessages, backupModel, "refusal_retry:backup_model");
+            if (retried) collected = retried;
+          }
+
+          if (!collected.name && !collected.text.trim()) {
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary: `${userFacingProviderMessage(refusal.kind)} Nothing was changed — send it again and Kimble will pick it straight back up.`,
+              outcome: "blocked",
+              reason: `provider_refusal:${refusal.kind}`,
+            });
+            return;
+          }
+        }
         // Running credit estimate. The main completion's usage is known the
         // moment the model stream ends — long before verify + deploy finish —
         // so the card can show "N credits used" while work is still going
@@ -3416,7 +3669,7 @@ Forbidden defaults
               files: currentFiles,
               summary: isInitial
                 ? "I couldn't complete the build because the app generator failed to return files after its recovery attempts. Your brief is clear — retry this build; you do not need to rewrite the prompt."
-                : "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A quick note like 'make the header sticky' or 'change the CTA color to teal' is usually enough.",
+                : "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
               outcome: isInitial ? "blocked" : "answered",
               reason: isInitial ? "initial_generation_no_files" : "no_safe_edit",
             });
@@ -5990,7 +6243,7 @@ Forbidden defaults
           emitConversationalFallback(controller, encoder, {
             files: currentFiles,
             summary:
-              "I took a careful look but couldn't pin down a safe change for this one. Could you point me at the specific element or behavior you want adjusted? A short note like 'make the header sticky' or 'change the CTA color to teal' is usually enough for me to land it precisely.",
+              "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
           });
         } else {
           controller.enqueue(
