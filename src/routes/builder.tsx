@@ -2741,6 +2741,10 @@ function Builder() {
               setActivityVisible(true);
               setLatestCycleProgress("Still working — Kimble is finishing this off.");
             },
+            onOpenSurface: (surface) => {
+              // Kimble read the message as asking for one of its own areas.
+              emitOpenSurface({ projectId: proj.id, surface: surface as SurfaceId });
+            },
             onTurnId: (turnId) => {
               // Persist immediately so a tab-close in the next 200ms still
               // lets us reconnect on return. Keyed per-project so opening a
@@ -3315,7 +3319,7 @@ function Builder() {
       }
 
       try {
-        const { reply } = await requestDiscussion({
+        const { reply, openSurface } = await requestDiscussion({
           messages: nextMessages,
           currentFiles: files,
           customInstructions: proj.custom_instructions ?? undefined,
@@ -3329,6 +3333,7 @@ function Builder() {
           setLastDiscussIndex(updated.length - 1);
           return updated;
         });
+        if (openSurface) emitOpenSurface({ projectId: proj.id, surface: openSurface });
         // User message already saved above — only write the assistant reply.
         try {
           await appendMessages(proj.id, [assistantMsg]);
