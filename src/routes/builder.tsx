@@ -2460,6 +2460,11 @@ function Builder() {
       let resultRecap: string | undefined;
       let planFallbackStarted = false;
       let planFallbackRequested = false;
+      /** Set when the server proposed a plan this turn. The proposal IS the
+       *  end of the turn — Kimble is now waiting for the user's answer, so
+       *  the post-stream path must unwind quietly instead of throwing the
+       *  fake "model stopped responding" timeout. */
+      let planProposedThisTurn = false;
       let resultNoFileChanges = false;
       // Iteration Standard — the server's byte-diffed verdict for this turn.
       let turnOutcome: {
@@ -2756,6 +2761,7 @@ function Builder() {
             },
             onPlanProposed: (plan) => {
               // Stop the build flow here; user must approve before we patch.
+              planProposedThisTurn = true;
               setProposedPlan({
                 planId: plan.planId,
                 summary: plan.summary,
@@ -2797,6 +2803,14 @@ function Builder() {
 
         if (controller.signal.aborted) return;
         if (planFallbackRequested) return;
+        if (planProposedThisTurn) {
+          // Kimble asked for plan approval and is waiting. Unwind quietly:
+          // no result is expected, so none of the failure paths below apply.
+          setStreamingPreamble("");
+          setLatestCycleProgress(undefined);
+          clearPersistedTurnId(proj.id);
+          return;
+        }
         if (silentlyRecovering) {
           // The server owns this turn now and will finish it. Stay in the
           // working state and let the watcher below surface the result.
