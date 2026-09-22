@@ -48,7 +48,7 @@ const RESERVED = new Set<string>([
   "static", "assets", "cdn", "docs", "help", "support", "status",
   "blog", "shop", "store", "pay", "billing", "auth", "login", "signup",
   "register", "account", "dashboard", "console", "portal", "manage",
-  "petal", "buildwithpetal", "lovable", "about", "contact", "pricing",
+  "petal", "buildwithpetal", "kimble", "lovable", "about", "contact", "pricing",
   "terms", "privacy", "legal", "security", "changelog", "roadmap",
   "preview", "staging", "dev", "test", "qa", "demo", "sandbox",
   "beta", "alpha", "edge", "workers", "pages", "cf", "cloudflare",
