@@ -184,7 +184,7 @@ export default function Today() {
     icon: Rocket,
     bullets: [
       { title: "Instant public URL", body: "Every project gets a shareable Kimble subdomain out of the box." },
-      { title: "Custom domain", body: "Bring buildwithpetal.com or add a domain we register for you." },
+      { title: "Custom domain", body: "Bring your own domain or add a domain we register for you." },
       { title: "Signed mobile builds", body: "iOS .ipa and Android .apk built on our cloud and delivered to you." },
     ],
     proof: [
@@ -192,9 +192,9 @@ export default function Today() {
       { stat: "∞", label: "Rollback points" },
       { stat: "iOS + Android", label: "Signed builds" },
     ],
-    samplePrompt: "Publish this to buildwithpetal.com and give me a signed Android build I can hand to my beta testers today.",
+    samplePrompt: "Publish this to my own domain and give me a signed Android build I can hand to my beta testers today.",
     codeLang: "bash",
-    codeSample: `$ petal publish --domain buildwithpetal.com
+    codeSample: `$ petal publish --domain yourbrand.com
 ✔ Built in 42s
 ✔ Deployed to https://kimble.cloud
 ✔ Android .apk ready → /downloads/app.apk`,
