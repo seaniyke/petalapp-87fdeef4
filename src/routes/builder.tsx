@@ -4836,29 +4836,10 @@ function Builder() {
                              gap between generation and the deploy
                              starting, which reads like "I'm done!" before
                              the app is actually live. */}
-                         {i === messages.length - 1 &&
-                           showNextSteps &&
-                           // (m.handoff guard removed — handoff was retired.)
-                           !m.error && (
-                             <NextStepsCard
-                              showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
-                              onPreview={() => {
-                                if (isMobile) setMobileTab("preview");
-                                else setView("preview");
-                              }}
-                              onPublish={() => setPublishOpen(true)}
-                              onKeepBuilding={() => {
-                                if (isMobile) setMobileTab("chat");
-                                composerTextareaRef.current?.focus();
-                              }}
-                              /* `suggestions` are intentionally NOT forwarded:
-                                 clarifying questions are owned by the
-                                 SuggestionChecklist above so the post-build
-                                 NextStepsCard never duplicates them. */
+                        {/* The post-build "what's next?" actions now live in
+                            the single result card rendered once below the
+                            thread (see <BuildActivityCard />). */}
 
-
-                            />
-                          )}
                         {m.recap && (() => {
                           const safeRecap = sanitizeNarrative(m.recap);
                           return (
