@@ -55,6 +55,7 @@ import { getWebSubtypeAddendum } from "@/lib/web-subtype";
 
 import { lookupBackendForGenerate, lookupSharedBackendForGenerate } from "@/server/backend-connector.server";
 import { resolveIntentActions } from "@/server/intent-actions.server";
+import { detectSurfaceIntent } from "@/lib/kimble-surfaces";
 import { loadInstalledIntegrationsContext } from "@/server/integrations/prompt-context.server";
 import {
   loadInstalledCodes,
