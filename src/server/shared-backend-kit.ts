@@ -68,18 +68,36 @@ export function setToken(token: string | null) {
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
-  const res = await fetch(BASE + path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      "x-petal-key": API_KEY,
-      ...(token ? { Authorization: "Bearer " + token } : {}),
-      ...(init.headers as Record<string, string> | undefined),
-    },
-  });
-  const body = (await res.json().catch(() => ({}))) as any;
-  if (!res.ok) throw new Error(body?.error || "Request failed (" + res.status + ")");
-  return body as T;
+  const headers = {
+    "Content-Type": "application/json",
+    "x-petal-key": API_KEY,
+    ...(token ? { Authorization: "Bearer " + token } : {}),
+    ...(init.headers as Record<string, string> | undefined),
+  };
+  // Try the remembered/primary address first, then the backups. Only a
+  // transport failure or a server-side outage moves on to the next one —
+  // a real answer (including a rejected password) is returned as-is.
+  const first = pickedBase();
+  const order = [first, ...BASES.filter((b) => b !== first)];
+  let lastError: Error | null = null;
+  for (const base of order) {
+    let res: Response;
+    try {
+      res = await fetch(base + path, { ...init, headers });
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error("Network error");
+      continue;
+    }
+    if (res.status === 503 || res.status === 502 || res.status === 404) {
+      lastError = new Error("Service unavailable");
+      continue;
+    }
+    const body = (await res.json().catch(() => ({}))) as any;
+    if (!res.ok) throw new Error(body?.error || "Request failed (" + res.status + ")");
+    rememberBase(base);
+    return body as T;
+  }
+  throw lastError || new Error("Request failed");
 }
 
 /** Typed data access. Collections are created on first write — no migrations. */
