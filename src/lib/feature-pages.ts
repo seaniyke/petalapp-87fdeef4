@@ -194,9 +194,9 @@ export default function Today() {
     ],
     samplePrompt: "Publish this to my own domain and give me a signed Android build I can hand to my beta testers today.",
     codeLang: "bash",
-    codeSample: `$ petal publish --domain yourbrand.com
+    codeSample: `$ kimble publish --domain yourbrand.com
 ✔ Built in 42s
-✔ Deployed to https://kimble.cloud
+✔ Deployed to https://yourbrand.com
 ✔ Android .apk ready → /downloads/app.apk`,
   },
 };
