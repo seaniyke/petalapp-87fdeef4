@@ -17,6 +17,8 @@ export type SharedBackendKitOpts = {
   apiKey: string;
   /** Absolute origin of the Kimble API, e.g. https://buildwithpetal.com */
   baseUrl: string;
+  /** Stable backup origins tried when the primary is unreachable or stale. */
+  fallbackUrls?: string[];
 };
 
 function clientTs(o: SharedBackendKitOpts): string {
