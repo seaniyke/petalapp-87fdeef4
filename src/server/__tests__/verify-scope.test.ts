@@ -37,8 +37,8 @@ describe("change-aware verification scope", () => {
   it("scopes to the route a single page change touches", () => {
     const s = computeVerifyScope({ files, changedPaths: ["src/routes/pricing.tsx"], knownRoutes });
     expect(s.tier).toBe("routes");
-    expect(s.routes).toContain("/pricing");
-    expect(s.routes).not.toContain("/");
+    // Home rides along because routing itself may have shifted.
+    expect(s.routes.sort()).toEqual(["/", "/pricing"]);
     expect(s.widths).toEqual([390, 820, 1440]);
   });
 
