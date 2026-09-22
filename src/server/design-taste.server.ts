@@ -12,6 +12,8 @@
 
 import { pickDesignForBrief, type DesignPick } from "./palette-presets.server";
 import { renderSectionLibraryBlock } from "./section-library.server";
+import { renderHeaderBlock } from "./registry/headers";
+import { renderIconBlock } from "./registry/icons";
 
 const TASTE_BODY = `\n\n[Reinforcement — Design taste commitments (READ BEFORE WRITING ANY VISUAL FILE)]
 Kimble is being judged on whether the landing looks like it was made by a person with taste, not by an AI that reached for the safe default. Every visual file you write this turn must satisfy ALL of the following:
@@ -113,8 +115,12 @@ Use \`font-display\` on every heading (h1-h3) and \`font-body\` on the <body>. N
 Archetype tags for this project: ${pick.archetypeTags.join(", ")}`;
 
   const sectionBlock = renderSectionLibraryBlock(pick.archetypeTags);
+  // Retrieved, not dumped: only the few headers/decorations/icons that fit
+  // this brief reach the model.
+  const headerBlock = renderHeaderBlock(pick.archetypeTags, brief);
+  const iconBlock = renderIconBlock(pick.archetypeTags, brief);
 
-  return { text: TASTE_BODY + lockedBlock + sectionBlock, pick };
+  return { text: TASTE_BODY + lockedBlock + sectionBlock + headerBlock + iconBlock, pick };
 }
 
 /**
