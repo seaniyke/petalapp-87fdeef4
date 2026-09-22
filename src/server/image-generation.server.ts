@@ -121,17 +121,12 @@ function extensionFor(mime: string): string {
 export async function generatePetalImage(
   opts: GenerateImageOptions,
 ): Promise<GenerateImageResult> {
-  // Resolve which provider serves image gen (admin-configurable).
-  const provider = await getProviderForFeature("image");
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
-  // Prefer the configured provider; fall back to whichever key IS configured
-  // so a misconfigured admin setting never breaks image gen completely.
-  const usingOpenrouter =
-    provider === "openrouter" ? Boolean(openrouterKey) : false;
-  const apiKey = usingOpenrouter ? openrouterKey : lovableKey;
-  const upstreamUrl = usingOpenrouter ? OPENROUTER_URL : LOVABLE_URL;
-  if (!apiKey) throw new Error("AI gateway is not configured.");
+  // OPENROUTER ONLY. Image generation also goes through OpenRouter; DeepSeek
+  // has no image-output model, so the configured image model is served by
+  // OpenRouter (see src/lib/ai-model-config.ts).
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const upstreamUrl = OPENROUTER_CHAT_URL;
+  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured.");
 
   const prompt = opts.prompt.trim();
   if (!prompt) throw new Error("Image prompt is empty.");
@@ -151,15 +146,11 @@ export async function generatePetalImage(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      ...(usingOpenrouter
-        ? {
-            "HTTP-Referer": "https://buildwithpetal.com",
-            "X-Title": "Kimble",
-          }
-        : {}),
+      "HTTP-Referer": process.env.OPENROUTER_REFERER || "https://buildwithpetal.com",
+      "X-Title": "Kimble",
     },
     body: JSON.stringify({
-      model: IMAGE_MODEL,
+      model: defaultImageModel(),
       messages: [{ role: "user", content: fullPrompt }],
       modalities: ["image", "text"],
     }),
