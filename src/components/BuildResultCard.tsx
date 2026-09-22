@@ -94,7 +94,7 @@ export function BuildResultCard({
   const cost = creditLabel(credits);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-[var(--shadow-soft)]">
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-[var(--shadow-soft)] animate-in fade-in zoom-in-95 duration-300 motion-reduce:animate-none">
       <div className="flex items-start gap-2.5 px-3.5 pb-2.5 pt-3">
         <span
           className="mt-[1px] inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600"
