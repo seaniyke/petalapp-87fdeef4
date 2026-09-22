@@ -182,7 +182,7 @@ import {
   scopeDisclosure,
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
-import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import { normalizeClientTurnId, startTurn, turnBelongsToUser, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
   openTurnCompletion,
   markStage,
@@ -6076,7 +6076,25 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (lastUser && typeof lastUser.content === "string") {
           turnUserRequest = lastUser.content;
         }
-        recorder = await startTurn({ projectId: peekBody.projectId, userId: peekAuth });
+        // Client-minted turn id: the phone persists it before sending, so a
+        // drop before the first response byte is still resumable. If a row
+        // with this id already exists for this user, this request is a
+        // retried send — tell the client to attach to the running turn
+        // instead of starting (and charging for) a second build.
+        const clientTurnId = normalizeClientTurnId(
+          (peekBody as { turnId?: unknown }).turnId,
+        );
+        if (clientTurnId && (await turnBelongsToUser(clientTurnId, peekAuth))) {
+          return new Response("Turn already accepted", {
+            status: 409,
+            headers: { "x-kimble-turn-id": clientTurnId },
+          });
+        }
+        recorder = await startTurn({
+          projectId: peekBody.projectId,
+          userId: peekAuth,
+          turnId: clientTurnId,
+        });
         // Open the server-owned completion record for this request. From here
         // the loop's authority lives in the database, not in the tab: stage,
         // attempts and outstanding defects survive a closed browser.
