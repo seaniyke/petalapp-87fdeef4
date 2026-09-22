@@ -24,6 +24,7 @@ import type { ProjectFile } from "@/server/generate.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import type { Prd } from "@/server/prd/prd-types";
 import { prdBrowserScenarios } from "@/server/prd/prd-acceptance.server";
+import { computeVerifyScope, type VerifyScope } from "@/server/verify-scope.server";
 
 const MODEL = "google/gemini-2.5-flash-lite";
 
