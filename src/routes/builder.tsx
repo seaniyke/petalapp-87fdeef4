@@ -3937,6 +3937,95 @@ function Builder() {
   const desktopToolbarActions = actionsForSurface(builderActions, "desktop-toolbar");
   const desktopMenuActions = actionsForSurface(builderActions, "desktop-menu");
 
+  // Kimble asked for one of its own areas to be opened (the user said "I want
+  // a domain", "who signed up?", "how many credits do I have left?"). Opening
+  // is silent and reversible: no charge, no provisioning, no writes.
+  const openKimbleSurface = useCallback(
+    (surface: SurfaceId) => {
+      const runAction = (id: string) => {
+        const action = builderActions.find((a) => a.id === id);
+        if (action && !action.disabled) action.run();
+      };
+      const openCloudAt = (view: typeof cloudInitialView) => {
+        setCloudInitialView(view);
+        setCloudPanelOpen(true);
+      };
+      switch (surface) {
+        case "domains":
+          return runAction("domains");
+        case "publish":
+          return setPublishOpen(true);
+        case "credits":
+          return setBillingOpen(true);
+        case "cloud":
+          return openCloudAt("home");
+        case "cloud.database":
+          return openCloudAt("database");
+        case "cloud.users":
+          return openCloudAt("users");
+        case "cloud.storage":
+          return openCloudAt("storage");
+        case "cloud.secrets":
+          return openCloudAt("secrets");
+        case "cloud.logs":
+          return openCloudAt("logs");
+        case "cloud.ai":
+          return openCloudAt("ai");
+        case "payments":
+          return runAction("payments");
+        case "integrations":
+          return runAction("connectors");
+        case "analytics":
+          return runAction("analytics");
+        case "website-info":
+          return setSeoOpen(true);
+        case "mobile":
+          setSettingsScrollTo("mobile");
+          return setSettingsOpen(true);
+        case "history":
+          return setHistoryOpen(true);
+        case "code":
+          return runAction("code");
+        case "share":
+          return setSharePreviewOpen(true);
+        case "security":
+          return setShieldOpen(true);
+        case "settings":
+          return setSettingsOpen(true);
+      }
+    },
+    [builderActions],
+  );
+
+  // Never interrupt: if something is already open, or the user is mid-build,
+  // the request is dropped rather than stacked on top of their screen.
+  const anySheetOpen =
+    settingsOpen ||
+    publishOpen ||
+    billingOpen ||
+    cloudPanelOpen ||
+    paymentsOpen ||
+    connectorsOpen ||
+    analyticsOpen ||
+    seoOpen ||
+    historyOpen ||
+    sharePreviewOpen ||
+    shieldOpen ||
+    actionsOpen ||
+    paletteOpen;
+  const anySheetOpenRef = useRef(anySheetOpen);
+  anySheetOpenRef.current = anySheetOpen;
+
+  useEffect(
+    () =>
+      onOpenSurface(({ projectId: forProject, surface }) => {
+        if (forProject && project?.id && forProject !== project.id) return;
+        if (anySheetOpenRef.current) return;
+        openKimbleSurface(surface);
+      }),
+    [openKimbleSurface, project?.id],
+  );
+
   const activeContent = files.find((f) => f.path === activeFile)?.content ?? "";
 
   // ⌘K / Ctrl+K to open command palette.
