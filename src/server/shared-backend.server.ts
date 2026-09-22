@@ -173,11 +173,14 @@ export async function disableSharedBackend(projectId: string): Promise<void> {
 }
 
 export async function getSharedBackend(projectId: string): Promise<SharedBackend | null> {
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("shared_backends")
     .select("project_id, api_key, enabled_at, row_count")
     .eq("project_id", projectId)
     .maybeSingle();
+  // A lookup that *failed* is not the same as a project without a backend.
+  // Swallowing it here is what made a broken backend look like a bad key.
+  if (error) throw new Error(`shared backend lookup failed: ${error.message}`);
   if (!data) return null;
   return {
     projectId: data.project_id as string,
