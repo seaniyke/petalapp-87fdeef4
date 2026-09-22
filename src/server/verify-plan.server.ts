@@ -57,6 +57,8 @@ export interface VerifyPlan {
   screenshots?: boolean;
   /** Visual QA capture request (mobile + desktop screenshots for vision scoring). */
   visual?: { widths?: number[]; routes?: string[] };
+  /** How this plan was scoped (recorded for debugging; the builder ignores it). */
+  scope?: { tier: "full" | "routes" | "minimal"; reason: string };
 }
 
 /** Mirrors the builder's caps so we never send a plan it will reject. */
