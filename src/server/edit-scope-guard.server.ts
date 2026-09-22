@@ -160,10 +160,14 @@ export function analyzeEditScope(
           .map((d) => d.path)
       : [];
 
-  const removedPaths = deltas.filter((d) => d.kind === "removed").map((d) => d.path);
+  const removedPaths = deltas
+    .filter((d) => d.kind === "removed" && !isVolatilePath(d.path))
+    .map((d) => d.path);
 
   const totalDeltaBytes = deltas.reduce((s, d) => s + d.deltaBytes, 0);
-  const tooManyFiles = wasSmallRequest && !isNewProject && deltas.length > 4;
+  // Scaffold/config churn shouldn't inflate the "touched N files" count either.
+  const appDeltaCount = deltas.filter((d) => !isVolatilePath(d.path)).length;
+  const tooManyFiles = wasSmallRequest && !isNewProject && appDeltaCount > 4;
 
   let reason = "";
   if (!isNewProject) {
