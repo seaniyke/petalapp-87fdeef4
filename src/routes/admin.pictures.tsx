@@ -445,6 +445,16 @@ function AdminPicturesPage() {
           ))}
         </div>
 
+        <Pager
+          page={paged.page}
+          pageCount={paged.pageCount}
+          total={paged.total}
+          pageSize={paged.pageSize}
+          onPage={paged.setPage}
+          noun="pictures"
+          className="mt-4 rounded-2xl border border-border"
+        />
+
         {!loading && rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             The library is empty, so every picture is made from scratch. Add a few and
