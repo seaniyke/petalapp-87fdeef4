@@ -368,11 +368,40 @@ export const Route = createFileRoute("/api/builds/trigger")({
           const storedPrd = await import("@/server/prd/prd-store.server")
             .then((m) => m.loadProjectPrd(projectId))
             .catch(() => null);
+          // Change-aware QA: scope the browser pass to what this turn touched.
+          // A missing or unreadable history row means "verify everything".
+          let changedPaths: string[] | null = null;
+          let forceFull = true;
+          try {
+            const [{ data: lastEdit }, { count: priorBuilds }] = await Promise.all([
+              supabaseAdmin
+                .from("project_edit_history")
+                .select("changed_paths")
+                .eq("project_id", projectId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+              supabaseAdmin
+                .from("project_builds")
+                .select("id", { count: "exact", head: true })
+                .eq("project_id", projectId)
+                .eq("status", "ready"),
+            ]);
+            const raw = lastEdit?.changed_paths;
+            if (Array.isArray(raw)) {
+              changedPaths = raw.filter((p): p is string => typeof p === "string");
+            }
+            forceFull = !priorBuilds || priorBuilds === 0;
+          } catch {
+            /* fall back to a full sweep */
+          }
           const verify = await buildVerifyPlan({
             files: withEnv,
             projectId,
             userId: userId ?? null,
             prd: storedPrd?.prd ?? null,
+            changedPaths,
+            forceFull,
           }).catch(() => undefined);
           await postBuildToRailway({ projectId, buildId: build.id, files: withEnv, hideBadge, verify });
         } catch (e) {
