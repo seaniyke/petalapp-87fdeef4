@@ -2,7 +2,20 @@
  * The pages landing as Kimble writes them — newest first, each sliding in,
  * the live one softly pulsing. Human names, never paths.
  */
-import { humanFileName } from "@/lib/human-file-name";
+
+/** "src/components/HowItWorks.tsx" → "How it works". */
+export function humanFileName(path: string): string {
+  const base = (path.split("/").pop() ?? path).replace(/\.[^.]+$/, "");
+  const words = base
+    .replace(/[-_]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!words) return path;
+  const lower = words.toLowerCase();
+  if (lower === "index") return "Home";
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
 
 type Props = {
   /** Every path written so far, oldest first. */
@@ -18,18 +31,20 @@ export function FileStack({ paths, activePath }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-3.5 pb-2.5">
-      {recent.map((p, i) => {
+      {recent.map((p) => {
         const live = p === activePath;
         return (
           <span
             key={p}
-            style={{ animationDelay: `${i * 40}ms` }}
-            className={`inline-flex animate-fade-in items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold motion-reduce:animate-none ${
+            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold animate-in fade-in slide-in-from-bottom-1 duration-300 motion-reduce:animate-none ${
               live
-                ? "border-primary/40 bg-primary/10 text-primary animate-pulse"
+                ? "border-primary/40 bg-primary/10 text-primary"
                 : "border-border/60 bg-muted/50 text-muted-foreground"
             }`}
           >
+            {live && (
+              <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse motion-reduce:animate-none" />
+            )}
             {humanFileName(p)}
           </span>
         );

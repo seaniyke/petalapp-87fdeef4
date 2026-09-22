@@ -16,14 +16,13 @@ export function ImageStrip({ urls, pending }: Props) {
 
   return (
     <div className="flex items-center gap-1.5 overflow-x-auto px-3.5 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {urls.slice(-8).map((url, i) => (
+      {urls.slice(-8).map((url) => (
         <img
           key={url}
           src={url}
           alt=""
           loading="lazy"
-          style={{ animationDelay: `${Math.min(i, 6) * 60}ms` }}
-          className="h-11 w-14 shrink-0 animate-scale-in rounded-lg border border-border/60 object-cover motion-reduce:animate-none"
+          className="h-11 w-14 shrink-0 rounded-lg border border-border/60 object-cover animate-in fade-in zoom-in-75 duration-500 motion-reduce:animate-none"
         />
       ))}
       {pending && (
