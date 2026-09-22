@@ -182,7 +182,7 @@ import {
   scopeDisclosure,
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
-import { startTurn, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import { startTurn, turnBelongsToUser, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
   openTurnCompletion,
   markStage,
