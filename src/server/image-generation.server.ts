@@ -204,7 +204,7 @@ export async function resolvePetalImagePlaceholders(
       slugs.add(m[1]);
     }
   }
-  if (slugs.size === 0) return { files, resolved: 0, failed: 0 };
+  if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [] };
 
   // 2. Cap to avoid runaway generations.
   const ordered = Array.from(slugs).slice(0, MAX_IMAGES_PER_GENERATION);
@@ -216,6 +216,16 @@ export async function resolvePetalImagePlaceholders(
   let failed = 0;
   const queue = [...ordered];
 
+  const liveUrls: string[] = [];
+  const announce = (slug: string, url: string) => {
+    liveUrls.push(url);
+    try {
+      onImage?.({ url, slug, index: liveUrls.length });
+    } catch {
+      // Announcing a picture must never break the build.
+    }
+  };
+
   async function worker() {
     while (queue.length) {
       const slug = queue.shift();
@@ -224,6 +234,7 @@ export async function resolvePetalImagePlaceholders(
         const r = await generatePetalImage({ prompt: slugToPrompt(slug) });
         urlMap.set(slug, r.url);
         resolved += 1;
+        announce(slug, r.url);
       } catch (e) {
         failed += 1;
         console.warn(`[petal-image] generation failed for "${slug}":`, e);
