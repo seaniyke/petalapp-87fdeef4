@@ -118,3 +118,50 @@ Rules:
 - Only fall back to a \`petal-image://\` placeholder where none of these fits.
 `;
 }
+
+/**
+ * Keep photos someone attached in chat.
+ *
+ * The model sees the attachment inline for understanding, but a data URL
+ * can't ship inside a built app — so we store the bytes once and register
+ * the photo against the project. From then on every build can place it.
+ *
+ * Never throws: a storage problem just means the turn has no saved photo.
+ */
+export async function keepChatPhotos(
+  projectId: string | null | undefined,
+  attachments: Array<{ dataUrl: string; name?: string; mimeType?: string }> | undefined,
+): Promise<ProjectPicture[]> {
+  if (!projectId || !attachments?.length) return [];
+  const kept: ProjectPicture[] = [];
+
+  for (const a of attachments.slice(0, 4)) {
+    try {
+      const match = /^data:([^;,]+);base64,(.+)$/.exec(a.dataUrl ?? "");
+      if (!match) continue;
+      const mime = a.mimeType || match[1] || "image/jpeg";
+      const bytes = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
+      const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+      const path = `site/${projectId}/photos/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+      const { error } = await supabaseAdmin.storage
+        .from("petal-images")
+        .upload(path, bytes, { contentType: mime, cacheControl: "31536000", upsert: false });
+      if (error) continue;
+
+      const url = supabaseAdmin.storage.from("petal-images").getPublicUrl(path).data.publicUrl;
+      const label = (a.name ?? "").replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim().slice(0, 80);
+      const { data } = await supabaseAdmin
+        .from("project_pictures")
+        .insert({ project_id: projectId, url, storage_path: path, label, tags: [] })
+        .select("id,url,label,tags")
+        .single();
+      if (data) kept.push(data as ProjectPicture);
+    } catch {
+      // A photo we couldn't keep is simply not offered to the build.
+    }
+  }
+
+  if (kept.length > 0) forgetProjectPictures(projectId);
+  return kept;
+}

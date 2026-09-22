@@ -151,7 +151,6 @@ import { getCreditPause, updateCreditPause, type CreditPause } from "@/lib/credi
 
 
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
-import { ProjectPhotosSheet } from "@/components/ProjectPhotosSheet";
 import petalLogo from "@/assets/kimble-logo.png";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
@@ -632,7 +631,6 @@ function Builder() {
   const [creditPause, setCreditPause] = useState<CreditPause | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [shieldOpen, setShieldOpen] = useState(false);
-  const [photosOpen, setPhotosOpen] = useState(false);
   const [sharePreviewOpen, setSharePreviewOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   // Destinations reachable from the mobile menu's "More" group.
@@ -4010,7 +4008,6 @@ function Builder() {
         },
         openHistory: () => setHistoryOpen(true),
         openSecurity: () => setShieldOpen(true),
-        openPhotos: () => setPhotosOpen(true),
         openComments: () => setCommentsOpen(true),
         openSeo: () => setSeoOpen(true),
         openAnalytics: () => setAnalyticsOpen(true),
@@ -4121,7 +4118,6 @@ function Builder() {
     historyOpen ||
     sharePreviewOpen ||
     shieldOpen ||
-    photosOpen ||
     actionsOpen ||
     paletteOpen;
   const anySheetOpenRef = useRef(anySheetOpen);
@@ -4620,13 +4616,6 @@ function Builder() {
               open={billingOpen}
               onOpenChange={setBillingOpen}
               returnTo={creditPause ? `/builder?id=${encodeURIComponent(creditPause.projectId)}` : undefined}
-            />
-          </LazySheet>
-          <LazySheet open={photosOpen && Boolean(project?.id)}>
-            <ProjectPhotosSheet
-              open={photosOpen}
-              onOpenChange={setPhotosOpen}
-              projectId={project?.id ?? ""}
             />
           </LazySheet>
           <LazySheet open={shieldOpen}>
