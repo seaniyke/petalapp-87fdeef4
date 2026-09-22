@@ -1600,6 +1600,64 @@ export const Route = createFileRoute("/api/admin/credits")({
               );
             }
 
+            // Per-turn AI rollup (calls, tokens, cache hits, retries, cost).
+            // Read from the ai_turn_economics_rollup view; best-effort so the
+            // rest of the page still renders if the view is unavailable.
+            let aiRollup: {
+              turns: number;
+              avg_calls_per_turn: number;
+              avg_input_tokens: number;
+              avg_output_tokens: number;
+              cache_hit_pct: number | null;
+              retries_per_turn: number;
+              error_rate_pct: number;
+              calls_without_usage_pct: number;
+              avg_cost_per_turn_usd: number;
+            } | null = null;
+            try {
+              const { data: rollupRaw } = await supabaseAdmin
+                .from("ai_turn_economics_rollup" as never)
+                .select("*")
+                .gte("started_at", since)
+                .limit(5000);
+              const rows = (rollupRaw ?? []) as unknown as Array<{
+                ai_calls: number | null;
+                retries: number | null;
+                errors: number | null;
+                calls_without_usage: number | null;
+                input_tokens: number | null;
+                output_tokens: number | null;
+                cached_input_tokens: number | null;
+                cost_usd: number | null;
+              }>;
+              if (rows.length) {
+                const sum = (f: (r: (typeof rows)[number]) => number) =>
+                  rows.reduce((acc, r) => acc + f(r), 0);
+                const n = rows.length;
+                const allCalls = sum((r) => Number(r.ai_calls ?? 0));
+                const input = sum((r) => Number(r.input_tokens ?? 0));
+                const cached = sum((r) => Number(r.cached_input_tokens ?? 0));
+                const round = (x: number, dp = 2) => Math.round(x * 10 ** dp) / 10 ** dp;
+                aiRollup = {
+                  turns: n,
+                  avg_calls_per_turn: round(allCalls / n),
+                  avg_input_tokens: Math.round(input / n),
+                  avg_output_tokens: Math.round(sum((r) => Number(r.output_tokens ?? 0)) / n),
+                  cache_hit_pct: input > 0 ? round((cached / input) * 100, 1) : null,
+                  retries_per_turn: round(sum((r) => Number(r.retries ?? 0)) / n),
+                  error_rate_pct: allCalls
+                    ? round((sum((r) => Number(r.errors ?? 0)) / allCalls) * 100, 1)
+                    : 0,
+                  calls_without_usage_pct: allCalls
+                    ? round((sum((r) => Number(r.calls_without_usage ?? 0)) / allCalls) * 100, 1)
+                    : 0,
+                  avg_cost_per_turn_usd: round(sum((r) => Number(r.cost_usd ?? 0)) / n, 4),
+                };
+              }
+            } catch {
+              /* rollup is diagnostic only */
+            }
+
             const projects = Array.from(byProject.entries())
               .sort((a, z) => z[1].cost - a[1].cost)
               .slice(0, 20)
@@ -1631,6 +1689,7 @@ export const Route = createFileRoute("/api/admin/credits")({
                 p95_ms: pct(0.95),
               },
               top_projects: projects,
+              ai_rollup: aiRollup,
               config: cfg,
               alerts,
             });
