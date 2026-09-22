@@ -254,11 +254,11 @@ export default {
     const url = new URL(request.url);
     const host = url.host.toLowerCase();
 
-    if (
-      host === `www.${PETAL_ROOT}` ||
-      host === `fallback.${PETAL_ROOT}` ||
-      host === PETAL_ROOT
-    ) {
+    const reserved = PETAL_ROOTS.some(
+      (root) =>
+        host === root || host === `www.${root}` || host === `fallback.${root}`,
+    );
+    if (reserved) {
       return new Response("Not found", { status: 404 });
     }
 
