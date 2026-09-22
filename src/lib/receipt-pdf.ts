@@ -124,7 +124,7 @@ export function renderReceiptPdf(doc: ReceiptDoc): Blob {
 
   // Header
   c.text(MARGIN, y, "Kimble", 22, true);
-  c.text(MARGIN, y - 16, "buildwithpetal.com", 9, false, 0.45);
+  c.text(MARGIN, y - 16, "kimble.cloud", 9, false, 0.45);
   c.text(right - 90, y, doc.kind, 16, true, 0.35);
   c.text(right - 90, y - 16, `#${doc.number}`, 9, false, 0.45);
   y -= 40;

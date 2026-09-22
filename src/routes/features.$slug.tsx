@@ -16,7 +16,7 @@ export const Route = createFileRoute("/features/$slug")({
     const f = loaderData?.feature;
     const title = f ? `${f.eyebrow} — Kimble` : "Kimble";
     const description = f?.lede ?? "Build real software from one chat.";
-    const origin = "https://buildwithpetal.com";
+    const origin = "https://kimble.cloud";
     const ogImage = f ? `${origin}${f.image}` : undefined;
     const url = `${origin}/features/${params.slug}`;
     return {

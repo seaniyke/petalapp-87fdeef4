@@ -27,7 +27,7 @@ function PrivacyPage() {
         <div className="prose prose-neutral mt-12 max-w-none dark:prose-invert prose-headings:font-display prose-headings:tracking-tight">
           <h2>1. Who we are</h2>
           <p>
-            Kimble (“we”, “us”) operates buildwithpetal.com and helps you build web apps, mobile apps,
+            Kimble (“we”, “us”) operates kimble.cloud and helps you build web apps, mobile apps,
             backends, and Chrome extensions from natural language. This policy explains what we collect
             and how we use it.
           </p>

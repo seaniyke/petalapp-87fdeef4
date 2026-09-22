@@ -66,6 +66,6 @@ export const template = {
     heading: "Your spot is ready",
     body: "We're opening Kimble to the waitlist today.\n\nSign in with this email and start building.",
     ctaLabel: "Start building",
-    ctaUrl: "https://buildwithpetal.com/auth?mode=signup",
+    ctaUrl: "https://kimble.cloud/auth?mode=signup",
   },
 } satisfies TemplateEntry;

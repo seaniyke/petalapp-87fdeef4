@@ -63,7 +63,7 @@ function AdminWaitlistPage() {
     "We're opening Kimble to the waitlist today.\n\nSign in with this email address and start building — web apps, mobile apps, backends and Chrome extensions, all from a sentence.",
   );
   const [ctaLabel, setCtaLabel] = useState("Start building");
-  const [ctaUrl, setCtaUrl] = useState("https://buildwithpetal.com/auth?mode=signup");
+  const [ctaUrl, setCtaUrl] = useState("https://kimble.cloud/auth?mode=signup");
   const [onlyPending, setOnlyPending] = useState(true);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState<{ sent: number; failed: number } | null>(null);
@@ -272,7 +272,7 @@ function AdminWaitlistPage() {
                 value={ctaUrl}
                 maxLength={500}
                 onChange={(e) => setCtaUrl(e.target.value)}
-                placeholder="https://buildwithpetal.com/auth"
+                placeholder="https://kimble.cloud/auth"
               />
             </div>
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
