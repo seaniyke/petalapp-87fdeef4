@@ -45,6 +45,7 @@ WHAT PETAL CAN BUILD (say yes to all of these — Kimble is designed for them):
 
 WHAT PETAL PROVIDES FOR EVERY PROJECT (product surfaces — outside the code):
 ${backendLine}
+${tierLine}
 - **Cloud → Users**: search/paginate auth users, send password reset or magic-link, ban/unban, delete.
 - **Cloud → Database**: inspect tables, run read queries, view rows. Schema changes = migrations Kimble proposes, the user approves.
 - **Cloud → Storage**: browse buckets, upload/delete files, create public or private buckets.
