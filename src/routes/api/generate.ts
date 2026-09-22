@@ -2802,11 +2802,15 @@ Forbidden defaults
 
 
 
-  const filesContext = isInitial
-    ? ""
-    : `\n\nEditable app file manifest (all app-owned files Kimble may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
-        .map((f) => `--- ${f.path} ---\n${f.content}`)
-        .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
+  // Built from a budget result so a refused (too-large) turn can be re-issued
+  // immediately with a smaller one instead of repeating the same request.
+  const renderFilesContext = (budget: PromptBudgetResult): string =>
+    isInitial
+      ? ""
+      : `\n\nEditable app file manifest (all app-owned files Kimble may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${budget.omitted} lower-priority files omitted for speed. Some large files are shown as the regions around the lines that matter, with the untouched ranges marked — quote only bytes you can actually see. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${budget.files
+          .map((f) => `--- ${f.path} ---\n${f.content}`)
+          .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
+  const filesContext = renderFilesContext(promptBudget);
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
   // Build the chat-completion messages. The LAST user turn may carry
