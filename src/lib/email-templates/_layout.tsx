@@ -47,7 +47,7 @@ export function PetalEmailLayout({
       <Preview>{preview}</Preview>
       <Body style={main}>
         <Container style={container}>
-          <Text style={brand}>🌸 {SITE_NAME}</Text>
+          <Text style={brand}>{SITE_NAME}</Text>
           <Heading style={h1}>{heading}</Heading>
           {children}
           {cta ? (
