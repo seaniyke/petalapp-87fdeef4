@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import { buildTrace, formatDuration, type ThoughtTick } from "@/lib/build-trace";
+import { latestActivityLine } from "@/lib/activity-language";
 import { BuildTimeline } from "@/components/BuildTimeline";
 
 import { pathToNarration } from "@/lib/path-narration";
