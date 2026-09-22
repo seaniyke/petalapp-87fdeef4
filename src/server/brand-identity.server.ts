@@ -393,6 +393,50 @@ function injectBrandMarkImport(src: string): string {
   return src.slice(0, lastEnd) + line + src.slice(lastEnd);
 }
 
+function injectNamedImport(src: string, name: string, module: string): string {
+  if (new RegExp(`from\\s+["']${module.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`).test(src)) {
+    return src;
+  }
+  const line = `import { ${name} } from "${module}";\n`;
+  const importRe = /^import[^\n]*\n/gm;
+  let lastEnd = 0;
+  let match: RegExpExecArray | null;
+  while ((match = importRe.exec(src))) lastEnd = match.index + match[0].length;
+  return src.slice(0, lastEnd) + line + src.slice(lastEnd);
+}
+
+/**
+ * A logo component existing somewhere in the graph does not mean the user can
+ * see it. Generated landing pages commonly render a bare `<NavBar />`, while
+ * the actual Logo component is only used inside the signed-in shell. Wire the
+ * canonical lockup into those empty navigation calls deterministically.
+ */
+function ensureVisibleLogoPlacement(files: ProjectFile[]): {
+  files: ProjectFile[];
+  notes: string[];
+} {
+  const logoFile = files.find(
+    (file) => file.path === "src/components/Logo.tsx" && /export\s+(?:function|const)\s+Logo\b/.test(file.content),
+  );
+  const name = logoFile ? "Logo" : "BrandMark";
+  const module = logoFile ? "@/components/Logo" : "@/components/brand-mark";
+  let wired = 0;
+
+  const next = files.map((file) => {
+    if (!/\.(tsx|jsx)$/.test(file.path) || file.path.startsWith("src/components/blocks/")) return file;
+    if (!/<NavBar\s*\/>/.test(file.content)) return file;
+    let content = file.content.replace(/<NavBar\s*\/>/g, `<NavBar brand={<${name} />} />`);
+    content = injectNamedImport(content, name, module);
+    wired++;
+    return { ...file, content };
+  });
+
+  return {
+    files: next,
+    notes: wired > 0 ? [`brand-identity: placed the logo in ${wired} empty navigation surface(s)`] : [],
+  };
+}
+
 export function ensureBrandIdentity(files: ProjectFile[]): {
   files: ProjectFile[];
   notes: string[];
@@ -430,7 +474,12 @@ export function ensureBrandIdentity(files: ProjectFile[]): {
   });
   if (swaps > 0) notes.push(`brand-identity: replaced ${swaps} placeholder logo glyph(s) with <BrandMark/>`);
 
-  // 3. Favicon + theme color — built from the app's own mark and palette.
+  // 3. A real mark must be visible, not merely present as an unused file.
+  const placementPass = ensureVisibleLogoPlacement(next);
+  next = placementPass.files;
+  notes.push(...placementPass.notes);
+
+  // 4. Favicon + theme color — built from the app's own mark and palette.
   const primary = resolvePrimaryHex(next) ?? "#111318";
   const glyph = markGlyphFrom(next);
   next = next.map((f) => {
