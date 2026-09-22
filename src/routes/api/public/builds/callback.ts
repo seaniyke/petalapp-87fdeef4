@@ -17,6 +17,7 @@ import {
   
   sanitizeVerificationDefects,
 } from "@/lib/verification-report";
+import { isInfrastructureBuildError } from "@/lib/friendly-errors";
 import { verifySignature } from "@/server/builder.server";
 import { judgeDefects } from "@/server/defect-judge.server";
 import { routeJudgedDefects, summarizeRouting } from "@/server/agents/qa-board";
@@ -447,7 +448,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         const { retryStalledBuild } = await import("@/server/build-retry.server");
         const res = await retryStalledBuild(payload.buildId, {
           minStuckMs: 0,
-          reason: "infrastructure failure reported by builder",
+          source: "callback-infra",
         });
         if (res.outcome === "retried" || res.outcome === "already_claimed") {
           console.warn(
