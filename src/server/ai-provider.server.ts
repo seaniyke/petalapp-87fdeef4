@@ -164,10 +164,8 @@ async function loadDbSettings(): Promise<Map<string, FeatureSettings>> {
         shadow_pct: number | null;
       }>) {
         map.set(row.feature, {
-          provider:
-            row.provider === "openrouter" || row.provider === "lovable"
-              ? row.provider
-              : null,
+          // Legacy rows may say "lovable"; OpenRouter is the only gateway now.
+          provider: row.provider === "openrouter" ? "openrouter" : null,
           model: row.model || null,
           fallback_model: row.fallback_model || null,
           budget_enabled: row.budget_enabled ?? null,
@@ -914,28 +912,26 @@ async function dispatch(
   signal: AbortSignal | undefined,
   tierOverride?: AiCallTimeoutTier,
 ): Promise<Response> {
-  let url: string;
-  let apiKey: string | undefined;
-  let outBody = body;
-
-  if (provider === "openrouter") {
-    url = OPENROUTER_URL;
-    apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        "OPENROUTER_API_KEY is not configured. Either add the secret or set the feature back to 'lovable'.",
-      );
-    }
-    const remapped = remapModelForOpenRouter(outBody.model as string | undefined);
-    if (remapped !== outBody.model) {
-      outBody = { ...outBody, model: remapped };
-    }
-  } else {
-    url = LOVABLE_URL;
-    apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) {
-      throw new Error("LOVABLE_API_KEY is not configured.");
-    }
+  const url = OPENROUTER_URL;
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "OPENROUTER_API_KEY is not configured. Kimble routes all AI traffic through OpenRouter.",
+    );
+  }
+  // Final safety net: coerce whatever slug arrives here to the configured model.
+  let outBody: Record<string, unknown> = body;
+  const wireModel = coerceToConfiguredModel(
+    remapModelForOpenRouter(outBody.model as string | undefined) ?? defaultTextModel(),
+    { vision: requestHasImageParts(outBody) },
+  );
+  if (wireModel !== outBody.model) {
+    outBody = { ...outBody, model: wireModel };
+  }
+  // Ask OpenRouter for token usage on streamed calls too, so `ai_call_log`
+  // records prompt/completion/total tokens for every request.
+  if (outBody.stream === true && !outBody.stream_options) {
+    outBody = { ...outBody, stream_options: { include_usage: true } };
   }
 
   const headers: Record<string, string> = {
@@ -943,7 +939,7 @@ async function dispatch(
     "Content-Type": "application/json",
   };
 
-  if (provider === "openrouter") {
+  {
     headers["HTTP-Referer"] = process.env.OPENROUTER_REFERER || "https://buildwithpetal.com";
     headers["X-Title"] = "Kimble";
   }
