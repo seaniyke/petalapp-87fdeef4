@@ -382,8 +382,10 @@ function Builder() {
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [input, setInput] = useState("");
   // Tracks `messages.length` at the moment the user answered or skipped the
-  // most recent clarifying question. The composer stays hard-blocked until
-  // this matches the current message count.
+  // most recent clarifying question. The question card stays actionable until
+  // this matches the current message count. (The composer itself is NOT
+  // blocked — typing an answer there counts as answering; only the BUILD
+  // pipeline stops while a question is pending.)
   const [answeredQuestionAt, setAnsweredQuestionAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(true);
@@ -4717,9 +4719,10 @@ function Builder() {
                         <CopyMessageButton text={sanitizeNarrative(m.content)} />
                         {/* Required clarifying-question answer card. Renders
                             whenever the latest assistant turn carries
-                            `suggestions`, before AND after a build. The
-                            composer is hard-blocked above until the user
-                            sends an answer or taps Skip. */}
+                            `suggestions`, before AND after a build. The build
+                            pipeline waits until the user answers or taps Skip;
+                            the composer stays enabled so a typed reply counts
+                            as the answer. */}
                         {m.suggestions && m.suggestions.length > 0 && i === messages.length - 1 && !petalIsWorking && (() => {
                           // Only render the radio-style "Pick an option" card
                           // for REAL clarifying questions — i.e. the assistant
