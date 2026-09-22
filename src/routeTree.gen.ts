@@ -117,6 +117,7 @@ import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/ap
 import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
 import { Route as ApiPublicCronCryptoVerifyRouteImport } from './routes/api/public/cron/crypto-verify'
 import { Route as ApiPublicCronCostAlertsRouteImport } from './routes/api/public/cron/cost-alerts'
+import { Route as ApiPublicCronBuildWatchdogRouteImport } from './routes/api/public/cron/build-watchdog'
 import { Route as ApiPublicCronBenchmarkRouteImport } from './routes/api/public/cron/benchmark'
 import { Route as ApiPublicCronBackendReapRouteImport } from './routes/api/public/cron/backend-reap'
 import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
@@ -683,6 +684,12 @@ const ApiPublicCronCostAlertsRoute = ApiPublicCronCostAlertsRouteImport.update({
   path: '/api/public/cron/cost-alerts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCronBuildWatchdogRoute =
+  ApiPublicCronBuildWatchdogRouteImport.update({
+    id: '/api/public/cron/build-watchdog',
+    path: '/api/public/cron/build-watchdog',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronBenchmarkRoute = ApiPublicCronBenchmarkRouteImport.update({
   id: '/api/public/cron/benchmark',
   path: '/api/public/cron/benchmark',
@@ -860,6 +867,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
+  '/api/public/cron/build-watchdog': typeof ApiPublicCronBuildWatchdogRoute
   '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
@@ -983,6 +991,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
+  '/api/public/cron/build-watchdog': typeof ApiPublicCronBuildWatchdogRoute
   '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
@@ -1107,6 +1116,7 @@ export interface FileRoutesById {
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
   '/api/public/cron/benchmark': typeof ApiPublicCronBenchmarkRoute
+  '/api/public/cron/build-watchdog': typeof ApiPublicCronBuildWatchdogRoute
   '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
@@ -1232,6 +1242,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
     | '/api/public/cron/benchmark'
+    | '/api/public/cron/build-watchdog'
     | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
@@ -1355,6 +1366,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
     | '/api/public/cron/benchmark'
+    | '/api/public/cron/build-watchdog'
     | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
@@ -1478,6 +1490,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
     | '/api/public/cron/benchmark'
+    | '/api/public/cron/build-watchdog'
     | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
     | '/api/public/cron/mobile-cert-expiry'
@@ -1598,6 +1611,7 @@ export interface RootRouteChildren {
   ApiPublicCronBackendHibernateRoute: typeof ApiPublicCronBackendHibernateRoute
   ApiPublicCronBackendReapRoute: typeof ApiPublicCronBackendReapRoute
   ApiPublicCronBenchmarkRoute: typeof ApiPublicCronBenchmarkRoute
+  ApiPublicCronBuildWatchdogRoute: typeof ApiPublicCronBuildWatchdogRoute
   ApiPublicCronCostAlertsRoute: typeof ApiPublicCronCostAlertsRoute
   ApiPublicCronCryptoVerifyRoute: typeof ApiPublicCronCryptoVerifyRoute
   ApiPublicCronMobileCertExpiryRoute: typeof ApiPublicCronMobileCertExpiryRoute
@@ -2377,6 +2391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronCostAlertsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/build-watchdog': {
+      id: '/api/public/cron/build-watchdog'
+      path: '/api/public/cron/build-watchdog'
+      fullPath: '/api/public/cron/build-watchdog'
+      preLoaderRoute: typeof ApiPublicCronBuildWatchdogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/benchmark': {
       id: '/api/public/cron/benchmark'
       path: '/api/public/cron/benchmark'
@@ -2614,6 +2635,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronBackendHibernateRoute: ApiPublicCronBackendHibernateRoute,
   ApiPublicCronBackendReapRoute: ApiPublicCronBackendReapRoute,
   ApiPublicCronBenchmarkRoute: ApiPublicCronBenchmarkRoute,
+  ApiPublicCronBuildWatchdogRoute: ApiPublicCronBuildWatchdogRoute,
   ApiPublicCronCostAlertsRoute: ApiPublicCronCostAlertsRoute,
   ApiPublicCronCryptoVerifyRoute: ApiPublicCronCryptoVerifyRoute,
   ApiPublicCronMobileCertExpiryRoute: ApiPublicCronMobileCertExpiryRoute,
