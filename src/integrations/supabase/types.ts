@@ -3696,6 +3696,7 @@ export type Database = {
           auto_upgrade_notified_at: string | null
           auto_upgrade_opt_out: boolean
           backend_type: string
+          cloud_tier_intent: string
           created_at: string
           custom_instructions: string | null
           hide_petal_badge: boolean
@@ -3728,6 +3729,7 @@ export type Database = {
           auto_upgrade_notified_at?: string | null
           auto_upgrade_opt_out?: boolean
           backend_type?: string
+          cloud_tier_intent?: string
           created_at?: string
           custom_instructions?: string | null
           hide_petal_badge?: boolean
@@ -3760,6 +3762,7 @@ export type Database = {
           auto_upgrade_notified_at?: string | null
           auto_upgrade_opt_out?: boolean
           backend_type?: string
+          cloud_tier_intent?: string
           created_at?: string
           custom_instructions?: string | null
           hide_petal_badge?: boolean
