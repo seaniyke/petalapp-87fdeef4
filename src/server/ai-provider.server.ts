@@ -834,7 +834,9 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // override doesn't burn 100% of that feature's calls.
   const shouldRetry =
     !primary.ok &&
+    !opts.noFallback &&
     !!fallbackModel &&
+
     (primary.status === 429 ||
       primary.status === 402 ||
       primary.status === 400 ||
