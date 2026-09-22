@@ -26,4 +26,4 @@
 - [ ] Redeploy the subdomain/custom-domain edge router from source (needs Workers permission on the account that hosts it)
 - [ ] End-to-end confirm a real customer domain (needs a domain outside our Cloudflare account)
 
-- [ ] Builder truthfulness: keep targeted edits scoped to the requested files, resolve only newly-added picture placeholders, de-duplicate resumed activity, and show only real live events.
+- [x] Builder truthfulness: keep targeted edits scoped to the requested files, resolve only newly-added picture placeholders, de-duplicate resumed activity, and show only real live events.
