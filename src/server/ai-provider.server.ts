@@ -801,7 +801,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   void recordTelemetry({
     feature: opts.feature,
     provider: effectiveProvider,
-    model: fallback,
+    model: fallbackModel,
     status: retried.status,
     latencyMs: retryLatency,
     fallbackUsed: true,
