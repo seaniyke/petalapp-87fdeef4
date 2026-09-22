@@ -204,14 +204,14 @@ export function SiteHeader() {
                 <Link
                   to="/auth"
                   search={{ mode: "signin", redirect: undefined }}
-                  className="inline-flex h-9 items-center rounded-full px-2.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground sm:px-4"
+                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground sm:px-4"
                 >
                   Sign in
                 </Link>
                 <Link
                   to="/auth"
                   search={{ mode: "signup", redirect: undefined }}
-                  className="inline-flex h-9 items-center rounded-full bg-foreground px-3.5 text-sm font-semibold text-background shadow-[var(--shadow-soft)] ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20 sm:px-5"
+                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-foreground px-3.5 text-sm font-semibold text-background shadow-[var(--shadow-soft)] ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20 sm:px-5"
                 >
                   Get started
                 </Link>
