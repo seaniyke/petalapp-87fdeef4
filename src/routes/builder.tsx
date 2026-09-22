@@ -4018,7 +4018,8 @@ function Builder() {
     [files.length, project?.id],
   );
   const desktopToolbarActions = actionsForSurface(builderActions, "desktop-toolbar");
-  const desktopMenuActions = actionsForSurface(builderActions, "desktop-menu");
+  // Same four groups as the phone sheet, so the menu reads identically.
+  const desktopMenuGroups = groupedActions(builderActions, ["desktop-menu"]);
 
   // Kimble asked for one of its own areas to be opened (the user said "I want
   // a domain", "who signed up?", "how many credits do I have left?"). Opening
