@@ -890,10 +890,12 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     turnId: opts.meta?.turnId ?? null,
   });
 
-  const fallbackBody = { ...opts.body, model: fallbackModel };
+  const fallbackBody: Record<string, unknown> = { ...body, model: fallbackModel };
   const t1 = Date.now();
   const retried = await dispatch(effectiveProvider, fallbackBody, opts.signal, opts.timeoutTier);
   const retryLatency = Date.now() - t1;
+  const retryUsage = await usageFromResponse(retried, fallbackBody);
+
 
   void recordTelemetry({
     feature: opts.feature,
