@@ -480,19 +480,24 @@ export function BuildActivityCard({
                 )
               )}
             </div>
-            {subCaption && (
-              <div
-                key={`cap-${subCaption}`}
-                className="mt-0.5 line-clamp-2 text-[12px] font-medium text-muted-foreground animate-fade-in motion-reduce:animate-none"
-              >
-                {subCaption}
-              </div>
-            )}
+            <LiveNarration
+              line={subCaption ?? null}
+              phaseId={currentPhase?.id}
+              active={isActive}
+            />
           </div>
         </div>
-        {/* Everything verbose — the step list, the thought feed, the file
-            trace and the cost breakdown — lives behind "Details". The card
-            itself stays one headline and one live line. */}
+
+        {/* The two things worth watching: the pictures Kimble makes, and the
+            pages landing one by one. Everything verbose stays behind
+            "Details". */}
+        <ImageStrip urls={imageUrls} pending={imagesPending} />
+        <FileStack
+          paths={writtenPaths ?? []}
+          activePath={isActive && currentPhase?.id === "writing" ? latestPath : null}
+        />
+
+
 
 
         <div className="grid grid-cols-2 gap-2 border-t border-border/60 p-2">
