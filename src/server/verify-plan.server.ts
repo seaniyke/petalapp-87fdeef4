@@ -466,7 +466,10 @@ export async function buildVerifyPlan(args: {
   // phone, tablet and desktop widths. Scored by a vision model in the
   // callback. Two routes at two widths was never enough to prove a design —
   // interior screens and the tablet breakpoint went entirely unreviewed.
-  plan.visual = { widths: [390, 820, 1440], routes: pickVisualRoutes(routes) };
+  plan.visual = {
+    widths: scope.widths,
+    routes: scope.tier === "full" ? pickVisualRoutes(routes) : scope.routes,
+  };
 
   try {
     const auth = detectAuth(args.files, routes);
@@ -475,13 +478,14 @@ export async function buildVerifyPlan(args: {
       plan.auth = { ...auth, ...identity };
       // Gated routes are verified in the signed-in pass, not the anonymous one,
       // where they would only ever report "redirected to login".
-      plan.routes = routes.filter((r) => !auth.protectedRoutes.includes(r));
+      plan.routes = plan.routes.filter((r) => !auth.protectedRoutes.includes(r));
+      if (plan.routes.length === 0) plan.routes = ["/"];
     }
   } catch {
     /* auth detection is best-effort */
   }
 
-  if (!args.skipFlows) {
+  if (!args.skipFlows && !scope.skipFlows) {
     const flows = await draftFlows({
       files: args.files,
       routes,
