@@ -103,6 +103,9 @@ export function PublishSuccessCard({
   onDismiss?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const { plan } = useWallet();
+  const onFreePlan = plan?.code === "free";
   const shareText = isUpdate ? `Just shipped an update to ${title}` : `I just built ${title} 🌸`;
   // Never surface Kimble's own build narration ("I've built…") as the site's
   // description — visitors want to know what the app does.
