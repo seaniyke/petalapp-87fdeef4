@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { CreditBadge } from "@/components/CreditBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 
