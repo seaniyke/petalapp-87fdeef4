@@ -1,28 +1,37 @@
 import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
+import {
+  OPENROUTER_CHAT_URL,
+  coerceToConfiguredModel,
+  defaultFallbackModel,
+  defaultTextModel,
+} from "@/lib/ai-model-config";
 
 /**
- * AI provider abstraction.
+ * AI provider abstraction — OPENROUTER ONLY.
  *
- * Every server-side AI call in Kimble goes through `aiChatCompletions(...)`. The
- * helper picks a provider (Lovable AI by default, OpenRouter optional), picks a
- * model (DB override → caller-supplied → default), forwards the request as an
- * OpenAI-compatible chat completions call, and:
+ *     Kimble  →  OpenRouter  →  DeepSeek
  *
- *   1. Records a telemetry row in `ai_call_log` (best-effort, never blocks).
- *   2. On a hard error (429/402/5xx) and only when the body has not yet been
- *      consumed, retries ONCE with the configured fallback model on the same
- *      provider. The retried response is what callers see.
+ * Every server-side AI call in Kimble goes through `aiChatCompletions(...)`.
+ * The helper resolves the model through the central config
+ * (`src/lib/ai-model-config.ts`), forwards the request as an OpenAI-compatible
+ * chat completions call to OpenRouter, and:
+ *
+ *   1. Records a telemetry row in `ai_call_log` (best-effort, never blocks) with
+ *      model, provider, token counts, cost, user/project/turn ids.
+ *   2. On a hard error (429/402/400/404/5xx) and only when the body has not yet
+ *      been consumed, retries EXACTLY ONCE with the fallback model. There is no
+ *      cross-provider failover, so one operation never fans out to two gateways.
  *
  * The caller gets back the raw `Response` so streaming code keeps working
  * without any change.
  *
- * How to switch providers:
- *   - Admin UI at /admin/ai-providers (per feature, with model picker).
- *   - DB override (ai_provider_settings) wins over env.
- *   - Env vars (AI_PROVIDER, AI_PROVIDER_GENERATE, etc.) still work.
+ * There are no direct model-provider integrations (OpenAI, Anthropic, Google,
+ * DeepSeek first-party) and no Lovable AI Gateway chat path. Model ids supplied
+ * by callers or by legacy DB overrides are coerced to the configured DeepSeek
+ * model; `openrouter/auto` is never used.
  *
- * Image gen is HARD-PINNED to Lovable AI — Gemini's `message.images` shape
- * isn't portable to OpenRouter.
+ * To change the model everywhere: edit src/lib/ai-model-config.ts (or set
+ * OPENROUTER_MODEL / OPENROUTER_VISION_MODEL / OPENROUTER_FALLBACK_MODEL).
  */
 
 export type AiFeature =
@@ -36,10 +45,25 @@ export type AiFeature =
   | "preflight"
   | "image";
 
-type Provider = "lovable" | "openrouter";
+/** Retained as a one-member union: OpenRouter is the only gateway. */
+type Provider = "openrouter";
 
-const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_URL = OPENROUTER_CHAT_URL;
+
+/** True when the request carries image parts (vision models required). */
+function requestHasImageParts(body: Record<string, unknown>): boolean {
+  const messages = body.messages;
+  if (!Array.isArray(messages)) return false;
+  for (const m of messages) {
+    const content = (m as { content?: unknown } | null)?.content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      const type = (part as { type?: unknown } | null)?.type;
+      if (type === "image_url" || type === "input_image" || type === "image") return true;
+    }
+  }
+  return false;
+}
 
 function featureOverrideEnv(feature: AiFeature): string {
   return `AI_PROVIDER_${feature.toUpperCase()}`;
