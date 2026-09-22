@@ -10,6 +10,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile } from "@/server/generate.server";
+import type { SurfaceId } from "@/lib/kimble-surfaces";
 
 export type DiscussResult = {
   reply: string;
