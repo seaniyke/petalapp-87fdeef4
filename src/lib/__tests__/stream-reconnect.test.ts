@@ -27,7 +27,7 @@ const baseBody = {
  *  i.e. "no attachable stream", which exhausts the quick-retry budget). */
 function mockFetch(generateResponse: Response, resumeResponse?: () => Response) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const url = typeof input === "string" ? input : input.url;
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     if (url.includes("/api/turns/")) {
       return resumeResponse ? resumeResponse() : new Response("not found", { status: 404 });
     }
