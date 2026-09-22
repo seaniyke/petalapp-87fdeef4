@@ -40,7 +40,9 @@ describe("the owner's own photos", () => {
 
   it("keeps the list short even with a big album", () => {
     const many = Array.from({ length: 40 }, (_, i) => pic({ id: String(i), label: `Photo ${i}` }));
-    const lines = renderProjectPictureBlock(many).split("\n").filter((l) => l.startsWith("- "));
+    const lines = renderProjectPictureBlock(many)
+      .split("\n")
+      .filter((l) => l.startsWith("- ") && l.includes("→"));
     expect(lines.length).toBe(12);
   });
 
