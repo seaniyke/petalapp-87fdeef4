@@ -103,8 +103,17 @@ export async function startTurn(opts: {
         })),
       );
       // Update last_seq so resumers know how far we got even without realtime.
+      // Every flushed event also proves the turn is alive — including the
+      // keep-alive status events emitted during long generation/verify phases
+      // — so the stalled-turn reaper must measure quiet time from here too.
+      // Without this a healthy build whose pre-deploy phase exceeds the
+      // reaper's quiet window gets aborted mid-work.
       const lastSeq = batch[batch.length - 1].seq;
-      await client!.from("turns").update({ last_seq: lastSeq }).eq("id", turnId);
+      await client!
+        .from("turns")
+        .update({ last_seq: lastSeq, last_progress_at: new Date().toISOString() })
+        .eq("id", turnId)
+        .eq("status", "running");
     } catch (e) {
       console.warn("[turn-recorder] flush failed:", (e as Error).message);
     }
