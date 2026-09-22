@@ -5175,7 +5175,26 @@ Forbidden defaults
             controller.enqueue(
               encoder.encode(sse({ type: "status", message: "Generating images…" })),
             );
-            const imgResult = await resolvePetalImagePlaceholders(nextFiles);
+            const imgResult = await resolvePetalImagePlaceholders(
+              nextFiles,
+              // Each picture is announced the moment it exists so the build
+              // card can show it landing instead of a count at the end.
+              ({ url, index }) => {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({
+                      type: "timeline",
+                      step: "image_resolve",
+                      outcome: "fixed",
+                      message: `Made picture ${index}`,
+                      count: index,
+                      url,
+                      ts: Date.now(),
+                    }),
+                  ),
+                );
+              },
+            );
             nextFiles = imgResult.files;
             if (imgResult.resolved > 0) {
               controller.enqueue(
