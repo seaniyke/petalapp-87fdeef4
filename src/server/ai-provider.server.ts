@@ -437,9 +437,48 @@ interface TelemetryArgs {
   turnId?: string | null;
 }
 
+/**
+ * Read `usage` out of a NON-STREAMED gateway response without consuming the
+ * body the caller still needs. Streamed responses are backfilled separately by
+ * `updateLastCallUsage` once the SSE body has been drained.
+ *
+ * Best-effort: any parse failure returns null and telemetry falls back to the
+ * previous NULL-token behaviour.
+ */
+async function usageFromResponse(
+  resp: Response,
+  body: Record<string, unknown>,
+): Promise<{
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+} | null> {
+  if (body.stream === true) return null;
+  if (!resp.ok) return null;
+  try {
+    const json = (await resp.clone().json()) as {
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+      };
+    };
+    const u = json?.usage;
+    if (!u) return null;
+    return {
+      promptTokens: u.prompt_tokens ?? null,
+      completionTokens: u.completion_tokens ?? null,
+      totalTokens: u.total_tokens ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const hasUsage = (args.promptTokens ?? 0) > 0 || (args.completionTokens ?? 0) > 0;
     await supabaseAdmin.from("ai_call_log").insert({
       feature: args.feature,
       provider: args.provider,
@@ -459,15 +498,20 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       project_id: args.projectId ?? null,
       user_id: args.userId ?? null,
       turn_id: args.turnId ?? null,
-      // No usage is known at insert time: a cost we cannot determine is
-      // recorded as unknown, never as a fake zero.
-      cost_basis: "unknown",
+      // Kimble always pays with its own gateway key today; per-user keys would
+      // record "user" here.
+      key_owner: "platform",
+      // Non-streamed calls now carry their usage at insert time; streamed ones
+      // are still unknown until the body is drained.
+      cost_basis: hasUsage && args.costUsdMicro != null ? "estimated" : "unknown",
+      cost_source: hasUsage && args.costUsdMicro != null ? "price_table" : null,
     });
   } catch (err) {
     // Never break the AI call because logging failed.
     console.warn("[ai-provider] telemetry insert failed", err);
   }
 }
+
 
 /**
  * Backfill token usage onto the most recent ai_call_log row for a given
