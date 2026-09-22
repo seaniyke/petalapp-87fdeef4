@@ -18,7 +18,7 @@
  */
 import { computeImpact, buildImportGraph } from "@/server/impact-graph.server";
 
-export type VerifyScopeTier = "full" | "routes" | "minimal";
+export type VerifyScopeTier = "full" | "routes" | "minimal" | "micro";
 
 export interface VerifyScope {
   tier: VerifyScopeTier;
@@ -28,6 +28,12 @@ export interface VerifyScope {
   widths: number[];
   /** Skip the model-drafted write flows (saves an AI call + browser time). */
   skipFlows: boolean;
+  /**
+   * Skip screenshot capture and the vision-model design review entirely. Only
+   * set for `micro`: a one-thing change to one page is checked for real
+   * breakage (page errors, blank screen, broken images) and nothing else.
+   */
+  skipVisualScoring?: boolean;
   /** Human-readable reason, recorded on the build for debugging. */
   reason: string;
 }
