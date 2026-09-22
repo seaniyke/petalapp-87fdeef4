@@ -24,10 +24,33 @@ export async function lookupBackendForGenerate(projectId: string): Promise<{
  * Shared (free) tier lookup. Returns the injection opts for
  * `sharedBackendKit` when the project has a shared backend enabled.
  */
+/**
+ * Every generated app on the shared tier bakes in the address of Kimble's own
+ * API. A single hardcoded address is a single point of failure: if that
+ * hostname is ever pointed at an older deployment, every published app loses
+ * its sign-in at once. So we ship a primary plus stable backups, and the
+ * client walks the list until one answers.
+ */
+const STABLE_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app";
+
+export function sharedApiOrigins(): { baseUrl: string; fallbackUrls: string[] } {
+  const configured = (process.env.PETAL_PUBLIC_ORIGIN || "").trim();
+  const extra = (process.env.PETAL_FALLBACK_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const all = [configured, "https://buildwithpetal.com", STABLE_ORIGIN, ...extra]
+    .filter(Boolean)
+    .map((u) => u.replace(/\/$/, ""));
+  const unique = Array.from(new Set(all));
+  return { baseUrl: unique[0]!, fallbackUrls: unique.slice(1) };
+}
+
 export async function lookupSharedBackendForGenerate(projectId: string): Promise<{
   projectId: string;
   apiKey: string;
   baseUrl: string;
+  fallbackUrls: string[];
 } | null> {
   const { data, error } = await supabaseAdmin
     .from("shared_backends")
@@ -38,6 +61,6 @@ export async function lookupSharedBackendForGenerate(projectId: string): Promise
   return {
     projectId,
     apiKey: data.api_key as string,
-    baseUrl: process.env.PETAL_PUBLIC_ORIGIN || "https://buildwithpetal.com",
+    ...sharedApiOrigins(),
   };
 }

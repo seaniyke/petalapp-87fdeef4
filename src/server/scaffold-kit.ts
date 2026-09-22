@@ -17,6 +17,24 @@
 import type { ProjectFile } from "./generate.server";
 import { backendKit, BACKEND_DEPS } from "./backend-kit";
 import { sharedBackendKit, type SharedBackendKitOpts } from "./shared-backend-kit";
+
+/**
+ * Write a protected kit file and remove any sibling that would shadow it.
+ *
+ * `@/integrations/backend/client` resolves to whichever of `client.ts` /
+ * `client.tsx` exists. When the model once wrote the `.tsx` spelling, the kit
+ * kept refreshing the `.ts` file while the app imported the stale `.tsx` one —
+ * so a re-issued backend key never reached the shipped app. Kit files own
+ * every spelling of their own path.
+ */
+function setKitFile(map: Map<string, string>, path: string, content: string): void {
+  const variants =
+    path.endsWith(".ts") || path.endsWith(".tsx")
+      ? [path.replace(/\.tsx?$/, ".ts"), path.replace(/\.tsx?$/, ".tsx")]
+      : [path];
+  for (const v of variants) if (v !== path) map.delete(v);
+  map.set(path, content);
+}
 import { extensionKit } from "./scaffold-kit-extension";
 import { mobileShellKit, MOBILE_SHELL_DEPS } from "./scaffold-kit-mobile-shell";
 import { EXAMPLES_PACK } from "./examples-pack";
@@ -4419,7 +4437,7 @@ export function applyScaffoldKit(
     }
     extraDeps = BACKEND_DEPS;
   } else if (opts?.sharedBackend) {
-    for (const f of sharedBackendKit(opts.sharedBackend)) map.set(f.path, f.content);
+    for (const f of sharedBackendKit(opts.sharedBackend)) setKitFile(map, f.path, f.content);
   }
 
   // Chrome extension target: add MV3 primitives the model shouldn't have to
@@ -4534,7 +4552,7 @@ export function applyScaffoldKitForPatch(
     }
     extraDeps = BACKEND_DEPS;
   } else if (opts?.sharedBackend) {
-    for (const f of sharedBackendKit(opts.sharedBackend)) map.set(f.path, f.content);
+    for (const f of sharedBackendKit(opts.sharedBackend)) setKitFile(map, f.path, f.content);
   }
 
   // Chrome extension target: add MV3 primitives the model shouldn't have to
