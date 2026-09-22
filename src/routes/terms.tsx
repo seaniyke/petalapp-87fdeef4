@@ -76,7 +76,7 @@ function TermsPage() {
 
           <h2>9. Contact</h2>
           <p>
-            <a href="mailto:hello@buildwithpetal.com">hello@buildwithpetal.com</a>
+            <a href="mailto:hello@kimble.cloud">hello@kimble.cloud</a>
           </p>
         </div>
 

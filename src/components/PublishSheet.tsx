@@ -124,7 +124,7 @@ export function PublishSheet({
   const [visitors, setVisitors] = useState<VisitorStatsResult | null>(null);
   const [visitorsLoading, setVisitorsLoading] = useState(false);
 
-  // Kimble subdomain (`<slug>.buildwithpetal.com`) — claim/edit flow. The
+  // Kimble subdomain (`<slug>.kimble.cloud`) — claim/edit flow. The
   // slug lives on `projects.subdomain`; we keep a local draft for the
   // input and debounce availability checks against /api/subdomain.
   const currentSlug = (project as ProjectRow & { subdomain: string | null }).subdomain ?? null;

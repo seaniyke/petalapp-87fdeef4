@@ -62,13 +62,13 @@ function PrivacyPage() {
           <h2>6. Your rights</h2>
           <p>
             You can export or delete your projects and account at any time from your profile. Email
-            <a href="mailto:privacy@buildwithpetal.com"> privacy@buildwithpetal.com</a> for any
+            <a href="mailto:privacy@kimble.cloud"> privacy@kimble.cloud</a> for any
             data request.
           </p>
 
           <h2>7. Contact</h2>
           <p>
-            Questions? <a href="mailto:hello@buildwithpetal.com">hello@buildwithpetal.com</a>.
+            Questions? <a href="mailto:hello@kimble.cloud">hello@kimble.cloud</a>.
           </p>
         </div>
 

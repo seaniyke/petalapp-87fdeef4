@@ -1,5 +1,5 @@
 /**
- * /api/subdomain — claim/check/release a `<slug>.buildwithpetal.com` for a project.
+ * /api/subdomain — claim/check/release a `<slug>.kimble.cloud` for a project.
  *
  * Routes (action via query string):
  *   POST /api/subdomain?action=check    -> { available, reason? }

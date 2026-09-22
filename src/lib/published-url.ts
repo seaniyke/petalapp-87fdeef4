@@ -4,7 +4,7 @@
  * Priority:
  *   1. The project's primary custom domain (`projects.primary_domain_id` →
  *      `project_domains.hostname`, only if the domain is `active`).
- *   2. The project's claimed Kimble subdomain (`<slug>.buildwithpetal.com`,
+ *   2. The project's claimed Kimble subdomain (`<slug>.kimble.cloud`,
  *      via `projects.subdomain`).
  *   3. The latest successful build's `dist_path` (e.g. the Cloudflare Pages
  *      deployment URL the build callback wrote).
@@ -43,7 +43,7 @@ export async function resolvePublishedUrl(
     }
   }
 
-  // 2) Kimble subdomain (`<slug>.buildwithpetal.com`) — single round-trip read.
+  // 2) Kimble subdomain (`<slug>.kimble.cloud`) — single round-trip read.
   const loose = supabase as unknown as {
     rpc: (n: string, a: Record<string, unknown>) => Promise<any>;
   };
