@@ -190,13 +190,40 @@ export async function getSharedBackend(projectId: string): Promise<SharedBackend
   };
 }
 
+/**
+ * Outcome of an access check. Kept distinct on purpose: "we could not reach
+ * the backend" must never be reported to an app as "your key is wrong".
+ */
+export type SharedAccess = "ok" | "bad_key" | "no_backend" | "unavailable";
+
+export async function resolveProjectAccess(
+  projectId: string,
+  apiKey: string | null,
+): Promise<SharedAccess> {
+  if (!apiKey) return "bad_key";
+  let backend: SharedBackend | null;
+  try {
+    backend = await getSharedBackend(projectId);
+  } catch {
+    return "unavailable";
+  }
+  if (!backend) return "no_backend";
+  if (backend.apiKey !== apiKey) return "bad_key";
+  void supabaseAdmin
+    .from("shared_backends")
+    .update({ last_active_at: new Date().toISOString() })
+    .eq("project_id", projectId)
+    .then(() => undefined);
+  return "ok";
+}
+
 /** Resolve a project from the caller-supplied public API key. */
 export async function resolveProjectByKey(
   projectId: string,
   apiKey: string | null,
 ): Promise<boolean> {
   if (!apiKey) return false;
-  const backend = await getSharedBackend(projectId);
+  const backend = await getSharedBackend(projectId).catch(() => null);
   if (!backend) return false;
   if (backend.apiKey !== apiKey) return false;
   void supabaseAdmin
