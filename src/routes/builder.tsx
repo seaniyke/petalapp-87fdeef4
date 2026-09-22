@@ -630,6 +630,10 @@ function Builder() {
   // Destinations reachable from the mobile menu's "More" group.
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [cloudPanelOpen, setCloudPanelOpen] = useState(false);
+  // Which Cloud sub-view to land on when Kimble opens it from chat.
+  const [cloudInitialView, setCloudInitialView] = useState<
+    "home" | "database" | "users" | "storage" | "secrets" | "logs" | "ai"
+  >("home");
   const [agentIntegrationsOpen, setAgentIntegrationsOpen] = useState(false);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
   const [connectorsOpen, setConnectorsOpen] = useState(false);
@@ -3907,6 +3911,16 @@ function Builder() {
         openConnectors: () => setConnectorsOpen(true),
         openRename: () => setRenameOpen(true),
         openPalette: () => setPaletteOpen(true),
+        openDomains: () => {
+          setSettingsScrollTo("domains");
+          setSettingsOpen(true);
+        },
+        openMobile: () => {
+          setSettingsScrollTo("mobile");
+          setSettingsOpen(true);
+        },
+        openCredits: () => setBillingOpen(true),
+        openWebsiteInfo: () => setWebsiteInfoOpen(true),
         reloadPreview: () => {
           setView("preview");
           setMobileTab("preview");
@@ -4334,6 +4348,7 @@ function Builder() {
               open={cloudPanelOpen}
               onOpenChange={setCloudPanelOpen}
               projectId={project.id}
+              initialView={cloudInitialView}
               onOpenBalance={() => {
                 setCloudPanelOpen(false);
                 setBillingOpen(true);
