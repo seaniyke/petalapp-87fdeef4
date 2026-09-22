@@ -393,6 +393,19 @@ export function BuildActivityCard({
 
   return (
     <>
+      {isComplete ? (
+        <BuildResultCard
+          credits={creditsCharged}
+          summary={resultSummary}
+          showPreview={showPreviewAction}
+          onPreview={onOpenPreview}
+          onPublish={onPublish}
+          onKeepBuilding={onKeepBuilding}
+          onDetails={() => setDetailsOpen(true)}
+          suggestions={suggestions}
+          onSuggest={onSuggest}
+        />
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-all">
         <div className="flex gap-px" aria-hidden>
           {phases.map((p, i) => (
