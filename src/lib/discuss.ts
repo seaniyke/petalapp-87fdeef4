@@ -45,7 +45,7 @@ export async function requestDiscussion(
     throwIfCreditsExhausted(resp, text);
     throw new Error(text || `Request failed (${resp.status})`);
   }
-  const json = (await resp.json()) as { reply?: string };
+  const json = (await resp.json()) as { reply?: string; openSurface?: SurfaceId | null };
   if (!json.reply) throw new Error("Empty reply from AI.");
-  return { reply: json.reply };
+  return { reply: json.reply, openSurface: json.openSurface ?? null };
 }
