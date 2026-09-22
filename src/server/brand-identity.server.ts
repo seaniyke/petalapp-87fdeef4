@@ -430,13 +430,16 @@ export function ensureBrandIdentity(files: ProjectFile[]): {
   });
   if (swaps > 0) notes.push(`brand-identity: replaced ${swaps} placeholder logo glyph(s) with <BrandMark/>`);
 
-  // 3. Favicon + theme color.
+  // 3. Favicon + theme color — built from the app's own mark and palette.
+  const primary = resolvePrimaryHex(next) ?? "#111318";
+  const glyph = markGlyphFrom(next);
   next = next.map((f) => {
     if (f.path !== "index.html") return f;
-    const content = ensureFavicon(f.content, initials, brand);
+    const content = ensureFavicon(f.content, initials, brand, primary, glyph);
     if (content !== f.content) notes.push("brand-identity: injected favicon + apple-touch-icon");
     return { ...f, content };
   });
+
 
   return { files: next, notes };
 }
