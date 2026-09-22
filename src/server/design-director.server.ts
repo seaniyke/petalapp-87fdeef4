@@ -375,11 +375,35 @@ const DIRECTOR_TOOL = {
   },
 };
 
-/** Render a Design Direction as a compact prompt block. */
-export function renderDesignDirectionBlock(d: DesignDirection): string {
+/**
+ * Render a Design Direction as a prompt block.
+ *
+ * `detail: "compact"` (small, non-structural edits) injects only the parts an
+ * edit must respect — vibe, typography, palette, density and the motion rule —
+ * and drops the FX catalog, theme token table and template plan. Those are
+ * scaffolding instructions that only matter when new surface is being built,
+ * and they are by far the largest part of this block. Keeping them on every
+ * copy tweak was pure input-token cost with no effect on the output.
+ */
+export function renderDesignDirectionBlock(
+  d: DesignDirection,
+  opts?: { detail?: "full" | "compact" },
+): string {
+  const compact = opts?.detail === "compact";
   const moves = d.design_moves.map((m) => `  - ${m}`).join("\n");
-  const themeBlock = d.theme ? renderThemeTokensBlock(d.theme) : "";
-  const templateBlock = d.template ? renderTemplatePlanBlock(d.template) : "";
+  const themeBlock = !compact && d.theme ? renderThemeTokensBlock(d.theme) : "";
+  const templateBlock = !compact && d.template ? renderTemplatePlanBlock(d.template) : "";
+  if (compact) {
+    return (
+      `\n\n### Design Direction (already committed for this project — keep it)\n` +
+      `- vibe: ${d.vibe}\n` +
+      `- typography: ${d.display_font} (display) + ${d.body_font} (body). Do not swap these.\n` +
+      `- palette mood: ${d.palette_mood}. Use the existing oklch tokens in src/styles.css; do not introduce new raw colors.\n` +
+      `- density: ${d.density}\n` +
+      `- motion: ${d.motion}. Match the motion level already used on the page; do not add new motion primitives for a small edit.\n` +
+      `- design moves to preserve:\n${moves}\n`
+    );
+  }
   return (
     `\n\n### Design Direction (committed before this build — execute it with conviction)\n` +
     `- vibe: ${d.vibe}\n` +
