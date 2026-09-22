@@ -2777,6 +2777,8 @@ Forbidden defaults
 
 
 
+  /** Import neighbours of the resolved targets — writable on a targeted edit. */
+  let impactNeighbourPaths: string[] = [];
   // Engine 3.0 phase 4 — impact graph. A targeted edit rarely stops at the
   // file it names: whoever imports that file has to keep compiling, and
   // whatever it imports defines the props it may use. Pin that immediate
