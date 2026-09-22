@@ -693,7 +693,14 @@ export interface AiCallOptions {
    * but substituting a model that ignores `tool_choice` breaks the contract.
    */
   lockCallerModel?: boolean;
+  /**
+   * Skip the bounded fallback retry. For cosmetic helpers (friendly error
+   * wording, self-check) a second paid round-trip buys nothing: the caller
+   * already has a deterministic fallback.
+   */
+  noFallback?: boolean;
 }
+
 
 /**
  * Make an OpenAI-compatible chat completions call against the resolved provider.
