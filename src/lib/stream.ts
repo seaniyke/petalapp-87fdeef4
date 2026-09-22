@@ -66,6 +66,8 @@ type Handlers = {
     outcome: "ok" | "fixed" | "skipped" | "failed";
     message: string;
     count?: number;
+    /** Public URL of a picture that just landed. */
+    url?: string;
     ts: number;
   }) => void;
   // NOTE: `onContinuationHandoff` was removed along with the
