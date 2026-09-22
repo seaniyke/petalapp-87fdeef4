@@ -64,7 +64,7 @@ function placeholder(kind) {
   const isPrivate = kind === "private";
   const isUnknown = kind === "unknown";
   const title = isUnknown
-    ? "This Petal app doesn't exist"
+    ? "This Kimble app doesn't exist"
     : isPrivate
       ? "This site is private"
       : "This site isn't published yet";
@@ -99,7 +99,7 @@ function placeholder(kind) {
     <span class="badge">${isUnknown ? "Not found" : isPrivate ? "Private" : "Coming soon"}</span>
     <h1>${title}</h1>
     <p>${body}</p>
-    <div class="footer">Built with Petal</div>
+    <div class="footer">Built with Kimble</div>
   </main>
 </body>
 </html>`;
@@ -227,7 +227,7 @@ class SiteMetaInjector {
   }
   element(el) {
     const m = this.meta || {};
-    const iconUrl = m.iconUrl || `${CONTROL_PLANE}/petal-logo.png`;
+    const iconUrl = m.iconUrl || `${CONTROL_PLANE}/kimble-logo.png`;
     const parts = [];
     parts.push(`<link rel="icon" href="${escapeAttr(iconUrl)}" />`);
     parts.push(`<link rel="apple-touch-icon" href="${escapeAttr(iconUrl)}" />`);
