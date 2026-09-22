@@ -119,8 +119,14 @@ Archetype tags for this project: ${pick.archetypeTags.join(", ")}`;
   // this brief reach the model.
   const headerBlock = renderHeaderBlock(pick.archetypeTags, brief);
   const iconBlock = renderIconBlock(pick.archetypeTags, brief);
+  // Imagery approach: photography is a choice here, not the automatic answer.
+  const illustrationBlock = renderIllustrationBlock(pick.archetypeTags, brief);
 
-  return { text: TASTE_BODY + lockedBlock + sectionBlock + headerBlock + iconBlock, pick };
+  return {
+    text:
+      TASTE_BODY + lockedBlock + sectionBlock + headerBlock + iconBlock + illustrationBlock,
+    pick,
+  };
 }
 
 /**
