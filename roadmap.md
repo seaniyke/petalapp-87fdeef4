@@ -16,3 +16,7 @@
 - [x] Generated app tab icon now uses the app's own logo shape and primary colour instead of a fixed pink tile
 - [ ] Rebuild Looplane once Kimble is published, then sign in on the live site to confirm end to end
 
+- [x] One balance: Cloud + AI meters charge Kimble Credits directly (no cents wallet left to convert — all wallets at zero)
+- [x] Kimble Compute: per-project Railway containers (project_compute, railway.server.ts, compute.server.ts, hourly meter cron, sleep/reap)
+- [x] Kimble Cloud tier intelligence: resolveCloudTier picks Kimble / Kimble + / Kimble Compute from app intent + growth; recorded per project, never downgraded
+- [ ] Kimble Compute needs RAILWAY_COMPUTE_PROJECT_ID, RAILWAY_COMPUTE_ENVIRONMENT_ID and a default container image before it can provision
