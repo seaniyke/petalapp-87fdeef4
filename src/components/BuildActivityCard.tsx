@@ -25,7 +25,11 @@ import {
 } from "lucide-react";
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import { buildTrace, formatDuration, type ThoughtTick } from "@/lib/build-trace";
-import { latestActivityLine } from "@/lib/activity-language";
+import { latestActivityLine, pictureLine } from "@/lib/activity-language";
+import { LiveNarration } from "@/components/build/LiveNarration";
+import { ImageStrip } from "@/components/build/ImageStrip";
+import { FileStack } from "@/components/build/FileStack";
+import { ProgressArc } from "@/components/build/ProgressArc";
 import { BuildTimeline } from "@/components/BuildTimeline";
 
 import { pathToNarration } from "@/lib/path-narration";
@@ -335,10 +339,26 @@ export function BuildActivityCard({
       ? Math.max(0, ...writtenPaths.map((p) => fileTimestamps[p] ?? 0))
       : 0;
     if (lastEvent && lastEvent.ts >= lastFileTs) {
-      const live = latestActivityLine(timelineEvents);
-      if (live) subCaption = live;
+      if (lastEvent.url) {
+        // A picture just landed — say it the way a person would.
+        subCaption = pictureLine(lastEvent.count ?? 1);
+      } else {
+        const live = latestActivityLine(timelineEvents);
+        if (live) subCaption = live;
+      }
     }
   }
+
+  // Pictures streamed in one by one, newest last.
+  const imageUrls = (timelineEvents ?? [])
+    .filter((e) => typeof e.url === "string" && e.url.length > 0)
+    .map((e) => e.url as string);
+  const lastEventTs = timelineEvents?.[timelineEvents.length - 1]?.ts ?? 0;
+  const imagesPending =
+    isActive &&
+    imageUrls.length > 0 &&
+    !!timelineEvents?.[timelineEvents.length - 1]?.url &&
+    Date.now() - lastEventTs < 60_000;
 
   // ─── Error state ─────────────────────────────────────────────────────────
   if (error) {
