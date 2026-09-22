@@ -3158,6 +3158,7 @@ Forbidden defaults
     prdScenarioBlock +
     orchestrationBlock +
     designTasteBlock +
+    skillsBlock +
 
     learningBlock +
     highStakesBlock +
