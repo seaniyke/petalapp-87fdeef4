@@ -121,6 +121,7 @@ import {
 } from "@/lib/draft-storage";
 import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
+import { retryTransient } from "@/lib/retry-transient";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { LazySheet } from "@/components/LazySheet";
