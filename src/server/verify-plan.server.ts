@@ -424,6 +424,14 @@ export async function buildVerifyPlan(args: {
   skipFlows?: boolean;
   /** The persisted product contract, when the project has one. */
   prd?: Prd | null;
+  /**
+   * Files this turn actually changed. When supplied, verification is scoped to
+   * the routes those changes can affect (see verify-scope.server.ts). Visual QA
+   * is never disabled — only narrowed.
+   */
+  changedPaths?: string[] | null;
+  /** First build of a project, or a publish: always verify everything. */
+  forceFull?: boolean;
   signal?: AbortSignal;
 }): Promise<VerifyPlan> {
   let routes: string[];
@@ -434,6 +442,22 @@ export async function buildVerifyPlan(args: {
   }
 
   const plan: VerifyPlan = { routes, screenshots: false };
+
+  let scope: VerifyScope;
+  try {
+    scope = computeVerifyScope({
+      files: args.files,
+      changedPaths: args.changedPaths,
+      knownRoutes: routes,
+      forceFull: args.forceFull,
+    });
+  } catch {
+    scope = { tier: "full", routes: [], widths: [390, 820, 1440], skipFlows: false, reason: "scope failed" };
+  }
+  if (scope.tier !== "full" && scope.routes.length) {
+    plan.routes = scope.routes;
+  }
+  plan.scope = { tier: scope.tier, reason: scope.reason };
 
   // Visual QA: home plus the most substantial interior routes, captured at
   // phone, tablet and desktop widths. Scored by a vision model in the
