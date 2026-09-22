@@ -85,6 +85,8 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
     status: string | null;
   } | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  /** Credit breakdown + usage stay collapsed; the balance is the headline. */
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [cryptoPlanCode, setCryptoPlanCode] = useState<string | null>(null);
   const [cryptoPackOpen, setCryptoPackOpen] = useState(false);
   const topupRef = useRef<HTMLDivElement | null>(null);
