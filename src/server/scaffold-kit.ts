@@ -4437,7 +4437,7 @@ export function applyScaffoldKit(
     }
     extraDeps = BACKEND_DEPS;
   } else if (opts?.sharedBackend) {
-    for (const f of sharedBackendKit(opts.sharedBackend)) map.set(f.path, f.content);
+    for (const f of sharedBackendKit(opts.sharedBackend)) setKitFile(map, f.path, f.content);
   }
 
   // Chrome extension target: add MV3 primitives the model shouldn't have to
@@ -4552,7 +4552,7 @@ export function applyScaffoldKitForPatch(
     }
     extraDeps = BACKEND_DEPS;
   } else if (opts?.sharedBackend) {
-    for (const f of sharedBackendKit(opts.sharedBackend)) map.set(f.path, f.content);
+    for (const f of sharedBackendKit(opts.sharedBackend)) setKitFile(map, f.path, f.content);
   }
 
   // Chrome extension target: add MV3 primitives the model shouldn't have to
