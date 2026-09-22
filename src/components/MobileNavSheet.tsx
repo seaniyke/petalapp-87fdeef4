@@ -58,9 +58,6 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
                 Signed in as
               </p>
               <p className="mt-0.5 truncate text-sm font-medium">{user.email}</p>
-              <div className="mt-3">
-                <CreditBadge />
-              </div>
             </div>
           )}
 
