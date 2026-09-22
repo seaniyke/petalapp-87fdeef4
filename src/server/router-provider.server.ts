@@ -542,17 +542,38 @@ function reachableFrom(entry: string, byPath: Map<string, ProjectFile>): Set<str
   return seen;
 }
 
+/** Heal an entry whose render argument comma ended up INSIDE the JSX tree
+ * (`</React.StrictMode>,\n</BrowserRouter>`). React renders that comma as
+ * visible text in the corner of every page. */
+export function stripStrayJsxCommas(content: string): string {
+  return content.replace(/(<\/[A-Za-z_$][\w$.]*>)\s*,\s*(\r?\n\s*<\/[A-Za-z_$][\w$.]*>)/g, "$1$2");
+}
+
 export function fixMissingRouterProvider(files: ProjectFile[]): RouterProviderFixResult {
   const notes: string[] = [];
-  const code = files.filter((f) => isExecutableSource(f.path));
+  let code = files.filter((f) => isExecutableSource(f.path));
   if (code.length === 0) return { files, notes };
 
-  const byPath = new Map(files.map((f) => [f.path, f] as const));
-  const entryPath =
+  const entryPathRaw =
     code.find((f) => /src\/main\.(tsx|jsx)$/i.test(f.path) && /\.render\(/.test(f.content))?.path ??
     code.find((f) => /\.render\(/.test(f.content))?.path ??
     null;
+  if (entryPathRaw) {
+    const entryFile = files.find((f) => f.path === entryPathRaw);
+    if (entryFile) {
+      const healed = stripStrayJsxCommas(entryFile.content);
+      if (healed !== entryFile.content) {
+        files = files.map((f) => (f.path === entryPathRaw ? { ...f, content: healed } : f));
+        code = files.filter((f) => isExecutableSource(f.path));
+        notes.push(`router-provider: removed stray comma rendered as text in ${entryPathRaw}`);
+      }
+    }
+  }
+
+  const byPath = new Map(files.map((f) => [f.path, f] as const));
+  const entryPath = entryPathRaw;
   const live = entryPath ? reachableFrom(entryPath, byPath) : null;
+
 
   const anyConsumer = code.some(
     (f) =>
