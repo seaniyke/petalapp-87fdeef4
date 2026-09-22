@@ -434,7 +434,21 @@ export async function buildAndDeploy(
   //    error on some accounts, which is indistinguishable from a real failure.
   //    GET-then-POST is unambiguous: 200 = exists, 404 = create it.
   heartbeat.beat("publishing the app");
-  await ensurePagesProject(projectName, cloudflare);
+  // This step is advisory. For every redeploy the project already exists, so a
+  // network hiccup while *checking* must never cost the user a build — carry on
+  // to wrangler, which fails loudly and specifically if the project is really
+  // missing. Only a definitive API answer (auth, validation) still stops us.
+  try {
+    await ensurePagesProject(projectName, cloudflare);
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    const transport =
+      !(err instanceof BuildError) ||
+      /abort|timeout|fetch failed|network|ECONNRESET|ETIMEDOUT|\(5\d\d\)|\(429\)/i.test(detail);
+    if (!transport) throw err;
+    console.warn(`[build] Pages project check skipped (${detail}); deploying anyway`);
+  }
+
 
   // 4) Deploy to Cloudflare Pages. --branch=main makes this a production deploy
   //    so the URL `<project>.pages.dev` updates. --commit-dirty avoids the "you
