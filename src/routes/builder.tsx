@@ -2090,9 +2090,25 @@ function Builder() {
     };
     document.addEventListener("visibilitychange", onVisible);
 
+    // Mobile Safari fires neither `visibilitychange` nor `online` reliably
+    // on a radio switch (Wi-Fi → LTE) or after a long sleep, so a saved
+    // turn could sit unresumed until a manual reload. Two extra triggers:
+    // the browser `online` event, and a light heartbeat that re-attempts
+    // while the tab is visible and a turn is still persisted. attemptResume
+    // no-ops when a send is already running in this tab.
+    const onOnline = () => attemptResume();
+    window.addEventListener("online", onOnline);
+    const heartbeat = window.setInterval(() => {
+      if (document.visibilityState === "visible" && readPersistedTurn(pid)) {
+        attemptResume();
+      }
+    }, 20_000);
+
     return () => {
       cancelled = true;
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+      window.clearInterval(heartbeat);
       // The server owns the build, so aborting only this replay request is
       // safe. It also prevents project A's controller from blocking project
       // B's reconnect when users switch projects quickly.
@@ -2485,6 +2501,10 @@ function Builder() {
       // Set when the server told us it is finishing this turn itself. No
       // failure is shown; the working state simply continues.
       let silentlyRecovering = false;
+      /** Set when the connection dropped mid-turn and the quick reconnect
+       *  budget ran out (long offline gap). The turn is still running
+       *  server-side; the auto-reconnect watcher will pick it up. */
+      let reconnectDeferred = false;
       let pausedForCredits = false;
       let streamError: string | null = null;
       let streamErrorKind: import("@/server/generate.server").ErrorKind | undefined;
@@ -2575,11 +2595,19 @@ function Builder() {
         setLiveCreditsEstimate(null);
 
 
+        // Mint the turn id on the phone and persist it BEFORE the request
+        // goes out: even a drop before the first response byte leaves a
+        // resumable handle, and a retried send dedupes server-side instead
+        // of starting a second build.
+        const clientTurnId = crypto.randomUUID();
+        persistTurnId(proj.id, clientTurnId);
+
         await streamGenerate(
           {
             // Strip transient system notes ("Kimble is auto-fixing…") before
             // sending — they're UI-only, the AI shouldn't see them.
             messages: nextMessages.filter((m) => m.role !== "system"),
+            turnId: clientTurnId,
             currentFiles: files,
             model: opts.autoEscalate
               ? "deep"
@@ -2750,6 +2778,20 @@ function Builder() {
               setActivityVisible(true);
               setLatestCycleProgress("Still working — Kimble is finishing this off.");
             },
+            onReconnectDeferred: () => {
+              // Long offline gap (phone asleep, tunnel, radio switch). The
+              // build is still running on the server under the persisted turn
+              // id; the watcher below reattaches on `online` / visibility /
+              // its 20s heartbeat. Never an error card, never a resend.
+              reconnectDeferred = true;
+              streamError = null;
+              streamErrorKind = undefined;
+              streamErrorRaw = undefined;
+              setActivityVisible(true);
+              setLatestCycleProgress(
+                "Connection hiccup — Kimble keeps working and will pick back up automatically.",
+              );
+            },
             onOpenSurface: (surface) => {
               // Kimble read the message as asking for one of its own areas.
               emitOpenSurface({ projectId: proj.id, surface: surface as SurfaceId });
@@ -2815,9 +2857,11 @@ function Builder() {
           clearPersistedTurnId(proj.id);
           return;
         }
-        if (silentlyRecovering) {
+        if (silentlyRecovering || reconnectDeferred) {
           // The server owns this turn now and will finish it. Stay in the
-          // working state and let the watcher below surface the result.
+          // working state and let the watcher below surface the result. The
+          // persisted turn id stays in place so the auto-reconnect effect
+          // reattaches on `online`, tab-visible, or its heartbeat interval.
           setAwaitingSilentResume(true);
           return;
         }
@@ -3110,6 +3154,12 @@ function Builder() {
 
         const msg = e instanceof Error ? e.message : "Something went wrong.";
         setError(msg);
+        // A thrown error means the turn is over (server-reported failure) or
+        // never existed server-side (pre-acceptance rejection like 402) — the
+        // network-drop-with-live-turn case returns via onReconnectDeferred
+        // instead and never lands here. Either way there is nothing to
+        // resume, so drop the persisted handle.
+        clearPersistedTurnId(proj.id);
         const isNoEditFailure =
           e instanceof PipelineError &&
           (e.kind === "no_files_emitted" ||
