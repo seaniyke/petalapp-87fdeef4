@@ -3073,11 +3073,11 @@ function Builder() {
           // post-build "READY — WHAT'S NEXT?" card never flashes in the gap
           // between generation finishing and the deploy row appearing.
           setAwaitingBuild(true);
-          void triggerBuild(proj.id)
+          void retryTransient(() => triggerBuild(proj.id))
             .then(async (build) => {
               restoreBuildId(build.buildId);
               startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
-              const r = await getProject(proj.id);
+              const r = await retryTransient(() => getProject(proj.id)).catch(() => null);
               if (r) setProject(r);
             })
             .catch((err: unknown) => {
