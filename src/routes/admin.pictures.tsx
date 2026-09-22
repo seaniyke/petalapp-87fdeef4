@@ -293,6 +293,7 @@ function AdminPicturesPage() {
           .includes(needle),
       )
     : rows;
+  const paged = usePaged(shown, 24);
 
   if (!ready) return null;
 

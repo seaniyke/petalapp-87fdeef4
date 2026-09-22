@@ -39,6 +39,7 @@ function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<ProjectRow | null>(null);
+  const paged = usePaged(projects, 12);
   const [deleting, setDeleting] = useState(false);
 
   // Prewarm the in-browser preview container as soon as the user reaches the

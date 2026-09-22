@@ -73,6 +73,8 @@ function MarketplacePage() {
     });
   }, [listings, query, category]);
 
+  const paged = usePaged(filtered, 12);
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
