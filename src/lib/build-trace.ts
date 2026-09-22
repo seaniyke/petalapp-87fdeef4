@@ -45,8 +45,12 @@ export type TraceEntry =
       kind: "check";
       key: string;
       ts: number;
+      /** Plain-English headline for what Kimble did. */
       message: string;
+      /** Plain-English explanation of why that step exists. */
       detail: string;
+      /** Internal pipeline step id, kept for debugging/telemetry only. */
+      step: string;
       outcome: "ok" | "fixed" | "skipped" | "failed";
     };
 
