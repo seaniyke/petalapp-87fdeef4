@@ -27,6 +27,7 @@ export default defineConfig({
       "src/lib/intent-registry.test.ts",
       "src/lib/__tests__/stream-plan.test.ts",
       "src/lib/__tests__/activity-language.test.ts",
+      "src/lib/__tests__/build-activity-events.test.ts",
       "src/lib/__tests__/kimble-surfaces.test.ts",
       "src/lib/__tests__/retry-transient.test.ts",
       "src/lib/__tests__/infra-build-failures.test.ts",

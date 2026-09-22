@@ -4,16 +4,15 @@
  * It types itself in when a real event arrives, then quietly clears if nothing
  * new happens. It never invents activity to make a build feel busy.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   /** The real line, derived from something Kimble actually did. */
   line?: string | null;
-  /** Current phase id — picks the tone of the idle aside. */
   phaseId?: string;
   /** False freezes the text (turn finished / not running). */
   active: boolean;
-  /** ms with no new line before an aside takes over. */
+  /** ms with no new event before the stale line clears. */
   idleAfterMs?: number;
 };
 
@@ -34,13 +33,11 @@ export function LiveNarration({ line, phaseId, active, idleAfterMs = 6000 }: Pro
   const reduced = usePrefersReducedMotion();
   const [shown, setShown] = useState<string>(line ?? "");
   const [typed, setTyped] = useState<string>(line ?? "");
-  const lastChangeRef = useRef<number>(Date.now());
 
   // A genuinely new line always wins and restarts the typing.
   useEffect(() => {
     const next = (line ?? "").trim();
     if (!next || next === shown) return;
-    lastChangeRef.current = Date.now();
     setShown(next);
   }, [line, shown]);
 

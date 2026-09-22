@@ -4910,22 +4910,6 @@ Forbidden defaults
           issue_count: autofixOut.report.fixedCount,
           details: { notes: autofixOut.report.notes.slice(0, 8) },
         });
-        controller.enqueue(
-          encoder.encode(
-            sse({
-              type: "timeline",
-              step: "stream_autofix",
-              outcome: autofixOut.report.fixedCount > 0 ? "fixed" : "ok",
-              message:
-                autofixOut.report.fixedCount > 0
-                  ? `Auto-corrected ${autofixOut.report.fixedCount} small issue${autofixOut.report.fixedCount === 1 ? "" : "s"}`
-                  : "Quick safety scan — clean",
-              count: autofixOut.report.fixedCount,
-              ts: Date.now(),
-            }),
-          ),
-        );
-
         // Tier 2.5 + 2.45 — local verifier and npm pre-flight
         // (extracted to src/server/pipeline/tier-local-verify.ts).
         const localT0 = Date.now();
@@ -5499,26 +5483,11 @@ Forbidden defaults
                 encoder.encode(
                   sse({
                     type: "status",
-                    message: `Generated ${imgResult.resolved} image${imgResult.resolved === 1 ? "" : "s"}.`,
+                    message: `Made ${imgResult.resolved} picture${imgResult.resolved === 1 ? "" : "s"}.`,
                   }),
                 ),
               );
             }
-            controller.enqueue(
-              encoder.encode(
-                sse({
-                  type: "timeline",
-                  step: "image_resolve",
-                  outcome: imgResult.resolved > 0 ? "fixed" : "ok",
-                  message:
-                    imgResult.resolved > 0
-                      ? `Generated ${imgResult.resolved} image${imgResult.resolved === 1 ? "" : "s"}`
-                      : "Image placeholders resolved",
-                  count: imgResult.resolved,
-                  ts: Date.now(),
-                }),
-              ),
-            );
           }
         } catch (e) {
           console.warn("[petal-image] resolver failed", e);
