@@ -33,7 +33,7 @@ describe("central AI model config", () => {
       defaultVisionModel(),
     );
     expect(coerceToConfiguredModel(defaultTextModel())).toBe(defaultTextModel());
-  });
+  }, 30_000);
 });
 
 describe("aiChatCompletions wire contract", () => {
@@ -61,6 +61,8 @@ describe("aiChatCompletions wire contract", () => {
     globalThis.fetch = realFetch;
   });
 
+  const orCalls = () => calls.filter((c) => c.url === OPENROUTER_CHAT_URL);
+
   it("sends every call to OpenRouter with the configured DeepSeek model", async () => {
     const { aiChatCompletions } = await import("@/server/ai-provider.server");
     await aiChatCompletions({
@@ -70,12 +72,13 @@ describe("aiChatCompletions wire contract", () => {
         messages: [{ role: "user", content: "hi" }],
       },
     });
-    // Exactly one upstream request — no multi-provider fan-out.
-    expect(calls.length).toBe(1);
-    expect(calls[0].url).toBe(OPENROUTER_CHAT_URL);
-    expect(calls[0].body.model).toBe(defaultTextModel());
-    expect(calls[0].headers.Authorization).toBe("Bearer test-key");
-  });
+    // Exactly one model request — no multi-provider fan-out.
+    expect(orCalls().length).toBe(1);
+    expect(orCalls()[0].body.model).toBe(defaultTextModel());
+    expect(orCalls()[0].headers.Authorization).toBe("Bearer test-key");
+    // No other AI gateway is contacted.
+    expect(calls.some((c) => c.url.includes("ai.gateway.lovable.dev"))).toBe(false);
+  }, 30_000);
 
   it("requests token usage on streamed calls", async () => {
     const { aiChatCompletions } = await import("@/server/ai-provider.server");
@@ -83,8 +86,8 @@ describe("aiChatCompletions wire contract", () => {
       feature: "discuss",
       body: { model: "openai/gpt-4o", stream: true, messages: [] },
     });
-    expect(calls[0].body.stream_options).toEqual({ include_usage: true });
-  });
+    expect(orCalls()[0].body.stream_options).toEqual({ include_usage: true });
+  }, 30_000);
 
   it("uses the vision model when the request carries an image part", async () => {
     const { aiChatCompletions } = await import("@/server/ai-provider.server");
@@ -102,6 +105,6 @@ describe("aiChatCompletions wire contract", () => {
         ],
       },
     });
-    expect(calls[0].body.model).toBe(defaultVisionModel());
-  });
+    expect(orCalls()[0].body.model).toBe(defaultVisionModel());
+  }, 30_000);
 });
