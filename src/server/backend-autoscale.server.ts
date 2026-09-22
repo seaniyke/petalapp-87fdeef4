@@ -298,6 +298,40 @@ export async function notifyOwner(
 /* ---------------- entry points ---------------- */
 
 /**
+ * Kimble Compute check: does this app need its own server, and does it have
+ * one? Runs alongside the database check and never blocks it — a compute
+ * failure leaves the app exactly where it is.
+ */
+async function considerCompute(projectId: string): Promise<boolean> {
+  try {
+    const { resolveCloudTier } = await import("@/server/cloud-tier.server");
+    const tier = await resolveCloudTier(projectId);
+    if (tier.tier !== "kimble_compute" || tier.current === "kimble_compute") return false;
+
+    const { data: project } = await supabaseAdmin
+      .from("projects")
+      .select("owner_id")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (!project?.owner_id) return false;
+
+    const { provisionCompute } = await import("@/server/compute.server");
+    const result = await provisionCompute({ projectId, ownerId: project.owner_id });
+    await recordEvent(
+      projectId,
+      "capability",
+      result.ok ? "upgraded" : "blocked",
+      result.ok ? tier.reason : result.message,
+      { rows: tier.rows, users: tier.users },
+    );
+    return result.ok;
+  } catch (e) {
+    console.warn("[autoscale] compute check failed", projectId, e);
+    return false;
+  }
+}
+
+/**
  * Evaluate one project and upgrade it when it qualifies. Used by the daily
  * watcher and by capability-triggered upgrades. Never throws.
  */
@@ -306,6 +340,7 @@ export async function considerUpgrade(
   capability = false,
 ): Promise<{ upgraded: boolean; blocked?: string; error?: string }> {
   try {
+    await considerCompute(projectId);
     const decision = await evaluateProject(projectId, capability);
     if (!decision.upgrade) {
       if (decision.blocked === "no_credits" || decision.blocked === "at_capacity") {
