@@ -435,6 +435,8 @@ export async function buildVerifyPlan(args: {
   changedPaths?: string[] | null;
   /** First build of a project, or a publish: always verify everything. */
   forceFull?: boolean;
+  /** How big the request read (edit-classifier). Unlocks the `micro` tier. */
+  editScope?: "micro" | "targeted" | "structural" | null;
   signal?: AbortSignal;
 }): Promise<VerifyPlan> {
   let routes: string[];
