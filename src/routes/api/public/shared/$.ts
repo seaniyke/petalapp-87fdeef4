@@ -61,8 +61,16 @@ async function handle(request: Request): Promise<Response> {
   if (!UUID.safeParse(projectId).success) return json({ error: "Invalid project id" }, 400);
 
   const apiKey = request.headers.get("x-petal-key");
-  const ok = await resolveProjectByKey(projectId, apiKey);
-  if (!ok) return json({ error: "Invalid or missing project key" }, 401);
+  const access = await resolveProjectAccess(projectId, apiKey);
+  if (access === "unavailable") {
+    // Our side is down or misconfigured — say so, and let the app retry
+    // (its client falls back to another Kimble origin on a 503).
+    return json({ error: "Backend temporarily unavailable. Please try again." }, 503);
+  }
+  if (access === "no_backend") {
+    return json({ error: "This app has no backend set up yet." }, 404);
+  }
+  if (access !== "ok") return json({ error: "Invalid or missing project key" }, 401);
 
   const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
   const userId = await verifyUserToken(projectId, bearer);
