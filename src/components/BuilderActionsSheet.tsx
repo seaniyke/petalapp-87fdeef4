@@ -170,43 +170,26 @@ export function BuilderActionsSheet({
 
         <div className="mx-4 h-px bg-border/60" />
 
-        {/* Primary actions — registry-driven, so mobile can't drift from desktop. */}
+        {/* Four groups, registry-driven — identical to desktop. */}
         <ul className="mt-1 max-h-[55vh] overflow-y-auto py-1">
-          {primary.map((action) => (
-            <ActionRow
-              key={action.id}
-              icon={<action.icon className="h-5 w-5" />}
-              label={action.label}
-              disabled={action.disabled}
-              onClick={() => runAction(action)}
-            />
+          {groups.map((g) => (
+            <li key={g.group}>
+              <div className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {g.label}
+              </div>
+              <ul>
+                {g.actions.map((action) => (
+                  <ActionRow
+                    key={action.id}
+                    icon={<action.icon className="h-5 w-5" />}
+                    label={action.label}
+                    disabled={action.disabled}
+                    onClick={() => runAction(action)}
+                  />
+                ))}
+              </ul>
+            </li>
           ))}
-
-          {/* More — expands in place, mirroring the reference menu. */}
-          <ActionRow
-            icon={<MoreHorizontal className="h-5 w-5" />}
-            label="More"
-            trailing={
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 text-muted-foreground transition-transform",
-                  moreOpen && "rotate-180",
-                )}
-              />
-            }
-            onClick={() => setMoreOpen((v) => !v)}
-          />
-          {moreOpen &&
-            more.map((action) => (
-              <ActionRow
-                key={action.id}
-                nested
-                icon={<action.icon className="h-5 w-5" />}
-                label={action.label}
-                disabled={action.disabled}
-                onClick={() => runAction(action)}
-              />
-            ))}
 
           <ActionRow
             icon={
