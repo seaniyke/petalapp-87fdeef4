@@ -41,23 +41,15 @@ assert.equal(
 
 console.log("auto-plan: all assertions passed");
 
-describe("micro element edits skip the plan card", () => {
-  it("does not plan a back button on the sign up page", () => {
-    expect(
-      shouldAutoPlan({
-        prompt: "Add back button on the sign up page",
-        fileCount: 40,
-        isInitial: false,
-      }),
-    ).toBe(false);
-  });
-  it("still plans a real new page", () => {
-    expect(
-      shouldAutoPlan({
-        prompt: "Add a pricing page with three tiers and a checkout flow",
-        fileCount: 40,
-        isInitial: false,
-      }),
-    ).toBe(true);
-  });
-});
+// 9. A single small element on a named screen is a one-line edit, not scope.
+assert.equal(
+  shouldAutoPlan({ ...base, prompt: "Add back button on the sign up page" }),
+  false,
+);
+assert.equal(
+  shouldAutoPlan({
+    ...base,
+    prompt: "Add a pricing page with three tiers and a checkout flow",
+  }),
+  true,
+);
