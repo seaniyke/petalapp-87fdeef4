@@ -1,41 +1,51 @@
-# Make custom domains work
+# What that chat actually means for Kimble
 
-I checked the live setup. Custom domains are built end to end — adding a domain, DNS instructions, status checks, automatic HTTPS, and serving the right app at the domain. Three things are blocking it, and all three are fixable.
+I read the whole thing and checked each of its 26 suggestions against what Kimble already has. The honest headline: Kimble already has most of it. Only four things in that list are genuinely missing, and one of them is worth real money.
 
-## What's blocking it
+## Already built (no work needed)
 
-**1. Our domain provider key is missing one permission (the real blocker).**
-Every domain action we make — registering a domain, requesting its certificate, checking status — is refused with an authentication error. The same key works fine for everything else (reading the zone, DNS records), so it is only the certificate/custom-hostname permission that is missing. Until this is fixed, no customer domain can ever go live, no matter what they do at their registrar.
+- Visual identities: 25 of them (editorial, brutalist, luxury gold, noir, glass, medical, kids, cyberpunk and more), picked automatically from the brief.
+- Starting structures: 70 (restaurant, real estate, job board, telehealth, invoicing, coworking, and so on).
+- Section patterns: a catalogue of hero / proof / features / pricing / FAQ / CTA variants written specifically to stop the "hero then three cards then three cards" look.
+- Motion: a shared motion kit with reduced-motion built in.
+- Copy honesty: a live check that blocks fake testimonials, fake stats and marketing filler.
+- Project memory, change-only editing, build verification, self-repair, version history with restore, real screenshots reviewed by a vision model at phone and desktop widths, and website research from a URL.
 
-**2. We tell customers to point at the wrong address.**
-The instructions say to point their domain at `fallback.buildwithpetal.com`, but domains are actually registered under `kimble.cloud`. These need to match, or verification and certificates stall.
+So the audit that chat is asking for is done, and the answer is: the engines exist.
 
-**3. Kimble's own addresses aren't in the "never treat as a customer domain" list.**
-The list still names the old buildwithpetal addresses and doesn't include `kimble.cloud` / `www.kimble.cloud`.
+## Genuinely missing (worth doing)
 
-## What happens next
+**1. Picture intelligence — the real gap.**
+Right now every app's images are made from scratch or filled with a grey placeholder. There is no library Kimble can search. This is the single biggest quality and cost lever: a curated, tagged picture library means better-looking apps and far cheaper builds, because the most expensive part of a build stops being image generation.
+Plan: build a picture library where every image carries subject, industry, mood, colour, orientation and whether people appear — then have the builder search it first and only create a new image when nothing fits.
 
-Step 1 needs you (a minute in the Cloudflare dashboard):
+**2. Icon vocabulary.**
+Icons are described in instructions but never chosen from a known list, so a build can reach for one that does not exist. Plan: a fixed, searchable icon set the builder picks from by meaning.
 
-- Create an API token with **Zone → SSL and Certificates → Edit** and **Zone → Zone → Read**, scoped to the `kimble.cloud` zone. (The current token is missing the first one; it must be a token created under **My Profile → API Tokens**, not an account-scoped one.)
-- Paste it to me and I'll store it securely and re-run the check.
+**3. You can edit the resources without a code change.**
+Identities, structures and section patterns are baked into the code. You can already edit pricing and economics from the admin screen; you cannot edit these. Plan: move them behind the same admin screen so you can add an identity or a starting structure yourself.
 
-Then I'll do the rest:
+**4. Visual review is thinner than it reads.**
+Screenshots are only reviewed at two widths and only after the build. Plan: add a tablet width and re-check after a repair, so a fix that breaks something else gets caught.
 
-- Turn on the setup that lets customer domains reach Kimble, and confirm it answers.
-- Change the address customers point at to one on `kimble.cloud`, in the instructions, the copy buttons, and the automatic DNS check.
-- Add Kimble's own addresses to the reserved list.
-- Run a full end-to-end test with a real test domain: add it, point the DNS, watch it verify, get its certificate, and load a published app over HTTPS — plus the "not published yet" and "private" pages.
-- Clean up the one stale test domain still sitting in our records.
+## Deliberately not doing
 
-## Technical detail
+- No second builder architecture. What that chat calls "agent tools", "self-healing" and "deterministic verification" already exist here — rebuilding them would be a rewrite with no user-visible gain.
+- No 100-component library as a separate thing. The section patterns plus the existing kits already cover this; a parallel library would only create drift.
+- Not chasing every one of the 26 items. Several are marketing descriptions of things Kimble does differently and better.
 
-- `src/server/cloudflare-saas.server.ts` calls `/zones/$CLOUDFLARE_SAAS_ZONE_ID/custom_hostnames`; that zone is `kimble.cloud` (confirmed, active). `GET custom_hostnames` and `GET custom_hostnames/fallback_origin` both return `403 code 10000 Authentication error`, while `GET /zones/{id}` returns 200 — permission scope, not a bad token.
-- `PETAL_DOMAIN_CNAME_TARGET` / `PETAL_DOMAIN_APEX_ALIAS_TARGET` in `src/lib/domains.ts` are `fallback.buildwithpetal.com`; change to a proxied record in the SaaS zone (`fallback.kimble.cloud`, which already resolves to Cloudflare). `src/routes/api/domains/dns-check.ts` and `DomainsSection.tsx` both read these constants, so one change updates instructions, copy buttons and verification.
-- Set the zone's fallback origin to the host running `proxyToPages` (`src/server/host-routing.server.ts`) once the token allows it.
-- `RESERVED_EXACT` in `host-routing.server.ts`: add `kimble.cloud`, `www.kimble.cloud`; keep the existing entries.
-- `project_domains` holds one row: `petalapp.dev`, active — a leftover from earlier testing.
+## Order of work
 
-## Not in scope
+1. Picture library with searchable tags, and the builder wired to search before generating.
+2. Icon vocabulary.
+3. Admin editing for identities, structures and section patterns.
+4. Tablet width plus after-repair recheck in visual review.
 
-Domain purchasing, email domains, plan gating, and the billing side of domains.
+Each step ships on its own and is verified with real builds, not just passing checks.
+
+## Technical notes
+
+- Picture library: new table with tag columns plus a text search index; the picture step queries it before falling back to generation; the existing procedural placeholder stays as the last resort. Metadata written at ingest time, not at build time.
+- Icons: a generated allow-list from the installed icon package, injected as a search tool rather than a prompt dump, plus a build-time check that every icon used exists.
+- Admin-managed resources: the current hardcoded records become seeded rows behind the existing admin patterns, read through a cached loader so build latency does not change.
+- Visual review: add a 834px capture and a second review pass gated to runs where a repair actually changed files, to avoid doubling vision cost on clean builds.
