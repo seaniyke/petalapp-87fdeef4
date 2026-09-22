@@ -134,7 +134,10 @@ export function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <ThemeToggle variant="icon" className="hidden sm:grid" />
+            <span className="hidden sm:inline-flex">
+              <ThemeToggle variant="icon" />
+            </span>
+
 
 
 
