@@ -373,8 +373,13 @@ export function autofixFile(file: ProjectFile, report: AutofixReport, hasBackend
  * (see generate.server.ts), which is the only safe place for it: the model
  * has full context and can omit both the file AND its callers.
  */
-export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; report: AutofixReport } {
+export function autofixFiles(
+  files: ProjectFile[],
+  targetPaths?: Iterable<string>,
+): { files: ProjectFile[]; report: AutofixReport } {
   const report: AutofixReport = { fixedCount: 0, notes: [] };
+  const allowed = targetPaths ? new Set(targetPaths) : null;
+  const originalByPath = allowed ? new Map(files.map((f) => [f.path, f])) : null;
   const hasBackendKit = files.some((f) => f.path === "src/integrations/backend/client.ts");
   const lazyFixed = fixLazyNamedExports(files, report);
   const perFile = lazyFixed.map((f) => autofixFile(f, report, hasBackendKit));
@@ -416,5 +421,23 @@ export function autofixFiles(files: ProjectFile[]): { files: ProjectFile[]; repo
     report.fixedCount += jsxFix.notes.length;
     report.notes.push(...jsxFix.notes);
   }
-  return { files: jsxFix.files, report };
+  if (!allowed || !originalByPath) return { files: jsxFix.files, report };
+
+  // A targeted user edit must not become a project-wide cleanup. The safety
+  // passes may inspect the whole graph, but only files already changed by this
+  // turn are allowed to leave with different bytes.
+  const scopedFiles = jsxFix.files.map((file) => {
+    if (allowed.has(file.path)) return file;
+    return originalByPath.get(file.path) ?? file;
+  });
+  const changedAllowed = scopedFiles.filter(
+    (file) => originalByPath.get(file.path)?.content !== file.content,
+  ).length;
+  return {
+    files: scopedFiles,
+    report: {
+      fixedCount: changedAllowed,
+      notes: changedAllowed > 0 ? [`Scoped safety fixes to ${changedAllowed} edited file(s)`] : [],
+    },
+  };
 }

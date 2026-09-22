@@ -1,12 +1,10 @@
 /**
  * The one line under the build headline — alive rather than static.
  *
- * It types itself in, crossfades when a new line arrives, and falls back to a
- * short in-character aside when nothing new has landed for a few seconds so
- * it never freezes on a stale sentence.
+ * It types itself in when a real event arrives, then quietly clears if nothing
+ * new happens. It never invents activity to make a build feel busy.
  */
 import { useEffect, useRef, useState } from "react";
-import { idleLine } from "@/lib/activity-language";
 
 type Props = {
   /** The real line, derived from something Kimble actually did. */
@@ -37,7 +35,6 @@ export function LiveNarration({ line, phaseId, active, idleAfterMs = 6000 }: Pro
   const [shown, setShown] = useState<string>(line ?? "");
   const [typed, setTyped] = useState<string>(line ?? "");
   const lastChangeRef = useRef<number>(Date.now());
-  const [idleSeed, setIdleSeed] = useState(0);
 
   // A genuinely new line always wins and restarts the typing.
   useEffect(() => {
@@ -47,20 +44,13 @@ export function LiveNarration({ line, phaseId, active, idleAfterMs = 6000 }: Pro
     setShown(next);
   }, [line, shown]);
 
-  // Nothing new for a while → say something in character instead of sitting
-  // on a line that is no longer true.
+  // A stale line is less honest than silence. Clear it; the next real event
+  // will populate the caption again.
   useEffect(() => {
-    if (!active) return;
-    const t = setInterval(() => {
-      if (Date.now() - lastChangeRef.current < idleAfterMs) return;
-      const aside = idleLine(phaseId ?? "writing", idleSeed);
-      if (!aside) return;
-      lastChangeRef.current = Date.now();
-      setIdleSeed((n) => n + 1);
-      setShown(aside);
-    }, 1200);
-    return () => clearInterval(t);
-  }, [active, phaseId, idleAfterMs, idleSeed]);
+    if (!active || !shown) return;
+    const t = setTimeout(() => setShown(""), idleAfterMs);
+    return () => clearTimeout(t);
+  }, [active, phaseId, idleAfterMs, shown]);
 
   // Type it in, character by character.
   useEffect(() => {

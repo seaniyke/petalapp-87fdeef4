@@ -198,10 +198,14 @@ export async function resolvePetalImagePlaceholders(
   onImage?: (image: { url: string; slug: string; index: number }) => void,
   /** When set, the owner's own uploaded photos are searched first. */
   projectId?: string | null,
+  /** Existing apps: only placeholders introduced by this turn are eligible. */
+  targetPaths?: Iterable<string>,
 ): Promise<{ files: ProjectFile[]; resolved: number; failed: number; urls: string[] }> {
+  const allowed = targetPaths ? new Set(targetPaths) : null;
   // 1. Collect all unique placeholders across the project.
   const slugs = new Set<string>();
   for (const f of files) {
+    if (allowed && !allowed.has(f.path)) continue;
     PLACEHOLDER_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = PLACEHOLDER_RE.exec(f.content)) !== null) {
@@ -290,6 +294,7 @@ export async function resolvePetalImagePlaceholders(
 
   // 5. Apply substitutions.
   const next = files.map((f) => {
+    if (allowed && !allowed.has(f.path)) return f;
     if (!f.content.includes("petal-image://")) return f;
     const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug) => {
       return urlMap.get(slug) ?? `https://picsum.photos/seed/${slug}/1200/800`;

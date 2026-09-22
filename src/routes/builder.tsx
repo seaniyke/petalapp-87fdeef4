@@ -51,6 +51,7 @@ import {
   readPersistedTurn,
   bumpTurnSeq,
 } from "@/lib/turn-persistence";
+import { appendUniqueActivity } from "@/lib/build-activity-events";
 import {
   persistPendingPlan,
   clearPendingPlan,
@@ -1961,11 +1962,11 @@ function Builder() {
       // event we refresh files from the database (the pipeline persists them
       // server-side), so the user sees the finished result without any
       // manual click.
-      let seq = persisted.lastSeq;
       void streamResumeTurn(
         persisted.turnId,
         persisted.lastSeq,
         {
+          onEventSeq: (seq) => bumpTurnSeq(pid, seq),
           onPhase: (phase) => {
             setPhases((p) => advanceTo(p, phase));
             setActivityVisible(true);
@@ -1975,22 +1976,15 @@ function Builder() {
             setActivityVisible(true);
           },
           onPlanDelta: (d) => {
-            seq += 1;
-            bumpTurnSeq(pid, seq);
             setStreamingPlan((s) => s + d);
           },
           onSummaryDelta: (d) => {
-            seq += 1;
-            bumpTurnSeq(pid, seq);
             setStreamingAssistant((s) => s + d);
           },
           onRecapDelta: (d) => {
-            seq += 1;
-            bumpTurnSeq(pid, seq);
             setStreamingRecap((s) => s + d);
           },
-          onFileProgress: (n, path) => {
-            setFilesWritten(n);
+          onFileProgress: (_n, path) => {
             if (path) {
               setLatestPath((prev) => {
                 // Reset narration when we move to a new file so the old
@@ -1998,7 +1992,11 @@ function Builder() {
                 if (prev !== path) setLatestNarration(undefined);
                 return path;
               });
-              setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+              setWrittenPaths((prev) => {
+                const next = prev.includes(path) ? prev : [...prev, path];
+                setFilesWritten(next.length);
+                return next;
+              });
             }
           },
           onFileComplete: (path, _bytes, _index, content) => {
@@ -2053,7 +2051,7 @@ function Builder() {
           onCycleProgress: (_cycle, message) => setLatestCycleProgress(message),
           onCycleEnd: () => setLatestCycleProgress(undefined),
           onTimeline: (entry) => {
-            setTimelineEvents((prev) => (prev.length >= 30 ? prev : [...prev, entry]));
+            setTimelineEvents((prev) => appendUniqueActivity(prev, entry));
           },
           onCreditsPaused: (pause) => {
             setCreditPause({
@@ -2687,8 +2685,7 @@ function Builder() {
               setStreamingRecap((s) => s + d);
               draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
-            onFileProgress: (n, path) => {
-              setFilesWritten(n);
+            onFileProgress: (_n, path) => {
               if (path) {
                 setLatestPath((prev) => {
                   if (prev !== path) setLatestNarration(undefined);
@@ -2696,7 +2693,11 @@ function Builder() {
                 });
                 // Append to ordered, deduped list so the user sees each file
                 // appear in the activity card as Kimble writes it.
-                setWrittenPaths((prev) => (prev.includes(path) ? prev : [...prev, path]));
+                setWrittenPaths((prev) => {
+                  const next = prev.includes(path) ? prev : [...prev, path];
+                  setFilesWritten(next.length);
+                  return next;
+                });
               }
             },
             onFileComplete: (path, _bytes, _index, content) => {
@@ -2772,9 +2773,7 @@ function Builder() {
             onTimeline: (entry) => {
               // Append every pipeline step to the live timeline. Cap at 30
               // entries so a runaway server can't bloat React state.
-              setTimelineEvents((prev) =>
-                prev.length >= 30 ? prev : [...prev, entry],
-              );
+              setTimelineEvents((prev) => appendUniqueActivity(prev, entry));
             },
             // onContinuationHandoff removed — Continue-building chip retired.
 

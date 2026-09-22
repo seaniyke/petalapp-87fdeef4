@@ -162,7 +162,7 @@ export const Route = createFileRoute("/api/turns/$id/events")({
                     evt.payload && typeof evt.payload === "object"
                       ? (evt.payload as Record<string, unknown>)
                       : {};
-                  safeEnqueue(sse(evt.kind, payload));
+                  safeEnqueue(sse(evt.kind, { ...payload, seq: evt.seq }));
                   lastSeqSent = evt.seq;
                 }
               }
@@ -194,7 +194,7 @@ export const Route = createFileRoute("/api/turns/$id/events")({
                       evt.payload && typeof evt.payload === "object"
                         ? (evt.payload as Record<string, unknown>)
                         : {};
-                    safeEnqueue(sse(evt.kind, payload));
+                    safeEnqueue(sse(evt.kind, { ...payload, seq: evt.seq }));
                     lastSeqSent = evt.seq;
                     if (evt.kind === "done") terminal = true;
                   }

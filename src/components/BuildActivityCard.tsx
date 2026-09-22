@@ -26,6 +26,7 @@ import {
 import { type Phase, type PhaseId, totalElapsedSeconds } from "@/lib/build-phases";
 import { buildTrace, formatDuration, type ThoughtTick } from "@/lib/build-trace";
 import { latestActivityLine, pictureLine } from "@/lib/activity-language";
+import { distinctPictureUrls } from "@/lib/build-activity-events";
 import { LiveNarration } from "@/components/build/LiveNarration";
 import { ImageStrip } from "@/components/build/ImageStrip";
 import { FileStack } from "@/components/build/FileStack";
@@ -341,7 +342,9 @@ export function BuildActivityCard({
     if (lastEvent && lastEvent.ts >= lastFileTs) {
       if (lastEvent.url) {
         // A picture just landed — say it the way a person would.
-        subCaption = pictureLine(lastEvent.count ?? 1);
+        subCaption = pictureLine(
+          distinctPictureUrls(timelineEvents ?? []).length || 1,
+        );
       } else {
         const live = latestActivityLine(timelineEvents);
         if (live) subCaption = live;
@@ -350,9 +353,7 @@ export function BuildActivityCard({
   }
 
   // Pictures streamed in one by one, newest last.
-  const imageUrls = (timelineEvents ?? [])
-    .filter((e) => typeof e.url === "string" && e.url.length > 0)
-    .map((e) => e.url as string);
+  const imageUrls = distinctPictureUrls(timelineEvents ?? []);
   const lastEventTs = timelineEvents?.[timelineEvents.length - 1]?.ts ?? 0;
   const imagesPending =
     isActive &&
@@ -373,7 +374,10 @@ export function BuildActivityCard({
     );
   }
 
-  const fileCount = filesWritten ?? writtenPaths?.length ?? 0;
+  const changedFileCount = fileChanges
+    ? Object.values(fileChanges).filter((change) => change.kind !== "unchanged").length
+    : 0;
+  const fileCount = changedFileCount || writtenPaths?.length || filesWritten || 0;
   const costLabel =
     typeof creditsCharged === "number"
       ? creditsCharged === 0
