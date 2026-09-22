@@ -1,42 +1,34 @@
-# Make small changes finish fast
+# Small changes: make them fast, and make them land on the right page
 
-You're right. Today almost every request — even "add a back arrow to the login page" — goes through the same heavy finishing routine as a brand-new app: rebuild, open a real browser, walk pages at three screen sizes, take screenshots, have a second model grade the design, sometimes sign up a test user and run form flows, and occasionally start a quiet touch-up round on top of that. That's why a ten-second change takes a minute.
+Two problems, one cause. A small request today goes through the same machinery as building a whole app: it is handed to the model with a wide view of the project, then finished with a full review — rebuild, open a real browser, walk pages at three screen sizes, grade the design with a second model, sometimes sign up a test user and run form flows, and occasionally start a quiet touch-up round on top.
 
-The compile-and-safety checks are cheap (milliseconds). The expensive parts are the browser pass, the design grading, the test-account flows, and any follow-up polish round. Those should be reserved for work that can actually break the app's look or behaviour.
+That is why "add a back arrow to the sign-in page" takes a minute — and why it can come back having changed the landing page. Nothing today actually forces the edit to stay on the page you named: the instruction to stay small is written in the prompt as advice, and several later clean-up passes are free to rewrite other files. When the wrong file changes, we only mention it afterwards.
 
-## What changes
+## Part 1 — Understand the request before touching anything
 
-**1. Size the finishing pass to the change**
+1. **Name the page first.** Before any editing starts, Kimble resolves the exact file(s) behind the words you used ("sign in page", "footer", "pricing"). If it can't confidently name them, it says so and asks one short question instead of guessing.
+2. **Lock the edit to those files.** The resolved list becomes a hard boundary, not a suggestion. Any change outside it is rejected and re-attempted on the right file. Only genuine follow-on fixes (an import that would otherwise break) are allowed through.
+3. **Don't let clean-up passes wander.** The automatic tidy-up, design-consistency and polish passes only run over the files this turn actually changed, never the whole project.
+4. **Confirm the ask landed.** After the edit, check that the thing you asked for actually appears in the file you named. If it didn't, retry there — don't report success.
+5. **Say what changed, honestly.** The result card lists the pages touched. If anything beyond your request changed, it's named plainly, not buried.
 
-- Tiny change (a button, a label, a colour, a link, one small file): rebuild and load only the page that changed, once, at one size. Check only for real breakage — page errors, a blank screen, a broken image. No screenshot grading, no test sign-up, no form flows.
-- Normal change (a section, a component used by a couple of pages): visit the affected pages, capture phone and desktop, grade only if something looks off structurally.
-- Big change (new page, layout/theme/global files, many files, first build, publishing): the full pass exactly as it is today.
+## Part 2 — Size the finishing review to the change
 
-**2. Stop cosmetic notes from triggering extra work on tiny changes**
+- **Tiny change** (a button, a label, a colour, a link, one small file): rebuild and load only the page that changed, once, at one screen size. Check only for real breakage — errors, a blank screen, a broken image. No design grading, no test sign-up, no form flows.
+- **Normal change** (a section or a shared component): visit the affected pages at phone and desktop.
+- **Big change** (new page, theme or layout files, many files, first build, publishing): the full review exactly as today.
 
-Design-taste notes ("this heading could be larger") will no longer start another build round on a small edit. They are collected and applied on the next substantial change or before publishing, so the user's small request finishes when it's done.
-
-**3. Never skip the cheap safety net**
-
-Type checking, compile checks, and the instant repair passes stay on for every change — they cost milliseconds and catch the failures that actually matter.
-
-**4. Always full quality before shipping**
-
-Publishing, the first build, and any change to global styling/layout still get the complete review. Quality at the moment it counts, speed in between.
-
-**5. Honest waiting**
-
-The live card will reflect the shorter path instead of implying a full review is running.
+Cosmetic design notes will no longer start an extra build round on a tiny change; they're saved and applied on the next substantial change or before publishing. The cheap safety net — type checking, compile checks, instant repairs — stays on for everything.
 
 ## Technical notes
 
-- Reuse `edit-classifier.server.ts` output (micro / targeted / structural) as an input to `computeVerifyScope` in `src/server/verify-scope.server.ts`; add a `micro` tier: single route, single width `[1440]` (or `[390]` on mobile targets), `skipFlows: true`, and a new `skipVisualScoring: true`.
-- `buildVerifyPlan` (`verify-plan.server.ts`) honours the new tier: omit `plan.auth` sign-up pass and `plan.flows` for micro, cap `plan.visual.routes` to one.
-- `src/routes/api/public/builds/callback.ts`: skip `scoreVisualQA` when the plan was micro; keep hard defect detection (page errors, blank route, broken images). Park craft notes on the project for the next non-micro turn instead of opening a repair round.
-- Keep esbuild, local verifier, autofix, and the TypeScript gate unchanged on every path.
-- Record the chosen tier and its reason on the build (already supported by `plan.scope`) so timings can be compared per tier.
-- Tests: scope-selection unit tests per tier, plus a callback test asserting no vision call and no repair round on a micro build.
+- Promote target resolution to a required pre-step: combine `change-set.server.ts` surface vocabulary, route/file name matching, and the existing inspector agent into one resolver returning `targetPaths` plus a confidence value. Low confidence on a micro/targeted edit → ask one question (existing ask policy), don't build.
+- Turn `renderScopeContractBlock` from prompt-only into enforcement: filter emitted ops against `targetPaths` (plus import-repair allowances) before they are applied; drop and re-prompt once with the rejected paths named. Keep `edit-scope-guard` disclosure as the backstop.
+- Pass `changedPaths` into `autofixFiles`, `enforceDesignContract`, design-finisher and image-placeholder resolution on every non-initial turn (autofix and image resolution already accept a path filter — the other passes need the same).
+- Add a per-item landing check: for each `ChangeSet` item, require diff evidence in a resolved target file; if absent, one targeted retry before the turn reports done.
+- Add a `micro` tier to `computeVerifyScope` (`verify-scope.server.ts`): single route, single width, `skipFlows: true`, new `skipVisualScoring: true`. `buildVerifyPlan` omits `plan.auth` and `plan.flows` for micro and caps `plan.visual.routes` to one. `builds/callback.ts` skips `scoreVisualQA` and the craft-repair round for micro builds, parking craft notes for the next non-micro turn.
+- Tests: resolver picks the right file for common phrasings; an op outside `targetPaths` is rejected; clean-up passes leave untouched files byte-identical; micro builds make no vision call and start no repair round.
 
 ## Expected effect
 
-Tiny edits drop from roughly a minute to the rebuild-and-deploy floor (a few seconds plus deploy), with no loss of protection on the changes that can genuinely break an app.
+"Add a back button to the sign-in page" edits exactly one file, finishes in seconds, and never touches the landing page.
