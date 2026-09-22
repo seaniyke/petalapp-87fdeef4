@@ -21,7 +21,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { economicsValues } from "@/server/economics-config.server";
+import {
+  economicsValues,
+  ECONOMICS_DEFAULTS,
+  invalidateEconomicsCache,
+  type EconomicsKey,
+} from "@/server/economics-config.server";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -1693,6 +1698,54 @@ export const Route = createFileRoute("/api/admin/credits")({
               config: cfg,
               alerts,
             });
+          }
+
+          // ---- Internal economics rates (admin-editable) -----------------
+          if (body.action === "economics_config") {
+            const { data } = await supabaseAdmin
+              .from("economics_config")
+              .select("key, value");
+            const stored: Record<string, number> = {};
+            for (const row of data ?? []) {
+              const n = Number(row.value);
+              if (Number.isFinite(n)) stored[row.key] = n;
+            }
+            return Response.json({
+              rows: (Object.keys(ECONOMICS_DEFAULTS) as EconomicsKey[]).map((key) => ({
+                key,
+                value: stored[key] ?? ECONOMICS_DEFAULTS[key],
+                default_value: ECONOMICS_DEFAULTS[key],
+                overridden: key in stored,
+              })),
+            });
+          }
+
+          if (body.action === "set_economics_config") {
+            const key = String(body.key ?? "") as EconomicsKey;
+            if (!(key in ECONOMICS_DEFAULTS)) {
+              return Response.json({ error: "Unknown setting" }, { status: 400 });
+            }
+            const value = Number(body.value);
+            if (!Number.isFinite(value) || value < 0) {
+              return Response.json({ error: "Value must be a positive number" }, { status: 400 });
+            }
+            const { error } = await supabaseAdmin
+              .from("economics_config")
+              .upsert({ key, value: value as never, updated_at: new Date().toISOString() }, { onConflict: "key" });
+            if (error) return Response.json({ error: error.message }, { status: 400 });
+            invalidateEconomicsCache();
+            return Response.json({ ok: true, key, value });
+          }
+
+          if (body.action === "reset_economics_config") {
+            const key = String(body.key ?? "") as EconomicsKey;
+            if (!(key in ECONOMICS_DEFAULTS)) {
+              return Response.json({ error: "Unknown setting" }, { status: 400 });
+            }
+            const { error } = await supabaseAdmin.from("economics_config").delete().eq("key", key);
+            if (error) return Response.json({ error: error.message }, { status: 400 });
+            invalidateEconomicsCache();
+            return Response.json({ ok: true, key, value: ECONOMICS_DEFAULTS[key] });
           }
 
           return Response.json({ error: "Unknown action" }, { status: 400 });
