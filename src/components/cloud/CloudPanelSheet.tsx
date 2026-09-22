@@ -10,7 +10,7 @@
  *  - Project mode (projectId set): all sub-views are scoped to that
  *    project (database, users, storage, secrets, advanced, etc.).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -59,6 +59,8 @@ type Props = {
   onOpenBalance: () => void;
   /** When set, sub-views are scoped to this project's managed backend. */
   projectId?: string;
+  /** Open straight onto a sub-view (used when Kimble opens it from chat). */
+  initialView?: View;
 };
 
 export function CloudPanelSheet({
@@ -66,8 +68,14 @@ export function CloudPanelSheet({
   onOpenChange,
   onOpenBalance,
   projectId,
+  initialView,
 }: Props) {
-  const [view, setView] = useState<View>("home");
+  const [view, setView] = useState<View>(initialView ?? "home");
+
+  // Kimble can ask for a specific sub-view while the sheet is already mounted.
+  useEffect(() => {
+    if (open && initialView) setView(initialView);
+  }, [open, initialView]);
 
   const handleOpenChange = (v: boolean) => {
     if (!v) setView("home"); // reset when closing
