@@ -25,7 +25,9 @@ export type EconomicsKey =
   | "dedicated_retention_days"
   | "auto_upgrade_row_pct"
   | "auto_upgrade_user_count"
-  | "auto_upgrade_min_credits";
+  | "auto_upgrade_min_credits"
+  | "compute_hour_usd"
+  | "max_active_compute";
 
 export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   target_variable_cost_per_credit_usd: 0.05,
