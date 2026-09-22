@@ -147,7 +147,9 @@ export async function scoreVisualQA(args: {
       type: "text",
       text: `Review these ${shots.length} screenshots of one app: ${shots
         .map((s) => `${s.path} at ${s.width}px`)
-        .join(", ")}. The 390px shots are phones — judge them by mobile standards.`,
+        .join(
+          ", ",
+        )}. Shots under 700px are phones — judge them by mobile standards. Shots between 700px and 1100px are tablets: check that desktop grids have actually reflowed and that nothing is stretched or orphaned at that width. Shots above 1100px are desktop.`,
     },
   ];
   for (const s of shots) {

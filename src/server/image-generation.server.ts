@@ -18,6 +18,7 @@
 import { createHash } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { OPENROUTER_CHAT_URL, defaultImageModel } from "@/lib/ai-model-config";
+import { findLibraryPicture } from "./registry/pictures.server";
 import type { ProjectFile } from "./generate.server";
 
 const BUCKET = "petal-images";
@@ -230,6 +231,20 @@ export async function resolvePetalImagePlaceholders(
     while (queue.length) {
       const slug = queue.shift();
       if (!slug) return;
+      // Curated library first. A good match is faster, cheaper and more
+      // consistent than generating; a weak match is skipped so quality
+      // never drops for the sake of a saving.
+      try {
+        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug) });
+        if (fromLibrary) {
+          urlMap.set(slug, fromLibrary.url);
+          resolved += 1;
+          announce(slug, fromLibrary.url);
+          continue;
+        }
+      } catch {
+        // Library trouble must never stop a build — generate instead.
+      }
       try {
         const r = await generatePetalImage({ prompt: slugToPrompt(slug) });
         urlMap.set(slug, r.url);
