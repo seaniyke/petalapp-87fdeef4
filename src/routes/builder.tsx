@@ -3445,7 +3445,8 @@ function Builder() {
       try {
         const { reply, openSurface } = await requestDiscussion({
           messages: nextMessages,
-          currentFiles: files,
+          currentFiles: await waitForFiles(),
+
           customInstructions: proj.custom_instructions ?? undefined,
         });
         const assistantMsg: ChatMessage = {
