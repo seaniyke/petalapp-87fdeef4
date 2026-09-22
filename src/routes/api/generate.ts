@@ -3391,20 +3391,21 @@ Forbidden defaults
   if (!directLogoEdit && (!upstream || !upstream.ok || !upstream.body)) {
     // Upstream rejected before doing any work — nothing was charged,
     // nothing to refund. Just surface a friendly error.
-    let msg = `AI gateway error (${upstream.status})`;
-    if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
-    else if (upstream.status === 402)
+    const upstreamStatus = upstream?.status ?? 502;
+    let msg = `AI gateway error (${upstreamStatus})`;
+    if (upstreamStatus === 429) msg = "Rate limit reached. Please wait a moment.";
+    else if (upstreamStatus === 402)
       msg = "AI credits exhausted. Add credits in Settings → Workspace → Usage.";
     else {
       try {
-        const text = await upstream.text();
-        console.error("AI gateway error", upstream.status, text);
+        const text = upstream ? await upstream.text() : "No response";
+        console.error("AI gateway error", upstreamStatus, text);
       } catch {
         /* ignore */
       }
     }
     releaseBuildLock(userId, body.projectId);
-    return new Response(msg, { status: upstream?.status === 402 ? 402 : 502 });
+    return new Response(msg, { status: upstreamStatus === 402 ? 402 : 502 });
   }
 
   const encoder = new TextEncoder();
