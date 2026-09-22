@@ -54,6 +54,17 @@ type EconomicsResponse = {
     p95_ms: number | null;
   };
   top_projects: Array<{ project_id: string; turns: number; credits: number; cost: number }>;
+  ai_rollup?: {
+    turns: number;
+    avg_calls_per_turn: number;
+    avg_input_tokens: number;
+    avg_output_tokens: number;
+    cache_hit_pct: number | null;
+    retries_per_turn: number;
+    error_rate_pct: number;
+    calls_without_usage_pct: number;
+    avg_cost_per_turn_usd: number;
+  } | null;
   config: Record<string, number>;
   alerts: string[];
 };
