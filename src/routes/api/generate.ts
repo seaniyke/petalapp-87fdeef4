@@ -2758,8 +2758,10 @@ Forbidden defaults
   }
   // Hard ceiling for the file block, derived from the model's own context
   // window minus the output reservation. Nothing is exempt from it.
+  // The concrete model is picked further down, so budget against the smallest
+  // window in the pool — being conservative here is the point.
   const fileBlockCeiling = Math.round(
-    promptTokenCeiling({ model: selectedModel, completionBudgetTokens: 16_000 }) * 0.55,
+    promptTokenCeiling({ model: null, completionBudgetTokens: 16_000 }) * 0.55,
   );
   const promptBudget = trimFilesForPrompt(
     editablePromptFiles,
