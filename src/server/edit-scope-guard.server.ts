@@ -178,7 +178,7 @@ export function analyzeEditScope(
     } else if (removedPaths.length > 0 && wasSmallRequest) {
       reason = `A small edit removed ${removedPaths.slice(0, 3).join(", ")}.`;
     } else if (tooManyFiles) {
-      reason = `That edit touched ${deltas.length} files for what read as a one-thing change.`;
+      reason = `That edit touched ${appDeltaCount} files for what read as a one-thing change.`;
     }
   }
 
