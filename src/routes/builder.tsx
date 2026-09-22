@@ -4406,20 +4406,28 @@ function Builder() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {desktopMenuActions.map((action) => (
-                  <DropdownMenuItem
-                    key={action.id}
-                    onSelect={action.run}
-                    disabled={action.disabled}
-                  >
-                    <action.icon className="mr-2 h-3.5 w-3.5" />
-                    {action.label}
-                    {action.shortcut && (
-                      <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-                        {action.shortcut}
-                      </span>
-                    )}
-                  </DropdownMenuItem>
+                {desktopMenuGroups.map((group, gi) => (
+                  <div key={group.group}>
+                    {gi > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {group.label}
+                    </DropdownMenuLabel>
+                    {group.actions.map((action) => (
+                      <DropdownMenuItem
+                        key={action.id}
+                        onSelect={action.run}
+                        disabled={action.disabled}
+                      >
+                        <action.icon className="mr-2 h-3.5 w-3.5" />
+                        {action.label}
+                        {action.shortcut && (
+                          <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+                            {action.shortcut}
+                          </span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
