@@ -6143,7 +6143,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       // disappeared: the server then writes the assistant reply itself so the
       // thread never ends on an unanswered prompt.
       let lastResult: { summary?: string; plan?: string; recap?: string } | null = null;
+      // Plan Mode short-circuit: the inner pipeline proposed a plan and ended
+      // the stream on purpose. That is a COMPLETED turn waiting on the user's
+      // approval — no build ran, no files changed, and the plan card on the
+      // client IS the reply. The finally block below must not write a
+      // "Finished this build while you were away" bubble or kick off a deploy.
+      let planProposed = false;
       const recordEvent = makeSseTap((type, payload) => {
+        if (type === "plan_proposed") planProposed = true;
         if (type === "result") {
           const p = payload as { summary?: string; plan?: string; recap?: string };
           lastResult = {
