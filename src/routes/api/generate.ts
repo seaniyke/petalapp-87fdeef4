@@ -657,6 +657,12 @@ type ParsedTool = {
     cache_read_input_tokens?: number;
     cache_creation_input_tokens?: number;
   } | null;
+  /**
+   * Upstream refusal carried INSIDE a 200 stream. OpenRouter reports upstream
+   * failures as `{"error": {...}}` frames with no `choices`; before this the
+   * reader skipped them and the turn looked empty instead of refused.
+   */
+  providerError?: ProviderError | null;
 };
 
 function isTruncatedFinishReason(reason: string | null | undefined): boolean {
