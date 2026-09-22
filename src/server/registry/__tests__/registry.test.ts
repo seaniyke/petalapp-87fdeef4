@@ -173,6 +173,7 @@ function picture(over: Partial<LibraryPicture>): LibraryPicture {
     aspect_ratio: "16:9",
     has_people: false,
     style: "photography",
+    location: null,
     tags: ["cafe", "food", "interior"],
     source: "curated",
     license: "cc0",
