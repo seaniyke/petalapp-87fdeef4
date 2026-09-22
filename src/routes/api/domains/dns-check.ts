@@ -4,7 +4,7 @@
  * Queries authoritative public resolvers (Cloudflare DoH + Google DoH) for
  * the records we need to be live before Cloudflare for SaaS can finish
  * verification + SSL issuance:
- *   - The routing record (CNAME/ALIAS → fallback.buildwithpetal.com)
+ *   - The routing record (CNAME/ALIAS → fallback.kimble.cloud)
  *   - Any explicit TXT validation records Cloudflare returns for wildcard or
  *     pre-validation flows. Normal hostnames use automatic HTTP DCV, so no TXT
  *     record should be required.

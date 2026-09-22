@@ -2,7 +2,7 @@
  * Cloudflare for SaaS — Custom Hostnames API client.
  *
  * Used by /api/domains to register a customer's domain on our SaaS zone
- * (buildwithpetal.com), trigger automatic SSL via TXT validation, and poll
+ * (kimble.cloud), trigger automatic SSL via TXT validation, and poll
  * status. Only used server-side — uses the scoped CLOUDFLARE_API_TOKEN.
  *
  * Docs: https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/
