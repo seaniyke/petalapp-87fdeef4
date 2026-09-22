@@ -3407,6 +3407,90 @@ Forbidden defaults
           );
         }
         let collected = await relayAndCollect(upstream, controller, encoder);
+
+        // ── The service refused ───────────────────────────────────────────
+        // A refusal used to look like an empty reply, so the identical
+        // request went out twice more. Now we read the refusal and answer it:
+        // too big → send less and go again; busy → switch model and go again.
+        if (collected.providerError && !collected.name && !collected.text.trim()) {
+          const refusal = collected.providerError;
+          console.warn(
+            `[provider-refusal] kind=${refusal.kind} code=${refusal.code ?? "-"} msg=${refusal.message}`,
+          );
+          const reissue = async (
+            nextMessages: typeof finalMessages,
+            nextModel: string,
+            why: string,
+          ) => {
+            const retryUpstream = await aiChatCompletions({
+              feature: "generate",
+              budgetAware: true,
+              body: {
+                model: nextModel,
+                messages: nextMessages,
+                tools: [tool],
+                tool_choice: { type: "function", function: { name: tool.function.name } },
+                max_tokens: maxCompletionTokens,
+                stream: true,
+                ...reasoningField,
+              },
+              timeoutTier: isInitial ? "stream_first_build" : "stream",
+              signal: abortSignal,
+              meta: {
+                phase: phaseTag.phase,
+                promptChars: lastUserContent.length,
+                hadAttachments: hasVisionTurn,
+                chosenBy: why,
+                projectId: body.projectId ?? null,
+                userId,
+                turnId: logicalTurnId,
+              },
+            });
+            if (!retryUpstream.ok || !retryUpstream.body) return null;
+            return relayAndCollect(retryUpstream, controller, encoder);
+          };
+
+          if (refusal.kind === "context_overflow" && !isInitial) {
+            controller.enqueue(
+              encoder.encode(sse({ type: "status", message: "Narrowing in on the files that matter…" })),
+            );
+            const smaller = trimFilesForPrompt(
+              editablePromptFiles,
+              multiEditPromptContext || lastUserContent,
+              pinnedPaths,
+              resolvedTargetPaths,
+              { tokenCeiling: fileBlockCeiling, anchors: promptAnchors, shrink: 0.45 },
+            );
+            const smallerContext = renderFilesContext(smaller);
+            const nextMessages = finalMessages.map((m) =>
+              typeof m.content === "string" && m.content.includes(filesContext) && filesContext
+                ? { ...m, content: m.content.replace(filesContext, smallerContext) }
+                : m,
+            ) as typeof finalMessages;
+            console.info(
+              `[provider-refusal] re-issuing with ${smaller.files.length} files / ~${smaller.estimatedTokens} tokens (was ${promptBudget.files.length} / ~${promptBudget.estimatedTokens})`,
+            );
+            const retried = await reissue(nextMessages, model, "refusal_retry:smaller_context");
+            if (retried) collected = retried;
+          } else if (refusal.kind === "capacity" || refusal.kind === "unknown") {
+            controller.enqueue(
+              encoder.encode(sse({ type: "status", message: "Picking this back up…" })),
+            );
+            const backupModel = model === MODEL_BEST ? MODEL_FAST : MODEL_BEST;
+            const retried = await reissue(finalMessages, backupModel, "refusal_retry:backup_model");
+            if (retried) collected = retried;
+          }
+
+          if (!collected.name && !collected.text.trim()) {
+            emitConversationalFallback(controller, encoder, {
+              files: currentFiles,
+              summary: `${userFacingProviderMessage(refusal.kind)} Nothing was changed — send it again and Kimble will pick it straight back up.`,
+              outcome: "blocked",
+              reason: `provider_refusal:${refusal.kind}`,
+            });
+            return;
+          }
+        }
         // Running credit estimate. The main completion's usage is known the
         // moment the model stream ends — long before verify + deploy finish —
         // so the card can show "N credits used" while work is still going
