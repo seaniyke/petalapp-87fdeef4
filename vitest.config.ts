@@ -20,6 +20,7 @@ export default defineConfig({
 
       "src/lib/intent-registry.test.ts",
       "src/lib/__tests__/stream-plan.test.ts",
+      "src/lib/__tests__/activity-language.test.ts",
       "src/lib/__tests__/kimble-surfaces.test.ts",
       "src/lib/friendly-errors.test.ts",
       "src/server/__tests__/runtime-credit-fallback.test.ts",
