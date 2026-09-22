@@ -6,19 +6,17 @@
  * can never drift apart. It still owns two mobile-only affordances that
  * have no desktop equivalent: the credits row and the appearance cycle.
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   Drawer,
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
-  ChevronDown,
   Sun,
   Moon,
   Monitor as MonitorIcon,
   Sparkles,
-  MoreHorizontal,
 } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme, type Theme } from "@/hooks/use-theme";
@@ -43,7 +41,6 @@ export function BuilderActionsSheet({
   onOpenBilling,
   readinessSlot,
 }: Props) {
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const { wallet, plan, breakdown, loading } = useWallet();
   const { theme, setTheme } = useTheme();
