@@ -5443,6 +5443,18 @@ Forbidden defaults
           }),
         );
 
+        // Kimble Cloud reads what this app needs — shared, its own database,
+        // or its own server — and records it. Deterministic, no AI call, and
+        // never allowed to break a turn.
+        if (body.projectId) {
+          try {
+            const { recordTierIntent } = await import("@/server/cloud-tier.server");
+            await recordTierIntent(body.projectId, lastUserContent ?? "");
+          } catch (e) {
+            console.warn("[cloud-tier] intent skipped:", e instanceof Error ? e.message : String(e));
+          }
+        }
+
         // W4 — refresh the persisted architecture doc from the files we are
         // about to ship, so the next turn plans against reality. Runs after
         // the blueprint save (which merges sibling keys) and never throws.
