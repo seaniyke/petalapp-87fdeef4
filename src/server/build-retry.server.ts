@@ -24,7 +24,7 @@ import {
   mergeFilesIntoPayload,
 } from "@/server/integrations/env-injector.server";
 
-export const MAX_BUILD_RETRIES = 2;
+export const MAX_BUILD_RETRIES = 4;
 /** Quiet time, not age: a build that keeps reporting progress is never stuck,
  *  however long it runs. Only silence counts against it. */
 export const MIN_STUCK_MS = 80_000;
