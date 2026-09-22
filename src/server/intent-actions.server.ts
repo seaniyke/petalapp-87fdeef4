@@ -202,7 +202,10 @@ export async function resolveIntentActions(
   return {
     intents,
     enabledSharedBackend,
-    promptBlock: lines.length > 0 ? `\n\n${lines.join("\n")}\n` : "",
-    userNote,
+    promptBlock: (lines.length > 0 ? `\n\n${lines.join("\n")}\n` : "") + surfaceBlock,
+    // The surface is opening on screen, so the "you have to do this yourself"
+    // line would be said twice. The surface block already covers it.
+    userNote: surface ? null : userNote,
+    surface,
   };
 }
