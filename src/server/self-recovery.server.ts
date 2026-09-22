@@ -328,7 +328,10 @@ export async function humanizeBuildError(args: {
         tools: [HUMANIZE_TOOL],
         tool_choice: { type: "function", function: { name: "humanize_error" } },
       },
+      // Wording helper only — the raw message is already a safe fallback.
+      noFallback: true,
     });
+
     if (!resp.ok) return fallback;
     const json = (await resp.json()) as {
       choices?: Array<{
