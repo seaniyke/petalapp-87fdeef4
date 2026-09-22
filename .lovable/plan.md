@@ -1,47 +1,50 @@
-# Why "Add logo" failed — and how to make simple asks stop failing
+# Why "Add logo" came back empty — and how to make it just work
 
-## What actually happened
+## The answer to your question
 
-I traced your exact turn (21:41, Looplane). Kimble understood the request perfectly — it even said which places the logo should go. Then it tried to produce the edit three times in nine seconds, and all three attempts came back empty. Nothing was wrong with your request, and nothing was wrong with the app.
+It didn't come back empty. It came back with an **error message that Kimble throws in the bin**.
 
-Three separate weaknesses turned that into a dead end:
+When Kimble asks the model to do work, the reply arrives as a live stream. Sometimes the first thing in that stream isn't work — it's a refusal from the model service ("too much text at once", "busy right now", "that request shape isn't supported"). Kimble's reader only knows how to recognise two things in that stream: words and file edits. Anything else — including an explicit error — it skips over and keeps reading, reaches the end, and concludes: nothing came back.
 
-1. **All three attempts were the same attempt.** The retry and the "recovery" pass use the same model, the same instructions and the same output format as the first try. When the first one comes back empty, the next two come back empty too. Kimble looks like it's working hard; it's repeating itself.
-2. **There is no last-resort path for ordinary asks.** Kimble only knows how to hand-finish two specific requests when the model fails (a hero background, and "add more sections"). Everything else — logo, colour, spacing, copy, a link — falls straight to the apology.
-3. **The apology blames you.** "Point me at the specific element" is the wrong sentence when Kimble just finished describing the exact change it was going to make. It also throws away the plan it had already written.
+So the turn looks like a mystery on our side: the connection succeeded, no error was recorded, and Kimble genuinely doesn't know why it got nothing. It then repeats the identical request twice more, gets the identical refusal twice more, and apologises to you.
 
-On top of that, these empty turns aren't recorded anywhere, so this failure was invisible until you screenshotted it.
+Your turn is textbook: three requests, 3.1s / 2.7s / 5.9s, all "fine", all zero work produced.
+
+So no — retries aren't the fix. **Reading the reply is the fix.** Once Kimble can see what the service actually said, almost every one of these turns can be completed instead of retried.
 
 ## What I'll change
 
-### 1. Each attempt must be a different attempt
-First try stays as it is. If it comes back empty:
-- second attempt switches to the backup model,
-- third attempt drops the strict output format entirely and asks for a plain list of changes, which Kimble then converts itself.
+### 1. Read the whole reply, not just the parts we like
+Kimble's stream reader learns to recognise a refusal and capture the reason. This single change turns an invisible failure into a known one and is the precondition for everything below.
 
-Three different shots instead of the same shot three times.
+### 2. Answer the refusal instead of repeating the question
+Each reason gets the right response, immediately, inside the same turn:
+- **Too much at once** — Kimble sends fewer files and asks again straight away. This is the most likely cause of your turn: Looplane is a big app and "add logo" touches several files.
+- **Service busy or briefly down** — wait a moment and go again, or switch to the backup model. This is the only case where trying again is the right answer.
+- **Request shape rejected** — ask for a plain list of changes instead of the strict format, and Kimble converts it.
 
-### 2. Use the plan Kimble already wrote
-When Kimble has described the change in words but produced no edit, that description is the instruction for the next attempt — it gets handed back in, so the second try starts from a finished plan rather than from nothing.
+### 3. Don't let it get too big in the first place
+Today Kimble decides how much to send by rough size, not by what the model can actually accept. It will measure properly before sending and keep the request inside the limit, so the "too much at once" refusal mostly stops happening rather than being recovered from.
 
-### 3. Make "add a logo" actually work
-Logo is one of the most common first asks and Kimble has no direct route for it today. It gets one: when a project has no brand mark, Kimble creates one from the app's name and palette, then places it in the header, the sidebar and the sign-in screens, with the site icon updated to match. Same treatment for the other everyday asks that currently have no safety net: colour changes, button and text edits, adding a link or a section.
+### 4. Make "add a logo" a thing Kimble can just do
+Even with all of the above, logo deserves a direct route: when a project has no brand mark, Kimble creates one from the app's name and colours and places it in the header, the sidebar, the sign-in screens and the site icon — one confident change, no guessing.
 
-### 4. Never end a turn by asking the user to repeat themselves
-If all attempts genuinely fail, Kimble says so plainly, keeps its own plan visible, and offers one button to try again. It only asks a question when it truly never understood the ask — not when it did.
+### 5. Never end by asking you to repeat yourself
+If a turn truly can't be completed, Kimble says what happened in one plain line and offers one button. It will not say "point me at the specific element" right after describing exactly what it was about to do.
 
-### 5. Count these
-Empty turns get recorded internally with enough detail to see which requests and which model produced them, so this stops being a thing you discover by screenshot.
+### 6. Make these visible to me
+Refusals get recorded with their reason so this class of failure shows up on its own instead of via your screenshots.
 
-## What this does not touch
+## Not in scope
 
-Your app's files, credits, publishing, the design system, or anything the user sees outside the builder conversation. No change to pricing or plans.
+Your app's files, credits, pricing, publishing, or the design system.
 
 ## Technical notes
 
-- Root cause confirmed from `ai_call_log` turn `f5707db7`: `phase_router`, `structured_retry` and `tool_recovery` all returned HTTP 200 with no recorded completion tokens in 3.1s / 2.7s / 5.9s, all on `deepseek/deepseek-v4-flash`. The turn ended in `emitConversationalFallback(... reason: "no_safe_edit")` at `src/routes/api/generate.ts:3419`.
-- `recoverMissingToolOutput` re-issues the same tool schema on the same model, so it cannot clear a tool-emission failure. Add model rotation on attempt 2 and a tools-free JSON pass on attempt 3, parsed through the existing `tool-args-salvage.server.ts` shape.
-- Empty-body detection: treat a 200 with no tool call and no assistant text as a hard failure at the provider layer, log the raw body head and finish reason (both currently unrecorded — `ai_call_log.completion_tokens` is null for streamed generate calls).
-- `deterministicPatchFallback` grows from two handlers to a small intent table (logo/brand mark, colour token change, copy edit, link, section) keyed off the change-set target, reusing `brand-identity.server.ts` for the mark and the existing image pipeline for the asset.
-- Write a `pipeline_failures` row for `no_safe_edit` / `no_edit_emitted` turns; today these degrade silently and never reach the table.
-- Tests: one per new recovery stage, plus a regression test that an "add logo" edit turn on a logo-less project produces ops.
+- Root cause confirmed at `src/routes/api/generate.ts:791-820`: the SSE loop reads `choices[0].delta` and `usage` only. OpenRouter emits upstream failures as a 200 stream carrying `{"error": {...}}` with no `choices`; that payload hits the `continue` at line 800 and is discarded. `tool.name` stays null, `tool.usage` stays null → `parseCollectedProject` finds nothing → `recoverMissingToolOutput` → `emitConversationalFallback("no_safe_edit")`.
+- Telemetry corroborates (turn `f5707db7`): `phase_router`, `structured_retry`, `tool_recovery` all `status: 200`, `completion_tokens` null, `error_message` null, `fallback_used` false. `aiChatCompletions` only branches on `primary.status`, so a streamed provider error can never trigger the fallback model — that's why all three attempts were identical.
+- Change 1: capture `json.error` (and a `choices: []` + no-usage terminal frame) in `relayAndCollect`; add `providerError: {code, message}` to `ParsedTool`; write it to `ai_call_log.error_message` via `updateLastCallUsage`, and record a `pipeline_failures` row.
+- Change 2: classify into `context_overflow` | `capacity` | `schema_rejected` | `unknown` and branch — re-issue with a reduced `trimFilesForPrompt` budget, rotate to `fallbackModel`, or a tools-free JSON pass parsed through `tool-args-salvage.server.ts`. The existing `model-kill-switch` counter should be fed by real provider errors rather than inferred no-edit turns.
+- Change 3: `trimFilesForPrompt` currently budgets on characters. Budget on estimated tokens against the configured model's context window (minus reserved output), and log the estimate alongside `files_sent`.
+- Change 4: extend `deterministicPatchFallback` with a brand-mark handler reusing `brand-identity.server.ts` plus the existing image pipeline, and make image generation reachable on edit turns, not initial builds only.
+- Tests: a fixture SSE stream carrying an OpenRouter error frame must surface a classified provider error rather than an empty tool; one per branch; a regression test that an "add logo" edit turn on a logo-less project produces ops.
