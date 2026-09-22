@@ -55,6 +55,8 @@ import { fixCssEscapes } from "./css-escape-fixer.server";
 import { fixBlockProps } from "./block-props.server";
 import { fixComponentChildren } from "./component-child.server";
 import { ensureBrandIdentity, ensureBrandMarkWired } from "./brand-identity.server";
+import { alignAuthApi } from "./auth-api-align.server";
+
 import { repairBuildConfigImports } from "./build-config-repair.server";
 import { fixSourceEscapes } from "./source-escape-fixer.server";
 import { fixMarkdownFences } from "./markdown-fence-fixer.server";
@@ -220,12 +222,19 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
     notes.push(`array-safety: hardened ${total} access(es) across ${arr.fixes.length} file(s)`);
   }
 
+  // 3a-auth. Align auth helper calls with the backend kit the project got.
+  //     Must run before the import resolver so nothing stubs a bogus helper.
+  const authAlign = alignAuthApi(files);
+  files = authAlign.files;
+  for (const n of authAlign.notes) notes.push(n);
+
   // 3b. BrandMark wiring MUST precede the import resolver: otherwise the
   //     resolver stubs `@/components/brand-mark` (or leaves the tag
   //     undeclared) and the preview dies with `Can't find variable: BrandMark`.
   const brandWire = ensureBrandMarkWired(files);
   files = brandWire.files;
   for (const n of brandWire.notes) notes.push(n);
+
 
   // 4. Local import resolver — remap or stub unresolved `@/` and `./` imports.
   const localImports = repairUnresolvedImports(files);

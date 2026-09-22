@@ -120,10 +120,76 @@ export default BrandMark;
 `;
 }
 
-function faviconDataUri(initials: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff6ea8"/><stop offset="100%" stop-color="#ffb86c"/></linearGradient></defs><rect width="48" height="48" rx="13" fill="url(#g)"/><text x="24" y="32" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="22" font-weight="700" fill="#ffffff">${initials}</text></svg>`;
+/** Read the app's own primary colour out of its theme CSS. */
+export function resolvePrimaryHex(files: ProjectFile[]): string | null {
+  const css = files.find((f) => /^src\/(index|styles|globals?)\.css$/.test(f.path));
+  if (!css) return null;
+  const hex = /--primary:\s*(#[0-9a-fA-F]{3,8})\s*;/.exec(css.content);
+  if (hex) return hex[1];
+  const hsl = /--primary:\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%/.exec(css.content);
+  if (!hsl) return null;
+  return hslToHex(Number(hsl[1]), Number(hsl[2]), Number(hsl[3]));
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const sat = s / 100;
+  const lig = l / 100;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = sat * Math.min(lig, 1 - lig);
+  const f = (n: number) => lig - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const to = (n: number) =>
+    Math.round(255 * f(n))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${to(0)}${to(8)}${to(4)}`;
+}
+
+/** Relative luminance → pick readable text on the tile. */
+function readableOn(hex: string): string {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h.slice(0, 6);
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.6 ? "#111318" : "#ffffff";
+}
+
+/**
+ * Extract the generated mark's own artwork so the tab icon matches the logo
+ * in the app. Only inlined when the SVG body is plain markup (no JSX
+ * expressions, no component references) — otherwise we fall back to the
+ * monogram tile.
+ */
+export function markGlyphFrom(files: ProjectFile[]): { body: string; viewBox: string } | null {
+  const mark = files.find((f) => f.path === BRAND_MARK_PATH);
+  if (!mark) return null;
+  const vb = /viewBox="([^"]+)"/.exec(mark.content);
+  const open = /<svg\b[^>]*>/.exec(mark.content);
+  const close = mark.content.lastIndexOf("</svg>");
+  if (!vb || !open || close < 0) return null;
+  let body = mark.content.slice(open.index + open[0].length, close);
+  body = body.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").trim();
+  if (!body || /[{}]/.test(body) || /<[A-Z]/.test(body)) return null;
+  // JSX attribute names → SVG attribute names.
+  body = body
+    .replace(/\b([a-z]+)([A-Z][a-zA-Z]*)=/g, (_m, a: string, b: string) => `${a}-${b.toLowerCase()}=`)
+    .replace(/\sclassName="[^"]*"/g, "")
+    .replace(/\s+/g, " ");
+  if (body.length > 1200) return null;
+  return { body, viewBox: vb[1] };
+}
+
+function faviconDataUri(
+  initials: string,
+  primary: string,
+  glyph: { body: string; viewBox: string } | null,
+): string {
+  const fg = readableOn(primary);
+  const svg = glyph
+    ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${glyph.viewBox}" fill="none" color="${primary}">${glyph.body.replace(/currentColor/g, primary)}</svg>`
+    : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="13" fill="${primary}"/><text x="24" y="32" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="22" font-weight="700" fill="${fg}">${initials}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
+
 
 /** Which files may legitimately host the logo. */
 function isBrandSurface(path: string): boolean {
@@ -187,12 +253,22 @@ function swapPlaceholderLogo(
   return { content: out, swapped };
 }
 
-function ensureFavicon(html: string, initials: string, brand: string): string {
+function ensureFavicon(
+  html: string,
+  initials: string,
+  brand: string,
+  primary: string,
+  glyph: { body: string; viewBox: string } | null,
+): string {
   let out = html;
-  const href = faviconDataUri(initials);
+  const href = faviconDataUri(initials, primary, glyph);
+  // The old build shipped a fixed pink→orange tile for every app; treat it as
+  // a placeholder so existing projects pick up their own colours on rebuild.
+  const legacyTile = /ff6ea8|%23ff6ea8/i.test(out);
   const hasRealIcon =
     /<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]*>/i.test(out) &&
-    !/vite\.svg|favicon\.ico/i.test(out);
+    !/vite\.svg|favicon\.ico/i.test(out) &&
+    !legacyTile;
   if (!hasRealIcon) {
     out = out.replace(
       /<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]*>\s*/gi,
@@ -207,9 +283,10 @@ function ensureFavicon(html: string, initials: string, brand: string): string {
   if (!/name=["']theme-color["']/i.test(out)) {
     out = out.replace(
       /<\/head>/i,
-      `    <meta name="theme-color" content="#0f0f12" />\n  </head>`,
+      `    <meta name="theme-color" content="${primary}" />\n  </head>`,
     );
   }
+
   if (/<title>\s*(vite|react|app|document)?[^<]{0,12}<\/title>/i.test(out)) {
     out = out.replace(/<title>[^<]*<\/title>/i, `<title>${brand}</title>`);
   }
@@ -353,13 +430,16 @@ export function ensureBrandIdentity(files: ProjectFile[]): {
   });
   if (swaps > 0) notes.push(`brand-identity: replaced ${swaps} placeholder logo glyph(s) with <BrandMark/>`);
 
-  // 3. Favicon + theme color.
+  // 3. Favicon + theme color — built from the app's own mark and palette.
+  const primary = resolvePrimaryHex(next) ?? "#111318";
+  const glyph = markGlyphFrom(next);
   next = next.map((f) => {
     if (f.path !== "index.html") return f;
-    const content = ensureFavicon(f.content, initials, brand);
+    const content = ensureFavicon(f.content, initials, brand, primary, glyph);
     if (content !== f.content) notes.push("brand-identity: injected favicon + apple-touch-icon");
     return { ...f, content };
   });
+
 
   return { files: next, notes };
 }
