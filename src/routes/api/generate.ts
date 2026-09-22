@@ -3013,8 +3013,19 @@ Forbidden defaults
   // Marketing/fullstack get the landing taste; app/fullstack get the
   // product-UI taste. Additive, cache-safe (lives in the dynamic suffix).
   let designTasteBlock = "";
+  // A one-line change does not need the full design manual (palette, type
+  // pairings, section library, header patterns, icon vocabulary, imagery
+  // rules). Every capability added here made EVERY request heavier; a
+  // targeted non-visual edit now carries none of it.
+  const skipDesignManual =
+    !isInitial &&
+    !isCrossCutting &&
+    (editClassification?.scope ?? "targeted") === "targeted" &&
+    !(editClassification?.dimensions ?? []).includes("visual");
   try {
-    if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
+    if (skipDesignManual) {
+      designTasteBlock = "";
+    } else if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
       const taste = renderDesignTasteBlock(lastUserText || "");
       designTasteBlock = taste.text + renderLandingChecklistBlock();
     }
