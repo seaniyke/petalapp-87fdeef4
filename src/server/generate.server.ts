@@ -744,6 +744,8 @@ export type StreamEvent =
       message: string;
       /** Optional count to show as a badge (files fixed, issues found, etc.). */
       count?: number;
+      /** Public URL of a picture that just landed, for the live picture strip. */
+      url?: string;
       /** Server timestamp when this step finished. */
       ts: number;
     }
