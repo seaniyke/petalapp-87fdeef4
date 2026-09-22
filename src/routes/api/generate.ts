@@ -187,6 +187,7 @@ import {
   scopeDisclosure,
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
+import { ensureBrandIdentity } from "@/server/brand-identity.server";
 import {
   estimateTokens,
   promptTokenCeiling,
