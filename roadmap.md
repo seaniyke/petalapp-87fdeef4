@@ -12,4 +12,7 @@
 - [x] System health test: 576 tests green, typecheck clean, OpenRouter/DeepSeek live 200, 6 key pages load with no console errors, build service healthy (0 queued).
 
 - [x] Build recovery: watchdog asks the build service what it is running, refreshes progress, and recovers finished-but-unreported builds from the live deployment (verified on Looplane build 8d48201d)
-- [ ] Looplane sign-in page renders nearly empty (/auth) — investigate
+- [x] Sign-in crash in generated apps: starter backend now exposes the same auth helpers as the dedicated one, plus a deterministic pass that rewrites calls to helpers a project's backend does not expose
+- [x] Generated app tab icon now uses the app's own logo shape and primary colour instead of a fixed pink tile
+- [ ] Rebuild Looplane once Kimble is published, then sign in on the live site to confirm end to end
+
