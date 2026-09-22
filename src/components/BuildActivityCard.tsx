@@ -429,22 +429,11 @@ export function BuildActivityCard({
         />
       ) : (
       <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-all">
-        <div className="flex gap-px" aria-hidden>
-          {phases.map((p, i) => (
-            <span
-              key={p.id}
-              className={`h-1 flex-1 transition-colors duration-500 ${
-                p.status === "failed"
-                  ? "bg-destructive"
-                  : p.status === "done" || isComplete
-                    ? "bg-primary/70"
-                    : i === phaseIndex
-                      ? "bg-primary/70 animate-pulse"
-                      : "bg-border/60"
-              }`}
-            />
-          ))}
-        </div>
+        <ProgressArc
+          value={phases.length ? (phaseIndex + 1) / phases.length : 0.1}
+          active={isActive}
+          failed={phases.some((p) => p.status === "failed")}
+        />
         <div className="flex items-center gap-2.5 px-3.5 py-3">
           <span
             className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
