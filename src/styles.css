@@ -63,6 +63,7 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
   --color-sidebar-ring: var(--sidebar-ring);
 
   --font-display: "Fraunces", "DM Serif Display", Georgia, serif;
+  --font-brand: "Space Grotesk", "Inter Tight", system-ui, sans-serif;
   /* iOS-leaning sans stack: real SF Pro on Apple devices, Inter Tight elsewhere.
      Inter Tight is a slightly narrower, more confident Inter — feels closer to
      SF Pro than the standard Inter. */
