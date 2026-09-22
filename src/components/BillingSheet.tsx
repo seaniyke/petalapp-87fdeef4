@@ -85,6 +85,8 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
     status: string | null;
   } | null>(null);
   const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  /** Credit breakdown + usage stay collapsed; the balance is the headline. */
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [cryptoPlanCode, setCryptoPlanCode] = useState<string | null>(null);
   const [cryptoPackOpen, setCryptoPackOpen] = useState(false);
   const topupRef = useRef<HTMLDivElement | null>(null);
@@ -341,7 +343,68 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
             </div>
           )}
 
-          {/* 2. Current plan card */}
+          {/* 1. Balance — one number, one bar. Everything that explains the
+              number sits behind "Details" so this stays a glance, not a
+              spreadsheet. */}
+          <div className="rounded-2xl bg-muted/40 p-5">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-base font-semibold">Credits left</h3>
+              <span className="text-2xl font-semibold tabular-nums">
+                {totalAvailable.toLocaleString()}
+              </span>
+            </div>
+            <Progress value={progressPct} className="mt-3 h-2" />
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button size="sm" onClick={scrollToTopups}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Get more
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setDetailsOpen((v) => !v)}
+              >
+                {detailsOpen ? "Hide details" : "Details"}
+              </Button>
+            </div>
+
+            {detailsOpen && (
+              <div className="mt-5 space-y-3">
+                <CreditRow
+                  label="Daily"
+                  sub={
+                    !dailyCap
+                      ? "Not on this plan"
+                      : monthlyFreeRemaining === 0
+                        ? `Monthly limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
+                        : `Back to ${dailyCap} ${dailyResetText ?? "soon"}${
+                            plan?.monthly_free_cap
+                              ? ` · ${monthlyFreeRemaining} free left this month`
+                              : ""
+                          }`
+                  }
+                  value={breakdown.daily}
+                />
+                <CreditRow
+                  label="Monthly"
+                  sub={
+                    planMonthlyCap
+                      ? `Refills in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
+                      : "Not on this plan"
+                  }
+                  value={breakdown.monthly}
+                />
+                <CreditRow
+                  label="Extra"
+                  sub={breakdown.topup > 0 ? "Never expire" : "Top up to add more"}
+                  value={breakdown.topup}
+                />
+                <UsageCard userId={user?.id ?? null} open={open} />
+              </div>
+            )}
+          </div>
+
+          {/* 2. Plan */}
           <div className="rounded-2xl bg-muted/40 p-5">
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-coral/30 to-primary/20 p-1.5">
@@ -376,9 +439,6 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
                   {plan.monthly_free_cap ? ` · ${plan.monthly_free_cap} a month` : ""}
                 </PlanFeature>
               ) : null}
-
-              <PlanFeature>Credits cover builds, Cloud and AI</PlanFeature>
-              {payAsYouGo && <PlanFeature>Credits unlock paid features</PlanFeature>}
               {currentPlanCode === "business" && (
                 <PlanFeature>Priority support</PlanFeature>
               )}
@@ -388,12 +448,6 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
               <Button size="sm" variant="outline" onClick={scrollToPlans}>
                 {currentPlanCode === "free" ? "See plans" : "Change plan"}
               </Button>
-              {(
-                <Button size="sm" variant="outline" onClick={scrollToTopups}>
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  Top up credits
-                </Button>
-              )}
               {subStatus?.hasPaystackSubscription && (
                 <Button
                   size="sm"
@@ -428,54 +482,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
             )}
           </div>
 
-          {/* 3. Credits remaining */}
-          <div className="rounded-2xl bg-muted/40 p-5">
-            <div className="flex items-baseline justify-between">
-              <h3 className="text-base font-semibold">Credits remaining</h3>
-              <span className="text-2xl font-semibold tabular-nums">
-                {totalAvailable.toLocaleString()}
-              </span>
-            </div>
-            <Progress value={progressPct} className="mt-3 h-2" />
-
-            <div className="mt-5 space-y-3">
-              <CreditRow
-                label="Daily"
-                sub={
-                  !dailyCap
-                    ? "Not on this plan"
-                    : monthlyFreeRemaining === 0
-                      ? `Monthly limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
-                      : `Back to ${dailyCap} ${dailyResetText ?? "soon"}${
-                          plan?.monthly_free_cap
-                            ? ` · ${monthlyFreeRemaining} free left this month`
-                            : ""
-                        }`
-                }
-                value={breakdown.daily}
-              />
-
-              <CreditRow
-                label="Monthly"
-                sub={
-                  planMonthlyCap
-                    ? `Refills in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
-                    : "Not on this plan"
-                }
-                value={breakdown.monthly}
-              />
-              <CreditRow
-                label="Extra"
-                sub={breakdown.topup > 0 ? "Never expire" : "Top up to add more"}
-                value={breakdown.topup}
-              />
-            </div>
-          </div>
-
-          {/* Where credits go */}
-          <UsageCard userId={user?.id ?? null} open={open} />
-
-          {/* 4. Currency picker */}
+          {/* Currency — quiet, only where it matters: just above buying. */}
           <div>
             <p className="mb-2 text-xs font-medium text-muted-foreground">Pay in</p>
             <div className="flex flex-wrap gap-1.5">
@@ -500,6 +507,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
               })}
             </div>
           </div>
+
 
           <Separator />
 

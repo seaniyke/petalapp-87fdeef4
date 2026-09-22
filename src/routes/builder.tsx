@@ -89,7 +89,6 @@ import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { CopyMessageButton } from "@/components/CopyMessageButton";
 import { useBuildStatusLabel } from "@/hooks/use-build-status-label";
-import { NextStepsCard } from "@/components/NextStepsCard";
 import { SuggestionChecklist } from "@/components/SuggestionChecklist";
 import { PlanProposalCard } from "@/components/PlanProposalCard";
 import { tryParseQuickEdit, applyQuickEditToFile } from "@/lib/quick-edit";
@@ -125,7 +124,7 @@ import { retryTransient } from "@/lib/retry-transient";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { LazySheet } from "@/components/LazySheet";
-import { createBuilderActions, actionsForSurface } from "@/lib/builder-actions";
+import { createBuilderActions, actionsForSurface, groupedActions } from "@/lib/builder-actions";
 import { emitOpenSurface, onOpenSurface } from "@/lib/surface-events";
 import type { SurfaceId } from "@/lib/kimble-surfaces";
 import { ProjectSettingsSheet } from "@/components/ProjectSettingsSheet";
@@ -177,6 +176,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
@@ -4017,7 +4018,8 @@ function Builder() {
     [files.length, project?.id],
   );
   const desktopToolbarActions = actionsForSurface(builderActions, "desktop-toolbar");
-  const desktopMenuActions = actionsForSurface(builderActions, "desktop-menu");
+  // Same four groups as the phone sheet, so the menu reads identically.
+  const desktopMenuGroups = groupedActions(builderActions, ["desktop-menu"]);
 
   // Kimble asked for one of its own areas to be opened (the user said "I want
   // a domain", "who signed up?", "how many credits do I have left?"). Opening
@@ -4404,20 +4406,28 @@ function Builder() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {desktopMenuActions.map((action) => (
-                  <DropdownMenuItem
-                    key={action.id}
-                    onSelect={action.run}
-                    disabled={action.disabled}
-                  >
-                    <action.icon className="mr-2 h-3.5 w-3.5" />
-                    {action.label}
-                    {action.shortcut && (
-                      <span className="ml-auto font-mono text-[10px] text-muted-foreground">
-                        {action.shortcut}
-                      </span>
-                    )}
-                  </DropdownMenuItem>
+                {desktopMenuGroups.map((group, gi) => (
+                  <div key={group.group}>
+                    {gi > 0 && <DropdownMenuSeparator />}
+                    <DropdownMenuLabel className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {group.label}
+                    </DropdownMenuLabel>
+                    {group.actions.map((action) => (
+                      <DropdownMenuItem
+                        key={action.id}
+                        onSelect={action.run}
+                        disabled={action.disabled}
+                      >
+                        <action.icon className="mr-2 h-3.5 w-3.5" />
+                        {action.label}
+                        {action.shortcut && (
+                          <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+                            {action.shortcut}
+                          </span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -4836,29 +4846,10 @@ function Builder() {
                              gap between generation and the deploy
                              starting, which reads like "I'm done!" before
                              the app is actually live. */}
-                         {i === messages.length - 1 &&
-                           showNextSteps &&
-                           // (m.handoff guard removed — handoff was retired.)
-                           !m.error && (
-                             <NextStepsCard
-                              showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
-                              onPreview={() => {
-                                if (isMobile) setMobileTab("preview");
-                                else setView("preview");
-                              }}
-                              onPublish={() => setPublishOpen(true)}
-                              onKeepBuilding={() => {
-                                if (isMobile) setMobileTab("chat");
-                                composerTextareaRef.current?.focus();
-                              }}
-                              /* `suggestions` are intentionally NOT forwarded:
-                                 clarifying questions are owned by the
-                                 SuggestionChecklist above so the post-build
-                                 NextStepsCard never duplicates them. */
+                        {/* The post-build "what's next?" actions now live in
+                            the single result card rendered once below the
+                            thread (see <BuildActivityCard />). */}
 
-
-                            />
-                          )}
                         {m.recap && (() => {
                           const safeRecap = sanitizeNarrative(m.recap);
                           return (
@@ -5131,6 +5122,20 @@ function Builder() {
                   if (isMobile) setMobileTab("preview");
                   else setView("preview");
                 }}
+                showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
+                onPublish={() => setPublishOpen(true)}
+                onKeepBuilding={() => {
+                  if (isMobile) setMobileTab("chat");
+                  composerTextareaRef.current?.focus();
+                }}
+                resultSummary={(() => {
+                  // One short line: the first sentence of Kimble's reply.
+                  const last = [...messages].reverse().find((m) => m.role === "assistant" && !m.error);
+                  const text = sanitizeNarrative(last?.content ?? "").trim();
+                  if (!text) return null;
+                  const first = text.split(/(?<=[.!?])\s+/)[0] ?? text;
+                  return first.length > 140 ? `${first.slice(0, 137)}…` : first;
+                })()}
                 onReviewChanges={
                   isLive && preTurnFilesRef.current
                     ? () => {

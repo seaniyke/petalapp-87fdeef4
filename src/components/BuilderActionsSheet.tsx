@@ -6,24 +6,22 @@
  * can never drift apart. It still owns two mobile-only affordances that
  * have no desktop equivalent: the credits row and the appearance cycle.
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
   Drawer,
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import {
-  ChevronDown,
   Sun,
   Moon,
   Monitor as MonitorIcon,
   Sparkles,
-  MoreHorizontal,
 } from "lucide-react";
 import { useWallet } from "@/hooks/use-wallet";
 import { useTheme, type Theme } from "@/hooks/use-theme";
 import { formatCredits } from "@/lib/format-credits";
-import { actionsForSurface, type BuilderAction } from "@/lib/builder-actions";
+import { groupedActions, type BuilderAction } from "@/lib/builder-actions";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -43,13 +41,11 @@ export function BuilderActionsSheet({
   onOpenBilling,
   readinessSlot,
 }: Props) {
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const { wallet, plan, breakdown, loading } = useWallet();
   const { theme, setTheme } = useTheme();
 
-  const primary = actionsForSurface(actions, "mobile-primary");
-  const more = actionsForSurface(actions, "mobile-more");
+  const groups = groupedActions(actions, ["mobile-primary", "mobile-more"]);
 
   // Build a segmented "remaining vs capacity" view so the bar visibly
   // shrinks as the user spends. Capacity = the plan's monthly allotment
@@ -170,43 +166,26 @@ export function BuilderActionsSheet({
 
         <div className="mx-4 h-px bg-border/60" />
 
-        {/* Primary actions — registry-driven, so mobile can't drift from desktop. */}
+        {/* Four groups, registry-driven — identical to desktop. */}
         <ul className="mt-1 max-h-[55vh] overflow-y-auto py-1">
-          {primary.map((action) => (
-            <ActionRow
-              key={action.id}
-              icon={<action.icon className="h-5 w-5" />}
-              label={action.label}
-              disabled={action.disabled}
-              onClick={() => runAction(action)}
-            />
+          {groups.map((g) => (
+            <li key={g.group}>
+              <div className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {g.label}
+              </div>
+              <ul>
+                {g.actions.map((action) => (
+                  <ActionRow
+                    key={action.id}
+                    icon={<action.icon className="h-5 w-5" />}
+                    label={action.label}
+                    disabled={action.disabled}
+                    onClick={() => runAction(action)}
+                  />
+                ))}
+              </ul>
+            </li>
           ))}
-
-          {/* More — expands in place, mirroring the reference menu. */}
-          <ActionRow
-            icon={<MoreHorizontal className="h-5 w-5" />}
-            label="More"
-            trailing={
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 text-muted-foreground transition-transform",
-                  moreOpen && "rotate-180",
-                )}
-              />
-            }
-            onClick={() => setMoreOpen((v) => !v)}
-          />
-          {moreOpen &&
-            more.map((action) => (
-              <ActionRow
-                key={action.id}
-                nested
-                icon={<action.icon className="h-5 w-5" />}
-                label={action.label}
-                disabled={action.disabled}
-                onClick={() => runAction(action)}
-              />
-            ))}
 
           <ActionRow
             icon={

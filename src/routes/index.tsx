@@ -953,36 +953,6 @@ function Landing() {
             </div>
           </section>
 
-          <section id="features" className="px-5 py-20 sm:px-6 sm:py-28">
-            <div className="mx-auto max-w-6xl">
-              <div className="max-w-3xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Everything between idea and launch</p>
-                <h2 className="heading-editorial mt-4 text-5xl sm:text-6xl">The whole product.<br /><em>Not just the first screen.</em></h2>
-                <p className="mt-5 max-w-xl text-base text-muted-foreground">Kimble makes the screens people see and the systems that make them useful.</p>
-              </div>
-              <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
-                {[
-                  { slug: "agent-board", icon: ShieldCheck, title: "Reviewed before it ships", body: "Specialist AI reviewers check the plan, design, security, and quality—not just whether the page loads." },
-                  { slug: "own-your-code", icon: Code2, title: "Built to remain yours", body: "Sync the code to Git, use your own web address, export it, or keep shaping it in Kimble." },
-                  { slug: "pay-as-you-build", icon: Sparkles, title: "Pay for progress, not promises", body: "Buy credits when you need them. They never expire, and turns that change nothing cost nothing." },
-                  { slug: "marketplace", icon: Store, title: "A product you can sell", body: "List a finished build in the marketplace and keep 80% of every sale." },
-                ].map((item, index) => (
-                  <Link
-                    key={item.slug}
-                    to="/why/$slug"
-                    params={{ slug: item.slug }}
-                    className="group min-h-64 bg-background p-7 transition-colors hover:bg-card sm:p-9"
-                  >
-                    <div className="flex items-center justify-between"><item.icon className="h-5 w-5 text-primary" /><span className="text-xs text-muted-foreground">0{index + 1}</span></div>
-                    <h3 className="font-landing-display mt-14 text-2xl font-semibold sm:text-3xl">{item.title}</h3>
-                    <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">{item.body}</p>
-                    <ArrowRight className="mt-6 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-
           <section id="how" className="border-y border-border bg-foreground px-5 py-20 text-background sm:px-6 sm:py-28">
             <div className="mx-auto max-w-6xl">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">A clear path from prompt to product</p>
@@ -1000,31 +970,6 @@ function Landing() {
                   </li>
                 ))}
               </ol>
-            </div>
-          </section>
-
-          <section id="marketplace" className="px-5 py-20 sm:px-6 sm:py-28">
-            <div className="mx-auto grid max-w-6xl overflow-hidden rounded-lg border border-border bg-card md:grid-cols-2">
-              <div className="p-8 sm:p-12">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Kimble Marketplace</p>
-                <h2 className="heading-editorial mt-4 text-5xl sm:text-6xl">Build it once.<br /><em>Sell it whole.</em></h2>
-                <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground">Sell a working product—not a screenshot. Buyers receive the project and its code, while you keep 80% of every sale.</p>
-                <div className="mt-8 flex flex-wrap gap-3">
-                <Link to="/marketplace" className="inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 text-sm font-semibold text-background">
-                  Browse marketplace <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link to="/sell" className="inline-flex h-11 items-center rounded-md border border-border px-5 text-sm font-semibold">
-                  Sell a build
-                </Link>
-                </div>
-              </div>
-              <div className="grid min-h-80 place-items-center bg-[var(--gradient-editorial)] p-8">
-                <div className="w-full max-w-sm border border-foreground/15 bg-background p-6 shadow-[var(--shadow-editorial)]">
-                  <div className="flex items-center justify-between"><Sparkles className="h-5 w-5 text-primary" /><span className="text-xs text-muted-foreground">Complete project</span></div>
-                  <p className="font-display mt-16 text-3xl font-semibold">Your next product can become someone else’s head start.</p>
-                  <div className="mt-8 flex items-end justify-between border-t border-border pt-5"><span className="text-sm text-muted-foreground">Creator share</span><span className="font-display text-4xl font-semibold">80%</span></div>
-                </div>
-              </div>
             </div>
           </section>
 

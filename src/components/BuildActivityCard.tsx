@@ -32,7 +32,7 @@ import { pathToNarration } from "@/lib/path-narration";
 import type { FriendlyError } from "@/lib/friendly-errors";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { BuildDetailsSheet, type FileChange } from "@/components/BuildDetailsSheet";
-import { BuildCostSummary } from "@/components/BuildCostSummary";
+import { BuildResultCard } from "@/components/BuildResultCard";
 
 import { ELAPSED_VISIBLE_AFTER_SEC, formatElapsed } from "@/hooks/use-build-status-label";
 
@@ -120,6 +120,17 @@ type Props = {
   onReviewChanges?: () => void;
   /** Jumps the workspace to the live preview. */
   onOpenPreview?: () => void;
+  /** Opens the publish panel from the finished-result card. */
+  onPublish?: () => void;
+  /** Focuses the composer from the finished-result card. */
+  onKeepBuilding?: () => void;
+  /** One short line describing what this turn changed. */
+  resultSummary?: string | null;
+  /** Follow-up ideas offered under "Keep building". */
+  suggestions?: string[];
+  onSuggest?: (prompt: string) => void;
+  /** False when the preview is already on screen. */
+  showPreviewAction?: boolean;
 };
 
 export function BuildActivityCard({
@@ -150,9 +161,14 @@ export function BuildActivityCard({
   onBuyCredits,
   onReviewChanges,
   onOpenPreview,
+  onPublish,
+  onKeepBuilding,
+  resultSummary,
+  suggestions,
+  onSuggest,
+  showPreviewAction = true,
 }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [feedOpen, setFeedOpen] = useState(true);
 
   // Tick once a second while active so the elapsed counter updates in real
   // time. `tick` is a memo dependency on purpose — without it the elapsed
@@ -377,6 +393,19 @@ export function BuildActivityCard({
 
   return (
     <>
+      {isComplete ? (
+        <BuildResultCard
+          credits={creditsCharged}
+          summary={resultSummary}
+          showPreview={showPreviewAction}
+          onPreview={onOpenPreview}
+          onPublish={onPublish}
+          onKeepBuilding={onKeepBuilding}
+          onDetails={() => setDetailsOpen(true)}
+          suggestions={suggestions}
+          onSuggest={onSuggest}
+        />
+      ) : (
       <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-all">
         <div className="flex gap-px" aria-hidden>
           {phases.map((p, i) => (
@@ -450,174 +479,10 @@ export function BuildActivityCard({
             )}
           </div>
         </div>
-        {/* Live activity — the early part of a turn has no plan and no files
-            yet, so the card used to sit still for a minute. This keeps the
-            work visible: phase chips, a rolling thought feed and the files as
-            they land, all inline and expandable. */}
-        {(isActive || thinkingLog.length > 0) && (
-          <div className="border-t border-border/60 px-3.5 py-2.5">
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {phases.map((p, i) => {
-                const state =
-                  p.status === "failed"
-                    ? "failed"
-                    : p.status === "done" || isComplete
-                      ? "done"
-                      : i === phaseIndex
-                        ? "active"
-                        : "todo";
-                return (
-                  <span
-                    key={`chip-${p.id}`}
-                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold transition-colors ${
-                      state === "failed"
-                        ? "bg-destructive/10 text-destructive"
-                        : state === "done"
-                          ? "bg-emerald-500/10 text-emerald-600"
-                          : state === "active"
-                            ? "bg-primary/12 text-primary"
-                            : "bg-muted/60 text-muted-foreground/60"
-                    }`}
-                  >
-                    {state === "done" ? (
-                      <CheckCircle2 className="h-3 w-3" aria-hidden />
-                    ) : state === "active" ? (
-                      <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                    ) : (
-                      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50" aria-hidden />
-                    )}
-                    {p.label}
-                  </span>
-                );
-              })}
-            </div>
+        {/* Everything verbose — the step list, the thought feed, the file
+            trace and the cost breakdown — lives behind "Details". The card
+            itself stays one headline and one live line. */}
 
-            {/* Running meter — time and cost, visible the whole way through so
-                nobody has to guess how long this has taken or what it cost. */}
-            <div className="mb-2 flex items-center justify-between gap-2 rounded-xl bg-muted/50 px-2.5 py-1.5">
-              <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-muted-foreground tabular-nums">
-                <Clock className="h-3 w-3" aria-hidden />
-                {isComplete
-                  ? `Took ${formatElapsed(elapsed)}`
-                  : `Running for ${formatElapsed(elapsed)}`}
-              </span>
-              <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-muted-foreground tabular-nums">
-                {fileCount > 0 && (
-                  <span>
-                    {fileCount} file{fileCount === 1 ? "" : "s"}
-                  </span>
-                )}
-                {liveCreditLabel && (
-                  <span className="inline-flex items-center gap-1">
-                    <Coins className="h-3 w-3" aria-hidden />
-                    {liveCreditLabel}
-                  </span>
-                )}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setFeedOpen((v) => !v)}
-              className="flex w-full items-center justify-between gap-2 text-left"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground/80">
-                Live activity
-              </span>
-              <ChevronDown
-                className={`h-3.5 w-3.5 text-muted-foreground/70 transition-transform ${feedOpen ? "rotate-180" : ""}`}
-                aria-hidden
-              />
-            </button>
-
-            {feedOpen && (
-              <div className="mt-2">
-                {trace.length === 0 ? (
-                  <div className="flex items-center gap-2 text-[12px] font-medium text-muted-foreground animate-fade-in motion-reduce:animate-none">
-                    <Loader2 className="h-3 w-3 animate-spin text-primary" aria-hidden />
-                    {currentPhase?.label ?? "Getting started"}…
-                  </div>
-                ) : (
-                  <BuildTimeline
-                    trace={trace}
-                    isActive={isActive}
-                    latestPath={latestPath}
-                    designCaption={designCaption}
-                    tail={6}
-                    autoScroll
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-        {/* Plan-first checklist. Kimble states the steps before it starts and
-            ticks each one off as its files land, so the user can follow the
-            work instead of watching an opaque spinner. */}
-        {buildSteps && buildSteps.length > 0 && (
-          <div className="border-t border-border/60 px-3.5 py-2.5">
-            <div className="mb-2 flex items-baseline justify-between gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground/80">
-                {isComplete ? "What Kimble did" : "Kimble's plan"}
-              </span>
-              {elapsed > 0 && (
-                <span className="shrink-0 font-mono text-[10.5px] font-semibold text-muted-foreground/70 tabular-nums">
-                  {isComplete ? `Took ${formatElapsed(elapsed)}` : `Running for ${formatElapsed(elapsed)}`}
-                </span>
-              )}
-            </div>
-            <ol className="space-y-1.5">
-              {buildSteps.map((step, i) => {
-                const done = doneStepIndexes?.includes(i) || isComplete;
-                // Exactly one step is ever in flight — the plan is executed in
-                // stages, never side by side.
-                const active = !done && isActive && i === activeStepIndex;
-                const dur = stepDuration(i);
-                return (
-                  <li
-                    key={`${i}-${step}`}
-                    className="flex items-start gap-2 text-[12.5px] animate-fade-in motion-reduce:animate-none"
-                  >
-                    <span className="mt-[3px] inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center" aria-hidden>
-                      {done ? (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      ) : active ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                      ) : (
-                        <span className="h-1.5 w-1.5 rounded-full bg-border" />
-                      )}
-                    </span>
-                    <span
-                      className={`min-w-0 flex-1 ${
-                        done
-                          ? "font-medium text-muted-foreground"
-                          : active
-                            ? "font-bold text-foreground"
-                            : "font-medium text-muted-foreground/70"
-                      }`}
-                    >
-                      {step}
-                    </span>
-                    {dur && (done || active) && (
-                      <span className="shrink-0 pt-[2px] font-mono text-[10.5px] font-semibold text-muted-foreground/60 tabular-nums">
-                        {dur}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        )}
-        {isComplete && typeof creditsCharged === "number" && (
-          <div className="border-t border-border/60 p-2">
-            <BuildCostSummary
-              credits={creditsCharged}
-              fileCount={fileCount}
-              paths={writtenPaths}
-            />
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-2 border-t border-border/60 p-2">
           <button
@@ -642,6 +507,8 @@ export function BuildActivityCard({
           </button>
         </div>
       </div>
+      )}
+
 
       <BuildDetailsSheet
         open={detailsOpen}

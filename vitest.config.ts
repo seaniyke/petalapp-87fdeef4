@@ -9,6 +9,7 @@ export default defineConfig({
     // importing scripts that call process.exit at module scope.
     include: [
       "src/lib/preview-state.test.ts",
+      "src/components/__tests__/one-result-card.test.ts",
       "src/server/__tests__/openrouter-only.test.ts",
       "src/server/__tests__/utility-model-tier.test.ts",
       "src/server/__tests__/verify-scope.test.ts",
