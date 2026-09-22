@@ -5111,6 +5111,20 @@ function Builder() {
                   if (isMobile) setMobileTab("preview");
                   else setView("preview");
                 }}
+                showPreviewAction={isMobile ? mobileTab !== "preview" : view !== "preview"}
+                onPublish={() => setPublishOpen(true)}
+                onKeepBuilding={() => {
+                  if (isMobile) setMobileTab("chat");
+                  composerTextareaRef.current?.focus();
+                }}
+                resultSummary={(() => {
+                  // One short line: the first sentence of Kimble's reply.
+                  const last = [...messages].reverse().find((m) => m.role === "assistant" && !m.error);
+                  const text = sanitizeNarrative(last?.content ?? "").trim();
+                  if (!text) return null;
+                  const first = text.split(/(?<=[.!?])\s+/)[0] ?? text;
+                  return first.length > 140 ? `${first.slice(0, 137)}…` : first;
+                })()}
                 onReviewChanges={
                   isLive && preTurnFilesRef.current
                     ? () => {
