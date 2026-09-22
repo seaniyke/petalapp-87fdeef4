@@ -3118,6 +3118,26 @@ Forbidden defaults
   }
   designTasteBlock += ownPhotoBlock;
 
+  // Focused expertise — a short set of craft rules chosen for THIS request
+  // instead of the whole manual on every one. Deterministic and capped.
+  let skillsBlock = "";
+  try {
+    const { renderSkillsForTurn } = await import("@/server/skills");
+    const picked = renderSkillsForTurn({
+      scope: editClassification?.scope ?? (isInitial ? "structural" : "targeted"),
+      dimensions: editClassification?.dimensions ?? [],
+      text: lastUserText || "",
+      isInitial,
+      isCrossCutting,
+    });
+    skillsBlock = picked.text;
+    if (picked.ids.length) console.info(`[skills] ${picked.ids.join(", ")}`);
+  } catch (e) {
+    console.warn("[skills] skipped:", e instanceof Error ? e.message : String(e));
+  }
+
+
+
 
   const dynamicSuffixText =
     dateBlock +
@@ -3138,6 +3158,7 @@ Forbidden defaults
     prdScenarioBlock +
     orchestrationBlock +
     designTasteBlock +
+    skillsBlock +
 
     learningBlock +
     highStakesBlock +
