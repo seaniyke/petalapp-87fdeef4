@@ -253,12 +253,22 @@ function swapPlaceholderLogo(
   return { content: out, swapped };
 }
 
-function ensureFavicon(html: string, initials: string, brand: string): string {
+function ensureFavicon(
+  html: string,
+  initials: string,
+  brand: string,
+  primary: string,
+  glyph: { body: string; viewBox: string } | null,
+): string {
   let out = html;
-  const href = faviconDataUri(initials);
+  const href = faviconDataUri(initials, primary, glyph);
+  // The old build shipped a fixed pink→orange tile for every app; treat it as
+  // a placeholder so existing projects pick up their own colours on rebuild.
+  const legacyTile = /ff6ea8|%23ff6ea8/i.test(out);
   const hasRealIcon =
     /<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]*>/i.test(out) &&
-    !/vite\.svg|favicon\.ico/i.test(out);
+    !/vite\.svg|favicon\.ico/i.test(out) &&
+    !legacyTile;
   if (!hasRealIcon) {
     out = out.replace(
       /<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]*>\s*/gi,
@@ -273,9 +283,10 @@ function ensureFavicon(html: string, initials: string, brand: string): string {
   if (!/name=["']theme-color["']/i.test(out)) {
     out = out.replace(
       /<\/head>/i,
-      `    <meta name="theme-color" content="#0f0f12" />\n  </head>`,
+      `    <meta name="theme-color" content="${primary}" />\n  </head>`,
     );
   }
+
   if (/<title>\s*(vite|react|app|document)?[^<]{0,12}<\/title>/i.test(out)) {
     out = out.replace(/<title>[^<]*<\/title>/i, `<title>${brand}</title>`);
   }
