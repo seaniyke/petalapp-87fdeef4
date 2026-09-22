@@ -4,7 +4,7 @@
  * Use anywhere a thumbnail / preview / page section is loading. Consistent
  * brand imagery beats spinner-of-the-day.
  */
-import logo from "/petal-logo.png";
+import logo from "/kimble-logo.png";
 
 export function PetalLoader({
   size = 40,

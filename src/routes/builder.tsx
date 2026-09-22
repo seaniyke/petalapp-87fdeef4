@@ -149,7 +149,7 @@ import { getCreditPause, updateCreditPause, type CreditPause } from "@/lib/credi
 
 
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
-import petalLogo from "@/assets/petal-logo.png";
+import petalLogo from "@/assets/kimble-logo.png";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";

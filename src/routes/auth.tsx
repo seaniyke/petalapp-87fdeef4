@@ -260,7 +260,7 @@ function AuthPage() {
           <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
             <Link to="/" className="inline-flex items-center gap-2.5 group">
               <img
-                src="/petal-logo.png"
+                src="/kimble-logo.png"
                 alt=""
                 aria-hidden
                 className="h-10 w-10 object-contain transition-transform group-hover:-rotate-6"
@@ -310,7 +310,7 @@ function AuthPage() {
               to="/"
               className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground lg:hidden"
             >
-              <img src="/petal-logo.png" alt="" aria-hidden className="h-8 w-8 object-contain" />
+              <img src="/kimble-logo.png" alt="" aria-hidden className="h-8 w-8 object-contain" />
               <span className="font-display text-2xl font-black tracking-[-0.03em] text-foreground">
                 Petal
               </span>

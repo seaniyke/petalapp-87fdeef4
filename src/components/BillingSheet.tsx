@@ -56,7 +56,7 @@ import {
   type PriceOverride,
 } from "@/lib/billing";
 import { toast } from "sonner";
-import petalLogo from "@/assets/petal-logo.png";
+import petalLogo from "@/assets/kimble-logo.png";
 import { CryptoCheckoutPanel } from "@/components/CryptoCheckoutPanel";
 import { fetchCreditUsage, formatCredits, type CreditUsage } from "@/lib/credit-usage";
 import { fetchProjectUsage, formatUsdCents, type ProjectUsageRow } from "@/lib/runtime-wallet";

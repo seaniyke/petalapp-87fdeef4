@@ -117,7 +117,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
       <div className="pointer-events-none absolute inset-0 bg-aurora opacity-70" aria-hidden />
       <div className="relative mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-16 sm:px-8">
         <Link to="/" className="mb-8 inline-flex items-center gap-2.5">
-          <img src="/petal-logo.png" alt="" aria-hidden className="h-9 w-9 object-contain" />
+          <img src="/kimble-logo.png" alt="" aria-hidden className="h-9 w-9 object-contain" />
           <span className="font-display text-2xl font-black tracking-[-0.035em]">Petal</span>
         </Link>
 
