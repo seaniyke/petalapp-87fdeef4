@@ -137,16 +137,21 @@ export async function resolveCloudTier(projectId: string): Promise<ResolvedTier>
     users: 0,
   };
   try {
-    const [{ data: project }, { data: compute }, { count: rows }, { count: users }] =
+    const [{ data: project }, { data: compute }, { data: backend }, { count: rows }, { count: users }] =
       await Promise.all([
         supabaseAdmin
           .from("projects")
-          .select("cloud_tier_intent, backend_mode")
+          .select("cloud_tier_intent")
           .eq("id", projectId)
           .maybeSingle(),
         supabaseAdmin
           .from("project_compute")
           .select("status")
+          .eq("project_id", projectId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("project_backends")
+          .select("provider, status")
           .eq("project_id", projectId)
           .maybeSingle(),
         supabaseAdmin
@@ -163,7 +168,7 @@ export async function resolveCloudTier(projectId: string): Promise<ResolvedTier>
     const userCount = users ?? 0;
 
     let current: CloudTier = "kimble";
-    if (project && (project as { backend_mode?: string }).backend_mode === "dedicated") {
+    if (backend?.provider === "managed_petal" && backend.status === "ready") {
       current = "kimble_plus";
     }
     if (compute && compute.status !== "deleted") current = "kimble_compute";
