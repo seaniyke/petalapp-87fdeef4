@@ -215,6 +215,19 @@ export function PublishSuccessCard({
         </a>
       </div>
 
+      {onFreePlan && (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/25 px-4 py-3 text-left">
+          <p className="text-[13px] font-semibold">Use your own domain, drop the badge</p>
+          <button
+            type="button"
+            onClick={() => setPlansOpen(true)}
+            className="shrink-0 rounded-xl bg-foreground px-3 py-1.5 text-[13px] font-bold text-background transition hover:opacity-90"
+          >
+            See plans
+          </button>
+        </div>
+      )}
+      <BillingSheet open={plansOpen} onOpenChange={setPlansOpen} />
 
       {onDismiss && (
         <button
