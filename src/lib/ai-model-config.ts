@@ -78,6 +78,28 @@ export function defaultImageModel(): string {
   return env("OPENROUTER_IMAGE_MODEL") ?? DEFAULT_IMAGE_MODEL;
 }
 
+/** Resolved utility-tier model (env override wins). */
+export function defaultUtilityModel(): string {
+  return env("OPENROUTER_UTILITY_MODEL") ?? DEFAULT_UTILITY_MODEL;
+}
+
+/**
+ * Features whose calls are short classification / summarisation work rather
+ * than code generation. They run on the cheaper utility model and have their
+ * output capped at UTILITY_MAX_OUTPUT_TOKENS.
+ */
+export const UTILITY_FEATURES: ReadonlySet<string> = new Set([
+  "triage",
+  "preflight",
+  "memory",
+  "coach",
+  "recovery",
+]);
+
+export function isUtilityFeature(feature: string | null | undefined): boolean {
+  return !!feature && UTILITY_FEATURES.has(feature);
+}
+
 /** True for any model slug served by DeepSeek on OpenRouter. */
 export function isDeepSeekModel(model: string | null | undefined): boolean {
   return !!model && model.startsWith("deepseek/");
@@ -88,10 +110,14 @@ export function isDeepSeekModel(model: string | null | undefined): boolean {
  * configured DeepSeek model. Historic call sites hardcode Gemini/Claude/GPT
  * slugs; rather than editing 35 files (and risking a missed one), every
  * request is normalised here, at the single chokepoint.
+ *
+ * `utility: true` routes short classification work to the cheaper utility
+ * model — unless the request needs vision, or the caller explicitly asked for
+ * a specific DeepSeek slug.
  */
 export function coerceToConfiguredModel(
   requested: string | null | undefined,
-  opts?: { vision?: boolean },
+  opts?: { vision?: boolean; utility?: boolean },
 ): string {
   const vision = opts?.vision === true;
   if (isDeepSeekModel(requested)) {
@@ -99,5 +125,8 @@ export function coerceToConfiguredModel(
     if (vision && !/vision/.test(requested!)) return defaultVisionModel();
     return requested!;
   }
-  return vision ? defaultVisionModel() : defaultTextModel();
+  if (vision) return defaultVisionModel();
+  if (opts?.utility === true) return defaultUtilityModel();
+  return defaultTextModel();
 }
+
