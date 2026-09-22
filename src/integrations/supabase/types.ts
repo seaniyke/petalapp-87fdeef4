@@ -1296,6 +1296,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          is_public: boolean
           name: string
           redistribute_allowed: boolean
           resale_allowed: boolean
@@ -1307,6 +1308,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          is_public?: boolean
           name: string
           redistribute_allowed?: boolean
           resale_allowed?: boolean
@@ -1318,6 +1320,7 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          is_public?: boolean
           name?: string
           redistribute_allowed?: boolean
           resale_allowed?: boolean
