@@ -697,16 +697,11 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // we make the call. Prevents the "every turn keeps hitting the same broken
   // model" loop until the cool-off window expires.
   const { isModelKilled } = await import("@/server/model-kill-switch.server");
-  if (
-    primaryModel &&
-    isModelKilled(primaryModel) &&
-    fallback &&
-    !isModelKilled(fallback)
-  ) {
+  if (isModelKilled(primaryModel) && fallbackModel && !isModelKilled(fallbackModel)) {
     console.warn(
-      `[kill-switch] swapping primary ${primaryModel} → ${fallback} (cooling off)`,
+      `[kill-switch] swapping primary ${primaryModel} → ${fallbackModel} (cooling off)`,
     );
-    primaryModel = fallback;
+    primaryModel = fallbackModel;
   }
 
   // Health guard (audit 3b): a model whose last ~50 logged calls are almost
@@ -714,22 +709,17 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // instead of paying a guaranteed-failed round-trip on every turn.
   const { isModelUnhealthySync } = await import("@/server/model-health.server");
   if (
-    primaryModel &&
     isModelUnhealthySync(primaryModel) &&
-    fallback &&
-    !isModelUnhealthySync(fallback)
+    fallbackModel &&
+    !isModelUnhealthySync(fallbackModel)
   ) {
     console.warn(
-      `[model-health] swapping primary ${primaryModel} → ${fallback} (rolling error rate too high)`,
+      `[model-health] swapping primary ${primaryModel} → ${fallbackModel} (rolling error rate too high)`,
     );
-    primaryModel = fallback;
+    primaryModel = fallbackModel;
   }
 
-
-  const body =
-    primaryModel && primaryModel !== callerModel
-      ? { ...opts.body, model: primaryModel }
-      : opts.body;
+  const body = { ...opts.body, model: primaryModel };
 
 
   const t0 = Date.now();
