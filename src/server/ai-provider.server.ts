@@ -669,15 +669,28 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     }
   }
 
-  const provider = budgetProviderOverride ?? (await resolveProvider(opts.feature));
+  // Provider is always OpenRouter — `budgetProviderOverride` can only ever be
+  // "openrouter" too; kept for telemetry shape compatibility.
+  const provider: Provider = budgetProviderOverride ?? (await resolveProvider(opts.feature));
   const { model: dbModel, fallback } = await resolveModelOverride(opts.feature);
 
   // DB model normally wins over caller-supplied model (operator overrides have
   // priority). Protocol-critical callers can lock a known tool-capable model;
   // budget routing remains highest priority when explicitly enabled.
   const callerModel = (opts.body.model as string | undefined) ?? undefined;
-  let primaryModel =
+  const requestedModel =
     budgetModelOverride || (opts.lockCallerModel ? callerModel : dbModel || callerModel) || null;
+
+  // OPENROUTER-ONLY MODEL POLICY. Every requested slug is normalised to the
+  // centrally configured DeepSeek model (src/lib/ai-model-config.ts) so no
+  // legacy hardcoded Gemini/GPT/Claude id can reach the wire. `openrouter/auto`
+  // is never used — the model is always explicit.
+  const needsVision = requestHasImageParts(opts.body);
+  let primaryModel: string = coerceToConfiguredModel(requestedModel, { vision: needsVision });
+  const coercedFallback = coerceToConfiguredModel(fallback ?? defaultFallbackModel(), {
+    vision: needsVision,
+  });
+  const fallbackModel = coercedFallback === primaryModel ? null : coercedFallback;
 
   // Kill-switch: if the primary model is currently cooling off because of a
   // high `no_edit_emitted` rate, swap it for the configured fallback BEFORE
