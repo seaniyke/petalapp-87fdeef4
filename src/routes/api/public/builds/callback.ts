@@ -437,6 +437,31 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       ? `${payload.errorMessage}\n\n--- logs ---\n${payload.logs}`
       : payload.errorMessage;
 
+    // Infrastructure failures (hosting edge unreachable, upstream timeout,
+    // Cloudflare 5xx) have nothing to do with the user's app. Never surface
+    // them: re-run the identical build immediately and silently while the
+    // retry budget lasts. Only an exhausted budget writes a failed row, and
+    // the retry helper owns that calm message.
+    if (!payload.verification && isInfrastructureBuildError(message)) {
+      try {
+        const { retryStalledBuild } = await import("@/server/build-retry.server");
+        const res = await retryStalledBuild(payload.buildId, {
+          minStuckMs: 0,
+          reason: "infrastructure failure reported by builder",
+        });
+        if (res.outcome === "retried" || res.outcome === "already_claimed") {
+          console.warn(
+            `[builds/callback] silently requeued ${payload.buildId} after infrastructure failure`,
+          );
+          return new Response("ok", { status: 200 });
+        }
+      } catch (err) {
+        console.warn("[builds/callback] infrastructure requeue failed", err);
+      }
+    }
+
+
+
     // A pre-deploy browser check failure arrives with structured defects.
     // Score its screenshots too, then persist the report so the client can
     // start a targeted repair instead of guessing from a log tail.
