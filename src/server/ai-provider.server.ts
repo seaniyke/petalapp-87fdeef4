@@ -1,10 +1,14 @@
 import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
 import {
   OPENROUTER_CHAT_URL,
+  UTILITY_MAX_OUTPUT_TOKENS,
   coerceToConfiguredModel,
   defaultFallbackModel,
   defaultTextModel,
+  defaultUtilityModel,
+  isUtilityFeature,
 } from "@/lib/ai-model-config";
+
 
 /**
  * AI provider abstraction — OPENROUTER ONLY.
@@ -433,9 +437,48 @@ interface TelemetryArgs {
   turnId?: string | null;
 }
 
+/**
+ * Read `usage` out of a NON-STREAMED gateway response without consuming the
+ * body the caller still needs. Streamed responses are backfilled separately by
+ * `updateLastCallUsage` once the SSE body has been drained.
+ *
+ * Best-effort: any parse failure returns null and telemetry falls back to the
+ * previous NULL-token behaviour.
+ */
+async function usageFromResponse(
+  resp: Response,
+  body: Record<string, unknown>,
+): Promise<{
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+} | null> {
+  if (body.stream === true) return null;
+  if (!resp.ok) return null;
+  try {
+    const json = (await resp.clone().json()) as {
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+      };
+    };
+    const u = json?.usage;
+    if (!u) return null;
+    return {
+      promptTokens: u.prompt_tokens ?? null,
+      completionTokens: u.completion_tokens ?? null,
+      totalTokens: u.total_tokens ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const hasUsage = (args.promptTokens ?? 0) > 0 || (args.completionTokens ?? 0) > 0;
     await supabaseAdmin.from("ai_call_log").insert({
       feature: args.feature,
       provider: args.provider,
@@ -455,15 +498,20 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       project_id: args.projectId ?? null,
       user_id: args.userId ?? null,
       turn_id: args.turnId ?? null,
-      // No usage is known at insert time: a cost we cannot determine is
-      // recorded as unknown, never as a fake zero.
-      cost_basis: "unknown",
+      // Kimble always pays with its own gateway key today; per-user keys would
+      // record "user" here.
+      key_owner: "platform",
+      // Non-streamed calls now carry their usage at insert time; streamed ones
+      // are still unknown until the body is drained.
+      cost_basis: hasUsage && args.costUsdMicro != null ? "estimated" : "unknown",
+      cost_source: hasUsage && args.costUsdMicro != null ? "price_table" : null,
     });
   } catch (err) {
     // Never break the AI call because logging failed.
     console.warn("[ai-provider] telemetry insert failed", err);
   }
 }
+
 
 /**
  * Backfill token usage onto the most recent ai_call_log row for a given
@@ -645,7 +693,14 @@ export interface AiCallOptions {
    * but substituting a model that ignores `tool_choice` breaks the contract.
    */
   lockCallerModel?: boolean;
+  /**
+   * Skip the bounded fallback retry. For cosmetic helpers (friendly error
+   * wording, self-check) a second paid round-trip buys nothing: the caller
+   * already has a deterministic fallback.
+   */
+  noFallback?: boolean;
 }
+
 
 /**
  * Make an OpenAI-compatible chat completions call against the resolved provider.
@@ -708,11 +763,19 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // legacy hardcoded Gemini/GPT/Claude id can reach the wire. `openrouter/auto`
   // is never used — the model is always explicit.
   const needsVision = requestHasImageParts(opts.body);
-  let primaryModel: string = coerceToConfiguredModel(requestedModel, { vision: needsVision });
+  // Utility tier: short classification / summarisation features run on the
+  // cheaper utility model unless the caller asked for a specific DeepSeek slug
+  // or the request carries images.
+  const utility = isUtilityFeature(opts.feature) && !needsVision;
+  let primaryModel: string = coerceToConfiguredModel(requestedModel, {
+    vision: needsVision,
+    utility,
+  });
   const coercedFallback = coerceToConfiguredModel(fallback ?? defaultFallbackModel(), {
     vision: needsVision,
   });
   const fallbackModel = coercedFallback === primaryModel ? null : coercedFallback;
+
 
   // Kill-switch: if the primary model is currently cooling off because of a
   // high `no_edit_emitted` rate, swap it for the configured fallback BEFORE
@@ -741,7 +804,15 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     primaryModel = fallbackModel;
   }
 
-  const body = { ...opts.body, model: primaryModel };
+  const body: Record<string, unknown> = { ...opts.body, model: primaryModel };
+  // Cost guard: a classification call never needs a long answer. Cap it unless
+  // the caller already asked for less.
+  if (utility) {
+    const asked = typeof body.max_tokens === "number" ? (body.max_tokens as number) : null;
+    body.max_tokens =
+      asked && asked > 0 ? Math.min(asked, UTILITY_MAX_OUTPUT_TOKENS) : UTILITY_MAX_OUTPUT_TOKENS;
+  }
+
 
 
   const t0 = Date.now();
@@ -763,7 +834,9 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // override doesn't burn 100% of that feature's calls.
   const shouldRetry =
     !primary.ok &&
+    !opts.noFallback &&
     !!fallbackModel &&
+
     (primary.status === 429 ||
       primary.status === 402 ||
       primary.status === 400 ||
@@ -771,6 +844,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       primary.status >= 500);
 
   if (!shouldRetry) {
+    // Non-streamed calls carry their usage in the body. Read it from a clone so
+    // the caller still gets an unconsumed Response, and log real token counts
+    // instead of NULLs. Streamed calls are backfilled by updateLastCallUsage.
+    const usage = await usageFromResponse(primary, body);
     // Fire-and-forget telemetry; do NOT await — keep latency tight.
     void recordTelemetry({
       feature: opts.feature,
@@ -787,9 +864,16 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       projectId: opts.meta?.projectId ?? null,
       userId: opts.meta?.userId ?? null,
       turnId: opts.meta?.turnId ?? null,
+      promptTokens: usage?.promptTokens ?? null,
+      completionTokens: usage?.completionTokens ?? null,
+      totalTokens: usage?.totalTokens ?? null,
+      costUsdMicro: usage
+        ? estimateCostUsdMicro(primaryModel, usage.promptTokens, usage.completionTokens)
+        : null,
     });
     return primary;
   }
+
 
   // Drain the failed response so we can safely discard it.
   try {
@@ -815,10 +899,12 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     turnId: opts.meta?.turnId ?? null,
   });
 
-  const fallbackBody = { ...opts.body, model: fallbackModel };
+  const fallbackBody: Record<string, unknown> = { ...body, model: fallbackModel };
   const t1 = Date.now();
   const retried = await dispatch(effectiveProvider, fallbackBody, opts.signal, opts.timeoutTier);
   const retryLatency = Date.now() - t1;
+  const retryUsage = await usageFromResponse(retried, fallbackBody);
+
 
   void recordTelemetry({
     feature: opts.feature,
@@ -835,6 +921,17 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     projectId: opts.meta?.projectId ?? null,
     userId: opts.meta?.userId ?? null,
     turnId: opts.meta?.turnId ?? null,
+    promptTokens: retryUsage?.promptTokens ?? null,
+    completionTokens: retryUsage?.completionTokens ?? null,
+    totalTokens: retryUsage?.totalTokens ?? null,
+    costUsdMicro: retryUsage
+      ? estimateCostUsdMicro(
+          fallbackModel,
+          retryUsage.promptTokens,
+          retryUsage.completionTokens,
+        )
+      : null,
+
   });
 
   return retried;

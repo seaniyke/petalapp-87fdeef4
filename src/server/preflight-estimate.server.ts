@@ -70,15 +70,51 @@ export function fallbackEstimate(prompt: string): PreflightEstimate {
   };
 }
 
+/**
+ * Server-side estimate cache. The composer re-estimates on every pause in
+ * typing, so the same prompt was being classified ~5x per turn. Keyed by the
+ * exact trimmed prompt, bounded, with a short TTL.
+ */
+const ESTIMATE_CACHE = new Map<string, { at: number; value: PreflightEstimate }>();
+const ESTIMATE_TTL_MS = 10 * 60 * 1000;
+const ESTIMATE_CACHE_MAX = 500;
+
+function cacheKey(prompt: string): string {
+  return prompt.length > 4000 ? prompt.slice(0, 4000) : prompt;
+}
+
+function readCache(key: string): PreflightEstimate | null {
+  const hit = ESTIMATE_CACHE.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > ESTIMATE_TTL_MS) {
+    ESTIMATE_CACHE.delete(key);
+    return null;
+  }
+  return hit.value;
+}
+
+function writeCache(key: string, value: PreflightEstimate): void {
+  if (ESTIMATE_CACHE.size >= ESTIMATE_CACHE_MAX) {
+    const oldest = ESTIMATE_CACHE.keys().next().value;
+    if (oldest) ESTIMATE_CACHE.delete(oldest);
+  }
+  ESTIMATE_CACHE.set(key, { at: Date.now(), value });
+}
+
 export async function estimatePromptCost(prompt: string): Promise<PreflightEstimate> {
   const trimmed = prompt.trim();
   if (!trimmed) {
     return { kind: "discussion", estSeconds: 0, estCents: 0, confidence: "high", rationale: "Empty prompt." };
   }
 
+  const key = cacheKey(trimmed);
+  const cached = readCache(key);
+  if (cached) return cached;
+
   if (!process.env.OPENROUTER_API_KEY) {
     return fallbackEstimate(trimmed);
   }
+
 
   try {
     const res = await aiChatCompletions({
@@ -130,11 +166,16 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
         ],
         tool_choice: { type: "function", function: { name: "classify_prompt" } },
       },
+      // A classification miss has a good local fallback; a second paid call
+      // is not worth it.
+      noFallback: true,
     });
 
     if (!res.ok) {
       console.warn("[preflight-estimate] AI gateway returned", res.status);
-      return fallbackEstimate(trimmed);
+      const local = fallbackEstimate(trimmed);
+      writeCache(key, local);
+      return local;
     }
 
     const data = (await res.json()) as {
@@ -149,13 +190,16 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
     };
     const base = KIND_BASELINES[parsed.kind] ?? KIND_BASELINES.feature;
     const lengthBoost = Math.min(2, Math.floor(trimmed.length / 200));
-    return {
+    const estimate: PreflightEstimate = {
       kind: parsed.kind,
       estSeconds: base.sec + lengthBoost * 5,
       estCents: base.cents + lengthBoost,
       confidence: parsed.confidence,
       rationale: parsed.rationale,
     };
+    writeCache(key, estimate);
+    return estimate;
+
   } catch (e) {
     console.warn("[preflight-estimate] failed", e);
     return fallbackEstimate(trimmed);
