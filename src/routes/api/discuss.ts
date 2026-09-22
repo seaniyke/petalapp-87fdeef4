@@ -272,7 +272,7 @@ export const Route = createFileRoute("/api/discuss")({
         // Charge ONCE, after success. If the wallet emptied between the
         // pre-flight check and now, we still deliver the reply (the user
         // already received it) and log a warning.
-        return Response.json({ reply: cleanReply });
+        return Response.json({ reply: cleanReply, openSurface: surfaceSignal?.surface.id ?? null });
       },
     },
   },
