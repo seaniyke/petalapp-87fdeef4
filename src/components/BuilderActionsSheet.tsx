@@ -48,8 +48,7 @@ export function BuilderActionsSheet({
   const { wallet, plan, breakdown, loading } = useWallet();
   const { theme, setTheme } = useTheme();
 
-  const primary = actionsForSurface(actions, "mobile-primary");
-  const more = actionsForSurface(actions, "mobile-more");
+  const groups = groupedActions(actions, ["mobile-primary", "mobile-more"]);
 
   // Build a segmented "remaining vs capacity" view so the bar visibly
   // shrinks as the user spends. Capacity = the plan's monthly allotment
