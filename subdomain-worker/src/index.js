@@ -21,8 +21,14 @@
  * Plain JS (not TS) because Cloudflare's plain script API doesn't transpile.
  */
 
-const PETAL_ROOT = "buildwithpetal.com";
-const CONTROL_PLANE = "https://buildwithpetal.com";
+/**
+ * Kimble's own hosts — never a customer app. Covers both the original SaaS
+ * root and the current brand root, plus each one's `fallback.` origin host
+ * (Cloudflare for SaaS sends customer traffic through it, but a direct visit
+ * to the fallback host itself is not an app).
+ */
+const PETAL_ROOTS = ["buildwithpetal.com", "kimble.cloud"];
+const CONTROL_PLANE = "https://kimble.cloud";
 const HOP_BY_HOP = new Set([
   "host",
   "connection",

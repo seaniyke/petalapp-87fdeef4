@@ -52,6 +52,8 @@ async function lookup(host: string): Promise<Result> {
   if (root) {
     const slug = h.slice(0, -1 - root.length);
     if (!slug || slug.includes(".")) return { kind: "unknown" };
+    // Infrastructure hosts are never project slugs.
+    if (slug === "www" || slug === "fallback") return { kind: "unknown" };
     const { data: project } = await supabaseAdmin
       .from("projects")
       .select("id")
