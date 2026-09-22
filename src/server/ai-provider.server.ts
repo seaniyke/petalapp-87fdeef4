@@ -501,9 +501,9 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
       prompt_chars: args.promptChars ?? null,
       had_attachments: args.hadAttachments ?? false,
       chosen_by: args.chosenBy ?? null,
-      project_id: args.projectId ?? null,
-      user_id: args.userId ?? null,
-      turn_id: args.turnId ?? null,
+      project_id: args.projectId ?? ambient.projectId ?? null,
+      user_id: args.userId ?? ambient.userId ?? null,
+      turn_id: args.turnId ?? ambient.turnId ?? null,
       // Kimble always pays with its own gateway key today; per-user keys would
       // record "user" here.
       key_owner: "platform",
