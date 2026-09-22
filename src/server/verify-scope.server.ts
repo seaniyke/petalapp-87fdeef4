@@ -78,6 +78,12 @@ export function computeVerifyScope(args: {
   knownRoutes: string[];
   /** First build of a project, or a publish — always verified in full. */
   forceFull?: boolean;
+  /**
+   * How big the request itself read (edit-classifier.server.ts). A one-thing
+   * ask that touched one page earns the `micro` tier: load that page once and
+   * look for real breakage, nothing else.
+   */
+  editScope?: "micro" | "targeted" | "structural" | null;
 }): VerifyScope {
   const full = (reason: string): VerifyScope => ({
     tier: "full",
