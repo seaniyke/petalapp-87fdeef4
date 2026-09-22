@@ -723,54 +723,17 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
 
   const t0 = Date.now();
-  let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
-  let latency = Date.now() - t0;
-  let effectiveProvider = provider;
+  const primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
+  const latency = Date.now() - t0;
+  const effectiveProvider = provider;
   if (primary.status === 402) {
     (globalThis as Record<string, unknown>)["__petalLastProviderPaymentFailureAt"] = Date.now();
   }
 
-  // Cross-provider failover. A 402 (out of credits) or 401/403 (bad key) is a
-  // BILLING/AUTH problem with that specific gateway, not with the model or the
-  // request — retrying the same gateway with a different model cannot help. If
-  // the other gateway is configured, use it instead of failing the whole turn.
-  const gatewayDown =
-    primary.status === 402 || primary.status === 401 || primary.status === 403;
-  const altProvider: Provider = provider === "lovable" ? "openrouter" : "lovable";
-  const altKeyPresent =
-    altProvider === "openrouter" ? !!process.env.OPENROUTER_API_KEY : !!process.env.LOVABLE_API_KEY;
-  if (gatewayDown && altKeyPresent) {
-    console.warn(
-      `[ai-provider] ${provider} returned HTTP ${primary.status} (billing/auth) — failing over to ${altProvider}`,
-    );
-    try {
-      await primary.text();
-    } catch {
-      /* ignore */
-    }
-    const tAlt = Date.now();
-    const alt = await dispatch(altProvider, body, opts.signal, opts.timeoutTier);
-    void recordTelemetry({
-      feature: opts.feature,
-      provider: altProvider,
-      model: primaryModel,
-      status: alt.status,
-      latencyMs: Date.now() - tAlt,
-      fallbackUsed: true,
-      errorMessage: alt.ok ? null : `HTTP ${alt.status}`,
-      phase: opts.meta?.phase ?? null,
-      promptChars: opts.meta?.promptChars ?? null,
-      hadAttachments: opts.meta?.hadAttachments ?? false,
-      chosenBy: `${opts.meta?.chosenBy ?? "unknown"}_provider_failover`,
-      projectId: opts.meta?.projectId ?? null,
-      userId: opts.meta?.userId ?? null,
-      turnId: opts.meta?.turnId ?? null,
-    });
-    if (alt.ok) return alt;
-    primary = alt;
-    latency = Date.now() - tAlt;
-    effectiveProvider = altProvider;
-  }
+  // NOTE: there is no cross-provider failover any more. OpenRouter is the only
+  // gateway, so a 401/402/403 is an account problem that a second provider
+  // cannot paper over. At most ONE bounded retry (fallback model) happens below,
+  // which guarantees a single operation never fans out to multiple providers.
 
   // Decide whether to retry on fallback model (same provider).
   // Retry on 5xx, 429 (rate-limit), 402 (credits), AND 400/404 — the latter
