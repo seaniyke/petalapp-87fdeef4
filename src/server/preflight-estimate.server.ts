@@ -166,11 +166,16 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
         ],
         tool_choice: { type: "function", function: { name: "classify_prompt" } },
       },
+      // A classification miss has a good local fallback; a second paid call
+      // is not worth it.
+      noFallback: true,
     });
 
     if (!res.ok) {
       console.warn("[preflight-estimate] AI gateway returned", res.status);
-      return fallbackEstimate(trimmed);
+      const local = fallbackEstimate(trimmed);
+      writeCache(key, local);
+      return local;
     }
 
     const data = (await res.json()) as {
@@ -185,13 +190,16 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
     };
     const base = KIND_BASELINES[parsed.kind] ?? KIND_BASELINES.feature;
     const lengthBoost = Math.min(2, Math.floor(trimmed.length / 200));
-    return {
+    const estimate: PreflightEstimate = {
       kind: parsed.kind,
       estSeconds: base.sec + lengthBoost * 5,
       estCents: base.cents + lengthBoost,
       confidence: parsed.confidence,
       rationale: parsed.rationale,
     };
+    writeCache(key, estimate);
+    return estimate;
+
   } catch (e) {
     console.warn("[preflight-estimate] failed", e);
     return fallbackEstimate(trimmed);
