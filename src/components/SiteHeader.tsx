@@ -62,10 +62,10 @@ export function SiteHeader() {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 w-full transition-[background-color,border-color,box-shadow] duration-200 ${
+        className={`sticky top-0 z-50 w-full bg-white transition-[background-color,border-color,box-shadow] duration-200 dark:bg-background ${
           scrolled
-            ? "border-b border-border/60 bg-background/80 shadow-[0_1px_0_0_hsl(var(--border)/0.4)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/65"
-            : "border-b border-transparent bg-background/60 backdrop-blur-md supports-[backdrop-filter]:bg-background/45"
+            ? "border-b border-border/60 shadow-[0_1px_0_0_hsl(var(--border)/0.4)]"
+            : "border-b border-border/30"
         }`}
       >
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">

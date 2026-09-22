@@ -22,10 +22,10 @@ export function PetalBrand({
   return (
     <span className={`group inline-flex items-center gap-2 ${className}`}>
       <img
-        src="/petal-logo.png"
+        src="/kimble-logo.png"
         alt=""
         aria-hidden="true"
-        className={`${mark} shrink-0 object-contain transition-transform group-hover:-rotate-6`}
+        className={`${mark} shrink-0 object-contain transition-transform group-hover:-rotate-6 dark:invert`}
       />
       <span
         className={`font-display ${word} font-black tracking-[-0.03em] text-foreground transition-opacity group-hover:opacity-80`}

@@ -27,7 +27,7 @@ import { updateSiteInfo, uploadSiteImage } from "@/lib/site-info";
 import { describeAppFallback, iconPromptFor, isAssistantNarration } from "@/lib/site-info-copy";
 import { generateSiteInfo } from "@/lib/site-info.functions";
 import { supabase } from "@/integrations/supabase/client";
-import petalLogo from "@/assets/petal-logo.png";
+import petalLogo from "@/assets/kimble-logo.png";
 
 const TITLE_LIMIT = 60;
 const DESC_LIMIT = 160;
