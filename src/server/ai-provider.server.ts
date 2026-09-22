@@ -753,7 +753,15 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     primaryModel = fallbackModel;
   }
 
-  const body = { ...opts.body, model: primaryModel };
+  const body: Record<string, unknown> = { ...opts.body, model: primaryModel };
+  // Cost guard: a classification call never needs a long answer. Cap it unless
+  // the caller already asked for less.
+  if (utility) {
+    const asked = typeof body.max_tokens === "number" ? (body.max_tokens as number) : null;
+    body.max_tokens =
+      asked && asked > 0 ? Math.min(asked, UTILITY_MAX_OUTPUT_TOKENS) : UTILITY_MAX_OUTPUT_TOKENS;
+  }
+
 
 
   const t0 = Date.now();
