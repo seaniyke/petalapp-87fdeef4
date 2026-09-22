@@ -86,6 +86,7 @@ export type Database = {
           files_sent: number | null
           had_attachments: boolean
           id: string
+          key_owner: string
           latency_ms: number | null
           model: string | null
           phase: string | null
@@ -114,6 +115,7 @@ export type Database = {
           files_sent?: number | null
           had_attachments?: boolean
           id?: string
+          key_owner?: string
           latency_ms?: number | null
           model?: string | null
           phase?: string | null
@@ -142,6 +144,7 @@ export type Database = {
           files_sent?: number | null
           had_attachments?: boolean
           id?: string
+          key_owner?: string
           latency_ms?: number | null
           model?: string | null
           phase?: string | null
@@ -4690,6 +4693,24 @@ export type Database = {
           provider: string | null
           samples: number | null
           verifier_pass_rate: number | null
+        }
+        Relationships: []
+      }
+      ai_turn_economics_rollup: {
+        Row: {
+          ai_calls: number | null
+          cached_input_tokens: number | null
+          calls_without_usage: number | null
+          cost_usd: number | null
+          errors: number | null
+          input_tokens: number | null
+          output_tokens: number | null
+          project_id: string | null
+          retries: number | null
+          started_at: string | null
+          total_tokens: number | null
+          turn_id: string | null
+          user_id: string | null
         }
         Relationships: []
       }
