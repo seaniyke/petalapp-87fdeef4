@@ -49,7 +49,7 @@ export function InviteFriendsCard() {
   async function share() {
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
-        await navigator.share({ title: "Petal", text: shareText(data!.code), url: link });
+        await navigator.share({ title: "Kimble", text: shareText(data!.code), url: link });
         return;
       } catch {
         /* cancelled */

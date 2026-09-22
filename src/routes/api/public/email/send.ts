@@ -1,7 +1,7 @@
 /**
  * POST /api/public/email/send
  *
- * Public email send endpoint for generated Petal apps.
+ * Public email send endpoint for generated Kimble apps.
  *
  * Auth:    Authorization: Bearer pet_xxxxxxxxxx (per-project token)
  * Body (Resend-aligned, snake_case):

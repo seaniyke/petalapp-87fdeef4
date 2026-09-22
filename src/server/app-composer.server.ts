@@ -271,7 +271,7 @@ function componentName(routePath: string): string {
 function stubContent(routePath: string, blueprint: AppBlueprint): string {
   const comp = componentName(routePath);
   const blueprintNote =
-    `// Petal scaffold stub — fill this in.\n` +
+    `// Kimble scaffold stub — fill this in.\n` +
     `// Route: ${routePath} · Template: ${blueprint.template.key}` +
     (blueprint.archetype ? ` · Archetype: ${blueprint.archetype.id}` : "") +
     `\n// Reuse blocks from src/components/blocks/* and study examples in src/components/examples/*.\n`;

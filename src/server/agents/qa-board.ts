@@ -1,5 +1,5 @@
 /**
- * Petal Intelligence — Phase E: the QA board and defect router.
+ * Kimble Intelligence — Phase E: the QA board and defect router.
  *
  * The build pipeline already produces findings from several independent
  * checkers (browser verification, visual QA, deploy probe) and already

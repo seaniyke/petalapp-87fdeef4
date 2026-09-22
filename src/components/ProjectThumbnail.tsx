@@ -3,7 +3,7 @@
  * and the homepage showcase.
  *
  * Previews are captured ONCE per build and stored as a real image file in
- * Petal's own storage (see `src/server/project-thumbnail.server.ts`). This
+ * Kimble's own storage (see `src/server/project-thumbnail.server.ts`). This
  * component only ever renders that saved image, so tiles appear instantly on
  * every visit instead of asking a screenshot service to re-render the app
  * live while the user waits.
@@ -91,7 +91,7 @@ export function ProjectThumbnail({
   projectId: string;
   className?: string;
   title?: string;
-  /** The project's claimed Petal subdomain slug, e.g. "my-app". */
+  /** The project's claimed Kimble subdomain slug, e.g. "my-app". */
   subdomain?: string | null;
   /** An active custom domain hostname, e.g. "example.com". */
   customDomain?: string | null;

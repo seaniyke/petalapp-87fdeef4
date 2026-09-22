@@ -1,7 +1,7 @@
 /**
  * Landing-page section variant catalog.
  *
- * The single biggest reason Petal's landings rhyme with each other is
+ * The single biggest reason Kimble's landings rhyme with each other is
  * that the model reaches for the same hero + 3-card features + 3-tier
  * pricing every time. This module exposes a menu of concrete section
  * variants and asks the model to pick a non-repeating combination based

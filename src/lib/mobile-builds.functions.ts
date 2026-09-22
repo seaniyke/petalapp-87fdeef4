@@ -1,5 +1,5 @@
 /**
- * Server functions for the Tier 2 native-mobile shell — Petal-owned flow.
+ * Server functions for the Tier 2 native-mobile shell — Kimble-owned flow.
  *
  * Three operations:
  *  - getMobileAppStatus: cheap read for the panel UI. Returns whether the
@@ -76,7 +76,7 @@ const SigningSchema = z.object({
 /**
  * Auto-generate a stable, valid reverse-DNS bundle id for a project. We
  * use `app.petal.<8charProjectIdPrefix>` so it's deterministic, unique
- * across all Petal projects, and never collides with a real user-owned
+ * across all Kimble projects, and never collides with a real user-owned
  * domain prefix.
  */
 function autoBundleId(projectId: string): string {
@@ -269,7 +269,7 @@ async function pushProjectSnapshot(args: {
     content: r.content ?? "",
   }));
   // Always include the codemagic config — overrides any user-authored one
-  // so the workflow definitions stay under Petal control.
+  // so the workflow definitions stay under Kimble control.
   const withCodemagic = files
     .filter((f) => f.path !== "codemagic.yaml")
     .concat({ path: "codemagic.yaml", content: CODEMAGIC_YAML });

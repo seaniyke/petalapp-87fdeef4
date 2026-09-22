@@ -1,9 +1,9 @@
 /**
- * CryptoTipPanel — send Petal a coffee in crypto.
+ * CryptoTipPanel — send Kimble a coffee in crypto.
  *
- * Shows Petal's public receiving wallets (address + QR), then lets the
+ * Shows Kimble's public receiving wallets (address + QR), then lets the
  * supporter log the transaction hash so we can confirm it on-chain and
- * thank them. No funds pass through Petal's servers.
+ * thank them. No funds pass through Kimble's servers.
  */
 import { useState } from "react";
 import { Check, Copy, Loader2, Heart, Wallet } from "lucide-react";
@@ -115,7 +115,7 @@ export function CryptoTipPanel() {
       <div className="mt-5 flex flex-col items-center gap-4 rounded-2xl border border-border bg-background/60 p-4 sm:flex-row sm:items-center">
         <img
           src={qrUrl(wallet.address)}
-          alt={`QR code for Petal's ${wallet.asset} address`}
+          alt={`QR code for Kimble's ${wallet.asset} address`}
           width={132}
           height={132}
           loading="lazy"
@@ -205,7 +205,7 @@ export function CryptoTipPanel() {
             onChange={(e) => setMessage(e.target.value)}
             rows={3}
             maxLength={280}
-            placeholder="What did you build with Petal?"
+            placeholder="What did you build with Kimble?"
             className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           />
         </div>

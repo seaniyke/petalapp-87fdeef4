@@ -5,10 +5,10 @@ import { Sparkles, Rocket, Wand2, Smartphone, Layers, Shield, ArrowRight } from 
 export const Route = createFileRoute("/changelog")({
   head: () => ({
     meta: [
-      { title: "What's new · Petal" },
-      { name: "description", content: "Every improvement, ship, and experiment inside Petal — updated as we build." },
-      { property: "og:title", content: "What's new · Petal" },
-      { property: "og:description", content: "The Petal changelog and roadmap." },
+      { title: "What's new · Kimble" },
+      { name: "description", content: "Every improvement, ship, and experiment inside Kimble — updated as we build." },
+      { property: "og:title", content: "What's new · Kimble" },
+      { property: "og:description", content: "The Kimble changelog and roadmap." },
       { property: "og:type", content: "website" },
     ],
   }),
@@ -36,14 +36,14 @@ const ENTRIES: Entry[] = [
     tag: "Improved",
     icon: Wand2,
     title: "Build cards you can actually read",
-    body: "Each build now lands as a compact card in chat with a Details view: a full timeline of what Petal thought, read, and edited — plus a file-by-file list of changes.",
+    body: "Each build now lands as a compact card in chat with a Details view: a full timeline of what Kimble thought, read, and edited — plus a file-by-file list of changes.",
   },
   {
     date: "June 2026",
     tag: "Shipped",
     icon: Smartphone,
     title: "Mobile apps without a Mac",
-    body: "Describe an app and Petal scaffolds React Native, streams a live phone preview you can open in Expo Go, and builds a signed .ipa and .apk on our cloud. No Xcode, no Expo account.",
+    body: "Describe an app and Kimble scaffolds React Native, streams a live phone preview you can open in Expo Go, and builds a signed .ipa and .apk on our cloud. No Xcode, no Expo account.",
   },
   {
     date: "June 2026",
@@ -71,13 +71,13 @@ const ENTRIES: Entry[] = [
     tag: "Shipped",
     icon: Rocket,
     title: "Domains, hosting and email in one click",
-    body: "Buy a domain inside Petal or bring your own. DNS, HTTPS, rollbacks and transactional email are handled for you.",
+    body: "Buy a domain inside Kimble or bring your own. DNS, HTTPS, rollbacks and transactional email are handled for you.",
   },
   {
     date: "February 2026",
     tag: "Shipped",
     icon: Shield,
-    title: "Petal Shield",
+    title: "Kimble Shield",
     body: "Spend caps, secret detection, dependency scanning and runtime error tracking are on by default for every project.",
   },
   {
@@ -107,7 +107,7 @@ function ChangelogPage() {
         <div className="relative mx-auto max-w-4xl px-6 pb-16 pt-20 sm:pt-28">
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">The roadmap</p>
           <h1 className="mt-4 font-display text-5xl font-black leading-[0.95] tracking-[-0.035em] sm:text-6xl md:text-7xl">
-            What's <span className="italic text-primary">new</span> in Petal.
+            What's <span className="italic text-primary">new</span> in Kimble.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
             Every ship, every fix, and what we're building next — in the open.
@@ -151,7 +151,7 @@ function ChangelogPage() {
           <h2 className="font-display text-3xl font-black leading-tight sm:text-4xl">
             Have an idea for what we should ship next?
           </h2>
-          <p className="mt-3 text-muted-foreground">Tell Petal — every reply here shapes the roadmap.</p>
+          <p className="mt-3 text-muted-foreground">Tell Kimble — every reply here shapes the roadmap.</p>
           <Link
             to="/"
             className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition hover:-translate-y-0.5"

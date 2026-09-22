@@ -1,6 +1,6 @@
 /**
  * Helpers for the per-project Cloud panel: returns a service-role Supabase
- * client pointed at the user's *managed* Supabase project (NOT Petal's own
+ * client pointed at the user's *managed* Supabase project (NOT Kimble's own
  * backend), plus the Mgmt API ref so we can run analytics queries.
  *
  * Server-only — never import from client code.

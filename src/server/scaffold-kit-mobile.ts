@@ -1,5 +1,5 @@
 /**
- * Mobile-feel primitives for Petal scaffold.
+ * Mobile-feel primitives for Kimble scaffold.
  *
  * These are PWA + Capacitor-friendly building blocks that make a generated
  * React app feel like a native iOS/Android app: safe-area aware containers,

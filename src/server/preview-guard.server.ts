@@ -11,9 +11,9 @@ const DEFAULT_INGEST_URL =
   "https://buildwithpetal.com/api/public/track-runtime-error";
 
 interface GuardOptions {
-  /** Petal project UUID. When present, the guard POSTs runtime errors to
+  /** Kimble project UUID. When present, the guard POSTs runtime errors to
    *  the ingest endpoint so deployed/CDN previews surface crashes back to
-   *  Petal even when there's no parent iframe to receive postMessage. */
+   *  Kimble even when there's no parent iframe to receive postMessage. */
   projectId?: string;
   /** Override the ingest URL (used for staging/preview environments). */
   ingestUrl?: string;
@@ -48,7 +48,7 @@ function buildGuardScript(opts: GuardOptions): string {
       if (payload && typeof payload === "object") payload.guardVersion = VERSION;
     } catch (_) {}
     try { parent.postMessage({ type: type, payload: payload }, "*"); } catch (_) {}
-    // Also POST to Petal's ingest endpoint so deployed apps (no parent
+    // Also POST to Kimble's ingest endpoint so deployed apps (no parent
     // iframe) surface crashes back to the project owner. Best-effort; we
     // never let an analytics failure break the user's app.
     if (!PROJECT_ID || posted) return;
@@ -183,7 +183,7 @@ function buildGuardScript(opts: GuardOptions): string {
       // app. React still mounts, fonts fall back, images show broken icons.
       // Showing the unrecoverable "Preview crashed" overlay here is wrong —
       // users saw a fully-working app behind a fatal error card. Post a
-      // non-fatal telemetry ping so Petal can still suggest a fix, but do
+      // non-fatal telemetry ping so Kimble can still suggest a fix, but do
       // NOT show the overlay.
       var url = target.src || target.href || "unknown asset";
       try { parent.postMessage({ type: "petal:runtime:asset-error", payload: { tag: String(target.tagName).toLowerCase(), url: String(url).slice(0, 500) } }, "*"); } catch (_) {}

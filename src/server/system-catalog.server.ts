@@ -1,5 +1,5 @@
 /**
- * System Catalog — Petal's "what can I build" surface.
+ * System Catalog — Kimble's "what can I build" surface.
  *
  * 500-ish archetypes organized by 25 verticals. Each entry is intentionally
  * tiny: id, label, parent template, recommended themes, reality tier,
@@ -11,7 +11,7 @@
  * prompt-size cost.
  *
  * Reality tier:
- *   - "real"        — Petal can build this end-to-end
+ *   - "real"        — Kimble can build this end-to-end
  *   - "demo-only"   — UI + simulated data only; render a DEMO banner
  *   - "keys-required" — needs provider keys to be useful (Plaid, Alchemy, …)
  *

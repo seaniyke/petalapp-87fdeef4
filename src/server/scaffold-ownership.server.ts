@@ -1,5 +1,5 @@
 /**
- * Petal v3 — Phase C: the scaffold owns structure.
+ * Kimble v3 — Phase C: the scaffold owns structure.
  *
  * WHY THIS FILE EXISTS
  * --------------------
@@ -16,16 +16,16 @@
  *   isScaffoldOwnedPath(p)  — may the MODEL write this file? (write allowlist)
  *   isVerifierExempt(p)     — may a verifier BLOCK a turn on this file?
  *
- * The second is a superset of the first: everything Petal owns is also
+ * The second is a superset of the first: everything Kimble owns is also
  * something the model cannot be asked to repair, plus generated integration
  * code that is correct-by-construction and occasionally trips a heuristic.
  *
  * Adding a path here retires repair passes. That is the point: `main.tsx`,
- * `index.html` and the router bootstrap are Petal's, so a model mistake in
+ * `index.html` and the router bootstrap are Kimble's, so a model mistake in
  * them is impossible rather than repairable.
  */
 
-/** Directory prefixes Petal owns outright. The model may not write into them. */
+/** Directory prefixes Kimble owns outright. The model may not write into them. */
 export const SCAFFOLD_OWNED_PREFIXES = [
   "src/components/ui/",
   "src/components/examples/",
@@ -42,7 +42,7 @@ export const SCAFFOLD_OWNED_PREFIXES = [
 ] as const;
 
 /**
- * Exact files Petal owns.
+ * Exact files Kimble owns.
  *
  * `package.json` is here deliberately: dependency changes belong to the bare
  * import resolver, which reads the real registry and writes a real resolved
@@ -67,7 +67,7 @@ export const SCAFFOLD_OWNED_PATHS = new Set([
 ]);
 
 /**
- * Structural files Petal writes deterministically but that still arrive on
+ * Structural files Kimble writes deterministically but that still arrive on
  * some legacy paths as model ops. These are absorbed rather than refused:
  * `index.html` goes through the document-head merge, `src/main.tsx` through
  * the renderable-shell restorer. Listed separately so callers can tell
@@ -91,7 +91,7 @@ export function isScaffoldAbsorbedPath(path: string): boolean {
 
 /**
  * May a verifier hold the turn hostage over this path? A diagnostic on a
- * Petal-owned file is either our bug or a false positive — never something a
+ * Kimble-owned file is either our bug or a false positive — never something a
  * model repair round can resolve, so blocking on it just burns budget.
  */
 export function isVerifierExempt(path: string): boolean {
@@ -103,10 +103,10 @@ export function isVerifierExempt(path: string): boolean {
 /** One plain sentence explaining an ownership refusal, for the model/user. */
 export function scaffoldOwnershipReason(path: string): string {
   if (path === "package.json") {
-    return "package.json is managed by Petal's dependency resolver — add the import and the package is installed with a real resolved version";
+    return "package.json is managed by Kimble's dependency resolver — add the import and the package is installed with a real resolved version";
   }
   if (path === "vite.config.ts" || path === "tsconfig.json") {
-    return `${path} is build configuration owned by the Petal scaffold`;
+    return `${path} is build configuration owned by the Kimble scaffold`;
   }
   if (path === "src/lib/utils.ts") {
     return "src/lib/utils.ts is part of the UI kit contract";
@@ -117,5 +117,5 @@ export function scaffoldOwnershipReason(path: string): string {
   if (path.startsWith("src/integrations/backend/")) {
     return "src/integrations/backend/* is generated backend client code";
   }
-  return `${path} is owned by the Petal scaffold`;
+  return `${path} is owned by the Kimble scaffold`;
 }

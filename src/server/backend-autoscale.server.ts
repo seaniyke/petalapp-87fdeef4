@@ -1,10 +1,10 @@
 /**
  * Automatic database upgrade.
  *
- * Every generated app starts on Petal's shared database because that costs
+ * Every generated app starts on Kimble's shared database because that costs
  * us almost nothing and covers any early-stage app. When an app actually
  * grows — real rows, real signed-up users — or needs something the shared
- * tier can't do, Petal moves it onto its own database without the owner
+ * tier can't do, Kimble moves it onto its own database without the owner
  * having to understand the difference.
  *
  * Rules that must never be broken:
@@ -13,7 +13,7 @@
  *   - An upgrade is never silent. The owner is told, with the cost, and can
  *     opt out.
  *   - An upgrade is never free money. It is gated on the owner's credits and
- *     on Petal's own capacity ceiling.
+ *     on Kimble's own capacity ceiling.
  *
  * Server-only. Never import from client code.
  */
@@ -263,7 +263,7 @@ export async function notifyOwner(
     const title = project.title ?? "Your app";
 
     const body =
-      `${title} has grown — ${REASON_TEXT[reason]} — so Petal moved it onto its own database.\n\n` +
+      `${title} has grown — ${REASON_TEXT[reason]} — so Kimble moved it onto its own database.\n\n` +
       `Everything carried across and the app kept running throughout. ` +
       `A dedicated database uses your credits while it's active, and it sleeps on its own when the app is quiet.\n\n` +
       `If you'd rather stay on the starter database, open the app's settings and turn off automatic upgrades.`;
@@ -273,7 +273,7 @@ export async function notifyOwner(
       payload: {
         message_id: `backend-upgrade-${projectId}`,
         to: email,
-        from: "Petal AI <noreply@buildwithpetal.com>",
+        from: "Kimble AI <noreply@buildwithpetal.com>",
         sender_domain: "notify.buildwithpetal.com",
         subject: `${title} moved onto its own database`,
         html: `<p>${body.replace(/\n\n/g, "</p><p>")}</p>`,

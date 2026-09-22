@@ -1,9 +1,9 @@
 /**
  * Shared backend tier — server helpers.
  *
- * Free-tier projects get a real database, auth and REST API without Petal
+ * Free-tier projects get a real database, auth and REST API without Kimble
  * spinning up a dedicated Supabase project per app. Every shared-tier app
- * stores its rows inside Petal's own Postgres in `shared_app_records`,
+ * stores its rows inside Kimble's own Postgres in `shared_app_records`,
  * namespaced by `project_id` + `collection`, and its end users live in
  * `shared_app_users`.
  *
@@ -282,7 +282,7 @@ export async function createRecord(opts: {
     throw new Error("Record is too large for the shared tier.");
   }
   // The row ceiling only applies to the shared database. An app with its own
-  // database has no Petal-imposed limit.
+  // database has no Kimble-imposed limit.
   if (!store.dedicated) {
     const { count } = await store.client
       .from(store.records)
@@ -294,7 +294,7 @@ export async function createRecord(opts: {
       // point; if it couldn't (no credits, at capacity) the app keeps serving
       // everything it already has and only new writes are refused.
       throw new Error(
-        "This app's starter database is full. It keeps working with the data it has — add credits and Petal will move it onto its own database automatically.",
+        "This app's starter database is full. It keeps working with the data it has — add credits and Kimble will move it onto its own database automatically.",
       );
     }
   }

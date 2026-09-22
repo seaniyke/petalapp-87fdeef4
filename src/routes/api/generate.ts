@@ -213,7 +213,7 @@ type Body = {
   customInstructions?: string;
   /** Required to look up the project's attached backend (BYO Supabase). */
   projectId?: string;
-  /** When true, this run is an internal auto-fix triggered by Petal itself
+  /** When true, this run is an internal auto-fix triggered by Kimble itself
    *  after a failed build. It changes prompt shaping and scaffold healing
    *  ONLY — it does NOT skip credit checks or charging. Every model call
    *  costs money, so every model call is metered. */
@@ -695,7 +695,7 @@ async function relayAndCollect(
   // forwarded to the client. Each file emits its narration exactly once,
   // the moment the model finishes writing its `narration` string — which
   // we instruct the model to place BEFORE `content`, so users hear what
-  // Petal is about to build *before* the file body streams.
+  // Kimble is about to build *before* the file body streams.
   const narratedPaths = new Set<string>();
   // Plan-first execution. The model writes `steps` before any file, so we can
   // show the user the whole checklist up front and then tick items off as the
@@ -1178,7 +1178,7 @@ async function recoverMissingToolOutput(args: {
  * Emit a conversational AI reply WITHOUT failing the turn — used as the
  * deterministic fallback whenever generation can't safely produce edits.
  *
- * The user sees a normal Petal message with a friendly explanation and
+ * The user sees a normal Kimble message with a friendly explanation and
  * suggested next step (NOT a red error card). No credits are charged
  * because no files were written / changed. Cleanly closes the SSE stream.
  *
@@ -1335,7 +1335,7 @@ function validateTargetShape(
     // `capacitor.config.ts` is scaffold-injected, so the only real failure
     // mode here is the generic "no renderable app" case the web guard covers.
     // Never roll a mobile turn back for not being Expo — that path does not
-    // exist in Petal's store pipeline.
+    // exist in Kimble's store pipeline.
     if (!hasAny((p) => p.startsWith("src/pages/")) && !has("src/App.tsx")) {
       return "I started building this as a mobile app but the output had no screens in it, so I rolled it back rather than hand you an empty app. Re-send the prompt and name the screens you want (e.g. 'home feed, add item, profile') and I'll build them.";
     }
@@ -1594,7 +1594,7 @@ function isRetryablePatchApplyError(message: string): boolean {
 }
 
 /**
- * Petal v3 Phase A — the closed-loop pre-emit gate.
+ * Kimble v3 Phase A — the closed-loop pre-emit gate.
  *
  * Was: a single-round, parse-only check. A file could parse perfectly and
  * still ship a white screen because it imported a sibling that didn't exist
@@ -1752,7 +1752,7 @@ async function handleGenerateRequestCore(
   /**
    * AI Generation Bible §7 — the repair phase is bounded by rounds AND by a
    * hard cost ceiling. Rounds alone don't bound spend: one repair pass over a
-   * 40-file project costs more than ten over a small one. Repair is Petal's
+   * 40-file project costs more than ten over a small one. Repair is Kimble's
    * cost, never the user's, so this ceiling protects margin and kills
    * pathological loops; it is never surfaced as "you ran out".
    */
@@ -1880,7 +1880,7 @@ async function handleGenerateRequestCore(
                 sse({
                   type: "error",
                   message:
-                    "Petal couldn't draft a plan for that request. Try sending again without Plan first.",
+                    "Kimble couldn't draft a plan for that request. Try sending again without Plan first.",
                   kind: classifyRawError(raw),
                   raw: raw.slice(0, 240),
                 }),
@@ -1984,7 +1984,7 @@ async function handleGenerateRequestCore(
       prdBlock = resolvedPrd.promptBlock;
       prdScenarioBlock = resolvedPrd.scenarioBlock;
       prdNote = resolvedPrd.note;
-      // When the contract itself changed, Petal must say so in one sentence
+      // When the contract itself changed, Kimble must say so in one sentence
       // rather than silently reshaping the product.
       if (prdNote) {
         prdBlock += `\n\n### Contract change (state this to the user in one sentence before you build)\n${prdNote}\n`;
@@ -2032,11 +2032,11 @@ async function handleGenerateRequestCore(
     ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n${webSubtypeBlock}`
     : webSubtypeBlock;
 
-  // Design + craft bar (applies to EVERY target). Petal apps must look
+  // Design + craft bar (applies to EVERY target). Kimble apps must look
   // hand-designed, not template-y. Keep this short and specific — the
   // model is much better at executing concrete rules than vibes.
   const designQualityBlock = `\n\n### Design & craft (HARD CONSTRAINT — applies to every UI you generate)
-Petal apps must feel hand-crafted, not AI-generic. Hold yourself to an Awwwards bar.
+Kimble apps must feel hand-crafted, not AI-generic. Hold yourself to an Awwwards bar.
 
 Typography
 - Pair a distinctive display font with a refined body font (Google Fonts is fine). NEVER default to Inter+Poppins or Inter alone. Examples that work: Space Grotesk + DM Sans, Instrument Serif + Work Sans, Bricolage Grotesque + Inter Tight, Fraunces + Geist, General Sans + Söhne-ish.
@@ -2075,7 +2075,7 @@ Forbidden defaults
   let sharedBackend =
     !backend && body.projectId ? await lookupSharedBackendForGenerate(body.projectId) : null;
 
-  // Intent → action. The inline "Enable X" cards were removed; Petal now acts
+  // Intent → action. The inline "Enable X" cards were removed; Kimble now acts
   // on the same detection itself. Best-effort: any failure leaves the turn
   // exactly as it would have been.
   const intentActions = await resolveIntentActions({
@@ -2091,7 +2091,7 @@ Forbidden defaults
 
 
   const sharedBackendBlock = sharedBackend
-    ? `\n\n### Backend (Petal Cloud, shared tier) is connected\nThis project has a FREE shared backend: a real database + user accounts, no SQL and no migrations. Use the pre-configured client — never call createClient, never import @supabase/supabase-js, never write SQL or emit a MIGRATION block.\n\nImports:\n- import { db, auth } from "@/integrations/backend/client"\n- import { useAuth, AuthProvider } from "@/integrations/backend/auth"\n\nData API (collections are created on first write):\n- await db.list<T>("tasks", { mine: true, limit: 50 }) -> { records }\n- await db.create("tasks", { title, done: false })\n- await db.update("tasks", id, { done: true })\n- await db.remove("tasks", id)\nEach record is { id, collection, user_id, data, created_at, updated_at } — your fields live under \`record.data\`.\n\nAuth: auth.signUp / auth.signIn / auth.signOut, or useAuth() for { user, loading }. Wrap the app once with <AuthProvider>.\nLimits: 5,000 rows and 25 collections. Never overwrite anything under src/integrations/backend/ — protected.\n`
+    ? `\n\n### Backend (Kimble Cloud, shared tier) is connected\nThis project has a FREE shared backend: a real database + user accounts, no SQL and no migrations. Use the pre-configured client — never call createClient, never import @supabase/supabase-js, never write SQL or emit a MIGRATION block.\n\nImports:\n- import { db, auth } from "@/integrations/backend/client"\n- import { useAuth, AuthProvider } from "@/integrations/backend/auth"\n\nData API (collections are created on first write):\n- await db.list<T>("tasks", { mine: true, limit: 50 }) -> { records }\n- await db.create("tasks", { title, done: false })\n- await db.update("tasks", id, { done: true })\n- await db.remove("tasks", id)\nEach record is { id, collection, user_id, data, created_at, updated_at } — your fields live under \`record.data\`.\n\nAuth: auth.signUp / auth.signIn / auth.signOut, or useAuth() for { user, loading }. Wrap the app once with <AuthProvider>.\nLimits: 5,000 rows and 25 collections. Never overwrite anything under src/integrations/backend/ — protected.\n`
     : "";
 
   const backendBlock = backend
@@ -2103,7 +2103,7 @@ Forbidden defaults
   // hallucinating ones, and so column names in queries match reality.
   const schemaBlock = await renderSchemaBlock({ backend, projectId: body.projectId });
 
-  // Marketplace integrations (Resend, Plausible, etc.) — tells Petal
+  // Marketplace integrations (Resend, Plausible, etc.) — tells Kimble
   // which helpers exist so it uses them instead of reinventing.
   const integrationsBlock = body.projectId
     ? await loadInstalledIntegrationsContext(body.projectId)
@@ -2111,7 +2111,7 @@ Forbidden defaults
 
   // Auto-suggest: when the user asks for a capability we already have a
   // marketplace integration for (and it isn't installed yet), inject a
-  // short prompt block so Petal recommends installing it instead of
+  // short prompt block so Kimble recommends installing it instead of
   // hand-rolling the SDK.
   const installedCodes = body.projectId
     ? await loadInstalledCodes(body.projectId)
@@ -2285,7 +2285,7 @@ Forbidden defaults
   // Compute the design direction up-front so BOTH the staged pipeline and
   // the monolithic path see the same brief. Previously this lived below
   // the staged branch and the staged path got a generic plan with no
-  // committed aesthetic — the root cause of "every Petal app looks the
+  // committed aesthetic — the root cause of "every Kimble app looks the
   // same / sidebar + dashboard for a feed prompt".
   // Re-render the full committed direction on every turn. The director reads
   // the persisted value first, so edits retain density, motion, FX recipe and
@@ -2349,7 +2349,7 @@ Forbidden defaults
 
 
   // ---------------------------------------------------------------------------
-  // Petal Intelligence — multi-agent planning board.
+  // Kimble Intelligence — multi-agent planning board.
   //
   // Convenes the specialists this turn actually deserves (a colour tweak gets
   // none; a marketplace gets the full board), reconciles their conflicts, and
@@ -2417,7 +2417,7 @@ Forbidden defaults
     /* never block a build on contract render failure */
   }
 
-  // Filter out files Petal manages itself before showing the project to the
+  // Filter out files Kimble manages itself before showing the project to the
   // model. The AI never edits these (we drop ops that touch them), but feeding
   // them back as context bloats patch turns and makes targeted edits harder.
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
@@ -2674,7 +2674,7 @@ Forbidden defaults
 
   const filesContext = isInitial
     ? ""
-    : `\n\nEditable app file manifest (all app-owned files Petal may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Petal-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
+    : `\n\nEditable app file manifest (all app-owned files Kimble may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${promptBudget.omitted} lower-priority files omitted for speed. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${promptBudget.files
         .map((f) => `--- ${f.path} ---\n${f.content}`)
         .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
@@ -2828,7 +2828,7 @@ Forbidden defaults
     // Never block a build on guidance failure.
   }
 
-  // Layer M — Game generation guidance. Fires when the user asks Petal to
+  // Layer M — Game generation guidance. Fires when the user asks Kimble to
   // build a game. Picks the right library (Phaser / three.js / plain React)
   // by genre, scaffolds the React+Phaser bridge, and adds a leaderboard
   // schema when the prompt mentions scores or multiplayer.
@@ -3203,7 +3203,7 @@ Forbidden defaults
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
         // Replay the Inspector's investigation into the timeline so the user
-        // sees the same trace Petal worked from (searched → read → concluded).
+        // sees the same trace Kimble worked from (searched → read → concluded).
         for (const step of inspectorReport?.steps ?? []) {
           controller.enqueue(
             encoder.encode(
@@ -3264,7 +3264,7 @@ Forbidden defaults
         // moment the model stream ends — long before verify + deploy finish —
         // so the card can show "N credits used" while work is still going
         // instead of only revealing the cost at the very end. Auto-fix turns
-        // are on Petal's tab and never show a number.
+        // are on Kimble's tab and never show a number.
         if (!body.isAutoFix) {
           try {
             controller.enqueue(
@@ -3578,7 +3578,7 @@ Forbidden defaults
           const appFiles = parsed.files.filter(
             (file) =>
               // package.json is accepted only as dependency intent; the
-              // scaffold merger rewrites it into Petal's canonical manifest.
+              // scaffold merger rewrites it into Kimble's canonical manifest.
               file.path === "package.json" ||
               (!isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path)),
           );
@@ -3587,7 +3587,7 @@ Forbidden defaults
             sharedBackend: sharedBackend ?? undefined,
             target: buildTarget.id,
           });
-          // index.html and src/main.tsx are deterministic Petal shell files.
+          // index.html and src/main.tsx are deterministic Kimble shell files.
           // Inject them before write-time validation so streamed path/content
           // drift can never corrupt the mount point or move CSS into TSX.
           nextFiles = ensureRenderableShell(nextFiles, detectedWebSubtype).files;
@@ -3679,7 +3679,7 @@ Forbidden defaults
 
           // Honesty ledger — every path the model asked to change that did
           // NOT end up byte-different after apply + recovery. Surfaced to the
-          // user at the end of the turn so Petal can never claim "done" for a
+          // user at the end of the turn so Kimble can never claim "done" for a
           // file it silently failed to touch.
 
           /**
@@ -3803,8 +3803,8 @@ Forbidden defaults
 
             // The model may correctly diagnose a scaffold/build-config fault,
             // but it is not allowed to edit those files directly. Before
-            // refusing the turn, run Petal's trusted deterministic repair
-            // layer. This closes the old contradiction where Petal said it
+            // refusing the turn, run Kimble's trusted deterministic repair
+            // layer. This closes the old contradiction where Kimble said it
             // would fix vite.config.ts, dropped its own op, then asked the
             // user to rephrase. User/plan-protected paths remain untouched.
             const onlyBuildConfigViolations = violations.every((v) =>
@@ -3830,7 +3830,7 @@ Forbidden defaults
               if (changed) {
                 const summary = body.isAutoFix
                   ? "I repaired the build configuration and restored the project to a buildable state."
-                  : "I fixed the build configuration safely and re-ran Petal's project repairs.";
+                  : "I fixed the build configuration safely and re-ran Kimble's project repairs.";
                 console.info("[protected-path-self-heal]", healed.notes.join("; ") || "scaffold restored");
                 emitDeterministicRepair(controller, encoder, { files: healed.files, summary });
                 return;
@@ -4289,7 +4289,7 @@ Forbidden defaults
             // Per-path honesty check. Some ops landed (so we're past the
             // all-or-nothing gate above) but individual files the model
             // claimed to edit may still be byte-identical — that's the
-            // "Petal said it did it but it didn't" failure mode.
+            // "Kimble said it did it but it didn't" failure mode.
             const changedSet = new Set(changedPaths);
             for (const p of new Set(safeOps.map((o) => o.path))) {
               if (!changedSet.has(p)) unappliedPaths.push(p);
@@ -4419,7 +4419,7 @@ Forbidden defaults
         // ROOT-CAUSE GATE: if the model failed to emit a real src/App.tsx,
         // we used to silently inject a "Your app is being prepared"
         // placeholder and ship it as a successful build. That's the bug
-        // class behind every "Petal built a blank app" report — a placeholder
+        // class behind every "Kimble built a blank app" report — a placeholder
         // screen shipped as a finished product. Treat it as a turn failure
         // instead: revert files, never charge credits, and ask the user to
         // retry with a more concrete prompt. index.html + main.tsx repairs
@@ -4501,7 +4501,7 @@ Forbidden defaults
             sse({
               type: "cycle_progress",
               cycle: 1,
-              message: "Checking the files Petal just wrote for build errors…",
+              message: "Checking the files Kimble just wrote for build errors…",
             }),
           ),
         );
@@ -4687,7 +4687,7 @@ Forbidden defaults
         // tier doesn't trip on identifiers that point at packages the
         // installer can never resolve. The replaced code is ugly on
         // purpose to flag the bad sections clearly in the source — the
-        // user can ask Petal in a follow-up turn to reimplement them.
+        // user can ask Kimble in a follow-up turn to reimplement them.
         if (localOut.preflightHallucinated.length > 0) {
           const stripT0 = Date.now();
           const stripOut = stripHallucinatedImports(
@@ -4887,7 +4887,7 @@ Forbidden defaults
         // Cycles 3..N (only when the `agent_loop` Labs flag is on) push
         // their gateway usage here so the per-turn aggregator at the
         // bottom of the handler can fold them into the single user
-        // charge. Cycle 2 (the default polish pass) stays on Petal's
+        // charge. Cycle 2 (the default polish pass) stays on Kimble's
         // tab — it runs for everyone whether they asked for it or not.
         const agentLoopUsages: Array<GatewayUsage | null> = [];
         if (autofixGateOpen) {
@@ -4902,7 +4902,7 @@ Forbidden defaults
               sse({
                 type: "cycle_progress",
                 cycle: 2,
-                message: `Petal noticed ${combinedAutofixIssues.length} thing${combinedAutofixIssues.length === 1 ? "" : "s"} to polish — patching now.`,
+                message: `Kimble noticed ${combinedAutofixIssues.length} thing${combinedAutofixIssues.length === 1 ? "" : "s"} to polish — patching now.`,
               }),
             ),
           );
@@ -5013,7 +5013,7 @@ Forbidden defaults
         //
         // Billing: cycles 3..N push usage into `agentLoopUsages` and are
         // folded into the single user charge via priceTurn(). Cycle 2 (the
-        // default polish pass above) is still on Petal's tab.
+        // default polish pass above) is still on Kimble's tab.
         // P0-D: the bounded agent loop now runs for every user (the labs
         // flag was the kill switch during early testing). All safety limits
         // below remain — 3 cycles max, 90s wall budget, converges the
@@ -5446,18 +5446,18 @@ Forbidden defaults
         // the MAIN generate call's token usage only — `collected.usage`
         // covers the patch_files / write_project completion, not the
         // side calls (design-director, self-check, humanize-error).
-        // Those run on Petal's tab so users never get surprise-charged
+        // Those run on Kimble's tab so users never get surprise-charged
         // for our internal QA passes. Do NOT add their usage here.
         //
-        // AUTO-FIX runs are also on Petal's tab — the user did not ask
-        // for this turn, Petal is fixing its own broken build. We log
+        // AUTO-FIX runs are also on Kimble's tab — the user did not ask
+        // for this turn, Kimble is fixing its own broken build. We log
         // the would-be amount for analytics but never debit the user.
         // Aggregate every user-billable sub-call's token usage and price
         // ONCE. Today this array holds just the main generate completion;
         // when we add user-requested fix cycles inside the agentic loop,
         // they push into `turnUsages` and the user still sees a single
         // debit at end of turn. Internal QA cycles (post-stream autofix,
-        // continuation, self-check) stay on Petal's tab and are NOT
+        // continuation, self-check) stay on Kimble's tab and are NOT
         // appended here — same convention as `body.isAutoFix`.
         const turnUsages: Array<GatewayUsage | null> = [
           collected.usage ?? null,
@@ -5585,7 +5585,7 @@ Forbidden defaults
         }
 
         // Internal economics record for this turn. Admin-only accounting:
-        // what the customer paid next to what the turn cost Petal, with the
+        // what the customer paid next to what the turn cost Kimble, with the
         // cost explicitly marked actual / estimated / unknown. Best-effort —
         // never allowed to affect the build or the charge.
         void recordTurnEconomics({
@@ -5688,7 +5688,7 @@ Forbidden defaults
         // Bible §9 scope guard — a one-line request that rewrites half the
         // project is how features silently disappear. We don't block it (the
         // rewrite is sometimes right), we disclose it and offer the undo, so
-        // the user finds out from Petal rather than from a missing page.
+        // the user finds out from Kimble rather than from a missing page.
         {
           const scope = analyzeEditScope(
             turnBaselineFiles,
@@ -5823,7 +5823,7 @@ Forbidden defaults
         const userCancelled = abortSignal?.aborted === true;
         let kind = userCancelled ? "aborted" : classifyRawError(raw);
         // A gateway 402 during this turn explains every downstream symptom
-        // ("no files", "no edits", unknown). Attribute it to Petal's own AI
+        // ("no files", "no edits", unknown). Attribute it to Kimble's own AI
         // account instead of telling the user their prompt was too complex —
         // they cannot fix our billing, and "Try a simpler app" is a lie.
         if (
@@ -5840,14 +5840,14 @@ Forbidden defaults
         // genuine user cancel — the client already knows what it did.
         const friendly = userCancelled
           ? {
-              message: "You stopped Petal. Send a new message when you're ready.",
+              message: "You stopped Kimble. Send a new message when you're ready.",
               suggestions: [] as string[],
             }
           : kind === "provider_credits_exhausted"
             ? {
                 // Never let the humanizer blame the prompt for OUR outage.
                 message:
-                  "Petal's AI is temporarily unavailable — this is on our side, not your prompt. Nothing was charged. Please try again shortly.",
+                  "Kimble's AI is temporarily unavailable — this is on our side, not your prompt. Nothing was charged. Please try again shortly.",
                 suggestions: ["Try again"] as string[],
               }
             : await humanizeBuildError({
@@ -5908,7 +5908,7 @@ Forbidden defaults
         // deterministic patch → conversational fallback) has already been
         // tried. If something still managed to throw `no_edit_emitted` out
         // here (rare leaked path, future regression, unanticipated throw
-        // site), degrade gracefully to a normal Petal reply instead of
+        // site), degrade gracefully to a normal Kimble reply instead of
         // showing the user "AI did not return usable edits". No credits
         // were charged, files are unchanged — the right UX is a friendly
         // ask-for-clarification message, not a failure card.
@@ -5973,7 +5973,7 @@ Forbidden defaults
 
 /**
  * Read an `error` payload out of one complete SSE block, if that is what it
- * is. Used to hold back failures Petal is about to retry itself.
+ * is. Used to hold back failures Kimble is about to retry itself.
  */
 function errorPayloadOf(block: string): { message: string; raw: string } | null {
   if (!block.includes('"type":"error"')) return null;
@@ -6005,7 +6005,7 @@ function creditPausePayloadOf(block: string): { checkpointId: string } | null {
 
 /**
  * Wording for a failure the user genuinely has to know about. Never blames
- * their connection — by the time this is shown, Petal has already decided the
+ * their connection — by the time this is shown, Kimble has already decided the
  * request cannot be finished on its own.
  */
 function humanizeStreamFailure(raw: string): string {
@@ -6013,7 +6013,7 @@ function humanizeStreamFailure(raw: string): string {
   if (kind === "credits_exhausted" || kind === "provider_credits_exhausted") {
     return raw;
   }
-  return "Petal couldn't finish this one. Nothing was charged — send it again and it'll pick up from here.";
+  return "Kimble couldn't finish this one. Nothing was charged — send it again and it'll pick up from here.";
 }
 
 async function handleGenerateRequest(request: Request): Promise<Response> {
@@ -6097,7 +6097,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       // same "Still working…" forever. The model + path narration takes
       // priority — these only fire when nothing else has spoken in 14s.
       const STATUS_ROTATION = [
-        "Still working — Petal is keeping the build connected.",
+        "Still working — Kimble is keeping the build connected.",
         "Reviewing the pieces and checking for build errors…",
         "Almost there — verifying everything compiles before shipping.",
         "Polishing the last few details — won't be much longer.",
@@ -6147,7 +6147,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       let silentRecovery = false;
 
       /**
-       * Queue the turn for silent completion when the failure is one Petal can
+       * Queue the turn for silent completion when the failure is one Kimble can
        * simply run again. Returns true when the caller should stay quiet.
        */
       const recoverSilently = async (raw: string, userCancelled: boolean): Promise<boolean> => {
@@ -6161,7 +6161,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (!queued) return false;
         silentRecovery = true;
         emit({ type: "recovering" });
-        emit({ type: "status", message: "Still working — Petal is finishing this off." });
+        emit({ type: "status", message: "Still working — Kimble is finishing this off." });
         return true;
       };
 
@@ -6212,7 +6212,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           if (!(await recoverSilently(raw, false))) {
             emit({
               type: "error",
-              message: raw || "Petal couldn't start that build. Please try again.",
+              message: raw || "Kimble couldn't start that build. Please try again.",
               kind: classifyRawError(raw),
               raw: raw.slice(0, 500),
             });
@@ -6225,7 +6225,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // rather than by throwing, so transient ones have to be caught on the
         // wire. Frame the stream into whole SSE blocks, and hold back any
         // error we are about to retry ourselves — the user should never see a
-        // failure Petal is already finishing on its own.
+        // failure Kimble is already finishing on its own.
         const decoder = new TextDecoder();
         let sseBuffer = "";
         while (true) {
@@ -6484,7 +6484,7 @@ export const Route = createFileRoute("/api/generate")({
           return new Response(
             JSON.stringify({
               error:
-                "Petal hit an unexpected error before starting your build. No credits were charged. Please try again.",
+                "Kimble hit an unexpected error before starting your build. No credits were charged. Please try again.",
               detail: message,
             }),
             { status: 500, headers: { "Content-Type": "application/json" } },

@@ -3,7 +3,7 @@
  * the project owner edit how their published site appears in browser tabs
  * and link previews:
  *
- *   - Icon (favicon)        — defaults to the Petal flower until uploaded.
+ *   - Icon (favicon)        — defaults to the Kimble flower until uploaded.
  *   - Title                 — defaults to the project's build-time title.
  *   - Description           — defaults to the project's build-time summary.
  *   - Social image (OG)     — defaults to the icon (so links always preview).
@@ -80,7 +80,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
     setOgUrl(project.site_og_image_url ?? null);
   }, [open, project]);
 
-  /** Ask Petal to write the title + description from what the app actually is. */
+  /** Ask Kimble to write the title + description from what the app actually is. */
   async function writeWithAi() {
     setWriting(true);
     try {
@@ -93,7 +93,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
       });
       if (result.title) setTitle(result.title.slice(0, TITLE_LIMIT));
       if (result.description) setDescription(result.description.slice(0, DESC_LIMIT));
-      toast.success("Petal wrote your title & description");
+      toast.success("Kimble wrote your title & description");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't write it");
     } finally {
@@ -223,7 +223,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
           </p>
         </div>
 
-        {/* Let Petal write the copy and draw the icon from the project itself */}
+        {/* Let Kimble write the copy and draw the icon from the project itself */}
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -232,7 +232,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold transition hover:bg-muted disabled:opacity-60"
           >
             {writing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            Write with Petal
+            Write with Kimble
           </button>
           <button
             type="button"
@@ -299,7 +299,7 @@ export function WebsiteInfoSheet({ open, onOpenChange, project, onChange }: Prop
               className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="h-3 w-3" />
-              Reset to Petal logo
+              Reset to Kimble logo
             </button>
           )}
         </div>

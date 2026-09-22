@@ -2,7 +2,7 @@
  * Entitlements — the single server-side answer to "does this user get the
  * paid feature set?".
  *
- * Petal sells two ways:
+ * Kimble sells two ways:
  *   1. Subscription (plan_code <> 'free')
  *   2. Pay as you go — buy a one-off credit pack, no subscription
  *

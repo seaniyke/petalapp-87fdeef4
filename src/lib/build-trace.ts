@@ -1,5 +1,5 @@
 /**
- * Pure helpers that turn everything Petal streams during a build into ONE
+ * Pure helpers that turn everything Kimble streams during a build into ONE
  * chronological trace — the thing the Details sheet renders.
  *
  * Before this, the sheet stacked four separate lists (phases, thoughts,

@@ -8,7 +8,7 @@
  * rewrites the user's app.
  *
  * Budget: ONE call to gemini-flash-lite, ≤2k output tokens, gated by gate().
- * Petal eats the cost (it's QA, not user-requested work) — same convention
+ * Kimble eats the cost (it's QA, not user-requested work) — same convention
  * as self-check / humanize-error.
  */
 
@@ -22,7 +22,7 @@ export interface PostStreamFixResult {
   /** Token usage from the autofix model call, when available. Surfaced so
    *  callers running this pass inside a user-billable agentic loop can
    *  fold it into the per-turn aggregate via priceTurn(). Internal QA
-   *  callers (default) ignore this and keep the call on Petal's tab. */
+   *  callers (default) ignore this and keep the call on Kimble's tab. */
   usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
 }
 
@@ -41,7 +41,7 @@ export function shouldRunPostStreamAutofix(args: {
   return false;
 }
 
-const SYSTEM = `You are Petal's final implementation critic. You receive a freshly generated React + Tailwind v4 + Vite app plus an authoritative MUST-FIX list. Make the smallest complete corrections required for the app to compile, match the requested product, work on mobile, and meet the stated design contract.
+const SYSTEM = `You are Kimble's final implementation critic. You receive a freshly generated React + Tailwind v4 + Vite app plus an authoritative MUST-FIX list. Make the smallest complete corrections required for the app to compile, match the requested product, work on mobile, and meet the stated design contract.
 
 ALLOWED FIXES:
 - Bad/missing imports (typoed package names, undefined React hooks, unresolved "@/..." paths)

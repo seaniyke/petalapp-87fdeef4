@@ -117,7 +117,7 @@ export function CreatorEarningsPanel() {
       <div className="grid gap-3 sm:grid-cols-4">
         <Stat label="Lifetime sales" value={String(s.sales_count)} />
         <Stat label="Gross" value={usd(s.gross_cents)} />
-        <Stat label="Petal fee" value={usd(s.commission_cents)} />
+        <Stat label="Kimble fee" value={usd(s.commission_cents)} />
         <Stat label="Your earnings" value={usd(s.net_cents)} highlight />
       </div>
 

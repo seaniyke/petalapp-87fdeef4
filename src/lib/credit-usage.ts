@@ -1,8 +1,8 @@
 /**
  * Month-to-date credit usage, split the way customers think about it:
- * builds (Petal writing code) vs Cloud vs AI.
+ * builds (Kimble writing code) vs Cloud vs AI.
  *
- * There is ONE balance — Petal Credits. Cloud and AI meters are recorded in
+ * There is ONE balance — Kimble Credits. Cloud and AI meters are recorded in
  * cents in `runtime_ledger` for internal economics, so they are converted to
  * credits here at the same central rate the charge used.
  */

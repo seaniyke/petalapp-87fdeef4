@@ -189,7 +189,7 @@ export interface CompletenessPassResult {
   note: string | null;
 }
 
-const SYSTEM = `You are Petal finishing an edit that was only partly completed.
+const SYSTEM = `You are Kimble finishing an edit that was only partly completed.
 
 You receive the user's original request, the parts that are still MISSING, and the current contents of the files most likely to own them.
 

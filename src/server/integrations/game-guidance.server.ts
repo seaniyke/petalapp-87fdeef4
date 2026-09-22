@@ -1,7 +1,7 @@
 /**
  * Layer M — Game generation guidance.
  *
- * Petal can already build interactive web apps; what was missing was
+ * Kimble can already build interactive web apps; what was missing was
  * generation-time knowledge for *games* specifically. The same Vite +
  * React + TanStack Start sandbox we ship to every project can host:
  *   - Phaser 3 for 2D arcade / runner / platformer / shooter
@@ -146,7 +146,7 @@ $$;
   return `
 
 ### Game build detected (genre: \`${intent.genre}\`, signal: "${intent.reason}")
-The user wants to build a game. Petal targets the **web (Vite + React)** and **Capacitor for mobile** — not Unity, Unreal, Godot, or native console SDKs. If the user explicitly asks for any of those, stop and explain that Petal builds web/Capacitor games and offer Phaser / three.js as the closest equivalent.
+The user wants to build a game. Kimble targets the **web (Vite + React)** and **Capacitor for mobile** — not Unity, Unreal, Godot, or native console SDKs. If the user explicitly asks for any of those, stop and explain that Kimble builds web/Capacitor games and offer Phaser / three.js as the closest equivalent.
 
 **Library choice for this prompt**
 ${libraryRecommendation(intent.genre, intent.needs3D, intent.needsPhysics)}

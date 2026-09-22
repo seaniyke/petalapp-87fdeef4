@@ -2,7 +2,7 @@
  * Readiness badge — small chip in the builder header showing the project's
  * current production-readiness level + score, with a popover checklist.
  *
- * Reuses Petal Shield's analyzer so we don't double-scan.
+ * Reuses Kimble Shield's analyzer so we don't double-scan.
  */
 import { useMemo, useState } from "react";
 import { Check, Rocket, Wand2, Globe } from "lucide-react";
@@ -43,7 +43,7 @@ const CATEGORY_LABEL: Record<ReadinessCheck["category"], string> = {
 export type ReadinessBadgeProps = {
   files: ProjectFile[];
   project: ProjectRow | null;
-  /** Runs a build prompt for a checklist item the user wants Petal to fix. */
+  /** Runs a build prompt for a checklist item the user wants Kimble to fix. */
   onFix?: (prompt: string) => void;
   /** Opens the custom-domain flow. */
   onConnectDomain?: () => void;

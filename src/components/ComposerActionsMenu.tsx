@@ -78,7 +78,7 @@ export function ComposerActionsMenu({
             active={mode === "build"}
             Icon={Hammer}
             label="Build"
-            hint="Petal writes code and updates your app."
+            hint="Kimble writes code and updates your app."
             onClick={() => {
               onModeChange("build");
               setOpen(false);

@@ -1,7 +1,7 @@
 /**
  * Worker-side client for the builder's sandboxed `/exec` endpoint.
  *
- * Petal runs on Cloudflare Workers, which has no processes and no filesystem,
+ * Kimble runs on Cloudflare Workers, which has no processes and no filesystem,
  * so anything that needs to actually *run* — a codemod script, a real `rg`
  * across the tree — has to happen on the Railway builder. This module is the
  * only door to that surface; everything else goes through `agent-tools`.

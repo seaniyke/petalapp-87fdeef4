@@ -1,7 +1,7 @@
 /**
  * Cloudflare Registrar API client (beta).
  *
- * Powers Petal's "Buy a domain" flow. Cloudflare resells domains at wholesale
+ * Powers Kimble's "Buy a domain" flow. Cloudflare resells domains at wholesale
  * cost (no markup). We charge the user wholesale × 1.25 — the 25% covers
  * payment processing, support, and our infra around DNS/SSL provisioning.
  *

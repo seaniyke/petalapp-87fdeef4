@@ -2,7 +2,7 @@
  * Marketplace auto-suggest.
  *
  * Looks at the latest user turn and surfaces installable integrations whose
- * `triggers` match. Petal's system prompt receives a short block telling it
+ * `triggers` match. Kimble's system prompt receives a short block telling it
  * to install the integration first, and the chat UI gets a structured
  * suggestion (rendered as an "Install Stripe" chip) via a streamed tag.
  *
@@ -35,7 +35,7 @@ export function suggestIntegrations(_args: {
   messages: Array<{ role: string; content: unknown }>;
   installedCodes: Set<string>;
 }): IntegrationSuggestion[] {
-  // Marketplace auto-suggest disabled — Petal scaffolds third-party SDKs
+  // Marketplace auto-suggest disabled — Kimble scaffolds third-party SDKs
   // directly from prompts and uses SecretRequestCard for any keys it needs.
   // Kept as a no-op so existing call sites remain stable.
   return [];
@@ -74,7 +74,7 @@ export function renderSuggestionsBlock(suggestions: IntegrationSuggestion[]): st
 }
 
 /**
- * Reference for the two interactive inline tags Petal can stream into a chat
+ * Reference for the two interactive inline tags Kimble can stream into a chat
  * reply. Keep it terse — added to every turn so size matters.
  */
 const INLINE_TAGS_REFERENCE = `

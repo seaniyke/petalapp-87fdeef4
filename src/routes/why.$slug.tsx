@@ -15,12 +15,12 @@ export const Route = createFileRoute("/why/$slug")({
     if (!d) {
       return {
         meta: [
-          { title: "Unavailable — Petal" },
+          { title: "Unavailable — Kimble" },
           { name: "robots", content: "noindex" },
         ],
       };
     }
-    const title = `${d.eyebrow} — Petal`;
+    const title = `${d.eyebrow} — Kimble`;
     const url = `https://buildwithpetal.com/why/${params.slug}`;
     return {
       meta: [
@@ -75,7 +75,7 @@ function WhyPage() {
             to="/"
             className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground transition hover:text-foreground"
           >
-            ← Petal
+            ← Kimble
           </Link>
 
           <div className="mt-10 grid gap-10 lg:grid-cols-[1.35fr_1fr] lg:items-end">

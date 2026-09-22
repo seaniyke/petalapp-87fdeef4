@@ -1,7 +1,7 @@
 /**
  * PaymentsSheet — payments setup for the app being built.
  *
- * Petal builds payments into the project from a prompt: it picks the right
+ * Kimble builds payments into the project from a prompt: it picks the right
  * provider for what the app sells, scaffolds checkout + webhooks, and asks
  * for any keys inline. This sheet is the front door for that flow.
  */
@@ -29,14 +29,14 @@ const OPTIONS = [
     title: "One-off checkout",
     body: "Sell a product or service with a hosted checkout and a success page.",
     prompt:
-      "Add one-off payments to this app using Petal's built-in payments. Pick the right provider, scaffold a hosted checkout, a success page and the webhook that marks an order as paid.",
+      "Add one-off payments to this app using Kimble's built-in payments. Pick the right provider, scaffold a hosted checkout, a success page and the webhook that marks an order as paid.",
   },
   {
     icon: RefreshCw,
     title: "Subscriptions",
     body: "Recurring plans with upgrade, downgrade and cancel handled for you.",
     prompt:
-      "Add subscription billing to this app using Petal's built-in payments. Create the plans, the checkout, the customer portal link and the webhook that keeps subscription status in sync.",
+      "Add subscription billing to this app using Kimble's built-in payments. Create the plans, the checkout, the customer portal link and the webhook that keeps subscription status in sync.",
   },
   {
     icon: Receipt,
@@ -64,7 +64,7 @@ export function PaymentsSheet({
             <CreditCard className="h-4 w-4" /> Payments
           </SheetTitle>
           <SheetDescription>
-            Take money in your app. Petal picks the provider, builds checkout
+            Take money in your app. Kimble picks the provider, builds checkout
             and wires the webhooks.
           </SheetDescription>
         </SheetHeader>

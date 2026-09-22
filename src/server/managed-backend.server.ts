@@ -1,5 +1,5 @@
 /**
- * Orchestrates the lifecycle of a Petal-managed Supabase project.
+ * Orchestrates the lifecycle of a Kimble-managed Supabase project.
  *
  * Flow:
  *   1. provisionForProject(projectId): called right after a backend slot is
@@ -41,7 +41,7 @@ const MAX_INLINE_WAIT_MS = 4 * 60 * 1000; // 4 minutes
 const POLL_INTERVAL_MS = 6_000;
 
 function projectNameFor(projectId: string): string {
-  // Supabase project names must be <= 60 chars; we use the Petal project id
+  // Supabase project names must be <= 60 chars; we use the Kimble project id
   // (without dashes) so it's traceable from the dashboard.
   return `petal-${projectId.replace(/-/g, "").slice(0, 24)}`;
 }
@@ -430,7 +430,7 @@ export async function activeManagedCount(): Promise<number> {
 
 /**
  * Dump every row of a managed project's public tables into a JSON file stored
- * in the Petal project's own files, so deleting the upstream database never
+ * in the Kimble project's own files, so deleting the upstream database never
  * loses the user's data outright. Best-effort and size-capped.
  */
 export async function exportManagedData(projectId: string): Promise<string | null> {
@@ -476,7 +476,7 @@ export async function exportManagedData(projectId: string): Promise<string | nul
 }
 
 /**
- * Permanently remove the upstream Supabase project and Petal's record of it.
+ * Permanently remove the upstream Supabase project and Kimble's record of it.
  * Exports the data first unless the caller opts out. Idempotent.
  */
 export async function deleteForProject(

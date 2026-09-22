@@ -143,7 +143,7 @@ export function CloudUsersView({ projectId }: { projectId: string }) {
       <div className="p-4">
         <CloudEmptyState
           title="No backend yet"
-          description="Enable Petal Cloud to see signups and configure how people sign in."
+          description="Enable Kimble Cloud to see signups and configure how people sign in."
         />
       </div>
     );
@@ -179,7 +179,7 @@ export function CloudUsersView({ projectId }: { projectId: string }) {
           description={
             search
               ? "Try a different search."
-              : "Petal hasn't set up sign-up for this project yet. Ask Petal in chat — e.g. ‘add email + Google sign-in’ — then signups will appear here."
+              : "Kimble hasn't set up sign-up for this project yet. Ask Kimble in chat — e.g. ‘add email + Google sign-in’ — then signups will appear here."
           }
         />
       ) : (

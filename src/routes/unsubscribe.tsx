@@ -76,7 +76,7 @@ function UnsubscribePage() {
         {phase === "ready" && (
           <>
             <p className="mt-4 text-sm text-muted-foreground">
-              {email ? <>Unsubscribe <strong>{email}</strong> from Petal app emails?</> : "Unsubscribe from Petal app emails?"}
+              {email ? <>Unsubscribe <strong>{email}</strong> from Kimble app emails?</> : "Unsubscribe from Kimble app emails?"}
               {" "}You'll still receive essential account notifications.
             </p>
             <button

@@ -213,7 +213,7 @@ export function GitSyncSection({ projectId }: { projectId: string }) {
             >
               fine-grained token
             </a>{" "}
-            with <strong>Contents: read &amp; write</strong> on that repo. Petal stores it
+            with <strong>Contents: read &amp; write</strong> on that repo. Kimble stores it
             encrypted and never shows it again.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">

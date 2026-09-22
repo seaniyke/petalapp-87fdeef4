@@ -2,7 +2,7 @@
  * /api/public/track — public page-view ingest.
  *
  * Called by a tiny beacon injected by the subdomain Worker into every HTML
- * response served from a published Petal site. No authentication required;
+ * response served from a published Kimble site. No authentication required;
  * the database `record_page_view` function silently no-ops on unknown
  * project ids so anonymous traffic can't pollute the table.
  *

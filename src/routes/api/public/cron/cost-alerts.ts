@@ -14,7 +14,7 @@ import { resolveAdminRecipients } from "@/server/self-learning-digest.server";
 import { secretsMatch } from "@/server/rate-limit.server";
 
 const RESEND_API = "https://api.resend.com";
-const SENDER = "Petal <noreply@buildwithpetal.com>";
+const SENDER = "Kimble <noreply@buildwithpetal.com>";
 
 async function run(request: Request) {
   const provided = request.headers.get("x-petal-cron-secret") ?? "";
@@ -47,7 +47,7 @@ async function run(request: Request) {
           body: JSON.stringify({
             from: SENDER,
             to: recipients,
-            subject: `Petal · Cost alerts${critical ? " · action needed" : ""} · ${report.alerts.length} alert(s)`,
+            subject: `Kimble · Cost alerts${critical ? " · action needed" : ""} · ${report.alerts.length} alert(s)`,
             html: renderCostAlertHtml(report),
             tags: [{ name: "kind", value: "cost_alerts" }],
           }),

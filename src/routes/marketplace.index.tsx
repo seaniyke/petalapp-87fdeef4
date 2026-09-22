@@ -17,16 +17,16 @@ import {
 export const Route = createFileRoute("/marketplace/")({
   head: () => ({
     meta: [
-      { title: "Marketplace · Buy ready-made apps · Petal" },
+      { title: "Marketplace · Buy ready-made apps · Kimble" },
       {
         name: "description",
         content:
-          "Browse finished apps, SaaS starters and websites built on Petal. Open one, make it yours, and ship it the same day.",
+          "Browse finished apps, SaaS starters and websites built on Kimble. Open one, make it yours, and ship it the same day.",
       },
-      { property: "og:title", content: "Petal Marketplace" },
+      { property: "og:title", content: "Kimble Marketplace" },
       {
         property: "og:description",
-        content: "Buy ready-made software you can open and customize in Petal.",
+        content: "Buy ready-made software you can open and customize in Kimble.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -87,7 +87,7 @@ function MarketplacePage() {
               The <em>Marketplace</em>.
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Finished apps built on Petal. Pick one, open it in the builder, and
+              Finished apps built on Kimble. Pick one, open it in the builder, and
               make it yours — no starting from a blank page.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -236,7 +236,7 @@ function EmptyState({ hasListings }: { hasListings: boolean }) {
       <p className="mx-auto mt-2 max-w-sm text-sm font-medium text-muted-foreground">
         {hasListings
           ? "Try a different keyword or category."
-          : "Be one of the first creators to list a product built on Petal."}
+          : "Be one of the first creators to list a product built on Kimble."}
       </p>
       {!hasListings && (
         <Button asChild className="mt-6">

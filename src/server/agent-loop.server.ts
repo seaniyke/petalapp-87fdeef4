@@ -1,5 +1,5 @@
 /**
- * Petal's multi-round agent loop — the "work before you write" phase.
+ * Kimble's multi-round agent loop — the "work before you write" phase.
  *
  * The final generation call is, and stays, a single forced `patch_files` /
  * `write_project` emit. That's deliberate: every downstream stage (streaming

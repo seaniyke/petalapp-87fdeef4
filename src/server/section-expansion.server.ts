@@ -2,7 +2,7 @@
  * Deterministic "add more sections" patch builder.
  *
  * "Add more sections to the website" is one of the most common follow-up
- * asks, and it used to be the one Petal was worst at: the model would
+ * asks, and it used to be the one Kimble was worst at: the model would
  * stream prose, fail to emit a usable patch twice, and the turn degraded
  * to "I couldn't pin down a safe change" — which reads as a refusal for a
  * request that is completely unambiguous.

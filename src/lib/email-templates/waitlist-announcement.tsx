@@ -32,12 +32,12 @@ function WaitlistAnnouncement({
 
   return (
     <PetalEmailLayout
-      preview={heading ?? "News from Petal"}
-      heading={heading ?? "News from Petal"}
+      preview={heading ?? "News from Kimble"}
+      heading={heading ?? "News from Kimble"}
       cta={
         ctaUrl
-          ? { label: ctaLabel || "Open Petal", href: ctaUrl }
-          : { label: "Open Petal", href: SITE_URL }
+          ? { label: ctaLabel || "Open Kimble", href: ctaUrl }
+          : { label: "Open Kimble", href: SITE_URL }
       }
       footnote={footnote}
     >
@@ -49,7 +49,7 @@ function WaitlistAnnouncement({
           </Text>
         ))
       ) : (
-        <Text style={muted}>We've got news — head over to Petal to take a look.</Text>
+        <Text style={muted}>We've got news — head over to Kimble to take a look.</Text>
       )}
     </PetalEmailLayout>
   );
@@ -58,13 +58,13 @@ function WaitlistAnnouncement({
 export const template = {
   component: WaitlistAnnouncement,
   subject: (data: Record<string, any>) =>
-    (typeof data?.subject === "string" && data.subject.trim()) || "News from Petal",
+    (typeof data?.subject === "string" && data.subject.trim()) || "News from Kimble",
   displayName: "Waitlist announcement",
   previewData: {
     name: "Ada Lovelace",
-    subject: "Petal is open — your spot is ready",
+    subject: "Kimble is open — your spot is ready",
     heading: "Your spot is ready",
-    body: "We're opening Petal to the waitlist today.\n\nSign in with this email and start building.",
+    body: "We're opening Kimble to the waitlist today.\n\nSign in with this email and start building.",
     ctaLabel: "Start building",
     ctaUrl: "https://buildwithpetal.com/auth?mode=signup",
   },

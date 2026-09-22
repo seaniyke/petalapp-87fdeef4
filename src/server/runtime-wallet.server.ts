@@ -44,7 +44,7 @@ export type ChargeRuntimeResult =
       message?: string;
     };
 
-/** Charge a Cloud/AI meter to the single Petal Credits balance.
+/** Charge a Cloud/AI meter to the single Kimble Credits balance.
  *
  *  Order of operations:
  *    1. spend caps (project + workspace) are checked first — a cap is a
@@ -173,7 +173,7 @@ export async function getRuntimeBalance(userId: string): Promise<RuntimeBalance>
     .eq("user_id", userId)
     .maybeSingle();
 
-  // One balance: Cloud + AI is paid with Petal Credits. Reported here as the
+  // One balance: Cloud + AI is paid with Kimble Credits. Reported here as the
   // internal cost capacity those credits buy, so cent-denominated gates and
   // caps keep working unchanged.
   const perCreditUsd = 0.05;

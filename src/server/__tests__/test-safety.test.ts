@@ -51,7 +51,7 @@ describe("redactWithIdentity", () => {
 });
 
 describe("isTestIdentity", () => {
-  it("recognises Petal's own test accounts", () => {
+  it("recognises Kimble's own test accounts", () => {
     expect(isTestIdentity("petal-verify+abc123@petal-qa.dev")).toBe(true);
     expect(isTestIdentity("ada@example.com")).toBe(false);
     expect(isTestIdentity(null)).toBe(false);

@@ -1,5 +1,5 @@
 /**
- * Helpers for image attachments sent through Petal's chat.
+ * Helpers for image attachments sent through Kimble's chat.
  *
  * We keep attachments small + bounded so a careless drop of a 30 MB photo
  * doesn't blow up the SSE request body (or the AI gateway's per-image limit).

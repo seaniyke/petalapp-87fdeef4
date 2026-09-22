@@ -38,7 +38,7 @@ const languages = {
  * task lists) and syntax-highlighted code blocks. User messages keep raw
  * whitespace formatting.
  *
- * Also extracts Petal-specific inline tags before rendering so they become
+ * Also extracts Kimble-specific inline tags before rendering so they become
  * interactive cards instead of leaking into the markdown output:
  *   <lov-suggest-integration code="stripe" />
  *   <lov-add-secret name="OPENAI_API_KEY" instructions="…" link="…" requestId="…" />

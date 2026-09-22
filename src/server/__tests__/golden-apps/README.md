@@ -1,6 +1,6 @@
 # Golden-App Suite
 
-End-to-end regression test for Petal's build pipeline.
+End-to-end regression test for Kimble's build pipeline.
 
 Unlike `pipeline.test.ts` (which feeds frozen file fixtures into the verifier
 for unit-level coverage), the golden suite runs the **full generation pipeline**
@@ -38,7 +38,7 @@ build with us:
 | 7 | File upload   | Cloud storage, file picker, bucket policies         |
 | 8 | Realtime      | Cloud realtime subscriptions on a table             |
 | 9 | Payments stub | Stripe enable flow, checkout button                 |
-| 10| Email send    | Petal Email send, template, suppression handling    |
+| 10| Email send    | Kimble Email send, template, suppression handling    |
 
 ## Running
 

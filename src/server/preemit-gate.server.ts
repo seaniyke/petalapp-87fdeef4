@@ -1,5 +1,5 @@
 /**
- * Petal v3 — Phase A: the closed-loop pre-emit gate.
+ * Kimble v3 — Phase A: the closed-loop pre-emit gate.
  *
  * ARCHITECTURE NOTE (why this file exists)
  * ----------------------------------------
@@ -89,7 +89,7 @@ export const BLOCKING_KINDS = new Set([
 ]);
 
 /**
- * Scaffold-owned paths. Petal writes these, the model does not, so a
+ * Scaffold-owned paths. Kimble writes these, the model does not, so a
  * diagnostic here is either our bug or a false positive — never something a
  * repair round can resolve. Excluded from blocking for that reason.
  *

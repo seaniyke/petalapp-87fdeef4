@@ -1,5 +1,5 @@
 /**
- * EmailSection — Petal Email management UI inside the project settings sheet.
+ * EmailSection — Kimble Email management UI inside the project settings sheet.
  * - Free tier: 100/day, 3,000/month from noreply@buildwithpetal.com
  * - Pro: $25/mo for 50,000 emails (custom domain optional)
  *
@@ -86,11 +86,11 @@ export function EmailSection({ projectId }: { projectId: string }) {
         pro: status?.pro ?? { monthly_cap: 50000, price_usd_cents: 2500 },
       } as Status);
       if (token) setRevealedToken(token);
-      toast.success("Petal Email enabled");
+      toast.success("Kimble Email enabled");
       emitServiceEnabled({
         projectId,
         service: "email",
-        label: "Petal Email",
+        label: "Kimble Email",
         summary: `Sender ${sender} • 100/day, 3,000/month on the free tier.${token ? " Your API token is shown once — copy it now." : ""}`,
       });
       // Background refresh — don't block the UI flip on it.
@@ -129,7 +129,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
   return (
     <div className="mt-8 scroll-mt-4 border-t border-border pt-6">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
-        <Mail className="h-4 w-4" /> Petal Email
+        <Mail className="h-4 w-4" /> Kimble Email
       </h3>
       <p className="mb-4 text-xs text-muted-foreground">
         Built-in email sending for your app. One endpoint, ready to go — no API keys, no third-party setup, no inbox to manage.
@@ -140,10 +140,10 @@ export function EmailSection({ projectId }: { projectId: string }) {
       ) : !status?.enabled ? (
         <div className="rounded-xl border border-border bg-muted/30 p-4">
           <p className="mb-3 text-xs text-muted-foreground">
-            Sends from a Petal-owned address — fully verified, deliverability handled for you.
+            Sends from a Kimble-owned address — fully verified, deliverability handled for you.
           </p>
           <Button size="sm" onClick={handleEnable} disabled={busy}>
-            {busy ? "Enabling…" : "Enable Petal Email"}
+            {busy ? "Enabling…" : "Enable Kimble Email"}
           </Button>
         </div>
       ) : (

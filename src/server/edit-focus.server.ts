@@ -3,11 +3,11 @@
  *
  * Users don't repeat themselves:
  *
- *   "Make the hero darker."        → Petal edits the hero
+ *   "Make the hero darker."        → Kimble edits the hero
  *   "Make the button white too."   → "the button" means the hero's CTA
  *   "Now fix checkout."            → new subject, focus moves
  *
- * Petal only ever sent the newest message to the model, so the second turn had
+ * Kimble only ever sent the newest message to the model, so the second turn had
  * no idea which button was meant. This module keeps a tiny focus — the surface
  * and files the last edit actually touched — and resolves bare references
  * against it.

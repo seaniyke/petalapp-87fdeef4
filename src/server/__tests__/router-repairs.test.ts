@@ -215,7 +215,7 @@ const mounted = fixMissingRouterProvider([
 ]);
 assert.equal(mounted.notes.length, 0, "a mounted provider must not be re-wrapped");
 
-// Petal's deterministic entry shell mounts App below a local error boundary.
+// Kimble's deterministic entry shell mounts App below a local error boundary.
 // App already owns the router, so wrapping the entry again creates React
 // Router's fatal "You cannot render a <Router> inside another <Router>" error.
 const providerBelowErrorBoundary = fixMissingRouterProvider([
@@ -233,7 +233,7 @@ const providerBelowErrorBoundary = fixMissingRouterProvider([
 assert.equal(
   providerBelowErrorBoundary.notes.length,
   0,
-  "a provider at App root must dominate through Petal's local error boundary",
+  "a provider at App root must dominate through Kimble's local error boundary",
 );
 assert.doesNotMatch(
   providerBelowErrorBoundary.files.find((f) => f.path === "src/main.tsx")?.content ?? "",
@@ -241,7 +241,7 @@ assert.doesNotMatch(
   "the entry must not receive a second router",
 );
 
-// Exact production shape: Petal's deterministic shell wraps App in both
+// Exact production shape: Kimble's deterministic shell wraps App in both
 // StrictMode and its local error boundary while App aliases BrowserRouter to
 // `Router`. The local alias is still a real provider and must dominate root.
 const aliasedProviderInPetalShell = fixMissingRouterProvider([
@@ -260,7 +260,7 @@ assert.equal(aliasedProviderInPetalShell.notes.length, 0);
 assert.doesNotMatch(
   aliasedProviderInPetalShell.files.find((f) => f.path === "src/main.tsx")?.content ?? "",
   /<BrowserRouter>/,
-  "an aliased BrowserRouter below Petal's error boundary must prevent duplicate injection",
+  "an aliased BrowserRouter below Kimble's error boundary must prevent duplicate injection",
 );
 
 // Heal already-persisted builds containing an entry BrowserRouter plus an

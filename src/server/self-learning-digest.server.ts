@@ -2,7 +2,7 @@
  * Daily self-learning digest builder.
  *
  * Reads the last 24h of telemetry (`ai_call_log`, `ai_call_outcomes`,
- * `pipeline_failures`) and produces a structured snapshot of how Petal is
+ * `pipeline_failures`) and produces a structured snapshot of how Kimble is
  * doing — where it's failing, which models are flaky, what user prompts
  * trigger reverts. The cron route persists this to
  * `petal_self_learning_digests` and emails it to admins.
@@ -41,7 +41,7 @@ export interface DigestPayload {
     timeoutRate: number | null;
   };
 
-  /** Top failure signatures from pipeline_failures (the "Petal got confused" branch). */
+  /** Top failure signatures from pipeline_failures (the "Kimble got confused" branch). */
   topFailureSignatures: Array<{
     signature: string;
     count: number;
@@ -306,7 +306,7 @@ function computeTopSignatures(
 function computeTopReverts(outcomes: OutcomeRow[]): DigestPayload["topRevertedPrompts"] {
   // Group outcomes whose followup looked like a fix request, keyed by the
   // first verifier error path+kind (proxy for "what kind of work was the
-  // user doing when Petal had to be told 'fix this'").
+  // user doing when Kimble had to be told 'fix this'").
   const reverted = outcomes.filter((o) => o.user_followup_was_fix === true);
   const byKey = new Map<
     string,
@@ -515,7 +515,7 @@ export function renderDigestHtml(d: DigestPayload): string {
   return `<!doctype html>
 <html><body style="margin:0;padding:0;background:#f6f6f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#222">
 <div style="max-width:680px;margin:0 auto;padding:24px">
-  <h1 style="margin:0 0 4px 0;font-size:20px">Petal · Daily self-learning digest</h1>
+  <h1 style="margin:0 0 4px 0;font-size:20px">Kimble · Daily self-learning digest</h1>
   <div style="color:#666;font-size:13px;margin-bottom:24px">${escapeHtml(d.windowLabel)}</div>
 
   <div style="background:white;border:1px solid #eee;border-radius:8px;padding:16px;margin-bottom:16px">

@@ -5,7 +5,7 @@
  * by App.tsx. They exist purely as a high-quality source of patterns the
  * AI can read and adapt for the user's actual feature work.
  *
- * Licensing: every block here is original code authored for Petal. They
+ * Licensing: every block here is original code authored for Kimble. They
  * compose only the canonical shadcn-style primitives already shipped in
  * `src/components/ui/*` (MIT) plus lucide-react icons (ISC). No verbatim
  * copies from third-party landing pages, paid template kits, or other
@@ -113,7 +113,7 @@ export default function SignUpSplit() {
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
       <aside className="relative hidden bg-gradient-to-br from-primary/15 via-background to-background lg:flex lg:flex-col lg:justify-between lg:p-10">
         <div className="flex items-center gap-2 text-sm font-semibold">
-          <Sparkles className="h-5 w-5 text-primary" /> Petal
+          <Sparkles className="h-5 w-5 text-primary" /> Kimble
         </div>
         <div className="space-y-4">
           <h2 className="text-3xl font-semibold leading-tight">
@@ -123,7 +123,7 @@ export default function SignUpSplit() {
             Start free. No credit card. Invite your team when you're ready.
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">© Petal Labs</p>
+        <p className="text-xs text-muted-foreground">© Kimble Labs</p>
       </aside>
       <main className="flex items-center justify-center px-6 py-12">
         <form className="w-full max-w-sm space-y-4">
@@ -3556,7 +3556,7 @@ function HomePage() {
       <Stack gap={4}>
         <h1 className="text-4xl font-semibold tracking-tight">Welcome</h1>
         <p className="text-muted-foreground">
-          A tiny multi-page app showing the canonical Petal routing pattern.
+          A tiny multi-page app showing the canonical Kimble routing pattern.
         </p>
         <Inline gap={3}>
           <Button asChild><Link to="/posts">Read posts</Link></Button>
@@ -3756,7 +3756,7 @@ matching file below and adapt — do not invent layouts from scratch.
  *
  * These are the ONLY safe seeds for real on-chain reads or bank-data
  * pulls. They are read-only and key-gated. Never adapt them for custody,
- * signing, or money movement — Petal does not support that.
+ * signing, or money movement — Kimble does not support that.
  * ================================================================= */
 
 const FINTECH_VIEM_READONLY = `import { useEffect, useState } from "react";
@@ -3770,7 +3770,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
  * key in client code. NEVER sign or send transactions from the browser.
  *
  * Adapt by passing the address as a prop. Do not generalize this into
- * a custodial wallet — Petal does not support custody.
+ * a custodial wallet — Kimble does not support custody.
  */
 export default function ViemReadOnlyBalance({ address }: { address: \`0x\${string}\` }) {
   const [eth, setEth] = useState<string | null>(null);

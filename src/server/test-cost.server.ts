@@ -1,7 +1,7 @@
 /**
  * Test Lab cost policy — proving the app works without spending like it.
  *
- * Testing is the most expensive thing Petal can do per build: a browser
+ * Testing is the most expensive thing Kimble can do per build: a browser
  * session costs wall-clock on the build service, and asking a model to look
  * at a screenshot costs real money. The policy here is deliberately boring:
  *

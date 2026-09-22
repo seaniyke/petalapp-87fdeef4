@@ -36,7 +36,7 @@ describe("copy slop scanner", () => {
     const src = `export const D = () => (
       <section>
         <h1>Build it. Ship it. Then sell it.</h1>
-        <p>Describe a web app and Petal builds the real files, then lists it for sale.</p>
+        <p>Describe a web app and Kimble builds the real files, then lists it for sale.</p>
       </section>
     );`;
     expect(findCopySlop(src)).toHaveLength(0);
@@ -59,7 +59,7 @@ describe("copy slop scanner", () => {
   });
 });
 
-describe("Petal's own marketing copy holds the same contract", () => {
+describe("Kimble's own marketing copy holds the same contract", () => {
   const files = [
     "src/routes/index.tsx",
     "src/routes/why.$slug.tsx",

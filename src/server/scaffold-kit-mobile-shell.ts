@@ -2,7 +2,7 @@
  * Mobile shell kit — injected when the project's build target is `mobile`
  * (or the legacy `ios` / `android` ids).
  *
- * Petal ships native apps by building the React app and wrapping it in a
+ * Kimble ships native apps by building the React app and wrapping it in a
  * Capacitor shell on Codemagic (see `mobile-codemagic-template.server.ts`).
  * That pipeline needs two things to exist in the project before a store
  * build can run:
@@ -28,13 +28,13 @@ export const MOBILE_SHELL_DEPS: Record<string, string> = {
 const CAPACITOR_CONFIG = `import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
- * Petal-managed native shell config. The store build (iOS + Android) runs
+ * Kimble-managed native shell config. The store build (iOS + Android) runs
  * \`vite build\` and then wraps \`dist/\` with Capacitor using this file.
  * Change appName / appId freely; leave \`webDir\` alone.
  */
 const config: CapacitorConfig = {
   appId: "app.petal.mobile",
-  appName: "Petal App",
+  appName: "Kimble App",
   webDir: "dist",
   ios: { contentInset: "always" },
   android: { backgroundColor: "#ffffff" },

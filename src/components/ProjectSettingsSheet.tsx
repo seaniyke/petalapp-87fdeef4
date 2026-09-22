@@ -219,7 +219,7 @@ export function ProjectSettingsSheet({
             <Cloud className="h-4 w-4" />
           </div>
           <div className="flex-1">
-            <div className="text-sm font-medium">Petal Cloud</div>
+            <div className="text-sm font-medium">Kimble Cloud</div>
             <div className="text-xs text-muted-foreground">
               AI usage, database, users, storage, secrets and more.
             </div>
@@ -271,7 +271,7 @@ export function ProjectSettingsSheet({
           <BackendSection projectId={project.id} />
         </div>
 
-        {/* Petal Email section */}
+        {/* Kimble Email section */}
         <div id="settings-email" className="scroll-mt-4">
           <EmailSection projectId={project.id} />
         </div>
@@ -287,7 +287,7 @@ export function ProjectSettingsSheet({
             <BookOpen className="h-4 w-4" /> Project Knowledge
           </h3>
           <p className="mb-3 text-xs text-muted-foreground">
-            Anything you write here is sent to Petal on every change so it stays consistent.
+            Anything you write here is sent to Kimble on every change so it stays consistent.
             Keep it short — a few rules work best.
           </p>
           <Textarea
@@ -320,14 +320,14 @@ export function ProjectSettingsSheet({
           </div>
         </div>
 
-        {/* "What Petal remembers" is internal — not shown to the user.
-            Petal still reads/writes project memory; the surface is just
+        {/* "What Kimble remembers" is internal — not shown to the user.
+            Kimble still reads/writes project memory; the surface is just
             hidden from the settings sheet on purpose. */}
 
-        {/* Powered by Petal badge toggle */}
+        {/* Powered by Kimble badge toggle */}
         <PetalBadgeSection project={project} onChange={onChange} />
 
-        {/* Integrations marketplace removed — Petal scaffolds third-party
+        {/* Integrations marketplace removed — Kimble scaffolds third-party
             SDKs directly from prompts and asks for any required secrets via
             the inline SecretRequestCard. The backend tables and API remain
             intact so existing installs keep working. */}
@@ -475,7 +475,7 @@ function BackendSection({ projectId }: { projectId: string }) {
           onChanged={refresh}
         />
       ) : (
-        // Nothing connected — show Petal Cloud option only
+        // Nothing connected — show Kimble Cloud option only
         <ManagedBackendCard
           projectId={projectId}
           backend={backend}
@@ -487,7 +487,7 @@ function BackendSection({ projectId }: { projectId: string }) {
 }
 
 
-/* ---------------- Powered by Petal badge ---------------- */
+/* ---------------- Powered by Kimble badge ---------------- */
 
 function PetalBadgeSection({
   project,
@@ -522,7 +522,7 @@ function PetalBadgeSection({
   return (
     <div className="mt-8 border-t border-border pt-6">
       <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
-        <Sparkles className="h-4 w-4" /> Built with Petal badge
+        <Sparkles className="h-4 w-4" /> Built with Kimble badge
       </h3>
       <p className="mb-3 text-xs text-muted-foreground">
         A small floating badge appears in the bottom-right of your built app.
@@ -551,7 +551,7 @@ function PetalBadgeSection({
           checked={!hidden}
           disabled={!isPaidPlan || saving || walletLoading}
           onCheckedChange={(checked) => toggle(!checked)}
-          aria-label="Show Built with Petal badge"
+          aria-label="Show Built with Kimble badge"
         />
       </div>
     </div>

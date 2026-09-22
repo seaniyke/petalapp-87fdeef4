@@ -1,10 +1,10 @@
 /**
- * Petal Credit System v2 — build cost transparency.
+ * Kimble Credit System v2 — build cost transparency.
  *
  * After every successful build we tell the user, in plain language, what
  * their credits paid for. Deliberate rules:
  *   - Never expose token counts, model names, or provider pricing.
- *   - Never show a cost line for work Petal did on its own tab
+ *   - Never show a cost line for work Kimble did on its own tab
  *     (auto-repair, retries, verification retries, deployment retries).
  *   - A zero charge is stated explicitly as free, not hidden.
  */
@@ -16,7 +16,7 @@ export type BuildCostInput = {
   fileCount?: number;
   /** Paths written — used to tell whether backend work happened. */
   paths?: string[];
-  /** Whether Petal's quality gates ran on this turn. */
+  /** Whether Kimble's quality gates ran on this turn. */
   verified?: boolean;
 };
 
@@ -55,7 +55,7 @@ export function buildCostReasons(input: BuildCostInput): string[] {
   return reasons;
 }
 
-/** "1 credit" / "2.4 credits" / "Free — Petal's own repair pass". */
+/** "1 credit" / "2.4 credits" / "Free — Kimble's own repair pass". */
 export function formatBuildCost(credits: number | null | undefined): string {
   if (typeof credits !== "number") return "—";
   if (credits <= 0) return "Free";
@@ -67,7 +67,7 @@ export function formatBuildCost(credits: number | null | undefined): string {
 /** Single trust line shown under the cost. */
 export function costFootnote(credits: number | null | undefined): string {
   if (typeof credits !== "number" || credits <= 0) {
-    return "Petal fixed this one on its own tab — you were not charged.";
+    return "Kimble fixed this one on its own tab — you were not charged.";
   }
   return "You're only charged for successful builds. Repairs, retries and publishing are always free.";
 }

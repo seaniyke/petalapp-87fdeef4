@@ -1,9 +1,9 @@
 /**
  * Git sync (user-owned GitHub repos).
  *
- * Distinct from mobile-github.server.ts, which pushes to Petal's own mirror
+ * Distinct from mobile-github.server.ts, which pushes to Kimble's own mirror
  * org via a GitHub App. Here the *user* supplies a fine-grained personal
- * access token with Contents: read/write on the target repo, and Petal
+ * access token with Contents: read/write on the target repo, and Kimble
  * mirrors the project's files into it on demand.
  *
  * Worker-safe: global fetch + Web APIs only.
@@ -84,7 +84,7 @@ async function ensureBranch(token: string, fullName: string, branch: string): Pr
 
 /**
  * Mirror the project's files into the repo as a single commit. The tree is
- * built without `base_tree` so deletions in Petal propagate to the repo.
+ * built without `base_tree` so deletions in Kimble propagate to the repo.
  */
 export async function syncProjectToRepo(args: {
   token: string;

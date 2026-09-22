@@ -1,5 +1,5 @@
 /**
- * Pure helpers for the human-readable activity feed shown while Petal
+ * Pure helpers for the human-readable activity feed shown while Kimble
  * generates and deploys an app. No React, no side effects — just data.
  *
  * The user never sees any technical jargon: no "tool call", "Cloudflare",

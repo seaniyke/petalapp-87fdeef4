@@ -10,7 +10,7 @@
  *     record should be required.
  *
  * Returns a per-record result the UI can render as ✅ / ❌ so users can
- * self-diagnose "stuck on Verifying" without leaving Petal. Read-only,
+ * self-diagnose "stuck on Verifying" without leaving Kimble. Read-only,
  * authenticated, scoped to a domain the user owns.
  *
  * Why DoH instead of node:dns? The Worker runtime doesn't expose a real
@@ -101,7 +101,7 @@ type CheckRecord = {
 };
 
 async function checkRouting(hostname: string): Promise<CheckRecord> {
-  // Petal Cloudflare for SaaS routing must target the SaaS hostname. For apex
+  // Kimble Cloudflare for SaaS routing must target the SaaS hostname. For apex
   // domains, registrars such as Namecheap expose this as ALIAS/ANAME and then
   // flatten it to A records publicly, so a raw A lookup alone is not enough.
   const labels = hostname.split(".");

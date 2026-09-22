@@ -1,5 +1,5 @@
 /**
- * ProjectMemorySection — surfaces "What Petal remembers" in the
+ * ProjectMemorySection — surfaces "What Kimble remembers" in the
  * Project Settings sheet. Lists every row in `project_memory` for this
  * project and lets the user delete individual entries or clear all of
  * them. Reads/writes go through authenticated server functions — RLS
@@ -48,7 +48,7 @@ export function ProjectMemorySection({ projectId }: { projectId: string }) {
       });
       if (!res.ok) throw new Error(res.error ?? "Could not forget this entry.");
       setEntries((cur) => (cur ?? []).filter((e) => e.id !== id));
-      toast.success("Petal forgot that.");
+      toast.success("Kimble forgot that.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not forget this.");
     } finally {
@@ -57,13 +57,13 @@ export function ProjectMemorySection({ projectId }: { projectId: string }) {
   };
 
   const handleClearAll = async () => {
-    if (!confirm("Forget everything Petal remembers about this project?")) return;
+    if (!confirm("Forget everything Kimble remembers about this project?")) return;
     setClearing(true);
     try {
       const res = await forgetAllProjectMemory({ data: { projectId } });
       if (!res.ok) throw new Error(res.error ?? "Could not clear memory.");
       setEntries([]);
-      toast.success("Petal's memory cleared.");
+      toast.success("Kimble's memory cleared.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not clear memory.");
     } finally {
@@ -74,10 +74,10 @@ export function ProjectMemorySection({ projectId }: { projectId: string }) {
   return (
     <div className="mt-8 scroll-mt-4 border-t border-border pt-6">
       <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <Brain className="h-4 w-4" /> What Petal remembers
+        <Brain className="h-4 w-4" /> What Kimble remembers
       </div>
       <p className="mb-3 text-xs text-muted-foreground">
-        Stable facts Petal carries between turns so it doesn't start from
+        Stable facts Kimble carries between turns so it doesn't start from
         zero. Forget anything that's outdated.
       </p>
 
@@ -87,7 +87,7 @@ export function ProjectMemorySection({ projectId }: { projectId: string }) {
         </div>
       ) : entries && entries.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border px-3 py-4 text-xs text-muted-foreground">
-          Nothing remembered yet. Petal will start saving stable choices
+          Nothing remembered yet. Kimble will start saving stable choices
           (audience, tone, palette, must-haves) as you build.
         </div>
       ) : (

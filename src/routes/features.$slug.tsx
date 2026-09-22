@@ -14,7 +14,7 @@ export const Route = createFileRoute("/features/$slug")({
   },
   head: ({ loaderData, params }) => {
     const f = loaderData?.feature;
-    const title = f ? `${f.eyebrow} — Petal` : "Petal";
+    const title = f ? `${f.eyebrow} — Kimble` : "Kimble";
     const description = f?.lede ?? "Build real software from one chat.";
     const origin = "https://buildwithpetal.com";
     const ogImage = f ? `${origin}${f.image}` : undefined;
@@ -89,7 +89,7 @@ function FeaturePage() {
             to="/"
             className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur transition hover:text-foreground"
           >
-            ← Back to Petal
+            ← Back to Kimble
           </Link>
 
           <div className="mt-8 max-w-2xl">
@@ -158,10 +158,10 @@ function FeaturePage() {
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary">Real code, not a mock</p>
             <h2 className="mt-4 font-display text-4xl font-black leading-[1.05] tracking-[-0.02em] sm:text-5xl">
-              You own every line Petal writes.
+              You own every line Kimble writes.
             </h2>
             <p className="mt-5 text-base text-muted-foreground">
-              No lock-in, no proprietary DSL. Petal writes production code you can read, edit,
+              No lock-in, no proprietary DSL. Kimble writes production code you can read, edit,
               extend, and export at any time. Here's a taste of what lands in your project.
             </p>
           </div>
@@ -237,7 +237,7 @@ function TryItSection({ samplePrompt, eyebrow }: { samplePrompt: string; eyebrow
           <Sparkles className="mr-1 inline h-3 w-3" /> Try {eyebrow.toLowerCase()} now
         </p>
         <h2 className="mt-4 font-display text-3xl font-black leading-tight tracking-[-0.02em] sm:text-4xl">
-          Type an idea. Petal builds it live.
+          Type an idea. Kimble builds it live.
         </h2>
         <form onSubmit={launch} className="mt-6 space-y-4">
           <textarea

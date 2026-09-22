@@ -19,7 +19,7 @@ function renderWorkflow(w: PrdWorkflow, label: string): string {
 export function renderPrdBlock(prd: Prd): string {
   const out: string[] = [];
 
-  out.push("\n\n### Product Requirements (authored by Petal — this is the contract for this build)");
+  out.push("\n\n### Product Requirements (authored by Kimble — this is the contract for this build)");
   out.push(
     "This PRD is the single source of truth. Where any other instruction, template, or habit conflicts with it, the PRD wins. Do not add surfaces it does not list, and do not omit surfaces it does.",
   );
@@ -86,7 +86,7 @@ export function renderPrdBlock(prd: Prd): string {
   out.push(`Content and tone: ${prd.contentTone}`);
 
   out.push("");
-  out.push("Acceptance — Petal will check every one of these in a real browser before this build is reported complete:");
+  out.push("Acceptance — Kimble will check every one of these in a real browser before this build is reported complete:");
   for (const c of prd.acceptance) out.push(`  - [${c.id}] ${c.statement}`);
 
   if (prd.outOfScope.length) {

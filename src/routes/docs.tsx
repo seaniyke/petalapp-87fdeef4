@@ -19,17 +19,17 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const Route = createFileRoute("/docs")({
   head: () => ({
     meta: [
-      { title: "Documentation · Petal" },
+      { title: "Documentation · Kimble" },
       {
         name: "description",
         content:
-          "Learn how to build, publish, and scale apps with Petal — from your first prompt to custom domains, backend, and AI features.",
+          "Learn how to build, publish, and scale apps with Kimble — from your first prompt to custom domains, backend, and AI features.",
       },
-      { property: "og:title", content: "Petal Documentation" },
+      { property: "og:title", content: "Kimble Documentation" },
       {
         property: "og:description",
         content:
-          "Guides for building full‑stack apps with Petal: prompts, Cloud, AI, publishing, custom domains, and billing.",
+          "Guides for building full‑stack apps with Kimble: prompts, Cloud, AI, publishing, custom domains, and billing.",
       },
     ],
   }),
@@ -53,7 +53,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          Petal turns plain‑English prompts into a working full‑stack web app. The
+          Kimble turns plain‑English prompts into a working full‑stack web app. The
           fastest way to learn is to build something tiny end‑to‑end.
         </p>
         <ol>
@@ -63,7 +63,7 @@ const sections: Section[] = [
             menu and a contact form."
           </li>
           <li>
-            Petal generates the project, opens the builder, and shows a live preview.
+            Kimble generates the project, opens the builder, and shows a live preview.
           </li>
           <li>
             Use the chat on the left to iterate. Be specific: name the page, the section, and
@@ -85,7 +85,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          Petal works best when each prompt is small and specific. Big "do everything" prompts
+          Kimble works best when each prompt is small and specific. Big "do everything" prompts
           tend to time out or drift off course.
         </p>
         <ul>
@@ -112,7 +112,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          Petal picks the right target from your prompt — say "mobile app" or "Chrome
+          Kimble picks the right target from your prompt — say "mobile app" or "Chrome
           extension" and the whole project is scaffolded for it.
         </p>
         <ul>
@@ -122,7 +122,7 @@ const sections: Section[] = [
           </li>
           <li>
             <strong>Mobile apps</strong> — one React Native codebase for iOS and Android, with
-            a live phone preview you can open in Expo Go. Petal builds the signed{" "}
+            a live phone preview you can open in Expo Go. Kimble builds the signed{" "}
             <code>.ipa</code> and <code>.apk</code> for you; store submission still needs your
             own Apple or Google developer account.
           </li>
@@ -142,17 +142,17 @@ const sections: Section[] = [
     id: "attachments",
     title: "Images, screenshots & voice",
     icon: MessageSquare,
-    blurb: "Give Petal references instead of describing them.",
+    blurb: "Give Kimble references instead of describing them.",
     body: (
       <>
         <ul>
-          <li><strong>Attach a screenshot</strong> of what's wrong and circle the area — Petal reads the markup.</li>
+          <li><strong>Attach a screenshot</strong> of what's wrong and circle the area — Kimble reads the markup.</li>
           <li><strong>Attach a reference design</strong> and say "match this layout, keep our colours".</li>
-          <li><strong>Upload a logo or photo</strong> and ask Petal to use it in the app.</li>
+          <li><strong>Upload a logo or photo</strong> and ask Kimble to use it in the app.</li>
           <li><strong>Dictate</strong> with the mic in the composer when typing a long brief is slow.</li>
         </ul>
         <p>
-          Need images you don't have? Ask for them — Petal generates illustrations, hero art,
+          Need images you don't have? Ask for them — Kimble generates illustrations, hero art,
           and icons directly into the project.
         </p>
       </>
@@ -161,13 +161,13 @@ const sections: Section[] = [
 
   {
     id: "cloud",
-    title: "Petal Cloud (backend)",
+    title: "Kimble Cloud (backend)",
     icon: Cloud,
     blurb: "Database, auth, storage, and serverless functions.",
     body: (
       <>
         <p>
-          Petal Cloud is the managed backend that powers data, users, file storage, and custom
+          Kimble Cloud is the managed backend that powers data, users, file storage, and custom
           server logic. Enable it from the builder when you ask for anything that needs to
           persist across sessions.
         </p>
@@ -187,14 +187,14 @@ const sections: Section[] = [
   },
   {
     id: "ai",
-    title: "Petal AI",
+    title: "Kimble AI",
     icon: Bot,
     blurb: "Add AI features without managing API keys.",
     body: (
       <>
         <p>
-          Petal AI gives your app access to top models without you needing to wire up API keys.
-          Just ask Petal to add a chatbot, summarizer, classifier, or image analyzer and it will
+          Kimble AI gives your app access to top models without you needing to wire up API keys.
+          Just ask Kimble to add a chatbot, summarizer, classifier, or image analyzer and it will
           set up the calls for you.
         </p>
         <p>
@@ -227,17 +227,17 @@ const sections: Section[] = [
     id: "custom-domain",
     title: "Custom domains",
     icon: Globe,
-    blurb: "Point your own domain at your Petal app.",
+    blurb: "Point your own domain at your Kimble app.",
     body: (
       <>
         <p>
           Once you're on a paid plan, you can connect a custom domain from the publish sheet.
-          Petal handles SSL automatically.
+          Kimble handles SSL automatically.
         </p>
         <ol>
           <li>Open <strong>Publish → Domains</strong>.</li>
           <li>Add the domain you own (e.g. <code>example.com</code>).</li>
-          <li>Add the DNS records Petal shows you at your registrar.</li>
+          <li>Add the DNS records Kimble shows you at your registrar.</li>
           <li>Wait a few minutes for verification — your site will go live on the new domain.</li>
         </ol>
       </>
@@ -251,7 +251,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          Petal apps use row‑level security so each user only sees their own data. Roles like
+          Kimble apps use row‑level security so each user only sees their own data. Roles like
           "admin" live in a separate roles table, never on the profile, to prevent privilege
           escalation.
         </p>
@@ -270,7 +270,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          Petal has Free, Pro, Business, and Enterprise plans. Pro is the default and includes
+          Kimble has Free, Pro, Business, and Enterprise plans. Pro is the default and includes
           a monthly credit allowance. Each chat message in Build mode uses one credit; messages
           triggered by "Try to fix" are free.
         </p>
@@ -289,7 +289,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          Every Petal change creates a version. Open the history panel in the builder to
+          Every Kimble change creates a version. Open the history panel in the builder to
           preview, compare, or revert any earlier version — useful when an experiment didn't
           land the way you hoped.
         </p>
@@ -305,8 +305,8 @@ const sections: Section[] = [
       <>
         <ul>
           <li>
-            <strong>Build error banner.</strong> Click "Try to fix" — it sends Petal the error
-            and is free. If it loops, describe what you were trying to do and ask Petal to
+            <strong>Build error banner.</strong> Click "Try to fix" — it sends Kimble the error
+            and is free. If it loops, describe what you were trying to do and ask Kimble to
             simplify the change.
           </li>
           <li>
@@ -319,7 +319,7 @@ const sections: Section[] = [
           </li>
           <li>
             <strong>Stuck in an error loop.</strong> Stop, summarize the goal in one sentence,
-            and ask Petal to take a different approach.
+            and ask Kimble to take a different approach.
           </li>
         </ul>
       </>
@@ -333,7 +333,7 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          Petal is invite-led while we're in early access. Everyone who joins gets a personal
+          Kimble is invite-led while we're in early access. Everyone who joins gets a personal
           referral link from their <Link to="/profile" className="underline">profile</Link>.
         </p>
         <ul>
@@ -356,7 +356,7 @@ const sections: Section[] = [
         <p><strong>Can I export my database?</strong> Yes. Open the Cloud panel → Database → Tables and use the export action on the table you want.</p>
         <p><strong>How do I copy a project?</strong> Open the project, click its name in the top left, go to Settings, and choose Remix.</p>
         <p><strong>What does a credit cover?</strong> One Build‑mode message. Try‑to‑fix retries are free.</p>
-        <p><strong>Do I need to know how to code?</strong> No. Petal writes and wires the code; you describe the outcome. If you do code, you can export the project and keep going in your own editor.</p>
+        <p><strong>Do I need to know how to code?</strong> No. Kimble writes and wires the code; you describe the outcome. If you do code, you can export the project and keep going in your own editor.</p>
         <p><strong>Can I build iOS and Android from one prompt?</strong> Yes — one mobile project ships to both.</p>
         <p><strong>Who owns what I build?</strong> You do — the code, the data, and the domain.</p>
         <p><strong>Where is my project ID?</strong> It's in the URL of the builder.</p>
@@ -374,7 +374,7 @@ function DocsPage() {
         <header className="mb-10">
           <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Documentation</p>
           <h1 className="mt-2 font-serif text-4xl tracking-tight md:text-5xl">
-            Build anything with Petal
+            Build anything with Kimble
           </h1>
           <p className="mt-3 max-w-2xl text-base text-muted-foreground md:text-lg">
             Everything you need to go from a single prompt to a published, full‑stack app —
@@ -426,7 +426,7 @@ function DocsPage() {
         <footer className="mt-20 rounded-2xl border border-border/60 bg-muted/30 p-6 text-center">
           <h3 className="font-serif text-xl">Still stuck?</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Open the builder and describe what you're trying to do — Petal can usually take it
+            Open the builder and describe what you're trying to do — Kimble can usually take it
             from there.
           </p>
           <Link

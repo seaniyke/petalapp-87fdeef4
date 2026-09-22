@@ -1,7 +1,7 @@
 /**
  * Kit dependency closure.
  *
- * Petal ships ~316 scaffold-kit files into every generated project. Many of
+ * Kimble ships ~316 scaffold-kit files into every generated project. Many of
  * them (motion primitives, marketing FX, three.js scenes, the TipTap editor,
  * thumbhash images) import npm packages that are deliberately NOT in
  * REQUIRED_DEPS — installing three.js + GSAP + ProseMirror into every todo app

@@ -1,9 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * One-row-per-project store for Petal's in-flight assistant reply.
+ * One-row-per-project store for Kimble's in-flight assistant reply.
  *
- * Why this exists: a build can run for 30–60 seconds while Petal streams a
+ * Why this exists: a build can run for 30–60 seconds while Kimble streams a
  * Plan, writes files, and writes a Recap. If the user refreshes mid-stream,
  * everything they were already seeing on screen disappears, leaving them
  * staring at their own prompt with no reply under it.

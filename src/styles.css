@@ -409,7 +409,7 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
 }
 
 /* ---------------------------------------------------------------------------
- * Petal "current action" shimmer — single-line, prose-feeling status used in
+ * Kimble "current action" shimmer — single-line, prose-feeling status used in
  * the builder thread (e.g. "Reading domain-intent.ts"). Mimics the calm,
  * inline activity log used by Lovable: a subtle horizontal sheen sweeps the
  * text instead of any spinner or chip.

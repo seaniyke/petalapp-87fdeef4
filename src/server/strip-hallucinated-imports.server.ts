@@ -15,7 +15,7 @@
  *
  * The output is intentionally ugly — the goal is "ship a working app the
  * user can iterate on", not "ship the app the model intended". The
- * Continue-building chip then nudges the user to ask Petal to reimplement
+ * Continue-building chip then nudges the user to ask Kimble to reimplement
  * those sections with real packages.
  */
 

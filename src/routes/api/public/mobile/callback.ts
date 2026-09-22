@@ -1,5 +1,5 @@
 /**
- * Codemagic → Petal webhook for mobile builds.
+ * Codemagic → Kimble webhook for mobile builds.
  *
  * The codemagic.yaml `publishing.scripts` step posts the build outcome
  * here, signed HMAC-SHA256 over `${timestamp}.${rawBody}` using

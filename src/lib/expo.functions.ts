@@ -1,10 +1,10 @@
 /**
  * Expo / EAS Build integration — server-side readiness check.
  *
- * Petal runs EAS Build under its OWN Expo organization account, not
+ * Kimble runs EAS Build under its OWN Expo organization account, not
  * the user's. That means we don't need OAuth, we just need a single
  * server-side `EXPO_ACCESS_TOKEN` (a personal access token from
- * Petal's Expo org with `builds:write` scope).
+ * Kimble's Expo org with `builds:write` scope).
  *
  * This is the same pattern Bolt and Rork use for "no setup" mobile
  * builds — the heavy infra (build runners, build queue) lives on the
@@ -22,8 +22,8 @@ export const getMobileBuildReady = createServerFn({ method: "GET" }).handler(
     const ready = Boolean(process.env.EXPO_ACCESS_TOKEN);
     return {
       ready,
-      // If true → Petal can run EAS Build for the user with zero setup.
-      // If false → "Petal is finishing its mobile build pipeline" copy.
+      // If true → Kimble can run EAS Build for the user with zero setup.
+      // If false → "Kimble is finishing its mobile build pipeline" copy.
     };
   }
 );

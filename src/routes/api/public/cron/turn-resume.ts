@@ -37,7 +37,7 @@ function repairBrief(record: CompletionRecord): string {
   }
   const defects = record.outstanding_defects.slice(0, 10);
   return [
-    "Your last build is not usable yet. Petal's own checks found these problems:",
+    "Your last build is not usable yet. Kimble's own checks found these problems:",
     ...defects.map((d) => `- ${d}`),
     "",
     "Fix exactly these problems. Change only the files involved, keep everything that already works, and do not restate the plan.",
@@ -61,13 +61,13 @@ async function resumeOne(record: CompletionRecord, origin: string): Promise<stri
   const interrupted = record.evidence.includes(INTERRUPTED_MARKER);
   const files = await loadFiles(record.project_id);
   if (!files.length && !interrupted) {
-    await markBlocked(record.id, "Petal could not find the project's files to repair.");
+    await markBlocked(record.id, "Kimble could not find the project's files to repair.");
     return "blocked";
   }
 
   const brief = repairBrief(record);
   if (!brief.trim()) {
-    await markBlocked(record.id, "Petal could not tell what was left to finish.");
+    await markBlocked(record.id, "Kimble could not tell what was left to finish.");
     return "blocked";
   }
 
@@ -92,7 +92,7 @@ async function resumeOne(record: CompletionRecord, origin: string): Promise<stri
   if (!res.ok) {
     await markBlocked(
       record.id,
-      `Petal could not start an automatic repair (${res.status}). Open the project and press Try to fix.`,
+      `Kimble could not start an automatic repair (${res.status}). Open the project and press Try to fix.`,
     );
     return "failed";
   }

@@ -4,7 +4,7 @@
  * When a user is iterating on an existing app ("change the hero headline to
  * X", "add a testimonials section under pricing", "remove the second card",
  * "rename Get Started to Try free"), the single thing that decides whether
- * Petal lands the edit is: did the model SEE the exact bytes it needs to
+ * Kimble lands the edit is: did the model SEE the exact bytes it needs to
  * quote in a `replace` op?
  *
  * The generic relevance heuristic in `trimFilesForPrompt` scores files by
@@ -118,7 +118,7 @@ const VERB_RULES: Record<EditVerb, string> = {
 const PASCAL_STOPWORDS = new Set([
   "I", "The", "This", "That", "Please", "Can", "Could", "Would", "Also", "And",
   "But", "For", "You", "Your", "We", "It", "Is", "Are", "Add", "Change", "Make",
-  "Remove", "Move", "Fix", "Update", "Petal", "Hi", "Hey", "Hello", "Now",
+  "Remove", "Move", "Fix", "Update", "Kimble", "Hi", "Hey", "Hello", "Now",
   "When", "Where", "What", "Why", "How", "Let", "Lets", "Let's", "OK", "Okay",
   "App", "Page", "Site", "UI", "UX", "API", "SEO", "CSS", "HTML", "JSON",
 ]);
@@ -229,7 +229,7 @@ function countOccurrences(haystack: string, needle: string): { count: number; fi
   return { count, first };
 }
 
-/** Files Petal owns and must never hand to the model as an edit target. */
+/** Files Kimble owns and must never hand to the model as an edit target. */
 function isKitPath(path: string): boolean {
   return (
     path.startsWith("src/components/ui/") ||
@@ -388,7 +388,7 @@ export function renderEditTargetBlock(args: {
     "",
     "",
     "### Targeted edit — resolved files",
-    `Petal matched this request against the real project bytes. Edit verb: **${verb}**.`,
+    `Kimble matched this request against the real project bytes. Edit verb: **${verb}**.`,
     "",
     "The user is pointing at these files (their FULL current contents are included above, untrimmed):",
     ...lines,

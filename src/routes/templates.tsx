@@ -26,17 +26,17 @@ import {
 export const Route = createFileRoute("/templates")({
   head: () => ({
     meta: [
-      { title: "Templates · Petal" },
+      { title: "Templates · Kimble" },
       {
         name: "description",
         content:
-          "Production-ready starter prompts for SaaS, AI tools, local business sites, internal tools, mobile apps and more. Pick one and Petal builds it.",
+          "Production-ready starter prompts for SaaS, AI tools, local business sites, internal tools, mobile apps and more. Pick one and Kimble builds it.",
       },
-      { property: "og:title", content: "Petal Templates — Browse 40+ starter apps" },
+      { property: "og:title", content: "Kimble Templates — Browse 40+ starter apps" },
       {
         property: "og:description",
         content:
-          "Browse Petal's template library by category. Pick a starter, tweak the prompt, ship in minutes.",
+          "Browse Kimble's template library by category. Pick a starter, tweak the prompt, ship in minutes.",
       },
       { property: "twitter:card", content: "summary_large_image" },
     ],
@@ -112,7 +112,7 @@ function TemplatesPage() {
           <p className="mt-3 text-muted-foreground">
             {START_IDEAS.length} hand-written starter prompts across SaaS, AI
             tools, local business sites, internal tools and more. Pick one,
-            tweak the wording, and Petal builds it for you.
+            tweak the wording, and Kimble builds it for you.
           </p>
         </header>
 
@@ -161,7 +161,7 @@ function TemplatesPage() {
             <h3 className="font-display text-2xl">No templates match</h3>
             <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
               Try a different category or clear the search. Or describe what
-              you want — Petal can build anything you can imagine.
+              you want — Kimble can build anything you can imagine.
             </p>
           </div>
         ) : (

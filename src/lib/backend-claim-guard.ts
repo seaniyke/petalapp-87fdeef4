@@ -1,7 +1,7 @@
 /**
  * Backend-claim guardrail.
  *
- * Petal's generation pipeline doesn't yet run migrations against managed
+ * Kimble's generation pipeline doesn't yet run migrations against managed
  * backends, but the model regularly writes recap/summary text claiming it
  * "created the users table" or "wired up sign-up". That's a lie by
  * construction — the user then opens the Cloud panel and sees nothing,

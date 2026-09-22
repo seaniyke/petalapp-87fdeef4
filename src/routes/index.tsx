@@ -58,13 +58,13 @@ export const Route = createFileRoute("/")({
     search.focus === "composer" ? { focus: "composer" } : {},
   head: () => ({
     meta: [
-      { title: "Petal — Build it, ship it, then sell it" },
+      { title: "Kimble — Build it, ship it, then sell it" },
       {
         name: "description",
         content:
-          "Petal is an app builder for web, mobile, backends, and extensions. Describe your idea, build it, publish it, and sell it.",
+          "Kimble is an app builder for web, mobile, backends, and extensions. Describe your idea, build it, publish it, and sell it.",
       },
-      { property: "og:title", content: "Petal — Build it, ship it, then sell it" },
+      { property: "og:title", content: "Kimble — Build it, ship it, then sell it" },
       {
         property: "og:description",
         content: "Describe your app, build it, publish it, and sell it. Your code is yours, and credits never expire.",
@@ -332,16 +332,16 @@ function Landing() {
     if (isFocused || prompt.length > 0) return;
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setAnimatedPlaceholder(
-        mode === "discuss" ? "Ask Petal anything…" : "Describe a web app, mobile app, API or extension…",
+        mode === "discuss" ? "Ask Kimble anything…" : "Describe a web app, mobile app, API or extension…",
       );
       return;
     }
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const prefix = mode === "discuss" ? "Ask Petal about " : "Ask Petal to build ";
+    const prefix = mode === "discuss" ? "Ask Kimble about " : "Ask Kimble to build ";
     const restingPlaceholder =
-      mode === "discuss" ? "Ask Petal anything about your idea…" : "Describe a web app, mobile app, API or extension…";
+      mode === "discuss" ? "Ask Kimble anything about your idea…" : "Describe a web app, mobile app, API or extension…";
     let promptIdx = 0;
     let charIdx = 0;
     let typingMode: "typing" | "pausing" | "deleting" | "done" = "typing";
@@ -507,7 +507,7 @@ function Landing() {
                 Build an app from<br />a conversation.
               </h1>
               <p className="mx-auto mt-5 max-w-2xl text-balance text-[0.94rem] leading-relaxed text-muted-foreground sm:mt-7 sm:text-xl">
-                Describe your app. Petal plans, builds, tests, and publishes it.
+                Describe your app. Kimble plans, builds, tests, and publishes it.
               </p>
             </>
           )}
@@ -559,7 +559,7 @@ function Landing() {
                   placeholder={
                     isFocused || prompt
                       ? mode === "discuss"
-                        ? "Ask Petal anything about your idea…"
+                        ? "Ask Kimble anything about your idea…"
                         : "Describe a web app, mobile app, API or extension…"
                       : animatedPlaceholder
                   }
@@ -651,7 +651,7 @@ function Landing() {
                 {mode !== "coach" && (
                   <button
                     type="submit"
-                    aria-label={mode === "discuss" ? "Ask Petal" : "Build it"}
+                    aria-label={mode === "discuss" ? "Ask Kimble" : "Build it"}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-50"
                     disabled={!prompt.trim()}
                   >
@@ -751,7 +751,7 @@ function Landing() {
 
             <div className="mt-8">
               {projectFilter === "public" ? (
-                // Community discovery: every public project across Petal,
+                // Community discovery: every public project across Kimble,
                 // linked through to the read-only /p/$slug page (since the
                 // current user doesn't own them).
                 communityLoading || communityPublic === null ? (
@@ -816,7 +816,7 @@ function Landing() {
                   </div>
                   <h3 className="mt-5 font-display text-xl">Your workspace is empty</h3>
                   <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-                    Describe a web app, mobile app, API or extension in the box above — Petal scaffolds it in seconds.
+                    Describe a web app, mobile app, API or extension in the box above — Kimble scaffolds it in seconds.
                   </p>
                 </div>
               ) : (
@@ -906,10 +906,10 @@ function Landing() {
             <div className="mx-auto max-w-6xl">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
                 <div className="max-w-3xl">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Made with Petal</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Made with Kimble</p>
                   <h2 className="heading-editorial mt-4 text-5xl sm:text-6xl">Real ideas. <em>Real builds.</em></h2>
                   <p className="mt-5 max-w-xl text-base leading-relaxed text-muted-foreground">
-                    Explore public projects made in Petal. Open one, see it working, then make it your own.
+                    Explore public projects made in Kimble. Open one, see it working, then make it your own.
                   </p>
                 </div>
                 <Link to="/gallery" className="inline-flex h-11 items-center gap-2 self-start rounded-md border border-foreground/20 px-5 text-sm font-semibold transition hover:bg-foreground hover:text-background sm:self-auto">
@@ -943,7 +943,7 @@ function Landing() {
                   <div className="p-8 sm:p-12">
                     <p className="text-xs uppercase tracking-[0.18em] text-background/60">A complete product</p>
                     <h3 className="font-display mt-4 text-3xl font-semibold">Not another empty prototype.</h3>
-                    <p className="mt-4 text-sm leading-relaxed text-background/70">Petal plans the full journey, builds every screen, connects the working parts, checks the result, and gets it ready to publish.</p>
+                    <p className="mt-4 text-sm leading-relaxed text-background/70">Kimble plans the full journey, builds every screen, connects the working parts, checks the result, and gets it ready to publish.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-px bg-background/15">
                     {["Plan", "Build", "Test", "Publish"].map((label, i) => <div key={label} className="bg-foreground p-7"><span className="text-xs text-background/50">0{i + 1}</span><p className="mt-8 font-display text-xl">{label}</p></div>)}
@@ -958,12 +958,12 @@ function Landing() {
               <div className="max-w-3xl">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Everything between idea and launch</p>
                 <h2 className="heading-editorial mt-4 text-5xl sm:text-6xl">The whole product.<br /><em>Not just the first screen.</em></h2>
-                <p className="mt-5 max-w-xl text-base text-muted-foreground">Petal makes the screens people see and the systems that make them useful.</p>
+                <p className="mt-5 max-w-xl text-base text-muted-foreground">Kimble makes the screens people see and the systems that make them useful.</p>
               </div>
               <div className="mt-14 grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2">
                 {[
                   { slug: "agent-board", icon: ShieldCheck, title: "Reviewed before it ships", body: "Specialist AI reviewers check the plan, design, security, and quality—not just whether the page loads." },
-                  { slug: "own-your-code", icon: Code2, title: "Built to remain yours", body: "Sync the code to Git, use your own web address, export it, or keep shaping it in Petal." },
+                  { slug: "own-your-code", icon: Code2, title: "Built to remain yours", body: "Sync the code to Git, use your own web address, export it, or keep shaping it in Kimble." },
                   { slug: "pay-as-you-build", icon: Sparkles, title: "Pay for progress, not promises", body: "Buy credits when you need them. They never expire, and turns that change nothing cost nothing." },
                   { slug: "marketplace", icon: Store, title: "A product you can sell", body: "List a finished build in the marketplace and keep 80% of every sale." },
                 ].map((item, index) => (
@@ -986,7 +986,7 @@ function Landing() {
           <section id="how" className="border-y border-border bg-foreground px-5 py-20 text-background sm:px-6 sm:py-28">
             <div className="mx-auto max-w-6xl">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">A clear path from prompt to product</p>
-              <h2 className="heading-editorial mt-4 max-w-3xl text-5xl sm:text-6xl">You describe it.<br /><em>Petal does the heavy lifting.</em></h2>
+              <h2 className="heading-editorial mt-4 max-w-3xl text-5xl sm:text-6xl">You describe it.<br /><em>Kimble does the heavy lifting.</em></h2>
               <ol className="mt-10 grid gap-8 md:grid-cols-3">
                 {[
                   ["01", "Start with the outcome", "Describe who the app is for, what it should do, and how it should feel."],
@@ -1006,7 +1006,7 @@ function Landing() {
           <section id="marketplace" className="px-5 py-20 sm:px-6 sm:py-28">
             <div className="mx-auto grid max-w-6xl overflow-hidden rounded-lg border border-border bg-card md:grid-cols-2">
               <div className="p-8 sm:p-12">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Petal Marketplace</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Kimble Marketplace</p>
                 <h2 className="heading-editorial mt-4 text-5xl sm:text-6xl">Build it once.<br /><em>Sell it whole.</em></h2>
                 <p className="mt-5 max-w-lg text-base leading-relaxed text-muted-foreground">Sell a working product—not a screenshot. Buyers receive the project and its code, while you keep 80% of every sale.</p>
                 <div className="mt-8 flex flex-wrap gap-3">
@@ -1048,7 +1048,7 @@ function Landing() {
                   ["Do I need a subscription?", "No. Credit packs work without a subscription."],
                   ["Do credits expire?", "No. Your unused balance stays available."],
                   ["Do I own the code?", "Yes. Sync it to Git, edit it, and deploy it elsewhere."],
-                  ["Can Petal build mobile apps?", "Yes. One mobile project can ship to iOS and Android."],
+                  ["Can Kimble build mobile apps?", "Yes. One mobile project can ship to iOS and Android."],
                 ].map(([question, answer]) => (
                   <div key={question} className="border-b border-border py-6 md:pr-10 md:odd:border-r md:even:pl-10">
                     <h3 className="font-landing-display text-base font-semibold">{question}</h3>
@@ -1077,7 +1077,7 @@ function Landing() {
               {/* Brand block + entry CTA */}
               <div className="flex flex-col gap-8 border-b border-border pb-10 md:flex-row md:items-end md:justify-between">
                 <div className="max-w-sm">
-                  <Link to="/" aria-label="Petal home" className="inline-flex">
+                  <Link to="/" aria-label="Kimble home" className="inline-flex">
                     <PetalBrand size="sm" />
                   </Link>
                   <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -1113,7 +1113,7 @@ function Landing() {
                   </h3>
                   <ul className="space-y-2.5 text-muted-foreground">
                     <li><Link to="/features/$slug" params={{ slug: "web" }} className="transition-colors hover:text-foreground">Features</Link></li>
-                    <li><Link to="/why/$slug" params={{ slug: "agent-board" }} className="transition-colors hover:text-foreground">Why Petal</Link></li>
+                    <li><Link to="/why/$slug" params={{ slug: "agent-board" }} className="transition-colors hover:text-foreground">Why Kimble</Link></li>
                     <li><Link to="/invest" className="transition-colors hover:text-foreground">Invest</Link></li>
                     <li><Link to="/coffee" className="transition-colors hover:text-foreground">Support us</Link></li>
                   </ul>
@@ -1129,7 +1129,7 @@ function Landing() {
                 </div>
                 <div className="space-y-3">
                   <h3 className="font-display text-xs font-semibold uppercase tracking-wider text-foreground/80">
-                    Build with Petal
+                    Build with Kimble
                   </h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     Start from a single sentence — no setup, no lock-in.
@@ -1139,9 +1139,9 @@ function Landing() {
 
               {/* Bottom bar */}
               <div className="flex flex-col items-center gap-3 border-t border-border pt-8 text-xs text-muted-foreground sm:flex-row sm:justify-between">
-                <span>© {new Date().getFullYear()} Petal</span>
+                <span>© {new Date().getFullYear()} Kimble</span>
                 <span className="text-muted-foreground/70">
-                  Powered by Petal Cloud & Petal AI
+                  Powered by Kimble Cloud & Kimble AI
                 </span>
               </div>
             </div>

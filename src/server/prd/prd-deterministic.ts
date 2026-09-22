@@ -488,7 +488,7 @@ function fallbackIdentity(brief: string, type: ProductType): {
   const subject = seen.join(" ") || "the job at hand";
   const label = TYPE_LABEL[type];
   return {
-    productName: title ? `${title} ${label[0].toUpperCase()}${label.slice(1)}` : `Petal ${label[0].toUpperCase()}${label.slice(1)}`,
+    productName: title ? `${title} ${label[0].toUpperCase()}${label.slice(1)}` : `Kimble ${label[0].toUpperCase()}${label.slice(1)}`,
     purpose: `A ${label} for ${subject}, built from the user's request: "${brief.trim().slice(0, 140)}".`,
     targetUser: `Someone who needs to handle ${subject} without extra tooling.`,
     primaryOutcome: `Complete the main job around ${subject} and see a real result.`,

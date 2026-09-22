@@ -1,5 +1,5 @@
 /**
- * Petal agent tools — the execution surface the model can reach for.
+ * Kimble agent tools — the execution surface the model can reach for.
  *
  * Design rule: anything answerable from the in-memory project tree is answered
  * *in the Worker*, with no network hop. Only `run_script` — which needs a real
@@ -153,7 +153,7 @@ export const RUN_CHECK_TOOL: ToolSpec = {
   function: {
     name: "run_check",
     description:
-      "Run Petal's static verifier over the project (syntax, unresolved imports, missing named exports, blank renders). Call this after a run_script codemod to confirm nothing broke.",
+      "Run Kimble's static verifier over the project (syntax, unresolved imports, missing named exports, blank renders). Call this after a run_script codemod to confirm nothing broke.",
     parameters: {
       type: "object",
       properties: {

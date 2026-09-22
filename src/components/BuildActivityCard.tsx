@@ -1,6 +1,6 @@
 /**
  * The compact build card users see in the chat thread while (and after)
- * Petal builds their app.
+ * Kimble builds their app.
  *
  * Chat-level UI stays tiny on purpose: a status/summary line plus two
  * actions — "Details" (opens the full Timeline / Changes trace) and
@@ -536,14 +536,14 @@ export function BuildActivityCard({
             )}
           </div>
         )}
-        {/* Plan-first checklist. Petal states the steps before it starts and
+        {/* Plan-first checklist. Kimble states the steps before it starts and
             ticks each one off as its files land, so the user can follow the
             work instead of watching an opaque spinner. */}
         {buildSteps && buildSteps.length > 0 && (
           <div className="border-t border-border/60 px-3.5 py-2.5">
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground/80">
-                {isComplete ? "What Petal did" : "Petal's plan"}
+                {isComplete ? "What Kimble did" : "Kimble's plan"}
               </span>
               {elapsed > 0 && (
                 <span className="shrink-0 font-mono text-[10.5px] font-semibold text-muted-foreground/70 tabular-nums">
@@ -619,7 +619,7 @@ export function BuildActivityCard({
             // Preview only becomes clickable once the turn has actually
             // finished — opening it mid-build shows a half-written app.
             disabled={!onOpenPreview || isActive || (!isComplete && !error)}
-            title={isActive ? "Available once Petal finishes" : undefined}
+            title={isActive ? "Available once Kimble finishes" : undefined}
             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border/70 bg-background px-3 py-2 text-[13px] font-bold transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-background"
           >
             <Play className="h-3.5 w-3.5" aria-hidden />

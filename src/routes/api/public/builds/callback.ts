@@ -34,7 +34,7 @@ import { warmProjectThumbnail } from "@/server/project-thumbnail.server";
 
 /**
  * Pull the committed design contract for a project so craft QA judges the app
- * against what Petal promised to build, not against generic taste. Missing
+ * against what Kimble promised to build, not against generic taste. Missing
  * intelligence is fine — the reviewer falls back to general craft standards.
  */
 async function loadCraftContract(projectId: string): Promise<CraftContract | null> {
@@ -194,7 +194,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         .update({
           status: "failed",
           dist_path: payload.url,
-          error_message: `${probe.message} Petal kept your previous preview live instead of shipping a broken one.`,
+          error_message: `${probe.message} Kimble kept your previous preview live instead of shipping a broken one.`,
         })
         .eq("id", payload.buildId);
       await refundRolledBackBuild(payload.projectId, payload.buildId);
@@ -308,7 +308,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       verification.ok = verification.defects.length === 0;
     }
     // The browser check can run while the hosting edge is still propagating,
-    // producing 52x on every route. Petal's own probe above already fetched
+    // producing 52x on every route. Kimble's own probe above already fetched
     // this exact URL and got a real app, so an all-edge-transient report is
     // inconclusive, not a build failure — never fail a healthy deploy on it.
     const edgeNoiseOnly = allBlockingDefectsAreTransientEdge(partitioned.blocking);
@@ -326,9 +326,9 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     }
     if (!edgeNoiseOnly && partitioned.blocking.length > 0) {
       const message = [
-        "The deployment completed, but Petal's browser check found a runtime failure.",
+        "The deployment completed, but Kimble's browser check found a runtime failure.",
         ...partitioned.blocking.slice(0, 8).map((defect) => `- ${defect}`),
-        "Petal kept the previous healthy preview live.",
+        "Kimble kept the previous healthy preview live.",
       ].join("\n");
       const { error: rejectedCandidateError } = await supabaseAdmin
         .from("project_builds")
@@ -369,7 +369,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         error_message: null,
         ready_at: new Date().toISOString(),
         // Null when the build predates verification or the plan was empty.
-        // `evidence` is the human-readable proof Petal reports back to the
+        // `evidence` is the human-readable proof Kimble reports back to the
         // user: "completed" without proof is exactly the claim we stopped
         // trusting from the builder.
         verification: verification
@@ -518,13 +518,13 @@ function buildEvidence(verification: Record<string, unknown>): string[] {
   if (typeof verification.durationMs === "number") {
     out.push(`Browser check ran for ${Math.round(verification.durationMs / 1000)}s`);
   }
-  if (!out.length) out.push("Deployed URL served a real app on Petal's own probe");
+  if (!out.length) out.push("Deployed URL served a real app on Kimble's own probe");
   return out;
 }
 
 /**
  * Trust hygiene: a build the user cannot use must not stay on their bill.
- * When Petal rolls a candidate back (failed probe or a browser-check failure),
+ * When Kimble rolls a candidate back (failed probe or a browser-check failure),
  * hand the build's credits back. The RPC is idempotent per build id, so a
  * retried callback can never refund twice.
  */

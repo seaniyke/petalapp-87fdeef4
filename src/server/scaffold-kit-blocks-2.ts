@@ -1,5 +1,5 @@
 /**
- * Phase-2 expansion of the Petal scaffold: section blocks for testimonials,
+ * Phase-2 expansion of the Kimble scaffold: section blocks for testimonials,
  * pricing, FAQ, CTA, footer, nav, logo cloud — plus end-to-end page-assembly
  * examples that show the model how to compose a full landing page from blocks.
  *

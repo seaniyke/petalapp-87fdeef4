@@ -115,7 +115,7 @@ export const DOMAIN_COMPONENTS: Record<BusinessDomain, string[]> = {
 /**
  * Per-domain SECONDARY components — the things that turn a "CRM screen"
  * into a "CRM product": activity timeline, notifications, reporting,
- * onboarding. Petal Quality Engine v1 / Part A.
+ * onboarding. Kimble Quality Engine v1 / Part A.
  *
  * Additive to DOMAIN_COMPONENTS, not a replacement. The planner is told
  * to build BOTH lists.

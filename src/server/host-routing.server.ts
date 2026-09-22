@@ -2,7 +2,7 @@
  * Custom-domain runtime routing — host → project lookup + reverse proxy.
  *
  * When a request arrives at a custom hostname (e.g. acme.com), we:
- *   1. Skip Petal's own hosts (marketing site, *.lovable.app, localhost, etc.)
+ *   1. Skip Kimble's own hosts (marketing site, *.lovable.app, localhost, etc.)
  *   2. Look up the project that owns that hostname in `project_domains`
  *   3. Proxy the request to that project's deployed Cloudflare Pages URL
  *      (https://petal-<projectId-prefix>.pages.dev) and stream the response
@@ -14,7 +14,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /**
- * Hosts that belong to Petal itself — never proxy these. Exact match or
+ * Hosts that belong to Kimble itself — never proxy these. Exact match or
  * suffix match (for wildcards like `.lovable.app`).
  *
  * Hardcoded for v1; move to env var (PETAL_RESERVED_HOSTS) if/when we add
@@ -53,7 +53,7 @@ function pagesProjectName(projectId: string): string {
  *     We render a friendly placeholder instead of proxying to a stale build.
  *   - `private`: visibility is `private` — only workspace members can view.
  *     Returned as a 403 placeholder for now (no auth gate yet on the proxy).
- *   - `null`: hostname isn't owned by any project; fall through to the Petal
+ *   - `null`: hostname isn't owned by any project; fall through to the Kimble
  *     app (404 / marketing).
  */
 type DomainTarget =
@@ -73,7 +73,7 @@ async function lookupDomain(hostname: string): Promise<DomainTarget> {
     .eq("hostname", hostname)
     .maybeSingle();
   if (error || !data) return null;
-  // Only proxy active domains — pending/failed ones get the default Petal site
+  // Only proxy active domains — pending/failed ones get the default Kimble site
   // (which is fine; the user is still mid-setup).
   if (data.status !== "active") return null;
 
@@ -224,7 +224,7 @@ export function renderUnpublishedPage(
     <span class="badge">${isPrivate ? "Private" : "Coming soon"}</span>
     <h1>${title}</h1>
     <p>${body}</p>
-    <div class="footer">Built with Petal</div>
+    <div class="footer">Built with Kimble</div>
   </main>
 </body>
 </html>`;

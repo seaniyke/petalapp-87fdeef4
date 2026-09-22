@@ -104,7 +104,7 @@ If the user does insist:
     docsUrl: "https://stripe.com/docs/api",
     requiredSecrets: ["STRIPE_SECRET_KEY", "VITE_STRIPE_PUBLISHABLE_KEY"],
     promptBlock: `### Universal Integration: Stripe
-**Petal already ships a managed Stripe integration** — strongly prefer running the Stripe install flow over hand-rolling. Suggest \`<lov-suggest-integration code="stripe" />\` first.
+**Kimble already ships a managed Stripe integration** — strongly prefer running the Stripe install flow over hand-rolling. Suggest \`<lov-suggest-integration code="stripe" />\` first.
 If hand-rolling:
 - Install: \`npm install stripe @stripe/stripe-js\`
 - Secrets: \`STRIPE_SECRET_KEY\` (server), \`VITE_STRIPE_PUBLISHABLE_KEY\` (client)
@@ -124,7 +124,7 @@ If hand-rolling:
     docsUrl: "https://resend.com/docs",
     requiredSecrets: ["RESEND_API_KEY"],
     promptBlock: `### Universal Integration: Resend
-**Petal already ships a managed Resend integration** — suggest \`<lov-suggest-integration code="resend" />\` first.
+**Kimble already ships a managed Resend integration** — suggest \`<lov-suggest-integration code="resend" />\` first.
 If hand-rolling:
 - Install: \`npm install resend\`
 - Secret: \`RESEND_API_KEY\`
@@ -334,7 +334,7 @@ If hand-rolling:
   \`\`\`ts
   import { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } from "plaid";
   const client = new PlaidApi(new Configuration({ basePath: PlaidEnvironments[process.env.PLAID_ENV ?? "sandbox"], baseOptions: { headers: { "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID, "PLAID-SECRET": process.env.PLAID_SECRET } } }));
-  const r = await client.linkTokenCreate({ user: { client_user_id: userId }, client_name: "Petal App", products: [Products.Transactions], country_codes: [CountryCode.Us], language: "en" });
+  const r = await client.linkTokenCreate({ user: { client_user_id: userId }, client_name: "Kimble App", products: [Products.Transactions], country_codes: [CountryCode.Us], language: "en" });
   \`\`\`
 - Client uses \`usePlaidLink({ token: linkToken, onSuccess })\` to open the modal.`,
   },
@@ -400,8 +400,8 @@ If they do:
 - Install: \`npm install discord.js\`
 - Secret: \`DISCORD_BOT_TOKEN\`
 - A persistent bot does NOT fit a serverless TanStack app. Two options:
-  1. **Outbound only (recommended for Petal)**: send messages via REST — \`POST https://discord.com/api/v10/channels/<id>/messages\` with \`Authorization: Bot ${"<token>"}\`.
-  2. **Full bot**: deploy a separate Node process (Railway, Fly, Render); Petal's app is the dashboard, the bot is a sidecar.
+  1. **Outbound only (recommended for Kimble)**: send messages via REST — \`POST https://discord.com/api/v10/channels/<id>/messages\` with \`Authorization: Bot ${"<token>"}\`.
+  2. **Full bot**: deploy a separate Node process (Railway, Fly, Render); Kimble's app is the dashboard, the bot is a sidecar.
 - Pitfall: don't try to keep \`client.login()\` open in a server function — it gets killed on every cold start.`,
   },
 

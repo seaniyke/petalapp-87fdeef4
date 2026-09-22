@@ -1,5 +1,5 @@
 /**
- * Petal Intelligence — profile + agent selection.
+ * Kimble Intelligence — profile + agent selection.
  *
  * The whole point: a colour tweak must not convene a design board, and a
  * fintech SaaS must not be planned by a landing-page brain. Selection is

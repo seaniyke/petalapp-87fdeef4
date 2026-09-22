@@ -1,18 +1,18 @@
 /**
  * Intent → action.
  *
- * Petal used to detect what a user asked for and then render a card they had
+ * Kimble used to detect what a user asked for and then render a card they had
  * to tap ("Enable storage", "Turn on the backend", "Connect a domain"). The
- * cards are gone. The same detection now runs here, server-side, and Petal
+ * cards are gone. The same detection now runs here, server-side, and Kimble
  * simply does the work as part of the turn.
  *
  * Two rules:
- *  1. Anything Petal can do on its own, it does — including attaching the
+ *  1. Anything Kimble can do on its own, it does — including attaching the
  *     free shared backend when the request needs data, accounts, uploads,
  *     live updates or scheduled work.
  *  2. Anything that costs money or needs an outside account (buying a web
  *     address, a paid plan, a payment provider) is never started silently.
- *     Petal notes it in one plain line and keeps building everything else.
+ *     Kimble notes it in one plain line and keeps building everything else.
  *
  * Fail-open by construction: every step is best-effort and any failure
  * degrades to today's behaviour (no auto-enable, no extra prompt text).
@@ -29,7 +29,7 @@ const BACKEND_IMPLYING: SimpleIntentId[] = [
   "aiFeature",
 ];
 
-/** Capabilities Petal cannot start alone — money or an outside account. */
+/** Capabilities Kimble cannot start alone — money or an outside account. */
 const NEEDS_THE_USER: SimpleIntentId[] = ["domain", "payment"];
 
 const CAPABILITY_BRIEF: Partial<Record<SimpleIntentId, string>> = {
@@ -70,7 +70,7 @@ export interface ResolvedIntentActions {
   /** Extra instructions appended to the generation prompt. Empty when none. */
   promptBlock: string;
   /**
-   * One plain sentence for the user about anything Petal could not start on
+   * One plain sentence for the user about anything Kimble could not start on
    * its own. Null when there is nothing to say.
    */
   userNote: string | null;

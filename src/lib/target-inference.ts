@@ -2,7 +2,7 @@
  * Build-target inference from the prompt text.
  *
  * Why this exists: the target chip rail was removed from the composer on the
- * understanding that Petal would infer the product type from what the user
+ * understanding that Kimble would infer the product type from what the user
  * typed. That inference was never actually built — `/api/generate` read
  * `x-petal-target` from the header and defaulted to `"web"`, with no
  * prompt-text inference anywhere in the codebase. The result: "build me a

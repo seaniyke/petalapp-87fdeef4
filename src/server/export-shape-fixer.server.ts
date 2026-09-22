@@ -172,7 +172,7 @@ export function fixExportShape(files: ProjectFile[]): ExportShapeResult {
       if (!decls) return f;
       return {
         ...f,
-        content: `${f.content.replace(/\s*$/, "")}\n\n// Petal: named aliases so existing imports of this module resolve.\n${decls}\n`,
+        content: `${f.content.replace(/\s*$/, "")}\n\n// Kimble: named aliases so existing imports of this module resolve.\n${decls}\n`,
       };
     });
   }

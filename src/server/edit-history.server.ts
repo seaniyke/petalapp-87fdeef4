@@ -1,7 +1,7 @@
 /**
  * Edit history (Edit Intelligence, phase 6) + focus persistence (phase 3).
  *
- * One row per chat edit: what the user asked, the change set Petal understood,
+ * One row per chat edit: what the user asked, the change set Kimble understood,
  * what it was told to preserve, which files actually changed, whether every
  * part landed, and the version to return to if the edit has to be undone.
  *

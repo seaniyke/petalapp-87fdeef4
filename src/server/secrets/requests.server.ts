@@ -1,7 +1,7 @@
 /**
  * Server-only helpers for the mid-conversation secret request flow.
  *
- * Petal uses these when it streams a `<lov-add-secret name="..." />` tag:
+ * Kimble uses these when it streams a `<lov-add-secret name="..." />` tag:
  * a row is inserted into `pending_secret_requests`, the chat UI renders
  * an inline secure input, and the user fulfils it from there. Values are
  * stored as project secrets via the same path the marketplace already uses.

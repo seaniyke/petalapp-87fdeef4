@@ -1,8 +1,8 @@
 /**
  * Document-head reconciliation — Quality Push A1.
  *
- * `index.html` is machine-owned. After the model sees it, Petal rewrites it
- * several more times: the preview guard, the Petal badge, the brand/favicon
+ * `index.html` is machine-owned. After the model sees it, Kimble rewrites it
+ * several more times: the preview guard, the Kimble badge, the brand/favicon
  * injector and the renderable-shell restorer all append or rewrite markup.
  * By the time a `replace` op lands, the snippet the model copied is either
  * gone or now appears twice — which is exactly what telemetry shows: every
@@ -259,7 +259,7 @@ export function reconcileDocumentHeadOps(files: ProjectFile[], ops: FileOp[]): H
       files,
       ops: remaining,
       notes: [
-        `document-head: ignored ${htmlOps.length} index.html edit(s) with no head metadata — index.html is managed by Petal`,
+        `document-head: ignored ${htmlOps.length} index.html edit(s) with no head metadata — index.html is managed by Kimble`,
       ],
       handled: htmlOps.length,
     };

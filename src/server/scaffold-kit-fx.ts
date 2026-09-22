@@ -32,7 +32,7 @@ type KitFile = ProjectFile & { overwrite: boolean };
 // from here; each component uses inline <style> or Tailwind arbitrary keyframes.
 // ---------------------------------------------------------------------------
 
-const FX_INDEX = `// Petal FX layer — marketing effects (MagicUI/Aceternity flavor).
+const FX_INDEX = `// Kimble FX layer — marketing effects (MagicUI/Aceternity flavor).
 // Import from "@/components/fx".
 
 // Backgrounds

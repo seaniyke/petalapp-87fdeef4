@@ -5,7 +5,7 @@
  *   • Publish it
  *   • Keep building (reveal contextual prompts to continue)
  *
- * Petal-style: warm copy, big tap targets, no jargon. The "Keep building"
+ * Kimble-style: warm copy, big tap targets, no jargon. The "Keep building"
  * action expands to show suggestive follow-up prompts derived from the
  * latest turn so users don't have to think about what to type next.
  */
@@ -90,7 +90,7 @@ export function NextStepsCard({
           <span className="min-w-0 flex-1">
             <span className="block text-[12.5px] font-semibold leading-tight">Keep building</span>
             <span className="block text-[11px] text-muted-foreground">
-              {hasSuggestions ? (expanded ? "Hide ideas" : "See ideas") : "Ask Petal for more"}
+              {hasSuggestions ? (expanded ? "Hide ideas" : "See ideas") : "Ask Kimble for more"}
             </span>
           </span>
         </button>

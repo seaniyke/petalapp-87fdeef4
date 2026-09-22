@@ -3,7 +3,7 @@ import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
 /**
  * AI provider abstraction.
  *
- * Every server-side AI call in Petal goes through `aiChatCompletions(...)`. The
+ * Every server-side AI call in Kimble goes through `aiChatCompletions(...)`. The
  * helper picks a provider (Lovable AI by default, OpenRouter optional), picks a
  * model (DB override → caller-supplied → default), forwards the request as an
  * OpenAI-compatible chat completions call, and:
@@ -962,7 +962,7 @@ async function dispatch(
 
   if (provider === "openrouter") {
     headers["HTTP-Referer"] = process.env.OPENROUTER_REFERER || "https://buildwithpetal.com";
-    headers["X-Title"] = "Petal";
+    headers["X-Title"] = "Kimble";
   }
 
   const isStreaming = outBody.stream === true;

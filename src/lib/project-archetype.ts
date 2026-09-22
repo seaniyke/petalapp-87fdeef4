@@ -7,9 +7,9 @@
  * archetype we store:
  *   - landing sections to ship on turn 1 (complete marketing site)
  *   - in-app features to defer to follow-up turns
- *   - providers Petal can wire later when the user asks
+ *   - providers Kimble can wire later when the user asks
  *
- * Petal uses this to:
+ * Kimble uses this to:
  *   1. Land a real branded marketing site first (not a half-baked dashboard).
  *   2. Save the roadmap to project memory so iteration turns pick from a
  *      coherent backlog instead of re-planning from scratch.
@@ -130,7 +130,7 @@ export const PROJECT_ARCHETYPES: readonly ProjectArchetype[] = [
       "Usage quota UI",
     ],
     providersToWireLater: [
-      "Petal AI Gateway (default — no key required)",
+      "Kimble AI Gateway (default — no key required)",
       "Pinecone or pgvector (RAG)",
       "ElevenLabs (voice output)",
       "Replicate (image/audio models)",
@@ -235,7 +235,7 @@ export const PROJECT_ARCHETYPES: readonly ProjectArchetype[] = [
     providersToWireLater: [
       "Stripe (paid quiz packs)",
       "Resend (results emailed)",
-      "Petal AI Gateway (question generation)",
+      "Kimble AI Gateway (question generation)",
     ],
   },
   {
@@ -414,7 +414,7 @@ export const PROJECT_ARCHETYPES: readonly ProjectArchetype[] = [
     ],
     providersToWireLater: [
       "Apple HealthKit / Google Fit",
-      "Petal AI Gateway (meal suggestions)",
+      "Kimble AI Gateway (meal suggestions)",
       "Stripe (premium plan)",
       "Twilio (check-in SMS)",
     ],
@@ -453,7 +453,7 @@ export const PROJECT_ARCHETYPES: readonly ProjectArchetype[] = [
       "Gmail / Outlook API",
       "Slack (deal notifications)",
       "Stripe (invoicing)",
-      "Petal AI Gateway (call summaries)",
+      "Kimble AI Gateway (call summaries)",
     ],
   },
   {
@@ -597,7 +597,7 @@ export const PROJECT_ARCHETYPES: readonly ProjectArchetype[] = [
       "Stripe (course purchases)",
       "Mux (video hosting)",
       "Zoom or Daily.co (live sessions)",
-      "Petal AI Gateway (AI tutoring)",
+      "Kimble AI Gateway (AI tutoring)",
     ],
   },
   {
@@ -631,7 +631,7 @@ export const PROJECT_ARCHETYPES: readonly ProjectArchetype[] = [
       "Paid membership tiers",
     ],
     providersToWireLater: [
-      "Petal Cloud Realtime (live feed)",
+      "Kimble Cloud Realtime (live feed)",
       "Resend (digest emails)",
       "Stripe (paid access)",
       "Stream.io (chat infra)",
@@ -793,7 +793,7 @@ export function archetypeBuildInstruction(archetype: ProjectArchetype): string {
 
 /**
  * Renders the saved roadmap as a prompt block: which landing sections to
- * build NOW and which features to defer. Keeps Petal landing-first instead
+ * build NOW and which features to defer. Keeps Kimble landing-first instead
  * of shipping a half-built dashboard on turn 1.
  */
 export function archetypeRoadmapBlock(archetype: ProjectArchetype): string {

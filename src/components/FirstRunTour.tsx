@@ -30,14 +30,14 @@ const STEPS: Step[] = [
     Icon: MessageSquare,
     badge: "1 of 3",
     title: "Chat is your remote control",
-    body: "Tell Petal what to build, or what to change. Plain language is enough — no commands, no syntax. The composer lives on the left.",
+    body: "Tell Kimble what to build, or what to change. Plain language is enough — no commands, no syntax. The composer lives on the left.",
     pointer: "← The chat panel",
   },
   {
     Icon: Eye,
     badge: "2 of 3",
     title: "Watch your app come to life",
-    body: "Every change runs in a real preview on the right. Toggle to Code view if you want to see the files Petal wrote.",
+    body: "Every change runs in a real preview on the right. Toggle to Code view if you want to see the files Kimble wrote.",
     pointer: "↑ Live preview",
   },
   {

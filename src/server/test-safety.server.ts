@@ -6,19 +6,19 @@
  * halves of the promise:
  *
  *  - Evidence is scrubbed. Screenshots, page text and error messages from a
- *    running app can contain keys, tokens and the throwaway password Petal
+ *    running app can contain keys, tokens and the throwaway password Kimble
  *    typed. None of that is stored or shown.
- *  - Test accounts are identifiable. Every identity Petal creates carries a
+ *  - Test accounts are identifiable. Every identity Kimble creates carries a
  *    recognisable tag, so a person can tell a test row from a real one and a
  *    cleanup pass can find them later.
  *
  * Pure functions only. The caller decides what to store.
  */
 
-/** Marker present in every identity Petal creates while testing. */
+/** Marker present in every identity Kimble creates while testing. */
 export const TEST_IDENTITY_TAG = "petal-verify+";
 
-/** True for an email Petal minted for a test run. */
+/** True for an email Kimble minted for a test run. */
 export function isTestIdentity(email: string | null | undefined): boolean {
   return Boolean(email && email.toLowerCase().includes(TEST_IDENTITY_TAG));
 }
@@ -65,7 +65,7 @@ export function redactAll(values: string[] | null | undefined): string[] {
 
 /**
  * Also hides a specific run's throwaway password, which is a valid string with
- * no recognisable shape. Pass the identity Petal used for the run.
+ * no recognisable shape. Pass the identity Kimble used for the run.
  */
 export function redactWithIdentity(
   text: string | null | undefined,
@@ -80,7 +80,7 @@ export function redactWithIdentity(
 /** One short line for the person, listing what testing refused to do. */
 export function describeSuppressed(suppressed: string[]): string | null {
   if (!suppressed.length) return null;
-  return `While testing, Petal blocked ${suppressed.length} request${
+  return `While testing, Kimble blocked ${suppressed.length} request${
     suppressed.length === 1 ? "" : "s"
   } that would have charged money or messaged someone for real.`;
 }

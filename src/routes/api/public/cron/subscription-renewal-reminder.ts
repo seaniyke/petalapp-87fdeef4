@@ -10,7 +10,7 @@
  *       via the existing cancel_paystack_plan RPC.
  *
  * Auth: `x-petal-cron-secret` matching BUILDER_SHARED_SECRET, same as the
- * other Petal crons. Schedule via pg_cron, daily at 09:00 UTC.
+ * other Kimble crons. Schedule via pg_cron, daily at 09:00 UTC.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";

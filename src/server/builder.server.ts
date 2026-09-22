@@ -1,5 +1,5 @@
 /**
- * Client for the external Petal Builder service running on Railway.
+ * Client for the external Kimble Builder service running on Railway.
  *
  * The builder receives a project's files, runs `npm install` + `vite build`,
  * and deploys the result to Cloudflare Pages. It then calls back to
@@ -74,7 +74,7 @@ export async function postBuildToRailway(args: {
   buildId: string;
   files: ProjectFile[];
   /**
-   * Skip the "Powered by Petal" badge injection. Defaults to false so EVERY
+   * Skip the "Powered by Kimble" badge injection. Defaults to false so EVERY
    * build pathway shows the badge unless the caller explicitly opts out
    * (e.g. paid-plan project that has hidden the badge in settings).
    */
@@ -222,7 +222,7 @@ export async function postBuildToRailway(args: {
     const text = await res.text().catch(() => "");
     if (isRetryableStatus(res.status)) {
       throw new Error(
-        "The build queue is full right now. Your files are saved — press Retry in a moment and Petal will pick up where it left off.",
+        "The build queue is full right now. Your files are saved — press Retry in a moment and Kimble will pick up where it left off.",
       );
     }
     throw new Error(`Builder rejected request (${res.status}): ${text.slice(0, 300)}`);

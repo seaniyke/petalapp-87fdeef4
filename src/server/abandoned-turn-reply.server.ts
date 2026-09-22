@@ -6,7 +6,7 @@
  * fine while the tab is open — but if the user closes the tab, locks their
  * phone, or the socket drops, the pipeline keeps running server-side, files
  * land in the project… and the conversation is left with a user prompt and no
- * answer. Coming back to a thread that looks like Petal ignored you is the
+ * answer. Coming back to a thread that looks like Kimble ignored you is the
  * single worst impression the product can make.
  *
  * So when the stream notices the client is gone, it calls
@@ -60,8 +60,8 @@ function bodyFor(input: AbandonedTurnReply): string {
   // phrased without blaming their connection.
   const detail = input.errorMessage?.trim();
   return detail
-    ? `Petal couldn't finish this one: ${detail.slice(0, 300)}`
-    : "Petal couldn't finish this one. Nothing was charged — send it again and it'll pick up from here.";
+    ? `Kimble couldn't finish this one: ${detail.slice(0, 300)}`
+    : "Kimble couldn't finish this one. Nothing was charged — send it again and it'll pick up from here.";
 }
 
 /**

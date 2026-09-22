@@ -36,7 +36,7 @@ export interface InspectorReport {
 const MAX_TOOL_ROUNDS = 6;
 const MODEL = "google/gemini-2.5-flash-lite";
 
-const SYSTEM_PROMPT = `You are Petal's Inspector: a read-only investigator working inside a user's app codebase.
+const SYSTEM_PROMPT = `You are Kimble's Inspector: a read-only investigator working inside a user's app codebase.
 
 The user has asked for a change. Your job is NOT to make it — you cannot write files. Your job is to find the ground truth so another model can make the change correctly on the first try.
 

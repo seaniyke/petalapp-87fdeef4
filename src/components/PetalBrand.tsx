@@ -1,5 +1,5 @@
 /**
- * The one true Petal brand lockup — mark + wordmark.
+ * The one true Kimble brand lockup — mark + wordmark.
  *
  * Every surface (site header, project pages, auth, waitlist) renders this so
  * the logo never drifts in size, weight or spacing between pages.
@@ -30,7 +30,7 @@ export function PetalBrand({
       <span
         className={`font-display ${word} font-black tracking-[-0.03em] text-foreground transition-opacity group-hover:opacity-80`}
       >
-        Petal
+        Kimble
       </span>
     </span>
   );

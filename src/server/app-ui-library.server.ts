@@ -5,7 +5,7 @@
  * locked palette, a locked type pair, refused clichés and a menu of section
  * variants. Product screens — dashboards, CRUD tables, forms, detail views,
  * settings, ERP consoles — got none of that: they inherited only the generic
- * mechanics floor, which is exactly why Petal's app screens have looked
+ * mechanics floor, which is exactly why Kimble's app screens have looked
  * plainer than its landings.
  *
  * This module is the app-side twin: a variant catalog for *product* surfaces

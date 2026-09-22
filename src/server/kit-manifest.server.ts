@@ -10,8 +10,8 @@
  *
  * Cost: ~5ms once per Worker isolate (memoized after first call).
  *
- * Why this matters: every new primitive becomes visible to Petal the
- * MOMENT it ships, no prompt edit required. Closes the "Petal doesn't
+ * Why this matters: every new primitive becomes visible to Kimble the
+ * MOMENT it ships, no prompt edit required. Closes the "Kimble doesn't
  * know about <NewThing>" gap that bites us every time the kit grows.
  */
 import { KIT_FILES } from "./scaffold-kit";

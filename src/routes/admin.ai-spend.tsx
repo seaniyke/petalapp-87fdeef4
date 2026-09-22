@@ -95,7 +95,7 @@ function AdminAiSpendPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">AI Spend by Project</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Petal AI Gateway cost attributed per project. Use this to find
+              Kimble AI Gateway cost attributed per project. Use this to find
               runaway agents before they drain a user's wallet.
             </p>
           </div>

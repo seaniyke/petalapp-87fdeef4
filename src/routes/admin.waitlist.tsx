@@ -57,10 +57,10 @@ function AdminWaitlistPage() {
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState<string | null>(null);
 
-  const [subject, setSubject] = useState("Petal is open — your spot is ready");
+  const [subject, setSubject] = useState("Kimble is open — your spot is ready");
   const [heading, setHeading] = useState("Your spot is ready");
   const [bodyText, setBodyText] = useState(
-    "We're opening Petal to the waitlist today.\n\nSign in with this email address and start building — web apps, mobile apps, backends and Chrome extensions, all from a sentence.",
+    "We're opening Kimble to the waitlist today.\n\nSign in with this email address and start building — web apps, mobile apps, backends and Chrome extensions, all from a sentence.",
   );
   const [ctaLabel, setCtaLabel] = useState("Start building");
   const [ctaUrl, setCtaUrl] = useState("https://buildwithpetal.com/auth?mode=signup");

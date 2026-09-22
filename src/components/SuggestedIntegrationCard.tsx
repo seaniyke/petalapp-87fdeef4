@@ -24,7 +24,7 @@ export function SuggestedIntegrationCard({ code }: { code: string }) {
       <div className="flex-1">
         <div className="font-medium">Suggested: install {m.name}</div>
         <p className="text-xs text-muted-foreground">
-          {m.tagline} Petal can wire it up in one click instead of hand-rolling the SDK.
+          {m.tagline} Kimble can wire it up in one click instead of hand-rolling the SDK.
         </p>
       </div>
       <Button

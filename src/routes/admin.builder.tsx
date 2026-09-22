@@ -187,7 +187,7 @@ function AdminBuilderPage() {
                 <CardContent className="space-y-2 p-6 text-sm">
                   <p className="font-semibold">Connect Railway to enable this</p>
                   <p className="text-muted-foreground">
-                    Add the following to Petal secrets, then reload:
+                    Add the following to Kimble secrets, then reload:
                   </p>
                   <ul className="list-inside list-disc text-muted-foreground">
                     {status.missing.map((m) => (

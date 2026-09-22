@@ -25,8 +25,8 @@ import {
 export const Route = createFileRoute("/projects")({
   head: () => ({
     meta: [
-      { title: "My projects · Petal" },
-      { name: "description", content: "All your Petal projects in one place." },
+      { title: "My projects · Kimble" },
+      { name: "description", content: "All your Kimble projects in one place." },
     ],
   }),
   component: ProjectsPage,
@@ -243,7 +243,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       </div>
       <h3 className="mt-4 font-display text-2xl">No projects yet</h3>
       <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-        Spin up your first one and describe what you want to build. Petal will write the
+        Spin up your first one and describe what you want to build. Kimble will write the
         files for you.
       </p>
       <button

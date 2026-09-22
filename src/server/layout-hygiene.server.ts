@@ -1,7 +1,7 @@
 /**
  * Layout hygiene pass.
  *
- * Failure modes this fixes (all observed on shipped Petal apps):
+ * Failure modes this fixes (all observed on shipped Kimble apps):
  *
  *   A. Viewport-locked sections — `h-screen` / `min-h-screen` / `h-[100vh]`
  *      on a *section* produces a tall band of dead black space on phones

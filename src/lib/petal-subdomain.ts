@@ -1,5 +1,5 @@
 /**
- * Client helpers for `/api/subdomain` — claim/check/release a Petal subdomain
+ * Client helpers for `/api/subdomain` — claim/check/release a Kimble subdomain
  * (`<slug>.buildwithpetal.com`) for a project.
  */
 import { supabase } from "@/integrations/supabase/client";

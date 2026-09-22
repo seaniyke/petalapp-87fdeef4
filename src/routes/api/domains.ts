@@ -169,7 +169,7 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
 
   // Connecting a domain the user already owns is free — no slot required.
   // (Paid `domain_slots` are now reserved for domains *purchased* through
-  // Petal via the Cloudflare registrar integration.)
+  // Kimble via the Cloudflare registrar integration.)
 
   // 1) Register with Cloudflare for SaaS.
   let cf;
@@ -179,7 +179,7 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
     const msg = e instanceof Error ? e.message : "Cloudflare error";
     if (msg.includes("1414") || msg.toLowerCase().includes("already exists")) {
       return new Response(
-        "That domain is already connected on Petal — remove it first or contact support.",
+        "That domain is already connected on Kimble — remove it first or contact support.",
         { status: 409 },
       );
     }
@@ -189,7 +189,7 @@ async function handleAdd(userId: string, body: unknown): Promise<Response> {
   }
 
   // Cloudflare's correct real-time validation path for normal SaaS hostnames
-  // is HTTP DCV: once DNS routes to Petal, Cloudflare serves the CA token at
+  // is HTTP DCV: once DNS routes to Kimble, Cloudflare serves the CA token at
   // the edge. TXT records are only expected for wildcard/pre-validation flows,
   // but keep support in case Cloudflare returns them for an edge case.
   let txts = extractAllTxtValidations(cf);
@@ -298,9 +298,9 @@ async function handleVerify(userId: string, body: unknown): Promise<Response> {
     .single();
   if (error) return new Response(error.message, { status: 500 });
 
-  // Auto-promote a purchased Petal domain to primary when it first becomes
+  // Auto-promote a purchased Kimble domain to primary when it first becomes
   // active and the project doesn't already have a primary domain. This makes
-  // domains bought through Petal show up as the Website URL automatically —
+  // domains bought through Kimble show up as the Website URL automatically —
   // no extra "Set primary" click needed. We only do this for purchased
   // domains so we don't override a user's intentional choice on manually-
   // connected domains.

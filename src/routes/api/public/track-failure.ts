@@ -1,7 +1,7 @@
 /**
  * Public failure-ingestion endpoint.
  *
- * Receives every "Petal got a bit confused" GENERIC fallback from the client
+ * Receives every "Kimble got a bit confused" GENERIC fallback from the client
  * (and any unmatched server-side error we choose to report) so we can rank
  * the actual silent failure modes that bypass `ai_call_log` /
  * `ai_call_outcomes` today.

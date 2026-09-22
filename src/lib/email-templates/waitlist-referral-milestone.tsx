@@ -23,7 +23,7 @@ function WaitlistReferralMilestone({ name, count = 1, referralCode }: Props) {
     >
       <Text style={text}>
         {first ? `Hey ${first} —` : "Hey —"} {count === 1 ? "someone" : `${count} people`} joined
-        the Petal waitlist from your link. You jumped {count * 15} spots.
+        the Kimble waitlist from your link. You jumped {count * 15} spots.
       </Text>
       <Text style={text}>
         Three friends and you skip the line completely — instant access, plus credits

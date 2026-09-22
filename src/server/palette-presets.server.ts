@@ -7,7 +7,7 @@
  * verbatim into the system prompt (see `design-taste.server.ts`).
  *
  * Presets are lifted from Lovable's own `questions_design_preferences`
- * catalog so Petal's taste vocabulary matches the ecosystem.
+ * catalog so Kimble's taste vocabulary matches the ecosystem.
  */
 
 export interface PalettePreset {

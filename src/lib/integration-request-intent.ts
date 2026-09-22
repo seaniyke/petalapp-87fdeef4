@@ -1,5 +1,5 @@
 /**
- * Detects when the user wants Petal to integrate a third-party service that
+ * Detects when the user wants Kimble to integrate a third-party service that
  * isn't in our curated marketplace. Returns the service name(s) so the
  * generate pipeline can resolve docs on demand.
  *

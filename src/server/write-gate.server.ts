@@ -1,5 +1,5 @@
 /**
- * Petal v3 — Phase B: write-time validation.
+ * Kimble v3 — Phase B: write-time validation.
  *
  * WHY THIS FILE EXISTS
  * --------------------
@@ -21,7 +21,7 @@
  *     blank.
  *   - Never throws. If esbuild itself is unavailable, everything is accepted
  *     and the later pre-emit gate remains the backstop.
- *   - Scaffold-owned paths are exempt — Petal wrote them, the model can't fix
+ *   - Scaffold-owned paths are exempt — Kimble wrote them, the model can't fix
  *     them, and reverting them would undo a deterministic repair.
  */
 

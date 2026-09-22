@@ -4,13 +4,13 @@
  * `data-source-file` / `data-source-line` so the in-iframe element picker
  * (`__petal_picker.js`) can report the EXACT file + line back to the chat
  * composer. Without this, the picker payload's `sourceFile` is always null
- * and Petal has to guess which file owns the clicked node.
+ * and Kimble has to guess which file owns the clicked node.
  */
 
 // We build the plugin source by concatenating raw string fragments so we
 // never have to nest template-literal interpolations (which TypeScript
 // rejects when the outer string is itself a template literal).
-const PLUGIN_HEADER = `// Auto-injected by Petal — do not edit.
+const PLUGIN_HEADER = `// Auto-injected by Kimble — do not edit.
 // Tags host JSX opening tags with data-source-file / data-source-line so the
 // in-preview element picker can report the exact file + line for each click.
 import path from "node:path";

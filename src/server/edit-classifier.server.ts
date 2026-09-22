@@ -5,7 +5,7 @@
  * regexes alone. Regexes miss the ask that matters most: "make it feel like a
  * real product", "this page is a mess, sort it out", "nothing works on my
  * phone" — all structural, none matching a keyword list. That misclassification
- * is the root of the worst failure mode Petal has: a redesign request answered
+ * is the root of the worst failure mode Kimble has: a redesign request answered
  * with a two-line tweak.
  *
  * This module keeps the deterministic verdict as the PRIOR and lets a cheap

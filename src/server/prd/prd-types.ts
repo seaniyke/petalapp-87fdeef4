@@ -1,5 +1,5 @@
 /**
- * Petal PRD — the internal product requirements document.
+ * Kimble PRD — the internal product requirements document.
  *
  * This is the single source of truth for a build. It is authored BEFORE any
  * planning, template selection, or file generation, and every later stage

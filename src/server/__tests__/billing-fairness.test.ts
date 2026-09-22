@@ -1,9 +1,9 @@
 /**
- * Billing fairness tests — Petal Credit System v2.
+ * Billing fairness tests — Kimble Credit System v2.
  *
  * These lock in the trust guarantees stated in
  * docs/petal-credit-philosophy.md. If one of these fails, a user is being
- * charged for something Petal promised was free.
+ * charged for something Kimble promised was free.
  */
 import { describe, expect, it } from "vitest";
 import { priceBuild, priceTurn, BUILD_FLOOR, BUILD_CAP } from "@/server/credit-pricing.server";

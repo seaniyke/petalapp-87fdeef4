@@ -1,5 +1,5 @@
 /**
- * Detects when a streamed plan/recap/summary segment is leaking Petal's own
+ * Detects when a streamed plan/recap/summary segment is leaking Kimble's own
  * internal infrastructure reasoning (bundler, Tailwind config, scaffold paths,
  * the route tree, etc.) instead of talking about the user's app.
  *
@@ -11,7 +11,7 @@
  * and this client filter rescues anything that slips through.
  */
 
-// Patterns that indicate the model is talking about Petal's own internals
+// Patterns that indicate the model is talking about Kimble's own internals
 // rather than the user's app. Case-insensitive substring or regex match.
 const INFRA_LEAK_PATTERNS: RegExp[] = [
   /\bsrc\/components\/(ui|examples)\b/i,
@@ -35,7 +35,7 @@ const PLACEHOLDER = "Resolving a setup issue behind the scenes — back to your 
 
 /**
  * Returns the segment text unchanged when it reads like normal user-facing
- * content. Returns a generic placeholder when it looks like Petal-internal
+ * content. Returns a generic placeholder when it looks like Kimble-internal
  * reasoning has leaked through.
  */
 export function sanitizeNarrative(text: string | null | undefined): string {

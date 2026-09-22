@@ -4,7 +4,7 @@
  * Extracted from src/routes/api/generate.ts so both the monolithic path
  * and the staged pipeline (stage-wireup) can call it. The contract is:
  *
- *   - index.html and src/main.tsx are ALWAYS injected if missing — Petal
+ *   - index.html and src/main.tsx are ALWAYS injected if missing — Kimble
  *     owns those; the model never has to write them.
  *   - src/App.tsx is only patched as a last-resort placeholder when the
  *     model truly produced no root view. The placeholder is marked in
@@ -16,7 +16,7 @@ import type { ProjectFile } from "@/server/generate.server";
 
 export interface RenderableShellResult {
   files: ProjectFile[];
-  /** Paths Petal had to inject/repair. */
+  /** Paths Kimble had to inject/repair. */
   fixed: string[];
   /**
    * Paths where the model produced nothing real and we fell back to a
@@ -149,7 +149,7 @@ export function composeRootApp(byPath: Map<string, string>): string | null {
       ? `import ${m.name} from "@/${m.path.replace(/^src\//, "").replace(/\.(tsx|jsx)$/i, "")}";`
       : `import { ${m.name} } from "@/${m.path.replace(/^src\//, "").replace(/\.(tsx|jsx)$/i, "")}";`;
 
-  const header = `// Composed by Petal: the generation didn't ship src/App.tsx, so the\n// pages/sections it did write are mounted here.\n`;
+  const header = `// Composed by Kimble: the generation didn't ship src/App.tsx, so the\n// pages/sections it did write are mounted here.\n`;
 
   if (pages.length > 0) {
     const seen = new Set<string>();
@@ -256,8 +256,8 @@ export function ensureRenderableShell(
       "Your app is being prepared";
     const sub =
       subtypeHint === "marketing"
-        ? "The first generation didn't ship a homepage. Ask Petal to retry — the next turn will scaffold the hero, features, and footer."
-        : "The first generation didn't ship a root view. Ask Petal to retry and your screens will appear here.";
+        ? "The first generation didn't ship a homepage. Ask Kimble to retry — the next turn will scaffold the hero, features, and footer."
+        : "The first generation didn't ship a root view. Ask Kimble to retry and your screens will appear here.";
     byPath.set(
       "src/App.tsx",
       `export default function App() {\n  return (\n    <main className="min-h-screen bg-background px-6 py-16 text-foreground">\n      <section className="mx-auto max-w-3xl space-y-4">\n        <p className="text-sm font-medium text-muted-foreground">${eyebrow}</p>\n        <h1 className="text-4xl font-bold tracking-tight">${headline}</h1>\n        <p className="text-lg text-muted-foreground">${sub}</p>\n      </section>\n    </main>\n  );\n}\n`,

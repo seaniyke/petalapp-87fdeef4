@@ -77,7 +77,7 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
               />
             )}
             {/* Templates / Industry packs / Themes & snippets intentionally hidden — */}
-            {/* Petal selects from them automatically based on the user's brief. */}
+            {/* Kimble selects from them automatically based on the user's brief. */}
             <RowLink
               to="/gallery"
               onClick={close}

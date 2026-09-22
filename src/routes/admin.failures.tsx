@@ -1,7 +1,7 @@
 /**
  * Admin · Pipeline failures
  *
- * Surfaces the raw error strings that hit the "Petal got a bit confused"
+ * Surfaces the raw error strings that hit the "Kimble got a bit confused"
  * branch in `friendly-errors.ts`. These are failures that today bypass our
  * `ai_call_log` and `ai_call_outcomes` telemetry entirely — i.e. silent
  * client-side / stream-parser / tool-arg failures.
@@ -104,7 +104,7 @@ function AdminFailuresPage() {
           <div>
             <h1 className="text-xl font-semibold">Pipeline failures</h1>
             <p className="text-xs text-muted-foreground">
-              Errors that fell through to the generic "Petal got a bit confused" card.
+              Errors that fell through to the generic "Kimble got a bit confused" card.
               Grouped by signature so the top rows are the highest-impact bugs to pattern-match next.
             </p>
           </div>

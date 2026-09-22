@@ -1,7 +1,7 @@
 /**
  * Build cost summary — shown after every successful build.
  *
- * Petal Credit System v2: every deduction must feel earned, so we always
+ * Kimble Credit System v2: every deduction must feel earned, so we always
  * explain the charge in user language and never expose token counts.
  */
 import { Check } from "lucide-react";

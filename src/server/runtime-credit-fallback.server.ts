@@ -1,11 +1,11 @@
 /**
- * Runtime wallet → Petal Credits fallback.
+ * Runtime wallet → Kimble Credits fallback.
  *
- * Petal historically kept two separate balances: build credits, and a
+ * Kimble historically kept two separate balances: build credits, and a
  * cents-denominated "runtime" wallet for Cloud + AI meters. Customers only
  * ever wanted ONE balance. This module is the bridge: when a runtime meter
  * charge fails purely because the runtime wallet is empty, we convert the
- * amount into Petal Credits at the centralised internal rate and charge the
+ * amount into Kimble Credits at the centralised internal rate and charge the
  * credit balance instead.
  *
  * Deliberate constraints:
@@ -28,7 +28,7 @@ export function unifiedBalanceEnabled(): boolean {
   return raw === "1" || raw === "on" || raw === "true" || raw === "yes" || raw === "enabled";
 }
 
-/** Cents of internal variable cost → Petal Credits, at the centralised rate. */
+/** Cents of internal variable cost → Kimble Credits, at the centralised rate. */
 export async function centsToCredits(cents: number): Promise<number> {
   const perCreditUsd = await economicsValue("target_variable_cost_per_credit_usd");
   const rate = perCreditUsd > 0 ? perCreditUsd : 0.05;

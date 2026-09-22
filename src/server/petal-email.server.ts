@@ -1,5 +1,5 @@
 /**
- * Petal Email — managed email service for generated apps.
+ * Kimble Email — managed email service for generated apps.
  *
  * Pricing model:
  *   Free tier: 100/day, 3,000/month. Sender = noreply@buildwithpetal.com.
@@ -7,7 +7,7 @@
  *
  * Public surface lives in src/routes/api/public/email/send.ts. All sends are
  * authenticated by a per-project bearer token issued when the user enables
- * Petal Email. Quota is enforced atomically (DB RPC) AFTER a successful send,
+ * Kimble Email. Quota is enforced atomically (DB RPC) AFTER a successful send,
  * so Resend failures don't burn quota. Every attempt is logged to
  * petal_email_outbound for the in-app dashboard. Idempotency-Key forwarded to
  * Resend to make retries safe.
@@ -61,7 +61,7 @@ export async function enablePetalEmail(args: {
     .maybeSingle();
 
   if (existing.data) {
-    throw new Error("Petal Email is already enabled for this project. Rotate the token instead.");
+    throw new Error("Kimble Email is already enabled for this project. Rotate the token instead.");
   }
 
   const { token, hash, prefix } = issueApiToken();
@@ -83,7 +83,7 @@ export async function enablePetalEmail(args: {
     .single();
 
   if (error || !data) {
-    throw new Error(`Failed to enable Petal Email: ${error?.message ?? "unknown error"}`);
+    throw new Error(`Failed to enable Kimble Email: ${error?.message ?? "unknown error"}`);
   }
 
   return { token, subscriptionId: data.id };
@@ -225,10 +225,10 @@ export async function sendViaResend(
       ? `noreply@${sub.custom_domain}`
       : sub.sender_email || DEFAULT_SENDER;
 
-  // Friendly name: only prefix "Petal" on the shared sender. Custom-domain
-  // projects send as their own domain with no Petal-branded display name.
+  // Friendly name: only prefix "Kimble" on the shared sender. Custom-domain
+  // projects send as their own domain with no Kimble-branded display name.
   const from =
-    sub.custom_domain_verified && sub.custom_domain ? fromAddr : `Petal <${fromAddr}>`;
+    sub.custom_domain_verified && sub.custom_domain ? fromAddr : `Kimble <${fromAddr}>`;
 
   const replyTo = params.reply_to ?? sub.reply_to ?? undefined;
 

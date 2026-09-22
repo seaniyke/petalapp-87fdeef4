@@ -1,7 +1,7 @@
 /**
  * Phase 12 — Missing shadcn primitives.
  *
- * Adds the shadcn/ui primitives that Petal's scaffold didn't ship. All
+ * Adds the shadcn/ui primitives that Kimble's scaffold didn't ship. All
  * components mirror the shadcn API (same imports, same prop shapes) so the
  * model can use them with its existing shadcn vocabulary.
  *

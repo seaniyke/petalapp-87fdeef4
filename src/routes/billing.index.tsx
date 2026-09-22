@@ -31,13 +31,13 @@ export const Route = createFileRoute("/billing/")({
   component: BillingDashboard,
   head: () => ({
     meta: [
-      { title: "Billing & receipts · Petal" },
+      { title: "Billing & receipts · Kimble" },
       {
         name: "description",
         content:
-          "See your Petal plan, renewal date, build credits and Cloud + AI balance, and download receipts for every card or crypto payment.",
+          "See your Kimble plan, renewal date, build credits and Cloud + AI balance, and download receipts for every card or crypto payment.",
       },
-      { property: "og:title", content: "Billing & receipts · Petal" },
+      { property: "og:title", content: "Billing & receipts · Kimble" },
       {
         property: "og:description",
         content: "Your plan, credits and payment receipts in one place.",
@@ -208,7 +208,7 @@ function BillingDashboard() {
       kind: paid ? "RECEIPT" : "INVOICE",
       number: item.reference.slice(-16).toUpperCase(),
       issuedAt: item.paidAt ?? item.createdAt,
-      billedTo: data?.email ?? "Petal customer",
+      billedTo: data?.email ?? "Kimble customer",
       status: STATUS_LABEL[item.status] ?? item.status,
       meta,
       lineItem: {

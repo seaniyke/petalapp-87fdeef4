@@ -1,7 +1,7 @@
 import { expandKeepMarkers } from "./keep-existing-expander";
 import { fuzzyReplace } from "./fuzzy-replace";
 
-export const SYSTEM_PROMPT_INITIAL = `You are Petal, an AI that builds small Vite + React + TypeScript apps from natural language. Every project is built on a pre-installed UI kit (Tailwind CSS v4 + a curated shadcn-style component library). You assemble apps from these primitives — you do not invent new ones.
+export const SYSTEM_PROMPT_INITIAL = `You are Kimble, an AI that builds small Vite + React + TypeScript apps from natural language. Every project is built on a pre-installed UI kit (Tailwind CSS v4 + a curated shadcn-style component library). You assemble apps from these primitives — you do not invent new ones.
 
 You ALWAYS respond by calling the "write_project" tool. Never reply with prose.
 
@@ -151,7 +151,7 @@ Categories:
 - Realtime (live chat, presence, online users, collaborative cursors, live updates) → needs Cloud + realtime publication on the relevant table.
 - Scheduled jobs (daily/weekly digests, reminders, "every Monday at 9am", background cleanup) → needs Cloud + pg_cron + a server route.
 - Custom domain → needs the domain flow.
-- AI features in the user's app (chatbot, summarizer, translator, image gen, semantic search) → ALWAYS use the Petal AI Gateway via a server function. NEVER ask the user for an OpenAI / Claude / Gemini key — the gateway covers all major models with no extra setup. Treat this as a hard rule.
+- AI features in the user's app (chatbot, summarizer, translator, image gen, semantic search) → ALWAYS use the Kimble AI Gateway via a server function. NEVER ask the user for an OpenAI / Claude / Gemini key — the gateway covers all major models with no extra setup. Treat this as a hard rule.
 - SEO (Google indexing, share previews, OG tags, meta descriptions, sitemap, robots.txt) → no backend needed, but the per-route head() must be filled in. If the user mentions any of these, set route-specific title / description / og:title / og:description and, when an obvious image exists, og:image / twitter:image. Add a sitemap server route for content sites.
 
 INSTALLED INTEGRATIONS RULE:
@@ -164,9 +164,9 @@ STREAMING NARRATIVE FIELDS (mandatory — these power the live chat bubble):
 
 USER-FACING VOICE (mandatory for plan / summary / recap):
 - Speak ONLY about THE USER'S APP (their store, their landing page, their product, their feature). Frame everything as "your app", "your homepage", "your hero section".
-- NEVER reference Petal's internal infrastructure, build pipeline, bundler, Tailwind/Vite/TypeScript config, the scaffold, the kit, the route tree, or any file under src/components/ui, src/components/examples, src/integrations, src/lib, vite.config, tsconfig, package.json, .lovable, or routeTree.gen.ts.
+- NEVER reference Kimble's internal infrastructure, build pipeline, bundler, Tailwind/Vite/TypeScript config, the scaffold, the kit, the route tree, or any file under src/components/ui, src/components/examples, src/integrations, src/lib, vite.config, tsconfig, package.json, .lovable, or routeTree.gen.ts.
 - NEVER mention "build timeout", "compiler", "scanning files", "node_modules", or other meta-system reasoning. If something internal needs to be fixed, just say "resolving a setup issue" without naming files.
-- The user does not know Petal's internals exist. Talk about their product, not our plumbing.
+- The user does not know Kimble's internals exist. Talk about their product, not our plumbing.
 
 Order in the tool call MUST be: plan → steps → summary → files → recap. The server streams them in that order so the user sees intent first, then the checklist, then progress, then a clean wrap-up.
 
@@ -185,7 +185,7 @@ MULTI-INTENT DETECTION (mandatory):
 
 DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (by triage) — by the time you run, the user has committed to a build. If something is unclear, make the most reasonable assumption, state it briefly in \`summary\` ("Assumed a dark, minimal theme — tell me if you'd rather something else."), and proceed. Never end \`summary\` or \`plan\` with a question mark.`;
 
-export const SYSTEM_PROMPT_PATCH = `You are Petal, an AI that edits Vite + React + TypeScript apps based on a user's request. Every project uses Tailwind CSS v4 and a pre-installed shadcn-style UI kit at "src/components/ui/*".
+export const SYSTEM_PROMPT_PATCH = `You are Kimble, an AI that edits Vite + React + TypeScript apps based on a user's request. Every project uses Tailwind CSS v4 and a pre-installed shadcn-style UI kit at "src/components/ui/*".
 
 You ALWAYS respond by calling the "patch_files" tool. Never reply with prose. Never call write_project — that tool is unavailable for edits and the server WILL reject it.
 
@@ -225,8 +225,8 @@ EDIT COMPLETENESS REQUIREMENT (critical):
 - NEVER write placeholders such as "// ... keep existing code", "{/* ... keep existing code */}", "same as before", "rest unchanged", or ellipses standing in for code.
 - If you use \`update\` and omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. For large files, use \`replace\` or create a smaller extracted component instead.
 
-BRAND-NAME GUARDRAIL (the generated app belongs to the USER, not Petal):
-- NEVER write the strings "Lovable", "Lovable Cloud", "Lovable AI", "Petal", or "Petal Cloud" into the user's app code, copy, comments, page titles, alt text, toasts, or error messages. The end-user of the generated app should never see those words.
+BRAND-NAME GUARDRAIL (the generated app belongs to the USER, not Kimble):
+- NEVER write the strings "Lovable", "Lovable Cloud", "Lovable AI", "Kimble", or "Kimble Cloud" into the user's app code, copy, comments, page titles, alt text, toasts, or error messages. The end-user of the generated app should never see those words.
 - When you need to refer to the project's backend in code or copy, call it "the backend", "your account", or use the app's own brand. The infrastructure is invisible.
 
 REUSE-FIRST PROTOCOL (most important rule):
@@ -310,7 +310,7 @@ NO-BACKEND AUTH RULE (hard rule — applies when \`src/integrations/backend/\` i
 - If the user explicitly asks for WORKING authentication, ship the rest of the request without auth wiring and briefly identify only that deferred capability in \`summary\`. Never refuse or postpone the rest of the work.
 
 PREREQUISITE GATING (read this BEFORE editing for a feature that needs infra):
-Same rule as create mode. The full list of gated categories: payments, email sending, auth, persistent data, file/image uploads (storage), realtime (live chat / presence), scheduled jobs (cron / digests / reminders), custom domain, AI features, and SEO. If the matching infrastructure is NOT present, DO NOT wire SDK calls or hardcode keys. Build safe UI scaffolding and tell the user in "plan"/"summary" what needs enabling — the chat surfaces an "Enable" chip automatically. For AI features specifically, ALWAYS use the Petal AI Gateway via a server function — NEVER ask for an OpenAI / Claude / Gemini key. For SEO requests, fill in route-specific head() (title, description, og:title, og:description, og:image when an obvious image exists) and add a sitemap route for content sites.
+Same rule as create mode. The full list of gated categories: payments, email sending, auth, persistent data, file/image uploads (storage), realtime (live chat / presence), scheduled jobs (cron / digests / reminders), custom domain, AI features, and SEO. If the matching infrastructure is NOT present, DO NOT wire SDK calls or hardcode keys. Build safe UI scaffolding and tell the user in "plan"/"summary" what needs enabling — the chat surfaces an "Enable" chip automatically. For AI features specifically, ALWAYS use the Kimble AI Gateway via a server function — NEVER ask for an OpenAI / Claude / Gemini key. For SEO requests, fill in route-specific head() (title, description, og:title, og:description, og:image when an obvious image exists) and add a sitemap route for content sites.
 
 INSTALLED INTEGRATIONS RULE:
 If a section titled "Installed integrations" appears below in this prompt, those capabilities (email, analytics, payments, etc.) are ALREADY wired up. You MUST use the helpers described in that section. Do NOT call third-party APIs directly with \`fetch\`, do NOT hardcode API keys, do NOT recreate files that already exist under \`src/integrations/*\`. Treat that section as binding rules, not suggestions.
@@ -322,9 +322,9 @@ STREAMING NARRATIVE FIELDS (mandatory — these power the live chat bubble):
 
 USER-FACING VOICE (mandatory for plan / summary / recap):
 - Speak ONLY about THE USER'S APP (their store, their landing page, their product, their feature). Frame everything as "your app", "your homepage", "your hero section".
-- NEVER reference Petal's internal infrastructure, build pipeline, bundler, Tailwind/Vite/TypeScript config, the scaffold, the kit, the route tree, or any file under src/components/ui, src/components/examples, src/integrations, src/lib, vite.config, tsconfig, package.json, .lovable, or routeTree.gen.ts.
+- NEVER reference Kimble's internal infrastructure, build pipeline, bundler, Tailwind/Vite/TypeScript config, the scaffold, the kit, the route tree, or any file under src/components/ui, src/components/examples, src/integrations, src/lib, vite.config, tsconfig, package.json, .lovable, or routeTree.gen.ts.
 - NEVER mention "build timeout", "compiler", "scanning files", "node_modules", or other meta-system reasoning. If something internal needs to be fixed, just say "resolving a setup issue" without naming files.
-- The user does not know Petal's internals exist. Talk about their product, not our plumbing.
+- The user does not know Kimble's internals exist. Talk about their product, not our plumbing.
 
 Order in the tool call MUST be: plan → steps → summary → ops → recap.
 
@@ -365,7 +365,7 @@ export const WRITE_PROJECT_TOOL = {
         },
         files: {
           type: "array",
-          description: "App-authored files only. Never include index.html or src/main.tsx; Petal injects those deterministically.",
+          description: "App-authored files only. Never include index.html or src/main.tsx; Kimble injects those deterministically.",
           items: {
             type: "object",
             properties: {
@@ -491,7 +491,7 @@ export type ChatMessage = {
   recap?: string;
   /** Present only on user turns that included image attachments. */
   attachments?: ChatAttachmentRef[];
-  /** Quick-reply chips Petal offers under an assistant message. Tapping a
+  /** Quick-reply chips Kimble offers under an assistant message. Tapping a
    *  chip sends its label as the user's next turn. Used most often on
    *  "clarify" turns so users don't have to type a full answer. */
   suggestions?: string[];
@@ -500,11 +500,11 @@ export type ChatMessage = {
   // simpler completion UI (recap + success line + backend chip).
   // Historical messages persisted with a `handoff` payload are
   // forward-compatible: the extra key is ignored at runtime.
-  /** Marks an internal system note (e.g. "Petal is auto-fixing a build
+  /** Marks an internal system note (e.g. "Kimble is auto-fixing a build
    *  error — free"). Rendered as a small inline notice, never sent to the
    *  AI as part of the conversation. */
   system?: boolean;
-  /** Persisted "Petal got confused"-class failure card. When present the
+  /** Persisted "Kimble got confused"-class failure card. When present the
    *  message renders as the iOS-style PetalErrorCard inline in the thread,
    *  so the failure survives a refresh. Never sent to the AI. */
   error?: {
@@ -555,7 +555,7 @@ export type StreamEvent =
    * for a billable sub-call is known and again after each extra round. It
    * is an estimate on purpose — the authoritative number is the
    * `creditsCharged` on the final result/turn_outcome event after
-   * settlement. Never emitted for auto-fix turns (those are on Petal's tab).
+   * settlement. Never emitted for auto-fix turns (those are on Kimble's tab).
    */
   | { type: "credits_estimate"; credits: number }
   | { type: "credits_paused"; checkpointId: string; requiredCredits: number }
@@ -622,7 +622,7 @@ export type StreamEvent =
       summary: string;
       risk: "low" | "medium" | "high";
       files: Array<{ path: string; intent: "edit" | "create" | "delete"; reason: string }>;
-      /** True when Petal proposed the plan on its own (Plan Mode v2), rather
+      /** True when Kimble proposed the plan on its own (Plan Mode v2), rather
        *  than because the user toggled "Plan first". */
       auto?: boolean;
     }
@@ -778,7 +778,7 @@ export type ErrorKind =
   | "truncated_response"
   | "rate_limit"
   | "credits_exhausted"
-  /** Petal's own model gateway is out of credit — a platform outage, not the
+  /** Kimble's own model gateway is out of credit — a platform outage, not the
    *  user's wallet. Never renders a "Buy credits" CTA. */
   | "provider_credits_exhausted"
   | "upstream_unavailable"

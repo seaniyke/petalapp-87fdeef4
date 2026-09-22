@@ -11,7 +11,7 @@
  *   cosmetic   → no PRD change at all. Style/copy/spacing edits.
  *   additive   → amend the PRD (new surface, new workflow), then build it.
  *   contradiction → the user changed their mind. Newer intent wins, the change
- *                   is recorded, and Petal says so in one sentence.
+ *                   is recorded, and Kimble says so in one sentence.
  *
  * Pure functions; no I/O. Deterministic and testable.
  */

@@ -1,5 +1,5 @@
 /**
- * The sample app Petal tests its own testing against.
+ * The sample app Kimble tests its own testing against.
  *
  * A testing system that is never itself tested is a claim, not a capability.
  * This fixture is a deliberately small app with two *known* faults:
@@ -96,7 +96,7 @@ export const defectiveVerifyPlan: VerifyPlan = {
     loginPath: "/login",
     email: "petal-verify+sample@example.com",
     password: "Sample-Passw0rd!",
-    name: "Petal Verify",
+    name: "Kimble Verify",
     protectedRoutes: ["/dashboard", "/notes"],
   },
   flows: [

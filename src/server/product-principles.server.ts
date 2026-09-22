@@ -103,7 +103,7 @@ const RULES: Array<{
     id: "brand-leak",
     test: /\b(Lovable Cloud|Lovable AI|Built with Lovable|lovable\.app)\b/,
     detail:
-      'Principle 20 — say what it is. User-visible copy references "Lovable". Petal-owned surfaces are named Petal, Petal Cloud, and Petal AI; a generated app should carry its own brand name instead.',
+      'Principle 20 — say what it is. User-visible copy references "Lovable". Kimble-owned surfaces are named Kimble, Kimble Cloud, and Kimble AI; a generated app should carry its own brand name instead.',
   },
   {
     rule: "P20",

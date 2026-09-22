@@ -1,6 +1,6 @@
 /**
  * Intent registry — single source of truth for the regex-based intent
- * detectors that drive Petal's inline suggestion chips.
+ * detectors that drive Kimble's inline suggestion chips.
  *
  * Background: we used to have one file per chip (backend-intent.ts,
  * payment-intent.ts, email-intent.ts, …). Each file held its own
@@ -388,11 +388,11 @@ export function detectIntents(
 //
 // These three used to render coloured "Enable X" banners under the last
 // assistant message. Banners fired on weak signals — including matches found
-// in Petal's OWN reply — so users saw "Take payments for 'store'" after
+// in Kimble's OWN reply — so users saw "Take payments for 'store'" after
 // simply mentioning a store page. They are now replaced by a plain inline
 // question in chat, and the bar to ask at all is much higher:
 //
-//   1. The signal must come from what the USER wrote, never from Petal's reply.
+//   1. The signal must come from what the USER wrote, never from Kimble's reply.
 //   2. The sentence must not be negated, deferred, or hypothetical.
 //   3. The user must not merely be asking a question about the capability.
 //
@@ -418,7 +418,7 @@ const PRETEND =
   /\b(?:mock|fake|dummy|placeholder|simulated?|pretend|sample|demo(?:-| )?only|hard ?cod(?:e|ed))\b/i;
 
 /**
- * Decide whether Petal should ask the user about enabling a capability.
+ * Decide whether Kimble should ask the user about enabling a capability.
  * Only reads the user's own message. Returns null when we should stay quiet.
  */
 export function detectCapabilityAsk(

@@ -65,7 +65,7 @@ export function CloudDatabaseView({ projectId }: Props) {
       <div className="p-4">
         <CloudEmptyState
           title="No backend yet"
-          description="Enable Petal Cloud for this project to see your database tables here."
+          description="Enable Kimble Cloud for this project to see your database tables here."
         />
       </div>
     );
@@ -100,8 +100,8 @@ export function CloudDatabaseView({ projectId }: Props) {
           title={hasUsers ? "Auth is live — no app tables yet" : "No tables yet"}
           description={
             hasUsers
-              ? `Your backend is running and ${authUserCount} ${authUserCount === 1 ? "person has" : "people have"} signed up (stored privately in Auth). You haven't asked Petal to create any app tables yet — try: 'add a profiles table linked to auth users', or 'add a listings table with title, price and location'.`
-              : "Your backend is running but no app tables have been created. Ask Petal in chat — e.g. 'add a recipes table with title and ingredients'."
+              ? `Your backend is running and ${authUserCount} ${authUserCount === 1 ? "person has" : "people have"} signed up (stored privately in Auth). You haven't asked Kimble to create any app tables yet — try: 'add a profiles table linked to auth users', or 'add a listings table with title, price and location'.`
+              : "Your backend is running but no app tables have been created. Ask Kimble in chat — e.g. 'add a recipes table with title and ingredients'."
           }
         />
       )}

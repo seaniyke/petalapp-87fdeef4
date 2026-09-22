@@ -37,9 +37,9 @@ const crossOriginIsolation = createMiddleware().server(async ({ next }) => {
 /**
  * Custom-domain reverse proxy. Runs before everything else so requests to
  * customer hostnames (e.g. acme.com) are forwarded to the right project's
- * Cloudflare Pages deployment instead of falling through to Petal's own app.
+ * Cloudflare Pages deployment instead of falling through to Kimble's own app.
  *
- * Reserved hosts (Petal's own marketing site, *.lovable.app, localhost) skip
+ * Reserved hosts (Kimble's own marketing site, *.lovable.app, localhost) skip
  * the proxy and continue down the normal middleware chain.
  */
 const customDomainProxy = createMiddleware().server(async ({ next }) => {
@@ -47,7 +47,7 @@ const customDomainProxy = createMiddleware().server(async ({ next }) => {
   const url = new URL(request.url);
 
   // Lovable email/cron/webhook routes (and the public unsubscribe API)
-  // must always run on the Petal app — never proxy them to a customer's
+  // must always run on the Kimble app — never proxy them to a customer's
   // deployed site.
   if (
     url.pathname.startsWith("/lovable/") ||
@@ -60,7 +60,7 @@ const customDomainProxy = createMiddleware().server(async ({ next }) => {
   if (isReservedHost(host)) return next();
 
   const target = await resolveHost(host);
-  if (!target) return next(); // unknown domain → fall through to Petal app
+  if (!target) return next(); // unknown domain → fall through to Kimble app
 
   if (target.kind === "unpublished") return renderUnpublishedPage("unpublished");
   if (target.kind === "private") return renderUnpublishedPage("private");

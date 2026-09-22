@@ -49,7 +49,7 @@ async function warn(projectId: string, daysLeft: number): Promise<boolean> {
   const subject = `${who.title}: database removal in ${daysLeft} days`;
   const body =
     `${who.title} hasn't been used in a while, so its dedicated database is paused.\n\n` +
-    `If it stays unused we'll remove it in ${daysLeft} days and the app will keep running on Petal's shared database. ` +
+    `If it stays unused we'll remove it in ${daysLeft} days and the app will keep running on Kimble's shared database. ` +
     `Open the app before then and the database wakes up automatically — nothing is lost.`;
   try {
     const { error } = await supabaseAdmin.rpc("enqueue_email", {
@@ -57,7 +57,7 @@ async function warn(projectId: string, daysLeft: number): Promise<boolean> {
       payload: {
         message_id: `backend-reap-${projectId}`,
         to: who.email,
-        from: "Petal AI <noreply@buildwithpetal.com>",
+        from: "Kimble AI <noreply@buildwithpetal.com>",
         sender_domain: "notify.buildwithpetal.com",
         subject,
         html: `<p>${body.replace(/\n\n/g, "</p><p>")}</p>`,

@@ -10,7 +10,7 @@ export function CreditPauseBanner({ requiredCredits, onFinishOff, onBuyCredits }
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary-foreground/15"><PauseCircle className="h-5 w-5" /></span>
           <div>
             <h2 id="credit-pause-title" className="text-lg font-bold">Your build is safely paused</h2>
-            <p className="mt-1 max-w-xl text-sm text-primary-foreground/85">Petal finished the work but needs {formatCredits(requiredCredits)} credits to save and publish it. Nothing has been charged.</p>
+            <p className="mt-1 max-w-xl text-sm text-primary-foreground/85">Kimble finished the work but needs {formatCredits(requiredCredits)} credits to save and publish it. Nothing has been charged.</p>
           </div>
         </div>
         <div className="flex shrink-0 gap-2">

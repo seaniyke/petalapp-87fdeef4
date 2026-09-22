@@ -1,9 +1,9 @@
 /**
- * Production Readiness Score — Petal's "is my app actually ready?" metric.
+ * Production Readiness Score — Kimble's "is my app actually ready?" metric.
  *
  * No competitor surfaces this. We aggregate signals we already have access to
  * (project files, project row, Shield report) into a single 0–100 score with
- * a checklist the user can click through. Frames Petal as "the one that
+ * a checklist the user can click through. Frames Kimble as "the one that
  * actually ships," not just another vibe-coding toy.
  *
  * Pure client-side computation over ProjectFile[] + ProjectRow + ShieldReport.
@@ -71,8 +71,8 @@ export function evaluateReadiness(
     weight: 20,
     detail:
       criticals === 0
-        ? "Petal Shield found no critical issues."
-        : `Petal Shield found ${criticals} critical issue${criticals === 1 ? "" : "s"}. Open Shield to fix.`,
+        ? "Kimble Shield found no critical issues."
+        : `Kimble Shield found ${criticals} critical issue${criticals === 1 ? "" : "s"}. Open Shield to fix.`,
     category: "security",
   });
 
@@ -201,7 +201,7 @@ export function evaluateReadiness(
     detail: !hasMigrations
       ? "No backend tables yet — nothing to protect."
       : rlsMissing
-        ? "At least one table is missing RLS. Open Petal Shield."
+        ? "At least one table is missing RLS. Open Kimble Shield."
         : "Every table has RLS enabled.",
     category: "security",
   });
@@ -247,7 +247,7 @@ export const LEVEL_LABEL: Record<ReadinessReport["level"], string> = {
 
 /**
  * Every unfinished check has to be one tap away from being fixed, otherwise
- * the checklist is just a scoreboard. Most fixes are a build prompt Petal can
+ * the checklist is just a scoreboard. Most fixes are a build prompt Kimble can
  * run; the domain one opens the domain flow instead.
  */
 export type ReadinessFix =

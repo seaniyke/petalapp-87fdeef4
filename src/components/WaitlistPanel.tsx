@@ -118,7 +118,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
       <div className="relative mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-16 sm:px-8">
         <Link to="/" className="mb-8 inline-flex items-center gap-2.5">
           <img src="/kimble-logo.png" alt="" aria-hidden className="h-9 w-9 object-contain" />
-          <span className="font-display text-2xl font-black tracking-[-0.035em]">Petal</span>
+          <span className="font-display text-2xl font-black tracking-[-0.035em]">Kimble</span>
         </Link>
 
         {done ? (
@@ -138,7 +138,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
               to="/"
               className="mt-6 inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
             >
-              Back to Petal
+              Back to Kimble
             </Link>
           </div>
         ) : (
@@ -147,7 +147,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
               <Sparkles className="h-3 w-3" /> Early access
             </span>
             <h1 className="mt-5 font-display text-4xl font-black leading-[1.03] tracking-[-0.035em]">
-              Petal is invite-only <em className="italic">for now.</em>
+              Kimble is invite-only <em className="italic">for now.</em>
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Drop your name and email — we're opening spots in batches. Bring{" "}

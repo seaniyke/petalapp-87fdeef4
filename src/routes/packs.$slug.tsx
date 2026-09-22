@@ -1,6 +1,6 @@
 /**
  * /packs/$slug — full pack brief with palette, typography, page list, and
- * Cloud features, plus a "Build this with Petal" CTA that ships the composed
+ * Cloud features, plus a "Build this with Kimble" CTA that ships the composed
  * brief into the builder.
  */
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/packs/$slug")({
   },
   head: ({ loaderData }) => {
     const pack = loaderData?.pack;
-    const title = pack ? `${pack.name} pack · Petal` : "Pack · Petal";
+    const title = pack ? `${pack.name} pack · Kimble` : "Pack · Kimble";
     const desc = pack?.tagline ?? "Industry pack starter.";
     return {
       meta: [
@@ -111,7 +111,7 @@ function PackDetail() {
             onClick={build}
             className="inline-flex items-center justify-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
           >
-            Build this with Petal
+            Build this with Kimble
             <ArrowRight className="h-4 w-4" />
           </button>
         </header>
@@ -179,7 +179,7 @@ function PackDetail() {
             <Cloud className="h-4 w-4 text-muted-foreground" /> Cloud features included
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Petal will turn these on for you as part of the build.
+            Kimble will turn these on for you as part of the build.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {pack.cloud.map((f) => (
@@ -197,7 +197,7 @@ function PackDetail() {
         <div className="mt-10 rounded-2xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-8 text-center">
           <h3 className="font-display text-2xl">Ship the {pack.name.toLowerCase()} site today</h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Petal builds all {pack.pages.length} pages, the palette, the
+            Kimble builds all {pack.pages.length} pages, the palette, the
             database tables, and turns on the right Cloud features.
           </p>
           <button
@@ -205,7 +205,7 @@ function PackDetail() {
             onClick={build}
             className="mt-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
           >
-            Build this with Petal <ArrowRight className="h-4 w-4" />
+            Build this with Kimble <ArrowRight className="h-4 w-4" />
           </button>
         </div>
 

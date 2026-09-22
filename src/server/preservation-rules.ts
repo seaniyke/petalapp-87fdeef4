@@ -1,9 +1,9 @@
 /**
  * User-authored preservation rules — "PETAL.md" / ".petalrc".
  *
- * Power-users on Lovable have AGENTS.md, on Cursor .cursorrules. Petal's
+ * Power-users on Lovable have AGENTS.md, on Cursor .cursorrules. Kimble's
  * equivalent is a single markdown file at the project root the user can
- * write to tell Petal:
+ * write to tell Kimble:
  *   1. Files / glob patterns to NEVER touch (added to the protected-path
  *      filter alongside the framework-managed paths).
  *   2. Free-text rules, conventions, or preferences to inject into both

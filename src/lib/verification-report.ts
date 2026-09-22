@@ -37,7 +37,7 @@ const BLOCKING_RUNTIME_PATTERNS = [
 ];
 
 /**
- * Browser-check instrumentation failures describe Petal's verifier, not the
+ * Browser-check instrumentation failures describe Kimble's verifier, not the
  * generated app. They must stay in service logs and never trigger repairs or
  * appear as user-facing app defects.
  */
@@ -52,7 +52,7 @@ export function isVerifierInternalDefect(value: string): boolean {
  * Hosting-edge propagation noise. A freshly uploaded deployment can answer
  * 502/503/504/52x for a few seconds while the CDN edge catches up. Those are
  * statements about the edge at that instant, not about the generated app —
- * especially when Petal's own independent probe fetched the same URL
+ * especially when Kimble's own independent probe fetched the same URL
  * successfully moments later.
  */
 const TRANSIENT_EDGE_DEFECT_PATTERN =

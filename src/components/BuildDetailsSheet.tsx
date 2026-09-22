@@ -104,7 +104,7 @@ export function BuildDetailsSheet({
 
   const stats = useMemo(() => traceStats(trace), [trace]);
 
-  // Live tail — keep the newest row in view while Petal is still working.
+  // Live tail — keep the newest row in view while Kimble is still working.
   const tailRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!open || !isActive) return;
@@ -287,7 +287,7 @@ export function BuildDetailsSheet({
 
             {stats.thoughts > 0 && (
               <p className="mt-3 text-xs font-medium text-muted-foreground">
-                Petal reasoned in {stats.thoughts} pass{stats.thoughts === 1 ? "" : "es"} — open the
+                Kimble reasoned in {stats.thoughts} pass{stats.thoughts === 1 ? "" : "es"} — open the
                 Timeline tab to read the thinking.
               </p>
             )}
@@ -317,7 +317,7 @@ function summarySentence({
       designCaption ? ` ${designCaption}` : ""
     }`;
   }
-  return `Petal touched ${fileBit} in ${formatDuration(elapsed)}.${
+  return `Kimble touched ${fileBit} in ${formatDuration(elapsed)}.${
     designCaption ? ` ${designCaption}` : ""
   }`;
 }

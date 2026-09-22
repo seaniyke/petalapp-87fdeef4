@@ -3,7 +3,7 @@
  * files created/edited, tool runs and pipeline checks — rendered as a single
  * rail.
  *
- * It is used in two places on purpose so the user and Petal are always looking
+ * It is used in two places on purpose so the user and Kimble are always looking
  * at the same story:
  *   • inline on the build card, live, tailing the newest rows as they land;
  *   • in full inside the Details sheet.
@@ -56,7 +56,7 @@ export function BuildTimeline({
   if (rows.length === 0) {
     return (
       <p className="py-6 text-center text-xs font-medium text-muted-foreground">
-        Nothing here yet — Petal logs every step as it happens.
+        Nothing here yet — Kimble logs every step as it happens.
       </p>
     );
   }

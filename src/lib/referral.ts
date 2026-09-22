@@ -68,5 +68,5 @@ export function shareUrl(code: string) {
 }
 
 export function shareText(code: string) {
-  return `I'm in line for Petal — you describe an app in a sentence and it builds it. Grab a spot: ${shareUrl(code)}`;
+  return `I'm in line for Kimble — you describe an app in a sentence and it builds it. Grab a spot: ${shareUrl(code)}`;
 }

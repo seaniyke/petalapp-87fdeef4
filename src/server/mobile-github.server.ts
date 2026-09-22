@@ -1,9 +1,9 @@
 /**
- * GitHub mirror provisioner — Petal-owned.
+ * GitHub mirror provisioner — Kimble-owned.
  *
  * Why this exists: Codemagic builds from a git repo. To make mobile builds
- * zero-config for our users, Petal owns a GitHub Org (env: PETAL_GITHUB_MIRROR_ORG)
- * and a GitHub App installed on it. Each Petal project that wants a native
+ * zero-config for our users, Kimble owns a GitHub Org (env: PETAL_GITHUB_MIRROR_ORG)
+ * and a GitHub App installed on it. Each Kimble project that wants a native
  * build gets its own private repo in that org named `petal-<projectId>`.
  *
  * Auth flow (RFC 7519 + GitHub App spec):
@@ -134,7 +134,7 @@ async function gh(
   return res;
 }
 
-/** Stable repo name per Petal project. Lowercase, hyphenated. */
+/** Stable repo name per Kimble project. Lowercase, hyphenated. */
 export function repoNameForProject(projectId: string): string {
   // GitHub repo names allow [-._a-zA-Z0-9]; uuid is already safe.
   return `petal-${projectId}`;
@@ -164,7 +164,7 @@ export async function ensureMirrorRepo(
       name,
       private: true,
       auto_init: true, // gives us an initial commit on `main` to base PUTs on
-      description: `Petal mobile build mirror for project ${projectId}`,
+      description: `Kimble mobile build mirror for project ${projectId}`,
     }),
   });
   const data = (await create.json()) as { full_name: string; default_branch: string };

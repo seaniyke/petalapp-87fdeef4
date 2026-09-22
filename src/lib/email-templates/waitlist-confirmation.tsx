@@ -1,5 +1,5 @@
 /**
- * Sent once, right after someone joins the Petal waitlist.
+ * Sent once, right after someone joins the Kimble waitlist.
  * Doubles as the hand-off into their referral status page.
  */
 import * as React from "react";
@@ -22,15 +22,15 @@ function WaitlistConfirmation({ name, referralCode, statusToken }: Props) {
 
   return (
     <PetalEmailLayout
-      preview="You're on the Petal waitlist 🌸"
+      preview="You're on the Kimble waitlist 🌸"
       heading="You're on the list"
       cta={{ label: "See your spot + invite link", href: statusUrl }}
     >
       <Text style={text}>
-        {first ? `Hey ${first} —` : "Hey —"} thanks for joining the Petal waitlist.
+        {first ? `Hey ${first} —` : "Hey —"} thanks for joining the Kimble waitlist.
       </Text>
       <Text style={text}>
-        Petal turns a sentence into a real app: web, mobile, backends and Chrome
+        Kimble turns a sentence into a real app: web, mobile, backends and Chrome
         extensions. We're letting people in gradually so every build stays fast.
       </Text>
       <Text style={text}>
@@ -45,7 +45,7 @@ function WaitlistConfirmation({ name, referralCode, statusToken }: Props) {
 
 export const template = {
   component: WaitlistConfirmation,
-  subject: "You're on the Petal waitlist 🌸",
+  subject: "You're on the Kimble waitlist 🌸",
   displayName: "Waitlist confirmation",
   previewData: { name: "Ada Lovelace", referralCode: "ada7fq", statusToken: "demo-token" },
 } satisfies TemplateEntry;

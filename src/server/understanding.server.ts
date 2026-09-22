@@ -1,7 +1,7 @@
 /**
  * Phase 1 — Semantic understanding.
  *
- * Petal's pre-generation triage was lexical: regexes over the prompt decided
+ * Kimble's pre-generation triage was lexical: regexes over the prompt decided
  * platform, backend needs and surfaces. That works for "build a landing page"
  * and fails for "a portal where parents pay school fees and see results",
  * which needs auth, roles, payments and two distinct surfaces but contains
@@ -28,7 +28,7 @@ const MODEL = "google/gemini-3-flash-preview";
 
 const PLATFORMS: BuildTargetId[] = ["web", "mobile", "web-mobile", "backend", "extension"];
 
-const SYSTEM = `You are Petal's product engineer. You read a build request and decide what is ACTUALLY being asked for, the way a senior engineer would before writing a line of code.
+const SYSTEM = `You are Kimble's product engineer. You read a build request and decide what is ACTUALLY being asked for, the way a senior engineer would before writing a line of code.
 
 Rules:
 - Read intent, not keywords. "Parents pay fees and see results" means auth, roles, payments and a database even though none of those words appear.
@@ -190,7 +190,7 @@ export async function understandRequest(
 
   try {
     const priorBlock = opts.prior
-      ? `\n\nWhat Petal already understood about this project (refine it, do not discard it):\n${JSON.stringify(
+      ? `\n\nWhat Kimble already understood about this project (refine it, do not discard it):\n${JSON.stringify(
           {
             summary: opts.prior.summary,
             productType: opts.prior.productType,

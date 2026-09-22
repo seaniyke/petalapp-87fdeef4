@@ -11,9 +11,9 @@ import type { ProjectFile } from "@/server/generate.server";
 
 const MANIFEST = `{
   "manifest_version": 3,
-  "name": "Petal Extension",
+  "name": "Kimble Extension",
   "version": "1.0.0",
-  "description": "Built with Petal.",
+  "description": "Built with Kimble.",
   "permissions": ["storage", "activeTab"],
   "action": {
     "default_popup": "popup.html",
@@ -85,7 +85,7 @@ const POPUP_HTML = `<!doctype html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Petal Extension</title>
+    <title>Kimble Extension</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
@@ -152,7 +152,7 @@ async function main() {
   const saved = (await storage.get("items")) ?? [];
 
   render(\`
-    <h1>Petal Extension</h1>
+    <h1>Kimble Extension</h1>
     <p class="sub">\${tab?.title ? tab.title.slice(0, 60) : "No active tab"}</p>
     \${
       saved.length

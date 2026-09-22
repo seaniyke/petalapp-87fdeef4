@@ -1,7 +1,7 @@
 /**
  * Per-project memory store.
  *
- * Petal saves a small set of stable facts about each project (audience,
+ * Kimble saves a small set of stable facts about each project (audience,
  * tone, palette intent, must-haves, things to avoid, …) so it stops
  * starting from zero on every turn. Memory is loaded into the system
  * prompt of both /api/triage and /api/generate, and updated by a tiny
@@ -136,11 +136,11 @@ type MergePlan = {
   deletes: string[];
 };
 
-export const MEMORY_WRITER_SYSTEM = `You maintain a small, durable memory about a project the user is building with Petal (a friendly app builder).
+export const MEMORY_WRITER_SYSTEM = `You maintain a small, durable memory about a project the user is building with Kimble (a friendly app builder).
 
 You are given:
 1. The CURRENT memory (a list of key/value facts).
-2. The user's LATEST message and Petal's reply on this turn.
+2. The user's LATEST message and Kimble's reply on this turn.
 3. A list of SUGGESTED keys you should prefer when applicable.
 
 Your job: return a merge plan via the "merge_memory" tool.
@@ -148,7 +148,7 @@ Your job: return a merge plan via the "merge_memory" tool.
 Rules:
 - Record ANY stable fact about the project that the user stated or confirmed: what the app is, who it's for, its name, the mood/tone/palette they want, hard requirements, things they explicitly rejected, decisions they approved.
 - When in doubt, record it. Forgetting a real preference is worse than storing an extra fact.
-- Do NOT record: greetings, temporary states, build statuses, file paths, frameworks, how Petal feels, or one-off questions with no project content.
+- Do NOT record: greetings, temporary states, build statuses, file paths, frameworks, how Kimble feels, or one-off questions with no project content.
 - Prefer the SUGGESTED keys. Invent a new key only when nothing in the suggested list fits.
 - Each value MUST be a single short sentence (under 200 chars), in the user's own words where possible.
 - If a key already exists and the user has REFINED or CONTRADICTED it, upsert the new value (overwrites).

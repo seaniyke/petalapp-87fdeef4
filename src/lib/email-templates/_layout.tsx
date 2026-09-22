@@ -1,5 +1,5 @@
 /**
- * Shared sleek brand layout for Petal transactional emails.
+ * Shared sleek brand layout for Kimble transactional emails.
  *
  * Visual language matches the auth-email template:
  *   • cream container on white body
@@ -23,7 +23,7 @@ import {
   Text,
 } from "@react-email/components";
 
-export const SITE_NAME = "Petal";
+export const SITE_NAME = "Kimble";
 export const SITE_URL = "https://buildwithpetal.com";
 
 interface LayoutProps {

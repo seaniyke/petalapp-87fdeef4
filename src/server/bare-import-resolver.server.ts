@@ -253,7 +253,7 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
   for (const file of files) {
     if (!SCANNABLE.test(file.path)) continue;
     if (isBuildConfig(file.path)) continue;
-    // Petal-owned kit files are handled by the kit dependency closure, which
+    // Kimble-owned kit files are handled by the kit dependency closure, which
     // installs by REACHABILITY. Scanning them here would install three.js,
     // TipTap and GSAP into every project just because the kit ships those
     // files — and their bytes are restored afterwards anyway.
@@ -402,7 +402,7 @@ export function repairBareImports(files: ProjectFile[]): BareImportRepairResult 
         src = shimImport(
           src,
           currentLine,
-          `package "${pkg}" is not in Petal's allow-list`,
+          `package "${pkg}" is not in Kimble's allow-list`,
           pkg,
         );
         result.stripped.push({ path: file.path, spec });

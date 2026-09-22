@@ -151,7 +151,7 @@ export {
 // ---------------------------------------------------------------------------
 // Reference: useQuery + server-action pattern doc (model copies from this)
 // ---------------------------------------------------------------------------
-const DATA_PATTERNS_DOC = `# Data fetching — the default Petal pattern
+const DATA_PATTERNS_DOC = `# Data fetching — the default Kimble pattern
 
 The scaffold ships TanStack Query, Zustand, and nuqs. Use them in this order
 before reaching for \`useEffect + fetch + useState\` (which you should basically

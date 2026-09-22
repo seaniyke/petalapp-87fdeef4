@@ -1,5 +1,5 @@
 /**
- * Petal Intelligence — shared agent context (the blackboard).
+ * Kimble Intelligence — shared agent context (the blackboard).
  *
  * Agents never talk to each other directly. Each one reads the context and
  * appends typed `Decision` records (and `Objection`s against other agents'

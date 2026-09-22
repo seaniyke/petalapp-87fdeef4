@@ -1,12 +1,12 @@
 /**
- * Petal Intelligence — agent execution lifecycle.
+ * Kimble Intelligence — agent execution lifecycle.
  *
  * Runs the selected agents wave by wave: parallel inside a wave, sequential
  * across waves. Owns retries, timeouts, budget, graceful degradation and the
  * decision log. It knows nothing about any specific agent — only the registry
  * contract — so a new specialist never touches this file.
  *
- * Hard rule, same as every other Petal layer: a failing OPTIONAL agent can
+ * Hard rule, same as every other Kimble layer: a failing OPTIONAL agent can
  * never fail a build. It is recorded, skipped, and the turn continues.
  */
 

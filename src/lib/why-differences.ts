@@ -1,5 +1,5 @@
 /**
- * Data for the "why Petal" differentiator pages.
+ * Data for the "why Kimble" differentiator pages.
  *
  * This lives outside the route file on purpose: TanStack Start splits a route
  * module into shared/server/client chunks, and a module-scope constant used by
@@ -10,7 +10,7 @@
 import { Store, Wallet, Bot, Code2, type LucideIcon } from "lucide-react";
 
 /**
- * The four things Petal does that the rest of the category does not.
+ * The four things Kimble does that the rest of the category does not.
  * Each entry is a real, shipped surface in this product — no roadmap copy.
  */
 type Difference = {
@@ -32,20 +32,20 @@ export const DIFFERENCES: Record<string, Difference> = {
     eyebrow: "The marketplace",
     title: "Software you built,",
     titleItalic: "sold to someone who needs it.",
-    lede: "Every other AI builder ends at deploy. Petal keeps going: list the app, price it, transfer it.",
+    lede: "Every other AI builder ends at deploy. Kimble keeps going: list the app, price it, transfer it.",
     icon: Store,
     blocks: [
       {
         heading: "List in a few clicks",
-        body: "Any project on your account can become a listing. Petal pulls the title, summary and a live preview from the build you already shipped, so the storefront page writes itself.",
+        body: "Any project on your account can become a listing. Kimble pulls the title, summary and a live preview from the build you already shipped, so the storefront page writes itself.",
       },
       {
         heading: "Licence or full transfer",
-        body: "Sell a licence and keep the original, or hand the whole project over. On purchase the buyer gets the real files in their own workspace — not a zip, not a template, a working project they can keep editing in Petal.",
+        body: "Sell a licence and keep the original, or hand the whole project over. On purchase the buyer gets the real files in their own workspace — not a zip, not a template, a working project they can keep editing in Kimble.",
       },
       {
         heading: "You keep 80%",
-        body: "Petal takes a flat 20% on paid listings. No listing fee, no monthly seller subscription, no rank-boost upsell. Earnings land in a ledger you can watch, and payouts run from there.",
+        body: "Kimble takes a flat 20% on paid listings. No listing fee, no monthly seller subscription, no rank-boost upsell. Earnings land in a ledger you can watch, and payouts run from there.",
       },
     ],
     proof: [
@@ -69,7 +69,7 @@ export const DIFFERENCES: Record<string, Difference> = {
       },
       {
         heading: "Charged for work, not for asking",
-        body: "A turn that changes nothing costs nothing. If Petal produces a byte-identical edit, the build is a no-op and the wallet is left alone. Failed builds that never reach your project are not billed either.",
+        body: "A turn that changes nothing costs nothing. If Kimble produces a byte-identical edit, the build is a no-op and the wallet is left alone. Failed builds that never reach your project are not billed either.",
       },
       {
         heading: "You can see the meter",
@@ -87,21 +87,21 @@ export const DIFFERENCES: Record<string, Difference> = {
     slug: "agent-board",
     eyebrow: "AI review team",
     title: "Several AI reviewers check your app",
-    titleItalic: "before Petal builds it.",
-    lede: "Petal uses different AI reviewers for planning, design, security, and testing. No human reviewer is involved.",
+    titleItalic: "before Kimble builds it.",
+    lede: "Kimble uses different AI reviewers for planning, design, security, and testing. No human reviewer is involved.",
     icon: Bot,
     blocks: [
       {
         heading: "Each AI reviewer has one job",
-        body: "Separate AI reviewers look at the plan, design, data, security, mobile layout, and testing. Petal combines their feedback before it starts building.",
+        body: "Separate AI reviewers look at the plan, design, data, security, mobile layout, and testing. Kimble combines their feedback before it starts building.",
       },
       {
         heading: "Problems are caught early",
-        body: "If an AI reviewer spots a security risk or a screen that will not fit on a phone, Petal must address it before the build continues.",
+        body: "If an AI reviewer spots a security risk or a screen that will not fit on a phone, Kimble must address it before the build continues.",
       },
       {
         heading: "Fixes stay focused",
-        body: "After the build, Petal sends each problem to the right AI reviewer. It fixes the affected part instead of rebuilding your whole app.",
+        body: "After the build, Kimble sends each problem to the right AI reviewer. It fixes the affected part instead of rebuilding your whole app.",
       },
     ],
     proof: [
@@ -121,15 +121,15 @@ export const DIFFERENCES: Record<string, Difference> = {
     blocks: [
       {
         heading: "Actual React, actual TypeScript",
-        body: "Petal writes the same code a senior engineer would hand you: typed components, semantic design tokens, a real router, a real schema. Open the file tree and read every line of it.",
+        body: "Kimble writes the same code a senior engineer would hand you: typed components, semantic design tokens, a real router, a real schema. Open the file tree and read every line of it.",
       },
       {
         heading: "Git sync both ways",
-        body: "Connect a repository and every build lands as a commit. Edit locally, push, keep building in Petal. Your history lives somewhere you control, not in a vendor database.",
+        body: "Connect a repository and every build lands as a commit. Edit locally, push, keep building in Kimble. Your history lives somewhere you control, not in a vendor database.",
       },
       {
         heading: "Ship where you like",
-        body: "Publish on a Petal URL, point your own custom domain at it, or take the repo and deploy it anywhere that runs Node. Leaving is a decision, not an escape.",
+        body: "Publish on a Kimble URL, point your own custom domain at it, or take the repo and deploy it anywhere that runs Node. Leaving is a decision, not an escape.",
       },
     ],
     proof: [

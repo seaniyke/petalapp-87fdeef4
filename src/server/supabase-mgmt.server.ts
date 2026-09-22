@@ -1,13 +1,13 @@
 /**
  * Thin wrapper around the Supabase Management API.
  *
- * Used by the managed-backend provisioner to create projects under Petal's
+ * Used by the managed-backend provisioner to create projects under Kimble's
  * Supabase organization, poll their lifecycle status, fetch API keys, and
  * pause/restore them when paid slots expire.
  *
  * Auth: a Personal Access Token from a Supabase org admin, stored as
  * PETAL_MGMT_PAT (we can't use SUPABASE_* — that prefix is reserved by the
- * Petal Cloud secrets manager).
+ * Kimble Cloud secrets manager).
  *
  * Docs: https://api.supabase.com/api/v1
  */

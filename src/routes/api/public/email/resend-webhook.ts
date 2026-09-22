@@ -1,7 +1,7 @@
 /**
  * POST /api/public/email/resend-webhook
  *
- * Receives Resend → Svix-signed webhook events for ALL Petal Email projects.
+ * Receives Resend → Svix-signed webhook events for ALL Kimble Email projects.
  *
  * Events handled:
  *   email.sent | email.delivered  → update outbound status to "sent"
