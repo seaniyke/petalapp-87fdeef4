@@ -3399,6 +3399,44 @@ export type Database = {
         }
         Relationships: []
       }
+      project_pictures: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          project_id: string
+          storage_path: string | null
+          tags: string[]
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string
+          project_id: string
+          storage_path?: string | null
+          tags?: string[]
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          project_id?: string
+          storage_path?: string | null
+          tags?: string[]
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_pictures_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_secrets: {
         Row: {
           ciphertext: string
