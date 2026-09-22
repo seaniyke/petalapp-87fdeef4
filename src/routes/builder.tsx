@@ -3920,7 +3920,7 @@ function Builder() {
           setSettingsOpen(true);
         },
         openCredits: () => setBillingOpen(true),
-        openWebsiteInfo: () => setWebsiteInfoOpen(true),
+        openWebsiteInfo: () => setSeoOpen(true),
         reloadPreview: () => {
           setView("preview");
           setMobileTab("preview");
