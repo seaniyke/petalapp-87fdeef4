@@ -166,6 +166,16 @@ export async function startTurn(opts: {
   };
 }
 
+/** Accept only a well-formed UUID as a client-minted turn id. Anything else
+ *  is ignored (the server mints its own) so a malformed or hostile value can
+ *  never target an arbitrary turn row. */
+export function normalizeClientTurnId(value: unknown): string | undefined {
+  return typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : undefined;
+}
+
 /** True when a turn row with this id already exists AND belongs to this
  *  user. Used to dedupe a retried send that carries a client-minted turn
  *  id: the original build keeps running and the retry attaches to it. */

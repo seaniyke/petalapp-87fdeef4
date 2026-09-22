@@ -182,7 +182,7 @@ import {
   scopeDisclosure,
 } from "@/server/edit-scope-guard.server";
 import { decideBackendGate, renderBackendGateBlock } from "@/server/two-phase-gate.server";
-import { startTurn, turnBelongsToUser, type TurnRecorderHandle } from "@/server/turn-recorder.server";
+import { normalizeClientTurnId, startTurn, turnBelongsToUser, type TurnRecorderHandle } from "@/server/turn-recorder.server";
 import {
   openTurnCompletion,
   markStage,
@@ -6081,12 +6081,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // with this id already exists for this user, this request is a
         // retried send — tell the client to attach to the running turn
         // instead of starting (and charging for) a second build.
-        const rawClientTurnId = (peekBody as { turnId?: unknown }).turnId;
-        const clientTurnId =
-          typeof rawClientTurnId === "string" &&
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawClientTurnId)
-            ? rawClientTurnId
-            : undefined;
+        const clientTurnId = normalizeClientTurnId(
+          (peekBody as { turnId?: unknown }).turnId,
+        );
         if (clientTurnId && (await turnBelongsToUser(clientTurnId, peekAuth))) {
           return new Response("Turn already accepted", {
             status: 409,
