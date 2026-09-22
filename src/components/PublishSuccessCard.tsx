@@ -11,6 +11,8 @@ import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { describeAppFallback, isAssistantNarration } from "@/lib/site-info-copy";
+import { useWallet } from "@/hooks/use-wallet";
+import { BillingSheet } from "@/components/BillingSheet";
 
 export function PublishingCard({ isUpdate }: { isUpdate: boolean }) {
   return (
@@ -101,6 +103,9 @@ export function PublishSuccessCard({
   onDismiss?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const { plan } = useWallet();
+  const onFreePlan = plan?.code === "free";
   const shareText = isUpdate ? `Just shipped an update to ${title}` : `I just built ${title} 🌸`;
   // Never surface Kimble's own build narration ("I've built…") as the site's
   // description — visitors want to know what the app does.
@@ -210,6 +215,19 @@ export function PublishSuccessCard({
         </a>
       </div>
 
+      {onFreePlan && (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-border/70 bg-muted/25 px-4 py-3 text-left">
+          <p className="text-[13px] font-semibold">Use your own domain, drop the badge</p>
+          <button
+            type="button"
+            onClick={() => setPlansOpen(true)}
+            className="shrink-0 rounded-xl bg-foreground px-3 py-1.5 text-[13px] font-bold text-background transition hover:opacity-90"
+          >
+            See plans
+          </button>
+        </div>
+      )}
+      <BillingSheet open={plansOpen} onOpenChange={setPlansOpen} />
 
       {onDismiss && (
         <button

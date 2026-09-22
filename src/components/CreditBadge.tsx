@@ -1,16 +1,10 @@
 /**
- * Credit balance pill in the site header.
+ * Credit balance in the site header.
  *
- * Hover for breakdown across daily / monthly / top-up. Click opens the
- * BillingSheet (upgrade plans or top up via Paystack).
+ * Quiet by default — just a number. It only speaks up when credits are
+ * actually low, and then it offers one tap to get more.
  */
 import { useState } from "react";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/use-wallet";
 import { cn } from "@/lib/utils";
 import { BillingSheet } from "@/components/BillingSheet";
@@ -22,65 +16,29 @@ export function CreditBadge() {
 
   if (loading || !wallet || !plan) return null;
 
-  const tone =
-    breakdown.total <= 3
-      ? "border-destructive/30 bg-destructive/10 text-destructive"
-      : breakdown.total <= 10
-        ? "border-amber-400/30 bg-amber-400/10 text-amber-600 dark:text-amber-300"
-        : "border-border/60 bg-muted/40 text-foreground";
+  const low = breakdown.total <= 10;
+  const label = formatCredits(breakdown.total);
 
   return (
     <>
-      <HoverCard openDelay={120} closeDelay={80}>
-        <HoverCardTrigger asChild>
-          <button
-            type="button"
-            aria-label={`${formatCredits(breakdown.total)} credits remaining. Open billing.`}
-            onClick={() => setSheetOpen(true)}
-            className={cn(
-              "inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors hover:opacity-90",
-              tone,
-            )}
-          >
-            <span className="tabular-nums">{formatCredits(breakdown.total)}</span>
-            <span className="hidden text-xs text-muted-foreground sm:inline">credits</span>
-          </button>
-        </HoverCardTrigger>
-        <HoverCardContent align="end" className="w-64 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-semibold">{plan.name} plan</p>
-            <span className="text-xs text-muted-foreground">{formatCredits(breakdown.total)} total</span>
-          </div>
-          <ul className="space-y-1.5 text-xs">
-            <li className="flex items-center justify-between">
-              <span className="text-muted-foreground">Daily free</span>
-              <span className="tabular-nums">{formatCredits(breakdown.daily)}</span>
-            </li>
-            {breakdown.monthly > 0 && (
-              <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">Monthly</span>
-                <span className="tabular-nums">{formatCredits(breakdown.monthly)}</span>
-              </li>
-            )}
-            {breakdown.topup > 0 && (
-              <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">Top-up</span>
-                <span className="tabular-nums">{formatCredits(breakdown.topup)}</span>
-              </li>
-            )}
-          </ul>
-          <p className="mt-3 border-t border-border/40 pt-3 text-[11px] leading-snug text-muted-foreground">
-            Each AI message costs 1 credit. Free daily credits refill every day.
-          </p>
-          <Button
-            size="sm"
-            className="mt-3 w-full"
-            onClick={() => setSheetOpen(true)}
-          >
-            {plan.code === "free" ? "Upgrade plan" : "Manage billing"}
-          </Button>
-        </HoverCardContent>
-      </HoverCard>
+      <button
+        type="button"
+        aria-label={`${label} credits left. Open credits and plan.`}
+        onClick={() => setSheetOpen(true)}
+        className={cn(
+          "inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors hover:opacity-90",
+          low
+            ? "border-amber-400/40 bg-amber-400/10 text-amber-700 dark:text-amber-300"
+            : "border-border/60 bg-muted/40 text-foreground",
+        )}
+      >
+        <span className="tabular-nums">{label}</span>
+        {low ? (
+          <span className="text-xs font-semibold">left · Get more</span>
+        ) : (
+          <span className="hidden text-xs text-muted-foreground sm:inline">credits</span>
+        )}
+      </button>
       <BillingSheet open={sheetOpen} onOpenChange={setSheetOpen} />
     </>
   );
