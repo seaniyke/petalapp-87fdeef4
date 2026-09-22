@@ -277,7 +277,7 @@ const REQUEST_CUES = [
   /\bwhere('?s| is| are)\b/i,
   /\b(?:show|give|take|get|let)\s+me\b/i,
   /\bopen\b/i,
-  /\bhow many\b/i,
+  /\bhow (?:many|much)\b/i,
   /\bwho\s+(?:has\s+)?(?:signed|registered)\b/i,
   /\bmy\b/i,
   /^\s*(?:check|see|view|manage|set ?up|add|connect|buy)\b/i,
