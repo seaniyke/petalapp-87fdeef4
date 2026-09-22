@@ -907,7 +907,8 @@ function TopupPicker({
   disabled: boolean;
   onBuy: (code: string) => void;
 }) {
-  const selected = packs.find((p) => p.code === selectedCode) ?? packs[0] ?? null;
+  const selected =
+    packs.find((p) => p.code === selectedCode) ?? packs[1] ?? packs[0] ?? null;
   const selConv =
     selected && activeCurrency
       ? convertPrice({
