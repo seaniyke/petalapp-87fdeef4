@@ -292,7 +292,14 @@ const BUILD_CUES = [
   /\b(?:app|site|website|platform|marketplace|page)\s+(?:that|where|which|to)\b/i,
   /\b(?:users?|people|customers?|visitors?)\s+(?:can|should|will|could)\b/i,
   /\blike\s+(?:airbnb|uber|shopify|notion|stripe)\b/i,
+  // An instruction to edit the app being built. "Add a back button on the sign
+  // up page" is work on their app, never a request to open Kimble's own
+  // signed-up-users screen.
+  /\b(?:add|put|place|insert|change|update|edit|remove|delete|move|resize|restyle|fix|make|set|rename|swap|replace|show|hide|centre|center|align)\b[^.?!]{0,60}\b(?:button|link|arrow|icon|label|text|title|heading|caption|placeholder|form|field|input|menu|nav(?:bar|igation)?|header|footer|section|hero|card|banner|modal|colou?r|font|spacing|padding|margin|border|shadow|logo|image|picture|photo|avatar|badge|tooltip)\b/i,
+  // Any instruction aimed at a page/screen of their app.
+  /\b(?:on|to|from|in|into|at)\s+(?:the\s+)?[a-z0-9 -]{0,24}\b(?:page|screen|view|tab)\b/i,
 ];
+
 
 export type SurfaceSignal = {
   surface: Surface;
