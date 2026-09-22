@@ -367,6 +367,25 @@ export function shouldAutoPlan(args: {
     !/\bpage|route|feature|flow|auth|database|schema|payment|checkout|dashboard\b/.test(p);
   if (trivial) return false;
 
+  // One small element on one named screen. "Add a back button on the sign up
+  // page" is a one-line edit: the page is WHERE it goes, not new surface area.
+  // Without this the word "page" alone pushed it into the structural branch
+  // below and produced an approval card for a single button.
+  const microElement =
+    raw.length < 120 &&
+    !/\b(and|also|plus|then)\b/.test(p) &&
+    /^(add|put|place|insert|change|update|remove|delete|move|make|set|rename|swap|replace|show|hide)\b/.test(
+      p,
+    ) &&
+    /\b(back|button|link|arrow|icon|label|text|title|heading|caption|placeholder|colou?r|font|size|spacing|padding|margin|border|shadow|logo|image|picture|photo|avatar|badge|tooltip|copy|word|wording)\b/.test(
+      p,
+    ) &&
+    !/\b(auth|authentication|database|schema|table|payment|checkout|subscription|onboarding|redesign|rebuild|refactor|migrate|integrate|api|endpoint|upload|search)\b/.test(
+      p,
+    );
+  if (microElement) return false;
+
+
   // Structural work — anything that adds surface area or touches data/auth.
   const structural =
     /\b(add|build|create|implement|introduce|integrate|set up|setup|wire up|redesign|rebuild|refactor|migrate|restructure)\b/.test(

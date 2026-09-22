@@ -40,3 +40,16 @@ assert.equal(
 );
 
 console.log("auto-plan: all assertions passed");
+
+// 9. A single small element on a named screen is a one-line edit, not scope.
+assert.equal(
+  shouldAutoPlan({ ...base, prompt: "Add back button on the sign up page" }),
+  false,
+);
+assert.equal(
+  shouldAutoPlan({
+    ...base,
+    prompt: "Add a pricing page with three tiers and a checkout flow",
+  }),
+  true,
+);
