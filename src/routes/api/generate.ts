@@ -2748,11 +2748,28 @@ Forbidden defaults
   }
 
 
+  // Anchors let large files travel as windows around the exact lines that
+  // matter instead of whole files — the single biggest reduction for a
+  // targeted edit, and it keeps the tail of a file reachable.
+  const promptAnchors: Record<string, number[]> = {};
+  for (const target of editIntent?.targets ?? []) {
+    const lines = target.anchors.map((a) => a.line).filter((n) => Number.isFinite(n));
+    if (lines.length) promptAnchors[target.path] = lines;
+  }
+  // Hard ceiling for the file block, derived from the model's own context
+  // window minus the output reservation. Nothing is exempt from it.
+  const fileBlockCeiling = Math.round(
+    promptTokenCeiling({ model: selectedModel, completionBudgetTokens: 16_000 }) * 0.55,
+  );
   const promptBudget = trimFilesForPrompt(
     editablePromptFiles,
     multiEditPromptContext || lastUserContent,
     pinnedPaths,
     resolvedTargetPaths,
+    { tokenCeiling: fileBlockCeiling, anchors: promptAnchors },
+  );
+  console.info(
+    `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`,
   );
   const inspectorAddendum = inspectorReport
     ? (() => {
