@@ -384,12 +384,18 @@ function renderArgumentBounds(content: string): { start: number; end: number } |
   return null;
 }
 
-/** Wrap `<App />` (or whatever root element) inside createRoot().render(...). */
+/** Wrap `<App />` (or whatever root element) inside createRoot().render(...).
+ *
+ * The render call is normally written with a trailing comma after the element
+ * (`render(\n  <React.StrictMode>…</React.StrictMode>,\n)`). That comma is a
+ * legal argument-list separator, but once it is swept inside the injected
+ * <BrowserRouter> it becomes JSX *text* and every page renders a stray "," in
+ * the corner. Strip it before wrapping and never re-emit it inside JSX. */
 function wrapRootRender(content: string): string | null {
   const bounds = renderArgumentBounds(content);
   if (!bounds) return null;
   const rawInner = content.slice(bounds.start, bounds.end);
-  const inner = rawInner.trim();
+  const inner = rawInner.trim().replace(/,+\s*$/, "").trim();
   if (!inner.startsWith("<")) return null;
   if (/<BrowserRouter/.test(inner)) return null;
 
@@ -397,7 +403,8 @@ function wrapRootRender(content: string): string | null {
   let wrapped: string;
   const strict = inner.match(/^<(React\.StrictMode|StrictMode)>([\s\S]*)<\/(React\.StrictMode|StrictMode)>$/);
   if (strict) {
-    wrapped = `<${strict[1]}>\n    <BrowserRouter>\n      ${strict[2].trim()}\n    </BrowserRouter>\n  </${strict[3]}>`;
+    const child = strict[2].trim().replace(/,+\s*$/, "").trim();
+    wrapped = `<${strict[1]}>\n    <BrowserRouter>\n      ${child}\n    </BrowserRouter>\n  </${strict[3]}>`;
   } else {
     wrapped = `<BrowserRouter>\n    ${inner}\n  </BrowserRouter>`;
   }
