@@ -71,6 +71,12 @@ export async function enforceDesignContract(args: {
   model: string;
   /** Small cosmetic edits lint-and-log; structural turns lint-and-repair. */
   repair: boolean;
+  /**
+   * Files this turn actually changed. When given, the lint only judges those —
+   * a small edit is never held responsible for styling debt it did not touch,
+   * and never pays for reviewing the whole project.
+   */
+  changedPaths?: string[] | null;
   projectId?: string | null;
   userId?: string | null;
   signal?: AbortSignal;
@@ -84,9 +90,15 @@ export async function enforceDesignContract(args: {
   };
   if (!args.design) return idle;
 
+  const scoped =
+    args.changedPaths && args.changedPaths.length > 0
+      ? args.files.filter((f) => args.changedPaths!.includes(f.path))
+      : args.files;
+  if (scoped.length === 0) return idle;
+
   let report: DesignLintReport;
   try {
-    report = lintDesignSystem(args.files, args.design, { skip: lintSkip });
+    report = lintDesignSystem(scoped, args.design, { skip: lintSkip });
   } catch (e) {
     console.warn("[design-lint] skipped:", e instanceof Error ? e.message : String(e));
     return idle;
