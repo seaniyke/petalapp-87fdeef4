@@ -1,47 +1,23 @@
 /**
- * Watchdog for stuck builds.
+ * Watchdog for stuck builds (browser-driven).
  *
- * The trigger route inserts a `pending` row and posts to Railway. If
- * Railway never calls our callback (cold start, transient network
- * issue, dropped webhook), the row sits at `pending` forever and the
- * user sees a spinner that never finishes.
+ * The trigger route inserts a `pending` row and posts to the build service. If
+ * the builder never calls our callback (cold start, transient network issue,
+ * dropped webhook), the row sits at `pending` forever and the user sees a
+ * spinner that never finishes.
  *
- * The client (`useBuildActivity`) calls this route after a build has
- * been pending for ~90s with no movement. We:
- *  1) Verify the build is still pending and the user owns the project.
- *  2) If `retry_count < 2`, re-post the existing files to Railway and
- *     bump the retry counter. The same buildId is reused so the UI
- *     subscription keeps pointing at the right row.
- *  3) If retries are exhausted, mark the row as `failed` with a clear
- *     "service didn't respond" message so the user can act.
- *
- * The retry path reuses the canonical scaffold + healing pipeline from
- * the trigger route so a transient bug in earlier-emitted files can
- * heal itself on the second attempt.
+ * The client (`useBuildActivity`) calls this route after a build has been
+ * pending for ~90s with no movement. The actual retry — claim, heal, re-post —
+ * lives in `build-retry.server` and is shared with the server-side sweeper at
+ * `/api/public/cron/build-watchdog`, so a stalled build is rescued whether or
+ * not the tab is still open.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { postBuildToRailway } from "@/server/builder.server";
-import { runAllRepairs } from "@/server/repair-all.server";
-import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
-import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
-import { validateStylesCss } from "@/server/validate-styles.server";
-import { autofixFiles } from "@/server/stream-autofixer";
-import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
-import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
-import { injectPreviewGuard } from "@/server/preview-guard.server";
-import {
-  buildIntegrationEnvFiles,
-  mergeFilesIntoPayload,
-} from "@/server/integrations/env-injector.server";
-
-const MAX_RETRIES = 2;
-/** Quiet time, not age: a build that keeps reporting progress is never stuck,
- *  however long it runs. Only silence counts against it. */
-const MIN_STUCK_MS = 80_000; // small grace below the 90s client trigger
+import { retryStalledBuild } from "@/server/build-retry.server";
+import { reconcileBuildById } from "@/server/build-reconcile.server";
 
 const BodySchema = z.object({ buildId: z.string().uuid() });
 
@@ -78,167 +54,37 @@ export const Route = createFileRoute("/api/builds/watchdog")({
         }
         const parsed = BodySchema.safeParse(body);
         if (!parsed.success) return Response.json({ error: "Invalid body" }, { status: 400 });
-        const { buildId } = parsed.data;
 
-        const { data: build } = await supabaseAdmin
-          .from("project_builds")
-          .select("id, project_id, status, retry_count, created_at, last_progress_at")
-          .eq("id", buildId)
-          .maybeSingle();
-        if (!build) return Response.json({ ok: false, reason: "not_found" }, { status: 404 });
-        if (build.status !== "pending" && build.status !== "building") {
-          return Response.json({ ok: true, action: "noop", reason: "not_active" });
-        }
-
-        const quietSince = build.last_progress_at ?? build.created_at;
-        const ageMs = Date.now() - new Date(quietSince).getTime();
-        if (ageMs < MIN_STUCK_MS) {
-          return Response.json({ ok: true, action: "noop", reason: "not_stuck_yet" });
-        }
-
-        const { data: project } = await supabaseAdmin
-          .from("projects")
-          .select("id, owner_id, hide_petal_badge")
-          .eq("id", build.project_id)
-          .maybeSingle();
-        if (!project || project.owner_id !== userId) {
-          return Response.json({ error: "Not authorized" }, { status: 403 });
-        }
-
-        // Retry budget exhausted — give up cleanly.
-        if ((build.retry_count ?? 0) >= MAX_RETRIES) {
-          await supabaseAdmin
-            .from("project_builds")
-            .update({
-              status: "failed",
-              error_message:
-                "The build service didn't respond after multiple attempts. Please try again in a moment.",
-              ready_at: new Date().toISOString(),
-            })
-            .eq("id", buildId);
-          return Response.json({ ok: true, action: "failed", reason: "retries_exhausted" });
-        }
-
-        // Compare-and-swap the retry counter. Two tabs (or a retry-happy
-        // client) could both read retry_count=0 and both re-post the same
-        // build to Railway, doubling the work and racing two callbacks onto
-        // one row. Constraining the UPDATE to the value we just read means
-        // exactly one caller wins; the loser backs off.
-        const currentRetry = build.retry_count ?? 0;
-        const nextRetry = currentRetry + 1;
-        const { data: claimed } = await supabaseAdmin
-          .from("project_builds")
-          .update({ retry_count: nextRetry, last_retry_at: new Date().toISOString() })
-          .eq("id", buildId)
-          .in("status", ["pending", "building"])
-          .eq("retry_count", currentRetry)
-          .select("id")
-          .maybeSingle();
-        if (!claimed) {
-          // Someone else already claimed this retry, or the build stopped
-          // being pending in the meantime. Doing nothing is correct.
-          return Response.json({ ok: true, action: "noop", reason: "already_claimed" });
-        }
-
-        // Re-load files + reapply the healing pipeline. A second pass through
-        // the autofix/shim/type-strip steps frequently rescues a build whose
-        // first attempt was flaky (Railway cold start, malformed file healed
-        // by a later edit, etc.).
-        const { data: rawFiles } = await supabaseAdmin
-          .from("project_files")
-          .select("path, content")
-          .eq("project_id", build.project_id);
-        const files = (rawFiles ?? []).map((r) => ({ path: r.path, content: r.content }));
-        if (files.length === 0) {
-          await supabaseAdmin
-            .from("project_builds")
-            .update({
-              status: "failed",
-              error_message: "Project has no files to build.",
-              ready_at: new Date().toISOString(),
-            })
-            .eq("id", buildId);
-          return Response.json({ ok: false, reason: "no_files" });
-        }
-
-        const { data: backendRow } = await supabaseAdmin
-          .from("project_backends")
-          .select("supabase_url, anon_key")
-          .eq("project_id", build.project_id)
-          .maybeSingle();
-        const backend = backendRow
-          ? { url: backendRow.supabase_url, anonKey: backendRow.anon_key }
-          : undefined;
-        const scaffolded = applyScaffoldKit(files, { backend });
-        // Same deterministic repair composition the trigger route runs. Without
-        // it a retry re-ships whatever syntax fault killed the first attempt
-        // (e.g. an import missing its `from` keyword).
-        const repaired = runAllRepairs(scaffolded);
-        if (repaired.notes.length > 0) {
-          console.info(
-            `[watchdog-repair] project=${build.project_id}: ${repaired.notes.join("; ")}`,
-          );
-        }
-        const aliasFixed = syncViteAliasesWithTsconfig(repaired.files);
-        const styleSafeFiles = aliasFixed.map((f) => {
-          if (f.path !== "src/styles.css") return f;
-          const result = validateStylesCss(f.content);
-          return result.ok ? f : { ...f, content: STYLES_CSS };
+        // Never re-run a build the service is still working on, and prefer
+        // recovering a finished-but-unreported build over rebuilding it.
+        const reconciled = await reconcileBuildById(parsed.data.buildId, {
+          requireOwnerId: userId,
         });
-        const { files: buildFiles } = autofixFiles(styleSafeFiles);
-        const { files: shimmedFiles } = shimMissingUiPrimitives(buildFiles);
-        const { files: typeStrippedFiles } = stripTypeOnlyValueImports(shimmedFiles);
-        let withEnv = injectPreviewGuard(typeStrippedFiles, { projectId: build.project_id }).files;
-        try {
-          const envBundle = await buildIntegrationEnvFiles(build.project_id, withEnv);
-          if (envBundle.files.length > 0) {
-            withEnv = mergeFilesIntoPayload(withEnv, envBundle.files);
-          }
-        } catch (e) {
-          console.warn(
-            `[watchdog] env injection failed for project=${build.project_id}:`,
-            e instanceof Error ? e.message : String(e),
-          );
+        if (reconciled.outcome === "still_running") {
+          return Response.json({ ok: true, action: "alive", label: reconciled.label ?? null });
+        }
+        if (reconciled.outcome === "recovered") {
+          return Response.json({ ok: true, action: "recovered", url: reconciled.url });
         }
 
-        let hideBadge = false;
-        try {
-          const { data: wallet } = await supabaseAdmin
-            .from("user_wallets")
-            .select("plan_code, topup_credits_remaining")
-            .eq("user_id", userId)
-            .maybeSingle();
-          const isPaidPlan =
-            (!!wallet?.plan_code && wallet.plan_code !== "free") ||
-            Number(wallet?.topup_credits_remaining ?? 0) > 0;
-          hideBadge = isPaidPlan && project.hide_petal_badge === true;
-        } catch {
-          hideBadge = false;
-        }
+        const result = await retryStalledBuild(parsed.data.buildId, {
+          requireOwnerId: userId,
+          source: "watchdog",
+        });
 
-        try {
-          await postBuildToRailway({
-            projectId: build.project_id,
-            buildId,
-            files: withEnv,
-            hideBadge,
-          });
-          console.log(`[watchdog] retried build=${buildId} attempt=${nextRetry}`);
-          return Response.json({ ok: true, action: "retried", attempt: nextRetry });
-        } catch (e) {
-          const message = e instanceof Error ? e.message : "Failed to reach builder";
-          if (nextRetry >= MAX_RETRIES) {
-            await supabaseAdmin
-              .from("project_builds")
-              .update({
-                status: "failed",
-                error_message: `Could not reach build service after ${nextRetry} attempts: ${message}`,
-                ready_at: new Date().toISOString(),
-              })
-              .eq("id", buildId);
-          }
-          return Response.json({ ok: false, action: "retry_failed", error: message });
+        if (result.outcome === "not_found") {
+          return Response.json({ ok: false, reason: "not_found" }, { status: 404 });
         }
+        if (result.outcome === "retried") {
+          return Response.json({ ok: true, action: "retried", attempt: result.attempt });
+        }
+        if (result.outcome === "retry_failed") {
+          return Response.json({ ok: false, action: "retry_failed", error: result.error });
+        }
+        if (result.outcome === "failed" || result.outcome === "no_files") {
+          return Response.json({ ok: true, action: "failed", reason: result.outcome });
+        }
+        return Response.json({ ok: true, action: "noop", reason: result.outcome });
       },
     },
   },

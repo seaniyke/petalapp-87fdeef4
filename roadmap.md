@@ -10,3 +10,6 @@
 - [ ] Before/after measurement across five real builds (plan phase 6).
 - [x] Token-as-billing-unit idea: dropped by user; credits stay.
 - [x] System health test: 576 tests green, typecheck clean, OpenRouter/DeepSeek live 200, 6 key pages load with no console errors, build service healthy (0 queued).
+
+- [x] Build recovery: watchdog asks the build service what it is running, refreshes progress, and recovers finished-but-unreported builds from the live deployment (verified on Looplane build 8d48201d)
+- [ ] Looplane sign-in page renders nearly empty (/auth) — investigate

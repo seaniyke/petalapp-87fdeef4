@@ -12,6 +12,7 @@ export default defineConfig({
       "src/server/__tests__/openrouter-only.test.ts",
       "src/server/__tests__/utility-model-tier.test.ts",
       "src/server/__tests__/verify-scope.test.ts",
+      "src/server/__tests__/build-reconcile.test.ts",
 
       "src/lib/intent-registry.test.ts",
       "src/lib/friendly-errors.test.ts",
