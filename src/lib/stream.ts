@@ -200,6 +200,8 @@ export async function streamGenerate(
    *  the user's answer, so a clean EOF after it must never look like a
    *  dropped build (no reconnect attempt, no fake "stopped responding"). */
   let sawPlanProposed = false;
+  /** Same for an auto-plan skip: the caller resends the turn itself. */
+  let sawPlanSkipped = false;
 
   /**
    * A mobile browser may tear down the original fetch after the server has
@@ -366,6 +368,7 @@ export async function streamGenerate(
             });
             break;
           case "plan_skipped":
+            sawPlanSkipped = true;
             handlers.onPlanSkipped?.(evt.reason);
             break;
           case "plan_scope_violation":
@@ -387,6 +390,12 @@ export async function streamGenerate(
     }
   } catch (e) {
     if (signal?.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+    // A proposed plan ends the turn by design — Kimble is waiting for the
+    // user. Never convert it into a reconnect attempt or an error card.
+    if (sawPlanProposed || sawPlanSkipped) {
+      if (sawPlanProposed && !sawDone) handlers.onDone?.("plan_proposed");
+      return;
+    }
     // If a result already arrived, the edit completed. Losing only the final
     // transport frame must never turn that success into a red error card or a
     // second charged build. Otherwise, resume this same accepted turn.
@@ -396,6 +405,13 @@ export async function streamGenerate(
     }
     if (await resumeAcceptedTurn()) return;
     throw e;
+  }
+
+  // A plan proposal (or an auto-plan skip that the caller turns into a
+  // resend) is a complete turn, not an interrupted stream.
+  if (sawPlanProposed || sawPlanSkipped) {
+    if (sawPlanProposed && !sawDone) handlers.onDone?.("plan_proposed");
+    return;
   }
 
   // A clean EOF without `done` is still an interrupted SSE response. Resume

@@ -1867,6 +1867,12 @@ async function handleGenerateRequestCore(
               }),
             ),
           );
+          // Terminal frame: a proposal is a COMPLETED turn now waiting on the
+          // user. Without it the client reads the clean EOF as a dropped
+          // build and tries to reconnect to a turn that never existed.
+          controller.enqueue(
+            planEncoder.encode(sse({ type: "done", status: "plan_proposed" })),
+          );
         } catch (e) {
           const raw = e instanceof Error ? e.message : "Planning failed.";
           console.error("[/api/generate] plan_proposal failed", raw);
@@ -1887,6 +1893,11 @@ async function handleGenerateRequestCore(
                   raw: raw.slice(0, 240),
                 }),
               ),
+            );
+            // Keep the terminal frame so the client surfaces THIS error
+            // instead of a generic "could not reconnect" one.
+            controller.enqueue(
+              planEncoder.encode(sse({ type: "done", status: "failed" })),
             );
           }
         } finally {
