@@ -310,7 +310,7 @@ export const Route = createFileRoute("/api/triage")({
         const authResult = await authorize(request);
         if (authResult instanceof Response) return authResult;
 
-        if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+        if (!process.env.OPENROUTER_API_KEY) {
           return new Response("AI gateway is not configured.", { status: 500 });
         }
 

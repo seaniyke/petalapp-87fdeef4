@@ -291,7 +291,7 @@ export async function commitDesignSystem(args: {
     );
   }
   const prior = deterministicDesignSystem(args.brief, args.understanding, { seed: args.seed });
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return prior;
+  if (!process.env.OPENROUTER_API_KEY) return prior;
 
   try {
     const res = await aiChatCompletions({

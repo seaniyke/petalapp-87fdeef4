@@ -108,7 +108,7 @@ const COACH_TOOL = {
 /** Call the AI gateway for one coach turn. Throws on transport failure;
  *  the caller is responsible for shaping non-2xx into a user-facing error. */
 export async function coachTurn(input: CoachTurnInput): Promise<CoachTurnOutput> {
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+  if (!process.env.OPENROUTER_API_KEY) {
     throw new Error("AI gateway is not configured");
   }
 

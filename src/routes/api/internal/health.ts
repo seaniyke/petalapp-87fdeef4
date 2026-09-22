@@ -18,7 +18,7 @@ import { createFileRoute } from "@tanstack/react-router";
  */
 const REQUIRED_VARS = {
   supabase: ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"],
-  ai: ["LOVABLE_API_KEY"],
+  ai: ["OPENROUTER_API_KEY"],
   builder: ["BUILDER_URL", "BUILDER_SHARED_SECRET"],
   mobile: [
     "CODEMAGIC_API_TOKEN",

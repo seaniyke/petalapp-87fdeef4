@@ -76,7 +76,7 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
     return { kind: "discussion", estSeconds: 0, estCents: 0, confidence: "high", rationale: "Empty prompt." };
   }
 
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return fallbackEstimate(trimmed);
   }
 

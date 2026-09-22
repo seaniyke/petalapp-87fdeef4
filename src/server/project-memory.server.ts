@@ -261,7 +261,7 @@ async function runMemoryWriter(
   const trimmedUser = (userMessage ?? "").trim();
   if (trimmedUser.length < 4) return true;
 
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return true;
+  if (!process.env.OPENROUTER_API_KEY) return true;
 
   let existing: MemoryEntry[] = [];
   try {
