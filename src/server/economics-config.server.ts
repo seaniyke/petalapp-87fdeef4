@@ -43,6 +43,10 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   auto_upgrade_row_pct: 80,
   auto_upgrade_user_count: 50,
   auto_upgrade_min_credits: 20,
+  // Kimble Compute: 8¢ per awake hour (~$58/mo full-time) against an
+  // underlying container cost of roughly 3¢/hr.
+  compute_hour_usd: 0.08,
+  max_active_compute: 25,
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
