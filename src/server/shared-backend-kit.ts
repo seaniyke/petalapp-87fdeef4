@@ -268,10 +268,10 @@ await db.create("tasks", { title: "Ship it", done: false });
 await db.update("tasks", id, { done: true });
 await db.remove("tasks", id);
 
-// Auth
-await auth.signUp(email, password, name);
-await auth.signIn(email, password);
-auth.signOut();
+// Auth — same helper names and \`{ error }\` shape as the dedicated tier.
+const { user, loading, signInWithPassword, signUpWithPassword, signOut } = useAuth();
+const { error } = await signInWithPassword(email, password);
+if (error) setError(error.message);
 \`\`\`
 
 Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } = useAuth()\`.
@@ -280,8 +280,10 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 
 - Rows created while signed in are owned by that user; pass \`{ mine: true }\` to list only theirs.
 - Limits: 5,000 rows and 25 collections per project. Upgrade for a dedicated database with no caps.
+- Password reset, email codes and Google sign-in are NOT available on this tier — they return \`{ error }\`. Use email + password.
 - Do NOT install \`@supabase/supabase-js\`, call \`createClient\`, or write SQL — there is no SQL layer on this tier.
 - Do NOT edit anything under \`src/integrations/backend/\` — protected, regenerated every build.
+
 `;
 
 export function sharedBackendKit(opts: SharedBackendKitOpts): ProjectFile[] {
