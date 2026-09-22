@@ -1099,6 +1099,12 @@ function Builder() {
   // it can invoke either variant without stale-closure issues.
   const askPetalToFixRef = useRef<(() => void) | null>(null);
   const askPetalToFixManualRef = useRef<(() => void) | null>(null);
+  /** Re-run the deploy without re-prompting the AI. Declared as a ref because
+   *  the build-status effect above needs it before `retryDeploy` exists. */
+  const retryDeployRef = useRef<(() => void) | null>(null);
+  /** Build ids whose infrastructure hiccup we already retried automatically,
+   *  so a service blip heals itself once and never loops. */
+  const infraRetriedBuildIdsRef = useRef<Set<string>>(new Set());
   // Survives error-card remounts, so one tap can start only one repair turn.
   const repairActionInFlightRef = useRef(false);
   // Phase 3 — track the build id we last surfaced an "Update available" toast
