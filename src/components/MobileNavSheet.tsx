@@ -42,7 +42,6 @@ type Props = {
 export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
   const { user, isReady, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
-  const navigate = useNavigate();
 
   const close = () => onOpenChange(false);
 
