@@ -6194,6 +6194,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (recorder) {
           emit({ type: "turn_id", turnId: recorder.turnId });
         }
+        // The message asked for a part of Kimble itself — tell the builder to
+        // open it. Purely a UI hint: nothing is charged, started or written.
+        if (intentActions.surface) {
+          emit({ type: "open_surface", surface: intentActions.surface });
+        }
         emit({ type: "phase", phase: "thinking" });
         emit({ type: "status", message: "Opening the project and preparing the edit…" });
 
