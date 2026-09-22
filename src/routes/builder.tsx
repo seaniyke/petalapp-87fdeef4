@@ -121,6 +121,7 @@ import {
 } from "@/lib/draft-storage";
 import { createVersion, listVersions } from "@/lib/versions";
 import { triggerBuild } from "@/lib/builds";
+import { retryTransient } from "@/lib/retry-transient";
 import { supabase } from "@/integrations/supabase/client";
 import { HistoryPanel } from "@/components/HistoryPanel";
 import { LazySheet } from "@/components/LazySheet";
@@ -3045,18 +3046,25 @@ function Builder() {
           // The user message was already persisted up-front (see send() entry)
           // so we only need to write the assistant reply now.
           const persistMsgs: ChatMessage[] = [assistantMsg];
+          // Every write here is idempotent, so a dropped socket (Wi-Fi → LTE
+          // hand-off mid-turn) must be retried, never reported. Surfacing it
+          // put a "Kimble is picking this back up" card under a finished
+          // recap and left the deploy unstarted.
           await Promise.all([
-            saveProjectFiles(proj.id, files2),
-            appendMessages(proj.id, persistMsgs),
-            maybeAutoTitleProject(proj, summary2, text),
-            createVersion(proj.id, files2, {
-              origin: "auto",
-              label: text.slice(0, 60),
-              summary: summary2,
-            }),
+            retryTransient(() => saveProjectFiles(proj.id, files2)),
+            retryTransient(() => appendMessages(proj.id, persistMsgs)),
+            retryTransient(() => maybeAutoTitleProject(proj, summary2, text)),
+            retryTransient(() =>
+              createVersion(proj.id, files2, {
+                origin: "auto",
+                label: text.slice(0, 60),
+                summary: summary2,
+              }),
+            ),
           ]);
           setHistoryKey((k) => k + 1);
-          const refreshed = await getProject(proj.id);
+          // A refresh read is cosmetic — never let it fail the turn.
+          const refreshed = await retryTransient(() => getProject(proj.id)).catch(() => null);
           if (refreshed) setProject(refreshed);
 
           // Kick off a Cloudflare Pages build. Fire-and-forget — the activity
@@ -3065,11 +3073,11 @@ function Builder() {
           // post-build "READY — WHAT'S NEXT?" card never flashes in the gap
           // between generation finishing and the deploy row appearing.
           setAwaitingBuild(true);
-          void triggerBuild(proj.id)
+          void retryTransient(() => triggerBuild(proj.id))
             .then(async (build) => {
               restoreBuildId(build.buildId);
               startedBuildIdsRef.current.add(build.buildId); persistRecovery(projectIdRef.current);
-              const r = await getProject(proj.id);
+              const r = await retryTransient(() => getProject(proj.id)).catch(() => null);
               if (r) setProject(r);
             })
             .catch((err: unknown) => {

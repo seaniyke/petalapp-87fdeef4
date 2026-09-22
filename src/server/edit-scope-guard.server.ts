@@ -15,6 +15,7 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { isScaffoldOwnedPath, isScaffoldAbsorbedPath } from "./scaffold-ownership.server";
 
 export interface FileDelta {
   path: string;
@@ -72,7 +73,12 @@ export function isSmallEditRequest(prompt: string): boolean {
 
 const bytes = (s: string) => new TextEncoder().encode(s).length;
 
-/** Files whose size legitimately swings on tiny asks (generated/config). */
+/**
+ * Files whose size legitimately swings on tiny asks (generated/config), plus
+ * everything the Kimble scaffold owns and rewrites deterministically. A kit
+ * file replaced by its canonical version is Kimble's own housekeeping — never
+ * "working code was dropped", and never something to warn the user about.
+ */
 function isVolatilePath(path: string): boolean {
   return (
     path === "package.json" ||
@@ -80,7 +86,9 @@ function isVolatilePath(path: string): boolean {
     path.endsWith(".lock") ||
     path.endsWith(".json") ||
     path.includes("vite.config") ||
-    path.includes("tailwind.config")
+    path.includes("tailwind.config") ||
+    isScaffoldOwnedPath(path) ||
+    isScaffoldAbsorbedPath(path)
   );
 }
 
@@ -152,10 +160,14 @@ export function analyzeEditScope(
           .map((d) => d.path)
       : [];
 
-  const removedPaths = deltas.filter((d) => d.kind === "removed").map((d) => d.path);
+  const removedPaths = deltas
+    .filter((d) => d.kind === "removed" && !isVolatilePath(d.path))
+    .map((d) => d.path);
 
   const totalDeltaBytes = deltas.reduce((s, d) => s + d.deltaBytes, 0);
-  const tooManyFiles = wasSmallRequest && !isNewProject && deltas.length > 4;
+  // Scaffold/config churn shouldn't inflate the "touched N files" count either.
+  const appDeltaCount = deltas.filter((d) => !isVolatilePath(d.path)).length;
+  const tooManyFiles = wasSmallRequest && !isNewProject && appDeltaCount > 4;
 
   let reason = "";
   if (!isNewProject) {
@@ -166,7 +178,7 @@ export function analyzeEditScope(
     } else if (removedPaths.length > 0 && wasSmallRequest) {
       reason = `A small edit removed ${removedPaths.slice(0, 3).join(", ")}.`;
     } else if (tooManyFiles) {
-      reason = `That edit touched ${deltas.length} files for what read as a one-thing change.`;
+      reason = `That edit touched ${appDeltaCount} files for what read as a one-thing change.`;
     }
   }
 
