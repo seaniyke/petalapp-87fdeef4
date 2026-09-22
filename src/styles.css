@@ -285,7 +285,7 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
     letter-spacing: 0;
   }
   .landing-page .font-landing-display {
-    font-family: "Space Grotesk", var(--font-sans);
+    font-family: var(--font-sans);
     letter-spacing: 0;
   }
   /* iOS safe-area helpers — opt-in so we don't change desktop spacing.
