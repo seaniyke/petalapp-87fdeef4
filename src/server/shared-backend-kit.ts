@@ -74,13 +74,18 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...(token ? { Authorization: "Bearer " + token } : {}),
     ...(init.headers as Record<string, string> | undefined),
   };
-  // Try the remembered/primary address first, then the backups. Only a
-  // transport failure or a server-side outage moves on to the next one —
-  // a real answer (including a rejected password) is returned as-is.
+  // Try the remembered/primary address first, then the backups. We move on to
+  // the next address when this one cannot answer for us: a transport failure,
+  // an outage, or an address that does not recognise this app (401/404 —
+  // the same key is valid everywhere, so that means we asked the wrong one).
+  // Any genuine answer, including a rejected password, is returned as-is.
   const first = pickedBase();
   const order = [first, ...BASES.filter((b) => b !== first)];
+  const RETRY_STATUS = [401, 404, 502, 503, 504];
   let lastError: Error | null = null;
-  for (const base of order) {
+  for (let i = 0; i < order.length; i++) {
+    const base = order[i];
+    const hasBackup = i < order.length - 1;
     let res: Response;
     try {
       res = await fetch(base + path, { ...init, headers });
@@ -88,12 +93,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       lastError = e instanceof Error ? e : new Error("Network error");
       continue;
     }
-    if (res.status === 503 || res.status === 502 || res.status === 404) {
-      lastError = new Error("Service unavailable");
-      continue;
-    }
     const body = (await res.json().catch(() => ({}))) as any;
-    if (!res.ok) throw new Error(body?.error || "Request failed (" + res.status + ")");
+    if (!res.ok) {
+      const err = new Error(body?.error || "Request failed (" + res.status + ")");
+      if (hasBackup && RETRY_STATUS.includes(res.status)) {
+        lastError = err;
+        continue;
+      }
+      throw err;
+    }
     rememberBase(base);
     return body as T;
   }
