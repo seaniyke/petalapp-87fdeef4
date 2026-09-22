@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { ensureBrandMarkWired } from "../brand-identity.server";
+import { ensureBrandIdentity, ensureBrandMarkWired } from "../brand-identity.server";
 
 const header = (body: string) => ({
   path: "src/components/site-header.tsx",
@@ -75,3 +75,30 @@ export const H = () => <div>{"<BrandMark />"}</div>;
 }
 
 console.log("brand-mark-wiring: all assertions passed");
+
+// 5. A mark existing in the graph is not enough: a bare landing NavBar must
+// receive the project's canonical Logo lockup so the requested logo is visible.
+{
+  const out = ensureBrandIdentity([
+    {
+      path: "index.html",
+      content: "<!doctype html><html><head><title>Looplane</title></head><body></body></html>",
+    },
+    {
+      path: "src/components/Logo.tsx",
+      content: "export function Logo() { return <span>Looplane</span>; }",
+    },
+    {
+      path: "src/components/brand-mark.tsx",
+      content: "export function BrandMark() { return <svg />; }",
+    },
+    {
+      path: "src/pages/Landing.tsx",
+      content: 'import { NavBar } from "@/components/blocks/nav-bar";\nexport function Landing(){ return <NavBar />; }',
+    },
+  ]);
+  const landing = out.files.find((f) => f.path === "src/pages/Landing.tsx");
+  assert.ok(landing?.content.includes('import { Logo } from "@/components/Logo";'));
+  assert.ok(landing?.content.includes("<NavBar brand={<Logo />} />"));
+  assert.ok(out.notes.some((note) => note.includes("placed the logo")));
+}

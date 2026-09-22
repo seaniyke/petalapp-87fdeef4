@@ -1722,6 +1722,14 @@ function deterministicPatchFallback(args: {
   };
 }
 
+function isDirectLogoPlacementRequest(prompt: string): boolean {
+  const compact = prompt.trim();
+  if (!/\b(?:logo|brand ?mark|wordmark|monogram|favicon|app icon)\b/i.test(compact)) return false;
+  if (!/\b(?:add|create|include|put|place|show|use|make)\b/i.test(compact)) return false;
+  // Requests to redesign an existing mark still need design judgement.
+  return !/\b(?:change|replace|redesign|restyle|colour|color|font|bigger|smaller|animate|upload|image)\b/i.test(compact);
+}
+
 
 function isRetryablePatchApplyError(message: string): boolean {
   return (
@@ -3306,8 +3314,13 @@ Forbidden defaults
   // is unchanged and still forced to a single structured payload; it just
   // runs with the transcript of everything the loop learned appended.
   // ---------------------------------------------------------------------
+  const directLogoEdit = !isInitial && isDirectLogoPlacementRequest(lastUserContent)
+    ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent })
+    : null;
+
   let agentLoop: AgentLoopResult | null = null;
   if (
+    !directLogoEdit &&
     shouldRunAgentLoop({
       isInitial,
       isCrossCutting,
@@ -3345,7 +3358,7 @@ Forbidden defaults
 
 
 
-  const upstream = await aiChatCompletions({
+  const upstream = directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
     body: {
@@ -3375,23 +3388,24 @@ Forbidden defaults
     },
   });
 
-  if (!upstream.ok || !upstream.body) {
+  if (!directLogoEdit && (!upstream || !upstream.ok || !upstream.body)) {
     // Upstream rejected before doing any work — nothing was charged,
     // nothing to refund. Just surface a friendly error.
-    let msg = `AI gateway error (${upstream.status})`;
-    if (upstream.status === 429) msg = "Rate limit reached. Please wait a moment.";
-    else if (upstream.status === 402)
+    const upstreamStatus = upstream?.status ?? 502;
+    let msg = `AI gateway error (${upstreamStatus})`;
+    if (upstreamStatus === 429) msg = "Rate limit reached. Please wait a moment.";
+    else if (upstreamStatus === 402)
       msg = "AI credits exhausted. Add credits in Settings → Workspace → Usage.";
     else {
       try {
-        const text = await upstream.text();
-        console.error("AI gateway error", upstream.status, text);
+        const text = upstream ? await upstream.text() : "No response";
+        console.error("AI gateway error", upstreamStatus, text);
       } catch {
         /* ignore */
       }
     }
     releaseBuildLock(userId, body.projectId);
-    return new Response(msg, { status: upstream.status === 402 ? 402 : 502 });
+    return new Response(msg, { status: upstreamStatus === 402 ? 402 : 502 });
   }
 
   const encoder = new TextEncoder();
@@ -3466,7 +3480,16 @@ Forbidden defaults
             ),
           );
         }
-        let collected = await relayAndCollect(upstream, controller, encoder);
+        let collected: ParsedTool = directLogoEdit
+          ? {
+              name: "patch_files",
+              args: JSON.stringify(directLogoEdit.parsed),
+              text: "",
+              finishReason: "stop",
+              usage: null,
+              providerError: null,
+            }
+          : await relayAndCollect(upstream as Response, controller, encoder);
 
         // ── The service refused ───────────────────────────────────────────
         // A refusal used to look like an empty reply, so the identical
