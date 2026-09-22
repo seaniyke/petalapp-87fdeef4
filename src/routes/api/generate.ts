@@ -399,34 +399,65 @@ function detectMultiEditIntent(prompt: string): boolean {
   return explicitMulti || enumeratedItems >= 2 || connectorCount >= 3;
 }
 
+export interface PromptBudgetOptions {
+  /** Hard ceiling in tokens. Nothing may push the file block past this. */
+  tokenCeiling?: number;
+  /** 1-based anchor lines per path — large files are sent as windows. */
+  anchors?: Record<string, number[]>;
+  /** Multiplier applied when re-issuing a refused turn with less context. */
+  shrink?: number;
+}
+
+export interface PromptBudgetResult {
+  files: ProjectFile[];
+  omitted: number;
+  /** Estimated tokens the file block costs. Logged next to `files_sent`. */
+  estimatedTokens: number;
+  /** True when the ceiling — not relevance — decided what was dropped. */
+  ceilingHit: boolean;
+}
+
+/** Default ceiling for the file block when the caller doesn't compute one. */
+const DEFAULT_FILE_BLOCK_TOKEN_CEILING = 60_000;
+
 function trimFilesForPrompt(
   files: ProjectFile[],
   latestPrompt = "",
   pinnedPaths: string[] = [],
-  // Paths resolved as the literal target of a targeted edit. These are never
-  // truncated: the model has to quote their bytes verbatim in `replace` ops,
-  // and a "...trimmed for context budget..." tail is exactly how a targeted
-  // edit turns into a hallucinated snippet that fails to match.
+  // Paths resolved as the literal target of a targeted edit. These are sent in
+  // full whenever the budget allows: the model has to quote their bytes
+  // verbatim in `replace` ops. When the budget does NOT allow it they are sent
+  // as anchored windows — never head-truncated, which is what used to make
+  // `replace` snippets miss the tail of a file.
   fullPaths: string[] = [],
-): { files: ProjectFile[]; omitted: number } {
+  options: PromptBudgetOptions = {},
+): PromptBudgetResult {
 
   const multiEditIntent = detectMultiEditIntent(latestPrompt);
   const full = new Set(fullPaths);
   const pinned = new Set([...pinnedPaths, ...fullPaths]);
+  const shrink = options.shrink ?? 1;
+  const anchors = options.anchors ?? {};
 
   // Cross-cutting intents need a larger budget — the whole point of pinning
   // is so the model sees every page/component at once.
   const expandForPinned = pinned.size > 0;
-  const fileLimit = expandForPinned
-    ? Math.max(MULTI_EDIT_CONTEXT_FILE_LIMIT, pinned.size + 8)
-    : multiEditIntent
-      ? MULTI_EDIT_CONTEXT_FILE_LIMIT
-      : PATCH_CONTEXT_FILE_LIMIT;
-  const charLimit = expandForPinned
-    ? Math.max(MULTI_EDIT_CONTEXT_CHAR_LIMIT * 2, MULTI_EDIT_CONTEXT_CHAR_LIMIT)
-    : multiEditIntent
-      ? MULTI_EDIT_CONTEXT_CHAR_LIMIT
-      : PATCH_CONTEXT_CHAR_LIMIT;
+  const fileLimit = Math.max(
+    4,
+    Math.round(
+      (expandForPinned
+        ? Math.max(MULTI_EDIT_CONTEXT_FILE_LIMIT, pinned.size + 8)
+        : multiEditIntent
+          ? MULTI_EDIT_CONTEXT_FILE_LIMIT
+          : PATCH_CONTEXT_FILE_LIMIT) * shrink,
+    ),
+  );
+  // The real ceiling. Unlike the old character budget this is measured in the
+  // unit the model actually enforces, and NOTHING is exempt from it.
+  const tokenCeiling = Math.max(
+    6_000,
+    Math.round((options.tokenCeiling ?? DEFAULT_FILE_BLOCK_TOKEN_CEILING) * shrink),
+  );
   const terms = latestPrompt
     .toLowerCase()
     .split(/[^a-z0-9]+/)
@@ -450,33 +481,66 @@ function trimFilesForPrompt(
     return 9;
   };
   const picked: ProjectFile[] = [];
-  let used = 0;
+  let usedTokens = 0;
+  let ceilingHit = false;
+  // Priority order: edit targets, pins, then relevance. Pinning decides WHO
+  // gets the budget first — it no longer exempts anyone from it.
   for (const file of [...files].sort(
     (a, b) =>
       (isPromptRelevant(a) ? 3 : rank(a.path)) - (isPromptRelevant(b) ? 3 : rank(b.path)) ||
       rank(a.path) - rank(b.path) ||
       a.path.localeCompare(b.path),
   )) {
-    if (picked.length >= fileLimit && !pinned.has(file.path)) break;
+    if (picked.length >= fileLimit) break;
+    if (usedTokens >= tokenCeiling) {
+      ceilingHit = true;
+      break;
+    }
     const isPinned = pinned.has(file.path);
-    const limit = full.has(file.path)
-      ? Number.POSITIVE_INFINITY
-      : isPinned || isPromptRelevant(file)
-        ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
-        : LARGE_FILE_CONTEXT_CHAR_LIMIT;
+    const isFull = full.has(file.path);
+    const remaining = tokenCeiling - usedTokens;
 
-    const content =
-      file.content.length > limit
-        ? `${file.content.slice(0, limit)}\n\n/* ...trimmed for context budget... */`
-        : file.content;
-    const cost = file.path.length + content.length + 32;
-    // Pinned files bypass the soft char budget — they were chosen
-    // explicitly because the model NEEDS to see their bytes.
-    if (!isPinned && picked.length > 0 && used + cost > charLimit) continue;
+    // Send the part, not the whole file: anything with known anchors and more
+    // bytes than its share of the budget goes out as merged windows around the
+    // lines that matter, with the gaps and their real line numbers marked.
+    const fileAnchors = anchors[file.path];
+    const softLimit = isPinned || isPromptRelevant(file)
+      ? RELEVANT_FILE_CONTEXT_CHAR_LIMIT
+      : LARGE_FILE_CONTEXT_CHAR_LIMIT;
+
+    let content = file.content;
+    if (!isFull && content.length > softLimit) {
+      content = fileAnchors?.length
+        ? anchoredWindows(content, { lines: fileAnchors, pad: 45, maxLines: 420 })
+        : `${content.slice(0, softLimit)}\n\n/* ...trimmed for context budget... */`;
+    } else if (isFull && estimateTokens(content) > remaining && fileAnchors?.length) {
+      content = anchoredWindows(content, { lines: fileAnchors, pad: 60, maxLines: 500 });
+    }
+
+    const cost = estimateTokens(`${file.path}\n${content}`) + 8;
+    if (picked.length > 0 && usedTokens + cost > tokenCeiling) {
+      ceilingHit = true;
+      // An edit target that still doesn't fit gets its windows; if there are
+      // no anchors we'd rather drop it than blow the ceiling and be refused.
+      if (isFull && fileAnchors?.length) {
+        const windowed = anchoredWindows(file.content, { lines: fileAnchors, pad: 30, maxLines: 200 });
+        const windowCost = estimateTokens(`${file.path}\n${windowed}`) + 8;
+        if (usedTokens + windowCost <= tokenCeiling) {
+          picked.push({ path: file.path, content: windowed });
+          usedTokens += windowCost;
+        }
+      }
+      continue;
+    }
     picked.push({ path: file.path, content });
-    used += cost;
+    usedTokens += cost;
   }
-  return { files: picked, omitted: Math.max(0, files.length - picked.length) };
+  return {
+    files: picked,
+    omitted: Math.max(0, files.length - picked.length),
+    estimatedTokens: usedTokens,
+    ceilingHit,
+  };
 }
 
 function compactManifest(files: ProjectFile[]): string {
