@@ -14,12 +14,10 @@ import {
   Settings,
   LogOut,
   Image as ImageIcon,
-  Plus,
   BookOpen,
   LogIn,
   X,
   Store,
-  Tag,
 } from "lucide-react";
 import {
   Sheet,
