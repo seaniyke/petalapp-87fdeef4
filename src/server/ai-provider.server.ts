@@ -478,6 +478,12 @@ async function usageFromResponse(
 async function recordTelemetry(args: TelemetryArgs): Promise<void> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { currentTurnContext } = await import("@/server/turn-context.server");
+    // Ambient turn attribution: explicit meta always wins, but a call made
+    // anywhere inside a turn (preflight, triage, memory, design, recovery)
+    // still lands on the right turn/project/user without threading arguments
+    // through every call site.
+    const ambient = currentTurnContext();
     const hasUsage = (args.promptTokens ?? 0) > 0 || (args.completionTokens ?? 0) > 0;
     await supabaseAdmin.from("ai_call_log").insert({
       feature: args.feature,
