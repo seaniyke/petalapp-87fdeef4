@@ -200,7 +200,7 @@ export const Route = createFileRoute("/api/discuss")({
         const surfaceBlock = renderSurfaceBlock(surfaceSignal);
 
         const chatMessages = [
-          { role: "system", content: DISCUSS_SYSTEM_PROMPT + dateBlock + capabilitiesBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
+          { role: "system", content: DISCUSS_SYSTEM_PROMPT + dateBlock + capabilitiesBlock + surfaceBlock + backendBlock + integrationsBlock + suggestionsBlock + knowledgeBlock + visionAddendum + filesContext },
           ...messages.map((m, i) => {
             if (i === lastUserIdx && hasVisionTurn) {
               return {
