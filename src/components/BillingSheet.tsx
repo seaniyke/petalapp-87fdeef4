@@ -724,6 +724,7 @@ function UsageCard({ userId, open }: { userId: string | null; open: boolean }) {
         <span>Builds {formatCredits(usage.buildCredits)}</span>
         <span>Cloud {formatCredits(usage.cloudCredits)}</span>
         <span>AI {formatCredits(usage.aiCredits)}</span>
+        {usage.computeCredits > 0 && <span>Compute {formatCredits(usage.computeCredits)}</span>}
       </div>
 
       {projects.length > 0 && (
