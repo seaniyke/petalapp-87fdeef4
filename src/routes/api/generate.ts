@@ -3029,7 +3029,7 @@ Forbidden defaults
       const taste = renderDesignTasteBlock(lastUserText || "");
       designTasteBlock = taste.text + renderLandingChecklistBlock();
     }
-    if (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack") {
+    if (!skipDesignManual && (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack")) {
       const appUi = renderAppUiBlock(lastUserText || "");
       designTasteBlock += appUi.text + renderAppScreenChecklistBlock();
       // The PRD supersedes the keyword-scraped app spec. Only fall back to the
