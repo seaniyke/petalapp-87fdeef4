@@ -6203,10 +6203,16 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // crashes Undici while reading its internal `window` slot.
         // `workController` is intentionally detached from `request.signal`:
         // a closed tab must not cancel a build the user already paid for.
-        const response = await handleGenerateRequestCore(
-          request,
-          recorder?.turnId,
-          workController.signal,
+        // Every AI call made anywhere inside the pipeline inherits this
+        // turn/project/user, so utility calls stop landing in telemetry
+        // with null attribution.
+        const response = await runWithTurnContext(
+          {
+            turnId: recorder?.turnId ?? null,
+            projectId: turnProjectId,
+            userId: turnUserId,
+          },
+          () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal),
         );
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
