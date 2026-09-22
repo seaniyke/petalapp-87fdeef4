@@ -1,10 +1,14 @@
 import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
 import {
   OPENROUTER_CHAT_URL,
+  UTILITY_MAX_OUTPUT_TOKENS,
   coerceToConfiguredModel,
   defaultFallbackModel,
   defaultTextModel,
+  defaultUtilityModel,
+  isUtilityFeature,
 } from "@/lib/ai-model-config";
+
 
 /**
  * AI provider abstraction — OPENROUTER ONLY.
