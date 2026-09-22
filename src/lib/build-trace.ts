@@ -11,6 +11,7 @@
  */
 
 import type { Phase } from "@/lib/build-phases";
+import { humanizeActivity } from "@/lib/activity-language";
 
 export type ThoughtTick = { id: number; text: string; ts: number };
 
