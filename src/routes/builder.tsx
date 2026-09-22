@@ -1191,12 +1191,13 @@ function Builder() {
   // Pending clarifying question gate. When the LAST message is an assistant
   // turn that BOTH carries `suggestions` AND ends with a real question mark
   // in its body, Kimble is asking the user to choose. Until the user sends an
-  // answer or taps "Skip question" the composer is hard-blocked and the
-  // SuggestionChecklist is the only way to proceed.
+  // answer or taps "Skip question" the build pipeline waits — the question
+  // card is the pending state. The composer stays enabled on purpose: typing
+  // a reply there IS answering the question (pendingQuestion folds it in).
   //
   // Suggestions WITHOUT a "?" in the text are post-build next-step ideas
-  // (from self-check) and must NOT block the composer — otherwise a happy
-  // path build silently locks the user out. Keep this in sync with the
+  // (from self-check) and must NOT gate anything — otherwise a happy-path
+  // build would look like an unanswered question. Keep this in sync with the
   // SuggestionChecklist render gate below (~line 3326).
   const _lastMsg = messages[messages.length - 1];
   const _lastMsgHasQuestion =
