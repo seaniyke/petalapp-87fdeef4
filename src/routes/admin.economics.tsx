@@ -12,6 +12,8 @@ import { AdminTabs } from "@/components/AdminTabs";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { adminApi } from "@/lib/admin-api";
 import { toast } from "sonner";
@@ -303,7 +305,143 @@ function AdminEconomicsPage() {
             </Card>
           </>
         )}
+
+        <EconomicsConfigPanel />
       </div>
     </div>
+  );
+}
+
+/* --------------------------- Editable settings --------------------------- */
+
+type ConfigRow = {
+  key: string;
+  value: number;
+  default_value: number;
+  overridden: boolean;
+};
+
+const CONFIG_LABELS: Record<string, string> = {
+  target_variable_cost_per_credit_usd: "Target variable cost per credit (USD)",
+  build_minute_usd: "Build minute (USD)",
+  verification_minute_usd: "Verification minute (USD)",
+  deploy_event_usd: "Deploy event (USD)",
+  image_generation_usd: "Image generation (USD)",
+  min_purchase_ngn: "Minimum purchase (NGN)",
+  target_gross_margin_pct: "Target gross margin (%)",
+  free_user_monthly_cost_ceiling_usd: "Free user monthly cost ceiling (USD)",
+  max_active_dedicated_backends: "Max active dedicated backends",
+  dedicated_retention_days: "Dedicated backend retention (days)",
+  auto_upgrade_row_pct: "Auto-upgrade at rows used (%)",
+  auto_upgrade_user_count: "Auto-upgrade at app users",
+  auto_upgrade_min_credits: "Auto-upgrade minimum credits",
+  compute_hour_usd: "Kimble Compute per awake hour (USD)",
+  max_active_compute: "Max active compute containers",
+};
+
+function EconomicsConfigPanel() {
+  const [rows, setRows] = useState<ConfigRow[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await adminApi<{ rows: ConfigRow[] }>({ action: "economics_config" });
+      setRows(res.rows);
+      setDrafts(Object.fromEntries(res.rows.map((r) => [r.key, String(r.value)])));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load settings");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  async function save(key: string) {
+    const value = Number(drafts[key]);
+    if (!Number.isFinite(value) || value < 0) {
+      toast.error("Enter a positive number");
+      return;
+    }
+    setBusy(key);
+    try {
+      await adminApi({ action: "set_economics_config", key, value });
+      toast.success("Saved");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function reset(key: string) {
+    setBusy(key);
+    try {
+      await adminApi({ action: "reset_economics_config", key });
+      toast.success("Reset to default");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <h2 className="text-sm font-medium">Economics settings</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Internal cost and margin rates used across billing, Cloud metering and auto-upgrades.
+          Customer prices live on the Billing tab (plans, credit packs, currencies).
+        </p>
+        {loading ? (
+          <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {rows.map((r) => (
+              <div key={r.key} className="flex flex-wrap items-center gap-2 border-t py-2">
+                <div className="min-w-[16rem] flex-1">
+                  <div className="text-sm">{CONFIG_LABELS[r.key] ?? r.key}</div>
+                  <div className="font-mono text-[11px] text-muted-foreground">
+                    {r.key} · default {r.default_value}
+                    {r.overridden ? " · overridden" : ""}
+                  </div>
+                </div>
+                <Input
+                  className="w-36"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={drafts[r.key] ?? ""}
+                  onChange={(e) => setDrafts((d) => ({ ...d, [r.key]: e.target.value }))}
+                />
+                <Button size="sm" disabled={busy === r.key} onClick={() => void save(r.key)}>
+                  Save
+                </Button>
+                {r.overridden && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy === r.key}
+                    onClick={() => void reset(r.key)}
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
