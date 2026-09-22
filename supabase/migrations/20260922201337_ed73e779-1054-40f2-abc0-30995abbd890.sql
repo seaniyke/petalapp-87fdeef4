@@ -1,0 +1,1 @@
+ALTER TABLE public.design_pictures ADD COLUMN IF NOT EXISTS location TEXT;

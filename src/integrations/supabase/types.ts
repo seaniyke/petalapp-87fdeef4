@@ -921,6 +921,7 @@ export type Database = {
           id: string
           industry: string | null
           license: string
+          location: string | null
           mood: string | null
           orientation: string
           source: string
@@ -940,6 +941,7 @@ export type Database = {
           id?: string
           industry?: string | null
           license?: string
+          location?: string | null
           mood?: string | null
           orientation?: string
           source?: string
@@ -959,6 +961,7 @@ export type Database = {
           id?: string
           industry?: string | null
           license?: string
+          location?: string | null
           mood?: string | null
           orientation?: string
           source?: string
