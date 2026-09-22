@@ -14,6 +14,7 @@ import { pickDesignForBrief, type DesignPick } from "./palette-presets.server";
 import { renderSectionLibraryBlock } from "./section-library.server";
 import { renderHeaderBlock } from "./registry/headers";
 import { renderIconBlock } from "./registry/icons";
+import { renderIllustrationBlock } from "./registry/illustrations";
 
 const TASTE_BODY = `\n\n[Reinforcement — Design taste commitments (READ BEFORE WRITING ANY VISUAL FILE)]
 Kimble is being judged on whether the landing looks like it was made by a person with taste, not by an AI that reached for the safe default. Every visual file you write this turn must satisfy ALL of the following:
