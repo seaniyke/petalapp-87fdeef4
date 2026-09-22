@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/sheet";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { CreditBadge } from "@/components/CreditBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 
@@ -58,9 +57,6 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
                 Signed in as
               </p>
               <p className="mt-0.5 truncate text-sm font-medium">{user.email}</p>
-              <div className="mt-3">
-                <CreditBadge />
-              </div>
             </div>
           )}
 
