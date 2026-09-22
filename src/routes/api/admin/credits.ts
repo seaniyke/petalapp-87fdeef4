@@ -1689,6 +1689,7 @@ export const Route = createFileRoute("/api/admin/credits")({
                 p95_ms: pct(0.95),
               },
               top_projects: projects,
+              ai_rollup: aiRollup,
               config: cfg,
               alerts,
             });
