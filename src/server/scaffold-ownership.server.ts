@@ -99,7 +99,7 @@ export function isScaffoldOwnedPath(path: string): boolean {
 
 /** Is this path absorbed by a deterministic writer instead of refused? */
 export function isScaffoldAbsorbedPath(path: string): boolean {
-  return SCAFFOLD_ABSORBED_PATHS.has(path);
+  return ownershipVariants(path).some((p) => SCAFFOLD_ABSORBED_PATHS.has(p));
 }
 
 /**

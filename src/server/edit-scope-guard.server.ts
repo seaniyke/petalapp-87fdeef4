@@ -15,6 +15,7 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { isScaffoldOwnedPath, isScaffoldAbsorbedPath } from "./scaffold-ownership.server";
 
 export interface FileDelta {
   path: string;
