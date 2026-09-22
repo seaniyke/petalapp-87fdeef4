@@ -1644,10 +1644,58 @@ function deterministicHeroBackgroundFallback(args: {
   };
 }
 
+/**
+ * "Add a logo" is a first-class capability, not a model gamble.
+ *
+ * When the app has no brand mark, build one from its own name and palette and
+ * wire it everywhere a mark belongs — header/footer surfaces, the placeholder
+ * glyphs standing in for it, and the site icon.
+ */
+function deterministicBrandMarkFallback(args: {
+  currentFiles: ProjectFile[];
+  latestUserContent: string;
+}): ParsedProjectPayload | null {
+  if (!/\b(logo|brand ?mark|wordmark|monogram|favicon|app icon)\b/i.test(args.latestUserContent)) {
+    return null;
+  }
+  let result: { files: ProjectFile[]; notes: string[] };
+  try {
+    result = ensureBrandIdentity(args.currentFiles);
+  } catch {
+    return null;
+  }
+  const before = new Map(args.currentFiles.map((f) => [f.path, f.content]));
+  const ops = result.files
+    .filter((f) => before.get(f.path) !== f.content)
+    .map((f) => ({
+      op: before.has(f.path) ? ("update" as const) : ("create" as const),
+      path: f.path,
+      content: f.content,
+    }));
+  if (ops.length === 0) return null;
+
+  const summary = "Added a logo built from the app's own name and colours, and used it across the header, footer and site icon.";
+  const recap = ops.map((o) => `- ${o.op === "create" ? "Added" : "Updated"} ${o.path}`).join("\n");
+  return {
+    parsed: {
+      plan: "Create the brand mark and wire it into every surface that shows a logo.",
+      summary,
+      ops: ops as ParsedProjectPayload["parsed"]["ops"],
+      recap,
+    },
+    summary,
+    plan: "Create the brand mark and wire it into every surface that shows a logo.",
+    recap,
+  };
+}
+
 function deterministicPatchFallback(args: {
   currentFiles: ProjectFile[];
   latestUserContent: string;
 }): ParsedProjectPayload | null {
+  const brandMark = deterministicBrandMarkFallback(args);
+  if (brandMark) return brandMark;
+
   const heroBackground = deterministicHeroBackgroundFallback(args);
   if (heroBackground) return heroBackground;
 
