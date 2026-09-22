@@ -24,9 +24,14 @@ export const Route = createFileRoute("/api/transcribe")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // DOCUMENTED EXCEPTION (audio only). Kimble's chat/completions traffic
+        // is 100% OpenRouter → DeepSeek. OpenRouter exposes no speech-to-text
+        // endpoint, so voice input still uses the gateway's Whisper route.
+        // Removing it would delete an existing product feature. No text model
+        // call happens here.
         const apiKey = process.env.LOVABLE_API_KEY;
         if (!apiKey) {
-          return new Response("LOVABLE_API_KEY not configured", { status: 500 });
+          return new Response("speech-to-text is not configured", { status: 500 });
         }
         // Lightweight auth: require a valid Supabase bearer.
         const authHeader = getRequestHeader("authorization");
