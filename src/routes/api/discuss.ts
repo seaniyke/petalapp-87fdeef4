@@ -90,7 +90,7 @@ export const Route = createFileRoute("/api/discuss")({
 
         // Provider key check is handled inside aiChatCompletions; we only verify
         // here for the friendly early-fail path used by the existing UI.
-        if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) {
+        if (!process.env.OPENROUTER_API_KEY) {
           return new Response("AI gateway is not configured.", { status: 500 });
         }
 

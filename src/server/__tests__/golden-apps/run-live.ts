@@ -245,8 +245,8 @@ async function main() {
     process.exit(0);
   }
 
-  if (!process.env.LOVABLE_API_KEY) {
-    console.error("error: LOVABLE_API_KEY is not set in the environment");
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.error("error: OPENROUTER_API_KEY is not set in the environment");
     process.exit(2);
   }
 

@@ -185,7 +185,7 @@ export async function understandRequest(
   opts: { userId?: string; projectId?: string | null; prior?: PicUnderstanding | null; signal?: AbortSignal } = {},
 ): Promise<PicUnderstanding> {
   const fallback = deterministicUnderstanding(brief);
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return fallback;
+  if (!process.env.OPENROUTER_API_KEY) return fallback;
   if ((brief ?? "").trim().length < 4) return fallback;
 
   try {

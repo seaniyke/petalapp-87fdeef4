@@ -183,21 +183,12 @@ function guessSecrets(displayName: string): string[] {
 /* ---------------------------- AI synth ---------------------------- */
 
 async function tryAiSynth(slug: string, displayName: string): Promise<ResolvedIntegration | null> {
-  const apiKey = process.env.LOVABLE_API_KEY;
-  if (!apiKey) return null;
-  const res = await fetchWithTimeout(
-    "https://ai.gateway.lovable.dev/v1/chat/completions",
-    9000,
-  );
-  if (!res) return null;
-  // Re-issue with a real body (the head request above just primes the connection).
-  void res;
+  if (!process.env.OPENROUTER_API_KEY) return null;
   try {
-    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+    const { aiChatCompletions } = await import("@/server/ai-provider.server");
+    const r = await aiChatCompletions({
+      feature: "discuss",
+      body: {
         messages: [
           {
             role: "system",
@@ -210,7 +201,9 @@ async function tryAiSynth(slug: string, displayName: string): Promise<ResolvedIn
           },
         ],
         temperature: 0.2,
-      }),
+        max_tokens: 1024,
+      },
+      meta: { chosenBy: "doc_resolver" },
     });
     if (!r.ok) return null;
     const json = (await r.json()) as {

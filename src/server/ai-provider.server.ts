@@ -1,28 +1,37 @@
 import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
+import {
+  OPENROUTER_CHAT_URL,
+  coerceToConfiguredModel,
+  defaultFallbackModel,
+  defaultTextModel,
+} from "@/lib/ai-model-config";
 
 /**
- * AI provider abstraction.
+ * AI provider abstraction — OPENROUTER ONLY.
  *
- * Every server-side AI call in Kimble goes through `aiChatCompletions(...)`. The
- * helper picks a provider (Lovable AI by default, OpenRouter optional), picks a
- * model (DB override → caller-supplied → default), forwards the request as an
- * OpenAI-compatible chat completions call, and:
+ *     Kimble  →  OpenRouter  →  DeepSeek
  *
- *   1. Records a telemetry row in `ai_call_log` (best-effort, never blocks).
- *   2. On a hard error (429/402/5xx) and only when the body has not yet been
- *      consumed, retries ONCE with the configured fallback model on the same
- *      provider. The retried response is what callers see.
+ * Every server-side AI call in Kimble goes through `aiChatCompletions(...)`.
+ * The helper resolves the model through the central config
+ * (`src/lib/ai-model-config.ts`), forwards the request as an OpenAI-compatible
+ * chat completions call to OpenRouter, and:
+ *
+ *   1. Records a telemetry row in `ai_call_log` (best-effort, never blocks) with
+ *      model, provider, token counts, cost, user/project/turn ids.
+ *   2. On a hard error (429/402/400/404/5xx) and only when the body has not yet
+ *      been consumed, retries EXACTLY ONCE with the fallback model. There is no
+ *      cross-provider failover, so one operation never fans out to two gateways.
  *
  * The caller gets back the raw `Response` so streaming code keeps working
  * without any change.
  *
- * How to switch providers:
- *   - Admin UI at /admin/ai-providers (per feature, with model picker).
- *   - DB override (ai_provider_settings) wins over env.
- *   - Env vars (AI_PROVIDER, AI_PROVIDER_GENERATE, etc.) still work.
+ * There are no direct model-provider integrations (OpenAI, Anthropic, Google,
+ * DeepSeek first-party) and no Lovable AI Gateway chat path. Model ids supplied
+ * by callers or by legacy DB overrides are coerced to the configured DeepSeek
+ * model; `openrouter/auto` is never used.
  *
- * Image gen is HARD-PINNED to Lovable AI — Gemini's `message.images` shape
- * isn't portable to OpenRouter.
+ * To change the model everywhere: edit src/lib/ai-model-config.ts (or set
+ * OPENROUTER_MODEL / OPENROUTER_VISION_MODEL / OPENROUTER_FALLBACK_MODEL).
  */
 
 export type AiFeature =
@@ -36,10 +45,25 @@ export type AiFeature =
   | "preflight"
   | "image";
 
-type Provider = "lovable" | "openrouter";
+/** Retained as a one-member union: OpenRouter is the only gateway. */
+type Provider = "openrouter";
 
-const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_URL = OPENROUTER_CHAT_URL;
+
+/** True when the request carries image parts (vision models required). */
+function requestHasImageParts(body: Record<string, unknown>): boolean {
+  const messages = body.messages;
+  if (!Array.isArray(messages)) return false;
+  for (const m of messages) {
+    const content = (m as { content?: unknown } | null)?.content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      const type = (part as { type?: unknown } | null)?.type;
+      if (type === "image_url" || type === "input_image" || type === "image") return true;
+    }
+  }
+  return false;
+}
 
 function featureOverrideEnv(feature: AiFeature): string {
   return `AI_PROVIDER_${feature.toUpperCase()}`;
@@ -140,10 +164,8 @@ async function loadDbSettings(): Promise<Map<string, FeatureSettings>> {
         shadow_pct: number | null;
       }>) {
         map.set(row.feature, {
-          provider:
-            row.provider === "openrouter" || row.provider === "lovable"
-              ? row.provider
-              : null,
+          // Legacy rows may say "lovable"; OpenRouter is the only gateway now.
+          provider: row.provider === "openrouter" ? "openrouter" : null,
           model: row.model || null,
           fallback_model: row.fallback_model || null,
           budget_enabled: row.budget_enabled ?? null,
@@ -174,21 +196,15 @@ export function invalidateProviderCache(): void {
 
 // ---------------- Resolution ----------------
 
-async function resolveProvider(feature: AiFeature): Promise<Provider> {
-  const settings = await loadDbSettings();
-  const dbChoice = settings.get(feature)?.provider;
-  if (dbChoice) return dbChoice;
-
-  const envOverride = process.env[featureOverrideEnv(feature)]?.toLowerCase();
-  const envGlobal = process.env.AI_PROVIDER?.toLowerCase();
-  const explicit = envOverride || envGlobal;
-  if (explicit) return explicit === "openrouter" ? "openrouter" : "lovable";
-
-  // No explicit configuration: prefer OpenRouter whenever its key is present.
-  // The old default was an unconditional "lovable", which meant a funded
-  // OpenRouter account was never touched and every call died on the Lovable
-  // gateway's own credit balance (HTTP 402) — an outage users could not fix.
-  return process.env.OPENROUTER_API_KEY ? "openrouter" : "lovable";
+/**
+ * OPENROUTER-ONLY. Kimble has a single AI provider: OpenRouter.
+ *
+ * Legacy DB rows (`ai_provider_settings.provider = 'lovable'`) and legacy env
+ * vars (`AI_PROVIDER`, `AI_PROVIDER_<FEATURE>`) are intentionally ignored so a
+ * stale configuration row cannot silently re-open a direct-provider path.
+ */
+async function resolveProvider(_feature: AiFeature): Promise<Provider> {
+  return "openrouter";
 }
 
 /** Public: resolve which provider a given feature is configured to use.
@@ -675,31 +691,39 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     }
   }
 
-  const provider = budgetProviderOverride ?? (await resolveProvider(opts.feature));
+  // Provider is always OpenRouter — `budgetProviderOverride` can only ever be
+  // "openrouter" too; kept for telemetry shape compatibility.
+  const provider: Provider = budgetProviderOverride ?? (await resolveProvider(opts.feature));
   const { model: dbModel, fallback } = await resolveModelOverride(opts.feature);
 
   // DB model normally wins over caller-supplied model (operator overrides have
   // priority). Protocol-critical callers can lock a known tool-capable model;
   // budget routing remains highest priority when explicitly enabled.
   const callerModel = (opts.body.model as string | undefined) ?? undefined;
-  let primaryModel =
+  const requestedModel =
     budgetModelOverride || (opts.lockCallerModel ? callerModel : dbModel || callerModel) || null;
+
+  // OPENROUTER-ONLY MODEL POLICY. Every requested slug is normalised to the
+  // centrally configured DeepSeek model (src/lib/ai-model-config.ts) so no
+  // legacy hardcoded Gemini/GPT/Claude id can reach the wire. `openrouter/auto`
+  // is never used — the model is always explicit.
+  const needsVision = requestHasImageParts(opts.body);
+  let primaryModel: string = coerceToConfiguredModel(requestedModel, { vision: needsVision });
+  const coercedFallback = coerceToConfiguredModel(fallback ?? defaultFallbackModel(), {
+    vision: needsVision,
+  });
+  const fallbackModel = coercedFallback === primaryModel ? null : coercedFallback;
 
   // Kill-switch: if the primary model is currently cooling off because of a
   // high `no_edit_emitted` rate, swap it for the configured fallback BEFORE
   // we make the call. Prevents the "every turn keeps hitting the same broken
   // model" loop until the cool-off window expires.
   const { isModelKilled } = await import("@/server/model-kill-switch.server");
-  if (
-    primaryModel &&
-    isModelKilled(primaryModel) &&
-    fallback &&
-    !isModelKilled(fallback)
-  ) {
+  if (isModelKilled(primaryModel) && fallbackModel && !isModelKilled(fallbackModel)) {
     console.warn(
-      `[kill-switch] swapping primary ${primaryModel} → ${fallback} (cooling off)`,
+      `[kill-switch] swapping primary ${primaryModel} → ${fallbackModel} (cooling off)`,
     );
-    primaryModel = fallback;
+    primaryModel = fallbackModel;
   }
 
   // Health guard (audit 3b): a model whose last ~50 logged calls are almost
@@ -707,73 +731,31 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // instead of paying a guaranteed-failed round-trip on every turn.
   const { isModelUnhealthySync } = await import("@/server/model-health.server");
   if (
-    primaryModel &&
     isModelUnhealthySync(primaryModel) &&
-    fallback &&
-    !isModelUnhealthySync(fallback)
+    fallbackModel &&
+    !isModelUnhealthySync(fallbackModel)
   ) {
     console.warn(
-      `[model-health] swapping primary ${primaryModel} → ${fallback} (rolling error rate too high)`,
+      `[model-health] swapping primary ${primaryModel} → ${fallbackModel} (rolling error rate too high)`,
     );
-    primaryModel = fallback;
+    primaryModel = fallbackModel;
   }
 
-
-  const body =
-    primaryModel && primaryModel !== callerModel
-      ? { ...opts.body, model: primaryModel }
-      : opts.body;
+  const body = { ...opts.body, model: primaryModel };
 
 
   const t0 = Date.now();
-  let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
-  let latency = Date.now() - t0;
-  let effectiveProvider = provider;
+  const primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
+  const latency = Date.now() - t0;
+  const effectiveProvider = provider;
   if (primary.status === 402) {
     (globalThis as Record<string, unknown>)["__petalLastProviderPaymentFailureAt"] = Date.now();
   }
 
-  // Cross-provider failover. A 402 (out of credits) or 401/403 (bad key) is a
-  // BILLING/AUTH problem with that specific gateway, not with the model or the
-  // request — retrying the same gateway with a different model cannot help. If
-  // the other gateway is configured, use it instead of failing the whole turn.
-  const gatewayDown =
-    primary.status === 402 || primary.status === 401 || primary.status === 403;
-  const altProvider: Provider = provider === "lovable" ? "openrouter" : "lovable";
-  const altKeyPresent =
-    altProvider === "openrouter" ? !!process.env.OPENROUTER_API_KEY : !!process.env.LOVABLE_API_KEY;
-  if (gatewayDown && altKeyPresent) {
-    console.warn(
-      `[ai-provider] ${provider} returned HTTP ${primary.status} (billing/auth) — failing over to ${altProvider}`,
-    );
-    try {
-      await primary.text();
-    } catch {
-      /* ignore */
-    }
-    const tAlt = Date.now();
-    const alt = await dispatch(altProvider, body, opts.signal, opts.timeoutTier);
-    void recordTelemetry({
-      feature: opts.feature,
-      provider: altProvider,
-      model: primaryModel,
-      status: alt.status,
-      latencyMs: Date.now() - tAlt,
-      fallbackUsed: true,
-      errorMessage: alt.ok ? null : `HTTP ${alt.status}`,
-      phase: opts.meta?.phase ?? null,
-      promptChars: opts.meta?.promptChars ?? null,
-      hadAttachments: opts.meta?.hadAttachments ?? false,
-      chosenBy: `${opts.meta?.chosenBy ?? "unknown"}_provider_failover`,
-      projectId: opts.meta?.projectId ?? null,
-      userId: opts.meta?.userId ?? null,
-      turnId: opts.meta?.turnId ?? null,
-    });
-    if (alt.ok) return alt;
-    primary = alt;
-    latency = Date.now() - tAlt;
-    effectiveProvider = altProvider;
-  }
+  // NOTE: there is no cross-provider failover any more. OpenRouter is the only
+  // gateway, so a 401/402/403 is an account problem that a second provider
+  // cannot paper over. At most ONE bounded retry (fallback model) happens below,
+  // which guarantees a single operation never fans out to multiple providers.
 
   // Decide whether to retry on fallback model (same provider).
   // Retry on 5xx, 429 (rate-limit), 402 (credits), AND 400/404 — the latter
@@ -781,8 +763,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // override doesn't burn 100% of that feature's calls.
   const shouldRetry =
     !primary.ok &&
-    fallback &&
-    fallback !== primaryModel &&
+    !!fallbackModel &&
     (primary.status === 429 ||
       primary.status === 402 ||
       primary.status === 400 ||
@@ -834,7 +815,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     turnId: opts.meta?.turnId ?? null,
   });
 
-  const fallbackBody = { ...opts.body, model: fallback };
+  const fallbackBody = { ...opts.body, model: fallbackModel };
   const t1 = Date.now();
   const retried = await dispatch(effectiveProvider, fallbackBody, opts.signal, opts.timeoutTier);
   const retryLatency = Date.now() - t1;
@@ -842,7 +823,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   void recordTelemetry({
     feature: opts.feature,
     provider: effectiveProvider,
-    model: fallback,
+    model: fallbackModel,
     status: retried.status,
     latencyMs: retryLatency,
     fallbackUsed: true,
@@ -926,33 +907,31 @@ function effectiveSignal(
 }
 
 async function dispatch(
-  provider: Provider,
+  _provider: Provider,
   body: Record<string, unknown>,
   signal: AbortSignal | undefined,
   tierOverride?: AiCallTimeoutTier,
 ): Promise<Response> {
-  let url: string;
-  let apiKey: string | undefined;
-  let outBody = body;
-
-  if (provider === "openrouter") {
-    url = OPENROUTER_URL;
-    apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        "OPENROUTER_API_KEY is not configured. Either add the secret or set the feature back to 'lovable'.",
-      );
-    }
-    const remapped = remapModelForOpenRouter(outBody.model as string | undefined);
-    if (remapped !== outBody.model) {
-      outBody = { ...outBody, model: remapped };
-    }
-  } else {
-    url = LOVABLE_URL;
-    apiKey = process.env.LOVABLE_API_KEY;
-    if (!apiKey) {
-      throw new Error("LOVABLE_API_KEY is not configured.");
-    }
+  const url = OPENROUTER_URL;
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "OPENROUTER_API_KEY is not configured. Kimble routes all AI traffic through OpenRouter.",
+    );
+  }
+  // Final safety net: coerce whatever slug arrives here to the configured model.
+  let outBody: Record<string, unknown> = body;
+  const wireModel = coerceToConfiguredModel(
+    remapModelForOpenRouter(outBody.model as string | undefined) ?? defaultTextModel(),
+    { vision: requestHasImageParts(outBody) },
+  );
+  if (wireModel !== outBody.model) {
+    outBody = { ...outBody, model: wireModel };
+  }
+  // Ask OpenRouter for token usage on streamed calls too, so `ai_call_log`
+  // records prompt/completion/total tokens for every request.
+  if (outBody.stream === true && !outBody.stream_options) {
+    outBody = { ...outBody, stream_options: { include_usage: true } };
   }
 
   const headers: Record<string, string> = {
@@ -960,7 +939,7 @@ async function dispatch(
     "Content-Type": "application/json",
   };
 
-  if (provider === "openrouter") {
+  {
     headers["HTTP-Referer"] = process.env.OPENROUTER_REFERER || "https://buildwithpetal.com";
     headers["X-Title"] = "Kimble";
   }

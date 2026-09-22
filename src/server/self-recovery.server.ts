@@ -184,7 +184,7 @@ export async function runSelfCheck(args: {
   assistantSummary: string;
   filePaths: string[];
 }): Promise<SelfCheckVerdict | null> {
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return null;
+  if (!process.env.OPENROUTER_API_KEY) return null;
 
   const brief = (args.brief ?? "").trim().slice(0, 1500);
   if (brief.length < 4) return null;
@@ -302,7 +302,7 @@ export async function humanizeBuildError(args: {
     suggestions: [],
   };
 
-  if (!process.env.LOVABLE_API_KEY && !process.env.OPENROUTER_API_KEY) return fallback;
+  if (!process.env.OPENROUTER_API_KEY) return fallback;
 
   const raw = (args.rawMessage ?? "").trim().slice(0, 1500);
   if (!raw) return fallback;

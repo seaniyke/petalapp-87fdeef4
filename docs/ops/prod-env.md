@@ -14,7 +14,14 @@ gated by `INTERNAL_HEALTH_TOKEN`).
 | `SUPABASE_URL` | Backend URL | Auto-injected by Lovable Cloud |
 | `SUPABASE_PUBLISHABLE_KEY` | Browser/RLS client | Auto-injected |
 | `SUPABASE_SERVICE_ROLE_KEY` | Admin client (`client.server.ts`) | Auto-injected |
-| `LOVABLE_API_KEY` | Petal AI Gateway | Auto-managed; rotate via `lovable_api_key--rotate_lovable_api_key` |
+| `OPENROUTER_API_KEY` | **The only AI provider.** All chat/completions + image generation (Kimble → OpenRouter → DeepSeek) | openrouter.ai dashboard; server-side only, never exposed to the browser |
+| `LOVABLE_API_KEY` | Voice-to-text only (`/api/transcribe`) + internal email routes. No text-model traffic. | Auto-managed; rotate via `lovable_api_key--rotate_lovable_api_key` |
+
+Optional AI overrides (all read server-side, defaults in `src/lib/ai-model-config.ts`):
+`OPENROUTER_MODEL` (default `deepseek/deepseek-v4-flash`), `OPENROUTER_VISION_MODEL`
+(`deepseek/deepseek-v4-flash-vision-exp`), `OPENROUTER_FALLBACK_MODEL`
+(`deepseek/deepseek-v3.2`), `OPENROUTER_IMAGE_MODEL` (`google/gemini-2.5-flash-image`),
+`OPENROUTER_REFERER`. The legacy `AI_PROVIDER*` vars are ignored.
 | `INTERNAL_HEALTH_TOKEN` | Gates `/api/internal/health` | Generate with `openssl rand -hex 32` |
 
 ## Mobile pipeline (Codemagic + Expo)
