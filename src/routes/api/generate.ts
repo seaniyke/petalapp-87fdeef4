@@ -3987,12 +3987,28 @@ Forbidden defaults
           // this" can never drift apart. `package.json` is in it: dependency
           // changes are owned by the bare import resolver, which writes a real
           // resolved version instead of a guessed one.
+          // Edit boundary — a small ask may not rewrite a page it never named.
+          // Built once per turn; stands down for initial builds, cross-cutting
+          // work and anything we could not confidently resolve to target files.
+          const editBoundary = buildEditBoundary({
+            scope: editClassification?.scope ?? null,
+            targetPaths: resolvedTargetPaths,
+            neighbourPaths: impactNeighbourPaths,
+            existingPaths: currentFiles.map((f) => f.path),
+            disabled: isInitial || isCrossCutting,
+          });
+          if (editBoundary.enforced) {
+            console.info(`[edit-boundary] ${editBoundary.describe()}`);
+          }
+
           const isProtectedPath = (p: string) =>
             isScaffoldOwnedPath(p) ||
             matchesUserProtectedGlob(p) ||
             // Plan Mode v1 — when a plan was approved, ANY file outside its
             // allow-list is treated as protected and dropped.
-            (allowedPathSet !== null && !allowedPathSet.has(p));
+            (allowedPathSet !== null && !allowedPathSet.has(p)) ||
+            // A file the request never pointed at, on a small edit.
+            !editBoundary.allows(p);
 
           // Honesty ledger — every path the model asked to change that did
           // NOT end up byte-different after apply + recovery. Surfaced to the
