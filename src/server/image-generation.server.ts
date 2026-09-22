@@ -188,9 +188,8 @@ export async function generatePetalImage(
 
 /** Walk every file content, find `petal-image://...` URLs, and replace them
  *  with real generated images. Replacements are deduped by slug so the same
- *  placeholder used five times only generates one image. Failures fall back
- *  to a deterministic picsum URL so the build never breaks because of a flaky
- *  image generation call. */
+ *  placeholder used five times only generates one image. Failed generations
+ *  become self-contained SVG artwork, never a third-party runtime dependency. */
 export async function resolvePetalImagePlaceholders(
   files: ProjectFile[],
   /** Called as soon as each picture is ready, so the build card can show it
@@ -198,10 +197,14 @@ export async function resolvePetalImagePlaceholders(
   onImage?: (image: { url: string; slug: string; index: number }) => void,
   /** When set, the owner's own uploaded photos are searched first. */
   projectId?: string | null,
+  /** Existing apps: only placeholders introduced by this turn are eligible. */
+  targetPaths?: Iterable<string>,
 ): Promise<{ files: ProjectFile[]; resolved: number; failed: number; urls: string[] }> {
+  const allowed = targetPaths ? new Set(targetPaths) : null;
   // 1. Collect all unique placeholders across the project.
   const slugs = new Set<string>();
   for (const f of files) {
+    if (allowed && !allowed.has(f.path)) continue;
     PLACEHOLDER_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = PLACEHOLDER_RE.exec(f.content)) !== null) {
@@ -221,6 +224,16 @@ export async function resolvePetalImagePlaceholders(
   const queue = [...ordered];
 
   const liveUrls: string[] = [];
+  const fallbackUrl = (slug: string) => {
+    const label = slug
+      .replace(/[-_]+/g, " ")
+      .replace(/[^a-z0-9 ]/gi, "")
+      .trim()
+      .slice(0, 48) || "Picture";
+    const hue = Math.abs([...slug].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue} 60% 88%)"/><stop offset="1" stop-color="hsl(${(hue + 55) % 360} 58% 72%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><circle cx="920" cy="170" r="240" fill="white" opacity=".2"/><path d="M0 700 330 390l210 190 170-150 490 370H0Z" fill="white" opacity=".35"/><text x="70" y="720" font-family="Arial,sans-serif" font-size="42" fill="#172033" opacity=".72">${label}</text></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  };
   const announce = (slug: string, url: string) => {
     liveUrls.push(url);
     try {
@@ -269,30 +282,25 @@ export async function resolvePetalImagePlaceholders(
       } catch (e) {
         failed += 1;
         console.warn(`[petal-image] generation failed for "${slug}":`, e);
-        // Deterministic fallback so the file still renders something.
-        const seed = Math.abs(
-          [...slug].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7),
-        );
-        urlMap.set(slug, `https://picsum.photos/seed/${seed}/1200/800`);
+        const url = fallbackUrl(slug);
+        urlMap.set(slug, url);
+        announce(slug, url);
       }
     }
   }
   await Promise.all([worker(), worker()]);
 
-  // 4. For slugs we skipped due to the cap, still substitute picsum so the
-  // app doesn't try to load `petal-image://` (which would 404).
+  // 4. Slugs beyond the generation cap still receive reliable local artwork.
   for (const slug of skipped) {
-    const seed = Math.abs(
-      [...slug].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7),
-    );
-    urlMap.set(slug, `https://picsum.photos/seed/${seed}/1200/800`);
+    urlMap.set(slug, fallbackUrl(slug));
   }
 
   // 5. Apply substitutions.
   const next = files.map((f) => {
+    if (allowed && !allowed.has(f.path)) return f;
     if (!f.content.includes("petal-image://")) return f;
     const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug) => {
-      return urlMap.get(slug) ?? `https://picsum.photos/seed/${slug}/1200/800`;
+      return urlMap.get(slug) ?? fallbackUrl(slug);
     });
     return updated === f.content ? f : { ...f, content: updated };
   });

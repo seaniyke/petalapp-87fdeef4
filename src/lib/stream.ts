@@ -3,6 +3,8 @@ import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.server";
 
 type Handlers = {
+  /** Durable server sequence number, available on resumed events. */
+  onEventSeq?: (seq: number) => void;
   onStatus?: (message: string) => void;
   onPlanDelta?: (delta: string) => void;
   onSummaryDelta?: (delta: string) => void;
@@ -523,6 +525,7 @@ export async function streamResumeTurn(
         } catch {
           continue;
         }
+        if (typeof evt.seq === "number") handlers.onEventSeq?.(evt.seq);
         // Resume-only meta events that aren't part of StreamEvent.
         if (evt.type === "resume_start" || evt.type === "resume_timeout") continue;
         // Re-dispatch through the same switch by faking a StreamEvent.

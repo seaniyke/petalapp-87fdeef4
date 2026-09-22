@@ -4891,20 +4891,16 @@ Forbidden defaults
         // Tier 2 — stream-time autofixer (regex pass, <10ms total).
         // Repairs known footguns BEFORE the build/image steps run.
         const autofixT0 = Date.now();
-        const autofixOut = autofixFiles(nextFiles);
+        const preAutofixChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
+        const autofixOut = autofixFiles(
+          nextFiles,
+          isInitial ? undefined : preAutofixChangedPaths,
+        );
         nextFiles = autofixOut.files;
         if (autofixOut.report.fixedCount > 0) {
           console.log(
             `[autofix] ${autofixOut.report.fixedCount} fix(es):`,
             autofixOut.report.notes.join("; "),
-          );
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "status",
-                message: `Auto-corrected ${autofixOut.report.fixedCount} small issue${autofixOut.report.fixedCount === 1 ? "" : "s"}.`,
-              }),
-            ),
           );
         }
         recorder.record({
@@ -4914,22 +4910,6 @@ Forbidden defaults
           issue_count: autofixOut.report.fixedCount,
           details: { notes: autofixOut.report.notes.slice(0, 8) },
         });
-        controller.enqueue(
-          encoder.encode(
-            sse({
-              type: "timeline",
-              step: "stream_autofix",
-              outcome: autofixOut.report.fixedCount > 0 ? "fixed" : "ok",
-              message:
-                autofixOut.report.fixedCount > 0
-                  ? `Auto-corrected ${autofixOut.report.fixedCount} small issue${autofixOut.report.fixedCount === 1 ? "" : "s"}`
-                  : "Quick safety scan — clean",
-              count: autofixOut.report.fixedCount,
-              ts: Date.now(),
-            }),
-          ),
-        );
-
         // Tier 2.5 + 2.45 — local verifier and npm pre-flight
         // (extracted to src/server/pipeline/tier-local-verify.ts).
         const localT0 = Date.now();
@@ -5464,7 +5444,13 @@ Forbidden defaults
         // bucket. Failures fall back to picsum so the build never
         // breaks because of a flaky image call.
         try {
-          const hasPlaceholders = nextFiles.some((f) => f.content.includes("petal-image://"));
+          const imageTargetPaths = isInitial
+            ? undefined
+            : diffChangedPaths(turnBaselineFiles, nextFiles);
+          const imageTargetSet = imageTargetPaths ? new Set(imageTargetPaths) : null;
+          const hasPlaceholders = nextFiles.some(
+            (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://"),
+          );
           if (hasPlaceholders) {
             controller.enqueue(
               encoder.encode(sse({ type: "status", message: "Generating images…" })),
@@ -5489,6 +5475,7 @@ Forbidden defaults
                 );
               },
               body.projectId ?? null,
+              imageTargetPaths,
             );
             nextFiles = imgResult.files;
             if (imgResult.resolved > 0) {
@@ -5496,26 +5483,11 @@ Forbidden defaults
                 encoder.encode(
                   sse({
                     type: "status",
-                    message: `Generated ${imgResult.resolved} image${imgResult.resolved === 1 ? "" : "s"}.`,
+                    message: `Made ${imgResult.resolved} picture${imgResult.resolved === 1 ? "" : "s"}.`,
                   }),
                 ),
               );
             }
-            controller.enqueue(
-              encoder.encode(
-                sse({
-                  type: "timeline",
-                  step: "image_resolve",
-                  outcome: imgResult.resolved > 0 ? "fixed" : "ok",
-                  message:
-                    imgResult.resolved > 0
-                      ? `Generated ${imgResult.resolved} image${imgResult.resolved === 1 ? "" : "s"}`
-                      : "Image placeholders resolved",
-                  count: imgResult.resolved,
-                  ts: Date.now(),
-                }),
-              ),
-            );
           }
         } catch (e) {
           console.warn("[petal-image] resolver failed", e);
