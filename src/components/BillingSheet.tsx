@@ -30,13 +30,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
