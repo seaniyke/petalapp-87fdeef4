@@ -70,7 +70,7 @@ export const SURFACES: Surface[] = [
     purpose: "everyone who has signed up inside the app you built",
     triggers: [
       /\b(?:who|how many|which)\b[^.?!]{0,40}\b(?:signed[- ]?up|registered|users?|members?|accounts?)\b/i,
-      /\b(?:my|the|our|app'?s?)\s+(?:app'?s?\s+)?(?:users?|members?|signups?|sign[- ]?ups?)\b/i,
+      /\b(?:my|the|our|app'?s?)\s+(?:app'?s?\s+)?(?:users?|members?|signups?|sign[- ]?ups?)\b(?!\s*(?:page|screen|view|form|flow|button|link|tab))/i,
       /\buser\s+list\b/i,
     ],
   },
