@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { BillingSheet } from "@/components/BillingSheet";
 import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
 import { renderReceiptPdf, downloadBlob } from "@/lib/receipt-pdf";
+import { Pager, usePaged } from "@/components/Pager";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -132,6 +133,8 @@ function BillingDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
+  const payments = usePaged(data?.items ?? [], 10);
+
 
   const load = useCallback(async () => {
     const { data: session } = await supabase.auth.getSession();
@@ -349,7 +352,7 @@ function BillingDashboard() {
             </div>
           ) : (
             <ul className="divide-y divide-border">
-              {data.items.map((item) => (
+              {payments.slice.map((item) => (
                 <li
                   key={`${item.method}-${item.id}`}
                   className="flex flex-wrap items-center gap-3 p-4"
@@ -398,6 +401,14 @@ function BillingDashboard() {
               ))}
             </ul>
           )}
+          <Pager
+            page={payments.page}
+            pageCount={payments.pageCount}
+            total={payments.total}
+            pageSize={payments.pageSize}
+            onPage={payments.setPage}
+            noun="payments"
+          />
         </div>
       </main>
 

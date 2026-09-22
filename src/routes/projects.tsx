@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Plus, Trash2, Sparkles, Globe, Lock } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
+import { Pager, usePaged } from "@/components/Pager";
 import { useAuth } from "@/lib/auth";
 import {
   listProjects,
@@ -38,6 +39,7 @@ function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingDelete, setPendingDelete] = useState<ProjectRow | null>(null);
+  const paged = usePaged(projects, 12);
   const [deleting, setDeleting] = useState(false);
 
   // Prewarm the in-browser preview container as soon as the user reaches the
@@ -142,11 +144,22 @@ function ProjectsPage() {
           ) : projects.length === 0 ? (
             <EmptyState onCreate={handleCreate} />
           ) : (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-2">
-              {projects.map((p) => (
-                <ProjectCard key={p.id} project={p} onDelete={() => setPendingDelete(p)} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-2">
+                {paged.slice.map((p) => (
+                  <ProjectCard key={p.id} project={p} onDelete={() => setPendingDelete(p)} />
+                ))}
+              </div>
+              <Pager
+                page={paged.page}
+                pageCount={paged.pageCount}
+                total={paged.total}
+                pageSize={paged.pageSize}
+                onPage={paged.setPage}
+                noun="projects"
+                className="mt-6 rounded-2xl border border-border"
+              />
+            </>
           )}
         </div>
       </main>
