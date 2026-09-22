@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { callbackCandidates } from "../../../builder/src/server";
+import { callbackCandidates } from "../../../builder/src/callback-urls";
 
 describe("builder callback fallback", () => {
   it("keeps the configured callback and adds the stable project endpoint", () => {

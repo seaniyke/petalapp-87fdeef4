@@ -53,13 +53,13 @@ import {
   type VerifyPlan,
   type VerifyReport,
 } from "./verify.js";
+import { callbackCandidates } from "./callback-urls.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 const CALLBACK_URL = process.env.PETAL_CALLBACK_URL; // https://app.example.com/api/builds/callback
-const CALLBACK_FALLBACK_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app";
 
 const MAX_CONCURRENT = Number(process.env.MAX_CONCURRENT_BUILDS ?? 3);
 const MAX_QUEUE = Number(process.env.MAX_QUEUE ?? 50);
@@ -609,27 +609,6 @@ const HEARTBEAT_URL = (() => {
     return null;
   }
 })();
-
-/**
- * The public brand domain can briefly point at an older app deployment while
- * DNS/edge caches converge. Builder callbacks are control-plane traffic, so
- * they must have a stable project URL fallback instead of depending on that
- * presentation domain alone.
- */
-export function callbackCandidates(configuredUrl: string): string[] {
-  const urls = [configuredUrl];
-  try {
-    const configured = new URL(configuredUrl);
-    const stable = new URL(configuredUrl);
-    stable.protocol = "https:";
-    stable.host = new URL(CALLBACK_FALLBACK_ORIGIN).host;
-    urls.push(stable.toString());
-  } catch {
-    // Startup already validates that a callback value exists. If it is not a
-    // URL, retain the configured value so the normal error remains diagnostic.
-  }
-  return [...new Set(urls)];
-}
 
 /**
  * Best-effort liveness ping. Never throws and never blocks the build: a
