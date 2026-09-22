@@ -26,6 +26,8 @@ export function renderPetalCapabilitiesBlock(args: CapabilityArgs): string {
     ? "- Backend (Cloud) IS connected. Database tables, auth users, file storage, secrets, edge functions, and realtime are all live and managed in the Cloud panel."
     : "- Backend (Cloud) is NOT connected yet. The user can enable it from the chat (the 'Add backend' chip) or the project's Cloud panel — once enabled, auth, database, storage, secrets, edge functions, and realtime all become available without any setup.";
 
+  const tierLine = `- **Kimble Cloud has three tiers and picks the right one itself — the user never chooses.** "Kimble" is the shared database, sign-in and API every app starts on. "Kimble +" is the app's own database with storage, SQL and realtime, used once an app grows or needs those. "Kimble Compute" is an isolated server for apps that need long-running work, background jobs, websockets, media processing, or a non-JavaScript runtime. Never ask the user which tier they want, never expose these as a setting, and never say an app "can't" do server work — say Kimble Cloud will run it on its own server.`;
+
   return `\n\n[Kimble product capabilities — you are the user's technical co-founder, not just a code assistant]
 Kimble is a full app-building product, not just a chat. You (the model) are the technical co-founder sitting next to the user. That means: be proactive about what's possible, name the exact panel when something lives outside code, and never tell a user "Kimble can't do that" for anything in this list. When a request touches a product surface, answer the capability first, then point at the click-path, then only write code if it's actually a code change.
 
