@@ -925,17 +925,16 @@ function TopupPicker({
   const fmtUsd = (cents: number) =>
     `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
 
+  // Three simple choices, most popular in the middle and pre-selected.
+  const choices = packs.slice(0, 3);
+  const popularCode = choices[1]?.code ?? choices[0]?.code ?? null;
+  const active = selectedCode ?? popularCode;
+
   return (
     <div className="space-y-3">
-      <Select
-        value={selected?.code ?? undefined}
-        onValueChange={onSelect}
-      >
-        <SelectTrigger className="w-full">
-          <SelectValue placeholder="Choose a top-up amount" />
-        </SelectTrigger>
-        <SelectContent>
-          {packs.map((pack) => {
+      {choices.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {choices.map((pack) => {
             const conv = activeCurrency
               ? convertPrice({
                   itemKind: "pack",
@@ -950,19 +949,33 @@ function TopupPicker({
               conv && activeCurrency
                 ? formatMoney(conv.amountMinor, activeCurrency)
                 : fmtUsd(pack.price_cents);
+            const isActive = pack.code === active;
+            const isPopular = pack.code === popularCode;
             return (
-              <SelectItem key={pack.code} value={pack.code}>
-                <span className="flex w-full items-center justify-between gap-4">
-                  <span className="font-medium">{priceLabel}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {Number(pack.credits)} credits
+              <button
+                key={pack.code}
+                type="button"
+                onClick={() => onSelect(pack.code)}
+                className={`relative rounded-2xl border p-3 text-center transition ${
+                  isActive
+                    ? "border-primary bg-primary/5"
+                    : "border-border/60 hover:border-foreground/30"
+                }`}
+              >
+                {isPopular && (
+                  <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-bold text-background">
+                    Popular
                   </span>
-                </span>
-              </SelectItem>
+                )}
+                <p className="text-sm font-bold tabular-nums">{priceLabel}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+                  {Number(pack.credits)} credits
+                </p>
+              </button>
             );
           })}
-        </SelectContent>
-      </Select>
+        </div>
+      )}
 
       {selected && (
         <div className="rounded-2xl border border-border/60 p-4">
