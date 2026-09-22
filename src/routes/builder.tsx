@@ -5109,7 +5109,7 @@ function Builder() {
             <div ref={chatEndRef} />
 
           </div>
-          {proposedPlan && !discussBusy && !isDeploying && !awaitingBuild && (
+          {proposedPlan && !petalIsWorking && (
             <PlanProposalCard
               plan={proposedPlan}
               onToggle={(path, checked) =>
