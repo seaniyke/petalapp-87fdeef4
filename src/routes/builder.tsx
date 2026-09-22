@@ -5074,11 +5074,15 @@ function Builder() {
             })() && (
               <BuildActivityCard
                 phases={phases}
-                isActive={busy || isDeploying || awaitingBuild}
+                isActive={busy || isDeploying || awaitingBuild || awaitingSilentResume}
                 // A project that shipped earlier keeps status "ready" while the
                 // NEXT turn is still thinking. Without this guard the card
                 // renders a spinning icon next to "Done" and a fully-green rail.
-                isComplete={isLive && !busy && !awaitingBuild && !isDeploying}
+                // awaitingSilentResume counts as active too: while Kimble is
+                // finishing a turn server-side after a connection gap, the card
+                // must stay live (and keep its caption) instead of freezing on
+                // a stale phase or flashing "Done".
+                isComplete={isLive && !busy && !awaitingBuild && !isDeploying && !awaitingSilentResume}
                 error={(() => {
                   // Only one banner, ever. If the thread's own error card is
                   // (or could be) on screen, the activity card never shows one.
