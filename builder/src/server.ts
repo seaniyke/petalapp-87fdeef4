@@ -53,6 +53,7 @@ import {
   type VerifyPlan,
   type VerifyReport,
 } from "./verify.js";
+import { callbackCandidates } from "./callback-urls.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
@@ -659,33 +660,33 @@ async function postCallback(payload: Callback): Promise<void> {
   const body = JSON.stringify(payload);
   const delays = [0, 1_000, 3_000, 8_000, 15_000];
   let lastError = "Callback did not complete";
+  const candidates = callbackCandidates(CALLBACK_URL!);
 
   for (const delay of delays) {
     if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
-    // Sign each attempt with a fresh timestamp. Reusing the first signature
-    // can make a later retry fail the callback endpoint's five-minute window.
-    const { timestamp, signature } = sign(SHARED_SECRET!, body);
-    try {
-      const res = await fetch(CALLBACK_URL!, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-petal-timestamp": timestamp,
-          "x-petal-signature": signature,
-        },
-        body,
-        signal: AbortSignal.timeout(20_000),
-      });
-      if (res.ok) return;
-      const responseBody = await res.text().catch(() => "");
-      lastError = `Callback POST failed: ${res.status} ${responseBody}`;
-      // Invalid payload/signature responses are deterministic; retries cannot
-      // repair them. Auth, rate-limit and server failures can be transient.
-      if (res.status >= 400 && res.status < 500 && res.status !== 401 && res.status !== 408 && res.status !== 429) {
-        break;
+    for (const callbackUrl of candidates) {
+      // Sign each attempt with a fresh timestamp. Reusing the first signature
+      // can make a later retry fail the callback endpoint's five-minute window.
+      const { timestamp, signature } = sign(SHARED_SECRET!, body);
+      try {
+        const res = await fetch(callbackUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-petal-timestamp": timestamp,
+            "x-petal-signature": signature,
+          },
+          body,
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (res.ok) return;
+        const responseBody = await res.text().catch(() => "");
+        lastError = `Callback POST failed: ${res.status} ${responseBody}`;
+        // A stale public deployment commonly answers 404/500 while the stable
+        // project URL is healthy. Always try every candidate before waiting.
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
       }
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
     }
   }
 
