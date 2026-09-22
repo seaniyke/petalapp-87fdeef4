@@ -210,14 +210,29 @@ export async function resolveCloudTier(projectId: string): Promise<ResolvedTier>
   }
 }
 
-/** Record what a newly generated app said it needs. Best effort. */
+/**
+ * Record what an app said it needs. Best effort, and never downgrades — a
+ * later turn that happens not to mention video doesn't take the server away.
+ */
 export async function recordTierIntent(projectId: string, text: string): Promise<TierSignal> {
   const signal = detectTierFromIntent(text);
   try {
-    await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from("projects")
-      .update({ cloud_tier_intent: signal.tier } as never)
-      .eq("id", projectId);
+      .select("cloud_tier_intent")
+      .eq("id", projectId)
+      .maybeSingle();
+    const prevRaw = (data as { cloud_tier_intent?: string } | null)?.cloud_tier_intent;
+    const prev: CloudTier = (ORDER as string[]).includes(prevRaw ?? "")
+      ? (prevRaw as CloudTier)
+      : "kimble";
+    const next = highestTier(prev, signal.tier);
+    if (next !== prev) {
+      await supabaseAdmin
+        .from("projects")
+        .update({ cloud_tier_intent: next } as never)
+        .eq("id", projectId);
+    }
   } catch (err) {
     console.warn("[cloud-tier] intent write failed", projectId, err);
   }
