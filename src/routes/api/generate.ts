@@ -6342,7 +6342,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // listening. Give the client a short grace window to land its own
         // write, then reconcile from the server — the helper no-ops when a
         // reply already exists.
-        if (turnProjectId && !silentRecovery && terminalStatus !== "awaiting_credits") {
+        if (turnProjectId && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
           // Hand the request over to the build stage, or close it honestly.
           await markStage(
             turnProjectId,
@@ -6358,7 +6358,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // A turn queued for silent completion must not write a reply at all:
         // the resumed run owns the conversation, and a "this didn't finish"
         // bubble is exactly what we are removing.
-        if (turnProjectId && recorder && !silentRecovery && terminalStatus !== "awaiting_credits") {
+        if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
           const wroteReply = await persistAbandonedTurnReply({
