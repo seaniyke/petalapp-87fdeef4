@@ -813,6 +813,14 @@ async function relayAndCollect(
       } catch {
         continue;
       }
+      // A refusal arrives as a 200 stream frame carrying `error` and no
+      // `choices`. Capture it — skipping it is what made refused turns look
+      // empty and got the identical oversized request re-sent twice.
+      const frameError = readErrorFrame(json);
+      if (frameError) {
+        tool.providerError = frameError;
+        continue;
+      }
       // Capture token usage. The Lovable AI gateway emits a final SSE chunk
       // with `usage: { prompt_tokens, completion_tokens, total_tokens }` and
       // an empty `choices` array — that's where we read it.
