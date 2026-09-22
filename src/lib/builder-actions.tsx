@@ -24,6 +24,7 @@ import {
   Download,
   Globe,
   History as HistoryIcon,
+  ImagePlus,
   MessageSquare,
   Pencil,
   Plug,
@@ -79,6 +80,8 @@ export interface BuilderActionContext {
   openSettings: () => void;
   openCode: () => void;
   openHistory: () => void;
+  /** The owner's own photos for this project. */
+  openPhotos: () => void;
   openSecurity: () => void;
   openComments: () => void;
   openSeo: () => void;
@@ -156,6 +159,15 @@ export function createBuilderActions(ctx: BuilderActionContext): BuilderAction[]
       run: ctx.openHistory,
       group: "app",
       surfaces: ["desktop-toolbar", "mobile-primary"],
+    },
+    {
+      id: "photos",
+      label: "Your photos",
+      title: "Add your own photos for Kimble to use",
+      icon: ImagePlus,
+      run: ctx.openPhotos,
+      group: "app",
+      surfaces: ["desktop-menu", "mobile-more"],
     },
     {
       id: "comments",

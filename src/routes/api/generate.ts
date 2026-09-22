@@ -108,6 +108,10 @@ import {
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
 import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
+import {
+  loadProjectPictures,
+  renderProjectPictureBlock,
+} from "@/server/registry/project-pictures.server";
 import { renderAppUiBlock, renderAppScreenChecklistBlock } from "@/server/app-ui-library.server";
 import { renderAppSpecBlock } from "@/server/app-spec.server";
 import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/lib/prompt-limits";
@@ -2915,6 +2919,15 @@ Forbidden defaults
     /* never block a build on taste-block failure */
   }
 
+  // Photos the owner uploaded for this project outrank anything generated.
+  let ownPhotoBlock = "";
+  try {
+    ownPhotoBlock = renderProjectPictureBlock(await loadProjectPictures(body.projectId ?? null));
+  } catch {
+    /* a photo lookup must never block a build */
+  }
+  designTasteBlock += ownPhotoBlock;
+
 
   const dynamicSuffixText =
     dateBlock +
@@ -5194,6 +5207,7 @@ Forbidden defaults
                   ),
                 );
               },
+              body.projectId ?? null,
             );
             nextFiles = imgResult.files;
             if (imgResult.resolved > 0) {
