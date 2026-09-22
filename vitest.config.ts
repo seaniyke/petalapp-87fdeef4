@@ -17,7 +17,6 @@ export default defineConfig({
       "src/server/__tests__/utility-model-tier.test.ts",
       "src/server/__tests__/verify-scope.test.ts",
       "src/server/__tests__/edit-boundary.test.ts",
-      "src/server/__tests__/auto-plan.test.ts",
 
       "src/server/__tests__/skills.test.ts",
       "src/server/__tests__/build-reconcile.test.ts",
