@@ -712,11 +712,19 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // legacy hardcoded Gemini/GPT/Claude id can reach the wire. `openrouter/auto`
   // is never used — the model is always explicit.
   const needsVision = requestHasImageParts(opts.body);
-  let primaryModel: string = coerceToConfiguredModel(requestedModel, { vision: needsVision });
+  // Utility tier: short classification / summarisation features run on the
+  // cheaper utility model unless the caller asked for a specific DeepSeek slug
+  // or the request carries images.
+  const utility = isUtilityFeature(opts.feature) && !needsVision;
+  let primaryModel: string = coerceToConfiguredModel(requestedModel, {
+    vision: needsVision,
+    utility,
+  });
   const coercedFallback = coerceToConfiguredModel(fallback ?? defaultFallbackModel(), {
     vision: needsVision,
   });
   const fallbackModel = coercedFallback === primaryModel ? null : coercedFallback;
+
 
   // Kill-switch: if the primary model is currently cooling off because of a
   // high `no_edit_emitted` rate, swap it for the configured fallback BEFORE
