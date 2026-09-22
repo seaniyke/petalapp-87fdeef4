@@ -21,7 +21,7 @@ export const Route = createFileRoute("/why/$slug")({
       };
     }
     const title = `${d.eyebrow} — Kimble`;
-    const url = `https://buildwithpetal.com/why/${params.slug}`;
+    const url = `https://kimble.cloud/why/${params.slug}`;
     return {
       meta: [
         { title },

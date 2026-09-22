@@ -1036,7 +1036,7 @@ export const Route = createFileRoute("/api/admin/credits")({
               if (secret) {
                 try {
                   const origin = new URL(request.url).origin;
-                  const signInUrl = `https://buildwithpetal.com/auth?mode=signup&approved=${encodeURIComponent(member.email)}`;
+                  const signInUrl = `https://kimble.cloud/auth?mode=signup&approved=${encodeURIComponent(member.email)}`;
                   const resp = await fetch(
                     new URL("/lovable/email/transactional/send", origin).toString(),
                     {

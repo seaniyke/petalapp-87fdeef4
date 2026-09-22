@@ -196,7 +196,7 @@ export default function Today() {
     codeLang: "bash",
     codeSample: `$ petal publish --domain buildwithpetal.com
 ✔ Built in 42s
-✔ Deployed to https://buildwithpetal.com
+✔ Deployed to https://kimble.cloud
 ✔ Android .apk ready → /downloads/app.apk`,
   },
 };

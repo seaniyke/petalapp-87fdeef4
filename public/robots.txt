@@ -11,4 +11,4 @@ Disallow: /api/admin/
 Disallow: /admin
 Disallow: /admin/
 
-Sitemap: https://buildwithpetal.com/sitemap.xml
+Sitemap: https://kimble.cloud/sitemap.xml

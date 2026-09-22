@@ -214,7 +214,7 @@ export const Route = createFileRoute("/api/public/waitlist")({
                   templateData: {
                     name: referrer.name,
                     email: referrer.email,
-                    signInUrl: `https://buildwithpetal.com/auth?mode=signup&approved=${encodeURIComponent(referrer.email)}`,
+                    signInUrl: `https://kimble.cloud/auth?mode=signup&approved=${encodeURIComponent(referrer.email)}`,
                   },
                 });
               } else if (MILESTONES.includes(nextCount)) {

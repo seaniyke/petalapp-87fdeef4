@@ -24,7 +24,7 @@ import {
 } from "@react-email/components";
 
 export const SITE_NAME = "Kimble";
-export const SITE_URL = "https://buildwithpetal.com";
+export const SITE_URL = "https://kimble.cloud";
 
 interface LayoutProps {
   preview: string;

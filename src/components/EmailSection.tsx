@@ -203,7 +203,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
           <details className="rounded-xl border border-border bg-muted/30 p-3 text-xs">
             <summary className="cursor-pointer font-medium">How to use in your app</summary>
             <pre className="mt-2 overflow-x-auto rounded bg-background p-2 text-[11px] leading-relaxed">
-{`await fetch("https://buildwithpetal.com/api/public/email/send", {
+{`await fetch("https://kimble.cloud/api/public/email/send", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",

@@ -61,7 +61,7 @@ export function readStatusToken(): string | null {
   }
 }
 
-export const SITE_ORIGIN = "https://buildwithpetal.com";
+export const SITE_ORIGIN = "https://kimble.cloud";
 
 export function shareUrl(code: string) {
   return `${SITE_ORIGIN}/r/${code}`;
