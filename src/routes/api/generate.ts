@@ -3356,6 +3356,8 @@ Forbidden defaults
   let agentLoop: AgentLoopResult | null = null;
   if (
     !directLogoEdit &&
+    // Phase 1 — a small, pinned edit never earns the exploration phase.
+    editClassification?.scope !== "micro" &&
     shouldRunAgentLoop({
       isInitial,
       isCrossCutting,
