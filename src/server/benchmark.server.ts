@@ -252,9 +252,10 @@ async function runBuild(token: string, projectId: string, deadline: number): Pro
 async function scoreSpecAdherence(
   projectId: string,
   testCase: BenchmarkCase,
+  criteriaList: BenchmarkCase["criteria"] = allCriteria(testCase),
 ): Promise<CriterionResult[]> {
   const fallback = (note: string): CriterionResult[] =>
-    testCase.criteria.map((c) => ({ id: c.id, text: c.text, passed: false, note }));
+    criteriaList.map((c) => ({ id: c.id, text: c.text, passed: false, note }));
 
   const { data: files } = await supabaseAdmin
     .from("project_files")
