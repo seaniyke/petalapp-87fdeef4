@@ -118,6 +118,25 @@ export function checkFileBudgets(
  * dropping them caused worse failures (main imports a file that vanished),
  * which showed up as blank apps or unresolved imports.
  */
+/**
+ * A big file is only dangerous when it's also unfinished. A long but complete
+ * page is valid work and must reach the user untouched; reverting it was the
+ * cause of "I asked for a page and nothing changed".
+ */
+export function looksIncomplete(content: string): boolean {
+  const trimmed = content.trimEnd();
+  if (!trimmed) return true;
+  let depth = 0;
+  for (let i = 0; i < trimmed.length; i++) {
+    const c = trimmed[i];
+    if (c === "{") depth++;
+    else if (c === "}") depth--;
+  }
+  if (depth !== 0) return true;
+  const last = trimmed[trimmed.length - 1] ?? "";
+  return !["}", ")", ";", "`", "]", ">"].includes(last);
+}
+
 export function enforceFileBudgets(
   nextFiles: { path: string; content: string }[],
   priorFiles: { path: string; content: string }[],

@@ -170,6 +170,7 @@ import { injectPreviewGuard } from "@/server/preview-guard.server";
 import {
   checkFileBudgets,
   enforceFileBudgets,
+  looksIncomplete,
   type FileBudgetIssue,
 } from "@/server/file-budget.server";
 import { pickBestModel } from "@/server/smart-router.server";
@@ -2527,7 +2528,12 @@ Forbidden defaults
   // empty block and the pipeline below runs exactly as it did before.
   // ---------------------------------------------------------------------------
   let orchestrationBlock = "";
+  // Phase 1 — only convene the board when the turn genuinely reshapes the
+  // product. Everyday edits skip it entirely: no extra calls, no extra wait,
+  // no chance of an unrequested requirement being injected.
+  const orchestratorWorthwhile = isInitial || isStructuralTurn;
   try {
+    if (!orchestratorWorthwhile) throw new Error("skip: routine edit");
     const { orchestrateTurn, summarizeOrchestration } = await import(
       "@/server/agents/orchestrator.server"
     );
@@ -3351,6 +3357,8 @@ Forbidden defaults
   let agentLoop: AgentLoopResult | null = null;
   if (
     !directLogoEdit &&
+    // Phase 1 — a small, pinned edit never earns the exploration phase.
+    editClassification?.scope !== "micro" &&
     shouldRunAgentLoop({
       isInitial,
       isCrossCutting,
@@ -4952,7 +4960,20 @@ Forbidden defaults
           .filter((f) => priorByPathBudget.get(f.path) !== f.content)
           .map((f) => f.path);
         const budgetVerdict = checkFileBudgets(nextFiles, budgetChangedPaths);
-        const budgetRejections: FileBudgetIssue[] = budgetVerdict.rejections;
+        // Phase 1 — a long file is only thrown away when it's genuinely
+        // unfinished. Complete work reaches the user, however large it is.
+        const contentByPathBudget = new Map(nextFiles.map((f) => [f.path, f.content]));
+        const budgetRejections: FileBudgetIssue[] = budgetVerdict.rejections.filter((r) =>
+          looksIncomplete(contentByPathBudget.get(r.path) ?? ""),
+        );
+        const budgetDowngraded = budgetVerdict.rejections.filter(
+          (r) => !budgetRejections.includes(r),
+        );
+        if (budgetDowngraded.length > 0) {
+          budgetVerdict.warnings.push(
+            ...budgetDowngraded.map((r) => ({ ...r, severity: "warn" as const })),
+          );
+        }
         if (budgetRejections.length > 0) {
           console.warn(
             `[file-budget] reverting ${budgetRejections.length} oversize file(s):`,
