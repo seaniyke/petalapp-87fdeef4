@@ -377,6 +377,28 @@ async function runCase(
     }
 
     const build = await runBuild(token, projectId, deadline);
+    // Edit / redesign / recovery cases: same project, one more real turn.
+    // Only worth running when the first build actually landed — otherwise the
+    // edit would be scored against a project that never existed.
+    if (testCase.followUp && build.status === "ready") {
+      const edit = await runGeneration(
+        token,
+        projectId,
+        testCase.followUp.prompt,
+        abort.signal,
+        [
+          { role: "user", content: testCase.prompt },
+          { role: "assistant", content: "Built." },
+          { role: "user", content: testCase.followUp.prompt },
+        ],
+      );
+      if (!edit.ok) {
+        base.errorMessage = `follow-up: ${edit.error}`;
+      } else {
+        build = await runBuild(token, projectId, deadline);
+      }
+    }
+
     base.buildId = build.buildId;
     base.buildCompleted = build.status === "ready";
     base.defects = build.defects;
