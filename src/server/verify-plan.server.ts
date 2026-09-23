@@ -188,17 +188,27 @@ export function collectRoutes(files: ProjectFile[]): string[] {
   return all.slice(0, MAX_ROUTES);
 }
 
-/** Does the project actually ship an email+password auth surface? */
-function detectAuth(files: ProjectFile[], routes: string[]) {
+/**
+ * Does the project actually ship an email+password auth surface backed by a
+ * real service?
+ *
+ * A password input on its own proves nothing: plenty of apps ship a sign-in
+ * screen that is pure UI while the backend is still being decided. Driving a
+ * full sign-up/sign-in against one of those always "fails", and that failure
+ * used to be reported as a blocking defect on a perfectly healthy app. Only
+ * probe auth when the source actually calls an auth provider.
+ */
+export function detectAuth(files: ProjectFile[], routes: string[]) {
   const authRoutes = routes.filter((r) => AUTH_PATH_RE.test(r));
   if (authRoutes.length === 0) return null;
 
-  const usesPasswordAuth = files.some(
-    (f) =>
-      /signInWithPassword|signUp\s*\(|createUserWithEmailAndPassword|auth\.signUp/.test(f.content) ||
-      /type=["']password["']/.test(f.content),
+  const usesPasswordAuth = files.some((f) =>
+    /signInWithPassword|supabase\.auth\.signUp|auth\.signUp\s*\(|createUserWithEmailAndPassword|signInWithEmailAndPassword|\bsignIn\s*\(\s*["']credentials["']/.test(
+      f.content,
+    ),
   );
   if (!usesPasswordAuth) return null;
+
 
   const signupPath = authRoutes.find((r) => SIGNUP_HINT_RE.test(r)) ?? authRoutes[0];
   const loginPath = authRoutes.find((r) => !SIGNUP_HINT_RE.test(r)) ?? authRoutes[0];
