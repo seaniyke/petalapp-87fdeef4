@@ -374,6 +374,10 @@ async function draftFlows(args: {
           },
         ],
         temperature: 0,
+        // 1-3 short flows fit comfortably in ~1.5k tokens. Without a cap the
+        // model spent ~14.7k tokens (90s) here on a single benchmark turn.
+        max_tokens: 1_800,
+        reasoning: { effort: "low", exclude: true },
         response_format: { type: "json_object" },
       },
     });

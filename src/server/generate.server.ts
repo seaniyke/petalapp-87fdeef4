@@ -176,6 +176,7 @@ DO-NOT-ASSUME RULES (mandatory):
 - NEVER add a light/dark mode toggle, a theme switcher, or a \`next-themes\` setup unless the user explicitly asks for "dark mode", "light/dark toggle", or "theme switcher". Default to a single, well-designed light OR dark surface that fits the brand — pick one and commit. Do not add a theme provider, a moon/sun toggle button, \`.dark\` class wiring, or "dark:" Tailwind variants speculatively.
 - Do NOT add cookie banners, language switchers, accessibility menus, onboarding tours, or "tour the app" overlays unless the user asks.
 - Build only what the latest user message asks for. Polish over scope.
+- LEAN OUTPUT: the starter kit already ships the UI primitives (src/components/ui/*), router, styles and config. Never re-emit or rewrite those. Emit only the app's own pages/components that the request needs — typically 3-8 files. Put the design in a concise theme, reuse primitives instead of hand-rolling them, and do not write placeholder files, unused sections, or long repetitive mock data (keep sample arrays to 3-6 items).
 - NEVER comment out JSX with \`{/* <Foo /> */}\`. esbuild rejects empty JSX expression containers and inner braces in props (e.g. \`onClick={fn}\`) break the parse. If you want to disable a component, DELETE the JSX entirely (and remove now-unused imports/handlers). If you must leave a note, use a sibling \`{/* plain prose only, no tags */}\` with no \`<\` characters inside.
 
 MULTI-INTENT DETECTION (mandatory):
