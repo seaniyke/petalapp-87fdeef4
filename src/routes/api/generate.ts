@@ -2527,7 +2527,12 @@ Forbidden defaults
   // empty block and the pipeline below runs exactly as it did before.
   // ---------------------------------------------------------------------------
   let orchestrationBlock = "";
+  // Phase 1 — only convene the board when the turn genuinely reshapes the
+  // product. Everyday edits skip it entirely: no extra calls, no extra wait,
+  // no chance of an unrequested requirement being injected.
+  const orchestratorWorthwhile = isInitial || isStructuralTurn;
   try {
+    if (!orchestratorWorthwhile) throw new Error("skip: routine edit");
     const { orchestrateTurn, summarizeOrchestration } = await import(
       "@/server/agents/orchestrator.server"
     );
