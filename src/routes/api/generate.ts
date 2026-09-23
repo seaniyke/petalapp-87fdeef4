@@ -135,6 +135,7 @@ import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import {
   assessChunking,
   assessRouteCoverage,
+  buildChunkInstruction,
   parseStepsFromArgs,
   runChunkedGeneration,
 } from "@/server/chunked-generation.server";
