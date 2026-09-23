@@ -255,7 +255,7 @@ export async function runPreEmitGate(
     prd?: Prd | null;
   } = {},
 ): Promise<PreEmitGateResult> {
-  const maxRounds = Math.max(0, opts.maxRounds ?? 2);
+  const maxRounds = Math.max(0, Math.min(opts.maxRounds ?? 1, 1)); // one targeted repair, then stop
 
   let current = files;
   const trace: string[] = [];

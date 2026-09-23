@@ -437,45 +437,91 @@ interface TelemetryArgs {
   turnId?: string | null;
 }
 
+/** Full provider-reported usage for one call. NULL fields mean UNKNOWN, never 0. */
+export interface ParsedUsage {
+  promptTokens: number | null;
+  completionTokens: number | null;
+  totalTokens: number | null;
+  cachedTokens: number | null;
+  cacheWriteTokens: number | null;
+  reasoningTokens: number | null;
+  costUsd: number | null;
+}
+
+const num = (v: unknown): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : null;
+
+/** Normalise an OpenRouter/OpenAI-shaped `usage` object. */
+export function parseUsageObject(u: unknown): ParsedUsage | null {
+  if (!u || typeof u !== "object") return null;
+  const o = u as Record<string, unknown>;
+  const pd = (o.prompt_tokens_details ?? {}) as Record<string, unknown>;
+  const cd = (o.completion_tokens_details ?? {}) as Record<string, unknown>;
+  const parsed: ParsedUsage = {
+    promptTokens: num(o.prompt_tokens),
+    completionTokens: num(o.completion_tokens),
+    totalTokens: num(o.total_tokens),
+    cachedTokens: num(pd.cached_tokens) ?? num(o.cache_read_input_tokens) ?? num(o.prompt_cache_hit_tokens),
+    cacheWriteTokens: num(pd.cache_write_tokens) ?? num(o.cache_creation_input_tokens),
+    reasoningTokens: num(cd.reasoning_tokens),
+    costUsd: num(o.cost),
+  };
+  if (parsed.promptTokens == null && parsed.completionTokens == null) return null;
+  return parsed;
+}
+
 /**
  * Read `usage` out of a NON-STREAMED gateway response without consuming the
- * body the caller still needs. Streamed responses are backfilled separately by
- * `updateLastCallUsage` once the SSE body has been drained.
- *
- * Best-effort: any parse failure returns null and telemetry falls back to the
- * previous NULL-token behaviour.
+ * body the caller still needs. Streamed responses are metered by
+ * `meterStream`, which parses the final SSE usage chunk in-flight.
  */
 async function usageFromResponse(
   resp: Response,
   body: Record<string, unknown>,
-): Promise<{
-  promptTokens: number | null;
-  completionTokens: number | null;
-  totalTokens: number | null;
-} | null> {
+): Promise<(ParsedUsage & { requestId: string | null; upstream: string | null }) | null> {
   if (body.stream === true) return null;
   if (!resp.ok) return null;
   try {
-    const json = (await resp.clone().json()) as {
-      usage?: {
-        prompt_tokens?: number;
-        completion_tokens?: number;
-        total_tokens?: number;
-      };
-    };
-    const u = json?.usage;
+    const json = (await resp.clone().json()) as { usage?: unknown; id?: string; provider?: string };
+    const u = parseUsageObject(json?.usage);
     if (!u) return null;
-    return {
-      promptTokens: u.prompt_tokens ?? null,
-      completionTokens: u.completion_tokens ?? null,
-      totalTokens: u.total_tokens ?? null,
-    };
+    return { ...u, requestId: json.id ?? null, upstream: json.provider ?? null };
   } catch {
     return null;
   }
 }
 
-async function recordTelemetry(args: TelemetryArgs): Promise<void> {
+function usageColumns(u: ParsedUsage, model: string | null): Record<string, unknown> {
+  const cols: Record<string, unknown> = {
+    prompt_tokens: u.promptTokens,
+    completion_tokens: u.completionTokens,
+    total_tokens: u.totalTokens,
+    cached_prompt_tokens: u.cachedTokens,
+    cache_write_tokens: u.cacheWriteTokens,
+    reasoning_tokens: u.reasoningTokens,
+  };
+  if (u.costUsd != null) {
+    cols.cost_usd_micro = Math.round(u.costUsd * 1_000_000);
+    cols.cost_basis = "actual";
+    cols.cost_source = "provider";
+  } else {
+    const c = estimateCostUsdMicro(model, u.promptTokens, u.completionTokens);
+    if (c != null) {
+      cols.cost_usd_micro = c;
+      cols.cost_basis = "estimated";
+      cols.cost_source = "price_table";
+    }
+  }
+  return cols;
+}
+
+async function recordTelemetry(
+  args: TelemetryArgs & {
+    usage?: ParsedUsage | null;
+    requestId?: string | null;
+    upstream?: string | null;
+  },
+): Promise<string | null> {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { currentTurnContext } = await import("@/server/turn-context.server");
@@ -484,38 +530,103 @@ async function recordTelemetry(args: TelemetryArgs): Promise<void> {
     // still lands on the right turn/project/user without threading arguments
     // through every call site.
     const ambient = currentTurnContext();
-    const hasUsage = (args.promptTokens ?? 0) > 0 || (args.completionTokens ?? 0) > 0;
-    await supabaseAdmin.from("ai_call_log").insert({
-      feature: args.feature,
-      provider: args.provider,
-      model: args.model,
-      status: args.status,
-      prompt_tokens: args.promptTokens ?? null,
-      completion_tokens: args.completionTokens ?? null,
-      total_tokens: args.totalTokens ?? null,
-      cost_usd_micro: args.costUsdMicro ?? null,
-      latency_ms: args.latencyMs,
-      fallback_used: args.fallbackUsed,
-      error_message: args.errorMessage ?? null,
-      phase: args.phase ?? null,
-      prompt_chars: args.promptChars ?? null,
-      had_attachments: args.hadAttachments ?? false,
-      chosen_by: args.chosenBy ?? null,
-      project_id: args.projectId ?? ambient.projectId ?? null,
-      user_id: args.userId ?? ambient.userId ?? null,
-      turn_id: args.turnId ?? ambient.turnId ?? null,
-      // Kimble always pays with its own gateway key today; per-user keys would
-      // record "user" here.
-      key_owner: "platform",
-      // Non-streamed calls now carry their usage at insert time; streamed ones
-      // are still unknown until the body is drained.
-      cost_basis: hasUsage && args.costUsdMicro != null ? "estimated" : "unknown",
-      cost_source: hasUsage && args.costUsdMicro != null ? "price_table" : null,
-    });
+    const usageCols = args.usage ? usageColumns(args.usage, args.model) : {};
+    const { data } = await supabaseAdmin
+      .from("ai_call_log")
+      .insert({
+        feature: args.feature,
+        provider: args.provider,
+        model: args.model,
+        status: args.status,
+        prompt_tokens: args.promptTokens ?? null,
+        completion_tokens: args.completionTokens ?? null,
+        total_tokens: args.totalTokens ?? null,
+        cost_usd_micro: args.costUsdMicro ?? null,
+        latency_ms: args.latencyMs,
+        fallback_used: args.fallbackUsed,
+        error_message: args.errorMessage ?? null,
+        phase: args.phase ?? null,
+        prompt_chars: args.promptChars ?? null,
+        had_attachments: args.hadAttachments ?? false,
+        chosen_by: args.chosenBy ?? null,
+        project_id: args.projectId ?? ambient.projectId ?? null,
+        user_id: args.userId ?? ambient.userId ?? null,
+        turn_id: args.turnId ?? ambient.turnId ?? null,
+        key_owner: "platform",
+        // Unknown until real usage arrives — never a fake 0.
+        cost_basis: "unknown",
+        cost_source: null,
+        request_id: args.requestId ?? null,
+        upstream_provider: args.upstream ?? null,
+        ...usageCols,
+      } as never)
+      .select("id")
+      .single();
+    return (data as { id?: string } | null)?.id ?? null;
   } catch (err) {
     // Never break the AI call because logging failed.
     console.warn("[ai-provider] telemetry insert failed", err);
+    return null;
   }
+}
+
+/**
+ * Wrap a streamed (SSE) response so its final usage chunk is parsed in-flight
+ * and written onto the exact ai_call_log row for this call. This is what makes
+ * primary build calls report real tokens regardless of how the caller consumes
+ * the stream. The caller receives the same bytes, unchanged.
+ */
+function meterStream(resp: Response, rowId: Promise<string | null>, model: string | null): Response {
+  if (!resp.ok || !resp.body) return resp;
+  const decoder = new TextDecoder();
+  let buf = "";
+  let last: ParsedUsage | null = null;
+  let requestId: string | null = null;
+  let upstream: string | null = null;
+  const scan = (line: string) => {
+    if (!line.startsWith("data:") || !line.includes('"usage"')) return;
+    try {
+      const j = JSON.parse(line.slice(5).trim()) as { usage?: unknown; id?: string; provider?: string };
+      const u = parseUsageObject(j.usage);
+      if (u) {
+        last = u;
+        requestId = j.id ?? requestId;
+        upstream = j.provider ?? upstream;
+      }
+    } catch {
+      /* partial / non-JSON line */
+    }
+  };
+  const ts = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, ctrl) {
+      ctrl.enqueue(chunk);
+      buf += decoder.decode(chunk, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() ?? "";
+      for (const l of lines) scan(l);
+    },
+    async flush() {
+      if (buf) scan(buf);
+      const u = last as ParsedUsage | null;
+      if (!u) return;
+      try {
+        const id = await rowId;
+        if (!id) return;
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        await supabaseAdmin
+          .from("ai_call_log")
+          .update({ ...usageColumns(u, model), request_id: requestId, upstream_provider: upstream } as never)
+          .eq("id", id);
+      } catch (err) {
+        console.warn("[ai-provider] stream usage write failed", err);
+      }
+    },
+  });
+  return new Response(resp.body.pipeThrough(ts), {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: resp.headers,
+  });
 }
 
 
@@ -562,6 +673,8 @@ export async function updateLastCallUsage(args: {
       .order("created_at", { ascending: false })
       .limit(1);
     if (args.model) q = q.eq("model", args.model);
+    // Scope to the turn so we never patch an older, unrelated NULL row.
+    if (args.turnId) q = q.eq("turn_id", args.turnId);
     const { data: rows } = await q;
     const id = rows?.[0]?.id;
     if (!id) return;
@@ -850,12 +963,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       primary.status >= 500);
 
   if (!shouldRetry) {
-    // Non-streamed calls carry their usage in the body. Read it from a clone so
-    // the caller still gets an unconsumed Response, and log real token counts
-    // instead of NULLs. Streamed calls are backfilled by updateLastCallUsage.
+    // Non-streamed calls carry their usage in the body (read from a clone).
+    // Streamed calls are metered in-flight by `meterStream` onto this row.
     const usage = await usageFromResponse(primary, body);
-    // Fire-and-forget telemetry; do NOT await — keep latency tight.
-    void recordTelemetry({
+    const rowId = recordTelemetry({
       feature: opts.feature,
       provider: effectiveProvider,
       model: primaryModel,
@@ -870,14 +981,11 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       projectId: opts.meta?.projectId ?? null,
       userId: opts.meta?.userId ?? null,
       turnId: opts.meta?.turnId ?? null,
-      promptTokens: usage?.promptTokens ?? null,
-      completionTokens: usage?.completionTokens ?? null,
-      totalTokens: usage?.totalTokens ?? null,
-      costUsdMicro: usage
-        ? estimateCostUsdMicro(primaryModel, usage.promptTokens, usage.completionTokens)
-        : null,
+      usage,
+      requestId: usage?.requestId ?? null,
+      upstream: usage?.upstream ?? null,
     });
-    return primary;
+    return body.stream === true ? meterStream(primary, rowId, primaryModel) : primary;
   }
 
 
@@ -911,8 +1019,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   const retryLatency = Date.now() - t1;
   const retryUsage = await usageFromResponse(retried, fallbackBody);
 
-
-  void recordTelemetry({
+  const retryRow = recordTelemetry({
     feature: opts.feature,
     provider: effectiveProvider,
     model: fallbackModel,
@@ -927,20 +1034,12 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     projectId: opts.meta?.projectId ?? null,
     userId: opts.meta?.userId ?? null,
     turnId: opts.meta?.turnId ?? null,
-    promptTokens: retryUsage?.promptTokens ?? null,
-    completionTokens: retryUsage?.completionTokens ?? null,
-    totalTokens: retryUsage?.totalTokens ?? null,
-    costUsdMicro: retryUsage
-      ? estimateCostUsdMicro(
-          fallbackModel,
-          retryUsage.promptTokens,
-          retryUsage.completionTokens,
-        )
-      : null,
-
+    usage: retryUsage,
+    requestId: retryUsage?.requestId ?? null,
+    upstream: retryUsage?.upstream ?? null,
   });
 
-  return retried;
+  return fallbackBody.stream === true ? meterStream(retried, retryRow, fallbackModel) : retried;
 }
 
 /**
@@ -1035,6 +1134,19 @@ async function dispatch(
   // records prompt/completion/total tokens for every request.
   if (outBody.stream === true && !outBody.stream_options) {
     outBody = { ...outBody, stream_options: { include_usage: true } };
+  }
+  // OpenRouter: always return usage (incl. cached tokens + real cost).
+  if (!outBody.usage) outBody = { ...outBody, usage: { include: true } };
+  // Sticky routing per project so repeated calls land on the same upstream
+  // and can reuse its prompt cache. Stable per project — never per request.
+  if (!outBody.session_id) {
+    try {
+      const { currentTurnContext } = await import("@/server/turn-context.server");
+      const pid = currentTurnContext().projectId;
+      if (pid) outBody = { ...outBody, session_id: `kimble-${pid}` };
+    } catch {
+      /* no ambient turn */
+    }
   }
 
   const headers: Record<string, string> = {

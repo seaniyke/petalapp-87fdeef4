@@ -3413,6 +3413,12 @@ Forbidden defaults
   let agentLoop: AgentLoopResult | null = null;
   if (
     !directLogoEdit &&
+    // COST CONTROL — measured: 64 exploration calls averaging 42.6K input
+    // tokens each (2.7M tokens) in one benchmark window, resending the full
+    // generate prompt every round before the emit call resends it again.
+    // The emit call already carries the focused context, so exploration is
+    // off unless explicitly re-enabled for an experiment.
+    process.env.KIMBLE_PREEMIT_AGENT_LOOP === "1" &&
     // Phase 1 — a small, pinned edit never earns the exploration phase.
     editClassification?.scope !== "micro" &&
     shouldRunAgentLoop({
