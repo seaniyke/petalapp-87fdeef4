@@ -24,8 +24,17 @@ export interface BenchmarkCase {
   title: string;
   prompt: string;
   /** Rough shape, used only for reporting/grouping. */
-  kind: "landing" | "tool" | "dashboard" | "multi-page" | "form";
+  kind: "landing" | "tool" | "dashboard" | "multi-page" | "form" | "edit" | "recovery";
   criteria: BenchmarkCriterion[];
+  /**
+   * Optional second turn against the same project. This is how the suite
+   * measures edits, redesigns and recovery: build something real first, then
+   * ask for a change and score the finished state against both criteria sets.
+   */
+  followUp?: {
+    prompt: string;
+    criteria: BenchmarkCriterion[];
+  };
 }
 
 export const BENCHMARK_SUITE: BenchmarkCase[] = [
