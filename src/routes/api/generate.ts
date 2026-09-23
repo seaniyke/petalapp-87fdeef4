@@ -2837,13 +2837,43 @@ Forbidden defaults
   const fileBlockCeiling = Math.round(
     promptTokenCeiling({ model: null, completionBudgetTokens: 16_000 }) * 0.55,
   );
+  // Reliability rebuild, phase 2 — strict target-only context.
+  //
+  // A one-element edit used to arrive with a dozen neighbouring pages in the
+  // prompt, which is exactly how "add a back button to sign in" came back as a
+  // rewrite of the landing page. When the scope is small AND we resolved real
+  // target files, the model sees ONLY those files (plus the design tokens it
+  // needs to stay on-palette). Everything else is unreachable, so it cannot be
+  // rewritten by accident.
+  const strictScope =
+    !isInitial &&
+    !isCrossCutting &&
+    resolvedTargetPaths.length > 0 &&
+    (editClassification?.scope === "micro" || editClassification?.scope === "targeted");
+  const contextFiles = strictScope
+    ? (() => {
+        const keep = new Set<string>(resolvedTargetPaths);
+        if (editClassification?.scope === "targeted") {
+          for (const p of impactNeighbourPaths) keep.add(p);
+        }
+        keep.add("src/styles.css");
+        const narrowed = editablePromptFiles.filter((f) => keep.has(f.path));
+        return narrowed.length > 0 ? narrowed : editablePromptFiles;
+      })()
+    : editablePromptFiles;
+  if (strictScope) {
+    console.info(
+      `[strict-context] ${editClassification?.scope} edit — sending ${contextFiles.length} of ${editablePromptFiles.length} file(s)`,
+    );
+  }
   const promptBudget = trimFilesForPrompt(
-    editablePromptFiles,
+    contextFiles,
     multiEditPromptContext || lastUserContent,
-    pinnedPaths,
+    strictScope ? pinnedPaths.filter((p) => contextFiles.some((f) => f.path === p)) : pinnedPaths,
     resolvedTargetPaths,
     { tokenCeiling: fileBlockCeiling, anchors: promptAnchors },
   );
+
   console.info(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`,
   );
