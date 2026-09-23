@@ -144,8 +144,17 @@ export async function runPostStreamAutofix(
   const inScope = (p: string) => allowed === null || allowed.has(p);
   // Only ship the non-scaffold, in-scope files to the model — keeps token cost
   // down and prevents the model from touching code this turn never wrote.
+  // FAILURE-FOCUSED REPAIR: when the verifier named the broken files, the
+  // model sees ONLY those files — never the rest of the turn's scope. Broad
+  // context is used only when no specific failure was identified.
   const candidates = files.filter(
-    (f) => !isProtected(f.path) && inScope(f.path) && /\.(tsx?|jsx?|css|html)$/.test(f.path),
+    (f) =>
+      !isProtected(f.path) &&
+      (flagged.size > 0 ? flagged.has(f.path) : inScope(f.path)) &&
+      /\.(tsx?|jsx?|css|html)$/.test(f.path),
+  );
+  console.info(
+    `[repair-scope] files=${candidates.length} reason=${flagged.size > 0 ? "verifier-flagged" : "turn-scope"}`,
   );
   if (candidates.length === 0) {
     return { files, result: { ran: false, fixedFiles: 0, notes: [] } };

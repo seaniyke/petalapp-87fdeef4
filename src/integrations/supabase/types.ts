@@ -73,6 +73,7 @@ export type Database = {
       }
       ai_call_log: {
         Row: {
+          cache_write_tokens: number | null
           cached_prompt_tokens: number | null
           chosen_by: string | null
           completion_tokens: number | null
@@ -94,14 +95,18 @@ export type Database = {
           prompt_chars: number | null
           prompt_tokens: number | null
           provider: string
+          reasoning_tokens: number | null
+          request_id: string | null
           static_prefix_chars: number | null
           static_prefix_hash: string | null
           status: number
           total_tokens: number | null
           turn_id: string | null
+          upstream_provider: string | null
           user_id: string | null
         }
         Insert: {
+          cache_write_tokens?: number | null
           cached_prompt_tokens?: number | null
           chosen_by?: string | null
           completion_tokens?: number | null
@@ -123,14 +128,18 @@ export type Database = {
           prompt_chars?: number | null
           prompt_tokens?: number | null
           provider: string
+          reasoning_tokens?: number | null
+          request_id?: string | null
           static_prefix_chars?: number | null
           static_prefix_hash?: string | null
           status: number
           total_tokens?: number | null
           turn_id?: string | null
+          upstream_provider?: string | null
           user_id?: string | null
         }
         Update: {
+          cache_write_tokens?: number | null
           cached_prompt_tokens?: number | null
           chosen_by?: string | null
           completion_tokens?: number | null
@@ -152,11 +161,14 @@ export type Database = {
           prompt_chars?: number | null
           prompt_tokens?: number | null
           provider?: string
+          reasoning_tokens?: number | null
+          request_id?: string | null
           static_prefix_chars?: number | null
           static_prefix_hash?: string | null
           status?: number
           total_tokens?: number | null
           turn_id?: string | null
+          upstream_provider?: string | null
           user_id?: string | null
         }
         Relationships: []
