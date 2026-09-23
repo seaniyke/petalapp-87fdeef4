@@ -2793,7 +2793,13 @@ Forbidden defaults
   // blast radius so the model edits with the callers in view instead of
   // breaking them silently. Deterministic, capped, and skipped when we are
   // already pinning the whole app for a cross-cutting ask.
-  if (!isInitial && !isCrossCutting && resolvedTargetPaths.length > 0) {
+  if (
+    !isInitial &&
+    !isCrossCutting &&
+    editClassification?.scope !== "micro" &&
+    resolvedTargetPaths.length > 0
+  ) {
+
     try {
       const { computeImpact } = await import("@/server/impact-graph.server");
       const impact = computeImpact(editablePromptFiles, resolvedTargetPaths, {
