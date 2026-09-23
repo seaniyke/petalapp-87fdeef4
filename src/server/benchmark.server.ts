@@ -24,14 +24,25 @@ import { partitionVerificationDefects } from "@/lib/verification-report";
 import { BENCHMARK_SUITE, type BenchmarkCase } from "@/server/benchmark-suite";
 
 const BENCH_EMAIL = "benchmark@bench.buildwithpetal.com";
-/** Per-case ceiling. A case that blows this is scored as a build failure. */
-const CASE_TIMEOUT_MS = 12 * 60_000;
+/**
+ * Per-phase ceilings, not a single per-case one. A case that builds an app and
+ * then edits it pays for two generations and two builds; sharing one 12-minute
+ * budget between them made a healthy edit case look like a product timeout
+ * when the initial build alone had taken nine minutes.
+ */
+const GENERATION_TIMEOUT_MS = 12 * 60_000;
+const BUILD_TIMEOUT_MS = 8 * 60_000;
 const BUILD_POLL_MS = 5_000;
 /** Judge model for spec adherence. Cheap: it reads criteria, not architecture. */
 const SPEC_JUDGE_MODEL = "google/gemini-3.1-flash-lite";
 
 function baseUrl(): string {
-  return process.env.PETAL_PUBLIC_BASE_URL ?? process.env.PETAL_PUBLIC_ORIGIN ?? "https://buildwithpetal.com";
+  return (
+    process.env.PETAL_BENCH_BASE_URL ??
+    process.env.PETAL_PUBLIC_BASE_URL ??
+    process.env.PETAL_PUBLIC_ORIGIN ??
+    "https://buildwithpetal.com"
+  );
 }
 
 export interface CriterionResult {
@@ -41,12 +52,29 @@ export interface CriterionResult {
   note?: string;
 }
 
+/**
+ * Exactly one primary verdict per case. The point of the split is that a
+ * dropped socket or an unreadable judge can never be filed as "Kimble failed",
+ * and a genuine product failure can never hide behind them either.
+ */
+export type BenchmarkClassification =
+  | "PASS — PRODUCT"
+  | "FAIL — PRODUCT"
+  | "FAIL — INFRASTRUCTURE"
+  | "FAIL — BENCHMARK"
+  | "INCONCLUSIVE";
+
+export interface BenchmarkTelemetry {
+  phases: Array<{ name: string; ms: number }>;
+}
+
 export interface BenchmarkCaseResult {
   caseId: string;
   title: string;
   projectId: string | null;
   buildId: string | null;
   status: "passed" | "failed" | "errored";
+  classification: BenchmarkClassification;
   buildCompleted: boolean;
   functionalCorrectness: number;
   specAdherence: number;
@@ -55,8 +83,10 @@ export interface BenchmarkCaseResult {
   criteria: CriterionResult[];
   defects: string[];
   durationMs: number;
+  telemetry: BenchmarkTelemetry;
   errorMessage?: string;
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Session                                                             */
@@ -274,19 +304,52 @@ function allCriteria(testCase: BenchmarkCase): BenchmarkCase["criteria"] {
   return testCase.followUp ? [...testCase.criteria, ...testCase.followUp.criteria] : testCase.criteria;
 }
 
+/**
+ * Pull a JSON object out of a judge reply that may be wrapped in prose, a
+ * ```json fence, or both. A judge that answers in the wrong shape is a
+ * benchmark failure, not a product failure, so the caller needs to know the
+ * difference — hence `judgeFailed` rather than a silent all-false verdict.
+ */
+export function extractJudgeJson(text: string): unknown | null {
+  const candidates: string[] = [];
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) candidates.push(fenced[1].trim());
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first !== -1 && last > first) candidates.push(text.slice(first, last + 1));
+  candidates.push(text.trim());
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      /* try the next shape */
+    }
+  }
+  return null;
+}
+
+export interface SpecScore {
+  criteria: CriterionResult[];
+  /** True when the judge could not be read — the test failed, not the app. */
+  judgeFailed: boolean;
+}
+
 async function scoreSpecAdherence(
   projectId: string,
   testCase: BenchmarkCase,
   criteriaList: BenchmarkCase["criteria"] = allCriteria(testCase),
-): Promise<CriterionResult[]> {
-  const fallback = (note: string): CriterionResult[] =>
-    criteriaList.map((c) => ({ id: c.id, text: c.text, passed: false, note }));
+): Promise<SpecScore> {
+  const fallback = (note: string, judgeFailed: boolean): SpecScore => ({
+    criteria: criteriaList.map((c) => ({ id: c.id, text: c.text, passed: false, note })),
+    judgeFailed,
+  });
 
   const { data: files } = await supabaseAdmin
     .from("project_files")
     .select("path, content")
     .eq("project_id", projectId);
-  if (!files?.length) return fallback("no files generated");
+  if (!files?.length) return fallback("no files generated", false);
 
   const relevant = (files as Array<{ path: string; content: string }>)
     .filter((f) => /\.(tsx?|jsx?|css|html)$/.test(f.path) && !f.path.includes("node_modules"))
@@ -295,54 +358,69 @@ async function scoreSpecAdherence(
     .join("\n\n")
     .slice(0, 180_000);
 
-  try {
-    const res = await aiChatCompletions({
-      feature: "design",
-      budgetAware: true,
-      body: {
-        model: SPEC_JUDGE_MODEL,
-        temperature: 0,
-        max_tokens: 1200,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You audit generated app source against acceptance criteria. For each criterion answer strictly from the code: pass only when the code plainly implements it. Reply with JSON only: {\"results\":[{\"id\":\"...\",\"passed\":true|false,\"note\":\"<12 words\"}]}.",
-          },
-          {
-            role: "user",
-            content: `App brief: ${testCase.prompt}${
-              testCase.followUp ? `\n\nThen the user asked: ${testCase.followUp.prompt}` : ""
-            }\n\nCriteria:\n${criteriaList
-              .map((c) => `- ${c.id}: ${c.text}`)
-              .join("\n")}\n\nSource:\n${relevant}`,
-          },
-        ],
-      },
-    });
-    const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const text = json.choices?.[0]?.message?.content ?? "";
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return fallback("judge returned no JSON");
-    const parsed = JSON.parse(match[0]) as {
-      results?: Array<{ id?: string; passed?: boolean; note?: string }>;
-    };
-    const byId = new Map((parsed.results ?? []).map((r) => [r.id, r]));
-    return criteriaList.map((c) => {
-      const hit = byId.get(c.id);
-      return {
-        id: c.id,
-        text: c.text,
-        passed: Boolean(hit?.passed),
-        note: hit?.note,
+  // One retry: a judge that fumbles the format once usually gets it right the
+  // second time, and a reroll is far cheaper than discarding a real result.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await aiChatCompletions({
+        feature: "design",
+        budgetAware: true,
+        body: {
+          model: SPEC_JUDGE_MODEL,
+          temperature: 0,
+          max_tokens: 1200,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You audit generated app source against acceptance criteria. For each criterion answer strictly from the code: pass only when the code plainly implements it. Reply with raw JSON only — no prose, no markdown fences: {\"results\":[{\"id\":\"...\",\"passed\":true|false,\"note\":\"<12 words\"}]}.",
+            },
+            {
+              role: "user",
+              content: `App brief: ${testCase.prompt}${
+                testCase.followUp ? `\n\nThen the user asked: ${testCase.followUp.prompt}` : ""
+              }\n\nCriteria:\n${criteriaList
+                .map((c) => `- ${c.id}: ${c.text}`)
+                .join("\n")}\n\nSource:\n${relevant}`,
+            },
+          ],
+        },
+      });
+      const json = (await res.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
       };
-    });
-  } catch (e) {
-    return fallback(`judge failed: ${(e as Error).message.slice(0, 80)}`);
+      const text = json.choices?.[0]?.message?.content ?? "";
+      const parsed = extractJudgeJson(text) as
+        | { results?: Array<{ id?: string; passed?: boolean; note?: string }> }
+        | null;
+      const results = Array.isArray(parsed?.results) ? parsed.results : null;
+      if (!results) continue;
+
+      const byId = new Map(results.map((r) => [r.id, r]));
+      // A judge that answered about none of our criteria did not read the
+      // task. Treat that as unreadable rather than a clean sweep of failures.
+      const matched = criteriaList.filter((c) => byId.has(c.id)).length;
+      if (matched === 0) continue;
+
+      return {
+        judgeFailed: false,
+        criteria: criteriaList.map((c) => {
+          const hit = byId.get(c.id);
+          return {
+            id: c.id,
+            text: c.text,
+            passed: Boolean(hit?.passed),
+            note: hit?.note ?? (hit ? undefined : "judge did not answer this criterion"),
+          };
+        }),
+      };
+    } catch (e) {
+      if (attempt === 1) return fallback(`judge failed: ${(e as Error).message.slice(0, 80)}`, true);
+    }
   }
+  return fallback("judge reply could not be read", true);
 }
+
 
 /** Previous run's criterion outcomes for this case, for regression diffing. */
 async function loadPreviousCriteria(caseId: string, currentRunId: string): Promise<Set<string>> {
@@ -367,6 +445,27 @@ async function loadProjectFiles(projectId: string): Promise<Array<{ path: string
   return (data ?? []) as Array<{ path: string; content: string }>;
 }
 
+/**
+ * Transport-level wording that proves the environment, not the product, ended
+ * the case. These must never be scored as Kimble failing to do the work.
+ */
+const INFRA_ERROR_PATTERNS = [
+  /socket connection was closed/i,
+  /unable to connect/i,
+  /ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|ENOTFOUND/i,
+  /fetch failed/i,
+  /network (?:error|request failed)/i,
+  /\bUnauthorized\b/i,
+  /operation was aborted/i,
+  /\b5\d\d\b.*(?:gateway|unavailable|timeout)/i,
+  /stream ended without a terminal event/i,
+];
+
+export function looksInfrastructural(message: string | undefined): boolean {
+  if (!message) return false;
+  return INFRA_ERROR_PATTERNS.some((p) => p.test(message));
+}
+
 async function runCase(
   token: string,
   userId: string,
@@ -374,9 +473,6 @@ async function runCase(
   testCase: BenchmarkCase,
 ): Promise<BenchmarkCaseResult> {
   const startedAt = Date.now();
-  const deadline = startedAt + CASE_TIMEOUT_MS;
-  const abort = new AbortController();
-  const timer = setTimeout(() => abort.abort(), CASE_TIMEOUT_MS);
 
   const base: BenchmarkCaseResult = {
     caseId: testCase.id,
@@ -384,6 +480,7 @@ async function runCase(
     projectId: null,
     buildId: null,
     status: "errored",
+    classification: "INCONCLUSIVE",
     buildCompleted: false,
     functionalCorrectness: 0,
     specAdherence: 0,
@@ -392,40 +489,88 @@ async function runCase(
     criteria: [],
     defects: [],
     durationMs: 0,
+    telemetry: { phases: [] },
+  };
+
+  /** Run one phase under its own clock, and record how long it actually took. */
+  const phase = async <T,>(
+    name: string,
+    limitMs: number,
+    fn: (signal: AbortSignal) => Promise<T>,
+  ): Promise<{ value: T | null; timedOut: boolean; ms: number }> => {
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), limitMs);
+    const t0 = Date.now();
+    try {
+      const value = await fn(abort.signal);
+      return { value, timedOut: false, ms: Date.now() - t0 };
+    } catch (e) {
+      const timedOut = abort.signal.aborted;
+      if (!timedOut) throw e;
+      return { value: null, timedOut: true, ms: Date.now() - t0 };
+    } finally {
+      clearTimeout(timer);
+      base.telemetry.phases.push({ name, ms: Date.now() - t0 });
+    }
   };
 
   try {
     const projectId = await createBenchProject(userId, testCase);
     base.projectId = projectId;
 
-    const gen = await runGeneration(token, projectId, testCase.prompt, abort.signal);
-    if (!gen.ok) {
-      base.errorMessage = gen.error;
+    const gen = await phase("generate:initial", GENERATION_TIMEOUT_MS, (signal) =>
+      runGeneration(token, projectId, testCase.prompt, signal),
+    );
+    if (gen.timedOut) {
+      base.errorMessage = `initial generation exceeded ${Math.round(GENERATION_TIMEOUT_MS / 1000)}s`;
+      base.classification = "FAIL — PRODUCT";
+      base.durationMs = Date.now() - startedAt;
+      return base;
+    }
+    if (!gen.value?.ok) {
+      base.errorMessage = gen.value?.error;
+      base.classification = looksInfrastructural(base.errorMessage)
+        ? "FAIL — INFRASTRUCTURE"
+        : "FAIL — PRODUCT";
       base.durationMs = Date.now() - startedAt;
       return base;
     }
 
-    let build = await runBuild(token, projectId, deadline);
-    // Edit / redesign / recovery cases: same project, one more real turn.
-    // Only worth running when the first build actually landed — otherwise the
-    // edit would be scored against a project that never existed.
+    const firstBuild = await phase("build:initial", BUILD_TIMEOUT_MS, () =>
+      runBuild(token, projectId, Date.now() + BUILD_TIMEOUT_MS),
+    );
+    let build =
+      firstBuild.value ??
+      ({ buildId: null, status: "timeout", defects: [], visualScore: null, errorMessage: "build timed out" } as BuildOutcome);
+
+    // Edit / redesign / recovery cases: same project, one more real turn, on
+    // its own clock. The first build's cost must not eat the edit's budget —
+    // that is what made multi-file-edit look like a product timeout.
     if (testCase.followUp && build.status === "ready") {
-      const edit = await runGeneration(
-        token,
-        projectId,
-        testCase.followUp.prompt,
-        abort.signal,
-        [
-          { role: "user", content: testCase.prompt },
-          { role: "assistant", content: "Built." },
-          { role: "user", content: testCase.followUp.prompt },
-        ],
-        await loadProjectFiles(projectId),
+      const currentFiles = await loadProjectFiles(projectId);
+      const edit = await phase("generate:edit", GENERATION_TIMEOUT_MS, (signal) =>
+        runGeneration(
+          token,
+          projectId,
+          testCase.followUp!.prompt,
+          signal,
+          [
+            { role: "user", content: testCase.prompt },
+            { role: "assistant", content: "Built." },
+            { role: "user", content: testCase.followUp!.prompt },
+          ],
+          currentFiles,
+        ),
       );
-      if (!edit.ok) {
-        base.errorMessage = `follow-up: ${edit.error}`;
+      if (edit.timedOut) {
+        base.errorMessage = `follow-up generation exceeded ${Math.round(GENERATION_TIMEOUT_MS / 1000)}s`;
+      } else if (!edit.value?.ok) {
+        base.errorMessage = `follow-up: ${edit.value?.error}`;
       } else {
-        build = await runBuild(token, projectId, deadline);
+        const editBuild = await phase("build:edit", BUILD_TIMEOUT_MS, () =>
+          runBuild(token, projectId, Date.now() + BUILD_TIMEOUT_MS),
+        );
+        if (editBuild.value) build = editBuild.value;
       }
     }
 
@@ -448,9 +593,20 @@ async function runCase(
           ? Math.max(0, 1 - 0.2 * visual.length)
           : 0;
 
-    const criteria = base.buildCompleted
-      ? await scoreSpecAdherence(projectId, testCase)
-      : testCase.criteria.map((c) => ({ id: c.id, text: c.text, passed: false, note: "build failed" }));
+    let judgeFailed = false;
+    let criteria: CriterionResult[];
+    if (base.buildCompleted) {
+      const scored = await scoreSpecAdherence(projectId, testCase);
+      criteria = scored.criteria;
+      judgeFailed = scored.judgeFailed;
+    } else {
+      criteria = testCase.criteria.map((c) => ({
+        id: c.id,
+        text: c.text,
+        passed: false,
+        note: "build failed",
+      }));
+    }
     base.criteria = criteria;
     base.specAdherence = criteria.length
       ? criteria.filter((c) => c.passed).length / criteria.length
@@ -462,18 +618,30 @@ async function runCase(
       ? 1 - regressed.length / previouslyPassing.size
       : 1;
 
-    base.status = base.buildCompleted && blocking.length === 0 && base.specAdherence >= 0.75 ? "passed" : "failed";
+    const passed = base.buildCompleted && blocking.length === 0 && base.specAdherence >= 0.75;
+    base.status = passed ? "passed" : "failed";
+
+    // A judge we could not read tells us nothing about the app. Scoring that
+    // as a product failure is exactly the mistake this pass removes.
+    if (passed) base.classification = "PASS — PRODUCT";
+    else if (judgeFailed) base.classification = "FAIL — BENCHMARK";
+    else if (looksInfrastructural(base.errorMessage)) base.classification = "FAIL — INFRASTRUCTURE";
+    else if (base.buildCompleted || build.status === "failed") base.classification = "FAIL — PRODUCT";
+    else base.classification = "INCONCLUSIVE";
+
     base.durationMs = Date.now() - startedAt;
     return base;
   } catch (e) {
     console.error("[benchmark] case failed", testCase.id, e);
     base.errorMessage = (e as Error).message.slice(0, 500);
+    base.classification = looksInfrastructural(base.errorMessage)
+      ? "FAIL — INFRASTRUCTURE"
+      : "INCONCLUSIVE";
     base.durationMs = Date.now() - startedAt;
     return base;
-  } finally {
-    clearTimeout(timer);
   }
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Run                                                                 */
@@ -529,7 +697,10 @@ export async function runNightlyBenchmark(options: NightlyBenchmarkOptions = {})
         run_id: runId,
         case_id: result.caseId,
         title: result.title,
+        classification: result.classification,
+        telemetry: result.telemetry as never,
         prompt: testCase.prompt,
+
         project_id: result.projectId,
         build_id: result.buildId,
         status: result.status,

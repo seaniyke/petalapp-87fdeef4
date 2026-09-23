@@ -348,6 +348,7 @@ export type Database = {
           build_completed: boolean
           build_id: string | null
           case_id: string
+          classification: string | null
           created_at: string
           criteria: Json
           defects: Json
@@ -361,6 +362,7 @@ export type Database = {
           run_id: string
           spec_adherence: number | null
           status: string
+          telemetry: Json
           title: string
           visual_quality: number | null
         }
@@ -368,6 +370,7 @@ export type Database = {
           build_completed?: boolean
           build_id?: string | null
           case_id: string
+          classification?: string | null
           created_at?: string
           criteria?: Json
           defects?: Json
@@ -381,6 +384,7 @@ export type Database = {
           run_id: string
           spec_adherence?: number | null
           status?: string
+          telemetry?: Json
           title: string
           visual_quality?: number | null
         }
@@ -388,6 +392,7 @@ export type Database = {
           build_completed?: boolean
           build_id?: string | null
           case_id?: string
+          classification?: string | null
           created_at?: string
           criteria?: Json
           defects?: Json
@@ -401,6 +406,7 @@ export type Database = {
           run_id?: string
           spec_adherence?: number | null
           status?: string
+          telemetry?: Json
           title?: string
           visual_quality?: number | null
         }
