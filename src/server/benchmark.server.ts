@@ -126,6 +126,7 @@ async function runGeneration(
   projectId: string,
   prompt: string,
   signal: AbortSignal,
+  messages?: Array<{ role: string; content: string }>,
 ): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch(`${baseUrl()}/api/generate`, {
     method: "POST",
@@ -138,7 +139,7 @@ async function runGeneration(
     body: JSON.stringify({
       projectId,
       currentFiles: [],
-      messages: [{ role: "user", content: prompt }],
+      messages: messages ?? [{ role: "user", content: prompt }],
     }),
   });
   if (!res.ok || !res.body) {
@@ -376,7 +377,7 @@ async function runCase(
       return base;
     }
 
-    const build = await runBuild(token, projectId, deadline);
+    let build = await runBuild(token, projectId, deadline);
     // Edit / redesign / recovery cases: same project, one more real turn.
     // Only worth running when the first build actually landed — otherwise the
     // edit would be scored against a project that never existed.
