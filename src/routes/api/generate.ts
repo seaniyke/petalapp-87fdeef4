@@ -4960,7 +4960,20 @@ Forbidden defaults
           .filter((f) => priorByPathBudget.get(f.path) !== f.content)
           .map((f) => f.path);
         const budgetVerdict = checkFileBudgets(nextFiles, budgetChangedPaths);
-        const budgetRejections: FileBudgetIssue[] = budgetVerdict.rejections;
+        // Phase 1 — a long file is only thrown away when it's genuinely
+        // unfinished. Complete work reaches the user, however large it is.
+        const contentByPathBudget = new Map(nextFiles.map((f) => [f.path, f.content]));
+        const budgetRejections: FileBudgetIssue[] = budgetVerdict.rejections.filter((r) =>
+          looksIncomplete(contentByPathBudget.get(r.path) ?? ""),
+        );
+        const budgetDowngraded = budgetVerdict.rejections.filter(
+          (r) => !budgetRejections.includes(r),
+        );
+        if (budgetDowngraded.length > 0) {
+          budgetVerdict.warnings.push(
+            ...budgetDowngraded.map((r) => ({ ...r, severity: "warn" as const })),
+          );
+        }
         if (budgetRejections.length > 0) {
           console.warn(
             `[file-budget] reverting ${budgetRejections.length} oversize file(s):`,
