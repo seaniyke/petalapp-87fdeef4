@@ -466,6 +466,10 @@ const INFRA_ERROR_PATTERNS = [
   /operation was aborted/i,
   /\b5\d\d\b.*(?:gateway|unavailable|timeout)/i,
   /stream ended without a terminal event/i,
+  // Hosting account capacity (e.g. Cloudflare Pages 8000027 project limit).
+  /reached the limit of projects/i,
+  /\b8000027\b/,
+  /\b(?:quota|rate limit) (?:exceeded|reached)\b/i,
 ];
 
 export function looksInfrastructural(message: string | undefined): boolean {
