@@ -234,6 +234,108 @@ export const BENCHMARK_SUITE: BenchmarkCase[] = [
       { id: "hours", text: "Opening hours are listed on the location page." },
     ],
   },
+  {
+    id: "micro-edit",
+    title: "Micro edit on an existing page",
+    kind: "edit",
+    prompt:
+      "Build a simple sign-in page for an app called Tidewell, with an email field, a password field and a sign-in button.",
+    criteria: [
+      { id: "signin-form", text: "A sign-in form renders with email, password and a submit button." },
+    ],
+    followUp: {
+      prompt: "Add a back arrow link to the home page at the top of the sign in page.",
+      criteria: [
+        { id: "back-link", text: "The sign-in page has a back link or arrow pointing to the home route." },
+        { id: "form-intact", text: "The email field, password field and sign-in button are still present and unchanged." },
+      ],
+    },
+  },
+  {
+    id: "multi-file-edit",
+    title: "Change that spans several files",
+    kind: "edit",
+    prompt:
+      "Build a two-page site for a bakery called Crumbfold: a home page and a menu page, with a shared top navigation.",
+    criteria: [
+      { id: "two-routes", text: "Home and menu are separate working routes with shared navigation." },
+    ],
+    followUp: {
+      prompt: "Add a Contact page with a contact form, and link it from the navigation on every page.",
+      criteria: [
+        { id: "contact-route", text: "A contact route exists and renders a contact form." },
+        { id: "nav-updated", text: "The shared navigation links to Contact and the link resolves." },
+        { id: "old-pages-ok", text: "Home and menu still render their original content." },
+      ],
+    },
+  },
+  {
+    id: "mobile-fix",
+    title: "Mobile layout correction",
+    kind: "edit",
+    prompt:
+      "Build a landing page for a fitness studio called Ironleaf with a hero, a three-column feature row and a pricing section.",
+    criteria: [
+      { id: "sections", text: "Hero, features and pricing sections all render." },
+    ],
+    followUp: {
+      prompt: "On phones the feature row and pricing cards are squashed side by side. Make them stack properly on mobile.",
+      criteria: [
+        { id: "stacks", text: "Feature and pricing cards stack in a single column at small widths." },
+        { id: "no-overflow", text: "At 390px wide nothing overflows horizontally." },
+        { id: "desktop-intact", text: "The multi-column layout is preserved at desktop widths." },
+      ],
+    },
+  },
+  {
+    id: "visual-redesign",
+    title: "Whole-site visual redesign",
+    kind: "edit",
+    prompt:
+      "Build a landing page for a note taking app called Quillstack with a nav, hero, features, testimonials and footer.",
+    criteria: [
+      { id: "landing-complete", text: "Nav, hero, features, testimonials and footer all render." },
+    ],
+    followUp: {
+      prompt: "Redesign the whole site to feel dark, premium and editorial, with a serif display face.",
+      criteria: [
+        { id: "dark-theme", text: "The theme is dark across every section, not only the hero." },
+        { id: "consistent", text: "Typography and colour are consistent across all sections — no half-redesigned page." },
+        { id: "content-kept", text: "All original sections and their copy are still present." },
+      ],
+    },
+  },
+  {
+    id: "backed-form",
+    title: "Database-backed signup form",
+    kind: "form",
+    prompt:
+      "Build a waitlist page for a product called Northmoor with a form that saves each signup (name and email) to the database and shows a success state.",
+    criteria: [
+      { id: "form", text: "A waitlist form with name and email renders and validates." },
+      { id: "persists", text: "Submissions are written to a database table rather than local state only." },
+      { id: "table-secured", text: "The table has row level security and explicit grants." },
+      { id: "success-state", text: "A success state is shown after a successful submission." },
+    ],
+  },
+  {
+    id: "broken-recovery",
+    title: "Recovery from a broken page",
+    kind: "recovery",
+    prompt:
+      "Build a pricing page for a hosting company called Stonepath with three plans and a comparison table.",
+    criteria: [
+      { id: "pricing-3", text: "Three plans and a comparison table render." },
+    ],
+    followUp: {
+      prompt:
+        "The comparison table is throwing an error and the page is blank. Fix it so the page renders again, and keep the three plans.",
+      criteria: [
+        { id: "renders", text: "The pricing page renders without a runtime error." },
+        { id: "plans-kept", text: "The three plans are still present after the fix." },
+      ],
+    },
+  },
 ];
 
 export function findBenchmarkCase(id: string): BenchmarkCase | undefined {
