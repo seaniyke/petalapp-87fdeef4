@@ -578,6 +578,20 @@ async function runCase(
           runBuild(token, projectId, Date.now() + BUILD_TIMEOUT_MS),
         );
         if (editBuild.value) build = editBuild.value;
+
+        // Minimal change surface: a one-line ask must not rewrite the project.
+        const afterFiles = await loadProjectFiles(projectId);
+        const before = new Map(currentFiles.map((f) => [f.path, f.content]));
+        const changedPaths = afterFiles
+          .filter((f) => before.get(f.path) !== f.content)
+          .map((f) => f.path)
+          .sort();
+        base.telemetry.changeSurface = {
+          filesBefore: currentFiles.length,
+          filesChanged: changedPaths.length,
+          changedPaths: changedPaths.slice(0, 50),
+          maxAllowed: testCase.followUp.maxChangedFiles,
+        };
       }
     }
 
