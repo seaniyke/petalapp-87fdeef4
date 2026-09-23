@@ -286,7 +286,9 @@ async function scoreSpecAdherence(
           },
           {
             role: "user",
-            content: `App brief: ${testCase.prompt}\n\nCriteria:\n${testCase.criteria
+            content: `App brief: ${testCase.prompt}${
+              testCase.followUp ? `\n\nThen the user asked: ${testCase.followUp.prompt}` : ""
+            }\n\nCriteria:\n${criteriaList
               .map((c) => `- ${c.id}: ${c.text}`)
               .join("\n")}\n\nSource:\n${relevant}`,
           },
