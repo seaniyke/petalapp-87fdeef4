@@ -135,6 +135,7 @@ import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import {
   assessChunking,
   assessRouteCoverage,
+  buildChunkInstruction,
   parseStepsFromArgs,
   runChunkedGeneration,
 } from "@/server/chunked-generation.server";
@@ -3633,6 +3634,12 @@ Forbidden defaults
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
           );
           const firstCollected = collected;
+          // A payload that ran out of room must never be retried at the same
+          // ceiling — that reproduces the exact truncation and the turn dies
+          // as "no safe edit". Give the retry materially more headroom.
+          const firstWasTruncated =
+            isTruncatedFinishReason(collected.finishReason) ||
+            (collected.args.trim().length > 0 && !collected.args.trimEnd().endsWith("}"));
           const retry = await structuredRetryCompletion({
             messages: finalMessages,
             isInitial,
@@ -3641,7 +3648,9 @@ Forbidden defaults
             tool,
             maxTokens: isInitial
               ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
-              : Math.max(maxCompletionTokens, 8_000),
+              : firstWasTruncated
+                ? Math.min(20_000, Math.max(16_000, Math.round(maxCompletionTokens * 1.6)))
+                : Math.max(maxCompletionTokens, 8_000),
             crossCuttingIntent: isCrossCutting,
             signal: abortSignal,
             meta: {
@@ -3692,6 +3701,70 @@ Forbidden defaults
               collected = recovered.collected;
             } else {
 
+            // The work was too big for one response. Before giving up, ask
+            // for a deliberately SMALL first chunk of the model's own plan —
+            // small enough that it cannot overflow. The chunk continuation
+            // loop below then finishes the rest in the same turn.
+            let smallChunk: ParsedProjectPayload | null = null;
+            if (firstWasTruncated) {
+              try {
+                controller.enqueue(
+                  encoder.encode(
+                    sse({ type: "status", message: "This one is large — building it in smaller pieces…" }),
+                  ),
+                );
+                const chunkRes = await structuredRetryCompletion({
+                  messages: [
+                    ...finalMessages,
+                    {
+                      role: "assistant",
+                      content: assistantTextFromCollected(firstCollected).slice(0, 4_000),
+                    },
+                    {
+                      role: "user",
+                      content: buildChunkInstruction({
+                        round: 1,
+                        isInitial,
+                        deliveredPaths: [],
+                        remainingSteps: parseStepsFromArgs(firstCollected.args),
+                        reason: "truncated_output",
+                      }),
+                    },
+                  ],
+                  isInitial,
+                  problem: "output_truncated_first_chunk",
+                  hasBackend: Boolean(backend),
+                  tool,
+                  maxTokens: 6_000,
+                  crossCuttingIntent: isCrossCutting,
+                  signal: abortSignal,
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: "truncation_small_chunk",
+                    projectId: body.projectId ?? null,
+                    userId,
+                    turnId: logicalTurnId,
+                  },
+                });
+                if (chunkRes.ok && chunkRes.body) {
+                  const chunkCollected = await relayAndCollect(chunkRes, controller, encoder);
+                  smallChunk = parseCollectedProject(chunkCollected, isInitial);
+                  collected = chunkCollected;
+                }
+              } catch (chunkErr) {
+                console.warn(
+                  "[generate] small-chunk recovery failed:",
+                  chunkErr instanceof Error ? chunkErr.message : String(chunkErr),
+                );
+                smallChunk = null;
+              }
+            }
+            if (smallChunk) {
+              payload = smallChunk;
+            } else {
+
             const deterministic = !isInitial
               ? deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent })
               : null;
@@ -3726,6 +3799,7 @@ Forbidden defaults
               reason: isInitial ? "initial_generation_no_files" : "no_safe_edit",
             });
             return;
+            }
             }
             }
           }
