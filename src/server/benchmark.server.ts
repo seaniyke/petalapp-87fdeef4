@@ -249,6 +249,11 @@ async function runBuild(token: string, projectId: string, deadline: number): Pro
  * whether the app actually does the thing the PRD asked for. This is the one
  * place the harness needs judgement — everything else is measured.
  */
+/** A case is scored on its build criteria plus, when present, its edit criteria. */
+function allCriteria(testCase: BenchmarkCase): BenchmarkCase["criteria"] {
+  return testCase.followUp ? [...testCase.criteria, ...testCase.followUp.criteria] : testCase.criteria;
+}
+
 async function scoreSpecAdherence(
   projectId: string,
   testCase: BenchmarkCase,
