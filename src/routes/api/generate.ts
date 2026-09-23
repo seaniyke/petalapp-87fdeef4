@@ -160,7 +160,11 @@ import {
 
 import { findGenerationQualityIssues } from "@/server/generation-quality-gate.server";
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
-import { isScaffoldAbsorbedPath, isScaffoldOwnedPath } from "@/server/scaffold-ownership.server";
+import {
+  isScaffoldAbsorbedPath,
+  isScaffoldOwnedPath,
+  isVerifierExempt,
+} from "@/server/scaffold-ownership.server";
 import {
   runWriteGate,
   writeGateDisclosure,
@@ -2551,9 +2555,14 @@ Forbidden defaults
   // Phase 1 — only convene the board when the turn genuinely reshapes the
   // product. Everyday edits skip it entirely: no extra calls, no extra wait,
   // no chance of an unrequested requirement being injected.
-  const orchestratorWorthwhile = isInitial || isStructuralTurn;
+  // Reliability rebuild: the 5-specialist board (product/design/ux/
+  // architecture/security) cost ~23 serial model calls per run and only
+  // restated what the PRD + design direction already give the generator.
+  // Off by default; KIMBLE_AGENT_BOARD=1 restores it.
+  const orchestratorWorthwhile =
+    process.env["KIMBLE_AGENT_BOARD"] === "1" && (isInitial || isStructuralTurn);
   try {
-    if (!orchestratorWorthwhile) throw new Error("skip: routine edit");
+    if (!orchestratorWorthwhile) throw new Error("skip: board off (PRD + design direction cover it)");
     const { orchestrateTurn, summarizeOrchestration } = await import(
       "@/server/agents/orchestrator.server"
     );
@@ -4893,14 +4902,19 @@ Forbidden defaults
         // shell guard / build trigger so Rollup never sees an unresolved
         // import. See src/server/repair-all.server.ts.
         {
-          // On an edit turn (project already had files), lock the cosmetic
-          // repair stages to the files this turn actually touched. Otherwise a
-          // targeted ask silently restyles pages the user never mentioned.
+          // Lock the cosmetic repair stages to files this turn actually
+          // authored. Edit turns: the diff. First builds: everything except
+          // the ~340 starter-kit files Kimble ships pre-verified — polishing
+          // those every build was minutes of wasted work.
           const scopeLock =
             turnBaselineFiles.length > 0
               ? { touchedPaths: diffChangedPaths(turnBaselineFiles, nextFiles) }
-              : undefined;
-          const repaired = runAllRepairs(nextFiles, scopeLock ? { scopeLock } : undefined);
+              : {
+                  touchedPaths: nextFiles
+                    .map((f) => f.path)
+                    .filter((p) => !isVerifierExempt(p)),
+                };
+          const repaired = runAllRepairs(nextFiles, { scopeLock });
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
             nextFiles = repaired.files;
@@ -5112,7 +5126,9 @@ Forbidden defaults
         const preAutofixChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
         const autofixOut = autofixFiles(
           nextFiles,
-          isInitial ? undefined : preAutofixChangedPaths,
+          isInitial
+            ? nextFiles.map((f) => f.path).filter((p) => !isVerifierExempt(p))
+            : preAutofixChangedPaths,
         );
         nextFiles = autofixOut.files;
         if (autofixOut.report.fixedCount > 0) {
