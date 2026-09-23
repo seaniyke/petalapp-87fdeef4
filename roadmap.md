@@ -30,3 +30,5 @@
 - [x] Right page, right size: small edits locked to the resolved target files (edit-boundary.server.ts), a `micro` verification tier that checks one page for real breakage only, and design lint scoped to what the turn changed.
 - [x] Focused expertise: a small skill catalog (src/server/skills) chosen deterministically per request instead of loading the whole craft manual every turn.
 - [x] Fast project open: the builder no longer waits on the full project source before painting — project row, conversation and draft load together, source streams in behind them, and a turn settles it before running.
+- [ ] Six-scenario benchmark run: classify each result (product / infrastructure / benchmark / inconclusive)
+- [ ] Explain why builds use more OpenRouter tokens (per-call breakdown from ai_call_log)
