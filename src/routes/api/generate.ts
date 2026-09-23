@@ -363,9 +363,11 @@ function completionBudget(args: {
   // same ceiling only reproduced the truncation. Scale conservatively with
   // brief size while keeping small requests inexpensive.
   if (args.isInitial) {
-    if ((args.promptChars ?? 0) >= 700) return 20_000;
-    if ((args.promptChars ?? 0) >= 350) return 16_000;
-    return 14_000;
+    // Truncation still escalates via the structured retry path (22k), so the
+    // first attempt can be sized for a lean build rather than the worst case.
+    if ((args.promptChars ?? 0) >= 700) return 16_000;
+    if ((args.promptChars ?? 0) >= 350) return 12_000;
+    return 10_000;
   }
   if (args.multiEditIntent || args.crossCuttingIntent) return 12_000;
   if (args.hasVisionTurn) return 8_000;
