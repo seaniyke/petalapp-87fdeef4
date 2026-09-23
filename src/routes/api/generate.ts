@@ -3634,6 +3634,12 @@ Forbidden defaults
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
           );
           const firstCollected = collected;
+          // A payload that ran out of room must never be retried at the same
+          // ceiling — that reproduces the exact truncation and the turn dies
+          // as "no safe edit". Give the retry materially more headroom.
+          const firstWasTruncated =
+            isTruncatedFinishReason(collected.finishReason) ||
+            (collected.args.trim().length > 0 && !collected.args.trimEnd().endsWith("}"));
           const retry = await structuredRetryCompletion({
             messages: finalMessages,
             isInitial,
@@ -3642,7 +3648,9 @@ Forbidden defaults
             tool,
             maxTokens: isInitial
               ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
-              : Math.max(maxCompletionTokens, 8_000),
+              : firstWasTruncated
+                ? Math.min(20_000, Math.max(16_000, Math.round(maxCompletionTokens * 1.6)))
+                : Math.max(maxCompletionTokens, 8_000),
             crossCuttingIntent: isCrossCutting,
             signal: abortSignal,
             meta: {
