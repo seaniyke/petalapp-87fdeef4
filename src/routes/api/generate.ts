@@ -694,7 +694,14 @@ async function authorize(request: Request): Promise<string | Response> {
   const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await supabase.auth.getClaims(token);
+  // Verification needs the signing keys over the network. A momentary blip
+  // there is not a signed-out user, so give it one quiet second chance before
+  // rejecting a perfectly good session mid-turn.
+  let { data, error } = await supabase.auth.getClaims(token);
+  if (error || !data?.claims?.sub) {
+    await new Promise((r) => setTimeout(r, 400));
+    ({ data, error } = await supabase.auth.getClaims(token));
+  }
   if (error || !data?.claims?.sub) {
     return new Response("Unauthorized", { status: 401 });
   }

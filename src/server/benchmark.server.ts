@@ -99,7 +99,25 @@ async function mintBenchSession(): Promise<{ token: string; userId: string }> {
   if (error || !data.session?.access_token) {
     throw new Error(`Benchmark sign-in failed: ${error?.message ?? "no session"}`);
   }
+  await ensureBenchCredits(userId);
   return { token: data.session.access_token, userId };
+}
+
+/**
+ * The bench account is an ordinary free account, so a long run drains its
+ * daily allowance and every later case stalls on "Waiting for credits".
+ * Top it back up before each run so the suite measures the pipeline, not
+ * the wallet.
+ */
+async function ensureBenchCredits(userId: string): Promise<void> {
+  try {
+    await supabaseAdmin
+      .from("user_wallets")
+      .update({ topup_credits_remaining: 5000, credit_debt: 0 } as never)
+      .eq("user_id", userId);
+  } catch (err) {
+    console.warn("[benchmark] could not top up bench wallet", err);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -448,6 +466,7 @@ async function runCase(
     base.durationMs = Date.now() - startedAt;
     return base;
   } catch (e) {
+    console.error("[benchmark] case failed", testCase.id, e);
     base.errorMessage = (e as Error).message.slice(0, 500);
     base.durationMs = Date.now() - startedAt;
     return base;
