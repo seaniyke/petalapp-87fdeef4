@@ -131,10 +131,22 @@ function isProtected(p: string): boolean {
 export async function runPostStreamAutofix(
   files: ProjectFile[],
   issues?: { path: string; kind: string; detail: string }[],
+  /**
+   * MINIMAL CHANGE SURFACE — the turn's write scope. When supplied, only these
+   * paths (plus any path the verifier explicitly flagged) may be shown to the
+   * model or rewritten by it. Without it this pass could rewrite any
+   * non-scaffold file in the project, whether or not the turn touched it.
+   */
+  targetPaths?: Iterable<string>,
 ): Promise<{ files: ProjectFile[]; result: PostStreamFixResult }> {
-  // Only ship the non-scaffold files to the model — keeps token cost down
-  // and prevents the model from being tempted to touch protected code.
-  const candidates = files.filter((f) => !isProtected(f.path) && /\.(tsx?|jsx?|css|html)$/.test(f.path));
+  const flagged = new Set((issues ?? []).map((i) => i.path));
+  const allowed = targetPaths ? new Set([...targetPaths, ...flagged]) : null;
+  const inScope = (p: string) => allowed === null || allowed.has(p);
+  // Only ship the non-scaffold, in-scope files to the model — keeps token cost
+  // down and prevents the model from touching code this turn never wrote.
+  const candidates = files.filter(
+    (f) => !isProtected(f.path) && inScope(f.path) && /\.(tsx?|jsx?|css|html)$/.test(f.path),
+  );
   if (candidates.length === 0) {
     return { files, result: { ran: false, fixedFiles: 0, notes: [] } };
   }
@@ -142,7 +154,7 @@ export async function runPostStreamAutofix(
   // When the verifier flagged specific files, ALWAYS include them — even if
   // they would otherwise blow the byte budget — and prioritise them first so
   // they're never trimmed away.
-  const flaggedPaths = new Set((issues ?? []).map((i) => i.path));
+  const flaggedPaths = flagged;
   candidates.sort((a, b) => {
     const af = flaggedPaths.has(a.path) ? 0 : 1;
     const bf = flaggedPaths.has(b.path) ? 0 : 1;
@@ -200,7 +212,7 @@ export async function runPostStreamAutofix(
     const parsed = JSON.parse(args) as {
       fixes?: Array<{ path: string; content: string; reason: string }>;
     };
-    const fixes = (parsed.fixes ?? []).filter((f) => !isProtected(f.path));
+    const fixes = (parsed.fixes ?? []).filter((f) => !isProtected(f.path) && inScope(f.path));
     if (fixes.length === 0) {
       return { files, result: { ran: true, fixedFiles: 0, notes: [], usage } };
     }

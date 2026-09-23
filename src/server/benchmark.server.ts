@@ -66,6 +66,13 @@ export type BenchmarkClassification =
 
 export interface BenchmarkTelemetry {
   phases: Array<{ name: string; ms: number }>;
+  /** Minimal change surface: how many files the follow-up turn actually changed. */
+  changeSurface?: {
+    filesBefore: number;
+    filesChanged: number;
+    changedPaths: string[];
+    maxAllowed?: number;
+  };
 }
 
 export interface BenchmarkCaseResult {

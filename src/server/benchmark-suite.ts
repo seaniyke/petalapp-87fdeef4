@@ -34,6 +34,12 @@ export interface BenchmarkCase {
   followUp?: {
     prompt: string;
     criteria: BenchmarkCriterion[];
+    /**
+     * Minimal change surface. When set, the follow-up turn may change at most
+     * this many files. Exceeding it fails the case: "cleanup" is not a reason
+     * to rewrite files the request never mentioned.
+     */
+    maxChangedFiles?: number;
   };
 }
 
@@ -334,6 +340,25 @@ export const BENCHMARK_SUITE: BenchmarkCase[] = [
       criteria: [
         { id: "renders", text: "The pricing page renders without a runtime error." },
         { id: "plans-kept", text: "The three plans are still present after the fix." },
+      ],
+    },
+  },
+  {
+    id: "minimal-change-surface",
+    title: "One-line copy change touches almost nothing",
+    kind: "edit",
+    prompt:
+      "Build a four-page site for a coffee roaster called Ashgrove: a home page with a hero headline, an about page, a pricing page with three plans, and a contact page. Use a shared top navigation and a shared footer on every page.",
+    criteria: [
+      { id: "four-routes", text: "Home, about, pricing and contact are separate working routes." },
+      { id: "shared-chrome", text: "Every page shows the same top navigation and footer." },
+    ],
+    followUp: {
+      prompt: "Change the hero headline on the homepage to 'Freshly Roasted Daily'.",
+      maxChangedFiles: 3,
+      criteria: [
+        { id: "headline-changed", text: "The homepage hero headline reads 'Freshly Roasted Daily'." },
+        { id: "other-pages-untouched", text: "The about, pricing and contact pages still show their original content." },
       ],
     },
   },

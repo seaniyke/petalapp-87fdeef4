@@ -1803,7 +1803,15 @@ async function runFinalParseGuard(
     // Deterministic repairs must re-run over the model's output: a repair
     // round can reintroduce an unresolved import that the resolver already
     // knows how to pin, and re-running is cheaper than another model round.
-    afterRepair: (candidate) => runAllRepairs(candidate).files,
+    // Scope-locked to this turn's files so the cosmetic stages cannot restyle
+    // screens the turn never touched.
+    afterRepair: (candidate) =>
+      runAllRepairs(
+        candidate,
+        changedPaths.length > 0 && priorFiles.length > 0
+          ? { scopeLock: { touchedPaths: changedPaths } }
+          : undefined,
+      ).files,
   });
 
   if (report.rounds > 0) {
@@ -1832,7 +1840,12 @@ async function runFinalParseGuard(
           const previous = priorByPath.get(p);
           if (previous !== undefined) kept.push({ path: p, content: previous });
         }
-        const repaired = runAllRepairs(kept).files;
+        const repaired = runAllRepairs(
+          kept,
+          changedPaths.length > 0 && priorFiles.length > 0
+            ? { scopeLock: { touchedPaths: changedPaths } }
+            : undefined,
+        ).files;
         const recheck = await runPreEmitGate(
           repaired,
           changedPaths.filter((p) => !bad.has(p)),
@@ -4897,6 +4910,22 @@ Forbidden defaults
               }),
             );
           }
+          // Change-scope telemetry. One line per turn so an unexplained
+          // expansion ("changed 3 files, shipped 300") is visible instead of
+          // being buried inside repair notes.
+          const finalScope = diffChangedPaths(turnBaselineFiles, nextFiles);
+          console.info(
+            `[turn-scope] read=${nextFiles.length} targeted=${resolvedTargetPaths.length} written=${scopeLock?.touchedPaths.length ?? finalScope.length} final=${finalScope.length} initial=${isInitial}`,
+          );
+          if (
+            !isInitial &&
+            scopeLock &&
+            finalScope.length > Math.max(12, scopeLock.touchedPaths.length * 2)
+          ) {
+            console.warn(
+              `[turn-scope] unexplained expansion: turn wrote ${scopeLock.touchedPaths.length} file(s) but ${finalScope.length} differ from the baseline.`,
+            );
+          }
         }
 
         const shellGuard = ensureRenderableShell(nextFiles, detectedWebSubtype);
@@ -5385,7 +5414,13 @@ Forbidden defaults
           );
           const fixT0 = Date.now();
           try {
-            const fixOut = await runPostStreamAutofix(nextFiles, combinedAutofixIssues);
+            const fixOut = await runPostStreamAutofix(
+              nextFiles,
+              combinedAutofixIssues,
+              // Minimal change surface: on an edit turn this pass may only see
+              // and rewrite what the turn wrote (plus verifier-flagged files).
+              isInitial ? undefined : diffChangedPaths(turnBaselineFiles, nextFiles),
+            );
             // §7 cost ceiling — meter the polish pass so later rounds know
             // how much of the turn's repair budget is already gone.
             repairMeter.charge(
@@ -5584,7 +5619,11 @@ Forbidden defaults
             );
             const beforeHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
             try {
-              const fixOut = await runPostStreamAutofix(nextFiles, stillBad);
+              const fixOut = await runPostStreamAutofix(
+                nextFiles,
+                stillBad,
+                isInitial ? undefined : diffChangedPaths(turnBaselineFiles, nextFiles),
+              );
               nextFiles = fixOut.files;
               if (fixOut.result.usage) {
                 agentLoopUsages.push(fixOut.result.usage);
@@ -5775,6 +5814,11 @@ Forbidden defaults
             projectId: body.projectId ?? undefined,
             userId,
             signal: abortSignal,
+            // Minimal change surface: only complete stubs THIS turn produced.
+            // A placeholder left by an earlier turn is not this turn's job.
+            scopePaths: isInitial
+              ? undefined
+              : diffChangedPaths(turnBaselineFiles, nextFiles),
           });
           if (completed.completedPaths.length > 0) {
             nextFiles = completed.files;
@@ -5792,7 +5836,13 @@ Forbidden defaults
         // landing page and leaves "auth routes will be added here" comments —
         // the build stays green and the verifier only ever sees "/", so the
         // user gets a fraction of the product they asked for. Fails open.
-        try {
+        //
+        // Minimal change surface: this writes NEW pages and rewrites the app
+        // shell, so it only belongs on turns that are building product surface
+        // (first build, structural or cross-cutting work). A micro/targeted
+        // edit must never grow the app behind the user's back.
+        const routeCompletionWorthwhile = isInitial || isStructuralTurn || isCrossCutting;
+        if (routeCompletionWorthwhile) try {
           const { completeUnwrittenRoutes } = await import(
             "@/server/design/unwritten-routes.server"
           );
