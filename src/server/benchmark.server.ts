@@ -127,6 +127,7 @@ async function runGeneration(
   prompt: string,
   signal: AbortSignal,
   messages?: Array<{ role: string; content: string }>,
+  currentFiles?: Array<{ path: string; content: string }>,
 ): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch(`${baseUrl()}/api/generate`, {
     method: "POST",
@@ -138,7 +139,7 @@ async function runGeneration(
     },
     body: JSON.stringify({
       projectId,
-      currentFiles: [],
+      currentFiles: currentFiles ?? [],
       messages: messages ?? [{ role: "user", content: prompt }],
     }),
   });
@@ -339,6 +340,15 @@ async function loadPreviousCriteria(caseId: string, currentRunId: string): Promi
   return new Set(list.filter((c) => c.passed).map((c) => c.id));
 }
 
+/** The project's current source — an edit turn must not look like a first build. */
+async function loadProjectFiles(projectId: string): Promise<Array<{ path: string; content: string }>> {
+  const { data } = await supabaseAdmin
+    .from("project_files")
+    .select("path, content")
+    .eq("project_id", projectId);
+  return (data ?? []) as Array<{ path: string; content: string }>;
+}
+
 async function runCase(
   token: string,
   userId: string,
@@ -392,6 +402,7 @@ async function runCase(
           { role: "assistant", content: "Built." },
           { role: "user", content: testCase.followUp.prompt },
         ],
+        await loadProjectFiles(projectId),
       );
       if (!edit.ok) {
         base.errorMessage = `follow-up: ${edit.error}`;
