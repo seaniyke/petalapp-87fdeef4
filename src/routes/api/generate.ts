@@ -170,6 +170,7 @@ import { injectPreviewGuard } from "@/server/preview-guard.server";
 import {
   checkFileBudgets,
   enforceFileBudgets,
+  looksIncomplete,
   type FileBudgetIssue,
 } from "@/server/file-budget.server";
 import { pickBestModel } from "@/server/smart-router.server";
