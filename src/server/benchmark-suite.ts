@@ -239,9 +239,10 @@ export const BENCHMARK_SUITE: BenchmarkCase[] = [
     title: "Micro edit on an existing page",
     kind: "edit",
     prompt:
-      "Build a simple sign-in page for an app called Tidewell, with an email field, a password field and a sign-in button.",
+      "Build a two-page app called Tidewell: a home page, and a separate sign-in page with an email field, a password field and a sign-in button.",
     criteria: [
       { id: "signin-form", text: "A sign-in form renders with email, password and a submit button." },
+      { id: "home-route", text: "Home and sign-in are separate working routes." },
     ],
     followUp: {
       prompt: "Add a back arrow link to the home page at the top of the sign in page.",
