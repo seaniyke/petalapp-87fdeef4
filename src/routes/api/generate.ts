@@ -5497,8 +5497,16 @@ Forbidden defaults
         // meant the user's explicit fix request got a single unverified pass.
         {
 
-          const AGENT_LOOP_MAX_CYCLES = 3;
-          const AGENT_LOOP_WALL_MS = 90_000;
+          // Reliability rebuild, phase 3 — repair is bounded to ONE pass.
+          // Three extra rounds over 90 seconds is what produced the long
+          // silent gap that ended in a rollback: rounds 2 and 3 almost never
+          // converged, they just spent time and invented imports. One extra
+          // round with the exact remaining compiler errors captures nearly
+          // all of the real recoveries, and a turn that still fails after it
+          // fails fast and honestly instead of stalling.
+          const AGENT_LOOP_MAX_CYCLES = 1;
+          const AGENT_LOOP_WALL_MS = 30_000;
+
           const loopT0 = Date.now();
           const { verifyFilesLocal: lvFn } = await import("@/server/local-verifier");
           // Shared with the pre-emit gate so "what blocks a turn" has exactly
