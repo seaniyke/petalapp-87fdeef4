@@ -126,6 +126,8 @@ async function runGeneration(
   projectId: string,
   prompt: string,
   signal: AbortSignal,
+  messages?: Array<{ role: string; content: string }>,
+  currentFiles?: Array<{ path: string; content: string }>,
 ): Promise<{ ok: boolean; error?: string }> {
   const res = await fetch(`${baseUrl()}/api/generate`, {
     method: "POST",
@@ -137,8 +139,8 @@ async function runGeneration(
     },
     body: JSON.stringify({
       projectId,
-      currentFiles: [],
-      messages: [{ role: "user", content: prompt }],
+      currentFiles: currentFiles ?? [],
+      messages: messages ?? [{ role: "user", content: prompt }],
     }),
   });
   if (!res.ok || !res.body) {
@@ -249,12 +251,18 @@ async function runBuild(token: string, projectId: string, deadline: number): Pro
  * whether the app actually does the thing the PRD asked for. This is the one
  * place the harness needs judgement — everything else is measured.
  */
+/** A case is scored on its build criteria plus, when present, its edit criteria. */
+function allCriteria(testCase: BenchmarkCase): BenchmarkCase["criteria"] {
+  return testCase.followUp ? [...testCase.criteria, ...testCase.followUp.criteria] : testCase.criteria;
+}
+
 async function scoreSpecAdherence(
   projectId: string,
   testCase: BenchmarkCase,
+  criteriaList: BenchmarkCase["criteria"] = allCriteria(testCase),
 ): Promise<CriterionResult[]> {
   const fallback = (note: string): CriterionResult[] =>
-    testCase.criteria.map((c) => ({ id: c.id, text: c.text, passed: false, note }));
+    criteriaList.map((c) => ({ id: c.id, text: c.text, passed: false, note }));
 
   const { data: files } = await supabaseAdmin
     .from("project_files")
@@ -285,7 +293,9 @@ async function scoreSpecAdherence(
           },
           {
             role: "user",
-            content: `App brief: ${testCase.prompt}\n\nCriteria:\n${testCase.criteria
+            content: `App brief: ${testCase.prompt}${
+              testCase.followUp ? `\n\nThen the user asked: ${testCase.followUp.prompt}` : ""
+            }\n\nCriteria:\n${criteriaList
               .map((c) => `- ${c.id}: ${c.text}`)
               .join("\n")}\n\nSource:\n${relevant}`,
           },
@@ -302,7 +312,7 @@ async function scoreSpecAdherence(
       results?: Array<{ id?: string; passed?: boolean; note?: string }>;
     };
     const byId = new Map((parsed.results ?? []).map((r) => [r.id, r]));
-    return testCase.criteria.map((c) => {
+    return criteriaList.map((c) => {
       const hit = byId.get(c.id);
       return {
         id: c.id,
@@ -328,6 +338,15 @@ async function loadPreviousCriteria(caseId: string, currentRunId: string): Promi
   const row = data?.[0] as { criteria?: unknown } | undefined;
   const list = Array.isArray(row?.criteria) ? (row.criteria as CriterionResult[]) : [];
   return new Set(list.filter((c) => c.passed).map((c) => c.id));
+}
+
+/** The project's current source — an edit turn must not look like a first build. */
+async function loadProjectFiles(projectId: string): Promise<Array<{ path: string; content: string }>> {
+  const { data } = await supabaseAdmin
+    .from("project_files")
+    .select("path, content")
+    .eq("project_id", projectId);
+  return (data ?? []) as Array<{ path: string; content: string }>;
 }
 
 async function runCase(
@@ -368,7 +387,30 @@ async function runCase(
       return base;
     }
 
-    const build = await runBuild(token, projectId, deadline);
+    let build = await runBuild(token, projectId, deadline);
+    // Edit / redesign / recovery cases: same project, one more real turn.
+    // Only worth running when the first build actually landed — otherwise the
+    // edit would be scored against a project that never existed.
+    if (testCase.followUp && build.status === "ready") {
+      const edit = await runGeneration(
+        token,
+        projectId,
+        testCase.followUp.prompt,
+        abort.signal,
+        [
+          { role: "user", content: testCase.prompt },
+          { role: "assistant", content: "Built." },
+          { role: "user", content: testCase.followUp.prompt },
+        ],
+        await loadProjectFiles(projectId),
+      );
+      if (!edit.ok) {
+        base.errorMessage = `follow-up: ${edit.error}`;
+      } else {
+        build = await runBuild(token, projectId, deadline);
+      }
+    }
+
     base.buildId = build.buildId;
     base.buildCompleted = build.status === "ready";
     base.defects = build.defects;
