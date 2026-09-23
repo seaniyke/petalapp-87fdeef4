@@ -54,13 +54,19 @@ function ensureInit(): Promise<void> {
       // works in the Worker runtime.
       worker: false,
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
+      // esbuild is already up — we only lost our handle to it (module reload,
+      // or a second copy of this module). That is success, not failure.
+      // Treating it as failure permanently disabled the cheap deterministic
+      // parse check, so every syntax slip had to be caught by a model round.
+      if (/more than once/i.test((err as Error)?.message ?? "")) return;
       // Reset so a retry next turn can attempt re-init.
       initPromise = null;
       throw err;
     });
   return initPromise;
 }
+
 
 function loaderFor(path: string): "ts" | "tsx" | "js" | "jsx" {
   if (path.endsWith(".tsx")) return "tsx";
