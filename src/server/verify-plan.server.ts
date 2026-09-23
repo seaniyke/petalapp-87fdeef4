@@ -25,6 +25,7 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
 import type { Prd } from "@/server/prd/prd-types";
 import { prdBrowserScenarios } from "@/server/prd/prd-acceptance.server";
 import { computeVerifyScope, type VerifyScope } from "@/server/verify-scope.server";
+import { isVerifierExempt } from "@/server/scaffold-ownership.server";
 
 const MODEL = "google/gemini-2.5-flash-lite";
 
@@ -202,7 +203,15 @@ export function detectAuth(files: ProjectFile[], routes: string[]) {
   const authRoutes = routes.filter((r) => AUTH_PATH_RE.test(r));
   if (authRoutes.length === 0) return null;
 
-  const usesPasswordAuth = files.some((f) =>
+  // Starter-kit files ship auth examples and a backend client the app may
+  // never use. Only the app's own code counts as evidence of real auth.
+  const appFiles = files.filter(
+    (f) =>
+      !isVerifierExempt(f.path) &&
+      !f.path.startsWith("src/components/examples/") &&
+      !f.path.startsWith("src/integrations/"),
+  );
+  const usesPasswordAuth = appFiles.some((f) =>
     /signInWithPassword|supabase\.auth\.signUp|auth\.signUp\s*\(|createUserWithEmailAndPassword|signInWithEmailAndPassword|\bsignIn\s*\(\s*["']credentials["']/.test(
       f.content,
     ),
