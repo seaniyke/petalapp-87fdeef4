@@ -305,7 +305,7 @@ async function scoreSpecAdherence(
       results?: Array<{ id?: string; passed?: boolean; note?: string }>;
     };
     const byId = new Map((parsed.results ?? []).map((r) => [r.id, r]));
-    return testCase.criteria.map((c) => {
+    return criteriaList.map((c) => {
       const hit = byId.get(c.id);
       return {
         id: c.id,
