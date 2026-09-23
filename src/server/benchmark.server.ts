@@ -66,6 +66,13 @@ export type BenchmarkClassification =
 
 export interface BenchmarkTelemetry {
   phases: Array<{ name: string; ms: number }>;
+  /** Minimal change surface: how many files the follow-up turn actually changed. */
+  changeSurface?: {
+    filesBefore: number;
+    filesChanged: number;
+    changedPaths: string[];
+    maxAllowed?: number;
+  };
 }
 
 export interface BenchmarkCaseResult {
@@ -571,6 +578,20 @@ async function runCase(
           runBuild(token, projectId, Date.now() + BUILD_TIMEOUT_MS),
         );
         if (editBuild.value) build = editBuild.value;
+
+        // Minimal change surface: a one-line ask must not rewrite the project.
+        const afterFiles = await loadProjectFiles(projectId);
+        const before = new Map(currentFiles.map((f) => [f.path, f.content]));
+        const changedPaths = afterFiles
+          .filter((f) => before.get(f.path) !== f.content)
+          .map((f) => f.path)
+          .sort();
+        base.telemetry.changeSurface = {
+          filesBefore: currentFiles.length,
+          filesChanged: changedPaths.length,
+          changedPaths: changedPaths.slice(0, 50),
+          maxAllowed: testCase.followUp.maxChangedFiles,
+        };
       }
     }
 
@@ -607,6 +628,21 @@ async function runCase(
         note: "build failed",
       }));
     }
+    // Change surface is measured, not judged: it is a hard criterion.
+    const surface = base.telemetry.changeSurface;
+    if (surface?.maxAllowed != null) {
+      const within = surface.filesChanged <= surface.maxAllowed;
+      criteria = [
+        ...criteria,
+        {
+          id: "minimal-change-surface",
+          text: `The follow-up change touches at most ${surface.maxAllowed} files.`,
+          passed: within,
+          note: `${surface.filesChanged} file(s) changed${within ? "" : `: ${surface.changedPaths.slice(0, 10).join(", ")}`}`,
+        },
+      ];
+    }
+
     base.criteria = criteria;
     base.specAdherence = criteria.length
       ? criteria.filter((c) => c.passed).length / criteria.length

@@ -85,6 +85,12 @@ export async function completePlaceholderPages(args: {
   projectId?: string | null;
   userId?: string | null;
   signal?: AbortSignal;
+  /**
+   * MINIMAL CHANGE SURFACE — the turn's write scope. When supplied, only
+   * placeholder pages this turn actually produced may be completed; a stub
+   * left behind by an earlier turn is not this turn's business.
+   */
+  scopePaths?: readonly string[];
 }): Promise<PageCompletionResult> {
   const idle: PageCompletionResult = { files: args.files, placeholders: [], completedPaths: [] };
   let targets: string[];
@@ -92,6 +98,10 @@ export async function completePlaceholderPages(args: {
     targets = findRoutedPlaceholders(args.files).slice(0, MAX_PAGES);
   } catch {
     return idle;
+  }
+  if (args.scopePaths) {
+    const allowed = new Set(args.scopePaths);
+    targets = targets.filter((p) => allowed.has(p));
   }
   if (targets.length === 0) return idle;
 
