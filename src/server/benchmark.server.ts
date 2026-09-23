@@ -628,6 +628,21 @@ async function runCase(
         note: "build failed",
       }));
     }
+    // Change surface is measured, not judged: it is a hard criterion.
+    const surface = base.telemetry.changeSurface;
+    if (surface?.maxAllowed != null) {
+      const within = surface.filesChanged <= surface.maxAllowed;
+      criteria = [
+        ...criteria,
+        {
+          id: "minimal-change-surface",
+          text: `The follow-up change touches at most ${surface.maxAllowed} files.`,
+          passed: within,
+          note: `${surface.filesChanged} file(s) changed${within ? "" : `: ${surface.changedPaths.slice(0, 10).join(", ")}`}`,
+        },
+      ];
+    }
+
     base.criteria = criteria;
     base.specAdherence = criteria.length
       ? criteria.filter((c) => c.passed).length / criteria.length
