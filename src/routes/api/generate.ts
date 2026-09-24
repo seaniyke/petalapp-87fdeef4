@@ -4170,6 +4170,8 @@ Forbidden defaults
             // The plan is authoritative; requested routes only fill in if
             // planning failed. No other source of pages exists.
             const pages = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            // Stop boundary: no page writer starts after the user pressed Stop.
+            await (await import("@/server/turn-cancel.server")).assertTurnActive(turnId, abortSignal, "page writing");
             const done = await writePlannedPages({
               pages,
               files: parsed.files,
@@ -5850,6 +5852,7 @@ Forbidden defaults
             (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://"),
           );
           if (hasPlaceholders) {
+            await (await import("@/server/turn-cancel.server")).assertTurnActive(turnId, abortSignal, "images");
             controller.enqueue(
               encoder.encode(sse({ type: "status", message: "Generating images…" })),
             );
@@ -6153,6 +6156,9 @@ Forbidden defaults
             `[prompt-cache] result prompt=${collected.usage.prompt_tokens} cached=${cachedPromptTokens ?? 0} hit=${hitPct}% model=${model}`,
           );
         }
+        // Stop boundary: after Stop nothing is billed, saved or built. This is
+        // the last point before settlement → persistence commit together.
+        await (await import("@/server/turn-cancel.server")).assertTurnActive(turnId, abortSignal, "saving");
         let finalCharged = 0;
         // Decide the terminal state BEFORE billing. Charging first meant a
         // turn where the user asked for an edit, the ops all failed to apply
@@ -6846,6 +6852,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
       // user is told nothing: no error card, no retry button, no "connection
       // dropped" line. The resume worker carries the request to completion.
       let silentRecovery = false;
+      let unregisterCancel: (() => void) | null = null;
 
       /**
        * Queue the turn for silent completion when the failure is one Kimble can
@@ -6899,6 +6906,13 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // 14s of silence so it never overwrites real model narration or
         // file events. Picks the next line in STATUS_ROTATION each tick.
         statusTimer = setInterval(() => {
+          // A Stop that landed on another worker is picked up here too (the
+          // same-worker case aborts instantly via the controller registry).
+          if (recorder && !workController.signal.aborted) {
+            void import("@/server/turn-cancel.server").then(async (m) => {
+              if (await m.isTurnCancelled(recorder.turnId)) m.abortLocalTurn(recorder.turnId);
+            });
+          }
           if (Date.now() - lastByteAt < 14_000) return;
           emit({
             type: "status",
@@ -6915,6 +6929,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // Every AI call made anywhere inside the pipeline inherits this
         // turn/project/user, so utility calls stop landing in telemetry
         // with null attribution.
+        if (recorder) {
+          const { registerTurnController } = await import("@/server/turn-cancel.server");
+          unregisterCancel = registerTurnController(recorder.turnId, workController);
+        }
         attemptCtx = {
           turnId: recorder?.turnId ?? null,
           projectId: turnProjectId,
@@ -6977,7 +6995,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
               terminalStatus = "awaiting_credits";
               terminalError = "Waiting for credits";
             }
-            if (failure && (await recoverSilently(failure.raw || failure.message, false))) {
+            if (failure && (await recoverSilently(failure.raw || failure.message, workController.signal.aborted))) {
               terminalStatus = "failed";
               terminalError = (failure.raw || failure.message).slice(0, 500);
             } else {
@@ -7008,6 +7026,14 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         if (attemptCtx) attemptCtx.ended = true;
         if (pingTimer) clearInterval(pingTimer);
         if (statusTimer) clearInterval(statusTimer);
+        unregisterCancel?.();
+        // An explicit Stop is the terminal state, whatever the inner pipeline
+        // reported on its way out. Never re-queued, never built, never billed.
+        if (workController.signal.aborted && terminalStatus !== "awaiting_credits") {
+          terminalStatus = "aborted";
+          terminalError = terminalError ?? "cancelled_by_user";
+          silentRecovery = false;
+        }
         // Always emit a terminal `done` event so resumers know to stop tailing.
         emit({ type: "done", status: terminalStatus });
         // Persist the terminal state before the request ends. A fire-and-forget

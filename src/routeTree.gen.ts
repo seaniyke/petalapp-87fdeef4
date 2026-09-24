@@ -105,6 +105,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiTurnsIdEventsRouteImport } from './routes/api/turns.$id.events'
+import { Route as ApiTurnsIdCancelRouteImport } from './routes/api/turns.$id.cancel'
 import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
@@ -618,6 +619,11 @@ const ApiTurnsIdEventsRoute = ApiTurnsIdEventsRouteImport.update({
   path: '/api/turns/$id/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTurnsIdCancelRoute = ApiTurnsIdCancelRouteImport.update({
+  id: '/api/turns/$id/cancel',
+  path: '/api/turns/$id/cancel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicSharedSplatRoute = ApiPublicSharedSplatRouteImport.update({
   id: '/api/public/shared/$',
   path: '/api/public/shared/$',
@@ -896,6 +902,7 @@ export interface FileRoutesByFullPath {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -1022,6 +1029,7 @@ export interface FileRoutesByTo {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -1149,6 +1157,7 @@ export interface FileRoutesById {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -1277,6 +1286,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -1403,6 +1413,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -1529,6 +1540,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -1652,6 +1664,7 @@ export interface RootRouteChildren {
   ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiPublicSharedSplatRoute: typeof ApiPublicSharedSplatRoute
+  ApiTurnsIdCancelRoute: typeof ApiTurnsIdCancelRoute
   ApiTurnsIdEventsRoute: typeof ApiTurnsIdEventsRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -2334,6 +2347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiTurnsIdEventsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/turns/$id/cancel': {
+      id: '/api/turns/$id/cancel'
+      path: '/api/turns/$id/cancel'
+      fullPath: '/api/turns/$id/cancel'
+      preLoaderRoute: typeof ApiTurnsIdCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/shared/$': {
       id: '/api/public/shared/$'
       path: '/api/public/shared/$'
@@ -2693,6 +2713,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiPublicSharedSplatRoute: ApiPublicSharedSplatRoute,
+  ApiTurnsIdCancelRoute: ApiTurnsIdCancelRoute,
   ApiTurnsIdEventsRoute: ApiTurnsIdEventsRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
