@@ -17,7 +17,7 @@ import { reconcileDocumentHeadOps } from "@/server/document-head.server";
 import { EMPTY_HOME_BUILD_FAILURE_MESSAGE } from "@/server/build-failure-copy";
 import { assessCompleteness, incompleteBuildMessage, requestedRoutesFor } from "@/server/engine/build-state";
 import { currentTurnContext, markUpstreamFailed, runWithTurnContext } from "@/server/turn-context.server";
-import { RecoveryBudget } from "@/server/engine/recovery-policy";
+import { RecoveryBudget, RECOVERY_LIMITS } from "@/server/engine/recovery-policy";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,
@@ -4206,7 +4206,7 @@ Forbidden defaults
             parsed.files = done.files;
           }
 
-          if (chunkAssessment.needed) {
+          if (chunkAssessment.needed && !isInitial) {
             console.warn(
               `[chunked-generation] reason=${chunkAssessment.reason} delivered=${chunkAssessment.deliveredPaths.length} remainingSteps=${chunkAssessment.remainingSteps.length}`,
             );
@@ -4226,7 +4226,8 @@ Forbidden defaults
               assessment: chunkAssessment,
               ops: parsed.ops ?? [],
               files: parsed.files ?? [],
-              chunkMaxTokens: isInitial ? 12_000 : 8_000,
+              maxRounds: RECOVERY_LIMITS.truncated_output,
+              chunkMaxTokens: 8_000,
               onRound: (round, added) => {
                 controller.enqueue(
                   encoder.encode(
