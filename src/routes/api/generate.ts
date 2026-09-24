@@ -4105,6 +4105,7 @@ Forbidden defaults
         // Honesty ledger — paths the model asked to change that end up
         // byte-identical after apply + recovery.
         const unappliedPaths: string[] = [];
+        let unlandedOps = 0;
         // Ops the critic refused to apply this turn (disclosed in the summary).
         const criticRejections: CriticRejection[] = [];
         // v3 Phase B — writes refused at the parse gate, disclosed at end of turn.
@@ -4784,6 +4785,7 @@ Forbidden defaults
                 }
               }
 
+              unlandedOps = partial.failed.filter((f) => !rewrittenPaths.includes(f.op.path)).length;
               // Final verdict for this batch: did anything land at all?
               if (partial.applied.length === 0 && rewrittenPaths.length === 0) {
                 recorder.record({
@@ -6462,6 +6464,15 @@ Forbidden defaults
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
           console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
+        }
+
+        if (unlandedOps > 0 && unappliedPaths.length === 0) {
+          const note =
+            `\n\nHeads up — ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of what you asked didn't land on this pass. ` +
+            `Send it again and I'll finish just that part.`;
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          console.warn(`[generate] ${unlandedOps} unlanded op(s) disclosed to user`);
         }
 
         // Bible §9 scope guard — a one-line request that rewrites half the
