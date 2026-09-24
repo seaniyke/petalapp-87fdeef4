@@ -9,6 +9,7 @@
  * log itself; the browser reads that log.
  */
 import { z } from "zod";
+import { sign } from "./signing.js";
 
 export const AgentJobSchema = z.object({
   turnId: z.string().uuid(),
@@ -140,6 +141,9 @@ export async function runAgentJob(
       /* drain — events are recorded by the pipeline */
     }
     log.info({ turnId: job.turnId, ms: Date.now() - started }, "agent job finished");
+    // The browser may be gone, so start compile + publish from here. The app
+    // refuses unless the turn succeeded, and the trigger is idempotent.
+    await startPublish(job, secret, log);
     return "finished";
   } catch (e) {
     if (controller.signal.aborted) {
@@ -150,5 +154,27 @@ export async function runAgentJob(
     return "failed";
   } finally {
     running.delete(job.turnId);
+  }
+}
+
+/** Ask the app to compile + publish a finished turn. Never throws. */
+export async function startPublish(
+  job: AgentJob,
+  secret: string,
+  log: { info: (o: object, m: string) => void; warn: (o: object, m: string) => void },
+): Promise<void> {
+  try {
+    const body = JSON.stringify({ turnId: job.turnId, ops: [{ op: "build.start" }] });
+    const { timestamp, signature } = sign(secret, body);
+    const res = await fetch(new URL("/api/public/agent/ops", job.appOrigin), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-petal-timestamp": timestamp, "x-petal-signature": signature },
+      body,
+    });
+    const out = (await res.json().catch(() => null)) as { results?: Array<{ ok: boolean; error?: string }> } | null;
+    const r = out?.results?.[0];
+    log.info({ turnId: job.turnId, ok: r?.ok ?? false, reason: r?.error }, "publish start");
+  } catch (e) {
+    log.warn({ turnId: job.turnId, err: (e as Error).message }, "publish start failed");
   }
 }
