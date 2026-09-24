@@ -4167,11 +4167,15 @@ Forbidden defaults
           if (isInitial && parsed.files?.length) {
             const { generateMissingPages } = await import("@/server/engine/completeness");
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
+            const wantOf = (instruction: string) =>
+              /as (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
             const done = await generateMissingPages({
               requestedRoutes: requested,
               files: parsed.files,
               budget: recovery,
               request: async (instruction) => {
+                const { withCallFrame, attachFiles } = await import("@/server/engine/call-accounting");
+                const framed = await withCallFrame(async () => {
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: "Writing the remaining pages…" })),
                 );
@@ -4235,6 +4239,12 @@ Forbidden defaults
                 } catch {
                   return null;
                 }
+                });
+                // Only the file this call was asked for is kept, so that is
+                // what it is credited with.
+                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => !wantOf(instruction) || p === wantOf(instruction));
+                void attachFiles(framed.callIds, kept);
+                return framed.value;
               },
             });
             console.log(

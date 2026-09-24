@@ -77,6 +77,7 @@ export type Database = {
           attempt_state: string | null
           cache_write_tokens: number | null
           cached_prompt_tokens: number | null
+          call_kind: string | null
           chosen_by: string | null
           completion_tokens: number | null
           cost_basis: string
@@ -88,23 +89,29 @@ export type Database = {
           fallback_number: number | null
           fallback_used: boolean
           feature: string
+          files_affected: string[] | null
           files_sent: number | null
           finish_reason: string | null
           first_token_ms: number | null
+          generated_files: boolean | null
           had_attachments: boolean
           id: string
+          invoke_reason: string | null
           key_owner: string
           last_token_ms: number | null
           latency_ms: number | null
           model: string | null
+          parent_stage: string | null
           phase: string | null
           project_id: string | null
           prompt_chars: number | null
           prompt_tokens: number | null
           provider: string
+          purpose: string | null
           reasoning_tokens: number | null
           recovery_reason: string | null
           request_id: string | null
+          stage: string | null
           stall_ms: number | null
           static_prefix_chars: number | null
           static_prefix_hash: string | null
@@ -122,6 +129,7 @@ export type Database = {
           attempt_state?: string | null
           cache_write_tokens?: number | null
           cached_prompt_tokens?: number | null
+          call_kind?: string | null
           chosen_by?: string | null
           completion_tokens?: number | null
           cost_basis?: string
@@ -133,23 +141,29 @@ export type Database = {
           fallback_number?: number | null
           fallback_used?: boolean
           feature: string
+          files_affected?: string[] | null
           files_sent?: number | null
           finish_reason?: string | null
           first_token_ms?: number | null
+          generated_files?: boolean | null
           had_attachments?: boolean
           id?: string
+          invoke_reason?: string | null
           key_owner?: string
           last_token_ms?: number | null
           latency_ms?: number | null
           model?: string | null
+          parent_stage?: string | null
           phase?: string | null
           project_id?: string | null
           prompt_chars?: number | null
           prompt_tokens?: number | null
           provider: string
+          purpose?: string | null
           reasoning_tokens?: number | null
           recovery_reason?: string | null
           request_id?: string | null
+          stage?: string | null
           stall_ms?: number | null
           static_prefix_chars?: number | null
           static_prefix_hash?: string | null
@@ -167,6 +181,7 @@ export type Database = {
           attempt_state?: string | null
           cache_write_tokens?: number | null
           cached_prompt_tokens?: number | null
+          call_kind?: string | null
           chosen_by?: string | null
           completion_tokens?: number | null
           cost_basis?: string
@@ -178,23 +193,29 @@ export type Database = {
           fallback_number?: number | null
           fallback_used?: boolean
           feature?: string
+          files_affected?: string[] | null
           files_sent?: number | null
           finish_reason?: string | null
           first_token_ms?: number | null
+          generated_files?: boolean | null
           had_attachments?: boolean
           id?: string
+          invoke_reason?: string | null
           key_owner?: string
           last_token_ms?: number | null
           latency_ms?: number | null
           model?: string | null
+          parent_stage?: string | null
           phase?: string | null
           project_id?: string | null
           prompt_chars?: number | null
           prompt_tokens?: number | null
           provider?: string
+          purpose?: string | null
           reasoning_tokens?: number | null
           recovery_reason?: string | null
           request_id?: string | null
+          stage?: string | null
           stall_ms?: number | null
           static_prefix_chars?: number | null
           static_prefix_hash?: string | null

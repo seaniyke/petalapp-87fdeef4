@@ -37,16 +37,24 @@ function routerSourceOf(files: ProjectFile[]): string {
     .join("\n");
 }
 
+/** A placeholder written by deterministic cleanup (e.g. the import resolver
+ *  stubbing a missing import) is NOT a delivered page. In the last smoke run
+ *  the "Home" that passed the check was exactly such a stub. */
+export function isPlaceholderFile(content: string): boolean {
+  return /Auto-generated stub by (Petal|Kimble) import-resolver/.test(content);
+}
+
 /** Deterministic completeness check against the FINAL file set. */
 export function assessCompleteness(args: {
   requestedRoutes: string[];
   files: ProjectFile[];
 }): { complete: boolean; missingRoutes: string[] } {
   if (args.requestedRoutes.length === 0) return { complete: true, missingRoutes: [] };
+  const real = args.files.filter((f) => !isPlaceholderFile(f.content));
   const a = assessRouteCoverage({
     expectedRoutes: args.requestedRoutes,
-    files: args.files,
-    routerSource: routerSourceOf(args.files),
+    files: real,
+    routerSource: routerSourceOf(real),
     requireAppShell: true,
   });
   const missingRoutes = a.remainingSteps
