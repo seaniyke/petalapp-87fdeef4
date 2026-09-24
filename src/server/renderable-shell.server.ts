@@ -55,9 +55,6 @@ const SECTION_DIR =
   /^src\/components\/(sections|section|landing|marketing|home)\/[^/]+\.(tsx|jsx)$/i;
 const TOP_LEVEL_COMPONENT = /^src\/components\/[^/]+\.(tsx|jsx)$/i;
 
-function baseOf(path: string): string {
-  return (path.split("/").pop() ?? path).replace(/\.(tsx?|jsx?)$/i, "");
-}
 
 
 
