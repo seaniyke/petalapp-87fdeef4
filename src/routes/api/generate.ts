@@ -6707,6 +6707,15 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   let turnUserId: string | null = null;
   // The request we would need to re-run if this turn dies mid-generation.
   let turnUserRequest = "";
+  const {
+    durableAgentEnabled,
+    DURABLE_TURN_HEADER,
+    buildAgentJobPayload,
+    dispatchAgentJob,
+    ingressAcceptedResponse,
+  } = await import("@/server/durable-agent.server");
+  const isInternalCaller = Boolean(request.headers.get("x-petal-internal-secret"));
+  const durableTurnHeader = request.headers.get(DURABLE_TURN_HEADER);
   const clone = request.clone();
   try {
     const peekAuth = await authorize(clone);
@@ -6731,16 +6740,46 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         const clientTurnId = normalizeClientTurnId(
           (peekBody as { turnId?: unknown }).turnId,
         );
-        if (clientTurnId && (await turnBelongsToUser(clientTurnId, peekAuth))) {
+        // The builder's internal call for a durable job: the ingress already
+        // opened this exact row, so record into it instead of deduping.
+        const attachDurable =
+          isInternalCaller && !!clientTurnId && durableTurnHeader === clientTurnId;
+        if (!attachDurable && clientTurnId && (await turnBelongsToUser(clientTurnId, peekAuth))) {
           return new Response("Turn already accepted", {
             status: 409,
             headers: { "x-kimble-turn-id": clientTurnId },
           });
         }
+        // Durable ingress: the browser must not be the caller of the run —
+        // on the live host its disconnect would kill the work. Open the turn
+        // row, hand the job to the builder, and let the browser tail events.
+        if (!isInternalCaller && durableAgentEnabled()) {
+          const turnId = clientTurnId ?? crypto.randomUUID();
+          const opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId });
+          const job = buildAgentJobPayload(
+            request,
+            opened.turnId,
+            peekAuth,
+            peekBody as unknown as Record<string, unknown>,
+          );
+          const sent = await dispatchAgentJob(job);
+          if (!sent.ok) {
+            console.error("[durable-agent] dispatch failed", sent.status, sent.reason);
+            await opened
+              .finish("failed", { errorMessage: `dispatch_failed: ${sent.reason}`.slice(0, 500) })
+              .catch(() => {});
+            return new Response(
+              "Kimble couldn't start that build just now. Nothing was charged — please send it again.",
+              { status: 503 },
+            );
+          }
+          return ingressAcceptedResponse(opened.turnId);
+        }
         recorder = await startTurn({
           projectId: peekBody.projectId,
           userId: peekAuth,
           turnId: clientTurnId,
+          attach: attachDurable,
         });
         // Open the server-owned completion record for this request. From here
         // the loop's authority lives in the database, not in the tab: stage,

@@ -10,6 +10,7 @@ export default defineConfig({
     include: [
       "src/lib/preview-state.test.ts",
       "src/server/__tests__/turn-cancel.test.ts",
+      "src/server/__tests__/durable-agent.test.ts",
       "src/server/__tests__/turn-resume-stopped.test.ts",
       "src/server/registry/__tests__/registry.test.ts",
       "src/server/registry/__tests__/project-pictures.test.ts",

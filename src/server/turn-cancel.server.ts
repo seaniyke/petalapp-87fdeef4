@@ -94,6 +94,11 @@ export async function requestTurnCancel(
     .select("id");
   if (updated && updated.length > 0) {
     abortLocalTurn(turnId);
+    // Durable jobs run on the builder: stop its run of this turn at once.
+    // Only reached when Stop won (uncommitted), so nothing is mid-charge.
+    await import("@/server/durable-agent.server")
+      .then((m) => m.cancelAgentJob(turnId))
+      .catch(() => {});
     return { ok: true, cancelled: true, status: "aborted" };
   }
   // Lost the race (turn committed or finished) — report its real state and
