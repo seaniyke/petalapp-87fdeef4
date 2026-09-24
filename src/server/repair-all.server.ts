@@ -203,9 +203,24 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
     // file (an edit does not rename files it was not asked to).
     const stem = (p: string) => p.replace(/\.(tsx|ts|jsx|js|mjs)$/g, "").replace(/\.(tsx|ts|jsx|js|mjs)$/g, "");
     const inputStems = new Set(input.map((f) => stem(f.path)));
+    // ...and only when a file the edit actually wrote imports it. Stubs made
+    // for imports of untouched entry files are not this edit's business.
+    const pathSet = new Set(inner.files.map((f) => f.path));
+    const wanted = new Set<string>();
+    for (const p of opts.scopeLock.touchedPaths) {
+      if (!input.some((f) => f.path === p)) continue; // must be a pre-existing file the edit changed
+      const f = inner.files.find((x) => x.path === p);
+      if (!f) continue;
+      for (const m of f.content.matchAll(IMPORT_SPEC_RE)) {
+        const spec = m[1] ?? m[2] ?? m[3];
+        const hit = spec ? resolveSpec(p, spec, pathSet) : null;
+        if (hit) wanted.add(hit);
+      }
+    }
     for (const f of inner.files) {
       if (viewPaths.has(f.path)) continue;
       if (inputStems.has(stem(f.path))) continue;
+      if (!wanted.has(f.path)) continue;
       merged.push(f);
     }
     inner.notes.unshift(`local-view: tidied ${view.length} of ${input.length} file(s).`);

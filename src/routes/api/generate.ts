@@ -4680,9 +4680,17 @@ Forbidden defaults
                       `Your previous edit to ${path} could not be applied: ${failure.error}\n\n` +
                       `Current contents of ${path} (authoritative — your replace snippet did not match these bytes):\n` +
                       `--- ${path} ---\n${currentContent.slice(0, 24_000)}${currentContent.length > 24_000 ? "\n/* ...trimmed... */" : ""}\n--- end ---\n\n` +
-                      `Re-emit the change as a SINGLE patch_files tool call containing EXACTLY ONE op: ` +
-                      `{ "op": "update", "path": "${path}", "content": "<the COMPLETE new file contents>" }. ` +
-                      `Do not use \`replace\`. Do not touch any other file. Do not use keep-existing markers. ` +
+                      // Large files only accept `replace` (the applier rejects
+                      // a whole-file resend that keeps most of the file), so
+                      // asking for a full update there guaranteed a second
+                      // failure. The current bytes are shown above, so replace
+                      // snippets copied from them match.
+                      (currentContent.split("\n").length > 150
+                        ? `Re-emit the change as a SINGLE patch_files tool call with one or more \`replace\` ops on ${path} only. ` +
+                          `Copy each \`search\` snippet VERBATIM from the current contents above (a few whole lines, unique in the file) and always include \`replace\`. `
+                        : `Re-emit the change as a SINGLE patch_files tool call containing EXACTLY ONE op: ` +
+                          `{ "op": "update", "path": "${path}", "content": "<the COMPLETE new file contents>" }. `) +
+                      `Do not touch any other file. Do not use keep-existing markers. ` +
                       `If the current contents already satisfy the user's request, return an empty ops array — do not invent edits.`,
                   },
                 ];
