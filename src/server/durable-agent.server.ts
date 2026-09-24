@@ -53,7 +53,13 @@ export function buildAgentJobPayload(
     const v = request.headers.get(name);
     if (v) headers[name] = v;
   }
-  return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: new URL(request.url).origin };
+  // Publishable (non-secret) backend settings, so the in-process runtime on
+  // the build server can verify sessions and read the user's own rows.
+  const publicConfig =
+    process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY
+      ? { supabaseUrl: process.env.SUPABASE_URL, supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY }
+      : undefined;
+  return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: new URL(request.url).origin, publicConfig };
 }
 
 type FetchLike = typeof fetch;
