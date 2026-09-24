@@ -79,3 +79,9 @@
 - [x] Failed turns end the active phase (no lingering "Checking my work"); plan steps tick only when written
 - [x] Check wording states what was actually checked (no "all good"/"end to end")
 - [ ] Next: move the generation core onto the Railway builder (`/agent/generate`), Cloudflare as thin control layer
+
+## Railway move (plan approved 2026-09-24)
+- [x] Phase 1: signed data gateway (/api/public/agent/ops) + tests
+- [ ] Phase 2: split generation into core + AgentIO (next)
+- [ ] Phase 3: run core on Railway — blocked on OPENROUTER_API_KEY on Railway + redeploy
+- [ ] Phase 4: switch over (AGENT_RUNTIME=railway) and live-prove
