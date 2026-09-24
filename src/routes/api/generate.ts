@@ -303,8 +303,8 @@ function isManagedScaffoldPath(path: string): boolean {
   );
 }
 
-const MODEL_FAST = "google/gemini-3-flash-preview";
-const MODEL_BEST = "google/gemini-2.5-pro";
+const MODEL_FAST = "deepseek/deepseek-v4-flash";
+const MODEL_BEST = "deepseek/deepseek-v4-flash";
 // Phase-aware reasoning candidates. Added to the smart-router pool so
 // the telemetry-driven picker (`pickBestModel`) can promote whichever
 // model is winning on success_rate / cost / latency for a given
@@ -318,10 +318,10 @@ const MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
  *  streamed tool calls. GPT-5 was returning HTTP 400 in production retry
  *  telemetry, which meant the retry never actually ran and `no_edit_emitted`
  *  leaked to users. */
-const MODEL_STRUCTURED_RETRY = "google/gemini-3-flash-preview";
-const MODEL_STRUCTURED_RETRY_BACKUP = "google/gemini-2.5-pro";
+const MODEL_STRUCTURED_RETRY = "deepseek/deepseek-v4-flash";
+const MODEL_STRUCTURED_RETRY_BACKUP = "deepseek/deepseek-v4-flash";
 /** Vision-capable model used whenever the latest turn carries image attachments. */
-const MODEL_VISION = "google/gemini-2.5-pro";
+const MODEL_VISION = "deepseek/deepseek-v4-flash";
 
 /** Heuristic: when in "smart" mode, decide whether the turn deserves the Pro model. */
 function pickSmartModel(latestPrompt: string, fileCount: number): string {
@@ -5910,7 +5910,7 @@ Forbidden defaults
             // how much of the turn's repair budget is already gone.
             repairMeter.charge(
               "autofix_cycle_2",
-              "google/gemini-2.5-flash-lite",
+              "deepseek/deepseek-v4-flash",
               (fixOut.result.usage?.total_tokens ?? 0) ||
                 Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
             );
@@ -6143,7 +6143,7 @@ Forbidden defaults
               }
               repairMeter.charge(
                 `autofix_cycle_${cycleNum}`,
-                "google/gemini-2.5-flash-lite",
+                "deepseek/deepseek-v4-flash",
                 (fixOut.result.usage?.total_tokens ?? 0) ||
                   Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
               );

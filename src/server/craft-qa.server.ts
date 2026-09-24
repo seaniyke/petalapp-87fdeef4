@@ -19,7 +19,7 @@
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { pickShotSpread, type VisualShot } from "@/server/visual-qa.server";
 
-const MODEL = "google/gemini-2.5-flash";
+const MODEL = "deepseek/deepseek-v4-flash";
 const MAX_SHOTS = 6;
 const MAX_DEFECTS = 6;
 

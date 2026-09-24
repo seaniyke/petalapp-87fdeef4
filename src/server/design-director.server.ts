@@ -42,7 +42,7 @@ import {
   type ShapeCategory,
 } from "@/lib/app-shape-classifier";
 
-const DIRECTOR_MODEL = "google/gemini-3-flash-preview";
+const DIRECTOR_MODEL = "deepseek/deepseek-v4-flash";
 
 /**
  * Part B — domain-aware font defaults.

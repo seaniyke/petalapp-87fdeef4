@@ -297,7 +297,7 @@ async function runMemoryWriter(
     const resp = await aiChatCompletions({
       feature: "memory",
       body: {
-        model: "google/gemini-3-flash-preview",
+        model: "deepseek/deepseek-v4-flash",
         messages: [
           { role: "system", content: MEMORY_WRITER_SYSTEM },
           { role: "user", content: userPrompt },

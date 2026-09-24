@@ -56,11 +56,11 @@ export interface BudgetResult {
 const SAFE_INPUT_TOKENS: Record<string, number> = {
   // Gemini 2.5 family: 1M context, but we cap aggressively because long
   // contexts hurt tool-call discipline (this is the prose-only failure).
-  "google/gemini-2.5-pro": 200_000,
-  "google/gemini-2.5-flash": 200_000,
-  "google/gemini-2.5-flash-lite": 100_000,
-  "google/gemini-3-flash-preview": 200_000,
-  "google/gemini-3.1-pro-preview": 250_000,
+  "deepseek/deepseek-v4-flash": 200_000,
+  "deepseek/deepseek-v4-flash": 200_000,
+  "deepseek/deepseek-v4-flash": 100_000,
+  "deepseek/deepseek-v4-flash": 200_000,
+  "deepseek/deepseek-v4-flash": 250_000,
   // GPT-5 family: 400K context window; safe input ~250K leaves room for output.
   "openai/gpt-5": 250_000,
   "openai/gpt-5-mini": 200_000,
@@ -70,11 +70,11 @@ const SAFE_INPUT_TOKENS: Record<string, number> = {
 
 /** Model upgrades when the current pick can't fit the payload. */
 const LARGER_CONTEXT_ALTERNATIVE: Record<string, string> = {
-  "google/gemini-3-flash-preview": "google/gemini-3.1-pro-preview",
-  "google/gemini-2.5-flash": "google/gemini-3.1-pro-preview",
-  "google/gemini-2.5-flash-lite": "google/gemini-2.5-flash",
-  "google/gemini-2.5-pro": "google/gemini-3.1-pro-preview",
-  "openai/gpt-5-mini": "google/gemini-3.1-pro-preview",
+  "deepseek/deepseek-v4-flash": "deepseek/deepseek-v4-flash",
+  "deepseek/deepseek-v4-flash": "deepseek/deepseek-v4-flash",
+  "deepseek/deepseek-v4-flash": "deepseek/deepseek-v4-flash",
+  "deepseek/deepseek-v4-flash": "deepseek/deepseek-v4-flash",
+  "openai/gpt-5-mini": "deepseek/deepseek-v4-flash",
   "openai/gpt-5-nano": "openai/gpt-5-mini",
 };
 

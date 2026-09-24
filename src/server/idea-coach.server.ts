@@ -10,7 +10,7 @@
  * Design choices:
  * - Tool-calling for structured output (per AI Gateway guidance) instead of
  *   asking the model for raw JSON. Much more reliable.
- * - Cheap fast model (`google/gemini-3-flash-preview`) — we burn a coach turn
+ * - Cheap fast model (`deepseek/deepseek-v4-flash`) — we burn a coach turn
  *   in a couple of seconds and at trivial token cost.
  * - The route, not the model, decides when to stop. We hard-cap turns server-
  *   side so a misbehaving model can't keep the user spinning.
@@ -148,7 +148,7 @@ export async function coachTurn(input: CoachTurnInput): Promise<CoachTurnOutput>
   const upstream = await aiChatCompletions({
     feature: "coach",
     body: {
-      model: "google/gemini-3-flash-preview",
+      model: "deepseek/deepseek-v4-flash",
       messages,
       tools: [COACH_TOOL],
       tool_choice: { type: "function", function: { name: "coach_turn" } },

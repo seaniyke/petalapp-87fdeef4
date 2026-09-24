@@ -222,7 +222,7 @@ export const Route = createFileRoute("/api/discuss")({
           feature: "discuss",
           body: {
             // Vision needs a vision-capable model; otherwise stay on the fast default.
-            model: hasVisionTurn ? "google/gemini-2.5-pro" : "google/gemini-3-flash-preview",
+            model: hasVisionTurn ? "deepseek/deepseek-v4-flash" : "deepseek/deepseek-v4-flash",
             messages: chatMessages,
             stream: false,
           },

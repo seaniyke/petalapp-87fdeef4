@@ -20,9 +20,9 @@ import type { AgentOutput, AgentView, DecisionKind, ObjectionSeverity } from "./
 import type { AgentSpec, ModelProfile } from "./registry";
 
 const MODEL_BY_PROFILE: Record<Exclude<ModelProfile, "deterministic">, string> = {
-  cheap: "google/gemini-2.5-flash-lite",
-  balanced: "google/gemini-2.5-flash",
-  deep: "google/gemini-2.5-pro",
+  cheap: "deepseek/deepseek-v4-flash",
+  balanced: "deepseek/deepseek-v4-flash",
+  deep: "deepseek/deepseek-v4-flash",
 };
 
 const MAX_DECISIONS = 5;

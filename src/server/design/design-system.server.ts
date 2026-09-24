@@ -26,7 +26,7 @@ import type {
 } from "@/server/pic/pic-types";
 import type { DesignDirection } from "@/server/design-director.server";
 
-const MODEL = "google/gemini-3-flash-preview";
+const MODEL = "deepseek/deepseek-v4-flash";
 
 function role(light: string, dark?: string): PicColorRole {
   return { light, dark: dark ?? light };

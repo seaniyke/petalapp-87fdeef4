@@ -48,7 +48,7 @@ export interface CriticVerdict {
   modelReviewed: boolean;
 }
 
-const MODEL = "google/gemini-2.5-flash-lite";
+const MODEL = "deepseek/deepseek-v4-flash";
 
 /** Files whose deletion is almost never what the user meant. */
 const ENTRY_FILES = new Set([
