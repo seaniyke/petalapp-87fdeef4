@@ -5418,7 +5418,13 @@ Forbidden defaults
         // instead: revert files, never charge credits, and ask the user to
         // retry with a more concrete prompt. index.html + main.tsx repairs
         // are still safe to keep (they only restore the mount point).
-        if (shellGuard.degraded.includes("src/App.tsx") && collected.name === "write_project") {
+        // First builds: never roll back pages that were written. The missing
+        // or placeholder layout is left out (never shipped as a placeholder)
+        // and the authoritative completeness check reports the real state.
+        if (isInitial && shellGuard.degraded.includes("src/App.tsx")) {
+          console.warn("[renderable-shell] no real App.tsx on a first build — leaving it to the completeness check");
+          nextFiles = shellGuard.files.filter((f) => f.path !== "src/App.tsx");
+        } else if (shellGuard.degraded.includes("src/App.tsx") && collected.name === "write_project") {
           console.warn("[renderable-shell] model emitted empty/placeholder App.tsx — failing turn");
           emitConversationalFallback(controller, encoder, {
             files: currentFiles,
@@ -5428,8 +5434,9 @@ Forbidden defaults
             reason: "empty_home",
           });
           return;
+        } else {
+          nextFiles = shellGuard.files;
         }
-        nextFiles = shellGuard.files;
         if (shellGuard.fixed.length > 0) {
           console.warn("[renderable-shell] repaired", shellGuard.fixed.join(", "));
           controller.enqueue(
