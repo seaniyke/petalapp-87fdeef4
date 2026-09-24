@@ -108,40 +108,118 @@ export function narrowRoutesToRequest(
   return templateRoutes;
 }
 
-/** Non-home pages one generation unit writes before the next unit starts.
- *  Shell + home + 3 pages fits the first-build output budget with headroom. */
-export const PAGES_PER_UNIT = 3;
+/**
+ * Output-size model for first builds (completion tokens).
+ *
+ * Calibrated against real runs: the Rise & Crumb four-page café emitted
+ * >18,000 tokens in one pass (shell + four rich pages ≈ 4.5K/page), which is
+ * the failure this split exists to prevent. Figures are deliberately a little
+ * pessimistic — an over-split costs one extra call, an under-split costs a
+ * truncated build.
+ */
+export const OUTPUT_CEILING = 18_000;
+/** A unit is planned to use at most this much, leaving ~40% headroom. */
+export const SAFE_UNIT_BUDGET = 11_000;
+const SHELL_TOKENS = 4_500; // router, nav, footer, styles, shared UI
+const HOME_TOKENS = 3_500;
+const PAGE_TOKENS = { marketing: 2_500, app: 3_800 } as const;
+/** Extra per continuation unit: it re-emits imports/wiring for its pages. */
+const UNIT_OVERHEAD = 800;
+
+export interface SizeEstimate {
+  kind: "marketing" | "app";
+  shell: number;
+  home: number;
+  /** Per non-home route, in request order. */
+  pages: Array<{ route: string; tokens: number }>;
+  /** Cross-cutting extras (backend, auth, native) — land in unit 1. */
+  extras: number;
+  total: number;
+}
+
+const APP_SIGNAL =
+  /\b(dashboard|admin|crud|login|sign ?in|sign ?up|auth|account|database|save|store data|booking system|checkout|cart|payments?|subscriptions?|kanban|tracker|inventory|crm|editor|upload|real-?time|chat|messages?|api)\b/i;
+
+export function estimateFirstBuildSize(prompt: string, routes: string[]): SizeEstimate {
+  const text = prompt.toLowerCase();
+  const kind: SizeEstimate["kind"] = APP_SIGNAL.test(text) ? "app" : "marketing";
+  let extras = 0;
+  if (/\b(database|save|store data|backend|crud|records?)\b/.test(text)) extras += 2_500;
+  if (/\b(login|sign ?in|sign ?up|auth|accounts?)\b/.test(text)) extras += 2_000;
+  if (/\b(payments?|checkout|stripe|subscriptions?)\b/.test(text)) extras += 1_500;
+  if (/\b(ios|android|app store|play store|native)\b/.test(text)) extras += 1_500;
+  // Each named workflow (upload, drag, filter, calendar…) adds real code.
+  const workflows = text.match(/\b(upload|drag|filter|search|calendar|chart|map|timer|notifications?|export|import)\b/g);
+  extras += Math.min(4, workflows?.length ?? 0) * 700;
+  const per = PAGE_TOKENS[kind];
+  const pages = routes
+    .filter((r) => r !== "/" && !r.includes("$"))
+    .map((route) => ({ route, tokens: per }));
+  const total = SHELL_TOKENS + HOME_TOKENS + extras + pages.reduce((n, p) => n + p.tokens, 0);
+  return { kind, shell: SHELL_TOKENS, home: HOME_TOKENS, pages, extras, total };
+}
+
+export interface GenerationUnitPlan {
+  /** Routes this unit writes (unit 1 also writes the shell + Home). */
+  routes: string[];
+  estimatedTokens: number;
+}
 
 export interface GenerationUnits {
   allRoutes: string[];
   unitCount: number;
+  estimate: SizeEstimate;
+  units: GenerationUnitPlan[];
   /** Prompt addendum for the FIRST unit; empty when one unit suffices. */
   instruction: string;
 }
 
 /**
- * Split a first build into the fewest units that stay under the output
- * ceiling. One unit for small builds; the remaining pages are written by the
- * coverage continuation, which only sees undelivered routes.
+ * Pack pages greedily into the fewest units that each stay under
+ * SAFE_UNIT_BUDGET. Unit 1 carries the shell, Home and cross-cutting extras;
+ * later units carry only pages. The remaining units are written by the
+ * coverage continuation, which is told what is already done and never
+ * regenerates delivered files.
  */
+export function planUnits(est: SizeEstimate): GenerationUnitPlan[] {
+  const units: GenerationUnitPlan[] = [
+    { routes: ["/"], estimatedTokens: est.shell + est.home + est.extras },
+  ];
+  for (const p of est.pages) {
+    const cur = units[units.length - 1]!;
+    if (cur.estimatedTokens + p.tokens <= SAFE_UNIT_BUDGET) {
+      cur.routes.push(p.route);
+      cur.estimatedTokens += p.tokens;
+    } else {
+      units.push({ routes: [p.route], estimatedTokens: UNIT_OVERHEAD + p.tokens });
+    }
+  }
+  return units;
+}
+
 export function buildGenerationUnits(prompt: string, plannedRoutes: string[]): GenerationUnits {
   const all = [...plannedRoutes];
   for (const n of extractRequestedPages(prompt)) {
     const r = pageNameToRoute(n);
     if (!all.includes(r)) all.push(r);
   }
-  const pages = all.filter((r) => r !== "/" && !r.includes("$"));
-  const unitCount = Math.max(1, Math.ceil(pages.length / PAGES_PER_UNIT));
-  if (unitCount <= 1) return { allRoutes: all, unitCount: 1, instruction: "" };
-  const first = pages.slice(0, PAGES_PER_UNIT);
-  const later = pages.slice(PAGES_PER_UNIT);
+  const estimate = estimateFirstBuildSize(prompt, all);
+  const units = planUnits(estimate);
+  if (units.length <= 1) {
+    return { allRoutes: all, unitCount: 1, estimate, units, instruction: "" };
+  }
+  const first = units[0]!.routes.filter((r) => r !== "/");
+  const later = units.slice(1).flatMap((u) => u.routes);
   return {
     allRoutes: all,
-    unitCount,
+    unitCount: units.length,
+    estimate,
+    units,
     instruction:
-      `\n\n### Build in parts (this pass = part 1 of ${unitCount})\n` +
-      `This build has ${pages.length + 1} pages — too many to write reliably in one pass.\n` +
-      `In THIS pass write: the shared shell (router registering EVERY route: ${all.join(", ")}; navigation; footer; styles; shared components) plus the Home page and ONLY these pages: ${first.join(", ")}.\n` +
+      `\n\n### Build in parts (this pass = part 1 of ${units.length})\n` +
+      `This build is too large to write reliably in one pass.\n` +
+      `In THIS pass write: the shared shell (router registering EVERY route: ${all.join(", ")}; navigation; footer; styles; shared components) plus the Home page` +
+      (first.length ? ` and ONLY these pages: ${first.join(", ")}.\n` : ` only.\n`) +
       `Do NOT write these pages yet — the next pass writes them and will reuse your shell: ${later.join(", ")}.\n` +
       `Finish every file you start. Never stop mid-file.\n`,
   };
