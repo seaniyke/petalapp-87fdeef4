@@ -5826,7 +5826,9 @@ Forbidden defaults
         // without this gate the turn ships an app whose every page is an empty
         // prose block and still reports success. Runs BEFORE design
         // enforcement so the new screens are linted too. Fails open.
-        try {
+        // Phase 2: first builds only. An edit turn never authors pages the
+        // user did not ask for — a stub left by an edit ships as-is.
+        if (isInitial) try {
           const { completePlaceholderPages } = await import(
             "@/server/design/page-completion.server"
           );
@@ -5865,7 +5867,7 @@ Forbidden defaults
         // shell, so it only belongs on turns that are building product surface
         // (first build, structural or cross-cutting work). A micro/targeted
         // edit must never grow the app behind the user's back.
-        const routeCompletionWorthwhile = isInitial || isStructuralTurn || isCrossCutting;
+        const routeCompletionWorthwhile = isInitial;
         if (routeCompletionWorthwhile) try {
           const { completeUnwrittenRoutes } = await import(
             "@/server/design/unwritten-routes.server"

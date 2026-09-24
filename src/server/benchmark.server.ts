@@ -1,3 +1,4 @@
+import { isVerifierExempt } from "@/server/scaffold-ownership.server";
 /**
  * W5 — nightly benchmark harness.
  *
@@ -342,6 +343,16 @@ export interface SpecScore {
   judgeFailed: boolean;
 }
 
+/** Judge sees the app itself first: entry, routes/pages, app components, then the rest. */
+export function judgeFileRank(path: string): number {
+  if (/^src\/(App|main)\.(tsx|jsx)$/.test(path) || path === "index.html") return 0;
+  if (/^src\/(pages|routes|screens|views)\//.test(path)) return 1;
+  if (/^src\/components\/ui\//.test(path)) return 4;
+  if (/^src\/components\//.test(path)) return 2;
+  if (/^src\/(lib|hooks|data|integrations)\//.test(path)) return 3;
+  return 5;
+}
+
 async function scoreSpecAdherence(
   projectId: string,
   testCase: BenchmarkCase,
@@ -360,6 +371,8 @@ async function scoreSpecAdherence(
 
   const relevant = (files as Array<{ path: string; content: string }>)
     .filter((f) => /\.(tsx?|jsx?|css|html)$/.test(f.path) && !f.path.includes("node_modules"))
+    .filter((f) => !isVerifierExempt(f.path))
+    .sort((a, b) => judgeFileRank(a.path) - judgeFileRank(b.path) || a.path.localeCompare(b.path))
     .slice(0, 40)
     .map((f) => `--- ${f.path} ---\n${f.content.slice(0, 6000)}`)
     .join("\n\n")
