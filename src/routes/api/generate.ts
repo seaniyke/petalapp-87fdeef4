@@ -2753,8 +2753,18 @@ Forbidden defaults
   const editIntent = isInitial
     ? null
     : resolveEditIntent(lastUserContent, editablePromptFiles);
-  const editTargetPaths =
+  let editTargetPaths =
     editIntent?.isTargetedEdit && !isCrossCutting ? editIntent.pinnedPaths : [];
+  // Plain-words screen match ("the sign-in form", "the home page") — finds the
+  // target without an AI round trip, so the Inspector rarely has to run.
+  if (!isInitial && !isCrossCutting) {
+    const { findScreenTargets } = await import("@/server/screen-target.server");
+    const screen = findScreenTargets(lastUserContent, editablePromptFiles.map((f) => f.path));
+    if (screen.length > 0) {
+      editTargetPaths = Array.from(new Set([...screen, ...editTargetPaths])).slice(0, 4);
+      console.info(`[screen-target] ${screen.join(", ")}`);
+    }
+  }
   if (editTargetPaths.length > 0) {
     console.info(
       `[edit-intent] verb=${editIntent!.verb} resolved ${editTargetPaths.length} target file(s): ${editTargetPaths.join(", ")}`,
