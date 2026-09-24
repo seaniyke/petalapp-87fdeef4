@@ -4205,7 +4205,7 @@ Forbidden defaults
                 });
                 if (!res.ok || !res.body) return null;
                 let c = await relayAndCollect(res, controller, encoder);
-                const wantPath = /as (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
+                const wantPath = wantOf(instruction);
                 const underDelivered = Boolean(wantPath) && !c.args.includes(`"${wantPath}"`);
                 if (underDelivered) markUpstreamFailed(c.upstream);
                 if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
