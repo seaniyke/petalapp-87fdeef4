@@ -1972,9 +1972,29 @@ async function runFinalParseGuard(
         console.warn("[preemit-gate] salvage failed:", e instanceof Error ? e.message : String(e));
       }
     }
-    // Don't throw — let the caller revert to the prior good files and reply
-    // conversationally. A failed gate is NOT an infra error; it just means
-    // this turn's edits weren't safe to ship.
+    // FIRST BUILDS: never discard the build. Isolate every file that still
+    // fails (plus anything that then fails because it imported one), keep
+    // everything valid, and let the completeness check report the real
+    // state. There is no prior project to roll back to — "rollback" here
+    // meant deleting good pages.
+    if (priorFiles.length === 0) {
+      const { isolateBrokenFiles } = await import("@/server/engine/build-state");
+      let kept = gated;
+      let bad = new Set(badPaths.length ? badPaths : report.issues.map((i) => i.path).filter(Boolean));
+      const isolated: string[] = [];
+      for (let round = 0; round < 3 && bad.size > 0; round++) {
+        isolated.push(...bad);
+        kept = isolateBrokenFiles(kept, bad);
+        const again = await runPreEmitGate(kept, changedPaths.filter((p) => !isolated.includes(p)), { maxRounds: 0, prd });
+        kept = again.files;
+        bad = new Set(again.report.issues.map((i) => i.path).filter((p) => p && !isolated.includes(p)));
+      }
+      console.warn(`[preemit-gate] first build: isolated ${JSON.stringify(isolated)}; kept ${kept.length} file(s)`);
+      controller.enqueue(encoder.encode(sse({ type: "status", message: "Setting aside files that couldn't be fixed…" })));
+      return { ok: true, files: kept };
+    }
+    // EDITS: revert only this turn's change to the prior project. A failed
+    // gate is NOT an infra error; it just means this edit wasn't safe.
     return { ok: false, detail: formatGateIssues(report.issues, 3) };
   }
   return { ok: true, files: gated };
@@ -5965,6 +5985,9 @@ Forbidden defaults
             files: currentFiles,
             summary:
               "I drafted the change but it didn't pass my final safety check, so I rolled it back to keep your app building. Want me to try a smaller version of the same change, or break it into a couple of steps?",
+            // A reverted change is a failed turn — never a "succeeded" done.
+            outcome: "failed",
+            reason: "final_check_reverted",
           });
           return;
         }
@@ -7003,9 +7026,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             // the turn failed. Nothing downstream may report it as succeeded.
             // A build that produced nothing ("blocked" with a no-files reason)
             // is a failure too — never a "succeeded" done event.
-            const failedOutcome =
-              /"type":\s*"turn_outcome"[^\n]*"outcome":\s*"failed"/.exec(block) ??
-              /"type":\s*"turn_outcome"[^\n]*"outcome":\s*"blocked"[^\n]*"reason":\s*"[^"]*(no_files|initial_generation)[^"]*"/.exec(block);
+            const { outcomeFailsTurn } = await import("@/server/engine/build-state");
+            const failedOutcome = outcomeFailsTurn(block);
             if (failedOutcome) {
               terminalStatus = "failed";
               terminalError = /"reason":\s*"([^"]+)"/.exec(block)?.[1] ?? "build incomplete";

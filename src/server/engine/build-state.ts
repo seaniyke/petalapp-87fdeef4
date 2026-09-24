@@ -139,3 +139,27 @@ export function neutraliseSuccessClaims(text: string): string {
     .replace(/\b(is|are)\s+(now\s+)?(live|published|up and running|ready to (use|go|share))\b/gi, "$1 written — building your preview now")
     .replace(/\byour (site|website|app) is ready\b/gi, "your $1's pages are written — building your preview now");
 }
+
+/** Remove isolated (still-broken) files; every other file is kept as-is. */
+export function isolateBrokenFiles(files: ProjectFile[], bad: Iterable<string>): ProjectFile[] {
+  const set = new Set(bad);
+  return files.filter((f) => !set.has(f.path));
+}
+
+/**
+ * The final `done` status derives from the authoritative turn outcome.
+ * Returns true when an SSE block's turn_outcome means the turn did NOT
+ * succeed: "failed", or "blocked" because nothing was produced.
+ */
+export function outcomeFailsTurn(block: string): boolean {
+  const m = /"type":\s*"turn_outcome"[^\n]*/.exec(block);
+  if (!m) return false;
+  const line = m[0];
+  const outcome = /"outcome":\s*"([a-z_]+)"/.exec(line)?.[1];
+  if (outcome === "failed") return true;
+  if (outcome === "blocked") {
+    const reason = /"reason":\s*"([^"]*)"/.exec(line)?.[1] ?? "";
+    return /no_files|initial_generation/.test(reason);
+  }
+  return false;
+}

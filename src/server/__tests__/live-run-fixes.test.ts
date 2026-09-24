@@ -117,3 +117,47 @@ describe("configured is not available", () => {
     });
   });
 });
+
+import { isolateBrokenFiles, outcomeFailsTurn, assessCompleteness } from "@/server/engine/build-state";
+
+describe("first builds are never discarded wholesale", () => {
+  const layout = f("src/App.tsx", `<header><nav/></header><Routes>${["/", "/menu", "/about", "/contact"].map((r) => `<Route path="${r}"/>`).join("")}</Routes><footer/>`);
+  const pageFile = (n: string) => f(`src/pages/${n}.tsx`, `export default function ${n}(){return <main>${n} content</main>}`);
+  const all = [layout, pageFile("Home"), pageFile("Menu"), pageFile("About"), pageFile("Contact")];
+  it("3 valid pages + 1 broken page → the 3 valid pages remain", () => {
+    const kept = isolateBrokenFiles(all, ["src/pages/Contact.tsx"]);
+    for (const p of ["Home", "Menu", "About"]) expect(kept.some((x) => x.path === `src/pages/${p}.tsx`)).toBe(true);
+    expect(kept.some((x) => x.path === "src/pages/Contact.tsx")).toBe(false);
+  });
+  it("valid layout + valid pages + one broken page → everything valid remains, build reported incomplete", () => {
+    const kept = isolateBrokenFiles(all, ["src/pages/Menu.tsx"]);
+    expect(kept.length).toBe(4);
+    expect(assessCompleteness({ requestedRoutes: ["/", "/menu", "/about", "/contact"], files: kept }).complete).toBe(false);
+  });
+  it("all generated files broken → nothing is claimed as created, but the state is reported, not 'nothing changed'", () => {
+    const kept = isolateBrokenFiles(all, all.map((x) => x.path));
+    const state = describeIncomplete({ requestedRoutes: ["/", "/menu", "/about", "/contact"], missingRoutes: ["app shell", "/", "/menu", "/about", "/contact"], files: kept, fileFor: pageFileFor });
+    expect(state.created).toEqual([]);
+    const msg = incompleteBuildMessage([], state);
+    expect(msg).toContain("couldn't be completed");
+    expect(msg).not.toMatch(/nothing (was )?changed/i);
+  });
+  it("isolation never touches files that passed validation", () => {
+    const kept = isolateBrokenFiles(all, ["src/pages/Home.tsx"]);
+    for (const x of kept) expect(all.find((a) => a.path === x.path)!.content).toBe(x.content);
+  });
+});
+
+describe("final done state is authoritative", () => {
+  const block = (o: string, reason?: string) => `data: {"type":"turn_outcome","outcome":"${o}","changedPaths":[]${reason ? `,"reason":"${reason}"` : ""}}`;
+  it("the b2/c2 scenario (final check reverted the turn) is a failure", () => {
+    expect(outcomeFailsTurn(block("failed", "final_check_reverted"))).toBe(true);
+  });
+  it("incomplete and no-file builds are failures", () => {
+    expect(outcomeFailsTurn(block("failed", "requested_scope_missing"))).toBe(true);
+    expect(outcomeFailsTurn(block("blocked", "initial_generation_no_files"))).toBe(true);
+  });
+  it("a completed build is not", () => {
+    expect(outcomeFailsTurn(block("applied"))).toBe(false);
+  });
+});
