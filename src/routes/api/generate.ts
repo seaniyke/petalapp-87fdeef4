@@ -4129,60 +4129,82 @@ Forbidden defaults
           const editAskedForPages =
             /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent) &&
             !/\b(on|in) the [a-z -]{0,30}(page|screen)\b/i.test(lastUserContent);
-          if (!chunkAssessment.needed && (isInitial || editAskedForPages)) {
-            const stepRoutes = parseStepsFromArgs(collected.args)
-              .flatMap((s) => s.match(/\/[a-z][a-z0-9-]{1,24}/gi) ?? []);
-            // Nav/link targets the app itself declares are promises to the
-            // user: a header link to /plants with no page behind it is the
-            // same unfinished build as a planned route that never shipped.
-            const emittedSource = [
-              ...(parsed.files ?? []).map((f) => f.content ?? ""),
-              ...(parsed.ops ?? []).map((o) => ("content" in o ? String(o.content ?? "") : "")),
-            ].join("\n");
-            // Every shape a promised destination takes: <Link to="/x">,
-            // <a href="/x">, and { href: "/x" } / { to: "/x" } nav data. The
-            // attribute form was missing, so a header with Sign In / Sign Up
-            // links and no pages behind them shipped as a "complete" app.
-            const linkRoutes = [
-              ...Array.from(emittedSource.matchAll(/\bto\s*=\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
-              ...Array.from(emittedSource.matchAll(/\bhref\s*=\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
-              ...Array.from(emittedSource.matchAll(/\bhref\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
-              ...Array.from(emittedSource.matchAll(/\bto\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
-            ].map((m) => m[1] ?? "");
-            // Edits: only pages the user named. Existing/emitted nav links and
-            // the model's own step list are never a request to build a page.
+          // Edits: only pages the user named. First builds use the
+          // deterministic completeness stage below instead.
+          if (!chunkAssessment.needed && !isInitial && editAskedForPages) {
             const { extractRequestedPages, pageNameToRoute } = await import("@/server/requested-scope");
             const expectedRoutes = Array.from(
-              new Set(
-                (isInitial
-                  ? [...plannedRoutes, ...stepRoutes, ...linkRoutes]
-                  : extractRequestedPages(lastUserContent).map(pageNameToRoute)
-                ).map((r) => r.toLowerCase()),
-              ),
+              new Set(extractRequestedPages(lastUserContent).map(pageNameToRoute).map((r) => r.toLowerCase())),
             ).filter((r) => r !== "/");
-
-            if (expectedRoutes.length || isInitial) {
+            if (expectedRoutes.length) {
+              const emittedSource = [
+                ...(parsed.files ?? []).map((f) => f.content ?? ""),
+                ...(parsed.ops ?? []).map((o) => ("content" in o ? String(o.content ?? "") : "")),
+              ].join("\n");
               const coverage = assessRouteCoverage({
                 expectedRoutes,
-                // A first build is not complete without its app shell + home.
-                requireAppShell: isInitial,
+                requireAppShell: false,
                 ops: parsed.ops,
                 files: parsed.files,
-                // Edit turns build on top of what already shipped.
-                existingPaths: isInitial ? [] : currentFiles.map((f) => f.path),
+                existingPaths: currentFiles.map((f) => f.path),
                 routerSource: [
                   emittedSource,
-                  ...(isInitial
-                    ? []
-                    : currentFiles
-                        .filter((f) => /src\/(App|main|router)\.(t|j)sx?$/i.test(f.path))
-                        .map((f) => f.content ?? "")),
+                  ...currentFiles
+                    .filter((f) => /src\/(App|main|router)\.(t|j)sx?$/i.test(f.path))
+                    .map((f) => f.content ?? ""),
                 ].join("\n"),
               });
               if (coverage.needed) chunkAssessment = coverage;
             }
           }
 
+          // COMPLETENESS stage (first builds): every requested page, written
+          // in one call naming all missing pages. Bounded by the recovery table.
+          if (isInitial && !chunkAssessment.needed && parsed.files?.length) {
+            const { generateMissingPages } = await import("@/server/engine/completeness");
+            const requested = requestedRoutesFor(lastUserText, plannedRoutes);
+            const done = await generateMissingPages({
+              requestedRoutes: requested,
+              files: parsed.files,
+              budget: recovery,
+              request: async (instruction) => {
+                controller.enqueue(
+                  encoder.encode(sse({ type: "status", message: "Writing the remaining pages…" })),
+                );
+                const res = await structuredRetryCompletion({
+                  messages: [...finalMessages, { role: "user", content: instruction }],
+                  isInitial,
+                  problem: "missing_pages",
+                  hasBackend: Boolean(backend),
+                  tool,
+                  maxTokens: 12_000,
+                  crossCuttingIntent: isCrossCutting,
+                  signal: abortSignal,
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: "missing_pages",
+                    projectId: body.projectId ?? null,
+                    userId,
+                    turnId: logicalTurnId,
+                    recoveryReason: "missing_page",
+                  },
+                });
+                if (!res.ok || !res.body) return null;
+                const c = await relayAndCollect(res, controller, encoder);
+                try {
+                  return parseCollectedProject(c, true).parsed.files ?? null;
+                } catch {
+                  return null;
+                }
+              },
+            });
+            console.log(
+              `[completeness] requested=${JSON.stringify(requested)} missingBefore=${JSON.stringify(done.missingBefore)} attempted=${done.attempted} added=${done.added} missingAfter=${JSON.stringify(done.missingAfter)}`,
+            );
+            parsed.files = done.files;
+          }
 
           if (chunkAssessment.needed) {
             console.warn(
