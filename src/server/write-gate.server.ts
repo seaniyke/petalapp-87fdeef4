@@ -224,3 +224,29 @@ export function writeGateDisclosure(rejections: WriteRejection[]): string {
     "Everything else landed and your app is still in a working state. Say the word and I'll retry the rejected part.",
   ].join("\n");
 }
+
+/**
+ * Deterministic cleanup may never break a file. For every path in `paths`:
+ * if it parsed BEFORE cleanup and fails AFTER, the pre-cleanup bytes win.
+ * (Live run: cleanup turned a valid Home page into "Unexpected }" and the
+ * page was later dropped.) Returns the guarded files and the reverted paths.
+ */
+export async function revertCleanupBreakage(
+  before: ProjectFile[],
+  after: ProjectFile[],
+  paths: string[],
+): Promise<{ files: ProjectFile[]; reverted: string[] }> {
+  const candidates = parseCandidates(paths);
+  if (candidates.length === 0) return { files: after, reverted: [] };
+  const failingAfter = await failingPaths(after, candidates);
+  if (failingAfter.size === 0) return { files: after, reverted: [] };
+  const failingBefore = await failingPaths(before, Array.from(failingAfter.keys()));
+  const beforeByPath = new Map(before.map((f) => [f.path, f.content]));
+  const reverted = Array.from(failingAfter.keys()).filter((p) => !failingBefore.has(p) && beforeByPath.has(p));
+  if (reverted.length === 0) return { files: after, reverted };
+  const set = new Set(reverted);
+  return {
+    files: after.map((f) => (set.has(f.path) ? { path: f.path, content: beforeByPath.get(f.path)! } : f)),
+    reverted,
+  };
+}
