@@ -5356,12 +5356,25 @@ Forbidden defaults
         // to emit only the missing tail bytes.
         // (extracted to src/server/pipeline/tier-continuation.ts).
         const contT0 = Date.now();
+        const preContFiles = nextFiles;
         const contOut = await runContinuationTier({
           files: nextFiles,
           verdict: localVerdict,
           model,
         });
         nextFiles = contOut.files;
+        // The continuation is itself the repair for a truncated file. If it
+        // ran, re-check the flagged files so the one-repair gate below sees
+        // the CURRENT state, not the pre-continuation verdict.
+        let gateLocalVerdict = localVerdict;
+        if (contOut.files !== preContFiles && !localVerdict.ok) {
+          const { verifyFilesLocal } = await import("@/server/local-verifier");
+          gateLocalVerdict = verifyFilesLocal(
+            nextFiles,
+            Array.from(new Set(localVerdict.issues.map((i) => i.path))),
+          );
+        }
+        const continuationRepaired = contOut.files !== preContFiles;
         // (Legacy handoff-state population removed. `contOut.requestHandoff`
         // still drives the telemetry outcome below — that's all it's used
         // for now.)
@@ -5372,7 +5385,7 @@ Forbidden defaults
           tier: "continuation",
           outcome: contOut.requestHandoff
             ? "failed"
-            : contOut.files !== nextFiles
+            : continuationRepaired
               ? "fixed"
               : "skipped",
           duration_ms: Date.now() - contT0,
@@ -5493,7 +5506,7 @@ Forbidden defaults
           : new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
         const inTurn = (p: string) => !gateTurnPaths || gateTurnPaths.has(p);
         const gateReason =
-          (!localVerdict.ok ? localVerdict.issues.find((i) => inTurn(i.path))?.kind : undefined) ??
+          (!gateLocalVerdict.ok ? gateLocalVerdict.issues.find((i) => inTurn(i.path))?.kind : undefined) ??
           (!esbuildVerdict.ok && esbuildVerdict.issues.some((i) => inTurn(i.path)) ? "syntax" : null) ??
           (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null) ??
           (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0)
