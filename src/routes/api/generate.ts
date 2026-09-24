@@ -4160,7 +4160,7 @@ Forbidden defaults
 
           // COMPLETENESS stage (first builds): every requested page, written
           // in one call naming all missing pages. Bounded by the recovery table.
-          if (isInitial && !chunkAssessment.needed && parsed.files?.length) {
+          if (isInitial && parsed.files?.length) {
             const { generateMissingPages } = await import("@/server/engine/completeness");
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             const done = await generateMissingPages({
