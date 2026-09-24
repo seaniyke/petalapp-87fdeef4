@@ -1419,7 +1419,7 @@ function emitConversationalFallback(
     files: ProjectFile[];
     suggestions?: string[];
     /** Defaults to "answered". Pass "blocked" when edits were refused. */
-    outcome?: "answered" | "blocked";
+    outcome?: "answered" | "blocked" | "failed";
     blockedPaths?: string[];
     reason?: string;
     streamSummary?: boolean;
