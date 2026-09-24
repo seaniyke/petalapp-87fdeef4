@@ -1934,7 +1934,7 @@ async function runFinalParseGuard(
         if (recheck.report.ok) {
           console.log(`[preemit-gate] salvaged turn by quarantining ${badPaths.length} file(s)`);
           controller.enqueue(
-            encoder.encode(sse({ type: "status", message: "Rewriting a screen that came out wrong…" })),
+            encoder.encode(sse({ type: "status", message: "Setting aside a file that couldn't be fixed…" })),
           );
           return { ok: true, files: recheck.files };
         }
@@ -5273,6 +5273,8 @@ Forbidden defaults
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })),
                 );
+                // One shared per-file budget for every repair in this turn.
+                if (!recovery.take("broken_file", file.path)) return null;
                 const { repairBrokenFile } = await import("@/server/engine/repair");
                 return repairBrokenFile(file, detail, {
                   turnId: logicalTurnId,
@@ -5336,7 +5338,11 @@ Forbidden defaults
           });
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
-            nextFiles = repaired.files;
+            // Cleanup may never break a file that parsed before it ran.
+            const { revertCleanupBreakage } = await import("@/server/write-gate.server");
+            const guarded = await revertCleanupBreakage(nextFiles, repaired.files, cleanupPaths);
+            if (guarded.reverted.length) console.warn(`[cleanup-guard] reverted cleanup on ${JSON.stringify(guarded.reverted)} (it broke them)`);
+            nextFiles = guarded.files;
             // Bible §7 — every repair records signature → fix → outcome.
             // This is the training set for the next codemod, and the only way
             // to see the same pass masking the same model defect week after
