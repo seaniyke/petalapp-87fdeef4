@@ -75,12 +75,8 @@ export function renderBuildBlueprintBlock(blueprint: BuildBlueprint | null): str
 export async function loadProjectBlueprint(projectId?: string | null): Promise<BuildBlueprint | null> {
   if (!projectId) return null;
   try {
-    const { data } = await (supabaseAdmin as any)
-      .from("project_blueprints")
-      .select("blueprint")
-      .eq("project_id", projectId)
-      .maybeSingle();
-    return data?.blueprint ?? null;
+    const { agentIO } = await import("@/server/agent-io.server");
+    return ((await agentIO().readBlueprint(projectId)) as BuildBlueprint | null) ?? null;
   } catch (e) {
     console.warn("[blueprint] load skipped:", e instanceof Error ? e.message : String(e));
     return null;
@@ -93,24 +89,18 @@ export async function saveProjectBlueprint(projectId: string | undefined, bluepr
     // The `blueprint` JSON column also carries sibling keys written by other
     // subsystems (`prd`, `architecture`). Merge instead of overwriting, or
     // saving the blueprint silently wipes them.
-    const { data: existing } = await (supabaseAdmin as any)
-      .from("project_blueprints")
-      .select("blueprint")
-      .eq("project_id", projectId)
-      .maybeSingle();
-    const merged = { ...(existing?.blueprint ?? {}), ...blueprint };
-    await (supabaseAdmin as any).from("project_blueprints").upsert(
+    const { agentIO } = await import("@/server/agent-io.server");
+    await agentIO().saveBlueprint(
+      projectId,
       {
-        project_id: projectId,
         project_type: blueprint.projectType,
         sections: blueprint.sections,
         navigation: blueprint.navigation,
         design_language: blueprint.designLanguage,
         backend: blueprint.backend,
         files: blueprint.files,
-        blueprint: merged,
       },
-      { onConflict: "project_id" },
+      blueprint as unknown as Record<string, unknown>,
     );
 
   } catch (e) {
