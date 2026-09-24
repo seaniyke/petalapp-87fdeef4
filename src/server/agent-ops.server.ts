@@ -29,7 +29,7 @@ export type TurnRow = {
 };
 
 export type FileRow = { path: string; content: string };
-export type EventRow = { seq: number; kind: string; payload: unknown };
+export type EventRow = { seq: number; kind: string; payload?: unknown };
 
 export interface AgentOpsStore {
   getTurn(turnId: string): Promise<TurnRow | null>;

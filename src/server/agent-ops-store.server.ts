@@ -111,7 +111,7 @@ export function createAgentOpsStore(): AgentOpsStore {
       await db.from("ai_call_log").insert(row as Any);
     },
     async savePicture(row) {
-      const { error } = await db.from("project_pictures").insert(row);
+      const { error } = await db.from("project_pictures").insert(row as Any);
       if (error) throw new Error(error.message);
     },
   };
