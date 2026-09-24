@@ -1146,8 +1146,23 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   const isCodeWriting = opts.codeOutput === true || (opts.feature === "generate" && hasTools);
   // Sole provider authority: any caller-supplied provider block is replaced.
   delete body.provider;
-  const routing = resolveProviderRouting({ codeWriting: isCodeWriting, avoid: turnFailed, hasTools });
+  let inferenceEval: { models: string[] } | null = null;
+  try {
+    const { currentTurnContext } = await import("@/server/turn-context.server");
+    inferenceEval = currentTurnContext().inferenceEval ?? null;
+  } catch { /* no turn */ }
+  const routing = inferenceEval && isCodeWriting
+    // Evaluation: OpenRouter owns provider failover for each model; Kimble
+    // only names the model chain. NextBit stays excluded (it corrupts tool
+    // arguments — a known correctness defect, not an availability one).
+    ? { allow_fallbacks: true, require_parameters: true, ignore: ["nextbit"] }
+    : resolveProviderRouting({ codeWriting: isCodeWriting, avoid: turnFailed, hasTools });
   if (routing) body.provider = routing;
+  if (inferenceEval && isCodeWriting) {
+    body.model = inferenceEval.models[0];
+    if (inferenceEval.models.length > 1) body.models = inferenceEval.models;
+    body.__inferenceEval = true;
+  }
   if (isCodeWriting) console.log(`[provider-policy] avoid=${turnFailed.join(",") || "-"} routing=${JSON.stringify(routing)}`);
   const streamExtra = {
     fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
@@ -1164,7 +1179,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // 408/502/503/524 before any output), they are marked failed for THIS turn
   // only and the same policy is asked again — which now opens the next
   // approved upstream (DeepInfra last). One re-dispatch; never a loop.
-  if (isCodeWriting && !primary.ok && isProviderUnavailableStatus(primary.status)) {
+  if (isCodeWriting && !inferenceEval && !primary.ok && isProviderUnavailableStatus(primary.status)) {
     const tried = ((body.provider as { only?: string[] } | undefined)?.only ?? []).slice();
     if (tried.length) {
       try {
@@ -1375,7 +1390,9 @@ async function dispatch(
   }
   // Final safety net: coerce whatever slug arrives here to the configured model.
   let outBody: Record<string, unknown> = body;
-  const wireModel = coerceToConfiguredModel(
+  const evalRun = outBody.__inferenceEval === true;
+  if ("__inferenceEval" in outBody) { outBody = { ...outBody }; delete outBody.__inferenceEval; }
+  const wireModel = evalRun ? (outBody.model as string) : coerceToConfiguredModel(
     remapModelForOpenRouter(outBody.model as string | undefined) ?? defaultTextModel(),
     { vision: requestHasImageParts(outBody) },
   );
