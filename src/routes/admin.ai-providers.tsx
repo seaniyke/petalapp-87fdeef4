@@ -718,11 +718,6 @@ function FeatureRow({
               <ProviderBadge provider={row.effective} />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">{details.blurb}</p>
-            {!row.locked && row.override === null && row.envChoice && (
-              <p className="mt-1 text-xs text-muted-foreground/70">
-                Currently following env var (<code>{row.envChoice}</code>).
-              </p>
-            )}
           </div>
 
           <div className="flex shrink-0 items-center gap-1 rounded-xl border border-border/60 bg-background p-1">

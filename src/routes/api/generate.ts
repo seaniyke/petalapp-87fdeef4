@@ -35,17 +35,6 @@ import {
   type InspectorReport,
 } from "@/server/inspector-agent.server";
 import {
-  runAgentLoop,
-  shouldRunAgentLoop,
-  agentLoopSummaryBlock,
-  type AgentLoopResult,
-  type ChatMessage as AgentChatMessage,
-} from "@/server/agent-loop.server";
-import {
-  initialBuildToolsEnabled,
-  INITIAL_BUILD_MAX_ROUNDS,
-} from "@/server/completion-flags.server";
-import {
   runCritic,
   criticDisclosure,
   type CriticRejection,
@@ -3679,54 +3668,6 @@ Forbidden defaults
     ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent })
     : null;
 
-  let agentLoop: AgentLoopResult | null = null;
-  if (
-    !directLogoEdit &&
-    // COST CONTROL — measured: 64 exploration calls averaging 42.6K input
-    // tokens each (2.7M tokens) in one benchmark window, resending the full
-    // generate prompt every round before the emit call resends it again.
-    // The emit call already carries the focused context, so exploration is
-    // off unless explicitly re-enabled for an experiment.
-    process.env.KIMBLE_PREEMIT_AGENT_LOOP === "1" &&
-    // Phase 1 — a small, pinned edit never earns the exploration phase.
-    editClassification?.scope !== "micro" &&
-    shouldRunAgentLoop({
-      isInitial,
-      isCrossCutting,
-      prompt: lastUserContent,
-      fileCount: currentFiles.length,
-      allowInitial: initialBuildToolsEnabled(),
-    })
-  ) {
-    agentLoop = await runAgentLoop({
-      model,
-      messages: finalMessages as AgentChatMessage[],
-      files: currentFiles,
-      projectId: body.projectId ?? "unknown",
-      userId,
-      signal: abortSignal,
-      maxRounds: isInitial ? INITIAL_BUILD_MAX_ROUNDS : undefined,
-    });
-    if (agentLoop.steps.length > 0) {
-      console.info(
-        `[agent-loop] rounds=${agentLoop.rounds} steps=${agentLoop.steps.length} converged=${agentLoop.converged} changed=${agentLoop.changedPaths.length}`,
-      );
-      // Adopt any codemod result BEFORE the emit call so every later stage
-      // diffs against the real post-codemod bytes.
-      currentFiles = agentLoop.files;
-      finalMessages = [
-        ...finalMessages,
-        ...(agentLoop.transcript as typeof finalMessages),
-        {
-          role: "user",
-          content: `${agentLoopSummaryBlock(agentLoop)}\n\nNow emit the final structured edit for whatever still needs changing.`,
-        } as (typeof finalMessages)[number],
-      ];
-    }
-  }
-
-
-
   const upstream = directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
@@ -3798,25 +3739,6 @@ Forbidden defaults
           controller.enqueue(
             encoder.encode(
               sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
-            ),
-          );
-        }
-        // Same for the pre-emit agent loop: every grep, read, codemod and
-        // verifier run shows up as its own timeline row.
-        for (const step of agentLoop?.steps ?? []) {
-          controller.enqueue(
-            encoder.encode(
-              sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
-            ),
-          );
-        }
-        if (agentLoop && agentLoop.changedPaths.length > 0) {
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "status",
-                message: `Codemod updated ${agentLoop.changedPaths.length} file${agentLoop.changedPaths.length === 1 ? "" : "s"}.`,
-              }),
             ),
           );
         }
@@ -5222,7 +5144,7 @@ Forbidden defaults
             // A codemod that already landed this turn IS a real change, even
             // if the emit call then had nothing left to add. Only the case
             // where literally nothing moved is a dead end.
-            if (changedPaths.length === 0 && (agentLoop?.changedPaths.length ?? 0) === 0) {
+            if (changedPaths.length === 0) {
               const claimed = Array.from(new Set(safeOps.map((o) => o.path))).slice(0, 4).join(", ");
               console.warn(`[generate] no-op patch — ops applied but file contents unchanged (${claimed})`);
               recorder.record({
@@ -6055,38 +5977,6 @@ Forbidden defaults
         // Pages are written only by the WRITE stage (engine/write.ts).
 
 
-        // Design contract enforcement — the project's committed design system
-        // is checked against the code we are about to ship. Structural turns
-        // get ONE focused repair pass for hard violations (raw colours, hex
-        // values, missing tokens); small edits lint-and-log only. Fails open.
-
-        try {
-          const { enforceDesignContract } = await import("@/server/design/design-enforce.server");
-          const enforced = await enforceDesignContract({
-            files: nextFiles,
-            design: picContext?.design ?? null,
-            model,
-            repair: isInitial || isCrossCutting,
-            // Judge only what this turn touched, unless it built the app.
-            changedPaths:
-              isInitial || isCrossCutting
-                ? null
-                : diffChangedPaths(turnBaselineFiles, nextFiles),
-            projectId: body.projectId ?? undefined,
-            userId,
-            signal: abortSignal,
-          });
-          if (enforced.repaired) {
-            nextFiles = enforced.files;
-            controller.enqueue(
-              encoder.encode(
-                sse({ type: "status", message: "Aligned the styling with your app's design system." }),
-              ),
-            );
-          }
-        } catch (e) {
-          console.warn("[design-lint] skipped:", e instanceof Error ? e.message : String(e));
-        }
 
         // Edit Intelligence phase 1/2/6 — did every requested change actually
         // land? The prompt asks for all of them; this checks the real diff.

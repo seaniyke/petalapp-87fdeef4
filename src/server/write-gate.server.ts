@@ -227,7 +227,7 @@ export function writeGateDisclosure(rejections: WriteRejection[]): string {
 
 /**
  * Deterministic cleanup may never break a file. For every path in `paths`:
- * if it parsed BEFORE cleanup and fails AFTER, the pre-cleanup bytes win.
+ * if it passed the final-check verifier BEFORE cleanup and fails AFTER, the pre-cleanup bytes win.
  * (Live run: cleanup turned a valid Home page into "Unexpected }" and the
  * page was later dropped.) Returns the guarded files and the reverted paths.
  */
@@ -238,11 +238,20 @@ export async function revertCleanupBreakage(
 ): Promise<{ files: ProjectFile[]; reverted: string[] }> {
   const candidates = parseCandidates(paths);
   if (candidates.length === 0) return { files: after, reverted: [] };
-  const failingAfter = await failingPaths(after, candidates);
+  // Same verifier as the final check (parse + structure + render risk), so a
+  // file cleanup damaged in any way the final check would flag is put back to
+  // its pre-cleanup bytes here — it never reaches the final check as "broken"
+  // and never spends a second repair or gets set aside.
+  const { runPreEmitGate } = await import("@/server/preemit-gate.server");
+  const flagged = async (files: ProjectFile[], only: string[]) => {
+    const { report } = await runPreEmitGate(files, only, { maxRounds: 0 });
+    return new Set(report.issues.map((i) => i.path).filter((p) => only.includes(p)));
+  };
+  const failingAfter = await flagged(after, candidates);
   if (failingAfter.size === 0) return { files: after, reverted: [] };
-  const failingBefore = await failingPaths(before, Array.from(failingAfter.keys()));
+  const failingBefore = await flagged(before, Array.from(failingAfter));
   const beforeByPath = new Map(before.map((f) => [f.path, f.content]));
-  const reverted = Array.from(failingAfter.keys()).filter((p) => !failingBefore.has(p) && beforeByPath.has(p));
+  const reverted = Array.from(failingAfter).filter((p) => !failingBefore.has(p) && beforeByPath.has(p));
   if (reverted.length === 0) return { files: after, reverted };
   const set = new Set(reverted);
   return {

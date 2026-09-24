@@ -46,12 +46,9 @@ export type AiCostRow = {
   errorCalls: number;
 };
 
-function envChoiceFor(feature: AiFeature): Provider | null {
-  const perFeature = process.env[`AI_PROVIDER_${feature.toUpperCase()}`]?.toLowerCase();
-  const global = process.env.AI_PROVIDER?.toLowerCase();
-  const choice = perFeature || global;
-  if (choice === "openrouter") return "openrouter";
-  if (choice === "lovable") return "lovable";
+// AI_PROVIDER / AI_PROVIDER_<FEATURE> no longer steer traffic (every call goes
+// through OpenRouter), so they are not reported as an active choice.
+function envChoiceFor(_feature: AiFeature): Provider | null {
   return null;
 }
 
