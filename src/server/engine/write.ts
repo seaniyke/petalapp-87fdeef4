@@ -94,8 +94,10 @@ export async function writePlannedPages(args: {
   if (retry.length) await writePages(retry);
 
   // 3) Router, once, only if the planned routes aren't all registered.
-  const routes = args.pages.map((p) => p.route);
-  if (!assessCompleteness({ requestedRoutes: routes, files }).complete && args.budget.take("missing_page", "app shell")) {
+  // Judge registration only for pages that exist — a missing page is not a
+  // router problem and must not trigger a router call.
+  const routes = args.pages.filter((p) => hasRealPage(files, p.file)).map((p) => p.route);
+  if (routes.length && !assessCompleteness({ requestedRoutes: routes, files }).complete && args.budget.take("missing_page", "app shell")) {
     put(await call(routerInstruction(args.pages, files.map((f) => f.path))));
   }
 
