@@ -6391,6 +6391,14 @@ Forbidden defaults
           const requested = requestedRoutesFor(lastUserText, plannedRoutes);
           const verdict = assessCompleteness({ requestedRoutes: requested, files: nextFiles });
           scopeMissing = verdict.missingRoutes;
+          {
+            // The shared frame is a required deliverable, not an optional one.
+            const { frameIsComplete } = await import("@/server/engine/write");
+            if (!frameIsComplete(nextFiles) && !scopeMissing.includes("app shell")) {
+              scopeMissing = ["app shell", ...scopeMissing];
+              verdict.complete = false;
+            }
+          }
           console.log(
             `[build-state] requested=${JSON.stringify(requested)} complete=${verdict.complete} missing=${JSON.stringify(scopeMissing)}`,
           );
