@@ -3188,6 +3188,8 @@ Forbidden defaults
   // output budget writes the shared shell + the first pages now; the
   // coverage continuation below writes only the remaining pages (it never
   // rewrites delivered files). Small builds stay one call.
+  // PLAN: the one scope contract the WRITE stage executes.
+  let firstBuildPlan: import("@/server/engine/plan").FirstBuildPlan | null = null;
   if (isInitial) {
     try {
       const { planFirstBuild } = await import("@/server/engine/plan");
@@ -3202,6 +3204,7 @@ Forbidden defaults
       const firstPlan = planFirstBuild({ prompt: lastUserText, plannedRoutes, maxOutputTokens: firstUnitMaxOutput });
       for (const r of firstPlan.routes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
       archetypeBlock += firstPlan.instruction;
+      firstBuildPlan = firstPlan;
       console.log(firstPlan.log);
     } catch {
       /* never block a build on unit planning */
@@ -3970,7 +3973,7 @@ Forbidden defaults
               : firstStall
                 ? null
                 : firstCollected;
-            const recovered = isMissingToolOutputError(retryErr) && recoverySource
+            const recovered = !isInitial && isMissingToolOutputError(retryErr) && recoverySource
               ? await recoverMissingToolOutput({
                   chatMessages: finalMessages,
                   collected: recoverySource,
@@ -4005,7 +4008,7 @@ Forbidden defaults
             // small enough that it cannot overflow. The chunk continuation
             // loop below then finishes the rest in the same turn.
             let smallChunk: ParsedProjectPayload | null = null;
-            if (firstWasTruncated && recovery.take("truncated_output")) {
+            if (!isInitial && firstWasTruncated && recovery.take("truncated_output")) {
               try {
                 controller.enqueue(
                   encoder.encode(
@@ -4161,18 +4164,20 @@ Forbidden defaults
             }
           }
 
-          // COMPLETENESS stage (first builds): every requested page, written
-          // in one call naming all missing pages. Bounded by the recovery table.
+          // WRITE stage (first builds): the shell call above wrote the shared
+          // shell; every planned page is now written by its own call.
           if (isInitial && parsed.files?.length) {
-            const { generateMissingPages } = await import("@/server/engine/completeness");
+            const { writePlannedPages, targetOf: wantOf } = await import("@/server/engine/write");
+            const { pageFileFor } = await import("@/server/engine/plan");
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
-            const wantOf = (instruction: string) =>
-              /as (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
-            const done = await generateMissingPages({
-              requestedRoutes: requested,
+            // The plan is authoritative; requested routes only fill in if
+            // planning failed. No other source of pages exists.
+            const pages = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            const done = await writePlannedPages({
+              pages,
               files: parsed.files,
               budget: recovery,
-              request: async (instruction) => {
+              request: async (instruction: string) => {
                 const { withCallFrame, attachFiles } = await import("@/server/engine/call-accounting");
                 const framed = await withCallFrame(async () => {
                 controller.enqueue(
@@ -4233,7 +4238,7 @@ Forbidden defaults
                 }
                 try {
                   const got = parseCollectedProject(c, true).parsed.files ?? null;
-                  console.log(`[completeness] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} argsChars=${c.args.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
+                  console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} argsChars=${c.args.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
                   return got;
                 } catch {
                   return null;
@@ -4247,7 +4252,7 @@ Forbidden defaults
               },
             });
             console.log(
-              `[completeness] requested=${JSON.stringify(requested)} missingBefore=${JSON.stringify(done.missingBefore)} calls=${done.calls} added=${done.added} missingAfter=${JSON.stringify(done.missingAfter)}`,
+              `[write] pages=${JSON.stringify(pages.map((p) => p.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`,
             );
             parsed.files = done.files;
           }
@@ -6290,8 +6295,7 @@ Forbidden defaults
           );
         }
 
-        // Missing/placeholder pages are owned solely by the completeness
-        // stage (engine/completeness.ts). No second page writer runs here.
+        // Pages are written only by the WRITE stage (engine/write.ts).
 
 
         // Design contract enforcement — the project's committed design system
