@@ -28,12 +28,6 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { freshenStaleYears } from "@/server/freshen-stale-years.server";
-import { postBuildToRailway } from "@/server/builder.server";
-import { buildVerifyPlan } from "@/server/verify-plan.server";
-import type { ProjectFile } from "@/server/generate.server";
-import { applyScaffoldKit } from "@/server/scaffold-kit";
-import { runAllRepairs } from "@/server/repair-all.server";
 
 /**
  * Best-effort: run the same deterministic self-healing used by generation and
@@ -49,58 +43,11 @@ import { runAllRepairs } from "@/server/repair-all.server";
  */
 async function repairAndReshipIfNeeded(
   projectId: string,
-  hidePetalBadge: boolean,
+  _hidePetalBadge: boolean,
 ): Promise<void> {
-  try {
-    const { data: rows, error } = await supabaseAdmin
-      .from("project_files")
-      .select("path, content")
-      .eq("project_id", projectId);
-    if (error || !rows?.length) return;
-
-    const files: ProjectFile[] = rows.map((r) => ({ path: r.path, content: r.content }));
-    const repaired = runAllRepairs(applyScaffoldKit(files));
-    const { files: freshened, replacements } = freshenStaleYears(repaired.files);
-    const originalByPath = new Map(files.map((f) => [f.path, f.content]));
-    const changed = freshened.filter((f) => originalByPath.get(f.path) !== f.content);
-    if (changed.length === 0) return;
-
-    // Persist changed and newly synthesized files before shipping.
-    for (const f of changed) {
-      await supabaseAdmin
-        .from("project_files")
-        .upsert({ project_id: projectId, path: f.path, content: f.content }, { onConflict: "project_id,path" });
-    }
-
-    // Create a new build row + ship — re-uses the standard build pipeline so
-    // the deployed Cloudflare Pages project gets the fresh files.
-    const { data: build } = await supabaseAdmin
-      .from("project_builds")
-      .insert({ project_id: projectId, status: "pending" })
-      .select("id")
-      .single();
-    if (!build) return;
-    await supabaseAdmin
-      .from("projects")
-      .update({ latest_build_id: build.id })
-      .eq("id", projectId);
-
-    await postBuildToRailway({
-      projectId,
-      buildId: build.id,
-      files: freshened,
-      hideBadge: hidePetalBadge,
-      verify: await buildVerifyPlan({ files: freshened, projectId }).catch(() => undefined),
-    });
-    console.log(
-      `[publish] repaired ${repaired.notes.length} issue(s), freshened ${replacements} stale year ref(s), and persisted ${changed.length} file(s) for project=${projectId} (build=${build.id})`,
-    );
-  } catch (e) {
-    console.warn(
-      `[publish] repair/reship pass failed for project=${projectId}:`,
-      e instanceof Error ? e.message : String(e),
-    );
-  }
+  console.info(
+    `[cleanup-scope] turn=publish attempt=none unit=publish written=0 modified=0 cleanup=0 duration_ms=0 result=skipped skipped=true paths=[] project=${projectId}`,
+  );
 }
 
 const VisibilitySchema = z.enum(["public", "private", "unpublished"]);
