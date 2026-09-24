@@ -1856,6 +1856,9 @@ async function runFinalParseGuard(
   prd?: import("@/server/prd/prd-types").Prd | null,
   /** Files as they were before this turn — the safe content to fall back to. */
   priorFiles: ProjectFile[] = [],
+  /** The turn's ONE repair (shared budget). Broken generated files get it
+   *  before anything is set aside. */
+  repair?: (file: ProjectFile, detail: string) => Promise<string | null>,
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
 
@@ -1909,7 +1912,32 @@ async function runFinalParseGuard(
     // import resolver keeps the app resolving, and ship the rest. The
     // placeholder-completion pass downstream then writes the dropped screens
     // for real.
-    const badPaths = Array.from(new Set(report.issues.map((i) => i.path))).filter(Boolean);
+    let badPaths = Array.from(new Set(report.issues.map((i) => i.path))).filter(Boolean);
+    // Every eligible broken file goes through the same single repair first
+    // (Home and the layout got none in the live run; Contact did).
+    if (repair && badPaths.length > 0) {
+      let working = gated;
+      const fixedPaths: string[] = [];
+      for (const p of badPaths) {
+        const file = working.find((f) => f.path === p);
+        if (!file) continue;
+        const detail = report.issues.filter((i) => i.path === p).map((i) => `${i.kind}: ${i.detail}`).join("; ");
+        let out: string | null = null;
+        try { out = await repair(file, detail); } catch { out = null; }
+        if (out && out !== file.content) {
+          working = working.map((f) => (f.path === p ? { path: p, content: out! } : f));
+          fixedPaths.push(p);
+        }
+      }
+      if (fixedPaths.length) {
+        const again = await runPreEmitGate(working, changedPaths, { maxRounds: 0, prd });
+        console.log(`[preemit-gate] repair attempted=${JSON.stringify(fixedPaths)} ok=${again.report.ok}`);
+        if (again.report.ok) return { ok: true, files: again.files };
+        const still = new Set(again.report.issues.map((i) => i.path));
+        gated.splice(0, gated.length, ...again.files);
+        badPaths = badPaths.filter((p) => still.has(p));
+      }
+    }
     const salvageable = badPaths.length > 0 && badPaths.length <= 4 && badPaths.length < gated.length;
     if (salvageable) {
       try {
@@ -5873,6 +5901,12 @@ Forbidden defaults
           // Pre-turn files: a handful of broken outputs get quarantined back
           // to these instead of throwing the whole turn away.
           currentFiles,
+          async (file, detail) => {
+            if (!recovery.take("broken_file", file.path)) return null;
+            controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })));
+            const { repairBrokenFile } = await import("@/server/engine/repair");
+            return repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId });
+          },
         );
 
         if (!guardOut.ok) {
