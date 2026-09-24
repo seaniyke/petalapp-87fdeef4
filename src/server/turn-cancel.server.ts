@@ -1,3 +1,4 @@
+import { currentTurnContext } from "@/server/turn-context.server";
 /**
  * User Stop → backend cancellation, keyed on the existing turn id.
  *
@@ -34,6 +35,9 @@ export function abortLocalTurn(turnId: string): boolean {
 
 let cached: Admin | null = null;
 function admin(): Admin | null {
+  // Railway runtime: no admin key; use the turn's gateway-scoped stand-in.
+  const ctxDb = currentTurnContext().agentDb;
+  if (ctxDb) return ctxDb as never;
   if (cached) return cached;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -10,19 +10,33 @@
 import { z } from "zod";
 
 type Action = "select" | "insert" | "upsert" | "update" | "delete";
-type Scope = "project_id" | "id" | "turn_id";
+/** Which turn value is forced onto `col`. `null` = global read-only config. */
+type Pin = { col: string; from: "project" | "user" | "turn" } | null;
 
-export const TABLE_RULES: Record<string, { scope: Scope; actions: Action[]; userCol?: boolean }> = {
-  project_files: { scope: "project_id", actions: ["select"] },
-  project_memory: { scope: "project_id", actions: ["select", "insert", "upsert", "update", "delete"] },
-  project_blueprints: { scope: "project_id", actions: ["select", "upsert", "update"] },
-  project_pictures: { scope: "project_id", actions: ["select", "insert"] },
-  project_intelligence: { scope: "project_id", actions: ["select", "insert", "upsert", "update"] },
-  project_integrations: { scope: "project_id", actions: ["select"] },
-  project_backends: { scope: "project_id", actions: ["select"] },
-  projects: { scope: "id", actions: ["select"] },
-  ai_call_log: { scope: "turn_id", actions: ["select", "update"] },
-  pipeline_failures: { scope: "project_id", actions: ["insert"], userCol: true },
+export const TABLE_RULES: Record<string, { pin: Pin; actions: Action[]; userCol?: boolean }> = {
+  project_files: { pin: { col: "project_id", from: "project" }, actions: ["select"] },
+  project_memory: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert", "upsert", "update", "delete"] },
+  project_blueprints: { pin: { col: "project_id", from: "project" }, actions: ["select", "upsert", "update"] },
+  project_pictures: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert"] },
+  project_intelligence: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert", "upsert", "update"] },
+  project_integrations: { pin: { col: "project_id", from: "project" }, actions: ["select"] },
+  project_backends: { pin: { col: "project_id", from: "project" }, actions: ["select"] },
+  project_turn_completion: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert", "upsert", "update"], userCol: true },
+  projects: { pin: { col: "id", from: "project" }, actions: ["select"] },
+  turns: { pin: { col: "id", from: "turn" }, actions: ["select"] },
+  ai_call_log: { pin: { col: "turn_id", from: "turn" }, actions: ["select", "update"] },
+  pipeline_failures: { pin: { col: "project_id", from: "project" }, actions: ["insert"], userCol: true },
+  profiles: { pin: { col: "id", from: "user" }, actions: ["select"] },
+  turn_economics: { pin: { col: "user_id", from: "user" }, actions: ["select"] },
+  ai_provider_settings: { pin: null, actions: ["select"] },
+  economics_config: { pin: null, actions: ["select"] },
+};
+
+/** Read-only database functions a build may call; user/project args pinned. */
+export const RPC_RULES: Record<string, { user?: string; project?: string }> = {
+  is_paid_plan: { user: "_user_id" },
+  check_credit_balance: { user: "_user_id" },
+  runtime_cap_check: { user: "_user_id", project: "_project_id" },
 };
 
 const Filter = z.object({
@@ -48,32 +62,53 @@ export type DbQuery = z.infer<typeof DbQuerySchema>;
 
 export type ScopeIds = { projectId: string; userId: string; turnId: string };
 
-export type ScopedQuery = Omit<DbQuery, "op"> & { scopeCol: Scope; scopeValue: string };
+export type ScopedQuery = Omit<DbQuery, "op"> & { scopeCol: string | null; scopeValue: string | null };
+
+export const DbRpcSchema = z.object({
+  op: z.literal("db.rpc"),
+  fn: z.string().max(60),
+  args: z.record(z.unknown()).default({}),
+});
+export type DbRpc = z.infer<typeof DbRpcSchema>;
+
+export function scopeDbRpc(q: DbRpc, ids: ScopeIds): { fn: string; args: Record<string, unknown> } | { error: string } {
+  const rule = RPC_RULES[q.fn];
+  if (!rule) return { error: "rpc_not_allowed" };
+  const args = { ...q.args };
+  if (rule.user) args[rule.user] = ids.userId;
+  if (rule.project && args[rule.project] != null) args[rule.project] = ids.projectId;
+  return { fn: q.fn, args };
+}
 
 /** Validate and pin a query to the turn. Returns an error code on refusal. */
 export function scopeDbQuery(q: DbQuery, ids: ScopeIds): ScopedQuery | { error: string } {
   const rule = TABLE_RULES[q.table];
   if (!rule) return { error: "table_not_allowed" };
   if (!rule.actions.includes(q.action)) return { error: "action_not_allowed" };
-  const scopeValue = rule.scope === "turn_id" ? ids.turnId : ids.projectId;
-  // Caller may not filter or write the scope column to anything else.
-  for (const f of q.filters) {
-    if (f.col === rule.scope && !(f.op === "eq" && f.value === scopeValue)) return { error: "scope_violation" };
+  const pin = rule.pin;
+  const scopeValue = !pin ? null : pin.from === "turn" ? ids.turnId : pin.from === "user" ? ids.userId : ids.projectId;
+  if (pin) {
+    for (const f of q.filters) {
+      if (f.col === pin.col && !(f.op === "eq" && f.value === scopeValue)) return { error: "scope_violation" };
+    }
   }
-  const pin = (row: Record<string, unknown>) => {
-    const out: Record<string, unknown> = { ...row, [rule.scope]: scopeValue };
+  const stamp = (row: Record<string, unknown>) => {
+    const out: Record<string, unknown> = { ...row };
+    if (pin) out[pin.col] = scopeValue;
     if (rule.userCol) out.user_id = ids.userId;
     return out;
   };
   let values = q.values;
   if (q.action === "insert" || q.action === "upsert") {
     if (!values) return { error: "values_required" };
-    values = Array.isArray(values) ? values.map(pin) : pin(values);
+    values = Array.isArray(values) ? values.map(stamp) : stamp(values);
   } else if (q.action === "update") {
     if (!values || Array.isArray(values)) return { error: "values_required" };
-    const { [rule.scope]: _drop, ...rest } = values;
+    const rest = { ...values };
+    if (pin) delete rest[pin.col];
+    if (rule.userCol) delete rest.user_id;
     values = rest;
   }
   const { op: _op, ...rest } = q;
-  return { ...rest, values, scopeCol: rule.scope, scopeValue };
+  return { ...rest, values, scopeCol: pin?.col ?? null, scopeValue };
 }

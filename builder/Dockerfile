@@ -24,6 +24,8 @@ RUN npx playwright install --with-deps chromium \
 # Compile TypeScript.
 COPY tsconfig.json ./
 COPY src ./src
+# Bundled generation pipeline (scripts/build-agent-core.mjs), used when AGENT_IN_PROCESS=1.
+COPY vendor ./vendor
 RUN npm install typescript --no-save && npx tsc -p tsconfig.json
 
 # Persistent npm cache across container restarts to speed up project installs.

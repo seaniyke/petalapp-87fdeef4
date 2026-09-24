@@ -1,3 +1,4 @@
+import { currentTurnContext } from "@/server/turn-context.server";
 /**
  * Server-owned turn lifecycle + event log.
  *
@@ -28,6 +29,9 @@ type AdminClient = SupabaseClient<Database>;
 let cached: AdminClient | null = null;
 
 function getAdminClient(): AdminClient | null {
+  // Railway runtime: no admin key; use the turn's gateway-scoped stand-in.
+  const ctxDb = currentTurnContext().agentDb;
+  if (ctxDb) return ctxDb as never;
   if (cached) return cached;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -93,7 +97,7 @@ export async function startTurn(opts: {
     if (!resolvedIO) throw new Error("agent io not ready");
     return resolvedIO;
   };
-  if (!resolvedIO) resolvedIO = (await import("@/server/agent-io.server")).createDirectAgentIO();
+  if (!resolvedIO) resolvedIO = (await import("@/server/agent-io.server")).agentIO();
 
   let seq = 0;
   let queue: Array<{ seq: number; kind: string; payload: unknown }> = [];

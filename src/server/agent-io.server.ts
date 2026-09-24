@@ -47,6 +47,8 @@ export interface AgentIO {
   readBlueprint(projectId: string): Promise<Record<string, unknown> | null>;
   /** Upsert plan columns; `blueprint` is merged with existing sibling keys. */
   saveBlueprint(projectId: string, columns: Record<string, unknown>, blueprint: Record<string, unknown>): Promise<void>;
+  /** Railway only: make + store a picture through the app (it holds storage). */
+  generateImage?(opts: { prompt: string; aspectRatio?: "1:1" | "16:9" | "4:3" | "3:4" | "9:16"; cacheKey?: string }): Promise<{ url: string; cached: boolean }>;
 }
 
 export function createDirectAgentIO(): AgentIO {

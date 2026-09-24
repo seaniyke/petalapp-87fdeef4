@@ -6696,7 +6696,7 @@ function humanizeStreamFailure(raw: string): string {
   return "Kimble couldn't finish this one. Nothing was charged — send it again and it'll pick up from here.";
 }
 
-async function handleGenerateRequest(request: Request): Promise<Response> {
+export async function handleGenerateRequest(request: Request): Promise<Response> {
   // Peek auth + projectId so we can open a `turns` row BEFORE the inner
   // pipeline starts streaming. The inner core also reads the body, so we
   // clone the request to avoid consuming it twice.
@@ -6974,7 +6974,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           const { registerTurnController } = await import("@/server/turn-cancel.server");
           unregisterCancel = registerTurnController(recorder.turnId, workController);
         }
+        const outerCtx = currentTurnContext();
         attemptCtx = {
+          // Railway runtime: keep the gateway adapters the entry attached.
+          agentIO: outerCtx.agentIO ?? null,
+          agentDb: outerCtx.agentDb,
           turnId: recorder?.turnId ?? null,
           projectId: turnProjectId,
           userId: turnUserId,

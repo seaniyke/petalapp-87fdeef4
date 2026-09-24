@@ -127,3 +127,12 @@ The Pages project is auto-created on first deploy. Subsequent deploys overwrite 
 - **Cloudflare Pages free tier:** 500 builds/month, 1 concurrent build. Pro plan: $20/mo for 5,000 builds/5 concurrent.
 - **Railway:** $5/month free credit, then ~$5/month for an always-on small Node service.
 - **Build time:** typically 30–90 seconds per generation. Repeat builds of the same project hit the npm cache and run faster.
+
+## In-process generation (AGENT_IN_PROCESS=1)
+
+`vendor/agent-core.mjs` is the app's generation pipeline, bundled by
+`bun scripts/build-agent-core.mjs` from the repo root. Re-run it whenever
+generation code changes, then redeploy. Required env on Railway:
+`BUILDER_SHARED_SECRET` (already set), `OPENROUTER_API_KEY`, `AGENT_IN_PROCESS=1`.
+No database key is needed: saved data goes through the app's signed
+`/api/public/agent/ops` gateway, scoped to one build.

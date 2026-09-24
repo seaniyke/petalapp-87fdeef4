@@ -46,6 +46,8 @@ export interface TurnContext {
   /** Where this turn's saved-data reads/writes go. Unset = direct database
    *  (Worker path). The Railway runtime sets a signed-gateway adapter. */
   agentIO?: import("@/server/agent-io.server").AgentIO | null;
+  /** Railway runtime only: gateway-backed stand-in for the admin client. */
+  agentDb?: unknown;
 }
 
 let storage: AsyncLocalStorage<TurnContext> | null = null;

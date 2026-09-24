@@ -120,6 +120,10 @@ function extensionFor(mime: string): string {
 export async function generatePetalImage(
   opts: GenerateImageOptions,
 ): Promise<GenerateImageResult> {
+  // Railway runtime: storage lives on the app, so the app makes the picture.
+  const { agentIO } = await import("@/server/agent-io.server");
+  const io = agentIO();
+  if (io.kind === "gateway" && io.generateImage) return io.generateImage(opts);
   // OPENROUTER ONLY. Image generation also goes through OpenRouter; DeepSeek
   // has no image-output model, so the configured image model is served by
   // OpenRouter (see src/lib/ai-model-config.ts).

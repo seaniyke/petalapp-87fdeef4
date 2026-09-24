@@ -125,7 +125,7 @@ export function createAgentOpsStore(): AgentOpsStore {
               : q.action === "update"
                 ? t.update(q.values)
                 : t.delete();
-      if (q.action !== "insert" && q.action !== "upsert") b = b.eq(q.scopeCol, q.scopeValue);
+      if (q.scopeCol && q.action !== "insert" && q.action !== "upsert") b = b.eq(q.scopeCol, q.scopeValue);
       for (const f of q.filters) {
         b = f.op === "not_is" ? b.not(f.col, "is", f.value) : b[f.op](f.col, f.value);
       }
@@ -135,6 +135,15 @@ export function createAgentOpsStore(): AgentOpsStore {
       if (q.single) b = b[q.single]();
       const { data, error } = await b;
       return { data: data ?? null, error: error ? error.message : null };
+    },
+    async runRpc(fn, args) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (db as any).rpc(fn, args);
+      return { data: data ?? null, error: error ? error.message : null };
+    },
+    async generateImage(opts) {
+      const { generatePetalImage } = await import("@/server/image-generation.server");
+      return generatePetalImage(opts);
     },
     async savePicture(row) {
       const { error } = await db.from("project_pictures").insert(row as Any);
