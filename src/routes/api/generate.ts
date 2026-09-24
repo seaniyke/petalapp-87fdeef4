@@ -5512,7 +5512,8 @@ Forbidden defaults
           (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0)
             ? "initial-quality"
             : null);
-        const autofixGateOpen = gateReason !== null;
+        // On an edit the truncation continuation already was the one repair.
+        const autofixGateOpen = gateReason !== null && (isInitial || !continuationRepaired);
         if (autofixGateOpen) console.info(`[repair] reason=${gateReason}`);
         const combinedAutofixIssues = [
           ...localVerdict.issues,
@@ -5745,7 +5746,7 @@ Forbidden defaults
             }
             // Ordinary edit: at most one repair call in total. If the first
             // repair already ran, stop rather than spend a third call.
-            if (!isInitial && autofixGateOpen) {
+            if (!isInitial && (autofixGateOpen || continuationRepaired)) {
               console.warn(
                 `[repair] edit already used its one repair — not running another (remaining=${stillBad.length})`,
               );
