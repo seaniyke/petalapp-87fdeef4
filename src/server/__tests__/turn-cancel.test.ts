@@ -101,8 +101,8 @@ describe("A. Stop cancels the backend turn", () => {
     expect(pages).toBeGreaterThan(0);
     expect(src.indexOf('assertActive(turnId, abortSignal, "images")')).toBeGreaterThan(0);
     expect(pages).toBeLessThan(src.indexOf("await writePlannedPages("));
-    expect(settle).toBeLessThan(src.indexOf('"settle_build_charge"'));
-    expect(settle).toBeLessThan(src.indexOf('"replace_project_files"'));
+    expect(settle).toBeLessThan(src.indexOf("agentIO().settleCharge("));
+    expect(settle).toBeLessThan(src.indexOf("agentIO().replaceFiles("));
     // Explicit Stop forces the terminal status to aborted (never succeeded → no server build trigger).
     expect(src).toMatch(/workController\.signal\.aborted && terminalStatus !== "awaiting_credits"\) \{\s*terminalStatus = "aborted"/);
   });
