@@ -180,7 +180,9 @@ export async function judgeDefects(args: {
       if (!["blocking", "visual", "advisory", "noise"].includes(severity)) continue;
       seen.add(i);
       const defect = all[i]!;
-      out[severity].push(defect);
+      // The judge may escalate, never excuse: a deterministic blocking
+      // finding (blank page, uncaught error, stand-in screen) stays blocking.
+      out[prior.blocking.includes(defect) ? "blocking" : severity].push(defect);
       const why = typeof v?.why === "string" ? v.why.trim().slice(0, 120) : "";
       if (why) out.reasons[defect] = why;
     }

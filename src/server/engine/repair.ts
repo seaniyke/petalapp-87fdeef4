@@ -5,6 +5,7 @@
  */
 import type { ProjectFile } from "@/server/generate.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import { isTruncationDetail } from "@/server/engine/build-state";
 import { defaultTextModel } from "@/lib/ai-model-config";
 
 const SYSTEM =
@@ -19,6 +20,9 @@ export async function repairBrokenFile(
   detail: string,
   meta?: { turnId?: string | null; projectId?: string | null; userId?: string | null },
 ): Promise<string | null> {
+  // A cut-off file is not repairable by patching half of it. The WRITE stage
+  // re-requests truncated pages; anything still truncated here is isolated.
+  if (isTruncationDetail(detail)) return null;
   const resp = await aiChatCompletions({
     feature: "recovery",
     codeOutput: true,

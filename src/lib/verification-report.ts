@@ -24,6 +24,14 @@ const SPECULATIVE_FLOW_PATTERNS = [
 // deployment offline — it queues a polish pass instead.
 const VISUAL_DEFECT_PREFIX = /^(?:Visual|Craft) QA \(/i;
 
+/** Screenshot findings that mean the page is empty or a stand-in — broken,
+ * not merely unpolished. These block "ready" even though they come from the
+ * screenshot reviewer. */
+const BLOCKING_VISUAL_PATTERNS = [
+  /^Visual QA \(blank\)/i,
+  /coming together|being assembled|placeholder (?:text|screen|page)/i,
+];
+
 const BLOCKING_RUNTIME_PATTERNS = [
   /rendered a blank page/i,
   /threw an uncaught error/i,
@@ -92,7 +100,8 @@ export function partitionVerificationDefects(value: unknown): {
   const visual: string[] = [];
   const advisory: string[] = [];
   for (const defect of defects) {
-    if (VISUAL_DEFECT_PREFIX.test(defect)) visual.push(defect);
+    if (BLOCKING_VISUAL_PATTERNS.some((pattern) => pattern.test(defect))) blocking.push(defect);
+    else if (VISUAL_DEFECT_PREFIX.test(defect)) visual.push(defect);
     else if (BLOCKING_RUNTIME_PATTERNS.some((pattern) => pattern.test(defect))) blocking.push(defect);
     else advisory.push(defect);
   }
