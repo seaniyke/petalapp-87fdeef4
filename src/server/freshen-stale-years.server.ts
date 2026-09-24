@@ -53,9 +53,12 @@ export function freshenStaleYearsInString(
 export function freshenStaleYears(
   files: ProjectFile[],
   year: number = currentYear(),
+  targetPaths?: Iterable<string>,
 ): { files: ProjectFile[]; replacements: number } {
   let total = 0;
+  const allowed = targetPaths ? new Set(targetPaths) : null;
   const next = files.map((f) => {
+    if (allowed && !allowed.has(f.path)) return f;
     if (!TEXT_EXT.test(f.path)) return f;
     const { content, replacements } = freshenStaleYearsInString(f.content, year);
     if (replacements === 0) return f;

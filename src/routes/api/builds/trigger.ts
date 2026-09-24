@@ -35,12 +35,19 @@ import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
 import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
 import { runAllRepairs } from "@/server/repair-all.server";
+import { runScopedBuildCleanup } from "@/server/build-cleanup-scope.server";
+import { currentTurnContext } from "@/server/turn-context.server";
 import {
   buildIntegrationEnvFiles,
   mergeFilesIntoPayload,
 } from "@/server/integrations/env-injector.server";
 
-const BodySchema = z.object({ projectId: z.string().uuid() });
+const BodySchema = z.object({
+  projectId: z.string().uuid(),
+  changedPaths: z.array(z.string().min(1).max(500)).max(100).optional(),
+  turnId: z.string().max(200).optional(),
+  unitId: z.string().max(200).optional(),
+});
 
 async function authorize(request: Request): Promise<string | Response> {
   const internalSecret = request.headers.get("x-petal-internal-secret");
@@ -190,7 +197,14 @@ export const Route = createFileRoute("/api/builds/trigger")({
           // the browser. Running the same deterministic repairs here guarantees
           // the deploy payload is safe even before the user makes another edit.
         prepStage = "repairs";
-          const repaired = runAllRepairs(scaffolded);
+          const requestedCleanupPaths = parsed.data.changedPaths ?? [];
+          const ambient = currentTurnContext();
+          const cleaned = runScopedBuildCleanup(scaffolded, requestedCleanupPaths, {
+            turnId: parsed.data.turnId ?? ambient.turnId ?? null,
+            attemptId: ambient.attemptId ?? null,
+            unitId: parsed.data.unitId ?? "build-trigger",
+          });
+          const repaired = { files: cleaned.files, notes: cleaned.notes };
           if (repaired.notes.length > 0) {
             console.info(
               `[build-repair] project=${projectId}: ${repaired.notes.join("; ")}`,
@@ -234,7 +248,10 @@ export const Route = createFileRoute("/api/builds/trigger")({
           //     `vite build` but blank the deployed app, especially React.lazy
           //     targeting named-only page exports (React error #306).
         prepStage = "autofix";
-          const { files: buildFiles, report: buildAutofix } = autofixFiles(styleSafeFiles);
+          const { files: buildFiles, report: buildAutofix } = autofixFiles(
+            styleSafeFiles,
+            parsed.data.changedPaths ?? [],
+          );
           if (buildAutofix.fixedCount > 0) {
             console.warn(
               `[build-autofix] project=${projectId} ${buildAutofix.fixedCount} fix(es): ${buildAutofix.notes.join("; ")}`,
@@ -437,7 +454,18 @@ export const Route = createFileRoute("/api/builds/trigger")({
             forceFull,
             editScope,
           }).catch(() => undefined);
-          await postBuildToRailway({ projectId, buildId: build.id, files: withEnv, hideBadge, verify });
+           await postBuildToRailway({
+             projectId,
+             buildId: build.id,
+             files: withEnv,
+             hideBadge,
+             verify,
+             cleanupPaths: parsed.data.changedPaths ?? [],
+             cleanupMeta: {
+               turnId: parsed.data.turnId ?? null,
+               unitId: parsed.data.unitId ?? "builder-last-mile",
+             },
+           });
         } catch (e) {
           const message = e instanceof Error ? e.message : "Failed to reach builder";
           console.error("postBuildToRailway failed", message);

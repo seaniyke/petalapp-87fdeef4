@@ -13,14 +13,16 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
 import { injectPetalBadge } from "@/server/petal-badge.server";
-import { freshenStaleYears } from "@/server/freshen-stale-years.server";
 import { fixSourceEscapes } from "@/server/source-escape-fixer.server";
 import { fixImportSyntax } from "@/server/import-syntax-fixer.server";
 import { fixJsxAttrLiterals } from "@/server/jsx-attr-literal-fixer.server";
 import { fixMarkdownFences } from "@/server/markdown-fence-fixer.server";
 import { ensureBrandMarkWired } from "@/server/brand-identity.server";
 import type { VerifyPlan } from "@/server/verify-plan.server";
-import { runAllRepairs } from "@/server/repair-all.server";
+import {
+  runScopedBuildCleanup,
+  type CleanupScopeMeta,
+} from "@/server/build-cleanup-scope.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
 
 const MAX_AGE_SECONDS = 5 * 60;
@@ -85,6 +87,9 @@ export async function postBuildToRailway(args: {
    * flows, and returns findings on the callback.
    */
   verify?: VerifyPlan;
+  /** Exact files written by the generation turn. Empty means skip cleanup. */
+  cleanupPaths?: string[];
+  cleanupMeta?: CleanupScopeMeta;
 }): Promise<void> {
   const builderUrl = process.env.BUILDER_URL;
   const sharedSecret = process.env.BUILDER_SHARED_SECRET;
@@ -100,7 +105,7 @@ export async function postBuildToRailway(args: {
   // may depend on every current or future caller remembering that contract.
   // In particular this guarantees router providers are repaired in the exact
   // payload sent to the external builder, including retries and reships.
-  const canonical = runAllRepairs(args.files);
+  const canonical = runScopedBuildCleanup(args.files, args.cleanupPaths, args.cleanupMeta);
   const escaped = fixSourceEscapes(canonical.files);
   const importHealed = fixImportSyntax(escaped.files);
   // `prop=[…]` / `prop=42` — unbraced JSX attribute values also abort the
@@ -119,18 +124,12 @@ export async function postBuildToRailway(args: {
 
   // Rewrite stale copyright years (e.g. "© 2024" → "© 2026") that the LLM
   // emitted from its training-data cutoff. Cheap, runs on every build.
-  const { files: yearFreshened, replacements: yearReplacements } = freshenStaleYears(
-    brandWired.files,
-  );
-  if (yearReplacements > 0) {
-    console.log(`[builder] freshened ${yearReplacements} stale year reference(s)`);
-  }
   // Infrastructure injection belongs at the final shipping boundary. Older
   // projects can still have a stale inline guard persisted in project_files,
   // and some callers may not have passed through the current trigger route.
   // Replacing it here guarantees the exact payload sent to the builder always
   // contains one current, parse-safe guard.
-  const guarded = injectPreviewGuard(yearFreshened, { projectId: args.projectId }).files;
+  const guarded = injectPreviewGuard(brandWired.files, { projectId: args.projectId }).files;
   const filesToShip = args.hideBadge ? guarded : injectPetalBadge(guarded);
 
   const body = JSON.stringify({
