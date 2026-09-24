@@ -84,6 +84,7 @@ export async function runContinuation(args: {
       // build model, reasoning off, room for the missing tail.
       codeOutput: true,
       lockCallerModel: true,
+      noFallback: true,
       meta: { chosenBy: "stream_continuation", recoveryReason: "stream_continuation" },
       body: {
         model,
