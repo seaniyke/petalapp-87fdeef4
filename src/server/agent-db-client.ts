@@ -11,7 +11,9 @@ import type { DbQuery } from "@/server/agent-db-scope";
 
 export type SendDbQuery = (q: DbQuery) => Promise<{ data: unknown; error: { message: string } | null }>;
 
-class Builder implements PromiseLike<{ data: unknown; error: { message: string } | null }> {
+type Result = { data: unknown; error: { message: string } | null };
+
+class Builder implements PromiseLike<Result> {
   private q: DbQuery;
   constructor(private send: SendDbQuery, table: string) {
     this.q = { op: "db.query", table, action: "select", filters: [] };
@@ -59,7 +61,10 @@ class Builder implements PromiseLike<{ data: unknown; error: { message: string }
   limit(n: number) { this.q.limit = n; return this; }
   single() { this.q.single = "single"; return this; }
   maybeSingle() { this.q.single = "maybeSingle"; return this; }
-  then<A, B>(ok?: ((v: { data: unknown; error: { message: string } | null }) => A) | null, bad?: ((e: unknown) => B) | null) {
+  then<A = Result, B = never>(
+    ok?: ((v: Result) => A | PromiseLike<A>) | null,
+    bad?: ((e: unknown) => B | PromiseLike<B>) | null,
+  ): PromiseLike<A | B> {
     return this.send(this.q).then(ok, bad);
   }
 }
