@@ -22,6 +22,8 @@ export interface WriteResult {
   /** Planned routes whose page is still missing. */
   missing: string[];
   calls: number;
+  /** Candidates discarded because they were cut off mid-file. */
+  truncated: string[];
 }
 
 /** The project's real technical substrate, handed to every writer so it
@@ -101,15 +103,29 @@ export async function writePlannedPages(args: {
   budget: RecoveryBudget;
   /** One model call; returns the files it wrote, or null on failure. */
   request: (instruction: string) => Promise<ProjectFile[] | null>;
+  /** Structural check: true when a candidate was cut off mid-file. A
+   *  truncated candidate is discarded (never patched), which leaves the page
+   *  missing so step 2 re-requests that same file exactly once. */
+  isTruncated?: (file: ProjectFile) => Promise<boolean>;
 }): Promise<WriteResult> {
   let files = args.files;
   const written: string[] = [];
+  const truncated: string[] = [];
   let calls = 0;
   const call = async (instruction: string): Promise<ProjectFile[]> => {
     calls++;
     const want = targetOf(instruction);
     try {
-      return ((await args.request(instruction)) ?? []).filter((f) => f.path === want);
+      const got = ((await args.request(instruction)) ?? []).filter((f) => f.path === want);
+      if (!args.isTruncated) return got;
+      const whole: ProjectFile[] = [];
+      for (const f of got) {
+        let cut = false;
+        try { cut = await args.isTruncated(f); } catch { cut = false; }
+        if (cut) truncated.push(f.path);
+        else whole.push(f);
+      }
+      return whole;
     } catch {
       return [];
     }
@@ -149,5 +165,5 @@ export async function writePlannedPages(args: {
   }
 
   const missing = args.pages.filter((p) => !hasRealPage(files, p.file)).map((p) => p.route);
-  return { files, written, missing, calls };
+  return { files, written, missing, calls, truncated };
 }

@@ -152,14 +152,34 @@ export function isolateBrokenFiles(files: ProjectFile[], bad: Iterable<string>):
  * succeed: "failed", or "blocked" because nothing was produced.
  */
 export function outcomeFailsTurn(block: string): boolean {
+  return turnOutcomeStatus(block) === "failed";
+}
+
+/**
+ * THE single mapping from an authoritative turn outcome to the stream's
+ * final `done` status. Null when the block carries no turn outcome.
+ */
+export function turnOutcomeStatus(block: string): "succeeded" | "failed" | null {
   const m = /"type":\s*"turn_outcome"[^\n]*/.exec(block);
-  if (!m) return false;
+  if (!m) return null;
   const line = m[0];
   const outcome = /"outcome":\s*"([a-z_]+)"/.exec(line)?.[1];
-  if (outcome === "failed") return true;
+  if (outcome === "applied" || outcome === "answered") return "succeeded";
   if (outcome === "blocked") {
     const reason = /"reason":\s*"([^"]*)"/.exec(line)?.[1] ?? "";
-    return /no_files|initial_generation/.test(reason);
+    return /no_files|initial_generation/.test(reason) ? "failed" : "succeeded";
   }
-  return false;
+  // "failed" and anything unrecognised fail closed.
+  return "failed";
+}
+
+/** esbuild messages that mean the file was cut off, not merely wrong. */
+export function isTruncationDetail(detail: string): boolean {
+  return /end of file|unterminated|unexpected end of input/i.test(detail);
+}
+
+/** Issue kinds that mean the file's OWN content is broken (as opposed to a
+ *  valid file that imports something missing). */
+export function isOwnContentIssue(kind: string): boolean {
+  return /^(parse|braces|jsx|unterminated-string|truncation|undefined|blank-render|render-risk)$/.test(kind);
 }
