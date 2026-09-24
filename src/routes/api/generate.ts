@@ -1999,6 +1999,21 @@ async function handleGenerateRequestCore(
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
   const userId = authResult;
+  {
+    // Isolated inference evaluation: bench account + explicit header only.
+    const { INFERENCE_EVAL_HEADER, INFERENCE_EVAL_USER_IDS, INFERENCE_EVAL_MODELS } = await import("@/lib/ai-model-config");
+    const evalHdr = request.headers.get(INFERENCE_EVAL_HEADER);
+    if (evalHdr && (INFERENCE_EVAL_USER_IDS as readonly string[]).includes(String(userId))) {
+      const all = INFERENCE_EVAL_MODELS as readonly string[];
+      // "chain" = full hierarchy; a model id = that model alone (per-candidate runs).
+      const models = evalHdr === "chain" ? [...all] : all.includes(evalHdr) ? [evalHdr] : [];
+      const tc = currentTurnContext();
+      if (models.length && Object.keys(tc).length) {
+        tc.inferenceEval = { models };
+        console.log(`[inference-eval] models=${models.join(",")}`);
+      }
+    }
+  }
 
   const economyMode = await loadEconomyMode(userId);
 
@@ -6986,7 +7001,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             const creditPause = creditPausePayloadOf(block);
             // Authoritative terminal state: any turn_outcome of "failed" makes
             // the turn failed. Nothing downstream may report it as succeeded.
-            const failedOutcome = /"type":\s*"turn_outcome"[^\n]*"outcome":\s*"failed"/.exec(block);
+            // A build that produced nothing ("blocked" with a no-files reason)
+            // is a failure too — never a "succeeded" done event.
+            const failedOutcome =
+              /"type":\s*"turn_outcome"[^\n]*"outcome":\s*"failed"/.exec(block) ??
+              /"type":\s*"turn_outcome"[^\n]*"outcome":\s*"blocked"[^\n]*"reason":\s*"[^"]*(no_files|initial_generation)[^"]*"/.exec(block);
             if (failedOutcome) {
               terminalStatus = "failed";
               terminalError = /"reason":\s*"([^"]+)"/.exec(block)?.[1] ?? "build incomplete";

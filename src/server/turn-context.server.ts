@@ -37,6 +37,9 @@ export interface TurnContext {
   /** First builds: the model's own summary ("it's live") is never streamed
    *  mid-build. Only the authoritative final result carries the message. */
   holdSummary?: boolean;
+  /** ISOLATED inference evaluation (bench account + explicit header only):
+   *  Kimble picks the model chain, OpenRouter does provider failover. */
+  inferenceEval?: { models: string[] } | null;
 }
 
 let storage: AsyncLocalStorage<TurnContext> | null = null;

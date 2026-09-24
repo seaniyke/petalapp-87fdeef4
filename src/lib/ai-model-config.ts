@@ -156,3 +156,16 @@ export function coerceToConfiguredModel(
   return defaultTextModel();
 }
 
+
+/**
+ * Inference evaluation (NOT production). Model chain under test; within each
+ * model OpenRouter fails over between providers itself (`models` = OpenRouter
+ * model fallback). Enabled only for the bench account with the eval header.
+ */
+export const INFERENCE_EVAL_HEADER = "x-kimble-inference-eval";
+export const INFERENCE_EVAL_USER_IDS = ["42b3c128-bd12-4c94-8d71-e4ae8f5a2a53"] as const;
+export const INFERENCE_EVAL_MODELS = [
+  "deepseek/deepseek-v4.1-flash",
+  "deepseek/deepseek-v4-flash-0731",
+  "deepseek/deepseek-v4-pro-0813",
+] as const;
