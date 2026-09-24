@@ -1819,7 +1819,7 @@ async function runFinalParseGuard(
       runAllRepairs(
         candidate,
         changedPaths.length > 0 && priorFiles.length > 0
-          ? { scopeLock: { touchedPaths: changedPaths } }
+          ? { scopeLock: { touchedPaths: changedPaths }, localOnly: true }
           : undefined,
       ).files,
   });
@@ -1853,7 +1853,7 @@ async function runFinalParseGuard(
         const repaired = runAllRepairs(
           kept,
           changedPaths.length > 0 && priorFiles.length > 0
-            ? { scopeLock: { touchedPaths: changedPaths } }
+            ? { scopeLock: { touchedPaths: changedPaths }, localOnly: true }
             : undefined,
         ).files;
         const recheck = await runPreEmitGate(
@@ -2762,14 +2762,28 @@ Forbidden defaults
   // Plain-words screen match ("the sign-in form", "the home page") — finds the
   // target without an AI round trip, so the Inspector rarely has to run.
   if (!isInitial && !isCrossCutting) {
-    const { findScreenTargets, expandPageSections } = await import("@/server/screen-target.server");
-    const screen = expandPageSections(
-      lastUserContent,
-      findScreenTargets(lastUserContent, editablePromptFiles.map((f) => f.path)),
-      editablePromptFiles,
+    const { findScreenTargets, expandPageSections, findAdjacentSection } = await import(
+      "@/server/screen-target.server"
+    );
+    const screen = Array.from(
+      new Set([
+        ...expandPageSections(
+          lastUserContent,
+          findScreenTargets(lastUserContent, editablePromptFiles.map((f) => f.path)),
+          editablePromptFiles,
+        ),
+        ...findAdjacentSection(lastUserContent, editablePromptFiles),
+      ]),
     );
     if (screen.length > 0) {
       editTargetPaths = Array.from(new Set([...screen, ...editTargetPaths])).slice(0, 8);
+    }
+    // Starter-kit files (fx, three, examples, ui…) are never the target of an
+    // edit to the user's own app: a word like "hero" or "text" matching
+    // `fx/hero-parallax` must not put it in write scope.
+    const ownTargets = editTargetPaths.filter((p) => !isVerifierExempt(p));
+    if (ownTargets.length > 0) editTargetPaths = ownTargets;
+    if (screen.length > 0) {
       console.info(`[screen-target] ${screen.join(", ")}`);
     }
   }
@@ -2824,7 +2838,7 @@ Forbidden defaults
         );
       })
       .map((f) => f.path)
-      .filter((p) => !resolvedTargetPaths.includes(p))
+      .filter((p) => !resolvedTargetPaths.includes(p) && !isVerifierExempt(p))
       .slice(0, 6);
     if (hintMatches.length > 0) {
       resolvedTargetPaths = [...resolvedTargetPaths, ...hintMatches];
@@ -2985,10 +2999,16 @@ Forbidden defaults
   // Tier 2 — dynamic system-prompt snippets. Append reinforcement
   // blocks for topics the user mentioned (charts, forms, auth, etc.)
   // — raises success rate without bloating every prompt.
+  // A bounded edit on existing files gets editing rules, not building rules.
+  const boundedEdit =
+    !isInitial &&
+    !isCrossCutting &&
+    (editClassification?.scope === "micro" || editClassification?.scope === "targeted");
   const dynamic = pickDynamicSnippets({
     messages,
     hasBackend: Boolean(backend),
     buildTarget,
+    boundedEdit,
   });
 
   const dateBlock = renderCurrentDateBlock();
@@ -3251,8 +3271,7 @@ Forbidden defaults
     // Project Intelligence Context first: the canonical understanding and the
     // committed design system frame everything the contract blocks add.
     picBlock +
-    prdBlock +
-    prdScenarioBlock +
+    (boundedEdit ? "" : prdBlock + prdScenarioBlock) +
     orchestrationBlock +
     designTasteBlock +
     skillsBlock +
@@ -3266,6 +3285,19 @@ Forbidden defaults
     astPatchBlock +
     filesContext;
 
+  console.info(
+    "[prompt-parts] " +
+      Object.entries({
+        staticPrefix: staticPrefixText, date: dateBlock, intent: intentBrief ?? "", suggestions: suggestionsBlock,
+        resolved: resolvedBlock, grounding: groundingBlock, dynamic: dynamic.text, pic: picBlock, prd: prdBlock,
+        prdScenario: prdScenarioBlock, orchestration: orchestrationBlock, designTaste: designTasteBlock,
+        skills: skillsBlock, learning: learningBlock, highStakes: highStakesBlock, vision: visionAddendum,
+        backendGate: backendGateBlock, intentActions: intentActions.promptBlock, astPatch: astPatchBlock, files: filesContext,
+      })
+        .filter(([, v]) => v.length > 0)
+        .map(([k, v]) => `${k}=${v.length}`)
+        .join(" "),
+  );
   // Short stable hash of the prefix — logged with each call so we can see at
   // a glance whether the prefix is drifting (which would kill cache hits).
   // Tiny FNV-1a is enough; this is for ops, not security.
@@ -4486,7 +4518,10 @@ Forbidden defaults
               // Iteration Standard #3 — hand the rejections back once and let
               // the model re-emit the same work properly (usually a full-file
               // `update` instead of a `replace` whose snippet never matched).
-              const reworked = await requestOpRepair({
+              // A no-op (already-true) change needs no rework: nothing the
+              // user asked for was lost, so no second model call.
+              const needsRework = verdict.rejections.some((r) => !r.silent);
+              const reworked = !needsRework ? [] : await requestOpRepair({
                 problem: "critic_rejection",
                 refused: verdict.rejections.map((r) => ({
                   op: r.op,
@@ -4494,7 +4529,7 @@ Forbidden defaults
                   reason: r.reason,
                 })),
                 constraint:
-                  "Never elide code with comments like `// ... rest unchanged`, never blank a file, and never emit a `replace` whose search text does not appear verbatim in the current file. Emit the COMPLETE new contents of each file you change.",
+                  "Never elide code with comments like `// ... rest unchanged`, never blank a file, and never emit a no-op. Use `replace` ops whose search text is copied verbatim from the current file (large files only accept `replace`); emit a full-file `update` only for a small file.",
               });
               if (reworked.length > 0) {
                 const second = await runCritic({

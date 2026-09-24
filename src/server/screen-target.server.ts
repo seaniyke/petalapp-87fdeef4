@@ -89,3 +89,39 @@ export function expandPageSections(
   }
   return Array.from(out);
 }
+
+/**
+ * "the section below/after the hero" names a section by position. Find the
+ * page that renders the anchor section and return the section rendered right
+ * after it, in JSX order. Deterministic; no match → [].
+ */
+export function findAdjacentSection(
+  prompt: string,
+  files: Array<{ path: string; content: string }>,
+): string[] {
+  const m = (prompt ?? "")
+    .toLowerCase()
+    .match(/\b(?:section|part|block|area)\s+(below|after|under|beneath|following|above|before)\s+(?:the\s+)?([a-z-]+)/);
+  if (!m) return [];
+  const forward = !/above|before/.test(m[1]);
+  const anchor = norm(m[2]);
+  for (const page of files) {
+    if (!/^src\/(pages|routes)\//.test(page.path)) continue;
+    const imports = new Map<string, string>();
+    for (const im of page.content.matchAll(/import\s+(?:(\w+)|\{\s*(\w+)[^}]*\})\s+from\s+["']@\/(components\/sections\/[^"']+)["']/g)) {
+      const name = im[1] ?? im[2];
+      const base = `src/${im[3]}`;
+      const path = [".tsx", ".ts", ".jsx"].map((e) => base + e).find((p) => files.some((f) => f.path === p));
+      if (name && path) imports.set(name, path);
+    }
+    if (imports.size < 2) continue;
+    const order = [...page.content.matchAll(/<([A-Z]\w*)[\s/>]/g)]
+      .map((x) => x[1])
+      .filter((n, i, a) => imports.has(n) && a.indexOf(n) === i);
+    const idx = order.findIndex((n) => norm(n).startsWith(anchor));
+    if (idx < 0) continue;
+    const next = order[forward ? idx + 1 : idx - 1];
+    if (next) return [imports.get(next)!];
+  }
+  return [];
+}
