@@ -67,8 +67,12 @@ export function upstreamSlug(name: string): string {
 export function markUpstreamFailed(upstream: string | null | undefined, ctx?: TurnContext): void {
   if (!upstream) return;
   const c = ctx ?? currentTurnContext();
-  if (!c || Object.keys(c).length === 0) return;
+  if (!c || Object.keys(c).length === 0) {
+    console.warn(`[provider-exclusion] no turn context; cannot exclude ${upstream}`);
+    return;
+  }
   (c.failedUpstreams ??= new Set()).add(upstreamSlug(upstream));
+  console.log(`[provider-exclusion] turn=${c.turnId ?? "?"} excluded=${Array.from(c.failedUpstreams).join(",")}`);
 }
 
 /** Upstreams excluded for the current turn. */

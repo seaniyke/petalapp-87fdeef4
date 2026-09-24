@@ -3900,6 +3900,9 @@ Forbidden defaults
         const firstStall =
           collected.stall ??
           (collected.finishReason === "error" ? { upstream: collected.upstream ?? null, ms: 0 } : null);
+        console.log(
+          `[collect] first tool=${collected.name} finish=${collected.finishReason ?? "?"} upstream=${collected.upstream ?? "?"} argsChars=${collected.args.length} pages=${(collected.args.match(/"path"\s*:\s*"src\/pages\/[^"]+"/g) ?? []).join(",")}`,
+        );
         // THE bounded recovery table for this turn (engine/recovery-policy).
         const recovery = new RecoveryBudget();
         try {
@@ -4194,7 +4197,10 @@ Forbidden defaults
                 });
                 if (!res.ok || !res.body) return null;
                 let c = await relayAndCollect(res, controller, encoder);
-                if ((c.stall || c.finishReason === "error") && recovery.take("provider_failure", "missing_pages")) {
+                const wantPath = /as (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
+                const underDelivered = Boolean(wantPath) && !c.args.includes(`"${wantPath}"`);
+                if (underDelivered) markUpstreamFailed(c.upstream);
+                if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
                   // Provider failed mid-page: one resend (failed upstream is excluded).
                   const again = await structuredRetryCompletion({
                     messages: [...finalMessages, { role: "user", content: instruction }],
@@ -4223,14 +4229,16 @@ Forbidden defaults
                   c = await relayAndCollect(again, controller, encoder);
                 }
                 try {
-                  return parseCollectedProject(c, true).parsed.files ?? null;
+                  const got = parseCollectedProject(c, true).parsed.files ?? null;
+                  console.log(`[completeness] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} argsChars=${c.args.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
+                  return got;
                 } catch {
                   return null;
                 }
               },
             });
             console.log(
-              `[completeness] requested=${JSON.stringify(requested)} missingBefore=${JSON.stringify(done.missingBefore)} attempted=${done.attempted} added=${done.added} missingAfter=${JSON.stringify(done.missingAfter)}`,
+              `[completeness] requested=${JSON.stringify(requested)} missingBefore=${JSON.stringify(done.missingBefore)} calls=${done.calls} added=${done.added} missingAfter=${JSON.stringify(done.missingAfter)}`,
             );
             parsed.files = done.files;
           }

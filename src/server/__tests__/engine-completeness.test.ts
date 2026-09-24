@@ -12,32 +12,26 @@ describe("completeness stage", () => {
   const requested = ["/", "/menu", "/about", "/contact"];
   const partial = [app(["/", "/contact"]), { path: "src/pages/Home.tsx", content: "home" }, { path: "src/pages/Contact.tsx", content: "c" }];
 
-  it("asks for ALL missing pages in one call and never rewrites finished pages", async () => {
-    let calls = 0;
-    let instr = "";
+  it("writes each missing page in its own call and never rewrites finished pages", async () => {
+    const instrs: string[] = [];
     const r = await generateMissingPages({
       requestedRoutes: requested,
       files: partial,
       budget: new RecoveryBudget(),
       request: async (i) => {
-        calls++;
-        instr = i;
-        return [
-          app(["/", "/menu", "/about", "/contact"]),
-          { path: "src/pages/Menu.tsx", content: "m" },
-          { path: "src/pages/About.tsx", content: "a" },
-          { path: "src/pages/Home.tsx", content: "REWRITTEN" },
-        ];
+        instrs.push(i);
+        if (i.includes("ONLY src/App.tsx")) return [app(requested)];
+        if (i.includes("src/pages/Menu.tsx")) return [{ path: "src/pages/Menu.tsx", content: "export default function Menu(){return <main><h1>Menu</h1><p>Sourdough, croissants and seasonal pastries baked daily.</p></main>}" }, { path: "src/pages/Home.tsx", content: "REWRITTEN" }];
+        if (i.includes("src/pages/About.tsx")) return [{ path: "src/pages/About.tsx", content: "export default function About(){return <main><h1>About</h1><p>A family bakery rising before dawn since 2009.</p></main>}" }];
+        return null;
       },
     });
-    expect(calls).toBe(1);
-    expect(instr).toMatch(/"\/menu"/);
-    expect(instr).toMatch(/"\/about"/);
+    expect(instrs.filter((i) => i.includes("Write ONLY the page")).length).toBe(2);
     expect(r.missingAfter).toEqual([]);
     expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toBe("home");
   });
 
-  it("is attempted once only; still-missing pages are reported", async () => {
+  it("each page is attempted once only; still-missing pages are reported", async () => {
     const budget = new RecoveryBudget();
     const first = await generateMissingPages({ requestedRoutes: requested, files: partial, budget, request: async () => null });
     expect(first.attempted).toBe(true);
