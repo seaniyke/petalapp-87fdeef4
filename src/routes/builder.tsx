@@ -2655,7 +2655,7 @@ function Builder() {
         // of starting a second build.
         const clientTurnId = crypto.randomUUID();
         persistTurnId(proj.id, clientTurnId);
-        const turnToken = { projectId: proj.id, turnId: clientTurnId };
+        const turnToken: { projectId: string; turnId: string } = { projectId: proj.id, turnId: clientTurnId };
         activeTurnRef.current = turnToken;
 
         await streamGenerate(

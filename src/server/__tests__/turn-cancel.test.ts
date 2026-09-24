@@ -143,9 +143,9 @@ describe("C. Late SSE events from an old turn are ignored", () => {
     );
     h.onPhase?.("writing");
     active = {}; // Turn B starts
-    h.onPhase?.("live");
-    h.onFileComplete?.("src/pages/Home.tsx" as never, 1 as never);
-    h.onNarration?.("late" as never);
+    h.onPhase?.("polishing");
+    (h.onFileComplete as unknown as (...a: unknown[]) => void)?.("src/pages/Home.tsx", 1, 1);
+    (h.onNarration as unknown as (...a: unknown[]) => void)?.("late", "x");
     h.onError?.("late failure" as never);
     h.onDone?.("failed");
     expect(seen).toEqual(["phase:writing"]);
