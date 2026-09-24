@@ -700,7 +700,7 @@ Every list you render this turn must feel like a REAL product, not a wireframe. 
 6. AVATARS. Use \`https://api.dicebear.com/9.x/avataaars/svg?seed=\${name}\` OR \`https://i.pravatar.cc/128?u=\${name}\` — vary per person. Never a single avatar reused. Never a bare initial circle across a whole team page.
 7. DATA SHAPE. Give each seed item a stable \`id\` (\`crypto.randomUUID()\` at module scope is fine for mocks). This makes React keys stable and lets the interactivity floor (search/filter/sort) work correctly.
 
-If the seed data lives inline in the component, extract it to a sibling \`*.data.ts\` file the moment the array crosses ~30 lines — keeps the component under the 180-line budget.`,
+If the seed data lives inline in the component, extract it to a sibling \`*.data.ts\` file the moment the array crosses ~30 lines — keeps the component readable.`,
   },
   // Fires on any list / page / data-fetch surface. The failure mode is
   // "render data or blank" — no loading, no empty, no error. Ships the
