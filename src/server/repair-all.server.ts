@@ -531,7 +531,9 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   //     headings/body actually use it, depth tokens exist, and the page has
   //     one honest entrance animation. Without this every build renders in
   //     system sans and reads as "plain" no matter what the director picked.
-  const designFinish = enforceDesignFinish(files);
+  // Edits never get unrequested design touches (entrance animations,
+  // font loading) — that is first-build polish, not the user's change.
+  const designFinish = opts?.localOnly ? { files, notes: [] as string[] } : enforceDesignFinish(files);
   files = designFinish.files;
   for (const n of designFinish.notes) notes.push(n);
 

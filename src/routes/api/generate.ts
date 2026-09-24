@@ -4639,7 +4639,33 @@ Forbidden defaults
               safeOps = head.ops;
               for (const note of head.notes) console.info("[document-head]", note);
             }
-            const partial = applyOpsPartial(currentFiles, safeOps);
+            let partial = applyOpsPartial(currentFiles, safeOps);
+            // A replace whose snippet was written against the wrong file:
+            // if the search text matches exactly one OTHER write-allowed
+            // target, move the op there (deterministic, no AI call).
+            if (!isInitial && partial.failed.length > 0 && resolvedTargetPaths.length > 1) {
+              let moved = 0;
+              const fixedOps = safeOps.map((op) => {
+                if (op.op !== "replace") return op;
+                const failed = partial.failed.find((f) => f.op === op);
+                const search = (op as { search?: string }).search;
+                if (!failed || !search) return op;
+                const hits = resolvedTargetPaths.filter((p) => {
+                  if (p === op.path) return false;
+                  const c = currentFiles.find((f) => f.path === p)?.content ?? "";
+                  const i = c.indexOf(search);
+                  return i >= 0 && c.indexOf(search, i + 1) < 0;
+                });
+                if (hits.length !== 1) return op;
+                moved++;
+                console.info(`[generate] retargeted replace ${op.path} → ${hits[0]} (snippet matched there)`);
+                return { ...op, path: hits[0] };
+              });
+              if (moved > 0) {
+                safeOps = fixedOps;
+                partial = applyOpsPartial(currentFiles, safeOps);
+              }
+            }
             patched = partial.files;
 
             initiallyAppliedOps = partial.applied.map(opDigest);
