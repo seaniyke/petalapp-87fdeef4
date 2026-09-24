@@ -47,7 +47,12 @@ const PETAL_BADGE_HTML = `
     ].join(';') + ';';
     var dot = document.createElement('span');
     dot.setAttribute('aria-hidden','true');
-    dot.style.cssText = 'display:inline-block;width:14px;height:14px;border-radius:999px;background:linear-gradient(135deg,#ff6ea8,#ffb86c);box-shadow:0 0 0 2px rgba(255,255,255,0.12) inset;';
+    dot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;background:#000;box-shadow:0 0 0 1px rgba(255,255,255,0.14) inset;overflow:hidden;';
+    var mark = document.createElement('img');
+    mark.src = 'https://kimble.cloud/kimble-logo.png';
+    mark.alt = '';
+    mark.style.cssText = 'width:11px;height:11px;object-fit:contain;filter:invert(1);';
+    dot.appendChild(mark);
     var label = document.createElement('span');
     label.appendChild(document.createTextNode('Built with '));
     var strong = document.createElement('strong');
