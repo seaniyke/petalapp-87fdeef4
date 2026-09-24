@@ -34,8 +34,8 @@ export function explainAiCall(i: {
   if (f === "memory") return { stage: "after", purpose: "save project memory", kind: "background", reason: "turn finished", parent: "write" };
   if (cb === "missing_pages") return { stage: "write", purpose: "write one requested page (or the router)", kind: "normal", reason: rr || "page not yet written", parent: "write" };
   if (cb === "missing_pages_provider_retry") return { stage: "write", purpose: "resend a page call to another provider", kind: "retry", reason: rr || "provider failed", parent: "write" };
-  if (cb === "stream_continuation") return { stage: "repair", purpose: "finish a cut-off file", kind: "continuation", reason: rr || "file truncated", parent: "validate" };
-  if (cb === "post_stream_repair" || cb === "op_repair_round" || cb === "per_file_rewrite" || rr === "post_stream_repair")
+  if (cb === "broken_file_repair") return { stage: "repair", purpose: "repair one file that fails to compile", kind: "repair", reason: rr || "parse error", parent: "validate" };
+  if (cb === "op_repair_round" || cb === "per_file_rewrite")
     return { stage: "repair", purpose: "fix a file the validator rejected", kind: "repair", reason: rr || cb, parent: "validate" };
   if (cb === "tool_recovery" || cb === "truncation_small_chunk" || cb === "provider_failure_retry" || /stall|empty|provider_error/.test(rr))
     return { stage: "write", purpose: "resend after provider failure", kind: "retry", reason: rr || cb, parent: "write" };
