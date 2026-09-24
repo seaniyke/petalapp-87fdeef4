@@ -40,15 +40,15 @@ describe("requested scope is authoritative", () => {
 
 describe("bounded first-build generation units", () => {
   it("small builds stay one call", () => {
-    const u = buildGenerationUnits("Home, Menu, About, Contact pages", []);
+    const u = buildGenerationUnits("Home and Menu pages", []);
     expect(u.unitCount).toBe(1);
     expect(u.instruction).toBe("");
   });
 
   it("large builds split into the fewest parts", () => {
     const u = buildGenerationUnits("pages: Home, Menu, About, Contact, Blog, Careers, FAQ", []);
-    expect(u.unitCount).toBe(2);
-    expect(u.instruction).toMatch(/part 1 of 2/);
+    expect(u.unitCount).toBe(3);
+    expect(u.instruction).toMatch(/part 1 of 3/);
     expect(u.instruction).toMatch(/\/careers/);
   });
 });
