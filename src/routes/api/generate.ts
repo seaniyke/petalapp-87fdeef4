@@ -1372,6 +1372,7 @@ function emitTurnOutcome(
     changedPaths: string[];
     blockedPaths?: string[];
     reason?: string;
+    cause?: string;
   },
 ): void {
   controller.enqueue(
