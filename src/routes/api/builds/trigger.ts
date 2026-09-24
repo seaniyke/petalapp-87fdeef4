@@ -176,98 +176,121 @@ export const Route = createFileRoute("/api/builds/trigger")({
         const backend = backendRow
           ? { url: backendRow.supabase_url, anonKey: backendRow.anon_key }
           : undefined;
-        const scaffolded = applyScaffoldKit(files, { backend });
-        // Publish-time self-heal for legacy projects. Generation already runs
-        // this composition pass, but older saved files can predate a repair.
-        // In particular, a stripped TanStack import with a surviving
-        // `createFileRoute(...)` call builds successfully and then crashes in
-        // the browser. Running the same deterministic repairs here guarantees
-        // the deploy payload is safe even before the user makes another edit.
-        const repaired = runAllRepairs(scaffolded);
-        if (repaired.notes.length > 0) {
-          console.info(
-            `[build-repair] project=${projectId}: ${repaired.notes.join("; ")}`,
-          );
-        }
-        // 2c) Defense-in-depth: keep tsconfig "paths" and Vite aliases in sync.
-        //     If `vite.config.ts` is ever missing an alias for a tsconfig
-        //     `paths` entry (older project, manual edit, AI emitted a slimmer
-        //     config), Rollup would fail to resolve `@/...` imports at build
-        //     time. This step injects any missing aliases. No-op when they're
-        //     already aligned (the canonical scaffold already declares them).
-        const aliasFixed = syncViteAliasesWithTsconfig(repaired.files);
-
-        // 2d) Validate `src/styles.css` and fall back to the canonical scaffold
-        //     CSS if it's broken. Tailwind v4 aborts the entire build on any
-        //     invalid declaration (a stray `1`, an unbalanced brace, a missing
-        //     `@import "tailwindcss";`). We never want one bad character in a
-        //     stylesheet to take the whole deploy down — the user can keep
-        //     iterating on the rest of the app, and Kimble can fix the CSS on
-        //     the next turn.
-        const styleSafeFiles = aliasFixed.map((f) => {
-          if (f.path !== "src/styles.css") return f;
-          const result = validateStylesCss(f.content);
-          if (result.ok) return f;
-          const repaired = repairStylesCss(f.content);
-          if (repaired) {
-            console.warn(
-              `[styles.css repaired] project=${projectId} reason="${result.reason}" — ${repaired.notes.join("; ")}`
+        // Any throw in these deterministic prep steps used to escape as an
+        // opaque framework 500 ("unhandled HTTPError") with no stack. Name the
+        // step that failed and log it so the real cause is visible.
+        let prepStage = "scaffold";
+        let withEnv: typeof files;
+        try {
+          const scaffolded = applyScaffoldKit(files, { backend });
+          // Publish-time self-heal for legacy projects. Generation already runs
+          // this composition pass, but older saved files can predate a repair.
+          // In particular, a stripped TanStack import with a surviving
+          // `createFileRoute(...)` call builds successfully and then crashes in
+          // the browser. Running the same deterministic repairs here guarantees
+          // the deploy payload is safe even before the user makes another edit.
+        prepStage = "repairs";
+          const repaired = runAllRepairs(scaffolded);
+          if (repaired.notes.length > 0) {
+            console.info(
+              `[build-repair] project=${projectId}: ${repaired.notes.join("; ")}`,
             );
-            return { ...f, content: repaired.css };
           }
-          console.warn(
-            `[styles.css invalid] project=${projectId} reason="${result.reason}" — falling back to scaffold default`
-          );
-          return { ...f, content: STYLES_CSS };
-        });
+          // 2c) Defense-in-depth: keep tsconfig "paths" and Vite aliases in sync.
+          //     If `vite.config.ts` is ever missing an alias for a tsconfig
+          //     `paths` entry (older project, manual edit, AI emitted a slimmer
+          //     config), Rollup would fail to resolve `@/...` imports at build
+          //     time. This step injects any missing aliases. No-op when they're
+          //     already aligned (the canonical scaffold already declares them).
+        prepStage = "aliases";
+          const aliasFixed = syncViteAliasesWithTsconfig(repaired.files);
 
-        // 2e) Runtime-crash guard: fix deterministic React footguns that pass
-        //     `vite build` but blank the deployed app, especially React.lazy
-        //     targeting named-only page exports (React error #306).
-        const { files: buildFiles, report: buildAutofix } = autofixFiles(styleSafeFiles);
-        if (buildAutofix.fixedCount > 0) {
-          console.warn(
-            `[build-autofix] project=${projectId} ${buildAutofix.fixedCount} fix(es): ${buildAutofix.notes.join("; ")}`,
+          // 2d) Validate `src/styles.css` and fall back to the canonical scaffold
+          //     CSS if it's broken. Tailwind v4 aborts the entire build on any
+          //     invalid declaration (a stray `1`, an unbalanced brace, a missing
+          //     `@import "tailwindcss";`). We never want one bad character in a
+          //     stylesheet to take the whole deploy down — the user can keep
+          //     iterating on the rest of the app, and Kimble can fix the CSS on
+          //     the next turn.
+        prepStage = "styles";
+          const styleSafeFiles = aliasFixed.map((f) => {
+            if (f.path !== "src/styles.css") return f;
+            const result = validateStylesCss(f.content);
+            if (result.ok) return f;
+            const repaired = repairStylesCss(f.content);
+            if (repaired) {
+              console.warn(
+                `[styles.css repaired] project=${projectId} reason="${result.reason}" — ${repaired.notes.join("; ")}`
+              );
+              return { ...f, content: repaired.css };
+            }
+            console.warn(
+              `[styles.css invalid] project=${projectId} reason="${result.reason}" — falling back to scaffold default`
+            );
+            return { ...f, content: STYLES_CSS };
+          });
+
+          // 2e) Runtime-crash guard: fix deterministic React footguns that pass
+          //     `vite build` but blank the deployed app, especially React.lazy
+          //     targeting named-only page exports (React error #306).
+        prepStage = "autofix";
+          const { files: buildFiles, report: buildAutofix } = autofixFiles(styleSafeFiles);
+          if (buildAutofix.fixedCount > 0) {
+            console.warn(
+              `[build-autofix] project=${projectId} ${buildAutofix.fixedCount} fix(es): ${buildAutofix.notes.join("; ")}`,
+            );
+          }
+
+          // 2e-bis) Synthesize shims for any `@/components/ui/<x>` or
+          //     `@/components/blocks/<x>` import that does NOT resolve to a real
+          //     file in the project. Without this, a hallucinated primitive
+          //     (carousel, command, menubar, sidebar, …) hard-fails the Rollup
+          //     resolver and the deployed preview goes blank. The shim is a
+          //     forgiving passthrough <div> — ugly but mounted.
+        prepStage = "ui-shim";
+          const { files: shimmedFiles, shimmed } = shimMissingUiPrimitives(buildFiles);
+          if (shimmed.length > 0) {
+            console.warn(
+              `[ui-shim] project=${projectId} synthesized ${shimmed.length} missing primitive(s): ${shimmed.join(", ")}`,
+            );
+          }
+
+          // 2e-ter) Heal named imports that target a local module but do not
+          //     have a runtime export there. This covers type/interface-only
+          //     exports (`NavLink`) and alias-only exports (`BrowserRouter` when
+          //     a module only exports `BrowserRouter as Router`). Rollup checks
+          //     runtime exports exactly, so these otherwise hard-fail production
+          //     builds or crash the live preview.
+        prepStage = "import-heal";
+          const { files: typeStrippedFiles, stripped: typeStripped } = stripTypeOnlyValueImports(shimmedFiles);
+          if (typeStripped.length > 0) {
+            console.warn(
+              `[local-import-heal] project=${projectId} healed ${typeStripped.length} invalid value import(s): ` +
+                typeStripped.map((s) => `${s.file}: { ${s.names.join(", ")} } from "${s.spec}"`).join(" | "),
+            );
+          }
+
+          // 2f) Inject env files for installed integrations. This loads each
+          //     integration's public options + decrypted secrets and renders
+          //     `.env.production` (Vite-consumed at build time) and `.dev.vars`
+          //     (Cloudflare convention for Pages/Workers runtime + local dev).
+          //     Without this step, scaffolded code that reads
+          //     `import.meta.env.VITE_*` or `process.env.*` would build with
+          //     undefined values and silently no-op at runtime. Failures here
+          //     are non-fatal — we log and continue with no env file rather
+          //     than blocking the deploy.
+        prepStage = "preview-guard";
+          withEnv = injectPreviewGuard(typeStrippedFiles, { projectId }).files;
+        } catch (e) {
+          console.error(
+            `[build-prep] project=${projectId} failed at stage=${prepStage}:`,
+            e instanceof Error ? (e.stack ?? e.message) : String(e),
+          );
+          return Response.json(
+            { error: `Build preparation failed at ${prepStage}`, stage: prepStage },
+            { status: 500 },
           );
         }
-
-        // 2e-bis) Synthesize shims for any `@/components/ui/<x>` or
-        //     `@/components/blocks/<x>` import that does NOT resolve to a real
-        //     file in the project. Without this, a hallucinated primitive
-        //     (carousel, command, menubar, sidebar, …) hard-fails the Rollup
-        //     resolver and the deployed preview goes blank. The shim is a
-        //     forgiving passthrough <div> — ugly but mounted.
-        const { files: shimmedFiles, shimmed } = shimMissingUiPrimitives(buildFiles);
-        if (shimmed.length > 0) {
-          console.warn(
-            `[ui-shim] project=${projectId} synthesized ${shimmed.length} missing primitive(s): ${shimmed.join(", ")}`,
-          );
-        }
-
-        // 2e-ter) Heal named imports that target a local module but do not
-        //     have a runtime export there. This covers type/interface-only
-        //     exports (`NavLink`) and alias-only exports (`BrowserRouter` when
-        //     a module only exports `BrowserRouter as Router`). Rollup checks
-        //     runtime exports exactly, so these otherwise hard-fail production
-        //     builds or crash the live preview.
-        const { files: typeStrippedFiles, stripped: typeStripped } = stripTypeOnlyValueImports(shimmedFiles);
-        if (typeStripped.length > 0) {
-          console.warn(
-            `[local-import-heal] project=${projectId} healed ${typeStripped.length} invalid value import(s): ` +
-              typeStripped.map((s) => `${s.file}: { ${s.names.join(", ")} } from "${s.spec}"`).join(" | "),
-          );
-        }
-
-        // 2f) Inject env files for installed integrations. This loads each
-        //     integration's public options + decrypted secrets and renders
-        //     `.env.production` (Vite-consumed at build time) and `.dev.vars`
-        //     (Cloudflare convention for Pages/Workers runtime + local dev).
-        //     Without this step, scaffolded code that reads
-        //     `import.meta.env.VITE_*` or `process.env.*` would build with
-        //     undefined values and silently no-op at runtime. Failures here
-        //     are non-fatal — we log and continue with no env file rather
-        //     than blocking the deploy.
-        let withEnv = injectPreviewGuard(typeStrippedFiles, { projectId }).files;
         try {
           const envBundle = await buildIntegrationEnvFiles(projectId, withEnv);
           if (envBundle.files.length > 0) {
