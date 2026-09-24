@@ -70,3 +70,10 @@ describe("single provider authority", () => {
     });
   });
 });
+
+import { extractRequestedPages } from "@/server/requested-scope";
+describe("requested page names", () => {
+  it('"Pages: Home, Menu, About, Contact only" is exactly four pages', () => {
+    expect(extractRequestedPages("Pages: Home, Menu, About, Contact only. Responsive.")).toEqual(["home", "menu", "about", "contact"]);
+  });
+});
