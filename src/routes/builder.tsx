@@ -43,7 +43,7 @@ import {
   type ChatAttachment,
   MAX_ATTACHMENTS_PER_MESSAGE,
 } from "@/lib/attachments";
-import { streamGenerate, streamResumeTurn } from "@/lib/stream";
+import { streamGenerate, streamResumeTurn, guardHandlers, cancelTurn } from "@/lib/stream";
 import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 import {
   persistTurnId,
@@ -950,6 +950,9 @@ function Builder() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  // The one turn this tab's activity UI belongs to. Stream handlers only run
+  // while their own token is current (see guardHandlers); Stop reads the id.
+  const activeTurnRef = useRef<{ projectId: string; turnId: string } | null>(null);
   // Phase 2 (auto-fix): only failures from builds this browser session
   // explicitly started are eligible. Old failed builds loaded from the DB must
   // never auto-run on page open, and retries are capped across the whole fix
@@ -1627,6 +1630,7 @@ function Builder() {
       if (lazyCreatedProjectIdRef.current) return;
       abortRef.current?.abort();
       abortRef.current = null;
+      activeTurnRef.current = null;
     };
   }, [searchId]);
 
@@ -1985,6 +1989,8 @@ function Builder() {
 
       controller = new AbortController();
       abortRef.current = controller;
+      const resumeToken = { projectId: pid, turnId: persisted.turnId };
+      activeTurnRef.current = resumeToken;
 
       // Lightweight handlers: we hydrate the streaming UI surfaces but don't
       // try to rebuild the full turn state machine. On the terminal `done`
@@ -1994,7 +2000,7 @@ function Builder() {
       void streamResumeTurn(
         persisted.turnId,
         persisted.lastSeq,
-        {
+        guardHandlers({
           onEventSeq: (seq) => bumpTurnSeq(pid, seq),
           onPhase: (phase) => {
             setPhases((p) => advanceTo(p, phase));
@@ -2113,7 +2119,7 @@ function Builder() {
               /* non-fatal */
             }
           },
-        },
+        }, () => activeTurnRef.current === resumeToken),
         controller.signal,
       ).catch(() => {
         // Resume is best-effort. Silent failure leaves the user in the
@@ -2649,6 +2655,8 @@ function Builder() {
         // of starting a second build.
         const clientTurnId = crypto.randomUUID();
         persistTurnId(proj.id, clientTurnId);
+        const turnToken = { projectId: proj.id, turnId: clientTurnId };
+        activeTurnRef.current = turnToken;
 
         await streamGenerate(
           {
@@ -2677,7 +2685,7 @@ function Builder() {
 
 
           },
-          {
+          guardHandlers({
             onPhase: (phase: PhaseId) => {
               setActivityVisible(true);
               setPhases((p) => advanceTo(p, phase));
@@ -2850,6 +2858,7 @@ function Builder() {
               // lets us reconnect on return. Keyed per-project so opening a
               // different project doesn't see a stale id.
               persistTurnId(proj.id, turnId);
+              turnToken.turnId = turnId;
             },
             onDone: (status) => {
               if (status !== "awaiting_credits") clearPersistedTurnId(proj.id);
@@ -2892,7 +2901,7 @@ function Builder() {
                 );
               }
             },
-          },
+          }, () => activeTurnRef.current === turnToken),
           controller.signal,
         );
 
@@ -3716,11 +3725,28 @@ function Builder() {
   }, [project, revertPreview, files]);
 
   const stopGeneration = useCallback(() => {
+    // Capture the exact turn, then detach this tab from it so any late event
+    // from it is ignored. Stop is an explicit cancel — unlike a dropped
+    // connection, it must not reconnect, so the resumable handle is cleared.
+    const active = activeTurnRef.current;
+    activeTurnRef.current = null;
     abortRef.current?.abort();
     abortRef.current = null;
     setBusy(false);
     releaseTurnLock();
     setActivityVisible(false);
+    if (!active) return;
+    clearPersistedTurnId(active.projectId);
+    const t = toast.loading("Stopping…");
+    void cancelTurn(active.turnId).then((r) => {
+      if (r.state === "cancelled") {
+        toast.success("Stopped. Nothing further will run or be charged.", { id: t });
+      } else if (r.state === "already_finished") {
+        toast.message("That request had already finished before Stop reached it.", { id: t });
+      } else {
+        toast.warning("Stop requested, but Kimble couldn't confirm it yet. Check your connection.", { id: t });
+      }
+    });
   }, []);
 
   const retry = useCallback(() => {
