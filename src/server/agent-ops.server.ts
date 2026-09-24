@@ -19,7 +19,7 @@
  * without a database.
  */
 import { z } from "zod";
-import { DbQuerySchema, scopeDbQuery, type ScopedQuery } from "@/server/agent-db-scope";
+import { DbQuerySchema, DbRpcSchema, scopeDbQuery, scopeDbRpc, type ScopedQuery } from "@/server/agent-db-scope";
 
 export type TurnRow = {
   id: string;
@@ -59,6 +59,9 @@ export interface AgentOpsStore {
   updateAiCall(turnId: string, id: string, patch: Record<string, unknown>): Promise<boolean>;
   /** Run an already-scoped table query. */
   runQuery(q: ScopedQuery): Promise<{ data: unknown; error: string | null }>;
+  runRpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: string | null }>;
+  /** Make + store one picture on the Worker (it holds the storage access). */
+  generateImage(opts: { prompt: string; aspectRatio?: "1:1" | "16:9" | "4:3" | "3:4" | "9:16"; cacheKey?: string }): Promise<{ url: string; cached: boolean }>;
   savePicture(row: { project_id: string; url: string; storage_path: string | null; label: string | null; tags: string[] }): Promise<void>;
 }
 
@@ -68,6 +71,13 @@ const Files = z
 
 export const AgentOpSchema = z.discriminatedUnion("op", [
   DbQuerySchema,
+  DbRpcSchema,
+  z.object({
+    op: z.literal("images.generate"),
+    prompt: z.string().min(1).max(4000),
+    aspectRatio: z.enum(["1:1", "16:9", "4:3", "3:4", "9:16"]).optional(),
+    cacheKey: z.string().max(200).optional(),
+  }),
   z.object({ op: z.literal("turn.context") }),
   z.object({ op: z.literal("files.read") }),
   z.object({ op: z.literal("files.replace"), files: Files }),
@@ -211,6 +221,23 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
       }
       const r = await store.runQuery(scoped);
       return r.error ? { ok: false, error: r.error } : { ok: true, data: r.data };
+    }
+    case "db.rpc": {
+      const scoped = scopeDbRpc(op, { projectId: turn.project_id, userId: turn.user_id, turnId: turn.id });
+      if ("error" in scoped) return { ok: false, error: scoped.error };
+      const r = await store.runRpc(scoped.fn, scoped.args);
+      return r.error ? { ok: false, error: r.error } : { ok: true, data: r.data };
+    }
+    case "images.generate": {
+      const fresh = await store.getTurn(turn.id);
+      if (!fresh || fresh.status !== "running") {
+        return { ok: false, error: fresh?.status === "aborted" ? "turn_stopped" : "turn_not_running" };
+      }
+      try {
+        return { ok: true, data: await store.generateImage({ prompt: op.prompt, aspectRatio: op.aspectRatio, cacheKey: op.cacheKey }) };
+      } catch (e) {
+        return { ok: false, error: (e as Error).message.slice(0, 300) };
+      }
     }
     case "events.append":
       await store.appendEvents(turn.id, op.events);

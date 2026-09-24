@@ -53,6 +53,8 @@ function memStore(turns: TurnRow[]) {
     logAiCall: async (r) => (aiLogs.push(r), `log-${aiLogs.length}`),
     updateAiCall: async (turnId, id) => aiLogs.some((r, i) => `log-${i + 1}` === id && r.turn_id === turnId),
     savePicture: async () => {},
+    runRpc: async (fn, args) => (queries.push({ fn, args }), { data: true, error: null }),
+    generateImage: async () => ({ url: "https://x/y.png", cached: false }),
     runQuery: async (q) => (queries.push(q), { data: [], error: null }),
   };
   return { store, spends, files, aiLogs, ledger, queries };
