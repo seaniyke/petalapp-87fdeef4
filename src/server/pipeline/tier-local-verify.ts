@@ -39,6 +39,8 @@ interface RunArgs {
   authoredPaths?: string[];
 }
 
+const HEURISTIC_SYNTAX_KINDS = new Set(["jsx", "braces", "unterminated-string"]);
+
 export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTierOutput> {
   const { nextFiles, currentFiles, toolName, parsedOps, authoredPaths } = args;
 
@@ -52,6 +54,29 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
       : (parsedOps ?? []).map((o) => o.path);
 
   const verdict = verifyFilesLocal(nextFiles, earlyChangedPaths);
+
+  // Ground truth for syntax is a real parser. A heuristic syntax flag on a
+  // file esbuild reads cleanly is dropped HERE, before it can trigger a
+  // continuation or repair AI call (real case: 2 continuations + 2 repairs,
+  // ~2.5 min, on a Contact page esbuild later confirmed was valid).
+  const heuristic = verdict.issues.filter((i) => HEURISTIC_SYNTAX_KINDS.has(i.kind));
+  if (heuristic.length) {
+    try {
+      const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
+      const paths = Array.from(new Set(heuristic.map((i) => i.path)));
+      const ev = await verifyFilesEsbuild(nextFiles, paths);
+      const failed = new Set(ev.issues.map((i) => i.path));
+      const clean = new Set(ev.checkedPaths.filter((p) => !failed.has(p)));
+      if (clean.size) {
+        verdict.issues = verdict.issues.filter((i) => !(HEURISTIC_SYNTAX_KINDS.has(i.kind) && clean.has(i.path)));
+        verdict.ok = verdict.issues.length === 0;
+        console.log(`[local-verifier] parser cleared heuristic syntax flags on: ${Array.from(clean).join(", ")}`);
+      }
+    } catch (e) {
+      console.warn("[local-verifier] parser confirmation skipped:", e);
+    }
+  }
+
 
   // Tier 2.45 — npm pre-flight (mutates verdict.issues in place via reassignment).
   let preflightDropped = 0;
