@@ -3914,7 +3914,12 @@ Forbidden defaults
           // new pages but shipped one is the same failure. If the turn planned
           // routes that neither the emitted files nor the existing project
           // provide, finish them in THIS turn.
-          if (!chunkAssessment.needed) {
+          // Edits only continue into missing pages when the user actually asked
+          // for new pages — existing nav links are not a request to build them.
+          const editAskedForPages =
+            /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent) &&
+            !/\b(on|in) the [a-z -]{0,30}(page|screen)\b/i.test(lastUserContent);
+          if (!chunkAssessment.needed && (isInitial || editAskedForPages)) {
             const stepRoutes = parseStepsFromArgs(collected.args)
               .flatMap((s) => s.match(/\/[a-z][a-z0-9-]{1,24}/gi) ?? []);
             // Nav/link targets the app itself declares are promises to the
@@ -4182,6 +4187,7 @@ Forbidden defaults
             neighbourPaths: impactNeighbourPaths,
             existingPaths: currentFiles.map((f) => f.path),
             disabled: isInitial || isCrossCutting,
+            allowNewPages: /\b(add|create|build|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent),
           });
           if (editBoundary.enforced) {
             console.info(`[edit-boundary] ${editBoundary.describe()}`);
@@ -4921,7 +4927,11 @@ Forbidden defaults
                     .map((f) => f.path)
                     .filter((p) => !isVerifierExempt(p)),
                 };
-          const repaired = runAllRepairs(nextFiles, { scopeLock });
+          const repaired = runAllRepairs(nextFiles, {
+            scopeLock,
+            // Edits (not first builds, not site-wide redesigns) repair locally.
+            localOnly: turnBaselineFiles.length > 0 && !isCrossCutting,
+          });
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
             nextFiles = repaired.files;

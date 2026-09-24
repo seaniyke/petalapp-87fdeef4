@@ -118,6 +118,14 @@ export interface RepairAllOptions {
    * (syntax, imports, route graph) always apply, everywhere.
    */
   scopeLock?: { touchedPaths: readonly string[] };
+  /**
+   * Local edit: a local failure gets a local repair. When set together with
+   * `scopeLock`, EVERY stage — RESOLVE included — may only keep changes to
+   * files the turn touched (plus brand-new files a resolver had to create and
+   * the resolver-managed build config). Pre-existing issues in untouched files
+   * are not this edit's business and are never rewritten.
+   */
+  localOnly?: boolean;
 }
 
 /**
@@ -377,6 +385,10 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   const postResolve = opts?.scopeLock
     ? new Map(files.map((f) => [f.path, f.content]))
     : null;
+  // Local edit: the baseline is the INPUT, not post-RESOLVE, so resolver
+  // passes cannot rewrite files the edit never touched either.
+  const localBase =
+    opts?.scopeLock && opts.localOnly ? new Map(input.map((f) => [f.path, f.content])) : null;
 
 
 
@@ -486,6 +498,20 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
         `scope-lock: reverted cosmetic repairs on ${reverted} file${reverted === 1 ? "" : "s"} this edit did not touch.`,
       );
     }
+  }
+
+  if (localBase && opts?.scopeLock) {
+    const touched = new Set(opts.scopeLock.touchedPaths);
+    const managed = new Set<string>(RESOLVER_MANAGED_PATHS);
+    let held = 0;
+    files = files.map((f) => {
+      if (touched.has(f.path) || managed.has(f.path)) return f;
+      const base = localBase.get(f.path);
+      if (base === undefined || base === f.content) return f; // new file or unchanged
+      held++;
+      return { ...f, content: base };
+    });
+    if (held > 0) notes.push(`local-scope: left ${held} untouched file(s) exactly as they were.`);
   }
 
   // Restore Kimble-owned files byte-for-byte: no heuristic pass may alter them.
