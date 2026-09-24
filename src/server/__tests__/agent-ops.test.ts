@@ -35,12 +35,13 @@ function memStore(turns: TurnRow[]) {
     },
     finishTurn: async (id, status) => void (turns.find((x) => x.id === id)!.status = status),
     checkBalance: async () => true,
-    findChargeForTurn: async (u, t, r) => ledger.find((l) => l.user_id === u && l.turn_id === t && l.reason === r)?.id ?? null,
-    spend: async ({ userId, turnId, reason }) => {
+    settle: async ({ userId, turnId }) => {
+      const hit = ledger.find((l) => l.user_id === userId && l.turn_id === turnId);
+      if (hit) return { charged: 0, shortfall: 0, ledgerId: hit.id, idempotent: true };
       const id = `led-${ledger.length + 1}`;
-      ledger.push({ id, user_id: userId, turn_id: turnId, reason });
+      ledger.push({ id, user_id: userId, turn_id: turnId, reason: "ai_build_charge" });
       spends.push(id);
-      return id;
+      return { charged: 2, shortfall: 0, ledgerId: id, idempotent: false };
     },
     ledgerOwner: async (id) => {
       const l = ledger.find((x) => x.id === id);
@@ -109,7 +110,7 @@ describe("agent ops scoping", () => {
 
   it("refund refuses another turn's ledger row", async () => {
     const m = memStore([running(T1, "u1"), running(T2, "u1")]);
-    await runAgentOps(m.store, T2, [{ op: "turn.claimCommit" }, { op: "credits.spend", amount: 1, reason: "ai_build_charge" }]);
+    await runAgentOps(m.store, T2, [{ op: "turn.claimCommit" }, { op: "credits.settle", amount: 1 }]);
     const [r] = await runAgentOps(m.store, T1, [
       { op: "credits.refund", ledgerId: "00000000-0000-4000-8000-000000000001", reason: "x" },
     ]);
@@ -129,7 +130,7 @@ describe("agent ops Stop and commit", () => {
   it("saving files and charging need the commit claim first", async () => {
     const m = memStore([running(T1)]);
     const [a] = await runAgentOps(m.store, T1, [{ op: "files.replace", files: [] }]);
-    const [b] = await runAgentOps(m.store, T1, [{ op: "credits.spend", amount: 1, reason: "ai_build_charge" }]);
+    const [b] = await runAgentOps(m.store, T1, [{ op: "credits.settle", amount: 1 }]);
     expect(a).toEqual({ ok: false, error: "commit_not_claimed" });
     expect(b).toEqual({ ok: false, error: "commit_not_claimed" });
     expect(m.spends).toHaveLength(0);
@@ -146,10 +147,10 @@ describe("agent ops Stop and commit", () => {
 describe("agent ops billing idempotency", () => {
   it("a replayed charge bills only once", async () => {
     const m = memStore([running(T1)]);
-    const first = await runAgentOps(m.store, T1, [{ op: "turn.claimCommit" }, { op: "credits.spend", amount: 2, reason: "ai_build_charge" }]);
-    const again = await runAgentOps(m.store, T1, [{ op: "credits.spend", amount: 2, reason: "ai_build_charge" }]);
+    const first = await runAgentOps(m.store, T1, [{ op: "turn.claimCommit" }, { op: "credits.settle", amount: 2 }]);
+    const again = await runAgentOps(m.store, T1, [{ op: "credits.settle", amount: 2 }]);
     expect(m.spends).toHaveLength(1);
-    expect(first[1]).toMatchObject({ ok: true, data: { replayed: false } });
-    expect(again[0]).toMatchObject({ ok: true, data: { ledgerId: "led-1", replayed: true } });
+    expect(first[1]).toMatchObject({ ok: true, data: { idempotent: false } });
+    expect(again[0]).toMatchObject({ ok: true, data: { ledgerId: "led-1", idempotent: true } });
   });
 });

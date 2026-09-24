@@ -66,6 +66,7 @@ import { validateStylesCss, repairStylesCss } from "@/server/validate-styles.ser
 import { verifyFileLocal } from "@/server/local-verifier";
 import { resolvePetalImagePlaceholders } from "@/server/image-generation.server";
 import { spendCredit, checkCreditBalance } from "@/server/credits.server";
+import { agentIO } from "@/server/agent-io.server";
 import { saveCreditPause } from "@/server/credit-pause.server";
 import { checkGenerateRateLimit, rateLimitResponse, secretsMatch } from "@/server/rate-limit.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -4173,7 +4174,7 @@ Forbidden defaults
             // planning failed. No other source of pages exists.
             const pages = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
             // Stop boundary: no page writer starts after the user pressed Stop.
-            await (await import("@/server/turn-cancel.server")).assertTurnActive(turnId, abortSignal, "page writing");
+            await agentIO().assertActive(turnId, abortSignal, "page writing");
             const done = await writePlannedPages({
               pages,
               files: parsed.files,
@@ -5854,7 +5855,7 @@ Forbidden defaults
             (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://"),
           );
           if (hasPlaceholders) {
-            await (await import("@/server/turn-cancel.server")).assertTurnActive(turnId, abortSignal, "images");
+            await agentIO().assertActive(turnId, abortSignal, "images");
             controller.enqueue(
               encoder.encode(sse({ type: "status", message: "Generating images…" })),
             );
@@ -6161,7 +6162,7 @@ Forbidden defaults
         // Stop boundary: after Stop nothing is billed, saved or built. This is
         // the last point before settlement → persistence commit together.
         // Commit point: atomically claims the turn against a concurrent Stop.
-        await (await import("@/server/turn-cancel.server")).claimTurnCommit(turnId, abortSignal);
+        await agentIO().claimCommit(turnId, abortSignal);
         let finalCharged = 0;
         // Decide the terminal state BEFORE billing. Charging first meant a
         // turn where the user asked for an edit, the ops all failed to apply
@@ -6175,7 +6176,7 @@ Forbidden defaults
           );
         }
         if (!body.isAutoFix && !failedEditTurn) {
-          const finalBalance = await checkCreditBalance({ userId, amount: priced.amount });
+          const finalBalance = await agentIO().checkBalance(userId, priced.amount);
           if (!finalBalance.ok && finalBalance.reason === "insufficient_credits" && body.projectId && logicalTurnId) {
             const checkpointId = await saveCreditPause({
               turnId: logicalTurnId,
@@ -6197,15 +6198,12 @@ Forbidden defaults
           // instead of failing the charge and silently losing the revenue.
           const settleTurnId = logicalTurnId;
           try {
-            const { data: settled, error: settleErr } = await supabaseAdmin.rpc(
-              "settle_build_charge",
-              {
-                _user_id: userId,
-                _amount: priced.amount,
-                _reason: "ai_build_charge",
-                _project_id: body.projectId ?? undefined,
-                _turn_id: settleTurnId ?? undefined,
-                _metadata: {
+            const row = await agentIO().settleCharge({
+                userId,
+                amount: priced.amount,
+                projectId: body.projectId ?? null,
+                turnId: settleTurnId ?? null,
+                metadata: {
                   route: "/api/generate",
                   prompt_tokens: priced.promptTokens,
                   completion_tokens: priced.completionTokens,
@@ -6213,11 +6211,8 @@ Forbidden defaults
                   clamped: priced.clamped,
                   model,
                   is_auto_fix: false,
-                } as never,
-              },
-            );
-            if (settleErr) throw new Error(settleErr.message);
-            const row = Array.isArray(settled) ? settled[0] : settled;
+                },
+            });
             finalCharged = Number(row?.charged ?? 0);
             const shortfall = Number(row?.shortfall ?? 0);
             if (row?.idempotent) {
@@ -6294,14 +6289,11 @@ Forbidden defaults
               }
               return Array.from(byPath.values());
             })();
-            const { error: persistErr } = await supabaseAdmin.rpc(
-              "replace_project_files",
-              { _project_id: body.projectId, _files: cleanFiles } as never,
-            );
+            const persistErr = await agentIO().replaceFiles(body.projectId, cleanFiles);
             if (persistErr) {
               console.error(
                 "[persistence] server-side replace_project_files failed",
-                { projectId: body.projectId, error: persistErr.message },
+                { projectId: body.projectId, error: persistErr },
               );
             }
           } catch (e) {
