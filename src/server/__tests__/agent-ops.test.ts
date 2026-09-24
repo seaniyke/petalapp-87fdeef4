@@ -26,6 +26,7 @@ function memStore(turns: TurnRow[]) {
     replaceFiles: async (p, f) => void files.set(p, f),
     readMemory: async () => [],
     readBlueprint: async () => null,
+    saveBlueprint: async () => {},
     appendEvents: async () => {},
     claimCommit: async (id) => {
       const t = turns.find((x) => x.id === id)!;

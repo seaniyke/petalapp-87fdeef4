@@ -30,14 +30,15 @@ export function createAgentOpsStore(): AgentOpsStore {
       return (data ?? []) as Array<{ key: string; value: string }>;
     },
     async readBlueprint(projectId) {
-      const { data } = await db
+      const { data } = await db.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
+      return ((data as { blueprint?: Record<string, unknown> } | null)?.blueprint ?? null);
+    },
+    async saveBlueprint(projectId, columns, blueprint) {
+      const existing = await this.readBlueprint(projectId);
+      const { error } = await db
         .from("project_blueprints")
-        .select("*")
-        .eq("project_id", projectId)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      return data ?? null;
+        .upsert({ ...columns, project_id: projectId, blueprint: { ...(existing ?? {}), ...blueprint } } as Any, { onConflict: "project_id" });
+      if (error) throw new Error(error.message);
     },
     async appendEvents(turnId, events) {
       const { error } = await db

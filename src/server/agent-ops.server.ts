@@ -37,7 +37,8 @@ export interface AgentOpsStore {
   readFiles(projectId: string): Promise<FileRow[]>;
   replaceFiles(projectId: string, files: FileRow[]): Promise<void>;
   readMemory(projectId: string): Promise<Array<{ key: string; value: string }>>;
-  readBlueprint(projectId: string): Promise<unknown | null>;
+  readBlueprint(projectId: string): Promise<Record<string, unknown> | null>;
+  saveBlueprint(projectId: string, columns: Record<string, unknown>, blueprint: Record<string, unknown>): Promise<void>;
   appendEvents(turnId: string, events: EventRow[]): Promise<void>;
   /** Atomic: set committed_at only while running + uncommitted. */
   claimCommit(turnId: string): Promise<boolean>;
@@ -68,6 +69,20 @@ export const AgentOpSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("files.replace"), files: Files }),
   z.object({ op: z.literal("memory.read") }),
   z.object({ op: z.literal("blueprint.read") }),
+  z.object({
+    op: z.literal("blueprint.save"),
+    columns: z
+      .object({
+        project_type: z.string().max(100).optional(),
+        sections: z.array(z.string().max(200)).max(100).optional(),
+        navigation: z.array(z.string().max(200)).max(100).optional(),
+        design_language: z.string().max(2000).optional(),
+        backend: z.string().max(100).optional(),
+        files: z.array(z.string().max(500)).max(500).optional(),
+      })
+      .strip(),
+    blueprint: z.record(z.unknown()),
+  }),
   z.object({
     op: z.literal("events.append"),
     events: z
@@ -114,6 +129,7 @@ const WRITES_NEED_RUNNING = new Set<AgentOp["op"]>([
   "turn.claimCommit",
   "credits.settle",
   "pictures.save",
+  "blueprint.save",
 ]);
 
 export type OpResult = { ok: true; data?: unknown } | { ok: false; error: string };
@@ -176,6 +192,9 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
       return { ok: true, data: await store.readMemory(turn.project_id) };
     case "blueprint.read":
       return { ok: true, data: await store.readBlueprint(turn.project_id) };
+    case "blueprint.save":
+      await store.saveBlueprint(turn.project_id, op.columns, op.blueprint);
+      return { ok: true };
     case "events.append":
       await store.appendEvents(turn.id, op.events);
       return { ok: true };

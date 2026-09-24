@@ -43,6 +43,10 @@ export interface AgentIO {
   logAiCall(row: Record<string, unknown>): Promise<string | null>;
   /** Patch a row this turn logged (usage, timings, outcome). */
   updateAiCall(id: string, patch: Record<string, unknown>): Promise<void>;
+  /** The project's saved plan JSON (null when none). */
+  readBlueprint(projectId: string): Promise<Record<string, unknown> | null>;
+  /** Upsert plan columns; `blueprint` is merged with existing sibling keys. */
+  saveBlueprint(projectId: string, columns: Record<string, unknown>, blueprint: Record<string, unknown>): Promise<void>;
 }
 
 export function createDirectAgentIO(): AgentIO {
@@ -113,6 +117,20 @@ export function createDirectAgentIO(): AgentIO {
     async updateAiCall(id, patch) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("ai_call_log").update(patch as never).eq("id", id);
+    },
+    async readBlueprint(projectId) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
+      return ((data as { blueprint?: Record<string, unknown> } | null)?.blueprint ?? null);
+    },
+    async saveBlueprint(projectId, columns, blueprint) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      // The JSON column also carries sibling keys (`prd`, `architecture`):
+      // merge, never overwrite.
+      const existing = await this.readBlueprint(projectId);
+      await supabaseAdmin
+        .from("project_blueprints")
+        .upsert({ ...columns, project_id: projectId, blueprint: { ...(existing ?? {}), ...blueprint } } as never, { onConflict: "project_id" });
     },
   };
 }
