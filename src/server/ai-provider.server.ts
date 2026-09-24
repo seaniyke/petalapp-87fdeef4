@@ -468,6 +468,14 @@ export function parseUsageObject(u: unknown): ParsedUsage | null {
  * whose body has not been consumed. A body read failure yields a clean 502
  * Response instead of an unhandled exception downstream.
  */
+/** Typed terminal failure: no eligible provider for this call. Never sent. */
+export function providersExhaustedResponse(): Response {
+  return new Response(
+    JSON.stringify({ error: { type: "providers_exhausted", message: "No eligible AI provider is available for this request." } }),
+    { status: 503, headers: { "Content-Type": "application/json", "x-kimble-error": "providers_exhausted" } },
+  );
+}
+
 export async function bufferedResponse(resp: Response): Promise<Response> {
   if (!resp.body) return resp;
   let text: string;
@@ -1212,6 +1220,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // override doesn't burn 100% of that feature's calls.
   const shouldRetry =
     !primary.ok &&
+    !exhausted &&
     !opts.noFallback &&
     !!fallbackModel &&
 
