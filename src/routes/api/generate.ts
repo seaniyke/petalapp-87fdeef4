@@ -1301,6 +1301,7 @@ async function rawPageCompletion(args: {
     body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
     timeoutTier: args.isInitial ? "stream_first_build" : "stream",
     lockCallerModel: true,
+    codeOutput: true,
     signal: args.signal,
     meta: args.meta,
   });
