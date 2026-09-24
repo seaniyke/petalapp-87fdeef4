@@ -48,7 +48,17 @@ export interface WriteGateResult {
   healedPaths: string[];
   /** Writes that were refused. Empty means everything landed. */
   rejected: WriteRejection[];
+  /** Files repaired by the bounded single-file AI repair and re-verified. */
+  repairedPaths?: string[];
+  /** Files the bounded repair attempted but could not fix. */
+  repairFailedPaths?: string[];
 }
+
+/** Bounded single-file repair: returns replacement content, or null. */
+export type SingleFileRepair = (file: ProjectFile, detail: string) => Promise<string | null>;
+
+/** At most this many broken files get an AI repair per turn. */
+export const MAX_AI_REPAIR_FILES = 3;
 
 const PARSEABLE = /\.(tsx?|jsx?|mts|cts)$/i;
 
@@ -99,6 +109,10 @@ export async function runWriteGate(args: {
   before: ProjectFile[];
   after: ProjectFile[];
   changedPaths: string[];
+  /** Optional bounded repair for files the deterministic heal could not fix.
+   *  Called at most once per broken file; only that file is rewritten and it
+   *  is accepted only if it re-verifies. Never touches any other file. */
+  repair?: SingleFileRepair;
 }): Promise<WriteGateResult> {
   const candidates = parseCandidates(args.changedPaths);
   if (candidates.length === 0) {
@@ -133,6 +147,38 @@ export async function runWriteGate(args: {
     return { files, healedPaths: actuallyHealed, rejected: [] };
   }
 
+  // Round 1b — bounded single-file repair. ONE attempt per broken file,
+  // capped at MAX_AI_REPAIR_FILES. Each repaired file must re-verify.
+  const repairedPaths: string[] = [];
+  const repairFailedPaths: string[] = [];
+  if (args.repair) {
+    for (const [path, detail] of Array.from(stillFailing).slice(0, MAX_AI_REPAIR_FILES)) {
+      const content = byPath.get(path);
+      if (content === undefined) continue;
+      let fixed: string | null = null;
+      try {
+        fixed = await args.repair({ path, content }, detail);
+      } catch {
+        fixed = null;
+      }
+      if (fixed && fixed.trim() && fixed !== content) {
+        const candidate = Array.from(byPath, ([p, c]) => ({ path: p, content: p === path ? fixed! : c }));
+        const recheck = await failingPaths(candidate, [path]);
+        if (!recheck.has(path)) {
+          byPath.set(path, fixed);
+          stillFailing.delete(path);
+          repairedPaths.push(path);
+          continue;
+        }
+      }
+      repairFailedPaths.push(path);
+    }
+    files = Array.from(byPath, ([path, content]) => ({ path, content }));
+    if (stillFailing.size === 0) {
+      return { files, healedPaths: actuallyHealed, rejected: [], repairedPaths, repairFailedPaths };
+    }
+  }
+
   // Round 2 — refuse the write. Revert to the pre-turn bytes so the project
   // is never left holding a file that cannot be parsed.
   const beforeByPath = new Map(args.before.map((f) => [f.path, f.content]));
@@ -149,7 +195,7 @@ export async function runWriteGate(args: {
   }
 
   files = Array.from(byPath, ([path, content]) => ({ path, content }));
-  return { files, healedPaths: actuallyHealed, rejected };
+  return { files, healedPaths: actuallyHealed, rejected, repairedPaths, repairFailedPaths };
 }
 
 /** Model-facing diagnostic: exactly what broke and what to do about it. */
