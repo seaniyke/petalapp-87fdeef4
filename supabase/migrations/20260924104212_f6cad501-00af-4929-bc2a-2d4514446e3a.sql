@@ -1,0 +1,1 @@
+UPDATE public.ai_provider_settings SET model = 'deepseek/deepseek-v4-flash' WHERE model = 'deepseek/deepseek-chat-v3' AND feature IN ('discuss','coach');
