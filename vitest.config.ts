@@ -9,6 +9,7 @@ export default defineConfig({
     // importing scripts that call process.exit at module scope.
     include: [
       "src/lib/preview-state.test.ts",
+      "src/server/__tests__/turn-cancel.test.ts",
       "src/server/registry/__tests__/registry.test.ts",
       "src/server/registry/__tests__/project-pictures.test.ts",
       "src/components/__tests__/one-result-card.test.ts",
