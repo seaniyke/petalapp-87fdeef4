@@ -136,3 +136,52 @@ describe("final done status derives from the turn outcome", () => {
     expect(turnOutcomeStatus('data: {"type":"status"}\n\n')).toBeNull();
   });
 });
+
+describe("audit consolidation", () => {
+  it("one AI repair per file across the whole turn (write-time + final check share it)", () => {
+    const b = new RecoveryBudget();
+    expect(b.take("broken_file", "src/pages/Home.tsx")).toBe(true);
+    expect(b.take("broken_file", "src/pages/Home.tsx")).toBe(false);
+  });
+
+  it("clean-up that breaks an already-valid/repaired file is put back, not repaired or set aside", async () => {
+    const { revertCleanupBreakage } = await import("@/server/write-gate.server");
+    const before = [good("src/pages/Home.tsx"), good("src/pages/Menu.tsx")];
+    const after = [{ path: "src/pages/Home.tsx", content: "export default function P(){return <main>" }, good("src/pages/Menu.tsx")];
+    const out = await revertCleanupBreakage(before, after, ["src/pages/Home.tsx", "src/pages/Menu.tsx"]);
+    expect(out.reverted).toEqual(["src/pages/Home.tsx"]);
+    expect(out.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toBe(before[0].content);
+    expect(out.files.find((f) => f.path === "src/pages/Menu.tsx")!.content).toBe(before[1].content);
+  });
+
+  it("clean-up leaves valid changes alone", async () => {
+    const { revertCleanupBreakage } = await import("@/server/write-gate.server");
+    const before = [good("src/pages/About.tsx")];
+    const after = [{ path: "src/pages/About.tsx", content: 'export default function P(){return <main className="p-4">x</main>}' }];
+    const out = await revertCleanupBreakage(before, after, ["src/pages/About.tsx"]);
+    expect(out.reverted).toEqual([]);
+    expect(out.files).toEqual(after);
+  });
+
+  it("live site not responding goes through the single decision → failed", () => {
+    const d = decideBuildStatus({ built: true, deployProbeOk: false, blockingDefects: [], blockingIsEdgeNoiseOnly: false, hasPlaceholderFiles: false });
+    expect(d.status).toBe("failed");
+  });
+
+  it("broken Home or broken router never drops the other pages", () => {
+    const all = [frame, ...pages.map((p) => good(p.file))];
+    const noHome = isolateBrokenFiles(all, new Set(["src/pages/Home.tsx"]));
+    expect(noHome.map((f) => f.path)).toEqual(expect.arrayContaining(["src/pages/Menu.tsx", "src/pages/About.tsx", "src/pages/Contact.tsx", "src/App.tsx"]));
+    const noRouter = isolateBrokenFiles(all, new Set(["src/App.tsx"]));
+    expect(noRouter.map((f) => f.path)).toEqual(expect.arrayContaining(pages.map((p) => p.file)));
+  });
+
+  it("removed steps stay removed from the build path", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync("src/routes/api/generate.ts", "utf8");
+    expect(src).not.toMatch(/enforceDesignContract/);
+    expect(src).not.toMatch(/KIMBLE_PREEMIT_AGENT_LOOP|runAgentLoop/);
+    const cb = fs.readFileSync("src/routes/api/public/builds/callback.ts", "utf8");
+    expect(cb).not.toMatch(/status: "ready"(?![\s\S]{0,0})/.source === "" ? /$^/ : /status:\s*"failed",\s*\n\s*dist_path: payload\.url/);
+  });
+});
