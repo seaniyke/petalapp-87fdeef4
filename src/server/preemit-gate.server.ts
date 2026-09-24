@@ -29,7 +29,6 @@
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { verifyFilesLocal } from "@/server/local-verifier";
 import { lintRenderRisks } from "@/server/render-risk-linter";
-import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { isVerifierExempt } from "@/server/scaffold-ownership.server";
 import type { ProjectFile } from "@/server/generate.server";
 import type { Prd } from "@/server/prd/prd-types";
@@ -255,92 +254,17 @@ export async function runPreEmitGate(
     prd?: Prd | null;
   } = {},
 ): Promise<PreEmitGateResult> {
-  const maxRounds = Math.max(0, Math.min(opts.maxRounds ?? 1, 1)); // one targeted repair, then stop
-
-  let current = files;
+  // Verifier only. The gate never calls a model: broken files are owned by
+  // the single REPAIR stage (write-time single-file repair). Anything still
+  // blocking here fails the turn honestly.
+  void opts.maxRounds; void opts.afterRepair;
+  const current = files;
   const trace: string[] = [];
-
-  let issues = await collectGateIssues(current, changedPaths, opts.prd);
-  let blocking = issues.filter(isBlocking);
+  const issues = await collectGateIssues(current, changedPaths, opts.prd);
+  const blocking = issues.filter(isBlocking);
   const initialIssueCount = blocking.length;
-
-  // Best state seen so far. A repair round that regresses must never win.
-  let bestFiles = current;
-  let bestBlocking = blocking;
-
+  const round = 0;
   trace.push(`round 0: ${blocking.length} blocking, ${issues.length - blocking.length} advisory`);
-
-  let round = 0;
-  while (blocking.length > 0 && round < maxRounds) {
-    round += 1;
-    opts.onRound?.(round, blocking);
-
-    const before = blocking.length;
-    let candidate: ProjectFile[];
-    try {
-      const out = await runPostStreamAutofix(
-        current,
-        blocking.map((i) => ({ path: i.path, kind: i.kind, detail: i.detail })),
-      );
-      candidate = out.files;
-    } catch (e) {
-      trace.push(`round ${round}: repair pass errored (${String(e)}) — stopping`);
-      break;
-    }
-
-    // Verify the model's candidate before deterministic normalization. A
-    // global repair pass must never be allowed to undo a fix that already
-    // cleared the gate; that previously created an endless retry/rollback
-    // cycle where every user retry reproduced the same failure.
-    let nextIssues = await collectGateIssues(candidate, changedPaths, opts.prd);
-    let nextBlocking = nextIssues.filter(isBlocking);
-
-    if (opts.afterRepair) {
-      try {
-        const normalized = opts.afterRepair(candidate);
-        const normalizedIssues = await collectGateIssues(normalized, changedPaths, opts.prd);
-        const normalizedBlocking = normalizedIssues.filter(isBlocking);
-        if (normalizedBlocking.length <= nextBlocking.length) {
-          candidate = normalized;
-          nextIssues = normalizedIssues;
-          nextBlocking = normalizedBlocking;
-        } else {
-          trace.push(
-            `round ${round}: deterministic repair regressed ${nextBlocking.length} -> ${normalizedBlocking.length}; kept model repair`,
-          );
-        }
-      } catch (e) {
-        console.warn("[preemit-gate] afterRepair hook errored, using unrepaired output:", e);
-      }
-    }
-
-    if (nextBlocking.length < bestBlocking.length) {
-      bestFiles = candidate;
-      bestBlocking = nextBlocking;
-    }
-
-    trace.push(`round ${round}: ${before} -> ${nextBlocking.length} blocking`);
-
-    // No progress means the model cannot see the problem. Another identical
-    // round would cost the same and return the same. Stop.
-    if (nextBlocking.length >= before) {
-      trace.push(`round ${round}: no progress — stopping early`);
-      current = bestFiles;
-      issues = nextIssues;
-      blocking = bestBlocking;
-      break;
-    }
-
-    current = candidate;
-    issues = nextIssues;
-    blocking = nextBlocking;
-  }
-
-  // Always hand back the best state we ever saw, not the last one we tried.
-  if (bestBlocking.length < blocking.length) {
-    current = bestFiles;
-    blocking = bestBlocking;
-  }
 
   return {
     files: current,
