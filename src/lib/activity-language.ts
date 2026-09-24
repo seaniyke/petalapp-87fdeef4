@@ -55,7 +55,9 @@ export function humanizeActivity(
         group: "checking",
         title:
           outcome === "ok"
-            ? "Checked your saved data stays private"
+            ? n
+              ? `Checked ${n} ${plural(n, "file", "files")} for data privacy`
+              : "Checked data privacy"
             : "Tightened who can see your saved data",
         detail: "Only the right people should be able to read or change anything you store.",
       };
@@ -65,7 +67,9 @@ export function humanizeActivity(
         group: "checking",
         title:
           outcome === "ok"
-            ? "Checked no page crashes when it opens"
+            ? n
+              ? `Checked ${n} ${plural(n, "file", "files")} for crash risks`
+              : "Checked for crash risks"
             : "Fixed things that could crash a page",
         detail: "Kimble opens each screen in its head and looks for anything that would break.",
       };
@@ -76,7 +80,9 @@ export function humanizeActivity(
         title:
           outcome === "failed"
             ? "Rolled the change back to keep your app working"
-            : "Checked every file is written correctly",
+            : n
+              ? `Checked ${n} ${plural(n, "file", "files")} for errors`
+              : "Checked the new code for errors",
         detail: "Nothing ships unless the whole app still builds.",
       };
 
@@ -102,11 +108,13 @@ export function humanizeActivity(
         group: "checking",
         title:
           outcome === "ok"
-            ? "Ran your app end to end — all good"
+            ? n
+              ? `Checked ${n} changed ${plural(n, "file", "files")}`
+              : "Checked the changed files"
             : n
               ? `Found and fixed ${n} ${plural(n, "problem", "problems")} before you saw them`
               : "Found and fixed problems before you saw them",
-        detail: "Kimble tries the app itself instead of hoping it works.",
+        detail: "A code check of the files that changed. Running the real app happens after it's built.",
       };
 
     case "stream_autofix":
