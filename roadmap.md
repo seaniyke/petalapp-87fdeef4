@@ -72,3 +72,10 @@
 - [x] Guard fix: first-turn backend deferral removed (user intent outranks the two-phase gate)
 - [x] Guard fix: file-length caps removed from the model prompts (contradicted the one-page-per-call WRITE contract and caused near-empty pages); deterministic revert still applies only to unfinished files
 - [ ] Model evaluation inside the constrained architecture (next step)
+
+## Truthful failure + OpenRouter routing (Sept 24)
+- [x] Code generation uses OpenRouter native routing/failover (no `only` allow-list); known-bad providers via `ignore`
+- [x] No eligible provider → typed `providers_exhausted`, never sent/re-sent; turn reports the real cause
+- [x] Failed turns end the active phase (no lingering "Checking my work"); plan steps tick only when written
+- [x] Check wording states what was actually checked (no "all good"/"end to end")
+- [ ] Next: move the generation core onto the Railway builder (`/agent/generate`), Cloudflare as thin control layer

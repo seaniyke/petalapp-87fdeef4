@@ -53,7 +53,7 @@ describe("latestActivityLine", () => {
       ],
       now,
     );
-    expect(line).toBe("Checked your saved data stays private");
+    expect(line).toBe("Checked data privacy");
   });
 
   it("ignores stale activity so the card never fakes being busy", () => {

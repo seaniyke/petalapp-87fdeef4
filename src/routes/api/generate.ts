@@ -1182,9 +1182,10 @@ async function relayAndCollect(
       }
     }
   }
-  // Stream is over — every checklist item the model published is finished, so
-  // close them out rather than leaving one stuck on "active".
-  for (let i = 0; i < stepsEmitted; i++) {
+  // Stream is over — close out only the checklist items the model actually
+  // reached (by its files' `step` tags). Steps it never wrote stay unticked:
+  // a plan item is never shown done unless its files were written.
+  for (let i = 0; i < Math.min(activeStep, stepsEmitted); i++) {
     controller.enqueue(encoder.encode(sse({ type: "step_status", index: i, status: "done" })));
   }
   // Authoritative per-turn exclusion: a stalled or empty upstream is never
@@ -1372,6 +1373,7 @@ function emitTurnOutcome(
     changedPaths: string[];
     blockedPaths?: string[];
     reason?: string;
+    cause?: string;
   },
 ): void {
   controller.enqueue(
@@ -6399,7 +6401,13 @@ Forbidden defaults
             const { pageFileFor } = await import("@/server/engine/plan");
             const state = describeIncomplete({ requestedRoutes: requested, missingRoutes: scopeMissing, files: nextFiles, fileFor: pageFileFor });
             console.log(`[build-state] created=${JSON.stringify(state.created)} notCreated=${JSON.stringify(state.notCreated)} unlinked=${JSON.stringify(state.unlinked)} shellMissing=${state.shellMissing}`);
-            const note = incompleteBuildMessage(scopeMissing, state);
+            let note = incompleteBuildMessage(scopeMissing, state);
+            {
+              const { providersExhaustedForTurn } = await import("@/server/turn-context.server");
+              if (providersExhaustedForTurn()) {
+                note += "\n\nWhy: the AI service had no available capacity to write the missing parts, so those requests couldn't run. Nothing was built or charged — send it again and I'll write only what's missing.";
+              }
+            }
             // A failed build's message is the state report only — never the
             // model's own "it's live" narration.
             summary = note.trim();
@@ -6413,8 +6421,9 @@ Forbidden defaults
         }
         {
           const turnChanged = turnChangedPaths;
+          const { providersExhaustedForTurn } = await import("@/server/turn-context.server");
           emitTurnOutcome(controller, encoder, scopeMissing.length > 0
-            ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing" }
+            ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing", ...(providersExhaustedForTurn() ? { cause: "providers_exhausted" } : {}) }
             : {
                 outcome: turnChanged.length > 0 ? "applied" : "answered",
                 changedPaths: turnChanged,

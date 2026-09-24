@@ -23,19 +23,10 @@ describe("planner fits the real output budget", () => {
 });
 
 describe("one page-generation provider policy", () => {
-  const order = (avoid: string[] = []) => codegenProviderRouting(avoid) as { order: string[]; ignore: string[] };
-  it("OpenInference primary, Azure fallback, DeepInfra ignored while primaries eligible", () => {
-    const r = order();
-    expect(r.order).toEqual(["openinference", "azure"]);
-    expect(r.ignore).toContain("deepinfra");
-  });
-  it("continuation after OpenInference fails goes to Azure, not DeepInfra", () => {
-    const r = order(["openinference"]);
-    expect(r.order[0]).toBe("azure");
-    expect(r.ignore).toContain("deepinfra");
-  });
-  it("DeepInfra only once every primary failed", () => {
-    expect(order(["openinference", "azure"]).order).toEqual(["deepinfra"]);
+  it("failed upstreams accumulate in ignore; OpenRouter picks among the rest", () => {
+    const r = codegenProviderRouting(["openinference", "azure"]) as { ignore: string[]; only?: string[] };
+    expect(r.ignore).toEqual(expect.arrayContaining(["openinference", "azure", "digitalocean", "nextbit"]));
+    expect(r.only).toBeUndefined();
   });
 });
 

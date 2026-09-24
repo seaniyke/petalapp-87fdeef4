@@ -1,44 +1,31 @@
 /**
- * THE provider policy. The only code in Kimble that decides which OpenRouter
- * upstream serves an AI call. Every call — first build, continuation,
- * missing page, retry, recovery, repair, design — resolves here via
- * `aiChatCompletions`, so there is no second routing system.
+ * THE provider policy. The only code in Kimble that decides how OpenRouter
+ * routes an AI call. Every call resolves here via `aiChatCompletions`, so
+ * there is no second routing system.
  *
  * Rules:
- *  - Code-writing calls: primaries (OpenInference → Azure) first; last-resort
- *    upstreams (DeepInfra) only once every primary has failed in this turn.
- *  - Upstreams that failed in this turn (stall / empty / error) are excluded
- *    for every later call in the turn, whatever path makes it.
- *  - DigitalOcean / NextBit are never used for code.
- *  - Non-code calls only inherit the failed-upstream exclusions.
+ *  - OpenRouter is the only gateway and owns provider selection + failover
+ *    for the selected model (native routing, `allow_fallbacks`). Kimble does
+ *    NOT maintain an allow-list (`only`/`order`).
+ *  - Code-writing calls require every parameter (tools must be honoured).
+ *  - Providers Kimble has determined are bad are excluded with `ignore`
+ *    (DigitalOcean / NextBit for code), plus upstreams that already failed
+ *    in this turn.
+ *  - An empty allow-list is never sent: see `isEmptyAllowList`.
  */
-import {
-  CODEGEN_LAST_RESORT_PROVIDERS,
-  CODEGEN_PRIMARY_PROVIDERS,
-  CODEGEN_PROVIDER_IGNORE,
-  CODEGEN_PROVIDER_ORDER,
-} from "@/lib/ai-model-config";
+import { CODEGEN_PROVIDER_IGNORE } from "@/lib/ai-model-config";
 
 export function slug(upstream: string): string {
   return upstream.toLowerCase().replace(/\s+/g, "");
 }
 
 export function codegenProviderRouting(avoid: string[] = []): Record<string, unknown> {
-  const ignoreSet = new Set<string>([...CODEGEN_PROVIDER_IGNORE, ...avoid.map(slug)]);
-  const primariesLeft = CODEGEN_PRIMARY_PROVIDERS.some((p) => !ignoreSet.has(p));
-  if (primariesLeft) for (const p of CODEGEN_LAST_RESORT_PROVIDERS) ignoreSet.add(p);
-  const ignore = Array.from(ignoreSet);
-  const order = CODEGEN_PROVIDER_ORDER.filter((p) => !ignore.includes(p));
-  // `only` is what makes this list authoritative: with just `order`,
-  // OpenRouter treats it as a preference and falls back to ANY other
-  // upstream (a live repair call went to Baidu that way). Fallbacks stay on,
-  // but only between the upstreams named here.
-  return { order, only: order, allow_fallbacks: true, require_parameters: true, ignore };
+  const ignore = Array.from(new Set<string>([...CODEGEN_PROVIDER_IGNORE, ...avoid.map(slug)]));
+  return { allow_fallbacks: true, require_parameters: true, ignore };
 }
 
 /** Resolve the OpenRouter `provider` block for one call (or undefined).
- *  Callers never pass their own avoid list: `avoid` is the per-turn failed
- *  set, read once by aiChatCompletions. */
+ *  `avoid` is the per-turn failed set, read once by aiChatCompletions. */
 export function resolveProviderRouting(args: {
   codeWriting: boolean;
   avoid: string[];
@@ -52,4 +39,11 @@ export function resolveProviderRouting(args: {
   }
   if (avoid.length) return { ignore: avoid };
   return undefined;
+}
+
+/** Defensive: a routing block that names an allow-list with nobody on it
+ *  can never be served. It must fail as `providers_exhausted`, not be sent. */
+export function isEmptyAllowList(routing: unknown): boolean {
+  const only = (routing as { only?: unknown } | undefined)?.only;
+  return Array.isArray(only) && only.length === 0;
 }

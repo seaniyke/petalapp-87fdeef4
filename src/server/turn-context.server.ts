@@ -34,6 +34,9 @@ export interface TurnContext {
    *  again by ANY later call in the same turn (retry, recovery, continuation,
    *  missing-page follow-up, repair). A fresh user turn starts empty. */
   failedUpstreams?: Set<string>;
+  /** Set when OpenRouter had no eligible provider left for a code call.
+   *  Terminal for the call: it is never re-sent in this turn. */
+  providersExhausted?: boolean;
   /** First builds: the model's own summary ("it's live") is never streamed
    *  mid-build. Only the authoritative final result carries the message. */
   holdSummary?: boolean;
@@ -85,4 +88,15 @@ export function markUpstreamFailed(upstream: string | null | undefined, ctx?: Tu
 export function failedUpstreamsForTurn(ctx?: TurnContext): string[] {
   const c = ctx ?? currentTurnContext();
   return c?.failedUpstreams ? Array.from(c.failedUpstreams) : [];
+}
+
+/** Record that no eligible provider was left for a code call this turn. */
+export function markProvidersExhausted(ctx?: TurnContext): void {
+  const c = ctx ?? currentTurnContext();
+  if (c && Object.keys(c).length > 0) c.providersExhausted = true;
+}
+
+export function providersExhaustedForTurn(ctx?: TurnContext): boolean {
+  const c = ctx ?? currentTurnContext();
+  return c?.providersExhausted === true;
 }
