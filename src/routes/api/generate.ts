@@ -3968,16 +3968,73 @@ Forbidden defaults
           });
           if (!retry.ok || !retry.body) throw e;
           collected = await relayAndCollect(retry, controller, encoder);
+          // Every upstream that failed this turn is avoided by every later
+          // recovery call — a stalled provider must never be re-picked.
+          const failedUpstreams: string[] = [];
+          if (firstStall?.upstream) failedUpstreams.push(firstStall.upstream);
+          const providerFailed = (c: ParsedTool) =>
+            Boolean(c.stall) || (!c.name && !c.args.trim() && !c.text.trim());
+          if (providerFailed(collected)) {
+            if (collected.upstream) failedUpstreams.push(collected.upstream);
+            console.warn(
+              `[generate] recovery attempt 1 ${collected.stall ? "stalled" : "returned an empty stream"} upstream=${collected.upstream ?? "?"} providerError=${collected.providerError ? JSON.stringify(collected.providerError).slice(0, 300) : "none"}`,
+            );
+            // Exactly one more clean resend of the ORIGINAL request, routed
+            // away from every failed upstream. Bounded: no further loop.
+            if (firstStall) {
+              controller.enqueue(
+                encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })),
+              );
+              const second = await structuredRetryCompletion({
+                messages: finalMessages,
+                isInitial,
+                problem: "provider_failure",
+                hasBackend: Boolean(backend),
+                tool,
+                maxTokens: isInitial
+                  ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
+                  : Math.max(maxCompletionTokens, 8_000),
+                crossCuttingIntent: isCrossCutting,
+                signal: abortSignal,
+                providerStalled: true,
+                avoidUpstreams: failedUpstreams,
+                meta: {
+                  phase: phaseTag.phase,
+                  promptChars: lastUserContent.length,
+                  hadAttachments: hasVisionTurn,
+                  chosenBy: "provider_failure_retry",
+                  projectId: body.projectId ?? null,
+                  userId,
+                  turnId: logicalTurnId,
+                  fallbackNumber: 2,
+                  fallbackFromUpstream: collected.upstream ?? null,
+                  recoveryReason: collected.stall ? "provider_stall" : "provider_empty_stream",
+                },
+              });
+              if (second.ok && second.body) {
+                collected = await relayAndCollect(second, controller, encoder);
+                if (providerFailed(collected) && collected.upstream) failedUpstreams.push(collected.upstream);
+              }
+            }
+          }
           try {
             payload = parseCollectedProject(collected, isInitial);
           } catch (retryErr) {
             // Both attempts failed to produce usable tool output. Never turn
             // that parser/model failure into a prerequisite refusal: recover
             // the missing tool call and ship the safe frontend instead.
-            const recovered = isMissingToolOutputError(retryErr)
+            // A stalled first attempt's partial text is never trusted as a
+            // recovery source.
+            const recoverySource = assistantTextFromCollected(collected)
+              ? collected
+              : firstStall
+                ? null
+                : firstCollected;
+            const recovered = isMissingToolOutputError(retryErr) && recoverySource
               ? await recoverMissingToolOutput({
+                  avoidUpstreams: failedUpstreams,
                   chatMessages: finalMessages,
-                  collected: assistantTextFromCollected(collected) ? collected : firstCollected,
+                  collected: recoverySource,
                   isInitial,
                   tool,
                   model,
