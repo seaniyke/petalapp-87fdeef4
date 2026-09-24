@@ -67,6 +67,10 @@ export const UTILITY_MAX_OUTPUT_TOKENS = 1024;
 // completed 3. DeepInfra stays LAST for page writing and stays available for
 // helper tasks (design/preflight), where it is reliable.
 export const CODEGEN_PROVIDER_ORDER = ["openinference", "azure", "deepinfra"] as const;
+/** Page/code generation primaries (in order). */
+export const CODEGEN_PRIMARY_PROVIDERS = ["openinference", "azure"] as const;
+/** Eligible only after every primary failed in this build. */
+export const CODEGEN_LAST_RESORT_PROVIDERS = ["deepinfra"] as const;
 export const CODEGEN_PROVIDER_IGNORE = ["digitalocean", "nextbit"] as const;
 
 /** Output budget for byte-level stream continuation (finishing a cut-off file). */

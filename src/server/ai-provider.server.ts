@@ -1,6 +1,8 @@
 import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
 import {
   CODEGEN_PROVIDER_IGNORE,
+  CODEGEN_PRIMARY_PROVIDERS,
+  CODEGEN_LAST_RESORT_PROVIDERS,
   CODEGEN_PROVIDER_ORDER,
   OPENROUTER_CHAT_URL,
   UTILITY_MAX_OUTPUT_TOKENS,
@@ -18,7 +20,14 @@ import {
  */
 export function codegenProviderRouting(avoid: string[] = []): Record<string, unknown> {
   const avoidSlugs = avoid.map((a) => a.toLowerCase().replace(/\s+/g, ""));
-  const ignore = Array.from(new Set([...CODEGEN_PROVIDER_IGNORE, ...avoidSlugs]));
+  const ignoreSet = new Set<string>([...CODEGEN_PROVIDER_IGNORE, ...avoidSlugs]);
+  // ONE page-generation policy for every code-writing call (initial,
+  // continuation, missing pages, retry, recovery, repair): primaries first;
+  // last-resort upstreams are only eligible once every primary has failed in
+  // this build. A continuation being "a new API call" never re-opens them.
+  const primariesLeft = CODEGEN_PRIMARY_PROVIDERS.some((p) => !ignoreSet.has(p));
+  if (primariesLeft) for (const p of CODEGEN_LAST_RESORT_PROVIDERS) ignoreSet.add(p);
+  const ignore = Array.from(ignoreSet);
   const order = CODEGEN_PROVIDER_ORDER.filter((p) => !ignore.includes(p));
   return { order, allow_fallbacks: true, require_parameters: true, ignore };
 }
@@ -488,6 +497,25 @@ export function parseUsageObject(u: unknown): ParsedUsage | null {
 }
 
 /**
+ * Read a non-streamed body exactly once and return an equivalent Response
+ * whose body has not been consumed. A body read failure yields a clean 502
+ * Response instead of an unhandled exception downstream.
+ */
+export async function bufferedResponse(resp: Response): Promise<Response> {
+  if (!resp.body) return resp;
+  let text: string;
+  try {
+    text = await resp.text();
+  } catch (e) {
+    return new Response(
+      JSON.stringify({ error: { message: `response body unreadable: ${e instanceof Error ? e.message : String(e)}` } }),
+      { status: 502, headers: { "content-type": "application/json" } },
+    );
+  }
+  return new Response(text, { status: resp.status, statusText: resp.statusText, headers: resp.headers });
+}
+
+/**
  * Read `usage` out of a NON-STREAMED gateway response without consuming the
  * body the caller still needs. Streamed responses are metered by
  * `meterStream`, which parses the final SSE usage chunk in-flight.
@@ -499,7 +527,7 @@ async function usageFromResponse(
   if (body.stream === true) return null;
   if (!resp.ok) return null;
   try {
-    const json = (await resp.clone().json()) as { usage?: unknown; id?: string; provider?: string };
+    const json = JSON.parse(await resp.clone().text()) as { usage?: unknown; id?: string; provider?: string };
     const u = parseUsageObject(json?.usage);
     if (!u) return null;
     return { ...u, requestId: json.id ?? null, upstream: json.provider ?? null };
@@ -1135,12 +1163,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     /* no ambient turn */
   }
   const avoidAll = Array.from(new Set([...(opts.avoidUpstreams ?? []), ...turnFailed]));
-  if (
-    opts.feature === "generate" &&
-    Array.isArray(body.tools) &&
-    (body.tools as unknown[]).length > 0 &&
-    !body.provider
-  ) {
+  const isCodeWriting =
+    opts.codeOutput === true ||
+    (opts.feature === "generate" && Array.isArray(body.tools) && (body.tools as unknown[]).length > 0);
+  if (isCodeWriting && !body.provider) {
     body.provider = codegenProviderRouting(avoidAll);
   } else if (avoidAll.length && !body.provider) {
     body.provider = { ignore: avoidAll.map((a) => a.toLowerCase().replace(/\s+/g, "")) };
@@ -1154,7 +1180,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
 
   const t0 = Date.now();
-  const primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
+  let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
   const latency = Date.now() - t0;
   const effectiveProvider = provider;
   if (primary.status === 402) {
@@ -1184,6 +1210,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   if (!shouldRetry) {
     // Non-streamed calls carry their usage in the body (read from a clone).
     // Streamed calls are metered in-flight by `meterStream` onto this row.
+    // Non-streamed: buffer the body ONCE and hand the caller a fresh,
+    // unread Response. Reading a tee'd clone raced the caller's own read
+    // ("Body has already been read" in the design step).
+    if (body.stream !== true) primary = await bufferedResponse(primary);
     const usage = await usageFromResponse(primary, body);
     const rowId = recordTelemetry({
       feature: opts.feature,
@@ -1235,7 +1265,8 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
   const fallbackBody: Record<string, unknown> = { ...body, model: fallbackModel };
   const t1 = Date.now();
-  const retried = await dispatch(effectiveProvider, fallbackBody, opts.signal, opts.timeoutTier);
+  let retried = await dispatch(effectiveProvider, fallbackBody, opts.signal, opts.timeoutTier);
+  if (fallbackBody.stream !== true) retried = await bufferedResponse(retried);
   const retryLatency = Date.now() - t1;
   const retryUsage = await usageFromResponse(retried, fallbackBody);
 

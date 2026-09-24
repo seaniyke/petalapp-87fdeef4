@@ -3225,11 +3225,20 @@ Forbidden defaults
   if (isInitial) {
     try {
       const { buildGenerationUnits } = await import("@/server/requested-scope");
-      const units = buildGenerationUnits(lastUserText, plannedRoutes);
+      // The planner must size units against the ACTUAL first-unit output
+      // ceiling this turn will send — not an independent constant.
+      const firstUnitMaxOutput = completionBudget({
+        isInitial: true,
+        phase: "implement" as Phase,
+        hasVisionTurn: false,
+        multiEditIntent: false,
+        promptChars: lastUserText.length,
+      });
+      const units = buildGenerationUnits(lastUserText, plannedRoutes, { maxOutputTokens: firstUnitMaxOutput });
       for (const r of units.allRoutes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
       if (units.instruction) archetypeBlock += units.instruction;
       console.log(
-        `[generation-units] kind=${units.estimate.kind} estimatedOutput=${units.estimate.total} units=${units.unitCount} plan=${units.units.map((u, i) => `u${i + 1}[${u.routes.join(",")}]~${u.estimatedTokens}`).join(" ")}`,
+        `[generation-units] maxOutput=${firstUnitMaxOutput} safeBudget=${units.safeBudget} kind=${units.estimate.kind} estimatedOutput=${units.estimate.total} units=${units.unitCount} plan=${units.units.map((u, i) => `u${i + 1}[${u.routes.join(",")}]~${u.estimatedTokens}`).join(" ")}`,
       );
     } catch {
       /* never block a build on unit planning */
@@ -5267,8 +5276,26 @@ Forbidden defaults
               before: currentFiles,
               after: nextFiles,
               changedPaths: touched,
+              // A broken generated page is repaired (that file only, once,
+              // re-verified) instead of silently dropped.
+              repair: async (file, detail) => {
+                controller.enqueue(
+                  encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })),
+                );
+                const { repairBrokenFile } = await import("@/server/page-repair.server");
+                return repairBrokenFile(file, detail, {
+                  turnId: logicalTurnId,
+                  projectId: body.projectId ?? null,
+                  userId,
+                });
+              },
             });
             nextFiles = gate.files;
+            if (gate.repairedPaths?.length || gate.repairFailedPaths?.length) {
+              console.info(
+                `[write-gate] ai-repair repaired=${JSON.stringify(gate.repairedPaths ?? [])} failed=${JSON.stringify(gate.repairFailedPaths ?? [])}`,
+              );
+            }
             if (gate.healedPaths.length > 0) {
               console.info("[write-gate] healed at write time:", gate.healedPaths.join(", "));
             }
