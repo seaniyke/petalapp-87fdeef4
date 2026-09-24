@@ -59,57 +59,10 @@ function baseOf(path: string): string {
   return (path.split("/").pop() ?? path).replace(/\.(tsx?|jsx?)$/i, "");
 }
 
-function pascal(base: string): string {
-  return base
-    .split(/[-_.\s]+/)
-    .filter(Boolean)
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join("");
-}
 
-function exportedName(source: string, path: string): { name: string; isDefault: boolean } | null {
-  const def = source.match(/export\s+default\s+(?:function\s+)?([A-Z][A-Za-z0-9_]*)/);
-  if (def) return { name: def[1], isDefault: true };
-  if (/export\s+default\s/.test(source)) {
-    const name = pascal(baseOf(path));
-    if (/^[A-Za-z][A-Za-z0-9]*$/.test(name)) return { name, isDefault: true };
-  }
-  const named = source.match(/export\s+(?:async\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9_]*)/);
-  if (named) return { name: named[1], isDefault: false };
-  return null;
-}
 
-function propsFree(source: string, name: string): boolean {
-  const re = new RegExp(
-    `(?:function\\s+${name}\\s*\\(([^)]*)\\)|(?:const|let)\\s+${name}\\s*(?::[^=]+)?=\\s*(?:React\\.)?(?:memo\\s*\\(\\s*)?\\(([^)]*)\\)\\s*=>)`,
-  );
-  const m = source.match(re);
-  if (!m) return true;
-  const params = (m[1] ?? m[2] ?? "").trim();
-  if (!params) return true;
-  const inner = params.replace(/^\{/, "").replace(/\}\s*(:[\s\S]*)?$/, "");
-  const parts = inner.split(/,(?![^{[]*[}\]])/).map((p) => p.trim()).filter(Boolean);
-  return parts.every((p) => p.includes("=") || p.startsWith("..."));
-}
 
-function rank(base: string): number {
-  const b = base.toLowerCase();
-  if (/hero|banner|masthead/.test(b)) return 0;
-  if (/logo|social-proof|proof|trusted|stats/.test(b)) return 1;
-  if (/feature|benefit|service|product|catalog|row|list|menu|about|story|process|how/.test(b)) return 2;
-  if (/gallery|showcase|work|portfolio/.test(b)) return 3;
-  if (/testimonial|review|quote/.test(b)) return 4;
-  if (/pricing|plan/.test(b)) return 5;
-  if (/faq|question/.test(b)) return 6;
-  if (/cta|contact|newsletter|signup|subscribe/.test(b)) return 8;
-  return 7;
-}
 
-function routeFor(base: string): string {
-  const b = base.toLowerCase();
-  if (/^(index|home|landing|main|app)$/.test(b)) return "/";
-  return "/" + b.replace(/page$/i, "").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
-}
 
 
 export function ensureRenderableShell(
