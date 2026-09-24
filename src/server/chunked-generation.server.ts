@@ -193,9 +193,18 @@ export function assessRouteCoverage(args: {
    * a missing screen — so an unregistered route counts as not delivered.
    */
   routerSource?: string;
+  /**
+   * First builds: the unit is only complete when the app shell (src/App.tsx)
+   * with its home screen exists. A normal provider finish that wrote only
+   * theme/brand files is INCOMPLETE work, not success.
+   */
+  requireAppShell?: boolean;
 }): ChunkAssessment {
   const deliveredPaths = pathsOf(args);
   const emitted = deliveredPaths.length;
+  const shellMissing =
+    args.requireAppShell === true &&
+    ![...deliveredPaths, ...(args.existingPaths ?? [])].some((p) => /^src\/App\.(t|j)sx$/i.test(p));
 
   const routeFiles = [
     ...deliveredPaths,
@@ -231,12 +240,19 @@ export function assessRouteCoverage(args: {
   }
 
   const unique = Array.from(new Set(missing)).slice(0, 8);
+  const steps = unique.map(
+    (r) => `Build the "${r}" page as its own route file and link it from the nav and footer.`,
+  );
+  if (shellMissing) {
+    steps.unshift(
+      "Write src/App.tsx: the router with every requested page registered, the shared nav/footer, and the complete Home page.",
+    );
+  }
+  const incomplete = steps.length > 0;
   return {
-    needed: unique.length > 0 && emitted > 0,
-    reason: unique.length > 0 ? "coverage_incomplete" : "none",
-    remainingSteps: unique.map(
-      (r) => `Build the "${r}" page as its own route file and link it from the nav and footer.`,
-    ),
+    needed: incomplete && emitted > 0,
+    reason: incomplete ? "coverage_incomplete" : "none",
+    remainingSteps: steps,
     deliveredPaths,
   };
 }

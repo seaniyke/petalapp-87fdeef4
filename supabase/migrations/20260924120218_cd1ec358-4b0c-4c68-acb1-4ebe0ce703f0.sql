@@ -1,0 +1,1 @@
+ALTER TABLE public.ai_call_log ADD COLUMN IF NOT EXISTS usage_state text CHECK (usage_state IS NULL OR usage_state IN ('usage_confirmed','usage_estimated','usage_unknown'));

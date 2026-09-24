@@ -29,6 +29,11 @@ export interface TurnContext {
   signal?: AbortSignal | null;
   /** Set when the attempt's response has finished. */
   ended?: boolean;
+  /** AUTHORITATIVE per-turn exclusion set. An upstream that stalled, errored
+   *  or returned an empty stream for this generation turn is never picked
+   *  again by ANY later call in the same turn (retry, recovery, continuation,
+   *  missing-page follow-up, repair). A fresh user turn starts empty. */
+  failedUpstreams?: Set<string>;
 }
 
 let storage: AsyncLocalStorage<TurnContext> | null = null;
@@ -51,4 +56,23 @@ export function currentTurnContext(): TurnContext {
   } catch {
     return {};
   }
+}
+
+/** Normalise an OpenRouter upstream name to its routing slug. */
+export function upstreamSlug(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, "");
+}
+
+/** Mark an upstream as failed for the given (or current) turn. */
+export function markUpstreamFailed(upstream: string | null | undefined, ctx?: TurnContext): void {
+  if (!upstream) return;
+  const c = ctx ?? currentTurnContext();
+  if (!c || Object.keys(c).length === 0) return;
+  (c.failedUpstreams ??= new Set()).add(upstreamSlug(upstream));
+}
+
+/** Upstreams excluded for the current turn. */
+export function failedUpstreamsForTurn(ctx?: TurnContext): string[] {
+  const c = ctx ?? currentTurnContext();
+  return c?.failedUpstreams ? Array.from(c.failedUpstreams) : [];
 }

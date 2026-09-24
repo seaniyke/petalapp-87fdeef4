@@ -114,6 +114,7 @@ export type Database = {
           total_tokens: number | null
           turn_id: string | null
           upstream_provider: string | null
+          usage_state: string | null
           user_id: string | null
         }
         Insert: {
@@ -158,6 +159,7 @@ export type Database = {
           total_tokens?: number | null
           turn_id?: string | null
           upstream_provider?: string | null
+          usage_state?: string | null
           user_id?: string | null
         }
         Update: {
@@ -202,6 +204,7 @@ export type Database = {
           total_tokens?: number | null
           turn_id?: string | null
           upstream_provider?: string | null
+          usage_state?: string | null
           user_id?: string | null
         }
         Relationships: []

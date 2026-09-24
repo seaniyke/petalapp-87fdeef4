@@ -521,6 +521,7 @@ function usageColumns(u: ParsedUsage, model: string | null): Record<string, unkn
     cols.cost_usd_micro = Math.round(u.costUsd * 1_000_000);
     cols.cost_basis = "actual";
     cols.cost_source = "provider";
+    cols.usage_state = "usage_confirmed";
   } else {
     const c = estimateCostUsdMicro(model, u.promptTokens, u.completionTokens);
     if (c != null) {
@@ -528,6 +529,7 @@ function usageColumns(u: ParsedUsage, model: string | null): Record<string, unkn
       cols.cost_basis = "estimated";
       cols.cost_source = "price_table";
     }
+    cols.usage_state = "usage_estimated";
   }
   return cols;
 }
@@ -652,7 +654,18 @@ function meterStream(
   const decoder = new TextDecoder();
   let buf = "";
   let last: ParsedUsage | null = null;
-  let requestId: string | null = null;
+  // Header fallback: a stream that dies after one frame may never surface a
+  // parsable id in the body, which left stalled calls with no usage lookup.
+  let requestId: string | null =
+    resp.headers.get("x-generation-id") ?? resp.headers.get("x-request-id") ?? null;
+  // Captured at creation: stream callbacks may run outside the turn's
+  // AsyncLocalStorage scope, but the context object is shared by reference.
+  let turnCtx: import("@/server/turn-context.server").TurnContext | null = null;
+  void import("@/server/turn-context.server")
+    .then((m) => {
+      turnCtx = m.currentTurnContext();
+    })
+    .catch(() => {});
   let upstream: string | null = null;
   let finishReason: string | null = null;
   // Stream health: "progress" = a frame that carries model output (text,
@@ -705,6 +718,14 @@ function meterStream(
     // failure, not a success — record it as such.
     const outcome =
       rawOutcome === "completed" && firstTokenAt == null ? (streamError ? "errored" : "empty") : rawOutcome;
+    if ((outcome === "stalled" || outcome === "empty" || outcome === "errored") && upstream && turnCtx) {
+      try {
+        const { markUpstreamFailed } = await import("@/server/turn-context.server");
+        markUpstreamFailed(upstream, turnCtx);
+      } catch {
+        /* ignore */
+      }
+    }
     let u = last as ParsedUsage | null;
     // Stalled / cancelled / empty streams never deliver the final usage
     // chunk, but the provider still bills them. Read the real numbers from
@@ -717,8 +738,11 @@ function meterStream(
       await supabaseAdmin
         .from("ai_call_log")
         .update({
-          ...(u ? usageColumns(u, model) : {}),
+          // Honest accounting: no usage from the provider is recorded as
+          // UNKNOWN — never as zero tokens or a free call.
+          ...(u ? usageColumns(u, model) : { usage_state: "usage_unknown" }),
           ...(u && !last && u.costUsd != null ? { cost_source: "provider_generation" } : {}),
+          ...(!u ? { cost_source: "unknown" } : {}),
           ...(requestId ? { request_id: requestId } : {}),
           ...(upstream ? { upstream_provider: upstream } : {}),
           ...(streamError ? { error_message: streamError } : {}),
@@ -1101,15 +1125,25 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   }
   // Primary code generation: DeepInfra first, reliable fallbacks, never
   // DigitalOcean/NextBit. Scoped to "generate" tool calls only.
+  // One authoritative per-turn exclusion set: every upstream that already
+  // failed in this turn is avoided by EVERY later call, whatever path makes it.
+  let turnFailed: string[] = [];
+  try {
+    const { failedUpstreamsForTurn } = await import("@/server/turn-context.server");
+    turnFailed = failedUpstreamsForTurn();
+  } catch {
+    /* no ambient turn */
+  }
+  const avoidAll = Array.from(new Set([...(opts.avoidUpstreams ?? []), ...turnFailed]));
   if (
     opts.feature === "generate" &&
     Array.isArray(body.tools) &&
     (body.tools as unknown[]).length > 0 &&
     !body.provider
   ) {
-    body.provider = codegenProviderRouting(opts.avoidUpstreams ?? []);
-  } else if (opts.avoidUpstreams?.length && !body.provider) {
-    body.provider = { ignore: opts.avoidUpstreams.map((a) => a.toLowerCase().replace(/\s+/g, "")) };
+    body.provider = codegenProviderRouting(avoidAll);
+  } else if (avoidAll.length && !body.provider) {
+    body.provider = { ignore: avoidAll.map((a) => a.toLowerCase().replace(/\s+/g, "")) };
   }
   const streamExtra = {
     fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
