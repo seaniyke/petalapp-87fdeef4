@@ -636,6 +636,9 @@ function meterStream(
         choices?: Array<{ delta?: Record<string, unknown>; finish_reason?: unknown }>;
       };
       if (j.provider) upstream = j.provider;
+      if (typeof j.id === "string" && j.id) requestId = requestId ?? j.id;
+      const errObj = (j as { error?: unknown }).error;
+      if (errObj) streamError = JSON.stringify(errObj).slice(0, 500);
       const ch = j.choices?.[0];
       if (typeof ch?.finish_reason === "string") finishReason = ch.finish_reason;
       if (ch?.delta && streamDeltaHasOutput(ch.delta)) {
@@ -652,12 +655,24 @@ function meterStream(
       /* partial / non-JSON line */
     }
   };
-  const finish = async (outcome: "completed" | "stalled" | "cancelled" | "errored", stallMs: number | null) => {
+  let streamError: string | null = null;
+  const finish = async (
+    rawOutcome: "completed" | "stalled" | "cancelled" | "errored",
+    stallMs: number | null,
+  ) => {
     if (written) return;
     written = true;
     if (buf) scan(buf);
     const end = Date.now();
-    const u = last as ParsedUsage | null;
+    // A stream that "completed" without a single output frame is a provider
+    // failure, not a success — record it as such.
+    const outcome =
+      rawOutcome === "completed" && firstTokenAt == null ? (streamError ? "errored" : "empty") : rawOutcome;
+    let u = last as ParsedUsage | null;
+    // Stalled / cancelled / empty streams never deliver the final usage
+    // chunk, but the provider still bills them. Read the real numbers from
+    // OpenRouter's generation record instead of leaving tokens/cost unknown.
+    if (!u && requestId) u = await fetchGenerationUsage(requestId);
     try {
       const id = await rowId;
       if (!id) return;
@@ -666,8 +681,10 @@ function meterStream(
         .from("ai_call_log")
         .update({
           ...(u ? usageColumns(u, model) : {}),
+          ...(u && !last && u.costUsd != null ? { cost_source: "provider_generation" } : {}),
           ...(requestId ? { request_id: requestId } : {}),
           ...(upstream ? { upstream_provider: upstream } : {}),
+          ...(streamError ? { error_message: streamError } : {}),
           first_token_ms: firstTokenAt != null ? firstTokenAt - startedAt : null,
           last_token_ms: lastTokenAt != null ? lastTokenAt - startedAt : null,
           stream_total_ms: end - startedAt,
