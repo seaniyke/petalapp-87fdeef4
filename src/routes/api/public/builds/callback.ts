@@ -324,9 +324,26 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         verification.ok = verification.defects.length === 0;
       }
     }
-    if (!edgeNoiseOnly && partitioned.blocking.length > 0) {
+    // Incomplete generation (an import-resolver stand-in still saved) can
+    // never be ready, whatever the browser saw.
+    const { count: placeholderCount } = await supabaseAdmin
+      .from("project_files")
+      .select("path", { count: "exact", head: true })
+      .eq("project_id", payload.projectId)
+      .like("content", "%Auto-generated stub by % import-resolver%");
+    const { decideBuildStatus } = await import("@/lib/build-status");
+    const decision = decideBuildStatus({
+      built: true,
+      deployProbeOk: true,
+      blockingDefects: partitioned.blocking,
+      blockingIsEdgeNoiseOnly: edgeNoiseOnly,
+      hasPlaceholderFiles: (placeholderCount ?? 0) > 0,
+    });
+    if (decision.status === "failed") {
       const message = [
-        "The deployment completed, but Kimble's browser check found a runtime failure.",
+        decision.reason === "incomplete generation"
+          ? "The deployment completed, but the app is incomplete — some files are missing."
+          : "The deployment completed, but Kimble's browser check found a runtime failure.",
         ...partitioned.blocking.slice(0, 8).map((defect) => `- ${defect}`),
         "Kimble kept the previous healthy preview live.",
       ].join("\n");
