@@ -7044,6 +7044,11 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
               terminalStatus = "failed";
               terminalError = (failure.raw || failure.message).slice(0, 500);
             } else {
+              // An error the user sees ends the turn as failed — never "succeeded".
+              if (failure) {
+                terminalStatus = "failed";
+                terminalError = (failure.raw || failure.message).slice(0, 500);
+              }
               // Keep pushing even after the client is gone: the bytes still go
               // to the turn recorder, which is what a reconnecting tab replays.
               push(encoder.encode(block));
