@@ -5728,6 +5728,22 @@ Forbidden defaults
           }
         }
 
+        // Dependency closure: every package the bundled import graph needs
+        // (kit files included) must be in package.json. Adds only.
+        {
+          const { missingReachableDeps, addMissingDeps } = await import("@/server/engine/deps");
+          const pkgFile = nextFiles.find((f) => f.path === "package.json");
+          const missing = pkgFile ? missingReachableDeps(nextFiles) : [];
+          if (pkgFile && missing.length) {
+            try {
+              pkgFile.content = addMissingDeps(pkgFile.content, missing);
+              console.log(`[deps-closure] added ${missing.join(", ")}`);
+            } catch (e) {
+              console.warn("[deps-closure] could not patch package.json:", e);
+            }
+          }
+        }
+
         // Tier 2.46 — deterministic strip of npm-confirmed-hallucinated
         // imports. We do this BEFORE continuation/esbuild so the parse
         // tier doesn't trip on identifiers that point at packages the
