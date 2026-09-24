@@ -24,23 +24,65 @@ export interface WriteResult {
   calls: number;
 }
 
-export function pageInstruction(page: PlannedPage, deliveredPaths: string[]): string {
+/** The project's real technical substrate, handed to every writer so it
+ *  never invents packages, primitives or routing APIs. Deterministic. */
+export function projectContract(files: ProjectFile[]): string {
+  let deps: string[] = [];
+  try {
+    const pkg = JSON.parse(files.find((f) => f.path === "package.json")?.content ?? "{}");
+    deps = Object.keys({ ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) }).sort();
+  } catch { deps = []; }
+  const ui = files
+    .map((f) => /^src\/components\/ui\/([^/]+)\.tsx$/.exec(f.path)?.[1])
+    .filter((x): x is string => !!x)
+    .sort();
+  const hasRouter = files.some((f) => f.path === "src/components/ui/router.tsx");
   return [
-    `Write ONLY the page for route "${page.route}" as ${page.file} (default export). One file in this call — nothing else.`,
-    "Make it a complete, polished page with real content, using the existing design system, brand and shared components. Put every section of this page inline in this ONE file — do not create new component, style or config files.",
-    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
-    "No extra pages.",
-  ].join("\n");
+    `Installed packages (import ONLY these, nothing else): ${deps.join(", ") || "none listed"}.`,
+    ui.length ? `UI primitives available at @/components/ui/<name>: ${ui.join(", ")}. Do not import any other @/components/ui path.` : "",
+    hasRouter ? `Routing: import Link/NavLink/Routes/Route/useLocation from "@/components/ui/router" — never from "react-router-dom".` : "",
+    "Icons: lucide-react only, and import every icon you use. Page titles/meta: set document.title in an effect — no helmet libraries.",
+  ].filter(Boolean).join("\n");
 }
 
-export function routerInstruction(pages: PlannedPage[], deliveredPaths: string[]): string {
+/** Files owned by the shared frame — page calls never write these. */
+export function sharedFiles(files: ProjectFile[], pages: PlannedPage[]): string[] {
+  const pageFiles = new Set(pages.map((p) => p.file));
+  return files
+    .map((f) => f.path)
+    .filter((p) => !pageFiles.has(p) && (p === "src/App.tsx" || p === "src/styles.css" || p === "index.html" || p === "package.json" || /^src\/components\/(sections|layout|brand)/.test(p) || /brand-mark|nav|header|footer/i.test(p)));
+}
+
+export function pageInstruction(page: PlannedPage, deliveredPaths: string[], contract = "", shared: string[] = []): string {
   return [
-    "Write ONLY src/App.tsx. One file in this call — nothing else.",
-    `It must route exactly these pages: ${pages.map((p) => `"${p.route}" -> ${p.file}`).join(", ")}.`,
-    "Wrap every route in the shared layout (existing header/nav and footer components) so every page is reachable from the navigation.",
+    `You are writing the "${page.route}" page ONLY.`,
+    `WRITE SCOPE: exactly one file, ${page.file} (default export). Nothing else.`,
+    `READ SCOPE: the existing project files listed below. The shared frame (layout, header, footer, colours, logo, router, package.json) already exists and is owned by the frame — do NOT recreate, restyle or modify it${shared.length ? ` (${shared.join(", ")})` : ""}. The page renders inside that frame, so do not add its own header or footer.`,
+    "Make it a complete, polished page with real content, using the existing design system and brand. Put every section of this page inline in this ONE file — do not create new component, style or config files.",
+    contract,
     `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
     "No extra pages.",
-  ].join("\n");
+  ].filter(Boolean).join("\n");
+}
+
+export function routerInstruction(pages: PlannedPage[], deliveredPaths: string[], contract = ""): string {
+  return [
+    "You own the SHARED FRAME. Write ONLY src/App.tsx. One file in this call — nothing else.",
+    `It must route exactly these pages: ${pages.map((p) => `"${p.route}" -> ${p.file}`).join(", ")}.`,
+    "It must contain the shared layout every page renders inside: a header with the brand and navigation to every page, and a footer. Use existing header/nav/footer components from the list below if present; otherwise define them inside src/App.tsx.",
+    contract,
+    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
+    "No extra pages.",
+  ].filter(Boolean).join("\n");
+}
+
+/** Deterministic frame check: the app file exists and carries a layout
+ *  (navigation + footer) and a router. Colours and package.json alone are
+ *  not a frame. */
+export function frameIsComplete(files: ProjectFile[]): boolean {
+  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+  if (!app.trim() || isPlaceholderFile(app)) return false;
+  return /<Routes\b|createBrowserRouter|<Route\b/.test(app) && /nav|header/i.test(app) && /footer/i.test(app);
 }
 
 /** The file a WRITE call is asked for (used to keep only that file). */
@@ -82,7 +124,9 @@ export async function writePlannedPages(args: {
   };
   const writePages = async (pages: PlannedPage[]) => {
     const paths = files.map((f) => f.path);
-    const results = await Promise.all(pages.map((p) => call(pageInstruction(p, paths))));
+    const contract = projectContract(files);
+    const shared = sharedFiles(files, args.pages);
+    const results = await Promise.all(pages.map((p) => call(pageInstruction(p, paths, contract, shared))));
     results.forEach(put);
   };
 
@@ -97,8 +141,11 @@ export async function writePlannedPages(args: {
   // Judge registration only for pages that exist — a missing page is not a
   // router problem and must not trigger a router call.
   const routes = args.pages.filter((p) => hasRealPage(files, p.file)).map((p) => p.route);
-  if (routes.length && !assessCompleteness({ requestedRoutes: routes, files }).complete && args.budget.take("missing_page", "app shell")) {
-    put(await call(routerInstruction(args.pages, files.map((f) => f.path))));
+  // The frame is authoritative: it runs when the router is incomplete OR
+  // the shell call didn't deliver a real layout (colours alone aren't one).
+  const needFrame = !frameIsComplete(files) || (routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete);
+  if (needFrame && args.budget.take("missing_page", "app shell")) {
+    put(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
   }
 
   const missing = args.pages.filter((p) => !hasRealPage(files, p.file)).map((p) => p.route);
