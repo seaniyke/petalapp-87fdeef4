@@ -4521,7 +4521,10 @@ Forbidden defaults
               // `update` instead of a `replace` whose snippet never matched).
               // A no-op (already-true) change needs no rework: nothing the
               // user asked for was lost, so no second model call.
-              const needsRework = verdict.rejections.some((r) => !r.silent);
+              // Exception: if EVERY op was a no-op, the model did nothing the
+              // user asked for — give it one chance to do the rest.
+              const allNoOp = verdict.ops.length === 0 && verdict.rejections.every((r) => r.silent);
+              const needsRework = allNoOp || verdict.rejections.some((r) => !r.silent);
               const reworked = !needsRework ? [] : await requestOpRepair({
                 problem: "critic_rejection",
                 refused: verdict.rejections.map((r) => ({
@@ -4530,6 +4533,9 @@ Forbidden defaults
                   reason: r.reason,
                 })),
                 constraint:
+                  (allNoOp
+                    ? "Every change you emitted was already true in the file. Skip parts that are already done and emit only the parts of the request that are NOT yet true. "
+                    : "") +
                   "Never elide code with comments like `// ... rest unchanged`, never blank a file, and never emit a no-op. Use `replace` ops whose search text is copied verbatim from the current file (large files only accept `replace`); emit a full-file `update` only for a small file.",
               });
               if (reworked.length > 0) {
