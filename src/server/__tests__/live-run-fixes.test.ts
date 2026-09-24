@@ -161,3 +161,27 @@ describe("final done state is authoritative", () => {
     expect(outcomeFailsTurn(block("applied"))).toBe(false);
   });
 });
+
+import { missingReachableDeps, addMissingDeps } from "@/server/engine/deps";
+describe("dependency closure follows the real import graph", () => {
+  const files = [
+    f("package.json", JSON.stringify({ dependencies: { react: "1", "react-dom": "1" } })),
+    f("src/main.tsx", 'import App from "./App";'),
+    f("src/App.tsx", 'import Home from "@/pages/Home";'),
+    f("src/pages/Home.tsx", 'import { SlideUp } from "@/components/motion";'),
+    f("src/components/motion/index.ts", 'export * from "./slide-up";'),
+    f("src/components/motion/slide-up.tsx", 'import { motion } from "framer-motion";'),
+    f("src/components/ui/command.tsx", 'import { Command } from "cmdk";'),
+  ];
+  it("finds a kit package pulled in by a page (the live framer-motion failure)", () => {
+    expect(missingReachableDeps(files)).toEqual(["framer-motion"]);
+  });
+  it("ignores unreachable kit files", () => {
+    expect(missingReachableDeps(files)).not.toContain("cmdk");
+  });
+  it("only ever adds dependencies", () => {
+    const out = JSON.parse(addMissingDeps(files[0]!.content, ["framer-motion"]));
+    expect(out.dependencies.react).toBe("1");
+    expect(out.dependencies["framer-motion"]).toBeTruthy();
+  });
+});

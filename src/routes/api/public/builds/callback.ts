@@ -468,6 +468,44 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       ? `${payload.errorMessage}\n\n--- logs ---\n${payload.logs}`
       : payload.errorMessage;
 
+    // BUILD FAILURE RECOVERY (bounded, deterministic): an import of a real
+    // package that package.json doesn't list is fixed by adding the package
+    // and rebuilding ONCE (shares the build's single retry claim). No AI.
+    {
+      const pkgs = Array.from(message.matchAll(/failed to resolve import ["']([^"'./][^"']*)["']/gi))
+        .map((m) => (m[1]!.startsWith("@") ? m[1]!.split("/").slice(0, 2).join("/") : m[1]!.split("/")[0]!))
+        .filter((p) => !p.startsWith("@/"));
+      if (!payload.verification && pkgs.length) {
+        try {
+          const { data: row } = await supabaseAdmin
+            .from("project_files")
+            .select("content")
+            .eq("project_id", payload.projectId)
+            .eq("path", "package.json")
+            .maybeSingle();
+          if (row?.content) {
+            const { addMissingDeps } = await import("@/server/engine/deps");
+            const next = addMissingDeps(row.content as string, Array.from(new Set(pkgs)));
+            if (next !== row.content) {
+              await supabaseAdmin
+                .from("project_files")
+                .update({ content: next })
+                .eq("project_id", payload.projectId)
+                .eq("path", "package.json");
+              const { retryStalledBuild } = await import("@/server/build-retry.server");
+              const res = await retryStalledBuild(payload.buildId, { minStuckMs: 0, source: "callback-missing-dep" });
+              console.warn(`[build-recovery] added ${pkgs.join(",")} → ${res.outcome}`);
+              if (res.outcome === "retried" || res.outcome === "already_claimed") {
+                return new Response("ok", { status: 200 });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[build-recovery] missing-dependency rebuild failed", err);
+        }
+      }
+    }
+
     // Infrastructure failures (hosting edge unreachable, upstream timeout,
     // Cloudflare 5xx) have nothing to do with the user's app. Never surface
     // them: re-run the identical build immediately and silently while the
