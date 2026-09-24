@@ -5231,7 +5231,7 @@ Forbidden defaults
         // so the real verify → one targeted repair → verify path can be
         // measured. Never active in a production build.
         if (import.meta.env.DEV && (body as { testFault?: string }).testFault === "syntax" && !isInitial) {
-          const victim = diffChangedPaths(turnBaselineFiles, nextFiles).find((p) => /\.tsx$/.test(p));
+          const victim = diffChangedPaths(turnBaselineFiles, nextFiles).find((p) => /\.tsx$/.test(p) && !isVerifierExempt(p));
           if (victim) {
             nextFiles = nextFiles.map((f) => {
               if (f.path !== victim) return f;
