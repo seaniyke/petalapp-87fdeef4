@@ -18,6 +18,7 @@ export default defineConfig({
       "src/server/__tests__/codegen-routing.test.ts",
       "src/server/__tests__/requested-scope.test.ts",
       "src/server/__tests__/build-cleanup-scope.test.ts",
+      "src/server/__tests__/stream-continuation.test.ts",
       "src/server/__tests__/generation-sizing.test.ts",
       "src/server/__tests__/verify-scope.test.ts",
       "src/server/__tests__/edit-boundary.test.ts",
