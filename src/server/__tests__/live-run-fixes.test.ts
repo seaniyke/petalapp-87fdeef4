@@ -79,7 +79,7 @@ describe("page writer contract", () => {
   });
   it("is told its write scope and that shared files are off-limits", () => {
     const i = pageInstruction({ route: "/", file: "src/pages/Home.tsx" }, [], projectContract(files), ["src/styles.css"]);
-    expect(i).toContain("WRITE SCOPE: exactly one file, src/pages/Home.tsx");
+    expect(i).toContain("WRITE SCOPE: exactly one file — write the page as src/pages/Home.tsx");
     expect(i).toMatch(/do NOT recreate/);
     expect(i).toContain("src/styles.css");
   });

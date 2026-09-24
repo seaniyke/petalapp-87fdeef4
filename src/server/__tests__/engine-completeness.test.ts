@@ -6,7 +6,7 @@ import { resolveProviderRouting } from "@/server/engine/provider-policy";
 
 const app = (routes: string[]) => ({
   path: "src/App.tsx",
-  content: routes.map((r) => `<Route path="${r}" />`).join("\n"),
+  content: `<header><nav/></header><Routes>\n${routes.map((r) => `<Route path="${r}" />`).join("\n")}\n</Routes><footer/>`,
 });
 const requested = ["/", "/menu", "/about", "/contact"];
 const pages = requested.map((route) => ({ route, file: pageFileFor(route) }));

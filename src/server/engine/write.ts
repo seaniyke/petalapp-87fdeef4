@@ -56,7 +56,7 @@ export function sharedFiles(files: ProjectFile[], pages: PlannedPage[]): string[
 export function pageInstruction(page: PlannedPage, deliveredPaths: string[], contract = "", shared: string[] = []): string {
   return [
     `You are writing the "${page.route}" page ONLY.`,
-    `WRITE SCOPE: exactly one file, ${page.file} (default export). Nothing else.`,
+    `WRITE SCOPE: exactly one file — write the page as ${page.file} (default export). Nothing else.`,
     `READ SCOPE: the existing project files listed below. The shared frame (layout, header, footer, colours, logo, router, package.json) already exists and is owned by the frame — do NOT recreate, restyle or modify it${shared.length ? ` (${shared.join(", ")})` : ""}. The page renders inside that frame, so do not add its own header or footer.`,
     "Make it a complete, polished page with real content, using the existing design system and brand. Put every section of this page inline in this ONE file — do not create new component, style or config files.",
     contract,
