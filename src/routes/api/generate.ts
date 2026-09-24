@@ -1268,6 +1268,8 @@ async function structuredRetryCompletion(args: {
     tools: [args.tool],
     tool_choice: { type: "function", function: { name: args.tool.function.name } },
     max_tokens: args.maxTokens,
+    // Retries/continuations must spend their budget on code, not thinking.
+    reasoning: { enabled: false },
     stream: true,
   };
 
@@ -3575,7 +3577,14 @@ Forbidden defaults
   // "deep" preset enables extended reasoning on the gateway. Models
   // that don't support `reasoning` simply ignore the field, so this
   // is safe to send unconditionally for deep turns.
-  const reasoningField = preset === "deep" ? { reasoning: { effort: "high" as const } } : {};
+  // Every other turn sends reasoning OFF explicitly. Measured 2026-09-24:
+  // with the field omitted the code model thinks by default, and two
+  // Rise & Crumb first builds spent all 18,000 completion tokens on hidden
+  // reasoning (reasoning_tokens=18000, finish=length) and emitted zero code.
+  const reasoningField =
+    preset === "deep"
+      ? { reasoning: { effort: "high" as const } }
+      : { reasoning: { enabled: false } };
 
   // Tier 7 — context-budget pre-check. Estimate the input token cost
   // of the assembled messages and, if it exceeds the chosen model's
