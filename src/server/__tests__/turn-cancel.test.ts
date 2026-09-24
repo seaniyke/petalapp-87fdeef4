@@ -96,10 +96,10 @@ describe("A. Stop cancels the backend turn", () => {
   it("the generate pipeline registers the controller and checks Stop before pages, images and billing", () => {
     const src = readFileSync("src/routes/api/generate.ts", "utf8");
     expect(src).toContain("registerTurnController(recorder.turnId, workController)");
-    const pages = src.indexOf('assertTurnActive(turnId, abortSignal, "page writing")');
-    const settle = src.indexOf("claimTurnCommit(turnId, abortSignal)");
+    const pages = src.indexOf('assertActive(turnId, abortSignal, "page writing")');
+    const settle = src.indexOf("claimCommit(turnId, abortSignal)");
     expect(pages).toBeGreaterThan(0);
-    expect(src.indexOf('assertTurnActive(turnId, abortSignal, "images")')).toBeGreaterThan(0);
+    expect(src.indexOf('assertActive(turnId, abortSignal, "images")')).toBeGreaterThan(0);
     expect(pages).toBeLessThan(src.indexOf("await writePlannedPages("));
     expect(settle).toBeLessThan(src.indexOf('"settle_build_charge"'));
     expect(settle).toBeLessThan(src.indexOf('"replace_project_files"'));
