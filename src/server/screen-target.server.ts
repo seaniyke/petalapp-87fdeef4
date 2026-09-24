@@ -61,3 +61,31 @@ export function findScreenTargets(prompt: string, paths: string[]): string[] {
   hits.sort((a, b) => b.score - a.score);
   return hits.slice(0, 3).map((h) => h.path);
 }
+
+/**
+ * A page target's own content sections (Hero, Features…) are part of that
+ * page's write scope; shared chrome (header, nav, footer) is not unless the
+ * request names it.
+ */
+export function expandPageSections(
+  prompt: string,
+  targets: string[],
+  files: Array<{ path: string; content: string }>,
+): string[] {
+  const text = (prompt ?? "").toLowerCase();
+  const chromeNamed = /\b(header|nav|navbar|navigation|menu|footer)\b/.test(text);
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const out = new Set(targets);
+  for (const t of targets) {
+    if (!/^src\/(pages|routes)\//.test(t)) continue;
+    const src = byPath.get(t) ?? "";
+    for (const m of src.matchAll(/from\s+["']@\/(components\/sections\/[^"']+)["']/g)) {
+      const base = `src/${m[1]}`;
+      const path = [".tsx", ".ts", ".jsx"].map((e) => base + e).find((p) => byPath.has(p));
+      if (!path) continue;
+      if (!chromeNamed && /(header|nav|footer)/i.test(path.split("/").pop()!)) continue;
+      out.add(path);
+    }
+  }
+  return Array.from(out);
+}

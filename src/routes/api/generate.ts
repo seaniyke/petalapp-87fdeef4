@@ -2758,10 +2758,14 @@ Forbidden defaults
   // Plain-words screen match ("the sign-in form", "the home page") — finds the
   // target without an AI round trip, so the Inspector rarely has to run.
   if (!isInitial && !isCrossCutting) {
-    const { findScreenTargets } = await import("@/server/screen-target.server");
-    const screen = findScreenTargets(lastUserContent, editablePromptFiles.map((f) => f.path));
+    const { findScreenTargets, expandPageSections } = await import("@/server/screen-target.server");
+    const screen = expandPageSections(
+      lastUserContent,
+      findScreenTargets(lastUserContent, editablePromptFiles.map((f) => f.path)),
+      editablePromptFiles,
+    );
     if (screen.length > 0) {
-      editTargetPaths = Array.from(new Set([...screen, ...editTargetPaths])).slice(0, 4);
+      editTargetPaths = Array.from(new Set([...screen, ...editTargetPaths])).slice(0, 8);
       console.info(`[screen-target] ${screen.join(", ")}`);
     }
   }
