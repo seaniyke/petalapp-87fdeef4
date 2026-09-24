@@ -29,7 +29,7 @@ const PETAL_BADGE_HTML = `
     if (document.getElementById('petal-badge')) return;
     var a = document.createElement('a');
     a.id = 'petal-badge';
-    a.href = 'https://kimble.cloud?utm_source=petal_badge';
+    a.href = 'https://kimble.cloud?utm_source=kimble_badge';
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
     a.setAttribute('aria-label', 'Built with Kimble');
