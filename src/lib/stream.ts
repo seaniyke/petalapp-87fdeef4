@@ -634,3 +634,46 @@ export async function streamResumeTurn(
   }
   return false;
 }
+
+/**
+ * Stale-event guard. Wraps every handler so it only runs while `isCurrent()`
+ * is true — i.e. the turn these handlers were created for is still the
+ * active turn in this tab. A delayed callback from Turn A can then never
+ * mutate Turn B's activity UI. Server events are untouched (they stay
+ * persisted); only the current tab's UI ignores them.
+ */
+export function guardHandlers(handlers: Handlers, isCurrent: () => boolean): Handlers {
+  const out: Record<string, unknown> = {};
+  for (const [key, fn] of Object.entries(handlers)) {
+    out[key] =
+      typeof fn === "function"
+        ? (...args: unknown[]) => {
+            if (!isCurrent()) return undefined;
+            return (fn as (...a: unknown[]) => unknown)(...args);
+          }
+        : fn;
+  }
+  return out as Handlers;
+}
+
+export type CancelTurnResult =
+  | { state: "cancelled" }
+  | { state: "already_finished"; status: string }
+  | { state: "unconfirmed" };
+
+/** Ask the server to stop exactly this turn. Never throws. */
+export async function cancelTurn(turnId: string): Promise<CancelTurnResult> {
+  try {
+    const token = await getSupabaseAccessToken();
+    if (!token) return { state: "unconfirmed" };
+    const resp = await fetch(`/api/turns/${turnId}/cancel`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) return { state: "unconfirmed" };
+    const json = (await resp.json()) as { cancelled?: boolean; status?: string };
+    return json.cancelled ? { state: "cancelled" } : { state: "already_finished", status: json.status ?? "unknown" };
+  } catch {
+    return { state: "unconfirmed" };
+  }
+}
