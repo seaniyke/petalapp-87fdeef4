@@ -16,6 +16,7 @@ export default defineConfig({
       "src/server/__tests__/openrouter-only.test.ts",
       "src/server/__tests__/utility-model-tier.test.ts",
       "src/server/__tests__/codegen-routing.test.ts",
+      "src/server/__tests__/requested-scope.test.ts",
       "src/server/__tests__/verify-scope.test.ts",
       "src/server/__tests__/edit-boundary.test.ts",
       "src/server/__tests__/direct-execution-contract.test.ts",
