@@ -725,12 +725,12 @@ export function renderTemplatePlanBlock(key: TemplateKey): string {
   })();
   return (
     `\n\n### App Template (committed before this build — execute it)\n` +
-    `Scope this MVP as a "${t.key}" app: ${t.description}\n` +
-    `- Routes to scaffold (use these paths exactly): ${t.routes.join(", ")}\n` +
+    `Style reference: a "${t.key}"-style product (${t.description})\n` +
+    `- Scope rule: build ONLY the pages, forms and features the user asked for. This template shapes style and layout — it never adds pages, routes, forms or workflows.\n` +
     `- Lean on these kit blocks where possible: ${t.blocks.join(", ")}\n` +
-    `- Features the user almost certainly wants:\n${t.features.map((f) => `  - ${f}`).join("\n")}\n` +
+    `- Patterns that may fit (only if they serve something the user asked for):\n${t.features.map((f) => `  - ${f}`).join("\n")}\n` +
     `- Asset plan: ${assetPlan}.\n` +
-    `- Before coding, privately map every route above to: its purpose, dominant content, primary action, required states, shared data source, desktop composition, and mobile transformation. Then implement that map; do not emit the private plan.\n` +
+    `- Before coding, privately map every page you are building to: its purpose, dominant content, primary action, required states, shared data source, desktop composition, and mobile transformation. Then implement that map; do not emit the private plan.\n` +
     `- Cross-page coherence: repeated entities must keep the same names, images, prices/statuses and facts across cards, detail screens, dashboards and checkout.\n` +
     `Do NOT mention the template name in any user-facing copy or comment. The user should never see the word "${t.key}".\n`
   );

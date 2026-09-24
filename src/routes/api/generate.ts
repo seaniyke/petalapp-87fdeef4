@@ -3181,6 +3181,18 @@ Forbidden defaults
         );
         narrowed = true;
       }
+      // Requested scope is authoritative: a template may never add pages the
+      // user did not ask for (Rise & Crumb: "bakery" → /reservations).
+      {
+        const { narrowRoutesToRequest } = await import("@/server/requested-scope");
+        const scoped = narrowRoutesToRequest(lastUserText, composed.blueprint.routes, {
+          marketing: detectedWebSubtype === "marketing",
+        });
+        if (scoped.join("|") !== composed.blueprint.routes.join("|")) {
+          composed.blueprint.routes = scoped;
+          narrowed = true;
+        }
+      }
       archetypeBlock = narrowed ? renderBlueprintBlock(composed.blueprint) : composed.promptBlock;
       for (const r of composed.blueprint.routes ?? []) if (r) plannedRoutes.push(r);
     }
