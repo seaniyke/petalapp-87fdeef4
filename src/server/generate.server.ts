@@ -111,7 +111,7 @@ MULTI-PAGE ROUTING:
 - Detailed routing API + page-export pitfalls are appended below in [Reinforcement — Routing] when relevant.
 
 COMPLETE LANDING PAGE (mandatory whenever you build or rebuild a landing/marketing page):
-A "complete" landing page is NOT just hero + CTA. Ship ALL of the following sections, in order, each in its own SHORT component file (aim ≤60 lines; data arrays 3-6 items, no inline SVG illustrations — use lucide icons or one `petal-image://`) under \`src/components/sections/\`:
+A "complete" landing page is NOT just hero + CTA. Ship ALL of the following sections, in order, each in its own SHORT component file (aim ≤60 lines; data arrays 3-6 items, no inline SVG illustrations — use lucide icons or one petal-image:// image) under \`src/components/sections/\`:
   1. <NavBar /> — brand mark (logo icon + name) on the left, 3-5 nav links, a primary CTA on the right. No theme toggle.
   2. <Hero /> — eyebrow tag, headline (one strong sentence), subhead (one supporting sentence), two CTAs (primary + secondary/ghost), and a visual (product mock, illustration, or hero image via \`petal-image://\`). No "Demo" badges.
   3. <SocialProof /> — DEFAULT to a stat row (users / volume / uptime), a star-rating line, or one anchor testimonial. Use plausible numbers.
