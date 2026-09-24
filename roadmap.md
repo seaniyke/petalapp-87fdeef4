@@ -52,3 +52,7 @@
 - [ ] bounded recovery table; missing-page generation once; honest incomplete messages
 - [ ] delete dead recovery/retry/pipeline tier/agent loop code
 - [ ] fresh Rise & Crumb smoke run through build, publish, browser check
+
+- [x] Completeness safety gate: incomplete/failed first builds never report success or get built
+- [ ] Phase 2: stage-by-stage engine replacement (scope, plan, generate, validate, repair, completeness, run) with old code deleted per stage
+- [ ] Remove stale deepseek-chat-v3 setting
