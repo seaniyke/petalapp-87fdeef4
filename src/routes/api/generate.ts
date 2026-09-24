@@ -1182,9 +1182,10 @@ async function relayAndCollect(
       }
     }
   }
-  // Stream is over — every checklist item the model published is finished, so
-  // close them out rather than leaving one stuck on "active".
-  for (let i = 0; i < stepsEmitted; i++) {
+  // Stream is over — close out only the checklist items the model actually
+  // reached (by its files' `step` tags). Steps it never wrote stay unticked:
+  // a plan item is never shown done unless its files were written.
+  for (let i = 0; i < Math.min(activeStep, stepsEmitted); i++) {
     controller.enqueue(encoder.encode(sse({ type: "step_status", index: i, status: "done" })));
   }
   // Authoritative per-turn exclusion: a stalled or empty upstream is never
