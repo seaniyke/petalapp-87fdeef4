@@ -54,6 +54,7 @@ import {
   type VerifyReport,
 } from "./verify.js";
 import { callbackCandidates } from "./callback-urls.js";
+import { AgentJobSchema, AgentPool, runAgentJob, cancelAgent } from "./agent.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
@@ -289,6 +290,44 @@ function releaseExecSlot() {
   const next = execQueue.shift();
   if (next) next();
 }
+
+// ---- Durable agent jobs (generation runs here, not on the browser's socket) ----
+const agentPool = new AgentPool(
+  Number(process.env.MAX_CONCURRENT_AGENTS ?? 8),
+  Number(process.env.MAX_AGENT_QUEUE ?? 50),
+);
+fastify.get("/agent/healthz", async () => ({ ok: true, ...agentPool.snapshot() }));
+
+fastify.post("/agent/generate", async (req, reply) => {
+  const ts = req.headers["x-petal-timestamp"] as string | undefined;
+  const sig = req.headers["x-petal-signature"] as string | undefined;
+  const raw = (req as unknown as { rawBody: string }).rawBody;
+  if (!verify(SHARED_SECRET, raw, ts, sig)) {
+    return reply.code(401).send({ error: "Invalid signature" });
+  }
+  const parsed = AgentJobSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return reply.code(400).send({ error: "Invalid body", details: parsed.error.flatten() });
+  }
+  const job = parsed.data;
+  const accepted = agentPool.tryEnqueue(async () => {
+    await runAgentJob(job, SHARED_SECRET, req.log);
+  });
+  if (!accepted) return reply.code(503).send({ error: "Builder is busy, please retry" });
+  return reply.code(202).send({ accepted: true, turnId: job.turnId });
+});
+
+fastify.post("/agent/cancel", async (req, reply) => {
+  const ts = req.headers["x-petal-timestamp"] as string | undefined;
+  const sig = req.headers["x-petal-signature"] as string | undefined;
+  const raw = (req as unknown as { rawBody: string }).rawBody;
+  if (!verify(SHARED_SECRET, raw, ts, sig)) {
+    return reply.code(401).send({ error: "Invalid signature" });
+  }
+  const turnId = (req.body as { turnId?: unknown } | null)?.turnId;
+  if (typeof turnId !== "string") return reply.code(400).send({ error: "turnId required" });
+  return reply.send({ cancelled: cancelAgent(turnId) });
+});
 
 fastify.post("/exec", async (req, reply) => {
   const ts = req.headers["x-petal-timestamp"] as string | undefined;
