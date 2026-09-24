@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { writePlannedPages } from "@/server/engine/write";
-import { createRecoveryBudget } from "@/server/engine/recovery-policy";
+import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import {
   isOwnContentIssue,
   isTruncationDetail,
@@ -44,7 +44,7 @@ function requester(homeAttempts: string[]) {
 describe("truncated file handling", () => {
   it("A: truncated Home → regenerated once → valid Home kept", async () => {
     const { request, counts } = requester([CUT, good("src/pages/Home.tsx").content]);
-    const r = await writePlannedPages({ pages, files: [frame], budget: createRecoveryBudget(), request, isTruncated });
+    const r = await writePlannedPages({ pages, files: [frame], budget: new RecoveryBudget(), request, isTruncated });
     expect(counts["src/pages/Home.tsx"]).toBe(2);
     expect(r.missing).toEqual([]);
     expect(r.truncated).toEqual(["src/pages/Home.tsx"]);
@@ -52,7 +52,7 @@ describe("truncated file handling", () => {
 
   it("B: regeneration also truncated → Home isolated, others intact", async () => {
     const { request, counts } = requester([CUT, CUT]);
-    const r = await writePlannedPages({ pages, files: [frame], budget: createRecoveryBudget(), request, isTruncated });
+    const r = await writePlannedPages({ pages, files: [frame], budget: new RecoveryBudget(), request, isTruncated });
     expect(counts["src/pages/Home.tsx"]).toBe(2);
     expect(r.missing).toEqual(["/"]);
     for (const p of ["src/pages/Menu.tsx", "src/pages/About.tsx", "src/pages/Contact.tsx", "src/App.tsx"]) {
@@ -63,7 +63,7 @@ describe("truncated file handling", () => {
 
   it("C: valid pages are never regenerated because another was truncated", async () => {
     const { request, counts } = requester([CUT, CUT]);
-    await writePlannedPages({ pages, files: [frame], budget: createRecoveryBudget(), request, isTruncated });
+    await writePlannedPages({ pages, files: [frame], budget: new RecoveryBudget(), request, isTruncated });
     expect(counts["src/pages/Menu.tsx"]).toBe(1);
     expect(counts["src/pages/About.tsx"]).toBe(1);
     expect(counts["src/pages/Contact.tsx"]).toBe(1);
