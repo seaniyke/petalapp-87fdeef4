@@ -2107,6 +2107,9 @@ function Builder() {
           onDone: async (status) => {
             if (status !== "awaiting_credits") clearPersistedTurnId(pid);
             if (status === "awaiting_credits") return;
+            // Terminal: the active phase ends now — never a lingering spinner.
+            setLatestCycleProgress(undefined);
+            setPhases((p) => (status === "success" ? completeThrough(p, "polishing") : markFailed(p)));
             // Refresh files + messages from the source of truth so the
             // resumed UI matches whatever the pipeline actually persisted.
             try {
