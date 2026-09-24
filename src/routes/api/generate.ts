@@ -4093,6 +4093,7 @@ Forbidden defaults
                   ],
                   isInitial,
                   problem: "output_truncated_first_chunk",
+                  avoidUpstreams: failedUpstreams,
                   hasBackend: Boolean(backend),
                   tool,
                   maxTokens: 6_000,
