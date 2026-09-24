@@ -785,7 +785,10 @@ const STREAM_IDLE_TIMEOUT_MS = 480_000;
  *    tokens a second, so 90s of silence is a dead provider, not a slow one.
  * Healthy long generations are unaffected — there is no total-time cap here.
  */
-const STREAM_FIRST_OUTPUT_TIMEOUT_MS = 180_000;
+// Measured 2026-09-24: DeepInfra normally emits tool arguments within ~2s,
+// but Azure buffers the whole tool call (first frame at 123s for 1.5K
+// tokens), so the pre-output bound must stay generous.
+const STREAM_FIRST_OUTPUT_TIMEOUT_MS = 300_000;
 const STREAM_STALL_TIMEOUT_MS = 90_000;
 
 /**

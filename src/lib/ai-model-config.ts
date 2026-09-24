@@ -58,7 +58,10 @@ export const UTILITY_MAX_OUTPUT_TOKENS = 1024;
  * retry at ~30–40 tok/s. NextBit drops patch-op fields (30/30 edits broken).
  * DeepInfra first, then tool-capable fallbacks; OpenRouter handles failover.
  */
-export const CODEGEN_PROVIDER_ORDER = ["deepinfra", "azure", "parasail", "novita"] as const;
+// Measured 2026-09-24 with require_parameters + forced tool_choice: only
+// DeepInfra and Azure currently serve this model/tool shape (Parasail, Novita,
+// StreamLake returned 404). Both stay listed; OpenRouter fails over in order.
+export const CODEGEN_PROVIDER_ORDER = ["deepinfra", "azure"] as const;
 export const CODEGEN_PROVIDER_IGNORE = ["digitalocean", "nextbit"] as const;
 
 /** Output budget for byte-level stream continuation (finishing a cut-off file). */
