@@ -4464,6 +4464,9 @@ Forbidden defaults
               userId,
               signal: abortSignal,
               prd: resolvedPrd?.prd ?? null,
+              // Ordinary edits get the deterministic rules only; the model
+              // review is reserved for initial builds.
+              deterministicOnly: !isInitial,
             });
             if (verdict.rejections.length > 0) {
               criticRejections.push(...verdict.rejections);
@@ -4501,6 +4504,7 @@ Forbidden defaults
                   projectId: body.projectId ?? "unknown",
                   userId,
                   signal: abortSignal,
+                  deterministicOnly: !isInitial,
                 });
                 if (second.ops.length > 0) {
                   console.info(`[op-repair] critic accepted ${second.ops.length} reworked op(s)`);
@@ -5430,8 +5434,8 @@ Forbidden defaults
           : new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
         const inTurn = (p: string) => !gateTurnPaths || gateTurnPaths.has(p);
         const gateReason =
-          localVerdict.issues.find((i) => inTurn(i.path))?.kind ??
-          (esbuildVerdict.issues.some((i) => inTurn(i.path)) ? "syntax" : null) ??
+          (!localVerdict.ok ? localVerdict.issues.find((i) => inTurn(i.path))?.kind : undefined) ??
+          (!esbuildVerdict.ok && esbuildVerdict.issues.some((i) => inTurn(i.path)) ? "syntax" : null) ??
           (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null) ??
           (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0)
             ? "initial-quality"
@@ -6004,7 +6008,13 @@ Forbidden defaults
               after: nextFiles,
               memory: memoryEntries,
             });
-            if (audit.unmet.length > 0) {
+            // A bounded edit (one or two asks) is never re-run by a second
+            // model: the unmet item is disclosed instead. Only requests with
+            // several explicit parts, or new pages that did not appear, get
+            // the one completeness pass.
+            const completenessWarranted =
+              turnChangeSet.items.length >= 3 || explicitPagesRequested;
+            if (audit.unmet.length > 0 && completenessWarranted) {
               controller.enqueue(
                 encoder.encode(
                   sse({ type: "status", message: "Checking every part of your request landed." }),
@@ -6414,7 +6424,7 @@ Forbidden defaults
         // verdict reaches the client BEFORE the stream closes. Bounded
         // to a single fast model call; on any failure we emit nothing
         // and the user just sees their normal result.
-        try {
+        if (isInitial) try {
           const verdict = await runSelfCheck({
             brief: lastUserContent,
             assistantSummary: summary,
