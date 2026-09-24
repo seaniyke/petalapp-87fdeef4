@@ -29,6 +29,7 @@ export type TurnRow = {
 };
 
 export type FileRow = { path: string; content: string };
+export type SettleResult = { charged: number; shortfall: number; ledgerId: string | null; idempotent: boolean };
 export type EventRow = { seq: number; kind: string; payload?: unknown };
 
 export interface AgentOpsStore {
@@ -46,8 +47,9 @@ export interface AgentOpsStore {
     extras: { errorMessage?: string | null; creditsCharged?: number | null },
   ): Promise<void>;
   checkBalance(userId: string, amount: number): Promise<boolean>;
-  findChargeForTurn(userId: string, turnId: string, reason: string): Promise<string | null>;
-  spend(args: { userId: string; projectId: string; turnId: string; amount: number; reason: string }): Promise<string | null>;
+  /** settle_build_charge: idempotent on the turn id, drains available
+   *  buckets and books any remainder as debt (same as the in-Worker path). */
+  settle(args: { userId: string; projectId: string; turnId: string; amount: number; metadata: Record<string, unknown> }): Promise<SettleResult>;
   ledgerOwner(ledgerId: string): Promise<{ user_id: string; turn_id: string | null } | null>;
   refund(args: { userId: string; ledgerId: string; reason: string }): Promise<boolean>;
   logAiCall(row: Record<string, unknown>): Promise<void>;
@@ -81,9 +83,9 @@ export const AgentOpSchema = z.discriminatedUnion("op", [
   }),
   z.object({ op: z.literal("credits.check"), amount: z.number().positive().max(10_000) }),
   z.object({
-    op: z.literal("credits.spend"),
+    op: z.literal("credits.settle"),
     amount: z.number().positive().max(10_000),
-    reason: z.enum(["ai_build_charge", "ai_image_charge"]),
+    metadata: z.record(z.unknown()).optional(),
   }),
   z.object({ op: z.literal("credits.refund"), ledgerId: z.string().uuid(), reason: z.string().min(1).max(100) }),
   z.object({ op: z.literal("ai.log"), row: z.record(z.unknown()) }),
@@ -107,7 +109,7 @@ const WRITES_NEED_RUNNING = new Set<AgentOp["op"]>([
   "files.replace",
   "events.append",
   "turn.claimCommit",
-  "credits.spend",
+  "credits.settle",
   "pictures.save",
 ]);
 
@@ -188,18 +190,16 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
     }
     case "credits.check":
       return { ok: true, data: { enough: await store.checkBalance(turn.user_id, op.amount) } };
-    case "credits.spend": {
+    case "credits.settle": {
       if (!turn.committed_at) return { ok: false, error: "commit_not_claimed" };
-      const existing = await store.findChargeForTurn(turn.user_id, turn.id, op.reason);
-      if (existing) return { ok: true, data: { ledgerId: existing, replayed: true } };
-      const ledgerId = await store.spend({
+      const r = await store.settle({
         userId: turn.user_id,
         projectId: turn.project_id,
         turnId: turn.id,
         amount: op.amount,
-        reason: op.reason,
+        metadata: { ...(op.metadata ?? {}), via: "agent_ops" },
       });
-      return ledgerId ? { ok: true, data: { ledgerId, replayed: false } } : { ok: false, error: "insufficient_credits" };
+      return { ok: true, data: r };
     }
     case "credits.refund": {
       const owner = await store.ledgerOwner(op.ledgerId);

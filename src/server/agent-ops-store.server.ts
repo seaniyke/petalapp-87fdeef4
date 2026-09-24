@@ -76,29 +76,25 @@ export function createAgentOpsStore(): AgentOpsStore {
       const { data } = await db.rpc("check_credit_balance", { _user_id: userId, _amount: amount as Any });
       return data === true;
     },
-    async findChargeForTurn(userId, turnId, reason) {
-      const { data } = await db
-        .from("credit_ledger")
-        .select("id")
-        .eq("user_id", userId)
-        .eq("reason", reason)
-        .or(`turn_id.eq.${turnId},metadata->>turn_id.eq.${turnId}`)
-        .limit(1)
-        .maybeSingle();
-      return (data as { id: string } | null)?.id ?? null;
-    },
-    async spend({ userId, projectId, turnId, amount, reason }) {
-      const { data, error } = await db.rpc("spend_credit", {
+    async settle({ userId, projectId, turnId, amount, metadata }) {
+      const { data, error } = await db.rpc("settle_build_charge", {
         _user_id: userId,
-        _amount: amount as Any,
-        _reason: reason,
+        _amount: amount,
+        _reason: "ai_build_charge",
         _project_id: projectId,
-        _metadata: { turn_id: turnId, via: "agent_ops" } as Any,
+        _turn_id: turnId,
+        _metadata: metadata as Any,
       });
-      if (error || !data) return null;
-      const ledgerId = data as unknown as string;
-      await db.from("credit_ledger").update({ turn_id: turnId }).eq("id", ledgerId);
-      return ledgerId;
+      if (error) throw new Error(error.message);
+      const row = (Array.isArray(data) ? data[0] : data) as
+        | { charged?: number; shortfall?: number; ledger_id?: string; idempotent?: boolean }
+        | null;
+      return {
+        charged: Number(row?.charged ?? 0),
+        shortfall: Number(row?.shortfall ?? 0),
+        ledgerId: row?.ledger_id ?? null,
+        idempotent: !!row?.idempotent,
+      };
     },
     async ledgerOwner(ledgerId) {
       const { data } = await db.from("credit_ledger").select("user_id,turn_id,metadata").eq("id", ledgerId).maybeSingle();
