@@ -5273,7 +5273,7 @@ Forbidden defaults
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })),
                 );
-                const { repairBrokenFile } = await import("@/server/page-repair.server");
+                const { repairBrokenFile } = await import("@/server/engine/repair");
                 return repairBrokenFile(file, detail, {
                   turnId: logicalTurnId,
                   projectId: body.projectId ?? null,
