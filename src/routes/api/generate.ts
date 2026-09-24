@@ -4136,8 +4136,16 @@ Forbidden defaults
               ...Array.from(emittedSource.matchAll(/\bhref\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
               ...Array.from(emittedSource.matchAll(/\bto\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
             ].map((m) => m[1] ?? "");
+            // Edits: only pages the user named. Existing/emitted nav links and
+            // the model's own step list are never a request to build a page.
+            const { extractRequestedPages, pageNameToRoute } = await import("@/server/requested-scope");
             const expectedRoutes = Array.from(
-              new Set([...plannedRoutes, ...stepRoutes, ...linkRoutes].map((r) => r.toLowerCase())),
+              new Set(
+                (isInitial
+                  ? [...plannedRoutes, ...stepRoutes, ...linkRoutes]
+                  : extractRequestedPages(lastUserContent).map(pageNameToRoute)
+                ).map((r) => r.toLowerCase()),
+              ),
             ).filter((r) => r !== "/");
 
             if (expectedRoutes.length) {
