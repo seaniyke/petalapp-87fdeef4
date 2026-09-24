@@ -41644,6 +41644,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -115151,6 +115152,30 @@ var init_write_gate_server = __esm({
   }
 });
 
+// src/server/engine/raw-file.ts
+var raw_file_exports = {};
+__export(raw_file_exports, {
+  RAW_FILE_FORMAT: () => RAW_FILE_FORMAT,
+  parseRawFile: () => parseRawFile
+});
+function parseRawFile(text) {
+  const open = /^[ \t]*```[^\n]*\n/m.exec(text);
+  if (!open) return null;
+  const start = open.index + open[0].length;
+  const rest = text.slice(start);
+  const close = /^[ \t]*```[ \t]*$/m.exec(rest);
+  if (!close) return null;
+  const body = rest.slice(0, close.index).replace(/\s+$/, "") + "\n";
+  return body.trim() ? body : null;
+}
+var RAW_FILE_FORMAT;
+var init_raw_file = __esm({
+  "src/server/engine/raw-file.ts"() {
+    init_define_import_meta_env();
+    RAW_FILE_FORMAT = "OUTPUT FORMAT (strict): reply with ONLY the complete file inside ONE fenced code block \u2014 a line ```tsx, then the full file, then a line ```. No tool call, no JSON, no prose before or after. Write the code exactly as it should be saved (no escaping).";
+  }
+});
+
 // src/server/prd/prd-deterministic.ts
 function detectProductType(brief) {
   const scores = /* @__PURE__ */ new Map();
@@ -123664,9 +123689,6 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
-
-// src/server/builder.server.ts
-init_jsx_attr_literal_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -143819,6 +143841,23 @@ async function structuredRetryCompletion(args) {
   });
   return primary;
 }
+async function rawPageCompletion(args) {
+  const { RAW_FILE_FORMAT: RAW_FILE_FORMAT2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
+  const msgs = args.messages.slice();
+  const last = msgs[msgs.length - 1];
+  msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}
+
+${RAW_FILE_FORMAT2}` };
+  return aiChatCompletions({
+    feature: "generate",
+    body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
+    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+    lockCallerModel: true,
+    codeOutput: true,
+    signal: args.signal,
+    meta: args.meta
+  });
+}
 async function recoverMissingToolOutput(args) {
   const assistantText = assistantTextFromCollected(args.collected);
   if (!assistantText) return null;
@@ -145755,14 +145794,10 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   controller.enqueue(
                     encoder.encode(sse({ type: "status", message: "Writing the remaining pages\u2026" }))
                   );
-                  const res = await structuredRetryCompletion({
+                  const res = await rawPageCompletion({
                     messages: [...finalMessages, { role: "user", content: instruction }],
                     isInitial,
-                    problem: "missing_pages",
-                    hasBackend: Boolean(backend2),
-                    tool,
                     maxTokens: 12e3,
-                    crossCuttingIntent: isCrossCutting,
                     signal: abortSignal,
                     meta: {
                       phase: phaseTag.phase,
@@ -145779,17 +145814,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   let c = await relayAndCollect(res, controller, encoder);
                   const wantPath = wantOf(instruction);
                   const truncatedOutput = isTruncatedFinishReason(c.finishReason);
-                  const underDelivered = !truncatedOutput && Boolean(wantPath) && !c.args.includes(`"${wantPath}"`);
+                  const underDelivered = !truncatedOutput && !c.stall && c.finishReason !== "error" && !c.text.includes("```");
                   if (underDelivered) markUpstreamFailed(c.upstream);
                   if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
-                    const again = await structuredRetryCompletion({
+                    const again = await rawPageCompletion({
                       messages: [...finalMessages, { role: "user", content: instruction }],
                       isInitial,
-                      problem: "missing_pages",
-                      hasBackend: Boolean(backend2),
-                      tool,
                       maxTokens: 12e3,
-                      crossCuttingIntent: isCrossCutting,
                       signal: abortSignal,
                       providerStalled: true,
                       meta: {
@@ -145809,8 +145840,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                     c = await relayAndCollect(again, controller, encoder);
                   }
                   try {
-                    const got = parseCollectedProject(c, true).parsed.files ?? null;
-                    console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} argsChars=${c.args.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
+                    const { parseRawFile: parseRawFile2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
+                    const content = wantPath ? parseRawFile2(c.text) : null;
+                    const got = wantPath && content ? [{ path: wantPath, content }] : null;
+                    if (got) {
+                      controller.enqueue(encoder.encode(sse({ type: "file_complete", path: wantPath, bytes: content.length, index: 1, content })));
+                    }
+                    console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} textChars=${c.text.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
                     return got;
                   } catch {
                     return null;

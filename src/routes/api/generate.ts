@@ -1283,6 +1283,30 @@ async function structuredRetryCompletion(args: {
   return primary;
 }
 
+/** One page, returned as plain text in a fenced block (see engine/raw-file). */
+async function rawPageCompletion(args: {
+  messages: Array<{ role: string; content: unknown }>;
+  isInitial: boolean;
+  maxTokens: number;
+  signal: AbortSignal;
+  providerStalled?: boolean;
+  meta: Parameters<typeof structuredRetryCompletion>[0]["meta"];
+}): Promise<Response> {
+  const { RAW_FILE_FORMAT } = await import("@/server/engine/raw-file");
+  const msgs = args.messages.slice();
+  const last = msgs[msgs.length - 1];
+  msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}\n\n${RAW_FILE_FORMAT}` };
+  return aiChatCompletions({
+    feature: "generate",
+    body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
+    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+    lockCallerModel: true,
+    codeOutput: true,
+    signal: args.signal,
+    meta: args.meta,
+  });
+}
+
 async function recoverMissingToolOutput(args: {
   chatMessages: Array<{ role: string; content: unknown }>;
   collected: ParsedTool;
@@ -4193,14 +4217,10 @@ Forbidden defaults
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: "Writing the remaining pages…" })),
                 );
-                const res = await structuredRetryCompletion({
+                const res = await rawPageCompletion({
                   messages: [...finalMessages, { role: "user", content: instruction }],
                   isInitial,
-                  problem: "missing_pages",
-                  hasBackend: Boolean(backend),
-                  tool,
                   maxTokens: 12_000,
-                  crossCuttingIntent: isCrossCutting,
                   signal: abortSignal,
                   meta: {
                     phase: phaseTag.phase,
@@ -4220,19 +4240,15 @@ Forbidden defaults
                 // provider failure: never fail the provider for it and never
                 // resend here — the WRITE stage re-requests the file once.
                 const truncatedOutput = isTruncatedFinishReason(c.finishReason);
-                const underDelivered = !truncatedOutput && Boolean(wantPath) && !c.args.includes(`"${wantPath}"`);
+                const underDelivered = !truncatedOutput && !c.stall && c.finishReason !== "error" && !c.text.includes("```");
                 if (underDelivered) markUpstreamFailed(c.upstream);
                 if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
                   // Provider failed mid-page: one resend (failed upstream is excluded).
-                  const again = await structuredRetryCompletion({
+                  const again = await rawPageCompletion({
                     messages: [...finalMessages, { role: "user", content: instruction }],
                     isInitial,
-                    problem: "missing_pages",
-                    hasBackend: Boolean(backend),
-                    tool,
                     maxTokens: 12_000,
-                    crossCuttingIntent: isCrossCutting,
-                    signal: abortSignal,
+                      signal: abortSignal,
                     providerStalled: true,
                     meta: {
                       phase: phaseTag.phase,
@@ -4251,8 +4267,15 @@ Forbidden defaults
                   c = await relayAndCollect(again, controller, encoder);
                 }
                 try {
-                  const got = parseCollectedProject(c, true).parsed.files ?? null;
-                  console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} argsChars=${c.args.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
+                  // Plain-text page: the file is the single fenced block. An
+                  // unclosed block is a cut-off file — discarded, never patched.
+                  const { parseRawFile } = await import("@/server/engine/raw-file");
+                  const content = wantPath ? parseRawFile(c.text) : null;
+                  const got = wantPath && content ? [{ path: wantPath, content }] : null;
+                  if (got) {
+                    controller.enqueue(encoder.encode(sse({ type: "file_complete", path: wantPath!, bytes: content!.length, index: 1, content: content! })));
+                  }
+                  console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} textChars=${c.text.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
                   return got;
                 } catch {
                   return null;

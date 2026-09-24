@@ -64,7 +64,7 @@ export default defineConfig({
       "src/server/__tests__/runtime-credit-fallback.test.ts",
       "src/server/__tests__/build-breaker-regressions.test.ts",
       "src/server/__tests__/browse-client.test.ts",
-      "src/server/__tests__/test-plan.test.ts",
+      "src/server/__tests__/test-plan.test.ts", "src/server/__tests__/raw-file.test.ts",
       "src/server/__tests__/test-repair.test.ts",
       "src/server/__tests__/readiness.test.ts",
       "src/server/__tests__/test-safety.test.ts",
