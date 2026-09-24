@@ -82,6 +82,6 @@
 
 ## Railway move (plan approved 2026-09-24)
 - [x] Phase 1: signed data gateway (/api/public/agent/ops) + tests
-- [ ] Phase 2: split generation into core + AgentIO (next)
+- [~] Phase 2: AgentIO seam added; commit point (Stop checks, balance, charge, save files) routed through it. Next: event recording, AI logs, reads, then extract core
 - [ ] Phase 3: run core on Railway — blocked on OPENROUTER_API_KEY on Railway + redeploy
 - [ ] Phase 4: switch over (AGENT_RUNTIME=railway) and live-prove
