@@ -78,6 +78,7 @@ import { saveCreditPause } from "@/server/credit-pause.server";
 import { checkGenerateRateLimit, rateLimitResponse, secretsMatch } from "@/server/rate-limit.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
+  streamDeltaHasOutput,
   aiChatCompletions,
   markLastCallFailure,
   updateLastCallUsage,
@@ -752,6 +753,10 @@ type ParsedTool = {
    * reader skipped them and the turn looked empty instead of refused.
    */
   providerError?: ProviderError | null;
+  /** Upstream (OpenRouter `provider` field) that served this stream. */
+  upstream?: string | null;
+  /** Set when the provider stopped making progress and we abandoned it. */
+  stall?: { ms: number; afterOutput: boolean; upstream: string | null } | null;
 };
 
 function isTruncatedFinishReason(reason: string | null | undefined): boolean {
@@ -769,6 +774,50 @@ function isTruncatedFinishReason(reason: string | null | undefined): boolean {
  * "nothing for several minutes", not "nothing for 75s".
  */
 const STREAM_IDLE_TIMEOUT_MS = 480_000;
+/**
+ * Progress watchdog. Keep-alive comments keep bytes flowing on a dead
+ * upstream, so the byte-idle timer alone let one DigitalOcean stream sit for
+ * ~10 minutes after 4 tokens. These count only frames carrying model output
+ * (text, tool arguments or reasoning):
+ *  - FIRST_OUTPUT: request accepted but nothing produced yet (large prompts
+ *    need prefill time; reasoning deltas count as output).
+ *  - STALL: output had started, then stopped. A healthy stream emits many
+ *    tokens a second, so 90s of silence is a dead provider, not a slow one.
+ * Healthy long generations are unaffected — there is no total-time cap here.
+ */
+const STREAM_FIRST_OUTPUT_TIMEOUT_MS = 180_000;
+const STREAM_STALL_TIMEOUT_MS = 90_000;
+
+/**
+ * DEV-only fault injection (body.testFault === "stall"): forward the real
+ * upstream's first output frames, then go silent except for keep-alive
+ * comments — the exact shape of the Rise & Crumb DigitalOcean stall.
+ */
+function simulateDeadStream(real: Response): Response {
+  const reader = real.body!.getReader();
+  const enc = new TextEncoder();
+  let frames = 0;
+  let dead = false;
+  const out = new ReadableStream<Uint8Array>({
+    async pull(ctrl) {
+      if (dead) {
+        await new Promise((r) => setTimeout(r, 10_000));
+        ctrl.enqueue(enc.encode(": OPENROUTER PROCESSING\n\n"));
+        return;
+      }
+      const { value, done } = await reader.read();
+      if (done) { dead = true; return; }
+      ctrl.enqueue(value);
+      // Stop after the first frame that carries real output (the DO case:
+      // a few tokens, then silence). The real reader is held, not read.
+      frames++;
+      const txt = new TextDecoder().decode(value);
+      if (frames >= 2 && /"(content|reasoning|arguments)":"[^"]/.test(txt)) dead = true;
+    },
+    cancel(reason) { void reader.cancel(reason).catch(() => {}); },
+  });
+  return new Response(out, { status: real.status, headers: real.headers });
+}
 
 async function relayAndCollect(
   upstream: Response,
@@ -855,22 +904,41 @@ async function relayAndCollect(
     }
   };
 
+  const streamStartedAt = Date.now();
+  let lastOutputAt: number | null = null;
   while (true) {
+    const progressDeadline =
+      lastOutputAt == null
+        ? streamStartedAt + STREAM_FIRST_OUTPUT_TIMEOUT_MS
+        : lastOutputAt + STREAM_STALL_TIMEOUT_MS;
+    const progressWait = Math.max(0, progressDeadline - Date.now());
+    const stallFires = progressWait < STREAM_IDLE_TIMEOUT_MS;
+    const STALL = Symbol("stall");
     // Race the next chunk read against an idle-timeout. If the upstream
     // goes silent for STREAM_IDLE_TIMEOUT_MS the provider is wedged —
     // cancel the reader and throw a classifiable timeout. This replaces
     // the old behaviour of relying solely on the wall-clock ceiling,
     // which would also kill streams that were happily producing bytes.
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const idle = new Promise<never>((_, reject) => {
+    const idle = new Promise<typeof STALL>((resolve, reject) => {
       timer = setTimeout(() => {
-        reject(new Error("operation was aborted due to timeout (stream idle)"));
-      }, STREAM_IDLE_TIMEOUT_MS);
+        if (stallFires) resolve(STALL);
+        else reject(new Error("operation was aborted due to timeout (stream idle)"));
+      }, stallFires ? progressWait : STREAM_IDLE_TIMEOUT_MS);
     });
     let value: Uint8Array | undefined;
     let done = false;
     try {
       const result = await Promise.race([reader.read(), idle]);
+      if (result === STALL) {
+        const stalledMs = Date.now() - (lastOutputAt ?? streamStartedAt);
+        tool.stall = { ms: stalledMs, afterOutput: lastOutputAt != null, upstream: tool.upstream ?? null };
+        console.warn(
+          `[stream-stall] upstream=${tool.upstream ?? "?"} noOutputFor=${stalledMs}ms afterOutput=${lastOutputAt != null} argsChars=${tool.args.length}`,
+        );
+        try { await reader.cancel(`stall:${stalledMs}`); } catch { /* ignore */ }
+        break;
+      }
       value = result.value;
       done = result.done;
     } catch (e) {
@@ -897,6 +965,12 @@ async function relayAndCollect(
       // A refusal arrives as a 200 stream frame carrying `error` and no
       // `choices`. Capture it — skipping it is what made refused turns look
       // empty and got the identical oversized request re-sent twice.
+      const frameProvider = (json as { provider?: unknown }).provider;
+      if (typeof frameProvider === "string" && frameProvider) tool.upstream = frameProvider;
+      {
+        const d = (json as { choices?: Array<{ delta?: Record<string, unknown> }> })?.choices?.[0]?.delta;
+        if (d && streamDeltaHasOutput(d)) lastOutputAt = Date.now();
+      }
       const frameError = readErrorFrame(json);
       if (frameError) {
         tool.providerError = frameError;
@@ -1161,6 +1235,10 @@ async function structuredRetryCompletion(args: {
   maxTokens: number;
   crossCuttingIntent?: boolean;
   signal: AbortSignal;
+  /** Set when the first attempt's provider went silent: resend the ORIGINAL
+   *  request unchanged, just routed away from that upstream. */
+  stalledUpstream?: string | null;
+  providerStalled?: boolean;
   meta: {
     phase: Phase;
     promptChars: number;
@@ -1169,15 +1247,21 @@ async function structuredRetryCompletion(args: {
     projectId?: string | null;
     userId?: string | null;
     turnId?: string | null;
+    fallbackNumber?: number | null;
+    fallbackFromUpstream?: string | null;
+    recoveryReason?: string | null;
   };
 }): Promise<Response> {
+  const avoidUpstreams = args.stalledUpstream ? [args.stalledUpstream] : [];
   const bodyBase = {
-    messages: addStructuredRetryInstruction(args.messages, {
-      isInitial: args.isInitial,
-      problem: args.problem,
-      hasBackend: args.hasBackend,
-      crossCuttingIntent: args.crossCuttingIntent,
-    }),
+    messages: args.providerStalled
+      ? args.messages
+      : addStructuredRetryInstruction(args.messages, {
+          isInitial: args.isInitial,
+          problem: args.problem,
+          hasBackend: args.hasBackend,
+          crossCuttingIntent: args.crossCuttingIntent,
+        }),
     tools: [args.tool],
     tool_choice: { type: "function", function: { name: args.tool.function.name } },
     max_tokens: args.maxTokens,
@@ -1195,6 +1279,7 @@ async function structuredRetryCompletion(args: {
     lockCallerModel: true,
     signal: args.signal,
     meta: args.meta,
+    avoidUpstreams,
   });
   if (primary.ok && primary.body) return primary;
 
@@ -1213,6 +1298,7 @@ async function structuredRetryCompletion(args: {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY_BACKUP },
     timeoutTier,
+    avoidUpstreams,
     // No providerOverride: follow the resolved provider (DB → env → OpenRouter
     // when its key is set). Pinning "lovable" here meant a funded OpenRouter
     // account was never used and every turn died on the Lovable gateway's 402.
@@ -3664,7 +3750,13 @@ Forbidden defaults
               usage: null,
               providerError: null,
             }
-          : await relayAndCollect(upstream as Response, controller, encoder);
+          : await relayAndCollect(
+              import.meta.env.DEV && (body as { testFault?: string }).testFault === "stall"
+                ? simulateDeadStream(upstream as Response)
+                : (upstream as Response),
+              controller,
+              encoder,
+            );
 
         // ── The service refused ───────────────────────────────────────────
         // A refusal used to look like an empty reply, so the identical
@@ -3772,7 +3864,16 @@ Forbidden defaults
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Applying changes…" })));
 
         let payload: ParsedProjectPayload;
+        const firstStall = collected.stall ?? null;
         try {
+          // A stalled provider's partial output is never trusted: resend the
+          // original request to a different upstream instead.
+          if (firstStall) {
+            controller.enqueue(
+              encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })),
+            );
+            throw new Error(`provider stream stalled (${firstStall.upstream ?? "unknown upstream"}, ${firstStall.ms}ms without output)`);
+          }
           payload = parseCollectedProject(collected, isInitial);
         } catch (e) {
           controller.enqueue(
@@ -3798,14 +3899,19 @@ Forbidden defaults
                 : Math.max(maxCompletionTokens, 8_000),
             crossCuttingIntent: isCrossCutting,
             signal: abortSignal,
+            providerStalled: Boolean(firstStall),
+            stalledUpstream: firstStall?.upstream ?? null,
             meta: {
               phase: phaseTag.phase,
               promptChars: lastUserContent.length,
               hadAttachments: hasVisionTurn,
-              chosenBy: "structured_retry",
+              chosenBy: firstStall ? "provider_stall_retry" : "structured_retry",
               projectId: body.projectId ?? null,
               userId,
               turnId: logicalTurnId,
+              fallbackNumber: 1,
+              fallbackFromUpstream: firstStall?.upstream ?? null,
+              recoveryReason: firstStall ? "provider_stall" : "invalid_structured_output",
             },
           });
           if (!retry.ok || !retry.body) throw e;

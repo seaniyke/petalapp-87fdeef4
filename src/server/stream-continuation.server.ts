@@ -14,6 +14,7 @@
  */
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
+import { CONTINUATION_MAX_OUTPUT_TOKENS, defaultTextModel } from "@/lib/ai-model-config";
 import type { ProjectFile } from "@/server/generate.server";
 import type { LocalIssue } from "@/server/local-verifier";
 import { verifyFileLocal } from "@/server/local-verifier";
@@ -67,16 +68,8 @@ export async function runContinuation(args: {
   const notes: string[] = [];
   let count = 0;
 
-  // Escalation ladder: if attempt 1 still leaves the file broken, attempt 2
-  // promotes to a stronger model. Provider-neutral aliases — the gateway
-  // routes by name.
-  const escalate = (m: string): string | null => {
-    if (/flash-lite/i.test(m)) return m.replace(/flash-lite/i, "flash");
-    if (/gpt-5-nano/i.test(m)) return "openai/gpt-5-mini";
-    if (/gpt-5-mini/i.test(m)) return "openai/gpt-5";
-    if (/gemini-2\.5-flash$/i.test(m)) return "google/gemini-2.5-pro";
-    return null;
-  };
+  // ONE attempt per file. The old escalation ladder resolved to the same
+  // DeepSeek model twice (every slug is coerced centrally), doubling calls.
 
   // Send only the last ~6KB of the file as anchor context. The full head
   // doesn't help the model emit the tail and burns the response budget.
@@ -85,8 +78,16 @@ export async function runContinuation(args: {
   async function attempt(file: ProjectFile, model: string): Promise<string | null> {
     const resp = await aiChatCompletions({
       feature: "recovery",
+      // Measured 2026-09-24: routed as a utility call this ran on the
+      // reasoning-heavy utility model with a 1,024-token cap and spent the
+      // whole budget thinking — 3 calls, 0 bytes of code. It is code output:
+      // build model, reasoning off, room for the missing tail.
+      codeOutput: true,
+      lockCallerModel: true,
+      meta: { chosenBy: "stream_continuation", recoveryReason: "stream_continuation" },
       body: {
         model,
+        reasoning: { enabled: false },
         messages: [
           { role: "system", content: SYSTEM },
           {
@@ -94,7 +95,7 @@ export async function runContinuation(args: {
             content: `Path: ${file.path}\n\nPartial contents (truncated mid-stream; tail shown):\n\n${tailAnchor(file.content)}`,
           },
         ],
-        max_tokens: 2000,
+        max_tokens: CONTINUATION_MAX_OUTPUT_TOKENS,
         temperature: 0.1,
       },
     });
@@ -114,7 +115,9 @@ export async function runContinuation(args: {
     const file = byPath.get(issue.path);
     if (!file) continue;
 
-    const ladder = [args.model, escalate(args.model)].filter(Boolean) as string[];
+    // Always the build model (never the utility tier) — caller's model is
+    // honoured only when it is already a DeepSeek build slug.
+    const ladder = [/^deepseek\//.test(args.model) && !/0731/.test(args.model) ? args.model : defaultTextModel()];
     let healed = false;
     let lastNote = "";
 
@@ -139,7 +142,7 @@ export async function runContinuation(args: {
         }
         byPath.set(file.path, { path: file.path, content: merged });
         notes.push(
-          `${file.path}: appended ${tail.length} bytes (${model}${model !== args.model ? " — escalated" : ""})`,
+          `${file.path}: appended ${tail.length} bytes (${model})`,
         );
         count++;
         healed = true;

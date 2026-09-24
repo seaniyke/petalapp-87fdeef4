@@ -51,6 +51,20 @@ export const DEFAULT_UTILITY_MODEL = "deepseek/deepseek-v4-flash-0731";
 /** Cost guard: hard ceiling on output tokens for short utility calls. */
 export const UTILITY_MAX_OUTPUT_TOKENS = 1024;
 
+/**
+ * OpenRouter upstream routing for PRIMARY code generation (feature "generate"
+ * tool calls). Measured 2026-09-24 (Rise & Crumb): DigitalOcean accepted a
+ * 33.6K-token build, streamed 4 tokens and went silent; DeepInfra served the
+ * retry at ~30–40 tok/s. NextBit drops patch-op fields (30/30 edits broken).
+ * DeepInfra first, then tool-capable fallbacks; OpenRouter handles failover.
+ */
+export const CODEGEN_PROVIDER_ORDER = ["deepinfra", "azure", "parasail", "novita"] as const;
+export const CODEGEN_PROVIDER_IGNORE = ["digitalocean", "nextbit"] as const;
+
+/** Output budget for byte-level stream continuation (finishing a cut-off file). */
+export const CONTINUATION_MAX_OUTPUT_TOKENS = 6000;
+
+
 
 function env(name: string): string | undefined {
   if (typeof process === "undefined" || !process.env) return undefined;

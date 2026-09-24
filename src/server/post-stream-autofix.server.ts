@@ -193,8 +193,13 @@ export async function runPostStreamAutofix(
   try {
     const resp = await aiChatCompletions({
       feature: "recovery",
+      // Code output, not classification: build model, no 1,024-token utility
+      // cap, reasoning off so the budget goes to the fix itself.
+      codeOutput: true,
+      meta: { chosenBy: "post_stream_repair", recoveryReason: "post_stream_repair" },
       body: {
         model: "google/gemini-2.5-flash-lite",
+        reasoning: { enabled: false },
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: userPayload },

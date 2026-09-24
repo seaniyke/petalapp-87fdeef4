@@ -82,12 +82,17 @@ export type Database = {
           cost_usd_micro: number | null
           created_at: string
           error_message: string | null
+          fallback_from_upstream: string | null
+          fallback_number: number | null
           fallback_used: boolean
           feature: string
           files_sent: number | null
+          finish_reason: string | null
+          first_token_ms: number | null
           had_attachments: boolean
           id: string
           key_owner: string
+          last_token_ms: number | null
           latency_ms: number | null
           model: string | null
           phase: string | null
@@ -96,10 +101,14 @@ export type Database = {
           prompt_tokens: number | null
           provider: string
           reasoning_tokens: number | null
+          recovery_reason: string | null
           request_id: string | null
+          stall_ms: number | null
           static_prefix_chars: number | null
           static_prefix_hash: string | null
           status: number
+          stream_outcome: string | null
+          stream_total_ms: number | null
           total_tokens: number | null
           turn_id: string | null
           upstream_provider: string | null
@@ -115,12 +124,17 @@ export type Database = {
           cost_usd_micro?: number | null
           created_at?: string
           error_message?: string | null
+          fallback_from_upstream?: string | null
+          fallback_number?: number | null
           fallback_used?: boolean
           feature: string
           files_sent?: number | null
+          finish_reason?: string | null
+          first_token_ms?: number | null
           had_attachments?: boolean
           id?: string
           key_owner?: string
+          last_token_ms?: number | null
           latency_ms?: number | null
           model?: string | null
           phase?: string | null
@@ -129,10 +143,14 @@ export type Database = {
           prompt_tokens?: number | null
           provider: string
           reasoning_tokens?: number | null
+          recovery_reason?: string | null
           request_id?: string | null
+          stall_ms?: number | null
           static_prefix_chars?: number | null
           static_prefix_hash?: string | null
           status: number
+          stream_outcome?: string | null
+          stream_total_ms?: number | null
           total_tokens?: number | null
           turn_id?: string | null
           upstream_provider?: string | null
@@ -148,12 +166,17 @@ export type Database = {
           cost_usd_micro?: number | null
           created_at?: string
           error_message?: string | null
+          fallback_from_upstream?: string | null
+          fallback_number?: number | null
           fallback_used?: boolean
           feature?: string
           files_sent?: number | null
+          finish_reason?: string | null
+          first_token_ms?: number | null
           had_attachments?: boolean
           id?: string
           key_owner?: string
+          last_token_ms?: number | null
           latency_ms?: number | null
           model?: string | null
           phase?: string | null
@@ -162,10 +185,14 @@ export type Database = {
           prompt_tokens?: number | null
           provider?: string
           reasoning_tokens?: number | null
+          recovery_reason?: string | null
           request_id?: string | null
+          stall_ms?: number | null
           static_prefix_chars?: number | null
           static_prefix_hash?: string | null
           status?: number
+          stream_outcome?: string | null
+          stream_total_ms?: number | null
           total_tokens?: number | null
           turn_id?: string | null
           upstream_provider?: string | null
