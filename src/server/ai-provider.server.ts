@@ -1,5 +1,7 @@
 import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
 import {
+  CODEGEN_PROVIDER_IGNORE,
+  CODEGEN_PROVIDER_ORDER,
   OPENROUTER_CHAT_URL,
   UTILITY_MAX_OUTPUT_TOKENS,
   coerceToConfiguredModel,
@@ -8,6 +10,18 @@ import {
   defaultUtilityModel,
   isUtilityFeature,
 } from "@/lib/ai-model-config";
+
+/**
+ * OpenRouter `provider` block for primary code generation. DeepInfra first,
+ * tool-capable fallbacks after it, DigitalOcean/NextBit never. `avoid` adds
+ * an upstream that just stalled so the retry lands somewhere else.
+ */
+export function codegenProviderRouting(avoid: string[] = []): Record<string, unknown> {
+  const avoidSlugs = avoid.map((a) => a.toLowerCase().replace(/\s+/g, ""));
+  const ignore = Array.from(new Set([...CODEGEN_PROVIDER_IGNORE, ...avoidSlugs]));
+  const order = CODEGEN_PROVIDER_ORDER.filter((p) => !ignore.includes(p));
+  return { order, allow_fallbacks: true, require_parameters: true, ignore };
+}
 
 
 /**
@@ -520,6 +534,7 @@ async function recordTelemetry(
     usage?: ParsedUsage | null;
     requestId?: string | null;
     upstream?: string | null;
+    extra?: Record<string, unknown>;
   },
 ): Promise<string | null> {
   try {
@@ -558,6 +573,7 @@ async function recordTelemetry(
         cost_source: null,
         request_id: args.requestId ?? null,
         upstream_provider: args.upstream ?? null,
+        ...(args.extra ?? {}),
         ...usageCols,
       } as never)
       .select("id")
@@ -576,57 +592,128 @@ async function recordTelemetry(
  * primary build calls report real tokens regardless of how the caller consumes
  * the stream. The caller receives the same bytes, unchanged.
  */
-function meterStream(resp: Response, rowId: Promise<string | null>, model: string | null): Response {
+function meterStream(
+  resp: Response,
+  rowId: Promise<string | null>,
+  model: string | null,
+  startedAt: number = Date.now(),
+): Response {
   if (!resp.ok || !resp.body) return resp;
   const decoder = new TextDecoder();
   let buf = "";
   let last: ParsedUsage | null = null;
   let requestId: string | null = null;
   let upstream: string | null = null;
+  let finishReason: string | null = null;
+  // Stream health: "progress" = a frame that carries model output (text,
+  // tool arguments or reasoning). Keep-alive comments do NOT count — they are
+  // exactly what kept a dead DigitalOcean stream looking alive for minutes.
+  let firstTokenAt: number | null = null;
+  let lastTokenAt: number | null = null;
+  let written = false;
   const scan = (line: string) => {
-    if (!line.startsWith("data:") || !line.includes('"usage"')) return;
+    if (!line.startsWith("data:")) return;
+    const payload = line.slice(5).trim();
+    if (!payload || payload === "[DONE]") return;
     try {
-      const j = JSON.parse(line.slice(5).trim()) as { usage?: unknown; id?: string; provider?: string };
-      const u = parseUsageObject(j.usage);
+      const j = JSON.parse(payload) as {
+        usage?: unknown;
+        id?: string;
+        provider?: string;
+        choices?: Array<{ delta?: Record<string, unknown>; finish_reason?: unknown }>;
+      };
+      if (j.provider) upstream = j.provider;
+      const ch = j.choices?.[0];
+      if (typeof ch?.finish_reason === "string") finishReason = ch.finish_reason;
+      if (ch?.delta && streamDeltaHasOutput(ch.delta)) {
+        const now = Date.now();
+        if (firstTokenAt == null) firstTokenAt = now;
+        lastTokenAt = now;
+      }
+      const u = j.usage ? parseUsageObject(j.usage) : null;
       if (u) {
         last = u;
         requestId = j.id ?? requestId;
-        upstream = j.provider ?? upstream;
       }
     } catch {
       /* partial / non-JSON line */
     }
   };
-  const ts = new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, ctrl) {
-      ctrl.enqueue(chunk);
-      buf += decoder.decode(chunk, { stream: true });
-      const lines = buf.split("\n");
-      buf = lines.pop() ?? "";
-      for (const l of lines) scan(l);
-    },
-    async flush() {
-      if (buf) scan(buf);
-      const u = last as ParsedUsage | null;
-      if (!u) return;
+  const finish = async (outcome: "completed" | "stalled" | "cancelled" | "errored", stallMs: number | null) => {
+    if (written) return;
+    written = true;
+    if (buf) scan(buf);
+    const end = Date.now();
+    const u = last as ParsedUsage | null;
+    try {
+      const id = await rowId;
+      if (!id) return;
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin
+        .from("ai_call_log")
+        .update({
+          ...(u ? usageColumns(u, model) : {}),
+          ...(requestId ? { request_id: requestId } : {}),
+          ...(upstream ? { upstream_provider: upstream } : {}),
+          first_token_ms: firstTokenAt != null ? firstTokenAt - startedAt : null,
+          last_token_ms: lastTokenAt != null ? lastTokenAt - startedAt : null,
+          stream_total_ms: end - startedAt,
+          finish_reason: finishReason,
+          stream_outcome: outcome,
+          stall_ms: stallMs,
+        } as never)
+        .eq("id", id);
+    } catch (err) {
+      console.warn("[ai-provider] stream usage write failed", err);
+    }
+  };
+  const reader = resp.body.getReader();
+  const out = new ReadableStream<Uint8Array>({
+    async pull(ctrl) {
       try {
-        const id = await rowId;
-        if (!id) return;
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        await supabaseAdmin
-          .from("ai_call_log")
-          .update({ ...usageColumns(u, model), request_id: requestId, upstream_provider: upstream } as never)
-          .eq("id", id);
+        const { value, done } = await reader.read();
+        if (done) {
+          ctrl.close();
+          void finish("completed", null);
+          return;
+        }
+        ctrl.enqueue(value);
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const l of lines) scan(l);
       } catch (err) {
-        console.warn("[ai-provider] stream usage write failed", err);
+        void finish("errored", null);
+        ctrl.error(err);
       }
     },
+    async cancel(reason) {
+      // relayAndCollect cancels with "stall:<ms>" when the provider stops
+      // making progress; record that so a dead-provider wait is visible.
+      const m = /^stall:(\d+)/.exec(String(reason ?? ""));
+      void finish(m ? "stalled" : "cancelled", m ? Number(m[1]) : null);
+      try { await reader.cancel(reason); } catch { /* ignore */ }
+    },
   });
-  return new Response(resp.body.pipeThrough(ts), {
+  return new Response(out, {
     status: resp.status,
     statusText: resp.statusText,
     headers: resp.headers,
   });
+}
+
+/** True when an SSE delta carries actual model output (text, tool args, reasoning). */
+export function streamDeltaHasOutput(delta: Record<string, unknown>): boolean {
+  const txt = (v: unknown) => typeof v === "string" && v.length > 0;
+  if (txt(delta.content) || txt(delta.reasoning) || txt(delta.reasoning_content)) return true;
+  if (Array.isArray(delta.reasoning_details) && delta.reasoning_details.length > 0) return true;
+  const tcs = delta.tool_calls;
+  if (Array.isArray(tcs)) {
+    for (const tc of tcs as Array<{ function?: { name?: unknown; arguments?: unknown } }>) {
+      if (txt(tc?.function?.arguments) || txt(tc?.function?.name)) return true;
+    }
+  }
+  return false;
 }
 
 
@@ -779,6 +866,12 @@ export interface AiCallMeta {
   userId?: string | null;
   /** Economics: the user turn this call belongs to. */
   turnId?: string | null;
+  /** Stream-health telemetry: 0 = first attempt, 1 = first provider fallback. */
+  fallbackNumber?: number | null;
+  /** Upstream abandoned before this attempt (e.g. stalled DigitalOcean). */
+  fallbackFromUpstream?: string | null;
+  /** Why this call exists when it is a recovery (provider_stall, stream_continuation…). */
+  recoveryReason?: string | null;
 }
 
 /**
@@ -818,6 +911,14 @@ export interface AiCallOptions {
    * already has a deterministic fallback.
    */
   noFallback?: boolean;
+  /**
+   * The call must emit CODE (byte-level continuation). Skips the utility-tier
+   * model and its 1,024-token cap, and the caller disables reasoning, so the
+   * whole budget goes to output instead of hidden thinking.
+   */
+  codeOutput?: boolean;
+  /** Upstreams to skip for this call (e.g. the one that just stalled). */
+  avoidUpstreams?: string[];
 }
 
 
@@ -885,7 +986,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // Utility tier: short classification / summarisation features run on the
   // cheaper utility model unless the caller asked for a specific DeepSeek slug
   // or the request carries images.
-  const utility = isUtilityFeature(opts.feature) && !needsVision;
+  const utility = isUtilityFeature(opts.feature) && !needsVision && !opts.codeOutput;
   let primaryModel: string = coerceToConfiguredModel(requestedModel, {
     vision: needsVision,
     utility,
@@ -931,6 +1032,23 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     body.max_tokens =
       asked && asked > 0 ? Math.min(asked, UTILITY_MAX_OUTPUT_TOKENS) : UTILITY_MAX_OUTPUT_TOKENS;
   }
+  // Primary code generation: DeepInfra first, reliable fallbacks, never
+  // DigitalOcean/NextBit. Scoped to "generate" tool calls only.
+  if (
+    opts.feature === "generate" &&
+    Array.isArray(body.tools) &&
+    (body.tools as unknown[]).length > 0 &&
+    !body.provider
+  ) {
+    body.provider = codegenProviderRouting(opts.avoidUpstreams ?? []);
+  } else if (opts.avoidUpstreams?.length && !body.provider) {
+    body.provider = { ignore: opts.avoidUpstreams.map((a) => a.toLowerCase().replace(/\s+/g, "")) };
+  }
+  const streamExtra = {
+    fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
+    fallback_from_upstream: opts.meta?.fallbackFromUpstream ?? null,
+    recovery_reason: opts.meta?.recoveryReason ?? null,
+  };
 
 
 
@@ -984,8 +1102,9 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
       usage,
       requestId: usage?.requestId ?? null,
       upstream: usage?.upstream ?? null,
+      extra: streamExtra,
     });
-    return body.stream === true ? meterStream(primary, rowId, primaryModel) : primary;
+    return body.stream === true ? meterStream(primary, rowId, primaryModel, t0) : primary;
   }
 
 
@@ -1037,9 +1156,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     usage: retryUsage,
     requestId: retryUsage?.requestId ?? null,
     upstream: retryUsage?.upstream ?? null,
+    extra: { ...streamExtra, fallback_number: (streamExtra.fallback_number ?? 0) + 1 },
   });
 
-  return fallbackBody.stream === true ? meterStream(retried, retryRow, fallbackModel) : retried;
+  return fallbackBody.stream === true ? meterStream(retried, retryRow, fallbackModel, t1) : retried;
 }
 
 /**
