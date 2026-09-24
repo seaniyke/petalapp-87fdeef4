@@ -32,6 +32,17 @@ export interface AgentIO {
   settleCharge(args: SettleCharge): Promise<SettleOutcome>;
   /** Returns an error message instead of throwing (persistence is logged, not fatal). */
   replaceFiles(projectId: string, files: Array<{ path: string; content: string }>): Promise<string | null>;
+  /** Progress log. Throws on failure (recorder swallows + logs). */
+  appendEvents(turnId: string, events: Array<{ seq: number; kind: string; payload: unknown }>): Promise<void>;
+  finishTurn(
+    turnId: string,
+    status: "awaiting_credits" | "succeeded" | "failed" | "aborted",
+    extras: { errorMessage?: string | null; creditsCharged?: number | null },
+  ): Promise<void>;
+  /** Insert one ai_call_log row; returns its id (null on failure). */
+  logAiCall(row: Record<string, unknown>): Promise<string | null>;
+  /** Patch a row this turn logged (usage, timings, outcome). */
+  updateAiCall(id: string, patch: Record<string, unknown>): Promise<void>;
 }
 
 export function createDirectAgentIO(): AgentIO {
@@ -68,6 +79,40 @@ export function createDirectAgentIO(): AgentIO {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error } = await supabaseAdmin.rpc("replace_project_files", { _project_id: projectId, _files: files } as never);
       return error ? error.message : null;
+    },
+    async appendEvents(turnId, events) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error } = await supabaseAdmin
+        .from("turn_events")
+        .insert(events.map((e) => ({ turn_id: turnId, seq: e.seq, kind: e.kind, payload: (e.payload ?? {}) as never })));
+      if (error) throw new Error(error.message);
+      // Every flushed event proves the turn is alive (stalled-turn reaper).
+      await supabaseAdmin
+        .from("turns")
+        .update({ last_seq: events[events.length - 1].seq, last_progress_at: new Date().toISOString() })
+        .eq("id", turnId)
+        .eq("status", "running");
+    },
+    async finishTurn(turnId, status, extras) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin
+        .from("turns")
+        .update({
+          status,
+          ended_at: new Date().toISOString(),
+          error_message: extras.errorMessage ?? null,
+          credits_charged: extras.creditsCharged ?? null,
+        })
+        .eq("id", turnId);
+    },
+    async logAiCall(row) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data } = await supabaseAdmin.from("ai_call_log").insert(row as never).select("id").single();
+      return (data as { id?: string } | null)?.id ?? null;
+    },
+    async updateAiCall(id, patch) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("ai_call_log").update(patch as never).eq("id", id);
     },
   };
 }

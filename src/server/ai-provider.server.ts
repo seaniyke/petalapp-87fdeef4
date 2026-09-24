@@ -562,9 +562,7 @@ async function recordTelemetry(
       recoveryReason: (args.extra?.["recovery_reason"] as string | null | undefined) ?? null,
     });
     if (why.stage === "unclassified") console.warn(`[call-accounting] unexplained AI call: ${why.purpose}`);
-    const { data } = await supabaseAdmin
-      .from("ai_call_log")
-      .insert({
+    const rowId = await (await import("@/server/agent-io.server")).agentIO().logAiCall({
         feature: args.feature,
         provider: args.provider,
         model: args.model,
@@ -606,10 +604,7 @@ async function recordTelemetry(
         call_kind: why.kind,
         invoke_reason: why.reason,
         parent_stage: why.parent,
-      } as never)
-      .select("id")
-      .single();
-    const rowId = (data as { id?: string } | null)?.id ?? null;
+      });
     noteCallRow(rowId);
     return rowId;
   } catch (err) {
@@ -752,10 +747,8 @@ function meterStream(
     try {
       const id = await rowId;
       if (!id) return;
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin
-        .from("ai_call_log")
-        .update({
+      const { agentIO } = await import("@/server/agent-io.server");
+      await agentIO().updateAiCall(id, {
           // Honest accounting: no usage from the provider is recorded as
           // UNKNOWN — never as zero tokens or a free call.
           ...(u ? usageColumns(u, model) : { usage_state: "usage_unknown" }),
@@ -770,8 +763,7 @@ function meterStream(
           finish_reason: finishReason,
           stream_outcome: outcome,
           stall_ms: stallMs,
-        } as never)
-        .eq("id", id);
+        });
     } catch (err) {
       console.warn("[ai-provider] stream usage write failed", err);
     }

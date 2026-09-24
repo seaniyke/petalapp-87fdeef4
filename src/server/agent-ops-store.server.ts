@@ -104,7 +104,12 @@ export function createAgentOpsStore(): AgentOpsStore {
     },
     refund: ({ userId, ledgerId, reason }) => refundCredit({ userId, ledgerId, reason }),
     async logAiCall(row) {
-      await db.from("ai_call_log").insert(row as Any);
+      const { data } = await db.from("ai_call_log").insert(row as Any).select("id").single();
+      return (data as { id?: string } | null)?.id ?? null;
+    },
+    async updateAiCall(turnId, id, patch) {
+      const { data } = await db.from("ai_call_log").update(patch as Any).eq("id", id).eq("turn_id", turnId).select("id");
+      return !!data && data.length > 0;
     },
     async savePicture(row) {
       const { error } = await db.from("project_pictures").insert(row as Any);

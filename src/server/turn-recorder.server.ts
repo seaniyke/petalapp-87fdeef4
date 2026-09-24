@@ -64,6 +64,8 @@ export async function startTurn(opts: {
   /** The row already exists (opened by the durable-agent ingress). Record
    *  into it instead of inserting a second one. */
   attach?: boolean;
+  /** Where events/terminal status go. Default: direct database. */
+  io?: import("@/server/agent-io.server").AgentIO;
 }): Promise<TurnRecorderHandle> {
   const client = getAdminClient();
   const turnId = opts.turnId ?? crypto.randomUUID();
@@ -86,6 +88,13 @@ export async function startTurn(opts: {
     }
   }
 
+  let resolvedIO: import("@/server/agent-io.server").AgentIO | null = opts.io ?? null;
+  const io = () => {
+    if (!resolvedIO) throw new Error("agent io not ready");
+    return resolvedIO;
+  };
+  if (!resolvedIO) resolvedIO = (await import("@/server/agent-io.server")).createDirectAgentIO();
+
   let seq = 0;
   let queue: Array<{ seq: number; kind: string; payload: unknown }> = [];
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -103,26 +112,7 @@ export async function startTurn(opts: {
       timer = null;
     }
     try {
-      await client!.from("turn_events").insert(
-        batch.map((e) => ({
-          turn_id: turnId,
-          seq: e.seq,
-          kind: e.kind,
-          payload: (e.payload ?? {}) as Database["public"]["Tables"]["turn_events"]["Insert"]["payload"],
-        })),
-      );
-      // Update last_seq so resumers know how far we got even without realtime.
-      // Every flushed event also proves the turn is alive — including the
-      // keep-alive status events emitted during long generation/verify phases
-      // — so the stalled-turn reaper must measure quiet time from here too.
-      // Without this a healthy build whose pre-deploy phase exceeds the
-      // reaper's quiet window gets aborted mid-work.
-      const lastSeq = batch[batch.length - 1].seq;
-      await client!
-        .from("turns")
-        .update({ last_seq: lastSeq, last_progress_at: new Date().toISOString() })
-        .eq("id", turnId)
-        .eq("status", "running");
+      await io().appendEvents(turnId, batch);
     } catch (e) {
       console.warn("[turn-recorder] flush failed:", (e as Error).message);
     }
@@ -155,15 +145,7 @@ export async function startTurn(opts: {
         /* swallow */
       }
       try {
-        await client!
-          .from("turns")
-          .update({
-            status,
-            ended_at: new Date().toISOString(),
-            error_message: extras?.errorMessage ?? null,
-            credits_charged: extras?.creditsCharged ?? null,
-          })
-          .eq("id", turnId);
+        await io().finishTurn(turnId, status, extras ?? {});
       } catch (e) {
         console.warn("[turn-recorder] finish update failed:", (e as Error).message);
       }

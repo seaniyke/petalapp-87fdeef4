@@ -48,7 +48,8 @@ function memStore(turns: TurnRow[]) {
       return l ? { user_id: l.user_id, turn_id: l.turn_id } : null;
     },
     refund: async () => true,
-    logAiCall: async (r) => void aiLogs.push(r),
+    logAiCall: async (r) => (aiLogs.push(r), `log-${aiLogs.length}`),
+    updateAiCall: async (turnId, id) => aiLogs.some((r, i) => `log-${i + 1}` === id && r.turn_id === turnId),
     savePicture: async () => {},
   };
   return { store, spends, files, aiLogs, ledger };
@@ -106,6 +107,15 @@ describe("agent ops scoping", () => {
     const m = memStore([running(T1, "u1", "p1")]);
     await runAgentOps(m.store, T1, [{ op: "ai.log", row: { user_id: "attacker", project_id: "x", model: "m" } }]);
     expect(m.aiLogs[0]).toMatchObject({ user_id: "u1", project_id: "p1", turn_id: T1, model: "m" });
+  });
+
+  it("ai.update refuses a row from another turn", async () => {
+    const m = memStore([running(T1), running(T2)]);
+    await runAgentOps(m.store, T2, [{ op: "ai.log", row: {} }]);
+    const [r] = await runAgentOps(m.store, T1, [
+      { op: "ai.update", id: "00000000-0000-4000-8000-000000000001", patch: { status: "ok" } },
+    ]);
+    expect(r).toEqual({ ok: false, error: "row_not_in_turn" });
   });
 
   it("refund refuses another turn's ledger row", async () => {

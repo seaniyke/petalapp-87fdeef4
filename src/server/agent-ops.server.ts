@@ -43,7 +43,7 @@ export interface AgentOpsStore {
   claimCommit(turnId: string): Promise<boolean>;
   finishTurn(
     turnId: string,
-    status: "succeeded" | "failed" | "aborted",
+    status: "awaiting_credits" | "succeeded" | "failed" | "aborted",
     extras: { errorMessage?: string | null; creditsCharged?: number | null },
   ): Promise<void>;
   checkBalance(userId: string, amount: number): Promise<boolean>;
@@ -52,7 +52,9 @@ export interface AgentOpsStore {
   settle(args: { userId: string; projectId: string; turnId: string; amount: number; metadata: Record<string, unknown> }): Promise<SettleResult>;
   ledgerOwner(ledgerId: string): Promise<{ user_id: string; turn_id: string | null } | null>;
   refund(args: { userId: string; ledgerId: string; reason: string }): Promise<boolean>;
-  logAiCall(row: Record<string, unknown>): Promise<void>;
+  logAiCall(row: Record<string, unknown>): Promise<string | null>;
+  /** Patch only if the row belongs to this turn. Returns whether it did. */
+  updateAiCall(turnId: string, id: string, patch: Record<string, unknown>): Promise<boolean>;
   savePicture(row: { project_id: string; url: string; storage_path: string | null; label: string | null; tags: string[] }): Promise<void>;
 }
 
@@ -77,7 +79,7 @@ export const AgentOpSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("turn.claimCommit") }),
   z.object({
     op: z.literal("turn.finish"),
-    status: z.enum(["succeeded", "failed", "aborted"]),
+    status: z.enum(["awaiting_credits", "succeeded", "failed", "aborted"]),
     errorMessage: z.string().max(2000).nullable().optional(),
     creditsCharged: z.number().min(0).max(10_000).nullable().optional(),
   }),
@@ -89,6 +91,7 @@ export const AgentOpSchema = z.discriminatedUnion("op", [
   }),
   z.object({ op: z.literal("credits.refund"), ledgerId: z.string().uuid(), reason: z.string().min(1).max(100) }),
   z.object({ op: z.literal("ai.log"), row: z.record(z.unknown()) }),
+  z.object({ op: z.literal("ai.update"), id: z.string().uuid(), patch: z.record(z.unknown()) }),
   z.object({
     op: z.literal("pictures.save"),
     url: z.string().url().max(2000),
@@ -211,8 +214,14 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
     }
     case "ai.log":
       // Identity fields come from the turn, never from the caller.
-      await store.logAiCall({ ...op.row, user_id: turn.user_id, project_id: turn.project_id, turn_id: turn.id });
-      return { ok: true };
+      return {
+        ok: true,
+        data: { id: await store.logAiCall({ ...op.row, user_id: turn.user_id, project_id: turn.project_id, turn_id: turn.id }) },
+      };
+    case "ai.update": {
+      const { user_id: _u, project_id: _p, turn_id: _t, id: _i, ...patch } = op.patch;
+      return (await store.updateAiCall(turn.id, op.id, patch)) ? { ok: true } : { ok: false, error: "row_not_in_turn" };
+    }
     case "pictures.save":
       await store.savePicture({
         project_id: turn.project_id,
