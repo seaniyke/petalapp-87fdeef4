@@ -32,7 +32,9 @@ describe("stream continuation recovery", () => {
   });
 
   it("stops after one fallback when both continuation attempts fail", async () => {
-    completion.mockRejectedValue(new Error("silent continuation"));
+    completion
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+      .mockResolvedValueOnce({ ok: false, json: async () => ({}) });
     const { runContinuation } = await import("@/server/stream-continuation.server");
     await runContinuation({
       files: [{ path: "src/pages/Broken.tsx", content: "export default function Broken(){return <main>" }],
