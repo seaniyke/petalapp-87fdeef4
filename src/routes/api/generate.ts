@@ -3200,6 +3200,23 @@ Forbidden defaults
     // Never block a build on composer failure.
   }
 
+  // Bounded first-build generation units. Pages the user named are the plan
+  // even without a template match. A build whose pages would overflow one
+  // output budget writes the shared shell + the first pages now; the
+  // coverage continuation below writes only the remaining pages (it never
+  // rewrites delivered files). Small builds stay one call.
+  if (isInitial) {
+    try {
+      const { buildGenerationUnits } = await import("@/server/requested-scope");
+      const units = buildGenerationUnits(lastUserText, plannedRoutes);
+      for (const r of units.allRoutes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
+      if (units.instruction) archetypeBlock += units.instruction;
+      console.log(`[generation-units] pages=${units.allRoutes.length} units=${units.unitCount}`);
+    } catch {
+      /* never block a build on unit planning */
+    }
+  }
+
   // Layer I — App-shape classifier. Predicts surfaces (landing/auth/dashboard/
   // admin/webhooks/kyc) and likely integrations from the free-form prompt so
   // the model scaffolds full apps instead of stopping at one dashboard page.

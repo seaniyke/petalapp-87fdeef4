@@ -107,3 +107,42 @@ export function narrowRoutesToRequest(
   if (isSinglePageRequest(prompt) || opts?.marketing) return ["/"];
   return templateRoutes;
 }
+
+/** Non-home pages one generation unit writes before the next unit starts.
+ *  Shell + home + 3 pages fits the first-build output budget with headroom. */
+export const PAGES_PER_UNIT = 3;
+
+export interface GenerationUnits {
+  allRoutes: string[];
+  unitCount: number;
+  /** Prompt addendum for the FIRST unit; empty when one unit suffices. */
+  instruction: string;
+}
+
+/**
+ * Split a first build into the fewest units that stay under the output
+ * ceiling. One unit for small builds; the remaining pages are written by the
+ * coverage continuation, which only sees undelivered routes.
+ */
+export function buildGenerationUnits(prompt: string, plannedRoutes: string[]): GenerationUnits {
+  const all = [...plannedRoutes];
+  for (const n of extractRequestedPages(prompt)) {
+    const r = pageNameToRoute(n);
+    if (!all.includes(r)) all.push(r);
+  }
+  const pages = all.filter((r) => r !== "/" && !r.includes("$"));
+  const unitCount = Math.max(1, Math.ceil(pages.length / PAGES_PER_UNIT));
+  if (unitCount <= 1) return { allRoutes: all, unitCount: 1, instruction: "" };
+  const first = pages.slice(0, PAGES_PER_UNIT);
+  const later = pages.slice(PAGES_PER_UNIT);
+  return {
+    allRoutes: all,
+    unitCount,
+    instruction:
+      `\n\n### Build in parts (this pass = part 1 of ${unitCount})\n` +
+      `This build has ${pages.length + 1} pages — too many to write reliably in one pass.\n` +
+      `In THIS pass write: the shared shell (router registering EVERY route: ${all.join(", ")}; navigation; footer; styles; shared components) plus the Home page and ONLY these pages: ${first.join(", ")}.\n` +
+      `Do NOT write these pages yet — the next pass writes them and will reuse your shell: ${later.join(", ")}.\n` +
+      `Finish every file you start. Never stop mid-file.\n`,
+  };
+}
