@@ -1,6 +1,8 @@
 import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
 import {
   CODEGEN_PROVIDER_IGNORE,
+  CODEGEN_PRIMARY_PROVIDERS,
+  CODEGEN_LAST_RESORT_PROVIDERS,
   CODEGEN_PROVIDER_ORDER,
   OPENROUTER_CHAT_URL,
   UTILITY_MAX_OUTPUT_TOKENS,
