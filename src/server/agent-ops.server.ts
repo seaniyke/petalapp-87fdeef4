@@ -57,6 +57,8 @@ export interface AgentOpsStore {
   logAiCall(row: Record<string, unknown>): Promise<string | null>;
   /** Patch only if the row belongs to this turn. Returns whether it did. */
   updateAiCall(turnId: string, id: string, patch: Record<string, unknown>): Promise<boolean>;
+  /** Start compile + publish for the project (idempotent per file revision). */
+  startBuild?(projectId: string, userId: string, turnId: string): Promise<boolean>;
   /** Run an already-scoped table query. */
   runQuery(q: ScopedQuery): Promise<{ data: unknown; error: string | null }>;
   runRpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: string | null }>;
@@ -105,6 +107,7 @@ export const AgentOpSchema = z.discriminatedUnion("op", [
       .max(64),
   }),
   z.object({ op: z.literal("turn.status") }),
+  z.object({ op: z.literal("build.start") }),
   z.object({ op: z.literal("turn.claimCommit") }),
   z.object({
     op: z.literal("turn.finish"),
@@ -284,6 +287,14 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
     case "ai.update": {
       const { user_id: _u, project_id: _p, turn_id: _t, id: _i, ...patch } = op.patch;
       return (await store.updateAiCall(turn.id, op.id, patch)) ? { ok: true } : { ok: false, error: "row_not_in_turn" };
+    }
+    case "build.start": {
+      // Only a finished, successful turn may publish — never a running,
+      // failed or stopped one. The trigger itself is idempotent.
+      const fresh = await store.getTurn(turn.id);
+      if (fresh?.status !== "succeeded") return { ok: false, error: "turn_not_succeeded" };
+      if (!store.startBuild) return { ok: false, error: "unsupported" };
+      return (await store.startBuild(turn.project_id, turn.user_id, turn.id)) ? { ok: true } : { ok: false, error: "build_not_started" };
     }
     case "pictures.save":
       await store.savePicture({

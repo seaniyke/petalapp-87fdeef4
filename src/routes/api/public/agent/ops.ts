@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/public/agent/ops")({
         if (!parsed.success) return Response.json({ error: "invalid_ops" }, { status: 400 });
         try {
           const { createAgentOpsStore } = await import("@/server/agent-ops-store.server");
-          const results = await runAgentOps(createAgentOpsStore(), parsed.data.turnId, parsed.data.ops);
+          const results = await runAgentOps(createAgentOpsStore(new URL(request.url).origin), parsed.data.turnId, parsed.data.ops);
           return Response.json({ results });
         } catch (e) {
           if (e instanceof AgentOpError) return Response.json({ error: e.message }, { status: e.status });

@@ -5,9 +5,19 @@ import type { AgentOpsStore, TurnRow } from "@/server/agent-ops.server";
 
 type Any = never;
 
-export function createAgentOpsStore(): AgentOpsStore {
+export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
   const db = supabaseAdmin;
   return {
+    async startBuild(projectId, userId, turnId) {
+      const secret = process.env.BUILDER_SHARED_SECRET;
+      if (!secret || !appOrigin) return false;
+      const res = await fetch(new URL("/api/builds/trigger", appOrigin), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret, "x-petal-internal-user": userId },
+        body: JSON.stringify({ projectId, turnId }),
+      }).catch(() => null);
+      return !!res?.ok;
+    },
     async getTurn(turnId) {
       const { data } = await db
         .from("turns")
