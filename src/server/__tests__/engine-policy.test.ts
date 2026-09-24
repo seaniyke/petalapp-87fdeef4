@@ -3,16 +3,10 @@ import { resolveProviderRouting } from "@/server/engine/provider-policy";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 
 describe("single provider policy", () => {
-  it("code calls: OpenInference first, DeepInfra hidden while a primary is left", () => {
-    const r = resolveProviderRouting({ codeWriting: true, avoid: [] }) as { order: string[] };
-    expect(r.order[0]).toBe("openinference");
-    expect(r.order).not.toContain("deepinfra");
-  });
-  it("after OpenInference fails, Azure; after both, DeepInfra last resort", () => {
-    const a = resolveProviderRouting({ codeWriting: true, avoid: ["OpenInference"] }) as { order: string[] };
-    expect(a.order).toEqual(["azure"]);
-    const b = resolveProviderRouting({ codeWriting: true, avoid: ["openinference", "Azure"] }) as { order: string[] };
-    expect(b.order).toEqual(["deepinfra"]);
+  it("code calls: OpenRouter native routing, failed upstreams ignored", () => {
+    const r = resolveProviderRouting({ codeWriting: true, avoid: ["OpenInference"] }) as { ignore: string[]; only?: string[] };
+    expect(r.only).toBeUndefined();
+    expect(r.ignore).toContain("openinference");
   });
   it("non-code calls only inherit exclusions", () => {
     expect(resolveProviderRouting({ codeWriting: false, avoid: [] })).toBeUndefined();

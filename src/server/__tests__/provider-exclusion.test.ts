@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CODEGEN_PROVIDER_ORDER } from "@/lib/ai-model-config";
+import { CODEGEN_PROVIDER_IGNORE } from "@/lib/ai-model-config";
 import { codegenProviderRouting } from "@/server/ai-provider.server";
 import {
   runWithTurnContext,
@@ -11,9 +11,9 @@ import { assessRouteCoverage, mergeChunk } from "@/server/chunked-generation.ser
 import { EMPTY_HOME_BUILD_FAILURE_MESSAGE, PROMPT_BLAME_PATTERN } from "@/server/build-failure-copy";
 
 describe("page-writing provider routing", () => {
-  it("DeepInfra is not primary for page generation", () => {
-    expect(CODEGEN_PROVIDER_ORDER[0]).not.toBe("deepinfra");
-    expect((codegenProviderRouting().order as string[])[0]).not.toBe("deepinfra");
+  it("keeps no Kimble allow-list; only known-bad providers are ignored", () => {
+    expect(CODEGEN_PROVIDER_IGNORE).toEqual(["digitalocean", "nextbit"]);
+    expect(codegenProviderRouting().only).toBeUndefined();
   });
 });
 
@@ -26,7 +26,6 @@ describe("per-turn failed-provider exclusion", () => {
       expect(avoid).toEqual(["deepinfra"]);
       // Every codegen call (retry, continuation, missing-page, repair) routes through this.
       const r = codegenProviderRouting(avoid);
-      expect(r.order).not.toContain("deepinfra");
       expect(r.ignore).toContain("deepinfra");
     });
   });

@@ -9,14 +9,12 @@ import { revertCleanupBreakage } from "@/server/write-gate.server";
 const f = (path: string, content: string) => ({ path, content });
 
 describe("provider picker is authoritative", () => {
-  it("code-writing calls may only use the named upstreams (no Baidu-style fallback)", () => {
-    const r = codegenProviderRouting() as { order: string[]; only: string[] };
-    expect(r.only).toEqual(r.order);
-    expect(r.only).toEqual(["openinference", "azure"]);
+  it("code-writing calls never send an allow-list", () => {
+    expect((codegenProviderRouting() as { only?: string[] }).only).toBeUndefined();
   });
-  it("a turn's failed upstream is excluded from `only` too", () => {
-    const r = resolveProviderRouting({ codeWriting: true, avoid: ["Azure"] }) as { only: string[] };
-    expect(r.only).toEqual(["openinference"]);
+  it("a turn's failed upstream is ignored", () => {
+    const r = resolveProviderRouting({ codeWriting: true, avoid: ["Azure"] }) as { ignore: string[] };
+    expect(r.ignore).toContain("azure");
   });
 });
 
@@ -103,12 +101,14 @@ describe("configured is not available", () => {
     for (const s of [404, 408, 502, 503, 524]) expect(isProviderUnavailableStatus(s)).toBe(true);
     for (const s of [200, 400, 401, 402]) expect(isProviderUnavailableStatus(s)).toBe(false);
   });
-  it("once both primaries are unavailable, DeepInfra is the next approved upstream", async () => {
+  it("after several upstream failures OpenRouter keeps routing among the rest", async () => {
     await runWithTurnContext({ turnId: "t1" }, async () => {
       markUpstreamFailed("Azure");
       markUpstreamFailed("OpenInference");
-      const r = resolveProviderRouting({ codeWriting: true, avoid: failedUpstreamsForTurn() }) as { only: string[] };
-      expect(r.only).toEqual(["deepinfra"]);
+      markUpstreamFailed("DeepInfra");
+      const r = resolveProviderRouting({ codeWriting: true, avoid: failedUpstreamsForTurn() }) as { ignore: string[]; only?: string[] };
+      expect(r.only).toBeUndefined();
+      expect(r.ignore).toEqual(expect.arrayContaining(["azure", "openinference", "deepinfra"]));
     });
   });
   it("failure state is per build: a new turn starts clean", async () => {
