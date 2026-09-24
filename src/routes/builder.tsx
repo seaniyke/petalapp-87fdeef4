@@ -3165,8 +3165,10 @@ function Builder() {
           // Mark `awaitingBuild` BEFORE setBusy(false) lands so the
           // post-build "READY — WHAT'S NEXT?" card never flashes in the gap
           // between generation finishing and the deploy row appearing.
-          setAwaitingBuild(true);
-          void retryTransient(() => triggerBuild(proj.id, {
+          // Completeness gate: an incomplete build is never built or published.
+          const scopeIncomplete = (turnOutcome as { reason?: string } | null)?.reason === "requested_scope_missing";
+          if (!scopeIncomplete) setAwaitingBuild(true);
+          if (!scopeIncomplete) void retryTransient(() => triggerBuild(proj.id, {
             changedPaths: turnOutcome?.changedPaths ?? [],
           }))
             .then(async (build) => {

@@ -15,6 +15,7 @@ import {
 } from "@/server/generate.server";
 import { reconcileDocumentHeadOps } from "@/server/document-head.server";
 import { EMPTY_HOME_BUILD_FAILURE_MESSAGE } from "@/server/build-failure-copy";
+import { assessCompleteness, incompleteBuildMessage, requestedRoutesFor } from "@/server/engine/build-state";
 import { currentTurnContext, markUpstreamFailed, runWithTurnContext } from "@/server/turn-context.server";
 import {
   salvagePartialToolArgs,
@@ -6768,15 +6769,34 @@ Forbidden defaults
 
         // Iteration Standard #1 — one turn, one terminal state, decided by a
         // byte diff against the snapshot taken when the turn began.
+        // COMPLETENESS SAFETY GATE — success is a deterministic consequence of
+        // the build state, never of an AI self-check. A first build that is
+        // missing requested pages is reported as incomplete and not built.
+        let scopeMissing: string[] = [];
+        if (isInitial && nextFiles.length > 0) {
+          const requested = requestedRoutesFor(lastUserText, plannedRoutes);
+          const verdict = assessCompleteness({ requestedRoutes: requested, files: nextFiles });
+          scopeMissing = verdict.missingRoutes;
+          console.log(
+            `[build-state] requested=${JSON.stringify(requested)} complete=${verdict.complete} missing=${JSON.stringify(scopeMissing)}`,
+          );
+          if (!verdict.complete) {
+            const note = incompleteBuildMessage(scopeMissing);
+            summary = `${summary}${note}`;
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          }
+        }
         {
           const turnChanged = turnChangedPaths;
-          emitTurnOutcome(controller, encoder, {
-            outcome: turnChanged.length > 0 ? "applied" : "answered",
-            changedPaths: turnChanged,
-            ...(unappliedPaths.length > 0
-              ? { blockedPaths: unappliedPaths, reason: "unapplied_claims" }
-              : {}),
-          });
+          emitTurnOutcome(controller, encoder, scopeMissing.length > 0
+            ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing" }
+            : {
+                outcome: turnChanged.length > 0 ? "applied" : "answered",
+                changedPaths: turnChanged,
+                ...(unappliedPaths.length > 0
+                  ? { blockedPaths: unappliedPaths, reason: "unapplied_claims" }
+                  : {}),
+              });
         }
 
         controller.enqueue(
@@ -7346,6 +7366,10 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             sseBuffer = sseBuffer.slice(cut + 2);
             const failure = errorPayloadOf(block);
             const creditPause = creditPausePayloadOf(block);
+            if (block.includes('"requested_scope_missing"')) {
+              terminalStatus = "failed";
+              terminalError = "Requested pages are missing — build incomplete";
+            }
             if (creditPause) {
               terminalStatus = "awaiting_credits";
               terminalError = "Waiting for credits";
