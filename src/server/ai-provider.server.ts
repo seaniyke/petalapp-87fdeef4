@@ -18,7 +18,14 @@ import {
  */
 export function codegenProviderRouting(avoid: string[] = []): Record<string, unknown> {
   const avoidSlugs = avoid.map((a) => a.toLowerCase().replace(/\s+/g, ""));
-  const ignore = Array.from(new Set([...CODEGEN_PROVIDER_IGNORE, ...avoidSlugs]));
+  const ignoreSet = new Set<string>([...CODEGEN_PROVIDER_IGNORE, ...avoidSlugs]);
+  // ONE page-generation policy for every code-writing call (initial,
+  // continuation, missing pages, retry, recovery, repair): primaries first;
+  // last-resort upstreams are only eligible once every primary has failed in
+  // this build. A continuation being "a new API call" never re-opens them.
+  const primariesLeft = CODEGEN_PRIMARY_PROVIDERS.some((p) => !ignoreSet.has(p));
+  if (primariesLeft) for (const p of CODEGEN_LAST_RESORT_PROVIDERS) ignoreSet.add(p);
+  const ignore = Array.from(ignoreSet);
   const order = CODEGEN_PROVIDER_ORDER.filter((p) => !ignore.includes(p));
   return { order, allow_fallbacks: true, require_parameters: true, ignore };
 }
@@ -1135,12 +1142,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     /* no ambient turn */
   }
   const avoidAll = Array.from(new Set([...(opts.avoidUpstreams ?? []), ...turnFailed]));
-  if (
-    opts.feature === "generate" &&
-    Array.isArray(body.tools) &&
-    (body.tools as unknown[]).length > 0 &&
-    !body.provider
-  ) {
+  const isCodeWriting =
+    opts.codeOutput === true ||
+    (opts.feature === "generate" && Array.isArray(body.tools) && (body.tools as unknown[]).length > 0);
+  if (isCodeWriting && !body.provider) {
     body.provider = codegenProviderRouting(avoidAll);
   } else if (avoidAll.length && !body.provider) {
     body.provider = { ignore: avoidAll.map((a) => a.toLowerCase().replace(/\s+/g, "")) };
