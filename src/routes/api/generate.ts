@@ -1978,7 +1978,7 @@ async function runFinalParseGuard(
     // state. There is no prior project to roll back to — "rollback" here
     // meant deleting good pages.
     if (priorFiles.length === 0) {
-      const { isolateBrokenFiles } = await import("@/server/engine/build-state");
+      const { isolateBrokenFiles, isOwnContentIssue } = await import("@/server/engine/build-state");
       let kept = gated;
       let bad = new Set(badPaths.length ? badPaths : report.issues.map((i) => i.path).filter(Boolean));
       const isolated: string[] = [];
@@ -1987,7 +1987,15 @@ async function runFinalParseGuard(
         kept = isolateBrokenFiles(kept, bad);
         const again = await runPreEmitGate(kept, changedPaths.filter((p) => !isolated.includes(p)), { maxRounds: 0, prd });
         kept = again.files;
-        bad = new Set(again.report.issues.map((i) => i.path).filter((p) => p && !isolated.includes(p)));
+        // Only a file whose OWN content is broken is isolated. A valid file
+        // that merely imports an isolated one (App.tsx → Home) is kept; the
+        // completeness check reports the missing dependency honestly.
+        bad = new Set(
+          again.report.issues
+            .filter((i) => isOwnContentIssue(i.kind))
+            .map((i) => i.path)
+            .filter((p) => p && !isolated.includes(p)),
+        );
       }
       console.warn(`[preemit-gate] first build: isolated ${JSON.stringify(isolated)}; kept ${kept.length} file(s)`);
       controller.enqueue(encoder.encode(sse({ type: "status", message: "Setting aside files that couldn't be fixed…" })));
@@ -4244,6 +4252,14 @@ Forbidden defaults
               pages,
               files: parsed.files,
               budget: recovery,
+              // Structural completeness check: a candidate cut off mid-file is
+              // discarded (never patched) so the page is re-requested once.
+              isTruncated: async (file) => {
+                const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
+                const { isTruncationDetail } = await import("@/server/engine/build-state");
+                const verdict = await verifyFilesEsbuild([file], [file.path]);
+                return verdict.issues.some((i) => isTruncationDetail(i.message));
+              },
               request: async (instruction: string) => {
                 const { withCallFrame, attachFiles } = await import("@/server/engine/call-accounting");
                 const framed = await withCallFrame(async () => {
@@ -4273,7 +4289,11 @@ Forbidden defaults
                 if (!res.ok || !res.body) return null;
                 let c = await relayAndCollect(res, controller, encoder);
                 const wantPath = wantOf(instruction);
-                const underDelivered = Boolean(wantPath) && !c.args.includes(`"${wantPath}"`);
+                // A truncated response is a model-output problem, not a
+                // provider failure: never fail the provider for it and never
+                // resend here — the WRITE stage re-requests the file once.
+                const truncatedOutput = isTruncatedFinishReason(c.finishReason);
+                const underDelivered = !truncatedOutput && Boolean(wantPath) && !c.args.includes(`"${wantPath}"`);
                 if (underDelivered) markUpstreamFailed(c.upstream);
                 if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
                   // Provider failed mid-page: one resend (failed upstream is excluded).
@@ -7054,9 +7074,12 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             // the turn failed. Nothing downstream may report it as succeeded.
             // A build that produced nothing ("blocked" with a no-files reason)
             // is a failure too — never a "succeeded" done event.
-            const { outcomeFailsTurn } = await import("@/server/engine/build-state");
-            const failedOutcome = outcomeFailsTurn(block);
-            if (failedOutcome) {
+            // ONE mapping from the authoritative turn outcome to the final
+            // status. The outcome block decides; nothing else may flip a
+            // failed outcome back to succeeded.
+            const { turnOutcomeStatus } = await import("@/server/engine/build-state");
+            const outcomeStatus = turnOutcomeStatus(block);
+            if (outcomeStatus === "failed") {
               terminalStatus = "failed";
               terminalError = /"reason":\s*"([^"]+)"/.exec(block)?.[1] ?? "build incomplete";
             }
