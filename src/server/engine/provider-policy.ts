@@ -29,7 +29,11 @@ export function codegenProviderRouting(avoid: string[] = []): Record<string, unk
   if (primariesLeft) for (const p of CODEGEN_LAST_RESORT_PROVIDERS) ignoreSet.add(p);
   const ignore = Array.from(ignoreSet);
   const order = CODEGEN_PROVIDER_ORDER.filter((p) => !ignore.includes(p));
-  return { order, allow_fallbacks: true, require_parameters: true, ignore };
+  // `only` is what makes this list authoritative: with just `order`,
+  // OpenRouter treats it as a preference and falls back to ANY other
+  // upstream (a live repair call went to Baidu that way). Fallbacks stay on,
+  // but only between the upstreams named here.
+  return { order, only: order, allow_fallbacks: true, require_parameters: true, ignore };
 }
 
 /** Resolve the OpenRouter `provider` block for one call (or undefined).
