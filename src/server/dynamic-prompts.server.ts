@@ -98,28 +98,20 @@ JSX correctness — prevents the most common runtime crash (React error #31 "obj
 - Slots typed as \`ReactNode\` / \`children\` / \`label\` / \`title\` / \`description\` / \`heading\` / \`cta\` accept RENDERED elements (strings, numbers, \`<Foo />\`), NOT component references. Only props explicitly typed as a component (e.g. \`icon: LucideIcon\` on kit blocks like \`<EmptyState icon={Inbox} />\` or \`<FeaturesGrid3 items={[{ icon: Film }]} />\`) accept a bare component value.
 - When in doubt, render it: \`label: <><Icon className="h-4 w-4" /> Save</>\` — not \`label: Icon\`.`,
   },
-  // Fires on multi-section / landing / dashboard / page-shaped requests —
-  // the exact turns that historically blew past the 180-line cap and got
-  // reverted by the file-budget gate. Reinforces the split-into-files
-  // pattern WITH a concrete example so the model has a template to follow.
+  // Fires on multi-section / landing / dashboard / page-shaped requests.
+  // Keep this aligned with the WRITE stage contract: one page per call, that
+  // whole page in ONE file. A cap that contradicts the call's own instruction
+  // makes the model stop early and deliver a near-empty page, so the only
+  // rule here is: finish what you start.
   fileBudget: {
     triggers:
       /\b(landing|landing page|home ?page|dashboard|marketing site|portfolio|saas|product page|pricing page|about page|multi[- ]?page|site|website|several pages?|full app|complete app|app from scratch|build me an? app)\b/i,
-    body: `\n\n[Reinforcement — Split into small files]
-This turn looks like a multi-section page. The server enforces a hard 180-line / 6 KB cap per file (>280 lines is auto-reverted). To stay under it:
-- Build the page as a SHELL that composes sub-components — never a single 300-line file.
-- Canonical landing-page split (mirror this structure):
-    src/components/Hero.tsx
-    src/components/Features.tsx
-    src/components/Testimonials.tsx   (if asked)
-    src/components/Pricing.tsx        (if asked)
-    src/components/CTA.tsx            (if asked)
-    src/components/FooterSection.tsx
-  Then src/App.tsx (or src/pages/Home.tsx) is just:
-    <Container><Hero /><Features /><FooterSection /></Container>
-- Only create the sections this request needs. Never add Stats, Testimonials, Pricing, CTA or FAQ sections the user did not ask for.
-- Each sub-component owns its own copy/data — do not pass props down for purely-presentational content.
-- The MOMENT a file you are writing crosses ~120 lines, stop and extract the next section into its own file before continuing.`,
+    body: `\n\n[Reinforcement — Finish the file you are asked for]
+This turn looks like a multi-section page.
+- Write the complete page, every section of it, in the ONE file this call names. Do not split it across new files and do not stop early: an unfinished file is thrown away, a long finished one is not.
+- Reuse the shell, navigation, footer, brand and shared components that already exist instead of re-creating them.
+- Only include the sections this request needs. Never add Stats, Testimonials, Pricing, CTA or FAQ sections the user did not ask for.
+- Each section owns its own copy/data — do not pass props down for purely-presentational content.`,
   },
   layout: {
     triggers:
@@ -708,7 +700,7 @@ Every list you render this turn must feel like a REAL product, not a wireframe. 
 6. AVATARS. Use \`https://api.dicebear.com/9.x/avataaars/svg?seed=\${name}\` OR \`https://i.pravatar.cc/128?u=\${name}\` — vary per person. Never a single avatar reused. Never a bare initial circle across a whole team page.
 7. DATA SHAPE. Give each seed item a stable \`id\` (\`crypto.randomUUID()\` at module scope is fine for mocks). This makes React keys stable and lets the interactivity floor (search/filter/sort) work correctly.
 
-If the seed data lives inline in the component, extract it to a sibling \`*.data.ts\` file the moment the array crosses ~30 lines — keeps the component under the 180-line budget.`,
+If the seed data lives inline in the component, extract it to a sibling \`*.data.ts\` file the moment the array crosses ~30 lines — keeps the component readable.`,
   },
   // Fires on any list / page / data-fetch surface. The failure mode is
   // "render data or blank" — no loading, no empty, no error. Ships the

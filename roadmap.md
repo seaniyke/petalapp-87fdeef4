@@ -66,3 +66,9 @@
 - [x] WRITE is the only page writer (plan → shell → one call per page); tidy-up and shell guard never invent pages or routers
 - [x] REPAIR is one stage: write-time single-file repair (engine/repair.ts); continuation, post-write autofix, extra repair round and safety-gate repair deleted; safety gate is check-only
 - [ ] Fresh 4-page smoke test (after user go-ahead) → build → browser check → publish
+
+## Webby constraint audit (Sept 2026)
+- [x] Audit of 16 capabilities against the live code; report delivered in chat
+- [x] Guard fix: first-turn backend deferral removed (user intent outranks the two-phase gate)
+- [x] Guard fix: file-length caps removed from the model prompts (contradicted the one-page-per-call WRITE contract and caused near-empty pages); deterministic revert still applies only to unfinished files
+- [ ] Model evaluation inside the constrained architecture (next step)

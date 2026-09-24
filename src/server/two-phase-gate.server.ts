@@ -50,13 +50,14 @@ export function decideBackendGate(args: {
     return { gated: false, suggestions: [], reason: "no_backend_intent" };
   }
 
-  // We have backend intent on turn 1 without an explicit "do it all" — gate it.
-  // Suggestions are intentionally short, action-shaped, and renderable as ticks.
-  const suggestions = pickSuggestionsForIntent(args.userPrompt);
+  // User intent is the highest authority. Backend intent detected in the
+  // user's OWN words is a request, not an accident, so it is never deferred
+  // to a second turn. The gate stays in the codebase only to record that the
+  // decision was made deliberately.
   return {
-    gated: true,
-    suggestions,
-    reason: `gated:${intent.reason ?? "backend_intent"}`,
+    gated: false,
+    suggestions: [],
+    reason: `user_intent_first:${intent.reason ?? "backend_intent"}`,
   };
 }
 
@@ -65,32 +66,3 @@ export function renderBackendGateBlock(): string {
   return `\n\n### Two-phase build (HARD CONSTRAINT — this turn)\nThis is the user's FIRST turn. Build the frontend ONLY. You MUST NOT:\n- create or import a Supabase client, server function, RLS policy, or migration\n- write code under \`src/integrations/backend/*\`, \`src/server/*\`, or any \`*.functions.ts\` / \`*.server.ts\` file\n- wire auth flows, login forms that POST to a backend, or database CRUD\n- assume any table or auth user exists\n\nIf the user's idea implies persistence (accounts, saved data, payments, file upload, email), build the complete requested UI with concise realistic local data. Do not add extra sections or verbose seed content merely to simulate a backend. End your summary with one short line: "I'll wire up the backend next — pick what to add from the suggestions below." Kimble will surface the suggestion chips automatically.\n`;
 }
 
-function pickSuggestionsForIntent(prompt: string): string[] {
-  const p = prompt.toLowerCase();
-  const out: string[] = [];
-  const push = (s: string) => {
-    if (!out.includes(s) && out.length < 4) out.push(s);
-  };
-
-  if (/\b(?:sign[- ]?up|sign[- ]?in|log[- ]?in|account|auth|user|profile|member)/i.test(p)) {
-    push("Add user accounts (sign up / login)");
-  }
-  if (/\b(?:save|store|persist|database|db|record|crud|post|comment|order|booking|task|note|message|product|listing|review)/i.test(p)) {
-    push("Add a database to save data");
-  }
-  if (/\b(?:upload|file|image|photo|document|attachment|avatar)/i.test(p)) {
-    push("Add file uploads");
-  }
-  if (/\b(?:pay|payment|subscription|stripe|paddle|paystack|checkout|billing)/i.test(p)) {
-    push("Add payments");
-  }
-  if (/\b(?:email|notify|magic link|reset password|invite)/i.test(p)) {
-    push("Add email sending");
-  }
-  if (out.length === 0) {
-    // Generic fall-through so the user always has something to tick.
-    push("Add user accounts");
-    push("Add a database to save data");
-  }
-  return out;
-}
