@@ -334,6 +334,26 @@ export function renderApprovedPlanBlock(plan: PlanProposal): string {
  * when the request is structural, multi-part, or long-form prose, and only on
  * projects that already exist (the first build has nothing to scope against).
  */
+/**
+ * Class B only: the user explicitly asked for a plan or a recommendation.
+ * Class A (a clear instruction — change, add, make, build, remove, move…) is
+ * EXECUTED, however many words or files it involves; asking approval for work
+ * the user already requested is a product failure. Class C (genuine missing
+ * information) is handled by the model's single clarifying question, not here.
+ * The explicit "Plan first" toggle still works independently of this.
+ */
+export function isExplicitPlanRequest(prompt: string): boolean {
+  const p = (prompt ?? "").trim().toLowerCase();
+  if (!p) return false;
+  if (/\b(just do it|no plan|don'?t plan|skip the plan)\b/.test(p)) return false;
+  return (
+    /\b(give|show|write|draft|make|propose|outline|suggest)\b[^.!?]{0,20}\b(me |us |a |an |the )*(plan|roadmap|approach|proposal|outline|strategy)\b/.test(p) ||
+    /\bplan (out |the |how |for )/.test(p) ||
+    /^(how should (we|i)|what would you recommend|what should (we|i) build|which approach)\b/.test(p) ||
+    /\b(before (you )?(code|coding|building|writing|touching)|plan first|plan it first)\b/.test(p)
+  );
+}
+
 export function shouldAutoPlan(args: {
   prompt: string;
   fileCount: number;
@@ -341,67 +361,5 @@ export function shouldAutoPlan(args: {
   isAutoFix?: boolean;
 }): boolean {
   if (args.isInitial || args.isAutoFix) return false;
-  // Under a handful of files there is no meaningful scope to review.
-  if (args.fileCount < 4) return false;
-
-  const raw = args.prompt.trim();
-  const p = raw.toLowerCase();
-
-  // Explicit "just do it" always wins over the heuristic.
-  if (/\b(just do it|no plan|don'?t plan|skip the plan|quick(ly)?)\b/.test(p)) return false;
-
-  // A focused bug report should enter repair immediately. Planning a known,
-  // single broken interaction adds ceremony after the user already described
-  // the exact failure (and was the source of the late plan card).
-  const focusedRepair =
-    /^(fix|repair|resolve|stop)\b/.test(p) &&
-    raw.length < 140 &&
-    !/\b(and|also|plus)\b/.test(p) &&
-    !/\b(auth|database|schema|payment|checkout|migration|redesign|architecture)\b/.test(p);
-  if (focusedRepair) return false;
-
-  // Small, well-understood tweaks never plan, even when phrased at length.
-  const trivial =
-    /^(fix|change|update|tweak|adjust|make|set|move|remove|delete|rename)\b/.test(p) &&
-    raw.length < 90 &&
-    !/\bpage|route|feature|flow|auth|database|schema|payment|checkout|dashboard\b/.test(p);
-  if (trivial) return false;
-
-  // One small element on one named screen. "Add a back button on the sign up
-  // page" is a one-line edit: the page is WHERE it goes, not new surface area.
-  // Without this the word "page" alone pushed it into the structural branch
-  // below and produced an approval card for a single button.
-  const microElement =
-    raw.length < 120 &&
-    !/\b(and|also|plus|then)\b/.test(p) &&
-    /^(add|put|place|insert|change|update|remove|delete|move|make|set|rename|swap|replace|show|hide)\b/.test(
-      p,
-    ) &&
-    /\b(back|button|link|arrow|icon|label|text|title|heading|caption|placeholder|colou?r|font|size|spacing|padding|margin|border|shadow|logo|image|picture|photo|avatar|badge|tooltip|copy|word|wording)\b/.test(
-      p,
-    ) &&
-    !/\b(auth|authentication|database|schema|table|payment|checkout|subscription|onboarding|redesign|rebuild|refactor|migrate|integrate|api|endpoint|upload|search)\b/.test(
-      p,
-    );
-  if (microElement) return false;
-
-
-  // Structural work — anything that adds surface area or touches data/auth.
-  const structural =
-    /\b(add|build|create|implement|introduce|integrate|set up|setup|wire up|redesign|rebuild|refactor|migrate|restructure)\b/.test(
-      p,
-    ) &&
-    /\b(page|pages|route|routes|screen|section|feature|flow|dashboard|auth|login|signup|account|database|schema|table|api|endpoint|payment|checkout|subscription|onboarding|search|admin|profile|settings|notification|upload|chat)\b/.test(
-      p,
-    );
-  if (structural) return true;
-
-  // Multi-part requests: bullet lists or several sentences of instructions.
-  const bullets = (raw.match(/^\s*(?:[-*•]|\d+[.)])\s+/gm) ?? []).length;
-  if (bullets >= 2) return true;
-
-  // Long-form prose is almost always a compound ask.
-  if (raw.length >= 320) return true;
-
-  return false;
+  return isExplicitPlanRequest(args.prompt);
 }
