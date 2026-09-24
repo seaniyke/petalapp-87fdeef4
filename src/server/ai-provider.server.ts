@@ -1137,6 +1137,14 @@ async function dispatch(
   }
   // OpenRouter: always return usage (incl. cached tokens + real cost).
   if (!outBody.usage) outBody = { ...outBody, usage: { include: true } };
+  // Tool calls must come back exactly as the schema says. Measured 2026-09-24:
+  // every edit served by the NextBit upstream returned re-serialized tool
+  // arguments with the `replace` field of patch ops missing (30/30 calls
+  // unusable, edits "didn't land"), while DeepInfra served the same requests
+  // intact. Require full parameter support and skip that upstream.
+  if (Array.isArray(outBody.tools) && outBody.tools.length > 0 && !outBody.provider) {
+    outBody = { ...outBody, provider: { require_parameters: true, ignore: ["NextBit"] } };
+  }
   // Sticky routing per project so repeated calls land on the same upstream
   // and can reuse its prompt cache. Stable per project — never per request.
   if (!outBody.session_id) {

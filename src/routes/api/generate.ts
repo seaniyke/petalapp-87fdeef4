@@ -1537,7 +1537,11 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
   if (Array.isArray(parsed.ops)) {
     const { ops, dropped } = dropUnusableOps(parsed.ops as unknown as Record<string, unknown>[]);
     if (dropped > 0) {
-      console.warn(`[generate] dropped ${dropped} unusable op(s)`);
+      console.warn(
+        `[generate] dropped ${dropped} unusable op(s); first keys=${JSON.stringify(
+          Object.keys((parsed.ops as unknown as Record<string, unknown>[])[0] ?? {}),
+        )} sample=${JSON.stringify((parsed.ops as unknown[])[0] ?? null).slice(0, 200)}`,
+      );
       parsed.ops = ops as unknown as ParsedProjectPayload["parsed"]["ops"];
     }
   }
@@ -2753,8 +2757,22 @@ Forbidden defaults
   const editIntent = isInitial
     ? null
     : resolveEditIntent(lastUserContent, editablePromptFiles);
-  const editTargetPaths =
+  let editTargetPaths =
     editIntent?.isTargetedEdit && !isCrossCutting ? editIntent.pinnedPaths : [];
+  // Plain-words screen match ("the sign-in form", "the home page") — finds the
+  // target without an AI round trip, so the Inspector rarely has to run.
+  if (!isInitial && !isCrossCutting) {
+    const { findScreenTargets, expandPageSections } = await import("@/server/screen-target.server");
+    const screen = expandPageSections(
+      lastUserContent,
+      findScreenTargets(lastUserContent, editablePromptFiles.map((f) => f.path)),
+      editablePromptFiles,
+    );
+    if (screen.length > 0) {
+      editTargetPaths = Array.from(new Set([...screen, ...editTargetPaths])).slice(0, 8);
+      console.info(`[screen-target] ${screen.join(", ")}`);
+    }
+  }
   if (editTargetPaths.length > 0) {
     console.info(
       `[edit-intent] verb=${editIntent!.verb} resolved ${editTargetPaths.length} target file(s): ${editTargetPaths.join(", ")}`,
@@ -3914,7 +3932,12 @@ Forbidden defaults
           // new pages but shipped one is the same failure. If the turn planned
           // routes that neither the emitted files nor the existing project
           // provide, finish them in THIS turn.
-          if (!chunkAssessment.needed) {
+          // Edits only continue into missing pages when the user actually asked
+          // for new pages — existing nav links are not a request to build them.
+          const editAskedForPages =
+            /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent) &&
+            !/\b(on|in) the [a-z -]{0,30}(page|screen)\b/i.test(lastUserContent);
+          if (!chunkAssessment.needed && (isInitial || editAskedForPages)) {
             const stepRoutes = parseStepsFromArgs(collected.args)
               .flatMap((s) => s.match(/\/[a-z][a-z0-9-]{1,24}/gi) ?? []);
             // Nav/link targets the app itself declares are promises to the
@@ -4182,6 +4205,7 @@ Forbidden defaults
             neighbourPaths: impactNeighbourPaths,
             existingPaths: currentFiles.map((f) => f.path),
             disabled: isInitial || isCrossCutting,
+            allowNewPages: /\b(add|create|build|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent),
           });
           if (editBoundary.enforced) {
             console.info(`[edit-boundary] ${editBoundary.describe()}`);
@@ -4921,7 +4945,11 @@ Forbidden defaults
                     .map((f) => f.path)
                     .filter((p) => !isVerifierExempt(p)),
                 };
-          const repaired = runAllRepairs(nextFiles, { scopeLock });
+          const repaired = runAllRepairs(nextFiles, {
+            scopeLock,
+            // Edits (not first builds, not site-wide redesigns) repair locally.
+            localOnly: turnBaselineFiles.length > 0 && !isCrossCutting,
+          });
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
             nextFiles = repaired.files;
@@ -5392,13 +5420,14 @@ Forbidden defaults
         // the local verifier's checks and its recovery pass was always
         // skipped by the Phase D one-round cap. One autofix call max
         // per turn is now structural, not just runtime-enforced.
+        // An AI repair runs only for a real failure. Deterministic autofix
+        // having already fixed things is success, not a reason for another
+        // model call, and on an edit advisory quality/size notes never open it.
         const autofixGateOpen =
           !localVerdict.ok ||
           !esbuildVerdict.ok ||
-          generationQualityIssues.length > 0 ||
           renderRiskIssues.length > 0 ||
-          budgetWarnings.length > 0 ||
-          autofixOut.report.fixedCount >= 2;
+          (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0));
         const combinedAutofixIssues = [
           ...localVerdict.issues,
           ...esbuildVerdict.issues.map((i) => ({

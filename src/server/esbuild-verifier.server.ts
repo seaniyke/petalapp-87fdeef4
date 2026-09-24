@@ -47,26 +47,22 @@ let initPromise: Promise<void> | null = null;
 
 function ensureInit(): Promise<void> {
   if (initPromise) return initPromise;
-  initPromise = esbuild
-    .initialize({
-      // The wasm binary ships inside the package; esbuild-wasm resolves it
-      // via its own loader. We don't pass wasmURL — the bundled fallback
-      // works in the Worker runtime.
-      worker: false,
-    })
-    .catch((err: unknown) => {
-      // esbuild is already up — we only lost our handle to it (module reload,
-      // or a second copy of this module). That is success, not failure.
-      // Treating it as failure permanently disabled the cheap deterministic
-      // parse check, so every syntax slip had to be caught by a model round.
-      if (/more than once/i.test((err as Error)?.message ?? "")) return;
-      // Reset so a retry next turn can attempt re-init.
-      initPromise = null;
+  const alreadyUp = (err: unknown) => /more than once/i.test((err as Error)?.message ?? "");
+  // esbuild-wasm throws "more than once" SYNCHRONOUSLY after a module reload
+  // (not as a rejected promise), so the whole parse check used to be skipped.
+  // Either form means esbuild is already running — that is success.
+  try {
+    initPromise = esbuild.initialize({ worker: false }).catch((err: unknown) => {
+      if (alreadyUp(err)) return;
+      initPromise = null; // let the next turn retry
       throw err;
     });
+  } catch (err) {
+    if (!alreadyUp(err)) throw err;
+    initPromise = Promise.resolve();
+  }
   return initPromise;
 }
-
 
 function loaderFor(path: string): "ts" | "tsx" | "js" | "jsx" {
   if (path.endsWith(".tsx")) return "tsx";

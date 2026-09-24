@@ -82,6 +82,12 @@ const TOOL = {
 export async function classifyPhase(prompt: string): Promise<PhaseTag> {
   const heuristic = classifyPhaseHeuristic(prompt);
   if (heuristic && heuristic.confidence !== "low") return heuristic;
+  // Routing is not worth an AI call: the model choice for implement/debug/
+  // refactor is the same tier anyway. The AI tagger stays available behind a
+  // flag for experiments only.
+  if (process.env.KIMBLE_AI_PHASE_TAGGER !== "1") {
+    return heuristic ?? { phase: "implement", confidence: "medium", source: "fallback" };
+  }
 
   if (!process.env.OPENROUTER_API_KEY) {
     return heuristic ?? { phase: "implement", confidence: "low", source: "fallback" };

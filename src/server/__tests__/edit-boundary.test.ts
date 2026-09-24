@@ -23,14 +23,15 @@ describe("edit boundary", () => {
     expect(b.allows("src/components/NavBar.tsx")).toBe(false);
   });
 
-  it("lets a targeted edit follow an import it has to keep compiling", () => {
+  it("lets a targeted edit READ an import neighbour but not rewrite it", () => {
     const b = buildEditBoundary({
       scope: "targeted",
       targetPaths: ["src/components/NavBar.tsx"],
       neighbourPaths: ["src/routes/index.tsx"],
       existingPaths,
     });
-    expect(b.allows("src/routes/index.tsx")).toBe(true);
+    expect(b.allows("src/routes/index.tsx")).toBe(false);
+    expect(b.allows("src/components/NavBar.tsx")).toBe(true);
     expect(b.allows("src/routes/signin.tsx")).toBe(false);
   });
 

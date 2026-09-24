@@ -41,6 +41,9 @@ const BEHAVIOUR_RE =
 const DATA_RE = /\b(database|table|schema|auth|login|sign ?up|store|save|persist|api|backend)\b/i;
 const NAV_RE = /\b(nav|navbar|navigation|menu|header|footer|sidebar|breadcrumb)\b/i;
 const CONTENT_RE = /\b(copy|text|headline|wording|title|label|rename|typo|content)\b/i;
+const IMPERATIVE_RE =
+  /^\s*(please\s+)?(on|in|for)?\b[^.!?]{0,60}?\b(add|change|make|set|move|remove|delete|rename|replace|swap|update|fix|put|insert|show|hide|use|turn|increase|decrease|align|center|centre|shorten|lengthen|translate|rewrite|reword)\b/i;
+
 const MICRO_RE =
   /^\s*(change|rename|fix|update|set|make)\b[^.!?]{0,80}$/i;
 
@@ -121,6 +124,10 @@ export async function classifyEdit(args: {
   // A regex-certain structural ask needs no second opinion, and a blank
   // prompt has nothing to reason about.
   if (!classifierEnabled() || prior.scope === "structural") return prior;
+  // A clear instruction needs no model to tell us it is an edit. The model is
+  // kept for genuinely vague asks ("this looks generic", "feels off") where
+  // no imperative verb names the change.
+  if (IMPERATIVE_RE.test((args.prompt ?? "").trim())) return prior;
   if ((args.prompt ?? "").trim().length < 4) return prior;
 
   try {
