@@ -58,7 +58,8 @@ export interface WriteGateResult {
 export type SingleFileRepair = (file: ProjectFile, detail: string) => Promise<string | null>;
 
 /** At most this many broken files get an AI repair per turn. */
-export const MAX_AI_REPAIR_FILES = 3;
+export { MAX_REPAIRED_FILES as MAX_AI_REPAIR_FILES } from "@/server/engine/recovery-policy";
+import { MAX_REPAIRED_FILES as MAX_AI_REPAIR_FILES } from "@/server/engine/recovery-policy";
 
 const PARSEABLE = /\.(tsx?|jsx?|mts|cts)$/i;
 

@@ -1003,8 +1003,6 @@ export interface AiCallOptions {
    * whole budget goes to output instead of hidden thinking.
    */
   codeOutput?: boolean;
-  /** Upstreams to skip for this call (e.g. the one that just stalled). */
-  avoidUpstreams?: string[];
 }
 
 
@@ -1129,14 +1127,12 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   } catch {
     /* no ambient turn */
   }
-  const avoidAll = Array.from(new Set([...(opts.avoidUpstreams ?? []), ...turnFailed]));
-  const isCodeWriting =
-    opts.codeOutput === true ||
-    (opts.feature === "generate" && Array.isArray(body.tools) && (body.tools as unknown[]).length > 0);
-  if (!body.provider) {
-    const routing = resolveProviderRouting({ codeWriting: isCodeWriting, avoid: avoidAll });
-    if (routing) body.provider = routing;
-  }
+  const hasTools = Array.isArray(body.tools) && (body.tools as unknown[]).length > 0;
+  const isCodeWriting = opts.codeOutput === true || (opts.feature === "generate" && hasTools);
+  // Sole provider authority: any caller-supplied provider block is replaced.
+  delete body.provider;
+  const routing = resolveProviderRouting({ codeWriting: isCodeWriting, avoid: turnFailed, hasTools });
+  if (routing) body.provider = routing;
   const streamExtra = {
     fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
     fallback_from_upstream: opts.meta?.fallbackFromUpstream ?? null,
@@ -1355,14 +1351,8 @@ async function dispatch(
   }
   // OpenRouter: always return usage (incl. cached tokens + real cost).
   if (!outBody.usage) outBody = { ...outBody, usage: { include: true } };
-  // Tool calls must come back exactly as the schema says. Measured 2026-09-24:
-  // every edit served by the NextBit upstream returned re-serialized tool
-  // arguments with the `replace` field of patch ops missing (30/30 calls
-  // unusable, edits "didn't land"), while DeepInfra served the same requests
-  // intact. Require full parameter support and skip that upstream.
-  if (Array.isArray(outBody.tools) && outBody.tools.length > 0 && !outBody.provider) {
-    outBody = { ...outBody, provider: { require_parameters: true, ignore: ["NextBit"] } };
-  }
+  // Provider routing is decided solely by engine/provider-policy (set in
+  // aiChatCompletions). dispatch never adds or changes a provider block.
   // Sticky routing per project so repeated calls land on the same upstream
   // and can reuse its prompt cache. Stable per project — never per request.
   if (!outBody.session_id) {

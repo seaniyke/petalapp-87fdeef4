@@ -47,12 +47,17 @@
 ## Build engine replacement (approved plan, Sept 24 2026)
 - [x] Gemini removed from all text/design/repair/QA paths + regression test (pictures still use Gemini image model — plan option a)
 - [x] Design step reads reply once, fails cleanly
-- [ ] engine/provider-policy.ts as sole provider picker; remove avoidUpstreams/stalledUpstream plumbing
+- [x] engine/provider-policy.ts as sole provider picker; avoidUpstreams/stalledUpstream plumbing + dispatch NextBit override removed
 - [ ] engine stages (scope/plan/generate/validate/repair/completeness/run) + thin generate.ts route
-- [ ] bounded recovery table; missing-page generation once; honest incomplete messages
+- [x] bounded recovery table connected (retry 1, truncation 1, repair files 3, missing pages 1); second retry + 3-round page loop deleted
 - [ ] delete dead recovery/retry/pipeline tier/agent loop code
 - [ ] fresh Rise & Crumb smoke run through build, publish, browser check
 
 - [x] Completeness safety gate: incomplete/failed first builds never report success or get built
 - [ ] Phase 2: stage-by-stage engine replacement (scope, plan, generate, validate, repair, completeness, run) with old code deleted per stage
 - [ ] Remove stale deepseek-chat-v3 setting
+- [x] Completeness stage (engine/completeness.ts): one call naming all missing pages; "Contact only" page-name bug fixed
+- [ ] Completeness call wrote only App.tsx in live run — find why pages weren't included
+- [ ] Fold late "fill empty screens" page writer (page-completion.server) into the completeness stage and delete it
+- [ ] Planning / generation / repair stage extraction with old code deleted per stage
+- [ ] Rerun fresh 4-page test; then build → browser check → publish

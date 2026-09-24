@@ -17,6 +17,7 @@ import { reconcileDocumentHeadOps } from "@/server/document-head.server";
 import { EMPTY_HOME_BUILD_FAILURE_MESSAGE } from "@/server/build-failure-copy";
 import { assessCompleteness, incompleteBuildMessage, requestedRoutesFor } from "@/server/engine/build-state";
 import { currentTurnContext, markUpstreamFailed, runWithTurnContext } from "@/server/turn-context.server";
+import { RecoveryBudget, RECOVERY_LIMITS } from "@/server/engine/recovery-policy";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,
@@ -1244,12 +1245,9 @@ async function structuredRetryCompletion(args: {
   maxTokens: number;
   crossCuttingIntent?: boolean;
   signal: AbortSignal;
-  /** Set when the first attempt's provider went silent: resend the ORIGINAL
-   *  request unchanged, just routed away from that upstream. */
-  stalledUpstream?: string | null;
+  /** Resend the ORIGINAL request unchanged (provider failure). Routing away
+   *  from failed upstreams is owned solely by engine/provider-policy. */
   providerStalled?: boolean;
-  /** Every upstream that already failed this turn (stalled or empty stream). */
-  avoidUpstreams?: string[];
   meta: {
     phase: Phase;
     promptChars: number;
@@ -1263,9 +1261,6 @@ async function structuredRetryCompletion(args: {
     recoveryReason?: string | null;
   };
 }): Promise<Response> {
-  // Failed upstreams are excluded by the single provider policy via the
-  // per-turn failure set (marked in relayAndCollect); no per-call plumbing.
-  for (const u of [args.stalledUpstream, ...(args.avoidUpstreams ?? [])]) if (u) markUpstreamFailed(u);
   const bodyBase = {
     messages: args.providerStalled
       ? args.messages
@@ -1316,7 +1311,6 @@ async function recoverMissingToolOutput(args: {
   encoder: TextEncoder;
   projectId?: string | null;
   userId?: string | null;
-  avoidUpstreams?: string[];
 }): Promise<ToolRecoveryPayload | null> {
   const assistantText = assistantTextFromCollected(args.collected);
   if (!assistantText) return null;
@@ -1347,7 +1341,6 @@ async function recoverMissingToolOutput(args: {
     maxTokens: args.isInitial ? 22_000 : 10_000,
     crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
-    avoidUpstreams: args.avoidUpstreams,
     meta: {
       phase: args.phaseTag.phase,
       promptChars: args.lastUserContent.length,
@@ -3906,6 +3899,8 @@ Forbidden defaults
 
         let payload: ParsedProjectPayload;
         const firstStall = collected.stall ?? null;
+        // THE bounded recovery table for this turn (engine/recovery-policy).
+        const recovery = new RecoveryBudget();
         try {
           // A stalled provider's partial output is never trusted: resend the
           // original request to a different upstream instead.
@@ -3927,6 +3922,9 @@ Forbidden defaults
           const firstWasTruncated =
             isTruncatedFinishReason(collected.finishReason) ||
             (collected.args.trim().length > 0 && !collected.args.trimEnd().endsWith("}"));
+          // Bounded recovery table: exactly one resend (provider_failure).
+          // Routing away from failed upstreams is the provider policy's job.
+          if (!recovery.take("provider_failure")) throw e;
           const retry = await structuredRetryCompletion({
             messages: finalMessages,
             isInitial,
@@ -3941,7 +3939,6 @@ Forbidden defaults
             crossCuttingIntent: isCrossCutting,
             signal: abortSignal,
             providerStalled: Boolean(firstStall),
-            stalledUpstream: firstStall?.upstream ?? null,
             meta: {
               phase: phaseTag.phase,
               promptChars: lastUserContent.length,
@@ -3957,55 +3954,6 @@ Forbidden defaults
           });
           if (!retry.ok || !retry.body) throw e;
           collected = await relayAndCollect(retry, controller, encoder);
-          // Every upstream that failed this turn is avoided by every later
-          // recovery call — a stalled provider must never be re-picked.
-          const failedUpstreams: string[] = [];
-          if (firstStall?.upstream) failedUpstreams.push(firstStall.upstream);
-          const providerFailed = (c: ParsedTool) =>
-            Boolean(c.stall) || (!c.name && !c.args.trim() && !c.text.trim());
-          if (providerFailed(collected)) {
-            if (collected.upstream) failedUpstreams.push(collected.upstream);
-            console.warn(
-              `[generate] recovery attempt 1 ${collected.stall ? "stalled" : "returned an empty stream"} upstream=${collected.upstream ?? "?"} providerError=${collected.providerError ? JSON.stringify(collected.providerError).slice(0, 300) : "none"}`,
-            );
-            // Exactly one more clean resend of the ORIGINAL request, routed
-            // away from every failed upstream. Bounded: no further loop.
-            if (firstStall) {
-              controller.enqueue(
-                encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })),
-              );
-              const second = await structuredRetryCompletion({
-                messages: finalMessages,
-                isInitial,
-                problem: "provider_failure",
-                hasBackend: Boolean(backend),
-                tool,
-                maxTokens: isInitial
-                  ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
-                  : Math.max(maxCompletionTokens, 8_000),
-                crossCuttingIntent: isCrossCutting,
-                signal: abortSignal,
-                providerStalled: true,
-                avoidUpstreams: failedUpstreams,
-                meta: {
-                  phase: phaseTag.phase,
-                  promptChars: lastUserContent.length,
-                  hadAttachments: hasVisionTurn,
-                  chosenBy: "provider_failure_retry",
-                  projectId: body.projectId ?? null,
-                  userId,
-                  turnId: logicalTurnId,
-                  fallbackNumber: 2,
-                  fallbackFromUpstream: collected.upstream ?? null,
-                  recoveryReason: collected.stall ? "provider_stall" : "provider_empty_stream",
-                },
-              });
-              if (second.ok && second.body) {
-                collected = await relayAndCollect(second, controller, encoder);
-                if (providerFailed(collected) && collected.upstream) failedUpstreams.push(collected.upstream);
-              }
-            }
-          }
           try {
             payload = parseCollectedProject(collected, isInitial);
           } catch (retryErr) {
@@ -4021,7 +3969,6 @@ Forbidden defaults
                 : firstCollected;
             const recovered = isMissingToolOutputError(retryErr) && recoverySource
               ? await recoverMissingToolOutput({
-                  avoidUpstreams: failedUpstreams,
                   chatMessages: finalMessages,
                   collected: recoverySource,
                   isInitial,
@@ -4055,7 +4002,7 @@ Forbidden defaults
             // small enough that it cannot overflow. The chunk continuation
             // loop below then finishes the rest in the same turn.
             let smallChunk: ParsedProjectPayload | null = null;
-            if (firstWasTruncated) {
+            if (firstWasTruncated && recovery.take("truncated_output")) {
               try {
                 controller.enqueue(
                   encoder.encode(
@@ -4082,7 +4029,6 @@ Forbidden defaults
                   ],
                   isInitial,
                   problem: "output_truncated_first_chunk",
-                  avoidUpstreams: failedUpstreams,
                   hasBackend: Boolean(backend),
                   tool,
                   maxTokens: 6_000,
@@ -4183,62 +4129,84 @@ Forbidden defaults
           const editAskedForPages =
             /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent) &&
             !/\b(on|in) the [a-z -]{0,30}(page|screen)\b/i.test(lastUserContent);
-          if (!chunkAssessment.needed && (isInitial || editAskedForPages)) {
-            const stepRoutes = parseStepsFromArgs(collected.args)
-              .flatMap((s) => s.match(/\/[a-z][a-z0-9-]{1,24}/gi) ?? []);
-            // Nav/link targets the app itself declares are promises to the
-            // user: a header link to /plants with no page behind it is the
-            // same unfinished build as a planned route that never shipped.
-            const emittedSource = [
-              ...(parsed.files ?? []).map((f) => f.content ?? ""),
-              ...(parsed.ops ?? []).map((o) => ("content" in o ? String(o.content ?? "") : "")),
-            ].join("\n");
-            // Every shape a promised destination takes: <Link to="/x">,
-            // <a href="/x">, and { href: "/x" } / { to: "/x" } nav data. The
-            // attribute form was missing, so a header with Sign In / Sign Up
-            // links and no pages behind them shipped as a "complete" app.
-            const linkRoutes = [
-              ...Array.from(emittedSource.matchAll(/\bto\s*=\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
-              ...Array.from(emittedSource.matchAll(/\bhref\s*=\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
-              ...Array.from(emittedSource.matchAll(/\bhref\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
-              ...Array.from(emittedSource.matchAll(/\bto\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
-            ].map((m) => m[1] ?? "");
-            // Edits: only pages the user named. Existing/emitted nav links and
-            // the model's own step list are never a request to build a page.
+          // Edits: only pages the user named. First builds use the
+          // deterministic completeness stage below instead.
+          if (!chunkAssessment.needed && !isInitial && editAskedForPages) {
             const { extractRequestedPages, pageNameToRoute } = await import("@/server/requested-scope");
             const expectedRoutes = Array.from(
-              new Set(
-                (isInitial
-                  ? [...plannedRoutes, ...stepRoutes, ...linkRoutes]
-                  : extractRequestedPages(lastUserContent).map(pageNameToRoute)
-                ).map((r) => r.toLowerCase()),
-              ),
+              new Set(extractRequestedPages(lastUserContent).map(pageNameToRoute).map((r) => r.toLowerCase())),
             ).filter((r) => r !== "/");
-
-            if (expectedRoutes.length || isInitial) {
+            if (expectedRoutes.length) {
+              const emittedSource = [
+                ...(parsed.files ?? []).map((f) => f.content ?? ""),
+                ...(parsed.ops ?? []).map((o) => ("content" in o ? String(o.content ?? "") : "")),
+              ].join("\n");
               const coverage = assessRouteCoverage({
                 expectedRoutes,
-                // A first build is not complete without its app shell + home.
-                requireAppShell: isInitial,
+                requireAppShell: false,
                 ops: parsed.ops,
                 files: parsed.files,
-                // Edit turns build on top of what already shipped.
-                existingPaths: isInitial ? [] : currentFiles.map((f) => f.path),
+                existingPaths: currentFiles.map((f) => f.path),
                 routerSource: [
                   emittedSource,
-                  ...(isInitial
-                    ? []
-                    : currentFiles
-                        .filter((f) => /src\/(App|main|router)\.(t|j)sx?$/i.test(f.path))
-                        .map((f) => f.content ?? "")),
+                  ...currentFiles
+                    .filter((f) => /src\/(App|main|router)\.(t|j)sx?$/i.test(f.path))
+                    .map((f) => f.content ?? ""),
                 ].join("\n"),
               });
               if (coverage.needed) chunkAssessment = coverage;
             }
           }
 
+          // COMPLETENESS stage (first builds): every requested page, written
+          // in one call naming all missing pages. Bounded by the recovery table.
+          if (isInitial && parsed.files?.length) {
+            const { generateMissingPages } = await import("@/server/engine/completeness");
+            const requested = requestedRoutesFor(lastUserText, plannedRoutes);
+            const done = await generateMissingPages({
+              requestedRoutes: requested,
+              files: parsed.files,
+              budget: recovery,
+              request: async (instruction) => {
+                controller.enqueue(
+                  encoder.encode(sse({ type: "status", message: "Writing the remaining pages…" })),
+                );
+                const res = await structuredRetryCompletion({
+                  messages: [...finalMessages, { role: "user", content: instruction }],
+                  isInitial,
+                  problem: "missing_pages",
+                  hasBackend: Boolean(backend),
+                  tool,
+                  maxTokens: 12_000,
+                  crossCuttingIntent: isCrossCutting,
+                  signal: abortSignal,
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: "missing_pages",
+                    projectId: body.projectId ?? null,
+                    userId,
+                    turnId: logicalTurnId,
+                    recoveryReason: "missing_page",
+                  },
+                });
+                if (!res.ok || !res.body) return null;
+                const c = await relayAndCollect(res, controller, encoder);
+                try {
+                  return parseCollectedProject(c, true).parsed.files ?? null;
+                } catch {
+                  return null;
+                }
+              },
+            });
+            console.log(
+              `[completeness] requested=${JSON.stringify(requested)} missingBefore=${JSON.stringify(done.missingBefore)} attempted=${done.attempted} added=${done.added} missingAfter=${JSON.stringify(done.missingAfter)}`,
+            );
+            parsed.files = done.files;
+          }
 
-          if (chunkAssessment.needed) {
+          if (chunkAssessment.needed && !isInitial) {
             console.warn(
               `[chunked-generation] reason=${chunkAssessment.reason} delivered=${chunkAssessment.deliveredPaths.length} remainingSteps=${chunkAssessment.remainingSteps.length}`,
             );
@@ -4258,7 +4226,8 @@ Forbidden defaults
               assessment: chunkAssessment,
               ops: parsed.ops ?? [],
               files: parsed.files ?? [],
-              chunkMaxTokens: isInitial ? 12_000 : 8_000,
+              maxRounds: RECOVERY_LIMITS.truncated_output,
+              chunkMaxTokens: 8_000,
               onRound: (round, added) => {
                 controller.enqueue(
                   encoder.encode(
@@ -4302,7 +4271,7 @@ Forbidden defaults
                 const chunkFailed =
                   Boolean(chunkCollected.stall) ||
                   (!chunkCollected.name && !chunkCollected.args.trim() && !chunkCollected.text.trim());
-                if (chunkFailed) {
+                if (chunkFailed && recovery.take("provider_failure", `chunk_${req.round}`)) {
                   console.warn(
                     `[chunked-generation] round=${req.round} provider_failed upstream=${chunkCollected.upstream ?? "?"} excluded=${JSON.stringify(Array.from(currentTurnContext().failedUpstreams ?? []))} — one resend`,
                   );
@@ -4319,7 +4288,6 @@ Forbidden defaults
                     maxTokens: req.maxTokens,
                     crossCuttingIntent: isCrossCutting,
                     signal: abortSignal,
-                    avoidUpstreams: chunkCollected.upstream ? [chunkCollected.upstream] : [],
                     meta: {
                       phase: phaseTag.phase,
                       promptChars: lastUserContent.length,

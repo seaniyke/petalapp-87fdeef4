@@ -16,6 +16,7 @@ export default defineConfig({
       "src/server/__tests__/openrouter-only.test.ts",
       "src/server/__tests__/no-gemini.test.ts",
       "src/server/__tests__/engine-policy.test.ts",
+      "src/server/__tests__/engine-completeness.test.ts",
       "src/server/__tests__/build-state.test.ts",
       "src/server/__tests__/utility-model-tier.test.ts",
       "src/server/__tests__/codegen-routing.test.ts",

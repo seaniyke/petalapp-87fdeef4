@@ -10,7 +10,7 @@ const STOP = new Set([
   "a", "an", "the", "with", "and", "or", "of", "for", "my", "our", "your",
   "separate", "multiple", "several", "different", "these", "following", "all",
   "new", "own", "its", "their", "few", "some", "other", "more", "main", "web",
-  "landing", "single", "one", "two", "three", "four", "five", "six", "seven",
+  "landing", "only", "just", "etc", "page", "pages", "single", "one", "two", "three", "four", "five", "six", "seven",
 ]);
 
 const HOME = /^(home|homepage|landing|index|front)$/;

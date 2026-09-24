@@ -32,13 +32,20 @@ export function codegenProviderRouting(avoid: string[] = []): Record<string, unk
   return { order, allow_fallbacks: true, require_parameters: true, ignore };
 }
 
-/** Resolve the OpenRouter `provider` block for one call (or undefined). */
+/** Resolve the OpenRouter `provider` block for one call (or undefined).
+ *  Callers never pass their own avoid list: `avoid` is the per-turn failed
+ *  set, read once by aiChatCompletions. */
 export function resolveProviderRouting(args: {
   codeWriting: boolean;
   avoid: string[];
+  /** Any tool call must come back schema-exact (NextBit re-serializes args). */
+  hasTools?: boolean;
 }): Record<string, unknown> | undefined {
   const avoid = Array.from(new Set(args.avoid.map(slug)));
   if (args.codeWriting) return codegenProviderRouting(avoid);
+  if (args.hasTools) {
+    return { require_parameters: true, ignore: Array.from(new Set(["nextbit", ...avoid])) };
+  }
   if (avoid.length) return { ignore: avoid };
   return undefined;
 }

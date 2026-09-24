@@ -1,3 +1,4 @@
+import { MAX_REPAIRED_FILES } from "@/server/engine/recovery-policy";
 /**
  * Stream continuation (Tier 2.6).
  *
@@ -125,7 +126,7 @@ export async function runContinuation(args: {
   }
 
   // Limit blast radius — at most 3 files per turn.
-  for (const issue of uniq.slice(0, 3)) {
+  for (const issue of uniq.slice(0, MAX_REPAIRED_FILES)) {
     const file = byPath.get(issue.path);
     if (!file) continue;
 

@@ -1,3 +1,4 @@
+import { RECOVERY_LIMITS } from "@/server/engine/recovery-policy";
 /**
  * Chunked generation + staged application for large multi-page edits.
  *
@@ -67,7 +68,8 @@ export interface ChunkedResult {
 }
 
 /** Hard ceiling on continuation rounds — cost and latency safety. */
-export const MAX_CHUNK_ROUNDS = 3;
+/** Owned by the recovery table (truncated_output). */
+export const MAX_CHUNK_ROUNDS = RECOVERY_LIMITS.truncated_output;
 
 /**
  * Pull the COMPLETE elements of a top-level `"steps": [...]` array out of a
