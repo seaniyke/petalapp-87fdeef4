@@ -61,6 +61,9 @@ export async function startTurn(opts: {
    *  before the request goes out, and makes a retried send dedupe instead
    *  of double-building. */
   turnId?: string;
+  /** The row already exists (opened by the durable-agent ingress). Record
+   *  into it instead of inserting a second one. */
+  attach?: boolean;
 }): Promise<TurnRecorderHandle> {
   const client = getAdminClient();
   const turnId = opts.turnId ?? crypto.randomUUID();
@@ -69,16 +72,18 @@ export async function startTurn(opts: {
     return makeNoop(turnId);
   }
 
-  try {
-    await client.from("turns").insert({
-      id: turnId,
-      project_id: opts.projectId,
-      user_id: opts.userId,
-      status: "running",
-    });
-  } catch (e) {
-    console.warn("[turn-recorder] startTurn insert failed:", (e as Error).message);
-    return makeNoop(turnId);
+  if (!opts.attach) {
+    try {
+      await client.from("turns").insert({
+        id: turnId,
+        project_id: opts.projectId,
+        user_id: opts.userId,
+        status: "running",
+      });
+    } catch (e) {
+      console.warn("[turn-recorder] startTurn insert failed:", (e as Error).message);
+      return makeNoop(turnId);
+    }
   }
 
   let seq = 0;
