@@ -1991,6 +1991,10 @@ function Builder() {
       abortRef.current = controller;
       const resumeToken = { projectId: pid, turnId: persisted.turnId };
       activeTurnRef.current = resumeToken;
+      // The turn is still running on the server, so the UI must show the
+      // working state (Stop control, live activity) — not an idle composer.
+      setBusy(true);
+      setActivityVisible(true);
 
       // Lightweight handlers: we hydrate the streaming UI surfaces but don't
       // try to rebuild the full turn state machine. On the terminal `done`
@@ -2098,6 +2102,7 @@ function Builder() {
               createdAt: new Date().toISOString(),
             });
             setActivityVisible(false);
+            setBusy(false);
           },
           onDone: async (status) => {
             if (status !== "awaiting_credits") clearPersistedTurnId(pid);
@@ -2126,6 +2131,9 @@ function Builder() {
         // same state they would have been in without auto-reconnect.
       }).finally(() => {
         if (abortRef.current === controller) abortRef.current = null;
+        // Only release the working state if this resume is still the active
+        // turn — a fresh send in this tab owns `busy` from that point on.
+        if (activeTurnRef.current === resumeToken) setBusy(false);
       });
     }
 
