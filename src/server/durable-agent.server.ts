@@ -36,6 +36,8 @@ export type AgentJobPayload = {
   headers: Record<string, string>;
   /** Origin the builder should call back into (this app). */
   appOrigin: string;
+  /** Publishable backend settings for the in-process runtime. */
+  publicConfig?: { supabaseUrl: string; supabasePublishableKey: string };
 };
 
 export function durableAgentEnabled(env: Record<string, string | undefined> = process.env): boolean {

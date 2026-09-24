@@ -16,6 +16,7 @@ export const AgentJobSchema = z.object({
   body: z.record(z.unknown()),
   headers: z.record(z.string()),
   appOrigin: z.string().url(),
+  publicConfig: z.object({ supabaseUrl: z.string().url(), supabasePublishableKey: z.string().min(1) }).optional(),
 });
 export type AgentJob = z.infer<typeof AgentJobSchema>;
 
@@ -89,6 +90,12 @@ async function loadCore(): Promise<AgentCore> {
 export function inProcessFetcher(job: AgentJob, secret: string): typeof fetch {
   return (async (url: string | URL | Request, init?: RequestInit) => {
     const c = await loadCore();
+    // Publishable settings from the app (never secrets): session checks and
+    // the user's own reads use them.
+    if (job.publicConfig) {
+      process.env.SUPABASE_URL ??= job.publicConfig.supabaseUrl;
+      process.env.SUPABASE_PUBLISHABLE_KEY ??= job.publicConfig.supabasePublishableKey;
+    }
     return c.handleInProcess(new Request(url as string, init), {
       appOrigin: job.appOrigin,
       secret,

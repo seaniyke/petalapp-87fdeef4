@@ -39761,7 +39761,8 @@ function buildAgentJobPayload(request, turnId, userId, body) {
     const v = request.headers.get(name);
     if (v) headers[name] = v;
   }
-  return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: new URL(request.url).origin };
+  const publicConfig = process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY ? { supabaseUrl: process.env.SUPABASE_URL, supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : void 0;
+  return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: new URL(request.url).origin, publicConfig };
 }
 async function signedPost(path, payload, fetcher, env2) {
   const base = env2.BUILDER_URL;
@@ -41359,7 +41360,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
 });
@@ -41402,7 +41402,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
     MISSING_FROM_PATTERNS = [
@@ -41556,7 +41555,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
 });
@@ -41746,7 +41744,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
     CONTENT_FENCE = /^\s*(`{3,}|~{3,})/;
@@ -82597,7 +82594,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
       // React + ecosystem
@@ -121722,6 +121718,10 @@ init_scaffold_ownership_server();
 
 // src/server/builder.server.ts
 import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
+init_source_escape_fixer_server();
+init_import_syntax_fixer_server();
+init_jsx_attr_literal_fixer_server();
+init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 var BRAND_MARK_PATH = "src/components/brand-mark.tsx";
