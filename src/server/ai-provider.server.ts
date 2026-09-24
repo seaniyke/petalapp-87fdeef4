@@ -546,6 +546,14 @@ async function recordTelemetry(
     // through every call site.
     const ambient = currentTurnContext();
     const usageCols = args.usage ? usageColumns(args.usage, args.model) : {};
+    const { explainAiCall, noteCallRow } = await import("@/server/engine/call-accounting");
+    const why = explainAiCall({
+      feature: args.feature,
+      phase: args.phase ?? null,
+      chosenBy: args.chosenBy ?? null,
+      recoveryReason: (args.extra?.["recovery_reason"] as string | null | undefined) ?? null,
+    });
+    if (why.stage === "unclassified") console.warn(`[call-accounting] unexplained AI call: ${why.purpose}`);
     const { data } = await supabaseAdmin
       .from("ai_call_log")
       .insert({
@@ -585,10 +593,17 @@ async function recordTelemetry(
         upstream_provider: args.upstream ?? null,
         ...(args.extra ?? {}),
         ...usageCols,
+        stage: why.stage,
+        purpose: why.purpose,
+        call_kind: why.kind,
+        invoke_reason: why.reason,
+        parent_stage: why.parent,
       } as never)
       .select("id")
       .single();
-    return (data as { id?: string } | null)?.id ?? null;
+    const rowId = (data as { id?: string } | null)?.id ?? null;
+    noteCallRow(rowId);
+    return rowId;
   } catch (err) {
     // Never break the AI call because logging failed.
     console.warn("[ai-provider] telemetry insert failed", err);
