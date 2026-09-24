@@ -30,13 +30,6 @@ export const TURN_REPAIR_COST_WARN_USD = 0.22;
  */
 const BLENDED_RATE_PER_MTOK: Record<string, number> = {
   "deepseek/deepseek-v4-flash": 0.4,
-  "deepseek/deepseek-v4-flash": 0.4,
-  "deepseek/deepseek-v4-flash": 1.2,
-  "deepseek/deepseek-v4-flash": 1.2,
-  "deepseek/deepseek-v4-flash": 1.4,
-  "deepseek/deepseek-v4-flash": 1.4,
-  "deepseek/deepseek-v4-flash": 8,
-  "deepseek/deepseek-v4-flash": 8,
   "openai/gpt-5-nano": 0.5,
   "openai/gpt-5-mini": 2,
   "openai/gpt-5": 10,

@@ -14,6 +14,7 @@ export default defineConfig({
       "src/components/__tests__/one-result-card.test.ts",
       "src/server/__tests__/shared-backend-origins.test.ts",
       "src/server/__tests__/openrouter-only.test.ts",
+      "src/server/__tests__/no-gemini.test.ts",
       "src/server/__tests__/utility-model-tier.test.ts",
       "src/server/__tests__/codegen-routing.test.ts",
       "src/server/__tests__/requested-scope.test.ts",
