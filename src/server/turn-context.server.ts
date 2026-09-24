@@ -34,6 +34,9 @@ export interface TurnContext {
    *  again by ANY later call in the same turn (retry, recovery, continuation,
    *  missing-page follow-up, repair). A fresh user turn starts empty. */
   failedUpstreams?: Set<string>;
+  /** First builds: the model's own summary ("it's live") is never streamed
+   *  mid-build. Only the authoritative final result carries the message. */
+  holdSummary?: boolean;
 }
 
 let storage: AsyncLocalStorage<TurnContext> | null = null;

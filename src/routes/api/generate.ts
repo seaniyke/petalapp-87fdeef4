@@ -1028,7 +1028,7 @@ async function relayAndCollect(
             controller.enqueue(encoder.encode(sse({ type: "build_steps", steps: stepsNow })));
           }
           const summaryNow = partial("summary");
-          if (summaryNow.length > summaryEmitted.length) {
+          if (summaryNow.length > summaryEmitted.length && !currentTurnContext().holdSummary) {
             if (!designingPhaseSent) {
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "designing" })));
               designingPhaseSent = true;
@@ -2237,6 +2237,10 @@ async function handleGenerateRequestCore(
   // token usage (see post-flight section below). This keeps the
   // experience honest: failed/aborted builds cost nothing.
   const isInitial = currentFiles.length === 0;
+  if (isInitial) {
+    const tc = currentTurnContext();
+    if (Object.keys(tc).length > 0) tc.holdSummary = true;
+  }
   const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
 
   // Build target. The composer's chip rail was removed on the premise that the
