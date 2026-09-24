@@ -7186,6 +7186,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             turnId: recorder?.turnId ?? null,
             projectId: turnProjectId,
             userId: turnUserId,
+            attemptId: crypto.randomUUID(),
+            signal: workController.signal,
           },
           () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal),
         );
