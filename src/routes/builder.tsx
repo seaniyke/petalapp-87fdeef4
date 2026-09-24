@@ -3148,9 +3148,16 @@ function Builder() {
           });
         }
 
-        // AI work is fully done — mark polishing complete and move to deploying.
-        setPhases((p) => completeThrough(p, "polishing"));
-        setPhases((p) => advanceTo(p, "deploying"));
+        // A terminal failure (e.g. requested pages never written) ends the
+        // active phase as failed — nothing is built, so never "deploying".
+        const failedOutcome = (turnOutcome as { outcome?: string } | null)?.outcome === "failed";
+        if (failedOutcome) {
+          setPhases((p) => markFailed(p));
+        } else {
+          // AI work is fully done — mark polishing complete and move to deploying.
+          setPhases((p) => completeThrough(p, "polishing"));
+          setPhases((p) => advanceTo(p, "deploying"));
+        }
 
         try {
           // The user message was already persisted up-front (see send() entry)
