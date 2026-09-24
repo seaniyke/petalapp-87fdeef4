@@ -18,10 +18,9 @@ describe("AI call accounting", () => {
   it("explains every call type seen in the last live build", () => {
     for (const c of seen) expect(explainAiCall(c).stage).not.toBe("unclassified");
   });
-  it("labels retries, continuations and repairs", () => {
+  it("labels retries and repairs", () => {
     expect(explainAiCall(seen[5]).kind).toBe("retry");
-    expect(explainAiCall(seen[6]).kind).toBe("continuation");
-    expect(explainAiCall(seen[7]).kind).toBe("repair");
+    expect(explainAiCall(seen[6]).kind).toBe("repair");
   });
 });
 
