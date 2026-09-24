@@ -113,10 +113,11 @@ This turn looks like a multi-section page. The server enforces a hard 180-line /
     src/components/Features.tsx
     src/components/Testimonials.tsx   (if asked)
     src/components/Pricing.tsx        (if asked)
-    src/components/CTA.tsx
+    src/components/CTA.tsx            (if asked)
     src/components/FooterSection.tsx
   Then src/App.tsx (or src/pages/Home.tsx) is just:
-    <Container><Hero /><Features /><CTA /><FooterSection /></Container>
+    <Container><Hero /><Features /><FooterSection /></Container>
+- Only create the sections this request needs. Never add Stats, Testimonials, Pricing, CTA or FAQ sections the user did not ask for.
 - Each sub-component owns its own copy/data — do not pass props down for purely-presentational content.
 - The MOMENT a file you are writing crosses ~120 lines, stop and extract the next section into its own file before continuing.`,
   },
@@ -195,7 +196,7 @@ Reference page assemblies — READ ONE before composing a similar page:
 
 Composition rules — this is the difference between forgettable and memorable:
 1. MIX variants across a single page. Do NOT use all "centered" variants together. Pair an asymmetric hero with alternating-rows features; pair a split-image hero with a bento grid.
-2. Match variants to the Design Direction vibe:
+2. Match variants to the Design Direction vibe. These are STYLE PAIRINGS, not a checklist — use only the sections the request needs (nav, hero, footer as baseline); never add Stats/Testimonials/Pricing/FAQ/CTA/Logos just because a recipe lists them:
    - agency / portfolio / studio → NavBar + HeroSplit or HeroEditorial (restyled with saturated colour blocks, never cream) + FeaturesAlternatingRows + TestimonialsQuoteHero + CtaSplit + FooterMinimal
    - playful / maximalist / consumer launch → NavWithCta + HeroCentered (GradientBlob) + FeaturesBento + TestimonialsMarquee + CtaGradientBand + FooterNewsletter
    - SaaS product / dev tools → NavWithCta + HeroSplitImage + LogosMarquee + FeaturesBento + StatsBand + TestimonialsCards + PricingSingleProduct + FaqAccordion + CtaCentered + FooterColumns
@@ -214,27 +215,23 @@ Composition rules — this is the difference between forgettable and memorable:
     triggers:
       /\b(site|website|landing|marketing|portfolio|agency|consultancy|saas|studio|business|brand|services|about|pricing|contact|blog|faq|case stud|product page)\b/i,
     body: `\n\n[Reinforcement — Prefer real pages over one long scroll]
-If the brief implies multiple sections that could each stand alone (Services, About, Contact, Pricing, Blog, FAQ, Case Studies, Portfolio, Team, Careers), create separate page components under src/pages/ and register each path in the EXISTING React Router <Routes> tree in src/App.tsx — not as <section id="..."> blocks on one page with hash-anchor nav.
+When the user asks for multiple pages (e.g. names About, Contact, Pricing), create separate page components under src/pages/ and register each path in the EXISTING React Router <Routes> tree in src/App.tsx — not as <section id="..."> blocks on one page with hash-anchor nav.
 
 Why this matters (don't skip):
 - Each route gets its own title and description — hash anchors all share the home page metadata and look identical when shared.
 - Deep links like /pricing or /case-studies/$slug actually work — users can bookmark and share them.
 - Adding a new page later becomes "create one file" instead of "refactor a 600-line index".
 
-Default decomposition for marketing/business sites:
-- src/pages/Home.tsx — home (hero + brief highlights + CTA only; do NOT cram every section here)
-- src/pages/About.tsx
-- src/pages/Services.tsx (or Features.tsx for product sites)
-- src/pages/Pricing.tsx (when relevant)
-- src/pages/Contact.tsx
-- src/pages/Blog.tsx + src/pages/BlogPost.tsx (when blog requested)
+Scope rule: build exactly the pages the user named. If they asked for one homepage, build one homepage. Never invent About, Services, Pricing, Contact, Reservations, Blog or any other page they did not ask for.
+- src/pages/Home.tsx — home (do NOT cram every named page's content here)
+- one src/pages/<Name>.tsx per page the user named
 - src/App.tsx — the single existing <Router>/<Routes> tree that registers all paths
 
 Each page MUST set route-specific title and description metadata when it renders. Do NOT copy the home page metadata into child pages.
 
 Hash anchors (#section) are allowed ONLY for in-page scrolling within a single long page (e.g. a TOC inside a docs page). They are NEVER the primary cross-section nav.
 
-In your chat reply: when you scaffold multiple pages, briefly tell the user which pages were created (e.g. "I built /, /about, /services, /pricing, and /contact — say the word and I'll add a /blog or /faq page too"). This teaches users that Kimble builds real multi-page sites, not one-pagers.`,
+In your chat reply: when you scaffold multiple pages, briefly tell the user which pages were created (e.g. "I built the Home, Menu and Contact pages"). This teaches users that Kimble builds real multi-page sites, not one-pagers.`,
   },
   // Mobile-app intent. Kimble wraps the web app in a Capacitor shell (hidden
   // from the user) and offloads native builds to a remote runner. The model
