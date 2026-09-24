@@ -1242,6 +1242,8 @@ async function structuredRetryCompletion(args: {
    *  request unchanged, just routed away from that upstream. */
   stalledUpstream?: string | null;
   providerStalled?: boolean;
+  /** Every upstream that already failed this turn (stalled or empty stream). */
+  avoidUpstreams?: string[];
   meta: {
     phase: Phase;
     promptChars: number;
@@ -1255,7 +1257,12 @@ async function structuredRetryCompletion(args: {
     recoveryReason?: string | null;
   };
 }): Promise<Response> {
-  const avoidUpstreams = args.stalledUpstream ? [args.stalledUpstream] : [];
+  const avoidUpstreams = Array.from(
+    new Set([
+      ...(args.stalledUpstream ? [args.stalledUpstream] : []),
+      ...(args.avoidUpstreams ?? []),
+    ]),
+  );
   const bodyBase = {
     messages: args.providerStalled
       ? args.messages
@@ -1329,6 +1336,7 @@ async function recoverMissingToolOutput(args: {
   encoder: TextEncoder;
   projectId?: string | null;
   userId?: string | null;
+  avoidUpstreams?: string[];
 }): Promise<ToolRecoveryPayload | null> {
   const assistantText = assistantTextFromCollected(args.collected);
   if (!assistantText) return null;
@@ -1359,6 +1367,7 @@ async function recoverMissingToolOutput(args: {
     maxTokens: args.isInitial ? 22_000 : 10_000,
     crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
+    avoidUpstreams: args.avoidUpstreams,
     meta: {
       phase: args.phaseTag.phase,
       promptChars: args.lastUserContent.length,
