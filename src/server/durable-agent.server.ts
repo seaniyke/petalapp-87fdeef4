@@ -11,7 +11,15 @@
  * One code path: the builder runs exactly the same generation pipeline, it
  * just owns the connection. Switched on with USE_DURABLE_AGENT=1.
  */
-import { signRequest } from "@/server/builder.server";
+import { createHmac } from "node:crypto";
+
+/** Same header scheme as builder/src/signing.ts (kept local: this module is
+ *  imported on the Stop path and must stay lightweight). */
+function signRequest(secret: string, body: string): { timestamp: string; signature: string } {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const signature = createHmac("sha256", secret).update(`${timestamp}.${body}`).digest("hex");
+  return { timestamp, signature };
+}
 
 /** Header the builder sets on the internal call: "attach to this turn row". */
 export const DURABLE_TURN_HEADER = "x-petal-durable-turn";
