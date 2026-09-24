@@ -220,7 +220,7 @@ export function assessRouteCoverage(args: {
     // "/" is covered by any index/home route file; other routes match on slug.
     const slug = route.replace(/^\/+|\/+$/g, "").split("/")[0]?.toLowerCase() ?? "";
     if (!slug) {
-      if (!/\/(index|home|landing)\.(t|j)sx?$/i.test(haystack) && !/index/.test(haystack)) {
+      if (!/\/(index|home|landing)\.(t|j)sx?$/im.test(haystack) && !/index/.test(haystack)) {
         missing.push("/");
       }
       continue;
