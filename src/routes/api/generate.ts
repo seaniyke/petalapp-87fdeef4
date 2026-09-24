@@ -5276,8 +5276,26 @@ Forbidden defaults
               before: currentFiles,
               after: nextFiles,
               changedPaths: touched,
+              // A broken generated page is repaired (that file only, once,
+              // re-verified) instead of silently dropped.
+              repair: async (file, detail) => {
+                controller.enqueue(
+                  encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })),
+                );
+                const { repairBrokenFile } = await import("@/server/page-repair.server");
+                return repairBrokenFile(file, detail, {
+                  turnId: logicalTurnId,
+                  projectId: body.projectId ?? null,
+                  userId,
+                });
+              },
             });
             nextFiles = gate.files;
+            if (gate.repairedPaths?.length || gate.repairFailedPaths?.length) {
+              console.info(
+                `[write-gate] ai-repair repaired=${JSON.stringify(gate.repairedPaths ?? [])} failed=${JSON.stringify(gate.repairFailedPaths ?? [])}`,
+              );
+            }
             if (gate.healedPaths.length > 0) {
               console.info("[write-gate] healed at write time:", gate.healedPaths.join(", "));
             }
