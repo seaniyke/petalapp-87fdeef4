@@ -139,9 +139,10 @@ describe("runChunkedGeneration", () => {
         return { ops: [{ op: "update", path: "d.tsx", content: "1" }], finishReason: "stop" };
       },
     });
-    expect(calls).toEqual([1, 2]);
-    expect(result.ops.map((o) => o.path)).toEqual(["a.tsx", "b.tsx", "c.tsx", "d.tsx"]);
-    expect(result.added).toBe(3);
+    // Recovery table: one truncated_output continuation only.
+    expect(calls).toEqual([1]);
+    expect(result.ops.map((o) => o.path)).toEqual(["a.tsx", "b.tsx", "c.tsx"]);
+    expect(result.added).toBe(2);
   });
 
   it("stops when a chunk adds nothing new", async () => {
@@ -183,7 +184,7 @@ describe("runChunkedGeneration", () => {
         return { ops: [{ op: "update", path: `f${req.round}.tsx`, content: "1" }], finishReason: "length" };
       },
     });
-    expect(n).toBe(3);
-    expect(result.rounds).toBe(3);
+    expect(n).toBe(1);
+    expect(result.rounds).toBe(1);
   });
 });
