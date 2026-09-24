@@ -17,6 +17,7 @@ import { reconcileDocumentHeadOps } from "@/server/document-head.server";
 import { EMPTY_HOME_BUILD_FAILURE_MESSAGE } from "@/server/build-failure-copy";
 import { assessCompleteness, incompleteBuildMessage, requestedRoutesFor } from "@/server/engine/build-state";
 import { currentTurnContext, markUpstreamFailed, runWithTurnContext } from "@/server/turn-context.server";
+import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,
@@ -3898,6 +3899,8 @@ Forbidden defaults
 
         let payload: ParsedProjectPayload;
         const firstStall = collected.stall ?? null;
+        // THE bounded recovery table for this turn (engine/recovery-policy).
+        const recovery = new RecoveryBudget();
         try {
           // A stalled provider's partial output is never trusted: resend the
           // original request to a different upstream instead.
