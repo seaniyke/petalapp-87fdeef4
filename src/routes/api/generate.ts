@@ -1534,6 +1534,9 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
       parsed.files = files as unknown as ParsedProjectPayload["parsed"]["files"];
     }
   }
+  if (process.env.KIMBLE_DUMP_OPS === "1") {
+    try { (await import("node:fs")).writeFileSync(`/tmp/ops-${Date.now()}.json`, collected.args); } catch { /* debug only */ }
+  }
   if (Array.isArray(parsed.ops)) {
     const { ops, dropped } = dropUnusableOps(parsed.ops as unknown as Record<string, unknown>[]);
     if (dropped > 0) {
