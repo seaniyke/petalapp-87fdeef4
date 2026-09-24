@@ -1310,7 +1310,6 @@ async function recoverMissingToolOutput(args: {
   encoder: TextEncoder;
   projectId?: string | null;
   userId?: string | null;
-  avoidUpstreams?: string[];
 }): Promise<ToolRecoveryPayload | null> {
   const assistantText = assistantTextFromCollected(args.collected);
   if (!assistantText) return null;
@@ -1341,7 +1340,6 @@ async function recoverMissingToolOutput(args: {
     maxTokens: args.isInitial ? 22_000 : 10_000,
     crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
-    avoidUpstreams: args.avoidUpstreams,
     meta: {
       phase: args.phaseTag.phase,
       promptChars: args.lastUserContent.length,
@@ -3968,7 +3966,6 @@ Forbidden defaults
                 : firstCollected;
             const recovered = isMissingToolOutputError(retryErr) && recoverySource
               ? await recoverMissingToolOutput({
-                  avoidUpstreams: failedUpstreams,
                   chatMessages: finalMessages,
                   collected: recoverySource,
                   isInitial,
@@ -4002,7 +3999,7 @@ Forbidden defaults
             // small enough that it cannot overflow. The chunk continuation
             // loop below then finishes the rest in the same turn.
             let smallChunk: ParsedProjectPayload | null = null;
-            if (firstWasTruncated) {
+            if (firstWasTruncated && recovery.take("truncated_output")) {
               try {
                 controller.enqueue(
                   encoder.encode(
@@ -4029,7 +4026,6 @@ Forbidden defaults
                   ],
                   isInitial,
                   problem: "output_truncated_first_chunk",
-                  avoidUpstreams: failedUpstreams,
                   hasBackend: Boolean(backend),
                   tool,
                   maxTokens: 6_000,
@@ -4249,7 +4245,7 @@ Forbidden defaults
                 const chunkFailed =
                   Boolean(chunkCollected.stall) ||
                   (!chunkCollected.name && !chunkCollected.args.trim() && !chunkCollected.text.trim());
-                if (chunkFailed) {
+                if (chunkFailed && recovery.take("provider_failure", `chunk_${req.round}`)) {
                   console.warn(
                     `[chunked-generation] round=${req.round} provider_failed upstream=${chunkCollected.upstream ?? "?"} excluded=${JSON.stringify(Array.from(currentTurnContext().failedUpstreams ?? []))} — one resend`,
                   );
@@ -4266,7 +4262,6 @@ Forbidden defaults
                     maxTokens: req.maxTokens,
                     crossCuttingIntent: isCrossCutting,
                     signal: abortSignal,
-                    avoidUpstreams: chunkCollected.upstream ? [chunkCollected.upstream] : [],
                     meta: {
                       phase: phaseTag.phase,
                       promptChars: lastUserContent.length,
