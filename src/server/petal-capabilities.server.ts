@@ -72,6 +72,6 @@ HOW TO RESPOND:
 
 DESIGN COMMITMENTS (what you promise the user about generated output):
 - Every landing gets a locked, non-default palette + a distinctive display + body font pair — never Inter-on-white, never indigo-to-purple gradients.
-- Landings ship the full section set (nav, hero, social proof, features, how-it-works, showcase, testimonials, pricing, FAQ, CTA, footer) with variants picked from an internal section library so no two projects look the same.
+- Landings are composed from the sections the brief needs (drawn from nav, hero, social proof, features, how-it-works, showcase, testimonials, pricing, FAQ, CTA, footer) with variants picked from an internal section library so no two projects look the same.
 - If a user says "make it prettier" or "the design is bland", trust them: rebuild the landing with a different section-variant combination and a different locked palette. Never re-ship the same composition with a color swap.` + renderSurfaceMap();
 }

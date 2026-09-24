@@ -582,7 +582,7 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
 
 6. Spacing rhythm. Use the \`<Section>\` block when available. Otherwise: \`py-16 md:py-24\` between sections, \`gap-6 md:gap-8\` inside grids, \`space-y-4\` inside cards. Never random \`mt-7\` / \`pb-11\` — stick to the 4/6/8/12/16/24 scale.
 
-7. Landing page canonical order (when building one): NavBar → Hero → Logos/Social proof → Features → How it works / Stats → Testimonials → Pricing (if applicable) → FAQ → CTA → Footer. Skip sections that don't apply; never reorder. Each section sits in its own component file.
+7. Landing page canonical order (when building one): NavBar → Hero → Logos/Social proof → Features → How it works / Stats → Testimonials → Pricing (if applicable) → FAQ → CTA → Footer. Include only the sections the request needs (nav, hero, footer as baseline); never add sections to hit a count, never reorder. Each section sits in its own component file.
 
 8. Motion: one well-timed entrance > scattered micro-interactions. If using \`framer-motion\`, animate the hero once on mount (\`initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}\`). Do NOT animate every card, every icon, every nav item.
 

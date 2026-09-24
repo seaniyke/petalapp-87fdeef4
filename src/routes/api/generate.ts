@@ -3166,7 +3166,12 @@ Forbidden defaults
       designTasteBlock = "";
     } else if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
       const taste = renderDesignTasteBlock(lastUserText || "");
-      designTasteBlock = taste.text + renderLandingChecklistBlock();
+      // The section framework is offered for marketing sites, and for other
+      // builds only when the user explicitly asked for a landing page.
+      const askedForLanding = /\b(landing|marketing)\s*(page|site|website)\b/i.test(lastUserText || "");
+      designTasteBlock =
+        taste.text +
+        (detectedWebSubtype === "marketing" || askedForLanding ? renderLandingChecklistBlock() : "");
     }
     if (!skipDesignManual && (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack")) {
       const appUi = renderAppUiBlock(lastUserText || "");

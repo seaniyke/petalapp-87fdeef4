@@ -149,19 +149,9 @@ export const LANDING_SECTION_KEYWORDS = {
 };
 
 export function renderLandingChecklistBlock(): string {
-  return `\n\n[Landing-page section checklist — required for any landing/marketing build]
-Every landing you build must include ALL of the following sections in the composed page, each in its own component file under \`src/components/sections/\`, each ≤120 lines:
-  1. NavBar / SiteHeader   (with logo, primary nav, CTA button)
-  2. Hero                  (variant picked from Section Library)
-  3. Social proof          (stat strip, rating line, or anchor testimonial — a logo marquee only for real named brands, always with wordmarks)
-  4. Features              (bento, zigzag, tabs, sticky-scroll, or icon grid)
-  5. How it works          (steps row, timeline, or diagram)
-  6. Showcase              (carousel, parallax grid, or device mockups)
-  7. Testimonials          (masonry, anchor+mini, or video row)
-  8. Pricing               (only skip if the product is genuinely free)
-  9. FAQ                   (accordion, two-col, or grouped)
- 10. Final CTA             (banner, split, or newsletter)
- 11. Footer                (mega, minimal, or newsletter)
-
-Missing 4+ of these sections = incomplete landing. If pricing genuinely doesn't apply, replace it with a matching "Who it's for" or "Compare" section — never leave a bare 4-section landing.`;
+  return `\n\n[Landing-page composition framework — use it when it genuinely fits the request]
+Available sections, in canonical order: NavBar · Hero · Social proof · Features · How it works · Showcase · Testimonials · Pricing · FAQ · Final CTA · Footer.
+- Nav, hero and footer are the baseline. Any section the user named is required.
+- Add other sections only when they serve this brief. Never add a section to meet a count.
+- Keep each section concise (≤120 lines) in its own file under \`src/components/sections/\`; short sample content (3-6 items), no huge inline SVGs, no long mock data.`;
 }
