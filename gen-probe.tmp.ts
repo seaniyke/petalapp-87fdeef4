@@ -13,7 +13,7 @@ const t0 = Date.now();
 const res = await fetch("http://localhost:8080/api/generate", { method: "POST",
   headers: { "content-type": "application/json", authorization: `Bearer ${data.session!.access_token}`, "x-petal-target": "web" },
   body: JSON.stringify({ projectId: PROJECT, currentFiles: files, messages: [{ role: "user", content: PROMPT }] }) });
-const text = await res.text();
+const text = await res.text(); console.log("stream-seconds", ((Date.now() - t0) / 1000).toFixed(1));
 const types = new Map<string, number>(); let result: any = null;
 for (const l of text.split("\n")) { if (!l.startsWith("data:")) continue; try { const e = JSON.parse(l.slice(5)); types.set(e.type, (types.get(e.type) ?? 0) + 1); if (e.type === "error") console.log("ERR", e.message); if (e.type === "result" || e.files) result = e; } catch {} }
 console.log("status", res.status, "start", new Date(t0).toISOString(), "seconds", ((Date.now() - t0) / 1000).toFixed(1));
