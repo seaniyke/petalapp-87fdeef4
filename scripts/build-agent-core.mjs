@@ -29,6 +29,8 @@ await build({
       },
     },
   ],
+  // Vite-only flags: the Node bundle has no import.meta.env.
+  define: { "import.meta.env": JSON.stringify({ DEV: false, PROD: true, MODE: "production", SSR: true }) },
   logLevel: "warning",
 });
 console.log("agent core bundled → builder/vendor/agent-core.mjs");
