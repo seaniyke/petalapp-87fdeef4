@@ -126,6 +126,56 @@ export interface RepairAllOptions {
    * are not this edit's business and are never rewritten.
    */
   localOnly?: boolean;
+  /** Internal: already narrowed to the local view. */
+  _viewOnly?: boolean;
+}
+
+const IMPORT_SPEC_RE = /(?:import|export)\s[^'"]*?from\s*['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|import\s+['"]([^'"]+)['"]/g;
+const RESOLVE_EXTS = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"];
+/** Entry/router files a local page edit may need for route checks. */
+const LOCAL_VIEW_ALWAYS = /^(index\.html|src\/(main|App|router|routes)\.(t|j)sx?|src\/(styles|index)\.css|src\/routes\/__root\.tsx)$/;
+
+function resolveSpec(from: string, spec: string, paths: Set<string>): string | null {
+  let base: string;
+  if (spec.startsWith("@/")) base = "src/" + spec.slice(2);
+  else if (spec.startsWith(".")) {
+    const dir = from.split("/").slice(0, -1);
+    for (const part of spec.split("/")) {
+      if (part === "." || part === "") continue;
+      if (part === "..") dir.pop();
+      else dir.push(part);
+    }
+    base = dir.join("/");
+  } else return null;
+  for (const ext of RESOLVE_EXTS) if (paths.has(base + ext)) return base + ext;
+  return null;
+}
+
+/**
+ * The local view for an ordinary edit: the files the edit wrote, the files
+ * those import (read context for the import/scope resolvers), the entry and
+ * router files, and the resolver-managed build config. Nothing else.
+ */
+export function localRepairView(files: ProjectFile[], touched: readonly string[]): ProjectFile[] {
+  const paths = new Set(files.map((f) => f.path));
+  const byPath = new Map(files.map((f) => [f.path, f]));
+  const keep = new Set<string>(touched.filter((p) => paths.has(p)));
+  for (const p of touched) {
+    const f = byPath.get(p);
+    if (!f) continue;
+    for (const m of f.content.matchAll(IMPORT_SPEC_RE)) {
+      const spec = m[1] ?? m[2] ?? m[3];
+      if (!spec) continue;
+      const hit = resolveSpec(p, spec, paths);
+      if (hit) keep.add(hit);
+    }
+  }
+  for (const f of files) {
+    if (LOCAL_VIEW_ALWAYS.test(f.path) || (RESOLVER_MANAGED_PATHS as readonly string[]).includes(f.path)) {
+      keep.add(f.path);
+    }
+  }
+  return files.filter((f) => keep.has(f.path));
 }
 
 /**
@@ -136,6 +186,46 @@ export interface RepairAllOptions {
 const RESOLVER_MANAGED_PATHS = ["package.json", "tsconfig.json", "vite.config.ts"] as const;
 
 export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): RepairAllResult {
+  // Ordinary edit: tidy only the edit's own files. The passes see the local
+  // view (written files + what they import + entry/router + build config),
+  // never the whole project, and the result is merged back.
+  if (opts?.localOnly && opts.scopeLock && !opts._viewOnly) {
+    const view = localRepairView(input, opts.scopeLock.touchedPaths);
+    const viewPaths = new Set(view.map((f) => f.path));
+    const inner = runAllRepairs(view, { ...opts, _viewOnly: true });
+    const out = new Map(inner.files.map((f) => [f.path, f]));
+    const merged: ProjectFile[] = [];
+    for (const f of input) {
+      if (!viewPaths.has(f.path)) merged.push(f);
+      else merged.push(out.get(f.path) ?? f); // a view file is never dropped on an edit
+    }
+    // Resolver-created files are kept, but never a renamed copy of an existing
+    // file (an edit does not rename files it was not asked to).
+    const stem = (p: string) => p.replace(/\.(tsx|ts|jsx|js|mjs)$/g, "").replace(/\.(tsx|ts|jsx|js|mjs)$/g, "");
+    const inputStems = new Set(input.map((f) => stem(f.path)));
+    // ...and only when a file the edit actually wrote imports it. Stubs made
+    // for imports of untouched entry files are not this edit's business.
+    const pathSet = new Set(inner.files.map((f) => f.path));
+    const wanted = new Set<string>();
+    for (const p of opts.scopeLock.touchedPaths) {
+      if (!input.some((f) => f.path === p)) continue; // must be a pre-existing file the edit changed
+      const f = inner.files.find((x) => x.path === p);
+      if (!f) continue;
+      for (const m of f.content.matchAll(IMPORT_SPEC_RE)) {
+        const spec = m[1] ?? m[2] ?? m[3];
+        const hit = spec ? resolveSpec(p, spec, pathSet) : null;
+        if (hit) wanted.add(hit);
+      }
+    }
+    for (const f of inner.files) {
+      if (viewPaths.has(f.path)) continue;
+      if (inputStems.has(stem(f.path))) continue;
+      if (!wanted.has(f.path)) continue;
+      merged.push(f);
+    }
+    inner.notes.unshift(`local-view: tidied ${view.length} of ${input.length} file(s).`);
+    return { ...inner, files: merged };
+  }
 
   let files = input;
   const notes: string[] = [];
@@ -441,7 +531,9 @@ export function runAllRepairs(input: ProjectFile[], opts?: RepairAllOptions): Re
   //     headings/body actually use it, depth tokens exist, and the page has
   //     one honest entrance animation. Without this every build renders in
   //     system sans and reads as "plain" no matter what the director picked.
-  const designFinish = enforceDesignFinish(files);
+  // Edits never get unrequested design touches (entrance animations,
+  // font loading) — that is first-build polish, not the user's change.
+  const designFinish = opts?.localOnly ? { files, notes: [] as string[] } : enforceDesignFinish(files);
   files = designFinish.files;
   for (const n of designFinish.notes) notes.push(n);
 

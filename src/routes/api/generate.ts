@@ -1819,7 +1819,7 @@ async function runFinalParseGuard(
       runAllRepairs(
         candidate,
         changedPaths.length > 0 && priorFiles.length > 0
-          ? { scopeLock: { touchedPaths: changedPaths } }
+          ? { scopeLock: { touchedPaths: changedPaths }, localOnly: true }
           : undefined,
       ).files,
   });
@@ -1853,7 +1853,7 @@ async function runFinalParseGuard(
         const repaired = runAllRepairs(
           kept,
           changedPaths.length > 0 && priorFiles.length > 0
-            ? { scopeLock: { touchedPaths: changedPaths } }
+            ? { scopeLock: { touchedPaths: changedPaths }, localOnly: true }
             : undefined,
         ).files;
         const recheck = await runPreEmitGate(
@@ -1930,6 +1930,7 @@ async function handleGenerateRequestCore(
    * this turn started. The turn's terminal state is decided by byte-diffing
    * the final files against THIS, never by trusting the model's prose.
    */
+  const kitSyncedPaths = new Set<string>();
   const turnBaselineFiles = currentFiles;
 
   /**
@@ -2762,14 +2763,28 @@ Forbidden defaults
   // Plain-words screen match ("the sign-in form", "the home page") — finds the
   // target without an AI round trip, so the Inspector rarely has to run.
   if (!isInitial && !isCrossCutting) {
-    const { findScreenTargets, expandPageSections } = await import("@/server/screen-target.server");
-    const screen = expandPageSections(
-      lastUserContent,
-      findScreenTargets(lastUserContent, editablePromptFiles.map((f) => f.path)),
-      editablePromptFiles,
+    const { findScreenTargets, expandPageSections, findAdjacentSection } = await import(
+      "@/server/screen-target.server"
+    );
+    const screen = Array.from(
+      new Set([
+        ...expandPageSections(
+          lastUserContent,
+          findScreenTargets(lastUserContent, editablePromptFiles.map((f) => f.path)),
+          editablePromptFiles,
+        ),
+        ...findAdjacentSection(lastUserContent, editablePromptFiles),
+      ]),
     );
     if (screen.length > 0) {
       editTargetPaths = Array.from(new Set([...screen, ...editTargetPaths])).slice(0, 8);
+    }
+    // Starter-kit files (fx, three, examples, ui…) are never the target of an
+    // edit to the user's own app: a word like "hero" or "text" matching
+    // `fx/hero-parallax` must not put it in write scope.
+    const ownTargets = editTargetPaths.filter((p) => !isVerifierExempt(p));
+    if (ownTargets.length > 0) editTargetPaths = ownTargets;
+    if (screen.length > 0) {
       console.info(`[screen-target] ${screen.join(", ")}`);
     }
   }
@@ -2824,7 +2839,7 @@ Forbidden defaults
         );
       })
       .map((f) => f.path)
-      .filter((p) => !resolvedTargetPaths.includes(p))
+      .filter((p) => !resolvedTargetPaths.includes(p) && !isVerifierExempt(p))
       .slice(0, 6);
     if (hintMatches.length > 0) {
       resolvedTargetPaths = [...resolvedTargetPaths, ...hintMatches];
@@ -2985,10 +3000,16 @@ Forbidden defaults
   // Tier 2 — dynamic system-prompt snippets. Append reinforcement
   // blocks for topics the user mentioned (charts, forms, auth, etc.)
   // — raises success rate without bloating every prompt.
+  // A bounded edit on existing files gets editing rules, not building rules.
+  const boundedEdit =
+    !isInitial &&
+    !isCrossCutting &&
+    (editClassification?.scope === "micro" || editClassification?.scope === "targeted");
   const dynamic = pickDynamicSnippets({
     messages,
     hasBackend: Boolean(backend),
     buildTarget,
+    boundedEdit,
   });
 
   const dateBlock = renderCurrentDateBlock();
@@ -3251,8 +3272,7 @@ Forbidden defaults
     // Project Intelligence Context first: the canonical understanding and the
     // committed design system frame everything the contract blocks add.
     picBlock +
-    prdBlock +
-    prdScenarioBlock +
+    (boundedEdit ? "" : prdBlock + prdScenarioBlock) +
     orchestrationBlock +
     designTasteBlock +
     skillsBlock +
@@ -3266,6 +3286,19 @@ Forbidden defaults
     astPatchBlock +
     filesContext;
 
+  console.info(
+    "[prompt-parts] " +
+      Object.entries({
+        staticPrefix: staticPrefixText, date: dateBlock, intent: intentBrief ?? "", suggestions: suggestionsBlock,
+        resolved: resolvedBlock, grounding: groundingBlock, dynamic: dynamic.text, pic: picBlock, prd: prdBlock,
+        prdScenario: prdScenarioBlock, orchestration: orchestrationBlock, designTaste: designTasteBlock,
+        skills: skillsBlock, learning: learningBlock, highStakes: highStakesBlock, vision: visionAddendum,
+        backendGate: backendGateBlock, intentActions: intentActions.promptBlock, astPatch: astPatchBlock, files: filesContext,
+      })
+        .filter(([, v]) => v.length > 0)
+        .map(([k, v]) => `${k}=${v.length}`)
+        .join(" "),
+  );
   // Short stable hash of the prefix — logged with each call so we can see at
   // a glance whether the prefix is drifting (which would kill cache hits).
   // Tiny FNV-1a is enough; this is for ops, not security.
@@ -4072,6 +4105,7 @@ Forbidden defaults
         // Honesty ledger — paths the model asked to change that end up
         // byte-identical after apply + recovery.
         const unappliedPaths: string[] = [];
+        let unlandedOps = 0;
         // Ops the critic refused to apply this turn (disclosed in the summary).
         const criticRejections: CriticRejection[] = [];
         // v3 Phase B — writes refused at the parse gate, disclosed at end of turn.
@@ -4486,7 +4520,13 @@ Forbidden defaults
               // Iteration Standard #3 — hand the rejections back once and let
               // the model re-emit the same work properly (usually a full-file
               // `update` instead of a `replace` whose snippet never matched).
-              const reworked = await requestOpRepair({
+              // A no-op (already-true) change needs no rework: nothing the
+              // user asked for was lost, so no second model call.
+              // Exception: if EVERY op was a no-op, the model did nothing the
+              // user asked for — give it one chance to do the rest.
+              const allNoOp = verdict.ops.length === 0 && verdict.rejections.every((r) => r.silent);
+              const needsRework = allNoOp || verdict.rejections.some((r) => !r.silent);
+              const reworked = !needsRework ? [] : await requestOpRepair({
                 problem: "critic_rejection",
                 refused: verdict.rejections.map((r) => ({
                   op: r.op,
@@ -4494,7 +4534,10 @@ Forbidden defaults
                   reason: r.reason,
                 })),
                 constraint:
-                  "Never elide code with comments like `// ... rest unchanged`, never blank a file, and never emit a `replace` whose search text does not appear verbatim in the current file. Emit the COMPLETE new contents of each file you change.",
+                  (allNoOp
+                    ? "Every change you emitted was already true in the file. Skip parts that are already done and emit only the parts of the request that are NOT yet true. "
+                    : "") +
+                  "Never elide code with comments like `// ... rest unchanged`, never blank a file, and never emit a no-op. Use `replace` ops whose search text is copied verbatim from the current file (large files only accept `replace`); emit a full-file `update` only for a small file.",
               });
               if (reworked.length > 0) {
                 const second = await runCritic({
@@ -4597,7 +4640,33 @@ Forbidden defaults
               safeOps = head.ops;
               for (const note of head.notes) console.info("[document-head]", note);
             }
-            const partial = applyOpsPartial(currentFiles, safeOps);
+            let partial = applyOpsPartial(currentFiles, safeOps);
+            // A replace whose snippet was written against the wrong file:
+            // if the search text matches exactly one OTHER write-allowed
+            // target, move the op there (deterministic, no AI call).
+            if (!isInitial && partial.failed.length > 0 && resolvedTargetPaths.length > 1) {
+              let moved = 0;
+              const fixedOps = safeOps.map((op) => {
+                if (op.op !== "replace") return op;
+                const failed = partial.failed.find((f) => f.op === op);
+                const search = (op as { search?: string }).search;
+                if (!failed || !search) return op;
+                const hits = resolvedTargetPaths.filter((p) => {
+                  if (p === op.path) return false;
+                  const c = currentFiles.find((f) => f.path === p)?.content ?? "";
+                  const i = c.indexOf(search);
+                  return i >= 0 && c.indexOf(search, i + 1) < 0;
+                });
+                if (hits.length !== 1) return op;
+                moved++;
+                console.info(`[generate] retargeted replace ${op.path} → ${hits[0]} (snippet matched there)`);
+                return { ...op, path: hits[0] };
+              });
+              if (moved > 0) {
+                safeOps = fixedOps;
+                partial = applyOpsPartial(currentFiles, safeOps);
+              }
+            }
             patched = partial.files;
 
             initiallyAppliedOps = partial.applied.map(opDigest);
@@ -4645,9 +4714,17 @@ Forbidden defaults
                       `Your previous edit to ${path} could not be applied: ${failure.error}\n\n` +
                       `Current contents of ${path} (authoritative — your replace snippet did not match these bytes):\n` +
                       `--- ${path} ---\n${currentContent.slice(0, 24_000)}${currentContent.length > 24_000 ? "\n/* ...trimmed... */" : ""}\n--- end ---\n\n` +
-                      `Re-emit the change as a SINGLE patch_files tool call containing EXACTLY ONE op: ` +
-                      `{ "op": "update", "path": "${path}", "content": "<the COMPLETE new file contents>" }. ` +
-                      `Do not use \`replace\`. Do not touch any other file. Do not use keep-existing markers. ` +
+                      // Large files only accept `replace` (the applier rejects
+                      // a whole-file resend that keeps most of the file), so
+                      // asking for a full update there guaranteed a second
+                      // failure. The current bytes are shown above, so replace
+                      // snippets copied from them match.
+                      (currentContent.split("\n").length > 150
+                        ? `Re-emit the change as a SINGLE patch_files tool call with one or more \`replace\` ops on ${path} only. ` +
+                          `Copy each \`search\` snippet VERBATIM from the current contents above (a few whole lines, unique in the file) and always include \`replace\`. `
+                        : `Re-emit the change as a SINGLE patch_files tool call containing EXACTLY ONE op: ` +
+                          `{ "op": "update", "path": "${path}", "content": "<the COMPLETE new file contents>" }. `) +
+                      `Do not touch any other file. Do not use keep-existing markers. ` +
                       `If the current contents already satisfy the user's request, return an empty ops array — do not invent edits.`,
                   },
                 ];
@@ -4708,6 +4785,7 @@ Forbidden defaults
                 }
               }
 
+              unlandedOps = partial.failed.filter((f) => !rewrittenPaths.includes(f.op.path)).length;
               // Final verdict for this batch: did anything land at all?
               if (partial.applied.length === 0 && rewrittenPaths.length === 0) {
                 recorder.record({
@@ -4875,6 +4953,12 @@ Forbidden defaults
             target: buildTarget.id,
             keepPaths: patchedTouched,
           });
+          // Files the kit sync refreshed are Kimble housekeeping, not this
+          // edit: keep them out of the tidy/repair scope below.
+          const patchedByPath = new Map(patched.map((f) => [f.path, f.content]));
+          for (const f of nextFiles) {
+            if (patchedByPath.get(f.path) !== f.content) kitSyncedPaths.add(f.path);
+          }
 
         }
         if (!nextFiles.some((f) => f.path === "index.html")) {
@@ -4943,7 +5027,11 @@ Forbidden defaults
           // those every build was minutes of wasted work.
           const scopeLock =
             turnBaselineFiles.length > 0
-              ? { touchedPaths: diffChangedPaths(turnBaselineFiles, nextFiles) }
+              ? {
+                  touchedPaths: diffChangedPaths(turnBaselineFiles, nextFiles).filter(
+                    (p) => !kitSyncedPaths.has(p),
+                  ),
+                }
               : {
                   touchedPaths: nextFiles
                     .map((f) => f.path)
@@ -5183,6 +5271,22 @@ Forbidden defaults
           issue_count: autofixOut.report.fixedCount,
           details: { notes: autofixOut.report.notes.slice(0, 8) },
         });
+        // Controlled repair-path test (development server only): break the
+        // first file this edit changed the way a truncated model reply would,
+        // so the real verify → one targeted repair → verify path can be
+        // measured. Never active in a production build.
+        if (import.meta.env.DEV && (body as { testFault?: string }).testFault === "syntax" && !isInitial) {
+          const changedNow = new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
+          const victim = resolvedTargetPaths.find((p) => changedNow.has(p) && /\.tsx$/.test(p));
+          if (victim) {
+            nextFiles = nextFiles.map((f) => {
+              if (f.path !== victim) return f;
+              const i = f.content.lastIndexOf("\n}");
+              return i < 0 ? f : { ...f, content: f.content.slice(0, i) + "\n" + f.content.slice(i + 2) };
+            });
+            console.warn(`[test-fault] removed the closing brace of ${victim}`);
+          }
+        }
         // Tier 2.5 + 2.45 — local verifier and npm pre-flight
         // (extracted to src/server/pipeline/tier-local-verify.ts).
         const localT0 = Date.now();
@@ -5297,12 +5401,25 @@ Forbidden defaults
         // to emit only the missing tail bytes.
         // (extracted to src/server/pipeline/tier-continuation.ts).
         const contT0 = Date.now();
+        const preContFiles = nextFiles;
         const contOut = await runContinuationTier({
           files: nextFiles,
           verdict: localVerdict,
           model,
         });
         nextFiles = contOut.files;
+        // The continuation is itself the repair for a truncated file. If it
+        // ran, re-check the flagged files so the one-repair gate below sees
+        // the CURRENT state, not the pre-continuation verdict.
+        let gateLocalVerdict = localVerdict;
+        if (contOut.files !== preContFiles && !localVerdict.ok) {
+          const { verifyFilesLocal } = await import("@/server/local-verifier");
+          gateLocalVerdict = verifyFilesLocal(
+            nextFiles,
+            Array.from(new Set(localVerdict.issues.map((i) => i.path))),
+          );
+        }
+        const continuationRepaired = contOut.files !== preContFiles;
         // (Legacy handoff-state population removed. `contOut.requestHandoff`
         // still drives the telemetry outcome below — that's all it's used
         // for now.)
@@ -5313,7 +5430,7 @@ Forbidden defaults
           tier: "continuation",
           outcome: contOut.requestHandoff
             ? "failed"
-            : contOut.files !== nextFiles
+            : continuationRepaired
               ? "fixed"
               : "skipped",
           duration_ms: Date.now() - contT0,
@@ -5434,13 +5551,14 @@ Forbidden defaults
           : new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
         const inTurn = (p: string) => !gateTurnPaths || gateTurnPaths.has(p);
         const gateReason =
-          (!localVerdict.ok ? localVerdict.issues.find((i) => inTurn(i.path))?.kind : undefined) ??
+          (!gateLocalVerdict.ok ? gateLocalVerdict.issues.find((i) => inTurn(i.path))?.kind : undefined) ??
           (!esbuildVerdict.ok && esbuildVerdict.issues.some((i) => inTurn(i.path)) ? "syntax" : null) ??
           (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null) ??
           (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0)
             ? "initial-quality"
             : null);
-        const autofixGateOpen = gateReason !== null;
+        // On an edit the truncation continuation already was the one repair.
+        const autofixGateOpen = gateReason !== null && (isInitial || !continuationRepaired);
         if (autofixGateOpen) console.info(`[repair] reason=${gateReason}`);
         const combinedAutofixIssues = [
           ...localVerdict.issues,
@@ -5673,7 +5791,7 @@ Forbidden defaults
             }
             // Ordinary edit: at most one repair call in total. If the first
             // repair already ran, stop rather than spend a third call.
-            if (!isInitial && autofixGateOpen) {
+            if (!isInitial && (autofixGateOpen || continuationRepaired)) {
               console.warn(
                 `[repair] edit already used its one repair — not running another (remaining=${stillBad.length})`,
               );
@@ -6346,6 +6464,15 @@ Forbidden defaults
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
           console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
+        }
+
+        if (unlandedOps > 0 && unappliedPaths.length === 0) {
+          const note =
+            `\n\nHeads up — ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of what you asked didn't land on this pass. ` +
+            `Send it again and I'll finish just that part.`;
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          console.warn(`[generate] ${unlandedOps} unlanded op(s) disclosed to user`);
         }
 
         // Bible §9 scope guard — a one-line request that rewrites half the

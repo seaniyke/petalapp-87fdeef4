@@ -924,6 +924,24 @@ export function needsBackendCapability(text: string): boolean {
  * current scope. Cap at 6 topical snippets to keep prompt size reasonable
  * while still covering compound asks (e.g. "auth + dashboard with charts").
  */
+/** Rules that bear on editing existing UI; everything else is for building. */
+const BOUNDED_EDIT_KEEP = new Set<DynamicSnippetKey>([
+  "verifyBeforeDone",
+  "layout",
+  "images",
+  "designFloor",
+  "frontendQuality",
+  "forms",
+  "toast",
+  "overlays",
+  "navigation",
+  "navbarBrand",
+  "interactivity",
+  "mobileCraft",
+  "backendCraft",
+  "chromeExtensionCraft",
+]);
+
 export function pickDynamicSnippets(args: {
   /** Full message thread (oldest → newest). */
   messages: Array<{ role: string; content: unknown }>;
@@ -931,6 +949,14 @@ export function pickDynamicSnippets(args: {
   hasBackend: boolean;
   /** Force-include target-specific craft snippets regardless of keywords. */
   buildTarget?: { id: string };
+  /**
+   * A bounded edit on existing files (heading, text, button, spacing, a
+   * layout tweak). It gets only the rules that bear on that kind of change:
+   * the JSX-correctness/verify rules and the design/quality floor, plus
+   * topical rules the request actually names. New-feature, backend,
+   * multi-page and kit-catalogue blocks are for building, not editing.
+   */
+  boundedEdit?: boolean;
 }): { snippets: DynamicSnippetKey[]; text: string } {
   const latestUserTurn = [...args.messages].reverse().find((m) => m.role === "user");
   const haystack = messageText(latestUserTurn?.content).toLowerCase();
@@ -984,7 +1010,10 @@ export function pickDynamicSnippets(args: {
   }
 
   // Cap generously — kitCore + verifyBeforeDone + noBackendGate + designFloor + up to ~12 topical.
-  const picked = matched.slice(0, 16);
+  let picked = matched.slice(0, 16);
+  if (args.boundedEdit) {
+    picked = picked.filter((k) => BOUNDED_EDIT_KEEP.has(k));
+  }
   const text = picked
     .map((k) => {
       const body = SNIPPETS[k].body;
