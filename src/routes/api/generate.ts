@@ -5757,7 +5757,8 @@ Forbidden defaults
               combinedAutofixIssues,
               // Minimal change surface: on an edit turn this pass may only see
               // and rewrite what the turn wrote (plus verifier-flagged files).
-              isInitial ? undefined : diffChangedPaths(turnBaselineFiles, nextFiles),
+              // Only the failing files — first builds included.
+              Array.from(new Set(combinedAutofixIssues.map((i) => i.path))),
             );
             // §7 cost ceiling — meter the polish pass so later rounds know
             // how much of the turn's repair budget is already gone.
