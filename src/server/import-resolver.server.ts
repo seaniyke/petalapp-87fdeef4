@@ -124,14 +124,10 @@ function buildStub(
   const safeName = /^[A-Z][A-Za-z0-9_]*$/.test(name) ? name : "Stub";
   const label = spec.split("/").pop() ?? "Section";
   const body =
-    `function ${safeName}() {
-` +
-    `  // ${label}: import target missing — renders nothing rather than fake content.
-` +
-    `  return null;
-` +
-    `}
-`;
+    `function ${safeName}() {\n` +
+    `  // ${label}: import target missing — renders nothing rather than fake content.\n` +
+    `  return null;\n` +
+    `}\n`;
 
   // A default-only stub is a runtime crash waiting to happen: a NAMED import
   // from this module would resolve to `undefined` and React throws
