@@ -47,7 +47,27 @@ let initPromise: Promise<void> | null = null;
 
 function ensureInit(): Promise<void> {
   if (initPromise) return initPromise;
-  initPromise = esbuild
+  // esbuild-wasm throws "more than once" SYNCHRONOUSLY after a module reload,
+  // so the .catch below never saw it and the whole parse check was skipped.
+  let started: Promise<void>;
+  try {
+    started = esbuild.initialize({ worker: false });
+  } catch (err) {
+    if (/more than once/i.test((err as Error)?.message ?? "")) {
+      initPromise = Promise.resolve();
+      return initPromise;
+    }
+    throw err;
+  }
+  initPromise = started
+    .then(() => undefined, (err: unknown) => { throw err; })
+    .catch(() => undefined as never)
+    .then(() => undefined);
+  return initPromise;
+}
+
+function _unusedLegacyInit(): Promise<void> {
+  return esbuild
     .initialize({
       // The wasm binary ships inside the package; esbuild-wasm resolves it
       // via its own loader. We don't pass wasmURL — the bundled fallback
