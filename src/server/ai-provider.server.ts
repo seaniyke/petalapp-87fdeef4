@@ -600,6 +600,43 @@ async function recordTelemetry(
 }
 
 /**
+ * OpenRouter generation record for one request id. Stats land a few seconds
+ * after the stream closes, so poll briefly. Returns null (UNKNOWN) on any
+ * failure — never a fake zero.
+ */
+export async function fetchGenerationUsage(requestId: string): Promise<ParsedUsage | null> {
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return null;
+  for (const delay of [3_000, 6_000, 12_000]) {
+    await new Promise((r) => setTimeout(r, delay));
+    try {
+      const res = await fetch(
+        `https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(requestId)}`,
+        { headers: { Authorization: `Bearer ${key}` } },
+      );
+      if (!res.ok) continue;
+      const d = ((await res.json()) as { data?: Record<string, unknown> }).data;
+      if (!d) continue;
+      const p = num(d.native_tokens_prompt) ?? num(d.tokens_prompt);
+      const c = num(d.native_tokens_completion) ?? num(d.tokens_completion);
+      if (p == null && c == null) continue;
+      return {
+        promptTokens: p,
+        completionTokens: c,
+        totalTokens: p != null && c != null ? p + c : null,
+        cachedTokens: num(d.native_tokens_cached),
+        cacheWriteTokens: null,
+        reasoningTokens: num(d.native_tokens_reasoning),
+        costUsd: num(d.total_cost) ?? num(d.usage),
+      };
+    } catch {
+      /* try again */
+    }
+  }
+  return null;
+}
+
+/**
  * Wrap a streamed (SSE) response so its final usage chunk is parsed in-flight
  * and written onto the exact ai_call_log row for this call. This is what makes
  * primary build calls report real tokens regardless of how the caller consumes
@@ -636,6 +673,9 @@ function meterStream(
         choices?: Array<{ delta?: Record<string, unknown>; finish_reason?: unknown }>;
       };
       if (j.provider) upstream = j.provider;
+      if (typeof j.id === "string" && j.id) requestId = requestId ?? j.id;
+      const errObj = (j as { error?: unknown }).error;
+      if (errObj) streamError = JSON.stringify(errObj).slice(0, 500);
       const ch = j.choices?.[0];
       if (typeof ch?.finish_reason === "string") finishReason = ch.finish_reason;
       if (ch?.delta && streamDeltaHasOutput(ch.delta)) {
@@ -652,12 +692,24 @@ function meterStream(
       /* partial / non-JSON line */
     }
   };
-  const finish = async (outcome: "completed" | "stalled" | "cancelled" | "errored", stallMs: number | null) => {
+  let streamError: string | null = null;
+  const finish = async (
+    rawOutcome: "completed" | "stalled" | "cancelled" | "errored",
+    stallMs: number | null,
+  ) => {
     if (written) return;
     written = true;
     if (buf) scan(buf);
     const end = Date.now();
-    const u = last as ParsedUsage | null;
+    // A stream that "completed" without a single output frame is a provider
+    // failure, not a success — record it as such.
+    const outcome =
+      rawOutcome === "completed" && firstTokenAt == null ? (streamError ? "errored" : "empty") : rawOutcome;
+    let u = last as ParsedUsage | null;
+    // Stalled / cancelled / empty streams never deliver the final usage
+    // chunk, but the provider still bills them. Read the real numbers from
+    // OpenRouter's generation record instead of leaving tokens/cost unknown.
+    if (!u && requestId) u = await fetchGenerationUsage(requestId);
     try {
       const id = await rowId;
       if (!id) return;
@@ -666,8 +718,10 @@ function meterStream(
         .from("ai_call_log")
         .update({
           ...(u ? usageColumns(u, model) : {}),
+          ...(u && !last && u.costUsd != null ? { cost_source: "provider_generation" } : {}),
           ...(requestId ? { request_id: requestId } : {}),
           ...(upstream ? { upstream_provider: upstream } : {}),
+          ...(streamError ? { error_message: streamError } : {}),
           first_token_ms: firstTokenAt != null ? firstTokenAt - startedAt : null,
           last_token_ms: lastTokenAt != null ? lastTokenAt - startedAt : null,
           stream_total_ms: end - startedAt,
