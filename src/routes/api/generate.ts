@@ -1244,12 +1244,9 @@ async function structuredRetryCompletion(args: {
   maxTokens: number;
   crossCuttingIntent?: boolean;
   signal: AbortSignal;
-  /** Set when the first attempt's provider went silent: resend the ORIGINAL
-   *  request unchanged, just routed away from that upstream. */
-  stalledUpstream?: string | null;
+  /** Resend the ORIGINAL request unchanged (provider failure). Routing away
+   *  from failed upstreams is owned solely by engine/provider-policy. */
   providerStalled?: boolean;
-  /** Every upstream that already failed this turn (stalled or empty stream). */
-  avoidUpstreams?: string[];
   meta: {
     phase: Phase;
     promptChars: number;
@@ -1263,9 +1260,6 @@ async function structuredRetryCompletion(args: {
     recoveryReason?: string | null;
   };
 }): Promise<Response> {
-  // Failed upstreams are excluded by the single provider policy via the
-  // per-turn failure set (marked in relayAndCollect); no per-call plumbing.
-  for (const u of [args.stalledUpstream, ...(args.avoidUpstreams ?? [])]) if (u) markUpstreamFailed(u);
   const bodyBase = {
     messages: args.providerStalled
       ? args.messages
