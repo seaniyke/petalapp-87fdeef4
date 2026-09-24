@@ -319,7 +319,6 @@ const MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
  *  telemetry, which meant the retry never actually ran and `no_edit_emitted`
  *  leaked to users. */
 const MODEL_STRUCTURED_RETRY = "deepseek/deepseek-v4-flash";
-const MODEL_STRUCTURED_RETRY_BACKUP = "deepseek/deepseek-v4-flash";
 /** Vision-capable model used whenever the latest turn carries image attachments. */
 const MODEL_VISION = "deepseek/deepseek-v4-flash";
 
@@ -1263,12 +1262,9 @@ async function structuredRetryCompletion(args: {
     recoveryReason?: string | null;
   };
 }): Promise<Response> {
-  const avoidUpstreams = Array.from(
-    new Set([
-      ...(args.stalledUpstream ? [args.stalledUpstream] : []),
-      ...(args.avoidUpstreams ?? []),
-    ]),
-  );
+  // Failed upstreams are excluded by the single provider policy via the
+  // per-turn failure set (marked in relayAndCollect); no per-call plumbing.
+  for (const u of [args.stalledUpstream, ...(args.avoidUpstreams ?? [])]) if (u) markUpstreamFailed(u);
   const bodyBase = {
     messages: args.providerStalled
       ? args.messages
@@ -1297,33 +1293,10 @@ async function structuredRetryCompletion(args: {
     lockCallerModel: true,
     signal: args.signal,
     meta: args.meta,
-    avoidUpstreams,
   });
-  if (primary.ok && primary.body) return primary;
-
-  let detail = "";
-  try {
-    detail = (await primary.text()).slice(0, 500);
-  } catch {
-    /* ignore */
-  }
-  console.warn(
-    `[generate] structured retry failed HTTP ${primary.status}; retrying backup model`,
-    detail,
-  );
-
-  return aiChatCompletions({
-    feature: "generate",
-    body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY_BACKUP },
-    timeoutTier,
-    avoidUpstreams,
-    // No providerOverride: follow the resolved provider (DB → env → OpenRouter
-    // when its key is set). Pinning "lovable" here meant a funded OpenRouter
-    // account was never used and every turn died on the Lovable gateway's 402.
-    lockCallerModel: true,
-    signal: args.signal,
-    meta: { ...args.meta, chosenBy: `${args.meta.chosenBy}_backup` },
-  });
+  // One attempt here. Model/provider fallback is owned by aiChatCompletions
+  // and the provider policy — no second backup-model retry layer.
+  return primary;
 }
 
 async function recoverMissingToolOutput(args: {
