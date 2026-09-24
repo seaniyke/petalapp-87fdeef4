@@ -185,3 +185,12 @@ describe("audit consolidation", () => {
     expect(cb).toMatch(/status: probeDecision\.status/);
   });
 });
+
+describe("eval routing honours the per-turn failed providers", () => {
+  it("source keeps failed upstreams in the eval ignore list and records the sent model", async () => {
+    const fs = await import("node:fs");
+    const src = fs.readFileSync("src/server/ai-provider.server.ts", "utf8");
+    expect(src).toMatch(/ignore: Array\.from\(new Set\(\["nextbit", \.\.\.turnFailed/);
+    expect(src).not.toMatch(/\n\s+model: primaryModel,\n/);
+  });
+});

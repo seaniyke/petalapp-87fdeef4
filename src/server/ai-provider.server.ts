@@ -1155,7 +1155,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     // Evaluation: OpenRouter owns provider failover for each model; Kimble
     // only names the model chain. NextBit stays excluded (it corrupts tool
     // arguments — a known correctness defect, not an availability one).
-    ? { allow_fallbacks: true, require_parameters: true, ignore: ["nextbit"] }
+    ? { allow_fallbacks: true, require_parameters: true, ignore: Array.from(new Set(["nextbit", ...turnFailed.map((u) => u.toLowerCase().replace(/\s+/g, ""))])) }
     : resolveProviderRouting({ codeWriting: isCodeWriting, avoid: turnFailed, hasTools });
   if (routing) body.provider = routing;
   if (inferenceEval && isCodeWriting) {
@@ -1233,7 +1233,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     const rowId = recordTelemetry({
       feature: opts.feature,
       provider: effectiveProvider,
-      model: primaryModel,
+      model: (body.model as string) ?? primaryModel,
       status: primary.status,
       latencyMs: latency,
       fallbackUsed: false,
@@ -1264,7 +1264,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   void recordTelemetry({
     feature: opts.feature,
     provider: effectiveProvider,
-    model: primaryModel,
+    model: (body.model as string) ?? primaryModel,
     status: primary.status,
     latencyMs: latency,
     fallbackUsed: false,
