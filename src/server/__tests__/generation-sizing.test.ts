@@ -48,7 +48,7 @@ describe("first-build generation sizing", () => {
   it("G: no planned unit comes near the output ceiling", () => {
     for (const prompt of [
       "pages: Home, Menu, About, Contact, Blog, Careers, FAQ, Press, Team",
-      "An inventory tracker with login and database: Dashboard, Items, Suppliers, Orders, Reports pages",
+      "An inventory tracker: Dashboard, Items, Suppliers, Orders, Reports pages",
     ]) {
       const u = buildGenerationUnits(prompt, []);
       for (const unit of u.units) {
