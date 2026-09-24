@@ -1,0 +1,1 @@
+ALTER TABLE public.turns ADD COLUMN IF NOT EXISTS committed_at timestamptz;

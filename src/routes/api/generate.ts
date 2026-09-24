@@ -6158,7 +6158,8 @@ Forbidden defaults
         }
         // Stop boundary: after Stop nothing is billed, saved or built. This is
         // the last point before settlement → persistence commit together.
-        await (await import("@/server/turn-cancel.server")).assertTurnActive(turnId, abortSignal, "saving");
+        // Commit point: atomically claims the turn against a concurrent Stop.
+        await (await import("@/server/turn-cancel.server")).claimTurnCommit(turnId, abortSignal);
         let finalCharged = 0;
         // Decide the terminal state BEFORE billing. Charging first meant a
         // turn where the user asked for an edit, the ops all failed to apply
