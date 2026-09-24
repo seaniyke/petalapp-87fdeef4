@@ -63,10 +63,46 @@ export class AgentPool {
 
 const running = new Map<string, AbortController>();
 
+/**
+ * In-process mode (AGENT_IN_PROCESS=1): the generation pipeline is bundled
+ * into vendor/agent-core.mjs and runs inside this server. Saved-data access
+ * goes through the app's signed gateway, so no database key lives here.
+ * Off: the builder holds the app's /api/generate connection (previous mode).
+ */
+type AgentCore = {
+  handleInProcess(req: Request, o: { appOrigin: string; secret: string; turnId: string }): Promise<Response>;
+  abortLocalTurn(turnId: string): boolean;
+};
+let core: AgentCore | null = null;
+export function inProcessEnabled(): boolean {
+  return process.env.AGENT_IN_PROCESS === "1";
+}
+async function loadCore(): Promise<AgentCore> {
+  if (!core) {
+    const spec = new URL("../vendor/agent-core.mjs", import.meta.url).href;
+    core = (await import(spec)) as AgentCore;
+  }
+  return core;
+}
+
+/** Same request, answered by the bundled pipeline instead of the app. */
+export function inProcessFetcher(job: AgentJob, secret: string): typeof fetch {
+  return (async (url: string | URL | Request, init?: RequestInit) => {
+    const c = await loadCore();
+    return c.handleInProcess(new Request(url as string, init), {
+      appOrigin: job.appOrigin,
+      secret,
+      turnId: job.turnId,
+    });
+  }) as typeof fetch;
+}
+
 export function cancelAgent(turnId: string): boolean {
   const c = running.get(turnId);
   if (!c) return false;
   c.abort();
+  // In-process work is detached from the request; stop it directly too.
+  core?.abortLocalTurn(turnId);
   return true;
 }
 

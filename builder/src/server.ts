@@ -54,7 +54,7 @@ import {
   type VerifyReport,
 } from "./verify.js";
 import { callbackCandidates } from "./callback-urls.js";
-import { AgentJobSchema, AgentPool, runAgentJob, cancelAgent } from "./agent.js";
+import { AgentJobSchema, AgentPool, runAgentJob, cancelAgent, inProcessEnabled, inProcessFetcher } from "./agent.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
@@ -296,7 +296,7 @@ const agentPool = new AgentPool(
   Number(process.env.MAX_CONCURRENT_AGENTS ?? 8),
   Number(process.env.MAX_AGENT_QUEUE ?? 50),
 );
-fastify.get("/agent/healthz", async () => ({ ok: true, ...agentPool.snapshot() }));
+fastify.get("/agent/healthz", async () => ({ ok: true, inProcess: inProcessEnabled(), ...agentPool.snapshot() }));
 
 fastify.post("/agent/generate", async (req, reply) => {
   const ts = req.headers["x-petal-timestamp"] as string | undefined;
@@ -311,7 +311,7 @@ fastify.post("/agent/generate", async (req, reply) => {
   }
   const job = parsed.data;
   const accepted = agentPool.tryEnqueue(async () => {
-    await runAgentJob(job, SHARED_SECRET, req.log);
+    await runAgentJob(job, SHARED_SECRET, req.log, inProcessEnabled() ? inProcessFetcher(job, SHARED_SECRET) : fetch);
   });
   if (!accepted) return reply.code(503).send({ error: "Builder is busy, please retry" });
   return reply.code(202).send({ accepted: true, turnId: job.turnId });
