@@ -3161,22 +3161,29 @@ Forbidden defaults
   // keyword-triggered snippets, plan results, vision addendum, etc.
   // Rule: NEVER move per-turn content into the prefix. Drift kills cache hits.
   // ---------------------------------------------------------------------------
+  // Order: stable system/build rules → stable design rules → project-stable
+  // reference (backend/schema/integrations/blueprint). Anything keyed on the
+  // request text or on notes that change turn to turn lives in
+  // `changingProjectText` at the head of the suffix.
   const staticPrefixText =
     baseSystem +
     buildTargetBlock +
-    designQualityBlock +
     capabilitiesBlock +
-    multiEditBlock +
+    designQualityBlock +
+    "\n\n" + COPY_CONTRACT_BLOCK + "\n\n" + COMPOSITION_CONTRACT_BLOCK + "\n\n" +
     backendBlock +
     sharedBackendBlock +
     schemaBlock +
     integrationsBlock +
-    knowledgeBlock +
+    renderBuildBlueprintBlock(persistedBlueprint);
+
+  const changingProjectText =
+    renderArchitectureBlock(persistedArchitecture) +
     memoryBlock +
     preservationBlock +
+    knowledgeBlock +
     designBlock +
-    "\n\n" + COPY_CONTRACT_BLOCK + "\n\n" + COMPOSITION_CONTRACT_BLOCK + "\n\n" +
-    blueprintBlock +
+    multiEditBlock +
     appShapeBlock +
     mobileBlock +
     gameBlock +
@@ -3258,6 +3265,7 @@ Forbidden defaults
 
 
   const dynamicSuffixText =
+    changingProjectText +
     dateBlock +
     (intentBrief
       ? `\n\n### Canonical turn intent (HARD CONTRACT)\n${intentBrief}\nSatisfy this exact outcome. Use the original user message for detail, but do not substitute a different feature, page, or product. Before emitting files, verify every planned change directly supports this intent.\n`
@@ -3289,7 +3297,7 @@ Forbidden defaults
   console.info(
     "[prompt-parts] " +
       Object.entries({
-        staticPrefix: staticPrefixText, date: dateBlock, intent: intentBrief ?? "", suggestions: suggestionsBlock,
+        staticPrefix: staticPrefixText, changing: changingProjectText, date: dateBlock, intent: intentBrief ?? "", suggestions: suggestionsBlock,
         resolved: resolvedBlock, grounding: groundingBlock, dynamic: dynamic.text, pic: picBlock, prd: prdBlock,
         prdScenario: prdScenarioBlock, orchestration: orchestrationBlock, designTaste: designTasteBlock,
         skills: skillsBlock, learning: learningBlock, highStakes: highStakesBlock, vision: visionAddendum,
