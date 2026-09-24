@@ -406,8 +406,8 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
           rewrites.push({ path: f.path, from: spec, to: aliasForm });
           changed = true;
         }
-        // Heal a previous turn's prose placeholder page once real sections exist.
-        if (resolved !== "external" && PAGE_PATH.test(resolved)) {
+        // Cleanup never writes pages (the WRITE stage is the only page writer).
+        if (false as boolean) {
           const current = byPath.get(resolved) ?? "";
           if (current.includes("Auto-generated stub by Petal import-resolver")) {
             const recomposed = buildPageFromOrphans(
@@ -447,6 +447,10 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       if (/(?:^|\/)routeTree\.gen$/i.test(spec)) continue;
       const stubPath = specToStubPath(f.path, spec);
       if (!stubPath) continue;
+      // Cleanup is non-generative for pages: a missing page stays missing so
+      // the completeness check reports it and the WRITE stage owns it. The
+      // old behaviour (a "Coming together" placeholder) produced false success.
+      if (PAGE_PATH.test(stubPath)) continue;
       // An earlier turn's prose placeholder is not a real page: if orphan
       // sections now exist, re-compose it instead of leaving a dead screen.
       const existing = byPath.get(stubPath);
