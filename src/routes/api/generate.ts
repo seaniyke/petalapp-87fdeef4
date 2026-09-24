@@ -5423,11 +5423,21 @@ Forbidden defaults
         // An AI repair runs only for a real failure. Deterministic autofix
         // having already fixed things is success, not a reason for another
         // model call, and on an edit advisory quality/size notes never open it.
-        const autofixGateOpen =
-          !localVerdict.ok ||
-          !esbuildVerdict.ok ||
-          renderRiskIssues.length > 0 ||
-          (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0));
+        // On an edit, only failures in files THIS turn changed count — a
+        // pre-existing issue elsewhere is not a reason to repair.
+        const gateTurnPaths = isInitial
+          ? null
+          : new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
+        const inTurn = (p: string) => !gateTurnPaths || gateTurnPaths.has(p);
+        const gateReason =
+          localVerdict.issues.find((i) => inTurn(i.path))?.kind ??
+          (esbuildVerdict.issues.some((i) => inTurn(i.path)) ? "syntax" : null) ??
+          (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null) ??
+          (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0)
+            ? "initial-quality"
+            : null);
+        const autofixGateOpen = gateReason !== null;
+        if (autofixGateOpen) console.info(`[repair] reason=${gateReason}`);
         const combinedAutofixIssues = [
           ...localVerdict.issues,
           ...esbuildVerdict.issues.map((i) => ({
@@ -5638,10 +5648,17 @@ Forbidden defaults
             // `missing-dep` is fixable here (the model can add the import or
             // drop the usage) even though the gate treats it as advisory,
             // because npm pre-flight may still resolve it.
+            // On an edit, only failures in files this turn changed count. A
+            // pre-existing problem elsewhere in the project is not this
+            // edit's failure and must not buy another model call.
+            const loopTurnPaths = isInitial
+              ? null
+              : new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
             const stillBad = rawStillBad.filter(
               (i) =>
                 (BLOCKING_KINDS.has(i.kind) || i.kind === "missing-dep") &&
-                !isScaffoldOwned(i.path),
+                !isScaffoldOwned(i.path) &&
+                (!loopTurnPaths || loopTurnPaths.has(i.path)),
             );
 
             if (stillBad.length === 0) {
@@ -5650,6 +5667,17 @@ Forbidden defaults
               );
               break;
             }
+            // Ordinary edit: at most one repair call in total. If the first
+            // repair already ran, stop rather than spend a third call.
+            if (!isInitial && autofixGateOpen) {
+              console.warn(
+                `[repair] edit already used its one repair — not running another (remaining=${stillBad.length})`,
+              );
+              break;
+            }
+            console.info(
+              `[repair] reason=${stillBad[0]!.kind} path=${stillBad[0]!.path} count=${stillBad.length}`,
+            );
             const cycleNum = 3 + cyc;
             // §7 hard cost ceiling. Rounds are bounded above; this bounds the
             // money. Crossing it ends the repair phase honestly rather than
