@@ -130,6 +130,7 @@ import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/publ
 import { Route as ApiPublicCoffeeCryptoRouteImport } from './routes/api/public/coffee/crypto'
 import { Route as ApiPublicBuildsHeartbeatRouteImport } from './routes/api/public/builds/heartbeat'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
+import { Route as ApiPublicAgentOpsRouteImport } from './routes/api/public/agent/ops'
 import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
 import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
 import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
@@ -759,6 +760,11 @@ const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
   path: '/api/public/builds/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentOpsRoute = ApiPublicAgentOpsRouteImport.update({
+  id: '/api/public/agent/ops',
+  path: '/api/public/agent/ops',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiBillingSubscriptionStatusRoute =
   ApiBillingSubscriptionStatusRouteImport.update({
     id: '/api/billing/subscription/status',
@@ -878,6 +884,7 @@ export interface FileRoutesByFullPath {
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
+  '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
@@ -1005,6 +1012,7 @@ export interface FileRoutesByTo {
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
+  '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
@@ -1133,6 +1141,7 @@ export interface FileRoutesById {
   '/api/billing/subscription/cancel': typeof ApiBillingSubscriptionCancelRoute
   '/api/billing/subscription/manage-link': typeof ApiBillingSubscriptionManageLinkRoute
   '/api/billing/subscription/status': typeof ApiBillingSubscriptionStatusRoute
+  '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
@@ -1262,6 +1271,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
+    | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
     | '/api/public/coffee/crypto'
@@ -1389,6 +1399,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
+    | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
     | '/api/public/coffee/crypto'
@@ -1516,6 +1527,7 @@ export interface FileRouteTypes {
     | '/api/billing/subscription/cancel'
     | '/api/billing/subscription/manage-link'
     | '/api/billing/subscription/status'
+    | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
     | '/api/public/coffee/crypto'
@@ -1640,6 +1652,7 @@ export interface RootRouteChildren {
   ApiBillingSubscriptionCancelRoute: typeof ApiBillingSubscriptionCancelRoute
   ApiBillingSubscriptionManageLinkRoute: typeof ApiBillingSubscriptionManageLinkRoute
   ApiBillingSubscriptionStatusRoute: typeof ApiBillingSubscriptionStatusRoute
+  ApiPublicAgentOpsRoute: typeof ApiPublicAgentOpsRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
   ApiPublicBuildsHeartbeatRoute: typeof ApiPublicBuildsHeartbeatRoute
   ApiPublicCoffeeCryptoRoute: typeof ApiPublicCoffeeCryptoRoute
@@ -2522,6 +2535,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBuildsCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/ops': {
+      id: '/api/public/agent/ops'
+      path: '/api/public/agent/ops'
+      fullPath: '/api/public/agent/ops'
+      preLoaderRoute: typeof ApiPublicAgentOpsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/billing/subscription/status': {
       id: '/api/billing/subscription/status'
       path: '/api/billing/subscription/status'
@@ -2688,6 +2708,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiBillingSubscriptionCancelRoute: ApiBillingSubscriptionCancelRoute,
   ApiBillingSubscriptionManageLinkRoute: ApiBillingSubscriptionManageLinkRoute,
   ApiBillingSubscriptionStatusRoute: ApiBillingSubscriptionStatusRoute,
+  ApiPublicAgentOpsRoute: ApiPublicAgentOpsRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
   ApiPublicBuildsHeartbeatRoute: ApiPublicBuildsHeartbeatRoute,
   ApiPublicCoffeeCryptoRoute: ApiPublicCoffeeCryptoRoute,
