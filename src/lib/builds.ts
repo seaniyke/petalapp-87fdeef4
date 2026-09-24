@@ -7,7 +7,10 @@ import { getSupabaseAccessToken } from "@/lib/auth-token";
  * request and inserted the `pending` build row; the actual build runs
  * async on Railway and reports back via the callback webhook.
  */
-export async function triggerBuild(projectId: string): Promise<{
+export async function triggerBuild(
+  projectId: string,
+  options?: { changedPaths?: string[]; turnId?: string; unitId?: string },
+): Promise<{
   buildId: string;
   status: "pending" | "ready" | "failed";
   reused?: boolean;
@@ -21,7 +24,7 @@ export async function triggerBuild(projectId: string): Promise<{
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ projectId }),
+    body: JSON.stringify({ projectId, ...options }),
   });
 
   let payload: unknown = null;

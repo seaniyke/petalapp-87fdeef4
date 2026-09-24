@@ -14,7 +14,11 @@
  */
 
 import { aiChatCompletions } from "@/server/ai-provider.server";
-import { CONTINUATION_MAX_OUTPUT_TOKENS, defaultTextModel } from "@/lib/ai-model-config";
+import {
+  CONTINUATION_MAX_OUTPUT_TOKENS,
+  defaultFallbackModel,
+  defaultTextModel,
+} from "@/lib/ai-model-config";
 import type { ProjectFile } from "@/server/generate.server";
 import type { LocalIssue } from "@/server/local-verifier";
 import { verifyFileLocal } from "@/server/local-verifier";
@@ -75,7 +79,11 @@ export async function runContinuation(args: {
   // doesn't help the model emit the tail and burns the response budget.
   const tailAnchor = (s: string): string => (s.length > 6000 ? s.slice(-6000) : s);
 
-  async function attempt(file: ProjectFile, model: string): Promise<string | null> {
+  async function attempt(
+    file: ProjectFile,
+    model: string,
+    fallbackNumber: number,
+  ): Promise<string | null> {
     const resp = await aiChatCompletions({
       feature: "recovery",
       // Measured 2026-09-24: routed as a utility call this ran on the
@@ -85,7 +93,12 @@ export async function runContinuation(args: {
       codeOutput: true,
       lockCallerModel: true,
       noFallback: true,
-      meta: { chosenBy: "stream_continuation", recoveryReason: "stream_continuation" },
+      timeoutTier: "default",
+      meta: {
+        chosenBy: "stream_continuation",
+        recoveryReason: fallbackNumber === 0 ? "stream_continuation" : "stream_continuation_silence",
+        fallbackNumber,
+      },
       body: {
         model,
         reasoning: { enabled: false },
@@ -118,13 +131,18 @@ export async function runContinuation(args: {
 
     // Always the build model (never the utility tier) — caller's model is
     // honoured only when it is already a DeepSeek build slug.
-    const ladder = [/^deepseek\//.test(args.model) && !/0731/.test(args.model) ? args.model : defaultTextModel()];
+    const primaryModel = /^deepseek\//.test(args.model) && !/0731/.test(args.model)
+      ? args.model
+      : defaultTextModel();
+    // Exactly one bounded fallback for a silent/failed continuation. This is
+    // file-local and cannot replay a completed generation unit.
+    const ladder = Array.from(new Set([primaryModel, defaultFallbackModel()])).slice(0, 2);
     let healed = false;
     let lastNote = "";
 
-    for (const model of ladder) {
+    for (const [fallbackNumber, model] of ladder.entries()) {
       try {
-        const tail = await attempt(file, model);
+        const tail = await attempt(file, model, fallbackNumber);
         if (!tail) {
           lastNote = `${file.path}: empty/failed completion (${model})`;
           continue;

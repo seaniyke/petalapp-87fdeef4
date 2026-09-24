@@ -13,14 +13,16 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
 import { injectPetalBadge } from "@/server/petal-badge.server";
-import { freshenStaleYears } from "@/server/freshen-stale-years.server";
 import { fixSourceEscapes } from "@/server/source-escape-fixer.server";
 import { fixImportSyntax } from "@/server/import-syntax-fixer.server";
 import { fixJsxAttrLiterals } from "@/server/jsx-attr-literal-fixer.server";
 import { fixMarkdownFences } from "@/server/markdown-fence-fixer.server";
 import { ensureBrandMarkWired } from "@/server/brand-identity.server";
 import type { VerifyPlan } from "@/server/verify-plan.server";
-import { runAllRepairs } from "@/server/repair-all.server";
+import {
+  runScopedBuildCleanup,
+  type CleanupScopeMeta,
+} from "@/server/build-cleanup-scope.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
 
 const MAX_AGE_SECONDS = 5 * 60;
@@ -85,6 +87,9 @@ export async function postBuildToRailway(args: {
    * flows, and returns findings on the callback.
    */
   verify?: VerifyPlan;
+  /** Exact files written by the generation turn. Empty means skip cleanup. */
+  cleanupPaths?: string[];
+  cleanupMeta?: CleanupScopeMeta;
 }): Promise<void> {
   const builderUrl = process.env.BUILDER_URL;
   const sharedSecret = process.env.BUILDER_SHARED_SECRET;
@@ -100,17 +105,30 @@ export async function postBuildToRailway(args: {
   // may depend on every current or future caller remembering that contract.
   // In particular this guarantees router providers are repaired in the exact
   // payload sent to the external builder, including retries and reships.
-  const canonical = runAllRepairs(args.files);
-  const escaped = fixSourceEscapes(canonical.files);
-  const importHealed = fixImportSyntax(escaped.files);
+  const canonical = runScopedBuildCleanup(args.files, args.cleanupPaths, args.cleanupMeta);
+  const cleanupSet = new Set(canonical.scope);
+  const selected = canonical.files.filter((file) => cleanupSet.has(file.path));
+  const mergeScoped = (base: ProjectFile[], changed: ProjectFile[]): ProjectFile[] => {
+    const byPath = new Map(changed.map((file) => [file.path, file]));
+    return base.map((file) => byPath.get(file.path) ?? file);
+  };
+  // These syntax passes are file-local. Running them against only the closed
+  // cleanup scope prevents the final ship boundary from rescanning the kit.
+  const escapedScoped = fixSourceEscapes(selected);
+  const escaped = { ...escapedScoped, files: mergeScoped(canonical.files, escapedScoped.files) };
+  const importScoped = fixImportSyntax(escaped.files.filter((file) => cleanupSet.has(file.path)));
+  const importHealed = { ...importScoped, files: mergeScoped(escaped.files, importScoped.files) };
   // `prop=[…]` / `prop=42` — unbraced JSX attribute values also abort the
   // esbuild transform ("Expected \"{\" but found \"[\"").
-  const attrHealed = fixJsxAttrLiterals(importHealed.files);
-  const fenceHealed = fixMarkdownFences(attrHealed.files);
+  const attrScoped = fixJsxAttrLiterals(importHealed.files.filter((file) => cleanupSet.has(file.path)));
+  const attrHealed = { ...attrScoped, files: mergeScoped(importHealed.files, attrScoped.files) };
+  const fenceScoped = fixMarkdownFences(attrHealed.files.filter((file) => cleanupSet.has(file.path)));
+  const fenceHealed = { ...fenceScoped, files: mergeScoped(attrHealed.files, fenceScoped.files) };
   // `<BrandMark/>` with no import compiles fine and then white-screens the
   // published app with `Can't find variable: BrandMark`. Heal it here too so
   // no build pathway can ship it.
-  const brandWired = ensureBrandMarkWired(fenceHealed.files);
+  const brandScoped = ensureBrandMarkWired(fenceHealed.files.filter((file) => cleanupSet.has(file.path)));
+  const brandWired = { ...brandScoped, files: mergeScoped(fenceHealed.files, brandScoped.files) };
 
   for (const n of [...canonical.notes, ...escaped.notes, ...importHealed.notes, ...attrHealed.notes, ...fenceHealed.notes, ...brandWired.notes]) {
     console.warn(`[builder-last-mile] project=${args.projectId}: ${n}`);
@@ -119,18 +137,12 @@ export async function postBuildToRailway(args: {
 
   // Rewrite stale copyright years (e.g. "© 2024" → "© 2026") that the LLM
   // emitted from its training-data cutoff. Cheap, runs on every build.
-  const { files: yearFreshened, replacements: yearReplacements } = freshenStaleYears(
-    brandWired.files,
-  );
-  if (yearReplacements > 0) {
-    console.log(`[builder] freshened ${yearReplacements} stale year reference(s)`);
-  }
   // Infrastructure injection belongs at the final shipping boundary. Older
   // projects can still have a stale inline guard persisted in project_files,
   // and some callers may not have passed through the current trigger route.
   // Replacing it here guarantees the exact payload sent to the builder always
   // contains one current, parse-safe guard.
-  const guarded = injectPreviewGuard(yearFreshened, { projectId: args.projectId }).files;
+  const guarded = injectPreviewGuard(brandWired.files, { projectId: args.projectId }).files;
   const filesToShip = args.hideBadge ? guarded : injectPetalBadge(guarded);
 
   const body = JSON.stringify({

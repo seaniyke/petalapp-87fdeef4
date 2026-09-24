@@ -14,7 +14,7 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { reconcileDocumentHeadOps } from "@/server/document-head.server";
-import { runWithTurnContext } from "@/server/turn-context.server";
+import { currentTurnContext, runWithTurnContext } from "@/server/turn-context.server";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,
@@ -5186,26 +5186,19 @@ Forbidden defaults
         // shell guard / build trigger so Rollup never sees an unresolved
         // import. See src/server/repair-all.server.ts.
         {
-          // Lock the cosmetic repair stages to files this turn actually
-          // authored. Edit turns: the diff. First builds: everything except
-          // the ~340 starter-kit files Kimble ships pre-verified — polishing
-          // those every build was minutes of wasted work.
-          const scopeLock =
-            turnBaselineFiles.length > 0
-              ? {
-                  touchedPaths: diffChangedPaths(turnBaselineFiles, nextFiles).filter(
-                    (p) => !kitSyncedPaths.has(p),
-                  ),
-                }
-              : {
-                  touchedPaths: nextFiles
-                    .map((f) => f.path)
-                    .filter((p) => !isVerifierExempt(p)),
-                };
+          // The model-authored/diff boundary is authoritative on every turn.
+          // A fresh scaffold contains hundreds of pre-verified files; their
+          // presence is never permission to inspect or rewrite them.
+          const cleanupPaths = turnBaselineFiles.length > 0
+            ? diffChangedPaths(turnBaselineFiles, nextFiles).filter((p) => !kitSyncedPaths.has(p))
+            : (authoredPaths ?? []).filter((p) => !isVerifierExempt(p));
+          const scopeLock = { touchedPaths: cleanupPaths };
+          const cleanupT0 = Date.now();
           const repaired = runAllRepairs(nextFiles, {
             scopeLock,
-            // Edits (not first builds, not site-wide redesigns) repair locally.
-            localOnly: turnBaselineFiles.length > 0 && !isCrossCutting,
+            // First builds and edits both use a local view. Cross-cutting intent
+            // widens authored paths upstream; it does not widen cleanup here.
+            localOnly: true,
           });
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
@@ -5228,6 +5221,10 @@ Forbidden defaults
           const finalScope = diffChangedPaths(turnBaselineFiles, nextFiles);
           console.info(
             `[turn-scope] read=${nextFiles.length} targeted=${resolvedTargetPaths.length} written=${scopeLock?.touchedPaths.length ?? finalScope.length} final=${finalScope.length} initial=${isInitial}`,
+          );
+          const ambientAttempt = currentTurnContext().attemptId ?? null;
+          console.info(
+            `[cleanup-scope] turn=${logicalTurnId} attempt=${ambientAttempt ?? "none"} unit=generation written=${cleanupPaths.length} modified=${finalScope.length} cleanup=${cleanupPaths.length} duration_ms=${Date.now() - cleanupT0} result=${repaired.notes.length > 0 ? "fixed" : "ok"} skipped=${cleanupPaths.length === 0} paths=${JSON.stringify(cleanupPaths)}`,
           );
           if (
             !isInitial &&
@@ -5416,12 +5413,7 @@ Forbidden defaults
         // Repairs known footguns BEFORE the build/image steps run.
         const autofixT0 = Date.now();
         const preAutofixChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
-        const autofixOut = autofixFiles(
-          nextFiles,
-          isInitial
-            ? nextFiles.map((f) => f.path).filter((p) => !isVerifierExempt(p))
-            : preAutofixChangedPaths,
-        );
+        const autofixOut = autofixFiles(nextFiles, preAutofixChangedPaths);
         nextFiles = autofixOut.files;
         if (autofixOut.report.fixedCount > 0) {
           console.log(

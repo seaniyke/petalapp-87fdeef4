@@ -11,13 +11,6 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { postBuildToRailway } from "@/server/builder.server";
-import { runAllRepairs } from "@/server/repair-all.server";
-import { applyScaffoldKit, STYLES_CSS } from "@/server/scaffold-kit";
-import { syncViteAliasesWithTsconfig } from "@/server/sync-vite-aliases.server";
-import { validateStylesCss } from "@/server/validate-styles.server";
-import { autofixFiles } from "@/server/stream-autofixer";
-import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
-import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
 import {
   buildIntegrationEnvFiles,
@@ -150,22 +143,12 @@ export async function retryStalledBuild(
     ? { url: backendRow.supabase_url, anonKey: backendRow.anon_key }
     : undefined;
 
-  const scaffolded = applyScaffoldKit(files, { backend });
-  // Same deterministic repair composition the trigger route runs, so a retry
-  // never re-ships whatever syntax fault killed the first attempt.
-  const repaired = runAllRepairs(scaffolded);
-  if (repaired.notes.length > 0) {
-    console.info(`[${source}-repair] project=${build.project_id}: ${repaired.notes.join("; ")}`);
-  }
-  const aliasFixed = syncViteAliasesWithTsconfig(repaired.files);
-  const styleSafeFiles = aliasFixed.map((f) => {
-    if (f.path !== "src/styles.css") return f;
-    return validateStylesCss(f.content).ok ? f : { ...f, content: STYLES_CSS };
-  });
-  const { files: buildFiles } = autofixFiles(styleSafeFiles);
-  const { files: shimmedFiles } = shimMissingUiPrimitives(buildFiles);
-  const { files: typeStrippedFiles } = stripTypeOnlyValueImports(shimmedFiles);
-  let withEnv = injectPreviewGuard(typeStrippedFiles, { projectId: build.project_id }).files;
+  // A transport retry has no new write set. Re-send persisted files without
+  // turning retry into another whole-project repair pass.
+  console.info(
+    `[cleanup-scope] turn=retry attempt=${nextRetry} unit=${source} written=0 modified=0 cleanup=0 duration_ms=0 result=skipped skipped=true paths=[] project=${build.project_id}`,
+  );
+  let withEnv = injectPreviewGuard(files, { projectId: build.project_id }).files;
   try {
     const envBundle = await buildIntegrationEnvFiles(build.project_id, withEnv);
     if (envBundle.files.length > 0) withEnv = mergeFilesIntoPayload(withEnv, envBundle.files);
@@ -197,6 +180,8 @@ export async function retryStalledBuild(
       buildId,
       files: withEnv,
       hideBadge,
+      cleanupPaths: [],
+      cleanupMeta: { unitId: source },
     });
     console.log(`[${source}] retried build=${buildId} attempt=${nextRetry}`);
     return {
