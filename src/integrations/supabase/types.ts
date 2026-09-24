@@ -73,6 +73,8 @@ export type Database = {
       }
       ai_call_log: {
         Row: {
+          attempt_id: string | null
+          attempt_state: string | null
           cache_write_tokens: number | null
           cached_prompt_tokens: number | null
           chosen_by: string | null
@@ -115,6 +117,8 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          attempt_id?: string | null
+          attempt_state?: string | null
           cache_write_tokens?: number | null
           cached_prompt_tokens?: number | null
           chosen_by?: string | null
@@ -157,6 +161,8 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          attempt_id?: string | null
+          attempt_state?: string | null
           cache_write_tokens?: number | null
           cached_prompt_tokens?: number | null
           chosen_by?: string | null
@@ -2608,6 +2614,7 @@ export type Database = {
       }
       pipeline_tier_events: {
         Row: {
+          attempt_id: string | null
           created_at: string
           details: Json
           duration_ms: number
@@ -2622,6 +2629,7 @@ export type Database = {
           turn_id: string
         }
         Insert: {
+          attempt_id?: string | null
           created_at?: string
           details?: Json
           duration_ms?: number
@@ -2636,6 +2644,7 @@ export type Database = {
           turn_id: string
         }
         Update: {
+          attempt_id?: string | null
           created_at?: string
           details?: Json
           duration_ms?: number

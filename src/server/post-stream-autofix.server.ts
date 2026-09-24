@@ -206,8 +206,11 @@ export async function runPostStreamAutofix(
         ],
         tools: [TOOL],
         tool_choice: { type: "function", function: { name: "emit_fixes" } },
-        max_tokens: 5000,
+        // Bounded repair budget, shared with stream continuation.
+        max_tokens: 6000,
       },
+      // One repair attempt: never silently re-run on a second model.
+      noFallback: true,
     });
 
     if (!resp.ok) {

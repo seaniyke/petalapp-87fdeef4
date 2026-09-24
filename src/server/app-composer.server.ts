@@ -195,7 +195,7 @@ export function renderBlueprintBlock(b: AppBlueprint): string {
   }
   out.push(`Template: ${b.template.key} — ${b.template.description}`);
 
-  out.push(`\nScaffold these routes (use these exact paths):`);
+  out.push(`\nScaffold these routes (use these exact paths) — build no other pages:`);
   for (const r of b.routes) out.push(`  - ${r}`);
 
   if (b.kitBlockPaths.length) {
@@ -209,7 +209,7 @@ export function renderBlueprintBlock(b: AppBlueprint): string {
     for (const p of b.examplePaths) out.push(`  - ${p}`);
   }
 
-  out.push(`\nFeatures the user almost certainly wants:`);
+  out.push(`\nPatterns that MAY fit — use one only if it serves a page or feature the user asked for; never add a form, workflow or page for it:`);
   for (const f of b.features) out.push(`  - ${f}`);
 
   if (b.guardrails.length) {

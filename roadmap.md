@@ -32,3 +32,14 @@
 - [x] Fast project open: the builder no longer waits on the full project source before painting — project row, conversation and draft load together, source streams in behind them, and a turn settles it before running.
 - [ ] Six-scenario benchmark run: classify each result (product / infrastructure / benchmark / inconclusive)
 - [ ] Explain why builds use more OpenRouter tokens (per-call breakdown from ai_call_log)
+
+## Hardening pass (pre-benchmark, Sept 24)
+- [x] Template scope: templates never add pages/routes/forms the user didn't ask for
+- [x] Section scope: dynamic prompts stop mandating Stats/Testimonials/CTA
+- [x] Recovery: every code repair on build model, reasoning off, ~6K budget, one attempt
+- [x] First build: bounded generation units sized to requested scope
+- [x] Visual QA off the critical path
+- [x] Telemetry: attempt id + abandon reason on every AI call
+- [x] Investigate 3-min repair gap
+- [x] Tests + final path review
+- [ ] Hardening items still open: whole-project tidy/typecheck of starter kit, verify-plan AI call before build start, live test of the new scope + parts rules

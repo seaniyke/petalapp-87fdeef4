@@ -22,6 +22,11 @@ export interface TurnContext {
   projectId?: string | null;
   userId?: string | null;
   buildId?: string | null;
+  /** Unique per HTTP request. A resumed/retried turn gets a new attempt, so
+   *  overlapping or abandoned attempts can never be aggregated together. */
+  attemptId?: string | null;
+  /** Aborts when this attempt is cancelled; calls made afterwards are tagged. */
+  signal?: AbortSignal | null;
 }
 
 let storage: AsyncLocalStorage<TurnContext> | null = null;

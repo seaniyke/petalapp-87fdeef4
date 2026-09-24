@@ -221,16 +221,15 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     let visualDefects: string[] = [];
     if (payload.verification?.visual?.length) {
       const shots = payload.verification.visual;
-      const [broken, craft] = await Promise.all([
-        scoreVisualQA({ shots, projectId: payload.projectId }).catch(() => []),
-        loadCraftContract(payload.projectId)
-          .then((contract) => scoreCraftQA({ shots, contract, projectId: payload.projectId }))
-          .catch(() => [] as string[]),
-      ]);
-      visualDefects = [...broken, ...craft];
+      // Only the "is it broken?" check can block shipping, so only it runs
+      // before the preview goes live. Craft review is advisory — it runs
+      // after the build is marked ready (see below) and joins the defect list
+      // for the polish pass without delaying the first usable result.
+      const broken = await scoreVisualQA({ shots, projectId: payload.projectId }).catch(() => [] as string[]);
+      visualDefects = [...broken];
       if (visualDefects.length) {
         console.warn(
-          `[builds/callback] visual QA found ${broken.length} defect(s) and craft QA ${craft.length} note(s) for ${payload.buildId}`,
+          `[builds/callback] visual QA found ${broken.length} defect(s) for ${payload.buildId}`,
         );
       }
     }
@@ -404,6 +403,37 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // and project cards never render a screenshot on demand. Best-effort: if
     // the worker cuts this short, the cron sweep backfills it.
     warmProjectThumbnail(payload.projectId, payload.buildId);
+
+    // Craft review, now that the preview is live. Advisory only: findings are
+    // appended for the polish pass; they never change ready/failed.
+    if (payload.verification?.visual?.length && verification) {
+      const craftStarted = Date.now();
+      const craft = await loadCraftContract(payload.projectId)
+        .then((contract) =>
+          scoreCraftQA({ shots: payload.verification!.visual!, contract, projectId: payload.projectId }),
+        )
+        .catch(() => [] as string[]);
+      console.info(
+        `[builds/callback] craft QA post-ready notes=${craft.length} ms=${Date.now() - craftStarted} for ${payload.buildId}`,
+      );
+      if (craft.length) {
+        const defects = sanitizeVerificationDefects([...verification.defects, ...craft]);
+        await supabaseAdmin
+          .from("project_builds")
+          .update({
+            verification: {
+              ...verification,
+              defects,
+              ok: false,
+              evidence: buildEvidence({ ...verification, defects }),
+            } as never,
+          })
+          .eq("id", payload.buildId)
+          .then(({ error }) => {
+            if (error) console.warn("[builds/callback] craft QA save failed", error.message);
+          });
+      }
+    }
 
     // Acceptance (phase 6): shipping is necessary, not sufficient. When the
     // Test Lab ran for this build, its must-work results decide the verdict —

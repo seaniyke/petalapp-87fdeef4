@@ -3181,11 +3181,40 @@ Forbidden defaults
         );
         narrowed = true;
       }
+      // Requested scope is authoritative: a template may never add pages the
+      // user did not ask for (Rise & Crumb: "bakery" → /reservations).
+      {
+        const { narrowRoutesToRequest } = await import("@/server/requested-scope");
+        const scoped = narrowRoutesToRequest(lastUserText, composed.blueprint.routes, {
+          marketing: detectedWebSubtype === "marketing",
+        });
+        if (scoped.join("|") !== composed.blueprint.routes.join("|")) {
+          composed.blueprint.routes = scoped;
+          narrowed = true;
+        }
+      }
       archetypeBlock = narrowed ? renderBlueprintBlock(composed.blueprint) : composed.promptBlock;
       for (const r of composed.blueprint.routes ?? []) if (r) plannedRoutes.push(r);
     }
   } catch {
     // Never block a build on composer failure.
+  }
+
+  // Bounded first-build generation units. Pages the user named are the plan
+  // even without a template match. A build whose pages would overflow one
+  // output budget writes the shared shell + the first pages now; the
+  // coverage continuation below writes only the remaining pages (it never
+  // rewrites delivered files). Small builds stay one call.
+  if (isInitial) {
+    try {
+      const { buildGenerationUnits } = await import("@/server/requested-scope");
+      const units = buildGenerationUnits(lastUserText, plannedRoutes);
+      for (const r of units.allRoutes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
+      if (units.instruction) archetypeBlock += units.instruction;
+      console.log(`[generation-units] pages=${units.allRoutes.length} units=${units.unitCount}`);
+    } catch {
+      /* never block a build on unit planning */
+    }
   }
 
   // Layer I — App-shape classifier. Predicts surfaces (landing/auth/dashboard/
@@ -4107,8 +4136,16 @@ Forbidden defaults
               ...Array.from(emittedSource.matchAll(/\bhref\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
               ...Array.from(emittedSource.matchAll(/\bto\s*:\s*["'](\/[a-z][a-z0-9-]{1,24})["']/gi)),
             ].map((m) => m[1] ?? "");
+            // Edits: only pages the user named. Existing/emitted nav links and
+            // the model's own step list are never a request to build a page.
+            const { extractRequestedPages, pageNameToRoute } = await import("@/server/requested-scope");
             const expectedRoutes = Array.from(
-              new Set([...plannedRoutes, ...stepRoutes, ...linkRoutes].map((r) => r.toLowerCase())),
+              new Set(
+                (isInitial
+                  ? [...plannedRoutes, ...stepRoutes, ...linkRoutes]
+                  : extractRequestedPages(lastUserContent).map(pageNameToRoute)
+                ).map((r) => r.toLowerCase()),
+              ),
             ).filter((r) => r !== "/");
 
             if (expectedRoutes.length) {
@@ -5670,13 +5707,17 @@ Forbidden defaults
         const gateReason =
           (!gateLocalVerdict.ok ? gateLocalVerdict.issues.find((i) => inTurn(i.path))?.kind : undefined) ??
           (!esbuildVerdict.ok && esbuildVerdict.issues.some((i) => inTurn(i.path)) ? "syntax" : null) ??
-          (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null) ??
-          (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0)
-            ? "initial-quality"
-            : null);
+          (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null);
+        // Quality/size notes are advisory on first builds too. Measured
+        // 2026-09-24: an "initial-quality" repair with 13 advisory notes spent
+        // 175 s writing a capped 5,000-token rewrite — the 3-minute gap.
+        // No failure = no repair call.
         // On an edit the truncation continuation already was the one repair.
         const autofixGateOpen = gateReason !== null && (isInitial || !continuationRepaired);
         if (autofixGateOpen) console.info(`[repair] reason=${gateReason}`);
+        // The repair sees only real failures in the failing files — never
+        // advisory size/quality/RLS notes, which inflated the repair into a
+        // multi-file rewrite.
         const combinedAutofixIssues = [
           ...localVerdict.issues,
           ...esbuildVerdict.issues.map((i) => ({
@@ -5684,18 +5725,8 @@ Forbidden defaults
             kind: "parse" as const,
             detail: `${i.message} (line ${i.line}:${i.column})`,
           })),
-          ...budgetWarnings.map((w) => ({
-            path: w.path,
-            kind: "oversize" as const,
-            detail: w.detail,
-          })),
-          // Render-risk issues open the gate: compile-clean code can still
-          // white-screen at runtime (for example undefined.includes()).
-          // RLS sanity remains advisory only.
-          ...generationQualityIssues,
           ...renderRiskIssues,
-          ...rlsSanityIssues,
-        ];
+        ].filter((i) => inTurn(i.path));
         // Token usage from any user-billable agentic-loop fix cycles.
         // Cycles 3..N (only when the `agent_loop` Labs flag is on) push
         // their gateway usage here so the per-turn aggregator at the
@@ -5726,7 +5757,8 @@ Forbidden defaults
               combinedAutofixIssues,
               // Minimal change surface: on an edit turn this pass may only see
               // and rewrite what the turn wrote (plus verifier-flagged files).
-              isInitial ? undefined : diffChangedPaths(turnBaselineFiles, nextFiles),
+              // Only the failing files — first builds included.
+              Array.from(new Set(combinedAutofixIssues.map((i) => i.path))),
             );
             // §7 cost ceiling — meter the polish pass so later rounds know
             // how much of the turn's repair budget is already gone.
@@ -7154,6 +7186,8 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             turnId: recorder?.turnId ?? null,
             projectId: turnProjectId,
             userId: turnUserId,
+            attemptId: crypto.randomUUID(),
+            signal: workController.signal,
           },
           () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal),
         );
