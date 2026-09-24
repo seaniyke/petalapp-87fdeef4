@@ -1,5 +1,4 @@
 import type { ProjectFile } from "@/server/generate.server";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { DesignDirection } from "@/server/design-director.server";
 import type { WebSubtype } from "@/lib/web-subtype";
 import type { HighStakesDomain, HighStakesRoadmap } from "@/lib/high-stakes-intent";
