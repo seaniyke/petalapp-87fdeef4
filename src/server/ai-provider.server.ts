@@ -365,6 +365,9 @@ export const KNOWN_MODEL_IDS: ReadonlySet<string> = new Set<string>([
   ...Object.keys(OPENROUTER_MODEL_MAP),
   ...Object.values(OPENROUTER_MODEL_MAP),
   "google/gemini-2.5-flash-image",
+  // Active utility model (DEFAULT_UTILITY_MODEL); was missing, so every
+  // health pass flagged a working model as a typo.
+  "deepseek/deepseek-v4-flash-0731",
 ]);
 
 
