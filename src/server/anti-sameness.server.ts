@@ -143,21 +143,9 @@ export function findAntiSamenessIssues(files: ProjectFile[]): LocalIssue[] {
     });
   }
 
-  // Only enforce section checklist for pages that look like landings.
-  const looksLikeLanding =
-    /\b(Hero|Landing)\b/.test(joined) && /\b(Footer|FooterSection)\b/.test(joined);
-  // Advisory only: section count is no longer a requirement, so a short
-  // landing is never sent to repair for missing sections.
-  if (false && looksLikeLanding && indexRoute) {
-    const missing = scanLandingSections(joined);
-    if (missing.length >= 4) {
-      issues.push({
-        path: indexRoute.path,
-        kind: "render-risk",
-        detail: `landing-checklist: missing ${missing.length} required section(s) — ${missing.join(", ")}. A complete landing needs nav + hero + social proof + features + how-it-works + showcase + testimonials + pricing + FAQ + CTA + footer.`,
-      });
-    }
-  }
+  // Landing section count is advisory, not a requirement: a short, purposeful
+  // landing is never flagged or sent to repair for "missing" sections.
+  void scanLandingSections;
 
   return issues;
 }
