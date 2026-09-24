@@ -93,7 +93,7 @@ export async function startTurn(opts: {
     if (!resolvedIO) throw new Error("agent io not ready");
     return resolvedIO;
   };
-  if (!resolvedIO) resolvedIO = (await import("@/server/agent-io.server")).createDirectAgentIO();
+  if (!resolvedIO) resolvedIO = (await import("@/server/agent-io.server")).agentIO();
 
   let seq = 0;
   let queue: Array<{ seq: number; kind: string; payload: unknown }> = [];

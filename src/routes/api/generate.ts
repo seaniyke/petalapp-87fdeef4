@@ -6974,7 +6974,11 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           const { registerTurnController } = await import("@/server/turn-cancel.server");
           unregisterCancel = registerTurnController(recorder.turnId, workController);
         }
+        const outerCtx = currentTurnContext();
         attemptCtx = {
+          // Railway runtime: keep the gateway adapters the entry attached.
+          agentIO: outerCtx.agentIO ?? null,
+          agentDb: outerCtx.agentDb,
           turnId: recorder?.turnId ?? null,
           projectId: turnProjectId,
           userId: turnUserId,
