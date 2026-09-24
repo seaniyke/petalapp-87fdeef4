@@ -1537,7 +1537,11 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
   if (Array.isArray(parsed.ops)) {
     const { ops, dropped } = dropUnusableOps(parsed.ops as unknown as Record<string, unknown>[]);
     if (dropped > 0) {
-      console.warn(`[generate] dropped ${dropped} unusable op(s)`);
+      console.warn(
+        `[generate] dropped ${dropped} unusable op(s); first keys=${JSON.stringify(
+          Object.keys((parsed.ops as unknown as Record<string, unknown>[])[0] ?? {}),
+        )} sample=${JSON.stringify((parsed.ops as unknown[])[0] ?? null).slice(0, 200)}`,
+      );
       parsed.ops = ops as unknown as ParsedProjectPayload["parsed"]["ops"];
     }
   }
