@@ -17,6 +17,7 @@ function memStore(turns: TurnRow[]) {
   const spends: string[] = [];
   const files = new Map<string, Array<{ path: string; content: string }>>();
   const aiLogs: Record<string, unknown>[] = [];
+  const queries: unknown[] = [];
   const store: AgentOpsStore = {
     getTurn: async (id) => {
       const t = turns.find((x) => x.id === id);
@@ -52,8 +53,9 @@ function memStore(turns: TurnRow[]) {
     logAiCall: async (r) => (aiLogs.push(r), `log-${aiLogs.length}`),
     updateAiCall: async (turnId, id) => aiLogs.some((r, i) => `log-${i + 1}` === id && r.turn_id === turnId),
     savePicture: async () => {},
+    runQuery: async (q) => (queries.push(q), { data: [], error: null }),
   };
-  return { store, spends, files, aiLogs, ledger };
+  return { store, spends, files, aiLogs, ledger, queries };
 }
 
 const running = (id: string, user = "u1", project = "p1"): TurnRow => ({
@@ -163,5 +165,47 @@ describe("agent ops billing idempotency", () => {
     expect(m.spends).toHaveLength(1);
     expect(first[1]).toMatchObject({ ok: true, data: { idempotent: false } });
     expect(again[0]).toMatchObject({ ok: true, data: { ledgerId: "led-1", idempotent: true } });
+  });
+});
+
+describe("agent ops scoped table access", () => {
+  const q = (x: Record<string, unknown>) => ({ op: "db.query" as const, filters: [], ...x });
+  it("pins reads to the turn's project", async () => {
+    const m = memStore([running(T1, "u1", "p1")]);
+    await runAgentOps(m.store, T1, [q({ table: "project_memory", action: "select" }) as never]);
+    expect(m.queries[0]).toMatchObject({ scopeCol: "project_id", scopeValue: "p1" });
+  });
+  it("refuses tables not on the list", async () => {
+    const m = memStore([running(T1)]);
+    const [r] = await runAgentOps(m.store, T1, [q({ table: "user_wallets", action: "select" }) as never]);
+    expect(r).toEqual({ ok: false, error: "table_not_allowed" });
+  });
+  it("refuses a filter on another project", async () => {
+    const m = memStore([running(T1, "u1", "p1")]);
+    const [r] = await runAgentOps(m.store, T1, [
+      q({ table: "project_files", action: "select", filters: [{ col: "project_id", op: "eq", value: "p2" }] }) as never,
+    ]);
+    expect(r).toEqual({ ok: false, error: "scope_violation" });
+  });
+  it("forces the project on inserted rows", async () => {
+    const m = memStore([running(T1, "u1", "p1")]);
+    await runAgentOps(m.store, T1, [
+      q({ table: "project_memory", action: "upsert", values: { key: "k", value: "v", project_id: "p2" } }) as never,
+    ]);
+    expect(m.queries[0]).toMatchObject({ values: { project_id: "p1", key: "k" } });
+  });
+  it("refuses writes the table does not allow", async () => {
+    const m = memStore([running(T1)]);
+    const [r] = await runAgentOps(m.store, T1, [q({ table: "project_files", action: "delete" }) as never]);
+    expect(r).toEqual({ ok: false, error: "action_not_allowed" });
+  });
+  it("refuses project writes after Stop", async () => {
+    const t = running(T1);
+    const m = memStore([t]);
+    t.status = "aborted";
+    const [r] = await runAgentOps(m.store, T1, [
+      q({ table: "project_memory", action: "insert", values: { key: "k", value: "v" } }) as never,
+    ]);
+    expect(r).toEqual({ ok: false, error: "turn_stopped" });
   });
 });

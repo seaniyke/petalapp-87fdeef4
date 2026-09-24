@@ -19,6 +19,7 @@
  * without a database.
  */
 import { z } from "zod";
+import { DbQuerySchema, scopeDbQuery, type ScopedQuery } from "@/server/agent-db-scope";
 
 export type TurnRow = {
   id: string;
@@ -56,6 +57,8 @@ export interface AgentOpsStore {
   logAiCall(row: Record<string, unknown>): Promise<string | null>;
   /** Patch only if the row belongs to this turn. Returns whether it did. */
   updateAiCall(turnId: string, id: string, patch: Record<string, unknown>): Promise<boolean>;
+  /** Run an already-scoped table query. */
+  runQuery(q: ScopedQuery): Promise<{ data: unknown; error: string | null }>;
   savePicture(row: { project_id: string; url: string; storage_path: string | null; label: string | null; tags: string[] }): Promise<void>;
 }
 
@@ -64,6 +67,7 @@ const Files = z
   .max(500);
 
 export const AgentOpSchema = z.discriminatedUnion("op", [
+  DbQuerySchema,
   z.object({ op: z.literal("turn.context") }),
   z.object({ op: z.literal("files.read") }),
   z.object({ op: z.literal("files.replace"), files: Files }),
@@ -195,6 +199,19 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
     case "blueprint.save":
       await store.saveBlueprint(turn.project_id, op.columns, op.blueprint);
       return { ok: true };
+    case "db.query": {
+      const scoped = scopeDbQuery(op, { projectId: turn.project_id, userId: turn.user_id, turnId: turn.id });
+      if ("error" in scoped) return { ok: false, error: scoped.error };
+      const logTable = op.table === "ai_call_log" || op.table === "pipeline_failures";
+      if (op.action !== "select" && !logTable) {
+        const fresh = await store.getTurn(turn.id);
+        if (!fresh || fresh.status !== "running") {
+          return { ok: false, error: fresh?.status === "aborted" ? "turn_stopped" : "turn_not_running" };
+        }
+      }
+      const r = await store.runQuery(scoped);
+      return r.error ? { ok: false, error: r.error } : { ok: true, data: r.data };
+    }
     case "events.append":
       await store.appendEvents(turn.id, op.events);
       return { ok: true };
