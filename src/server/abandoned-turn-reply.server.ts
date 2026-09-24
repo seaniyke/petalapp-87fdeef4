@@ -1,3 +1,4 @@
+import { currentTurnContext } from "@/server/turn-context.server";
 /**
  * Server-side safety net for builds whose browser went away.
  *
@@ -28,6 +29,9 @@ const STRUCTURED_PREFIX = "@@petal/v1:";
 let cached: SupabaseClient<Database> | null = null;
 
 function admin(): SupabaseClient<Database> | null {
+  // Railway runtime: no admin key; use the turn's gateway-scoped stand-in.
+  const ctxDb = currentTurnContext().agentDb;
+  if (ctxDb) return ctxDb as never;
   if (cached) return cached;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

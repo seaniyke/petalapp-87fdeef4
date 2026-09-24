@@ -39843,6 +39843,8 @@ function abortLocalTurn(turnId) {
   return true;
 }
 function admin() {
+  const ctxDb = currentTurnContext().agentDb;
+  if (ctxDb) return ctxDb;
   if (cached) return cached;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -39918,6 +39920,7 @@ async function assertTurnActive(turnId, signal, stage, check = (id) => isTurnCan
 var controllers, cached, CANCEL_REASON;
 var init_turn_cancel_server = __esm({
   "src/server/turn-cancel.server.ts"() {
+    init_turn_context_server();
     init_dist4();
     controllers = /* @__PURE__ */ new Map();
     cached = null;
@@ -82594,6 +82597,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
       // React + ecosystem
@@ -83375,6 +83379,7 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -110395,6 +110400,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     TEMPLATES = {
       "saas-landing": {
         key: "saas-landing",
@@ -113616,6 +113622,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_prompt_limits();
     CALCULATORS = [
       {
@@ -114532,6 +114539,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_client_server_shim();
   }
 });
@@ -123166,7 +123174,6 @@ function normalizeJsxExtensions(files) {
 
 // src/server/verify-plan.server.ts
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_impact_graph_server();
@@ -134560,10 +134567,13 @@ init_client_server_shim();
 import { createHash as createHash2 } from "node:crypto";
 
 // src/server/abandoned-turn-reply.server.ts
+init_turn_context_server();
 init_dist4();
 var STRUCTURED_PREFIX = "@@petal/v1:";
 var cached3 = null;
 function admin2() {
+  const ctxDb = currentTurnContext().agentDb;
+  if (ctxDb) return ctxDb;
   if (cached3) return cached3;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -140766,9 +140776,12 @@ function userFacingProviderMessage(kind) {
 }
 
 // src/server/turn-recorder.server.ts
+init_turn_context_server();
 init_dist4();
 var cached6 = null;
 function getAdminClient() {
+  const ctxDb = currentTurnContext().agentDb;
+  if (ctxDb) return ctxDb;
   if (cached6) return cached6;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
