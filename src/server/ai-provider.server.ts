@@ -1159,6 +1159,28 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
   const t0 = Date.now();
   let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
+  // Configured ≠ available. When every upstream this call was allowed has no
+  // usable endpoint ("no provider available" 404, or a provider-level
+  // 408/502/503/524 before any output), they are marked failed for THIS turn
+  // only and the same policy is asked again — which now opens the next
+  // approved upstream (DeepInfra last). One re-dispatch; never a loop.
+  if (isCodeWriting && !primary.ok && isProviderUnavailableStatus(primary.status)) {
+    const tried = ((body.provider as { only?: string[] } | undefined)?.only ?? []).slice();
+    if (tried.length) {
+      try {
+        const { markUpstreamFailed, failedUpstreamsForTurn } = await import("@/server/turn-context.server");
+        for (const u of tried) markUpstreamFailed(u);
+        const next = resolveProviderRouting({ codeWriting: true, avoid: failedUpstreamsForTurn(), hasTools }) as { only?: string[] } | undefined;
+        if (next?.only?.length) {
+          console.warn(`[provider-policy] unavailable=${tried.join(",")} status=${primary.status} → next=${next.only.join(",")}`);
+          body.provider = next;
+          primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
+        }
+      } catch {
+        /* no ambient turn — keep the original response */
+      }
+    }
+  }
   const latency = Date.now() - t0;
   const effectiveProvider = provider;
   if (primary.status === 402) {
@@ -1426,3 +1448,8 @@ export const ALL_AI_FEATURES: AiFeature[] = [
   "preflight",
   "image",
 ];
+
+/** Provider-level unavailability (not bad model output). */
+export function isProviderUnavailableStatus(status: number): boolean {
+  return status === 404 || status === 408 || status === 502 || status === 503 || status === 524;
+}
