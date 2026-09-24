@@ -209,3 +209,24 @@ describe("agent ops scoped table access", () => {
     expect(r).toEqual({ ok: false, error: "turn_stopped" });
   });
 });
+
+import { createAgentDbClient } from "@/server/agent-db-client";
+describe("stand-in database client", () => {
+  it("turns a query chain into one db.query op", async () => {
+    const sent: unknown[] = [];
+    const db = createAgentDbClient(async (q) => (sent.push(q), { data: [{ key: "a" }], error: null }));
+    const r = await db.from("project_memory").select("key, value").eq("project_id", "p1").order("updated_at", { ascending: false }).limit(30);
+    expect(r.data).toEqual([{ key: "a" }]);
+    expect(sent[0]).toMatchObject({
+      table: "project_memory", action: "select", columns: "key, value",
+      filters: [{ col: "project_id", op: "eq", value: "p1" }],
+      order: { col: "updated_at", ascending: false }, limit: 30,
+    });
+  });
+  it("records upsert conflict target and values", async () => {
+    const sent: any[] = [];
+    const db = createAgentDbClient(async (q) => (sent.push(q), { data: null, error: null }));
+    await db.from("project_blueprints").upsert({ blueprint: {} }, { onConflict: "project_id" });
+    expect(sent[0]).toMatchObject({ action: "upsert", onConflict: "project_id", values: { blueprint: {} } });
+  });
+});
