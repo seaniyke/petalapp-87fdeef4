@@ -186,14 +186,26 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // crucially we do NOT repoint `latest_build_id`, so the last known-good
     // preview survives.
     const probe = await probeDeployedUrl(payload.url);
-    if (!probe.ok) {
+    // The live-site check goes through the ONE build decision like every
+    // other outcome; there is no separate status path for it.
+    const { decideBuildStatus: decideProbe } = await import("@/lib/build-status");
+    const probeDecision = probe.ok
+      ? null
+      : decideProbe({
+          built: true,
+          deployProbeOk: false,
+          blockingDefects: [],
+          blockingIsEdgeNoiseOnly: false,
+          hasPlaceholderFiles: false,
+        });
+    if (probeDecision && probeDecision.status === "failed") {
       console.warn(
         `[builds/callback] deploy verification failed for ${payload.buildId}: ${probe.reason} (${probe.status ?? "no status"})`,
       );
       await supabaseAdmin
         .from("project_builds")
         .update({
-          status: "failed",
+          status: probeDecision.status,
           dist_path: payload.url,
           error_message: `${probe.message} Kimble kept your previous preview live instead of shipping a broken one.`,
         })
