@@ -4273,7 +4273,7 @@ Forbidden defaults
                   const content = wantPath ? parseRawFile(c.text) : null;
                   const got = wantPath && content ? [{ path: wantPath, content }] : null;
                   if (got) {
-                    controller.enqueue(encoder.encode(sse({ type: "file_complete", path: wantPath, bytes: content!.length, index: 1, content })));
+                    controller.enqueue(encoder.encode(sse({ type: "file_complete", path: wantPath!, bytes: content!.length, index: 1, content: content! })));
                   }
                   console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} textChars=${c.text.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
                   return got;
