@@ -35,17 +35,6 @@ import {
   type InspectorReport,
 } from "@/server/inspector-agent.server";
 import {
-  runAgentLoop,
-  shouldRunAgentLoop,
-  agentLoopSummaryBlock,
-  type AgentLoopResult,
-  type ChatMessage as AgentChatMessage,
-} from "@/server/agent-loop.server";
-import {
-  initialBuildToolsEnabled,
-  INITIAL_BUILD_MAX_ROUNDS,
-} from "@/server/completion-flags.server";
-import {
   runCritic,
   criticDisclosure,
   type CriticRejection,
@@ -3679,9 +3668,6 @@ Forbidden defaults
     ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent })
     : null;
 
-  // Pre-emit exploration loop removed (dormant, cost-disabled).
-  const agentLoop = null as { changedPaths: string[]; steps: Array<unknown> } | null;
-
   const upstream = directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
@@ -3753,25 +3739,6 @@ Forbidden defaults
           controller.enqueue(
             encoder.encode(
               sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
-            ),
-          );
-        }
-        // Same for the pre-emit agent loop: every grep, read, codemod and
-        // verifier run shows up as its own timeline row.
-        for (const step of agentLoop?.steps ?? []) {
-          controller.enqueue(
-            encoder.encode(
-              sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
-            ),
-          );
-        }
-        if (agentLoop && agentLoop.changedPaths.length > 0) {
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "status",
-                message: `Codemod updated ${agentLoop.changedPaths.length} file${agentLoop.changedPaths.length === 1 ? "" : "s"}.`,
-              }),
             ),
           );
         }
@@ -5177,7 +5144,7 @@ Forbidden defaults
             // A codemod that already landed this turn IS a real change, even
             // if the emit call then had nothing left to add. Only the case
             // where literally nothing moved is a dead end.
-            if (changedPaths.length === 0 && (agentLoop?.changedPaths.length ?? 0) === 0) {
+            if (changedPaths.length === 0) {
               const claimed = Array.from(new Set(safeOps.map((o) => o.path))).slice(0, 4).join(", ");
               console.warn(`[generate] no-op patch — ops applied but file contents unchanged (${claimed})`);
               recorder.record({
