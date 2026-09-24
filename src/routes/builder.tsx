@@ -3742,7 +3742,30 @@ function Builder() {
       if (r.state === "cancelled") {
         toast.success("Stopped. Nothing further will run or be charged.", { id: t });
       } else if (r.state === "already_finished") {
-        toast.message("That request had already finished before Stop reached it.", { id: t });
+        // Completion won the race. Never say "Stopped": follow the turn to its
+        // real end and show exactly what the server kept.
+        toast.message(
+          r.status === "completing" || r.status === "succeeded"
+            ? "That request had already finished — showing the result."
+            : "That request had already ended before Stop reached it.",
+          { id: t },
+        );
+        const refresh = async () => {
+          try {
+            const [fs, ms] = await Promise.all([
+              loadProjectFiles(active.projectId),
+              loadProjectMessages(active.projectId),
+            ]);
+            if (projectIdRef.current !== active.projectId) return;
+            setFiles(fs);
+            setMessages(ms);
+          } catch {
+            /* non-fatal */
+          }
+        };
+        void streamResumeTurn(active.turnId, 0, { onDone: () => void refresh() })
+          .catch(() => false)
+          .then(() => refresh());
       } else {
         toast.warning("Stop requested, but Kimble couldn't confirm it yet. Check your connection.", { id: t });
       }
