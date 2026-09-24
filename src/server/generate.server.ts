@@ -111,7 +111,7 @@ MULTI-PAGE ROUTING:
 - Detailed routing API + page-export pitfalls are appended below in [Reinforcement — Routing] when relevant.
 
 COMPLETE LANDING PAGE (mandatory whenever you build or rebuild a landing/marketing page):
-A "complete" landing page is NOT just hero + CTA. Ship ALL of the following sections, in order, each in its own component file (≤120 lines) under \`src/components/sections/\`:
+A "complete" landing page is NOT just hero + CTA. Ship ALL of the following sections, in order, each in its own SHORT component file (aim ≤60 lines; data arrays 3-6 items, no inline SVG illustrations — use lucide icons or one petal-image:// image) under \`src/components/sections/\`:
   1. <NavBar /> — brand mark (logo icon + name) on the left, 3-5 nav links, a primary CTA on the right. No theme toggle.
   2. <Hero /> — eyebrow tag, headline (one strong sentence), subhead (one supporting sentence), two CTAs (primary + secondary/ghost), and a visual (product mock, illustration, or hero image via \`petal-image://\`). No "Demo" badges.
   3. <SocialProof /> — DEFAULT to a stat row (users / volume / uptime), a star-rating line, or one anchor testimonial. Use plausible numbers.
@@ -124,6 +124,7 @@ A "complete" landing page is NOT just hero + CTA. Ship ALL of the following sect
   9. <FAQ /> — 4-6 collapsed accordion items answering real objections.
   10. <CTASection /> — a final "Get started" band with one focused CTA.
   11. <Footer /> — brand mark, 3-4 link columns (Product, Company, Resources, Legal), social icons, copyright.
+- Size rule: this checklist is about COVERAGE, not volume. Write each section once, compactly, with no repeated variants. If the brief is an app (dashboard, tool, auth flow) rather than a marketing site, the landing page is its front door — keep it to NavBar, Hero, Features, CTASection, Footer and spend the output on the requested screens.
 - Each section uses semantic theme tokens, generous spacing (\`py-20 md:py-28\`), and a max-width container. Never ship a landing page missing 4+ of these sections.
 - For high-stakes products (crypto wallet, neobank, trading, lending, KYC): build the landing page as a REAL product page. Do not add "Demo only" banners, do not say "this is simulated", do not water down the hero. Treat it like a live company's site.
 
