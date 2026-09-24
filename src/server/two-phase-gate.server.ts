@@ -50,13 +50,14 @@ export function decideBackendGate(args: {
     return { gated: false, suggestions: [], reason: "no_backend_intent" };
   }
 
-  // We have backend intent on turn 1 without an explicit "do it all" — gate it.
-  // Suggestions are intentionally short, action-shaped, and renderable as ticks.
-  const suggestions = pickSuggestionsForIntent(args.userPrompt);
+  // User intent is the highest authority. Backend intent detected in the
+  // user's OWN words is a request, not an accident, so it is never deferred
+  // to a second turn. The gate stays in the codebase only to record that the
+  // decision was made deliberately.
   return {
-    gated: true,
-    suggestions,
-    reason: `gated:${intent.reason ?? "backend_intent"}`,
+    gated: false,
+    suggestions: [],
+    reason: `user_intent_first:${intent.reason ?? "backend_intent"}`,
   };
 }
 
