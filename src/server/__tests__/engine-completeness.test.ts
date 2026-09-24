@@ -20,8 +20,8 @@ describe("completeness stage", () => {
       budget: new RecoveryBudget(),
       request: async (i) => {
         instrs.push(i);
-        if (i.includes("src/pages/Menu.tsx")) return [{ path: "src/pages/Menu.tsx", content: "m" }, { path: "src/pages/Home.tsx", content: "REWRITTEN" }];
-        if (i.includes("src/pages/About.tsx")) return [{ path: "src/pages/About.tsx", content: "a" }];
+        if (i.includes("src/pages/Menu.tsx")) return [{ path: "src/pages/Menu.tsx", content: "export default function Menu(){return <main><h1>Menu</h1><p>Sourdough, croissants and seasonal pastries baked daily.</p></main>}" }, { path: "src/pages/Home.tsx", content: "REWRITTEN" }];
+        if (i.includes("src/pages/About.tsx")) return [{ path: "src/pages/About.tsx", content: "export default function About(){return <main><h1>About</h1><p>A family bakery rising before dawn since 2009.</p></main>}" }];
         if (i.includes("ONLY src/App.tsx")) return [app(requested)];
         return null;
       },
