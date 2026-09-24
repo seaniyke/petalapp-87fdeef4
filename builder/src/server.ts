@@ -296,7 +296,9 @@ const agentPool = new AgentPool(
   Number(process.env.MAX_CONCURRENT_AGENTS ?? 8),
   Number(process.env.MAX_AGENT_QUEUE ?? 50),
 );
-fastify.get("/agent/healthz", async () => ({ ok: true, inProcess: inProcessEnabled(), ...agentPool.snapshot() }));
+// Bump when the vendored agent core changes, so a live check can confirm the deploy.
+const AGENT_CORE_VERSION = "2026-09-24-env-fix";
+fastify.get("/agent/healthz", async () => ({ ok: true, version: AGENT_CORE_VERSION, inProcess: inProcessEnabled(), ...agentPool.snapshot() }));
 
 fastify.post("/agent/generate", async (req, reply) => {
   const ts = req.headers["x-petal-timestamp"] as string | undefined;
