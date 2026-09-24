@@ -216,8 +216,8 @@ export function writeGateDisclosure(rejections: WriteRejection[]): string {
   return [
     "",
     rejections.length === 1
-      ? "**One file didn't parse, so I didn't write it:**"
-      : `**${rejections.length} files didn't parse, so I didn't write them:**`,
+      ? "**One file had a code error that couldn't be repaired, so it isn't in your app yet — that part is not complete:**"
+      : `**${rejections.length} files had code errors that couldn't be repaired, so they aren't in your app yet — those parts are not complete:**`,
     ...lines,
     "",
     "Everything else landed and your app is still in a working state. Say the word and I'll retry the rejected part.",
