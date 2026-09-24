@@ -198,92 +198,9 @@ function namedImportNames(line: string): string[] {
 const KIT_OWNED_PATH =
   /^src\/(components\/(ui|blocks|examples|fx|motion|mobile|three|content|providers|scroll|image|charts|data|forms|editor|map)\/|integrations\/|hooks\/|lib\/)/;
 
-/**
- * Only these paths may be auto-composed into a missing page. Kit primitives
- * (fx/motion/mobile/three/…) are prop-driven building blocks: rendering them
- * bare produces runtime crashes ("t is not iterable", `.split` of undefined),
- * so page composition is restricted to the turn's own section components.
- */
-const COMPOSABLE_SECTION_PATH =
-  /^src\/components\/(sections|section|landing|marketing|home)\/[^/]+\.(tsx|jsx)$/i;
-const TOP_LEVEL_COMPONENT_PATH = /^src\/components\/[^/]+\.(tsx|jsx)$/i;
 
-/** A component that requires props can't be rendered bare in a composed page. */
-function takesNoRequiredProps(source: string, name: string): boolean {
-  const re = new RegExp(
-    `(?:function\\s+${name}\\s*\\(([^)]*)\\)|(?:const|let)\\s+${name}\\s*(?::[^=]+)?=\\s*(?:React\\.)?(?:memo\\s*\\(\\s*)?\\(([^)]*)\\)\\s*=>)`,
-  );
-  const m = source.match(re);
-  if (!m) return false;
-  const params = (m[1] ?? m[2] ?? "").trim();
-  if (params === "") return true;
-  // `{ a = 1, b = 2 }` — every destructured prop has a default.
-  const inner = params.replace(/^\{/, "").replace(/\}\s*(:[\s\S]*)?$/, "");
-  const parts = inner.split(/,(?![^{[]*[}\]])/).map((p) => p.trim()).filter(Boolean);
-  if (parts.length === 0) return true;
-  return parts.every((p) => p.includes("=") || p.startsWith("..."));
-}
-
-
-/** A missing module that a router points at is a PAGE, not a leaf component. */
+/** Page paths — cleanup never creates these (the WRITE stage owns pages). */
 const PAGE_PATH = /^src\/(pages|screens|views|routes)\//i;
-
-/** Chrome components never belong inside a page body (App renders them). */
-const CHROME_BASENAME =
-  /^(nav-bar|navbar|navigation|site-nav|header|footer|site-footer|brand-mark|logo|theme-toggle|mobile-nav)$/i;
-
-function fileBase(path: string): string {
-  return (path.split("/").pop() ?? path).replace(/\.(tsx?|jsx?)$/, "");
-}
-
-/** Best exported component name for a module, preferring a named export. */
-function exportedComponentName(source: string, path: string): { name: string; isDefault: boolean } | null {
-  const named = source.match(
-    /export\s+(?:async\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9_]*)/,
-  );
-  if (named) return { name: named[1], isDefault: false };
-  const defFn = source.match(/export\s+default\s+(?:function\s+)?([A-Z][A-Za-z0-9_]*)/);
-  if (defFn) return { name: defFn[1], isDefault: true };
-  if (/export\s+default\s/.test(source)) {
-    const pascal = fileBase(path)
-      .split(/[-_.\s]+/)
-      .filter(Boolean)
-      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-      .join("");
-    if (/^[A-Za-z][A-Za-z0-9]*$/.test(pascal)) return { name: pascal, isDefault: true };
-  }
-  return null;
-}
-
-/** Rank sections into a believable page order: hero → body → cta. */
-function sectionRank(base: string): number {
-  const b = base.toLowerCase();
-  if (/hero|banner|masthead/.test(b)) return 0;
-  if (/logo|social-proof|proof|trusted|stats/.test(b)) return 1;
-  if (/feature|benefit|service|product|menu|about|story|process|how/.test(b)) return 2;
-  if (/gallery|showcase|work|portfolio/.test(b)) return 3;
-  if (/testimonial|review|quote/.test(b)) return 4;
-  if (/pricing|plan/.test(b)) return 5;
-  if (/faq|question/.test(b)) return 6;
-  if (/cta|contact|newsletter|signup|subscribe/.test(b)) return 8;
-  return 7;
-}
-
-function collectReferenced(byPath: Map<string, string>): Set<string> {
-  const referenced = new Set<string>();
-  for (const [p, content] of byPath) {
-    if (!SCANNABLE.test(p)) continue;
-    content.replace(IMPORT_RE, (_full, _lead, spec: string) => {
-      if (spec.startsWith("@/") || spec.startsWith(".")) {
-        const target = resolveSpec(p, spec, byPath);
-        if (target && target !== "external") referenced.add(target);
-      }
-      return _full;
-    });
-  }
-  return referenced;
-}
-
 
 export interface ImportRepairResult {
   files: ProjectFile[];
