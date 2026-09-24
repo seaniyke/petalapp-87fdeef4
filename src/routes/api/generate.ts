@@ -6391,8 +6391,14 @@ Forbidden defaults
             `[build-state] requested=${JSON.stringify(requested)} complete=${verdict.complete} missing=${JSON.stringify(scopeMissing)}`,
           );
           if (!verdict.complete) {
-            const note = incompleteBuildMessage(scopeMissing);
-            summary = `${summary}${note}`;
+            const { describeIncomplete } = await import("@/server/engine/build-state");
+            const { pageFileFor } = await import("@/server/engine/plan");
+            const state = describeIncomplete({ requestedRoutes: requested, missingRoutes: scopeMissing, files: nextFiles, fileFor: pageFileFor });
+            console.log(`[build-state] created=${JSON.stringify(state.created)} notCreated=${JSON.stringify(state.notCreated)} unlinked=${JSON.stringify(state.unlinked)} shellMissing=${state.shellMissing}`);
+            const note = incompleteBuildMessage(scopeMissing, state);
+            // A failed build's message is the state report only — never the
+            // model's own "it's live" narration.
+            summary = note.trim();
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
           }
         }
