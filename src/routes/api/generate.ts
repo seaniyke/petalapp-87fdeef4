@@ -1930,6 +1930,7 @@ async function handleGenerateRequestCore(
    * this turn started. The turn's terminal state is decided by byte-diffing
    * the final files against THIS, never by trusting the model's prose.
    */
+  const kitSyncedPaths = new Set<string>();
   const turnBaselineFiles = currentFiles;
 
   /**
@@ -4918,6 +4919,12 @@ Forbidden defaults
             target: buildTarget.id,
             keepPaths: patchedTouched,
           });
+          // Files the kit sync refreshed are Kimble housekeeping, not this
+          // edit: keep them out of the tidy/repair scope below.
+          const patchedByPath = new Map(patched.map((f) => [f.path, f.content]));
+          for (const f of nextFiles) {
+            if (patchedByPath.get(f.path) !== f.content) kitSyncedPaths.add(f.path);
+          }
 
         }
         if (!nextFiles.some((f) => f.path === "index.html")) {
@@ -4986,7 +4993,11 @@ Forbidden defaults
           // those every build was minutes of wasted work.
           const scopeLock =
             turnBaselineFiles.length > 0
-              ? { touchedPaths: diffChangedPaths(turnBaselineFiles, nextFiles) }
+              ? {
+                  touchedPaths: diffChangedPaths(turnBaselineFiles, nextFiles).filter(
+                    (p) => !kitSyncedPaths.has(p),
+                  ),
+                }
               : {
                   touchedPaths: nextFiles
                     .map((f) => f.path)
