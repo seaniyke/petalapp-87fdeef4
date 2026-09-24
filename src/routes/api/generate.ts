@@ -5226,6 +5226,21 @@ Forbidden defaults
           issue_count: autofixOut.report.fixedCount,
           details: { notes: autofixOut.report.notes.slice(0, 8) },
         });
+        // Controlled repair-path test (development server only): break the
+        // first file this edit changed the way a truncated model reply would,
+        // so the real verify → one targeted repair → verify path can be
+        // measured. Never active in a production build.
+        if (import.meta.env.DEV && (body as { testFault?: string }).testFault === "syntax" && !isInitial) {
+          const victim = diffChangedPaths(turnBaselineFiles, nextFiles).find((p) => /\.tsx$/.test(p));
+          if (victim) {
+            nextFiles = nextFiles.map((f) => {
+              if (f.path !== victim) return f;
+              const i = f.content.lastIndexOf("\n}");
+              return i < 0 ? f : { ...f, content: f.content.slice(0, i) + "\n" + f.content.slice(i + 2) };
+            });
+            console.warn(`[test-fault] removed the closing brace of ${victim}`);
+          }
+        }
         // Tier 2.5 + 2.45 — local verifier and npm pre-flight
         // (extracted to src/server/pipeline/tier-local-verify.ts).
         const localT0 = Date.now();
