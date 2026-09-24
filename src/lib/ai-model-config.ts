@@ -61,7 +61,12 @@ export const UTILITY_MAX_OUTPUT_TOKENS = 1024;
 // Measured 2026-09-24 with require_parameters + forced tool_choice: only
 // DeepInfra and Azure currently serve this model/tool shape (Parasail, Novita,
 // StreamLake returned 404). Both stay listed; OpenRouter fails over in order.
-export const CODEGEN_PROVIDER_ORDER = ["deepinfra", "azure"] as const;
+// Updated 2026-09-24 after two Rise & Crumb smoke runs: every DeepInfra
+// page-writing call (12 in 3 days) streamed one frame then went silent.
+// OpenInference completed 5/5 build calls (avg ~11.4K output tokens); Azure
+// completed 3. DeepInfra stays LAST for page writing and stays available for
+// helper tasks (design/preflight), where it is reliable.
+export const CODEGEN_PROVIDER_ORDER = ["openinference", "azure", "deepinfra"] as const;
 export const CODEGEN_PROVIDER_IGNORE = ["digitalocean", "nextbit"] as const;
 
 /** Output budget for byte-level stream continuation (finishing a cut-off file). */

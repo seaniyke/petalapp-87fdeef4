@@ -14,7 +14,8 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { reconcileDocumentHeadOps } from "@/server/document-head.server";
-import { currentTurnContext, runWithTurnContext } from "@/server/turn-context.server";
+import { EMPTY_HOME_BUILD_FAILURE_MESSAGE } from "@/server/build-failure-copy";
+import { currentTurnContext, markUpstreamFailed, runWithTurnContext } from "@/server/turn-context.server";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,
@@ -1198,6 +1199,11 @@ async function relayAndCollect(
   // close them out rather than leaving one stuck on "active".
   for (let i = 0; i < stepsEmitted; i++) {
     controller.enqueue(encoder.encode(sse({ type: "step_status", index: i, status: "done" })));
+  }
+  // Authoritative per-turn exclusion: a stalled or empty upstream is never
+  // re-picked by any later call in this turn (sync, before any retry runs).
+  if (tool.upstream && (tool.stall || (!tool.name && !tool.args.trim() && !tool.text.trim()))) {
+    markUpstreamFailed(tool.upstream);
   }
   return tool;
 }
@@ -4226,9 +4232,11 @@ Forbidden defaults
               ),
             ).filter((r) => r !== "/");
 
-            if (expectedRoutes.length) {
+            if (expectedRoutes.length || isInitial) {
               const coverage = assessRouteCoverage({
                 expectedRoutes,
+                // A first build is not complete without its app shell + home.
+                requireAppShell: isInitial,
                 ops: parsed.ops,
                 files: parsed.files,
                 // Edit turns build on top of what already shipped.
@@ -4303,7 +4311,48 @@ Forbidden defaults
                   },
                 });
                 if (!res.ok || !res.body) return null;
-                const chunkCollected = await relayAndCollect(res, controller, encoder);
+                let chunkCollected = await relayAndCollect(res, controller, encoder);
+                // One bounded resend of THIS chunk when its provider failed.
+                // The failed upstream is already in the turn exclusion set, so
+                // the resend lands elsewhere. Completed pages stay protected
+                // by mergeChunk; no loop beyond this single retry.
+                const chunkFailed =
+                  Boolean(chunkCollected.stall) ||
+                  (!chunkCollected.name && !chunkCollected.args.trim() && !chunkCollected.text.trim());
+                if (chunkFailed) {
+                  console.warn(
+                    `[chunked-generation] round=${req.round} provider_failed upstream=${chunkCollected.upstream ?? "?"} excluded=${JSON.stringify(Array.from(currentTurnContext().failedUpstreams ?? []))} — one resend`,
+                  );
+                  const again = await structuredRetryCompletion({
+                    messages: [
+                      ...finalMessages,
+                      { role: "assistant", content: assistantTextFromCollected(collected).slice(0, 4_000) },
+                      { role: "user", content: req.instruction },
+                    ],
+                    isInitial,
+                    problem: "output_truncated_chunk",
+                    hasBackend: Boolean(backend),
+                    tool,
+                    maxTokens: req.maxTokens,
+                    crossCuttingIntent: isCrossCutting,
+                    signal: abortSignal,
+                    avoidUpstreams: chunkCollected.upstream ? [chunkCollected.upstream] : [],
+                    meta: {
+                      phase: phaseTag.phase,
+                      promptChars: lastUserContent.length,
+                      hadAttachments: hasVisionTurn,
+                      chosenBy: `chunk_round_${req.round}_provider_retry`,
+                      projectId: body.projectId ?? null,
+                      userId,
+                      turnId: logicalTurnId,
+                      fallbackNumber: 1,
+                      fallbackFromUpstream: chunkCollected.upstream ?? null,
+                      recoveryReason: chunkCollected.stall ? "provider_stall" : "provider_empty_stream",
+                    },
+                  });
+                  if (!again.ok || !again.body) return null;
+                  chunkCollected = await relayAndCollect(again, controller, encoder);
+                }
                 try {
                   const chunkPayload = parseCollectedProject(chunkCollected, isInitial);
                   return {
@@ -5318,7 +5367,7 @@ Forbidden defaults
           emitConversationalFallback(controller, encoder, {
             files: currentFiles,
             summary:
-              "I drafted the files but the home screen came back empty, so I rolled it back instead of shipping a placeholder. Could you send your prompt again with a bit more detail about what the first screen should show? Even one sentence like 'a hero with the headline X and a Get Started button' is enough.",
+              EMPTY_HOME_BUILD_FAILURE_MESSAGE,
           });
           return;
         }

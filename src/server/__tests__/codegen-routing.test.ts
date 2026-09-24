@@ -2,9 +2,9 @@ import { describe, it, expect } from "vitest";
 import { codegenProviderRouting, streamDeltaHasOutput } from "@/server/ai-provider.server";
 
 describe("primary code-generation provider routing", () => {
-  it("prefers DeepInfra, keeps a fallback, never DigitalOcean/NextBit", () => {
+  it("prefers OpenInference (DeepInfra not primary), keeps a fallback, never DigitalOcean/NextBit", () => {
     const r = codegenProviderRouting() as { order: string[]; ignore: string[]; allow_fallbacks: boolean };
-    expect(r.order[0]).toBe("deepinfra");
+    expect(r.order[0]).toBe("openinference");
     expect(r.order.length).toBeGreaterThan(1);
     expect(r.allow_fallbacks).toBe(true);
     expect(r.ignore).toEqual(expect.arrayContaining(["digitalocean", "nextbit"]));
