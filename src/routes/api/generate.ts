@@ -1534,7 +1534,6 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
       parsed.files = files as unknown as ParsedProjectPayload["parsed"]["files"];
     }
   }
-  console.warn("[ops-debug]", collected.args.slice(0, 2500).replace(/\n/g, "\\n"));
   if (Array.isArray(parsed.ops)) {
     const { ops, dropped } = dropUnusableOps(parsed.ops as unknown as Record<string, unknown>[]);
     if (dropped > 0) {
