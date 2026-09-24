@@ -70,8 +70,58 @@ function label(route: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Honest user-facing note for an incomplete build. */
-export function incompleteBuildMessage(missing: string[]): string {
+/** What actually exists for each requested page — never collapse
+ *  "not written" and "written but not linked" into one state. */
+export function describeIncomplete(args: {
+  requestedRoutes: string[];
+  missingRoutes: string[];
+  files: ProjectFile[];
+  fileFor: (route: string) => string;
+}): { created: string[]; notCreated: string[]; unlinked: string[]; shellMissing: boolean } {
+  const real = new Set(
+    args.files.filter((f) => f.content.trim().length > 0 && !isPlaceholderFile(f.content)).map((f) => f.path),
+  );
+  const missing = new Set(args.missingRoutes);
+  const created: string[] = [];
+  const notCreated: string[] = [];
+  const unlinked: string[] = [];
+  for (const r of args.requestedRoutes) {
+    if (!real.has(args.fileFor(r))) notCreated.push(r);
+    else {
+      created.push(r);
+      if (missing.has(r)) unlinked.push(r);
+    }
+  }
+  return { created, notCreated, unlinked, shellMissing: missing.has("app shell") };
+}
+
+function list(routes: string[]): string {
+  const n = routes.map(label);
+  return n.length <= 1 ? n[0] ?? "" : `${n.slice(0, -1).join(", ")} and ${n[n.length - 1]}`;
+}
+
+/** Honest user-facing note for an incomplete build, from actual state. */
+export function incompleteBuildMessage(
+  missing: string[],
+  state?: { created: string[]; notCreated: string[]; unlinked: string[]; shellMissing: boolean },
+): string {
+  if (!state) return legacyIncompleteMessage(missing);
+  const parts: string[] = [];
+  if (state.created.length) parts.push(`${list(state.created)} ${state.created.length === 1 ? "was" : "were"} created`);
+  const blocked: string[] = [];
+  if (state.notCreated.length) blocked.push(`${list(state.notCreated)} couldn't be completed`);
+  if (state.shellMissing) blocked.push("the shared site layout couldn't be completed");
+  else if (state.unlinked.length) blocked.push(`${list(state.unlinked)} ${state.unlinked.length === 1 ? "isn't" : "aren't"} linked into the site yet`);
+  return (
+    `\n\nThis build couldn't be completed. ` +
+    (parts.length ? `${parts.join("; ")}, but ` : "") +
+    `${blocked.join(" and ")}, so I haven't built or published it. ` +
+    `Everything that was created is saved — ask me to finish it and I'll write only what's missing.`
+  );
+}
+
+function legacyIncompleteMessage(missing: string[]): string {
+
   const names = missing.map(label);
   const list =
     names.length <= 1 ? names[0] ?? "part of it" : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
@@ -80,4 +130,12 @@ export function incompleteBuildMessage(missing: string[]): string {
     `so I haven't built or published it. Everything else I made is saved — ` +
     `ask me to add ${missing.length === 1 ? "it" : "them"} and I'll write only what's missing.`
   );
+}
+
+/** Before build + browser check + publish have passed, the model's summary
+ *  may describe what was written but never claim the site is live/ready. */
+export function neutraliseSuccessClaims(text: string): string {
+  return text
+    .replace(/\b(is|are)\s+(now\s+)?(live|published|up and running|ready to (use|go|share))\b/gi, "$1 written — building your preview now")
+    .replace(/\byour (site|website|app) is ready\b/gi, "your $1's pages are written — building your preview now");
 }

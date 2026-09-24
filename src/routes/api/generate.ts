@@ -1028,7 +1028,7 @@ async function relayAndCollect(
             controller.enqueue(encoder.encode(sse({ type: "build_steps", steps: stepsNow })));
           }
           const summaryNow = partial("summary");
-          if (summaryNow.length > summaryEmitted.length) {
+          if (summaryNow.length > summaryEmitted.length && !currentTurnContext().holdSummary) {
             if (!designingPhaseSent) {
               controller.enqueue(encoder.encode(sse({ type: "phase", phase: "designing" })));
               designingPhaseSent = true;
@@ -1856,6 +1856,9 @@ async function runFinalParseGuard(
   prd?: import("@/server/prd/prd-types").Prd | null,
   /** Files as they were before this turn — the safe content to fall back to. */
   priorFiles: ProjectFile[] = [],
+  /** The turn's ONE repair (shared budget). Broken generated files get it
+   *  before anything is set aside. */
+  repair?: (file: ProjectFile, detail: string) => Promise<string | null>,
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
 
@@ -1909,7 +1912,32 @@ async function runFinalParseGuard(
     // import resolver keeps the app resolving, and ship the rest. The
     // placeholder-completion pass downstream then writes the dropped screens
     // for real.
-    const badPaths = Array.from(new Set(report.issues.map((i) => i.path))).filter(Boolean);
+    let badPaths = Array.from(new Set(report.issues.map((i) => i.path))).filter(Boolean);
+    // Every eligible broken file goes through the same single repair first
+    // (Home and the layout got none in the live run; Contact did).
+    if (repair && badPaths.length > 0) {
+      let working = gated;
+      const fixedPaths: string[] = [];
+      for (const p of badPaths) {
+        const file = working.find((f) => f.path === p);
+        if (!file) continue;
+        const detail = report.issues.filter((i) => i.path === p).map((i) => `${i.kind}: ${i.detail}`).join("; ");
+        let out: string | null = null;
+        try { out = await repair(file, detail); } catch { out = null; }
+        if (out && out !== file.content) {
+          working = working.map((f) => (f.path === p ? { path: p, content: out! } : f));
+          fixedPaths.push(p);
+        }
+      }
+      if (fixedPaths.length) {
+        const again = await runPreEmitGate(working, changedPaths, { maxRounds: 0, prd });
+        console.log(`[preemit-gate] repair attempted=${JSON.stringify(fixedPaths)} ok=${again.report.ok}`);
+        if (again.report.ok) return { ok: true, files: again.files };
+        const still = new Set(again.report.issues.map((i) => i.path));
+        gated.splice(0, gated.length, ...again.files);
+        badPaths = badPaths.filter((p) => still.has(p));
+      }
+    }
     const salvageable = badPaths.length > 0 && badPaths.length <= 4 && badPaths.length < gated.length;
     if (salvageable) {
       try {
@@ -1934,7 +1962,7 @@ async function runFinalParseGuard(
         if (recheck.report.ok) {
           console.log(`[preemit-gate] salvaged turn by quarantining ${badPaths.length} file(s)`);
           controller.enqueue(
-            encoder.encode(sse({ type: "status", message: "Rewriting a screen that came out wrong…" })),
+            encoder.encode(sse({ type: "status", message: "Setting aside a file that couldn't be fixed…" })),
           );
           return { ok: true, files: recheck.files };
         }
@@ -2209,6 +2237,10 @@ async function handleGenerateRequestCore(
   // token usage (see post-flight section below). This keeps the
   // experience honest: failed/aborted builds cost nothing.
   const isInitial = currentFiles.length === 0;
+  if (isInitial) {
+    const tc = currentTurnContext();
+    if (Object.keys(tc).length > 0) tc.holdSummary = true;
+  }
   const baseSystem = isInitial ? SYSTEM_PROMPT_INITIAL : SYSTEM_PROMPT_PATCH;
 
   // Build target. The composer's chip rail was removed on the premise that the
@@ -5273,6 +5305,8 @@ Forbidden defaults
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })),
                 );
+                // One shared per-file budget for every repair in this turn.
+                if (!recovery.take("broken_file", file.path)) return null;
                 const { repairBrokenFile } = await import("@/server/engine/repair");
                 return repairBrokenFile(file, detail, {
                   turnId: logicalTurnId,
@@ -5336,7 +5370,11 @@ Forbidden defaults
           });
           if (repaired.notes.length > 0) {
             for (const n of repaired.notes) console.info("[repair-all]", n);
-            nextFiles = repaired.files;
+            // Cleanup may never break a file that parsed before it ran.
+            const { revertCleanupBreakage } = await import("@/server/write-gate.server");
+            const guarded = await revertCleanupBreakage(nextFiles, repaired.files, cleanupPaths);
+            if (guarded.reverted.length) console.warn(`[cleanup-guard] reverted cleanup on ${JSON.stringify(guarded.reverted)} (it broke them)`);
+            nextFiles = guarded.files;
             // Bible §7 — every repair records signature → fix → outcome.
             // This is the training set for the next codemod, and the only way
             // to see the same pass masking the same model defect week after
@@ -5867,6 +5905,12 @@ Forbidden defaults
           // Pre-turn files: a handful of broken outputs get quarantined back
           // to these instead of throwing the whole turn away.
           currentFiles,
+          async (file, detail) => {
+            if (!recovery.take("broken_file", file.path)) return null;
+            controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })));
+            const { repairBrokenFile } = await import("@/server/engine/repair");
+            return repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId });
+          },
         );
 
         if (!guardOut.ok) {
@@ -6347,13 +6391,32 @@ Forbidden defaults
           const requested = requestedRoutesFor(lastUserText, plannedRoutes);
           const verdict = assessCompleteness({ requestedRoutes: requested, files: nextFiles });
           scopeMissing = verdict.missingRoutes;
+          {
+            // The shared frame is a required deliverable, not an optional one.
+            const { frameIsComplete } = await import("@/server/engine/write");
+            if (!frameIsComplete(nextFiles) && !scopeMissing.includes("app shell")) {
+              scopeMissing = ["app shell", ...scopeMissing];
+              verdict.complete = false;
+            }
+          }
           console.log(
             `[build-state] requested=${JSON.stringify(requested)} complete=${verdict.complete} missing=${JSON.stringify(scopeMissing)}`,
           );
           if (!verdict.complete) {
-            const note = incompleteBuildMessage(scopeMissing);
-            summary = `${summary}${note}`;
+            const { describeIncomplete } = await import("@/server/engine/build-state");
+            const { pageFileFor } = await import("@/server/engine/plan");
+            const state = describeIncomplete({ requestedRoutes: requested, missingRoutes: scopeMissing, files: nextFiles, fileFor: pageFileFor });
+            console.log(`[build-state] created=${JSON.stringify(state.created)} notCreated=${JSON.stringify(state.notCreated)} unlinked=${JSON.stringify(state.unlinked)} shellMissing=${state.shellMissing}`);
+            const note = incompleteBuildMessage(scopeMissing, state);
+            // A failed build's message is the state report only — never the
+            // model's own "it's live" narration.
+            summary = note.trim();
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          } else {
+            // Pages are complete, but build, browser check and publishing
+            // haven't run yet: never let the message claim the site is live.
+            const { neutraliseSuccessClaims } = await import("@/server/engine/build-state");
+            summary = neutraliseSuccessClaims(summary ?? "");
           }
         }
         {
