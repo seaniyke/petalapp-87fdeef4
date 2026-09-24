@@ -5420,13 +5420,14 @@ Forbidden defaults
         // the local verifier's checks and its recovery pass was always
         // skipped by the Phase D one-round cap. One autofix call max
         // per turn is now structural, not just runtime-enforced.
+        // An AI repair runs only for a real failure. Deterministic autofix
+        // having already fixed things is success, not a reason for another
+        // model call, and on an edit advisory quality/size notes never open it.
         const autofixGateOpen =
           !localVerdict.ok ||
           !esbuildVerdict.ok ||
-          generationQualityIssues.length > 0 ||
           renderRiskIssues.length > 0 ||
-          budgetWarnings.length > 0 ||
-          autofixOut.report.fixedCount >= 2;
+          (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0));
         const combinedAutofixIssues = [
           ...localVerdict.issues,
           ...esbuildVerdict.issues.map((i) => ({
