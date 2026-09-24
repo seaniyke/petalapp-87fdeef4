@@ -34,11 +34,12 @@
 - [ ] Explain why builds use more OpenRouter tokens (per-call breakdown from ai_call_log)
 
 ## Hardening pass (pre-benchmark, Sept 24)
-- [ ] Template scope: templates never add pages/routes/forms the user didn't ask for
-- [ ] Section scope: dynamic prompts stop mandating Stats/Testimonials/CTA
-- [ ] Recovery: every code repair on build model, reasoning off, ~6K budget, one attempt
-- [ ] First build: bounded generation units sized to requested scope
-- [ ] Visual QA off the critical path
-- [ ] Telemetry: attempt id + abandon reason on every AI call
-- [ ] Investigate 3-min repair gap
-- [ ] Tests + final path review
+- [x] Template scope: templates never add pages/routes/forms the user didn't ask for
+- [x] Section scope: dynamic prompts stop mandating Stats/Testimonials/CTA
+- [x] Recovery: every code repair on build model, reasoning off, ~6K budget, one attempt
+- [x] First build: bounded generation units sized to requested scope
+- [x] Visual QA off the critical path
+- [x] Telemetry: attempt id + abandon reason on every AI call
+- [x] Investigate 3-min repair gap
+- [x] Tests + final path review
+- [ ] Hardening items still open: whole-project tidy/typecheck of starter kit, verify-plan AI call before build start, live test of the new scope + parts rules
