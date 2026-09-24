@@ -42,7 +42,7 @@ import {
   type ShapeCategory,
 } from "@/lib/app-shape-classifier";
 
-const DIRECTOR_MODEL = "google/gemini-3-flash-preview";
+const DIRECTOR_MODEL = "deepseek/deepseek-v4-flash";
 
 /**
  * Part B — domain-aware font defaults.
@@ -575,7 +575,15 @@ export async function pickDesignDirection(args: {
       console.warn("[design-director] http error", resp.status, "— using deterministic direction");
       return persist(fallback());
     }
-    const json = (await resp.json()) as {
+    // Read the reply body exactly once; a failed read falls back cleanly.
+    let raw: string;
+    try {
+      raw = await resp.text();
+    } catch (e) {
+      console.warn("[design-director] body read failed — using deterministic direction", e);
+      return persist(fallback());
+    }
+    const json = JSON.parse(raw || "{}") as {
       choices?: Array<{
         message?: { tool_calls?: Array<{ function?: { arguments?: string } }> };
       }>;

@@ -100,7 +100,7 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
     const resp = await aiChatCompletions({
       feature: "preflight",
       body: {
-        model: "google/gemini-2.5-flash-lite",
+        model: "deepseek/deepseek-v4-flash",
         messages: [
           {
             role: "system",

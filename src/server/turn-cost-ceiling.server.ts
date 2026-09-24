@@ -29,14 +29,7 @@ export const TURN_REPAIR_COST_WARN_USD = 0.22;
  * so the meter over-estimates rather than letting a loop run long.
  */
 const BLENDED_RATE_PER_MTOK: Record<string, number> = {
-  "google/gemini-2.5-flash-lite": 0.4,
-  "google/gemini-3.1-flash-lite": 0.4,
-  "google/gemini-2.5-flash": 1.2,
-  "google/gemini-3-flash-preview": 1.2,
-  "google/gemini-3.5-flash": 1.4,
-  "google/gemini-3.6-flash": 1.4,
-  "google/gemini-2.5-pro": 8,
-  "google/gemini-3.1-pro-preview": 8,
+  "deepseek/deepseek-v4-flash": 0.4,
   "openai/gpt-5-nano": 0.5,
   "openai/gpt-5-mini": 2,
   "openai/gpt-5": 10,

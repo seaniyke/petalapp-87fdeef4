@@ -35,7 +35,7 @@ export interface InspectorReport {
 
 // Bounded: search, read, answer. Six rounds made a small edit cost 6 calls.
 const MAX_TOOL_ROUNDS = 3;
-const MODEL = "google/gemini-2.5-flash-lite";
+const MODEL = "deepseek/deepseek-v4-flash";
 
 const SYSTEM_PROMPT = `You are Kimble's Inspector: a read-only investigator working inside a user's app codebase.
 

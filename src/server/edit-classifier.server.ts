@@ -135,7 +135,7 @@ export async function classifyEdit(args: {
       feature: "triage",
       budgetAware: true,
       body: {
-        model: "google/gemini-2.5-flash-lite",
+        model: "deepseek/deepseek-v4-flash",
         temperature: 0,
         max_tokens: 220,
         messages: [

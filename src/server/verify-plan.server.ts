@@ -27,7 +27,7 @@ import { prdBrowserScenarios } from "@/server/prd/prd-acceptance.server";
 import { computeVerifyScope, type VerifyScope } from "@/server/verify-scope.server";
 import { isVerifierExempt } from "@/server/scaffold-ownership.server";
 
-const MODEL = "google/gemini-2.5-flash-lite";
+const MODEL = "deepseek/deepseek-v4-flash";
 
 export interface VerifyStep {
   action: "goto" | "click" | "fill" | "select" | "expectText" | "expectUrl" | "wait";

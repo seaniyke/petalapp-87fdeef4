@@ -22,7 +22,7 @@ export interface VisualShot {
   image: string;
 }
 
-const MODEL = "google/gemini-2.5-flash";
+const MODEL = "deepseek/deepseek-v4-flash";
 const MAX_SHOTS = 8;
 const MAX_DEFECTS = 8;
 

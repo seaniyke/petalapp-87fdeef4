@@ -43,3 +43,12 @@
 - [x] Investigate 3-min repair gap
 - [x] Tests + final path review
 - [ ] Hardening items still open: whole-project tidy/typecheck of starter kit, verify-plan AI call before build start, live test of the new scope + parts rules
+
+## Build engine replacement (approved plan, Sept 24 2026)
+- [x] Gemini removed from all text/design/repair/QA paths + regression test (pictures still use Gemini image model — plan option a)
+- [x] Design step reads reply once, fails cleanly
+- [ ] engine/provider-policy.ts as sole provider picker; remove avoidUpstreams/stalledUpstream plumbing
+- [ ] engine stages (scope/plan/generate/validate/repair/completeness/run) + thin generate.ts route
+- [ ] bounded recovery table; missing-page generation once; honest incomplete messages
+- [ ] delete dead recovery/retry/pipeline tier/agent loop code
+- [ ] fresh Rise & Crumb smoke run through build, publish, browser check
