@@ -27,6 +27,8 @@ export interface TurnContext {
   attemptId?: string | null;
   /** Aborts when this attempt is cancelled; calls made afterwards are tagged. */
   signal?: AbortSignal | null;
+  /** Set when the attempt's response has finished. */
+  ended?: boolean;
 }
 
 let storage: AsyncLocalStorage<TurnContext> | null = null;

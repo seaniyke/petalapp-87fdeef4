@@ -7042,6 +7042,7 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
   const encoder = new TextEncoder();
   // Detached from `request.signal` on purpose — see the `cancel()` note below.
   const workController = new AbortController();
+  let attemptCtx: import("@/server/turn-context.server").TurnContext | null = null;
   // Flipped when the browser goes away; the build keeps running regardless.
   let clientGone = false;
   const stream = new ReadableStream<Uint8Array>({
@@ -7181,14 +7182,16 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
         // Every AI call made anywhere inside the pipeline inherits this
         // turn/project/user, so utility calls stop landing in telemetry
         // with null attribution.
+        attemptCtx = {
+          turnId: recorder?.turnId ?? null,
+          projectId: turnProjectId,
+          userId: turnUserId,
+          attemptId: crypto.randomUUID(),
+          signal: workController.signal,
+          ended: false,
+        };
         const response = await runWithTurnContext(
-          {
-            turnId: recorder?.turnId ?? null,
-            projectId: turnProjectId,
-            userId: turnUserId,
-            attemptId: crypto.randomUUID(),
-            signal: workController.signal,
-          },
+          attemptCtx,
           () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal),
         );
         if (!response.ok || !response.body) {
@@ -7254,6 +7257,9 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
           });
         }
       } finally {
+        // Any AI call still logged under this attempt is background work that
+        // outlived it — tagged "after_end" so it never joins a live result.
+        if (attemptCtx) attemptCtx.ended = true;
         if (pingTimer) clearInterval(pingTimer);
         if (statusTimer) clearInterval(statusTimer);
         // Always emit a terminal `done` event so resumers know to stop tailing.
