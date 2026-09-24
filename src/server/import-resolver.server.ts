@@ -124,15 +124,14 @@ function buildStub(
   const safeName = /^[A-Z][A-Za-z0-9_]*$/.test(name) ? name : "Stub";
   const label = spec.split("/").pop() ?? "Section";
   const body =
-    `function ${safeName}() {\n` +
-    `  return (\n` +
-    `    <section className="mx-auto max-w-3xl px-6 py-12">\n` +
-    `      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">${label}</p>\n` +
-    `      <h2 className="mt-2 text-2xl font-semibold tracking-tight">Coming together</h2>\n` +
-    `      <p className="mt-2 text-muted-foreground">This section is being assembled.</p>\n` +
-    `    </section>\n` +
-    `  );\n` +
-    `}\n`;
+    `function ${safeName}() {
+` +
+    `  // ${label}: import target missing — renders nothing rather than fake content.
+` +
+    `  return null;
+` +
+    `}
+`;
 
   // A default-only stub is a runtime crash waiting to happen: a NAMED import
   // from this module would resolve to `undefined` and React throws
@@ -201,6 +200,9 @@ const KIT_OWNED_PATH =
 
 /** Page paths — cleanup never creates these (the WRITE stage owns pages). */
 const PAGE_PATH = /^src\/(pages|screens|views|routes)\//i;
+/** The shared frame (app root / entry / layout) is never stubbed: a stand-in
+ *  frame renders a fake screen and hides a missing deliverable. */
+const FRAME_PATH = /^src\/(App|main|Layout|layout|router)\.(t|j)sx?$|^src\/components\/layout\//;
 
 export interface ImportRepairResult {
   files: ProjectFile[];
@@ -279,7 +281,7 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       // Cleanup is non-generative for pages: a missing page stays missing so
       // the completeness check reports it and the WRITE stage owns it. The
       // old behaviour (a "Coming together" placeholder) produced false success.
-      if (PAGE_PATH.test(stubPath)) continue;
+      if (PAGE_PATH.test(stubPath) || FRAME_PATH.test(stubPath)) continue;
       // An earlier turn's prose placeholder is not a real page: if orphan
       // sections now exist, re-compose it instead of leaving a dead screen.
       if (byPath.get(stubPath) !== undefined) continue;
