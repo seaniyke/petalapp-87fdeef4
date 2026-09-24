@@ -4146,6 +4146,9 @@ export const KIT_FILES: KitFile[] = [
   { path: "src/components/ui/stack.tsx", content: STACK, overwrite: true },
   { path: "src/components/ui/inline.tsx", content: INLINE, overwrite: true },
   { path: "src/components/ui/grid.tsx", content: GRID, overwrite: true },
+  // Models routinely import the layout primitives from one place; give them
+  // that place instead of failing the page on an unresolved import.
+  { path: "src/components/ui/layout.tsx", content: `export { Container } from "./container";\nexport { Stack } from "./stack";\nexport { Inline } from "./inline";\nexport { Grid } from "./grid";\n`, overwrite: true },
   // Phase 3 kit expansion — Calendar, DatePicker, Combobox, Form, Drawer, Chart.
   // (Command palette intentionally omitted — see scaffold-kit note above.)
   { path: "src/components/ui/calendar.tsx", content: CALENDAR, overwrite: true },
