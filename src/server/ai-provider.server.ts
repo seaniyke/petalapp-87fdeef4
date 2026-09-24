@@ -1,9 +1,5 @@
 import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
 import {
-  CODEGEN_PROVIDER_IGNORE,
-  CODEGEN_PRIMARY_PROVIDERS,
-  CODEGEN_LAST_RESORT_PROVIDERS,
-  CODEGEN_PROVIDER_ORDER,
   OPENROUTER_CHAT_URL,
   UTILITY_MAX_OUTPUT_TOKENS,
   coerceToConfiguredModel,
@@ -13,25 +9,8 @@ import {
   isUtilityFeature,
 } from "@/lib/ai-model-config";
 
-/**
- * OpenRouter `provider` block for primary code generation. DeepInfra first,
- * tool-capable fallbacks after it, DigitalOcean/NextBit never. `avoid` adds
- * an upstream that just stalled so the retry lands somewhere else.
- */
-export function codegenProviderRouting(avoid: string[] = []): Record<string, unknown> {
-  const avoidSlugs = avoid.map((a) => a.toLowerCase().replace(/\s+/g, ""));
-  const ignoreSet = new Set<string>([...CODEGEN_PROVIDER_IGNORE, ...avoidSlugs]);
-  // ONE page-generation policy for every code-writing call (initial,
-  // continuation, missing pages, retry, recovery, repair): primaries first;
-  // last-resort upstreams are only eligible once every primary has failed in
-  // this build. A continuation being "a new API call" never re-opens them.
-  const primariesLeft = CODEGEN_PRIMARY_PROVIDERS.some((p) => !ignoreSet.has(p));
-  if (primariesLeft) for (const p of CODEGEN_LAST_RESORT_PROVIDERS) ignoreSet.add(p);
-  const ignore = Array.from(ignoreSet);
-  const order = CODEGEN_PROVIDER_ORDER.filter((p) => !ignore.includes(p));
-  return { order, allow_fallbacks: true, require_parameters: true, ignore };
-}
-
+import { codegenProviderRouting, resolveProviderRouting } from "@/server/engine/provider-policy";
+export { codegenProviderRouting };
 
 /**
  * AI provider abstraction — OPENROUTER ONLY.
@@ -1154,10 +1133,9 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   const isCodeWriting =
     opts.codeOutput === true ||
     (opts.feature === "generate" && Array.isArray(body.tools) && (body.tools as unknown[]).length > 0);
-  if (isCodeWriting && !body.provider) {
-    body.provider = codegenProviderRouting(avoidAll);
-  } else if (avoidAll.length && !body.provider) {
-    body.provider = { ignore: avoidAll.map((a) => a.toLowerCase().replace(/\s+/g, "")) };
+  if (!body.provider) {
+    const routing = resolveProviderRouting({ codeWriting: isCodeWriting, avoid: avoidAll });
+    if (routing) body.provider = routing;
   }
   const streamExtra = {
     fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
