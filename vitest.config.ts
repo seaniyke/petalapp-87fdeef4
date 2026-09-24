@@ -19,6 +19,7 @@ export default defineConfig({
       "src/server/__tests__/requested-scope.test.ts",
       "src/server/__tests__/build-cleanup-scope.test.ts",
       "src/server/__tests__/stream-continuation.test.ts",
+      "src/server/__tests__/no-gemini.test.ts",
       "src/server/__tests__/provider-exclusion.test.ts",
       "src/server/__tests__/reliability-hardening.test.ts",
       "src/server/__tests__/generation-sizing.test.ts",
