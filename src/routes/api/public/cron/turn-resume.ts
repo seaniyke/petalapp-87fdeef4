@@ -52,7 +52,13 @@ async function loadFiles(projectId: string) {
   return (data ?? []).map((f) => ({ path: f.path, content: f.content }));
 }
 
-async function resumeOne(record: CompletionRecord, origin: string): Promise<string> {
+export async function resumeOne(record: CompletionRecord, origin: string): Promise<string> {
+  // A turn the user stopped is never restarted, however it was queued.
+  const { turnAllowsResume, turnStatusOf } = await import("@/server/turn-cancel.server");
+  if (!turnAllowsResume(await turnStatusOf(record.turn_id))) {
+    await markBlocked(record.id, "Stopped by you — Kimble won't restart it.");
+    return "stopped";
+  }
   const claimed = await claimResumeAttempt(record);
   if (!claimed) return "skipped";
 
