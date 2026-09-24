@@ -106,7 +106,7 @@ const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recomme
   discuss: {
     label: "Discuss / Plan mode",
     blurb: "Chat replies that don't touch files. Cheap-friendly.",
-    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "deepseek/deepseek-chat-v3" },
+    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "deepseek/deepseek-v4-flash" },
     fallback: "google/gemini-2.5-flash",
   },
   triage: {
@@ -118,7 +118,7 @@ const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recomme
   coach: {
     label: "Idea Coach",
     blurb: "The 'I don't know what to build' guided dialogue.",
-    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "deepseek/deepseek-chat-v3" },
+    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "deepseek/deepseek-v4-flash" },
     fallback: "google/gemini-2.5-flash",
   },
   design: {
@@ -418,7 +418,7 @@ function AiProvidersPage() {
                 (best code + tool reliability), fallback <code>openai/gpt-5-mini</code>.
               </li>
               <li>
-                <strong>Discuss / Coach</strong> → OpenRouter <code>deepseek/deepseek-chat-v3</code>{" "}
+                <strong>Discuss / Coach</strong> → OpenRouter <code>deepseek/deepseek-v4-flash</code>{" "}
                 (~20× cheaper than Sonnet, indistinguishable for chat).
               </li>
               <li>
