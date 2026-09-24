@@ -1203,7 +1203,7 @@ async function relayAndCollect(
   }
   // Authoritative per-turn exclusion: a stalled or empty upstream is never
   // re-picked by any later call in this turn (sync, before any retry runs).
-  if (tool.upstream && (tool.stall || (!tool.name && !tool.args.trim() && !tool.text.trim()))) {
+  if (tool.upstream && (tool.stall || tool.finishReason === "error" || (!tool.name && !tool.args.trim() && !tool.text.trim()))) {
     markUpstreamFailed(tool.upstream);
   }
   return tool;
@@ -3191,9 +3191,8 @@ Forbidden defaults
   // rewrites delivered files). Small builds stay one call.
   if (isInitial) {
     try {
-      const { buildGenerationUnits } = await import("@/server/requested-scope");
-      // The planner must size units against the ACTUAL first-unit output
-      // ceiling this turn will send — not an independent constant.
+      const { planFirstBuild } = await import("@/server/engine/plan");
+      // Sized against the ACTUAL first-unit output ceiling this turn sends.
       const firstUnitMaxOutput = completionBudget({
         isInitial: true,
         phase: "implement" as Phase,
@@ -3201,12 +3200,10 @@ Forbidden defaults
         multiEditIntent: false,
         promptChars: lastUserText.length,
       });
-      const units = buildGenerationUnits(lastUserText, plannedRoutes, { maxOutputTokens: firstUnitMaxOutput });
-      for (const r of units.allRoutes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
-      if (units.instruction) archetypeBlock += units.instruction;
-      console.log(
-        `[generation-units] maxOutput=${firstUnitMaxOutput} safeBudget=${units.safeBudget} kind=${units.estimate.kind} estimatedOutput=${units.estimate.total} units=${units.unitCount} plan=${units.units.map((u, i) => `u${i + 1}[${u.routes.join(",")}]~${u.estimatedTokens}`).join(" ")}`,
-      );
+      const firstPlan = planFirstBuild({ prompt: lastUserText, plannedRoutes, maxOutputTokens: firstUnitMaxOutput });
+      for (const r of firstPlan.routes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
+      archetypeBlock += firstPlan.instruction;
+      console.log(firstPlan.log);
     } catch {
       /* never block a build on unit planning */
     }
@@ -3898,7 +3895,11 @@ Forbidden defaults
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Applying changes…" })));
 
         let payload: ParsedProjectPayload;
-        const firstStall = collected.stall ?? null;
+        // A stream that ended with finish_reason "error" is a provider failure
+        // exactly like a stall: its partial output is never trusted.
+        const firstStall =
+          collected.stall ??
+          (collected.finishReason === "error" ? { upstream: collected.upstream ?? null, ms: 0 } : null);
         // THE bounded recovery table for this turn (engine/recovery-policy).
         const recovery = new RecoveryBudget();
         try {
@@ -4192,7 +4193,35 @@ Forbidden defaults
                   },
                 });
                 if (!res.ok || !res.body) return null;
-                const c = await relayAndCollect(res, controller, encoder);
+                let c = await relayAndCollect(res, controller, encoder);
+                if ((c.stall || c.finishReason === "error") && recovery.take("provider_failure", "missing_pages")) {
+                  // Provider failed mid-page: one resend (failed upstream is excluded).
+                  const again = await structuredRetryCompletion({
+                    messages: [...finalMessages, { role: "user", content: instruction }],
+                    isInitial,
+                    problem: "missing_pages",
+                    hasBackend: Boolean(backend),
+                    tool,
+                    maxTokens: 12_000,
+                    crossCuttingIntent: isCrossCutting,
+                    signal: abortSignal,
+                    providerStalled: true,
+                    meta: {
+                      phase: phaseTag.phase,
+                      promptChars: lastUserContent.length,
+                      hadAttachments: hasVisionTurn,
+                      chosenBy: "missing_pages_provider_retry",
+                      projectId: body.projectId ?? null,
+                      userId,
+                      turnId: logicalTurnId,
+                      fallbackNumber: 1,
+                      fallbackFromUpstream: c.upstream ?? null,
+                      recoveryReason: "provider_error",
+                    },
+                  });
+                  if (!again.ok || !again.body) return null;
+                  c = await relayAndCollect(again, controller, encoder);
+                }
                 try {
                   return parseCollectedProject(c, true).parsed.files ?? null;
                 } catch {
@@ -6244,77 +6273,9 @@ Forbidden defaults
           );
         }
 
-        // Placeholder-page completion. When the model routed to screens it
-        // never wrote, the import resolver stubs them so the build resolves —
-        // without this gate the turn ships an app whose every page is an empty
-        // prose block and still reports success. Runs BEFORE design
-        // enforcement so the new screens are linted too. Fails open.
-        // Phase 2: first builds only. An edit turn never authors pages the
-        // user did not ask for — a stub left by an edit ships as-is.
-        if (isInitial) try {
-          const { completePlaceholderPages } = await import(
-            "@/server/design/page-completion.server"
-          );
-          const completed = await completePlaceholderPages({
-            files: nextFiles,
-            design: picContext?.design ?? null,
-            model,
-            userRequest: lastUserContent,
-            projectId: body.projectId ?? undefined,
-            userId,
-            signal: abortSignal,
-            // Minimal change surface: only complete stubs THIS turn produced.
-            // A placeholder left by an earlier turn is not this turn's job.
-            scopePaths: isInitial
-              ? undefined
-              : diffChangedPaths(turnBaselineFiles, nextFiles),
-          });
-          if (completed.completedPaths.length > 0) {
-            nextFiles = completed.files;
-            controller.enqueue(
-              encoder.encode(
-                sse({ type: "status", message: "Filled in the screens that were still empty." }),
-              ),
-            );
-          }
-        } catch (e) {
-          console.warn("[page-completion] skipped:", e instanceof Error ? e.message : String(e));
-        }
+        // Missing/placeholder pages are owned solely by the completeness
+        // stage (engine/completeness.ts). No second page writer runs here.
 
-        // Unwritten-route completion. The shell sometimes routes only the
-        // landing page and leaves "auth routes will be added here" comments —
-        // the build stays green and the verifier only ever sees "/", so the
-        // user gets a fraction of the product they asked for. Fails open.
-        //
-        // Minimal change surface: this writes NEW pages and rewrites the app
-        // shell, so it only belongs on turns that are building product surface
-        // (first build, structural or cross-cutting work). A micro/targeted
-        // edit must never grow the app behind the user's back.
-        const routeCompletionWorthwhile = isInitial;
-        if (routeCompletionWorthwhile) try {
-          const { completeUnwrittenRoutes } = await import(
-            "@/server/design/unwritten-routes.server"
-          );
-          const routed = await completeUnwrittenRoutes({
-            files: nextFiles,
-            design: picContext?.design ?? null,
-            model,
-            userRequest: lastUserContent,
-            projectId: body.projectId ?? undefined,
-            userId,
-            signal: abortSignal,
-          });
-          if (routed.writtenPaths.length > 0) {
-            nextFiles = routed.files;
-            controller.enqueue(
-              encoder.encode(
-                sse({ type: "status", message: "Built the screens that were still missing." }),
-              ),
-            );
-          }
-        } catch (e) {
-          console.warn("[unwritten-routes] skipped:", e instanceof Error ? e.message : String(e));
-        }
 
         // Design contract enforcement — the project's committed design system
         // is checked against the code we are about to ship. Structural turns

@@ -229,21 +229,6 @@ describe("named import of a default-only module", () => {
   });
 });
 
-describe("unwritten route promises", () => {
-  it("detects promissory router comments in the app shell", async () => {
-    const { findUnwrittenRoutePromises } = await import("@/server/design/unwritten-routes.server");
-    const { shell, promises } = findUnwrittenRoutePromises([
-      {
-        path: "src/App.tsx",
-        content:
-          'import { Routes, Route } from "@/components/ui/router";\nfunction App(){return (<Routes><Route path="/" element={<Hero/>} />{/* Authentication routes will be added here */}{/* Dashboard routes will be added here */}</Routes>);}\nexport default App;\n',
-      },
-    ] as never);
-    expect(shell?.path).toBe("src/App.tsx");
-    expect(promises.length).toBe(2);
-  });
-});
-
 describe("query provider on the render path", () => {
   it("wraps the root even when an unused providers module exists", async () => {
     const { ensureQueryProvider } = await import("@/server/ensure-query-provider.server");
