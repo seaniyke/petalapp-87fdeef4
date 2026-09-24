@@ -3899,7 +3899,16 @@ Forbidden defaults
         // exactly like a stall: its partial output is never trusted.
         const firstStall =
           collected.stall ??
-          (collected.finishReason === "error" ? { upstream: collected.upstream ?? null, ms: 0 } : null);
+          (collected.finishReason === "error" ? { upstream: collected.upstream ?? null, ms: 0 } : null) ??
+          // Minimum deliverable: a first build that came back with no page
+          // file at all is a provider under-delivery, handled exactly like a
+          // failure (one resend to a different upstream).
+          (isInitial && collected.name === "write_project" && !/"path"\s*:\s*"src\/pages\//.test(collected.args)
+            ? (markUpstreamFailed(collected.upstream), { upstream: collected.upstream ?? null, ms: 0 })
+            : null);
+        console.log(
+          `[collect] first tool=${collected.name} finish=${collected.finishReason ?? "?"} upstream=${collected.upstream ?? "?"} argsChars=${collected.args.length} pages=${(collected.args.match(/"path"\s*:\s*"src\/pages\/[^"]+"/g) ?? []).join(",")}`,
+        );
         // THE bounded recovery table for this turn (engine/recovery-policy).
         const recovery = new RecoveryBudget();
         try {
@@ -4194,7 +4203,9 @@ Forbidden defaults
                 });
                 if (!res.ok || !res.body) return null;
                 let c = await relayAndCollect(res, controller, encoder);
-                if ((c.stall || c.finishReason === "error") && recovery.take("provider_failure", "missing_pages")) {
+                const underDelivered = /Missing pages/.test(instruction) && !/"path"\s*:\s*"src\/pages\//.test(c.args);
+                if (underDelivered) markUpstreamFailed(c.upstream);
+                if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", "missing_pages")) {
                   // Provider failed mid-page: one resend (failed upstream is excluded).
                   const again = await structuredRetryCompletion({
                     messages: [...finalMessages, { role: "user", content: instruction }],
@@ -4223,7 +4234,14 @@ Forbidden defaults
                   c = await relayAndCollect(again, controller, encoder);
                 }
                 try {
-                  return parseCollectedProject(c, true).parsed.files ?? null;
+                  const got = parseCollectedProject(c, true).parsed.files ?? null;
+                  const rawPaths = c.args.match(/"path"\s*:\s*"[^"]+"/g) ?? [];
+                  console.log(`[completeness] reply argsChars=${c.args.length} rawPaths=${rawPaths.join(" ")} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
+                  try {
+                    const fs = await import("node:fs");
+                    fs.writeFileSync(`/tmp/kimble-missing-pages-${Date.now()}.json`, c.args);
+                  } catch { /* dev-only evidence */ }
+                  return got;
                 } catch {
                   return null;
                 }

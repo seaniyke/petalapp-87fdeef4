@@ -1133,6 +1133,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   delete body.provider;
   const routing = resolveProviderRouting({ codeWriting: isCodeWriting, avoid: turnFailed, hasTools });
   if (routing) body.provider = routing;
+  if (isCodeWriting) console.log(`[provider-policy] avoid=${turnFailed.join(",") || "-"} routing=${JSON.stringify(routing)}`);
   const streamExtra = {
     fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
     fallback_from_upstream: opts.meta?.fallbackFromUpstream ?? null,
