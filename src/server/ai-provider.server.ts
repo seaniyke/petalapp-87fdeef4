@@ -9,7 +9,7 @@ import {
   isUtilityFeature,
 } from "@/lib/ai-model-config";
 
-import { codegenProviderRouting, resolveProviderRouting } from "@/server/engine/provider-policy";
+import { codegenProviderRouting, resolveProviderRouting, isEmptyAllowList } from "@/server/engine/provider-policy";
 export { codegenProviderRouting };
 
 /**
@@ -1173,28 +1173,27 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
 
 
   const t0 = Date.now();
+  // Defensive: an allow-list with nobody on it can never be served. Fail as
+  // `providers_exhausted` immediately — zero requests sent.
+  if (isEmptyAllowList(body.provider)) {
+    try {
+      const { markProvidersExhausted } = await import("@/server/turn-context.server");
+      markProvidersExhausted();
+    } catch { /* no turn */ }
+    console.warn(`[provider-policy] providers_exhausted (empty allow-list) — not sent`);
+    return providersExhaustedResponse();
+  }
   let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
-  // Configured ≠ available. When every upstream this call was allowed has no
-  // usable endpoint ("no provider available" 404, or a provider-level
-  // 408/502/503/524 before any output), they are marked failed for THIS turn
-  // only and the same policy is asked again — which now opens the next
-  // approved upstream (DeepInfra last). One re-dispatch; never a loop.
-  if (isCodeWriting && !inferenceEval && !primary.ok && isProviderUnavailableStatus(primary.status)) {
-    const tried = ((body.provider as { only?: string[] } | undefined)?.only ?? []).slice();
-    if (tried.length) {
-      try {
-        const { markUpstreamFailed, failedUpstreamsForTurn } = await import("@/server/turn-context.server");
-        for (const u of tried) markUpstreamFailed(u);
-        const next = resolveProviderRouting({ codeWriting: true, avoid: failedUpstreamsForTurn(), hasTools }) as { only?: string[] } | undefined;
-        if (next?.only?.length) {
-          console.warn(`[provider-policy] unavailable=${tried.join(",")} status=${primary.status} → next=${next.only.join(",")}`);
-          body.provider = next;
-          primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
-        }
-      } catch {
-        /* no ambient turn — keep the original response */
-      }
-    }
+  // OpenRouter owns provider failover. A 404 on a code call means it found no
+  // eligible endpoint for this model after its own failover: terminal for
+  // this call, never re-sent (not even on the fallback model).
+  const exhausted = isCodeWriting && !primary.ok && primary.status === 404;
+  if (exhausted) {
+    try {
+      const { markProvidersExhausted } = await import("@/server/turn-context.server");
+      markProvidersExhausted();
+    } catch { /* no turn */ }
+    console.warn(`[provider-policy] providers_exhausted (OpenRouter 404) — not retried`);
   }
   const latency = Date.now() - t0;
   const effectiveProvider = provider;
