@@ -370,7 +370,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
         buildId: payload.buildId,
         shipped: false,
         blockingDefects: partitioned.blocking,
-        reason: "browser check found a runtime failure",
+        reason: decision.reason,
       });
       return new Response("ok", {
         status: 200,
