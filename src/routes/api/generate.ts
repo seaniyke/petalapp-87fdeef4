@@ -5744,6 +5744,18 @@ Forbidden defaults
           }
         }
 
+        // Router provider: pages using Link/Routes crash at runtime with
+        // "cannot destructure 'basename'" if nothing mounts a router. The
+        // deterministic fixer only wraps the entry when it's truly missing.
+        {
+          const { fixMissingRouterProvider } = await import("@/server/router-provider.server");
+          const rp = fixMissingRouterProvider(nextFiles);
+          if (rp.notes.length) {
+            nextFiles = rp.files;
+            console.log(`[router-provider] ${rp.notes.join("; ")}`);
+          }
+        }
+
         // Tier 2.46 — deterministic strip of npm-confirmed-hallucinated
         // imports. We do this BEFORE continuation/esbuild so the parse
         // tier doesn't trip on identifiers that point at packages the
