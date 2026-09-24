@@ -5369,6 +5369,8 @@ Forbidden defaults
             files: currentFiles,
             summary:
               EMPTY_HOME_BUILD_FAILURE_MESSAGE,
+            outcome: "failed",
+            reason: "empty_home",
           });
           return;
         }
@@ -7366,9 +7368,12 @@ async function handleGenerateRequest(request: Request): Promise<Response> {
             sseBuffer = sseBuffer.slice(cut + 2);
             const failure = errorPayloadOf(block);
             const creditPause = creditPausePayloadOf(block);
-            if (block.includes('"requested_scope_missing"')) {
+            // Authoritative terminal state: any turn_outcome of "failed" makes
+            // the turn failed. Nothing downstream may report it as succeeded.
+            const failedOutcome = /"type":\s*"turn_outcome"[^\n]*"outcome":\s*"failed"/.exec(block);
+            if (failedOutcome) {
               terminalStatus = "failed";
-              terminalError = "Requested pages are missing — build incomplete";
+              terminalError = /"reason":\s*"([^"]+)"/.exec(block)?.[1] ?? "build incomplete";
             }
             if (creditPause) {
               terminalStatus = "awaiting_credits";
