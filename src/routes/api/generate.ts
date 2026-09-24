@@ -1938,7 +1938,9 @@ async function runFinalParseGuard(
         badPaths = badPaths.filter((p) => still.has(p));
       }
     }
-    const salvageable = badPaths.length > 0 && badPaths.length <= 4 && badPaths.length < gated.length;
+    // First builds (no prior files) always keep the good files: a broken page
+    // is set aside, never a reason to discard the pages that work.
+    const salvageable = badPaths.length > 0 && badPaths.length < gated.length && (priorFiles.length === 0 || badPaths.length <= 4);
     if (salvageable) {
       try {
         const bad = new Set(badPaths);

@@ -94,3 +94,26 @@ describe("cleanup can never break a file", () => {
     expect(r.files[0].content).toBe(before[0].content);
   });
 });
+
+import { isProviderUnavailableStatus } from "@/server/ai-provider.server";
+import { runWithTurnContext, markUpstreamFailed, failedUpstreamsForTurn } from "@/server/turn-context.server";
+
+describe("configured is not available", () => {
+  it("'no provider available' and provider-level errors count as unavailable; bad output statuses don't", () => {
+    for (const s of [404, 408, 502, 503, 524]) expect(isProviderUnavailableStatus(s)).toBe(true);
+    for (const s of [200, 400, 401, 402]) expect(isProviderUnavailableStatus(s)).toBe(false);
+  });
+  it("once both primaries are unavailable, DeepInfra is the next approved upstream", async () => {
+    await runWithTurnContext({ turnId: "t1" }, async () => {
+      markUpstreamFailed("Azure");
+      markUpstreamFailed("OpenInference");
+      const r = resolveProviderRouting({ codeWriting: true, avoid: failedUpstreamsForTurn() }) as { only: string[] };
+      expect(r.only).toEqual(["deepinfra"]);
+    });
+  });
+  it("failure state is per build: a new turn starts clean", async () => {
+    await runWithTurnContext({ turnId: "t2" }, async () => {
+      expect(failedUpstreamsForTurn()).toEqual([]);
+    });
+  });
+});
