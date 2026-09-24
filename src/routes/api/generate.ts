@@ -5707,13 +5707,17 @@ Forbidden defaults
         const gateReason =
           (!gateLocalVerdict.ok ? gateLocalVerdict.issues.find((i) => inTurn(i.path))?.kind : undefined) ??
           (!esbuildVerdict.ok && esbuildVerdict.issues.some((i) => inTurn(i.path)) ? "syntax" : null) ??
-          (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null) ??
-          (isInitial && (generationQualityIssues.length > 0 || budgetWarnings.length > 0)
-            ? "initial-quality"
-            : null);
+          (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null);
+        // Quality/size notes are advisory on first builds too. Measured
+        // 2026-09-24: an "initial-quality" repair with 13 advisory notes spent
+        // 175 s writing a capped 5,000-token rewrite — the 3-minute gap.
+        // No failure = no repair call.
         // On an edit the truncation continuation already was the one repair.
         const autofixGateOpen = gateReason !== null && (isInitial || !continuationRepaired);
         if (autofixGateOpen) console.info(`[repair] reason=${gateReason}`);
+        // The repair sees only real failures in the failing files — never
+        // advisory size/quality/RLS notes, which inflated the repair into a
+        // multi-file rewrite.
         const combinedAutofixIssues = [
           ...localVerdict.issues,
           ...esbuildVerdict.issues.map((i) => ({
@@ -5721,18 +5725,8 @@ Forbidden defaults
             kind: "parse" as const,
             detail: `${i.message} (line ${i.line}:${i.column})`,
           })),
-          ...budgetWarnings.map((w) => ({
-            path: w.path,
-            kind: "oversize" as const,
-            detail: w.detail,
-          })),
-          // Render-risk issues open the gate: compile-clean code can still
-          // white-screen at runtime (for example undefined.includes()).
-          // RLS sanity remains advisory only.
-          ...generationQualityIssues,
           ...renderRiskIssues,
-          ...rlsSanityIssues,
-        ];
+        ].filter((i) => inTurn(i.path));
         // Token usage from any user-billable agentic-loop fix cycles.
         // Cycles 3..N (only when the `agent_loop` Labs flag is on) push
         // their gateway usage here so the per-turn aggregator at the
