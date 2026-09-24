@@ -6013,7 +6013,8 @@ Forbidden defaults
             // several explicit parts, or new pages that did not appear, get
             // the one completeness pass.
             const completenessWarranted =
-              turnChangeSet.items.length >= 3 || explicitPagesRequested;
+              turnChangeSet.items.length >= 3 ||
+              /\b(add|create|build|new)\b[^.!?]{0,40}\b(pages?|routes?|screens?)\b/i.test(lastUserContent);
             if (audit.unmet.length > 0 && completenessWarranted) {
               controller.enqueue(
                 encoder.encode(
