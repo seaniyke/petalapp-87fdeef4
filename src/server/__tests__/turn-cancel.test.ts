@@ -8,23 +8,26 @@ import {
   abortLocalTurn,
   requestTurnCancel,
   assertTurnActive,
+  claimTurnCommit,
+  turnAllowsResume,
 } from "@/server/turn-cancel.server";
 import { guardHandlers, streamGenerate, cancelTurn } from "@/lib/stream";
 
 /** Minimal in-memory stand-in for the service client, `turns` table only.
  *  Records every table touched so tests can prove nothing else is written. */
-function fakeDb(rows: Array<{ id: string; user_id: string; status: string }>) {
+function fakeDb(rows: Array<{ id: string; user_id: string; status: string; committed_at?: string | null }>) {
   const touched: string[] = [];
   const client = {
     from(table: string) {
       touched.push(table);
       const filters: Array<[string, unknown]> = [];
       let patch: Record<string, unknown> | null = null;
-      const match = () => rows.filter((r) => filters.every(([k, v]) => (r as Record<string, unknown>)[k] === v));
+      const match = () => rows.filter((r) => filters.every(([k, v]) => ((r as Record<string, unknown>)[k] ?? null) === v));
       const q = {
         select() { return q; },
         update(p: Record<string, unknown>) { patch = p; return q; },
         eq(k: string, v: unknown) { filters.push([k, v]); return q; },
+        is(k: string, v: unknown) { filters.push([k, v]); return q; },
         async maybeSingle() { return { data: match()[0] ?? null, error: null }; },
         then(res: (v: unknown) => void) {
           const hit = match();
@@ -94,7 +97,7 @@ describe("A. Stop cancels the backend turn", () => {
     const src = readFileSync("src/routes/api/generate.ts", "utf8");
     expect(src).toContain("registerTurnController(recorder.turnId, workController)");
     const pages = src.indexOf('assertTurnActive(turnId, abortSignal, "page writing")');
-    const settle = src.indexOf('assertTurnActive(turnId, abortSignal, "saving")');
+    const settle = src.indexOf("claimTurnCommit(turnId, abortSignal)");
     expect(pages).toBeGreaterThan(0);
     expect(src.indexOf('assertTurnActive(turnId, abortSignal, "images")')).toBeGreaterThan(0);
     expect(pages).toBeLessThan(src.indexOf("await writePlannedPages("));
@@ -202,5 +205,69 @@ describe("F. Cancel after partial work never rolls the project back", () => {
     expect(new Set(db.touched)).toEqual(new Set(["turns"]));
     const src = readFileSync("src/server/turn-cancel.server.ts", "utf8");
     expect(src).not.toMatch(/project_files|replace_project_files|refund|project_builds/);
+  });
+});
+
+describe("Race: Stop vs completion has exactly one winner", () => {
+  it("Stop wins before the commit point: commit refuses, nothing is charged, saved or built", async () => {
+    const db = fakeDb([{ id: A, user_id: "u1", status: "running", committed_at: null }]);
+    const work = new AbortController();
+    const un = registerTurnController(A, work);
+    expect(await requestTurnCancel(A, "u1", db.client)).toEqual({ ok: true, cancelled: true, status: "aborted" });
+    const charge = vi.fn();
+    const save = vi.fn();
+    const build = vi.fn();
+    await expect(
+      (async () => {
+        await claimTurnCommit(A, undefined, db.client); // other worker: signal not aborted locally
+        charge(); save(); build();
+      })(),
+    ).rejects.toThrow(/Stopped by user/);
+    expect([charge, save, build].every((f) => f.mock.calls.length === 0)).toBe(true);
+    expect(db.rows[0].committed_at ?? null).toBeNull();
+    un();
+  });
+
+  it("completion wins at the commit point: Stop reports 'completing', never 'Stopped', and the work controller keeps running", async () => {
+    const db = fakeDb([{ id: A, user_id: "u1", status: "running", committed_at: null }]);
+    const work = new AbortController();
+    const un = registerTurnController(A, work);
+    await claimTurnCommit(A, work.signal, db.client);
+    expect(db.rows[0].committed_at).toBeTruthy();
+    const r = await requestTurnCancel(A, "u1", db.client);
+    expect(r).toEqual({ ok: true, cancelled: false, status: "completing" });
+    expect(db.rows[0].status).toBe("running");
+    expect(work.signal.aborted).toBe(false);
+    un();
+  });
+
+  it("after the turn finished, Stop reports the real terminal state", async () => {
+    for (const status of ["succeeded", "failed"]) {
+      const db = fakeDb([{ id: A, user_id: "u1", status, committed_at: "t" }]);
+      expect(await requestTurnCancel(A, "u1", db.client)).toEqual({ ok: true, cancelled: false, status });
+      expect(db.rows[0].status).toBe(status);
+    }
+  });
+
+  it("a missing turn row (tracking off) never blocks a build", async () => {
+    const db = fakeDb([]);
+    await expect(claimTurnCommit(A, undefined, db.client)).resolves.toBeUndefined();
+  });
+
+  it("the UI only says Stopped on a server-confirmed cancel", () => {
+    const src = readFileSync("src/routes/builder.tsx", "utf8");
+    const i = src.indexOf('toast.success("Stopped.');
+    expect(src.lastIndexOf('if (r.state === "cancelled")', i)).toBeGreaterThan(src.indexOf("const stopGeneration"));
+    expect(src).toContain("That request had already finished — showing the result.");
+  });
+});
+
+describe("Queued silent retry respects a Stop", () => {
+  it("only an explicitly stopped turn is refused", () => {
+    expect(turnAllowsResume("aborted")).toBe(false);
+    // interrupted turns close as failed; repair rounds follow succeeded builds
+    expect(turnAllowsResume("failed")).toBe(true);
+    expect(turnAllowsResume("succeeded")).toBe(true);
+    expect(turnAllowsResume(null)).toBe(true);
   });
 });
