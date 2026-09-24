@@ -34,7 +34,6 @@ import { autofixFiles } from "@/server/stream-autofixer";
 import { shimMissingUiPrimitives } from "@/server/shim-missing-ui.server";
 import { stripTypeOnlyValueImports } from "@/server/strip-type-only-value-imports.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
-import { runAllRepairs } from "@/server/repair-all.server";
 import { runScopedBuildCleanup } from "@/server/build-cleanup-scope.server";
 import { currentTurnContext } from "@/server/turn-context.server";
 import {

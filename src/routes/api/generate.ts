@@ -14,7 +14,7 @@ import {
   type StreamEvent,
 } from "@/server/generate.server";
 import { reconcileDocumentHeadOps } from "@/server/document-head.server";
-import { runWithTurnContext } from "@/server/turn-context.server";
+import { currentTurnContext, runWithTurnContext } from "@/server/turn-context.server";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,

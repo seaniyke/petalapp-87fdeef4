@@ -106,16 +106,29 @@ export async function postBuildToRailway(args: {
   // In particular this guarantees router providers are repaired in the exact
   // payload sent to the external builder, including retries and reships.
   const canonical = runScopedBuildCleanup(args.files, args.cleanupPaths, args.cleanupMeta);
-  const escaped = fixSourceEscapes(canonical.files);
-  const importHealed = fixImportSyntax(escaped.files);
+  const cleanupSet = new Set(canonical.scope);
+  const selected = canonical.files.filter((file) => cleanupSet.has(file.path));
+  const mergeScoped = (base: ProjectFile[], changed: ProjectFile[]): ProjectFile[] => {
+    const byPath = new Map(changed.map((file) => [file.path, file]));
+    return base.map((file) => byPath.get(file.path) ?? file);
+  };
+  // These syntax passes are file-local. Running them against only the closed
+  // cleanup scope prevents the final ship boundary from rescanning the kit.
+  const escapedScoped = fixSourceEscapes(selected);
+  const escaped = { ...escapedScoped, files: mergeScoped(canonical.files, escapedScoped.files) };
+  const importScoped = fixImportSyntax(escaped.files.filter((file) => cleanupSet.has(file.path)));
+  const importHealed = { ...importScoped, files: mergeScoped(escaped.files, importScoped.files) };
   // `prop=[…]` / `prop=42` — unbraced JSX attribute values also abort the
   // esbuild transform ("Expected \"{\" but found \"[\"").
-  const attrHealed = fixJsxAttrLiterals(importHealed.files);
-  const fenceHealed = fixMarkdownFences(attrHealed.files);
+  const attrScoped = fixJsxAttrLiterals(importHealed.files.filter((file) => cleanupSet.has(file.path)));
+  const attrHealed = { ...attrScoped, files: mergeScoped(importHealed.files, attrScoped.files) };
+  const fenceScoped = fixMarkdownFences(attrHealed.files.filter((file) => cleanupSet.has(file.path)));
+  const fenceHealed = { ...fenceScoped, files: mergeScoped(attrHealed.files, fenceScoped.files) };
   // `<BrandMark/>` with no import compiles fine and then white-screens the
   // published app with `Can't find variable: BrandMark`. Heal it here too so
   // no build pathway can ship it.
-  const brandWired = ensureBrandMarkWired(fenceHealed.files);
+  const brandScoped = ensureBrandMarkWired(fenceHealed.files.filter((file) => cleanupSet.has(file.path)));
+  const brandWired = { ...brandScoped, files: mergeScoped(fenceHealed.files, brandScoped.files) };
 
   for (const n of [...canonical.notes, ...escaped.notes, ...importHealed.notes, ...attrHealed.notes, ...fenceHealed.notes, ...brandWired.notes]) {
     console.warn(`[builder-last-mile] project=${args.projectId}: ${n}`);
