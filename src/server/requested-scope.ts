@@ -120,6 +120,18 @@ export function narrowRoutesToRequest(
 export const OUTPUT_CEILING = 18_000;
 /** A unit is planned to use at most this much, leaving ~40% headroom. */
 export const SAFE_UNIT_BUDGET = 11_000;
+/** Fraction of the real output ceiling a planned unit may use (estimation error headroom). */
+export const UNIT_BUDGET_FRACTION = 0.8;
+
+/**
+ * INVARIANT: a planned unit must fit inside the actual generation budget.
+ * The safe budget is derived from the real max_tokens the call will send.
+ */
+export function safeUnitBudget(maxOutputTokens?: number | null): number {
+  if (!maxOutputTokens || maxOutputTokens <= 0) return SAFE_UNIT_BUDGET;
+  return Math.min(SAFE_UNIT_BUDGET, Math.floor(maxOutputTokens * UNIT_BUDGET_FRACTION));
+}
+
 const SHELL_TOKENS = 4_500; // router, nav, footer, styles, shared UI
 const HOME_TOKENS = 3_500;
 const PAGE_TOKENS = { marketing: 2_500, app: 3_800 } as const;
@@ -170,6 +182,8 @@ export interface GenerationUnits {
   unitCount: number;
   estimate: SizeEstimate;
   units: GenerationUnitPlan[];
+  /** Budget every unit was planned against. */
+  safeBudget: number;
   /** Prompt addendum for the FIRST unit; empty when one unit suffices. */
   instruction: string;
 }
@@ -181,13 +195,13 @@ export interface GenerationUnits {
  * coverage continuation, which is told what is already done and never
  * regenerates delivered files.
  */
-export function planUnits(est: SizeEstimate): GenerationUnitPlan[] {
+export function planUnits(est: SizeEstimate, budget: number = SAFE_UNIT_BUDGET): GenerationUnitPlan[] {
   const units: GenerationUnitPlan[] = [
     { routes: ["/"], estimatedTokens: est.shell + est.home + est.extras },
   ];
   for (const p of est.pages) {
     const cur = units[units.length - 1]!;
-    if (cur.estimatedTokens + p.tokens <= SAFE_UNIT_BUDGET) {
+    if (cur.estimatedTokens + p.tokens <= budget) {
       cur.routes.push(p.route);
       cur.estimatedTokens += p.tokens;
     } else {
@@ -197,16 +211,21 @@ export function planUnits(est: SizeEstimate): GenerationUnitPlan[] {
   return units;
 }
 
-export function buildGenerationUnits(prompt: string, plannedRoutes: string[]): GenerationUnits {
+export function buildGenerationUnits(
+  prompt: string,
+  plannedRoutes: string[],
+  opts?: { maxOutputTokens?: number | null },
+): GenerationUnits {
+  const safeBudget = safeUnitBudget(opts?.maxOutputTokens);
   const all = [...plannedRoutes];
   for (const n of extractRequestedPages(prompt)) {
     const r = pageNameToRoute(n);
     if (!all.includes(r)) all.push(r);
   }
   const estimate = estimateFirstBuildSize(prompt, all);
-  const units = planUnits(estimate);
+  const units = planUnits(estimate, safeBudget);
   if (units.length <= 1) {
-    return { allRoutes: all, unitCount: 1, estimate, units, instruction: "" };
+    return { allRoutes: all, unitCount: 1, estimate, units, safeBudget, instruction: "" };
   }
   const first = units[0]!.routes.filter((r) => r !== "/");
   const later = units.slice(1).flatMap((u) => u.routes);
@@ -215,6 +234,7 @@ export function buildGenerationUnits(prompt: string, plannedRoutes: string[]): G
     unitCount: units.length,
     estimate,
     units,
+    safeBudget,
     instruction:
       `\n\n### Build in parts (this pass = part 1 of ${units.length})\n` +
       `This build is too large to write reliably in one pass.\n` +

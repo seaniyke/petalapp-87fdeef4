@@ -3225,11 +3225,20 @@ Forbidden defaults
   if (isInitial) {
     try {
       const { buildGenerationUnits } = await import("@/server/requested-scope");
-      const units = buildGenerationUnits(lastUserText, plannedRoutes);
+      // The planner must size units against the ACTUAL first-unit output
+      // ceiling this turn will send — not an independent constant.
+      const firstUnitMaxOutput = completionBudget({
+        isInitial: true,
+        phase: "implement" as Phase,
+        hasVisionTurn: false,
+        multiEditIntent: false,
+        promptChars: lastUserText.length,
+      });
+      const units = buildGenerationUnits(lastUserText, plannedRoutes, { maxOutputTokens: firstUnitMaxOutput });
       for (const r of units.allRoutes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
       if (units.instruction) archetypeBlock += units.instruction;
       console.log(
-        `[generation-units] kind=${units.estimate.kind} estimatedOutput=${units.estimate.total} units=${units.unitCount} plan=${units.units.map((u, i) => `u${i + 1}[${u.routes.join(",")}]~${u.estimatedTokens}`).join(" ")}`,
+        `[generation-units] maxOutput=${firstUnitMaxOutput} safeBudget=${units.safeBudget} kind=${units.estimate.kind} estimatedOutput=${units.estimate.total} units=${units.unitCount} plan=${units.units.map((u, i) => `u${i + 1}[${u.routes.join(",")}]~${u.estimatedTokens}`).join(" ")}`,
       );
     } catch {
       /* never block a build on unit planning */
