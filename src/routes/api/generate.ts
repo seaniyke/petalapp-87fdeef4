@@ -6404,6 +6404,11 @@ Forbidden defaults
             // model's own "it's live" narration.
             summary = note.trim();
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          } else {
+            // Pages are complete, but build, browser check and publishing
+            // haven't run yet: never let the message claim the site is live.
+            const { neutraliseSuccessClaims } = await import("@/server/engine/build-state");
+            summary = neutraliseSuccessClaims(summary ?? "");
           }
         }
         {

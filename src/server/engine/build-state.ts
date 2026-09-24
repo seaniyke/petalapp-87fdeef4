@@ -131,3 +131,11 @@ function legacyIncompleteMessage(missing: string[]): string {
     `ask me to add ${missing.length === 1 ? "it" : "them"} and I'll write only what's missing.`
   );
 }
+
+/** Before build + browser check + publish have passed, the model's summary
+ *  may describe what was written but never claim the site is live/ready. */
+export function neutraliseSuccessClaims(text: string): string {
+  return text
+    .replace(/\b(is|are)\s+(now\s+)?(live|published|up and running|ready to (use|go|share))\b/gi, "$1 written — building your preview now")
+    .replace(/\byour (site|website|app) is ready\b/gi, "your $1's pages are written — building your preview now");
+}
