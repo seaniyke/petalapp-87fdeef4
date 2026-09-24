@@ -40,7 +40,7 @@ export function pageFileFor(route: string): string {
 export function pageInstruction(route: string, deliveredPaths: string[]): string {
   return [
     `Write ONLY the page for route "${route}" as ${pageFileFor(route)} (default export). One file in this call — nothing else.`,
-    "Make it a complete, polished page with real content, using the existing design system, brand and shared components.",
+    "Make it a complete, polished page with real content, using the existing design system, brand and shared components. Put every section of this page inline in this ONE file — do not create new component, style or config files.",
     `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
     "No extra pages.",
   ].join("\n");
