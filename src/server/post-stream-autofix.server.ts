@@ -59,7 +59,6 @@ ALLOWED FIXES:
 - Optional/nullable values used with .map/.filter/.includes/.length without a default/guard → add defaults (items = [], tags = []) or optional chaining so the page cannot white-screen at runtime.
 - Dead buttons, forms that refresh the page, blank routes, or mobile navigation that cannot open/close → wire the interaction using the app's existing state and router.
 - design-contract / anti-sameness findings → apply the existing semantic tokens, typography, brand identity and layout language consistently; replace placeholder composition and raw unstyled interior pages.
-- landing-checklist findings → add the specifically missing product sections with real domain copy and working navigation. Do not add generic filler.
 - Product-shape mismatches → remove unrelated surfaces and make the primary workflow requested by the user functional and prominent.
 
 FORBIDDEN:

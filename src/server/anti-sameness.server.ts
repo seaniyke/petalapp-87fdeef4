@@ -146,7 +146,9 @@ export function findAntiSamenessIssues(files: ProjectFile[]): LocalIssue[] {
   // Only enforce section checklist for pages that look like landings.
   const looksLikeLanding =
     /\b(Hero|Landing)\b/.test(joined) && /\b(Footer|FooterSection)\b/.test(joined);
-  if (looksLikeLanding && indexRoute) {
+  // Advisory only: section count is no longer a requirement, so a short
+  // landing is never sent to repair for missing sections.
+  if (false && looksLikeLanding && indexRoute) {
     const missing = scanLandingSections(joined);
     if (missing.length >= 4) {
       issues.push({
