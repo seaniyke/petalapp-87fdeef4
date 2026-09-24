@@ -22,7 +22,7 @@ export default defineConfig({
       "src/server/__tests__/codegen-routing.test.ts",
       "src/server/__tests__/requested-scope.test.ts",
       "src/server/__tests__/build-cleanup-scope.test.ts",
-      "src/server/__tests__/stream-continuation.test.ts",
+      
       "src/server/__tests__/no-gemini.test.ts",
       "src/server/__tests__/engine-policy.test.ts",
       "src/server/__tests__/build-state.test.ts", "src/server/__tests__/call-accounting.test.ts",
@@ -78,7 +78,7 @@ export default defineConfig({
       "src/server/__tests__/design-direction-scope.test.ts",
       "src/server/__tests__/benchmark-classification.test.ts",
 
-      "src/server/__tests__/{agents-orchestrator,agents-qa-board,copy-slop,app-ui-library,backend-quality,billing-fairness,builder-deployment-readiness,chunked-generation,css-escape-fixer,document-head,file-budget,prompt-budget,frontend-quality,html-injectors-integration,kit-customization,kit-dep-closure,prd-engine,prd-golden-corpus,preemit-gate,preview-guard-markup,product-principles,renderable-shell,repair-safety,design-variety,composition-contract,palette-integrity,design-floor,pic-engine,engine3-phase345,import-resolver-page-compose,scope-jsx-prose,scope-repair,sibling-resolver,tier-local-verify,tool-args-salvage,visual-qa,write-gate}.test.ts",
+      "src/server/__tests__/{agents-orchestrator,agents-qa-board,copy-slop,app-ui-library,backend-quality,billing-fairness,builder-deployment-readiness,chunked-generation,css-escape-fixer,document-head,file-budget,prompt-budget,frontend-quality,html-injectors-integration,kit-customization,kit-dep-closure,prd-engine,prd-golden-corpus,preemit-gate,preview-guard-markup,product-principles,renderable-shell,repair-safety,design-variety,composition-contract,palette-integrity,design-floor,pic-engine,engine3-phase345,scope-jsx-prose,scope-repair,sibling-resolver,tier-local-verify,tool-args-salvage,visual-qa,write-gate}.test.ts",
     ],
   },
 });

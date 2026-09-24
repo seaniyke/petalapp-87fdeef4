@@ -198,161 +198,9 @@ function namedImportNames(line: string): string[] {
 const KIT_OWNED_PATH =
   /^src\/(components\/(ui|blocks|examples|fx|motion|mobile|three|content|providers|scroll|image|charts|data|forms|editor|map)\/|integrations\/|hooks\/|lib\/)/;
 
-/**
- * Only these paths may be auto-composed into a missing page. Kit primitives
- * (fx/motion/mobile/three/…) are prop-driven building blocks: rendering them
- * bare produces runtime crashes ("t is not iterable", `.split` of undefined),
- * so page composition is restricted to the turn's own section components.
- */
-const COMPOSABLE_SECTION_PATH =
-  /^src\/components\/(sections|section|landing|marketing|home)\/[^/]+\.(tsx|jsx)$/i;
-const TOP_LEVEL_COMPONENT_PATH = /^src\/components\/[^/]+\.(tsx|jsx)$/i;
 
-/** A component that requires props can't be rendered bare in a composed page. */
-function takesNoRequiredProps(source: string, name: string): boolean {
-  const re = new RegExp(
-    `(?:function\\s+${name}\\s*\\(([^)]*)\\)|(?:const|let)\\s+${name}\\s*(?::[^=]+)?=\\s*(?:React\\.)?(?:memo\\s*\\(\\s*)?\\(([^)]*)\\)\\s*=>)`,
-  );
-  const m = source.match(re);
-  if (!m) return false;
-  const params = (m[1] ?? m[2] ?? "").trim();
-  if (params === "") return true;
-  // `{ a = 1, b = 2 }` — every destructured prop has a default.
-  const inner = params.replace(/^\{/, "").replace(/\}\s*(:[\s\S]*)?$/, "");
-  const parts = inner.split(/,(?![^{[]*[}\]])/).map((p) => p.trim()).filter(Boolean);
-  if (parts.length === 0) return true;
-  return parts.every((p) => p.includes("=") || p.startsWith("..."));
-}
-
-
-/** A missing module that a router points at is a PAGE, not a leaf component. */
+/** Page paths — cleanup never creates these (the WRITE stage owns pages). */
 const PAGE_PATH = /^src\/(pages|screens|views|routes)\//i;
-
-/** Chrome components never belong inside a page body (App renders them). */
-const CHROME_BASENAME =
-  /^(nav-bar|navbar|navigation|site-nav|header|footer|site-footer|brand-mark|logo|theme-toggle|mobile-nav)$/i;
-
-function fileBase(path: string): string {
-  return (path.split("/").pop() ?? path).replace(/\.(tsx?|jsx?)$/, "");
-}
-
-/** Best exported component name for a module, preferring a named export. */
-function exportedComponentName(source: string, path: string): { name: string; isDefault: boolean } | null {
-  const named = source.match(
-    /export\s+(?:async\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9_]*)/,
-  );
-  if (named) return { name: named[1], isDefault: false };
-  const defFn = source.match(/export\s+default\s+(?:function\s+)?([A-Z][A-Za-z0-9_]*)/);
-  if (defFn) return { name: defFn[1], isDefault: true };
-  if (/export\s+default\s/.test(source)) {
-    const pascal = fileBase(path)
-      .split(/[-_.\s]+/)
-      .filter(Boolean)
-      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-      .join("");
-    if (/^[A-Za-z][A-Za-z0-9]*$/.test(pascal)) return { name: pascal, isDefault: true };
-  }
-  return null;
-}
-
-/** Rank sections into a believable page order: hero → body → cta. */
-function sectionRank(base: string): number {
-  const b = base.toLowerCase();
-  if (/hero|banner|masthead/.test(b)) return 0;
-  if (/logo|social-proof|proof|trusted|stats/.test(b)) return 1;
-  if (/feature|benefit|service|product|menu|about|story|process|how/.test(b)) return 2;
-  if (/gallery|showcase|work|portfolio/.test(b)) return 3;
-  if (/testimonial|review|quote/.test(b)) return 4;
-  if (/pricing|plan/.test(b)) return 5;
-  if (/faq|question/.test(b)) return 6;
-  if (/cta|contact|newsletter|signup|subscribe/.test(b)) return 8;
-  return 7;
-}
-
-/**
- * The real failure this fixes: the model writes several section components AND
- * an App that routes to `@/pages/Home`, but never writes the page itself. A
- * prose placeholder then WINS the merge and the whole landing page reads
- * "This section is being assembled" while the real sections sit orphaned.
- * When the missing module is a page, compose it from the orphan sections.
- */
-function buildPageFromOrphans(
-  stubPath: string,
-  importedName: string | null,
-  byPath: Map<string, string>,
-  referenced: Set<string>,
-  consumed: Set<string>,
-): string | null {
-  if (!PAGE_PATH.test(stubPath)) return null;
-
-  const picks: Array<{ path: string; base: string; name: string; isDefault: boolean }> = [];
-  for (const [p, content] of byPath) {
-    if (!SCANNABLE.test(p)) continue;
-    if (KIT_OWNED_PATH.test(p)) continue;
-    if (!COMPOSABLE_SECTION_PATH.test(p) && !TOP_LEVEL_COMPONENT_PATH.test(p)) continue;
-    if (referenced.has(p) || consumed.has(p)) continue;
-    const base = fileBase(p);
-    if (CHROME_BASENAME.test(base)) continue;
-    if (!/<[A-Za-z]/.test(content)) continue; // not a renderer
-    const exp = exportedComponentName(content, p);
-    if (!exp) continue;
-    if (!takesNoRequiredProps(content, exp.name)) continue;
-    picks.push({ path: p, base, name: exp.name, isDefault: exp.isDefault });
-  }
-  if (picks.length === 0) return null;
-
-
-  picks.sort((a, b) => sectionRank(a.base) - sectionRank(b.base) || a.base.localeCompare(b.base));
-  const seen = new Set<string>();
-  const unique = picks
-    .filter((s) => (seen.has(s.name) ? false : (seen.add(s.name), true)))
-    .slice(0, 14);
-  for (const s of unique) consumed.add(s.path);
-
-
-  const compName =
-    importedName && /^[A-Z][A-Za-z0-9_]*$/.test(importedName) ? importedName : "Page";
-  const imports = unique
-    .map((s) =>
-      s.isDefault
-        ? `import ${s.name} from "${toAliasSpec(s.path)}";`
-        : `import { ${s.name} } from "${toAliasSpec(s.path)}";`,
-    )
-    .join("\n");
-  const body = unique.map((s) => `      <${s.name} />`).join("\n");
-
-  return (
-    `// Composed by Petal import-resolver: the route target was missing, so the\n` +
-    `// sections authored in this turn are rendered here in reading order.\n` +
-    `${imports}\n\n` +
-    `function ${compName}() {\n` +
-    `  return (\n` +
-    `    <main>\n` +
-    `${body}\n` +
-    `    </main>\n` +
-    `  );\n` +
-    `}\n\n` +
-    `export default ${compName};\n` +
-    `export { ${compName} };\n`
-  );
-}
-
-/** Every local module path that some file already imports. */
-function collectReferenced(byPath: Map<string, string>): Set<string> {
-  const referenced = new Set<string>();
-  for (const [p, content] of byPath) {
-    if (!SCANNABLE.test(p)) continue;
-    content.replace(IMPORT_RE, (_full, _lead, spec: string) => {
-      if (spec.startsWith("@/") || spec.startsWith(".")) {
-        const target = resolveSpec(p, spec, byPath);
-        if (target && target !== "external") referenced.add(target);
-      }
-      return _full;
-    });
-  }
-  return referenced;
-}
-
 
 export interface ImportRepairResult {
   files: ProjectFile[];
@@ -366,8 +214,6 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
   const byPath = new Map(files.map((f) => [f.path, f.content]));
   const rewrites: ImportRepairResult["rewrites"] = [];
   const stubsCreated: string[] = [];
-  const referenced = collectReferenced(byPath);
-  const consumedOrphans = new Set<string>();
 
   // We mutate `byPath` as we go (rewrites + new stubs both feed back into
   // subsequent resolution attempts on later files).
@@ -406,23 +252,6 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
           rewrites.push({ path: f.path, from: spec, to: aliasForm });
           changed = true;
         }
-        // Heal a previous turn's prose placeholder page once real sections exist.
-        if (resolved !== "external" && PAGE_PATH.test(resolved)) {
-          const current = byPath.get(resolved) ?? "";
-          if (current.includes("Auto-generated stub by Petal import-resolver")) {
-            const recomposed = buildPageFromOrphans(
-              resolved,
-              defaultImportName(full),
-              byPath,
-              referenced,
-              consumedOrphans,
-            );
-            if (recomposed) {
-              byPath.set(resolved, recomposed);
-              stubsCreated.push(resolved);
-            }
-          }
-        }
         continue;
       }
 
@@ -447,13 +276,13 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       if (/(?:^|\/)routeTree\.gen$/i.test(spec)) continue;
       const stubPath = specToStubPath(f.path, spec);
       if (!stubPath) continue;
+      // Cleanup is non-generative for pages: a missing page stays missing so
+      // the completeness check reports it and the WRITE stage owns it. The
+      // old behaviour (a "Coming together" placeholder) produced false success.
+      if (PAGE_PATH.test(stubPath)) continue;
       // An earlier turn's prose placeholder is not a real page: if orphan
       // sections now exist, re-compose it instead of leaving a dead screen.
-      const existing = byPath.get(stubPath);
-      const isPlaceholder =
-        typeof existing === "string" &&
-        existing.includes("Auto-generated stub by Petal import-resolver");
-      if (existing !== undefined && !(isPlaceholder && PAGE_PATH.test(stubPath))) continue;
+      if (byPath.get(stubPath) !== undefined) continue;
       // Never stub a kit-owned path. The scaffold kit supplies these files
       // later in the pipeline; writing a "Coming together" placeholder here
       // wins the merge and turns real primitives (Toaster, auth client, utils)
@@ -461,14 +290,7 @@ export function repairUnresolvedImports(files: ProjectFile[]): ImportRepairResul
       if (KIT_OWNED_PATH.test(stubPath)) continue;
 
       const defName = defaultImportName(full);
-      const composed = buildPageFromOrphans(
-        stubPath,
-        defName,
-        byPath,
-        referenced,
-        consumedOrphans,
-      );
-      const stub = composed ?? buildStub(spec, defName, namedImportNames(full));
+      const stub = buildStub(spec, defName, namedImportNames(full));
       byPath.set(stubPath, stub);
       stubsCreated.push(stubPath);
     }

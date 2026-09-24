@@ -61,3 +61,8 @@
 - [ ] Fold late "fill empty screens" page writer (page-completion.server) into the completeness stage and delete it
 - [ ] Planning / generation / repair stage extraction with old code deleted per stage
 - [ ] Rerun fresh 4-page test; then build → browser check → publish
+
+## Phase 2 — single-owner stages
+- [x] WRITE is the only page writer (plan → shell → one call per page); tidy-up and shell guard never invent pages or routers
+- [x] REPAIR is one stage: write-time single-file repair (engine/repair.ts); continuation, post-write autofix, extra repair round and safety-gate repair deleted; safety gate is check-only
+- [ ] Fresh 4-page smoke test (after user go-ahead) → build → browser check → publish

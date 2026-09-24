@@ -10,8 +10,7 @@ describe("AI call accounting", () => {
     { feature: "generate", phase: "implement", chosenBy: "smart_router:best_score" },
     { feature: "generate", phase: "implement", chosenBy: "missing_pages", recoveryReason: "missing_page" },
     { feature: "generate", phase: "implement", chosenBy: "missing_pages_provider_retry", recoveryReason: "provider_error" },
-    { feature: "recovery", chosenBy: "stream_continuation", recoveryReason: "stream_continuation" },
-    { feature: "recovery", chosenBy: "post_stream_repair" },
+    { feature: "recovery", chosenBy: "broken_file_repair", recoveryReason: "parse_error" },
     { feature: "generate", phase: "design-contract" },
     { feature: "recovery" },
     { feature: "generate", phase: "verify-plan" },
@@ -19,10 +18,9 @@ describe("AI call accounting", () => {
   it("explains every call type seen in the last live build", () => {
     for (const c of seen) expect(explainAiCall(c).stage).not.toBe("unclassified");
   });
-  it("labels retries, continuations and repairs", () => {
+  it("labels retries and repairs", () => {
     expect(explainAiCall(seen[5]).kind).toBe("retry");
-    expect(explainAiCall(seen[6]).kind).toBe("continuation");
-    expect(explainAiCall(seen[7]).kind).toBe("repair");
+    expect(explainAiCall(seen[6]).kind).toBe("repair");
   });
 });
 

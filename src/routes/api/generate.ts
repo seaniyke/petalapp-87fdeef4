@@ -104,7 +104,6 @@ import {
 } from "@/server/preservation-rules";
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import {
-  runSelfCheck,
   humanizeBuildError,
   classifyRawError,
   isTransientFailure,
@@ -128,14 +127,12 @@ import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
 import { autofixFiles } from "@/server/stream-autofixer";
-import { runPostStreamAutofix } from "@/server/post-stream-autofix.server";
 import { fallbackEstimate } from "@/server/preflight-estimate.server";
 import { classifyPhase, modelTierForPhase, type Phase } from "@/server/phase-classifier.server";
 // Tier 3 model verifier removed: it duplicated the deterministic local
 // verifier and its recovery pass was unconditionally skipped by the
 // Phase D one-round autofix cap, so it only added latency + tokens.
 import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
-import { runContinuationTier } from "@/server/pipeline/tier-continuation";
 import {
   assessChunking,
   assessRouteCoverage,
@@ -3189,6 +3186,8 @@ Forbidden defaults
   // output budget writes the shared shell + the first pages now; the
   // coverage continuation below writes only the remaining pages (it never
   // rewrites delivered files). Small builds stay one call.
+  // PLAN: the one scope contract the WRITE stage executes.
+  let firstBuildPlan: import("@/server/engine/plan").FirstBuildPlan | null = null;
   if (isInitial) {
     try {
       const { planFirstBuild } = await import("@/server/engine/plan");
@@ -3203,6 +3202,7 @@ Forbidden defaults
       const firstPlan = planFirstBuild({ prompt: lastUserText, plannedRoutes, maxOutputTokens: firstUnitMaxOutput });
       for (const r of firstPlan.routes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
       archetypeBlock += firstPlan.instruction;
+      firstBuildPlan = firstPlan;
       console.log(firstPlan.log);
     } catch {
       /* never block a build on unit planning */
@@ -3971,7 +3971,7 @@ Forbidden defaults
               : firstStall
                 ? null
                 : firstCollected;
-            const recovered = isMissingToolOutputError(retryErr) && recoverySource
+            const recovered = !isInitial && isMissingToolOutputError(retryErr) && recoverySource
               ? await recoverMissingToolOutput({
                   chatMessages: finalMessages,
                   collected: recoverySource,
@@ -4006,7 +4006,7 @@ Forbidden defaults
             // small enough that it cannot overflow. The chunk continuation
             // loop below then finishes the rest in the same turn.
             let smallChunk: ParsedProjectPayload | null = null;
-            if (firstWasTruncated && recovery.take("truncated_output")) {
+            if (!isInitial && firstWasTruncated && recovery.take("truncated_output")) {
               try {
                 controller.enqueue(
                   encoder.encode(
@@ -4162,18 +4162,20 @@ Forbidden defaults
             }
           }
 
-          // COMPLETENESS stage (first builds): every requested page, written
-          // in one call naming all missing pages. Bounded by the recovery table.
+          // WRITE stage (first builds): the shell call above wrote the shared
+          // shell; every planned page is now written by its own call.
           if (isInitial && parsed.files?.length) {
-            const { generateMissingPages } = await import("@/server/engine/completeness");
+            const { writePlannedPages, targetOf: wantOf } = await import("@/server/engine/write");
+            const { pageFileFor } = await import("@/server/engine/plan");
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
-            const wantOf = (instruction: string) =>
-              /as (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
-            const done = await generateMissingPages({
-              requestedRoutes: requested,
+            // The plan is authoritative; requested routes only fill in if
+            // planning failed. No other source of pages exists.
+            const pages = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            const done = await writePlannedPages({
+              pages,
               files: parsed.files,
               budget: recovery,
-              request: async (instruction) => {
+              request: async (instruction: string) => {
                 const { withCallFrame, attachFiles } = await import("@/server/engine/call-accounting");
                 const framed = await withCallFrame(async () => {
                 controller.enqueue(
@@ -4201,7 +4203,7 @@ Forbidden defaults
                 });
                 if (!res.ok || !res.body) return null;
                 let c = await relayAndCollect(res, controller, encoder);
-                const wantPath = /as (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
+                const wantPath = wantOf(instruction);
                 const underDelivered = Boolean(wantPath) && !c.args.includes(`"${wantPath}"`);
                 if (underDelivered) markUpstreamFailed(c.upstream);
                 if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
@@ -4234,7 +4236,7 @@ Forbidden defaults
                 }
                 try {
                   const got = parseCollectedProject(c, true).parsed.files ?? null;
-                  console.log(`[completeness] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} argsChars=${c.args.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
+                  console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} argsChars=${c.args.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
                   return got;
                 } catch {
                   return null;
@@ -4248,7 +4250,7 @@ Forbidden defaults
               },
             });
             console.log(
-              `[completeness] requested=${JSON.stringify(requested)} missingBefore=${JSON.stringify(done.missingBefore)} calls=${done.calls} added=${done.added} missingAfter=${JSON.stringify(done.missingAfter)}`,
+              `[write] pages=${JSON.stringify(pages.map((p) => p.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`,
             );
             parsed.files = done.files;
           }
@@ -5271,7 +5273,7 @@ Forbidden defaults
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })),
                 );
-                const { repairBrokenFile } = await import("@/server/page-repair.server");
+                const { repairBrokenFile } = await import("@/server/engine/repair");
                 return repairBrokenFile(file, detail, {
                   turnId: logicalTurnId,
                   projectId: body.projectId ?? null,
@@ -5687,47 +5689,8 @@ Forbidden defaults
           // a follow-up turn. (Legacy handoff signalling removed.)
         }
 
-        // Tier 2.6 — TRUE truncation recovery. If the local verifier
-        // flagged any file as truncated mid-stream, ask the SAME model
-        // to emit only the missing tail bytes.
-        // (extracted to src/server/pipeline/tier-continuation.ts).
-        const contT0 = Date.now();
-        const preContFiles = nextFiles;
-        const contOut = await runContinuationTier({
-          files: nextFiles,
-          verdict: localVerdict,
-          model,
-        });
-        nextFiles = contOut.files;
-        // The continuation is itself the repair for a truncated file. If it
-        // ran, re-check the flagged files so the one-repair gate below sees
-        // the CURRENT state, not the pre-continuation verdict.
-        let gateLocalVerdict = localVerdict;
-        if (contOut.files !== preContFiles && !localVerdict.ok) {
-          const { verifyFilesLocal } = await import("@/server/local-verifier");
-          gateLocalVerdict = verifyFilesLocal(
-            nextFiles,
-            Array.from(new Set(localVerdict.issues.map((i) => i.path))),
-          );
-        }
-        const continuationRepaired = contOut.files !== preContFiles;
-        // (Legacy handoff-state population removed. `contOut.requestHandoff`
-        // still drives the telemetry outcome below — that's all it's used
-        // for now.)
-        for (const ev of contOut.emit) {
-          controller.enqueue(encoder.encode(sse(ev)));
-        }
-        recorder.record({
-          tier: "continuation",
-          outcome: contOut.requestHandoff
-            ? "failed"
-            : continuationRepaired
-              ? "fixed"
-              : "skipped",
-          duration_ms: Date.now() - contT0,
-          issue_count: contOut.requestHandoff ? 1 : 0,
-          details: { handoff_requested: contOut.requestHandoff },
-        });
+        // REPAIR is one stage: the write-time single-file repair (write-gate →
+        // engine/repair). Truncated files fail to parse and are repaired there.
 
         // Tier 2.7 — esbuild parse pass
         // (extracted to src/server/pipeline/tier-esbuild.ts).
@@ -5818,350 +5781,9 @@ Forbidden defaults
           );
         }
 
-        // Tier 2 — post-stream autofix model. Tiny gemini-flash-lite
-        // pass that ONLY fixes obvious build-breakers.
-        //
-        // Tightened gate (post-audit): we only spend a model call when
-        // the deterministic local verifier flagged something OR the
-        // regex autofixer caught ≥2 things. The old "any 6+ file turn
-        // or any feature/refactor" trigger fired on ~half of turns and
-        // returned an empty fix list almost every time — pure latency
-        // tax. Local verifier is the source of truth.
-        //
-        // The legacy Tier 3 model verifier was removed: it duplicated
-        // the local verifier's checks and its recovery pass was always
-        // skipped by the Phase D one-round cap. One autofix call max
-        // per turn is now structural, not just runtime-enforced.
-        // An AI repair runs only for a real failure. Deterministic autofix
-        // having already fixed things is success, not a reason for another
-        // model call, and on an edit advisory quality/size notes never open it.
-        // On an edit, only failures in files THIS turn changed count — a
-        // pre-existing issue elsewhere is not a reason to repair.
-        const gateTurnPaths = isInitial
-          ? null
-          : new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
-        const inTurn = (p: string) => !gateTurnPaths || gateTurnPaths.has(p);
-        const gateReason =
-          (!gateLocalVerdict.ok ? gateLocalVerdict.issues.find((i) => inTurn(i.path))?.kind : undefined) ??
-          (!esbuildVerdict.ok && esbuildVerdict.issues.some((i) => inTurn(i.path)) ? "syntax" : null) ??
-          (renderRiskIssues.some((i) => inTurn(i.path)) ? "render-risk" : null);
-        // Quality/size notes are advisory on first builds too. Measured
-        // 2026-09-24: an "initial-quality" repair with 13 advisory notes spent
-        // 175 s writing a capped 5,000-token rewrite — the 3-minute gap.
-        // No failure = no repair call.
-        // On an edit the truncation continuation already was the one repair.
-        const autofixGateOpen = gateReason !== null && (isInitial || !continuationRepaired);
-        if (autofixGateOpen) console.info(`[repair] reason=${gateReason}`);
-        // The repair sees only real failures in the failing files — never
-        // advisory size/quality/RLS notes, which inflated the repair into a
-        // multi-file rewrite.
-        const combinedAutofixIssues = [
-          ...localVerdict.issues,
-          ...esbuildVerdict.issues.map((i) => ({
-            path: i.path,
-            kind: "parse" as const,
-            detail: `${i.message} (line ${i.line}:${i.column})`,
-          })),
-          ...renderRiskIssues,
-        ].filter((i) => inTurn(i.path));
-        // Token usage from any user-billable agentic-loop fix cycles.
-        // Cycles 3..N (only when the `agent_loop` Labs flag is on) push
-        // their gateway usage here so the per-turn aggregator at the
-        // bottom of the handler can fold them into the single user
-        // charge. Cycle 2 (the default polish pass) stays on Kimble's
-        // tab — it runs for everyone whether they asked for it or not.
+        // (Post-write autofix and the extra repair round were removed: the
+        // only AI repair is the write-time single-file repair.)
         const agentLoopUsages: Array<GatewayUsage | null> = [];
-        if (autofixGateOpen) {
-          // Cycle 2 = the polish pass. Brief intent ping so the activity
-          // card narrates the gap instead of going silent for 5-10s while
-          // the autofix model thinks.
-          controller.enqueue(
-            encoder.encode(sse({ type: "cycle_start", cycle: 2, intent: "fixing" })),
-          );
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "cycle_progress",
-                cycle: 2,
-                message: `Kimble noticed ${combinedAutofixIssues.length} thing${combinedAutofixIssues.length === 1 ? "" : "s"} to polish — patching now.`,
-              }),
-            ),
-          );
-          const fixT0 = Date.now();
-          try {
-            const fixOut = await runPostStreamAutofix(
-              nextFiles,
-              combinedAutofixIssues,
-              // Minimal change surface: on an edit turn this pass may only see
-              // and rewrite what the turn wrote (plus verifier-flagged files).
-              // Only the failing files — first builds included.
-              Array.from(new Set(combinedAutofixIssues.map((i) => i.path))),
-            );
-            // §7 cost ceiling — meter the polish pass so later rounds know
-            // how much of the turn's repair budget is already gone.
-            repairMeter.charge(
-              "autofix_cycle_2",
-              "deepseek/deepseek-v4-flash",
-              (fixOut.result.usage?.total_tokens ?? 0) ||
-                Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
-            );
-            nextFiles = fixOut.files;
-            if (fixOut.result.fixedFiles > 0) {
-              console.log(
-                `[post-stream-autofix] fixed ${fixOut.result.fixedFiles}:`,
-                fixOut.result.notes.join("; "),
-              );
-              controller.enqueue(
-                encoder.encode(
-                  sse({
-                    type: "status",
-                    message: `Polished ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"} for safety.`,
-                  }),
-                ),
-              );
-            }
-            recorder.record({
-              tier: "post_stream_autofix",
-              outcome: fixOut.result.fixedFiles > 0 ? "fixed" : "ok",
-              duration_ms: Date.now() - fixT0,
-              issue_count: fixOut.result.fixedFiles,
-              details: { gate_open: true, input_issues: combinedAutofixIssues.length },
-            });
-            controller.enqueue(
-              encoder.encode(
-                sse({
-                  type: "timeline",
-                  step: "post_stream_autofix",
-                  outcome: fixOut.result.fixedFiles > 0 ? "fixed" : "ok",
-                  message:
-                    fixOut.result.fixedFiles > 0
-                      ? `Repaired ${fixOut.result.fixedFiles} file${fixOut.result.fixedFiles === 1 ? "" : "s"}`
-                      : "Autofix pass — nothing to repair",
-                  count: fixOut.result.fixedFiles,
-                  ts: Date.now(),
-                }),
-              ),
-            );
-          } catch (e) {
-            console.warn("[post-stream-autofix] rejected:", e);
-            recorder.record({
-              tier: "post_stream_autofix",
-              outcome: "failed",
-              duration_ms: Date.now() - fixT0,
-              issue_count: 0,
-              details: {
-                gate_open: true,
-                error: e instanceof Error ? e.message : String(e),
-              },
-            });
-            controller.enqueue(
-              encoder.encode(
-                sse({
-                  type: "timeline",
-                  step: "post_stream_autofix",
-                  outcome: "failed",
-                  message: "Autofix pass errored — continuing with current files",
-                  ts: Date.now(),
-                }),
-              ),
-            );
-          }
-        } else {
-          recorder.record({
-            tier: "post_stream_autofix",
-            outcome: "skipped",
-            duration_ms: 0,
-            issue_count: 0,
-            details: { gate_open: false },
-          });
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "timeline",
-                step: "post_stream_autofix",
-                outcome: "skipped",
-                message: "Autofix skipped — files look healthy",
-                ts: Date.now(),
-              }),
-            ),
-          );
-        }
-
-        // Agentic loop (Labs: agent_loop). Bounded multi-cycle pass that
-        // re-runs verifiers and feeds remaining issues back to the autofix
-        // model up to N times. Lets a single turn legitimately spend 2-3+
-        // minutes fixing its own mistakes without the user manually
-        // pressing "try to fix" — same shape as Lovable's long agent turns.
-        //
-        // Hard limits (defensive — a runaway turn must NOT exist):
-        //   - up to 3 extra cycles (cycles 3, 4, 5 in the SSE numbering)
-        //   - 90s wall-clock budget across all extra cycles combined
-        //   - stops the moment local + esbuild verifiers both pass
-        //   - stops if a cycle makes zero file changes (model gave up)
-        //
-        // Billing: cycles 3..N push usage into `agentLoopUsages` and are
-        // folded into the single user charge via priceTurn(). Cycle 2 (the
-        // default polish pass above) is still on Kimble's tab.
-        // P0-D: the bounded agent loop now runs for every user (the labs
-        // flag was the kill switch during early testing). All safety limits
-        // below remain — 3 cycles max, 90s wall budget, converges the
-        // moment local+esbuild verifiers pass, hard-stops on zero progress.
-        //
-        // v3 Phase A: this loop now also runs on user-initiated "try to fix"
-        // turns. It used to be suppressed there to avoid "recursing into
-        // another loop", but that was backwards — the repair turn is exactly
-        // where convergence matters most, and the loop is already bounded by
-        // cycles, wall clock, and the repair cost ceiling. Suppressing it
-        // meant the user's explicit fix request got a single unverified pass.
-        {
-
-          // Reliability rebuild, phase 3 — repair is bounded to ONE pass.
-          // Three extra rounds over 90 seconds is what produced the long
-          // silent gap that ended in a rollback: rounds 2 and 3 almost never
-          // converged, they just spent time and invented imports. One extra
-          // round with the exact remaining compiler errors captures nearly
-          // all of the real recoveries, and a turn that still fails after it
-          // fails fast and honestly instead of stalling.
-          const AGENT_LOOP_MAX_CYCLES = 1;
-          const AGENT_LOOP_WALL_MS = 30_000;
-
-          const loopT0 = Date.now();
-          const { verifyFilesLocal: lvFn } = await import("@/server/local-verifier");
-          // Shared with the pre-emit gate so "what blocks a turn" has exactly
-          // one definition. Two copies of this list is how a kind silently
-          // becomes blocking in one place and advisory in the other.
-          const { BLOCKING_KINDS, isScaffoldOwned } = await import(
-            "@/server/preemit-gate.server"
-          );
-          for (let cyc = 0; cyc < AGENT_LOOP_MAX_CYCLES; cyc++) {
-            if (Date.now() - loopT0 > AGENT_LOOP_WALL_MS) {
-              console.log("[agent-loop] wall-time exhausted, stopping");
-              break;
-            }
-            const reverifyPaths = nextFiles.map((f) => f.path);
-            const localAgain = lvFn(nextFiles, reverifyPaths);
-            const esbAgain = await verifyFilesEsbuild(nextFiles, reverifyPaths);
-            const rawStillBad = [
-              ...localAgain.issues,
-              ...esbAgain.issues.map((i) => ({
-                path: i.path,
-                kind: "parse" as const,
-                detail: `${i.message} (line ${i.line}:${i.column})`,
-              })),
-            ];
-            // Only loop on issues the autofix model is actually allowed
-            // to act on. Soft warnings and protected scaffold paths get
-            // filtered out — otherwise the model returns an empty fix
-            // list and we hard-stop on cycle 3 for nothing useful.
-            // `missing-dep` is fixable here (the model can add the import or
-            // drop the usage) even though the gate treats it as advisory,
-            // because npm pre-flight may still resolve it.
-            // On an edit, only failures in files this turn changed count. A
-            // pre-existing problem elsewhere in the project is not this
-            // edit's failure and must not buy another model call.
-            const loopTurnPaths = isInitial
-              ? null
-              : new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
-            const stillBad = rawStillBad.filter(
-              (i) =>
-                (BLOCKING_KINDS.has(i.kind) || i.kind === "missing-dep") &&
-                !isScaffoldOwned(i.path) &&
-                (!loopTurnPaths || loopTurnPaths.has(i.path)),
-            );
-
-            if (stillBad.length === 0) {
-              console.log(
-                `[agent-loop] converged after ${cyc} extra cycle(s) (raw=${rawStillBad.length}, fixable=0)`,
-              );
-              break;
-            }
-            // Ordinary edit: at most one repair call in total. If the first
-            // repair already ran, stop rather than spend a third call.
-            if (!isInitial && (autofixGateOpen || continuationRepaired)) {
-              console.warn(
-                `[repair] edit already used its one repair — not running another (remaining=${stillBad.length})`,
-              );
-              break;
-            }
-            console.info(
-              `[repair] reason=${stillBad[0]!.kind} path=${stillBad[0]!.path} count=${stillBad.length}`,
-            );
-            const cycleNum = 3 + cyc;
-            // §7 hard cost ceiling. Rounds are bounded above; this bounds the
-            // money. Crossing it ends the repair phase honestly rather than
-            // spending another round on a loop that isn't converging.
-            if (repairMeter.status().exhausted) {
-              console.warn(
-                `[agent-loop] cycle ${cycleNum} skipped — repair cost ceiling reached (${repairMeter.summary()})`,
-              );
-              controller.enqueue(
-                encoder.encode(sse({ type: "cycle_end", cycle: cycleNum, outcome: "hard-stop" })),
-              );
-              break;
-            }
-            controller.enqueue(
-              encoder.encode(sse({ type: "cycle_start", cycle: cycleNum, intent: "fixing" })),
-            );
-            controller.enqueue(
-              encoder.encode(
-                sse({
-                  type: "cycle_progress",
-                  cycle: cycleNum,
-                  message: `Round ${cycleNum}: ${stillBad.length} issue${stillBad.length === 1 ? "" : "s"} remaining — refining.`,
-                }),
-              ),
-            );
-            const beforeHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
-            try {
-              const fixOut = await runPostStreamAutofix(
-                nextFiles,
-                stillBad,
-                isInitial ? undefined : diffChangedPaths(turnBaselineFiles, nextFiles),
-              );
-              nextFiles = fixOut.files;
-              if (fixOut.result.usage) {
-                agentLoopUsages.push(fixOut.result.usage);
-                if (!body.isAutoFix) {
-                  controller.enqueue(
-                    encoder.encode(
-                      sse({
-                        type: "credits_estimate",
-                        credits: priceTurn([collected.usage ?? null, ...agentLoopUsages]).amount,
-                      }),
-                    ),
-                  );
-                }
-              }
-              repairMeter.charge(
-                `autofix_cycle_${cycleNum}`,
-                "deepseek/deepseek-v4-flash",
-                (fixOut.result.usage?.total_tokens ?? 0) ||
-                  Math.ceil(nextFiles.reduce((s, f) => s + f.content.length, 0) / 4) + 4_000,
-              );
-              const afterHash = nextFiles.map((f) => f.path + ":" + f.content.length).join("|");
-              const madeProgress = afterHash !== beforeHash;
-              controller.enqueue(
-                encoder.encode(
-                  sse({
-                    type: "cycle_end",
-                    cycle: cycleNum,
-                    outcome: madeProgress ? "retrying" : "hard-stop",
-                  }),
-                ),
-              );
-              if (!madeProgress) {
-                console.log(`[agent-loop] cycle ${cycleNum} made no changes, stopping`);
-                break;
-              }
-            } catch (e) {
-              console.warn(`[agent-loop] cycle ${cycleNum} threw:`, e);
-              controller.enqueue(
-                encoder.encode(sse({ type: "cycle_end", cycle: cycleNum, outcome: "hard-stop" })),
-              );
-              break;
-            }
-          }
-        }
 
         // Phase 4: resolve `petal-image://...` placeholders into real
         // AI-generated images uploaded to the public petal-images
@@ -6291,8 +5913,7 @@ Forbidden defaults
           );
         }
 
-        // Missing/placeholder pages are owned solely by the completeness
-        // stage (engine/completeness.ts). No second page writer runs here.
+        // Pages are written only by the WRITE stage (engine/write.ts).
 
 
         // Design contract enforcement — the project's committed design system
@@ -6785,32 +6406,8 @@ Forbidden defaults
           filesWritten: nextFiles.length,
         });
 
-        // Layer 5 — Self-check. Awaited (not fire-and-forget) so the
-        // verdict reaches the client BEFORE the stream closes. Bounded
-        // to a single fast model call; on any failure we emit nothing
-        // and the user just sees their normal result.
-        if (isInitial) try {
-          const verdict = await runSelfCheck({
-            brief: lastUserContent,
-            assistantSummary: summary,
-            filePaths: nextFiles.map((f) => f.path),
-          });
-          if (verdict) {
-            controller.enqueue(
-              encoder.encode(
-                sse({
-                  type: "self_check",
-                  score: verdict.score,
-                  verdict: verdict.verdict,
-                  gaps: verdict.gaps,
-                  suggestions: verdict.suggestions,
-                }),
-              ),
-            );
-          }
-        } catch (e) {
-          console.warn("[self-check] rejected:", e);
-        }
+        // (AI self-check removed: success is decided only by the deterministic
+        // build state. An AI opinion can never mark a build complete or not.)
 
         // Kill-switch: this turn produced a usable edit on the primary
         // model — record a success sample so a transient blip doesn't

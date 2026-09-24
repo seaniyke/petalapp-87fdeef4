@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { generateMissingPages, missingPagesInstruction } from "@/server/engine/completeness";
+import { writePlannedPages } from "@/server/engine/write";
+import { planFirstBuild, pageFileFor } from "@/server/engine/plan";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { resolveProviderRouting } from "@/server/engine/provider-policy";
 
@@ -7,52 +8,53 @@ const app = (routes: string[]) => ({
   path: "src/App.tsx",
   content: routes.map((r) => `<Route path="${r}" />`).join("\n"),
 });
+const requested = ["/", "/menu", "/about", "/contact"];
+const pages = requested.map((route) => ({ route, file: pageFileFor(route) }));
+const page = (n: string) => ({ path: `src/pages/${n}.tsx`, content: `export default function ${n}(){return <main>${n}</main>}` });
 
-describe("completeness stage", () => {
-  const requested = ["/", "/menu", "/about", "/contact"];
-  const partial = [app(["/", "/contact"]), { path: "src/pages/Home.tsx", content: "home" }, { path: "src/pages/Contact.tsx", content: "c" }];
+describe("plan drives write", () => {
+  it("plan names every page and tells the shell call not to write pages", () => {
+    const p = planFirstBuild({ prompt: "Pages: Home, Menu, About, Contact only.", plannedRoutes: [], maxOutputTokens: 10000 });
+    expect(p.pages.map((x) => x.file)).toEqual(["src/pages/Home.tsx", "src/pages/Menu.tsx", "src/pages/About.tsx", "src/pages/Contact.tsx"]);
+    expect(p.instruction).toMatch(/Do NOT write any of the page files/);
+  });
+});
 
-  it("writes each missing page in its own call and never rewrites finished pages", async () => {
+describe("write stage", () => {
+  it("writes each planned page once, in its own call, never rewriting finished pages", async () => {
     const instrs: string[] = [];
-    const r = await generateMissingPages({
-      requestedRoutes: requested,
-      files: partial,
+    const r = await writePlannedPages({
+      pages,
+      files: [app(requested), page("Home")],
       budget: new RecoveryBudget(),
       request: async (i) => {
         instrs.push(i);
-        if (i.includes("ONLY src/App.tsx")) return [app(requested)];
-        if (i.includes("src/pages/Menu.tsx")) return [{ path: "src/pages/Menu.tsx", content: "export default function Menu(){return <main><h1>Menu</h1><p>Sourdough, croissants and seasonal pastries baked daily.</p></main>}" }, { path: "src/pages/Home.tsx", content: "REWRITTEN" }];
-        if (i.includes("src/pages/About.tsx")) return [{ path: "src/pages/About.tsx", content: "export default function About(){return <main><h1>About</h1><p>A family bakery rising before dawn since 2009.</p></main>}" }];
-        return null;
+        const m = /as src\/pages\/(\w+)\.tsx/.exec(i);
+        return m ? [page(m[1]!), { path: "src/pages/Home.tsx", content: "REWRITTEN" }] : null;
       },
     });
-    expect(instrs.filter((i) => i.includes("Write ONLY the page")).length).toBe(2);
-    expect(r.missingAfter).toEqual([]);
-    expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toBe("home");
+    expect(instrs.length).toBe(3);
+    expect(r.missing).toEqual([]);
+    expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).not.toBe("REWRITTEN");
   });
 
-  it("each page is attempted once only; still-missing pages are reported", async () => {
-    const budget = new RecoveryBudget();
-    const first = await generateMissingPages({ requestedRoutes: requested, files: partial, budget, request: async () => null });
-    expect(first.attempted).toBe(true);
-    expect(first.missingAfter.length).toBeGreaterThan(0);
-    let called = false;
-    const second = await generateMissingPages({
-      requestedRoutes: requested, files: partial, budget,
-      request: async () => { called = true; return null; },
+  it("a failed page gets exactly one more attempt, then is reported missing", async () => {
+    let calls = 0;
+    const r = await writePlannedPages({
+      pages, files: [app(requested)], budget: new RecoveryBudget(),
+      request: async (i) => { calls++; return i.includes("Menu") ? null : [page(/as src\/pages\/(\w+)/.exec(i)?.[1] ?? "X")]; },
     });
-    expect(called).toBe(false);
-    expect(second.attempted).toBe(false);
+    expect(r.missing).toEqual(["/menu"]);
+    expect(calls).toBe(5); // 4 pages + 1 retry for Menu (router already fine)
   });
 
-  it("skips when nothing is missing", async () => {
-    const full = [app(requested), ...["Home", "Menu", "About", "Contact"].map((n) => ({ path: `src/pages/${n}.tsx`, content: n }))];
-    const r = await generateMissingPages({ requestedRoutes: requested, files: full, budget: new RecoveryBudget(), request: async () => { throw new Error("no"); } });
-    expect(r.attempted).toBe(false);
-  });
-
-  it("instruction names no extra pages", () => {
-    expect(missingPagesInstruction(["/menu"], ["src/pages/Home.tsx"])).toMatch(/No extra pages/);
+  it("a placeholder page is not a real page", async () => {
+    const stub = { path: "src/pages/Home.tsx", content: "// Auto-generated stub by Petal import-resolver.\nexport default ()=>null" };
+    const r = await writePlannedPages({
+      pages: [pages[0]!], files: [app(["/"]), stub], budget: new RecoveryBudget(),
+      request: async () => [page("Home")],
+    });
+    expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toContain("<main>Home");
   });
 });
 
