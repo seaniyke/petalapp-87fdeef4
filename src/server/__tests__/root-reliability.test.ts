@@ -182,6 +182,6 @@ describe("audit consolidation", () => {
     expect(src).not.toMatch(/enforceDesignContract/);
     expect(src).not.toMatch(/KIMBLE_PREEMIT_AGENT_LOOP|runAgentLoop/);
     const cb = fs.readFileSync("src/routes/api/public/builds/callback.ts", "utf8");
-    expect(cb).not.toMatch(/status: "ready"(?![\s\S]{0,0})/.source === "" ? /$^/ : /status:\s*"failed",\s*\n\s*dist_path: payload\.url/);
+    expect(cb).toMatch(/status: probeDecision\.status/);
   });
 });
