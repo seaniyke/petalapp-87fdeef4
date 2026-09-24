@@ -570,7 +570,13 @@ async function recordTelemetry(
         attempt_id: ambient.attemptId ?? null,
         // "after_cancel" = background work that outlived its attempt — must
         // never be counted toward a live benchmark result.
-        attempt_state: ambient.attemptId ? (ambient.signal?.aborted ? "after_cancel" : "live") : null,
+        attempt_state: ambient.attemptId
+          ? ambient.signal?.aborted
+            ? "after_cancel"
+            : ambient.ended
+              ? "after_end"
+              : "live"
+          : null,
         key_owner: "platform",
         // Unknown until real usage arrives — never a fake 0.
         cost_basis: "unknown",

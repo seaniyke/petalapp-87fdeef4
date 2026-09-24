@@ -356,6 +356,11 @@ async function draftFlows(args: {
   signal?: AbortSignal;
   prd?: Prd | null;
 }): Promise<VerifyFlow[]> {
+  // Nothing interactive (no form, submit or mutation) → no flow to plan and
+  // no reason to hold the build start for a model call.
+  if (!args.files.some((f) => /\.(tsx|jsx)$/.test(f.path) && !/\/ui\/|components\/(examples|blocks|kit)\//.test(f.path) && /<form|onSubmit|useMutation|\.insert\(|handleSubmit/i.test(f.content))) {
+    return [];
+  }
   try {
     const res = await aiChatCompletions({
       feature: "generate",
@@ -376,8 +381,10 @@ async function draftFlows(args: {
         temperature: 0,
         // 1-3 short flows fit comfortably in ~1.5k tokens. Without a cap the
         // model spent ~14.7k tokens (90s) here on a single benchmark turn.
-        max_tokens: 1_800,
-        reasoning: { effort: "low", exclude: true },
+        // Measured 2026-09-24: with reasoning on, the call used the whole
+        // 1,800 budget (~60 s) before the build could start. JSON only.
+        max_tokens: 1_200,
+        reasoning: { enabled: false },
         response_format: { type: "json_object" },
       },
     });

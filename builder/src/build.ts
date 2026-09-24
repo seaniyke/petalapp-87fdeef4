@@ -364,7 +364,10 @@ export async function buildAndDeploy(
   //     This is deliberately NON-FATAL: a type error that rollup can still
   //     bundle must never cost the user a working preview. We only surface the
   //     diagnostics, and attach them to the failure when vite does blow up.
-  const typecheck = await runTypecheck(projectDir, env, heartbeat);
+  //     Runs ALONGSIDE vite rather than before it: it is diagnostic-only, and
+  //     type-checking the whole starter kit sequentially added its full
+  //     duration to every build's critical path.
+  const typecheckPromise = runTypecheck(projectDir, env, heartbeat);
 
   // 2) Build with vite (project's own script).
   heartbeat.beat("compiling the app");
@@ -375,6 +378,7 @@ export async function buildAndDeploy(
     heartbeat,
     label: "compiling the app",
   });
+  const typecheck = await typecheckPromise;
   if (build.code !== 0) {
     const viteLogs = build.stdout + "\n" + build.stderr;
     throw new BuildError(
