@@ -4597,6 +4597,7 @@ export type Database = {
       }
       turns: {
         Row: {
+          committed_at: string | null
           created_at: string
           credits_charged: number | null
           ended_at: string | null
@@ -4612,6 +4613,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          committed_at?: string | null
           created_at?: string
           credits_charged?: number | null
           ended_at?: string | null
@@ -4627,6 +4629,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          committed_at?: string | null
           created_at?: string
           credits_charged?: number | null
           ended_at?: string | null
