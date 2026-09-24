@@ -104,7 +104,6 @@ import {
 } from "@/server/preservation-rules";
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import {
-  runSelfCheck,
   humanizeBuildError,
   classifyRawError,
   isTransientFailure,
@@ -6785,32 +6784,8 @@ Forbidden defaults
           filesWritten: nextFiles.length,
         });
 
-        // Layer 5 — Self-check. Awaited (not fire-and-forget) so the
-        // verdict reaches the client BEFORE the stream closes. Bounded
-        // to a single fast model call; on any failure we emit nothing
-        // and the user just sees their normal result.
-        if (isInitial) try {
-          const verdict = await runSelfCheck({
-            brief: lastUserContent,
-            assistantSummary: summary,
-            filePaths: nextFiles.map((f) => f.path),
-          });
-          if (verdict) {
-            controller.enqueue(
-              encoder.encode(
-                sse({
-                  type: "self_check",
-                  score: verdict.score,
-                  verdict: verdict.verdict,
-                  gaps: verdict.gaps,
-                  suggestions: verdict.suggestions,
-                }),
-              ),
-            );
-          }
-        } catch (e) {
-          console.warn("[self-check] rejected:", e);
-        }
+        // (AI self-check removed: success is decided only by the deterministic
+        // build state. An AI opinion can never mark a build complete or not.)
 
         // Kill-switch: this turn produced a usable edit on the primary
         // model — record a success sample so a transient blip doesn't
