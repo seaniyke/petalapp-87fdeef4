@@ -82,6 +82,6 @@
 
 ## Railway move (plan approved 2026-09-24)
 - [x] Phase 1: signed data gateway (/api/public/agent/ops) + tests
-- [~] Phase 2: AgentIO seam added; commit point (Stop checks, balance, charge, save files) routed through it. Progress events + turn close + AI call log also routed. Saved plan (blueprint) read+save routed; memory already uses the user's own sign-in. Next: run core off the web request (Phase 3 prep)
+- [~] Phase 2: AgentIO seam added; commit point (Stop checks, balance, charge, save files) routed through it. Progress events + turn close + AI call log also routed. Saved plan (blueprint) read+save routed; memory already uses the user's own sign-in. Scoped table access (db.query op + stand-in client) done. Next: run core off the web request on Railway (Phase 3)
 - [ ] Phase 3: run core on Railway — blocked on OPENROUTER_API_KEY on Railway + redeploy
 - [ ] Phase 4: switch over (AGENT_RUNTIME=railway) and live-prove

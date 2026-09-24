@@ -112,6 +112,30 @@ export function createAgentOpsStore(): AgentOpsStore {
       const { data } = await db.from("ai_call_log").update(patch as Any).eq("id", id).eq("turn_id", turnId).select("id");
       return !!data && data.length > 0;
     },
+    async runQuery(q) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const t = (db as any).from(q.table);
+      let b =
+        q.action === "select"
+          ? t.select(q.columns ?? "*")
+          : q.action === "insert"
+            ? t.insert(q.values)
+            : q.action === "upsert"
+              ? t.upsert(q.values, q.onConflict ? { onConflict: q.onConflict } : undefined)
+              : q.action === "update"
+                ? t.update(q.values)
+                : t.delete();
+      if (q.action !== "insert" && q.action !== "upsert") b = b.eq(q.scopeCol, q.scopeValue);
+      for (const f of q.filters) {
+        b = f.op === "not_is" ? b.not(f.col, "is", f.value) : b[f.op](f.col, f.value);
+      }
+      if (q.action !== "select" && q.returning) b = b.select(q.columns ?? "*");
+      if (q.order) b = b.order(q.order.col, { ascending: q.order.ascending });
+      if (q.limit) b = b.limit(q.limit);
+      if (q.single) b = b[q.single]();
+      const { data, error } = await b;
+      return { data: data ?? null, error: error ? error.message : null };
+    },
     async savePicture(row) {
       const { error } = await db.from("project_pictures").insert(row as Any);
       if (error) throw new Error(error.message);
