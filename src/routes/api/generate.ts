@@ -3617,13 +3617,12 @@ Forbidden defaults
     // how it should look second.
     // Project Intelligence Context first: the canonical understanding and the
     // committed design system frame everything the contract blocks add.
-    picBlock +
-    (boundedEdit ? "" : prdBlock + prdScenarioBlock) +
-    orchestrationBlock +
-    designTasteBlock +
-    skillsBlock +
-
-    learningBlock +
+    keep("pic", picBlock) +
+    keep("prd", boundedEdit ? "" : prdBlock + prdScenarioBlock) +
+    keep("orchestration", orchestrationBlock) +
+    keep("designTaste", designTasteBlock) +
+    keep("skills", skillsBlock) +
+    keep("learning", learningBlock) +
     highStakesBlock +
     visionAddendum +
     backendGateBlock +
