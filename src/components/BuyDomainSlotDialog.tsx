@@ -211,7 +211,9 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
 
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
+
       <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -449,6 +451,9 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
 
       </DialogContent>
     </Dialog>
+    <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
+    </>
   );
+
 }
 
