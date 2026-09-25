@@ -90,7 +90,7 @@ export function parseTokens(css: string) {
   };
 }
 
-const ALLOWED_FONT_HOSTS = /^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|api\.fontshare\.com|rsms\.me)\//;
+const ALLOWED_FONT_HOSTS = /^https:\/\/(fonts\.googleapis\.com|fonts\.gstatic\.com|api\.fontshare\.com|rsms\.me)(\/|$)/;
 
 export function parseFontsHtml(html: string): { fonts: DesignFont[]; errors: string[] } {
   const fonts: DesignFont[] = [];
