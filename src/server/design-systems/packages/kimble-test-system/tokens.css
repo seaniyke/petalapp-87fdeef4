@@ -1,0 +1,50 @@
+:root {
+  --kimble-font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --kimble-font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --kimble-text-sm: 0.875rem;
+  --kimble-text-base: 1rem;
+  --kimble-text-lg: 1.1875rem;
+  --kimble-text-display: 3.25rem;
+  --kimble-weight-body: 420;
+  --kimble-weight-heading: 640;
+  --kimble-leading-body: 1.6;
+  --kimble-leading-heading: 1.12;
+  --kimble-tracking-heading: -0.018em;
+  --kimble-space-unit: 0.3rem;
+  --kimble-container: 72rem;
+  --kimble-radius-sm: 0.3rem;
+  --kimble-radius-md: 0.55rem;
+  --kimble-radius-lg: 0.9rem;
+  --kimble-shadow-sm: 0 1px 2px oklch(0.2 0.02 200 / 0.08);
+  --kimble-shadow-md: 0 6px 18px -6px oklch(0.2 0.02 200 / 0.18);
+  --kimble-ease: cubic-bezier(0.3, 0.7, 0.2, 1);
+  --kimble-duration: 180ms;
+  --kimble-focus-ring: 0 0 0 3px oklch(0.62 0.11 200 / 0.35);
+
+  --background: oklch(0.975 0.006 190);
+  --foreground: oklch(0.22 0.02 210);
+  --card: oklch(0.995 0.003 190);
+  --card-foreground: oklch(0.22 0.02 210);
+  --muted: oklch(0.93 0.01 195);
+  --muted-foreground: oklch(0.5 0.02 205);
+  --border: oklch(0.88 0.012 195);
+  --input: oklch(0.88 0.012 195);
+  --secondary: oklch(0.94 0.012 180);
+  --secondary-foreground: oklch(0.25 0.02 210);
+  --radius: 0.55rem;
+  --font-display: var(--kimble-font-display);
+  --font-body: var(--kimble-font-body);
+}
+
+.dark {
+  --background: oklch(0.19 0.015 215);
+  --foreground: oklch(0.95 0.008 190);
+  --card: oklch(0.23 0.016 215);
+  --card-foreground: oklch(0.95 0.008 190);
+  --muted: oklch(0.28 0.015 212);
+  --muted-foreground: oklch(0.72 0.015 200);
+  --border: oklch(0.32 0.015 212);
+  --input: oklch(0.32 0.015 212);
+  --secondary: oklch(0.27 0.02 200);
+  --secondary-foreground: oklch(0.94 0.01 190);
+}
