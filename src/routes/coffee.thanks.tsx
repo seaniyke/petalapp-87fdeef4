@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Heart, Loader2, XCircle, ArrowRight } from "lucide-react";
+import { INVEST_LINKS_ENABLED } from "@/lib/site-flags";
 
 const SearchSchema = z.object({
   reference: z.string().optional(),
