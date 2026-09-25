@@ -62,7 +62,7 @@ export const Route = createRootRoute({
       { rel: "apple-touch-icon", href: "/kimble-logo.png" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..900;1,9..40,400..700&family=JetBrains+Mono:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&family=Sora:wght@400..800&family=JetBrains+Mono:wght@400;500&display=swap",
       },
     ],
     scripts: [

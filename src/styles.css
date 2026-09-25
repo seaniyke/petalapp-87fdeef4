@@ -63,9 +63,9 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* Single typeface across the whole product: DM Sans. */
-  --font-display: "DM Sans", system-ui, sans-serif;
-  --font-brand: "DM Sans", system-ui, sans-serif;
-  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-display: "Sora", system-ui, sans-serif;
+  --font-brand: "Sora", system-ui, sans-serif;
+  --font-sans: "Manrope", system-ui, sans-serif;
   --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Menlo", monospace;
 
   /* iOS-style surface shadows: soft, taller, with a faint inset top highlight. */
@@ -210,11 +210,11 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
      - 1.5 line-height for body, tightened for headlines below.
      - text-rendering + cv11 enables tabular-friendly numerals via Inter Tight. */
   html {
-    font-size: 16.5px;
+    font-size: 17px;
   }
   @media (min-width: 768px) {
     html {
-      font-size: 17px;
+      font-size: 17.5px;
     }
   }
   html, body {
@@ -224,29 +224,30 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
     font-feature-settings: "cv11", "ss01", "ss03";
     letter-spacing: -0.011em;
     line-height: 1.5;
-    font-weight: 450;
+    font-weight: 500;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
   h1, h2, h3, h4 {
     font-family: var(--font-display);
+    font-weight: 700;
     letter-spacing: -0.022em;
     line-height: 1.1;
   }
   /* Small text carries the most information density — keep it thick and
      legible on both phones and desktops instead of thin and grey. */
   .text-xs {
-    font-size: 0.8rem;
+    font-size: 0.8125rem;
     font-weight: 600;
     letter-spacing: -0.004em;
   }
   .text-sm {
-    font-size: 0.925rem;
-    font-weight: 550;
+    font-size: 0.9375rem;
+    font-weight: 600;
   }
   .text-base {
-    font-weight: 500;
+    font-weight: 550;
   }
   /* Muted copy at small sizes gets extra weight so it never looks washed out. */
   .text-muted-foreground.text-xs,
@@ -281,7 +282,7 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
   }
   .text-balance { text-wrap: balance; }
   .landing-page {
-    font-family: "DM Sans", var(--font-sans);
+    font-family: "Manrope", var(--font-sans);
     letter-spacing: 0;
   }
   .landing-page .font-landing-display {
