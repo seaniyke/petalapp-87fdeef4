@@ -85164,6 +85164,7 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -112236,6 +112237,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -115489,6 +115491,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -125161,7 +125164,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -131296,7 +131298,7 @@ var REQUEST_CUES = [
   /^\s*(?:check|see|view|manage|set ?up|add|connect|buy)\b/i
 ];
 var BUILD_CUES = [
-  /\b(?:build|make|create|add|generate|design|code)\s+(?:me\s+)?(?:a|an|the)\s+(?:app|site|website|page|landing|dashboard|tool|platform|marketplace|store|shop|clone)\b/i,
+  /\b(?:build|make|create|add|generate|design|code)\s+(?:me\s+)?(?:a|an|the)\s+(?:[\w-]+\s+){0,3}(?:app|site|website|page|landing|dashboard|tool|platform|marketplace|store|shop|clone)\b/i,
   /\b(?:app|site|website|platform|marketplace|page)\s+(?:that|where|which|to)\b/i,
   /\b(?:users?|people|customers?|visitors?)\s+(?:can|should|will|could)\b/i,
   /\blike\s+(?:airbnb|uber|shopify|notion|stripe)\b/i,
@@ -131308,7 +131310,7 @@ var BUILD_CUES = [
   /\b(?:on|to|from|in|into|at)\s+(?:the\s+)?[a-z0-9 -]{0,24}\b(?:page|screen|view|tab)\b/i
 ];
 function detectSurfaceIntent(text) {
-  const raw = (text ?? "").trim();
+  const raw = (text ?? "").replace(/\bhttps?:\/\/\S+/gi, " ").trim();
   if (raw.length < 4 || raw.length > 2e3) return null;
   for (const cue of BUILD_CUES) if (cue.test(raw)) return null;
   if (!REQUEST_CUES.some((cue) => cue.test(raw))) return null;
@@ -147407,6 +147409,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           async (file, detail) => {
             if (!recovery.take("broken_file", file.path)) return null;
             controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}\u2026` })));
+            controller.enqueue(encoder.encode(sse({ type: "timeline", step: "esbuild_parse", outcome: "failed", message: `Final check on ${file.path}: ${detail}`.slice(0, 500), ts: Date.now() })));
             const { repairBrokenFile: repairBrokenFile2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
             return repairBrokenFile2(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId });
           }
