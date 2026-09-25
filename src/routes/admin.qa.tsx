@@ -1,7 +1,7 @@
 /**
  * Admin · Catalog QA
  *
- * Runs the static catalog validator (templates, packs, themes, snippets) and
+ * Runs the static catalog validator (templates, packs, snippets) and
  * lists findings grouped by severity. This is the safety net that lets us
  * answer "is the starter surface actually shippable?" without hand-auditing
  * 80+ entries every release.
@@ -61,7 +61,7 @@ function AdminQAPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Catalog QA</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Static audit of templates, industry packs, themes, and snippets. Run before every release.
+              Static audit of templates, industry packs, and snippets. Run before every release.
             </p>
           </div>
           <div className="text-xs text-muted-foreground">
@@ -69,10 +69,9 @@ function AdminQAPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Stat label="Templates" value={report.counts.templates} />
           <Stat label="Packs" value={report.counts.packs} />
-          <Stat label="Themes" value={report.counts.themes} />
           <Stat label="Snippets" value={report.counts.snippets} />
           <Stat label="Errors" value={report.counts.errors} tone={report.counts.errors ? "text-destructive" : ""} />
           <Stat label="Warnings" value={report.counts.warnings} tone={report.counts.warnings ? "text-amber-600 dark:text-amber-400" : ""} />

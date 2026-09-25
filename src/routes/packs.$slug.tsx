@@ -197,7 +197,7 @@ function PackDetail() {
         <div className="mt-10 rounded-2xl border border-border bg-gradient-to-br from-primary/10 to-transparent p-8 text-center">
           <h3 className="font-display text-2xl">Ship the {pack.name.toLowerCase()} site today</h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            Kimble builds all {pack.pages.length} pages, the palette, the
+            Kimble builds all {pack.pages.length} pages, the
             database tables, and turns on the right Cloud features.
           </p>
           <button

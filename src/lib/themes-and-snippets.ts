@@ -1,176 +1,18 @@
 /**
- * Theme presets — opinionated visual directions a user can apply to any
- * existing project. Each preset describes the palette, typography, and vibe
- * so the AI can re-skin without changing functionality.
- *
- * The user picks a preset → we ship a tightly-scoped prompt to the builder
- * ("Re-theme this project with…") that doesn't touch business logic.
+ * Reusable feature/section snippets. Composition only: snippet prompts never
+ * choose colours, fonts or accents — the project's design-system package owns
+ * those. (Theme presets were removed: re-theming goes through the
+ * deterministic design-system package engine, never an AI prompt.)
  */
-export type ThemePreset = {
-  slug: string;
-  name: string;
-  vibe: string;
-  palette: { name: string; sample: string }[];
-  fonts: { display: string; body: string };
-  /** The exact prompt sent to the builder. */
-  prompt: string;
-};
-
-export const THEME_PRESETS: ThemePreset[] = [
-  {
-    slug: "editorial-warm",
-    name: "Editorial warm",
-    vibe: "New Yorker meets indie magazine. Cream, ink, terracotta accents.",
-    palette: [
-      { name: "Cream", sample: "#FBF6EE" },
-      { name: "Ink", sample: "#1A1A1A" },
-      { name: "Terracotta", sample: "#C75D3C" },
-    ],
-    fonts: { display: "Fraunces", body: "Inter" },
-    prompt:
-      "Re-theme this project with an editorial warm palette: cream background (#FBF6EE), ink foreground (#1A1A1A), terracotta accent (#C75D3C). Use Fraunces for display headings and Inter for body. Generous whitespace, magazine-style asymmetric layouts, drop caps on hero copy. Do not change any functionality.",
-  },
-  {
-    slug: "midnight-neon",
-    name: "Midnight neon",
-    vibe: "Late-night coding aesthetic. Deep ink, electric accents, tight type.",
-    palette: [
-      { name: "Midnight", sample: "#0A0B12" },
-      { name: "Lime", sample: "#C5F23A" },
-      { name: "Cyan", sample: "#5DD8E6" },
-    ],
-    fonts: { display: "Space Grotesk", body: "JetBrains Mono" },
-    prompt:
-      "Re-theme this project for a midnight-neon aesthetic: near-black background (#0A0B12), white text, electric lime primary (#C5F23A) and cyan secondary (#5DD8E6). Space Grotesk for display, JetBrains Mono for accents and code-feeling labels. Subtle grid lines, tight kerning. Functionality unchanged.",
-  },
-  {
-    slug: "soft-pastel",
-    name: "Soft pastel",
-    vibe: "Friendly indie SaaS. Sky, mint, butter, lots of rounded corners.",
-    palette: [
-      { name: "Sky", sample: "#CFE4FF" },
-      { name: "Mint", sample: "#CFF1DD" },
-      { name: "Butter", sample: "#FFE9A8" },
-    ],
-    fonts: { display: "Outfit", body: "Inter" },
-    prompt:
-      "Re-theme this project with a soft-pastel palette: white background, sky/mint/butter accent tints, rounded-2xl everywhere, Outfit for display, Inter for body. Friendly, approachable, indie-SaaS vibes. Don't change behavior.",
-  },
-  {
-    slug: "brutalist-mono",
-    name: "Brutalist mono",
-    vibe: "Hard edges, monospace, raw 90s web energy.",
-    palette: [
-      { name: "Paper", sample: "#FFFFFF" },
-      { name: "Black", sample: "#000000" },
-      { name: "Hot pink", sample: "#FF2E7E" },
-    ],
-    fonts: { display: "JetBrains Mono", body: "JetBrains Mono" },
-    prompt:
-      "Re-theme this project as brutalist-monospace: pure white background, pure black text, hot pink (#FF2E7E) accent only. Sharp corners (no border-radius), thick black borders, JetBrains Mono everywhere, raw spacing, no shadows or gradients. Keep functionality the same.",
-  },
-  {
-    slug: "glass-aurora",
-    name: "Glass aurora",
-    vibe: "Apple-keynote glassmorphism with aurora gradients.",
-    palette: [
-      { name: "Deep blue", sample: "#0B1426" },
-      { name: "Aurora pink", sample: "#FF6FA3" },
-      { name: "Aurora violet", sample: "#9D6BFF" },
-    ],
-    fonts: { display: "SF Pro Display", body: "Inter" },
-    prompt:
-      "Re-theme this project with a glass-aurora aesthetic: deep blue background with subtle aurora gradients (pink → violet → cyan), frosted-glass cards with backdrop-blur and 1px white borders at low opacity, SF Pro Display vibes for headlines (use Inter as fallback), large soft shadows. Premium, hardware-keynote feel. Functionality unchanged.",
-  },
-  {
-    slug: "earthy-organic",
-    name: "Earthy organic",
-    vibe: "Sustainable brand. Moss, clay, oat — natural, grown-up.",
-    palette: [
-      { name: "Oat", sample: "#EFE8D8" },
-      { name: "Moss", sample: "#5A6B3B" },
-      { name: "Clay", sample: "#A65A36" },
-    ],
-    fonts: { display: "Cormorant Garamond", body: "Inter" },
-    prompt:
-      "Re-theme with an earthy-organic palette: oat background (#EFE8D8), moss primary (#5A6B3B), clay accent (#A65A36). Cormorant Garamond for display, Inter for body. Natural, considered, sustainable-brand feel — no neon, no harsh shadows. Same functionality.",
-  },
-  {
-    slug: "aperture",
-    name: "Aperture",
-    vibe: "Editorial gallery — off-white canvas, sharp charcoal type, a single amber highlight.",
-    palette: [
-      { name: "Canvas", sample: "#F6F4EF" },
-      { name: "Charcoal", sample: "#1A1815" },
-      { name: "Amber", sample: "#D89A3B" },
-    ],
-    fonts: { display: "Instrument Serif", body: "Inter" },
-    prompt:
-      "Re-theme this project as 'Aperture' — an editorial-gallery aesthetic. Off-white canvas (#F6F4EF), sharp charcoal (#1A1815) type, a single amber highlight (#D89A3B). Instrument Serif for display headings, Inter for body. Generous whitespace, thin rules, image-forward asymmetric grids. Sharp corners. Functionality unchanged.",
-  },
-  {
-    slug: "botanica",
-    name: "Botanica",
-    vibe: "Soft-organic — sage foliage, warm cream, terracotta accent.",
-    palette: [
-      { name: "Cream", sample: "#F5F0E4" },
-      { name: "Sage", sample: "#6B7B4B" },
-      { name: "Terracotta", sample: "#C57845" },
-    ],
-    fonts: { display: "Cormorant Garamond", body: "Nunito Sans" },
-    prompt:
-      "Re-theme this project as 'Botanica' — a botanical, soft-organic aesthetic. Warm cream background (#F5F0E4), sage primary (#6B7B4B), terracotta accent (#C57845). Cormorant Garamond for display, Nunito Sans for body. Rounded corners, generous negative space, organic curves. Functionality unchanged.",
-  },
-  {
-    slug: "monolith",
-    name: "Monolith",
-    vibe: "Architectural brutalism — near-black canvas, oversized display type, one hot accent.",
-    palette: [
-      { name: "Ink", sample: "#0E0F14" },
-      { name: "Bone", sample: "#F2F1EE" },
-      { name: "Signal", sample: "#F2542D" },
-    ],
-    fonts: { display: "Space Grotesk", body: "Inter" },
-    prompt:
-      "Re-theme this project as 'Monolith' — architectural brutalism. Near-black background (#0E0F14), bone foreground (#F2F1EE), one signal-orange accent (#F2542D). Oversized Space Grotesk display headings (tracking-tight), Inter body. Zero border-radius, thick 1–2px borders, no shadows. Functionality unchanged.",
-  },
-  {
-    slug: "noir",
-    name: "Noir",
-    vibe: "Cinematic monochrome — pure black canvas, chalk-white type, minimal chrome.",
-    palette: [
-      { name: "Void", sample: "#050505" },
-      { name: "Chalk", sample: "#EFEFEF" },
-      { name: "Blood", sample: "#B9243B" },
-    ],
-    fonts: { display: "Playfair Display", body: "Inter" },
-    prompt:
-      "Re-theme this project as 'Noir' — cinematic monochrome. Near-black background (#050505), chalk-white (#EFEFEF) type, deep blood-red (#B9243B) accent used sparingly. Playfair Display for headings, Inter for body. High contrast, film-still feel, minimal chrome, generous letterspacing on labels. Functionality unchanged.",
-  },
-  {
-    slug: "bloom",
-    name: "Bloom",
-    vibe: "Playful and joyful — coral primary, peach neutrals, rounded everything.",
-    palette: [
-      { name: "Peach", sample: "#FFF3EB" },
-      { name: "Coral", sample: "#F27059" },
-      { name: "Kimble", sample: "#EA8BD3" },
-    ],
-    fonts: { display: "Fraunces", body: "DM Sans" },
-    prompt:
-      "Re-theme this project as 'Bloom' — a playful, joyful aesthetic. Peach background (#FFF3EB), coral primary (#F27059), pink petal accent (#EA8BD3). Fraunces for display headings, DM Sans for body. Rounded-2xl everywhere, soft shadows, cheerful micro-decorations. Functionality unchanged.",
-  },
-];
-
 export type Snippet = {
   slug: string;
   name: string;
   category:
     | "Marketing"
-    | "Forms"
-    | "Data"
-    | "Auth"
     | "Pricing"
+    | "Forms"
+    | "Auth"
+    | "Data"
     | "Realtime"
     | "Maps"
     | "AI"

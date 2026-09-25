@@ -75,7 +75,7 @@ export const INDUSTRY_PACKS: IndustryPack[] = [
       { path: "/contact", purpose: "Address, hours, phone, embedded map, contact form" },
     ],
     cloud: ["database", "email", "storage"],
-    brief: `A complete restaurant website with warm, editorial design (terracotta + cream, Fraunces display font). Build these pages:
+    brief: `A complete restaurant website with a warm, editorial feel. Build these pages:
 
 1. Home — hero with bold cuisine photography, today's specials strip, two-column "our story" teaser, prominent "Reserve a table" CTA.
 2. Menu — full menu organised by section (Starters, Mains, Desserts, Drinks). Each item has name, description, price, and dietary tags (V, GF, etc).
@@ -84,7 +84,7 @@ export const INDUSTRY_PACKS: IndustryPack[] = [
 5. Gallery — masonry grid of food + interior photos with lightbox.
 6. Contact — address, hours per day, phone, embedded map, contact form.
 
-Use a warm cream background, terracotta accent, olive secondary, and a serif display font paired with a clean sans body. Photography-led, generous whitespace, no stock-template feel.`,
+Photography-led, generous whitespace, no stock-template feel.`,
   },
   {
     slug: "real-estate",
@@ -108,7 +108,7 @@ Use a warm cream background, terracotta accent, olive secondary, and a serif dis
       { path: "/about", purpose: "Agency story, awards, testimonials" },
     ],
     cloud: ["database", "email", "storage", "auth"],
-    brief: `A premium real estate agency site with editorial typography (Playfair display, Inter body) and a confident navy + brass + sand palette.
+    brief: `A premium real estate agency site with a confident, editorial feel.
 
 Pages:
 1. Home — full-bleed hero of a featured listing, search bar (location, price range, beds), 3 neighborhood highlight cards.
@@ -118,7 +118,7 @@ Pages:
 5. /sell — seller lead-capture page: free valuation form (address, beds, baths, condition) saved to db, email notification to agency.
 6. /about — agency story, awards, testimonial carousel.
 
-Use serif display + sans body, generous whitespace, large photography. Build the listings table with realistic seed data (5-8 properties).`,
+Generous whitespace, large photography. Build the listings table with realistic seed data (5-8 properties).`,
   },
   {
     slug: "fitness",
@@ -141,7 +141,7 @@ Use serif display + sans body, generous whitespace, large photography. Build the
       { path: "/trial", purpose: "Free trial class booking form" },
     ],
     cloud: ["database", "email", "payments", "auth"],
-    brief: `A high-energy fitness studio site. Dark charcoal background, electric lime primary, bold sans display (Space Grotesk).
+    brief: `A high-energy fitness studio site. Bold and energetic.
 
 Pages:
 1. Home — bold full-height hero with motion-y headline, class-types row (HIIT, Yoga, Strength, Spin), 3 member testimonials, "Book your free trial" CTA.
@@ -174,7 +174,7 @@ Use bold motion, big type, gritty energy. Not soft, not corporate.`,
       { path: "/contact", purpose: "Inquiry form (company, project type, budget, timeline, message)" },
     ],
     cloud: ["database", "email"],
-    brief: `A senior, editorial consultancy site. Ink on bone background, signal-red accent, serif display (GT Sectra) + clean sans body. Confident, asymmetric layouts, generous whitespace.
+    brief: `A senior, editorial consultancy site. Confident, asymmetric layouts, generous whitespace.
 
 Pages:
 1. Home — editorial hero with a sharp positioning statement, services row, one featured case study (image left, copy right), client logo strip, "Start a project" CTA.
@@ -206,7 +206,7 @@ Tone: confident, restrained, premium. No buzzwords.`,
       { path: "/about", purpose: "Author bio, why this newsletter exists" },
     ],
     cloud: ["database", "email"],
-    brief: `A newsletter site optimised for conversion and reading. Paper background, ink type, marigold accent, serif display (Tiempos) + sans body.
+    brief: `A newsletter site optimised for conversion and reading. Calm, readable, editorial.
 
 Pages:
 1. Home — large signup hero (email + name), social proof ("Read by 4,200 founders"), 3 latest-issue cards, "What you'll get" 3-column row, second signup CTA at bottom. Save signups to db and send confirmation via Resend.
@@ -238,7 +238,7 @@ Reading-first design: max-width prose, generous line-height, real serif typograp
       { path: "/admin", purpose: "Admin: today's schedule, all bookings, blocked dates" },
     ],
     cloud: ["database", "email", "payments", "auth"],
-    brief: `A booking site for a solo professional. Calm, premium design — sage primary, bone background, plum accent, Fraunces display + Inter body.
+    brief: `A booking site for a solo professional. Calm, premium feel.
 
 Pages:
 1. Home — hero with practitioner photo, services overview, 3 testimonials, big "Book a session" CTA.
@@ -273,7 +273,7 @@ Use a calm, considered aesthetic — not a SaaS landing page. Real database tabl
       { path: "/messages", purpose: "In-app messaging between buyer and seller per order" },
     ],
     cloud: ["database", "email", "payments", "auth", "storage"],
-    brief: `A two-sided marketplace. Confident, slightly playful — indigo primary, paper background, coral accent, Outfit display + Inter body.
+    brief: `A two-sided marketplace. Confident, slightly playful.
 
 Pages:
 1. Home — hero with category quick-links, featured listings carousel, "Become a seller" CTA, social proof.
@@ -311,7 +311,7 @@ Integration brief for the builder: every checkout / payout / refund call MUST be
       { path: "/settings/connections", purpose: "Connect / disconnect social accounts via OAuth" },
     ],
     cloud: ["database", "email", "auth", "storage", "analytics"],
-    brief: `A creator/social command center. Bold, slightly maximalist — hot pink primary, off-black background, citron accent, Space Grotesk display + Inter body. Punchy, modern, not corporate.
+    brief: `A creator/social command center. Bold, slightly maximalist. Punchy, modern, not corporate.
 
 Pages:
 1. Home — marketing landing for the tool itself: hero, "what it does" feature row (compose once / cross-post / unified inbox / link-in-bio), pricing teaser, signup CTA.
@@ -351,7 +351,7 @@ Integration brief for the builder: use per-user OAuth (not workspace connectors)
       { path: "/settings", purpose: "Profile, linked external accounts, notification prefs" },
     ],
     cloud: ["auth", "database", "email", "storage", "payments"],
-    brief: `A neobank-style banking dashboard. Calm, trustworthy, fintech-modern: indigo primary on ink background, mint success accent, Söhne/Inter pairing. Show clear "DEMO — simulated balances" notices everywhere money is displayed unless real provider keys are configured.
+    brief: `A neobank-style banking dashboard. Calm, trustworthy, fintech-modern. Show clear "DEMO — simulated balances" notices everywhere money is displayed unless real provider keys are configured.
 
 Pages:
 1. / — marketing landing: trust messaging, security highlights (encryption, audit log), labelled-demo disclosure, signup CTA.
@@ -390,7 +390,7 @@ Integration brief for the builder: NEVER move real money. Use Plaid for account 
       { path: "/settings", purpose: "Manage connected wallets, currency preference, hide-small-balances toggle" },
     ],
     cloud: ["auth", "database", "analytics"],
-    brief: `A non-custodial crypto portfolio tracker. Bold web3 aesthetic: electric violet on carbon, lime accent, Space Grotesk display. NEVER ask for or store private keys / seed phrases — that's a hard rule, including in placeholder text.
+    brief: `A non-custodial crypto portfolio tracker. Bold web3 feel. NEVER ask for or store private keys / seed phrases — that's a hard rule, including in placeholder text.
 
 Pages:
 1. / — landing: connect-wallet CTA (RainbowKit modal), supported chains row (Ethereum, Base, Arbitrum, Optimism, Solana), non-custodial trust copy, FAQ.
@@ -429,7 +429,7 @@ Integration brief for the builder: use wagmi + viem + RainbowKit for wallet conn
       { path: "/settings", purpose: "Business profile (logo, address, default tax, payment terms), Stripe connection" },
     ],
     cloud: ["auth", "database", "email", "payments", "storage"],
-    brief: `An invoicing app for small businesses. Clean, professional, finance-software polish: slate-blue primary on paper background, emerald success, Inter Tight display. No clutter, no gradients — money apps need to look trustworthy.
+    brief: `An invoicing app for small businesses. Clean, professional, finance-software polish. No clutter, no gradients — money apps need to look trustworthy.
 
 Pages:
 1. / — landing: hero with screenshot mock, "what it does" rows (clients/invoices/get-paid/auto-chase), pricing teaser, signup CTA.
