@@ -108,8 +108,11 @@ export interface FailureOutcome {
  *    help, so it trips. Two identical failures are common and normal.
  *  - `maxToolFailures: 4` — a tool that failed four times this turn with no
  *    success in between is broken, not unlucky.
- *  - `maxFileFailures: 3` — matches MAX_REPAIRED_FILES; a file that resisted
- *    three fixes needs a different strategy, not a fourth rewrite.
+ *  - `maxFileFailures: 4` — deliberately ONE above the identical-error rule.
+ *    Three DIFFERENT errors on one file is a file being progressively fixed
+ *    (import → export → type), which must not trip; a fourth says the file
+ *    itself is the problem and needs a different strategy, not another
+ *    rewrite. A genuine fix resets the file's count entirely.
  *  - `maxTotalFailures: 10` — a hard backstop well above TURN_LIMITS.repair
  *    plus every bounded recovery path combined.
  */
@@ -127,7 +130,7 @@ export const BREAKER_THRESHOLDS: Readonly<BreakerThresholds> = {
   maxIdenticalError: 3,
   maxConsecutiveFailures: 5,
   maxToolFailures: 4,
-  maxFileFailures: 3,
+  maxFileFailures: 4,
   maxTotalFailures: 10,
   guidanceAtIdentical: 2,
 };
