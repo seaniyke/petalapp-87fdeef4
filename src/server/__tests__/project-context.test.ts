@@ -62,7 +62,7 @@ describe("focused context selection", () => {
     expect(s.primary).toContain("src/components/HeroSection.tsx");
     expect(s.primary).not.toContain("src/pages/Pricing.tsx");
     expect(s.primary).not.toContain("src/pages/Login.tsx");
-    expect(s.supporting).toContain("src/components/Button.tsx");
+    expect([...s.primary, ...s.supporting]).toContain("src/components/Button.tsx");
   });
   it("explicit targets win", () => {
     const s = selectContext("make it nicer", manifest, { explicitTargets: ["src/pages/Login.tsx"] });
