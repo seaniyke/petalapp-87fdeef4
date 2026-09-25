@@ -49,6 +49,8 @@ type Handlers = {
       noFileChanges?: boolean;
       /** Two-phase gate: backend chips proposed for the NEXT turn. */
       suggestions?: string[];
+      /** Code revision the server committed this turn (Prompt 11). */
+      committedRevision?: number | null;
     },
   ) => void;
   onSelfCheck?: (verdict: {
@@ -348,6 +350,7 @@ export async function streamGenerate(
               creditsCharged: evt.creditsCharged,
               noFileChanges: evt.noFileChanges,
               suggestions: evt.suggestions,
+              committedRevision: (evt as { committedRevision?: number | null }).committedRevision ?? null,
             });
             break;
           case "self_check":
@@ -605,6 +608,7 @@ export async function streamResumeTurn(
                 creditsCharged: evt.creditsCharged as number | undefined,
                 noFileChanges: evt.noFileChanges as boolean | undefined,
                 suggestions: evt.suggestions as string[] | undefined,
+                committedRevision: (evt.committedRevision as number | null | undefined) ?? null,
               },
             );
             break;
