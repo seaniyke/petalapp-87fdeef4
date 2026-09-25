@@ -8,6 +8,20 @@
  * Pure — no AI call.
  */
 import { buildGenerationUnits } from "@/server/requested-scope";
+import { stageForTurn, type PrdRequirement } from "@/server/prd/prd-requirements";
+
+/**
+ * Product-aware stage for this turn, derived from the PRD's requirement list
+ * and evidence-based statuses. The plan stays the one scope contract; this
+ * only names WHICH requirements the bounded execution should implement.
+ */
+export function planProductStage(
+  requirements: PrdRequirement[],
+  brief: string,
+  isFirstBuild: boolean,
+) {
+  return stageForTurn(requirements, brief, isFirstBuild);
+}
 
 export interface PlannedPage {
   route: string;

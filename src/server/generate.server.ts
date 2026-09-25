@@ -163,9 +163,9 @@ DO-NOT-ASSUME RULES (mandatory):
 - LEAN OUTPUT: the starter kit already ships the UI primitives (src/components/ui/*), router, styles and config. Never re-emit or rewrite those. Emit only the app's own pages/components that the request needs — typically 3-8 files. Put the design in a concise theme, reuse primitives instead of hand-rolling them, and do not write placeholder files, unused sections, or long repetitive mock data (keep sample arrays to 3-6 items).
 - NEVER comment out JSX with \`{/* <Foo /> */}\`. esbuild rejects empty JSX expression containers and inner braces in props (e.g. \`onClick={fn}\`) break the parse. If you want to disable a component, DELETE the JSX entirely (and remove now-unused imports/handlers). If you must leave a note, use a sibling \`{/* plain prose only, no tags */}\` with no \`<\` characters inside.
 
-MULTI-INTENT DETECTION (mandatory):
-- This is the FIRST build of a brand-new app. An app brief that names several pages/screens/sections of ONE product (e.g. "landing page, list view, calendar, tips page") is a SINGLE intent — build ALL of it in this turn, wire every page into the router and the nav, and never end the summary with "reply with the next number". Splitting a first build is a defect.
-- Only when the brief bundles 3+ genuinely SEPARATE products or systems (e.g. "an e-commerce store AND a CRM AND a blog engine") do you list the intents as a numbered list in \`plan\`, do the FIRST one, and end \`summary\` with: "I tackled #1 here — reply with the next number (or 'all') to keep going."
+REQUESTED SCOPE (mandatory):
+- This is the FIRST build of a brand-new app. The user's requested product scope is authoritative: understand and retain all of it. An app brief that names several pages/screens/features of ONE product is ONE product — every requested page goes into the router and the nav. Do not arbitrarily defer requested functionality merely because multiple features were requested, and never end the summary with "reply with the next number".
+- Large products are built in coherent stages using the "Product requirements and progress" block: implement THIS STAGE fully now; later-stage requirements are retained and built on following turns, never dropped. The summary names what remains.
 
 
 DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (by triage) — by the time you run, the user has committed to a build. If something is unclear, make the most reasonable assumption, state it briefly in \`summary\` ("Assumed a dark, minimal theme — tell me if you'd rather something else."), and proceed. Never end \`summary\` or \`plan\` with a question mark.`;
@@ -317,8 +317,8 @@ DO-NOT-ASSUME RULES (mandatory):
 - Do NOT add cookie banners, language switchers, accessibility menus, or onboarding tours unless the user asks.
 - Build only what the latest user message asks for.
 
-MULTI-INTENT DETECTION (mandatory):
-- If the LAST user message bundles 3+ clearly distinct features, do NOT silently change them all in one turn. List the intents in \`plan\` as a numbered list, do ONLY the first one this turn, and end \`summary\` with: "I tackled #1 here — reply with the next number (or 'all') to keep going."
+REQUESTED SCOPE (mandatory):
+- The user's requested product scope is authoritative. Understand and retain the complete scope. Do not arbitrarily defer requested functionality merely because multiple features were requested. When a "Product requirements and progress" block is present, implement the requirements it names for THIS turn inside the existing app and leave the others intact. Never lose or silently discard a requirement; if something genuinely cannot fit this turn, name it in \`summary\` as remaining.
 
 DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (by triage) — by the time you run, the user has committed to a build. If something is unclear, make the most reasonable assumption, state it briefly in \`summary\` ("Assumed X — tell me if you'd rather Y."), and proceed. Never end \`summary\` or \`plan\` with a question mark.`;
 
