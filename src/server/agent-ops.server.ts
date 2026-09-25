@@ -59,6 +59,8 @@ export interface AgentOpsStore {
   updateAiCall(turnId: string, id: string, patch: Record<string, unknown>): Promise<boolean>;
   /** Start compile + publish for the project (idempotent per file revision). */
   startBuild?(projectId: string, userId: string, turnId: string): Promise<boolean>;
+  /** Rename a still-"Untitled project" project. Best-effort, never throws. */
+  nameUntitledProject?(projectId: string): Promise<void>;
   /** Run an already-scoped table query. */
   runQuery(q: ScopedQuery): Promise<{ data: unknown; error: string | null }>;
   runRpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: string | null }>;
@@ -265,6 +267,11 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
         errorMessage: op.errorMessage ?? null,
         creditsCharged: op.creditsCharged ?? null,
       });
+      // Durable builds finish with no browser attached, so the browser-side
+      // auto-title never runs. Name the project here instead (no AI call).
+      if (op.status === "succeeded" && store.nameUntitledProject) {
+        await store.nameUntitledProject(turn.project_id).catch(() => {});
+      }
       return { ok: true };
     }
     case "credits.check":

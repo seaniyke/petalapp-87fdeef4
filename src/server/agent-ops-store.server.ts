@@ -5,6 +5,23 @@ import type { AgentOpsStore, TurnRow } from "@/server/agent-ops.server";
 
 type Any = never;
 
+/** "harbor-lane-coffee" → "Harbor Lane Coffee". Generic scaffold names are ignored. */
+export function titleFromPackageJson(content: string): string | null {
+  let name = "";
+  try {
+    name = String((JSON.parse(content) as { name?: unknown }).name ?? "");
+  } catch {
+    return null;
+  }
+  name = name.replace(/^@[^/]+\//, "").trim();
+  if (!name || /^(app|my-app|vite|react|project|template|kimble|petal)([-_].*)?$/i.test(name) && !/-/.test(name.replace(/^(app|my-app|vite|react|project|template)/i, "").slice(1))) {
+    if (/^(app|my-app|vite-project|vite-react|react-app|project|template|vite_react_shadcn_ts|kimble-app|petal-app)$/i.test(name) || !name) return null;
+  }
+  const words = name.split(/[-_\s]+/).filter(Boolean).slice(0, 6);
+  if (!words.length) return null;
+  return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ").slice(0, 60);
+}
+
 export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
   const db = supabaseAdmin;
   return {
@@ -25,6 +42,28 @@ export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
         .eq("id", turnId)
         .maybeSingle();
       return (data as TurnRow | null) ?? null;
+    },
+    async nameUntitledProject(projectId) {
+      try {
+        const { data: proj } = await db.from("projects").select("title").eq("id", projectId).maybeSingle();
+        if ((proj as { title?: string } | null)?.title !== "Untitled project") return;
+        const { data: pkg } = await db
+          .from("project_files")
+          .select("content")
+          .eq("project_id", projectId)
+          .eq("path", "package.json")
+          .maybeSingle();
+        const title = titleFromPackageJson((pkg as { content?: string } | null)?.content ?? "");
+        if (!title) return;
+        const { slugifyForProject } = await import("@/lib/projects");
+        await db
+          .from("projects")
+          .update({ title, slug: slugifyForProject(title, projectId) } as Any)
+          .eq("id", projectId)
+          .eq("title", "Untitled project");
+      } catch {
+        /* best-effort */
+      }
     },
     async readFiles(projectId) {
       const { data, error } = await db.from("project_files").select("path,content").eq("project_id", projectId);
