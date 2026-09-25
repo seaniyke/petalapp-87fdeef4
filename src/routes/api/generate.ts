@@ -3545,7 +3545,11 @@ Forbidden defaults
     if (hasVisionTurn) {
       await keepChatPhotos(body.projectId ?? null, messages[lastUserIdx]?.attachments);
     }
-    ownPhotoBlock = renderProjectPictureBlock(await loadProjectPictures(body.projectId ?? null));
+    // Conditional context: project photos only when the request is about
+    // imagery (or carries photos). Unknown → not included.
+    if (projectCtx.flags.images || hasVisionTurn) {
+      ownPhotoBlock = renderProjectPictureBlock(await loadProjectPictures(body.projectId ?? null));
+    }
   } catch {
     /* a photo lookup must never block a build */
   }
@@ -3571,14 +3575,40 @@ Forbidden defaults
 
 
 
+  // Context budget — measure everything before sending. When over, drop
+  // optional material lowest-value first (history → skills → memory →
+  // design → project state). Rules, the request and files are required.
+  const contextBudget = (await import("@/server/context")).applyContextBudget(
+    [
+      { id: "system", priority: "required", text: staticPrefixText },
+      { id: "files", priority: "required", text: filesContext },
+      { id: "intent", priority: "required", text: (intentBrief ?? "") + resolvedBlock + groundingBlock + dynamic.text + intentActions.promptBlock + astPatchBlock + backendGateBlock + highStakesBlock + visionAddendum },
+      { id: "pic", priority: "project-state", text: picBlock },
+      { id: "prd", priority: "project-state", text: boundedEdit ? "" : prdBlock + prdScenarioBlock },
+      { id: "designTaste", priority: "design", text: designTasteBlock },
+      { id: "memory", priority: "memory", text: memoryBlock },
+      { id: "skills", priority: "skills", text: skillsBlock },
+      { id: "orchestration", priority: "history", text: orchestrationBlock },
+      { id: "learning", priority: "history", text: learningBlock },
+      { id: "suggestions", priority: "inference", text: suggestionsBlock },
+    ],
+    promptTokenCeiling({ model: null, completionBudgetTokens: 16_000 }),
+  );
+  const keep = (id: string, text: string) => (contextBudget.dropped.includes(id) ? "" : text);
+  console.info(
+    `[context-budget] tokens=${contextBudget.tokens} budget=${contextBudget.budget}${contextBudget.dropped.length ? ` dropped=${contextBudget.dropped.join(",")}` : ""}${contextBudget.overRequired ? " (required sections alone exceed budget)" : ""}`,
+  );
+  const budgetedChanging = contextBudget.dropped.includes("memory") && memoryBlock
+    ? changingProjectText.replace(memoryBlock, "")
+    : changingProjectText;
 
   const dynamicSuffixText =
-    changingProjectText +
+    budgetedChanging +
     dateBlock +
     (intentBrief
       ? `\n\n### Canonical turn intent (HARD CONTRACT)\n${intentBrief}\nSatisfy this exact outcome. Use the original user message for detail, but do not substitute a different feature, page, or product. Before emitting files, verify every planned change directly supports this intent.\n`
       : "") +
-    suggestionsBlock +
+    keep("suggestions", suggestionsBlock) +
     resolvedBlock +
     groundingBlock +
     (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
