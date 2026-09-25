@@ -15,6 +15,8 @@ import { renderDesignTasteBlock } from "@/server/design-taste.server";
 import { renderAppUiBlock } from "@/server/app-ui-library.server";
 import { lintDesignSystem } from "@/server/design/design-system-lint.server";
 import { applyPaletteFloor } from "@/server/palette-floor.server";
+import { PALETTES, FONT_PAIRS } from "@/server/palette-presets.server";
+import { enforceDesignFinish } from "@/server/design-finisher.server";
 import { buildRevisionStatus } from "@/lib/build-revision";
 import type { PicDesignSystem, PicUnderstanding } from "@/server/pic/pic-types";
 import * as fs from "node:fs";
@@ -182,6 +184,42 @@ describe("stylesheet checks understand packages", () => {
     expect(applyPaletteFloor(css, "bakery").changed).toBe(false);
     // Without a package the floor still guards the scaffold default.
     expect(applyPaletteFloor(scaffold()[0]!.content, "bakery").changed).toBe(true);
+  });
+});
+
+describe("legacy palette list cannot reach a package-backed project", () => {
+  it("no preset hex or preset font name appears in package-backed visual instructions", async () => {
+    const design = await newProjectDesign();
+    const briefs = ["a bakery site", "a fintech saas", "a luxury restaurant", "a wellness studio", "a crm dashboard"];
+    const pkgFonts = new Set(getDesignSystem(SLUG)!.design.fonts.map((f: { family?: string; name?: string } | string) => (typeof f === "string" ? f : (f.family ?? f.name ?? ""))));
+    const presetFonts = FONT_PAIRS.flatMap((p) => [p.display, p.body]).filter((f) => !pkgFonts.has(f) && f !== "Inter");
+    const presetHex = PALETTES.flatMap((p) => p.colors.map((c) => c.toLowerCase()));
+    for (const brief of briefs) {
+      const text = [
+        designSystemBlockFor(design),
+        renderDesignSystemBlock(design),
+        renderDesignDirectionBlock(fallbackDesignDirection(brief, "p1"), { detail: "full", packageOwnsVisuals: true }),
+        renderDesignTasteBlock(brief, { packageOwnsVisuals: true }).text,
+        renderAppUiBlock(brief, { packageOwnsVisuals: true }).text,
+      ].join("\n").toLowerCase();
+      for (const hex of presetHex) expect(text, `${brief}: ${hex}`).not.toContain(hex);
+      for (const font of presetFonts) expect(text, `${brief}: ${font}`).not.toContain(font.toLowerCase());
+      for (const p of PALETTES) expect(text, `${brief}: ${p.label}`).not.toContain(p.label.toLowerCase());
+    }
+  });
+
+  it("the design finisher leaves a package stylesheet untouched but still finishes legacy ones", async () => {
+    const r = applyPackageToTree(scaffold(), await newProjectDesign());
+    if (!r.applied) throw new Error("package did not apply");
+    const before = r.files.find((f) => f.path === "src/styles.css")!.content;
+    const after = enforceDesignFinish(r.files).files.find((f) => f.path === "src/styles.css")!.content;
+    expect(after).toContain(TOKENS_START);
+    for (const p of PALETTES) for (const c of p.colors) {
+      if (!before.toLowerCase().includes(c.toLowerCase())) expect(after.toLowerCase()).not.toContain(c.toLowerCase());
+    }
+    const legacyBefore = scaffold().find((f) => f.path === "src/styles.css")!.content;
+    const legacyAfter = enforceDesignFinish(scaffold()).files.find((f) => f.path === "src/styles.css")!.content;
+    expect(legacyAfter).not.toBe(legacyBefore);
   });
 });
 
