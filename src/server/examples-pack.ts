@@ -3662,8 +3662,8 @@ matching file below and adapt — do not invent layouts from scratch.
 ## Auth
 - \`auth-sign-in-card.tsx\` — centered sign-in with email/password + OAuth
 - \`auth-sign-up-split.tsx\` — split-screen onboarding (brand left, form right)
-- \`auth-forgot-password.tsx\` — reset request form (calls \`resetPasswordForEmail\`)
-- \`auth-reset-password.tsx\` — landing page for the reset link (calls \`updatePassword\`); mount at \`/reset-password\`
+- \`auth-forgot-password.tsx\` — (backend projects only) reset request form (calls \`resetPasswordForEmail\`)
+- \`auth-reset-password.tsx\` — (backend projects only) landing page for the reset link (calls \`updatePassword\`); mount at \`/reset-password\`
 - \`auth-otp-card.tsx\` — six-digit code verification
 
 ## Auth modals (Dialog / Sheet)
@@ -3677,7 +3677,7 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`onboarding-signup-step.tsx\` — name + email + password step (calls \`onSubmit\`)
 - \`onboarding-verify-step.tsx\` — six-digit OTP step bound to the signup email
 - \`onboarding-success.tsx\` — final "you're all set" screen
-- \`onboarding-flow.tsx\` — orchestrator wiring welcome → signup → verify → done, with forgot-password side route
+- \`onboarding-flow.tsx\` — (backend projects only) orchestrator wiring welcome → signup → verify → done, with forgot-password side route
 
 ## Dashboard
 - \`dashboard-stats-grid.tsx\` — four-up KPI cards with delta indicators
@@ -3884,14 +3884,24 @@ export default function PlaidLinkButton() {
 }
 `;
 
+/**
+ * Examples that import `@/integrations/backend/auth`. That module only exists
+ * when a backend kit is installed, so these ship ONLY with a backend (same
+ * rule as BACKEND_KIT_BLOCK_FILES_3). In a project without a backend they are
+ * broken imports and fail source verification of the whole tree.
+ */
+export const BACKEND_EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
+  { path: "src/components/examples/auth-forgot-password.tsx", content: AUTH_FORGOT_PASSWORD, overwrite: true },
+  { path: "src/components/examples/auth-reset-password.tsx", content: AUTH_RESET_PASSWORD, overwrite: true },
+  { path: "src/components/examples/onboarding-flow.tsx", content: ONBOARDING_FLOW, overwrite: true },
+];
+
 export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/EXAMPLES.md", content: EXAMPLES_INDEX, overwrite: true },
 
   // Auth
   { path: "src/components/examples/auth-sign-in-card.tsx", content: AUTH_SIGN_IN_CARD, overwrite: true },
   { path: "src/components/examples/auth-sign-up-split.tsx", content: AUTH_SIGN_UP_SPLIT, overwrite: true },
-  { path: "src/components/examples/auth-forgot-password.tsx", content: AUTH_FORGOT_PASSWORD, overwrite: true },
-  { path: "src/components/examples/auth-reset-password.tsx", content: AUTH_RESET_PASSWORD, overwrite: true },
   { path: "src/components/examples/auth-otp-card.tsx", content: AUTH_OTP_CARD, overwrite: true },
 
   // Auth modals (Dialog / Sheet)
@@ -3905,7 +3915,6 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/onboarding-signup-step.tsx", content: ONBOARDING_SIGNUP_STEP, overwrite: true },
   { path: "src/components/examples/onboarding-verify-step.tsx", content: ONBOARDING_VERIFY_STEP, overwrite: true },
   { path: "src/components/examples/onboarding-success.tsx", content: ONBOARDING_SUCCESS, overwrite: true },
-  { path: "src/components/examples/onboarding-flow.tsx", content: ONBOARDING_FLOW, overwrite: true },
 
   // Dashboard
   { path: "src/components/examples/dashboard-stats-grid.tsx", content: DASHBOARD_STATS_GRID, overwrite: true },

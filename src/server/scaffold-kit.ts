@@ -37,7 +37,7 @@ function setKitFile(map: Map<string, string>, path: string, content: string): vo
 }
 import { extensionKit } from "./scaffold-kit-extension";
 import { mobileShellKit, MOBILE_SHELL_DEPS } from "./scaffold-kit-mobile-shell";
-import { EXAMPLES_PACK } from "./examples-pack";
+import { BACKEND_EXAMPLES_PACK, EXAMPLES_PACK } from "./examples-pack";
 import { EXAMPLES_PACK_2 } from "./examples-pack-2";
 import { PETAL_SOURCE_PLUGIN } from "./petal-source-plugin";
 import { KIT_BLOCK_FILES } from "./scaffold-kit-blocks";
@@ -4438,6 +4438,7 @@ export function applyScaffoldKit(
     for (const f of BACKEND_KIT_BLOCK_FILES_3) {
       map.set(f.path, f.content);
     }
+    for (const f of BACKEND_EXAMPLES_PACK) map.set(f.path, f.content);
     extraDeps = BACKEND_DEPS;
   } else if (opts?.sharedBackend) {
     for (const f of sharedBackendKit(opts.sharedBackend)) setKitFile(map, f.path, f.content);
@@ -4563,6 +4564,9 @@ export function applyScaffoldKitForPatch(
   if (opts?.backend) {
     for (const f of backendKit(opts.backend)) map.set(f.path, f.content);
     for (const f of BACKEND_KIT_BLOCK_FILES_3) {
+      if (!map.has(f.path)) map.set(f.path, f.content);
+    }
+    for (const f of BACKEND_EXAMPLES_PACK) {
       if (!map.has(f.path)) map.set(f.path, f.content);
     }
     extraDeps = BACKEND_DEPS;
