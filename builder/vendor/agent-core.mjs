@@ -85240,7 +85240,6 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -110647,7 +110646,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -138826,7 +138824,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -139746,7 +139743,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -143780,7 +143776,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -143883,19 +143878,33 @@ var init_transaction = __esm({
       staged = /* @__PURE__ */ new Map();
       verdicts = [];
       done = false;
-      stage(path, content, purpose = "requested change") {
+      /**
+       * Stage one file. `system: true` marks Kimble-managed files (scaffold kit,
+       * housekeeping) — they are staged atomically with the turn but do not
+       * consume the model's write budget. No-op writes are refused either way.
+       */
+      stage(path, content, purpose = "requested change", opts) {
         if (this.done) return false;
         const current2 = this.staged.has(path) ? this.staged.get(path) ?? void 0 : this.base.get(path);
-        if (this.ledger) {
+        if (this.ledger && !opts?.system) {
           const r = this.ledger.write(path, content, current2, purpose, this.writer);
           if (!r.ok) return false;
         } else if (current2 === content) return false;
         this.staged.set(path, content);
         return true;
       }
-      remove(path) {
+      /** The complete proposed project tree (baseline + staged), uncommitted. */
+      proposedTree() {
+        const next = new Map(this.base);
+        for (const [p, c] of this.staged) {
+          if (c === null) next.delete(p);
+          else next.set(p, c);
+        }
+        return [...next].map(([path, content]) => ({ path, content }));
+      }
+      remove(path, opts) {
         if (this.done || !this.base.has(path)) return false;
-        if (this.ledger && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
+        if (this.ledger && !opts?.system && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
         this.staged.set(path, null);
         return true;
       }
@@ -143936,6 +143945,103 @@ var init_transaction = __esm({
   }
 });
 
+// src/server/execution/commit.ts
+function commitTurn(args) {
+  const tx = new TurnTransaction(args.baseline, args.ledger);
+  const base = new Map(args.baseline.map((f) => [f.path, f.content]));
+  const next = /* @__PURE__ */ new Map();
+  for (const f of args.proposed) {
+    const p = f.path.trim();
+    if (p) next.set(p, f.content ?? "");
+  }
+  const rejections = [];
+  const noOps = [];
+  const refusalReason = () => {
+    const last = args.ledger.summary().refusals.at(-1) ?? "";
+    if (last.includes(":limit")) return "limit";
+    if (last.includes(":foreign_writer")) return "foreign_writer";
+    if (last.includes(":cancelled")) return "cancelled";
+    return "other";
+  };
+  for (const [path, content] of next) {
+    const system = args.isSystemPath(path);
+    if (base.get(path) === content) continue;
+    if (!system) {
+      const why = args.protectionReason(path);
+      if (why) {
+        rejections.push({
+          operation: "write",
+          path,
+          reason: "scope_violation",
+          detail: why,
+          recoverable: true,
+          next: "retry without changing this file, or name it explicitly in the request"
+        });
+        continue;
+      }
+    }
+    if (!tx.stage(path, content, "turn change", { system })) {
+      const reason = refusalReason();
+      rejections.push({
+        operation: "write",
+        path,
+        reason,
+        detail: `write refused (${reason})`,
+        recoverable: reason === "limit",
+        next: reason === "limit" ? "split the request into smaller steps" : "stop"
+      });
+    }
+  }
+  for (const path of base.keys()) {
+    if (next.has(path)) continue;
+    if (!args.isSystemPath(path) && args.protectionReason(path)) {
+      rejections.push({
+        operation: "delete",
+        path,
+        reason: "scope_violation",
+        detail: args.protectionReason(path),
+        recoverable: true,
+        next: "retry without removing this file"
+      });
+      continue;
+    }
+    if (!tx.remove(path, { system: args.isSystemPath(path) })) {
+      const reason = refusalReason();
+      rejections.push({ operation: "delete", path, reason, detail: `delete refused (${reason})`, recoverable: reason === "limit", next: "stop" });
+    }
+  }
+  for (const r of args.ledger.summary().refusals) {
+    if (r.startsWith("write:no_op_write:")) noOps.push(r.slice("write:no_op_write:".length));
+  }
+  for (const c of args.checks) tx.recordCheck(c.check, c.verdict, c.detail);
+  if (rejections.length) {
+    tx.recordCheck(
+      "execution_boundary",
+      "FAIL",
+      rejections.slice(0, 3).map((r) => `${r.operation} ${r.path ?? ""}: ${r.reason}`).join("; ")
+    );
+  }
+  if (args.cancelled()) args.ledger.cancel();
+  const outcome = tx.commit();
+  if (outcome.status === "rolled_back" && rejections.length === 0) {
+    rejections.push({
+      operation: "commit",
+      reason: outcome.reason === "cancelled" ? "cancelled" : outcome.reason === "no changes" ? "no_changes" : "validation_failed",
+      detail: outcome.reason,
+      recoverable: outcome.reason !== "cancelled",
+      next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry"
+    });
+  }
+  return { outcome, rejections, noOps };
+}
+var init_commit = __esm({
+  "src/server/execution/commit.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_transaction();
+  }
+});
+
 // src/server/execution/index.ts
 var execution_exports = {};
 __export(execution_exports, {
@@ -143945,6 +144051,7 @@ __export(execution_exports, {
   blocksCommit: () => blocksCommit,
   buildExecutionScope: () => buildExecutionScope,
   classifyRequest: () => classifyRequest,
+  commitTurn: () => commitTurn,
   renderScopeBlock: () => renderScopeBlock,
   shouldRepair: () => shouldRepair,
   toVerdict: () => toVerdict
@@ -143957,6 +144064,7 @@ var init_execution = __esm({
     init_verdict();
     init_ledger();
     init_transaction();
+    init_commit();
   }
 });
 
@@ -149776,6 +149884,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -170055,6 +170164,9 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     neighbours: impactNeighbourPaths
   });
   const executionScopeBlock = isInitial ? "" : renderScopeBlock2(executionScope);
+  const { TurnLedger: TurnLedger2, commitTurn: commitTurn2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
+  const turnLedger = new TurnLedger2();
+  const turnChecks = [];
   console.info(
     `[execution] op=${executionScope.operation} mode=${turnClassification.mode} plan=${turnClassification.planRequired} targets=${executionScope.affectedFiles.length} protected=${executionScope.protectedAreas.length} (${turnClassification.reason})`
   );
@@ -171811,6 +171923,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                   encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}\u2026` }))
                 );
                 if (!recovery.take("broken_file", file.path)) return null;
+                if (!turnLedger.use("repair", "write-gate compile repair", file.path).ok) return null;
                 const turnContext = turnContextFor(file.path);
                 const n = recovery.record({
                   kind: "broken_file",
@@ -171835,6 +171948,11 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               throw new Error(`Authoritative code validation unavailable: ${gate2.validationFailure}`);
             }
             nextFiles = gate2.files;
+            turnChecks.push({
+              check: "write_gate",
+              verdict: gate2.rejected.length ? "WARNING" : "PASS",
+              detail: gate2.rejected.map((r) => r.path).join(", ") || void 0
+            });
             for (const p of gate2.repairedPaths ?? []) recovery.resolvePath(p, "fixed");
             for (const p of gate2.repairFailedPaths ?? []) recovery.resolvePath(p, "kept_previous");
             if (gate2.repairedPaths?.length || gate2.repairFailedPaths?.length) {
@@ -172501,9 +172619,35 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           );
         }
         await agentIO().claimCommit(turnId, abortSignal);
+        const txResult = commitTurn2({
+          baseline: turnBaselineFiles,
+          proposed: nextFiles,
+          ledger: turnLedger,
+          isSystemPath: (p) => isScaffoldOwnedPath(p) || kitSyncedPaths.has(p) || authoredPaths !== void 0 && !authoredPaths.includes(p),
+          protectionReason: (p) => isInitial || isCrossCutting ? null : executionScope.protectionReason(p),
+          checks: turnChecks,
+          cancelled: () => abortSignal.aborted
+        });
+        const txCommitted = txResult.outcome.status === "committed";
+        console.info(
+          `[execution] tx=${txResult.outcome.status} changed=${txCommitted && txResult.outcome.status === "committed" ? txResult.outcome.changed.length : 0} rejections=${JSON.stringify(txResult.rejections.slice(0, 5))} ledger=${JSON.stringify(turnLedger.summary().counts)}`
+        );
+        if (txResult.outcome.status === "committed") {
+          nextFiles = txResult.outcome.files;
+        } else {
+          if (txResult.outcome.reason === "cancelled") throw new Error("Turn cancelled before commit");
+          nextFiles = txResult.outcome.files;
+          if (txResult.outcome.reason !== "no changes") {
+            const note = `
+
+I couldn't save this change safely, so your app was left exactly as it was: ` + txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} \u2014 ` : ""}${r.detail}`).join("; ") + `. Send it again and I'll retry just that part.`;
+            summary = `${summary}${note}`;
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          }
+        }
         let finalCharged = 0;
         const turnChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
-        const failedEditTurn = turnChangedPaths.length === 0 && unappliedPaths.length > 0;
+        const failedEditTurn = turnChangedPaths.length === 0 && unappliedPaths.length > 0 || !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
         if (failedEditTurn) {
           console.warn(
             `[credits] no-op edit turn not billed project=${body.projectId ?? "none"} unapplied=${unappliedPaths.length}`
@@ -172584,7 +172728,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         controller.enqueue(
           encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" }))
         );
-        if (body.projectId && nextFiles.length > 0) {
+        if (body.projectId && txCommitted && nextFiles.length > 0) {
           try {
             const cleanFiles = (() => {
               const byPath = /* @__PURE__ */ new Map();

@@ -10,3 +10,4 @@ export * from "./scope";
 export * from "./verdict";
 export * from "./ledger";
 export * from "./transaction";
+export * from "./commit";

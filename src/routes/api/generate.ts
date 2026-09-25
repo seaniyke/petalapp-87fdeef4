@@ -3184,6 +3184,11 @@ Forbidden defaults
     neighbours: impactNeighbourPaths,
   });
   const executionScopeBlock = isInitial ? "" : renderScopeBlock(executionScope);
+  // One TurnLedger per turn: enforces TURN_LIMITS on repairs, writes and
+  // deletes; the TurnTransaction at the commit point is accounted by it.
+  const { TurnLedger, commitTurn } = await import("@/server/execution");
+  const turnLedger = new TurnLedger();
+  const turnChecks: Array<{ check: string; verdict: import("@/server/execution").Verdict; detail?: string }> = [];
   console.info(
     `[execution] op=${executionScope.operation} mode=${turnClassification.mode} plan=${turnClassification.planRequired} targets=${executionScope.affectedFiles.length} protected=${executionScope.protectedAreas.length} (${turnClassification.reason})`,
   );
@@ -5595,6 +5600,7 @@ Forbidden defaults
                 );
                 // One shared per-file budget for every repair in this turn.
                 if (!recovery.take("broken_file", file.path)) return null;
+                if (!turnLedger.use("repair", "write-gate compile repair", file.path).ok) return null;
                 const turnContext = turnContextFor(file.path);
                 const n = recovery.record({
                   kind: "broken_file",
@@ -5619,6 +5625,13 @@ Forbidden defaults
               throw new Error(`Authoritative code validation unavailable: ${gate.validationFailure}`);
             }
             nextFiles = gate.files;
+            // Rejected writes were reverted inside the proposed tree (existing
+            // policy): the rest of the turn may land, so this is a WARNING.
+            turnChecks.push({
+              check: "write_gate",
+              verdict: gate.rejected.length ? "WARNING" : "PASS",
+              detail: gate.rejected.map((r) => r.path).join(", ") || undefined,
+            });
             for (const p of gate.repairedPaths ?? []) recovery.resolvePath(p, "fixed");
             for (const p of gate.repairFailedPaths ?? []) recovery.resolvePath(p, "kept_previous");
             if (gate.repairedPaths?.length || gate.repairFailedPaths?.length) {
@@ -6535,13 +6548,50 @@ Forbidden defaults
         // the last point before settlement → persistence commit together.
         // Commit point: atomically claims the turn against a concurrent Stop.
         await agentIO().claimCommit(turnId, abortSignal);
+        // LIVE MUTATION BOUNDARY — the proposed tree is staged into one
+        // TurnTransaction (accounted by turnLedger), scope-enforced and
+        // checked; only a committed outcome is billed and persisted.
+        const txResult = commitTurn({
+          baseline: turnBaselineFiles,
+          proposed: nextFiles,
+          ledger: turnLedger,
+          isSystemPath: (p) =>
+            isScaffoldOwnedPath(p) ||
+            kitSyncedPaths.has(p) ||
+            (authoredPaths !== undefined && !authoredPaths.includes(p)),
+          protectionReason: (p) =>
+            isInitial || isCrossCutting ? null : executionScope.protectionReason(p),
+          checks: turnChecks,
+          cancelled: () => abortSignal.aborted,
+        });
+        const txCommitted = txResult.outcome.status === "committed";
+        console.info(
+          `[execution] tx=${txResult.outcome.status} changed=${txCommitted && txResult.outcome.status === "committed" ? txResult.outcome.changed.length : 0} rejections=${JSON.stringify(txResult.rejections.slice(0, 5))} ledger=${JSON.stringify(turnLedger.summary().counts)}`,
+        );
+        if (txResult.outcome.status === "committed") {
+          nextFiles = txResult.outcome.files;
+        } else {
+          if (txResult.outcome.reason === "cancelled") throw new Error("Turn cancelled before commit");
+          // Nothing lands: the project keeps its previous state.
+          nextFiles = txResult.outcome.files;
+          if (txResult.outcome.reason !== "no changes") {
+            const note =
+              `\n\nI couldn't save this change safely, so your app was left exactly as it was: ` +
+              txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} — ` : ""}${r.detail}`).join("; ") +
+              `. Send it again and I'll retry just that part.`;
+            summary = `${summary}${note}`;
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          }
+        }
         let finalCharged = 0;
         // Decide the terminal state BEFORE billing. Charging first meant a
         // turn where the user asked for an edit, the ops all failed to apply
         // and the project came out byte-identical still debited credits —
         // the user paid for nothing and (correctly) called it a loop.
         const turnChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
-        const failedEditTurn = turnChangedPaths.length === 0 && unappliedPaths.length > 0;
+        const failedEditTurn =
+          (turnChangedPaths.length === 0 && unappliedPaths.length > 0) ||
+          (!txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes");
         if (failedEditTurn) {
           console.warn(
             `[credits] no-op edit turn not billed project=${body.projectId ?? "none"} unapplied=${unappliedPaths.length}`,
@@ -6652,7 +6702,8 @@ Forbidden defaults
         // result event, so the work is durable even if delivery to the
         // client fails. Client still updates its local file map from the
         // SSE payload for instant preview without an extra round-trip.
-        if (body.projectId && nextFiles.length > 0) {
+        // Only a committed transaction may reach persistent project_files.
+        if (body.projectId && txCommitted && nextFiles.length > 0) {
           try {
             const cleanFiles = (() => {
               const byPath = new Map<string, { path: string; content: string }>();
