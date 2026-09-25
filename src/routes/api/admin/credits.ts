@@ -1005,6 +1005,7 @@ export const Route = createFileRoute("/api/admin/credits")({
                   key: "features.marketplace",
                   value: enabled as never,
                   description: "Controls whether Kimble Marketplace is available on customer-facing surfaces.",
+                  updated_at: new Date().toISOString(),
                   updated_by: adminId,
                 } as never,
                 { onConflict: "key" },

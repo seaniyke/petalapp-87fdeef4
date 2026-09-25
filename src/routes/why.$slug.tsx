@@ -62,6 +62,14 @@ function WhyNotFound() {
 function WhyPage() {
   const { difference } = Route.useLoaderData();
   const { enabled: marketplaceEnabled, loading } = useMarketplaceFeature();
+  if (difference.slug === "marketplace" && loading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <SiteHeader />
+        <div className="mx-auto max-w-xl px-6 py-32 text-center text-sm text-muted-foreground">Loading…</div>
+      </div>
+    );
+  }
   if (difference.slug === "marketplace" && !loading && !marketplaceEnabled) {
     return (
       <div className="min-h-screen bg-background text-foreground">
