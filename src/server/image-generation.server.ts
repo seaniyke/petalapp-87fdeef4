@@ -20,7 +20,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { OPENROUTER_CHAT_URL, defaultImageModel } from "@/lib/ai-model-config";
 import { findLibraryPicture } from "./registry/pictures.server";
 import { findProjectPicture } from "./registry/project-pictures.server";
+import { currentTurnContext } from "./turn-context.server";
 import type { ProjectFile } from "./generate.server";
+
 
 const BUCKET = "petal-images";
 
@@ -39,7 +41,11 @@ export type GenerateImageOptions = {
   aspectRatio?: "1:1" | "16:9" | "4:3" | "3:4" | "9:16";
   /** Optional cache key — same key returns the same URL. */
   cacheKey?: string;
+  /** Who this picture belongs to. Set server-side only: it decides which
+   *  remembered pictures may be reused and who owns the new one. */
+  scope?: { projectId?: string | null; ownerId?: string | null; turnId?: string | null };
 };
+
 
 export type GenerateImageResult = {
   url: string;
@@ -142,7 +148,28 @@ export async function generatePetalImage(
     if (cached) return { url: cached, cached: true };
   }
 
+  // A picture Kimble already made for this project/owner (or one an admin
+  // shared) beats paying to make the same thing again. A weak match is
+  // ignored — quality always outranks the saving.
+  const scope = opts.scope ?? {
+    projectId: currentTurnContext().projectId ?? null,
+    ownerId: currentTurnContext().userId ?? null,
+    turnId: currentTurnContext().turnId ?? null,
+  };
+  try {
+    const { findRememberedPicture } = await import("./registry/generated-pictures.server");
+    const remembered = await findRememberedPicture({
+      request: prompt,
+      scope,
+      aspectRatio: opts.aspectRatio ?? null,
+    });
+    if (remembered) return { url: remembered.url, cached: true };
+  } catch {
+    // Picture memory trouble must never stop a build — generate instead.
+  }
+
   const fullPrompt = `${prompt}.${aspectGuidance(opts.aspectRatio)} High quality, professional, no watermarks, no text overlays.`;
+
 
   const upstream = await fetch(upstreamUrl, {
     method: "POST",
@@ -187,8 +214,23 @@ export async function generatePetalImage(
   if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
 
   const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(filename);
+  // Remember it so the next build can reuse it instead of paying again.
+  try {
+    const { rememberGeneratedPicture } = await import("./registry/generated-pictures.server");
+    await rememberGeneratedPicture({
+      url: pub.publicUrl,
+      prompt,
+      cacheKey: key,
+      aspectRatio: opts.aspectRatio ?? null,
+      model: defaultImageModel(),
+      scope,
+    });
+  } catch {
+    // Recording is a bonus, never a build failure.
+  }
   return { url: pub.publicUrl, cached: false };
 }
+
 
 /** Walk every file content, find `petal-image://...` URLs, and replace them
  *  with real generated images. Replacements are deduped by slug so the same

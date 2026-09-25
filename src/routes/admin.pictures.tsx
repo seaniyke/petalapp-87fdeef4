@@ -151,9 +151,159 @@ function measure(file: File): Promise<Measured> {
   });
 }
 
+type Tab = "library" | "made";
+
+/** Heading + the two views: the curated library and what Kimble has made. */
+function PicturesHeading({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h1 className="text-xl font-semibold">Pictures</h1>
+        <p className="text-sm text-muted-foreground">
+          The builder looks here first and only makes a new picture when nothing fits.
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button variant={tab === "library" ? "default" : "outline"} size="sm" onClick={() => onTab("library")}>
+          Library
+        </Button>
+        <Button variant={tab === "made" ? "default" : "outline"} size="sm" onClick={() => onTab("made")}>
+          Made by Kimble
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type MadeRow = {
+  id: string;
+  url: string;
+  subject: string | null;
+  prompt: string;
+  style: string | null;
+  mood: string | null;
+  tags: string[] | null;
+  aspect_ratio: string | null;
+  orientation: string | null;
+  shared: boolean;
+  created_at: string;
+};
+
+/**
+ * Pictures Kimble made during builds. They stay private to the project and
+ * owner that paid for them until someone here shares one with everybody.
+ */
+function MadePictures() {
+  const [rows, setRows] = useState<MadeRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    void supabase
+      .from("generated_pictures")
+      .select("id,url,subject,prompt,style,mood,tags,aspect_ratio,orientation,shared,created_at")
+      .order("created_at", { ascending: false })
+      .limit(500)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setLoading(false);
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+        setRows((data ?? []) as MadeRow[]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function share(row: MadeRow) {
+    const { error } = await supabase
+      .from("generated_pictures")
+      .update({ shared: !row.shared })
+      .eq("id", row.id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, shared: !r.shared } : r)));
+  }
+
+  const needle = query.trim().toLowerCase();
+  const shown = needle
+    ? rows.filter((r) =>
+        `${r.subject ?? ""} ${r.prompt} ${r.style ?? ""} ${r.mood ?? ""} ${(r.tags ?? []).join(" ")}`
+          .toLowerCase()
+          .includes(needle),
+      )
+    : rows;
+  const paged = usePaged(shown, 24);
+
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <Input
+          placeholder="Search what Kimble has made"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="max-w-sm"
+        />
+        <span className="text-xs text-muted-foreground">
+          {shown.length} of {rows.length}
+        </span>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : null}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {paged.slice.map((row) => (
+          <Card key={row.id}>
+            <CardContent className="space-y-2 p-3">
+              <img
+                src={row.url}
+                alt={row.subject ?? "Generated picture"}
+                loading="lazy"
+                className="aspect-video w-full rounded-lg object-cover"
+              />
+              <p className="line-clamp-2 text-sm font-medium">{row.subject ?? row.prompt}</p>
+              <p className="text-xs text-muted-foreground">
+                {[row.style, row.mood, row.aspect_ratio, row.orientation].filter(Boolean).join(" · ")}
+              </p>
+              <label className="flex items-center gap-2 pt-1 text-xs">
+                <Switch checked={row.shared} onCheckedChange={() => share(row)} />
+                {row.shared ? "Shared with everyone" : "Private to its project"}
+              </label>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Pager
+        page={paged.page}
+        pageCount={paged.pageCount}
+        total={paged.total}
+        pageSize={paged.pageSize}
+        onPage={paged.setPage}
+        noun="pictures"
+        className="mt-4 rounded-2xl border border-border"
+      />
+
+      {!loading && rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Nothing here yet. Pictures made during builds show up automatically.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 function AdminPicturesPage() {
   const { ready } = useAdminGuard("/admin/pictures");
+  const [tab, setTab] = useState<Tab>("library");
   const [rows, setRows] = useState<Row[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -297,17 +447,27 @@ function AdminPicturesPage() {
 
   if (!ready) return null;
 
+  if (tab === "made") {
+    return (
+      <div className="min-h-screen bg-background">
+        <SiteHeader />
+        <AdminTabs />
+        <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+          <PicturesHeading tab={tab} onTab={setTab} />
+          <MadePictures />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <AdminTabs />
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-        <div>
-          <h1 className="text-xl font-semibold">Pictures</h1>
-          <p className="text-sm text-muted-foreground">
-            The builder looks here first and only makes a new picture when nothing fits.
-          </p>
-        </div>
+        <PicturesHeading tab={tab} onTab={setTab} />
+
+
 
         <Card>
           <CardContent className="space-y-3 p-4">
