@@ -3,6 +3,7 @@ import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CryptoTipPanel } from "@/components/CryptoTipPanel";
 import { Coffee, Heart, Loader2, ArrowRight, CreditCard, Bitcoin } from "lucide-react";
+import { INVEST_LINKS_ENABLED } from "@/lib/site-flags";
 
 
 export const Route = createFileRoute("/coffee")({
