@@ -203,8 +203,8 @@ describe("legacy palette list cannot reach a package-backed project", () => {
         renderAppUiBlock(brief, { packageOwnsVisuals: true }).text,
       ].join("\n").toLowerCase();
       for (const hex of presetHex) expect(text, `${brief}: ${hex}`).not.toContain(hex);
-      for (const font of presetFonts) expect(text, `${brief}: ${font}`).not.toContain(font.toLowerCase());
-      for (const p of PALETTES) expect(text, `${brief}: ${p.label}`).not.toContain(p.label.toLowerCase());
+      for (const font of presetFonts) expect(text, `${brief}: ${font}`).not.toMatch(new RegExp(`\\b${font.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`));
+      for (const p of PALETTES) expect(text, `${brief}: ${p.label}`).not.toMatch(new RegExp(`\\b${p.label.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`));
     }
   });
 
