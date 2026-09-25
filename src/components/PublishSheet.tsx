@@ -287,8 +287,20 @@ export function PublishSheet({
         return;
       }
 
-      // Latest build is ready → pin it as published.
-      const result = await publishProject({ projectId: project.id });
+      // Latest build is ready → pin it as published. If it was built from an
+      // older version of the code, the server refuses; build the current
+      // version and auto-publish when it lands.
+      let result: Awaited<ReturnType<typeof publishProject>>;
+      try {
+        result = await publishProject({ projectId: project.id });
+      } catch (e) {
+        if (e instanceof Error && /haven't finished building|changed while publishing/i.test(e.message)) {
+          await triggerBuild(project.id);
+          setAwaitingBuild(true);
+          return;
+        }
+        throw e;
+      }
       onChange({ ...project, ...result.project } as ProjectRow);
       setAwaitingBuild(false);
       setJustPublished(true);
