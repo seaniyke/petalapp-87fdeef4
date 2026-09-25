@@ -98,3 +98,6 @@
 - [x] Oxford-comma page list read as Home only → 10k shell cut-off with no continuation — fixed + router-driven continuation
 - [ ] Confirm Railway builder redeployed: GET $BUILDER_URL/agent/healthz must show version 2026-09-25-design-systems-continuation and coreHash fbbd6e8f… (blocked: Railway redeploy is outside this editor)
 - [ ] Re-run the live hotel test (after the item above)
+- [ ] Economics: redeploy builder (new bundle sha 10bec869…) so timings/`deployed` flag reach Kimble — blocked on Railway redeploy
+- [ ] Economics: observe 10-build cohort (2026-10-10-BUILD-01..10) in Admin → Economics — waits on real builds
+- [ ] Economics: enter monthly infra bills in infra_services; image provider cost reporting — waits on your numbers / provider data
