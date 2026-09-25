@@ -4,6 +4,8 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
+    // Design-system packages load tokens.css as raw text; keep CSS real in tests.
+    css: { include: [/design-systems\/packages\//] },
     // Some older regression harnesses are standalone Bun scripts. Let
     // Vitest run only files that use an actual test-runner API instead of
     // importing scripts that call process.exit at module scope.

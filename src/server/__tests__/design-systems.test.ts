@@ -13,10 +13,10 @@ const pkg = getDesignSystem(SLUG) as DesignSystemPackage;
 const baseFiles = {
   "design.json": JSON.stringify({
     schema_version: 1, slug: "demo", name: "Demo", description: "d", when_to_use: "w", version: "1.0.0",
-    default_accent: "a", accents: ["a"], has_components: false,
+    default_accent: "alpha", accents: ["alpha"], has_components: false,
   }),
   "tokens.css": ":root { --background: oklch(1 0 0); --kimble-radius: 4px; }",
-  "accents.json": JSON.stringify({ a: { light: { primary: "oklch(0.5 0.1 20)" } } }),
+  "accents.json": JSON.stringify({ alpha: { light: { primary: "oklch(0.5 0.1 20)" } } }),
   "fonts.html": '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora">',
   "DESIGN.md": "# Demo\nUse tokens.",
 };
@@ -47,7 +47,7 @@ describe("package loader", () => {
   it("rejects malformed accents.json and mismatched accents", () => {
     expect(parseDesignSystemPackage({ ...baseFiles, "accents.json": "[" }, "demo").ok).toBe(false);
     expect(parseDesignSystemPackage({ ...baseFiles, "accents.json": JSON.stringify({ b: { light: { primary: "x" } } }) }, "demo").ok).toBe(false);
-    expect(parseDesignSystemPackage({ ...baseFiles, "accents.json": JSON.stringify({ a: { light: { primary: "x;}" } } }) }, "demo").ok).toBe(false);
+    expect(parseDesignSystemPackage({ ...baseFiles, "accents.json": JSON.stringify({ alpha: { light: { primary: "x;}" } } }) }, "demo").ok).toBe(false);
   });
   it("rejects disallowed font hosts and non-link content", () => {
     expect(parseDesignSystemPackage({ ...baseFiles, "fonts.html": '<link rel="stylesheet" href="https://evil.test/x.css">' }, "demo").ok).toBe(false);
