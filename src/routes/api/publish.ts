@@ -218,9 +218,9 @@ export const Route = createFileRoute("/api/publish")({
             { status: 409 },
           );
         }
-        if (updateErr) {
+        if (updateErr || !updated) {
           return Response.json(
-            { error: `Failed to update publish state: ${updateErr.message}` },
+            { error: `Failed to update publish state: ${updateErr?.message ?? "unknown"}` },
             { status: 500 },
           );
         }
