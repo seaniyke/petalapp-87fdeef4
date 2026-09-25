@@ -167,7 +167,14 @@ export async function writePlannedPages(args: {
     const paths = files.map((f) => f.path);
     const contract = projectContract(files);
     const shared = sharedFiles(files, args.pages);
-    const results = await Promise.all(pages.map((p) => call(pageInstruction(p, paths, contract, shared))));
+    // Bounded fan-out. Gilded Shingle evidence (ai_call_log, same provider,
+    // same 40,704-token prefix): the first 4 simultaneous page calls hit the
+    // prompt cache, calls 5 and 6 fired in the same second missed it and cost
+    // ~3x. Running at most PAGE_CONCURRENCY at once keeps every page call on
+    // the warm cache without changing prompts, model or context.
+    const results = await mapBounded(pages, PAGE_CONCURRENCY, (p) =>
+      call(pageInstruction(p, paths, contract, shared)),
+    );
     results.forEach(put);
   };
 
