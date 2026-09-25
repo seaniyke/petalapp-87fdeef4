@@ -241,5 +241,42 @@ export function Calculator() {
   assert("destructured bindings/literals are not scope leaks", scope.length === 0, JSON.stringify(scope));
 });
 
+
+// ---------------------------------------------------------------------------
+// Regression — semicolon-less endings are NOT truncation. A valid Login page
+// ending in `export default Login` was rolled back as "cut off" in production.
+// ---------------------------------------------------------------------------
+run("Regression — semicolon-less file endings are complete", () => {
+  const login = `import AuthSignInCard from "@/components/examples/auth-sign-in-card"
+
+const Login = () => {
+  return (
+    <div className="mx-auto max-w-md">
+      <AuthSignInCard />
+    </div>
+  )
+}
+
+export default Login`;
+  const v = verifyFilesLocal([{ path: "src/pages/Login.tsx", content: login }], ["src/pages/Login.tsx"]);
+  const trunc = v.issues.filter((i) => i.kind === "truncation");
+  assert("`export default Login` is not truncation", trunc.length === 0, JSON.stringify(trunc));
+
+  const named = `const A = 1\nconst B = 2\nexport { A, B }`;
+  const v2 = verifyFilesLocal([{ path: "src/lib/x.ts", content: named }], ["src/lib/x.ts"]);
+  assert(
+    "`export { A, B }` is not truncation",
+    v2.issues.filter((i) => i.kind === "truncation").length === 0,
+  );
+
+  const cut = `export function Page() {\n  return (\n    <div className="p-4">`;
+  const v3 = verifyFilesLocal([{ path: "src/pages/Cut.tsx", content: cut }], ["src/pages/Cut.tsx"]);
+  assert(
+    "a genuinely cut-off file is still flagged",
+    v3.issues.some((i) => i.kind === "truncation"),
+  );
+});
+
 console.log(`\n${failed === 0 ? "✓ all assertions passed" : `✗ ${failed} assertion(s) failed`}`);
+
 process.exit(failed === 0 ? 0 : 1);

@@ -99,7 +99,7 @@ export const BLOCKING_KINDS = new Set([
  * Local-verifier kinds that are pure syntax heuristics. A real parser verdict
  * always beats them.
  */
-const HEURISTIC_SYNTAX_KINDS = new Set(["jsx", "braces", "unterminated-string"]);
+const HEURISTIC_SYNTAX_KINDS = new Set(["jsx", "braces", "unterminated-string", "truncation"]);
 
 export function isScaffoldOwned(path: string): boolean {
   return isVerifierExempt(path);
