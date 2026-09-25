@@ -15,6 +15,9 @@ import {
 const GOOD = `export default function App() {\n  return <div>hi</div>;\n}\n`;
 const BROKEN = `export default function App() {\n  return <div>hi</div>\n`;
 const FENCED = "```tsx\nexport const A = () => <p>a</p>;\n```\n";
+const APOSTROPHE_APP = `export default function App() {
+  return <main><p>This page hasn't been built yet.</p></main>;
+}\n`;
 
 describe("scaffold ownership", () => {
   it("protects the UI kit and build config from model writes", () => {
@@ -37,6 +40,14 @@ describe("write gate", () => {
     const res = await runWriteGate({ before: [], after, changedPaths: ["src/App.tsx"] });
     expect(res.rejected).toEqual([]);
     expect(res.files).toEqual(after);
+  });
+
+  it("keeps a valid App.tsx with JSX apostrophe available for the build", async () => {
+    const after = [{ path: "src/App.tsx", content: APOSTROPHE_APP }];
+    const res = await runWriteGate({ before: [], after, changedPaths: ["src/App.tsx"] });
+    expect(res.validationFailure).toBeUndefined();
+    expect(res.rejected).toEqual([]);
+    expect(res.files).toContainEqual(after[0]);
   });
 
   it("heals rather than rejects when a leaked fence breaks the parse", async () => {

@@ -5883,6 +5883,11 @@ Forbidden defaults
             })),
           },
         });
+        if (esbuildVerdict.status === "unavailable") {
+          throw new Error(
+            `Authoritative code validation unavailable: ${esbuildVerdict.unavailableDetail ?? esbuildVerdict.unavailableReason ?? "initialization error"}`,
+          );
+        }
 
         // Tier 2.8 — render-risk linter (Phase 5).
         // Soft-warn only: feeds findings into combinedAutofixIssues so

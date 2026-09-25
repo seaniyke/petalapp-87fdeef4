@@ -12,10 +12,8 @@
  * produce noise here ("can't resolve @/components/ui/button") because
  * esbuild has no knowledge of our virtual file map.
  *
- * Failure mode policy: if esbuild itself errors out (cold-start wasm
- * init failure, OOM, etc.), we LOG and return ok=true. We never fail a
- * build that would have otherwise passed because of an infra hiccup in
- * our verifier.
+ * Failure mode policy: initialization failure is an explicit unavailable
+ * verdict. Callers must stop safely: unknown is neither clean nor broken.
  */
 import * as esbuild from "esbuild-wasm";
 
@@ -32,8 +30,8 @@ export type EsbuildVerdict = {
   ok: boolean;
   issues: EsbuildIssue[];
   /**
-   * Paths this pass actually parsed. Empty when the pass was skipped (init
-   * failure, nothing changed), which callers must treat as "no verdict" —
+   * Paths this pass actually parsed. Empty when unavailable/not checked,
+   * which callers must treat as "no verdict" —
    * NOT as "everything parsed fine".
    */
   checkedPaths: string[];
