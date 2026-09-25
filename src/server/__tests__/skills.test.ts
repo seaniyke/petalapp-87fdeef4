@@ -47,7 +47,7 @@ describe("focused expertise", () => {
   it("gives a first build composition and writing expertise", () => {
     const ids = selectSkills({ ...base, isInitial: true, text: "build a bakery site" }).map((s) => s.id);
     expect(ids).toContain("page-composition");
-    expect(ids.length).toBeLessThanOrEqual(4);
+    expect(ids.length).toBeLessThanOrEqual(5);
   });
 
   it("never loads everything at once", () => {

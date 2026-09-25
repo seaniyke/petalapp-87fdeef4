@@ -45,8 +45,8 @@ export function selectSkills(ctx: SkillContext): Skill[] {
   const wants: Array<[boolean, SkillId]> = [
     [structural || has("visual"), "page-composition"],
     [(structural && SECTION_ARCH_RE.test(text)) || (ctx.scope !== "micro" && /\b(landing|marketing|sections?)\b/i.test(text)), "section-architectures"],
-    [ctx.isInitial || has("copy") || COPY_RE.test(text), "copy-honesty"],
     [ctx.isInitial || has("visual") || VISUAL_RE.test(text), "typography-color"],
+    [ctx.isInitial || has("copy") || COPY_RE.test(text), "copy-honesty"],
     [MOTION_RE.test(text) || has("motion"), "motion"],
     [ctx.isInitial || has("content") || IMAGE_RE.test(text), "imagery"],
     [ctx.touchesData === true || has("data") || FORM_RE.test(text), "forms-and-data"],
