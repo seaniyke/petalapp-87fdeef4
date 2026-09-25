@@ -139,3 +139,4 @@ describe("multi-turn constraints survive", () => {
     expect(selectHistoryForGeneration(msgs, 2, true)).toHaveLength(3);
   });
 });
+it("TMPSIZE", () => { for (const m of ["full","compact"] as const) { const t = loadCoreKnowledge(m).text; console.log("SZ", m, t.length, Math.round(t.length/4), (t.match(/verifyBuild|verifyIntegration|readFile|editFile|analyzeProject|template\.json|askUser/g)||[]).length); console.log("HD", t.split("\n").filter(l=>/^##/.test(l)).join(" | ")); }});
