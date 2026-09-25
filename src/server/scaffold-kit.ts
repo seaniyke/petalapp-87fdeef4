@@ -4493,6 +4493,14 @@ export function markKitFileCustomized(path: string, content: string): string {
   return `// ${PETAL_CUSTOMIZED_MARKER} — customized for this project; kit refreshes will not overwrite it.\n${content}`;
 }
 
+const IMAGE_REF_RE = /petal-image:\/\/[^\s"'`<>)]+|https?:\/\/[^\s"'`<>)]+/g;
+/** True when two kit copies differ only by picture placeholders vs filled pictures. */
+export function sameKitModuloResolvedImages(kitContent: string, existing: string): boolean {
+  if (kitContent === existing) return false;
+  if (!kitContent.includes("petal-image://")) return false;
+  return kitContent.replace(IMAGE_REF_RE, "@IMG@") === existing.replace(IMAGE_REF_RE, "@IMG@");
+}
+
 function shouldOverwriteDuringPatch(path: string): boolean {
 
   return (
@@ -4541,6 +4549,10 @@ export function applyScaffoldKitForPatch(
     // silently reverts the redesign, which reads to the user as "Kimble said it
     // changed the design but nothing changed".
     if (existing !== undefined && isCustomizedKitFile(kit.path, existing)) continue;
+    // The only difference is that this project's picture slots were already
+    // filled with real pictures. Reverting would re-open those slots and the
+    // picture step would make brand-new pictures for a file nobody edited.
+    if (existing !== undefined && sameKitModuloResolvedImages(kit.content, existing)) continue;
     if (shouldOverwriteDuringPatch(kit.path) || !map.has(kit.path)) {
       map.set(kit.path, kit.content);
     }
