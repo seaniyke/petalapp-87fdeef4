@@ -6659,6 +6659,9 @@ async function handleGenerateRequestCore(
             if (lint.findings.length) console.info(`[design-lint] errors=${lint.errorCount} warnings=${lint.warningCount}: ${lint.findings.slice(0, 5).map((v) => `${v.rule}@${v.path}`).join(", ")}`);
           }
         }
+        // Documented read-before-edit exception: on a FIRST_BUILD the starter
+        // template is the foundation the build is designed to author over.
+        if (isInitial) for (const f of turnBaselineFiles) turnLedger.recordRead(f.path);
         const txResult = await commitTurn({
           baseline: turnBaselineFiles,
           proposed: nextFiles,
