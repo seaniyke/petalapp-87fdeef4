@@ -374,6 +374,18 @@ export async function attachBuildEconomicsByProject(args: {
       verifyMs: args.verifyMs ?? null,
       result: args.result,
     });
+    // Browser-review AI calls run on the builder with no turn id: link the
+    // un-stamped calls for this project made while this build ran.
+    if (args.buildMs != null) {
+      const started = new Date(Date.now() - args.buildMs - 60_000).toISOString();
+      await supabaseAdmin
+        .from("ai_call_log")
+        .update({ turn_id: turnId, build_id: args.buildId } as never)
+        .eq("project_id", args.projectId)
+        .is("turn_id", null)
+        .gte("created_at", started);
+    }
+    await syncTurnCosts(turnId);
     await supabaseAdmin
       .from("turn_economics")
       .update({ metadata: { build_link: "heuristic_recent_project_turn" } as never })
