@@ -1237,6 +1237,77 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_pictures: {
+        Row: {
+          active: boolean
+          aspect_ratio: string
+          cache_key: string | null
+          created_at: string
+          id: string
+          model: string | null
+          mood: string | null
+          orientation: string
+          owner_id: string | null
+          project_id: string | null
+          prompt: string
+          shared: boolean
+          style: string | null
+          subject: string
+          tags: string[]
+          turn_id: string | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          active?: boolean
+          aspect_ratio?: string
+          cache_key?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          mood?: string | null
+          orientation?: string
+          owner_id?: string | null
+          project_id?: string | null
+          prompt: string
+          shared?: boolean
+          style?: string | null
+          subject?: string
+          tags?: string[]
+          turn_id?: string | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          active?: boolean
+          aspect_ratio?: string
+          cache_key?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          mood?: string | null
+          orientation?: string
+          owner_id?: string | null
+          project_id?: string | null
+          prompt?: string
+          shared?: boolean
+          style?: string | null
+          subject?: string
+          tags?: string[]
+          turn_id?: string | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_pictures_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_docs_cache: {
         Row: {
           display_name: string
