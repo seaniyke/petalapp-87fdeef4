@@ -604,13 +604,20 @@ async function runBuildInner(body: BuildBody): Promise<void> {
 
     log.info({ url: result.url, durationMs: result.durationMs }, "Build succeeded");
 
-    await postCallback({
-      buildId: body.buildId,
-      projectId: body.projectId,
-      status: "ready",
-      url: result.url,
-      ...(verification ? { verification } : {}),
-    });
+    try {
+      await postCallback({
+        buildId: body.buildId,
+        projectId: body.projectId,
+        status: "ready",
+        url: result.url,
+        ...(verification ? { verification } : {}),
+      });
+    } catch (e) {
+      // The app is deployed. A slow or lost acknowledgement is not a build
+      // failure — the app side may already have recorded it, and the
+      // reconciler recovers it otherwise. Never report "failed" here.
+      log.error({ err: String(e) }, "Ready callback not acknowledged; leaving to reconciler");
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const logs = err instanceof BuildError ? err.logs.slice(-4000) : message;
