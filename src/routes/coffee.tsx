@@ -3,6 +3,7 @@ import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CryptoTipPanel } from "@/components/CryptoTipPanel";
 import { Coffee, Heart, Loader2, ArrowRight, CreditCard, Bitcoin } from "lucide-react";
+import { INVEST_LINKS_ENABLED } from "@/lib/site-flags";
 
 
 export const Route = createFileRoute("/coffee")({
@@ -126,13 +127,15 @@ function CoffeePage() {
               Kimble is built by a small team. If it saved you time or made you smile, drop a tip — it keeps the servers
               warm and the features shipping.
             </p>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Want to go bigger?{" "}
-              <Link to="/invest" className="font-medium text-primary hover:underline">
-                Invest in Kimble
-              </Link>
-              .
-            </p>
+            {INVEST_LINKS_ENABLED && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Want to go bigger?{" "}
+                <Link to="/invest" className="font-medium text-primary hover:underline">
+                  Invest in Kimble
+                </Link>
+                .
+              </p>
+            )}
           </div>
 
           {/* Payment method */}

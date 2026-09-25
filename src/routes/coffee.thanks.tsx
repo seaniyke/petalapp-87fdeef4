@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Heart, Loader2, XCircle, ArrowRight } from "lucide-react";
+import { INVEST_LINKS_ENABLED } from "@/lib/site-flags";
 
 const SearchSchema = z.object({
   reference: z.string().optional(),
@@ -102,12 +103,14 @@ function ThanksPage() {
                 >
                   Back to Kimble <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  to="/invest"
-                  className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium hover:bg-muted"
-                >
-                  Want to invest in Kimble?
-                </Link>
+                {INVEST_LINKS_ENABLED && (
+                  <Link
+                    to="/invest"
+                    className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium hover:bg-muted"
+                  >
+                    Want to invest in Kimble?
+                  </Link>
+                )}
               </div>
             </>
           )}
