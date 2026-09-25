@@ -149,7 +149,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   // Defends against a compromised builder or a bug that scrambles ids.
   const { data: existing } = await supabaseAdmin
     .from("project_builds")
-    .select("id, project_id, created_at, project_revision")
+    .select("id, project_id, created_at, project_revision, status")
     .eq("id", payload.buildId)
     .maybeSingle();
   if (!existing) {
@@ -160,6 +160,15 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   if (existing.project_id !== payload.projectId) {
     console.warn("Builder callback project mismatch", payload.buildId);
     return new Response("Project mismatch", { status: 400 });
+  }
+  // A build already recorded as ready is final. When our slow "ready"
+  // handling outlasts the builder's callback timeout, the builder reports its
+  // own timeout as a "failed" callback — that must never undo a live app.
+  if (existing.status === "ready" && payload.status === "failed") {
+    console.warn(
+      `[builds/callback] ignoring late failed callback for ready build=${payload.buildId}: ${payload.errorMessage.slice(0, 120)}`,
+    );
+    return new Response("ok", { status: 200 });
   }
 
   // Internal economics: how long this build occupied the builder, and how
