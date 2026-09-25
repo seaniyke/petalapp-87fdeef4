@@ -98,8 +98,10 @@ export function classifyRequest(
   const base = baseOperation(r, opts);
   // A cross-cutting ask is an architectural change whatever keyword matched
   // first (previously an override applied separately in /api/generate).
+  // Escalation always requires a plan: a site-wide change must never inherit
+  // planRequired=false from the repair/content branch that matched first.
   if (crossCutting && base.operation !== "architectural_change") {
-    return { operation: "architectural_change", planRequired: base.planRequired, mode: "staged", reason: `cross-cutting (${base.reason})`, edit, crossCutting };
+    return { operation: "architectural_change", planRequired: true, mode: "staged", reason: `cross-cutting (${base.reason})`, edit, crossCutting };
   }
   return { ...base, edit, crossCutting };
 }
