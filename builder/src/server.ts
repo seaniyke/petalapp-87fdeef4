@@ -297,8 +297,20 @@ const agentPool = new AgentPool(
   Number(process.env.MAX_AGENT_QUEUE ?? 50),
 );
 // Bump when the vendored agent core changes, so a live check can confirm the deploy.
-const AGENT_CORE_VERSION = "2026-09-25-progress-title-fix";
-fastify.get("/agent/healthz", async () => ({ ok: true, version: AGENT_CORE_VERSION, inProcess: inProcessEnabled(), ...agentPool.snapshot() }));
+const AGENT_CORE_VERSION = "2026-09-25-design-systems-continuation";
+// sha256 of the vendored bundle actually on disk in this container — compare
+// with builder/vendor/agent-core.version.json to prove what production runs.
+const AGENT_CORE_HASH: string = await (async () => {
+  try {
+    const { readFile } = await import("node:fs/promises");
+    const { createHash } = await import("node:crypto");
+    const buf = await readFile(new URL("../vendor/agent-core.mjs", import.meta.url));
+    return createHash("sha256").update(buf).digest("hex");
+  } catch {
+    return "unavailable";
+  }
+})();
+fastify.get("/agent/healthz", async () => ({ ok: true, version: AGENT_CORE_VERSION, coreHash: AGENT_CORE_HASH, inProcess: inProcessEnabled(), ...agentPool.snapshot() }));
 
 fastify.post("/agent/generate", async (req, reply) => {
   const ts = req.headers["x-petal-timestamp"] as string | undefined;

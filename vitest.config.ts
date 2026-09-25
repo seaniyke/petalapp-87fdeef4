@@ -16,6 +16,8 @@ export default defineConfig({
       "src/server/__tests__/design-knowledge.test.ts",
       "src/server/__tests__/design-systems.test.ts",
       "src/server/__tests__/design-authority.test.ts",
+      "src/server/__tests__/starter-kit-imports.test.ts",
+      "src/server/__tests__/output-limit-continuation.test.ts",
       "src/server/__tests__/turn-cancel.test.ts",
       "src/server/__tests__/durable-agent.test.ts",
       "src/server/__tests__/agent-ops.test.ts",

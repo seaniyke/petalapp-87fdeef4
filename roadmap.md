@@ -91,3 +91,10 @@
 - [x] Stage 5–6: files, steps, narration, timeline moved to the reducer; duplicate builder state removed
 - [ ] Later: move phases + cycle caption (entangled with publish flow) into the reducer
 - [ ] Refresh after a turn finished while away: result comes from saved card, not replay
+
+## Live-test blockers (Sept 25)
+- [x] Agent bundle stale (couldn't build `?raw`/glob) — build script fixed, bundle rebuilt (sha256 fbbd6e8f…)
+- [x] Backend-only example files shipped to every project — now backend-only
+- [x] Oxford-comma page list read as Home only → 10k shell cut-off with no continuation — fixed + router-driven continuation
+- [ ] Confirm Railway builder redeployed: GET $BUILDER_URL/agent/healthz must show version 2026-09-25-design-systems-continuation and coreHash fbbd6e8f… (blocked: Railway redeploy is outside this editor)
+- [ ] Re-run the live hotel test (after the item above)

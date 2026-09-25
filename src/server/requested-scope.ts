@@ -56,8 +56,9 @@ export function extractRequestedPages(prompt: string): string[] {
   for (const m of text.matchAll(/\bpages?\s*(?::|\(|—|-|including|include)\s*([^.!?\n)]{2,160})/gi)) {
     push(m[1]);
   }
-  // "A, B, C and D pages"
-  for (const m of text.matchAll(/((?:[A-Za-z][\w&-]*\s*(?:,|\band\b|\/|\+)\s*){1,9}[A-Za-z][\w&-]*)\s+pages\b/gi)) {
+  // "A, B, C and D pages" — also the Oxford comma "A, B, and C pages"
+  // (", and" is ONE separator; missing it dropped every page but Home).
+  for (const m of text.matchAll(/((?:[A-Za-z][\w&-]*\s*(?:,\s*(?:and\b|&)?|\band\b|&|\/|\+)\s*){1,9}[A-Za-z][\w&-]*)\s+pages\b/gi)) {
     push(m[1]);
   }
   // single "X page" mentions ("a menu page", "the contact page")
