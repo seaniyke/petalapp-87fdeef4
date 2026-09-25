@@ -88,5 +88,6 @@
 
 ## Builder streaming UX (Sept 2026)
 - [x] Stage 1–4: turn reducer (live + replay), activity story, full replay on refresh, truthful Stop
-- [ ] Stage 5–6: move remaining turn state out of builder.tsx; remove legacy duplicated streaming state once proven live
+- [x] Stage 5–6: files, steps, narration, timeline moved to the reducer; duplicate builder state removed
+- [ ] Later: move phases + cycle caption (entangled with publish flow) into the reducer
 - [ ] Refresh after a turn finished while away: result comes from saved card, not replay

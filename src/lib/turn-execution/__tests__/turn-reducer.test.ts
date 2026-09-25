@@ -198,7 +198,7 @@ describe("stage 5 projections (replacing builder-local state)", () => {
   it("plan step stays active while files are written", () => {
     expect(v.activeStepIndex).toBe(0);
     expect(v.doneStepIndexes).toEqual([]);
-    expect(v.current?.label).toBe("Generating imagery".length ? v.current?.label : "");
+    expect(v.current?.label).toBe("Made 1 picture");
   });
   it("timeline dedupes pictures", () => {
     expect(v.timeline.filter((t) => t.url)).toHaveLength(1);
