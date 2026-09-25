@@ -6737,7 +6737,14 @@ Forbidden defaults
         {
           const turnChanged = turnChangedPaths;
           const { providersExhaustedForTurn } = await import("@/server/turn-context.server");
-          turnCommittedForMemory = scopeMissing.length === 0;
+          {
+            const { shouldRecordMemory } = await import("@/server/context/memory-model");
+            turnCommittedForMemory = shouldRecordMemory({
+              committed: nextFiles.length > 0,
+              cancelled: request.signal.aborted,
+              missingScope: scopeMissing.length,
+            });
+          }
           // One inspectable record per edit turn: why each file changed and
           // why anything was considered broken — no guessing afterwards.
           if (!isInitial) {
