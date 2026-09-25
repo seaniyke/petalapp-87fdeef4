@@ -395,7 +395,7 @@ function trimMessagesForGeneration(messages: ChatMessage[]): ChatMessage[] {
     /^(yes|yeah|yep|ok|okay|sure|do it|do all|do all of (?:it|them|these)|do both|all of (?:it|them|these)|both|everything|ship it|go ahead|continue|proceed|that|this)$/i.test(latestText);
   // Constraint-aware retention BEFORE any truncation: earlier user messages
   // that state a standing rule ("always…", "never…", brand, font) survive,
-  // alongside the immediate context for bare confirmations. budgetMessages()
+  // alongside the immediate context for bare confirmations. The message budget
   // later fits the result to the token ceiling with the same priorities.
   return selectHistoryForGeneration(messages, lastUserIdx, needsPreviousContext);
 }
