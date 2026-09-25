@@ -2,7 +2,7 @@
  * /packs — gallery of industry packs (multi-page, opinionated starters).
  *
  * Heavier than /templates: each pack here is a full website brief with a
- * page list, palette, typography, and Cloud features. Click-through goes
+ * page list and Cloud features. Click-through goes
  * to /packs/$slug for the full breakdown before launching the builder.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -44,7 +44,7 @@ function PacksGallery() {
           </h1>
           <p className="mt-3 text-muted-foreground">
             Multi-page briefs tuned for a specific kind of business. Each
-            pack ships with the page list, palette, typography pairing, and
+            pack ships with the page list and
             the Cloud features Kimble will turn on for you.
           </p>
         </header>

@@ -180,7 +180,7 @@ Pages:
 3. /issues/$slug — single issue with rich editorial typography (drop cap, pull quotes), inline signup CTA two-thirds down.
 4. /about — author bio, why this newsletter exists, what to expect.
 
-Reading-first design: max-width prose, generous line-height, real serif typography. Not a SaaS landing page in disguise.`,
+Reading-first design: max-width prose, generous line-height, considered editorial typography. Not a SaaS landing page in disguise.`,
   },
   {
     slug: "booking",

@@ -1,5 +1,5 @@
 /**
- * /packs/$slug — full pack brief with palette, typography, page list, and
+ * /packs/$slug — full pack brief with page list and
  * Cloud features, plus a "Build this with Kimble" CTA that ships the composed
  * brief into the builder.
  */
