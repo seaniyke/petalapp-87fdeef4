@@ -3154,6 +3154,29 @@ Forbidden defaults
   }
 
 
+  // Execution discipline — deterministic operation class + enforced scope.
+  // Shared chrome and unrelated pages are protected on targeted edits; the
+  // scope never grows silently. No AI call.
+  const { classifyRequest, buildExecutionScope, renderScopeBlock } = await import("@/server/execution");
+  const turnClassification = classifyRequest(lastUserContent || "", {
+    isInitial,
+    manifest: projectCtx.manifest,
+    targetCount: resolvedTargetPaths.length,
+  });
+  const executionScope = buildExecutionScope({
+    request: lastUserContent || "",
+    classification: isCrossCutting && turnClassification.operation !== "first_build"
+      ? { ...turnClassification, operation: "architectural_change", mode: "staged" }
+      : turnClassification,
+    manifest: projectCtx.manifest,
+    targets: resolvedTargetPaths,
+    neighbours: impactNeighbourPaths,
+  });
+  const executionScopeBlock = isInitial ? "" : renderScopeBlock(executionScope);
+  console.info(
+    `[execution] op=${executionScope.operation} mode=${turnClassification.mode} plan=${turnClassification.planRequired} targets=${executionScope.affectedFiles.length} protected=${executionScope.protectedAreas.length} (${turnClassification.reason})`,
+  );
+
   // Anchors let large files travel as windows around the exact lines that
   // matter instead of whole files — the single biggest reduction for a
   // targeted edit, and it keeps the tail of a file reachable.
@@ -3245,7 +3268,7 @@ Forbidden defaults
       ? ""
       : `\n\nEditable app file manifest (all app-owned files Kimble may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${budget.omitted} lower-priority files omitted for speed. Some large files are shown as the regions around the lines that matter, with the untouched ranges marked — quote only bytes you can actually see. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${budget.files
           .map((f) => `--- ${f.path} ---\n${f.content}`)
-          .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}${appMapBlock}`;
+          .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}${appMapBlock}${executionScopeBlock}`;
   const filesContext = renderFilesContext(promptBudget);
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
@@ -4803,7 +4826,9 @@ Forbidden defaults
             // allow-list is treated as protected and dropped.
             (allowedPathSet !== null && !allowedPathSet.has(p)) ||
             // A file the request never pointed at, on a small edit.
-            !editBoundary.allows(p);
+            !editBoundary.allows(p) ||
+            // Shared chrome / unrelated page outside the execution scope.
+            (!isInitial && !isCrossCutting && executionScope.isProtected(p));
 
           // Honesty ledger — every path the model asked to change that did
           // NOT end up byte-different after apply + recovery. Surfaced to the
@@ -6758,6 +6783,10 @@ Forbidden defaults
                     request: lastUserContent.slice(0, 400),
                     intent: editClassification?.scope ?? null,
                     scope: resolvedTargetPaths,
+                    operation: executionScope.operation,
+                    mode: turnClassification.mode,
+                    protectedAreas: executionScope.protectedAreas.slice(0, 20),
+                    protectedTouched: turnChanged.filter((p) => executionScope.isProtected(p)),
                     filesRead: contextFiles.map((f) => f.path).slice(0, 40),
                     filesChanged: turnChanged.slice(0, 40),
                     housekeeping: [...kitSyncedPaths].slice(0, 40),
