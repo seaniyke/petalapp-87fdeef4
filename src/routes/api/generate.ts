@@ -4124,8 +4124,15 @@ Forbidden defaults
         // THE bounded recovery table for this turn (engine/recovery-policy).
         const recovery = new RecoveryBudget();
         recovery.setTurn({ request: lastUserContent, targets: resolvedTargetPaths });
+        // THE agent circuit breaker for this turn (execution/circuit-breaker).
+        // RecoveryBudget bounds each recovery mechanism; the breaker decides
+        // whether the agent is making useful progress at all. A fresh one per
+        // turn — it never survives into an unrelated request.
+        const breaker = new AgentCircuitBreaker();
+        /** Guidance the breaker wants the next repair attempt to see. */
+        let breakerGuidance: string | null = null;
         const turnContextFor = (path: string | null): string =>
-          [recovery.summarize(path), appMapRepairBlock].filter(Boolean).join("\n\n");
+          [recovery.summarize(path), breakerGuidance, appMapRepairBlock].filter(Boolean).join("\n\n");
         try {
           // A stalled provider's partial output is never trusted: resend the
           // original request to a different upstream instead.
