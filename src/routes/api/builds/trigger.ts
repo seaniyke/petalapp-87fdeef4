@@ -338,10 +338,8 @@ export const Route = createFileRoute("/api/builds/trigger")({
             // function the generation turn used, so the finishing pass is sized
             // to the request without another model call.
             if (typeof lastEdit?.user_request === "string" && lastEdit.user_request.trim()) {
-              const { classifyEditDeterministic } = await import(
-                "@/server/edit-classifier.server"
-              );
-              editScope = classifyEditDeterministic(lastEdit.user_request).scope;
+              const { classifyRequest } = await import("@/server/execution/classify");
+              editScope = classifyRequest(lastEdit.user_request, { isInitial: false }).edit?.scope ?? editScope;
             }
             forceFull = !priorBuilds || priorBuilds === 0;
           } catch {

@@ -25,7 +25,7 @@ import {
 } from "@/server/tool-args-salvage.server";
 
 
-import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
+import { pickPinnedPaths } from "@/server/intent-targets.server";
 import { resolveEditIntent } from "@/server/edit-intent.server";
 import { buildSectionExpansionPatch } from "@/server/section-expansion.server";
 
@@ -2876,25 +2876,15 @@ Forbidden defaults
   // semantic classifier can WIDEN it (never shrink it), which is what catches
   // "this looks generic" and "nothing works on my phone" — structural asks
   // that no keyword list will ever match.
-  let editClassification: import("@/server/edit-classifier.server").EditClassification | null =
-    null;
-  if (!isInitial) {
-    try {
-      const { classifyEdit } = await import("@/server/edit-classifier.server");
-      editClassification = await classifyEdit({
-        prompt: lastUserContent,
-        projectPurpose: picContext?.understanding?.summary ?? resolvedPrd?.prd?.purpose ?? null,
-        fileCount: currentFiles.length,
-        projectId: body.projectId ?? null,
-        userId,
-        signal: request.signal,
-      });
-      console.info(
-        `[edit-classifier] scope=${editClassification.scope} source=${editClassification.source} dims=${editClassification.dimensions.join(",")} — ${editClassification.reason}`,
-      );
-    } catch (e) {
-      console.warn("[edit-classifier] skipped:", e instanceof Error ? e.message : String(e));
-    }
+  // ONE classification for this request (operation, mode, edit size,
+  // dimensions, cross-cutting). Deterministic; no AI classifier call.
+  const { classifyRequest, buildExecutionScope, renderScopeBlock } = await import("@/server/execution");
+  const turnClassification = classifyRequest(lastUserContent || "", { isInitial });
+  const editClassification = turnClassification.edit;
+  if (editClassification) {
+    console.info(
+      `[classify] op=${turnClassification.operation} scope=${editClassification.scope} dims=${editClassification.dimensions.join(",")} cross=${turnClassification.crossCutting} — ${turnClassification.reason}`,
+    );
   }
 
   // Edit Intelligence phase 1 + 3 — turn the message into an explicit change
@@ -2970,9 +2960,7 @@ Forbidden defaults
     );
   }
 
-  const isCrossCutting =
-    !isInitial &&
-    (detectCrossCuttingIntent(lastUserContent) || editClassification?.scope === "structural");
+  const isCrossCutting = turnClassification.crossCutting;
   let pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
   if (isCrossCutting) {
     console.info(
@@ -3168,17 +3156,9 @@ Forbidden defaults
   // Execution discipline — deterministic operation class + enforced scope.
   // Shared chrome and unrelated pages are protected on targeted edits; the
   // scope never grows silently. No AI call.
-  const { classifyRequest, buildExecutionScope, renderScopeBlock } = await import("@/server/execution");
-  const turnClassification = classifyRequest(lastUserContent || "", {
-    isInitial,
-    manifest: projectCtx.manifest,
-    targetCount: resolvedTargetPaths.length,
-  });
   const executionScope = buildExecutionScope({
     request: lastUserContent || "",
-    classification: isCrossCutting && turnClassification.operation !== "first_build"
-      ? { ...turnClassification, operation: "architectural_change", mode: "staged" }
-      : turnClassification,
+    classification: turnClassification,
     manifest: projectCtx.manifest,
     targets: resolvedTargetPaths,
     neighbours: impactNeighbourPaths,
