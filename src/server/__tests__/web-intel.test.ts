@@ -154,6 +154,30 @@ describe("web intelligence", () => {
     expect(detectWebIntelNeed("no link here").need).toBe("none");
   });
 
+  it("accepts bare domains without a scheme", () => {
+    expect(detectWebIntelNeed("build a site like airbnb.com").url).toBe("https://airbnb.com");
+    expect(detectWebIntelNeed("use www.example.co.uk please").url).toBe("https://www.example.co.uk");
+    expect(detectWebIntelNeed("copy stripe.com/pricing").url).toBe("https://stripe.com/pricing");
+    expect(detectWebIntelNeed("Rebuild my current website mysite.com").need).toBe("required");
+    // scheme wins when both are present
+    expect(detectWebIntelNeed("airbnb.com and https://b.com").url).toBe("https://b.com");
+  });
+
+  it("never mistakes file names or plain words for websites", () => {
+    for (const m of [
+      "fix App.tsx",
+      "update index.ts and styles.css",
+      "read data.json",
+      "the logo.png is broken",
+      "change main.jsx",
+      "an Airbnb clone please",
+      "e.g. make it bigger",
+    ]) {
+      expect(detectWebIntelNeed(m).need).toBe("none");
+    }
+  });
+
+
   it("20. recovery/billing tables unchanged apart from provider switches", () => {
     expect(RECOVERY_LIMITS.broken_file).toBe(1);
     expect(RECOVERY_LIMITS.browser_failure).toBe(0);
