@@ -542,6 +542,17 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       const w = browserGate(readiness);
       console.info(`[verification] build=${b.verdict} browser=${w.verdict} build=${payload.buildId}${w.reasons[0] ? ` — ${w.reasons[0]}` : ""}`);
     }
+    // The browser/Test Lab run takes time: the verdict may only establish
+    // readiness if the project is STILL at this build's revision.
+    const { data: nowProj } = await supabaseAdmin.from("projects").select("revision").eq("id", payload.projectId).maybeSingle();
+    if (!nowProj || Number(nowProj.revision) !== Number(existing.project_revision)) {
+      await supabaseAdmin
+        .from("project_builds")
+        .update({ stale_reason: `runtime verification finished after project moved to revision ${nowProj?.revision ?? "?"}` })
+        .eq("id", payload.buildId);
+      console.info(`[revision] stale runtime verdict ignored build=${payload.buildId} build_revision=${existing.project_revision} project_revision=${nowProj?.revision ?? "?"} verdict=${readiness.verdict}`);
+      return new Response("ok", { status: 200 });
+    }
     await recordBuildOutcome({
       projectId: payload.projectId,
       buildId: payload.buildId,

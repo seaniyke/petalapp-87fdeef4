@@ -113,7 +113,7 @@ export const Route = createFileRoute("/api/publish")({
         // Ownership check.
         const { data: project, error: projErr } = await supabaseAdmin
           .from("projects")
-          .select("id, owner_id, latest_build_id, published_build_id, published_visibility, hide_petal_badge")
+          .select("id, owner_id, latest_build_id, published_build_id, published_visibility, hide_petal_badge, revision")
           .eq("id", projectId)
           .maybeSingle();
         if (projErr) {
@@ -147,7 +147,7 @@ export const Route = createFileRoute("/api/publish")({
           }
           const { data: build, error: buildErr } = await supabaseAdmin
             .from("project_builds")
-            .select("id, status")
+            .select("id, status, project_revision")
             .eq("id", project.latest_build_id)
             .maybeSingle();
           if (buildErr) {
@@ -162,6 +162,18 @@ export const Route = createFileRoute("/api/publish")({
                 error:
                   "The latest build isn't ready yet — wait for it to finish (or retry if it failed) and try again.",
               },
+              { status: 409 },
+            );
+          }
+          // Revision identity: only a build of the CURRENT code revision may
+          // be published as the current code. An already-published older
+          // build stays live untouched while newer revisions are edited.
+          const { buildRevisionStatus } = await import("@/lib/build-revision");
+          const rs = buildRevisionStatus(build, project);
+          if (!rs.current) {
+            console.info(`[revision] publish refused build=${build.id} build_revision=${rs.buildRevision ?? "unknown"} project_revision=${rs.projectRevision}`);
+            return Response.json(
+              { error: "Your latest changes haven't finished building yet. Wait for the build to finish, then publish." },
               { status: 409 },
             );
           }
