@@ -192,10 +192,10 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
                     !dailyCap
                       ? "Not on this plan"
                       : monthlyFreeRemaining === 0
-                        ? `Monthly limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
+                        ? `Free-credit limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
                         : `Back to ${dailyCap} ${dailyResetText ?? "soon"}${
                             plan?.monthly_free_cap
-                              ? ` · ${monthlyFreeRemaining} free left this month`
+                              ? ` · ${monthlyFreeRemaining} free credits left`
                               : ""
                           }`
                   }
@@ -322,7 +322,7 @@ function UsageCard({ userId, open }: { userId: string | null; open: boolean }) {
   return (
     <div className="rounded-2xl bg-muted/40 p-5">
       <div className="flex items-baseline justify-between">
-        <h3 className="text-base font-semibold">Used this month</h3>
+        <h3 className="text-base font-semibold">Credit usage</h3>
         <span className="text-base font-semibold tabular-nums">
           {formatCredits(usage.totalCredits)}
         </span>

@@ -231,8 +231,8 @@ const sections: Section[] = [
     body: (
       <>
         <p>
-          Once you're on a paid plan, you can connect a custom domain from the publish sheet.
-          Kimble handles SSL automatically.
+          You can connect a custom domain from the publish sheet. Kimble handles SSL
+          automatically, and any paid domain purchase uses your credits.
         </p>
         <ol>
           <li>Open <strong>Publish → Domains</strong>.</li>
@@ -264,19 +264,18 @@ const sections: Section[] = [
   },
   {
     id: "billing",
-    title: "Plans & billing",
+    title: "Credits & billing",
     icon: CreditCard,
-    blurb: "How credits, plans, and runtime work.",
+    blurb: "How credits and usage work.",
     body: (
       <>
         <p>
-          Kimble has Free, Pro, Business, and Enterprise plans. Pro is the default and includes
-          a monthly credit allowance. Each chat message in Build mode uses one credit; messages
-          triggered by "Try to fix" are free.
+          Kimble runs on credits. You can buy credits whenever you need them, and purchased
+          credits never expire. Charges reflect the work Kimble completes.
         </p>
         <p>
-          Backend, custom email, and custom domains require a paid plan. Top‑ups never expire
-          and are independent from your monthly credit allowance.
+          Credits power building, hosting, AI, domains, mobile builds, and badge removal.
+          Buying credits is optional, and you are never required to save a card.
         </p>
       </>
     ),
@@ -352,10 +351,10 @@ const sections: Section[] = [
     blurb: "Quick answers to the most common questions.",
     body: (
       <>
-        <p><strong>Can I export my code?</strong> Yes — paid plans include code export and GitHub sync.</p>
+        <p><strong>Can I export my code?</strong> Yes — code export and GitHub sync are available from your project.</p>
         <p><strong>Can I export my database?</strong> Yes. Open the Cloud panel → Database → Tables and use the export action on the table you want.</p>
         <p><strong>How do I copy a project?</strong> Open the project, click its name in the top left, go to Settings, and choose Remix.</p>
-        <p><strong>What does a credit cover?</strong> One Build‑mode message. Try‑to‑fix retries are free.</p>
+        <p><strong>What does a credit cover?</strong> Credits pay for completed work across building, hosting, AI, domains, and related services.</p>
         <p><strong>Do I need to know how to code?</strong> No. Kimble writes and wires the code; you describe the outcome. If you do code, you can export the project and keep going in your own editor.</p>
         <p><strong>Can I build iOS and Android from one prompt?</strong> Yes — one mobile project ships to both.</p>
         <p><strong>Who owns what I build?</strong> You do — the code, the data, and the domain.</p>

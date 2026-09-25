@@ -124,7 +124,7 @@ export function SharePreviewDialog({
     // Free users can go public freely, but making a project private again
     // requires a paid plan or purchased credits (the DB enforces the same).
     if (!next && !hasFullAccess(wallet)) {
-      toast.error("Buy credits or upgrade to a paid plan to make projects private.");
+      toast.error("Buy credits to make projects private.");
       onUpgrade?.();
       return;
     }

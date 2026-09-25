@@ -238,7 +238,7 @@ async function handleEnableManaged(userId: string, body: unknown): Promise<Respo
     return new Response(
       JSON.stringify({
         error:
-          "Backends need a paid plan or credits in your wallet. Buy credits or upgrade to add a backend.",
+          "Backends need credits in your wallet. Buy credits to add a backend.",
         code: "plan_upgrade_required",
         requiredPlan: "pro",
         currentPlan: planCode,
