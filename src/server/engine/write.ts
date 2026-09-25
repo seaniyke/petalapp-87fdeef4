@@ -79,12 +79,14 @@ export function routerInstruction(pages: PlannedPage[], deliveredPaths: string[]
 }
 
 /** Deterministic frame check: the app file exists and carries a layout
- *  (navigation + footer) and a router. Colours and package.json alone are
- *  not a frame. */
-export function frameIsComplete(files: ProjectFile[]): boolean {
+ *  (navigation + footer), plus a router when there is more than one page.
+ *  A one-page site has nothing to route between. Colours and package.json
+ *  alone are not a frame. */
+export function frameIsComplete(files: ProjectFile[], pageCount = 2): boolean {
   const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
   if (!app.trim() || isPlaceholderFile(app)) return false;
-  return /<Routes\b|createBrowserRouter|<Route\b/.test(app) && /nav|header/i.test(app) && /footer/i.test(app);
+  const routed = pageCount <= 1 || /<Routes\b|createBrowserRouter|<Route\b/.test(app);
+  return routed && /nav|header/i.test(app) && /footer/i.test(app);
 }
 
 /** The file a WRITE call is asked for (used to keep only that file). */
@@ -159,7 +161,7 @@ export async function writePlannedPages(args: {
   const routes = args.pages.filter((p) => hasRealPage(files, p.file)).map((p) => p.route);
   // The frame is authoritative: it runs when the router is incomplete OR
   // the shell call didn't deliver a real layout (colours alone aren't one).
-  const needFrame = !frameIsComplete(files) || (routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete);
+  const needFrame = !frameIsComplete(files, args.pages.length) || (routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete);
   if (needFrame && args.budget.take("missing_page", "app shell")) {
     put(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
   }
