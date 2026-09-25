@@ -203,7 +203,10 @@ Chart palette: derive 4-6 series colours from ${accent} and ${accentSoft} (vary 
 
 Archetype tags: ${pick.archetypeTags.join(", ")}`;
 
-  return { text: APP_TASTE_BODY + lockedBlock + renderAppUiLibraryBlock(), pick };
+  const body = opts.packageOwnsVisuals
+    ? APP_TASTE_BODY.replace("The locked palette below is the whole palette.", "The selected design system's palette is the whole palette.")
+    : APP_TASTE_BODY;
+  return { text: body + lockedBlock + renderAppUiLibraryBlock(), pick };
 }
 
 /**

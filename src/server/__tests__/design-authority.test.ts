@@ -74,8 +74,8 @@ describe("A. initial generation", () => {
     expect(contract).not.toMatch(/oklch|Color roles|Google Fonts/);
     const dir = renderDesignDirectionBlock(fallbackDesignDirection("a bakery site", "p1"), { detail: "full", packageOwnsVisuals: true });
     expect(dir).not.toMatch(/palette mood|Load both via Google Fonts/);
-    expect(renderDesignTasteBlock("a bakery site", { packageOwnsVisuals: true }).text).not.toMatch(/LOCKED PALETTE/);
-    expect(renderAppUiBlock("a crm", { packageOwnsVisuals: true }).text).not.toMatch(/LOCKED design tokens/);
+    expect(renderDesignTasteBlock("a bakery site", { packageOwnsVisuals: true }).text).not.toMatch(/LOCKED PALETTE|LOCKED FONT PAIR/);
+    expect(renderAppUiBlock("a crm", { packageOwnsVisuals: true }).text).not.toMatch(/LOCKED design tokens|locked palette below/);
   });
 });
 
