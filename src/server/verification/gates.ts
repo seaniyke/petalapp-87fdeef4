@@ -14,7 +14,8 @@ import type { ProjectFile } from "@/server/generate.server";
 import type { Verdict } from "@/server/execution/verdict";
 import { toVerdict } from "@/server/execution/verdict";
 import { buildAppMap } from "@/server/engine/app-map";
-import { assessCompleteness } from "@/server/engine/build-state";
+import { assessCompleteness, isUnfinishedPage } from "@/server/engine/build-state";
+export { isUnfinishedPage };
 
 export type GateId = "syntax" | "dependencies" | "routes" | "build" | "browser";
 export const GATE_ORDER: GateId[] = ["syntax", "dependencies", "routes", "build", "browser"];
@@ -126,24 +127,6 @@ export function dependencyGate(files: ProjectFile[]): GateResult {
 }
 
 /* ------------------------ routes / completeness ------------------------ */
-
-const PLACEHOLDER_TEXT =
-  /\b(coming soon|lorem ipsum|placeholder( page| content)?|todo:? (add|build|implement)|page content goes here|under construction|this page is (not yet|still) (built|available))\b/i;
-
-/**
- * An unfinished generated page: short, and its visible text is a
- * placeholder phrase. Deliberately strict — a real page that mentions
- * "coming soon" in one card is not a placeholder.
- */
-export function isUnfinishedPage(content: string): boolean {
-  if (/Auto-generated stub by (Petal|Kimble) import-resolver/.test(content)) return true;
-  if (content.length > 900) return false;
-  const text = content
-    .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\b(import|export|default|function|return|const|from)\b[^\n]*\n/g, " ");
-  return PLACEHOLDER_TEXT.test(text) || /return\s*\(?\s*(null|<>\s*<\/>|<div\s*\/>)\s*\)?\s*;?\s*\}/.test(content);
-}
 
 export function routesGate(files: ProjectFile[], requestedRoutes: string[]): GateResult {
   const reasons: string[] = [];
