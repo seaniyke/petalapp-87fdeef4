@@ -6260,6 +6260,7 @@ async function handleGenerateRequestCore(
           const hasPlaceholders = nextFiles.some(
             (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://"),
           );
+          const seenPictureUrls = new Set<string>();
           if (hasPlaceholders) {
             await agentIO().assertActive(turnId, abortSignal, "images");
             controller.enqueue(
@@ -6270,6 +6271,29 @@ async function handleGenerateRequestCore(
               // Each picture is announced the moment it exists so the build
               // card can show it landing instead of a count at the end.
               ({ url, index }) => {
+                // Economics: one cost row per picture. A URL already seen in
+                // this turn is a reuse (provider not charged again → $0);
+                // otherwise the provider cost is not reported here → UNKNOWN.
+                const reused = seenPictureUrls.has(url);
+                seenPictureUrls.add(url);
+                void import("@/server/cost-events.server").then(({ recordCostEvents }) =>
+                  recordCostEvents([
+                    {
+                      sourceRef: `image:${logicalTurnId}:${index}`,
+                      userId,
+                      projectId: body.projectId ?? null,
+                      turnId: logicalTurnId,
+                      stage: "images",
+                      category: "IMAGE_GENERATION",
+                      resource: url.slice(0, 300),
+                      quantity: 1,
+                      unit: "image",
+                      costUsd: reused ? 0 : null,
+                      basis: reused ? "ACTUAL" : "UNKNOWN",
+                      metadata: { reused, index },
+                    },
+                  ]),
+                );
                 controller.enqueue(
                   encoder.encode(
                     sse({

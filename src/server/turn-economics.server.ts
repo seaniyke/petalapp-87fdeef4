@@ -17,6 +17,7 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { economicsValues } from "@/server/economics-config.server";
+import { aiRowToCostEvent, classifyTurnCalls, recordCostEvents } from "@/server/cost-events.server";
 
 export type CostBasis = "actual" | "estimated" | "unknown";
 
@@ -169,8 +170,63 @@ export async function recordTurnEconomics(args: RecordTurnEconomicsArgs): Promis
       },
       { onConflict: "turn_id" },
     );
+    await syncTurnCosts(args.turnId);
   } catch (err) {
     console.warn("[turn-economics] record failed", err);
+  }
+}
+
+/**
+ * Mirror every AI call of the turn into cost_events (ACTUAL where OpenRouter
+ * reported a cost), stamp call classes, and split credits into free-build vs
+ * paid from the ledger. Idempotent; safe to call again after builds finish.
+ */
+export async function syncTurnCosts(turnId: string): Promise<void> {
+  try {
+    const { data: rows } = await supabaseAdmin
+      .from("ai_call_log")
+      .select("id, user_id, project_id, turn_id, stage, purpose, call_kind, model, upstream_provider, provider, prompt_tokens, completion_tokens, reasoning_tokens, cache_write_tokens, cost_usd_micro, cost_basis, status, created_at")
+      .eq("turn_id", turnId)
+      .order("created_at", { ascending: true });
+    const list = (rows ?? []) as Array<Record<string, unknown>>;
+    await recordCostEvents(list.map((r) => aiRowToCostEvent(r as never)));
+    const classes = classifyTurnCalls(list as never);
+    for (let i = 0; i < list.length; i++) {
+      await supabaseAdmin.from("ai_call_log").update({ call_class: classes[i] } as never).eq("id", list[i].id as string);
+    }
+    const count = (c: string) => classes.filter((x) => x === c).length;
+    const { data: te } = await supabaseAdmin
+      .from("turn_economics").select("user_id, project_id, created_at").eq("turn_id", turnId).maybeSingle();
+    let free = 0;
+    let paid = 0;
+    if (te?.user_id && te.project_id) {
+      const since = new Date(new Date(te.created_at as string).getTime() - 30 * 60_000).toISOString();
+      const { data: led } = await supabaseAdmin
+        .from("credit_ledger").select("delta, reason, metadata")
+        .eq("user_id", te.user_id).eq("project_id", te.project_id).eq("reason", "ai_build_charge")
+        .lt("delta", 0).gte("created_at", since).order("created_at", { ascending: false }).limit(1);
+      const m = (led?.[0]?.metadata ?? {}) as { sources?: Array<{ bucket: string; amount: number }> };
+      for (const s of m.sources ?? []) {
+        if (s.bucket === "daily_free") free += Number(s.amount);
+        else paid += Number(s.amount);
+      }
+    }
+    await supabaseAdmin
+      .from("turn_economics")
+      .update({
+        reasoning_tokens: list.reduce((a, r) => a + Number(r.reasoning_tokens ?? 0), 0),
+        cache_write_tokens: list.reduce((a, r) => a + Number(r.cache_write_tokens ?? 0), 0),
+        redundant_calls: count("REDUNDANT"),
+        retry_calls: count("RETRY"),
+        recovery_calls: count("RECOVERY"),
+        verification_calls: count("VERIFICATION"),
+        free_credits_charged: free,
+        paid_credits_charged: paid,
+        settlement_state: "settled",
+      } as never)
+      .eq("turn_id", turnId);
+  } catch (err) {
+    console.warn("[turn-economics] cost sync failed", err);
   }
 }
 
@@ -209,6 +265,46 @@ export async function attachBuildEconomics(args: {
     const variable =
       aiCost == null || buildCostMicro == null ? null : aiCost + otherCost + buildCostMicro;
 
+    // Build/browser compute: rate-derived, so ESTIMATED — never ACTUAL.
+    await recordCostEvents([
+      {
+        sourceRef: `build:${args.buildId}`,
+        projectId: args.projectId ?? null,
+        turnId: args.turnId,
+        buildId: args.buildId,
+        stage: "build",
+        category: "BUILD_COMPUTE",
+        provider: "railway",
+        resource: "builder",
+        quantity: args.buildMs == null ? null : buildMinutes,
+        unit: "minutes",
+        costUsd: args.buildMs == null ? null : buildMinutes * rates.build_minute_usd,
+        basis: "ESTIMATED",
+        failedWork: args.result !== "ready",
+        metadata: { rate_usd_per_minute: rates.build_minute_usd },
+      },
+      {
+        sourceRef: `browser:${args.buildId}`,
+        projectId: args.projectId ?? null,
+        turnId: args.turnId,
+        buildId: args.buildId,
+        stage: "verify",
+        category: "BROWSER_COMPUTE",
+        provider: "railway",
+        resource: "playwright",
+        quantity: args.verifyMs == null ? null : verifyMinutes,
+        unit: "minutes",
+        costUsd: args.verifyMs == null ? null : verifyMinutes * rates.verification_minute_usd,
+        basis: "ESTIMATED",
+        failedWork: args.result !== "ready",
+        metadata: { rate_usd_per_minute: rates.verification_minute_usd },
+      },
+    ]);
+    await supabaseAdmin
+      .from("project_builds")
+      .update({ turn_id: args.turnId } as never)
+      .eq("id", args.buildId)
+      .is("turn_id" as never, null);
     await supabaseAdmin
       .from("turn_economics")
       .update({
@@ -265,7 +361,6 @@ export async function attachBuildEconomicsByProject(args: {
       .from("turn_economics")
       .select("turn_id")
       .eq("project_id", args.projectId)
-      .is("build_id", null)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(1);
@@ -279,6 +374,18 @@ export async function attachBuildEconomicsByProject(args: {
       verifyMs: args.verifyMs ?? null,
       result: args.result,
     });
+    // Browser-review AI calls run on the builder with no turn id: link the
+    // un-stamped calls for this project made while this build ran.
+    if (args.buildMs != null) {
+      const started = new Date(Date.now() - args.buildMs - 60_000).toISOString();
+      await supabaseAdmin
+        .from("ai_call_log")
+        .update({ turn_id: turnId, build_id: args.buildId } as never)
+        .eq("project_id", args.projectId)
+        .is("turn_id", null)
+        .gte("created_at", started);
+    }
+    await syncTurnCosts(turnId);
     await supabaseAdmin
       .from("turn_economics")
       .update({ metadata: { build_link: "heuristic_recent_project_turn" } as never })

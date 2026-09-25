@@ -93,6 +93,19 @@ const VerificationSchema = z
   })
   .passthrough();
 
+/** Optional build-stage timings the builder reports for economics. */
+const TimingsSchema = z
+  .object({
+    jobId: z.string().max(200),
+    installMs: z.number().nonnegative(),
+    compileMs: z.number().nonnegative(),
+    browserMs: z.number().nonnegative(),
+    deployMs: z.number().nonnegative(),
+    turnId: z.string().max(200),
+  })
+  .partial()
+  .optional();
+
 const CallbackSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("ready"),
@@ -100,6 +113,7 @@ const CallbackSchema = z.discriminatedUnion("status", [
     projectId: z.string().uuid(),
     url: z.string().url().max(500),
     verification: VerificationSchema.optional(),
+    timings: TimingsSchema,
   }),
   z.object({
     status: z.literal("failed"),
@@ -110,6 +124,9 @@ const CallbackSchema = z.discriminatedUnion("status", [
     // Present when the pre-deploy browser check is what stopped the build.
     // Carries the exact defects so a repair can be aimed at them.
     verification: VerificationSchema.optional(),
+    /** True when the site had already gone live before the failure. */
+    deployed: z.boolean().optional(),
+    timings: TimingsSchema,
   }),
 
 ]);
@@ -161,13 +178,37 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     console.warn("Builder callback project mismatch", payload.buildId);
     return new Response("Project mismatch", { status: 400 });
   }
-  // A build already recorded as ready is final. When our slow "ready"
-  // handling outlasts the builder's callback timeout, the builder reports its
-  // own timeout as a "failed" callback — that must never undo a live app.
-  if (existing.status === "ready" && payload.status === "failed") {
-    console.warn(
-      `[builds/callback] ignoring late failed callback for ready build=${payload.buildId}: ${payload.errorMessage.slice(0, 120)}`,
-    );
+  // ONE outcome decision (src/lib/build-outcome.ts): terminal success wins,
+  // duplicates are no-ops, stale/out-of-order failures never refund.
+  const { decideBuildOutcome } = await import("@/lib/build-outcome");
+  const { data: projRow } = await supabaseAdmin
+    .from("projects")
+    .select("revision")
+    .eq("id", payload.projectId)
+    .maybeSingle();
+  let siblingReady = false;
+  if (existing.project_revision != null) {
+    const { count } = await supabaseAdmin
+      .from("project_builds")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", payload.projectId)
+      .eq("project_revision", existing.project_revision)
+      .eq("status", "ready")
+      .neq("id", payload.buildId);
+    siblingReady = (count ?? 0) > 0;
+  }
+  const outcome = decideBuildOutcome({
+    existingStatus: existing.status,
+    incoming: payload.status,
+    buildRevision: (existing.project_revision as number | null) ?? null,
+    projectRevision: (projRow?.revision as number | undefined) ?? null,
+    siblingReadyForRevision: siblingReady,
+    deployed: payload.status === "failed" ? payload.deployed : true,
+    errorMessage: payload.status === "failed" ? payload.errorMessage : undefined,
+  });
+  void recordBuildTimings(payload, outcome.failureClass);
+  if (!outcome.apply) {
+    console.warn(`[builds/callback] ignored callback build=${payload.buildId}: ${outcome.reason}`);
     return new Response("ok", { status: 200 });
   }
 
@@ -218,8 +259,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
           ...(payload.verification ? { verification: { ...payload.verification, stale: true } as never } : {}),
         })
         .eq("id", payload.buildId);
-      // Billing is unchanged by staleness: a build that never shipped refunds.
-      if (payload.status === "failed") await refundRolledBackBuild(payload.projectId, payload.buildId);
+      // A stale result never triggers a refund on its own (build-outcome.ts).
       console.info(
         `[revision] stale build result ignored for readiness build=${payload.buildId} status=${payload.status} build_revision=${rs.buildRevision ?? "unknown"} project_revision=${rs.projectRevision} reason=${rs.reason}`,
       );
@@ -682,8 +722,10 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       console.error("Builder callback could not mark build failed", buildUpdateError.message);
       return new Response("Could not save build status", { status: 503 });
     }
-    // The build never shipped — the user keeps their credits.
-    await refundRolledBackBuild(payload.projectId, payload.buildId);
+    // Refund only when the customer did not get the outcome. A live site
+    // with a failed browser expectation or a post-deploy timeout keeps its
+    // charge; all incurred cost stays recorded either way.
+    if (outcome.refundAllowed) await refundRolledBackBuild(payload.projectId, payload.buildId);
     const failedBlocking = Array.isArray(failedVerification?.blocking)
       ? (failedVerification.blocking as string[])
       : [];
@@ -744,6 +786,32 @@ async function refundRolledBackBuild(projectId: string, buildId: string): Promis
     }
   } catch (e) {
     console.error("[builds/callback] rollback refund threw", buildId, (e as Error).message);
+  }
+}
+
+/** Persist builder-reported stage timings and failure class (economics). */
+async function recordBuildTimings(
+  payload: { buildId: string; status: string; timings?: Record<string, unknown> | undefined; deployed?: boolean },
+  failureClass: string | null,
+): Promise<void> {
+  try {
+    const t = (payload.timings ?? {}) as Record<string, number | string | undefined>;
+    const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : undefined);
+    await supabaseAdmin
+      .from("project_builds")
+      .update({
+        builder_job_id: typeof t.jobId === "string" ? t.jobId : undefined,
+        turn_id: typeof t.turnId === "string" ? t.turnId : undefined,
+        install_ms: num(t.installMs),
+        compile_ms: num(t.compileMs),
+        browser_ms: num(t.browserMs),
+        deploy_ms: num(t.deployMs),
+        deployed: payload.status === "ready" ? true : (payload.deployed ?? undefined),
+        failure_class: failureClass ?? undefined,
+      } as never)
+      .eq("id", payload.buildId);
+  } catch (e) {
+    console.warn("[builds/callback] timings not recorded", (e as Error).message);
   }
 }
 

@@ -112446,6 +112446,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -114455,6 +114456,91 @@ var init_generated_pictures_server = __esm({
   }
 });
 
+// src/server/cost-events.server.ts
+var cost_events_server_exports = {};
+__export(cost_events_server_exports, {
+  aiRowToCostEvent: () => aiRowToCostEvent,
+  classifyTurnCalls: () => classifyTurnCalls,
+  normaliseCost: () => normaliseCost,
+  recordCostEvents: () => recordCostEvents,
+  toRow: () => toRow
+});
+function normaliseCost(e) {
+  if (e.costUsd == null || !Number.isFinite(e.costUsd)) return { costUsd: null, basis: "UNKNOWN" };
+  if (e.basis === "UNKNOWN") return { costUsd: null, basis: "UNKNOWN" };
+  return { costUsd: e.costUsd, basis: e.basis };
+}
+function toRow(e) {
+  const n = normaliseCost(e);
+  return {
+    source_ref: e.sourceRef,
+    user_id: e.userId ?? null,
+    project_id: e.projectId ?? null,
+    turn_id: e.turnId ?? null,
+    revision: e.revision ?? null,
+    build_id: e.buildId ?? null,
+    stage: e.stage ?? null,
+    category: e.category,
+    provider: e.provider ?? null,
+    resource: e.resource ?? null,
+    quantity: e.quantity ?? null,
+    unit: e.unit ?? null,
+    cost_usd: n.costUsd,
+    cost_basis: n.basis,
+    failed_work: e.failedWork ?? false,
+    metadata: e.metadata ?? {}
+  };
+}
+async function recordCostEvents(events) {
+  if (!events.length) return;
+  try {
+    await supabaseAdmin.from("cost_events").upsert(events.map(toRow), { onConflict: "source_ref", ignoreDuplicates: true });
+  } catch (err) {
+    console.warn("[cost-events] write failed", err);
+  }
+}
+function aiRowToCostEvent(r) {
+  const cost = r.cost_usd_micro == null ? null : Number(r.cost_usd_micro) / 1e6;
+  const basis = cost == null ? "UNKNOWN" : r.cost_basis === "actual" ? "ACTUAL" : "ESTIMATED";
+  return {
+    sourceRef: `ai:${r.id}`,
+    userId: r.user_id,
+    projectId: r.project_id,
+    turnId: r.turn_id,
+    buildId: r.build_id ?? null,
+    revision: r.revision ?? null,
+    stage: r.stage,
+    category: r.stage === "verify" ? "AI_VERIFICATION" : "AI_INFERENCE",
+    provider: r.upstream_provider ?? r.provider,
+    resource: r.model,
+    quantity: Number(r.prompt_tokens ?? 0) + Number(r.completion_tokens ?? 0),
+    unit: "tokens",
+    costUsd: cost,
+    basis,
+    failedWork: r.status != null && r.status >= 400
+  };
+}
+function classifyTurnCalls(rows) {
+  const seen = /* @__PURE__ */ new Set();
+  return rows.map((r) => {
+    if (r.call_kind === "retry") return "RETRY";
+    if (r.call_kind === "repair") return "RECOVERY";
+    if (r.stage === "verify") return "VERIFICATION";
+    if (r.stage === "after") return "MEMORY";
+    if (r.stage === "write" && /one requested page/.test(r.purpose ?? "")) return "REQUIRED";
+    const key = `${r.stage}|${r.purpose}`;
+    if (r.stage === "request" && seen.has(key)) return "REDUNDANT";
+    seen.add(key);
+    return r.stage ? "REQUIRED" : "OTHER";
+  });
+}
+var init_cost_events_server = __esm({
+  "src/server/cost-events.server.ts"() {
+    init_define_import_meta_env();
+    init_client_server_shim();
+  }
+});
+
 // src/server/design-systems/registry.ts
 function groupByFolder(raw) {
   const out = /* @__PURE__ */ new Map();
@@ -114664,7 +114750,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -146352,7 +146437,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -149845,7 +149929,9 @@ var init_skills = __esm({
 // src/server/engine/write.ts
 var write_exports = {};
 __export(write_exports, {
+  PAGE_CONCURRENCY: () => PAGE_CONCURRENCY,
   frameIsComplete: () => frameIsComplete,
+  mapBounded: () => mapBounded,
   pageInstruction: () => pageInstruction,
   pagesReferencedByRouter: () => pagesReferencedByRouter,
   projectContract: () => projectContract,
@@ -149961,7 +150047,11 @@ async function writePlannedPages(args) {
     const paths = files.map((f) => f.path);
     const contract = projectContract(files);
     const shared = sharedFiles(files, args.pages);
-    const results = await Promise.all(pages.map((p) => call(pageInstruction(p, paths, contract, shared))));
+    const results = await mapBounded(
+      pages,
+      PAGE_CONCURRENCY,
+      (p) => call(pageInstruction(p, paths, contract, shared))
+    );
     results.forEach(put2);
   };
   await writePages(args.pages.filter((p) => !hasRealPage(files, p.file)));
@@ -149975,10 +150065,24 @@ async function writePlannedPages(args) {
   const missing = args.pages.filter((p) => !hasRealPage(files, p.file)).map((p) => p.route);
   return { files, written, missing, calls, truncated };
 }
+async function mapBounded(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
+  return out;
+}
+var PAGE_CONCURRENCY;
 var init_write = __esm({
   "src/server/engine/write.ts"() {
     init_define_import_meta_env();
     init_build_state();
+    PAGE_CONCURRENCY = 4;
   }
 });
 
@@ -165799,6 +165903,7 @@ function priceTurnByCost(usages, costPerCreditUsd) {
 init_define_import_meta_env();
 init_client_server_shim();
 init_economics_config_server();
+init_cost_events_server();
 async function rollUpAiCalls(turnId) {
   const empty = {
     calls: 0,
@@ -165889,8 +165994,46 @@ async function recordTurnEconomics(args) {
       },
       { onConflict: "turn_id" }
     );
+    await syncTurnCosts(args.turnId);
   } catch (err) {
     console.warn("[turn-economics] record failed", err);
+  }
+}
+async function syncTurnCosts(turnId) {
+  try {
+    const { data: rows } = await supabaseAdmin.from("ai_call_log").select("id, user_id, project_id, turn_id, stage, purpose, call_kind, model, upstream_provider, provider, prompt_tokens, completion_tokens, reasoning_tokens, cache_write_tokens, cost_usd_micro, cost_basis, status, created_at").eq("turn_id", turnId).order("created_at", { ascending: true });
+    const list3 = rows ?? [];
+    await recordCostEvents(list3.map((r) => aiRowToCostEvent(r)));
+    const classes = classifyTurnCalls(list3);
+    for (let i = 0; i < list3.length; i++) {
+      await supabaseAdmin.from("ai_call_log").update({ call_class: classes[i] }).eq("id", list3[i].id);
+    }
+    const count = (c) => classes.filter((x) => x === c).length;
+    const { data: te } = await supabaseAdmin.from("turn_economics").select("user_id, project_id, created_at").eq("turn_id", turnId).maybeSingle();
+    let free = 0;
+    let paid = 0;
+    if (te?.user_id && te.project_id) {
+      const since = new Date(new Date(te.created_at).getTime() - 30 * 6e4).toISOString();
+      const { data: led } = await supabaseAdmin.from("credit_ledger").select("delta, reason, metadata").eq("user_id", te.user_id).eq("project_id", te.project_id).eq("reason", "ai_build_charge").lt("delta", 0).gte("created_at", since).order("created_at", { ascending: false }).limit(1);
+      const m = led?.[0]?.metadata ?? {};
+      for (const s of m.sources ?? []) {
+        if (s.bucket === "daily_free") free += Number(s.amount);
+        else paid += Number(s.amount);
+      }
+    }
+    await supabaseAdmin.from("turn_economics").update({
+      reasoning_tokens: list3.reduce((a2, r) => a2 + Number(r.reasoning_tokens ?? 0), 0),
+      cache_write_tokens: list3.reduce((a2, r) => a2 + Number(r.cache_write_tokens ?? 0), 0),
+      redundant_calls: count("REDUNDANT"),
+      retry_calls: count("RETRY"),
+      recovery_calls: count("RECOVERY"),
+      verification_calls: count("VERIFICATION"),
+      free_credits_charged: free,
+      paid_credits_charged: paid,
+      settlement_state: "settled"
+    }).eq("turn_id", turnId);
+  } catch (err) {
+    console.warn("[turn-economics] cost sync failed", err);
   }
 }
 
@@ -176443,6 +176586,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           const hasPlaceholders = nextFiles.some(
             (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://")
           );
+          const seenPictureUrls = /* @__PURE__ */ new Set();
           if (hasPlaceholders) {
             await agentIO().assertActive(turnId, abortSignal, "images");
             controller.enqueue(
@@ -176453,6 +176597,26 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               // Each picture is announced the moment it exists so the build
               // card can show it landing instead of a count at the end.
               ({ url, index }) => {
+                const reused = seenPictureUrls.has(url);
+                seenPictureUrls.add(url);
+                void Promise.resolve().then(() => (init_cost_events_server(), cost_events_server_exports)).then(
+                  ({ recordCostEvents: recordCostEvents2 }) => recordCostEvents2([
+                    {
+                      sourceRef: `image:${logicalTurnId}:${index}`,
+                      userId,
+                      projectId: body.projectId ?? null,
+                      turnId: logicalTurnId,
+                      stage: "images",
+                      category: "IMAGE_GENERATION",
+                      resource: url.slice(0, 300),
+                      quantity: 1,
+                      unit: "image",
+                      costUsd: reused ? 0 : null,
+                      basis: reused ? "ACTUAL" : "UNKNOWN",
+                      metadata: { reused, index }
+                    }
+                  ])
+                );
                 controller.enqueue(
                   encoder.encode(
                     sse({

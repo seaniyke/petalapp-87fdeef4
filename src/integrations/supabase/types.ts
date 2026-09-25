@@ -75,8 +75,10 @@ export type Database = {
         Row: {
           attempt_id: string | null
           attempt_state: string | null
+          build_id: string | null
           cache_write_tokens: number | null
           cached_prompt_tokens: number | null
+          call_class: string | null
           call_kind: string | null
           chosen_by: string | null
           completion_tokens: number | null
@@ -111,6 +113,8 @@ export type Database = {
           reasoning_tokens: number | null
           recovery_reason: string | null
           request_id: string | null
+          revision: number | null
+          session_id: string | null
           stage: string | null
           stall_ms: number | null
           static_prefix_chars: number | null
@@ -127,8 +131,10 @@ export type Database = {
         Insert: {
           attempt_id?: string | null
           attempt_state?: string | null
+          build_id?: string | null
           cache_write_tokens?: number | null
           cached_prompt_tokens?: number | null
+          call_class?: string | null
           call_kind?: string | null
           chosen_by?: string | null
           completion_tokens?: number | null
@@ -163,6 +169,8 @@ export type Database = {
           reasoning_tokens?: number | null
           recovery_reason?: string | null
           request_id?: string | null
+          revision?: number | null
+          session_id?: string | null
           stage?: string | null
           stall_ms?: number | null
           static_prefix_chars?: number | null
@@ -179,8 +187,10 @@ export type Database = {
         Update: {
           attempt_id?: string | null
           attempt_state?: string | null
+          build_id?: string | null
           cache_write_tokens?: number | null
           cached_prompt_tokens?: number | null
+          call_class?: string | null
           call_kind?: string | null
           chosen_by?: string | null
           completion_tokens?: number | null
@@ -215,6 +225,8 @@ export type Database = {
           reasoning_tokens?: number | null
           recovery_reason?: string | null
           request_id?: string | null
+          revision?: number | null
+          session_id?: string | null
           stage?: string | null
           stall_ms?: number | null
           static_prefix_chars?: number | null
@@ -764,6 +776,72 @@ export type Database = {
           supporter_name?: string | null
           tx_hash?: string | null
           wallet_address?: string | null
+        }
+        Relationships: []
+      }
+      cost_events: {
+        Row: {
+          build_id: string | null
+          category: string
+          cost_basis: string
+          cost_usd: number | null
+          created_at: string
+          failed_work: boolean
+          funded_by: string | null
+          id: string
+          metadata: Json
+          project_id: string | null
+          provider: string | null
+          quantity: number | null
+          resource: string | null
+          revision: number | null
+          source_ref: string | null
+          stage: string | null
+          turn_id: string | null
+          unit: string | null
+          user_id: string | null
+        }
+        Insert: {
+          build_id?: string | null
+          category: string
+          cost_basis: string
+          cost_usd?: number | null
+          created_at?: string
+          failed_work?: boolean
+          funded_by?: string | null
+          id?: string
+          metadata?: Json
+          project_id?: string | null
+          provider?: string | null
+          quantity?: number | null
+          resource?: string | null
+          revision?: number | null
+          source_ref?: string | null
+          stage?: string | null
+          turn_id?: string | null
+          unit?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          build_id?: string | null
+          category?: string
+          cost_basis?: string
+          cost_usd?: number | null
+          created_at?: string
+          failed_work?: boolean
+          funded_by?: string | null
+          id?: string
+          metadata?: Json
+          project_id?: string | null
+          provider?: string | null
+          quantity?: number | null
+          resource?: string | null
+          revision?: number | null
+          source_ref?: string | null
+          stage?: string | null
+          turn_id?: string | null
+          unit?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1325,6 +1403,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      infra_services: {
+        Row: {
+          allocation_method: string | null
+          confidence: string
+          created_at: string
+          id: string
+          monthly_fixed_usd: number | null
+          notes: string | null
+          per_turn_allocation_possible: boolean
+          plan: string | null
+          service: string
+          updated_at: string
+          usage_components: string | null
+          usage_metrics: string | null
+        }
+        Insert: {
+          allocation_method?: string | null
+          confidence?: string
+          created_at?: string
+          id?: string
+          monthly_fixed_usd?: number | null
+          notes?: string | null
+          per_turn_allocation_possible?: boolean
+          plan?: string | null
+          service: string
+          updated_at?: string
+          usage_components?: string | null
+          usage_metrics?: string | null
+        }
+        Update: {
+          allocation_method?: string | null
+          confidence?: string
+          created_at?: string
+          id?: string
+          monthly_fixed_usd?: number | null
+          notes?: string | null
+          per_turn_allocation_possible?: boolean
+          plan?: string | null
+          service?: string
+          updated_at?: string
+          usage_components?: string | null
+          usage_metrics?: string | null
+        }
+        Relationships: []
       }
       integration_docs_cache: {
         Row: {
@@ -3114,10 +3237,17 @@ export type Database = {
       }
       project_builds: {
         Row: {
+          browser_ms: number | null
+          builder_job_id: string | null
+          compile_ms: number | null
           created_at: string
+          deploy_ms: number | null
+          deployed: boolean | null
           dist_path: string | null
           error_message: string | null
+          failure_class: string | null
           id: string
+          install_ms: number | null
           last_progress_at: string | null
           last_retry_at: string | null
           progress_label: string | null
@@ -3127,13 +3257,21 @@ export type Database = {
           retry_count: number
           stale_reason: string | null
           status: string
+          turn_id: string | null
           verification: Json | null
         }
         Insert: {
+          browser_ms?: number | null
+          builder_job_id?: string | null
+          compile_ms?: number | null
           created_at?: string
+          deploy_ms?: number | null
+          deployed?: boolean | null
           dist_path?: string | null
           error_message?: string | null
+          failure_class?: string | null
           id?: string
+          install_ms?: number | null
           last_progress_at?: string | null
           last_retry_at?: string | null
           progress_label?: string | null
@@ -3143,13 +3281,21 @@ export type Database = {
           retry_count?: number
           stale_reason?: string | null
           status?: string
+          turn_id?: string | null
           verification?: Json | null
         }
         Update: {
+          browser_ms?: number | null
+          builder_job_id?: string | null
+          compile_ms?: number | null
           created_at?: string
+          deploy_ms?: number | null
+          deployed?: boolean | null
           dist_path?: string | null
           error_message?: string | null
+          failure_class?: string | null
           id?: string
+          install_ms?: number | null
           last_progress_at?: string | null
           last_retry_at?: string | null
           progress_label?: string | null
@@ -3159,6 +3305,7 @@ export type Database = {
           retry_count?: number
           stale_reason?: string | null
           status?: string
+          turn_id?: string | null
           verification?: Json | null
         }
         Relationships: [
@@ -4588,96 +4735,147 @@ export type Database = {
           agent_rounds: number
           ai_calls: number
           ai_cost_usd_micro: number | null
+          browser_cost_usd_micro: number | null
           build_cost_usd_micro: number | null
           build_id: string | null
           build_ms: number | null
+          cache_write_tokens: number
           cached_prompt_tokens: number
           completion_tokens: number
           cost_basis: string
           created_at: string
           credits_charged: number
+          credits_estimated: number | null
           credits_refunded: number
+          credits_reserved: number | null
           deploy_ms: number | null
+          economics_cohort: string | null
           feature: string
+          free_credits_charged: number
           id: string
+          image_cost_usd_micro: number | null
           images_generated: number
           is_auto_fix: boolean
           metadata: Json
           models: Json
           other_cost_usd_micro: number | null
+          paid_credits_charged: number
           project_id: string | null
           prompt_tokens: number
           providers: Json
+          reasoning_tokens: number
+          recovery_calls: number
+          redundant_calls: number
+          refund_reason: string | null
           result: string | null
+          retry_calls: number
           retry_count: number
+          revision: number | null
+          session_id: string | null
+          settlement_state: string
           turn_id: string
           updated_at: string
           user_id: string | null
           variable_cost_usd_micro: number | null
+          verification_calls: number
           verify_ms: number | null
         }
         Insert: {
           agent_rounds?: number
           ai_calls?: number
           ai_cost_usd_micro?: number | null
+          browser_cost_usd_micro?: number | null
           build_cost_usd_micro?: number | null
           build_id?: string | null
           build_ms?: number | null
+          cache_write_tokens?: number
           cached_prompt_tokens?: number
           completion_tokens?: number
           cost_basis?: string
           created_at?: string
           credits_charged?: number
+          credits_estimated?: number | null
           credits_refunded?: number
+          credits_reserved?: number | null
           deploy_ms?: number | null
+          economics_cohort?: string | null
           feature?: string
+          free_credits_charged?: number
           id?: string
+          image_cost_usd_micro?: number | null
           images_generated?: number
           is_auto_fix?: boolean
           metadata?: Json
           models?: Json
           other_cost_usd_micro?: number | null
+          paid_credits_charged?: number
           project_id?: string | null
           prompt_tokens?: number
           providers?: Json
+          reasoning_tokens?: number
+          recovery_calls?: number
+          redundant_calls?: number
+          refund_reason?: string | null
           result?: string | null
+          retry_calls?: number
           retry_count?: number
+          revision?: number | null
+          session_id?: string | null
+          settlement_state?: string
           turn_id: string
           updated_at?: string
           user_id?: string | null
           variable_cost_usd_micro?: number | null
+          verification_calls?: number
           verify_ms?: number | null
         }
         Update: {
           agent_rounds?: number
           ai_calls?: number
           ai_cost_usd_micro?: number | null
+          browser_cost_usd_micro?: number | null
           build_cost_usd_micro?: number | null
           build_id?: string | null
           build_ms?: number | null
+          cache_write_tokens?: number
           cached_prompt_tokens?: number
           completion_tokens?: number
           cost_basis?: string
           created_at?: string
           credits_charged?: number
+          credits_estimated?: number | null
           credits_refunded?: number
+          credits_reserved?: number | null
           deploy_ms?: number | null
+          economics_cohort?: string | null
           feature?: string
+          free_credits_charged?: number
           id?: string
+          image_cost_usd_micro?: number | null
           images_generated?: number
           is_auto_fix?: boolean
           metadata?: Json
           models?: Json
           other_cost_usd_micro?: number | null
+          paid_credits_charged?: number
           project_id?: string | null
           prompt_tokens?: number
           providers?: Json
+          reasoning_tokens?: number
+          recovery_calls?: number
+          redundant_calls?: number
+          refund_reason?: string | null
           result?: string | null
+          retry_calls?: number
           retry_count?: number
+          revision?: number | null
+          session_id?: string | null
+          settlement_state?: string
           turn_id?: string
           updated_at?: string
           user_id?: string | null
           variable_cost_usd_micro?: number | null
+          verification_calls?: number
           verify_ms?: number | null
         }
         Relationships: [
@@ -5342,6 +5540,10 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      economics_cohort_report: {
+        Args: { _cohort_prefix?: string }
+        Returns: Json
+      }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
@@ -5409,6 +5611,7 @@ export type Database = {
           reason: string
         }[]
       }
+      is_build_credit_reason: { Args: { _reason: string }; Returns: boolean }
       is_paid_plan: { Args: { _user_id: string }; Returns: boolean }
       marketplace_admin_decide_payout: {
         Args: { p_decision: string; p_id: string; p_note?: string }
@@ -5642,6 +5845,10 @@ export type Database = {
           _turn_id?: string
         }
         Returns: number
+      }
+      restore_free_build_credits: {
+        Args: { _amount: number; _spent_at: string; _user_id: string }
+        Returns: undefined
       }
       runtime_apply_monthly_grant: { Args: never; Returns: undefined }
       runtime_cap_check: {
