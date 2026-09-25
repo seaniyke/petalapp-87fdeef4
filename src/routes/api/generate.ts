@@ -3623,6 +3623,7 @@ async function handleGenerateRequestCore(
     keep("pic", picBlock) +
     keep("prd", boundedEdit ? "" : prdBlock + prdScenarioBlock) +
     keep("orchestration", orchestrationBlock) +
+    keep("designSystem", designSystemBlock) +
     keep("designTaste", designTasteBlock) +
     keep("skills", skillsBlock) +
     keep("learning", learningBlock) +
