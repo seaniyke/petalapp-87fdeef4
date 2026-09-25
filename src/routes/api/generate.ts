@@ -94,6 +94,13 @@ import {
 } from "@/server/preservation-rules";
 import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
 import {
+  applyStatedIntent,
+  readStatedDesignIntent,
+  renderCategoryCompositionBlock,
+  renderStatedIntentBlock,
+} from "@/server/design-intent.server";
+
+import {
   humanizeBuildError,
   classifyRawError,
   isTransientFailure,
