@@ -25,7 +25,8 @@ export type SkillId =
   | "copy-honesty"
   | "motion"
   | "forms-and-data"
-  | "findability";
+  | "findability"
+  | "section-architectures";
 
 export interface Skill {
   id: SkillId;
@@ -37,6 +38,11 @@ export interface Skill {
   prefer: string[];
   /** Working detail. First thing trimmed when the budget is tight. */
   body: string;
+  /**
+   * When set, the canonical Markdown in src/server/agent-knowledge is the
+   * skill's content and hard/prefer/body are left empty (one source only).
+   */
+  knowledge?: import("@/server/agent-knowledge").KnowledgeSkillId | "color-guide";
 }
 
 export interface SkillContext {

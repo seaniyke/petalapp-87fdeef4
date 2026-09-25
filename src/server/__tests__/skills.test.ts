@@ -27,9 +27,10 @@ describe("focused expertise", () => {
       scope: "micro",
       text: "make the headline bigger",
     });
-    // Rules only, no working detail.
-    expect(rendered.text).toContain("Never break these");
-    expect(rendered.text.length).toBeLessThan(1600);
+    // Canonical redesign-safety Markdown only — no copy/motion/section manuals.
+    expect(rendered.ids[0]).toBe("redesign-safety");
+    expect(rendered.ids.length).toBeLessThanOrEqual(2);
+    expect(rendered.text).not.toContain("Choosing section architectures");
   });
 
   it("brings picture expertise when the ask is about pictures", () => {
@@ -47,7 +48,7 @@ describe("focused expertise", () => {
   it("gives a first build composition and writing expertise", () => {
     const ids = selectSkills({ ...base, isInitial: true, text: "build a bakery site" }).map((s) => s.id);
     expect(ids).toContain("page-composition");
-    expect(ids.length).toBeLessThanOrEqual(4);
+    expect(ids.length).toBeLessThanOrEqual(5);
   });
 
   it("never loads everything at once", () => {

@@ -167,3 +167,25 @@ export function budgetMessages<M extends BudgetMessage>(messages: M[], budgetTok
     droppedCount: messages.length - filtered.length,
   };
 }
+
+/**
+ * Pre-budget history retention for generation. Keeps the latest user message,
+ * the two preceding messages for bare confirmations ("yes", "do it"), and any
+ * earlier user message that carries a standing constraint. Everything else is
+ * left out; budgetMessages() then fits what remains to the token ceiling.
+ */
+export function selectHistoryForGeneration<M extends BudgetMessage>(
+  messages: M[],
+  lastUserIdx: number,
+  needsPreviousContext: boolean,
+): M[] {
+  if (lastUserIdx < 0) return messages.slice(-4);
+  const keep = new Set<number>([lastUserIdx]);
+  if (needsPreviousContext) {
+    for (let i = Math.max(0, lastUserIdx - 2); i < lastUserIdx; i++) keep.add(i);
+  }
+  for (let i = 0; i < lastUserIdx; i++) {
+    if (messages[i].role === "user" && carriesConstraint(messages[i])) keep.add(i);
+  }
+  return messages.filter((_, i) => keep.has(i));
+}
