@@ -38,6 +38,8 @@ import type { FriendlyError } from "@/lib/friendly-errors";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
 import { BuildDetailsSheet, type FileChange } from "@/components/BuildDetailsSheet";
 import { BuildResultCard } from "@/components/BuildResultCard";
+import { TurnStory } from "@/components/build/TurnStory";
+import type { TurnView } from "@/lib/turn-execution/turn-reducer";
 
 import { ELAPSED_VISIBLE_AFTER_SEC, formatElapsed } from "@/hooks/use-build-status-label";
 
@@ -77,6 +79,8 @@ const PHASE_ICONS: Record<PhaseId, LucideIcon> = {
 };
 
 type Props = {
+  /** Deterministic turn view from the turn reducer (live + replay). */
+  turn?: TurnView;
   phases: Phase[];
   /** Plan-first — the model's ordered checklist for this turn. */
   buildSteps?: string[];
@@ -316,14 +320,6 @@ export function BuildActivityCard({
   } else if (currentPhase?.id === "deploying" && deployProgressLabel) {
     // Live word from the build service always beats a generic reassurance.
     subCaption = deployProgressLabel;
-  } else if (currentPhase?.id === "deploying" && typeof deployElapsedSec === "number") {
-    if (deployElapsedSec >= 90) {
-      subCaption = "Still on it — your code is safe, keep editing.";
-    } else if (deployElapsedSec >= 60) {
-      subCaption = "Almost there — bundling and uploading assets.";
-    } else if (deployElapsedSec >= 30) {
-      subCaption = "Wrapping up the build…";
-    }
   } else if (
     isActive &&
     currentPhase?.startedAt &&
