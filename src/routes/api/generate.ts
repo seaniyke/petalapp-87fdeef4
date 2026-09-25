@@ -4440,12 +4440,24 @@ async function handleGenerateRequestCore(
           // WRITE stage (first builds): the shell call above wrote the shared
           // shell; every planned page is now written by its own call.
           if (isInitial && parsed.files?.length) {
-            const { writePlannedPages, targetOf: wantOf } = await import("@/server/engine/write");
+            const { writePlannedPages, pagesReferencedByRouter, targetOf: wantOf } = await import("@/server/engine/write");
             const { pageFileFor } = await import("@/server/engine/plan");
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             // The plan is authoritative; requested routes only fill in if
-            // planning failed. No other source of pages exists.
-            const pages = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            // planning failed.
+            const planned = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            // Output-limit continuation: pages the shell's own router already
+            // imports but that were never written (the shell call ran out of
+            // room, or planning under-counted) are the remaining work — write
+            // them here, under the same bounded WRITE-stage budget.
+            const fromRouter = pagesReferencedByRouter(parsed.files, planned);
+            const pages = [...planned, ...fromRouter];
+            for (const p of fromRouter) if (!plannedRoutes.includes(p.route)) plannedRoutes.push(p.route);
+            if (isTruncatedFinishReason(collected.finishReason) || fromRouter.length) {
+              console.warn(
+                `[output-limit] first-build shell finish=${collected.finishReason ?? "?"} — continuing: ${JSON.stringify(pages.map((p) => p.route))} (router-referenced extra: ${JSON.stringify(fromRouter.map((p) => p.route))})`,
+              );
+            }
             // Stop boundary: no page writer starts after the user pressed Stop.
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             let pagesWritten = 0;
