@@ -36,7 +36,8 @@ export type EventRow = { seq: number; kind: string; payload?: unknown };
 export interface AgentOpsStore {
   getTurn(turnId: string): Promise<TurnRow | null>;
   readFiles(projectId: string): Promise<FileRow[]>;
-  replaceFiles(projectId: string, files: FileRow[]): Promise<void>;
+  /** Atomic save bound to the turn; returns the project revision after it. */
+  replaceFiles(projectId: string, files: FileRow[], turnId?: string): Promise<number | null | undefined>;
   readMemory(projectId: string): Promise<Array<{ key: string; value: string }>>;
   readBlueprint(projectId: string): Promise<Record<string, unknown> | null>;
   saveBlueprint(projectId: string, columns: Record<string, unknown>, blueprint: Record<string, unknown>): Promise<void>;
@@ -207,8 +208,12 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
       if (!turn.committed_at) return { ok: false, error: "commit_not_claimed" };
       const byPath = new Map<string, FileRow>();
       for (const f of op.files) byPath.set(f.path.trim(), { path: f.path.trim(), content: f.content });
-      await store.replaceFiles(turn.project_id, [...byPath.values()]);
-      return { ok: true };
+      try {
+        const revision = await store.replaceFiles(turn.project_id, [...byPath.values()], turn.id);
+        return { ok: true, data: { revision: revision ?? null } };
+      } catch (e) {
+        return { ok: false, error: e instanceof Error ? e.message : String(e) };
+      }
     }
     case "memory.read":
       return { ok: true, data: await store.readMemory(turn.project_id) };

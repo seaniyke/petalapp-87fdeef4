@@ -96,7 +96,11 @@ export async function resumeCreditPause(id: string): Promise<{ ok: boolean; reas
   try {
     const { error } = await supabaseAdmin.rpc("replace_project_files", {
       _project_id: claim.project_id,
-      _files: claim.candidate_files,
+      _files: claim.candidate_files as never,
+      // Records turn.committed_revision in the same transaction. The base
+      // check is off: this path has its own baseline-hash drift check above.
+      _turn_id: claim.turn_id,
+      _check_base: false,
     });
     if (error) throw new Error(error.message);
     await supabaseAdmin.from("credit_paused_turns").update({ status: "completed", completed_at: new Date().toISOString() }).eq("id", id).eq("status", "applying");

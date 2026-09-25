@@ -68,9 +68,14 @@ export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
       if (error) throw new Error(error.message);
       return (data ?? []).map((r) => ({ path: r.path, content: r.content ?? "" }));
     },
-    async replaceFiles(projectId, files) {
-      const { error } = await db.rpc("replace_project_files", { _project_id: projectId, _files: files } as Any);
+    async replaceFiles(projectId, files, turnId) {
+      const { data, error } = await db.rpc("replace_project_files", {
+        _project_id: projectId,
+        _files: files,
+        ...(turnId ? { _turn_id: turnId } : {}),
+      } as Any);
       if (error) throw new Error(error.message);
+      return data == null ? null : Number(data);
     },
     async readMemory(projectId) {
       const { data } = await db.from("project_memory").select("key,value").eq("project_id", projectId);

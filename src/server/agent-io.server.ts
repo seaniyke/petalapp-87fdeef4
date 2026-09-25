@@ -30,8 +30,18 @@ export interface AgentIO {
   checkBalance(userId: string, amount: number): Promise<BalanceOutcome>;
   /** Throws on failure (caller records it as unpaid, as before). */
   settleCharge(args: SettleCharge): Promise<SettleOutcome>;
-  /** Returns an error message instead of throwing (persistence is logged, not fatal). */
-  replaceFiles(projectId: string, files: Array<{ path: string; content: string }>): Promise<string | null>;
+  /**
+   * The one full-tree save. Files, project code revision and (when a turn is
+   * given) turn.committed_revision change in ONE database transaction. A save
+   * against a revision other than the turn's base is rejected
+   * (`revision_conflict`). Never throws; `revision` is the project revision
+   * after the save (unchanged for an identical tree).
+   */
+  replaceFiles(
+    projectId: string,
+    files: Array<{ path: string; content: string }>,
+    opts?: { turnId?: string | null },
+  ): Promise<{ error: string | null; revision: number | null }>;
   /** Progress log. Throws on failure (recorder swallows + logs). */
   appendEvents(turnId: string, events: Array<{ seq: number; kind: string; payload: unknown }>): Promise<void>;
   finishTurn(
@@ -83,10 +93,15 @@ export function createDirectAgentIO(): AgentIO {
         | null;
       return { charged: Number(row?.charged ?? 0), shortfall: Number(row?.shortfall ?? 0), idempotent: !!row?.idempotent };
     },
-    async replaceFiles(projectId, files) {
+    async replaceFiles(projectId, files, opts) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error } = await supabaseAdmin.rpc("replace_project_files", { _project_id: projectId, _files: files } as never);
-      return error ? error.message : null;
+      const turnId = opts?.turnId && /^[0-9a-f-]{36}$/i.test(opts.turnId) ? opts.turnId : undefined;
+      const { data, error } = await supabaseAdmin.rpc("replace_project_files", {
+        _project_id: projectId,
+        _files: files as never,
+        ...(turnId ? { _turn_id: turnId } : {}),
+      });
+      return error ? { error: error.message, revision: null } : { error: null, revision: data == null ? null : Number(data) };
     },
     async appendEvents(turnId, events) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
