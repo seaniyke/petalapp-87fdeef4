@@ -393,7 +393,7 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
     case "done": {
       const s = str("status");
       const done = (["succeeded", "failed", "aborted", "awaiting_credits", "plan_proposed"] as const).find((x) => x === s) ?? "succeeded";
-      const acts = done === "succeeded" ? settle(g.activities) : g.activities.map((a) => (a.status === "active" ? { ...a, status: "failed" as const } : a));
+      const acts = done === "succeeded" ? g.activities.map((a) => (a.status === "active" ? { ...a, status: "done" as const } : a)) : g.activities.map((a) => (a.status === "active" ? { ...a, status: "failed" as const } : a));
       return { ...g, done, current: null, recovering: false, activities: acts };
     }
     default:
