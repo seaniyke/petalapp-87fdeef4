@@ -6381,11 +6381,16 @@ Forbidden defaults
 
           emitConversationalFallback(controller, encoder, {
             files: currentFiles,
-            summary:
-              "I drafted the change but it didn't pass my final safety check, so I rolled it back to keep your app building. Want me to try a smaller version of the same change, or break it into a couple of steps?",
+            // A tripped breaker explains WHY it stopped trying; otherwise the
+            // existing generic revert message stands.
+            summary: breaker.tripped
+              ? breaker.userMessage()
+              : "I drafted the change but it didn't pass my final safety check, so I rolled it back to keep your app building. Want me to try a smaller version of the same change, or break it into a couple of steps?",
             // A reverted change is a failed turn — never a "succeeded" done.
             outcome: "failed",
-            reason: "final_check_reverted",
+            reason: breaker.tripped
+              ? `circuit_breaker:${breaker.reason()?.rule ?? "unknown"}`
+              : "final_check_reverted",
           });
           return;
         }
