@@ -6815,14 +6815,16 @@ Forbidden defaults
         // build to the user; after a commit it is empty by construction and
         // can never turn a committed/failed verdict into anything else.
         let scopeMissing: string[] = [];
-        if (isInitial && !txCommitted && nextFiles.length > 0) {
+        if (isInitial && nextFiles.length > 0) {
           const requested = requestedRoutesFor(lastUserText, plannedRoutes);
-          const verdict = assessCompleteness({ requestedRoutes: requested, files: nextFiles });
+          const verdict = txCommitted
+            ? { complete: true, missingRoutes: [] as string[] }
+            : assessCompleteness({ requestedRoutes: requested, files: nextFiles });
           scopeMissing = verdict.missingRoutes;
           {
             // The shared frame is a required deliverable, not an optional one.
             const { frameIsComplete } = await import("@/server/engine/write");
-            if (!frameIsComplete(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
+            if (!txCommitted && !frameIsComplete(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
               scopeMissing = ["app shell", ...scopeMissing];
               verdict.complete = false;
             }
