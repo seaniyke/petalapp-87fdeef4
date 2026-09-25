@@ -297,7 +297,7 @@ const agentPool = new AgentPool(
   Number(process.env.MAX_AGENT_QUEUE ?? 50),
 );
 // Bump when the vendored agent core changes, so a live check can confirm the deploy.
-const AGENT_CORE_VERSION = "2026-09-25-provider-resend";
+const AGENT_CORE_VERSION = "2026-09-25-web-intel";
 fastify.get("/agent/healthz", async () => ({ ok: true, version: AGENT_CORE_VERSION, inProcess: inProcessEnabled(), ...agentPool.snapshot() }));
 
 fastify.post("/agent/generate", async (req, reply) => {

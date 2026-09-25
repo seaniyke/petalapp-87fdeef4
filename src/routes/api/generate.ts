@@ -201,6 +201,7 @@ import {
   markInterruptedForResume,
 } from "@/server/turn-completion.server";
 import { persistAbandonedTurnReply } from "@/server/abandoned-turn-reply.server";
+import { gatherWebIntel } from "@/server/web-intel/web-intel.server";
 import {
   proposeChangePlan,
   savePlan,
@@ -3672,6 +3673,19 @@ Forbidden defaults
   // safe window, either upgrade to a larger-context model or drop
   // the oldest non-system messages until it fits. Eliminates silent
   // context-overflow failures (truncated/empty completions).
+  // Web Intelligence (information only). Runs only when the user supplied a
+  // URL; its sole output is one bounded system block placed before the
+  // latest user message. It never writes files or calls a model.
+  const webIntel = await gatherWebIntel({
+    message: lastUserContent,
+    signal: abortSignal,
+    turnId: logicalTurnId,
+    projectId: body.projectId ?? null,
+  });
+  if (webIntel.status === "ok") {
+    const at = Math.max(1, chatMessages.length - 1);
+    (chatMessages as Array<{ role: string; content: unknown }>).splice(at, 0, { role: "system", content: webIntel.block });
+  }
   const budget = applyContextBudget(chatMessages as BudgetMessage[], model);
   if (budget.action !== "none") {
     console.log(
@@ -3758,6 +3772,26 @@ Forbidden defaults
         model,
       });
       try {
+        if (webIntel.status === "ok") {
+          controller.enqueue(encoder.encode(sse({
+            type: "status",
+            message: `Read ${webIntel.intel.pages.length} page${webIntel.intel.pages.length === 1 ? "" : "s"} of the website you linked — using it as reference`,
+          })));
+        } else if (webIntel.status === "unavailable" && webIntel.need === "required") {
+          // Never fabricate a site the user asked to rebuild.
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary: `I couldn't read ${webIntel.url}, so I haven't built anything — I won't guess what's on your site. Check the link opens publicly and send it again.`,
+            outcome: "blocked",
+            reason: "web_intel_unavailable",
+          });
+          return;
+        } else if (webIntel.status === "unavailable") {
+          controller.enqueue(encoder.encode(sse({
+            type: "status",
+            message: "Couldn't read the website you linked — building from your description instead",
+          })));
+        }
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
         // Replay the Inspector's investigation into the timeline so the user
