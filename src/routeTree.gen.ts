@@ -66,6 +66,7 @@ import { Route as AdminPicturesRouteImport } from './routes/admin.pictures'
 import { Route as AdminMobileSigningRouteImport } from './routes/admin.mobile-signing'
 import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
+import { Route as AdminFeaturesRouteImport } from './routes/admin.features'
 import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminEconomicsRouteImport } from './routes/admin.economics'
 import { Route as AdminDigestRouteImport } from './routes/admin.digest'
@@ -420,6 +421,11 @@ const AdminMarketplaceRoute = AdminMarketplaceRouteImport.update({
 const AdminLedgersRoute = AdminLedgersRouteImport.update({
   id: '/admin/ledgers',
   path: '/admin/ledgers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminFeaturesRoute = AdminFeaturesRouteImport.update({
+  id: '/admin/features',
+  path: '/admin/features',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminFailuresRoute = AdminFailuresRouteImport.update({
@@ -825,6 +831,7 @@ export interface FileRoutesByFullPath {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/economics': typeof AdminEconomicsRoute
   '/admin/failures': typeof AdminFailuresRoute
+  '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
@@ -954,6 +961,7 @@ export interface FileRoutesByTo {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/economics': typeof AdminEconomicsRoute
   '/admin/failures': typeof AdminFailuresRoute
+  '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
@@ -1084,6 +1092,7 @@ export interface FileRoutesById {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/economics': typeof AdminEconomicsRoute
   '/admin/failures': typeof AdminFailuresRoute
+  '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
@@ -1215,6 +1224,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/economics'
     | '/admin/failures'
+    | '/admin/features'
     | '/admin/ledgers'
     | '/admin/marketplace'
     | '/admin/mobile-signing'
@@ -1344,6 +1354,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/economics'
     | '/admin/failures'
+    | '/admin/features'
     | '/admin/ledgers'
     | '/admin/marketplace'
     | '/admin/mobile-signing'
@@ -1473,6 +1484,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/economics'
     | '/admin/failures'
+    | '/admin/features'
     | '/admin/ledgers'
     | '/admin/marketplace'
     | '/admin/mobile-signing'
@@ -1603,6 +1615,7 @@ export interface RootRouteChildren {
   AdminDigestRoute: typeof AdminDigestRoute
   AdminEconomicsRoute: typeof AdminEconomicsRoute
   AdminFailuresRoute: typeof AdminFailuresRoute
+  AdminFeaturesRoute: typeof AdminFeaturesRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
   AdminMarketplaceRoute: typeof AdminMarketplaceRoute
   AdminMobileSigningRoute: typeof AdminMobileSigningRoute
@@ -2099,6 +2112,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/ledgers'
       fullPath: '/admin/ledgers'
       preLoaderRoute: typeof AdminLedgersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/features': {
+      id: '/admin/features'
+      path: '/admin/features'
+      fullPath: '/admin/features'
+      preLoaderRoute: typeof AdminFeaturesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/failures': {
@@ -2667,6 +2687,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDigestRoute: AdminDigestRoute,
   AdminEconomicsRoute: AdminEconomicsRoute,
   AdminFailuresRoute: AdminFailuresRoute,
+  AdminFeaturesRoute: AdminFeaturesRoute,
   AdminLedgersRoute: AdminLedgersRoute,
   AdminMarketplaceRoute: AdminMarketplaceRoute,
   AdminMobileSigningRoute: AdminMobileSigningRoute,
