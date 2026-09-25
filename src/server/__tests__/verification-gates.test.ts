@@ -12,7 +12,7 @@ import {
   MAX_REPAIR_TARGETS,
 } from "@/server/verification/gates";
 import { shouldRepair } from "@/server/execution/verdict";
-import { quickSyntaxScan } from "@/server/write-gate.server";
+import { runWriteGate } from "@/server/write-gate.server";
 
 const pkg = { path: "package.json", content: JSON.stringify({ dependencies: { react: "19", "react-router-dom": "6" } }) };
 const app = {
@@ -85,9 +85,10 @@ describe("false-positive regression: JSX prose", () => {
     path: "src/pages/Home.tsx",
     content: `export default function Home(){return <main><h1>We're open</h1><p>Don't miss it — it hasn't sold out, and you'll love Mom's bread.</p></main>}`,
   };
-  it("the heuristic scanner does not flag apostrophes in JSX text", () => {
-    const issues = quickSyntaxScan(prose.path, prose.content);
-    expect(issues.filter((i) => /unterminated|string/i.test(i.detail ?? ""))).toEqual([]);
+  it("the write gate keeps valid JSX with apostrophes (no quarantine)", async () => {
+    const res = await runWriteGate({ before: [], after: [prose], changedPaths: [prose.path] });
+    expect(res.rejected).toEqual([]);
+    expect(res.files).toContainEqual(prose);
   });
   it("a clean authoritative verdict is PASS regardless of heuristics", () => {
     expect(syntaxGate(ok).verdict).toBe("PASS");
