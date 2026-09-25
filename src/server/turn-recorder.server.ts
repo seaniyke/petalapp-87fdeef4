@@ -70,6 +70,9 @@ export async function startTurn(opts: {
   attach?: boolean;
   /** Where events/terminal status go. Default: direct database. */
   io?: import("@/server/agent-io.server").AgentIO;
+  /** This handle runs the work (default). The durable ingress only opens the
+   *  row, so it passes false and never claims the worker lease. */
+  heartbeat?: boolean;
 }): Promise<TurnRecorderHandle> {
   const client = getAdminClient();
   const turnId = opts.turnId ?? crypto.randomUUID();
@@ -100,6 +103,23 @@ export async function startTurn(opts: {
   if (!resolvedIO) resolvedIO = (await import("@/server/agent-io.server")).agentIO();
 
   let seq = 0;
+
+  // Worker liveness + lease: independent of events, so a quiet AI call is
+  // not mistaken for a dead worker, and a stale worker stops itself.
+  let beat: { stop: () => void } | null = null;
+  const beatIO = resolvedIO;
+  if (opts.heartbeat !== false && beatIO?.heartbeat) {
+    const { startHeartbeat } = await import("@/server/turn-lease");
+    beat = startHeartbeat({
+      turnId,
+      lease: crypto.randomUUID(),
+      beat: (t, l) => beatIO.heartbeat!(t, l),
+      onLost: (state) => {
+        console.warn(`[turn-lease] turn=${turnId} ${state} — stopping this worker's run`);
+        void import("@/server/turn-cancel.server").then((m) => m.abortLocalTurn(turnId)).catch(() => {});
+      },
+    });
+  }
   let queue: Array<{ seq: number; kind: string; payload: unknown }> = [];
   let timer: ReturnType<typeof setTimeout> | null = null;
   let finishing = false;
@@ -151,6 +171,7 @@ export async function startTurn(opts: {
     },
     async finish(status, extras) {
       finishing = true;
+      beat?.stop();
       try {
         await flush();
       } catch {

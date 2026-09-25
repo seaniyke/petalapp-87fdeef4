@@ -7170,7 +7170,7 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // row, hand the job to the builder, and let the browser tail events.
         if (!isInternalCaller && durableAgentEnabled()) {
           const turnId = clientTurnId ?? crypto.randomUUID();
-          const opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId });
+          const opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId, heartbeat: false });
           const job = buildAgentJobPayload(
             request,
             opened.turnId,

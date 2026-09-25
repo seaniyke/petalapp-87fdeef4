@@ -90,13 +90,18 @@ export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
     async appendEvents(turnId, events) {
       const { error } = await db
         .from("turn_events")
-        .insert(events.map((e) => ({ turn_id: turnId, seq: e.seq, kind: e.kind, payload: (e.payload ?? {}) as Any })));
+        .upsert(events.map((e) => ({ turn_id: turnId, seq: e.seq, kind: e.kind, payload: (e.payload ?? {}) as Any })), { onConflict: "turn_id,seq", ignoreDuplicates: true });
       if (error) throw new Error(error.message);
       await db
         .from("turns")
         .update({ last_seq: events[events.length - 1].seq, last_progress_at: new Date().toISOString() })
         .eq("id", turnId)
         .eq("status", "running");
+    },
+    async heartbeat(turnId, lease) {
+      const { data, error } = await db.rpc("claim_turn_heartbeat" as Any, { _turn_id: turnId, _lease: lease } as Any);
+      if (error) return "ok";
+      return ((data as unknown) as "ok" | "lost" | "terminal") ?? "ok";
     },
     async claimCommit(turnId) {
       const { data, error } = await db
