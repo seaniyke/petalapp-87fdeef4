@@ -91,6 +91,10 @@ type GenState = {
   latestPath: string | null;
   latestNarration: string | null;
   timeline: TimelineItem[];
+  /** Highest phase reached — phases never move backwards. */
+  phaseRank: number;
+  /** Latest real server status line (setup stages, repairs). */
+  note: string | null;
 };
 
 export type TurnState = {
@@ -145,8 +149,12 @@ function emptyGen(): GenState {
     latestPath: null,
     latestNarration: null,
     timeline: [],
+    phaseRank: -1,
+    note: null,
   };
 }
+
+const PHASE_ORDER = ["thinking", "designing", "writing", "polishing"];
 
 const TIMELINE_LIMIT = 30;
 function pushTimeline(g: GenState, item: TimelineItem): TimelineItem[] {
@@ -236,6 +244,9 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
       const phase = str("phase");
       const label = PHASE_LINES[phase];
       if (!label) return g;
+      const rank = PHASE_ORDER.indexOf(phase);
+      if (rank <= g.phaseRank) return g;
+      g = { ...g, phaseRank: rank };
       const key = `phase:${phase}`;
       return { ...g, current: label, activities: upsert(settle(g.activities, key), { key, kind: phase === "designing" ? "design" : "understand", status: "active", label }) };
     }
@@ -260,6 +271,7 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
       const moved = g.latestPath !== path;
       const base = {
         ...g,
+        note: null,
         paths: g.paths.includes(path) ? g.paths : [...g.paths, path],
         latestPath: path,
         latestNarration: moved ? null : g.latestNarration,
@@ -365,7 +377,7 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
     case "status": {
       const m = str("message");
       if (!m || FILLER.test(m)) return g;
-      return { ...g, tech: pushTech(g, m) };
+      return { ...g, note: m, tech: pushTech(g, m) };
     }
     case "recovering":
       return { ...g, recovering: true, current: "Reconnecting to the AI service", activities: upsert(settle(g.activities, "recovery"), { key: "recovery", kind: "recovery", status: "active", label: "Switched to a backup AI service" }) };
@@ -557,7 +569,7 @@ export function deriveView(s: TurnState): TurnView {
     ready: "Your app is ready",
   };
   let detail: string | null = null;
-  if (lifecycle === "running") detail = g.recovering ? "Your progress is kept." : null;
+  if (lifecycle === "running") detail = g.recovering ? "Your progress is kept." : g.note;
   if (lifecycle === "building") detail = d?.progressLabel ?? null;
   if (lifecycle === "failed") detail = g.error?.message ?? null;
   if (lifecycle === "build_failed") detail = d?.errorMessage ?? null;
