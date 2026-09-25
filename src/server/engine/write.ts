@@ -99,6 +99,29 @@ function hasRealPage(files: ProjectFile[], file: string): boolean {
   return Boolean(f && f.content.trim().length > 0 && !isPlaceholderFile(f.content));
 }
 
+/**
+ * Output-limit continuation input: pages the shell's OWN router already
+ * imports (`@/pages/X`) that don't exist yet. When the shell call runs out
+ * of output room — or the planner under-counted the pages — this is the
+ * concrete record of what remains unfinished, so the WRITE stage writes
+ * exactly those pages instead of leaving a router pointing at nothing.
+ * Deterministic; never invents a page the router doesn't reference.
+ */
+export function pagesReferencedByRouter(files: ProjectFile[], known: PlannedPage[]): PlannedPage[] {
+  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+  const knownFiles = new Set(known.map((p) => p.file));
+  const out: PlannedPage[] = [];
+  for (const m of app.matchAll(/from\s+["']@\/pages\/([A-Za-z][\w-]*)(?:\.tsx)?["']/g)) {
+    const name = m[1]!;
+    const file = `src/pages/${name}.tsx`;
+    if (knownFiles.has(file) || hasRealPage(files, file)) continue;
+    knownFiles.add(file);
+    const slug = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+    out.push({ route: /^(home|index|landing)$/.test(slug) ? "/" : `/${slug}`, file });
+  }
+  return out;
+}
+
 export async function writePlannedPages(args: {
   pages: PlannedPage[];
   files: ProjectFile[];
