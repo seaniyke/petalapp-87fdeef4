@@ -15,7 +15,9 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/use-wallet";
+import { hasFullAccess } from "@/lib/billing";
 import { BillingSheet } from "@/components/BillingSheet";
+
 import { supabase } from "@/integrations/supabase/client";
 import {
   getMobileAppStatus,
@@ -47,8 +49,9 @@ const STATUS_COLOR: Record<MobileBuild["status"], string> = {
 };
 
 export function MobileAppPanel({ projectId }: { projectId: string }) {
-  const { plan } = useWallet();
-  const isPaidPlan = !!plan && plan.code !== "free";
+  const { wallet } = useWallet();
+  const canBuild = hasFullAccess(wallet);
+
 
   const [billingOpen, setBillingOpen] = useState(false);
   const [loading, setLoading] = useState(true);

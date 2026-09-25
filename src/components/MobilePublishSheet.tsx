@@ -119,7 +119,8 @@ export function MobilePublishSheet({ open, onOpenChange, projectId }: Props) {
       if (!result.ok) {
         const msg =
           result.reason === "plan_required"
-            ? "Mobile builds require a paid plan. Upgrade in Settings → Plan."
+            ? "Buy credits to build mobile apps — each build is charged from your credits."
+
             : result.reason === "signing_required"
               ? "Add a signing certificate in the Advanced sheet first."
               : (result.message ?? "Build couldn't start. Try again shortly.");
