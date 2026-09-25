@@ -41439,6 +41439,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -41482,6 +41483,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -41636,6 +41638,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -41826,6 +41829,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -84375,6 +84379,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -107735,6 +107740,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -110215,6 +110221,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -114420,6 +114427,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -121702,12 +121710,6 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
-
-// src/server/builder.server.ts
-init_source_escape_fixer_server();
-init_import_syntax_fixer_server();
-init_jsx_attr_literal_fixer_server();
-init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -138291,6 +138293,7 @@ async function runLocalVerifyTier(args) {
     authoredPaths ?? nextFiles.filter((f) => priorByPath.get(f.path) !== f.content).map((f) => f.path)
   )) : (parsedOps ?? []).map((o) => o.path);
   const verdict = verifyFilesLocal(nextFiles, earlyChangedPaths);
+  let validationFailure;
   const heuristic = verdict.issues.filter((i) => HEURISTIC_SYNTAX_KINDS.has(i.kind));
   if (heuristic.length) {
     try {
@@ -138299,6 +138302,7 @@ async function runLocalVerifyTier(args) {
       const ev = await verifyFilesEsbuild2(nextFiles, paths);
       if (ev.status === "unavailable") {
         console.error("[local-verifier] parser confirmation unavailable:", ev.unavailableDetail);
+        validationFailure = `esbuild unavailable (${ev.unavailableReason ?? "unknown"}): ${ev.unavailableDetail ?? "no detail"}`;
       }
       const failed = new Set(ev.issues.map((i) => i.path));
       const clean = new Set(ev.checkedPaths.filter((p) => !failed.has(p)));
@@ -138308,7 +138312,8 @@ async function runLocalVerifyTier(args) {
         console.log(`[local-verifier] parser cleared heuristic syntax flags on: ${Array.from(clean).join(", ")}`);
       }
     } catch (e) {
-      console.warn("[local-verifier] parser confirmation skipped:", e);
+      validationFailure = `esbuild unavailable (unexpected_error): ${e instanceof Error ? e.message : String(e)}`;
+      console.error("[local-verifier] parser confirmation unavailable:", e);
     }
   }
   let preflightDropped = 0;
@@ -138392,6 +138397,7 @@ async function runLocalVerifyTier(args) {
     preflightDropped,
     preflightHallucinated,
     realButMissing,
+    validationFailure,
     emit
   };
 }
@@ -145208,6 +145214,16 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         for (const ev of localOut.emit) {
           controller.enqueue(encoder.encode(sse(ev)));
         }
+        if (localOut.validationFailure) {
+          controller.enqueue(encoder.encode(sse({
+            type: "timeline",
+            step: "esbuild_parse",
+            outcome: "failed",
+            message: "Code parser unavailable \u2014 validation stopped",
+            ts: Date.now()
+          })));
+          throw new Error(`Authoritative code validation unavailable: ${localOut.validationFailure}`);
+        }
         recorder.record({
           tier: "local_verify",
           outcome: localVerdict.ok ? "ok" : "failed",
@@ -145324,6 +145340,11 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             }))
           }
         });
+        if (esbuildVerdict.status === "unavailable") {
+          throw new Error(
+            `Authoritative code validation unavailable: ${esbuildVerdict.unavailableDetail ?? esbuildVerdict.unavailableReason ?? "initialization error"}`
+          );
+        }
         const renderRiskT0 = Date.now();
         const renderRiskOut = runRenderRiskTier({
           files: nextFiles,
