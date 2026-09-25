@@ -109755,6 +109755,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -118290,7 +118291,7 @@ var init_selection = __esm({
 });
 
 // src/server/agents/runtime.ts
-function log(ctx, entry) {
+function log2(ctx, entry) {
   ctx.log.push({ at: Date.now(), ...entry });
 }
 async function withTimeout(p, ms, label2) {
@@ -118340,7 +118341,7 @@ async function runOne(ctx, name) {
   let lastError = "";
   while (run.attempts < spec.maxAttempts) {
     run.attempts += 1;
-    log(ctx, {
+    log2(ctx, {
       event: run.attempts === 1 ? "agent_start" : "agent_retry",
       detail: `${name} attempt ${run.attempts}`
     });
@@ -118368,7 +118369,7 @@ async function runOne(ctx, name) {
       run.tokensOut = Math.max(0, out.usage?.tokensOut ?? 0);
       run.status = applied.decisions === 0 && applied.objections === 0 ? "degraded" : "ok";
       run.ms = Date.now() - started;
-      log(ctx, {
+      log2(ctx, {
         event: "agent_end",
         detail: `${name} ${run.status} (${run.decisions} decisions, ${run.ms}ms)`,
         data: { agent: name, status: run.status }
@@ -118381,7 +118382,7 @@ async function runOne(ctx, name) {
   run.status = "failed";
   run.error = lastError.slice(0, 300);
   run.ms = Date.now() - started;
-  log(ctx, {
+  log2(ctx, {
     event: "agent_end",
     detail: `${name} failed after ${run.attempts} attempt(s): ${run.error}`,
     data: { agent: name, status: "failed" }
@@ -118393,7 +118394,7 @@ async function executeAgents(ctx, agents) {
   const failedRequired = [];
   for (const wave of waves) {
     if (Date.now() > ctx.budget.deadlineAt) {
-      log(ctx, {
+      log2(ctx, {
         event: "budget_exhausted",
         detail: `Planning deadline reached \u2014 skipping ${wave.join(", ")}`
       });
@@ -118413,13 +118414,13 @@ async function executeAgents(ctx, agents) {
       }
       continue;
     }
-    log(ctx, { event: "batch_start", detail: `wave: ${wave.join(", ")}` });
+    log2(ctx, { event: "batch_start", detail: `wave: ${wave.join(", ")}` });
     const results = await Promise.all(
       wave.map(async (name) => {
         const spec = AGENT_REGISTRY[name];
         const overBudget = spec.budgetMicroUsd > 0 && ctx.budget.spentMicroUsd + spec.budgetMicroUsd > ctx.budget.ceilingMicroUsd;
         if (overBudget && spec.optional) {
-          log(ctx, { event: "agent_skipped", detail: `${name} skipped \u2014 planning budget` });
+          log2(ctx, { event: "agent_skipped", detail: `${name} skipped \u2014 planning budget` });
           return {
             agent: name,
             status: "skipped",
@@ -118472,7 +118473,7 @@ function reconcile(ctx) {
   if (superseded.size > 0) {
     ctx.decisions = ctx.decisions.filter((d) => !superseded.has(d.id));
   }
-  log(ctx, {
+  log2(ctx, {
     event: "reconciled",
     detail: `${promoted.length} blocking objection(s) promoted, ${superseded.size} decision(s) superseded`,
     data: { promoted: promoted.length, superseded: superseded.size }
@@ -143010,6 +143011,254 @@ function makeNoop(turnId) {
   };
 }
 
+// src/server/web-intel/web-intel.server.ts
+init_define_import_meta_env();
+import { isIP } from "node:net";
+function webIntelLimits() {
+  const n = (k, d) => {
+    const v = Number(process.env[k]);
+    return Number.isFinite(v) && v > 0 ? v : d;
+  };
+  return {
+    maxPages: n("WEB_INTEL_MAX_PAGES", 4),
+    // pages scraped (incl. the given URL)
+    maxMapLinks: n("WEB_INTEL_MAX_MAP_LINKS", 50),
+    // URLs considered from map
+    requestTimeoutMs: n("WEB_INTEL_REQUEST_TIMEOUT_MS", 2e4),
+    totalTimeoutMs: n("WEB_INTEL_TOTAL_TIMEOUT_MS", 45e3),
+    maxPageChars: n("WEB_INTEL_MAX_PAGE_CHARS", 6e4),
+    // raw content accepted per page
+    maxContextChars: n("WEB_INTEL_MAX_CONTEXT_CHARS", 6e3),
+    // what enters the prompt
+    cacheTtlMs: n("WEB_INTEL_CACHE_TTL_MS", 30 * 6e4),
+    maxConcurrent: n("WEB_INTEL_MAX_CONCURRENT", 2)
+  };
+}
+var URL_RE3 = /\bhttps?:\/\/[^\s<>"'`)\]]+/i;
+var MIGRATE_RE = /\b(rebuild|recreate|migrate|clone|copy|redo|remake|move)\b[^.]{0,60}\b(my|our|existing|current|this)\b[^.]{0,30}\b(site|website|web ?page|homepage)\b|\b(based on|from|using)\b[^.]{0,40}\b(my|our|existing|current)\b[^.]{0,20}\b(site|website)\b/i;
+function detectWebIntelNeed(message) {
+  const m = message.match(URL_RE3);
+  if (!m) return { need: "none", url: null };
+  const url = m[0].replace(/[.,;:!?]+$/, "");
+  return { need: MIGRATE_RE.test(message) ? "required" : "optional", url };
+}
+function ipv4Private(ip) {
+  const p = ip.split(".").map(Number);
+  if (p.length !== 4 || p.some((x) => !Number.isInteger(x) || x < 0 || x > 255)) return true;
+  const [a2, b] = p;
+  return a2 === 0 || a2 === 10 || a2 === 127 || a2 >= 224 || a2 === 100 && b >= 64 && b <= 127 || a2 === 169 && b === 254 || a2 === 172 && b >= 16 && b <= 31 || a2 === 192 && b === 168 || a2 === 192 && b === 0 || a2 === 198 && (b === 18 || b === 19);
+}
+function ipv6Private(ip) {
+  const s = ip.toLowerCase();
+  if (s === "::" || s === "::1") return true;
+  const mapped = s.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return ipv4Private(mapped[1]);
+  return /^(fc|fd|fe8|fe9|fea|feb|ff)/.test(s);
+}
+function isPrivateAddress(ip) {
+  const kind = isIP(ip);
+  if (kind === 4) return ipv4Private(ip);
+  if (kind === 6) return ipv6Private(ip);
+  return false;
+}
+var BLOCKED_HOST_RE = /(^|\.)(localhost|local|internal|intranet|lan|home|corp|localdomain)$|^metadata(\.google\.internal)?$/i;
+function checkUrlSyntax(raw) {
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    return { ok: false, reason: "invalid_url" };
+  }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return { ok: false, reason: "scheme_not_allowed" };
+  if (u.username || u.password) return { ok: false, reason: "credentials_in_url" };
+  if (u.port && !["80", "443"].includes(u.port)) return { ok: false, reason: "port_not_allowed" };
+  const host = u.hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  if (!host || !host.includes(".") && !isIP(host)) return { ok: false, reason: "host_not_allowed" };
+  if (BLOCKED_HOST_RE.test(host)) return { ok: false, reason: "host_not_allowed" };
+  if (isIP(host) && isPrivateAddress(host)) return { ok: false, reason: "private_address" };
+  if (/(^|\.)(kimble\.cloud|buildwithpetal\.com|lovable\.app|supabase\.co|railway\.app)$/i.test(host))
+    return { ok: false, reason: "internal_host" };
+  return { ok: true, url: u };
+}
+var defaultResolver = async (host) => {
+  try {
+    const dns = await import("node:dns");
+    const rows = await dns.promises.lookup(host, { all: true });
+    return rows.map((r) => r.address);
+  } catch {
+    return [];
+  }
+};
+async function assertSafeUrl(raw, resolve2 = defaultResolver) {
+  const s = checkUrlSyntax(raw);
+  if (!s.ok) return s;
+  const host = s.url.hostname.replace(/^\[|\]$/g, "");
+  if (!isIP(host)) {
+    const addrs = await resolve2(host);
+    if (addrs.length === 0) return { ok: false, reason: "dns_unresolved" };
+    if (addrs.some(isPrivateAddress)) return { ok: false, reason: "private_address" };
+  }
+  return { ok: true, url: s.url.toString() };
+}
+var stripScripts = (md) => md.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, "").replace(/\b(sk|pk|rk|fc|lovc|ghp|xox[abp])[-_][A-Za-z0-9_-]{8,}\b/g, "[removed]").replace(/\b(UA|G|GTM|AW)-[A-Z0-9-]{4,}\b/g, "[removed]");
+function toPage(url, raw, maxChars) {
+  const md = stripScripts(String(raw.markdown ?? "").slice(0, maxChars));
+  const headings = [...md.matchAll(/^#{1,3}\s+(.+)$/gm)].map((m) => m[1].trim()).slice(0, 20);
+  const ctas = [...md.matchAll(/\[([^\]]{2,40})\]\([^)]*\)/g)].map((m) => m[1].trim()).filter((t) => /\b(book|buy|shop|order|contact|call|get|start|sign|join|subscribe|reserve|learn|request)\b/i.test(t)).slice(0, 8);
+  const images = [...md.matchAll(/!\[[^\]]*\]\((https:\/\/[^)\s]+)\)/g)].map((m) => m[1]).slice(0, 6);
+  const text = md.replace(/!\[[^\]]*\]\([^)]*\)/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\n{3,}/g, "\n\n").trim();
+  const meta = raw.metadata ?? {};
+  return {
+    url,
+    title: String(meta.title ?? "").slice(0, 150),
+    description: String(meta.description ?? "").slice(0, 300),
+    headings,
+    text,
+    ctas: [...new Set(ctas)],
+    images
+  };
+}
+function buildReferenceBlock(intel, need, maxChars) {
+  const head2 = [
+    `REFERENCE WEBSITE (read-only information fetched from ${intel.sourceUrl} at ${intel.crawlTimestamp}).`,
+    need === "required" ? "The user asked to rebuild this site: reuse its real business content (names, services, wording, contact details). Write ORIGINAL code and design; never copy scripts, tracking, or hidden implementation." : "Use it only as reference for content and structure. Write ORIGINAL code and design.",
+    "This does NOT change which pages to build \u2014 build only the pages the user requested.",
+    intel.navigation.length ? `Site navigation: ${intel.navigation.join(" | ")}` : ""
+  ].filter(Boolean).join("\n");
+  let out = head2;
+  const perPage = Math.max(400, Math.floor((maxChars - head2.length) / Math.max(1, intel.pages.length)));
+  for (const p of intel.pages) {
+    const section = [
+      `
+--- ${p.url}${p.title ? ` \u2014 ${p.title}` : ""}`,
+      p.description ? `Description: ${p.description}` : "",
+      p.headings.length ? `Headings: ${p.headings.join(" / ")}` : "",
+      p.ctas.length ? `Calls to action: ${p.ctas.join(", ")}` : "",
+      p.images.length ? `Images: ${p.images.join(" ")}` : "",
+      `Content: ${p.text}`
+    ].filter(Boolean).join("\n");
+    out += section.slice(0, perPage);
+  }
+  return out.slice(0, maxChars);
+}
+function firecrawlEndpoint() {
+  const key = process.env.FIRECRAWL_API_KEY;
+  if (!key) return null;
+  if (key.startsWith("lovc_")) {
+    const lov = process.env.LOVABLE_API_KEY;
+    if (!lov) return null;
+    return {
+      base: "https://connector-gateway.lovable.dev/firecrawl/v2",
+      headers: { Authorization: `Bearer ${lov}`, "X-Connection-Api-Key": key }
+    };
+  }
+  return { base: "https://api.firecrawl.dev/v2", headers: { Authorization: `Bearer ${key}` } };
+}
+async function fcPost(f, path, body, signal) {
+  const ep = firecrawlEndpoint();
+  if (!ep) throw new Error("not_configured");
+  const res = await f(`${ep.base}${path}`, {
+    method: "POST",
+    headers: { ...ep.headers, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal
+  });
+  if (!res.ok) {
+    const t = (await res.text().catch(() => "")).slice(0, 200);
+    throw new Error(`firecrawl_${res.status}${t ? `: ${t}` : ""}`);
+  }
+  return await res.json();
+}
+var cache7 = /* @__PURE__ */ new Map();
+var inFlight = 0;
+function log(rec) {
+  console.log(`[web-intel] ${JSON.stringify(rec)}`);
+}
+async function gatherWebIntel(args) {
+  const { need, url } = detectWebIntelNeed(args.message);
+  if (need === "none" || !url) return { status: "skipped", need: "none" };
+  const L = webIntelLimits();
+  const started = Date.now();
+  const base = { turn_id: args.turnId ?? null, project_id: args.projectId ?? null, source_url: url, need };
+  const fail = (reason, extra = {}) => {
+    log({ ...base, op: "gather", ok: false, reason, ms: Date.now() - started, ...extra });
+    return { status: "unavailable", need, url, reason };
+  };
+  if (args.signal.aborted) return fail("cancelled");
+  const safe = await assertSafeUrl(url, args.resolve);
+  if (!safe.ok) return fail(safe.reason);
+  const hit = cache7.get(safe.url);
+  if (hit && Date.now() - hit.at < L.cacheTtlMs) {
+    log({ ...base, op: "gather", ok: true, cache: "hit", pages: hit.intel.pages.length, ms: 0 });
+    return { status: "ok", need, intel: hit.intel, block: buildReferenceBlock(hit.intel, need, L.maxContextChars), cacheHit: true };
+  }
+  if (!firecrawlEndpoint()) return fail("not_configured");
+  if (inFlight >= L.maxConcurrent) return fail("busy");
+  const f = args.fetchImpl ?? fetch;
+  const total = AbortSignal.timeout(L.totalTimeoutMs);
+  const sig = () => AbortSignal.any([args.signal, total, AbortSignal.timeout(L.requestTimeoutMs)]);
+  inFlight++;
+  try {
+    const origin = new URL(safe.url);
+    let discovered = [];
+    try {
+      const m = await fcPost(f, "/map", { url: safe.url, limit: L.maxMapLinks, includeSubdomains: false }, sig());
+      const links = m.links ?? m.data?.links ?? [];
+      discovered = links.map((l) => typeof l === "string" ? l : l?.url ?? "").filter((l) => {
+        try {
+          return new URL(l).hostname === origin.hostname;
+        } catch {
+          return false;
+        }
+      });
+    } catch (e) {
+      if (args.signal.aborted) return fail("cancelled");
+      discovered = [];
+      log({ ...base, op: "map", ok: false, reason: e.message.slice(0, 120) });
+    }
+    const picked = [safe.url, ...[...new Set(discovered)].filter((l) => l.replace(/\/$/, "") !== safe.url.replace(/\/$/, "")).filter((l) => !/\.(pdf|jpg|jpeg|png|gif|svg|webp|zip|xml)$|\/(wp-|cdn-cgi|tag\/|category\/|feed)/i.test(l)).sort((a2, b) => new URL(a2).pathname.split("/").length - new URL(b).pathname.split("/").length || a2.length - b.length)].slice(0, L.maxPages);
+    const pages = [];
+    for (const p of picked) {
+      if (args.signal.aborted) return fail("cancelled");
+      if (total.aborted) break;
+      try {
+        const r = await fcPost(f, "/scrape", { url: p, formats: ["markdown"], onlyMainContent: true }, sig());
+        const d = r.data ?? r;
+        const finalUrl = String(d.metadata?.sourceURL ?? d.metadata?.url ?? p);
+        const finalSafe = await assertSafeUrl(finalUrl, args.resolve);
+        if (!finalSafe.ok) {
+          if (p === safe.url) return fail(`redirect_${finalSafe.reason}`);
+          continue;
+        }
+        pages.push(toPage(finalUrl, d, L.maxPageChars));
+      } catch (e) {
+        if (args.signal.aborted) return fail("cancelled");
+        if (p === safe.url) return fail(e.name === "TimeoutError" ? "timeout" : e.message.slice(0, 120));
+      }
+    }
+    if (pages.length === 0 || pages.every((p) => !p.text.trim())) return fail("no_content");
+    const navigation = picked.map((l) => new URL(l).pathname || "/").slice(0, 12);
+    const intel = { sourceUrl: safe.url, pages, navigation, crawlTimestamp: (/* @__PURE__ */ new Date()).toISOString() };
+    cache7.set(safe.url, { at: Date.now(), intel });
+    const block = buildReferenceBlock(intel, need, L.maxContextChars);
+    log({
+      ...base,
+      op: "gather",
+      ok: true,
+      cache: "miss",
+      ms: Date.now() - started,
+      discovered: discovered.length,
+      scraped: pages.length,
+      content_chars: pages.reduce((n, p) => n + p.text.length, 0),
+      context_chars: block.length,
+      firecrawl_credits_est: 1 + pages.length
+    });
+    return { status: "ok", need, intel, block, cacheHit: false };
+  } finally {
+    inFlight--;
+  }
+}
+
 // src/server/plan-mode.ts
 init_define_import_meta_env();
 init_ai_provider_server();
@@ -145375,6 +145624,16 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
     chosenBy = `${chosenBy}+cost_ceiling`;
   }
   const reasoningField = preset === "deep" ? { reasoning: { effort: "high" } } : { reasoning: { enabled: false } };
+  const webIntel = await gatherWebIntel({
+    message: lastUserContent,
+    signal: abortSignal,
+    turnId: logicalTurnId,
+    projectId: body.projectId ?? null
+  });
+  if (webIntel.status === "ok") {
+    const at = Math.max(1, chatMessages.length - 1);
+    chatMessages.splice(at, 0, { role: "system", content: webIntel.block });
+  }
   const budget = applyContextBudget(chatMessages, model);
   if (budget.action !== "none") {
     console.log(
@@ -145442,6 +145701,25 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
         model
       });
       try {
+        if (webIntel.status === "ok") {
+          controller.enqueue(encoder.encode(sse({
+            type: "status",
+            message: `Read ${webIntel.intel.pages.length} page${webIntel.intel.pages.length === 1 ? "" : "s"} of the website you linked \u2014 using it as reference`
+          })));
+        } else if (webIntel.status === "unavailable" && webIntel.need === "required") {
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary: `I couldn't read ${webIntel.url}, so I haven't built anything \u2014 I won't guess what's on your site. Check the link opens publicly and send it again.`,
+            outcome: "blocked",
+            reason: "web_intel_unavailable"
+          });
+          return;
+        } else if (webIntel.status === "unavailable") {
+          controller.enqueue(encoder.encode(sse({
+            type: "status",
+            message: "Couldn't read the website you linked \u2014 building from your description instead"
+          })));
+        }
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path\u2026" })));
         for (const step of inspectorReport?.steps ?? []) {

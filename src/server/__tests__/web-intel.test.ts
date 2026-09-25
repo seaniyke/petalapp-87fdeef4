@@ -117,7 +117,7 @@ describe("web intelligence", () => {
 
   it("10/11/12/18. module never writes files, calls a model or starts generation", () => {
     const src = readFileSync("src/server/web-intel/web-intel.server.ts", "utf8");
-    expect(src).not.toMatch(/project_files|writeFile|aiChatCompletions|openrouter|handleGenerateRequest|supabase/i);
+    expect(src).not.toMatch(/project_files|writeFile|aiChatCompletions|openrouter\.ai|handleGenerateRequest|supabaseAdmin|createClient/i);
     const gen = readFileSync("src/routes/api/generate.ts", "utf8");
     expect(gen.match(/gatherWebIntel\(/g)).toHaveLength(1);
   });
