@@ -7,6 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { CheckCircle2, Eye, Rocket, Wand2, ChevronRight } from "lucide-react";
+import { ProductProgress } from "@/components/ProductProgress";
 
 /** Counts up to `value` on mount — the small reward beat at the end of a turn. */
 function useCountUp(value: number, ms = 600) {
