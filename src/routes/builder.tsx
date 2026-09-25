@@ -2202,13 +2202,13 @@ function Builder() {
       });
     }
 
-    attemptResume();
+    void reconcileThenResume();
 
     // Also re-attempt when the tab returns to focus (mobile users locking
     // and unlocking the phone). If the previous resume already finished
     // and cleared localStorage, this is a no-op.
     const onVisible = () => {
-      if (document.visibilityState === "visible") attemptResume();
+      if (document.visibilityState === "visible") void reconcileThenResume();
     };
     document.addEventListener("visibilitychange", onVisible);
 
@@ -2218,11 +2218,11 @@ function Builder() {
     // the browser `online` event, and a light heartbeat that re-attempts
     // while the tab is visible and a turn is still persisted. attemptResume
     // no-ops when a send is already running in this tab.
-    const onOnline = () => attemptResume();
+    const onOnline = () => void reconcileThenResume();
     window.addEventListener("online", onOnline);
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState === "visible" && readPersistedTurn(pid)) {
-        attemptResume();
+        void reconcileThenResume();
       }
     }, 20_000);
 
