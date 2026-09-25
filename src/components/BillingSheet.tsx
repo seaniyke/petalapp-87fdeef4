@@ -10,7 +10,7 @@
  *  6. Top-up packs (dropdown + dynamic "Top up $X" button)
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Plus, Sparkles, AlertTriangle, CreditCard, X } from "lucide-react";
+import { Check, Loader2, Plus, AlertTriangle, CreditCard, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -290,10 +290,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
         className="w-full overflow-y-auto bg-background p-0 sm:max-w-xl"
       >
         <SheetHeader className="border-b border-border/60 px-5 py-4">
-          <SheetTitle className="flex items-center gap-2 text-lg font-semibold">
-            <Sparkles className="h-4 w-4" />
-            Plans &amp; credits
-          </SheetTitle>
+          <SheetTitle className="text-lg font-semibold">Credits</SheetTitle>
         </SheetHeader>
 
         <div className="space-y-4 p-4">

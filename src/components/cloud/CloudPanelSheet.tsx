@@ -252,7 +252,7 @@ function CloudHome({
       />
       <Row
         icon={<Wallet className="h-4 w-4" />}
-        title="Plans & credits"
+        title="Credits"
         description=""
         trailing={<ArrowUpRight className="h-4 w-4 text-muted-foreground" />}
         onClick={onOpenBalance}

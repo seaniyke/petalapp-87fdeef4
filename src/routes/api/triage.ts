@@ -332,7 +332,7 @@ export const Route = createFileRoute("/api/triage")({
         if (!balance.ok) {
           if (balance.reason === "insufficient_credits") {
             return new Response(
-              "You're out of credits. Add credits in Settings → Plans & Credits to keep going.",
+              "You're out of credits. Add credits in Settings → Credits to keep going.",
               { status: 402 },
             );
           }

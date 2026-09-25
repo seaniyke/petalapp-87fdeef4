@@ -37,8 +37,8 @@ export function AccountHubGrid({ onOpenBilling, onOpenCloud }: Props) {
         <CardButton
           onClick={onOpenBilling}
           icon={<CreditCard className="h-5 w-5" />}
-          title="Plans & credits"
-          description="Balance, usage, top-ups and plans — one place."
+          title="Credits"
+          description="Balance, usage and top-ups — one place."
         />
         <CardLink
           to="/billing"

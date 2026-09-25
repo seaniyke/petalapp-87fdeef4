@@ -2149,7 +2149,7 @@ async function handleGenerateRequestCore(
       return new Response(
         JSON.stringify({
           error:
-            "You're out of credits. Add credits in Settings → Plans & Credits to keep generating.",
+            "You're out of credits. Add credits in Settings → Credits to keep generating.",
         }),
         { status: 402, headers: { "Content-Type": "application/json" } },
       );
