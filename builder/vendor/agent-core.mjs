@@ -41445,6 +41445,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -41488,6 +41489,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -41642,6 +41644,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -41832,6 +41835,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -84381,6 +84385,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -121438,10 +121443,11 @@ function routerInstruction(pages, deliveredPaths, contract = "") {
     "No extra pages."
   ].filter(Boolean).join("\n");
 }
-function frameIsComplete(files) {
+function frameIsComplete(files, pageCount = 2) {
   const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
   if (!app.trim() || isPlaceholderFile(app)) return false;
-  return /<Routes\b|createBrowserRouter|<Route\b/.test(app) && /nav|header/i.test(app) && /footer/i.test(app);
+  const routed = pageCount <= 1 || /<Routes\b|createBrowserRouter|<Route\b/.test(app);
+  return routed && /nav|header/i.test(app) && /footer/i.test(app);
 }
 function targetOf(instruction) {
   return /as (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
@@ -121495,7 +121501,7 @@ async function writePlannedPages(args) {
   const retry = args.pages.filter((p) => !hasRealPage(files, p.file) && args.budget.take("missing_page", p.route));
   if (retry.length) await writePages(retry);
   const routes = args.pages.filter((p) => hasRealPage(files, p.file)).map((p) => p.route);
-  const needFrame = !frameIsComplete(files) || routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete;
+  const needFrame = !frameIsComplete(files, args.pages.length) || routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete;
   if (needFrame && args.budget.take("missing_page", "app shell")) {
     put2(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
   }
@@ -123693,12 +123699,6 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
-
-// src/server/builder.server.ts
-init_source_escape_fixer_server();
-init_import_syntax_fixer_server();
-init_jsx_attr_literal_fixer_server();
-init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -147406,7 +147406,7 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
           scopeMissing = verdict.missingRoutes;
           {
             const { frameIsComplete: frameIsComplete2 } = await Promise.resolve().then(() => (init_write(), write_exports));
-            if (!frameIsComplete2(nextFiles) && !scopeMissing.includes("app shell")) {
+            if (!frameIsComplete2(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
               scopeMissing = ["app shell", ...scopeMissing];
               verdict.complete = false;
             }
