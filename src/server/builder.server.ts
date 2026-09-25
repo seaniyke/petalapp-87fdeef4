@@ -24,6 +24,7 @@ import {
   type CleanupScopeMeta,
 } from "@/server/build-cleanup-scope.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
+import { pinLooseDeps } from "@/server/pin-loose-deps";
 
 const MAX_AGE_SECONDS = 5 * 60;
 
