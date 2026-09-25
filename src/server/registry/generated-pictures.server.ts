@@ -182,7 +182,7 @@ export function imageDimensions(bytes: Uint8Array): { width: number; height: num
   return null;
 }
 
-/** "google/gemini-..." → "google". */
+/** "vendor/model-name" → "vendor". */
 export function providerFor(model?: string | null): string | null {
   const m = String(model ?? "");
   return m.includes("/") ? m.split("/")[0] : m || null;
