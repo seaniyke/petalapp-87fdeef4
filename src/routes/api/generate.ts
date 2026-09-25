@@ -3145,7 +3145,56 @@ async function handleGenerateRequestCore(
     targets: resolvedTargetPaths,
     neighbours: impactNeighbourPaths,
   });
-  const executionScopeBlock = isInitial ? "" : renderScopeBlock(executionScope);
+  const executionScopeBlockBase = isInitial ? "" : renderScopeBlock(executionScope);
+  // Lifecycle phase in the agent context (existing prompt assembly).
+  const { initialDepth } = await import("@/server/execution");
+  const turnInitialDepth = initialDepth(turnClassification, lastUserContent || "");
+  const lifecycleBlock = await (async () => {
+    try {
+      const { renderLifecycleContext } = await import("@/server/context/lifecycle");
+      let currentRevision: number | null = null;
+      let buildRevision: number | null = null;
+      let buildStatus: string | null = null;
+      let publishedRevision: number | null = null;
+      const knownIssues: string[] = [];
+      if (!isInitial && body.projectId) {
+        const { data: proj } = await supabaseAdmin
+          .from("projects").select("revision, latest_build_id, published_build_id").eq("id", body.projectId).maybeSingle();
+        currentRevision = (proj?.revision as number | null) ?? null;
+        const ids = [proj?.latest_build_id, proj?.published_build_id].filter(Boolean) as string[];
+        if (ids.length) {
+          const { data: builds } = await supabaseAdmin.from("project_builds").select("id, status, project_revision, error_message").in("id", ids);
+          for (const b of builds ?? []) {
+            if (b.id === proj?.latest_build_id) {
+              buildRevision = (b.project_revision as number | null) ?? null;
+              buildStatus = b.status as string;
+              if (b.status === "failed" && b.error_message) knownIssues.push(String(b.error_message).slice(0, 160));
+            }
+            if (b.id === proj?.published_build_id) publishedRevision = (b.project_revision as number | null) ?? null;
+          }
+        }
+      }
+      return "\n\n" + renderLifecycleContext({
+        isInitial,
+        operationType: toOperationType(turnClassification.operation, { isInitial }),
+        executionDepth: turnInitialDepth,
+        currentRevision,
+        buildRevision,
+        buildStatus,
+        publishedRevision,
+        designSystem: picContext?.design?.package?.systemId ?? null,
+        accent: picContext?.design?.package?.accent ?? null,
+        routes: (projectCtx.manifest?.pages ?? []).map((p) => String((p as { route?: string; path?: string }).route ?? (p as { path?: string }).path ?? "")).filter(Boolean),
+        relevantFiles: resolvedTargetPaths,
+        recentChanges: [],
+        knownIssues,
+      });
+    } catch (e) {
+      console.warn("[lifecycle] context unavailable", (e as Error).message);
+      return "";
+    }
+  })();
+  const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}`;
   // One TurnLedger per turn: enforces TURN_LIMITS on repairs, writes and
   // deletes; the TurnTransaction at the commit point is accounted by it.
   const { TurnLedger, commitTurn } = await import("@/server/execution");
