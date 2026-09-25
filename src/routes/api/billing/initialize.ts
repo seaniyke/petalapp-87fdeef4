@@ -63,8 +63,8 @@ export const Route = createFileRoute("/api/billing/initialize")({
                 JSON.stringify({
                   error:
                     parsed.purpose === "runtime_topup"
-                      ? "Buy credits or upgrade to a paid plan to top up your Cloud + AI balance."
-                      : "Buy credits or upgrade to a paid plan to add this.",
+                      ? "Buy credits to top up your Cloud + AI balance."
+                      : "Buy credits to add this.",
                   code: "upgrade_required",
                 }),
                 { status: 403, headers: { "Content-Type": "application/json" } },

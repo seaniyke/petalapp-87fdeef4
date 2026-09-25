@@ -977,7 +977,7 @@ function Landing() {
             <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-2 md:items-center">
               <h2 className="font-landing-display text-4xl font-semibold leading-tight sm:text-6xl">Buy credits once.<br />Use them anytime.</h2>
               <div>
-                <p className="max-w-lg text-base leading-relaxed text-muted-foreground">Subscriptions are optional. Credits never expire, and turns that change nothing cost nothing.</p>
+                <p className="max-w-lg text-base leading-relaxed text-muted-foreground">Credits never expire, no saved card is required, and turns that change nothing cost nothing.</p>
                 <Link to="/why/$slug" params={{ slug: "pay-as-you-build" }} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold hover:text-primary">
                   See how pricing works <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -990,7 +990,7 @@ function Landing() {
               <h2 className="font-landing-display text-3xl font-semibold sm:text-4xl">Common questions</h2>
               <div className="mt-10 grid border-t border-border md:grid-cols-2">
                 {[
-                  ["Do I need a subscription?", "No. Credit packs work without a subscription."],
+                  ["Do I need to add a card?", "No. Buy credits only when you choose, using any available payment method."],
                   ["Do credits expire?", "No. Your unused balance stays available."],
                   ["Do I own the code?", "Yes. Sync it to Git, edit it, and deploy it elsewhere."],
                   ["Can Kimble build mobile apps?", "Yes. One mobile project can ship to iOS and Android."],

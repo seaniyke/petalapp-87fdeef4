@@ -46,8 +46,9 @@ function TermsPage() {
 
           <h2>4. Billing</h2>
           <p>
-            Free plans include a starting credit. Paid plans and top-ups are non-refundable except
-            where required by law. Prices are shown on the plan you pick.
+            Kimble may include free starting credits. Purchased credits are one-time purchases,
+            never expire, and are non-refundable except where required by law. A saved payment
+            card is not required to use Kimble.
           </p>
 
           <h2>5. AI output</h2>

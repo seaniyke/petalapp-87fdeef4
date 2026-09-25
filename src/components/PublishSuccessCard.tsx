@@ -103,7 +103,7 @@ export function PublishSuccessCard({
   onDismiss?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const [plansOpen, setPlansOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const { plan } = useWallet();
   const onFreePlan = plan?.code === "free";
   const shareText = isUpdate ? `Just shipped an update to ${title}` : `I just built ${title} 🌸`;
@@ -220,14 +220,14 @@ export function PublishSuccessCard({
           <p className="text-[13px] font-semibold">Use your own domain, drop the badge</p>
           <button
             type="button"
-            onClick={() => setPlansOpen(true)}
+            onClick={() => setCreditsOpen(true)}
             className="shrink-0 rounded-xl bg-foreground px-3 py-1.5 text-[13px] font-bold text-background transition hover:opacity-90"
           >
-            See plans
+            Buy credits
           </button>
         </div>
       )}
-      <BillingSheet open={plansOpen} onOpenChange={setPlansOpen} />
+      <BillingSheet open={creditsOpen} onOpenChange={setCreditsOpen} />
 
       {onDismiss && (
         <button

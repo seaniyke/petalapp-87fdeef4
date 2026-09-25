@@ -44,7 +44,7 @@ export function AccountHubGrid({ onOpenBilling, onOpenCloud }: Props) {
           to="/billing"
           icon={<Receipt className="h-5 w-5" />}
           title="Billing & receipts"
-          description="Plan, renewal date, payment history and PDF receipts."
+          description="Credit purchases, payment history and PDF receipts."
         />
         <CardLink
           to="/projects"

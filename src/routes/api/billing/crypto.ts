@@ -95,7 +95,7 @@ export const Route = createFileRoute("/api/billing/crypto")({
               return json(
                 {
                   error:
-                    "Buy credits or upgrade to a paid plan to top up your Cloud + AI balance.",
+                    "Buy credits to top up your Cloud + AI balance.",
                   code: "upgrade_required",
                 },
                 403,

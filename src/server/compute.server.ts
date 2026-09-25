@@ -99,7 +99,7 @@ export async function provisionCompute(opts: {
     return {
       ok: false,
       reason: "not_entitled",
-      message: "A paid plan or purchased credits are needed to run a dedicated server.",
+      message: "Credits are needed to run a dedicated server.",
     };
   }
 

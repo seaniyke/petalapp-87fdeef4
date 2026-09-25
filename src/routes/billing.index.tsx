@@ -1,8 +1,7 @@
 /**
  * /billing — the money dashboard.
  *
- * One place to see the current plan, when it renews, build credits, the
- * Cloud + AI balance, and every card or crypto payment with a downloadable
+ * One place to see credits, the Cloud + AI balance, and every card or crypto payment with a downloadable
  * PDF receipt.
  */
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
@@ -14,7 +13,6 @@ import {
   Download,
   Loader2,
   RefreshCw,
-  Sparkles,
   Wallet as WalletIcon,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -36,12 +34,12 @@ export const Route = createFileRoute("/billing/")({
       {
         name: "description",
         content:
-          "See your Kimble plan, renewal date, build credits and Cloud + AI balance, and download receipts for every card or crypto payment.",
+          "See your Kimble credits and Cloud + AI balance, and download receipts for every payment.",
       },
       { property: "og:title", content: "Billing & receipts · Kimble" },
       {
         property: "og:description",
-        content: "Your plan, credits and payment receipts in one place.",
+        content: "Your credits and payment receipts in one place.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -88,12 +86,6 @@ type Payload = {
   items: HistoryItem[];
 };
 
-const PLAN_LABEL: Record<string, string> = {
-  free: "Free",
-  pro: "Pro",
-  business: "Business",
-};
-
 const STATUS_STYLE: Record<string, string> = {
   success: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
   confirmed: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
@@ -119,7 +111,7 @@ function usd(cents: number) {
 }
 
 function purposeLabel(item: HistoryItem) {
-  if (item.purpose === "plan") return `${PLAN_LABEL[item.itemCode] ?? item.itemCode} plan`;
+  if (item.purpose === "plan") return "Legacy payment";
   if (item.purpose === "pack") return `Credit pack · ${item.itemCode}`;
   if (item.purpose === "runtime_topup") return "Cloud + AI top-up";
   return item.itemCode || item.purpose;
@@ -131,7 +123,7 @@ function BillingDashboard() {
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [planOpen, setPlanOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const [topupOpen, setTopupOpen] = useState(false);
   const payments = usePaged(data?.items ?? [], 10);
 
@@ -242,11 +234,9 @@ function BillingDashboard() {
   }
 
   const w = data?.wallet;
-  const planCode = w?.plan_code ?? "free";
   const credits = Number(w?.monthly_credits_remaining ?? 0) + Number(w?.topup_credits_remaining ?? 0);
   const runtimeCents =
     Number(w?.runtime_free_balance_cents ?? 0) + Number(w?.runtime_topup_balance_cents ?? 0);
-  const renewal = data?.subscription?.next_payment_date ?? w?.current_period_end ?? null;
 
   return (
     <div className="min-h-dvh bg-background">
@@ -264,7 +254,7 @@ function BillingDashboard() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
             <p className="mt-1 text-sm font-medium text-muted-foreground">
-              Your plan, balances and every receipt — card or crypto.
+              Your credit balance and every receipt — card or crypto.
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing}>
@@ -273,53 +263,17 @@ function BillingDashboard() {
           </Button>
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-card p-4">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5" />
-              Plan
-            </div>
-            <div className="mt-2 text-2xl font-bold">{PLAN_LABEL[planCode] ?? planCode}</div>
-            <p className="mt-1 text-xs font-medium text-muted-foreground">
-              {data?.subscription?.cancel_at_period_end
-                ? `Ends ${renewal ? new Date(renewal).toLocaleDateString() : "at period end"}`
-                : renewal
-                  ? `Renews ${new Date(renewal).toLocaleDateString()}`
-                  : "No renewal scheduled"}
-            </p>
-            <Button size="sm" className="mt-3 w-full" onClick={() => setPlanOpen(true)}>
-              {planCode === "free" ? "Upgrade" : "Manage plan"}
-            </Button>
-            {planCode === "free" && (
-              <button
-                type="button"
-                onClick={() => setPlanOpen(true)}
-                className="mt-2 w-full text-xs font-semibold text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              >
-                {Number(w?.topup_credits_remaining ?? 0) > 0
-                  ? "Pay as you go — buy more credits"
-                  : "No subscription? Just buy credits →"}
-              </button>
-            )}
-          </div>
-
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-border bg-card p-4">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               <WalletIcon className="h-3.5 w-3.5" />
-              Build credits
+              Credits
             </div>
             <div className="mt-2 text-2xl font-bold tabular-nums">{credits}</div>
             <p className="mt-1 text-xs font-medium text-muted-foreground">
-              {Number(w?.topup_credits_remaining ?? 0)} from top-ups · purchased
-              credits never expire
-
+              Purchased credits never expire. No saved card is required.
             </p>
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-3 w-full"
-              onClick={() => setPlanOpen(true)}
-            >
+            <Button size="sm" className="mt-3 w-full" onClick={() => setCreditsOpen(true)}>
               Buy credits
             </Button>
           </div>
@@ -412,7 +366,7 @@ function BillingDashboard() {
         </div>
       </main>
 
-      <BillingSheet open={planOpen} onOpenChange={setPlanOpen} />
+      <BillingSheet open={creditsOpen} onOpenChange={setCreditsOpen} />
       <RuntimeTopupModal open={topupOpen} onOpenChange={setTopupOpen} />
     </div>
   );

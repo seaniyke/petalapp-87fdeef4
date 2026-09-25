@@ -45,7 +45,7 @@ export const DIFFERENCES: Record<string, Difference> = {
       },
       {
         heading: "You keep 80%",
-        body: "Kimble takes a flat 20% on paid listings. No listing fee, no monthly seller subscription, no rank-boost upsell. Earnings land in a ledger you can watch, and payouts run from there.",
+        body: "Kimble takes a flat 20% on paid listings. No listing fee and no rank-boost upsell. Earnings land in a ledger you can watch, and payouts run from there.",
       },
     ],
     proof: [
@@ -59,13 +59,13 @@ export const DIFFERENCES: Record<string, Difference> = {
     slug: "pay-as-you-build",
     eyebrow: "Pay as you build",
     title: "Credits you buy once.",
-    titleItalic: "No subscription to cancel.",
+    titleItalic: "No recurring payment.",
     lede: "Build in bursts. Disappear for three months. Come back and your balance is exactly where you left it.",
     icon: Wallet,
     blocks: [
       {
         heading: "Buy once, never expire",
-        body: "Credit packs are a one-off purchase. They do not reset monthly, they do not lapse, and nothing gets clawed back if you take a break. There is no plan you have to keep paying to stay logged in.",
+        body: "Credit packs are a one-off purchase. They never expire, and nothing gets clawed back if you take a break. No saved card is required.",
       },
       {
         heading: "Charged for work, not for asking",
@@ -79,7 +79,7 @@ export const DIFFERENCES: Record<string, Difference> = {
     proof: [
       { stat: "Never", label: "Credits expire" },
       { stat: "$0", label: "Cost of a no-op turn" },
-      { stat: "Optional", label: "Subscription" },
+      { stat: "Never", label: "Card required" },
     ],
     cta: { label: "See what a build costs", to: "/billing" },
   },

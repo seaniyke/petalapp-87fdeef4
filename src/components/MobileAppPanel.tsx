@@ -141,7 +141,7 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
       });
       if (!res.ok) {
         if (res.reason === "plan_required") {
-          toast.error("Upgrade required to build mobile apps");
+          toast.error("Credits are required to build mobile apps");
           setBillingOpen(true);
         } else if (res.reason === "insufficient_balance") {
           toast.error("Top up credits to start a build");
