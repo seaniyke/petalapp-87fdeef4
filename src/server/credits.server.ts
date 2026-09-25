@@ -38,7 +38,9 @@ export type SpendReason =
   // runtime wallet is empty (see runtime-credit-fallback.server.ts).
   | "runtime_fallback"
   // Cloud + AI meter charged directly to the single credit balance.
-  | "runtime_charge";
+  | "runtime_charge"
+  // One-time purchase: remove the Kimble badge from a project.
+  | "badge_removal";
 
 export type SpendCreditOptions = {
   userId: string;

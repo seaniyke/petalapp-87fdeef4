@@ -212,7 +212,8 @@ export const Route = createFileRoute("/api/publish")({
           updated.published_visibility === "public" &&
           (pinLatestBuild || visibility === "public");
         if (goingPublic) {
-          await repairAndReshipIfNeeded(projectId, project.hide_petal_badge === true);
+          const { shouldHideBadge } = await import("@/server/badge-access.server");
+          await repairAndReshipIfNeeded(projectId, await shouldHideBadge(projectId, project.owner_id, project.hide_petal_badge));
         }
 
         return Response.json({ ok: true, project: updated });

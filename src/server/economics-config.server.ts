@@ -27,7 +27,8 @@ export type EconomicsKey =
   | "auto_upgrade_user_count"
   | "auto_upgrade_min_credits"
   | "compute_hour_usd"
-  | "max_active_compute";
+  | "max_active_compute"
+  | "badge_removal_credits";
 
 export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   target_variable_cost_per_credit_usd: 0.05,
@@ -47,6 +48,7 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   // underlying container cost of roughly 3¢/hr.
   compute_hour_usd: 0.08,
   max_active_compute: 25,
+  badge_removal_credits: 25,
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;

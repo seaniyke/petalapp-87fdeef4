@@ -247,25 +247,8 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //     project settings. Actual injection happens inside
         //     postBuildToRailway so EVERY build pathway shows the badge by
         //     default — even pathways that bypass this route.
-        let hideBadge = false;
-        try {
-          const { data: wallet } = await supabaseAdmin
-            .from("user_wallets")
-            .select("plan_code, topup_credits_remaining")
-            .eq("user_id", userId)
-            .maybeSingle();
-          const isPaidPlan =
-            (!!wallet?.plan_code && wallet.plan_code !== "free") ||
-            Number(wallet?.topup_credits_remaining ?? 0) > 0;
-          hideBadge = isPaidPlan && project.hide_petal_badge === true;
-        } catch (e) {
-          console.warn(
-            `[badge] could not determine plan for project=${projectId}:`,
-            e instanceof Error ? e.message : String(e),
-          );
-          // On error, default to showing the badge (safer for the free tier).
-          hideBadge = false;
-        }
+        const { shouldHideBadge } = await import("@/server/badge-access.server");
+        const hideBadge = await shouldHideBadge(projectId, userId, project.hide_petal_badge);
 
         // 3) Insert pending build row + bump latest_build_id BEFORE calling
         //    Railway, so a fast callback never races ahead of our own write.
