@@ -39420,6 +39420,7 @@ __export(build_state_exports, {
   isOwnContentIssue: () => isOwnContentIssue,
   isPlaceholderFile: () => isPlaceholderFile,
   isTruncationDetail: () => isTruncationDetail,
+  isUnfinishedPage: () => isUnfinishedPage,
   isolateBrokenFiles: () => isolateBrokenFiles,
   neutraliseSuccessClaims: () => neutraliseSuccessClaims,
   outcomeFailsTurn: () => outcomeFailsTurn,
@@ -39435,7 +39436,13 @@ function routerSourceOf(files) {
   return files.filter((f) => /^src\/(App|main|router)\.(t|j)sx?$/i.test(f.path) || /^src\/routes\//i.test(f.path)).map((f) => f.content).join("\n");
 }
 function isPlaceholderFile(content) {
-  return /Auto-generated stub by (Petal|Kimble) import-resolver/.test(content);
+  return isUnfinishedPage(content);
+}
+function isUnfinishedPage(content) {
+  if (/Auto-generated stub by (Petal|Kimble) import-resolver/.test(content)) return true;
+  if (content.length > 900) return false;
+  const text = content.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, " ").replace(/<[^>]+>/g, " ").replace(/\b(import|export|default|function|return|const|from)\b[^\n]*\n/g, " ");
+  return PLACEHOLDER_TEXT.test(text) || /return\s*\(?\s*(null|<>\s*<\/>|<div\s*\/>)\s*\)?\s*;?\s*\}/.test(content);
 }
 function assessCompleteness(args) {
   if (args.requestedRoutes.length === 0) return { complete: true, missingRoutes: [] };
@@ -39523,11 +39530,13 @@ function isTruncationDetail(detail) {
 function isOwnContentIssue(kind) {
   return /^(parse|braces|jsx|unterminated-string|truncation|undefined|blank-render|render-risk)$/.test(kind);
 }
+var PLACEHOLDER_TEXT;
 var init_build_state = __esm({
   "src/server/engine/build-state.ts"() {
     init_define_import_meta_env();
     init_chunked_generation_server();
     init_requested_scope();
+    PLACEHOLDER_TEXT = /\b(coming soon|lorem ipsum|placeholder( page| content)?|todo:? (add|build|implement)|page content goes here|under construction|this page is (not yet|still) (built|available))\b/i;
   }
 });
 
@@ -41705,7 +41714,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -110522,6 +110530,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139577,7 +139586,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145706,6 +145714,212 @@ var init_repair = __esm({
   }
 });
 
+// src/server/verification/gates.ts
+var gates_exports = {};
+__export(gates_exports, {
+  GATE_ORDER: () => GATE_ORDER,
+  MAX_REPAIR_TARGETS: () => MAX_REPAIR_TARGETS,
+  browserGate: () => browserGate,
+  buildGate: () => buildGate,
+  dependencyGate: () => dependencyGate,
+  finalizeVerification: () => finalizeVerification,
+  guardCleanup: () => guardCleanup,
+  isUnfinishedPage: () => isUnfinishedPage,
+  requiredGates: () => requiredGates,
+  routesGate: () => routesGate,
+  runSourceGates: () => runSourceGates,
+  syntaxGate: () => syntaxGate
+});
+function syntaxGate(esbuild2) {
+  if (!esbuild2) return gate("syntax", "UNKNOWN", ["syntax check did not run"]);
+  const v = esbuild2.status === "not_checked" ? "PASS" : toVerdict(esbuild2.status);
+  const issues = esbuild2.issues ?? [];
+  if (v === "FAIL") {
+    return gate("syntax", "FAIL", issues.slice(0, 6).map((i) => `${i.path}${i.line ? `:${i.line}` : ""}: ${i.message ?? i.detail ?? "syntax error"}`), uniq2(issues.map((i) => i.path)));
+  }
+  if (v === "UNAVAILABLE") return gate("syntax", "UNAVAILABLE", ["syntax checker unavailable \u2014 code kept as written"]);
+  return gate("syntax", v);
+}
+function resolveLocal2(from, spec, paths) {
+  let base;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else {
+    const dir = from.split("/").slice(0, -1);
+    for (const part of spec.split("/")) {
+      if (part === "." || part === "") continue;
+      if (part === "..") dir.pop();
+      else dir.push(part);
+    }
+    base = dir.join("/");
+  }
+  return ["", ".tsx", ".ts", ".jsx", ".js", ".css", "/index.tsx", "/index.ts", "/index.js"].some((e) => paths.has(base + e));
+}
+function pkgName(spec) {
+  return spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
+}
+function dependencyGate(files) {
+  const paths = new Set(files.map((f) => f.path));
+  let declared = /* @__PURE__ */ new Set();
+  const pkg = files.find((f) => f.path === "package.json");
+  if (!pkg) return gate("dependencies", "UNKNOWN", ["no package.json"]);
+  try {
+    const j = JSON.parse(pkg.content);
+    declared = /* @__PURE__ */ new Set([...Object.keys(j.dependencies ?? {}), ...Object.keys(j.devDependencies ?? {})]);
+  } catch {
+    return gate("dependencies", "FAIL", ["package.json is not valid JSON"], ["package.json"]);
+  }
+  const broken = [];
+  const brokenPaths = [];
+  const undeclared = /* @__PURE__ */ new Set();
+  const re = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']([^"']+)["']/g;
+  for (const f of files) {
+    if (!/\.(t|j)sx?$/.test(f.path) || !f.path.startsWith("src/")) continue;
+    let m;
+    re.lastIndex = 0;
+    while (m = re.exec(f.content)) {
+      const spec = m[1];
+      if (spec.startsWith(".") || spec.startsWith("@/")) {
+        if (!resolveLocal2(f.path, spec, paths)) {
+          broken.push(`${f.path} imports "${spec}", which does not exist`);
+          brokenPaths.push(f.path);
+        }
+      } else if (!spec.startsWith("node:") && !/^(https?:|virtual:|~)/.test(spec)) {
+        const name = pkgName(spec);
+        if (!declared.has(name) && !KIT_PROVIDED.test(name)) undeclared.add(name);
+      }
+    }
+  }
+  if (broken.length) return gate("dependencies", "FAIL", broken.slice(0, 8), uniq2(brokenPaths));
+  if (undeclared.size) return gate("dependencies", "WARNING", [`packages added at build time: ${[...undeclared].slice(0, 8).join(", ")}`]);
+  return gate("dependencies", "PASS");
+}
+function routesGate(files, requestedRoutes) {
+  const reasons = [];
+  const bad = [];
+  const completeness = assessCompleteness({ requestedRoutes, files });
+  if (!completeness.complete) {
+    reasons.push(`missing requested: ${completeness.missingRoutes.join(", ")}`);
+  }
+  const map = buildAppMap(files);
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  for (const r of map.routes) {
+    if (!r.file) {
+      const src = map.routerFile ? byPath.get(map.routerFile) ?? "" : "";
+      const declaredInline = new RegExp(`(function|const)\\s+${r.component}\\b`).test(src);
+      if (!declaredInline) {
+        reasons.push(`route ${r.path} renders ${r.component}, which is not imported`);
+        if (map.routerFile) bad.push(map.routerFile);
+      }
+      continue;
+    }
+    const content = byPath.get(r.file) ?? "";
+    if (isUnfinishedPage(content)) {
+      reasons.push(`route ${r.path} is an unfinished placeholder page`);
+      bad.push(r.file);
+    }
+  }
+  if (reasons.length) return gate("routes", "FAIL", reasons, uniq2(bad));
+  const defined = new Set(map.routes.map((r) => r.path));
+  const deadLinks = map.navLinks.filter((l) => defined.size > 0 && !defined.has(l) && !/[:$*]/.test(l));
+  if (deadLinks.length) return gate("routes", "WARNING", [`navigation links without a page: ${deadLinks.join(", ")}`]);
+  return gate("routes", "PASS");
+}
+function buildGate(state, error) {
+  if (state === "succeeded") return gate("build", "PASS");
+  if (state === "failed") return gate("build", "FAIL", [error?.slice(0, 300) ?? "build failed"]);
+  if (state === "unavailable") return gate("build", "UNAVAILABLE", ["build service unavailable"]);
+  return gate("build", "UNKNOWN", ["build has not finished"]);
+}
+function browserGate(readiness) {
+  if (!readiness) return gate("browser", "UNKNOWN", ["live app not checked yet"]);
+  if (readiness.verdict === "ready") return gate("browser", "PASS");
+  if (readiness.verdict === "not_ready") return gate("browser", "FAIL", readiness.reasons.slice(0, 6));
+  return gate("browser", "UNAVAILABLE", readiness.reasons.slice(0, 6));
+}
+function requiredGates(kind) {
+  if (kind === "mobile") return ["syntax", "dependencies", "routes", "build"];
+  if (kind === "api") return ["syntax", "dependencies", "build"];
+  return GATE_ORDER;
+}
+function finalizeVerification(results, kind = "web") {
+  const ordered = GATE_ORDER.map((g) => results.find((r) => r.gate === g)).filter(Boolean);
+  const failed = ordered.find((r) => r.verdict === "FAIL");
+  if (failed) {
+    return {
+      status: "FAILED",
+      gates: ordered,
+      failedGate: failed.gate,
+      reason: failed.reasons[0] ?? `${failed.gate} failed`,
+      repairTargets: failed.paths.slice(0, MAX_REPAIR_TARGETS)
+    };
+  }
+  const required = requiredGates(kind);
+  const pending = required.find((g) => {
+    const r = ordered.find((x) => x.gate === g);
+    return !r || r.verdict !== "PASS" && r.verdict !== "WARNING";
+  });
+  if (pending) {
+    const r = ordered.find((x) => x.gate === pending);
+    const inProgress = !r || r.verdict === "UNKNOWN" && (pending === "build" || pending === "browser");
+    return {
+      status: inProgress ? "IN_PROGRESS" : "UNVERIFIED",
+      gates: ordered,
+      failedGate: null,
+      reason: r?.reasons[0] ?? `${pending} has not run`,
+      repairTargets: []
+    };
+  }
+  return { status: "READY", gates: ordered, failedGate: null, reason: null, repairTargets: [] };
+}
+function runSourceGates(args) {
+  return [syntaxGate(args.esbuild), dependencyGate(args.files), routesGate(args.files, args.requestedRoutes)];
+}
+function guardCleanup(before, after, allowed) {
+  const ok = new Set(allowed);
+  const prev = new Map(before.map((f) => [f.path, f.content]));
+  const reverted = [];
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const f of after) {
+    seen.add(f.path);
+    const was = prev.get(f.path);
+    if (was !== void 0 && was !== f.content && !ok.has(f.path)) {
+      reverted.push(f.path);
+      out.push({ ...f, content: was });
+    } else if (was === void 0 && !ok.has(f.path)) {
+      reverted.push(f.path);
+    } else out.push(f);
+  }
+  for (const f of before) {
+    if (!seen.has(f.path) && !ok.has(f.path)) {
+      reverted.push(f.path);
+      out.push(f);
+    }
+  }
+  return { files: out, reverted };
+}
+function uniq2(a2) {
+  return Array.from(new Set(a2));
+}
+var GATE_ORDER, MAX_REPAIR_TARGETS, gate, KIT_PROVIDED;
+var init_gates = __esm({
+  "src/server/verification/gates.ts"() {
+    init_define_import_meta_env();
+    init_verdict();
+    init_app_map();
+    init_build_state();
+    GATE_ORDER = ["syntax", "dependencies", "routes", "build", "browser"];
+    MAX_REPAIR_TARGETS = 3;
+    gate = (g, verdict, reasons = [], paths = []) => ({
+      gate: g,
+      verdict,
+      reasons,
+      paths
+    });
+    KIT_PROVIDED = /^(react|react-dom|react\/jsx-runtime|lucide-react|clsx|tailwind-merge|class-variance-authority)$/;
+  }
+});
+
 // src/server/engine/deps.ts
 var deps_exports = {};
 __export(deps_exports, {
@@ -145715,7 +145929,7 @@ __export(deps_exports, {
 function rootOf(spec) {
   return spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
 }
-function resolveLocal2(spec, from, byPath) {
+function resolveLocal3(spec, from, byPath) {
   let base;
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
   else if (spec.startsWith(".")) {
@@ -145749,7 +145963,7 @@ function missingReachableDeps(files, entry = "src/main.tsx") {
       const spec = m[1] ?? m[2] ?? m[3];
       if (!spec || /\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
       if (spec.startsWith("@/") || spec.startsWith(".")) {
-        const next = resolveLocal2(spec, path, byPath);
+        const next = resolveLocal3(spec, path, byPath);
         if (next && !seen.has(next)) {
           seen.add(next);
           queue.push(next);
@@ -147837,6 +148051,9 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
 
+// src/server/builder.server.ts
+init_jsx_attr_literal_fixer_server();
+
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
 var BRAND_MARK_PATH = "src/components/brand-mark.tsx";
@@ -149761,7 +149978,7 @@ var CODE_CONCEPT = new RegExp(
   ].join(""),
   "i"
 );
-var PLACEHOLDER_TEXT = /\b(placeholder|coming soon|todo|lorem ipsum|under construction|tbd)\b/i;
+var PLACEHOLDER_TEXT2 = /\b(placeholder|coming soon|todo|lorem ipsum|under construction|tbd)\b/i;
 function normalizedName(raw) {
   return raw.replace(/[_\s]+/g, "-").toLowerCase();
 }
@@ -149769,7 +149986,7 @@ function looksEmpty(src) {
   const body = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
   const jsxTags = (body.match(/<[A-Za-z][^>]*>/g) ?? []).length;
   const visibleText = body.match(/>([^<>{}]{3,})</g)?.map((s) => s.slice(1, -1).trim()).filter(Boolean) ?? [];
-  if (PLACEHOLDER_TEXT.test(visibleText.join(" "))) return true;
+  if (PLACEHOLDER_TEXT2.test(visibleText.join(" "))) return true;
   const hasBehavior = /\b(useState|useEffect|useQuery|supabase|onSubmit|onClick|fetch\()/.test(body);
   return body.trim().length < 700 && jsxTags <= 6 && !hasBehavior;
 }
@@ -171302,7 +171519,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
           const touched = collected.name === "write_project" && authoredPaths ? authoredPaths : nextFiles.filter((f) => prevByPath.get(f.path) !== f.content).map((f) => f.path);
           if (touched.length > 0) {
-            const gate = await runWriteGate({
+            const gate2 = await runWriteGate({
               before: currentFiles,
               after: nextFiles,
               changedPaths: touched,
@@ -171333,28 +171550,28 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                 return out;
               }
             });
-            if (gate.validationFailure) {
-              throw new Error(`Authoritative code validation unavailable: ${gate.validationFailure}`);
+            if (gate2.validationFailure) {
+              throw new Error(`Authoritative code validation unavailable: ${gate2.validationFailure}`);
             }
-            nextFiles = gate.files;
-            for (const p of gate.repairedPaths ?? []) recovery.resolvePath(p, "fixed");
-            for (const p of gate.repairFailedPaths ?? []) recovery.resolvePath(p, "kept_previous");
-            if (gate.repairedPaths?.length || gate.repairFailedPaths?.length) {
+            nextFiles = gate2.files;
+            for (const p of gate2.repairedPaths ?? []) recovery.resolvePath(p, "fixed");
+            for (const p of gate2.repairFailedPaths ?? []) recovery.resolvePath(p, "kept_previous");
+            if (gate2.repairedPaths?.length || gate2.repairFailedPaths?.length) {
               console.info(
-                `[write-gate] ai-repair repaired=${JSON.stringify(gate.repairedPaths ?? [])} failed=${JSON.stringify(gate.repairFailedPaths ?? [])}`
+                `[write-gate] ai-repair repaired=${JSON.stringify(gate2.repairedPaths ?? [])} failed=${JSON.stringify(gate2.repairFailedPaths ?? [])}`
               );
             }
-            if (gate.healedPaths.length > 0) {
-              console.info("[write-gate] healed at write time:", gate.healedPaths.join(", "));
+            if (gate2.healedPaths.length > 0) {
+              console.info("[write-gate] healed at write time:", gate2.healedPaths.join(", "));
             }
-            if (gate.rejected.length > 0) {
-              writeGateRejections.push(...gate.rejected);
+            if (gate2.rejected.length > 0) {
+              writeGateRejections.push(...gate2.rejected);
               console.warn(
                 "[write-gate] refused unparseable write(s):",
-                gate.rejected.map((r) => `${r.path}: ${r.detail}`).join(" | ")
+                gate2.rejected.map((r) => `${r.path}: ${r.detail}`).join(" | ")
               );
               void recordRepairs(
-                gate.rejected.map((r) => ({
+                gate2.rejected.map((r) => ({
                   projectId: body.projectId ?? null,
                   userId,
                   turnId: logicalTurnId,
@@ -171384,6 +171601,14 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             const guarded = await revertCleanupBreakage2(nextFiles, repaired.files, cleanupPaths);
             if (guarded.reverted.length) console.warn(`[cleanup-guard] reverted cleanup on ${JSON.stringify(guarded.reverted)} (it broke them)`);
             nextFiles = guarded.files;
+            {
+              const { guardCleanup: guardCleanup2 } = await Promise.resolve().then(() => (init_gates(), gates_exports));
+              const scoped = guardCleanup2(turnBaselineFiles.length ? turnBaselineFiles : nextFiles, nextFiles, [...cleanupPaths, ...kitSyncedPaths]);
+              if (turnBaselineFiles.length && scoped.reverted.length) {
+                console.warn(`[cleanup-guard] reverted out-of-scope cleanup on ${JSON.stringify(scoped.reverted.slice(0, 20))}`);
+                nextFiles = scoped.files;
+              }
+            }
             void recordRepairs(
               entriesFromRepairNotes(repaired.notes, {
                 projectId: body.projectId ?? null,
@@ -171531,7 +171756,12 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         const autofixT0 = Date.now();
         const preAutofixChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
         const autofixOut = autofixFiles(nextFiles, preAutofixChangedPaths);
-        nextFiles = autofixOut.files;
+        {
+          const { guardCleanup: guardCleanup2 } = await Promise.resolve().then(() => (init_gates(), gates_exports));
+          const scoped = guardCleanup2(nextFiles, autofixOut.files, preAutofixChangedPaths);
+          if (scoped.reverted.length) console.warn(`[cleanup-guard] autofix out of scope on ${JSON.stringify(scoped.reverted.slice(0, 20))}`);
+          nextFiles = scoped.files;
+        }
         if (autofixOut.report.fixedCount > 0) {
           console.log(
             `[autofix] ${autofixOut.report.fixedCount} fix(es):`,
@@ -172187,6 +172417,17 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
               missingScope: scopeMissing.length
             });
           }
+          const { runSourceGates: runSourceGates2, finalizeVerification: finalizeVerification2 } = await Promise.resolve().then(() => (init_gates(), gates_exports));
+          const sourceVerification = finalizeVerification2(
+            runSourceGates2({
+              files: nextFiles,
+              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
+              esbuild: esbuildVerdict
+            })
+          );
+          console.info(
+            `[verification] ${sourceVerification.gates.map((g) => `${g.gate}=${g.verdict}`).join(" ")} status=${sourceVerification.status}${sourceVerification.failedGate ? ` failed=${sourceVerification.failedGate}: ${sourceVerification.reason}` : ""}`
+          );
           if (!isInitial) {
             controller.enqueue(
               encoder.encode(
@@ -172202,6 +172443,7 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
                     mode: turnClassification.mode,
                     protectedAreas: executionScope.protectedAreas.slice(0, 20),
                     protectedTouched: turnChanged.filter((p) => executionScope.isProtected(p)),
+                    verification: sourceVerification,
                     filesRead: contextFiles.map((f) => f.path).slice(0, 40),
                     filesChanged: turnChanged.slice(0, 40),
                     housekeeping: [...kitSyncedPaths].slice(0, 40),
