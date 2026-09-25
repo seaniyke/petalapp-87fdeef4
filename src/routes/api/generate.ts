@@ -5674,6 +5674,21 @@ Forbidden defaults
           }
         }
 
+        // CIRCUIT BREAKER STOP BOUNDARY. Tripped means the agent kept hitting
+        // the same failure without getting closer. Stop here: no further AI
+        // calls, no commit, no charge — the transaction never opens, so the
+        // project keeps its previous state by construction.
+        if (breaker.tripped) {
+          console.warn(`[circuit-breaker] tripped ${JSON.stringify(breaker.snapshot())}`);
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary: breaker.userMessage(),
+            outcome: "failed",
+            reason: `circuit_breaker:${breaker.reason()?.rule ?? "unknown"}`,
+          });
+          return;
+        }
+
 
         // Single composition point for all deterministic file-graph
         // repairs (extension normalizer → shadcn imports → array safety →
