@@ -3567,6 +3567,16 @@ async function handleGenerateRequestCore(
 
 
 
+  // Selected design-system package (if any): DESIGN.md + token/accent/font
+  // summary. Outranks generic design defaults, never the user's request.
+  let designSystemBlock = "";
+  try {
+    const { designSystemBlockFor } = await import("@/server/design-systems/context");
+    designSystemBlock = designSystemBlockFor(picContext?.design);
+  } catch (e) {
+    console.warn("[design-systems] skipped:", e instanceof Error ? e.message : String(e));
+  }
+
   // Context budget — measure everything before sending. When over, drop
   // optional material lowest-value first (history → skills → memory →
   // design → project state). Rules, the request and files are required.
@@ -3577,6 +3587,7 @@ async function handleGenerateRequestCore(
       { id: "intent", priority: "required", text: (intentBrief ?? "") + resolvedBlock + groundingBlock + dynamic.text + intentActions.promptBlock + astPatchBlock + backendGateBlock + highStakesBlock + visionAddendum },
       { id: "pic", priority: "project-state", text: picBlock },
       { id: "prd", priority: "project-state", text: boundedEdit ? "" : prdBlock + prdScenarioBlock },
+      { id: "designSystem", priority: "project-state", text: designSystemBlock },
       { id: "designTaste", priority: "design", text: designTasteBlock },
       { id: "memory", priority: "memory", text: memoryBlock },
       { id: "skills", priority: "skills", text: skillsBlock },
