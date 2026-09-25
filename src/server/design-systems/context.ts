@@ -7,6 +7,7 @@
 import type { PicDesignSystem } from "@/server/pic/pic-types";
 import { getDesignSystem } from "./registry";
 import type { DesignSystemPackage } from "./loader";
+import { resolveSelection, withPackageVisuals } from "./authority";
 
 export interface DesignPackageSelection {
   systemId: string;
@@ -14,21 +15,27 @@ export interface DesignPackageSelection {
 }
 
 /**
- * Normal generations may re-commit the design contract, but must never
- * silently change or drop the selected package. Only the deterministic
- * re-theme path writes `package`.
+ * Decide the stored design record after a generation re-commits it.
+ *
+ * - Project already on a package: the package stays, and colours/typography
+ *   are re-derived from it — a generation can never change or drop it.
+ * - Brand-new project (no previous record): the freshly committed record
+ *   (which carries the default package) is accepted.
+ * - Legacy project (record without a package): its stored look is kept as-is
+ *   and it is marked `legacy-unmapped`; it is never silently moved to a package.
  */
 export function preserveDesignPackage(
   prev: PicDesignSystem | null | undefined,
   next: PicDesignSystem | null,
 ): PicDesignSystem | null {
-  if (!next) return prev?.package ? prev : next;
-  if (!prev?.package) {
-    // A generation cannot introduce a package either.
-    if (next.package) { const { package: _drop, ...rest } = next; return rest as PicDesignSystem; }
-    return next;
+  if (!next) return prev ?? next;
+  if (!prev) return next;
+  if (prev.package) {
+    const sel = resolveSelection(prev.package);
+    return sel ? withPackageVisuals({ ...next }, sel.pkg, sel.accent) : { ...next, typography: prev.typography, colors: prev.colors, radius: prev.radius, package: prev.package, source: prev.source };
   }
-  return { ...next, package: prev.package };
+  const { package: _drop, ...rest } = next;
+  return { ...rest, typography: prev.typography, colors: prev.colors, radius: prev.radius, source: prev.source, migration: "legacy-unmapped" };
 }
 
 /** Compact, AI-readable context. Token names + roles, never the raw CSS. */

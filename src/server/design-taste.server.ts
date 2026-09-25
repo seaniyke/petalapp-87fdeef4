@@ -62,11 +62,16 @@ If your draft violates ANY of the above, REWRITE before emitting. The goal is th
  * Called once per build turn and appended to the system prompt when the
  * archetype is landing/marketing/portfolio-adjacent.
  */
-export function renderDesignTasteBlock(brief: string): { text: string; pick: DesignPick } {
+export function renderDesignTasteBlock(
+  brief: string,
+  opts: { packageOwnsVisuals?: boolean } = {},
+): { text: string; pick: DesignPick } {
   const pick = pickDesignForBrief(brief);
   const [bgDeep, bgSurface, accent, accentSoft] = pick.palette.colors;
 
-  const lockedBlock = `\n\n[LOCKED PALETTE + TYPOGRAPHY for this project — use verbatim]
+  const lockedBlock = opts.packageOwnsVisuals
+    ? `\n\n[COLOURS + TYPOGRAPHY] Owned by the SELECTED DESIGN SYSTEM above. Its tokens and font links are installed by Kimble — do not write a palette, :root colour values or font links of your own.\nArchetype tags for this project: ${pick.archetypeTags.join(", ")}`
+    : `\n\n[LOCKED PALETTE + TYPOGRAPHY for this project — use verbatim]
 Palette: "${pick.palette.label}" — ${pick.palette.vibe}
   - Deep background:  ${bgDeep}
   - Surface / card:   ${bgSurface}

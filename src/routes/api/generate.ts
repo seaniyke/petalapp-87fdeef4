@@ -2692,12 +2692,16 @@ async function handleGenerateRequestCore(
       lastUserContent || "",
     );
 
-  const designBlock =
-    (designDirection
+  const renderDirection = (packageOwnsVisuals: boolean) =>
+    designDirection
       ? renderDesignDirectionBlock(designDirection, {
           detail: isStructuralTurn ? "full" : "compact",
+          packageOwnsVisuals,
         })
-      : "") +
+      : "";
+  const directionPart = renderDirection(false);
+  let designBlock =
+    directionPart +
     // Composition guidance only matters while new surface is being built.
     (isStructuralTurn ? await renderCategoryCompositionBlock(lastUserContent || "") : "") +
     renderStatedIntentBlock(statedIntent) +
@@ -2744,6 +2748,11 @@ async function handleGenerateRequestCore(
         designDirection,
       });
       picContext = assembled.pic;
+      // The design system package owns colours/fonts: the director block
+      // drops its palette + typography so there is exactly one visual authority.
+      if (assembled.pic.design?.package && directionPart) {
+        designBlock = renderDirection(true) + designBlock.slice(directionPart.length);
+      }
       picBlock = `\n\n${renderPicBlock(assembled.pic, { detail: isStructural ? "full" : "summary" })}\n`;
       console.log(
         `[pic] project=${body.projectId ?? "n/a"} rev=${assembled.pic.revision} refreshed=${assembled.refreshed} understanding=${assembled.pic.understanding.source} design=${assembled.pic.design?.source ?? "none"} structural=${isStructural}`,
@@ -3516,10 +3525,10 @@ async function handleGenerateRequestCore(
     } else if (detectedWebSubtype === "marketing" || detectedWebSubtype === "fullstack") {
       // Section framework now comes from the section-architectures /
       // page-composition knowledge skills, not a second checklist.
-      designTasteBlock = renderDesignTasteBlock(lastUserText || "").text;
+      designTasteBlock = renderDesignTasteBlock(lastUserText || "", { packageOwnsVisuals: !!picContext?.design?.package }).text;
     }
     if (!skipDesignManual && (detectedWebSubtype === "app" || detectedWebSubtype === "fullstack")) {
-      const appUi = renderAppUiBlock(lastUserText || "");
+      const appUi = renderAppUiBlock(lastUserText || "", { packageOwnsVisuals: !!picContext?.design?.package });
       designTasteBlock += appUi.text + renderAppScreenChecklistBlock();
       // The PRD supersedes the keyword-scraped app spec. Only fall back to the
       // old extractor when the PRD engine produced nothing this turn.
@@ -6590,6 +6599,25 @@ async function handleGenerateRequestCore(
         // LIVE MUTATION BOUNDARY — the proposed tree is staged into one
         // TurnTransaction (accounted by turnLedger), scope-enforced and
         // checked; only a committed outcome is billed and persisted.
+        // Deterministic design-system install: the selected package's tokens,
+        // accent, fonts and components are (re)applied to the proposed tree so
+        // the committed revision always carries them, whatever the AI wrote.
+        // Idempotent; on failure the tree is left as the AI proposed it.
+        {
+          const { applyPackageToTree } = await import("@/server/design-systems/authority");
+          const pkgApply = applyPackageToTree(nextFiles, picContext?.design);
+          if (pkgApply.applied) {
+            nextFiles = pkgApply.files;
+            if (pkgApply.changedPaths.length) console.info(`[design-system] installed ${picContext?.design?.package?.systemId}/${picContext?.design?.package?.accent} paths=${pkgApply.changedPaths.join(",")}`);
+          } else if (picContext?.design?.package) {
+            console.warn(`[design-system] not applied: ${pkgApply.reason}`);
+          }
+          const { lintDesignSystem } = await import("@/server/design/design-system-lint.server");
+          if (picContext?.design) {
+            const lint = lintDesignSystem(nextFiles, picContext.design);
+            if (lint.findings.length) console.info(`[design-lint] errors=${lint.errorCount} warnings=${lint.warningCount}: ${lint.findings.slice(0, 5).map((v) => `${v.rule}@${v.path}`).join(", ")}`);
+          }
+        }
         const txResult = await commitTurn({
           baseline: turnBaselineFiles,
           proposed: nextFiles,

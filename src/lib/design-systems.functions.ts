@@ -3,10 +3,9 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Apply a design-system package to a project deterministically (no AI).
- * Returns the new revision; the caller starts the build with the existing
- * `triggerBuild(projectId, { revision })` path so only this revision can
- * become ready.
+ * Apply a design-system package to a project deterministically (no AI, no
+ * credits). The revision returned by the atomic save is handed to the
+ * existing build endpoint, which refuses to build a superseded revision.
  */
 export const applyDesignSystemToProject = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -51,6 +50,17 @@ export const applyDesignSystemToProject = createServerFn({ method: "POST" })
         },
         async loadDesign(projectId) {
           return (await loadPic(projectId))?.pic.design ?? null;
+        },
+        async triggerBuild(projectId, revision) {
+          const { getRequest, getRequestHeader } = await import("@tanstack/react-start/server");
+          const auth = getRequestHeader("authorization");
+          if (!auth) throw new Error("missing authorization for build trigger");
+          const res = await fetch(new URL("/api/builds/trigger", getRequest().url), {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: auth },
+            body: JSON.stringify({ projectId, revision }),
+          });
+          if (!res.ok) throw new Error(`build trigger failed (${res.status})`);
         },
         async saveDesign(projectId, design) {
           const stored = await loadPic(projectId);

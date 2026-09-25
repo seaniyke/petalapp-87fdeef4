@@ -63,7 +63,7 @@ describe("package loader", () => {
 describe("synthetic package via registry", () => {
   it("exposes metadata, DESIGN.md, tokens, fonts and components", () => {
     expect(pkg).toBeTruthy();
-    expect(pkg.meta.name).toBe("Kimble Test System");
+    expect(pkg.meta.name).toBe("Kimble Coastal");
     expect(pkg.designMd).toMatch(/design playbook/);
     expect(pkg.tokens.root["kimble-radius-md"]).toBe("0.55rem");
     expect(pkg.tokens.dark.background).toBeTruthy();
@@ -73,9 +73,9 @@ describe("synthetic package via registry", () => {
     expect(isValidAccent(pkg, "ember")).toBe(true);
     expect(isValidAccent(pkg, "indigo")).toBe(false);
   });
-  it("internal packages are hidden from customer listings", () => {
-    expect(listDesignSystems().some((p) => p.meta.slug === SLUG)).toBe(false);
-    expect(listDesignSystems({ includeInternal: true }).some((p) => p.meta.slug === SLUG)).toBe(true);
+  it("the coastal package is installed and selectable", () => {
+    expect(pkg.meta.internal).toBe(false);
+    expect(listDesignSystems().some((p) => p.meta.slug === SLUG)).toBe(true);
   });
   it("discovers new packages with no code change", () => {
     const m = loadAllDesignSystems(Object.fromEntries(Object.entries(baseFiles).map(([k, v]) => [`./packages/demo/${k}`, v])));

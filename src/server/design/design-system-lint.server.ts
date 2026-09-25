@@ -12,6 +12,7 @@
 
 import type { ProjectFile } from "@/server/generate.server";
 import type { PicDesignSystem } from "@/server/pic/pic-types";
+import { TOKENS_START, TOKENS_END } from "@/server/design-systems/apply";
 
 export interface DesignLintFinding {
   path: string;
@@ -109,6 +110,21 @@ export function lintDesignSystem(
         severity: "error",
         message: `Design tokens missing from the stylesheet: ${missing.join(", ")}. Write the committed :root block.`,
       });
+    }
+    // Package projects: the marked design-system block is the token source.
+    // Package tokens (var(--kimble-*) and the semantic roles it sets) are
+    // legitimate; a missing or broken block means the package was bypassed.
+    if (design.package) {
+      const a = css.indexOf(TOKENS_START);
+      const b = css.indexOf(TOKENS_END);
+      if (a < 0 || b < a) {
+        findings.push({
+          path: stylesFile.path,
+          rule: "package/tokens-block",
+          severity: "error",
+          message: `The ${design.package.systemId} design-system token block is missing or broken. It is installed by Kimble — do not edit or remove it.`,
+        });
+      }
     }
     for (const font of [design.typography.displayFont, design.typography.bodyFont]) {
       if (font && !css.includes(font) && !files.some((f) => f.content.includes(font))) {
