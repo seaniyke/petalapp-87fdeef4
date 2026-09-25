@@ -93,6 +93,19 @@ const VerificationSchema = z
   })
   .passthrough();
 
+/** Optional build-stage timings the builder reports for economics. */
+const TimingsSchema = z
+  .object({
+    jobId: z.string().max(200),
+    installMs: z.number().nonnegative(),
+    compileMs: z.number().nonnegative(),
+    browserMs: z.number().nonnegative(),
+    deployMs: z.number().nonnegative(),
+    turnId: z.string().max(200),
+  })
+  .partial()
+  .optional();
+
 const CallbackSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("ready"),
@@ -100,6 +113,7 @@ const CallbackSchema = z.discriminatedUnion("status", [
     projectId: z.string().uuid(),
     url: z.string().url().max(500),
     verification: VerificationSchema.optional(),
+    timings: TimingsSchema,
   }),
   z.object({
     status: z.literal("failed"),
@@ -110,6 +124,9 @@ const CallbackSchema = z.discriminatedUnion("status", [
     // Present when the pre-deploy browser check is what stopped the build.
     // Carries the exact defects so a repair can be aimed at them.
     verification: VerificationSchema.optional(),
+    /** True when the site had already gone live before the failure. */
+    deployed: z.boolean().optional(),
+    timings: TimingsSchema,
   }),
 
 ]);
@@ -161,13 +178,37 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     console.warn("Builder callback project mismatch", payload.buildId);
     return new Response("Project mismatch", { status: 400 });
   }
-  // A build already recorded as ready is final. When our slow "ready"
-  // handling outlasts the builder's callback timeout, the builder reports its
-  // own timeout as a "failed" callback — that must never undo a live app.
-  if (existing.status === "ready" && payload.status === "failed") {
-    console.warn(
-      `[builds/callback] ignoring late failed callback for ready build=${payload.buildId}: ${payload.errorMessage.slice(0, 120)}`,
-    );
+  // ONE outcome decision (src/lib/build-outcome.ts): terminal success wins,
+  // duplicates are no-ops, stale/out-of-order failures never refund.
+  const { decideBuildOutcome } = await import("@/lib/build-outcome");
+  const { data: projRow } = await supabaseAdmin
+    .from("projects")
+    .select("revision")
+    .eq("id", payload.projectId)
+    .maybeSingle();
+  let siblingReady = false;
+  if (existing.project_revision != null) {
+    const { count } = await supabaseAdmin
+      .from("project_builds")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", payload.projectId)
+      .eq("project_revision", existing.project_revision)
+      .eq("status", "ready")
+      .neq("id", payload.buildId);
+    siblingReady = (count ?? 0) > 0;
+  }
+  const outcome = decideBuildOutcome({
+    existingStatus: existing.status,
+    incoming: payload.status,
+    buildRevision: (existing.project_revision as number | null) ?? null,
+    projectRevision: (projRow?.revision as number | undefined) ?? null,
+    siblingReadyForRevision: siblingReady,
+    deployed: payload.status === "failed" ? payload.deployed : true,
+    errorMessage: payload.status === "failed" ? payload.errorMessage : undefined,
+  });
+  void recordBuildTimings(payload, outcome.failureClass);
+  if (!outcome.apply) {
+    console.warn(`[builds/callback] ignored callback build=${payload.buildId}: ${outcome.reason}`);
     return new Response("ok", { status: 200 });
   }
 
