@@ -611,6 +611,10 @@ async function runBuildInner(body: BuildBody): Promise<void> {
         status: "ready",
         url: result.url,
         ...(verification ? { verification } : {}),
+        timings: {
+          ...(typeof body.turnId === "string" ? { turnId: body.turnId } : {}),
+          ...(verification?.durationMs != null ? { browserMs: verification.durationMs } : {}),
+        },
       });
     } catch (e) {
       // The app is deployed. A slow or lost acknowledgement is not a build
@@ -632,6 +636,12 @@ async function runBuildInner(body: BuildBody): Promise<void> {
       errorMessage: message,
       logs,
       ...(err instanceof VerificationBlockedError && verification ? { verification } : {}),
+      // Lets the app tell "never went live" from "live, then a late problem".
+      deployed: false,
+      timings: {
+        ...(typeof body.turnId === "string" ? { turnId: body.turnId } : {}),
+        ...(verification?.durationMs != null ? { browserMs: verification.durationMs } : {}),
+      },
     }).catch((e) => log.error({ err: String(e) }, "Callback also failed"));
   } finally {
     clearInterval(beatTimer);
@@ -705,6 +715,7 @@ type Callback =
       status: "ready";
       url: string;
       verification?: VerifyReport;
+      timings?: Record<string, string | number>;
     }
   | {
       buildId: string;
@@ -713,6 +724,8 @@ type Callback =
       errorMessage: string;
       logs: string;
       verification?: VerifyReport;
+      deployed?: boolean;
+      timings?: Record<string, string | number>;
     };
 
 
