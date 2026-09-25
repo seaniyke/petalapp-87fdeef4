@@ -1,3 +1,4 @@
+import { toOperationType } from "@/lib/operation-identity";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -6792,6 +6793,9 @@ async function handleGenerateRequestCore(
                 turnId: settleTurnId ?? null,
                 metadata: {
                   route: "/api/generate",
+                  // Server-side classifier result; the DB derives credit
+                  // purpose from it (allow-list), never from the caller.
+                  operation_type: toOperationType(turnClassification.operation, { isInitial }),
                   prompt_tokens: priced.promptTokens,
                   completion_tokens: priced.completionTokens,
                   usage_missing: priced.usageMissing,
