@@ -458,16 +458,25 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     }
 
     // Always point the project at its newest build so the UI shows it.
-    const { error: projectUpdateError } = await supabaseAdmin
+    const { data: repointed, error: projectUpdateError } = await supabaseAdmin
       .from("projects")
       .update({ latest_build_id: payload.buildId })
       .eq("id", payload.projectId)
       // Compare-and-set on the code revision: if a newer revision committed
       // since the check above, this build must not become the current one.
-      .eq("revision", Number(existing.project_revision));
+      .eq("revision", Number(existing.project_revision))
+      .select("id");
     if (projectUpdateError) {
       console.error("Builder callback could not update project build", projectUpdateError.message);
       return new Response("Could not save project status", { status: 503 });
+    }
+    if (!repointed || repointed.length === 0) {
+      await supabaseAdmin
+        .from("project_builds")
+        .update({ stale_reason: `project moved past revision ${existing.project_revision} while this build finished` })
+        .eq("id", payload.buildId);
+      console.info(`[revision] stale build result ignored for readiness build=${payload.buildId} build_revision=${existing.project_revision} reason=superseded_during_callback`);
+      return new Response("ok", { status: 200 });
     }
 
     // Capture the app's preview image once, now that it is live, so gallery
