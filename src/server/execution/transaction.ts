@@ -26,15 +26,30 @@ export class TurnTransaction {
     this.base = new Map(baseline.map((f) => [f.path, f.content]));
   }
 
-  stage(path: string, content: string, purpose = "requested change"): boolean {
+  /**
+   * Stage one file. `system: true` marks Kimble-managed files (scaffold kit,
+   * housekeeping) — they are staged atomically with the turn but do not
+   * consume the model's write budget. No-op writes are refused either way.
+   */
+  stage(path: string, content: string, purpose = "requested change", opts?: { system?: boolean }): boolean {
     if (this.done) return false;
     const current = this.staged.has(path) ? (this.staged.get(path) ?? undefined) : this.base.get(path);
-    if (this.ledger) {
+    if (this.ledger && !opts?.system) {
       const r = this.ledger.write(path, content, current, purpose, this.writer);
       if (!r.ok) return false;
     } else if (current === content) return false;
     this.staged.set(path, content);
     return true;
+  }
+
+  /** The complete proposed project tree (baseline + staged), uncommitted. */
+  proposedTree(): TxFile[] {
+    const next = new Map(this.base);
+    for (const [p, c] of this.staged) {
+      if (c === null) next.delete(p);
+      else next.set(p, c);
+    }
+    return [...next].map(([path, content]) => ({ path, content }));
   }
 
   remove(path: string): boolean {
