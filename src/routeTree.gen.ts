@@ -77,6 +77,7 @@ import { Route as AdminAiSpendRouteImport } from './routes/admin.ai-spend'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
+import { Route as ApiRegistrarPurchaseCreditsRouteImport } from './routes/api/registrar/purchase-credits'
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
 import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/poll'
 import { Route as ApiPublicWaitlistRouteImport } from './routes/api/public/waitlist'
@@ -476,6 +477,12 @@ const ApiRegistrarSearchRoute = ApiRegistrarSearchRouteImport.update({
   path: '/api/registrar/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRegistrarPurchaseCreditsRoute =
+  ApiRegistrarPurchaseCreditsRouteImport.update({
+    id: '/api/registrar/purchase-credits',
+    path: '/api/registrar/purchase-credits',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiRegistrarPurchaseRoute = ApiRegistrarPurchaseRouteImport.update({
   id: '/api/registrar/purchase',
   path: '/api/registrar/purchase',
@@ -878,6 +885,7 @@ export interface FileRoutesByFullPath {
   '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
+  '/api/registrar/purchase-credits': typeof ApiRegistrarPurchaseCreditsRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
@@ -1006,6 +1014,7 @@ export interface FileRoutesByTo {
   '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
+  '/api/registrar/purchase-credits': typeof ApiRegistrarPurchaseCreditsRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
@@ -1135,6 +1144,7 @@ export interface FileRoutesById {
   '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
+  '/api/registrar/purchase-credits': typeof ApiRegistrarPurchaseCreditsRoute
   '/api/registrar/search': typeof ApiRegistrarSearchRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/billing/crypto/check': typeof ApiBillingCryptoCheckRoute
@@ -1265,6 +1275,7 @@ export interface FileRouteTypes {
     | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
+    | '/api/registrar/purchase-credits'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
     | '/api/billing/crypto/check'
@@ -1393,6 +1404,7 @@ export interface FileRouteTypes {
     | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
+    | '/api/registrar/purchase-credits'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
     | '/api/billing/crypto/check'
@@ -1521,6 +1533,7 @@ export interface FileRouteTypes {
     | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
+    | '/api/registrar/purchase-credits'
     | '/api/registrar/search'
     | '/lovable/email/suppression'
     | '/api/billing/crypto/check'
@@ -1647,6 +1660,7 @@ export interface RootRouteChildren {
   ApiPublicWaitlistRoute: typeof ApiPublicWaitlistRoute
   ApiRegistrarPollRoute: typeof ApiRegistrarPollRoute
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
+  ApiRegistrarPurchaseCreditsRoute: typeof ApiRegistrarPurchaseCreditsRoute
   ApiRegistrarSearchRoute: typeof ApiRegistrarSearchRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiBillingSubscriptionCancelRoute: typeof ApiBillingSubscriptionCancelRoute
@@ -2162,6 +2176,13 @@ declare module '@tanstack/react-router' {
       path: '/api/registrar/search'
       fullPath: '/api/registrar/search'
       preLoaderRoute: typeof ApiRegistrarSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/registrar/purchase-credits': {
+      id: '/api/registrar/purchase-credits'
+      path: '/api/registrar/purchase-credits'
+      fullPath: '/api/registrar/purchase-credits'
+      preLoaderRoute: typeof ApiRegistrarPurchaseCreditsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/registrar/purchase': {
@@ -2703,6 +2724,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWaitlistRoute: ApiPublicWaitlistRoute,
   ApiRegistrarPollRoute: ApiRegistrarPollRoute,
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
+  ApiRegistrarPurchaseCreditsRoute: ApiRegistrarPurchaseCreditsRoute,
   ApiRegistrarSearchRoute: ApiRegistrarSearchRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiBillingSubscriptionCancelRoute: ApiBillingSubscriptionCancelRoute,

@@ -155,7 +155,23 @@ export const Route = createFileRoute("/api/registrar/purchase-credits")({
           });
         }
 
+        // If Cloudflare rejected the registration outright, the user never got
+        // a domain — give the credits straight back.
+        const { data: after } = await supabaseAdmin
+          .from("purchased_domains")
+          .select("status, error_message")
+          .eq("paystack_reference", reference)
+          .maybeSingle();
+        if (after?.status === "failed") {
+          await refundCredit({ userId, ledgerId: spent.ledgerId, reason: "refund" });
+          return new Response(
+            after.error_message || "Registration failed — your credits were returned.",
+            { status: 502 },
+          );
+        }
+
         return Response.json({ ok: true, credits, hostname: parsed.hostname, pending: false });
+
       },
     },
   },

@@ -50,6 +50,56 @@ export async function purchaseDomain(args: {
   return (await resp.json()) as { authorizationUrl: string; reference: string };
 }
 
+/** How many USD cents one credit is worth when paying a cash cost. */
+export async function fetchCreditRate(): Promise<number> {
+  const { data: sess } = await supabase.auth.getSession();
+  const token = sess.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+  const resp = await fetch("/api/registrar/purchase-credits", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) throw new Error("Couldn't load credit pricing");
+  const json = (await resp.json()) as { usdCentsPerCredit: number };
+  return json.usdCentsPerCredit;
+}
+
+/** Whole credits charged for a cash cost in USD cents. */
+export function creditsForUsdCents(usdCents: number, usdCentsPerCredit: number): number {
+  const rate = usdCentsPerCredit > 0 ? usdCentsPerCredit : 20;
+  return Math.max(1, Math.ceil(usdCents / rate));
+}
+
+export type CreditPurchaseError = Error & { code?: string; credits?: number };
+
+/** Register a domain paid for entirely with Kimble Credits. */
+export async function purchaseDomainWithCredits(args: {
+  projectId: string;
+  hostname: string;
+}): Promise<{ ok: true; credits: number; hostname: string; pending: boolean }> {
+  const resp = await authedFetch("/api/registrar/purchase-credits", args);
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    let err: CreditPurchaseError = new Error(text || `Purchase failed (${resp.status})`);
+    try {
+      const json = JSON.parse(text) as { error?: string; code?: string; credits?: number };
+      err = Object.assign(new Error(json.error ?? "Purchase failed"), {
+        code: json.code,
+        credits: json.credits,
+      });
+    } catch {
+      /* plain-text error */
+    }
+    throw err;
+  }
+  return (await resp.json()) as {
+    ok: true;
+    credits: number;
+    hostname: string;
+    pending: boolean;
+  };
+}
+
+
 /** Ask the server to poll Cloudflare for any in-flight registrations. */
 export async function pollDomainRegistrations(
   args: { projectId: string } | { reference: string },
