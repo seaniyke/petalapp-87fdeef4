@@ -10,6 +10,10 @@
  * Later turns load the stored PRD and amend it only when the request actually
  * changes the product's shape. Style and copy edits leave the contract alone.
  *
+ * The PRD also carries the full requirement list with evidence-derived status
+ * (`prd-requirements.ts`). Every turn sees the whole product, what is already
+ * verified, and the coherent stage this turn should build.
+ *
  * Nothing here can fail a build: every path has a deterministic fallback.
  */
 
@@ -20,6 +24,14 @@ import { loadProjectPrd, saveProjectPrd } from "./prd-store.server";
 import { renderPrdBlock } from "./prd-render";
 import { renderSubtypeOverrideBlock, subtypeFromPrd } from "./prd-reconcile";
 import { renderPrdScenarioBlock } from "./prd-acceptance.server";
+import {
+  deriveRequirements,
+  mergeRequirements,
+  renderRequirementsBlock,
+  stageForTurn,
+  type PrdRequirement,
+  type StageMode,
+} from "./prd-requirements";
 import type { Prd, VersionedPrd } from "./prd-types";
 import type { WebSubtype } from "@/lib/web-subtype";
 
@@ -37,6 +49,9 @@ export interface ResolvedPrd {
   promptBlock: string;
   /** Prompt block for the verifier. */
   scenarioBlock: string;
+  /** Requirements this turn is meant to implement. */
+  stage: PrdRequirement[];
+  stageMode: StageMode;
 }
 
 export interface ResolvePrdArgs {
@@ -45,6 +60,20 @@ export interface ResolvePrdArgs {
   userId?: string | null;
   /** Skip the model pass (used by tests and by cheap retry paths). */
   deterministicOnly?: boolean;
+}
+
+/** Pure core, shared by the engine and tests. */
+export function attachRequirements(
+  prd: Prd,
+  brief: string,
+  stored: VersionedPrd | null,
+): { prd: Prd; changed: boolean } {
+  if (!stored) return { prd: { ...prd, requirements: deriveRequirements(brief) }, changed: true };
+  const base = stored.prd.requirements ?? deriveRequirements(stored.sourcePrompt || "");
+  const merged = mergeRequirements(base, brief);
+  const changed =
+    !stored.prd.requirements || merged.added.length > 0 || merged.rejected.length > 0;
+  return { prd: { ...prd, requirements: merged.requirements }, changed };
 }
 
 export async function resolvePrdForTurn(args: ResolvePrdArgs): Promise<ResolvedPrd> {
@@ -58,20 +87,24 @@ export async function resolvePrdForTurn(args: ResolvePrdArgs): Promise<ResolvedP
   let note = "";
 
   if (!stored) {
-    prd = args.deterministicOnly ? deterministicPrd(brief) : await modelPrd(brief, args.userId ?? undefined);
+    const authoredPrd = args.deterministicOnly ? deterministicPrd(brief) : await modelPrd(brief, args.userId ?? undefined);
+    prd = attachRequirements(authoredPrd, brief, null).prd;
     versioned = await saveProjectPrd(args.projectId, prd, brief, null);
     authored = true;
   } else {
     const result = amendPrd(stored.prd, brief);
-    prd = result.prd;
     amendment = result.kind;
     note = result.note;
-    if (result.changed) {
+    const withReqs = attachRequirements(result.prd, brief, stored);
+    prd = withReqs.prd;
+    if (result.changed || withReqs.changed) {
       versioned = await saveProjectPrd(args.projectId, prd, brief, stored);
     }
   }
 
   const subtype = subtypeFromPrd(prd);
+  const requirements = prd.requirements ?? [];
+  const plan = stageForTurn(requirements, brief, authored);
 
   return {
     prd,
@@ -80,7 +113,15 @@ export async function resolvePrdForTurn(args: ResolvePrdArgs): Promise<ResolvedP
     amendment,
     note,
     subtype,
-    promptBlock: [renderPrdBlock(prd), renderSubtypeOverrideBlock(prd, subtype)].filter(Boolean).join("\n"),
+    promptBlock: [
+      renderPrdBlock(prd),
+      renderSubtypeOverrideBlock(prd, subtype),
+      renderRequirementsBlock(requirements, plan),
+    ]
+      .filter(Boolean)
+      .join("\n"),
     scenarioBlock: renderPrdScenarioBlock(prd),
+    stage: plan.stage,
+    stageMode: plan.mode,
   };
 }

@@ -7146,6 +7146,37 @@ async function handleGenerateRequestCore(
               });
         }
 
+        // Product progress — re-evaluate the PRD's requirements against the
+        // committed files. No build has been verified yet, so nothing can be
+        // promoted to COMPLETED here (the build callback does that for the
+        // current revision only). Suggestions come from what really remains.
+        let productSuggestions: string[] = [];
+        let productProgressOut: import("@/server/prd/prd-requirements").ProductProgress | null = null;
+        if (body.projectId && resolvedPrd && txSaved && typeof committedRevision === "number") {
+          try {
+            const { recordRequirementEvidence } = await import("@/server/prd/prd-progress.server");
+            const { continuationSuggestions, productProgress, renderProgressSummary } = await import(
+              "@/server/prd/prd-requirements"
+            );
+            const reqs = await recordRequirementEvidence({
+              projectId: body.projectId,
+              build: null,
+              files: nextFiles.map((f) => ({ path: f.path, content: f.content ?? "" })),
+              projectRevision: committedRevision,
+            });
+            if (reqs?.length) {
+              productSuggestions = continuationSuggestions(reqs);
+              productProgressOut = productProgress(reqs);
+              if (productProgressOut.completed < productProgressOut.total) {
+                const truth = renderProgressSummary(reqs, resolvedPrd.prd.productName);
+                if (truth) summary = `${summary ?? ""}\n\n${truth}`.trim();
+              }
+            }
+          } catch (e) {
+            console.warn("[prd-progress] turn evaluation skipped:", e instanceof Error ? e.message : String(e));
+          }
+        }
+
         controller.enqueue(
           encoder.encode(
             sse({
@@ -7158,9 +7189,12 @@ async function handleGenerateRequestCore(
               persisted: Boolean(body.projectId && txSaved && nextFiles.length > 0),
               committedRevision,
               ...(txSaved ? {} : { noFileChanges: true }),
+              ...(productProgressOut ? { productProgress: productProgressOut } : {}),
               ...(backendGate.gated && backendGate.suggestions.length > 0
                 ? { suggestions: backendGate.suggestions }
-                : {}),
+                : productSuggestions.length > 0
+                  ? { suggestions: productSuggestions }
+                  : {}),
             }),
           ),
         );

@@ -768,49 +768,56 @@ export function getArchetype(id: ArchetypeId): ProjectArchetype {
 // -----------------------------------------------------------------------------
 
 /**
- * Always-applied build instruction. For ANY archetype, force landing-first
- * + real brand + no demo banners + no theme toggle. Adds extra no-SDK
- * guarantees for high-stakes archetypes.
+ * Always-applied build instruction. Real brand, no demo banners, no theme
+ * toggle. The user's requested scope is authoritative — the archetype never
+ * narrows it to a landing page.
  */
+export const REQUESTED_SCOPE_PRINCIPLE =
+  "The user's requested product scope is authoritative. Understand and retain the complete scope. Do not arbitrarily defer requested functionality merely because multiple features were requested. For large requests, decompose the work into coherent implementation stages using the existing planning and execution system. Never lose or silently discard requirements.";
+
 export function archetypeBuildInstruction(archetype: ProjectArchetype): string {
   const lines = [
     `PROJECT ARCHETYPE DETECTED: ${archetype.id} (${archetype.productLabel}) — treat as a LIVE product launch.`,
-    `Build a polished, on-brand marketing LANDING PAGE first. Invent a memorable brand name + logo mark if the user did not provide one; use it consistently in nav, hero, footer, and <title>.`,
+    REQUESTED_SCOPE_PRINCIPLE,
+    `Invent a memorable brand name + logo mark if the user did not provide one; use it consistently in nav, hero, footer, and <title>.`,
     `Do NOT add a "Demo only", "Simulated data", "no real money", or any disclaimer banner anywhere in the user's app.`,
     `Do NOT add a light/dark mode toggle unless the user explicitly asks.`,
   ];
   if (archetype.highStakes) {
     lines.push(
-      `HIGH-STAKES domain: do NOT import on-chain libraries (viem, ethers, web3.js), banking SDKs (Plaid, Increase, Unit), or KYC SDKs on this turn. Wire keys later when the user explicitly asks. Build the in-product dashboard only when the user asks for it in a follow-up.`,
+      `HIGH-STAKES domain: never invent keys or pretend an on-chain, banking or KYC provider is live. Build the requested screens and data flow; the real provider account is connected by the user.`,
     );
   } else {
     lines.push(
-      `Do not import vendor SDKs (Stripe, Twilio, Resend, etc.) on this turn — wire them later when the user asks. Build the in-product surfaces only when the user asks for them in a follow-up.`,
+      `Vendor services (Stripe, Twilio, Resend, etc.): build the requested screens and integration code when the user asked for them, but never invent keys or claim the account is connected.`,
     );
   }
   return lines.join(" ");
 }
 
 /**
- * Renders the saved roadmap as a prompt block: which landing sections to
- * build NOW and which features to defer. Keeps Kimble landing-first instead
- * of shipping a half-built dashboard on turn 1.
+ * Renders the archetype's knowledge as a prompt block: suggested sections
+ * for the marketing surface (only when the product has one) and features the
+ * user may want later. It never defers anything the user asked for.
  */
 export function archetypeRoadmapBlock(archetype: ProjectArchetype): string {
+  return roadmapBlock(archetype.productLabel, archetype.landingSections, archetype.futureFeatures, archetype.providersToWireLater);
+}
+
+function roadmapBlock(label: string, sections: string[], future: string[], providers: string[]): string {
   return [
-    `### Saved roadmap — ${archetype.productLabel}`,
-    `On THIS turn, ship a COMPLETE on-brand marketing landing page (real, live company feel — no "demo" banners, no disclaimers, no theme toggle). Include these sections in order:`,
-    ...archetype.landingSections.map((s, i) => `  ${i + 1}. ${s}`),
+    `### Product archetype — ${label}`,
+    REQUESTED_SCOPE_PRINCIPLE,
+    ``,
+    `If this product has a marketing/home surface, these sections suit it (use judgement, never pad):`,
+    ...sections.map((s, i) => `  ${i + 1}. ${s}`),
     ``,
     `Pick (or invent) a short memorable brand name + logo mark and use it in the nav, hero, footer, and <title>.`,
     ``,
-    `DO NOT build the in-app product yet. These are saved for future turns; the user will pick which one to iterate on next:`,
-    ...archetype.futureFeatures.map((s, i) => `  ${i + 1}. ${s}`),
+    `Features users of this kind of product often want next (NOT requested — do not build unless the user asked; they are only ideas for later):`,
+    ...future.map((s, i) => `  ${i + 1}. ${s}`),
     ``,
-    `Providers the user can wire later when they ask (do NOT import these libraries today, do NOT mention them as "limitations"):`,
-    `  ${archetype.providersToWireLater.join(", ")}`,
-    ``,
-    `Preamble requirement: open your reply with ONE short, confident paragraph that (a) names the product by its brand name, (b) says you're shipping the landing page first and that next features (list 2-3 by name) are queued up, (c) invites the user to pick what to build next. Do NOT say "demo", "simulated", "limitation", or "cannot". Then build.`,
+    `Providers that need the user's own account: ${providers.join(", ")}. Never invent keys; never describe them as "limitations".`,
   ].join("\n");
 }
 
@@ -915,19 +922,5 @@ export const DEFAULT_LANDING_SECTIONS: string[] = [
 
 /** Render a fallback archetype as a prompt block, same shape as the registry path. */
 export function fallbackRoadmapBlock(fa: FallbackArchetype): string {
-  return [
-    `### Saved roadmap — ${fa.productLabel}`,
-    `On THIS turn, ship a COMPLETE on-brand marketing landing page (real, live company feel — no "demo" banners, no disclaimers, no theme toggle). Include these sections in order:`,
-    ...fa.landingSections.map((s, i) => `  ${i + 1}. ${s}`),
-    ``,
-    `Pick (or invent) a short memorable brand name + logo mark and use it in the nav, hero, footer, and <title>.`,
-    ``,
-    `DO NOT build the in-app product yet. These are saved for future turns; the user will pick which one to iterate on next:`,
-    ...fa.futureFeatures.map((s, i) => `  ${i + 1}. ${s}`),
-    ``,
-    `Providers the user can wire later when they ask (do NOT import these libraries today, do NOT mention them as "limitations"):`,
-    `  ${fa.providersToWireLater.join(", ")}`,
-    ``,
-    `Preamble requirement: open your reply with ONE short, confident paragraph that (a) names the product by its brand name, (b) says you're shipping the landing page first and that next features (list 2-3 by name) are queued up, (c) invites the user to pick what to build next. Do NOT say "demo", "simulated", "limitation", or "cannot". Then build.`,
-  ].join("\n");
+  return roadmapBlock(fa.productLabel, fa.landingSections, fa.futureFeatures, fa.providersToWireLater);
 }
