@@ -7,6 +7,7 @@ import { PetalLoader } from "@/components/PetalLoader";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { ListingRating, ListingReviews } from "@/components/marketplace/ListingReviews";
+import { useMarketplaceFeature } from "@/hooks/use-marketplace-feature";
 import {
   formatListingPrice,
   getLiveListing,
@@ -41,8 +42,19 @@ export const Route = createFileRoute("/marketplace/$slug")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: ListingDetailPage,
+  component: ListingDetailRoute,
 });
+
+function ListingDetailRoute() {
+  const { enabled, loading } = useMarketplaceFeature();
+  if (loading) {
+    return <div className="min-h-screen bg-background"><SiteHeader /><div className="grid place-items-center py-32"><PetalLoader size={56} label="Loading…" /></div></div>;
+  }
+  if (!enabled) {
+    return <div className="min-h-screen bg-background"><SiteHeader /><div className="mx-auto max-w-xl px-6 py-32 text-center"><h1 className="text-2xl font-bold">This page isn't available</h1><Button asChild className="mt-6"><Link to="/">Back to Kimble</Link></Button></div></div>;
+  }
+  return <ListingDetailPage />;
+}
 
 function ListingDetailPage() {
   const { slug } = Route.useParams();

@@ -66,6 +66,7 @@ import { Route as AdminPicturesRouteImport } from './routes/admin.pictures'
 import { Route as AdminMobileSigningRouteImport } from './routes/admin.mobile-signing'
 import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
+import { Route as AdminFeaturesRouteImport } from './routes/admin.features'
 import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminEconomicsRouteImport } from './routes/admin.economics'
 import { Route as AdminDigestRouteImport } from './routes/admin.digest'
@@ -84,6 +85,7 @@ import { Route as ApiPublicWaitlistRouteImport } from './routes/api/public/waitl
 import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
 import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
+import { Route as ApiPublicMarketplaceFeatureRouteImport } from './routes/api/public/marketplace-feature'
 import { Route as ApiPublicInvestRouteImport } from './routes/api/public/invest'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
@@ -422,6 +424,11 @@ const AdminLedgersRoute = AdminLedgersRouteImport.update({
   path: '/admin/ledgers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminFeaturesRoute = AdminFeaturesRouteImport.update({
+  id: '/admin/features',
+  path: '/admin/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminFailuresRoute = AdminFailuresRouteImport.update({
   id: '/admin/failures',
   path: '/admin/failures',
@@ -514,6 +521,12 @@ const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
   path: '/api/public/track',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMarketplaceFeatureRoute =
+  ApiPublicMarketplaceFeatureRouteImport.update({
+    id: '/api/public/marketplace-feature',
+    path: '/api/public/marketplace-feature',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicInvestRoute = ApiPublicInvestRouteImport.update({
   id: '/api/public/invest',
   path: '/api/public/invest',
@@ -825,6 +838,7 @@ export interface FileRoutesByFullPath {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/economics': typeof AdminEconomicsRoute
   '/admin/failures': typeof AdminFailuresRoute
+  '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
@@ -879,6 +893,7 @@ export interface FileRoutesByFullPath {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/invest': typeof ApiPublicInvestRoute
+  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -954,6 +969,7 @@ export interface FileRoutesByTo {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/economics': typeof AdminEconomicsRoute
   '/admin/failures': typeof AdminFailuresRoute
+  '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
@@ -1008,6 +1024,7 @@ export interface FileRoutesByTo {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/invest': typeof ApiPublicInvestRoute
+  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -1084,6 +1101,7 @@ export interface FileRoutesById {
   '/admin/digest': typeof AdminDigestRoute
   '/admin/economics': typeof AdminEconomicsRoute
   '/admin/failures': typeof AdminFailuresRoute
+  '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
   '/admin/marketplace': typeof AdminMarketplaceRoute
   '/admin/mobile-signing': typeof AdminMobileSigningRoute
@@ -1138,6 +1156,7 @@ export interface FileRoutesById {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/invest': typeof ApiPublicInvestRoute
+  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -1215,6 +1234,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/economics'
     | '/admin/failures'
+    | '/admin/features'
     | '/admin/ledgers'
     | '/admin/marketplace'
     | '/admin/mobile-signing'
@@ -1269,6 +1289,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/invest'
+    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -1344,6 +1365,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/economics'
     | '/admin/failures'
+    | '/admin/features'
     | '/admin/ledgers'
     | '/admin/marketplace'
     | '/admin/mobile-signing'
@@ -1398,6 +1420,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/invest'
+    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -1473,6 +1496,7 @@ export interface FileRouteTypes {
     | '/admin/digest'
     | '/admin/economics'
     | '/admin/failures'
+    | '/admin/features'
     | '/admin/ledgers'
     | '/admin/marketplace'
     | '/admin/mobile-signing'
@@ -1527,6 +1551,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/invest'
+    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -1603,6 +1628,7 @@ export interface RootRouteChildren {
   AdminDigestRoute: typeof AdminDigestRoute
   AdminEconomicsRoute: typeof AdminEconomicsRoute
   AdminFailuresRoute: typeof AdminFailuresRoute
+  AdminFeaturesRoute: typeof AdminFeaturesRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
   AdminMarketplaceRoute: typeof AdminMarketplaceRoute
   AdminMobileSigningRoute: typeof AdminMobileSigningRoute
@@ -1654,6 +1680,7 @@ export interface RootRouteChildren {
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicInvestRoute: typeof ApiPublicInvestRoute
+  ApiPublicMarketplaceFeatureRoute: typeof ApiPublicMarketplaceFeatureRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
   ApiPublicTrackRuntimeErrorRoute: typeof ApiPublicTrackRuntimeErrorRoute
@@ -2101,6 +2128,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLedgersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/features': {
+      id: '/admin/features'
+      path: '/admin/features'
+      fullPath: '/admin/features'
+      preLoaderRoute: typeof AdminFeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/failures': {
       id: '/admin/failures'
       path: '/admin/failures'
@@ -2225,6 +2259,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/track'
       fullPath: '/api/public/track'
       preLoaderRoute: typeof ApiPublicTrackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/marketplace-feature': {
+      id: '/api/public/marketplace-feature'
+      path: '/api/public/marketplace-feature'
+      fullPath: '/api/public/marketplace-feature'
+      preLoaderRoute: typeof ApiPublicMarketplaceFeatureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/invest': {
@@ -2667,6 +2708,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDigestRoute: AdminDigestRoute,
   AdminEconomicsRoute: AdminEconomicsRoute,
   AdminFailuresRoute: AdminFailuresRoute,
+  AdminFeaturesRoute: AdminFeaturesRoute,
   AdminLedgersRoute: AdminLedgersRoute,
   AdminMarketplaceRoute: AdminMarketplaceRoute,
   AdminMobileSigningRoute: AdminMobileSigningRoute,
@@ -2718,6 +2760,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicInvestRoute: ApiPublicInvestRoute,
+  ApiPublicMarketplaceFeatureRoute: ApiPublicMarketplaceFeatureRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
   ApiPublicTrackRuntimeErrorRoute: ApiPublicTrackRuntimeErrorRoute,

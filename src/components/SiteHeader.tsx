@@ -14,6 +14,7 @@ import {
 
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/hooks/use-is-admin";
+import { useMarketplaceFeature } from "@/hooks/use-marketplace-feature";
 
 import { PetalBrand } from "@/components/PetalBrand";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -34,6 +35,7 @@ import {
 export function SiteHeader() {
   const { user, isReady, likelyAuthed, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
+  const { enabled: marketplaceEnabled } = useMarketplaceFeature();
   const navigate = useNavigate();
   const [billingOpen, setBillingOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -97,12 +99,14 @@ export function SiteHeader() {
                 >
                   Gallery
                 </Link>
-                <Link
-                  to="/marketplace"
-                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                >
-                  Marketplace
-                </Link>
+                {marketplaceEnabled && (
+                  <Link
+                    to="/marketplace"
+                    className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  >
+                    Marketplace
+                  </Link>
+                )}
               </>
             ) : (
               <>
@@ -121,13 +125,15 @@ export function SiteHeader() {
                 >
                   <ImageIcon className="h-4 w-4" /> Gallery
                 </Link>
-                <Link
-                  to="/marketplace"
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                  activeProps={{ className: "bg-muted/60 text-foreground" }}
-                >
-                  <Store className="h-4 w-4" /> Marketplace
-                </Link>
+                {marketplaceEnabled && (
+                  <Link
+                    to="/marketplace"
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                    activeProps={{ className: "bg-muted/60 text-foreground" }}
+                  >
+                    <Store className="h-4 w-4" /> Marketplace
+                  </Link>
+                )}
 
               </>
             )}
@@ -239,6 +245,7 @@ export function SiteHeader() {
         open={mobileNavOpen}
         onOpenChange={setMobileNavOpen}
         onOpenBilling={() => setBillingOpen(true)}
+        marketplaceEnabled={marketplaceEnabled}
       />
       <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
     </>

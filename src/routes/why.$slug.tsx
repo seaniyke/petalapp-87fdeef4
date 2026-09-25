@@ -2,6 +2,8 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import { Button } from "@/components/ui/button";
+import { useMarketplaceFeature } from "@/hooks/use-marketplace-feature";
 import { DIFFERENCES, ORDER } from "@/lib/why-differences";
 
 export const Route = createFileRoute("/why/$slug")({
@@ -59,9 +61,29 @@ function WhyNotFound() {
 
 function WhyPage() {
   const { difference } = Route.useLoaderData();
+  const { enabled: marketplaceEnabled, loading } = useMarketplaceFeature();
+  if (difference.slug === "marketplace" && loading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <SiteHeader />
+        <div className="mx-auto max-w-xl px-6 py-32 text-center text-sm text-muted-foreground">Loading…</div>
+      </div>
+    );
+  }
+  if (difference.slug === "marketplace" && !loading && !marketplaceEnabled) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <SiteHeader />
+        <div className="mx-auto max-w-xl px-6 py-32 text-center">
+          <h1 className="text-2xl font-bold">This page isn't available</h1>
+          <Button asChild className="mt-6"><Link to="/">Back to Kimble</Link></Button>
+        </div>
+      </div>
+    );
+  }
   const Icon = difference.icon;
   const idx = ORDER.indexOf(difference.slug as (typeof ORDER)[number]);
-  const rail = ORDER.filter((s) => s !== difference.slug).map((s) => DIFFERENCES[s]);
+  const rail = ORDER.filter((s) => s !== difference.slug && (marketplaceEnabled || s !== "marketplace")).map((s) => DIFFERENCES[s]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

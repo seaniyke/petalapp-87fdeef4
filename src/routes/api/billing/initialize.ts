@@ -56,6 +56,15 @@ export const Route = createFileRoute("/api/billing/initialize")({
           if (parsed.purpose === "plan" && process.env.SUBSCRIPTIONS_ENABLED !== "1") {
             return new Response(JSON.stringify({ error: "Monthly plans are paused. Buy credits instead — they never expire." }), { status: 400, headers: { "Content-Type": "application/json" } });
           }
+          if (parsed.purpose === "marketplace") {
+            const { isMarketplaceEnabled } = await import("@/server/marketplace-feature.server");
+            if (!(await isMarketplaceEnabled())) {
+              return new Response(
+                JSON.stringify({ error: "Marketplace is currently unavailable." }),
+                { status: 403, headers: { "Content-Type": "application/json" } },
+              );
+            }
+          }
           if (parsed.purpose === "addon" || parsed.purpose === "runtime_topup") {
             const { hasFullAccess } = await import("@/server/entitlements.server");
             if (!(await hasFullAccess(userData.user.id))) {

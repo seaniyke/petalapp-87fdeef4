@@ -5433,6 +5433,7 @@ export type Database = {
           title: string
         }[]
       }
+      marketplace_is_enabled: { Args: never; Returns: boolean }
       marketplace_list_live: {
         Args: never
         Returns: {

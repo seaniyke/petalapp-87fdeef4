@@ -6,6 +6,7 @@ import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
+import { useMarketplaceFeature } from "@/hooks/use-marketplace-feature";
 
 import type { BuildTargetId } from "@/lib/build-targets";
 
@@ -58,16 +59,16 @@ export const Route = createFileRoute("/")({
     search.focus === "composer" ? { focus: "composer" } : {},
   head: () => ({
     meta: [
-      { title: "Kimble — Build it, ship it, then sell it" },
+      { title: "Kimble — Build it and ship it" },
       {
         name: "description",
         content:
-          "Kimble is an app builder for web, mobile, backends, and extensions. Describe your idea, build it, publish it, and sell it.",
+          "Kimble is an app builder for web, mobile, backends, and extensions. Describe your idea, build it, and publish it.",
       },
-      { property: "og:title", content: "Kimble — Build it, ship it, then sell it" },
+      { property: "og:title", content: "Kimble — Build it and ship it" },
       {
         property: "og:description",
-        content: "Describe your app, build it, publish it, and sell it. Your code is yours, and credits never expire.",
+        content: "Describe your app, build it, and publish it. Your code is yours, and credits never expire.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -89,6 +90,7 @@ const samplePrompts = [
 const DRAFT_KEY = "petal:landing:draft";
 
 function Landing() {
+  const { enabled: marketplaceEnabled } = useMarketplaceFeature();
   const { focus: focusParam } = Route.useSearch();
   const [prompt, setPrompt] = useState("");
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
@@ -1047,7 +1049,7 @@ function Landing() {
                   </h3>
                   <ul className="space-y-2.5 text-muted-foreground">
                     <li><Link to="/gallery" className="transition-colors hover:text-foreground">Gallery</Link></li>
-                    <li><Link to="/marketplace" className="transition-colors hover:text-foreground">Marketplace</Link></li>
+                    {marketplaceEnabled && <li><Link to="/marketplace" className="transition-colors hover:text-foreground">Marketplace</Link></li>}
                     <li><Link to="/changelog" className="transition-colors hover:text-foreground">What's new</Link></li>
                     <li><Link to="/docs" className="transition-colors hover:text-foreground">Docs</Link></li>
                   </ul>
