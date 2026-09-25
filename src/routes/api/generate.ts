@@ -2685,11 +2685,16 @@ Forbidden defaults
       lastUserContent || "",
     );
 
-  const designBlock = designDirection
-    ? renderDesignDirectionBlock(designDirection, {
-        detail: isStructuralTurn ? "full" : "compact",
-      })
-    : "";
+  const designBlock =
+    (designDirection
+      ? renderDesignDirectionBlock(designDirection, {
+          detail: isStructuralTurn ? "full" : "compact",
+        })
+      : "") +
+    // Composition guidance only matters while new surface is being built.
+    (isStructuralTurn ? await renderCategoryCompositionBlock(lastUserContent || "") : "") +
+    renderStatedIntentBlock(statedIntent);
+
 
   // ---------------------------------------------------------------------------
   // Project Intelligence Context (PIC) — Engine 3.0, phases 1 & 2.
