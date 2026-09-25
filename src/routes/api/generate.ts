@@ -5669,6 +5669,15 @@ Forbidden defaults
             const guarded = await revertCleanupBreakage(nextFiles, repaired.files, cleanupPaths);
             if (guarded.reverted.length) console.warn(`[cleanup-guard] reverted cleanup on ${JSON.stringify(guarded.reverted)} (it broke them)`);
             nextFiles = guarded.files;
+            {
+              // Cleanup may only touch the files this turn wrote.
+              const { guardCleanup } = await import("@/server/verification/gates");
+              const scoped = guardCleanup(turnBaselineFiles.length ? turnBaselineFiles : nextFiles, nextFiles, [...cleanupPaths, ...kitSyncedPaths]);
+              if (turnBaselineFiles.length && scoped.reverted.length) {
+                console.warn(`[cleanup-guard] reverted out-of-scope cleanup on ${JSON.stringify(scoped.reverted.slice(0, 20))}`);
+                nextFiles = scoped.files;
+              }
+            }
             // Bible §7 — every repair records signature → fix → outcome.
             // This is the training set for the next codemod, and the only way
             // to see the same pass masking the same model defect week after
@@ -5889,7 +5898,13 @@ Forbidden defaults
         const autofixT0 = Date.now();
         const preAutofixChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
         const autofixOut = autofixFiles(nextFiles, preAutofixChangedPaths);
-        nextFiles = autofixOut.files;
+        {
+          // Autofix is cleanup: only files this turn already changed.
+          const { guardCleanup } = await import("@/server/verification/gates");
+          const scoped = guardCleanup(nextFiles, autofixOut.files, preAutofixChangedPaths);
+          if (scoped.reverted.length) console.warn(`[cleanup-guard] autofix out of scope on ${JSON.stringify(scoped.reverted.slice(0, 20))}`);
+          nextFiles = scoped.files;
+        }
         if (autofixOut.report.fixedCount > 0) {
           console.log(
             `[autofix] ${autofixOut.report.fixedCount} fix(es):`,
