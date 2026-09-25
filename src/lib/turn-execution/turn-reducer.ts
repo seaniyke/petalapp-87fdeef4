@@ -518,9 +518,7 @@ export function turnReducer(state: TurnState, action: TurnAction): TurnState {
         if (seq > g.lastSeq + 1) {
           const pending = { ...g.pending, [seq]: e };
           const held = { ...state, gen: { ...g, pending } };
-          return Object.keys(pending).length >= MAX_PENDING || e.type === "done" && Object.keys(pending).length > 0 && false
-            ? drain(held, true)
-            : held;
+          return Object.keys(pending).length >= MAX_PENDING ? drain(held, true) : held;
         }
         return drain({ ...state, gen: applySequenced(g, e, seq) }, false);
       }
