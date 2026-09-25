@@ -15,10 +15,28 @@ export function stripFences(s: string): string {
   return s.replace(/^\s*```[a-zA-Z]*\n?/, "").replace(/\n?```\s*$/, "");
 }
 
+/** Exported for tests: the exact repair prompt body. */
+export function buildRepairUserMessage(file: ProjectFile, detail: string, turnContext: string | null): string {
+  const ctx = turnContext?.trim()
+    ? `${turnContext.trim()}\n\nRules: this file is the CURRENT authoritative version. Keep the approach already taken (same router, same imports, same structure) unless the error proves it wrong. Fix only the reported error; do not redesign, rename, or switch libraries.\n\n`
+    : "";
+  return `${ctx}Path: ${file.path}\nError: ${detail}\n\n${file.content}`;
+}
+
 export async function repairBrokenFile(
   file: ProjectFile,
   detail: string,
-  meta?: { turnId?: string | null; projectId?: string | null; userId?: string | null },
+  meta?: {
+    turnId?: string | null;
+    projectId?: string | null;
+    userId?: string | null;
+    /**
+     * Compact turn record (original request, scope, earlier attempts and why
+     * they failed) plus the deterministic App Map. Lets this repair continue
+     * the same piece of work instead of starting fresh from one error.
+     */
+    turnContext?: string | null;
+  },
 ): Promise<string | null> {
   // A cut-off file is not repairable by patching half of it. The WRITE stage
   // re-requests truncated pages; anything still truncated here is isolated.
@@ -43,7 +61,7 @@ export async function repairBrokenFile(
       temperature: 0.1,
       messages: [
         { role: "system", content: SYSTEM },
-        { role: "user", content: `Path: ${file.path}\nError: ${detail}\n\n${file.content}` },
+        { role: "user", content: buildRepairUserMessage(file, detail, meta?.turnContext ?? null) },
       ],
     },
   });
