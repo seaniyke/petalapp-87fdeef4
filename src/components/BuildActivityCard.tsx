@@ -469,7 +469,7 @@ export function BuildActivityCard({
         <ProgressArc
           value={phases.length ? (phaseIndex + 1) / phases.length : 0.1}
           active={isActive}
-          failed={phases.some((p) => p.status === "failed")}
+          failed={phases.some((p) => p.status === "failed") || lc === "failed" || lc === "build_failed" || lc === "verify_failed"}
         />
         <div className="flex items-center gap-2.5 px-3.5 py-3">
           <span
