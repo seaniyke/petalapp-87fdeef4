@@ -6628,17 +6628,38 @@ Forbidden defaults
         );
         if (txResult.outcome.status === "committed") {
           nextFiles = txResult.outcome.files;
+          // The turn produced a verified, committed result. Lock the breaker:
+          // a late failure from an earlier tool call can never retroactively
+          // turn a successful turn into a tripped one.
+          breaker.recordProgress("verification_passed");
+          breaker.complete();
         } else {
+          // CANCELLATION HAS PRIORITY over every breaker rule: a user Stop is
+          // never reported or recorded as an agent failure.
           if (txResult.outcome.reason === "cancelled") throw new Error("Turn cancelled before commit");
+          // A blocked commit is an agent failure the breaker must see — this
+          // is the authoritative verification verdict, not a guess.
+          for (const r of txResult.rejections.slice(0, 3)) {
+            breaker.recordFailure({
+              category: r.reason === "scope_violation" ? "scope_violation" : "verification_failed",
+              tool: r.stage === "source_verification" ? (r.gate ?? "source_verification") : "execution",
+              path: r.path ?? null,
+              message: r.detail,
+            });
+          }
           // Nothing lands: the project keeps its previous state.
           nextFiles = txResult.outcome.files;
           if (txResult.outcome.reason !== "no changes") {
-            const note =
-              `\n\nI couldn't save this change safely, so your app was left exactly as it was: ` +
-              txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} — ` : ""}${r.detail}`).join("; ") +
-              `. Send it again and I'll retry just that part.`;
+            const note = breaker.tripped
+              ? `\n\n${breaker.userMessage()}`
+              : `\n\nI couldn't save this change safely, so your app was left exactly as it was: ` +
+                txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} — ` : ""}${r.detail}`).join("; ") +
+                `. Send it again and I'll retry just that part.`;
             summary = `${summary}${note}`;
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          }
+          if (breaker.tripped) {
+            console.warn(`[circuit-breaker] tripped at commit ${JSON.stringify(breaker.snapshot())}`);
           }
         }
         let finalCharged = 0;
