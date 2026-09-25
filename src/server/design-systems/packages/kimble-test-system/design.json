@@ -1,15 +1,35 @@
 {
   "schema_version": 1,
   "slug": "kimble-test-system",
-  "name": "Kimble Test System",
-  "description": "Synthetic internal package used to validate the design-system loader and apply pipeline. Not customer-facing.",
-  "when_to_use": "Internal tests only. Never offered to customers.",
-  "version": "0.1.0",
-  "internal": true,
+  "name": "Kimble Coastal",
+  "description": "Calm coastal system: cool sea-glass neutrals, one confident accent, Sora headings over Manrope body, soft radii and quiet elevation.",
+  "when_to_use": "Default Kimble system for any product without its own brand system: clear, calm, legible, works for marketing sites and apps.",
+  "version": "1.0.0",
+  "internal": false,
   "default_accent": "lagoon",
-  "accents": ["lagoon", "ember"],
-  "capabilities": ["light", "dark", "elevation", "motion"],
-  "token_categories": ["color", "surface", "typography", "spacing", "radius", "shadow", "motion", "focus"],
-  "fonts": ["Sora", "Manrope"],
+  "accents": [
+    "lagoon",
+    "ember"
+  ],
+  "capabilities": [
+    "light",
+    "dark",
+    "elevation",
+    "motion"
+  ],
+  "token_categories": [
+    "color",
+    "surface",
+    "typography",
+    "spacing",
+    "radius",
+    "shadow",
+    "motion",
+    "focus"
+  ],
+  "fonts": [
+    "Sora",
+    "Manrope"
+  ],
   "has_components": true
 }

@@ -158,13 +158,22 @@ export interface PicDesignSystem {
   iconography: string;
   accessibility: string;
   components: PicComponentRules;
-  /** "model" when the design agent reasoned, "deterministic" on fallback. */
-  source: "model" | "deterministic";
   /**
-   * Selected design-system package + accent. Written only by the
-   * deterministic re-theme path; generations preserve it.
+   * "package" when colours/typography are derived from the selected design
+   * system package (the only authority for new projects). "model" /
+   * "deterministic" exist only on legacy records created before packages.
+   */
+  source: "model" | "deterministic" | "package";
+  /**
+   * Selected design-system package + accent. Set on the first build, then
+   * changed only by the deterministic re-theme path.
    */
   package?: { systemId: string; accent: string };
+  /**
+   * Legacy projects created before packages keep their stored look and are
+   * marked here instead of being silently re-themed.
+   */
+  migration?: "legacy-unmapped";
 }
 
 /* ------------------------------------------------------------------ */

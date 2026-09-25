@@ -57,16 +57,33 @@ Kimble is being judged on whether the landing looks like it was made by a person
 
 If your draft violates ANY of the above, REWRITE before emitting. The goal is that when the user pastes the URL into a designer channel, no one guesses it was AI-generated.`;
 
+/** Taste body with the colour/type rules handed to the design system package. */
+function packageTasteBody(): string {
+  const a = TASTE_BODY.indexOf("1. Commit to ONE COLOURFUL");
+  const b = TASTE_BODY.indexOf("4. Refused");
+  if (a < 0 || b < a) return TASTE_BODY;
+  return (
+    TASTE_BODY.slice(0, a) +
+    `1-3. Colour and typography come from the SELECTED DESIGN SYSTEM. Execute its DESIGN.md with conviction; use its semantic tokens and installed fonts; body text at 4.5:1 contrast. Never write your own palette, font pair or font links.\n\n` +
+    TASTE_BODY.slice(b)
+  );
+}
+
 /**
  * Full design-taste block: taste commitments + locked palette/type + section library.
  * Called once per build turn and appended to the system prompt when the
  * archetype is landing/marketing/portfolio-adjacent.
  */
-export function renderDesignTasteBlock(brief: string): { text: string; pick: DesignPick } {
+export function renderDesignTasteBlock(
+  brief: string,
+  opts: { packageOwnsVisuals?: boolean } = {},
+): { text: string; pick: DesignPick } {
   const pick = pickDesignForBrief(brief);
   const [bgDeep, bgSurface, accent, accentSoft] = pick.palette.colors;
 
-  const lockedBlock = `\n\n[LOCKED PALETTE + TYPOGRAPHY for this project — use verbatim]
+  const lockedBlock = opts.packageOwnsVisuals
+    ? `\n\n[COLOURS + TYPOGRAPHY] Owned by the SELECTED DESIGN SYSTEM above. Its tokens and font links are installed by Kimble — do not write a palette, :root colour values or font links of your own.\nArchetype tags for this project: ${pick.archetypeTags.join(", ")}`
+    : `\n\n[LOCKED PALETTE + TYPOGRAPHY for this project — use verbatim]
 Palette: "${pick.palette.label}" — ${pick.palette.vibe}
   - Deep background:  ${bgDeep}
   - Surface / card:   ${bgSurface}
@@ -125,7 +142,7 @@ Archetype tags for this project: ${pick.archetypeTags.join(", ")}`;
 
   return {
     text:
-      TASTE_BODY + lockedBlock + sectionBlock + headerBlock + iconBlock + illustrationBlock,
+      (opts.packageOwnsVisuals ? packageTasteBody() : TASTE_BODY) + lockedBlock + sectionBlock + headerBlock + iconBlock + illustrationBlock,
     pick,
   };
 }

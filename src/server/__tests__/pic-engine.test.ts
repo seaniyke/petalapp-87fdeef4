@@ -63,8 +63,10 @@ describe("design system contract", () => {
 
   it("renders an enforceable prompt block", () => {
     const block = renderDesignSystemBlock(ds);
-    expect(block).toContain("DESIGN SYSTEM CONTRACT");
-    expect(block).toContain(ds.typography.displayFont);
+    // Package projects: structure-only contract; colours/fonts live in the package block.
+    expect(ds.package?.systemId).toBe("kimble-test-system");
+    expect(block).toContain("DESIGN CONTRACT — STRUCTURE");
+    expect(block).not.toMatch(/oklch/);
     expect(block).toContain("Empty states:");
   });
 
@@ -72,8 +74,9 @@ describe("design system contract", () => {
     const direction = fallbackDesignDirection("premium restaurant with reservations", "restaurant-1");
     const committed = designSystemFromDirection(PORTAL, u, direction, "restaurant-1");
     expect(committed.direction).toBe(direction.vibe);
-    expect(committed.typography.displayFont).toBe(direction.display_font);
-    expect(committed.typography.bodyFont).toBe(direction.body_font);
+    // The director owns composition; fonts/colours come from the package.
+    expect(committed.source).toBe("package");
+    expect(committed.typography.displayFont).toBe("Sora");
     expect(committed.imagery).toContain(direction.design_moves[0]);
   });
 
@@ -155,7 +158,7 @@ describe("PIC rendering", () => {
   it("renders the full contract on structural turns", () => {
     const block = renderPicBlock(pic, { detail: "full" });
     expect(block).toContain("PROJECT INTELLIGENCE CONTEXT");
-    expect(block).toContain("DESIGN SYSTEM CONTRACT");
+    expect(block).toContain("DESIGN CONTRACT — STRUCTURE");
     expect(block).toContain("PROTECTED FILES");
   });
 

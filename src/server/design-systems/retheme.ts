@@ -10,6 +10,8 @@ import type { ProjectFile } from "@/server/generate.server";
 import type { PicDesignSystem } from "@/server/pic/pic-types";
 import { applyDesignSystem } from "./apply";
 import { isValidAccent, type DesignSystemPackage } from "./loader";
+import { withPackageVisuals } from "./authority";
+import { lintDesignSystem } from "@/server/design/design-system-lint.server";
 
 export interface RethemeDeps {
   getPackage(slug: string): DesignSystemPackage | null;
@@ -23,10 +25,23 @@ export interface RethemeDeps {
 }
 
 export type RethemeResult =
-  | { ok: true; changed: boolean; revision: number | null; changedPaths: string[]; built: boolean }
+  | {
+      ok: true;
+      changed: boolean;
+      revision: number | null;
+      changedPaths: string[];
+      built: boolean;
+      /** Hard-coded colours/fonts the package cannot reach. When > 0 the
+       *  caller may offer the scoped clean-up (RETHEME_CLEANUP_SCOPE). */
+      cleanupFindings: number;
+    }
   | { ok: false; error: string; stage: "validate" | "load" | "apply" | "snapshot" | "save" };
 
-/** Allowed scope for an optional follow-up AI cleanup (not wired to AI here). */
+/**
+ * Allowed scope for the optional follow-up AI clean-up. It is only offered
+ * when the post-apply lint finds hard-coded colours/fonts; the deterministic
+ * apply never depends on it.
+ */
 export const RETHEME_CLEANUP_SCOPE = {
   may: ["replace hard-coded colours with semantic tokens", "replace hard-coded font families with font tokens", "replace raw visual values that block the design system"],
   mustNot: ["redesign pages", "change content", "change routes", "change behaviour", "restructure layouts", "add unrelated components", "change business logic"],
@@ -50,16 +65,21 @@ export async function rethemeProject(
   if (!applied.ok) return { ok: false, stage: "apply", error: applied.error };
 
   const design = await deps.loadDesign(args.projectId);
+  // No design record → the selection could not be persisted alongside the
+  // code, so nothing is written at all.
+  if (!design) return { ok: false, stage: "load", error: "project has no design record yet — build it once first" };
+  const nextDesign = withPackageVisuals(design, pkg, accent);
   const recordSelection = async () => {
-    if (!design) return;
     const cur = design.package;
-    if (cur?.systemId === pkg.meta.slug && cur.accent === accent) return;
-    await deps.saveDesign(args.projectId, { ...design, package: { systemId: pkg.meta.slug, accent } });
+    if (cur?.systemId === pkg.meta.slug && cur.accent === accent && design.source === "package") return;
+    await deps.saveDesign(args.projectId, nextDesign);
   };
+  const lint = lintDesignSystem(applied.files, nextDesign);
+  const cleanupFindings = lint.findings.filter((f) => /^(color|typography)\//.test(f.rule)).length;
 
   if (!applied.changed) {
     await recordSelection();
-    return { ok: true, changed: false, revision: null, changedPaths: [], built: false };
+    return { ok: true, changed: false, revision: null, changedPaths: [], built: false, cleanupFindings };
   }
 
   try { await deps.snapshot(args.projectId, files, `Before design system: ${pkg.meta.name} (${accent})`); } catch (e) {
@@ -77,5 +97,5 @@ export async function rethemeProject(
   if (deps.triggerBuild && revision !== null) {
     try { await deps.triggerBuild(args.projectId, revision); built = true; } catch { /* build can be retried; code is saved */ }
   }
-  return { ok: true, changed: true, revision, changedPaths: applied.changedPaths, built };
+  return { ok: true, changed: true, revision, changedPaths: applied.changedPaths, built, cleanupFindings };
 }

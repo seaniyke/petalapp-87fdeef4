@@ -177,11 +177,16 @@ export interface AppUiBlockResult {
  * Full app-UI block: product-craft commitments + locked palette/type +
  * the variant library. Mirrors `renderDesignTasteBlock` for app builds.
  */
-export function renderAppUiBlock(brief: string): AppUiBlockResult {
+export function renderAppUiBlock(
+  brief: string,
+  opts: { packageOwnsVisuals?: boolean } = {},
+): AppUiBlockResult {
   const pick = pickDesignForBrief(brief);
   const [bg, surface, accent, accentSoft] = pick.palette.colors;
 
-  const lockedBlock = `\n\n[LOCKED design tokens for this project — use verbatim]
+  const lockedBlock = opts.packageOwnsVisuals
+    ? `\n\n[COLOURS + TYPOGRAPHY] Owned by the SELECTED DESIGN SYSTEM above (tokens and font links installed by Kimble). Use only semantic classes (\`bg-background\`, \`text-foreground\`, \`bg-card\`, \`border-border\`, \`text-primary\`); derive chart series from the primary token. Never write your own palette or font links.\nArchetype tags: ${pick.archetypeTags.join(", ")}`
+    : `\n\n[LOCKED design tokens for this project — use verbatim]
 Palette: ${pick.palette.label} — ${pick.palette.vibe}
   app background / canvas : ${bg}
   panel / card surface    : ${surface}
@@ -198,7 +203,10 @@ Chart palette: derive 4-6 series colours from ${accent} and ${accentSoft} (vary 
 
 Archetype tags: ${pick.archetypeTags.join(", ")}`;
 
-  return { text: APP_TASTE_BODY + lockedBlock + renderAppUiLibraryBlock(), pick };
+  const body = opts.packageOwnsVisuals
+    ? APP_TASTE_BODY.replace("The locked palette below is the whole palette.", "The selected design system's palette is the whole palette.")
+    : APP_TASTE_BODY;
+  return { text: body + lockedBlock + renderAppUiLibraryBlock(), pick };
 }
 
 /**

@@ -25,12 +25,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import type { MemoryEntry } from "@/server/project-memory.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
-import {
-  THEMES,
-  pickThemeForBrief,
-  renderThemeTokensBlock,
-  type ThemeKey,
-} from "@/server/themes.server";
+import { resolveDefaultPackage } from "@/server/design-systems/authority";
 import {
   pickTemplateForBrief,
   renderTemplatePlanBlock,
@@ -157,8 +152,11 @@ export type DesignDirection = {
   fx_recipe?: FxRecipe;
   /** 2–4 concrete design moves to commit to (e.g. "asymmetric hero", "oversized numerals"). */
   design_moves: string[];
-  /** Hidden theme key — drives concrete oklch tokens. Never surfaced to the user. */
-  theme?: ThemeKey;
+  /**
+   * Legacy only: old records carry a theme key. Colours and fonts now come
+   * from the design system package; this field is ignored.
+   */
+  theme?: string;
   /** Hidden template key — drives the route + section plan. Never surfaced to the user. */
   template?: TemplateKey | null;
 };
@@ -235,11 +233,11 @@ function pickFxRecipe(brief: string, motion: MotionIntensity): FxRecipe {
 /** A category-specific floor for timeouts and unconfigured design models. */
 export function fallbackDesignDirection(brief: string, seed?: string): DesignDirection {
   const cleanBrief = (brief ?? "").trim();
-  const theme = pickThemeForBrief(cleanBrief, seed ?? cleanBrief);
+  const pkgFonts = resolveDefaultPackage()?.pkg.meta.fonts ?? [];
   const font = pickFontDefault(cleanBrief) ?? {
-    display: THEMES[theme].display_font,
-    body: THEMES[theme].body_font,
-    reason: "theme",
+    display: pkgFonts[0] ?? "system-ui",
+    body: pkgFonts[1] ?? pkgFonts[0] ?? "system-ui",
+    reason: "package",
   };
   const shape = classifyAppShape(cleanBrief);
   const appLike = ["fintech", "crypto", "saas", "internal-tool", "marketplace"].includes(
@@ -275,16 +273,15 @@ export function fallbackDesignDirection(brief: string, seed?: string): DesignDir
   const motion: MotionIntensity = shape.category === "restaurant" ? "expressive" : "subtle";
 
   return {
-    vibe: `${shape.category}-${theme}`,
+    vibe: `${shape.category}-direction`,
     rationale: `A category-specific ${shape.category} direction that foregrounds the product's real content and primary journey.`,
     display_font: font.display,
     body_font: font.body,
-    palette_mood: `${THEMES[theme].description} Use one saturated primary and one supporting hue with accessible contrast.`,
+    palette_mood: "Set by the selected design system package.",
     density: appLike ? "dense" : "balanced",
     motion,
     fx_recipe: pickFxRecipe(cleanBrief, motion),
     design_moves: designMoves,
-    theme,
     template: pickTemplateForBrief(cleanBrief, seed ?? cleanBrief),
   };
 }
@@ -387,18 +384,20 @@ const DIRECTOR_TOOL = {
  */
 export function renderDesignDirectionBlock(
   d: DesignDirection,
-  opts?: { detail?: "full" | "compact" },
+  opts?: { detail?: "full" | "compact"; packageOwnsVisuals?: boolean },
 ): string {
   const compact = opts?.detail === "compact";
+  const pkg = opts?.packageOwnsVisuals === true;
   const moves = d.design_moves.map((m) => `  - ${m}`).join("\n");
-  const themeBlock = !compact && d.theme ? renderThemeTokensBlock(d.theme) : "";
   const templateBlock = !compact && d.template ? renderTemplatePlanBlock(d.template) : "";
   if (compact) {
     return (
       `\n\n### Design Direction (already committed for this project — keep it)\n` +
       `- vibe: ${d.vibe}\n` +
-      `- typography: ${d.display_font} (display) + ${d.body_font} (body). Do not swap these.\n` +
-      `- palette mood: ${d.palette_mood}. Use the existing oklch tokens in src/styles.css; do not introduce new raw colors.\n` +
+      (pkg
+        ? `- colours & fonts: owned by the SELECTED DESIGN SYSTEM. Use its tokens; never add raw colours or font links.\n`
+        : `- typography: ${d.display_font} (display) + ${d.body_font} (body). Do not swap these.\n` +
+          `- palette mood: ${d.palette_mood}. Use the existing oklch tokens in src/styles.css; do not introduce new raw colors.\n`) +
       `- density: ${d.density}\n` +
       `- motion: ${d.motion}. Match the motion level already used on the page; do not add new motion primitives for a small edit.\n` +
       `- design moves to preserve:\n${moves}\n`
@@ -408,8 +407,10 @@ export function renderDesignDirectionBlock(
     `\n\n### Design Direction (committed before this build — execute it with conviction)\n` +
     `- vibe: ${d.vibe}\n` +
     `- rationale: ${d.rationale}\n` +
-    `- typography: ${d.display_font} (display) + ${d.body_font} (body). Load both via Google Fonts in index.html and set them on --font-sans / a display utility in src/styles.css. NEVER fall back to the default system stack.\n` +
-    `- palette mood: ${d.palette_mood}. Translate this into oklch tokens in src/styles.css (background, foreground, primary, accent, muted). DO NOT use stock purple gradients on white.\n` +
+    (pkg
+      ? `- colours & fonts: owned by the SELECTED DESIGN SYSTEM (tokens and font links are installed by Kimble). Do not write your own palette, :root colour values or font links.\n`
+      : `- typography: ${d.display_font} (display) + ${d.body_font} (body). Load both via Google Fonts in index.html and set them on --font-sans / a display utility in src/styles.css. NEVER fall back to the default system stack.\n` +
+        `- palette mood: ${d.palette_mood}. Translate this into oklch tokens in src/styles.css (background, foreground, primary, accent, muted). DO NOT use stock purple gradients on white.\n`) +
     `- density: ${d.density}\n` +
     `- motion: ${d.motion}\n` +
     `- motion primitives (\`@/components/motion\`): FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Magnetic, Tilt, Parallax, SplitText, CountUp, WordRotate, BlurFade. ` +
@@ -425,7 +426,6 @@ export function renderDesignDirectionBlock(
     `- FX catalog (\`@/components/fx\`) for reference: Backgrounds: GridPattern, DotPattern, RetroGrid, FlickeringGrid, AnimatedGridPattern, Ripple, NoiseTexture, LightRays, MeshGradient, Meteors, Particles, Sparkles. Text: AuroraText, GradientText, ShinyText. Containers: MagicCard, BorderBeam, GlowCard, BentoGrid + BentoCard, Marquee, InfiniteMovingCards, OrbitingCircles, HeroParallax, AnimatedBeam. Buttons: ShimmerButton, RainbowButton, ShinyButton. Stick to the recipe above — layer at most 2 FX per section. Restraint matters.\n` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
-    themeBlock +
     templateBlock
   );
 }
@@ -615,12 +615,9 @@ export async function pickDesignDirection(args: {
         parsed.body_font = fontDefault.body;
       }
     }
-    // Workstream C1: assign a hidden theme key from the brief if the
-    // model didn't pick one. Drives concrete oklch tokens via
-    // renderThemeTokensBlock().
-    if (!parsed.theme || !(parsed.theme in THEMES)) {
-      parsed.theme = pickThemeForBrief(trimmedBrief, designSeed);
-    }
+    // Colours and fonts belong to the design system package; any theme key
+    // the model returns is dropped.
+    delete parsed.theme;
     // Workstream C2: assign a hidden template key from the brief so the
     // builder model scaffolds the right routes/sections instead of
     // defaulting to a generic landing page.

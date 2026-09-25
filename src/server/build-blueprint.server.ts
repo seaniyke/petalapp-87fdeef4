@@ -49,7 +49,7 @@ export function makeBuildBlueprint(args: {
     sections: Array.from(new Set(sectionNames)).slice(0, 12),
     navigation: Array.from(new Set([...routes, ...navLabels])).slice(0, 12),
     designLanguage: args.designDirection
-      ? `${args.designDirection.vibe}; ${args.designDirection.display_font} + ${args.designDirection.body_font}; ${args.designDirection.palette_mood}`
+      ? `${args.designDirection.vibe}; colours and fonts from the selected design system`
       : "Use the committed design direction and semantic theme tokens.",
     backend: args.hasBackend ? "connected" : "none",
     files: args.files.map((f) => f.path).filter((p) => !p.startsWith("src/components/ui/")).slice(0, 40),
