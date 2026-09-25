@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.assign_economics_cohort() FROM PUBLIC, anon, authenticated;
