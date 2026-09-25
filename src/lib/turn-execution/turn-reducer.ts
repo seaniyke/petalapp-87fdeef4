@@ -216,7 +216,12 @@ function upsert(list: Activity[], a: Activity): Activity[] {
 
 /** Close whatever was "active" so exactly one thing is current. */
 function settle(list: Activity[], exceptKey?: string): Activity[] {
-  return list.map((a) => (a.status === "active" && a.key !== exceptKey ? { ...a, status: "done" } : a));
+  // Plan steps close only on their own step_status event — never implicitly.
+  return list.map((a) =>
+    a.status === "active" && a.key !== exceptKey && !(a.key.startsWith("step:") && !exceptKey?.startsWith("step:"))
+      ? { ...a, status: "done" }
+      : a,
+  );
 }
 
 function pushTech(g: GenState, line: string): string[] {
@@ -531,7 +536,8 @@ export function deriveView(s: TurnState): TurnView {
       else if (d.verification && !d.verification.ok) acts.push({ key: "verify", kind: "verify", status: "failed", label: "The live check found problems", tech: d.verification.defects.join("; ") });
     }
   }
-  const current = acts.find((a) => a.status === "active") ?? null;
+  const actives = acts.filter((a) => a.status === "active");
+  const current = [...actives].reverse().find((a) => !a.key.startsWith("step:")) ?? actives[actives.length - 1] ?? null;
   const completed = acts.filter((a) => a.status === "done");
   const failedSteps = acts.filter((a) => a.status === "failed");
 
