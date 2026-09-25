@@ -41,6 +41,9 @@ const BodySchema = z.object({
   changedPaths: z.array(z.string().min(1).max(500)).max(100).optional(),
   turnId: z.string().max(200).optional(),
   unitId: z.string().max(200).optional(),
+  /** Project code revision the caller committed. Optional; when given and
+   *  already superseded, no build is started (the newer revision builds). */
+  revision: z.number().int().positive().optional(),
 });
 
 async function authorize(request: Request): Promise<string | Response> {
@@ -110,35 +113,34 @@ export const Route = createFileRoute("/api/builds/trigger")({
           return Response.json({ error: "Not authorized to build this project" }, { status: 403 });
         }
 
-        // 2) Load files (admin client bypasses RLS — safe, we already authorized).
-        const { data: rawFiles, error: filesErr } = await supabaseAdmin
-          .from("project_files")
-          .select("path, content, updated_at")
-          .eq("project_id", projectId);
-        if (filesErr) {
-          return Response.json(
-            { error: `Could not load files: ${filesErr.message}` },
-            { status: 500 }
-          );
+        // 2) Load files together with the code revision they belong to
+        //    (admin client bypasses RLS — safe, we already authorized). The
+        //    build is labelled with exactly this revision, captured now.
+        const { readFilesAtRevision } = await import("@/server/project-revision.server");
+        const snap = await readFilesAtRevision(projectId);
+        if (!snap.ok) {
+          return Response.json({ error: `Could not load files: ${snap.error}` }, { status: 500 });
         }
-        const files = (rawFiles ?? []).map((r) => ({ path: r.path, content: r.content }));
+        const projectRevision = snap.revision;
+        if (parsed.data.revision !== undefined && parsed.data.revision !== projectRevision) {
+          console.info(`[revision] trigger skipped: requested revision ${parsed.data.revision} superseded by ${projectRevision} project=${projectId}`);
+          return Response.json({ superseded: true, revision: projectRevision, status: "pending" as const, buildId: project.latest_build_id ?? null });
+        }
+        const rawFiles = snap.files;
+        const files = rawFiles.map((r) => ({ path: r.path, content: r.content }));
         if (files.length === 0) {
           return Response.json({ error: "Project has no files to build" }, { status: 400 });
         }
 
-        // Idempotency boundary: one saved file revision gets one deployment.
-        // Multiple tabs, a reconnecting client, or duplicate result handlers
-        // can all call this endpoint for the same files. Reuse the latest
-        // active/successful build when it was created after the newest file
-        // write instead of creating another Railway job.
-        const newestFileWrite = Math.max(
-          0,
-          ...(rawFiles ?? []).map((row) => new Date(row.updated_at).getTime()),
-        );
+        // Idempotency boundary: one project code revision gets one
+        // deployment. Multiple tabs, a reconnecting client, or duplicate
+        // result handlers can all call this endpoint for the same revision.
+        // Reuse the latest active/successful build only when it was built
+        // from THIS revision (never inferred from timestamps).
         if (project.latest_build_id) {
           const { data: latest } = await supabaseAdmin
             .from("project_builds")
-            .select("id, status, created_at")
+            .select("id, status, created_at, project_revision")
             .eq("id", project.latest_build_id)
             .maybeSingle();
           const latestCreatedAt = latest ? new Date(latest.created_at).getTime() : 0;
@@ -148,12 +150,9 @@ export const Route = createFileRoute("/api/builds/trigger")({
           // project makes both compete for the one container and they time out
           // mid-verification. Reuse the running job; the next trigger (after it
           // settles) picks up any newer edits.
-          const justStarted = inFlight && Date.now() - latestCreatedAt < 120_000;
-          if (
-            latest &&
-            (inFlight || latest.status === "ready") &&
-            (justStarted || latestCreatedAt >= newestFileWrite)
-          ) {
+          const sameRevision = latest?.project_revision != null && Number(latest.project_revision) === projectRevision;
+          const justStarted = inFlight && sameRevision && Date.now() - latestCreatedAt < 120_000;
+          if (latest && (inFlight || latest.status === "ready") && (justStarted || sameRevision)) {
             return Response.json({
               buildId: latest.id,
               status: latest.status === "ready" ? "ready" as const : "pending" as const,
@@ -254,7 +253,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
         //    Railway, so a fast callback never races ahead of our own write.
         const { data: build, error: insertErr } = await supabaseAdmin
           .from("project_builds")
-          .insert({ project_id: projectId, status: "pending" })
+          .insert({ project_id: projectId, status: "pending", project_revision: projectRevision })
           .select("id")
           .single();
         if (insertErr || !build) {
