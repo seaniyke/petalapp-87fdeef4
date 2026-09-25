@@ -216,13 +216,14 @@ export async function generatePetalImage(
   const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(filename);
   // Remember it so the next build can reuse it instead of paying again.
   try {
-    const { rememberGeneratedPicture } = await import("./registry/generated-pictures.server");
+    const { rememberGeneratedPicture, imageDimensions } = await import("./registry/generated-pictures.server");
     await rememberGeneratedPicture({
       url: pub.publicUrl,
       prompt,
       cacheKey: key,
       aspectRatio: opts.aspectRatio ?? null,
       model: defaultImageModel(),
+      ...(imageDimensions(bytes) ?? {}),
       scope,
     });
   } catch {

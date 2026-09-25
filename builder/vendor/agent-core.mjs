@@ -85240,6 +85240,7 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -109607,20 +109608,32 @@ var init_pictures_server = __esm({
 // src/server/registry/generated-pictures.server.ts
 var generated_pictures_server_exports = {};
 __export(generated_pictures_server_exports, {
+  describePrompt: () => describePrompt,
   findRememberedPicture: () => findRememberedPicture,
+  imageDimensions: () => imageDimensions,
   orientationFor: () => orientationFor,
+  providerFor: () => providerFor,
+  rankRememberedPictures: () => rankRememberedPictures,
   rememberGeneratedPicture: () => rememberGeneratedPicture,
+  renderReusablePicturesBlock: () => renderReusablePicturesBlock,
+  scopeOf: () => scopeOf,
   tagsForPrompt: () => tagsForPrompt
 });
+function scopeOf(row, scope) {
+  if (row.shared) return "global";
+  if (scope?.projectId && row.project_id === scope.projectId) return "project";
+  if (scope?.ownerId && row.owner_id === scope.ownerId) return "user";
+  return null;
+}
 function asScorable(row) {
   return {
     id: row.id,
     url: row.url,
     subject: row.subject ?? "",
-    industry: null,
+    industry: row.industry ?? null,
     mood: row.mood,
-    tone: null,
-    colors: [],
+    tone: row.category ?? null,
+    colors: row.visual_traits ?? [],
     orientation: row.orientation ?? "",
     aspect_ratio: row.aspect_ratio ?? "",
     has_people: false,
@@ -109645,6 +109658,50 @@ function orientationFor(aspectRatio) {
       return "";
   }
 }
+function describePrompt(prompt) {
+  const p = String(prompt ?? "").toLowerCase();
+  const pick = (k) => VOCAB[k].find(([, re]) => re.test(p))?.[0] ?? null;
+  const traits = Array.from(new Set(p.match(TRAITS) ?? [])).slice(0, 8);
+  return { style: pick("style"), mood: pick("mood"), industry: pick("industry"), category: pick("category"), visual_traits: traits };
+}
+function imageDimensions(bytes2) {
+  try {
+    const b = bytes2;
+    if (b.length > 24 && b[0] === 137 && b[1] === 80) {
+      const w = b[16] << 24 | b[17] << 16 | b[18] << 8 | b[19];
+      const h = b[20] << 24 | b[21] << 16 | b[22] << 8 | b[23];
+      return { width: w >>> 0, height: h >>> 0 };
+    }
+    if (b[0] === 255 && b[1] === 216) {
+      let i = 2;
+      while (i + 9 < b.length) {
+        if (b[i] !== 255) return null;
+        const marker = b[i + 1];
+        const len = b[i + 2] << 8 | b[i + 3];
+        if (marker >= 192 && marker <= 207 && ![196, 200, 204].includes(marker)) {
+          return { height: b[i + 5] << 8 | b[i + 6], width: b[i + 7] << 8 | b[i + 8] };
+        }
+        i += 2 + len;
+      }
+      return null;
+    }
+    if (b.length > 30 && b[0] === 82 && b[8] === 87 && b[12] === 86) {
+      const kind = String.fromCharCode(b[12], b[13], b[14], b[15]);
+      if (kind === "VP8X") return { width: 1 + (b[24] | b[25] << 8 | b[26] << 16), height: 1 + (b[27] | b[28] << 8 | b[29] << 16) };
+      if (kind === "VP8 ") return { width: (b[26] | b[27] << 8) & 16383, height: (b[28] | b[29] << 8) & 16383 };
+      if (kind === "VP8L") {
+        const bits = b[21] | b[22] << 8 | b[23] << 16 | b[24] << 24;
+        return { width: (bits & 16383) + 1, height: (bits >> 14 & 16383) + 1 };
+      }
+    }
+  } catch {
+  }
+  return null;
+}
+function providerFor(model) {
+  const m = String(model ?? "");
+  return m.includes("/") ? m.split("/")[0] : m || null;
+}
 function tagsForPrompt(prompt) {
   return Array.from(new Set(tokenize(prompt))).slice(0, 12);
 }
@@ -109652,6 +109709,7 @@ async function rememberGeneratedPicture(row) {
   try {
     const prompt = String(row.prompt ?? "").slice(0, 2e3);
     if (!row.url || !prompt) return;
+    const d = describePrompt(prompt);
     await supabaseAdmin.from("generated_pictures").upsert(
       {
         url: row.url,
@@ -109662,6 +109720,14 @@ async function rememberGeneratedPicture(row) {
         aspect_ratio: row.aspectRatio ?? "",
         orientation: orientationFor(row.aspectRatio),
         model: row.model ?? null,
+        provider: providerFor(row.model),
+        style: d.style,
+        mood: d.mood,
+        industry: d.industry,
+        category: d.category,
+        visual_traits: d.visual_traits,
+        width: row.width ?? null,
+        height: row.height ?? null,
         project_id: row.scope?.projectId ?? null,
         owner_id: row.scope?.ownerId ?? null,
         turn_id: row.scope?.turnId ?? null
@@ -109672,8 +109738,12 @@ async function rememberGeneratedPicture(row) {
   }
 }
 async function findRememberedPicture(query) {
+  const ranked = await rankRememberedPictures(query, 1);
+  return ranked[0]?.row ?? null;
+}
+async function rankRememberedPictures(query, limit = 5) {
   const words2 = tokenize(query.request);
-  if (!words2.length) return null;
+  if (!words2.length) return [];
   const projectId = query.scope?.projectId ?? null;
   const ownerId = query.scope?.ownerId ?? null;
   const rows = [];
@@ -109697,31 +109767,76 @@ async function findRememberedPicture(query) {
       add(proj.data);
     }
   } catch {
-    return null;
+    return [];
   }
-  if (!rows.length) return null;
+  if (!rows.length) return [];
   const briefTags = (query.briefTags ?? []).map((t) => String(t).toLowerCase());
-  let best = null;
-  let bestScore = 0;
+  const out = [];
   for (const row of rows) {
-    const visible = row.shared === true || !!ownerId && row.owner_id === ownerId || !!projectId && row.project_id === projectId;
+    const visible = scopeOf(row, { projectId, ownerId });
     if (!visible) continue;
     const score = scorePicture(asScorable(row), words2, briefTags, query.aspectRatio);
-    if (score > bestScore) {
-      bestScore = score;
-      best = row;
-    }
+    if (score >= MIN_SCORE) out.push({ row, score, scope: visible });
   }
-  return bestScore >= MIN_SCORE ? best : null;
+  out.sort((a2, b) => b.score - a2.score);
+  return out.slice(0, limit);
 }
-var COLUMNS;
+async function renderReusablePicturesBlock(query) {
+  try {
+    const ranked = await rankRememberedPictures(query, query.limit ?? 5);
+    if (!ranked.length) return "";
+    const lines = ranked.map(({ row }) => {
+      const shape2 = row.width && row.height ? `${row.width}x${row.height}` : row.aspect_ratio || row.orientation || "";
+      const bits = [row.category, row.mood, shape2].filter(Boolean).join(", ");
+      return `- ${row.url} \u2014 ${row.subject.slice(0, 90)}${bits ? ` (${bits})` : ""}`;
+    });
+    return "\n\n## Pictures you already have\nThese were made for this project or its owner earlier. When one fits, use its URL directly instead of a new petal-image:// placeholder:\n" + lines.join("\n") + "\n";
+  } catch {
+    return "";
+  }
+}
+var COLUMNS, VOCAB, TRAITS;
 var init_generated_pictures_server = __esm({
   "src/server/registry/generated-pictures.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
     init_pictures_server();
-    COLUMNS = "id,url,subject,style,mood,tags,aspect_ratio,orientation,shared,project_id,owner_id";
+    COLUMNS = "id,url,subject,style,mood,tags,aspect_ratio,orientation,shared,project_id,owner_id,category,industry,visual_traits,width,height";
+    VOCAB = {
+      style: [
+        ["illustration", /\b(illustrat|vector|flat art|cartoon)/],
+        ["3d render", /\b(3d|render|isometric)\b/],
+        ["minimal", /\b(minimal|minimalist|clean)\b/],
+        ["photography", /\b(photo|photograph|shot|portrait|interior|landscape|close-?up|lifestyle)/]
+      ],
+      mood: [
+        ["warm", /\b(warm|cozy|cosy|golden|sunset|inviting)\b/],
+        ["dark", /\b(dark|moody|night|noir)\b/],
+        ["bright", /\b(bright|airy|sunny|light-filled|fresh)\b/],
+        ["calm", /\b(calm|serene|peaceful|tranquil|soft)\b/],
+        ["energetic", /\b(energetic|vibrant|bold|dynamic)\b/],
+        ["luxury", /\b(luxury|luxurious|elegant|premium)\b/]
+      ],
+      industry: [
+        ["food & drink", /\b(coffee|cafe|restaurant|bakery|food|dish|bar|kitchen|chef|menu)\b/],
+        ["fitness", /\b(gym|fitness|yoga|workout|athlete)\b/],
+        ["real estate", /\b(house|home|apartment|property|real estate|villa)\b/],
+        ["travel", /\b(travel|hotel|resort|beach|vacation|airbnb)\b/],
+        ["technology", /\b(tech|software|saas|dashboard|laptop|code|startup)\b/],
+        ["health", /\b(clinic|doctor|health|medical|dental|wellness)\b/],
+        ["fashion & beauty", /\b(fashion|clothing|salon|beauty|model|boutique)\b/],
+        ["finance", /\b(finance|bank|money|invest|fintech|crypto)\b/]
+      ],
+      category: [
+        ["people", /\b(person|people|woman|man|team|customer|portrait|smiling)\b/],
+        ["product", /\b(product|bottle|package|device|packshot)\b/],
+        ["place", /\b(interior|exterior|room|storefront|office|street|building|space)\b/],
+        ["nature", /\b(nature|forest|mountain|ocean|sea|garden|sky)\b/],
+        ["food", /\b(dish|plate|meal|pastry|bread|coffee cup|latte|dessert)\b/],
+        ["abstract", /\b(abstract|pattern|texture|gradient)\b/]
+      ]
+    };
+    TRAITS = /\b(red|orange|yellow|green|blue|purple|pink|black|white|gold|golden|neutral|pastel|monochrome|colou?rful|natural light|soft light|studio light|shallow depth|wide angle|aerial|close-?up|overhead)\b/g;
   }
 });
 
@@ -110532,6 +110647,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -138710,6 +138826,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -139629,6 +139746,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -143662,6 +143780,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -149657,7 +149776,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -160970,13 +161088,14 @@ async function generatePetalImage(opts) {
   if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
   const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(filename);
   try {
-    const { rememberGeneratedPicture: rememberGeneratedPicture2 } = await Promise.resolve().then(() => (init_generated_pictures_server(), generated_pictures_server_exports));
+    const { rememberGeneratedPicture: rememberGeneratedPicture2, imageDimensions: imageDimensions2 } = await Promise.resolve().then(() => (init_generated_pictures_server(), generated_pictures_server_exports));
     await rememberGeneratedPicture2({
       url: pub.publicUrl,
       prompt,
       cacheKey: key,
       aspectRatio: opts.aspectRatio ?? null,
       model: defaultImageModel(),
+      ...imageDimensions2(bytes2) ?? {},
       scope
     });
   } catch {
@@ -169631,7 +169750,12 @@ When in doubt use "replace" \u2014 ast-patch is a power tool, not a default. kee
   const designBlock = (designDirection ? renderDesignDirectionBlock(designDirection, {
     detail: isStructuralTurn ? "full" : "compact"
   }) : "") + // Composition guidance only matters while new surface is being built.
-  (isStructuralTurn ? await renderCategoryCompositionBlock(lastUserContent || "") : "") + renderStatedIntentBlock(statedIntent);
+  (isStructuralTurn ? await renderCategoryCompositionBlock(lastUserContent || "") : "") + renderStatedIntentBlock(statedIntent) + // Pictures already made for this project/owner (or admin-shared): a few
+  // compact lines so the AI reuses instead of asking for a new one.
+  (isStructuralTurn || /\b(image|photo|picture|hero|gallery|banner)\b/i.test(lastUserContent || "") ? await (await Promise.resolve().then(() => (init_generated_pictures_server(), generated_pictures_server_exports))).renderReusablePicturesBlock({
+    request: lastUserContent || "",
+    scope: { projectId: body.projectId ?? null, ownerId: userId ?? null }
+  }).catch(() => "") : "");
   let picBlock = "";
   let picContext = null;
   if (process.env.PETAL_PIC_DISABLED !== "1") {
