@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWallet } from "@/hooks/use-wallet";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,6 +57,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
   /** Credit breakdown + usage stay collapsed; the balance is the headline. */
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [cryptoPackOpen, setCryptoPackOpen] = useState(false);
+  const [customMajor, setCustomMajor] = useState("");
   const topupRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -97,11 +100,25 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ purpose: "pack", itemCode, currency, returnUrl }),
+        body: JSON.stringify({
+          purpose: "pack",
+          itemCode,
+          currency,
+          returnUrl,
+          ...(itemCode === CUSTOM
+            ? { customAmountMinor: Math.round(Number(customMajor) * 100) }
+            : {}),
+        }),
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || "Could not start checkout");
+        let msg = text;
+        try {
+          msg = (JSON.parse(text) as { error?: string }).error ?? text;
+        } catch {
+          /* plain text */
+        }
+        throw new Error(msg || "Could not start checkout");
       }
       const json = (await res.json()) as { authorizationUrl?: string };
       if (!json.authorizationUrl) throw new Error("No checkout URL returned");
@@ -256,6 +273,8 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
               busyKey={busyKey}
               disabled={!user}
               onBuy={startCheckout}
+              customMajor={customMajor}
+              onCustomMajor={setCustomMajor}
             />
 
             <div className="mt-3">
@@ -268,6 +287,28 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
               </button>
               {cryptoPackOpen &&
                 (() => {
+                  if (selectedPackCode === CUSTOM) {
+                    const rate = currency === "USD" ? 1 : Number(activeCurrency?.usd_rate ?? 0);
+                    const usd = rate > 0 ? Math.floor((Number(customMajor) * 100) / rate) : 0;
+                    if (usd < MIN_USD_CENTS) {
+                      return (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Enter at least $3 above to pay with crypto.
+                        </p>
+                      );
+                    }
+                    return (
+                      <div className="mt-3">
+                        <CryptoCheckoutPanel
+                          purpose="pack"
+                          itemCode={CUSTOM}
+                          itemLabel={`$${(usd / 100).toFixed(2)} of credits`}
+                          usdCents={usd}
+                          customUsdCents={usd}
+                        />
+                      </div>
+                    );
+                  }
                   const pack = packs.find((x) => x.code === selectedPackCode) ?? packs[0];
                   if (!pack) return null;
                   return (
@@ -387,6 +428,12 @@ function CreditRow({
   );
 }
 
+const CUSTOM = "custom";
+/** Mirrors the server floor (min_purchase_usd_cents). Server is authoritative. */
+const MIN_USD_CENTS = 300;
+/** Mirrors credit_retail_usd_cents for the live preview. Server is authoritative. */
+const RETAIL_USD_CENTS_PER_CREDIT = 15;
+
 function TopupPicker({
   packs,
   selectedCode,
@@ -398,6 +445,8 @@ function TopupPicker({
   busyKey,
   disabled,
   onBuy,
+  customMajor,
+  onCustomMajor,
 }: {
   packs: CreditPack[];
   selectedCode: string | null;
@@ -409,110 +458,103 @@ function TopupPicker({
   busyKey: string | null;
   disabled: boolean;
   onBuy: (code: string) => void;
+  customMajor: string;
+  onCustomMajor: (v: string) => void;
 }) {
-  const selected =
-    packs.find((p) => p.code === selectedCode) ?? packs[1] ?? packs[0] ?? null;
-  const selConv =
-    selected && activeCurrency
+  const fmtUsd = (cents: number) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
+  const priceOf = (pack: CreditPack) => {
+    const conv = activeCurrency
       ? convertPrice({
           itemKind: "pack",
-          itemCode: selected.code,
-          usdCents: selected.price_cents,
+          itemCode: pack.code,
+          usdCents: pack.price_cents,
           currency,
           currencies,
           overrides,
         })
       : null;
-  const busy = selected ? busyKey === `pack:${selected.code}` : false;
-  const perCredit = selected ? selected.price_cents / 100 / Number(selected.credits) : 0;
+    return conv && activeCurrency ? formatMoney(conv.amountMinor, activeCurrency) : fmtUsd(pack.price_cents);
+  };
 
-  const fmtUsd = (cents: number) =>
-    `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
-
-  // Three simple choices, most popular in the middle and pre-selected.
-  const choices = packs.slice(0, 3);
-  const popularCode = choices[1]?.code ?? choices[0]?.code ?? null;
-  const active = selectedCode ?? popularCode;
+  const isCustom = selectedCode === CUSTOM;
+  const selected = isCustom ? null : packs.find((p) => p.code === selectedCode) ?? packs[0] ?? null;
+  const rate = currency === "USD" ? 1 : Number(activeCurrency?.usd_rate ?? 0);
+  const symbol = activeCurrency?.symbol ?? "$";
+  const amount = Number(customMajor);
+  const customUsdCents = rate > 0 && amount > 0 ? Math.floor((amount * 100) / rate) : 0;
+  const customCredits = Math.floor((customUsdCents / RETAIL_USD_CENTS_PER_CREDIT) * 100) / 100;
+  const minLocal = rate > 0 ? Math.ceil((MIN_USD_CENTS / 100) * rate) : 3;
+  const belowMin = customUsdCents < MIN_USD_CENTS;
+  const busy = isCustom ? busyKey === `pack:${CUSTOM}` : selected ? busyKey === `pack:${selected.code}` : false;
 
   return (
     <div className="space-y-3">
-      {choices.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {choices.map((pack) => {
-            const conv = activeCurrency
-              ? convertPrice({
-                  itemKind: "pack",
-                  itemCode: pack.code,
-                  usdCents: pack.price_cents,
-                  currency,
-                  currencies,
-                  overrides,
-                })
-              : null;
-            const priceLabel =
-              conv && activeCurrency
-                ? formatMoney(conv.amountMinor, activeCurrency)
-                : fmtUsd(pack.price_cents);
-            const isActive = pack.code === active;
-            const isPopular = pack.code === popularCode;
-            return (
-              <button
-                key={pack.code}
-                type="button"
-                onClick={() => onSelect(pack.code)}
-                className={`relative rounded-2xl border p-3 text-center transition ${
-                  isActive
-                    ? "border-primary bg-primary/5"
-                    : "border-border/60 hover:border-foreground/30"
-                }`}
-              >
-                {isPopular && (
-                  <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-bold text-background">
-                    Popular
-                  </span>
-                )}
-                <p className="text-sm font-bold tabular-nums">{priceLabel}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
-                  {Number(pack.credits)} credits
-                </p>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <Select value={isCustom ? CUSTOM : selected?.code ?? undefined} onValueChange={onSelect}>
+        <SelectTrigger className="h-11 rounded-xl">
+          <SelectValue placeholder="Choose credits" />
+        </SelectTrigger>
+        <SelectContent>
+          {packs.map((pack) => (
+            <SelectItem key={pack.code} value={pack.code}>
+              {Number(pack.credits).toLocaleString()} credits — {priceOf(pack)}
+            </SelectItem>
+          ))}
+          <SelectItem value={CUSTOM}>Custom amount</SelectItem>
+        </SelectContent>
+      </Select>
 
-      {selected && (
+      {isCustom ? (
         <div className="rounded-2xl border border-border/60 p-4">
-          <div className="flex items-baseline justify-between">
-            <p className="text-sm font-medium">{Number(selected.credits)} credits</p>
-            <p className="text-lg font-semibold tabular-nums">
-              {selConv && activeCurrency
-                ? formatMoney(selConv.amountMinor, activeCurrency)
-                : fmtUsd(selected.price_cents)}
-            </p>
+          <label className="text-xs font-medium text-muted-foreground" htmlFor="custom-credit-amount">
+            Amount ({currency})
+          </label>
+          <div className="relative mt-1.5">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              {symbol}
+            </span>
+            <Input
+              id="custom-credit-amount"
+              inputMode="decimal"
+              type="number"
+              min={0}
+              step="any"
+              value={customMajor}
+              onChange={(e) => onCustomMajor(e.target.value)}
+              placeholder={String(minLocal)}
+              className="h-11 rounded-xl pl-10 tabular-nums"
+            />
           </div>
-          {selConv?.source === "override" && (
-            <p className="mt-1 text-[11px] text-emerald-600 dark:text-emerald-400">
-              · local price
-            </p>
-          )}
+          <p className="mt-2 text-xs text-muted-foreground">
+            {amount > 0 && !belowMin
+              ? `You get about ${customCredits.toLocaleString()} credits`
+              : `Minimum ${symbol}${minLocal.toLocaleString()}${currency === "USD" ? "" : " ($3)"}`}
+          </p>
           <Button
             size="sm"
-            disabled={disabled || busy}
+            disabled={disabled || busy || belowMin}
             className="mt-3 w-full"
-            onClick={() => onBuy(selected.code)}
+            onClick={() => onBuy(CUSTOM)}
           >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              `Top up ${
-                selConv && activeCurrency
-                  ? formatMoney(selConv.amountMinor, activeCurrency)
-                  : fmtUsd(selected.price_cents)
-              }`
-            )}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Buy ${symbol}${amount > 0 ? amount.toLocaleString() : 0}`}
           </Button>
         </div>
+      ) : (
+        selected && (
+          <div className="rounded-2xl border border-border/60 p-4">
+            <div className="flex items-baseline justify-between">
+              <p className="text-sm font-medium">{Number(selected.credits).toLocaleString()} credits</p>
+              <p className="text-lg font-semibold tabular-nums">{priceOf(selected)}</p>
+            </div>
+            <Button
+              size="sm"
+              disabled={disabled || busy}
+              className="mt-3 w-full"
+              onClick={() => onBuy(selected.code)}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : `Top up ${priceOf(selected)}`}
+            </Button>
+          </div>
+        )
       )}
     </div>
   );
