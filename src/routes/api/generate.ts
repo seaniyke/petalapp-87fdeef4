@@ -1919,6 +1919,20 @@ async function runFinalParseGuard(
   }
 
   if (!report.ok) {
+    const validatorFailure = report.issues.find((i) => i.kind === "validator-unavailable");
+    if (validatorFailure) {
+      console.error(`[preemit-gate] validation unavailable — refusing to classify or quarantine files: ${validatorFailure.detail}`);
+      controller.enqueue(
+        encoder.encode(sse({
+          type: "timeline",
+          step: "esbuild_parse",
+          outcome: "failed",
+          message: "Code validation was unavailable — build stopped safely",
+          ts: Date.now(),
+        })),
+      );
+      return { ok: false, detail: validatorFailure.detail };
+    }
     // Salvage before surrender. Observed on a real build: two of eight files
     // came back truncated (an unterminated string, unbalanced braces), the
     // repair rounds made no progress, and the ENTIRE turn was rolled back —
@@ -4277,6 +4291,9 @@ Forbidden defaults
                 const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
                 const { isTruncationDetail } = await import("@/server/engine/build-state");
                 const verdict = await verifyFilesEsbuild([file], [file.path]);
+                if (verdict.status === "unavailable") {
+                  throw new Error(`Authoritative code validation unavailable: ${verdict.unavailableDetail ?? verdict.unavailableReason ?? "unknown error"}`);
+                }
                 return verdict.issues.some((i) => isTruncationDetail(i.message));
               },
               request: async (instruction: string) => {
@@ -5390,6 +5407,9 @@ Forbidden defaults
                 });
               },
             });
+            if (gate.validationFailure) {
+              throw new Error(`Authoritative code validation unavailable: ${gate.validationFailure}`);
+            }
             nextFiles = gate.files;
             if (gate.repairedPaths?.length || gate.repairFailedPaths?.length) {
               console.info(
@@ -5715,6 +5735,16 @@ Forbidden defaults
         for (const ev of localOut.emit) {
           controller.enqueue(encoder.encode(sse(ev)));
         }
+        if (localOut.validationFailure) {
+          controller.enqueue(encoder.encode(sse({
+            type: "timeline",
+            step: "esbuild_parse",
+            outcome: "failed",
+            message: "Code parser unavailable — validation stopped",
+            ts: Date.now(),
+          })));
+          throw new Error(`Authoritative code validation unavailable: ${localOut.validationFailure}`);
+        }
         recorder.record({
           tier: "local_verify",
           outcome: localVerdict.ok ? "ok" : "failed",
@@ -5863,6 +5893,11 @@ Forbidden defaults
             })),
           },
         });
+        if (esbuildVerdict.status === "unavailable") {
+          throw new Error(
+            `Authoritative code validation unavailable: ${esbuildVerdict.unavailableDetail ?? esbuildVerdict.unavailableReason ?? "initialization error"}`,
+          );
+        }
 
         // Tier 2.8 — render-risk linter (Phase 5).
         // Soft-warn only: feeds findings into combinedAutofixIssues so

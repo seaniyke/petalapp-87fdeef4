@@ -12,10 +12,8 @@
  * produce noise here ("can't resolve @/components/ui/button") because
  * esbuild has no knowledge of our virtual file map.
  *
- * Failure mode policy: if esbuild itself errors out (cold-start wasm
- * init failure, OOM, etc.), we LOG and return ok=true. We never fail a
- * build that would have otherwise passed because of an infra hiccup in
- * our verifier.
+ * Failure mode policy: initialization failure is an explicit unavailable
+ * verdict. Callers must stop safely: unknown is neither clean nor broken.
  */
 import * as esbuild from "esbuild-wasm";
 
@@ -28,14 +26,17 @@ export type EsbuildIssue = {
 };
 
 export type EsbuildVerdict = {
+  status: "passed" | "failed" | "unavailable" | "not_checked";
   ok: boolean;
   issues: EsbuildIssue[];
   /**
-   * Paths this pass actually parsed. Empty when the pass was skipped (init
-   * failure, nothing changed), which callers must treat as "no verdict" —
+   * Paths this pass actually parsed. Empty when unavailable/not checked,
+   * which callers must treat as "no verdict" —
    * NOT as "everything parsed fine".
    */
   checkedPaths: string[];
+  unavailableReason?: "initialization_error";
+  unavailableDetail?: string;
 };
 
 const SCANNABLE = /\.(tsx?|jsx?)$/;
@@ -90,13 +91,26 @@ export async function verifyFilesEsbuild(
   const targets = files.filter(
     (f) => changed.has(f.path) && !shouldSkip(f.path, options.includeScaffoldOwned === true),
   );
-  if (targets.length === 0) return { ok: true, issues: [], checkedPaths: [] };
+  if (targets.length === 0) return { status: "not_checked", ok: true, issues: [], checkedPaths: [] };
 
   try {
     await ensureInit();
   } catch (err) {
-    console.warn("[esbuild-verifier] init failed, skipping pass:", err);
-    return { ok: true, issues: [], checkedPaths: [] };
+    const detail = (err as Error)?.message ?? String(err);
+    console.error("[esbuild-verifier] unavailable:", {
+      validator: "esbuild",
+      status: "unavailable",
+      reason: "initialization_error",
+      detail,
+    });
+    return {
+      status: "unavailable",
+      ok: false,
+      issues: [],
+      checkedPaths: [],
+      unavailableReason: "initialization_error",
+      unavailableDetail: detail,
+    };
   }
 
   const issues: EsbuildIssue[] = [];
@@ -141,5 +155,10 @@ export async function verifyFilesEsbuild(
     }),
   );
 
-  return { ok: issues.length === 0, issues, checkedPaths: targets.map((f) => f.path) };
+  return {
+    status: issues.length === 0 ? "passed" : "failed",
+    ok: issues.length === 0,
+    issues,
+    checkedPaths: targets.map((f) => f.path),
+  };
 }

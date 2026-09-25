@@ -38,6 +38,7 @@ function setVerifiers(opts: {
   esbuildCheckedPaths?: string[];
 }) {
   vi.mocked(verifyFilesEsbuild).mockResolvedValue({
+    status: (opts.esbuild ?? []).length === 0 ? "passed" : "failed",
     ok: (opts.esbuild ?? []).length === 0,
     issues: (opts.esbuild ?? []).map((i) => ({ ...i, kind: "parse" as const })),
     // Default: no parser verdict, so heuristic syntax issues stay blocking.
@@ -105,12 +106,13 @@ describe("issue collection", () => {
     expect(issues.map((i) => i.source).sort()).toEqual(["esbuild", "local", "render-risk"]);
   });
 
-  it("survives a verifier that throws instead of losing the other verdicts", async () => {
+  it("turns an unexpected parser error into a blocking infrastructure state", async () => {
     setVerifiers({ local: [{ path: "src/App.tsx", kind: "braces", detail: "unbalanced" }] });
     vi.mocked(verifyFilesEsbuild).mockRejectedValue(new Error("wasm init failed"));
     const issues = await collectGateIssues(files, changed);
-    expect(issues).toHaveLength(1);
-    expect(issues[0].source).toBe("local");
+    expect(issues).toHaveLength(2);
+    expect(issues.some((i) => i.kind === "validator-unavailable" && i.source === "esbuild")).toBe(true);
+    expect(issues.some((i) => i.source === "local")).toBe(true);
   });
 });
 
@@ -158,5 +160,22 @@ describe("parser beats heuristics", () => {
     });
     const issues = await collectGateIssues(files, changed);
     expect(issues).toHaveLength(1);
+  });
+
+  it("reports parser unavailability explicitly instead of a clean verdict", async () => {
+    setVerifiers({});
+    vi.mocked(verifyFilesEsbuild).mockResolvedValue({
+      status: "unavailable",
+      ok: false,
+      issues: [],
+      checkedPaths: [],
+      unavailableReason: "initialization_error",
+      unavailableDetail: "runtime missing",
+    });
+    const { report } = await runPreEmitGate(files, changed);
+    expect(report.ok).toBe(false);
+    expect(report.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "validator-unavailable", source: "esbuild" }),
+    ]));
   });
 });
