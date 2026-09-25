@@ -52,6 +52,7 @@ import {
   readPersistedTurn,
   bumpTurnSeq,
 } from "@/lib/turn-persistence";
+import { reconcileAuthoritativeTurn } from "@/lib/turn-reconcile";
 import {
   persistPendingPlan,
   clearPendingPlan,
