@@ -2112,6 +2112,8 @@ async function handleGenerateRequestCore(
    * the final files against THIS, never by trusting the model's prose.
    */
   const kitSyncedPaths = new Set<string>();
+  /** True only once this turn's change passed every gate and is being committed. */
+  let turnCommittedForMemory = false;
   const turnBaselineFiles = currentFiles;
 
   /**
@@ -2894,6 +2896,13 @@ Forbidden defaults
   const changeSetBlock = isInitial
     ? ""
     : `${renderChangeSetBlock(turnChangeSet)}${kitTargetGuidance(turnChangeSet, currentFiles)}`;
+  // Deterministic App Map from the CURRENT files (never memory). The writer
+  // and every repair in this turn see the same facts: router, entry, routes,
+  // pages, shared layout, navigation.
+  const { buildAppMap, renderAppMapBlock, appMapFacts } = await import("@/server/engine/app-map");
+  const turnAppMap = isInitial ? null : buildAppMap(currentFiles);
+  const appMapBlock = turnAppMap ? renderAppMapBlock(turnAppMap) : "";
+  const appMapRepairBlock = turnAppMap ? renderAppMapBlock(turnAppMap, 900).trim() : "";
   if (turnChangeSet.items.length > 1) {
     console.info(
       `[change-set] ${turnChangeSet.items.length} requested change(s), ${turnChangeSet.preserve.length} preservation rule(s)`,
@@ -3171,7 +3180,7 @@ Forbidden defaults
       ? ""
       : `\n\nEditable app file manifest (all app-owned files Kimble may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${budget.omitted} lower-priority files omitted for speed. Some large files are shown as the regions around the lines that matter, with the untouched ranges marked — quote only bytes you can actually see. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${budget.files
           .map((f) => `--- ${f.path} ---\n${f.content}`)
-          .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
+          .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}${appMapBlock}`;
   const filesContext = renderFilesContext(promptBudget);
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
 
@@ -3997,6 +4006,9 @@ Forbidden defaults
         );
         // THE bounded recovery table for this turn (engine/recovery-policy).
         const recovery = new RecoveryBudget();
+        recovery.setTurn({ request: lastUserContent, targets: resolvedTargetPaths });
+        const turnContextFor = (path: string | null): string =>
+          [recovery.summarize(path), appMapRepairBlock].filter(Boolean).join("\n\n");
         try {
           // A stalled provider's partial output is never trusted: resend the
           // original request to a different upstream instead.
@@ -4030,6 +4042,16 @@ Forbidden defaults
           let lastErr: unknown = e;
           while (recovery.take("provider_failure")) {
             attempts++;
+            recovery.record({
+              kind: "provider_failure",
+              stage: "generation",
+              path: null,
+              reason: lastErr instanceof Error ? lastErr.message : "invalid structured response",
+              action: providerFailed
+                ? "resent the original request to another provider (partial output discarded)"
+                : "resent the original request with more room",
+              upstream: lastFailedUpstream,
+            });
             const retry = await structuredRetryCompletion({
               messages: finalMessages,
               isInitial,
@@ -5138,11 +5160,19 @@ Forbidden defaults
                 // the file and demanding a single `update` op with the
                 // COMPLETE new contents. Full-file rewrite of ONE file is
                 // the easiest thing for the model to get right.
+                const rewriteAttempt = recovery.record({
+                  kind: "apply_failure",
+                  stage: "apply",
+                  path,
+                  reason: failure.error,
+                  action: "one-file rewrite against the current bytes",
+                });
                 const rewriteMessages = [
                   ...finalMessages,
                   {
                     role: "user" as const,
                     content:
+                      `${turnContextFor(path)}\n\n` +
                       `Your previous edit to ${path} could not be applied: ${failure.error}\n\n` +
                       `Current contents of ${path} (authoritative — your replace snippet did not match these bytes):\n` +
                       `--- ${path} ---\n${currentContent.slice(0, 24_000)}${currentContent.length > 24_000 ? "\n/* ...trimmed... */" : ""}\n--- end ---\n\n` +
@@ -5190,12 +5220,18 @@ Forbidden defaults
                     (op) => op.path === path && !isProtectedPath(op.path),
                   );
                   if (ops.length === 0) {
+                    recovery.resolve(rewriteAttempt, "kept_previous");
                     console.info(`[generate] per-file rewrite for ${path} returned no ops — accepting`);
                     continue;
                   }
                   // Apply each op against the in-progress `patched` map.
                   const stepResult = applyOpsPartial(patched, ops);
                   patched = stepResult.files;
+                  recovery.resolve(
+                    rewriteAttempt,
+                    stepResult.applied.length > 0 ? "fixed" : "failed",
+                    stepResult.applied.length > 0 ? patched.find((f) => f.path === path)?.content : null,
+                  );
                   if (stepResult.applied.length > 0) {
                     rewrittenPaths.push(path);
                     controller.enqueue(
@@ -5426,18 +5462,32 @@ Forbidden defaults
                 );
                 // One shared per-file budget for every repair in this turn.
                 if (!recovery.take("broken_file", file.path)) return null;
+                const turnContext = turnContextFor(file.path);
+                const n = recovery.record({
+                  kind: "broken_file",
+                  stage: "validation",
+                  path: file.path,
+                  reason: detail,
+                  action: "compile repair of this file only (write gate)",
+                });
                 const { repairBrokenFile } = await import("@/server/engine/repair");
-                return repairBrokenFile(file, detail, {
+                const out = await repairBrokenFile(file, detail, {
                   turnId: logicalTurnId,
                   projectId: body.projectId ?? null,
                   userId,
+                  turnContext,
                 });
+                if (!out) recovery.resolve(n, "kept_previous");
+                else recovery.resolve(n, "pending", out);
+                return out;
               },
             });
             if (gate.validationFailure) {
               throw new Error(`Authoritative code validation unavailable: ${gate.validationFailure}`);
             }
             nextFiles = gate.files;
+            for (const p of gate.repairedPaths ?? []) recovery.resolvePath(p, "fixed");
+            for (const p of gate.repairFailedPaths ?? []) recovery.resolvePath(p, "kept_previous");
             if (gate.repairedPaths?.length || gate.repairFailedPaths?.length) {
               console.info(
                 `[write-gate] ai-repair repaired=${JSON.stringify(gate.repairedPaths ?? [])} failed=${JSON.stringify(gate.repairFailedPaths ?? [])}`,
@@ -6002,7 +6052,11 @@ Forbidden defaults
         try {
           const imageTargetPaths = isInitial
             ? undefined
-            : diffChangedPaths(turnBaselineFiles, nextFiles);
+            : diffChangedPaths(turnBaselineFiles, nextFiles).filter(
+                // Kimble's own building-block refresh is housekeeping, not
+                // this request: never make pictures for files nobody edited.
+                (p) => !kitSyncedPaths.has(p),
+              );
           const imageTargetSet = imageTargetPaths ? new Set(imageTargetPaths) : null;
           const hasPlaceholders = nextFiles.some(
             (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://"),
@@ -6084,8 +6138,18 @@ Forbidden defaults
             // Build-server logs aren't retained — record the exact reason on
             // the wire so a failed final check can be diagnosed afterwards.
             controller.enqueue(encoder.encode(sse({ type: "timeline", step: "esbuild_parse", outcome: "failed", message: `Final check on ${file.path}: ${detail}`.slice(0, 500), ts: Date.now() })));
+            const turnContext = turnContextFor(file.path);
+            const n = recovery.record({
+              kind: "broken_file",
+              stage: "validation",
+              path: file.path,
+              reason: detail,
+              action: "compile repair of this file only (final check)",
+            });
             const { repairBrokenFile } = await import("@/server/engine/repair");
-            return repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId });
+            const out = await repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext });
+            recovery.resolve(n, out ? "pending" : "kept_previous", out);
+            return out;
           },
         );
 
@@ -6576,6 +6640,32 @@ Forbidden defaults
         {
           const turnChanged = turnChangedPaths;
           const { providersExhaustedForTurn } = await import("@/server/turn-context.server");
+          turnCommittedForMemory = scopeMissing.length === 0;
+          // One inspectable record per edit turn: why each file changed and
+          // why anything was considered broken — no guessing afterwards.
+          if (!isInitial) {
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  type: "timeline",
+                  step: "edit_record",
+                  outcome: scopeMissing.length === 0 ? "fixed" : "failed",
+                  message: `Edit record: ${turnChanged.length} file(s) changed, ${recovery.history().length} recovery attempt(s)`,
+                  record: {
+                    request: lastUserContent.slice(0, 400),
+                    intent: editClassification?.scope ?? null,
+                    scope: resolvedTargetPaths,
+                    filesRead: contextFiles.map((f) => f.path).slice(0, 40),
+                    filesChanged: turnChanged.slice(0, 40),
+                    housekeeping: [...kitSyncedPaths].slice(0, 40),
+                    appMap: turnAppMap ? appMapFacts(turnAppMap) : null,
+                    recovery: recovery.history(),
+                  },
+                  ts: Date.now(),
+                }),
+              ),
+            );
+          }
           emitTurnOutcome(controller, encoder, scopeMissing.length > 0
             ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing", ...(providersExhaustedForTurn() ? { cause: "providers_exhausted" } : {}) }
             : {
@@ -6637,7 +6727,8 @@ Forbidden defaults
         // turn ends, so if this worker dies right after responding, the
         // turn-resume cron replays it and the turn is never forgotten.
         // Failures are logged inside; never block the reply or the build.
-        if (body.projectId && userJwt) {
+        // Notes are written only for a change that was actually kept.
+        if (body.projectId && userJwt && turnCommittedForMemory) {
           void savePendingMemory(logicalTurnId, {
             userMessage: lastUserContent,
             assistantSummary: summary,
