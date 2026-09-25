@@ -2937,13 +2937,56 @@ function Builder() {
           throw new PipelineError(streamError, streamErrorKind ?? "unknown", streamErrorRaw);
         }
         if (!resultFiles) {
-          // The stream closed cleanly but never delivered a result: the model
-          // hung or the connection dropped mid-turn. This was the top failure
-          // signature in the daily digest ("No result returned.") precisely
-          // because it threw a bare Error — no `kind`, so no friendly card, no
-          // retry affordance, and telemetry couldn't tell it apart from a
-          // genuine crash. Classify it as what it is so the user gets the
-          // timeout card with a retry button.
+          // The stream closed without delivering a result frame. That frame is
+          // TRANSPORT, not truth: a locked phone or a radio switch loses it for
+          // turns the server already committed. So ask the database what really
+          // happened before ever showing a failure.
+          setLatestCycleProgress("Connection interrupted — checking your build status…");
+          setActivityVisible(true);
+          const verdict = await reconcileAuthoritativeTurn(proj.id, turnToken.turnId);
+          if (verdict.state === "SUCCEEDED" || verdict.state === "BUILDING") {
+            // Committed server-side. Rehydrate from the source of truth; never
+            // resend, never charge twice, never show an error.
+            try {
+              const [fs, ms] = await Promise.all([
+                loadProjectFiles(proj.id),
+                loadProjectMessages(proj.id),
+              ]);
+              if (projectIdRef.current !== proj.id) return;
+              setFiles(fs);
+              setMessages(ms);
+            } catch {
+              /* the reply still lands on reload */
+            }
+            setStreamingAssistant("");
+            setStreamingPlan("");
+            setStreamingRecap("");
+            clearPersistedTurnId(proj.id);
+            if (verdict.state === "BUILDING") {
+              setPhases((p) => advanceTo(p, "deploying"));
+              setLatestCycleProgress("Finishing the build…");
+            } else {
+              setLatestCycleProgress(undefined);
+              setActivityVisible(false);
+            }
+            return;
+          }
+          if (verdict.state === "RUNNING" || verdict.state === "WAITING_FOR_USER") {
+            // Still alive on the server — stay in the working state and let the
+            // resume watcher reattach.
+            setAwaitingSilentResume(true);
+            setLatestCycleProgress("Still working — Kimble is finishing this off.");
+            return;
+          }
+          if (verdict.state === "FAILED" || verdict.state === "ABORTED") {
+            throw new PipelineError(
+              verdict.errorMessage?.trim() ||
+                "Kimble couldn't finish this one. Nothing was saved.",
+              "unknown",
+              "reconciled terminal failure from turns row",
+            );
+          }
+          // Genuinely unknown (no turn row, or the lookup itself failed).
           throw new PipelineError(
             "The model stopped responding before it finished this turn.",
             "upstream_timeout",
