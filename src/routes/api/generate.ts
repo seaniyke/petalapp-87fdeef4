@@ -2664,7 +2664,7 @@ Forbidden defaults
   // the persisted value first, so edits retain density, motion, FX recipe and
   // concrete design moves instead of degrading to the blueprint's one-line
   // visual summary.
-  const designDirection = userJwt
+  const rawDesignDirection = userJwt
     ? await pickDesignDirection({
         jwt: userJwt,
         projectId: body.projectId,
@@ -2672,6 +2672,9 @@ Forbidden defaults
         memoryEntries,
       })
     : null;
+  // The person's own words outrank anything auto-picked, on every turn.
+  const statedIntent = readStatedDesignIntent(lastUserContent || "");
+  const designDirection = applyStatedIntent(rawDesignDirection, statedIntent);
   // Structural = anything that changes product shape: the first build, a
   // cross-cutting request, or a new page/feature. Computed once here and
   // reused by both the design block and PIC so they agree on how much
@@ -2681,6 +2684,7 @@ Forbidden defaults
     /\b(redesign|re-?design|rebuild|new (page|screen|feature|section)|add (a )?(page|dashboard|auth|login|payment|checkout)|entire (site|website|app)|whole (site|app))\b/i.test(
       lastUserContent || "",
     );
+
   const designBlock = designDirection
     ? renderDesignDirectionBlock(designDirection, {
         detail: isStructuralTurn ? "full" : "compact",
