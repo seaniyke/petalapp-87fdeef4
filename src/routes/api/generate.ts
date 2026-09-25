@@ -6785,6 +6785,20 @@ Forbidden defaults
               missingScope: scopeMissing.length,
             });
           }
+          // Verification pipeline — source gates (syntax, dependencies, routes).
+          // Build and browser gates are added by the build callback. The record
+          // names the first failing gate; UNAVAILABLE/UNKNOWN never count as FAIL.
+          const { runSourceGates, finalizeVerification } = await import("@/server/verification/gates");
+          const sourceVerification = finalizeVerification(
+            runSourceGates({
+              files: nextFiles,
+              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
+              esbuild: esbuildVerdict,
+            }),
+          );
+          console.info(
+            `[verification] ${sourceVerification.gates.map((g) => `${g.gate}=${g.verdict}`).join(" ")} status=${sourceVerification.status}${sourceVerification.failedGate ? ` failed=${sourceVerification.failedGate}: ${sourceVerification.reason}` : ""}`,
+          );
           // One inspectable record per edit turn: why each file changed and
           // why anything was considered broken — no guessing afterwards.
           if (!isInitial) {
@@ -6802,6 +6816,7 @@ Forbidden defaults
                     mode: turnClassification.mode,
                     protectedAreas: executionScope.protectedAreas.slice(0, 20),
                     protectedTouched: turnChanged.filter((p) => executionScope.isProtected(p)),
+                    verification: sourceVerification,
                     filesRead: contextFiles.map((f) => f.path).slice(0, 40),
                     filesChanged: turnChanged.slice(0, 40),
                     housekeeping: [...kitSyncedPaths].slice(0, 40),
