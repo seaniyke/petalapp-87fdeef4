@@ -36,6 +36,7 @@ import {
 } from "@/lib/billing";
 import { toast } from "sonner";
 import { CryptoCheckoutPanel } from "@/components/CryptoCheckoutPanel";
+import { RecentPurchases } from "@/components/RecentPurchases";
 import { fetchCreditUsage, formatCredits, type CreditUsage } from "@/lib/credit-usage";
 import { fetchProjectUsage, formatUsdCents, type ProjectUsageRow } from "@/lib/runtime-wallet";
 
@@ -325,6 +326,8 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
             </div>
           </section>
 
+          <Separator />
+          <RecentPurchases open={open} />
         </div>
       </SheetContent>
     </Sheet>

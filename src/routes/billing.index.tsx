@@ -111,8 +111,9 @@ function usd(cents: number) {
 }
 
 function purposeLabel(item: HistoryItem) {
-  if (item.purpose === "plan") return "Legacy payment";
-  if (item.purpose === "pack") return `Credit pack · ${item.itemCode}`;
+  if (item.purpose === "plan") return "Earlier payment";
+  if (item.purpose === "pack")
+    return item.itemCode === "custom" ? "Custom credits" : `Credit pack · ${item.itemCode}`;
   if (item.purpose === "runtime_topup") return "Cloud + AI top-up";
   return item.itemCode || item.purpose;
 }
