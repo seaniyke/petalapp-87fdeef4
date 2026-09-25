@@ -6318,6 +6318,19 @@ Forbidden defaults
           // to these instead of throwing the whole turn away.
           currentFiles,
           async (file, detail) => {
+            // Circuit breaker owns "is this worth another attempt"; the
+            // recovery budget owns "how many attempts this mechanism gets".
+            const verdict = breaker.recordFailure({
+              category: classifyFailure(detail),
+              tool: "final_parse_guard",
+              path: file.path,
+              message: detail,
+            });
+            breakerGuidance = verdict.guidance;
+            if (verdict.tripped) {
+              console.warn(`[circuit-breaker] ${JSON.stringify(breaker.snapshot())}`);
+              return null;
+            }
             if (!recovery.take("broken_file", file.path)) return null;
             controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })));
             // Build-server logs aren't retained — record the exact reason on
@@ -6334,6 +6347,10 @@ Forbidden defaults
             const { repairBrokenFile } = await import("@/server/engine/repair");
             const out = await repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext });
             recovery.resolve(n, out ? "pending" : "kept_previous", out);
+            if (out) {
+              breaker.recordProgress("file_repaired", file.path);
+              breakerGuidance = null;
+            }
             return out;
           },
         );
