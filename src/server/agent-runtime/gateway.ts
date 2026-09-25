@@ -104,10 +104,17 @@ export function createGatewayAgentIO(send: SendOps): AgentIO {
       await one(send, { op: "blueprint.save", columns, blueprint });
     },
     async generateImage(opts) {
-      const r = await one(send, { op: "images.generate", ...opts });
+      // Ownership is decided by the app from the turn, not sent from here.
+      const r = await one(send, {
+        op: "images.generate",
+        prompt: opts.prompt,
+        aspectRatio: opts.aspectRatio,
+        cacheKey: opts.cacheKey,
+      });
       if (!r.ok) throw new Error(r.error);
       return r.data as { url: string; cached: boolean };
     },
+
   };
 }
 
