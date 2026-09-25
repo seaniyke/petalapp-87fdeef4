@@ -94,7 +94,7 @@ import {
   renderPreservationBlock,
   makeProtectedGlobMatcher,
 } from "@/server/preservation-rules";
-import { pickDesignDirection, renderDesignDirectionBlock } from "@/server/design-director.server";
+import { pickDesignDirection, readDirectionFromMemory, renderDesignDirectionBlock } from "@/server/design-director.server";
 import {
   applyStatedIntent,
   readStatedDesignIntent,
@@ -2671,14 +2671,35 @@ async function handleGenerateRequestCore(
   // the persisted value first, so edits retain density, motion, FX recipe and
   // concrete design moves instead of degrading to the blueprint's one-line
   // visual summary.
-  stage("pre_design", "Choosing a design direction…", "designing");
+  // Classify EARLY (deterministic, no AI call) so a repair turn never runs
+  // the first-build stages below. A runtime-error repair must not re-pick a
+  // design direction, re-map the product, or present "Choosing a design
+  // direction" to the user — it reads the failing code and fixes exactly
+  // that. The same classification is reused for execution scope later.
+  const { classifyRequest } = await import("@/server/execution");
+  const turnClassification = classifyRequest(lastUserContent || "", { isInitial });
+  const isRepairTurn =
+    turnClassification.operation === "repair" ||
+    Boolean(body.isAutoFix) ||
+    Boolean(body.isInternalRepair);
+
+  // Repair turns reuse the COMMITTED design direction read-only (no model
+  // call, no re-selection). Other turns pick as before — the picker itself
+  // short-circuits to the persisted direction when one exists.
+  stage(
+    "pre_design",
+    isRepairTurn ? "Reading the failing code…" : "Choosing a design direction…",
+    isRepairTurn ? undefined : "designing",
+  );
   const rawDesignDirection = userJwt
-    ? await pickDesignDirection({
-        jwt: userJwt,
-        projectId: body.projectId,
-        brief: lastUserContent,
-        memoryEntries,
-      })
+    ? isRepairTurn
+      ? readDirectionFromMemory(memoryEntries)
+      : await pickDesignDirection({
+          jwt: userJwt,
+          projectId: body.projectId,
+          brief: lastUserContent,
+          memoryEntries,
+        })
     : null;
   // The person's own words outrank anything auto-picked, on every turn.
   const statedIntent = readStatedDesignIntent(lastUserContent || "");
@@ -2688,10 +2709,11 @@ async function handleGenerateRequestCore(
   // reused by both the design block and PIC so they agree on how much
   // context this turn actually needs.
   const isStructuralTurn =
-    isInitial ||
-    /\b(redesign|re-?design|rebuild|new (page|screen|feature|section)|add (a )?(page|dashboard|auth|login|payment|checkout)|entire (site|website|app)|whole (site|app))\b/i.test(
-      lastUserContent || "",
-    );
+    !isRepairTurn &&
+    (isInitial ||
+      /\b(redesign|re-?design|rebuild|new (page|screen|feature|section)|add (a )?(page|dashboard|auth|login|payment|checkout)|entire (site|website|app)|whole (site|app))\b/i.test(
+        lastUserContent || "",
+      ));
 
   const renderDirection = (packageOwnsVisuals: boolean) =>
     designDirection
@@ -2860,8 +2882,9 @@ async function handleGenerateRequestCore(
   // that no keyword list will ever match.
   // ONE classification for this request (operation, mode, edit size,
   // dimensions, cross-cutting). Deterministic; no AI classifier call.
-  const { classifyRequest, buildExecutionScope, renderScopeBlock } = await import("@/server/execution");
-  const turnClassification = classifyRequest(lastUserContent || "", { isInitial });
+  const { buildExecutionScope, renderScopeBlock } = await import("@/server/execution");
+  // turnClassification was computed once before the design stage (a repair
+  // turn must be known before first-build stages run) — reuse it here.
   const editClassification = turnClassification.edit;
   if (editClassification) {
     console.info(
