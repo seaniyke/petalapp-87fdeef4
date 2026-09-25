@@ -45,8 +45,10 @@ export function EnableBackendFromCloudDialog({
   onEnabled,
 }: Props) {
   const { user } = useAuth();
-  const { plan } = useWallet();
-  const isPaidPlan = !!plan && plan.code !== "free";
+  const { wallet } = useWallet();
+  // Credits unlock everything — a legacy plan or any purchased credits count.
+  const isPaidPlan = hasFullAccess(wallet);
+
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
