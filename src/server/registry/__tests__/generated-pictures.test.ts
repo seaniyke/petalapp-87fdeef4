@@ -259,3 +259,91 @@ describe("design intent — composition, and no change to anything else", () => 
     spy.mockRestore();
   });
 });
+
+import {
+  describePrompt,
+  imageDimensions,
+  providerFor,
+  rankRememberedPictures,
+  renderReusablePicturesBlock,
+  scopeOf,
+} from "../generated-pictures.server";
+
+describe("asset library — metadata", () => {
+  it("records category, industry, style, mood, traits, size and provider", async () => {
+    from.mockImplementation(selectResult(() => []));
+    await rememberGeneratedPicture({
+      url: "https://x/cafe2.png",
+      prompt: "warm cozy coffee shop interior photo, golden natural light",
+      aspectRatio: "16:9",
+      model: "google/gemini-image",
+      width: 1600,
+      height: 900,
+      scope: { projectId: "p1", ownerId: "u1" },
+    });
+    expect(upserts[0]).toMatchObject({
+      industry: "food & drink",
+      category: "place",
+      style: "photography",
+      mood: "warm",
+      provider: "google",
+      width: 1600,
+      height: 900,
+      project_id: "p1",
+    });
+    expect(upserts[0].visual_traits as string[]).toContain("natural light");
+  });
+
+  it("describes prompts without guessing when nothing matches", () => {
+    expect(describePrompt("xyz")).toMatchObject({ style: null, mood: null, industry: null, category: null });
+  });
+
+  it("reads PNG and JPEG sizes from the file header", () => {
+    const png = new Uint8Array(32);
+    png.set([0x89, 0x50, 0x4e, 0x47], 0);
+    png.set([0, 0, 4, 0], 16);
+    png.set([0, 0, 2, 0], 20);
+    expect(imageDimensions(png)).toEqual({ width: 1024, height: 512 });
+    const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xc0, 0, 17, 8, 0x01, 0x2c, 0x01, 0x90, 0, 0]);
+    expect(imageDimensions(jpg)).toEqual({ width: 400, height: 300 });
+    expect(imageDimensions(new Uint8Array([1, 2, 3]))).toBeNull();
+  });
+
+  it("names the provider from the model", () => {
+    expect(providerFor("openai/gpt-image")).toBe("openai");
+    expect(providerFor(null)).toBeNull();
+  });
+});
+
+describe("asset library — scopes and project association", () => {
+  it("labels global, project and user scope", () => {
+    expect(scopeOf({ ...CAFE, shared: true } as never)).toBe("global");
+    expect(scopeOf(CAFE as never, { projectId: "p1" })).toBe("project");
+    expect(scopeOf(CAFE as never, { projectId: "p2", ownerId: "u1" })).toBe("user");
+    expect(scopeOf(CAFE as never, { projectId: "p2", ownerId: "u2" })).toBeNull();
+  });
+
+  it("ranks only strong in-scope matches", async () => {
+    const other = { ...CAFE, id: "b", url: "https://x/other.png", owner_id: "u2", project_id: "p2" };
+    from.mockImplementation(selectResult(() => [CAFE, other]));
+    const ranked = await rankRememberedPictures({ request: "coffee shop interior warm light", scope: { projectId: "p1", ownerId: "u1" } });
+    expect(ranked.map((r) => r.row.id)).toEqual(["a"]);
+    expect(ranked[0].scope).toBe("project");
+  });
+});
+
+describe("asset library — compact AI context", () => {
+  it("lists a few relevant pictures with their URLs", async () => {
+    from.mockImplementation(selectResult(() => [CAFE]));
+    const block = await renderReusablePicturesBlock({ request: "coffee shop interior warm", scope: { projectId: "p1" } });
+    expect(block).toContain(CAFE.url as string);
+    expect(block.split("\n").filter((l) => l.startsWith("- ")).length).toBeLessThanOrEqual(5);
+  });
+
+  it("is empty when nothing relevant or the lookup fails", async () => {
+    from.mockImplementation(selectResult(() => [CAFE]));
+    expect(await renderReusablePicturesBlock({ request: "mountain range dusk", scope: { projectId: "p1" } })).toBe("");
+    from.mockImplementation(() => { throw new Error("down"); });
+    expect(await renderReusablePicturesBlock({ request: "coffee shop", scope: { projectId: "p1" } })).toBe("");
+  });
+});
