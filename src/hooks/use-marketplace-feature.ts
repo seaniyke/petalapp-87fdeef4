@@ -1,12 +1,4 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-
-type MarketplaceRpcClient = {
-  rpc: (name: "marketplace_is_enabled") => Promise<{
-    data: boolean | null;
-    error: { message: string } | null;
-  }>;
-};
 
 export function useMarketplaceFeature(): { enabled: boolean; loading: boolean } {
   const [enabled, setEnabled] = useState(false);
@@ -14,10 +6,13 @@ export function useMarketplaceFeature(): { enabled: boolean; loading: boolean } 
 
   useEffect(() => {
     let cancelled = false;
-    (supabase as unknown as MarketplaceRpcClient)
-      .rpc("marketplace_is_enabled")
-      .then(({ data, error }) => {
-        if (!cancelled) setEnabled(!error && data === true);
+    fetch("/api/public/marketplace-feature", { headers: { Accept: "application/json" } })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Feature status unavailable");
+        return response.json() as Promise<{ enabled?: boolean }>;
+      })
+      .then((data) => {
+        if (!cancelled) setEnabled(data.enabled === true);
       })
       .catch(() => {
         if (!cancelled) setEnabled(false);
