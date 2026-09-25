@@ -6,6 +6,7 @@ import { StartIdeasPanel } from "@/components/StartIdeasPanel";
 import { ComposerModePicker, type ComposerMode } from "@/components/ComposerModePicker";
 import { IdeaCoach } from "@/components/IdeaCoach";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
+import { useMarketplaceFeature } from "@/hooks/use-marketplace-feature";
 
 import type { BuildTargetId } from "@/lib/build-targets";
 
@@ -89,6 +90,7 @@ const samplePrompts = [
 const DRAFT_KEY = "petal:landing:draft";
 
 function Landing() {
+  const { enabled: marketplaceEnabled } = useMarketplaceFeature();
   const { focus: focusParam } = Route.useSearch();
   const [prompt, setPrompt] = useState("");
   const [animatedPlaceholder, setAnimatedPlaceholder] = useState("");
@@ -1047,7 +1049,7 @@ function Landing() {
                   </h3>
                   <ul className="space-y-2.5 text-muted-foreground">
                     <li><Link to="/gallery" className="transition-colors hover:text-foreground">Gallery</Link></li>
-                    <li><Link to="/marketplace" className="transition-colors hover:text-foreground">Marketplace</Link></li>
+                    {marketplaceEnabled && <li><Link to="/marketplace" className="transition-colors hover:text-foreground">Marketplace</Link></li>}
                     <li><Link to="/changelog" className="transition-colors hover:text-foreground">What's new</Link></li>
                     <li><Link to="/docs" className="transition-colors hover:text-foreground">Docs</Link></li>
                   </ul>

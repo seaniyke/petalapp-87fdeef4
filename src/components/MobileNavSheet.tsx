@@ -34,9 +34,10 @@ type Props = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onOpenBilling: () => void;
+  marketplaceEnabled: boolean;
 };
 
-export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
+export function MobileNavSheet({ open, onOpenChange, onOpenBilling, marketplaceEnabled }: Props) {
   const { user, isReady, signOut } = useAuth();
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
@@ -78,12 +79,14 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
               icon={<ImageIcon className="h-4 w-4" />}
               label="Gallery"
             />
-            <RowLink
-              to="/marketplace"
-              onClick={close}
-              icon={<Store className="h-4 w-4" />}
-              label="Marketplace"
-            />
+            {marketplaceEnabled && (
+              <RowLink
+                to="/marketplace"
+                onClick={close}
+                icon={<Store className="h-4 w-4" />}
+                label="Marketplace"
+              />
+            )}
           </Section>
 
           {isReady && user && (

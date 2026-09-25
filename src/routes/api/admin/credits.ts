@@ -983,6 +983,36 @@ export const Route = createFileRoute("/api/admin/credits")({
             return Response.json({ ok: true, enabled });
           }
 
+          if (body.action === "feature_settings") {
+            const { data, error } = await supabaseAdmin
+              .from("system_settings")
+              .select("value")
+              .eq("key", "features.marketplace")
+              .maybeSingle();
+            if (error) return Response.json({ error: error.message }, { status: 500 });
+            return Response.json({ marketplace: data?.value === true });
+          }
+
+          if (body.action === "feature_toggle") {
+            if (body.feature !== "marketplace") {
+              return Response.json({ error: "Unknown feature" }, { status: 400 });
+            }
+            const enabled = body.enabled === true;
+            const { error } = await supabaseAdmin
+              .from("system_settings")
+              .upsert(
+                {
+                  key: "features.marketplace",
+                  value: enabled as never,
+                  description: "Controls whether Kimble Marketplace is available on customer-facing surfaces.",
+                  updated_by: adminId,
+                } as never,
+                { onConflict: "key" },
+              );
+            if (error) return Response.json({ error: error.message }, { status: 500 });
+            return Response.json({ ok: true, enabled });
+          }
+
           if (body.action === "waitlist_list") {
             const page = Math.max(0, Number(body.page ?? 0) | 0);
             const pageSize = Math.min(200, Math.max(1, Number(body.page_size ?? 50) | 0));
