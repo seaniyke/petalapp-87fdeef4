@@ -138,6 +138,14 @@ type Props = {
   onSuggest?: (prompt: string) => void;
   /** False when the preview is already on screen. */
   showPreviewAction?: boolean;
+  /** Called with the finished result so it can be saved across refreshes. */
+  onResultSnapshot?: (snap: {
+    credits: number | null;
+    files: number;
+    pictures: number;
+    seconds: number;
+    summary: string | null;
+  }) => void;
 };
 
 export function BuildActivityCard({
@@ -174,6 +182,7 @@ export function BuildActivityCard({
   suggestions,
   onSuggest,
   showPreviewAction = true,
+  onResultSnapshot,
 }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
@@ -378,6 +387,20 @@ export function BuildActivityCard({
     ? Object.values(fileChanges).filter((change) => change.kind !== "unchanged").length
     : 0;
   const fileCount = changedFileCount || writtenPaths?.length || filesWritten || 0;
+
+  // Hand the finished result up so the page can keep showing it after a refresh.
+  const pictureCount = imageUrls.length;
+  useEffect(() => {
+    if (!isComplete || !onResultSnapshot) return;
+    onResultSnapshot({
+      credits: creditsCharged ?? null,
+      files: fileCount,
+      pictures: pictureCount,
+      seconds: elapsed,
+      summary: resultSummary ?? null,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isComplete, creditsCharged, fileCount, pictureCount, elapsed, resultSummary]);
   const costLabel =
     typeof creditsCharged === "number"
       ? creditsCharged === 0
