@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { codegenProviderRouting, resolveProviderRouting } from "@/server/engine/provider-policy";
 import { describeIncomplete, incompleteBuildMessage, neutraliseSuccessClaims } from "@/server/engine/build-state";
 import { frameIsComplete, pageInstruction, projectContract, writePlannedPages } from "@/server/engine/write";
@@ -86,6 +86,17 @@ describe("page writer contract", () => {
 });
 
 describe("cleanup can never break a file", () => {
+  // The real parser (esbuild-wasm) compiles its WASM module once per test
+  // worker. Under the full parallel suite that one-time start-up alone can
+  // take several seconds, and it was being charged to whichever assertion
+  // happened to call the parser first. Start it here so the assertions below
+  // measure clean-up behaviour only. A failed start-up still fails loudly.
+  beforeAll(async () => {
+    const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
+    const v = await verifyFilesEsbuild([{ path: "src/warm.tsx", content: "export default function W(){return null}" }], ["src/warm.tsx"]);
+    expect(v.status).toBe("passed");
+  }, 30_000);
+
   it("reverts a file that parsed before cleanup and fails after", async () => {
     const before = [f("src/pages/Home.tsx", "export default function Home(){return null}")];
     const after = [f("src/pages/Home.tsx", "export default function Home(){return null}}")];
