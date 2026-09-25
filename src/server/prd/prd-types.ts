@@ -142,6 +142,13 @@ export interface Prd {
   acceptance: PrdAcceptanceCriterion[];
   outOfScope: string[];
 
+  /**
+   * Every requirement the user named, with evidence-derived status and
+   * dependencies. Optional so older persisted PRDs still load; derived from
+   * the stored source prompt when absent. See `prd-requirements.ts`.
+   */
+  requirements?: import("./prd-requirements").PrdRequirement[];
+
   /** Provenance — how much of this came from rules vs the model. */
   source: "deterministic" | "model" | "hybrid";
   /** 0–1. Below 0.35 the caller may choose to ask a clarifying question. */
