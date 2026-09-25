@@ -10,10 +10,11 @@
  * same state. Nothing here invents activity: every line is a deterministic
  * translation of a real backend event or a real build-row snapshot.
  *
- * Deduplication is by authoritative `seq` (replay) and by arrival ordinal
- * (live, which the server records in the same order it emits). A replay from
- * seq 0 rebuilds the derived state from scratch, so a live stream followed by
- * a full replay never double-counts. Lifecycle is DERIVED, never stored, and
+ * Deduplication is by authoritative `seq` for replayed events. Live events
+ * carry no seq; a replay from seq 0 rebuilds the derived state from the
+ * durable log, so a live stream followed by a full replay never
+ * double-counts. Per-item keys (file path, check step, picture URL) make
+ * repeated application idempotent. Lifecycle is DERIVED, never stored, and
  * its inputs only ever move forward — a late event cannot make READY look
  * like BUILDING again.
  */

@@ -3,6 +3,12 @@ import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.server";
 
 type Handlers = {
+  /** Every parsed event, live or replayed, before typed dispatch. Feeds the
+   *  single turn reducer so live and replay produce identical state. */
+  onRawEvent?: (
+    event: { type: string; seq?: number } & Record<string, unknown>,
+    source: "live" | "replay",
+  ) => void;
   /** Durable server sequence number, available on resumed events. */
   onEventSeq?: (seq: number) => void;
   onStatus?: (message: string) => void;
@@ -275,6 +281,7 @@ export async function streamGenerate(
         } catch {
           continue;
         }
+        handlers.onRawEvent?.(evt as unknown as { type: string } & Record<string, unknown>, "live");
         switch (evt.type) {
           case "status":
             handlers.onStatus?.(evt.message);
@@ -525,6 +532,7 @@ export async function streamResumeTurn(
         } catch {
           continue;
         }
+        handlers.onRawEvent?.(evt, "replay");
         if (typeof evt.seq === "number") handlers.onEventSeq?.(evt.seq);
         // Resume-only meta events that aren't part of StreamEvent.
         if (evt.type === "resume_start" || evt.type === "resume_timeout") continue;
