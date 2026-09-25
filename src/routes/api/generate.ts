@@ -6647,10 +6647,9 @@ Forbidden defaults
             controller.enqueue(
               encoder.encode(
                 sse({
-                  type: "timeline",
-                  step: "edit_record",
-                  outcome: scopeMissing.length === 0 ? "fixed" : "failed",
-                  message: `Edit record: ${turnChanged.length} file(s) changed, ${recovery.history().length} recovery attempt(s)`,
+                  // Stored with the turn for diagnosis; the client ignores it.
+                  type: "edit_record",
+                  outcome: scopeMissing.length === 0 ? "committed" : "not_committed",
                   record: {
                     request: lastUserContent.slice(0, 400),
                     intent: editClassification?.scope ?? null,
@@ -6661,8 +6660,7 @@ Forbidden defaults
                     appMap: turnAppMap ? appMapFacts(turnAppMap) : null,
                     recovery: recovery.history(),
                   },
-                  ts: Date.now(),
-                }),
+                } as never),
               ),
             );
           }
