@@ -191,7 +191,7 @@ describe("legacy palette list cannot reach a package-backed project", () => {
   it("no preset hex or preset font name appears in package-backed visual instructions", async () => {
     const design = await newProjectDesign();
     const briefs = ["a bakery site", "a fintech saas", "a luxury restaurant", "a wellness studio", "a crm dashboard"];
-    const pkgFonts = new Set(getDesignSystem(SLUG)!.design.fonts.map((f: { family?: string; name?: string } | string) => (typeof f === "string" ? f : (f.family ?? f.name ?? ""))));
+    const pkgFonts = new Set(getDesignSystem(SLUG)!.meta.fonts);
     const presetFonts = FONT_PAIRS.flatMap((p) => [p.display, p.body]).filter((f) => !pkgFonts.has(f) && f !== "Inter");
     const presetHex = PALETTES.flatMap((p) => p.colors.map((c) => c.toLowerCase()));
     for (const brief of briefs) {
