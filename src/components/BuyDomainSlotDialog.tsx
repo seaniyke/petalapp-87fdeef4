@@ -102,10 +102,33 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Credit price for the pick, quoted with the same rate the server uses.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchCreditRate()
+      .then((rate) => {
+        if (!cancelled) setUsdCentsPerCredit(rate);
+      })
+      .catch(() => {
+        /* keep the default rate */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   const selectedCurrency = useMemo(
     () => currencies.find((c) => c.code === currency) ?? null,
     [currencies, currency],
   );
+
+  const selectedCredits =
+    selected && selected.priceCents != null
+      ? creditsForUsdCents(selected.priceCents, usdCentsPerCredit)
+      : 0;
+  const canAffordSelected = selectedCredits > 0 && creditBalance >= selectedCredits;
+
 
   async function handleSearch(e?: React.FormEvent) {
     e?.preventDefault();
