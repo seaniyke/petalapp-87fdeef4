@@ -113,7 +113,7 @@ export const Route = createFileRoute("/api/discuss")({
         if (!reservation.ok) {
           if (reservation.reason === "insufficient_credits") {
             return new Response(
-              "You're out of credits. Add credits in Settings → Plans & Credits to keep going.",
+              "You're out of credits. Add credits in Settings → Credits to keep going.",
               { status: 402 },
             );
           }

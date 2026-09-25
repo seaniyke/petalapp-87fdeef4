@@ -94,7 +94,7 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling }: Props) {
                   onOpenBilling();
                 }}
                 icon={<CreditCard className="h-4 w-4" />}
-                label="Plans & credits"
+                label="Credits"
               />
               <RowLink
                 to="/profile"

@@ -180,7 +180,7 @@ export function SiteHeader() {
                       <FolderOpen className="mr-2 h-4 w-4" /> My projects
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setBillingOpen(true)}>
-                      <CreditCard className="mr-2 h-4 w-4" /> Plans &amp; credits
+                      <CreditCard className="mr-2 h-4 w-4" /> Credits
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}>
                       <UserIcon className="mr-2 h-4 w-4" /> Profile

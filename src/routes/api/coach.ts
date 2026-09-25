@@ -76,7 +76,7 @@ export const Route = createFileRoute("/api/coach")({
         if (!reservation.ok) {
           if (reservation.reason === "insufficient_credits") {
             return new Response(
-              "Coach needs ½ credit to keep going. Top up in Settings → Plans & Credits.",
+              "Coach needs ½ credit to keep going. Top up in Settings → Credits.",
               { status: 402 },
             );
           }
