@@ -39,7 +39,11 @@ export type GenerateImageOptions = {
   aspectRatio?: "1:1" | "16:9" | "4:3" | "3:4" | "9:16";
   /** Optional cache key — same key returns the same URL. */
   cacheKey?: string;
+  /** Who this picture belongs to. Set server-side only: it decides which
+   *  remembered pictures may be reused and who owns the new one. */
+  scope?: { projectId?: string | null; ownerId?: string | null; turnId?: string | null };
 };
+
 
 export type GenerateImageResult = {
   url: string;
