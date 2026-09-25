@@ -62,7 +62,7 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Single typeface across the whole product: DM Sans. */
+  /* Product typefaces: Sora for display/brand, Manrope for body. */
   --font-display: "Sora", system-ui, sans-serif;
   --font-brand: "Sora", system-ui, sans-serif;
   --font-sans: "Manrope", system-ui, sans-serif;
