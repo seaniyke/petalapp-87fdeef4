@@ -1919,6 +1919,20 @@ async function runFinalParseGuard(
   }
 
   if (!report.ok) {
+    const validatorFailure = report.issues.find((i) => i.kind === "validator-unavailable");
+    if (validatorFailure) {
+      console.error(`[preemit-gate] validation unavailable — refusing to classify or quarantine files: ${validatorFailure.detail}`);
+      controller.enqueue(
+        encoder.encode(sse({
+          type: "timeline",
+          step: "esbuild_parse",
+          outcome: "failed",
+          message: "Code validation was unavailable — build stopped safely",
+          ts: Date.now(),
+        })),
+      );
+      return { ok: false, detail: validatorFailure.detail };
+    }
     // Salvage before surrender. Observed on a real build: two of eight files
     // came back truncated (an unterminated string, unbalanced braces), the
     // repair rounds made no progress, and the ENTIRE turn was rolled back —
