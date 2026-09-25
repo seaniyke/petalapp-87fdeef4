@@ -6,6 +6,7 @@
  */
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { isVerifierExempt } from "@/server/scaffold-ownership.server";
+import { checkUndefinedIdentifiers } from "./identifiers.server";
 import { finalizeVerification, runSourceGates, type VerificationRecord } from "./gates";
 
 export async function verifyProposedSource(args: {
@@ -17,5 +18,30 @@ export async function verifyProposedSource(args: {
 }): Promise<VerificationRecord> {
   const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
   const esbuild = await verifyFilesEsbuild(args.tree, parseable);
-  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild, requireShell: args.requireShell }));
+  // Semantic gate: esbuild proves the bytes PARSE; the real TypeScript
+  // checker proves the changed files don't reference identifiers that were
+  // never declared (`ReferenceError: mode is not defined` shipped to the
+  // preview because nothing checked this). Runs only when the parse gate
+  // passed — a file that doesn't parse is already a FAIL with a better
+  // diagnostic, and the checker would just echo it.
+  let merged = esbuild;
+  if (esbuild && (esbuild.status === "passed" || esbuild.status === "not_checked")) {
+    const identifierIssues = checkUndefinedIdentifiers(args.tree, parseable);
+    if (identifierIssues.length) {
+      merged = {
+        ...esbuild,
+        status: "failed",
+        ok: false,
+        issues: [
+          ...(esbuild.issues ?? []),
+          ...identifierIssues.map((i) => ({
+            path: i.path,
+            line: i.line,
+            message: `${i.message} — declared nowhere in this file; the preview would crash with a ReferenceError`,
+          })),
+        ],
+      };
+    }
+  }
+  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
 }
