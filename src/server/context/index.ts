@@ -16,11 +16,13 @@ export * from "./design-intel";
 export * from "./memory-model";
 export * from "./select";
 export * from "./budget";
+export * from "./design-knowledge";
 
 import type { ProjectFile } from "@/server/generate.server";
 import type { MemoryEntry } from "@/server/project-memory.server";
 import { buildProjectManifest, renderStructureBlock, type ManifestInputs, type ProjectManifest } from "./manifest";
 import { renderDesignIntel } from "./design-intel";
+import { renderDesignKnowledge, selectDesignKnowledge, type DesignKnowledgeSelection } from "./design-knowledge";
 import { renderResolvedMemory, resolveMemory, type ClassifiedMemory } from "./memory-model";
 import { detectContextFlags, selectContext, type ContextFlags, type Selection } from "./select";
 
@@ -31,6 +33,9 @@ export interface TurnProjectContext {
   memory: ClassifiedMemory[];
   structureBlock: string;
   designBlock: string;
+  /** Conditionally loaded craft knowledge, subordinate to the project's design. */
+  designKnowledge: DesignKnowledgeSelection;
+  designKnowledgeBlock: string;
   memoryBlock: string;
 }
 
@@ -48,12 +53,16 @@ export function assembleProjectContext(args: {
   const selection = manifest
     ? selectContext(args.request, manifest, { explicitTargets: args.explicitTargets, flags })
     : null;
+  const hasExistingDesign = !!manifest && (Object.keys(manifest.design.colors).length > 0 || !!manifest.design.fonts.display || !!manifest.design.fonts.body);
+  const designKnowledge = selectDesignKnowledge({ request: args.request, isInitial: args.isInitial, hasExistingDesign });
   const memory = resolveMemory(args.memoryEntries, manifest, args.request);
   return {
     manifest,
     flags,
     selection,
     memory,
+    designKnowledge,
+    designKnowledgeBlock: renderDesignKnowledge(designKnowledge),
     structureBlock: manifest ? renderStructureBlock(manifest) : "",
     designBlock: manifest ? renderDesignIntel(manifest.design, flags.design ? "full" : "tokens") : "",
     // History/inference hints only on first build or structural asks where

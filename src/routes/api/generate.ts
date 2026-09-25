@@ -2948,10 +2948,11 @@ Forbidden defaults
       console.info(`[project-context] memory not applied: ${stale.map((m) => `${m.key}(${m.status}: ${m.reason})`).join("; ")}`);
     }
     console.info(`[project-context] flags=${JSON.stringify(projectCtx.flags)}`);
+    console.info(`[design-knowledge] mode=${projectCtx.designKnowledge.mode} category=${projectCtx.designKnowledge.category ?? "-"} topics=${projectCtx.designKnowledge.topics.join(",") || "-"}`);
   }
   const appMapBlock = turnAppMap
-    ? renderAppMapBlock(turnAppMap) + projectCtx.structureBlock + projectCtx.designBlock
-    : "";
+    ? renderAppMapBlock(turnAppMap) + projectCtx.structureBlock + projectCtx.designBlock + projectCtx.designKnowledgeBlock
+    : projectCtx.designKnowledgeBlock;
   const appMapRepairBlock = turnAppMap ? renderAppMapBlock(turnAppMap, 900).trim() : "";
   if (turnChangeSet.items.length > 1) {
     console.info(
