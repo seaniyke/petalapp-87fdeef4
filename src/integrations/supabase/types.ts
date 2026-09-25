@@ -1242,14 +1242,18 @@ export type Database = {
           active: boolean
           aspect_ratio: string
           cache_key: string | null
+          category: string | null
           created_at: string
+          height: number | null
           id: string
+          industry: string | null
           model: string | null
           mood: string | null
           orientation: string
           owner_id: string | null
           project_id: string | null
           prompt: string
+          provider: string | null
           shared: boolean
           style: string | null
           subject: string
@@ -1257,19 +1261,25 @@ export type Database = {
           turn_id: string | null
           updated_at: string
           url: string
+          visual_traits: string[]
+          width: number | null
         }
         Insert: {
           active?: boolean
           aspect_ratio?: string
           cache_key?: string | null
+          category?: string | null
           created_at?: string
+          height?: number | null
           id?: string
+          industry?: string | null
           model?: string | null
           mood?: string | null
           orientation?: string
           owner_id?: string | null
           project_id?: string | null
           prompt: string
+          provider?: string | null
           shared?: boolean
           style?: string | null
           subject?: string
@@ -1277,19 +1287,25 @@ export type Database = {
           turn_id?: string | null
           updated_at?: string
           url: string
+          visual_traits?: string[]
+          width?: number | null
         }
         Update: {
           active?: boolean
           aspect_ratio?: string
           cache_key?: string | null
+          category?: string | null
           created_at?: string
+          height?: number | null
           id?: string
+          industry?: string | null
           model?: string | null
           mood?: string | null
           orientation?: string
           owner_id?: string | null
           project_id?: string | null
           prompt?: string
+          provider?: string | null
           shared?: boolean
           style?: string | null
           subject?: string
@@ -1297,6 +1313,8 @@ export type Database = {
           turn_id?: string | null
           updated_at?: string
           url?: string
+          visual_traits?: string[]
+          width?: number | null
         }
         Relationships: [
           {
