@@ -65,6 +65,9 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
       const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
       const paths = Array.from(new Set(heuristic.map((i) => i.path)));
       const ev = await verifyFilesEsbuild(nextFiles, paths);
+      if (ev.status === "unavailable") {
+        console.error("[local-verifier] parser confirmation unavailable:", ev.unavailableDetail);
+      }
       const failed = new Set(ev.issues.map((i) => i.path));
       const clean = new Set(ev.checkedPaths.filter((p) => !failed.has(p)));
       if (clean.size) {

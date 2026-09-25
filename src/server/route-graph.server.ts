@@ -339,7 +339,7 @@ export function validateRouteGraph(files: ProjectFile[]): RouteGraphResult {
     const idx = out.findIndex((f) => SCANNABLE.test(f.path) && ROUTES_OPEN_RE.test(f.content));
     if (idx >= 0) {
       const f = out[idx];
-      const NOT_FOUND_JSX = `<Route path="*" element={<div style={{ padding: "4rem 2rem", textAlign: "center", fontFamily: "system-ui" }}><h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>404</h1><p style={{ opacity: 0.7 }}>This page hasn't been built yet.</p></div>} />`;
+      const NOT_FOUND_JSX = `<Route path="*" element={<div style={{ padding: "4rem 2rem", textAlign: "center", fontFamily: "system-ui" }}><h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>404</h1><p style={{ opacity: 0.7 }}>This page has not been built yet.</p></div>} />`;
       // Insert before `</Routes>`. If multiple, only the first.
       let content = f.content;
       const closeIdx = content.indexOf("</Routes>");

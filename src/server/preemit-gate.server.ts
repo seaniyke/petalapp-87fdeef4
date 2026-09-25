@@ -22,8 +22,8 @@
  *     progress (issue count did not drop) so we never burn budget spinning.
  *   - Non-destructive. If a repair round makes things WORSE, we keep the best
  *     state seen, never the regressed one.
- *   - Never throws. Verifier infrastructure failures degrade to "green" so an
- *     infra hiccup can't fail a turn that would otherwise have shipped.
+ *   - Never guesses. If the authoritative parser is unavailable, validation
+ *     stops as infrastructure-unknown instead of accepting or quarantining code.
  */
 
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
@@ -165,6 +165,14 @@ export async function collectGateIssues(
 
   try {
     const verdict = await verifyFilesEsbuild(files, changedPaths);
+    if (verdict.status === "unavailable") {
+      issues.push({
+        path: "[validator]",
+        kind: "validator-unavailable",
+        detail: `esbuild unavailable (${verdict.unavailableReason ?? "unknown"}): ${verdict.unavailableDetail ?? "no detail"}`,
+        source: "esbuild",
+      });
+    }
     const failed = new Set(verdict.issues.map((i) => i.path));
     for (const p of verdict.checkedPaths) if (!failed.has(p)) parsedClean.add(p);
     for (const i of verdict.issues) {
@@ -176,7 +184,12 @@ export async function collectGateIssues(
       });
     }
   } catch (e) {
-    console.warn("[preemit-gate] esbuild verifier errored, skipping:", e);
+    issues.push({
+      path: "[validator]",
+      kind: "validator-unavailable",
+      detail: `esbuild unavailable (unexpected_error): ${e instanceof Error ? e.message : String(e)}`,
+      source: "esbuild",
+    });
   }
 
   try {

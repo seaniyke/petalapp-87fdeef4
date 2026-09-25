@@ -52,6 +52,8 @@ export interface WriteGateResult {
   repairedPaths?: string[];
   /** Files the bounded repair attempted but could not fix. */
   repairFailedPaths?: string[];
+  /** Validation stopped because the authoritative parser could not run. */
+  validationFailure?: string;
 }
 
 /** Bounded single-file repair: returns replacement content, or null. */
@@ -82,21 +84,28 @@ function healOne(file: ProjectFile): ProjectFile {
 async function failingPaths(
   files: ProjectFile[],
   paths: string[],
-): Promise<Map<string, string>> {
+): Promise<{ failures: Map<string, string>; unavailable?: string }> {
   const out = new Map<string, string>();
-  if (paths.length === 0) return out;
+  if (paths.length === 0) return { failures: out };
   try {
     const verdict = await verifyFilesEsbuild(files, paths);
+    if (verdict.status === "unavailable") {
+      return {
+        failures: out,
+        unavailable: `esbuild unavailable (${verdict.unavailableReason ?? "unknown"}): ${verdict.unavailableDetail ?? "no detail"}`,
+      };
+    }
     for (const issue of verdict.issues) {
       if (out.has(issue.path)) continue;
       out.set(issue.path, `${issue.message} (line ${issue.line}:${issue.column})`);
     }
   } catch (e) {
-    // Infra failure must never fail a turn that would otherwise ship.
-    console.warn("[write-gate] esbuild unavailable, accepting all writes:", e);
-    return new Map();
+    return {
+      failures: out,
+      unavailable: `esbuild unavailable (unexpected_error): ${e instanceof Error ? e.message : String(e)}`,
+    };
   }
-  return out;
+  return { failures: out };
 }
 
 /**
@@ -120,7 +129,11 @@ export async function runWriteGate(args: {
     return { files: args.after, healedPaths: [], rejected: [] };
   }
 
-  const firstPass = await failingPaths(args.after, candidates);
+  const firstCheck = await failingPaths(args.after, candidates);
+  if (firstCheck.unavailable) {
+    return { files: args.after, healedPaths: [], rejected: [], validationFailure: firstCheck.unavailable };
+  }
+  const firstPass = firstCheck.failures;
   if (firstPass.size === 0) {
     return { files: args.after, healedPaths: [], rejected: [] };
   }
@@ -139,7 +152,11 @@ export async function runWriteGate(args: {
   }
 
   let files = Array.from(byPath, ([path, content]) => ({ path, content }));
-  const stillFailing = await failingPaths(files, Array.from(firstPass.keys()));
+  const healedCheck = await failingPaths(files, Array.from(firstPass.keys()));
+  if (healedCheck.unavailable) {
+    return { files: args.after, healedPaths: [], rejected: [], validationFailure: healedCheck.unavailable };
+  }
+  const stillFailing = healedCheck.failures;
 
   // Anything the heal fixed is no longer a rejection.
   const actuallyHealed = healedPaths.filter((p) => !stillFailing.has(p));
@@ -165,7 +182,10 @@ export async function runWriteGate(args: {
       if (fixed && fixed.trim() && fixed !== content) {
         const candidate = Array.from(byPath, ([p, c]) => ({ path: p, content: p === path ? fixed! : c }));
         const recheck = await failingPaths(candidate, [path]);
-        if (!recheck.has(path)) {
+        if (recheck.unavailable) {
+          return { files: args.after, healedPaths: [], rejected: [], validationFailure: recheck.unavailable };
+        }
+        if (!recheck.failures.has(path)) {
           byPath.set(path, fixed);
           stillFailing.delete(path);
           repairedPaths.push(path);

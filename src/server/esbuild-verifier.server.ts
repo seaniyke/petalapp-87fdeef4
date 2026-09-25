@@ -28,6 +28,7 @@ export type EsbuildIssue = {
 };
 
 export type EsbuildVerdict = {
+  status: "passed" | "failed" | "unavailable" | "not_checked";
   ok: boolean;
   issues: EsbuildIssue[];
   /**
@@ -36,6 +37,8 @@ export type EsbuildVerdict = {
    * NOT as "everything parsed fine".
    */
   checkedPaths: string[];
+  unavailableReason?: "initialization_error";
+  unavailableDetail?: string;
 };
 
 const SCANNABLE = /\.(tsx?|jsx?)$/;
@@ -90,13 +93,26 @@ export async function verifyFilesEsbuild(
   const targets = files.filter(
     (f) => changed.has(f.path) && !shouldSkip(f.path, options.includeScaffoldOwned === true),
   );
-  if (targets.length === 0) return { ok: true, issues: [], checkedPaths: [] };
+  if (targets.length === 0) return { status: "not_checked", ok: true, issues: [], checkedPaths: [] };
 
   try {
     await ensureInit();
   } catch (err) {
-    console.warn("[esbuild-verifier] init failed, skipping pass:", err);
-    return { ok: true, issues: [], checkedPaths: [] };
+    const detail = (err as Error)?.message ?? String(err);
+    console.error("[esbuild-verifier] unavailable:", {
+      validator: "esbuild",
+      status: "unavailable",
+      reason: "initialization_error",
+      detail,
+    });
+    return {
+      status: "unavailable",
+      ok: false,
+      issues: [],
+      checkedPaths: [],
+      unavailableReason: "initialization_error",
+      unavailableDetail: detail,
+    };
   }
 
   const issues: EsbuildIssue[] = [];
@@ -141,5 +157,10 @@ export async function verifyFilesEsbuild(
     }),
   );
 
-  return { ok: issues.length === 0, issues, checkedPaths: targets.map((f) => f.path) };
+  return {
+    status: issues.length === 0 ? "passed" : "failed",
+    ok: issues.length === 0,
+    issues,
+    checkedPaths: targets.map((f) => f.path),
+  };
 }

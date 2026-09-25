@@ -367,7 +367,14 @@ async function runCheck(files: ProjectFile[], paths?: string[]): Promise<ToolRes
       : files.filter((f) => /\.(tsx?|jsx?)$/.test(f.path)).map((f) => f.path);
 
   const local = verifyFilesLocal(files, targets);
-  const esbuild = await verifyFilesEsbuild(files, targets).catch(() => ({ ok: true, issues: [] }));
+  const esbuild = await verifyFilesEsbuild(files, targets);
+  if (esbuild.status === "unavailable") {
+    return {
+      label: "Code check unavailable",
+      output: `The authoritative code parser could not run: ${esbuild.unavailableDetail ?? esbuild.unavailableReason ?? "unknown error"}. No clean verdict was issued.`,
+      isError: true,
+    };
+  }
 
   const issues = [
     ...local.issues.map((i) => `${i.path}: [${i.kind}] ${i.detail}`),

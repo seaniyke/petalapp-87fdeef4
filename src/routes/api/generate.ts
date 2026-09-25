@@ -4277,6 +4277,9 @@ Forbidden defaults
                 const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
                 const { isTruncationDetail } = await import("@/server/engine/build-state");
                 const verdict = await verifyFilesEsbuild([file], [file.path]);
+                if (verdict.status === "unavailable") {
+                  throw new Error(`Authoritative code validation unavailable: ${verdict.unavailableDetail ?? verdict.unavailableReason ?? "unknown error"}`);
+                }
                 return verdict.issues.some((i) => isTruncationDetail(i.message));
               },
               request: async (instruction: string) => {
@@ -5390,6 +5393,9 @@ Forbidden defaults
                 });
               },
             });
+            if (gate.validationFailure) {
+              throw new Error(`Authoritative code validation unavailable: ${gate.validationFailure}`);
+            }
             nextFiles = gate.files;
             if (gate.repairedPaths?.length || gate.repairFailedPaths?.length) {
               console.info(

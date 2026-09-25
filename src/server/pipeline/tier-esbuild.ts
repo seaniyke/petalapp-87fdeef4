@@ -22,7 +22,9 @@ export async function runEsbuildTier(args: RunArgs): Promise<EsbuildTierOutput> 
   const { files, earlyChangedPaths } = args;
 
   const verdict = await verifyFilesEsbuild(files, earlyChangedPaths);
-  if (!verdict.ok) {
+  if (verdict.status === "unavailable") {
+    console.error("[esbuild-verifier] authoritative parser unavailable:", verdict.unavailableDetail);
+  } else if (!verdict.ok) {
     console.warn(
       `[esbuild-verifier] ${verdict.issues.length} parse error(s):`,
       verdict.issues.map((i) => `${i.path}:${i.line}:${i.column} ${i.message}`).join("; "),
@@ -33,11 +35,15 @@ export async function runEsbuildTier(args: RunArgs): Promise<EsbuildTierOutput> 
     {
       type: "timeline",
       step: "esbuild_parse",
-      outcome: verdict.ok ? "ok" : "failed",
-      message: verdict.ok
-        ? `Parsed ${earlyChangedPaths.length} file${earlyChangedPaths.length === 1 ? "" : "s"} cleanly`
-        : `Found ${verdict.issues.length} syntax issue${verdict.issues.length === 1 ? "" : "s"}`,
-      count: verdict.ok ? earlyChangedPaths.length : verdict.issues.length,
+      outcome: verdict.status === "passed" || verdict.status === "not_checked" ? "ok" : "failed",
+      message: verdict.status === "unavailable"
+        ? "Code parser unavailable — validation stopped"
+        : verdict.status === "not_checked"
+          ? "No changed code files needed parsing"
+          : verdict.ok
+            ? `Parsed ${verdict.checkedPaths.length} file${verdict.checkedPaths.length === 1 ? "" : "s"} cleanly`
+            : `Found ${verdict.issues.length} syntax issue${verdict.issues.length === 1 ? "" : "s"}`,
+      count: verdict.ok ? verdict.checkedPaths.length : verdict.issues.length,
       ts: Date.now(),
     },
   ];
