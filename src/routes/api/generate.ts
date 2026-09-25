@@ -6737,6 +6737,22 @@ async function handleGenerateRequestCore(
           },
         });
         const txCommitted = txResult.outcome.status === "committed";
+        // FINAL execution depth: classifier's initial depth, raised (never
+        // lowered) by deterministic impact analysis of what actually changed.
+        if (txResult.outcome.status === "committed") {
+          const { finalDepth } = await import("@/server/execution");
+          const fd = finalDepth(turnInitialDepth, txResult.outcome.changed, { codeChanged: true });
+          console.info(`[depth] initial=${turnInitialDepth} final=${fd.depth}${fd.escalatedBy.length ? ` escalated_by=${fd.escalatedBy.map((f) => `${f.path}:${f.reason}`).slice(0, 5).join(",")}` : ""}`);
+          if (turnId && /^[0-9a-f-]{36}$/i.test(turnId)) {
+            void (async () => {
+              const { data: op } = await supabaseAdmin.from("economic_operations" as never).select("metadata").eq("turn_id", turnId).maybeSingle();
+              const meta = ((op as { metadata?: Record<string, unknown> } | null)?.metadata ?? {}) as Record<string, unknown>;
+              await supabaseAdmin.from("economic_operations" as never).update({
+                metadata: { ...meta, initial_depth: turnInitialDepth, final_depth: fd.depth, escalated_by: fd.escalatedBy.slice(0, 10) },
+              } as never).eq("turn_id", turnId);
+            })().catch(() => {});
+          }
+        }
         console.info(
           `[execution] tx=${txResult.outcome.status} changed=${txCommitted && txResult.outcome.status === "committed" ? txResult.outcome.changed.length : 0} rejections=${JSON.stringify(txResult.rejections.slice(0, 5))} ledger=${JSON.stringify(turnLedger.summary().counts)}`,
         );
