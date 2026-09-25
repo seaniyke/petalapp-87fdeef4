@@ -85,3 +85,8 @@
 - [~] Phase 2: AgentIO seam added; commit point (Stop checks, balance, charge, save files) routed through it. Progress events + turn close + AI call log also routed. Saved plan (blueprint) read+save routed; memory already uses the user's own sign-in. Scoped table access (db.query op + stand-in client) done. Phase 3 code done (in-process runtime, AGENT_IN_PROCESS flag). Blocked on user: OPENROUTER_API_KEY + AGENT_IN_PROCESS=1 on Railway, redeploy; then live check
 - [ ] Phase 3: run core on Railway — blocked on OPENROUTER_API_KEY on Railway + redeploy
 - [ ] Phase 4: switch over (AGENT_RUNTIME=railway) and live-prove
+
+## Builder streaming UX (Sept 2026)
+- [x] Stage 1–4: turn reducer (live + replay), activity story, full replay on refresh, truthful Stop
+- [ ] Stage 5–6: move remaining turn state out of builder.tsx; remove legacy duplicated streaming state once proven live
+- [ ] Refresh after a turn finished while away: result comes from saved card, not replay
