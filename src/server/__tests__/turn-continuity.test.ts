@@ -146,9 +146,9 @@ describe("repair sees the current file and the turn history", () => {
     expect(msg.endsWith(LOGIN_OK)).toBe(true);
   });
 
-  it("does not call the AI for a truncation flag (cut-off pages are re-requested, not patched)", async () => {
+  it("does not call the AI for a genuinely cut-off file (cut-off pages are re-requested, not patched)", async () => {
     vi.mocked(aiChatCompletions).mockClear();
-    const out = await repairBrokenFile({ path: "src/pages/Login.tsx", content: LOGIN_OK }, "truncation: file ends mid-statement", { turnContext: "x" });
+    const out = await repairBrokenFile({ path: "src/pages/Login.tsx", content: LOGIN_OK }, "Unexpected end of input", { turnContext: "x" });
     expect(out).toBeNull();
     expect(aiChatCompletions).not.toHaveBeenCalled();
   });
@@ -190,7 +190,7 @@ describe("write gate: valid files are never repaired; failures keep last known-g
 
 describe("pictures and building blocks stay out of an unrelated edit", () => {
   const withKit = applyScaffoldKitForPatch(PROJECT);
-  const example = withKit.find((f) => f.path.startsWith("src/components/examples/") && f.content.includes("petal-image://"))!;
+  const example = withKit.find((f) => f.path.startsWith("src/components/examples/") && f.path.endsWith(".tsx") && /petal-image:\/\/\w/.test(f.content))!;
   const resolved = example.content.replace(/petal-image:\/\/[^\s"'`<>)]+/g, "https://cdn.example/pic.png");
 
   it("recognises a kit copy whose picture slots were filled", () => {
