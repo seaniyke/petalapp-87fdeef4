@@ -6019,6 +6019,9 @@ Forbidden defaults
           async (file, detail) => {
             if (!recovery.take("broken_file", file.path)) return null;
             controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })));
+            // Build-server logs aren't retained — record the exact reason on
+            // the wire so a failed final check can be diagnosed afterwards.
+            controller.enqueue(encoder.encode(sse({ type: "timeline", step: "esbuild_parse", outcome: "failed", message: `Final check on ${file.path}: ${detail}`.slice(0, 500), ts: Date.now() })));
             const { repairBrokenFile } = await import("@/server/engine/repair");
             return repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId });
           },
