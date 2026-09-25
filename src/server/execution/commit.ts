@@ -100,7 +100,7 @@ export function commitTurn(args: CommitTurnArgs): CommitTurnResult {
       });
       continue;
     }
-    if (!tx.remove(path)) {
+    if (!tx.remove(path, { system: args.isSystemPath(path) })) {
       const reason = refusalReason();
       rejections.push({ operation: "delete", path, reason, detail: `delete refused (${reason})`, recoverable: reason === "limit", next: "stop" });
     }

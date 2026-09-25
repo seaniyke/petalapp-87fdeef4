@@ -52,9 +52,9 @@ export class TurnTransaction {
     return [...next].map(([path, content]) => ({ path, content }));
   }
 
-  remove(path: string): boolean {
+  remove(path: string, opts?: { system?: boolean }): boolean {
     if (this.done || !this.base.has(path)) return false;
-    if (this.ledger && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
+    if (this.ledger && !opts?.system && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
     this.staged.set(path, null);
     return true;
   }
