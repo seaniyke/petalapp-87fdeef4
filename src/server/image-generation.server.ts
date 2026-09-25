@@ -146,7 +146,28 @@ export async function generatePetalImage(
     if (cached) return { url: cached, cached: true };
   }
 
+  // A picture Kimble already made for this project/owner (or one an admin
+  // shared) beats paying to make the same thing again. A weak match is
+  // ignored — quality always outranks the saving.
+  const scope = opts.scope ?? {
+    projectId: currentTurnContext().projectId ?? null,
+    ownerId: currentTurnContext().userId ?? null,
+    turnId: currentTurnContext().turnId ?? null,
+  };
+  try {
+    const { findRememberedPicture } = await import("./registry/generated-pictures.server");
+    const remembered = await findRememberedPicture({
+      request: prompt,
+      scope,
+      aspectRatio: opts.aspectRatio ?? null,
+    });
+    if (remembered) return { url: remembered.url, cached: true };
+  } catch {
+    // Picture memory trouble must never stop a build — generate instead.
+  }
+
   const fullPrompt = `${prompt}.${aspectGuidance(opts.aspectRatio)} High quality, professional, no watermarks, no text overlays.`;
+
 
   const upstream = await fetch(upstreamUrl, {
     method: "POST",
