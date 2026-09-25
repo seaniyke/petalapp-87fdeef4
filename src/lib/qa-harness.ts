@@ -1,6 +1,6 @@
 /**
  * Catalog QA harness — static validator that audits everything in the
- * "starter surface" (templates, industry packs, themes, snippets) for the
+ * "starter surface" (templates, industry packs, snippets) for the
  * mistakes that actually break generation downstream:
  *
  *   - missing / too-short prompts (LLM produces vague output)
@@ -15,13 +15,13 @@
  */
 import { START_IDEAS, type StartIdea } from "@/lib/start-ideas";
 import { INDUSTRY_PACKS, type IndustryPack, type CloudFeature } from "@/lib/industry-packs";
-import { THEME_PRESETS, SNIPPETS, type ThemePreset, type Snippet } from "@/lib/themes-and-snippets";
+import { SNIPPETS, type Snippet } from "@/lib/themes-and-snippets";
 
 export type Severity = "error" | "warn" | "info";
 
 export type Finding = {
   severity: Severity;
-  surface: "template" | "pack" | "theme" | "snippet";
+  surface: "template" | "pack" | "snippet";
   slug: string;
   rule: string;
   message: string;
@@ -32,7 +32,6 @@ export type QAReport = {
   counts: {
     templates: number;
     packs: number;
-    themes: number;
     snippets: number;
     errors: number;
     warnings: number;
@@ -177,30 +176,6 @@ function auditPack(p: IndustryPack): Finding[] {
   return out;
 }
 
-function auditTheme(t: ThemePreset): Finding[] {
-  const out: Finding[] = [];
-  if (!t.prompt || t.prompt.length < 100) {
-    out.push({
-      severity: "error", surface: "theme", slug: t.slug,
-      rule: "prompt-too-short", message: "Theme prompt under 100 chars.",
-    });
-  }
-  if (!/functionality/i.test(t.prompt) && !/behavior/i.test(t.prompt)) {
-    out.push({
-      severity: "warn", surface: "theme", slug: t.slug,
-      rule: "missing-no-behavior-clause",
-      message: 'Theme prompt should explicitly say "do not change functionality/behavior".',
-    });
-  }
-  if (!t.palette || t.palette.length < 2) {
-    out.push({
-      severity: "error", surface: "theme", slug: t.slug,
-      rule: "thin-palette", message: "Need ≥ 2 palette swatches.",
-    });
-  }
-  return out;
-}
-
 function auditSnippet(s: Snippet): Finding[] {
   const out: Finding[] = [];
   if (!s.prompt || s.prompt.length < MIN_SNIPPET_PROMPT) {
@@ -237,7 +212,6 @@ export function runQAHarness(): QAReport {
 
   findings.push(...uniqueSlugCheck(START_IDEAS, "template", (t) => t.title));
   findings.push(...uniqueSlugCheck(INDUSTRY_PACKS, "pack", (p) => p.slug));
-  findings.push(...uniqueSlugCheck(THEME_PRESETS, "theme", (t) => t.slug));
   findings.push(...uniqueSlugCheck(SNIPPETS, "snippet", (s) => s.slug));
 
   for (const t of START_IDEAS) {
@@ -248,7 +222,6 @@ export function runQAHarness(): QAReport {
     findings.push(...auditPack(p));
     findings.push(...detectUnknownServices("pack", p.slug, p.brief ?? ""));
   }
-  for (const t of THEME_PRESETS) findings.push(...auditTheme(t));
   for (const s of SNIPPETS) {
     findings.push(...auditSnippet(s));
     findings.push(...detectUnknownServices("snippet", s.slug, s.prompt ?? ""));
@@ -262,7 +235,6 @@ export function runQAHarness(): QAReport {
     counts: {
       templates: START_IDEAS.length,
       packs: INDUSTRY_PACKS.length,
-      themes: THEME_PRESETS.length,
       snippets: SNIPPETS.length,
       errors,
       warnings,

@@ -69,10 +69,9 @@ function AdminQAPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           <Stat label="Templates" value={report.counts.templates} />
           <Stat label="Packs" value={report.counts.packs} />
-          <Stat label="Themes" value={report.counts.themes} />
           <Stat label="Snippets" value={report.counts.snippets} />
           <Stat label="Errors" value={report.counts.errors} tone={report.counts.errors ? "text-destructive" : ""} />
           <Stat label="Warnings" value={report.counts.warnings} tone={report.counts.warnings ? "text-amber-600 dark:text-amber-400" : ""} />
