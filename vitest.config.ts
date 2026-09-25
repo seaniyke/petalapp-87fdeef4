@@ -11,6 +11,7 @@ export default defineConfig({
       "src/lib/preview-state.test.ts",
       "src/lib/turn-execution/__tests__/turn-reducer.test.ts",
       "src/lib/turn-execution/__tests__/turn-observer.test.ts",
+      "src/server/__tests__/design-knowledge.test.ts",
       "src/server/__tests__/turn-cancel.test.ts",
       "src/server/__tests__/durable-agent.test.ts",
       "src/server/__tests__/agent-ops.test.ts",
