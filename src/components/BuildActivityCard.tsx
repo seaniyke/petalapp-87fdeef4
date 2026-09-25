@@ -139,6 +139,7 @@ type Props = {
   resultSummary?: string | null;
   /** Follow-up ideas offered under "Keep building". */
   suggestions?: string[];
+  projectId?: string | null;
   onSuggest?: (prompt: string) => void;
   /** False when the preview is already on screen. */
   showPreviewAction?: boolean;
@@ -185,6 +186,7 @@ export function BuildActivityCard({
   onKeepBuilding,
   resultSummary,
   suggestions,
+  projectId,
   onSuggest,
   showPreviewAction = true,
   onResultSnapshot,
@@ -478,6 +480,7 @@ export function BuildActivityCard({
           onKeepBuilding={onKeepBuilding}
           onDetails={() => setDetailsOpen(true)}
           suggestions={suggestions}
+          projectId={projectId}
           onSuggest={onSuggest}
         />
       ) : (

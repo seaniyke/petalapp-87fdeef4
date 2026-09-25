@@ -5185,6 +5185,7 @@ function Builder() {
               return activityVisible && !errorCardVisible;
             })() && (
               <BuildActivityCard
+                projectId={project?.id ?? null}
                 turn={turnView}
                 phases={phases}
                 isActive={busy || isDeploying || awaitingBuild || awaitingSilentResume}
@@ -5281,6 +5282,7 @@ function Builder() {
                 finished result on screen so the user still sees it. */}
             {!activityVisible && !busy && !awaitingBuild && !isDeploying && isLive && savedResult && (
               <BuildResultCard
+                projectId={project?.id ?? null}
                 credits={savedResult.credits}
                 files={savedResult.files}
                 pictures={savedResult.pictures}
