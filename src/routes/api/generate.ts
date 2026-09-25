@@ -4297,6 +4297,7 @@ Forbidden defaults
             const pages = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
             // Stop boundary: no page writer starts after the user pressed Stop.
             await agentIO().assertActive(turnId, abortSignal, "page writing");
+            let pagesWritten = 0;
             const done = await writePlannedPages({
               pages,
               files: parsed.files,
@@ -4375,6 +4376,12 @@ Forbidden defaults
                   const got = wantPath && content ? [{ path: wantPath, content }] : null;
                   if (got) {
                     controller.enqueue(encoder.encode(sse({ type: "file_complete", path: wantPath!, bytes: content!.length, index: 1, content: content! })));
+                    // Move the progress card onto the page that just finished so it
+                    // doesn't sit on the last scaffold file for minutes.
+                    pagesWritten += 1;
+                    const pageName = wantPath!.split("/").pop()!.replace(/\.[jt]sx?$/, "");
+                    controller.enqueue(encoder.encode(sse({ type: "file_progress", written: (parsed.files?.length ?? 0) + pagesWritten, latestPath: wantPath! })));
+                    controller.enqueue(encoder.encode(sse({ type: "narration", path: wantPath!, text: `Finished the ${pageName} page.` })));
                   }
                   console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} textChars=${c.text.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
                   return got;
