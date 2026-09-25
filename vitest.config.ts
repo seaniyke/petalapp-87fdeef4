@@ -16,6 +16,8 @@ export default defineConfig({
       "src/server/__tests__/turn-resume-stopped.test.ts",
       "src/server/registry/__tests__/registry.test.ts",
       "src/server/registry/__tests__/project-pictures.test.ts",
+      "src/server/registry/__tests__/generated-pictures.test.ts",
+
       "src/components/__tests__/one-result-card.test.ts",
       "src/server/__tests__/shared-backend-origins.test.ts",
       "src/server/__tests__/openrouter-only.test.ts",
