@@ -322,8 +322,14 @@ export class AgentCircuitBreaker {
     }
     this.lastFingerprint = fingerprint;
 
-    if (tool) this.byTool.set(tool, (this.byTool.get(tool) ?? 0) + 1);
+    // Exactly ONE counter owns each failure, so no failure is punished twice.
+    // A failure that names a file belongs to that file: "write_gate" is a
+    // stage every repair flows through, not a flaky tool, and counting its
+    // file failures again under the tool rule would trip healthy turns that
+    // are fixing several files. Only file-less failures (a tool that is
+    // itself misbehaving) count toward the tool rule.
     if (path) this.byFile.set(path, (this.byFile.get(path) ?? 0) + 1);
+    else if (tool) this.byTool.set(tool, (this.byTool.get(tool) ?? 0) + 1);
 
     const trip = (rule: TripReason["rule"], detail: string): FailureOutcome => {
       this.state = "TRIPPED";
