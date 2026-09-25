@@ -2017,6 +2017,49 @@ function Builder() {
     let cancelled = false;
     let controller: AbortController | null = null;
 
+    // Set while a reconcile lookup is in flight so the visibility/online/
+    // heartbeat triggers can't stack several of them on top of each other.
+    let reconciling = false;
+
+    /**
+     * A turn that finished while the tab was away needs no stream at all —
+     * the database already holds the answer. Check that first: it turns a
+     * returning phone into an instant, correct view instead of a reconnect
+     * that may fail and look like a lost build.
+     */
+    async function reconcileThenResume(): Promise<void> {
+      if (cancelled || reconciling || abortRef.current) return;
+      const persisted = readPersistedTurn(pid);
+      if (!persisted) return;
+      reconciling = true;
+      try {
+        const verdict = await reconcileAuthoritativeTurn(pid, persisted.turnId);
+        if (cancelled) return;
+        if (verdict.state === "SUCCEEDED") {
+          const [fs, ms] = await Promise.all([
+            loadProjectFiles(pid).catch(() => null),
+            loadProjectMessages(pid).catch(() => null),
+          ]);
+          if (cancelled) return;
+          if (fs) setFiles(fs);
+          if (ms) setMessages(ms);
+          setStreamingAssistant("");
+          setStreamingPlan("");
+          setStreamingRecap("");
+          setLatestCycleProgress(undefined);
+          setActivityVisible(false);
+          setBusy(false);
+          clearPersistedTurnId(pid);
+          return;
+        }
+      } catch {
+        /* fall through to the normal resume */
+      } finally {
+        reconciling = false;
+      }
+      if (!cancelled) attemptResume();
+    }
+
     function attemptResume() {
       if (cancelled) return;
       const persisted = readPersistedTurn(pid);
