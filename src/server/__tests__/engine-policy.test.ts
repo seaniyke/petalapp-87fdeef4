@@ -15,8 +15,9 @@ describe("single provider policy", () => {
 });
 
 describe("bounded recovery table", () => {
-  it("one attempt per kind, none for browser failures", () => {
+  it("two provider switches, none for browser failures", () => {
     const b = new RecoveryBudget();
+    expect(b.take("provider_failure")).toBe(true);
     expect(b.take("provider_failure")).toBe(true);
     expect(b.take("provider_failure")).toBe(false);
     expect(b.take("browser_failure")).toBe(false);
