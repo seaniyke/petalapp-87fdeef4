@@ -483,6 +483,14 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       blockingDefects: [],
       results: labCases,
     });
+    {
+      // Build + browser gates of the verification pipeline, judged on the
+      // DEPLOYED app. "Could not check" is UNAVAILABLE, never PASS or FAIL.
+      const { buildGate, browserGate } = await import("@/server/verification/gates");
+      const b = buildGate("succeeded");
+      const w = browserGate(readiness);
+      console.info(`[verification] build=${b.verdict} browser=${w.verdict} build=${payload.buildId}${w.reasons[0] ? ` — ${w.reasons[0]}` : ""}`);
+    }
     await recordBuildOutcome({
       projectId: payload.projectId,
       buildId: payload.buildId,
