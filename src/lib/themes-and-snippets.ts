@@ -4,7 +4,21 @@
  * those. (Theme presets were removed: re-theming goes through the
  * deterministic design-system package engine, never an AI prompt.)
  */
-/** Composed prompt the user's project receives in the builder. */
+export type Snippet = {
+  slug: string;
+  name: string;
+  category:
+    | "Marketing"
+    | "Pricing"
+    | "Forms"
+    | "Auth"
+    | "Data"
+    | "Realtime"
+    | "Maps"
+    | "AI"
+    | "Media";
+  blurb: string;
+  /** Composed prompt the user's project receives in the builder. */
   prompt: string;
 };
 
