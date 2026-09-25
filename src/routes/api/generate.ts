@@ -18,6 +18,7 @@ import { EMPTY_HOME_BUILD_FAILURE_MESSAGE } from "@/server/build-failure-copy";
 import { assessCompleteness, incompleteBuildMessage, requestedRoutesFor } from "@/server/engine/build-state";
 import { currentTurnContext, markUpstreamFailed, runWithTurnContext } from "@/server/turn-context.server";
 import { RecoveryBudget, RECOVERY_LIMITS } from "@/server/engine/recovery-policy";
+import { AgentCircuitBreaker, classifyFailure } from "@/server/execution/circuit-breaker";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,
