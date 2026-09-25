@@ -199,3 +199,20 @@ export async function writePlannedPages(args: {
   const missing = args.pages.filter((p) => !hasRealPage(files, p.file)).map((p) => p.route);
   return { files, written, missing, calls, truncated };
 }
+
+/** Max simultaneous page-writing calls (see writePages). */
+export const PAGE_CONCURRENCY = 4;
+
+/** Run `fn` over `items` with at most `limit` in flight; order preserved. */
+export async function mapBounded<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
+  return out;
+}
