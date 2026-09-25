@@ -84,6 +84,22 @@ export function decideAskPolicy(
 }
 
 /**
+ * Final triage mode after the ask policy. The model may propose "clarify";
+ * this is where that proposal is kept (a genuinely ambiguous request) or
+ * converted into real work (the turn was never allowed to ask).
+ */
+export function resolveTriageMode<M extends string>(
+  modelMode: M,
+  policy: AskDecision,
+  fileCount: number,
+): { mode: M | "build" | "edit"; clarifyBlocked: boolean } {
+  if (modelMode === "clarify" && policy.forceAction) {
+    return { mode: fileCount === 0 ? "build" : "edit", clarifyBlocked: true };
+  }
+  return { mode: modelMode, clarifyBlocked: false };
+}
+
+/**
  * System-prompt addendum injected when questions are not allowed this turn.
  */
 export function noAskInstruction(reason: AskDecision["reason"]): string {

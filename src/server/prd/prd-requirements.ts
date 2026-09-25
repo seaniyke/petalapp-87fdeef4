@@ -321,6 +321,19 @@ export function evaluateRequirements(
     ev.build.revision === ev.projectRevision;
 
   const next = reqs.map((r) => {
+    const out = evaluateOne(r);
+    // Idempotent: an unchanged result keeps the original object (and its
+    // updatedAt), so re-running reconciliation on unchanged state is a no-op.
+    return out.status === r.status &&
+      out.evidence.join("|") === r.evidence.join("|") &&
+      (out.evidenceFingerprint ?? null) === (r.evidenceFingerprint ?? null) &&
+      out.lastVerifiedRevision === r.lastVerifiedRevision
+      ? r
+      : out;
+  });
+  return next;
+
+  function evaluateOne(r: PrdRequirement): PrdRequirement {
     if (r.status === "REJECTED" || r.status === "SUPERSEDED") return r;
 
     // Quality requirement: complete only when the verified build checked a
@@ -361,8 +374,7 @@ export function evaluateRequirements(
     if (r.status === "COMPLETED" && r.evidenceFingerprint && r.evidenceFingerprint === fp) return r;
     if (r.status === "IN_PROGRESS" && r.evidence.join("|") === proof.join("|")) return r;
     return { ...r, status: "IN_PROGRESS" as const, evidence: proof, updatedAt: now };
-  });
-  return next;
+  }
 }
 
 // ---------------------------------------------------------------------------

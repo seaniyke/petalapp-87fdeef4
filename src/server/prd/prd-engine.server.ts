@@ -102,6 +102,25 @@ export async function resolvePrdForTurn(args: ResolvePrdArgs): Promise<ResolvedP
     }
   }
 
+  // Reconcile the requirement list against the project's actual state
+  // (current files, routes, integrations, and the current build's
+  // verification). Existing projects keep proven work and are never
+  // regenerated to establish status. Idempotent and non-destructive: an
+  // unchanged state writes nothing.
+  if (args.projectId && !authored && prd.requirements?.length) {
+    try {
+      const { recordRequirementEvidence } = await import("./prd-progress.server");
+      const reconciled = await recordRequirementEvidence({
+        projectId: args.projectId,
+        build: "latest",
+        requirements: prd.requirements,
+      });
+      if (reconciled) prd = { ...prd, requirements: reconciled };
+    } catch {
+      /* fail open — statuses stay as stored */
+    }
+  }
+
   const subtype = subtypeFromPrd(prd);
   const requirements = prd.requirements ?? [];
   const plan = stageForTurn(requirements, brief, authored);
