@@ -67,38 +67,44 @@ export const Route = createFileRoute("/api/preview/$projectId")({
           return htmlError(400, "Invalid project ID.");
         }
 
-        // Anonymous client first — used for the public-project lookup.
-        const anon = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        // Private projects are invisible to an anonymous lookup, so when the
+        // owner sends a token we query as them. Iframes can't set
+        // Authorization headers, so ?t=<jwt> is accepted as a fallback.
+        const auth = request.headers.get("authorization");
+        const headerToken = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
+        const token = headerToken ?? new URL(request.url).searchParams.get("t");
+
+        const db = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
           auth: { persistSession: false, autoRefreshToken: false },
+          ...(token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}),
         });
 
-        const { data: project, error: projectErr } = await anon
+        const { data: project, error: projectErr } = await db
           .from("projects")
           .select("id, owner_id, is_public")
           .eq("id", projectId)
           .maybeSingle();
 
-        if (projectErr) return htmlError(500, "Couldn't load this project.");
-        if (!project) return htmlError(404, "Project not found.");
+        if (projectErr) {
+          if (token) return htmlError(401, "Your session expired — reopen the project to refresh the preview.");
+          return htmlError(500, "Couldn't load this project.");
+        }
+        if (!project) {
+          return token
+            ? htmlError(404, "Project not found.")
+            : htmlError(401, "Sign in to view this preview.");
+        }
 
-        // If private, require a token from the owner. Iframes can't set
-        // Authorization headers, so we also accept ?t=<jwt> as a fallback.
         if (!project.is_public) {
-          const auth = request.headers.get("authorization");
-          const headerToken = auth?.startsWith("Bearer ") ? auth.slice("Bearer ".length) : null;
-          const url = new URL(request.url);
-          const queryToken = url.searchParams.get("t");
-          const token = headerToken ?? queryToken;
           if (!token) return htmlError(401, "Sign in to view this preview.");
-          const { data: claims, error: claimsErr } = await anon.auth.getClaims(token);
+          const { data: claims, error: claimsErr } = await db.auth.getClaims(token);
           if (claimsErr || claims?.claims?.sub !== project.owner_id) {
             return htmlError(403, "You don't have access to this project.");
           }
         }
 
-        // Read files. RLS allows public-project reads + owner reads, so the
-        // anon client is sufficient here.
-        const { data: rows, error: filesErr } = await anon
+        // RLS allows public-project reads + owner reads.
+        const { data: rows, error: filesErr } = await db
           .from("project_files")
           .select("path, content")
           .eq("project_id", projectId);
