@@ -569,6 +569,25 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // the worker cuts this short, the cron sweep backfills it.
     warmProjectThumbnail(payload.projectId, payload.buildId);
 
+    // Requirement progress. This build is ready AND still the current
+    // revision (CAS above), so its verification is authoritative evidence.
+    // Best-effort; never changes the build outcome.
+    try {
+      const { recordRequirementEvidence } = await import("@/server/prd/prd-progress.server");
+      await recordRequirementEvidence({
+        projectId: payload.projectId,
+        projectRevision: Number(existing.project_revision),
+        build: {
+          revision: Number(existing.project_revision),
+          status: "ready",
+          verified: Boolean(verification),
+          phoneChecked: Boolean(payload.verification?.visual?.some((s) => s.width <= 480)),
+        },
+      });
+    } catch (e) {
+      console.warn("[builds/callback] requirement progress skipped", e instanceof Error ? e.message : String(e));
+    }
+
     // Craft review, now that the preview is live. Advisory only: findings are
     // appended for the polish pass; they never change ready/failed.
     if (payload.verification?.visual?.length && verification) {
