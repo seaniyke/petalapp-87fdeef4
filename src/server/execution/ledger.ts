@@ -18,7 +18,7 @@ export const TURN_LIMITS: Readonly<Record<ToolKind, number>> = {
   browser: 1,
 };
 
-export type Refusal = "cancelled" | "limit" | "duplicate_read" | "no_op_write" | "foreign_writer" | "committed";
+export type Refusal = "cancelled" | "limit" | "duplicate_read" | "no_op_write" | "foreign_writer" | "committed" | "unread_write";
 
 export interface LedgerEvent {
   kind: ToolKind;
@@ -31,6 +31,9 @@ export interface LedgerEvent {
 export class TurnLedger {
   private counts = new Map<ToolKind, number>();
   private reads = new Set<string>();
+  /** Files whose current content was inspected in THIS operation. A ledger is
+   *  created per turn, so a previous operation's reads never carry over. */
+  private inspected = new Set<string>();
   private events: LedgerEvent[] = [];
   private writer: string | null = null;
   cancelled = false;
@@ -69,7 +72,29 @@ export class TurnLedger {
   }
 
   /** Write discipline: refuse a write whose bytes equal the current file. */
+  /** Mark a file as inspected (its current content was placed in the model's
+   *  context, or read through a tool) during this operation. */
+  recordRead(path: string): void {
+    this.inspected.add(path);
+  }
+
+  hasRead(path: string): boolean {
+    return this.inspected.has(path) || this.reads.has(path);
+  }
+
+  /**
+   * Write boundary. READ-BEFORE-EDIT: overwriting an EXISTING file that was
+   * not inspected in this operation is refused — not warned. New files
+   * (current === undefined) are exempt. Kimble-managed system writes
+   * (scaffold kit, design-system installer, housekeeping) never reach this
+   * method: TurnTransaction.stage(..., { system: true }) bypasses the ledger,
+   * and those writers are validated by their own deterministic mechanisms.
+   */
   write(path: string, next: string, current: string | undefined, purpose: string, writer?: string) {
+    if (current !== undefined && !this.hasRead(path)) {
+      this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "unread_write" });
+      return { ok: false as const, refusal: "unread_write" as Refusal };
+    }
     if (current !== undefined && current === next) {
       this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "no_op_write" });
       return { ok: false as const, refusal: "no_op_write" as Refusal };

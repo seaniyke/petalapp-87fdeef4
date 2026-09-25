@@ -3207,6 +3207,10 @@ async function handleGenerateRequestCore(
     { tokenCeiling: fileBlockCeiling, anchors: promptAnchors },
   );
 
+  // Read-before-edit: exactly the files whose current content the model
+  // receives this operation count as inspected. Nothing else may be
+  // overwritten (enforced at TurnLedger.write, the write boundary).
+  for (const f of promptBudget.files) turnLedger.recordRead(f.path);
   console.info(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`,
   );
