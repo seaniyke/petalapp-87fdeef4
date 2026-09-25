@@ -154,25 +154,25 @@ type Props = {
 
 export function BuildActivityCard({
   phases,
-  buildSteps,
-  activeStepIndex = -1,
-  doneStepIndexes,
+  buildSteps: buildStepsProp,
+  activeStepIndex: activeStepIndexProp = -1,
+  doneStepIndexes: doneStepIndexesProp,
   turn,
   isActive: isActiveProp,
   isComplete: isCompleteProp,
   error,
   designCaption,
-  latestPath,
-  latestNarration,
+  latestPath: latestPathProp,
+  latestNarration: latestNarrationProp,
   latestCycleProgress,
-  filesWritten,
-  writtenPaths,
-  completedPaths,
+  filesWritten: filesWrittenProp,
+  writtenPaths: writtenPathsProp,
+  completedPaths: completedPathsProp,
   finalFileLines,
   fileChanges,
   deployElapsedSec,
   deployProgressLabel,
-  timelineEvents,
+  timelineEvents: timelineEventsProp,
   creditsCharged,
   creditsEstimate,
   onRetry,
@@ -190,6 +190,22 @@ export function BuildActivityCard({
   onResultSnapshot,
 }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // The turn reducer is the single source for per-turn activity. Legacy props
+  // remain only as a fallback for callers that don't pass `turn`.
+  const deletedPaths = fileChanges
+    ? Object.entries(fileChanges).filter(([, c]) => c.kind === "deleted").map(([p]) => p)
+    : [];
+  const writtenPaths = turn
+    ? [...turn.writtenPaths, ...deletedPaths.filter((p) => !turn.writtenPaths.includes(p))]
+    : writtenPathsProp;
+  const completedPaths = turn ? turn.completedPaths : completedPathsProp;
+  const filesWritten = turn ? turn.writtenPaths.length : filesWrittenProp;
+  const latestPath = turn ? turn.latestPath : latestPathProp;
+  const latestNarration = turn ? turn.latestNarration : latestNarrationProp;
+  const buildSteps = turn ? turn.buildSteps : buildStepsProp;
+  const activeStepIndex = turn ? turn.activeStepIndex : activeStepIndexProp;
+  const doneStepIndexes = turn ? turn.doneStepIndexes : doneStepIndexesProp;
+  const timelineEvents = (turn ? turn.timeline : timelineEventsProp) as TimelineEntry[] | undefined;
   // Authoritative lifecycle wins. "AI finished" is never "ready": a failed
   // build, failed live check, failure or Stop can never show the success card.
   const lc = turn?.lifecycle;
