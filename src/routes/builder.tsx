@@ -84,7 +84,7 @@ import {
   PipelineError,
   type FriendlyError,
 } from "@/lib/friendly-errors";
-import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
+import { BuildActivityCard } from "@/components/BuildActivityCard";
 import { BuildResultCard } from "@/components/BuildResultCard";
 import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
