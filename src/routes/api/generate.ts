@@ -5584,6 +5584,20 @@ Forbidden defaults
               // A broken generated page is repaired (that file only, once,
               // re-verified) instead of silently dropped.
               repair: async (file, detail) => {
+                // Circuit breaker first: a tripped turn makes no further AI
+                // calls, so a repeated failure stops here instead of paying
+                // for another attempt that already failed twice.
+                const verdict = breaker.recordFailure({
+                  category: classifyFailure(detail),
+                  tool: "write_gate",
+                  path: file.path,
+                  message: detail,
+                });
+                breakerGuidance = verdict.guidance;
+                if (verdict.tripped) {
+                  console.warn(`[circuit-breaker] ${JSON.stringify(breaker.snapshot())}`);
+                  return null;
+                }
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })),
                 );
@@ -5606,7 +5620,13 @@ Forbidden defaults
                   turnContext,
                 });
                 if (!out) recovery.resolve(n, "kept_previous");
-                else recovery.resolve(n, "pending", out);
+                else {
+                  recovery.resolve(n, "pending", out);
+                  // A repaired file is real progress: clear this file's
+                  // failure count and the consecutive-failure run.
+                  breaker.recordProgress("file_repaired", file.path);
+                  breakerGuidance = null;
+                }
                 return out;
               },
             });
