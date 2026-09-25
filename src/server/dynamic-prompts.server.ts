@@ -359,7 +359,7 @@ What to say:
     triggers:
       /\b(image|photo|picture|hero|illustration|avatar|background|banner|cover|logo|gallery)\b/i,
     body: `\n\n[Reinforcement — Images]
-Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECIFIC (e.g. "petal-image://cozy-coffee-shop-hero-warm-morning-light"). Max 6 unique placeholders per turn — extras silently fall back to picsum. NEVER use unsplash.com / placeholder.com / picsum.photos when petal-image:// fits. Fake testimonial avatars MAY use https://i.pravatar.cc/150?u=<seed>.
+Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECIFIC (e.g. "petal-image://cozy-coffee-shop-hero-warm-morning-light"). Max 6 unique placeholders per turn — extras silently fall back to picsum. NEVER use unsplash.com / placeholder.com / picsum.photos when petal-image:// fits.
 
 CRITICAL — no gratuitous photo grids: do NOT add a generic "Gallery / Recent Work / Our Projects / Portfolio" grid of 3-6 stock photos on a service-business landing page (plumber, electrician, lawyer, dentist, restaurant, salon, etc.) UNLESS the user explicitly asked for a gallery / portfolio / case studies. These grids land as random grayscale picsum fallbacks and look amateur. Default to FeaturesGrid3 (icon + title + copy) or StatsBand for trust signals instead. Use GalleryGrid ONLY for: photographer / designer / architect / restaurant menu / real-estate portfolios, and ONLY when the brief implies showcasing visual work.`,
   },
@@ -692,7 +692,7 @@ Every list you render this turn must feel like a REAL product, not a wireframe. 
 1. QUANTITY. Landing-page proof sections (testimonials, features, logos, pricing): minimum 3, target 6. Product catalogs / feeds / directories / galleries: minimum 12 varied items. Never ship 3 identical placeholder cards as the entire content.
 2. VARIETY. Item names, prices, dates, categories, and status values must VARY realistically. A products list has different prices ($12, $48, $199, $2,400 — not "$X"); a team page has different roles and photos; a feed has different post lengths and timestamps ("2h ago", "yesterday", "Mar 14").
 3. REAL COPY. Never "Lorem ipsum". Never "Feature One / Feature Two". Write copy that names the specific domain: for a running app "Log a 5K without a watch", for a legal SaaS "Redline contracts in the browser", for a bakery "Sourdough loaves proofed 36 hours". If you don't know the domain, RE-READ the user's brief before writing copy.
-4. REAL NAMES. People in testimonials / team / avatars get real full names from a mix of cultures ("Priya Nair, Marcus Chen, Ana Rossi, Amara Okafor, Leo Martín, Yuki Tanaka") — never "John Doe / Jane Smith". Roles are specific ("Head of Growth at Linear") not generic ("Product Manager").
+4. REAL NAMES. Never invent testimonials, ratings or customer quotes. Seed data for app records (users, team rows) gets real-sounding full names from a mix of cultures ("Priya Nair, Marcus Chen, Ana Rossi, Amara Okafor, Leo Martín, Yuki Tanaka") — never "John Doe / Jane Smith". Roles are specific ("Head of Growth at Linear") not generic ("Product Manager").
 5. REAL IMAGES. Never gray-box placeholders. Options in order of preference:
    - Domain-relevant AI-generated images (already-imported assets or new generations).
    - Unsplash Source with a specific query: \`https://source.unsplash.com/800x600/?<domain-keyword>,<style>\` — e.g. \`?ceramics,studio\` for a pottery store. Vary the query per item so the grid doesn't repeat one photo.
