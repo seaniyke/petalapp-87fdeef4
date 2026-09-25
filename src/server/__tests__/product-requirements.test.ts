@@ -18,7 +18,7 @@ import { deterministicPrd } from "@/server/prd/prd-deterministic";
 import { amendPrd } from "@/server/prd/prd-amend";
 import { planProductStage } from "@/server/engine/plan";
 import { SYSTEM_PROMPT, SYSTEM_PROMPT_PATCH } from "@/server/generate.server";
-import { archetypeBuildInstruction, archetypeRoadmapBlock, detectArchetype, getArchetype } from "@/lib/project-archetype";
+import { archetypeBuildInstruction, archetypeRoadmapBlock, PROJECT_ARCHETYPES } from "@/lib/project-archetype";
 import { routesFromFiles, integrationsFromSecretNames } from "@/server/prd/prd-progress.server";
 
 const HOTEL =
@@ -58,8 +58,7 @@ describe("A/B — whole scope retained, no reduction to intent #1", () => {
       expect(p).not.toMatch(/ONLY the first one|tackled #1/);
       expect(p).toMatch(/requested product scope is authoritative/);
     }
-    const a = getArchetype(detectArchetype(HOTEL).id ?? "saas");
-    for (const b of [archetypeBuildInstruction(a), archetypeRoadmapBlock(a)]) {
+    for (const a of PROJECT_ARCHETYPES) for (const b of [archetypeBuildInstruction(a), archetypeRoadmapBlock(a)]) {
       expect(b).not.toMatch(/DO NOT build the in-app product|landing page first|in-product surfaces only when/i);
       expect(b).toMatch(/requested product scope is authoritative/);
     }
