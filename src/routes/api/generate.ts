@@ -2596,7 +2596,9 @@ Forbidden defaults
   const userJwt = reqAuth?.startsWith("Bearer ") ? reqAuth.slice("Bearer ".length) : "";
   const memoryEntries =
     body.projectId && userJwt ? await loadProjectMemory(userJwt, body.projectId) : [];
-  const memoryBlock = renderMemoryBlock(memoryEntries);
+  // Replaced below by the precedence-resolved memory once the project
+  // manifest exists (source beats memory; the current request beats both).
+  let memoryBlock = renderMemoryBlock(memoryEntries);
 
   // PETAL.md / .petalrc — user-authored preservation rules. Optional.
   // Adds protected globs to the patch filter and injects free-text rules
@@ -2924,9 +2926,32 @@ Forbidden defaults
   // Deterministic App Map from the CURRENT files (never memory). The writer
   // and every repair in this turn see the same facts: router, entry, routes,
   // pages, shared layout, navigation.
-  const { buildAppMap, renderAppMapBlock, appMapFacts } = await import("@/server/engine/app-map");
-  const turnAppMap = isInitial ? null : buildAppMap(currentFiles);
-  const appMapBlock = turnAppMap ? renderAppMapBlock(turnAppMap) : "";
+  const { renderAppMapBlock, appMapFacts } = await import("@/server/engine/app-map");
+  // Project Context layer — deterministic manifest, design language,
+  // precedence-resolved memory and fail-closed section flags. No AI call.
+  const { assembleProjectContext } = await import("@/server/context");
+  const projectCtx = assembleProjectContext({
+    files: currentFiles,
+    request: lastUserContent || "",
+    isInitial,
+    memoryEntries,
+    manifestInputs: {
+      projectId: body.projectId ?? null,
+      backendKind: sharedBackend ? "shared" : backend ? "dedicated" : "none",
+    },
+  });
+  const turnAppMap = projectCtx.manifest?.appMap ?? null;
+  memoryBlock = projectCtx.memoryBlock;
+  {
+    const stale = projectCtx.memory.filter((m) => m.status !== "active");
+    if (stale.length) {
+      console.info(`[project-context] memory not applied: ${stale.map((m) => `${m.key}(${m.status}: ${m.reason})`).join("; ")}`);
+    }
+    console.info(`[project-context] flags=${JSON.stringify(projectCtx.flags)}`);
+  }
+  const appMapBlock = turnAppMap
+    ? renderAppMapBlock(turnAppMap) + projectCtx.structureBlock + projectCtx.designBlock
+    : "";
   const appMapRepairBlock = turnAppMap ? renderAppMapBlock(turnAppMap, 900).trim() : "";
   if (turnChangeSet.items.length > 1) {
     console.info(
@@ -3022,6 +3047,21 @@ Forbidden defaults
     );
   }
 
+
+  // Manifest-based focused selection: page types and component names matched
+  // against the request. Deterministic, so the Inspector AI only runs when
+  // project structure alone cannot name the target.
+  if (!isInitial && !isCrossCutting && editTargetPaths.length === 0 && projectCtx.selection) {
+    const picked = projectCtx.selection.primary.filter(
+      (p) => editablePromptFiles.some((f) => f.path === p) && !isVerifierExempt(p),
+    );
+    if (picked.length > 0) {
+      editTargetPaths = picked;
+      console.info(
+        `[project-context] selected ${picked.map((p) => `${p} (${projectCtx.selection!.reasons[p]})`).join(", ")}`,
+      );
+    }
+  }
 
   // When the deterministic resolver comes up empty on a follow-up edit, send
   // the read-only Inspector subagent in: it greps and reads the real bytes on
@@ -3505,7 +3545,11 @@ Forbidden defaults
     if (hasVisionTurn) {
       await keepChatPhotos(body.projectId ?? null, messages[lastUserIdx]?.attachments);
     }
-    ownPhotoBlock = renderProjectPictureBlock(await loadProjectPictures(body.projectId ?? null));
+    // Conditional context: project photos only when the request is about
+    // imagery (or carries photos). Unknown → not included.
+    if (projectCtx.flags.images || hasVisionTurn) {
+      ownPhotoBlock = renderProjectPictureBlock(await loadProjectPictures(body.projectId ?? null));
+    }
   } catch {
     /* a photo lookup must never block a build */
   }
@@ -3522,6 +3566,7 @@ Forbidden defaults
       text: lastUserText || "",
       isInitial,
       isCrossCutting,
+      touchesData: projectCtx.flags.database || projectCtx.flags.forms,
     });
     skillsBlock = picked.text;
     if (picked.ids.length) console.info(`[skills] ${picked.ids.join(", ")}`);
@@ -3531,14 +3576,40 @@ Forbidden defaults
 
 
 
+  // Context budget — measure everything before sending. When over, drop
+  // optional material lowest-value first (history → skills → memory →
+  // design → project state). Rules, the request and files are required.
+  const contextBudget = (await import("@/server/context")).applyContextBudget(
+    [
+      { id: "system", priority: "required", text: staticPrefixText },
+      { id: "files", priority: "required", text: filesContext },
+      { id: "intent", priority: "required", text: (intentBrief ?? "") + resolvedBlock + groundingBlock + dynamic.text + intentActions.promptBlock + astPatchBlock + backendGateBlock + highStakesBlock + visionAddendum },
+      { id: "pic", priority: "project-state", text: picBlock },
+      { id: "prd", priority: "project-state", text: boundedEdit ? "" : prdBlock + prdScenarioBlock },
+      { id: "designTaste", priority: "design", text: designTasteBlock },
+      { id: "memory", priority: "memory", text: memoryBlock },
+      { id: "skills", priority: "skills", text: skillsBlock },
+      { id: "orchestration", priority: "history", text: orchestrationBlock },
+      { id: "learning", priority: "history", text: learningBlock },
+      { id: "suggestions", priority: "inference", text: suggestionsBlock },
+    ],
+    promptTokenCeiling({ model: null, completionBudgetTokens: 16_000 }),
+  );
+  const keep = (id: string, text: string) => (contextBudget.dropped.includes(id) ? "" : text);
+  console.info(
+    `[context-budget] tokens=${contextBudget.tokens} budget=${contextBudget.budget}${contextBudget.dropped.length ? ` dropped=${contextBudget.dropped.join(",")}` : ""}${contextBudget.overRequired ? " (required sections alone exceed budget)" : ""}`,
+  );
+  const budgetedChanging = contextBudget.dropped.includes("memory") && memoryBlock
+    ? changingProjectText.replace(memoryBlock, "")
+    : changingProjectText;
 
   const dynamicSuffixText =
-    changingProjectText +
+    budgetedChanging +
     dateBlock +
     (intentBrief
       ? `\n\n### Canonical turn intent (HARD CONTRACT)\n${intentBrief}\nSatisfy this exact outcome. Use the original user message for detail, but do not substitute a different feature, page, or product. Before emitting files, verify every planned change directly supports this intent.\n`
       : "") +
-    suggestionsBlock +
+    keep("suggestions", suggestionsBlock) +
     resolvedBlock +
     groundingBlock +
     (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") +
@@ -3547,13 +3618,12 @@ Forbidden defaults
     // how it should look second.
     // Project Intelligence Context first: the canonical understanding and the
     // committed design system frame everything the contract blocks add.
-    picBlock +
-    (boundedEdit ? "" : prdBlock + prdScenarioBlock) +
-    orchestrationBlock +
-    designTasteBlock +
-    skillsBlock +
-
-    learningBlock +
+    keep("pic", picBlock) +
+    keep("prd", boundedEdit ? "" : prdBlock + prdScenarioBlock) +
+    keep("orchestration", orchestrationBlock) +
+    keep("designTaste", designTasteBlock) +
+    keep("skills", skillsBlock) +
+    keep("learning", learningBlock) +
     highStakesBlock +
     visionAddendum +
     backendGateBlock +
@@ -6667,7 +6737,14 @@ Forbidden defaults
         {
           const turnChanged = turnChangedPaths;
           const { providersExhaustedForTurn } = await import("@/server/turn-context.server");
-          turnCommittedForMemory = scopeMissing.length === 0;
+          {
+            const { shouldRecordMemory } = await import("@/server/context/memory-model");
+            turnCommittedForMemory = shouldRecordMemory({
+              committed: nextFiles.length > 0,
+              cancelled: request.signal.aborted,
+              missingScope: scopeMissing.length,
+            });
+          }
           // One inspectable record per edit turn: why each file changed and
           // why anything was considered broken — no guessing afterwards.
           if (!isInitial) {

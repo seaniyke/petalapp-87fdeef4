@@ -39239,9 +39239,9 @@ function slugify(name) {
   return name.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 function cleanName(raw) {
-  const words = raw.toLowerCase().replace(/[“”"'`()]/g, " ").split(/\s+/).filter((w) => w && !STOP.has(w));
-  if (words.length === 0 || words.length > 3) return null;
-  const n = words.join(" ");
+  const words2 = raw.toLowerCase().replace(/[“”"'`()]/g, " ").split(/\s+/).filter((w) => w && !STOP.has(w));
+  if (words2.length === 0 || words2.length > 3) return null;
+  const n = words2.join(" ");
   if (!/^[a-z][a-z0-9 &-]*$/.test(n)) return null;
   return n;
 }
@@ -107815,6 +107815,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -109520,8 +109521,8 @@ async function loadPictureLibrary(force = false) {
 function tokenize(text) {
   return String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").map((w) => w.trim()).filter((w) => w.length > 2 && !STOP2.has(w));
 }
-function scorePicture(pic, words, briefTags, aspectRatio) {
-  const want = new Set(words);
+function scorePicture(pic, words2, briefTags, aspectRatio) {
+  const want = new Set(words2);
   const tags = new Set(briefTags.map((t) => t.toLowerCase()));
   let score = 0;
   for (const w of tokenize(pic.subject)) if (want.has(w)) score += 4;
@@ -109540,15 +109541,15 @@ function scorePicture(pic, words, briefTags, aspectRatio) {
   return score;
 }
 async function findLibraryPicture(query) {
-  const words = tokenize(query.request);
-  if (!words.length) return null;
+  const words2 = tokenize(query.request);
+  if (!words2.length) return null;
   const rows = await loadPictureLibrary();
   if (!rows.length) return null;
   const briefTags = (query.briefTags ?? []).map((t) => String(t).toLowerCase());
   let best = null;
   let bestScore = 0;
   for (const pic of rows) {
-    const score = scorePicture(pic, words, briefTags, query.aspectRatio);
+    const score = scorePicture(pic, words2, briefTags, query.aspectRatio);
     if (score > bestScore) {
       bestScore = score;
       best = pic;
@@ -109657,8 +109658,8 @@ async function rememberGeneratedPicture(row) {
   }
 }
 async function findRememberedPicture(query) {
-  const words = tokenize(query.request);
-  if (!words.length) return null;
+  const words2 = tokenize(query.request);
+  if (!words2.length) return null;
   const projectId = query.scope?.projectId ?? null;
   const ownerId = query.scope?.ownerId ?? null;
   const rows = [];
@@ -109691,7 +109692,7 @@ async function findRememberedPicture(query) {
   for (const row of rows) {
     const visible = row.shared === true || !!ownerId && row.owner_id === ownerId || !!projectId && row.project_id === projectId;
     if (!visible) continue;
-    const score = scorePicture(asScorable(row), words, briefTags, query.aspectRatio);
+    const score = scorePicture(asScorable(row), words2, briefTags, query.aspectRatio);
     if (score > bestScore) {
       bestScore = score;
       best = row;
@@ -138212,6 +138213,111 @@ var init_write_gate_server = __esm({
   }
 });
 
+// src/server/prompt-budget.server.ts
+function estimateTokens(text) {
+  if (!text) return 0;
+  return Math.ceil(text.length / 3.2);
+}
+function contextWindowFor(model) {
+  const hit = CONTEXT_WINDOWS.find((c) => c.match.test(model ?? ""));
+  return hit?.tokens ?? 128e3;
+}
+function promptTokenCeiling(args) {
+  const window2 = contextWindowFor(args.model);
+  const reserve = Math.max(4e3, args.completionBudgetTokens);
+  const safety = Math.round(window2 * 0.12);
+  return Math.max(8e3, window2 - reserve - safety);
+}
+function anchoredWindows(content, opts) {
+  const lines = content.split("\n");
+  const pad = opts.pad ?? 40;
+  const maxLines = opts.maxLines ?? 400;
+  const anchors = [...new Set(opts.lines)].filter((n) => n >= 1 && n <= lines.length).sort((a2, b) => a2 - b);
+  if (anchors.length === 0) return content;
+  const ranges = [];
+  for (const line of anchors) {
+    const start = Math.max(1, line - pad);
+    const end = Math.min(lines.length, line + pad);
+    const last = ranges[ranges.length - 1];
+    if (last && start <= last[1] + 1) last[1] = Math.max(last[1], end);
+    else ranges.push([start, end]);
+  }
+  let budget = maxLines;
+  const kept = [];
+  for (const [start, end] of ranges) {
+    if (budget <= 0) break;
+    const span = end - start + 1;
+    if (span <= budget) {
+      kept.push([start, end]);
+      budget -= span;
+    } else {
+      kept.push([start, start + budget - 1]);
+      budget = 0;
+    }
+  }
+  if (kept.length === 0) return content;
+  if (kept.length === 1 && kept[0][0] === 1 && kept[0][1] === lines.length) return content;
+  const out = [];
+  let cursor = 1;
+  for (const [start, end] of kept) {
+    if (start > cursor) out.push(`/* \u2026 lines ${cursor}-${start - 1} unchanged, not shown \u2026 */`);
+    out.push(`/* lines ${start}-${end} */`);
+    out.push(lines.slice(start - 1, end).join("\n"));
+    cursor = end + 1;
+  }
+  if (cursor <= lines.length) {
+    out.push(`/* \u2026 lines ${cursor}-${lines.length} unchanged, not shown \u2026 */`);
+  }
+  return out.join("\n");
+}
+function readErrorFrame(json) {
+  if (!json || typeof json !== "object") return null;
+  const err = json.error;
+  if (!err) return null;
+  if (typeof err === "string") return classifyProviderError(err, null);
+  if (typeof err === "object") {
+    const e = err;
+    const message = typeof e.message === "string" && e.message ? e.message : JSON.stringify(err).slice(0, 500);
+    const rawCode = e.code ?? e.type ?? null;
+    const code = rawCode == null ? null : String(rawCode);
+    const meta = e.metadata && typeof e.metadata === "object" ? JSON.stringify(e.metadata).slice(0, 300) : "";
+    return classifyProviderError(`${message} ${meta}`.trim(), code);
+  }
+  return null;
+}
+function classifyProviderError(message, code) {
+  const m = message.toLowerCase();
+  const c = (code ?? "").toLowerCase();
+  const kind = /context|too (?:long|large|many tokens)|maximum context|token limit|exceeds? the (?:model|context)|prompt is too/.test(m) ? "context_overflow" : /rate.?limit|429|overloaded|capacity|temporarily unavailable|no (?:available )?(?:endpoints|providers)|timeout|503|502|upstream/.test(m) || c === "429" || c === "503" || c === "502" ? "capacity" : /tool|function call|schema|invalid.*(?:request|argument|parameter)|json|unsupported/.test(m) || c === "400" ? "schema_rejected" : /unauthor|forbidden|api key|credit|payment|insufficient/.test(m) || c === "401" || c === "402" || c === "403" ? "auth" : "unknown";
+  return { kind, code, message: message.slice(0, 500) };
+}
+function userFacingProviderMessage(kind) {
+  switch (kind) {
+    case "context_overflow":
+      return "That change reached across more of the app than Kimble could hold at once.";
+    case "capacity":
+      return "Kimble's build service was briefly busy.";
+    case "schema_rejected":
+      return "Kimble couldn't shape that change safely on the first pass.";
+    case "auth":
+      return "Kimble couldn't reach its build service.";
+    default:
+      return "Kimble's build service didn't complete that request.";
+  }
+}
+var CONTEXT_WINDOWS;
+var init_prompt_budget_server = __esm({
+  "src/server/prompt-budget.server.ts"() {
+    init_define_import_meta_env();
+    CONTEXT_WINDOWS = [
+      { match: /deepseek/i, tokens: 128e3 },
+      { match: /gemini/i, tokens: 2e5 },
+      { match: /gpt-5|gpt-4|openai/i, tokens: 128e3 },
+      { match: /claude/i, tokens: 2e5 }
+    ];
+  }
+});
+
 // src/server/engine/raw-file.ts
 var raw_file_exports = {};
 __export(raw_file_exports, {
@@ -138282,9 +138388,9 @@ function extractExplicitName(brief) {
   return m ? m[1].trim() : null;
 }
 function fallbackIdentity(brief, type) {
-  const words = (brief.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []).filter((w) => !STOP_WORDS.has(w));
+  const words2 = (brief.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []).filter((w) => !STOP_WORDS.has(w));
   const seen = [];
-  for (const w of words) {
+  for (const w of words2) {
     if (!seen.includes(w)) seen.push(w);
     if (seen.length === 2) break;
   }
@@ -142018,12 +142124,12 @@ function classifyKind(text) {
   return "visual";
 }
 function keywordsFor(text, target) {
-  const words = text.toLowerCase().replace(/[^a-z0-9/\s-]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP3.has(w));
+  const words2 = text.toLowerCase().replace(/[^a-z0-9/\s-]/g, " ").split(/\s+/).filter((w) => w.length >= 3 && !STOP3.has(w));
   const out = /* @__PURE__ */ new Set();
   if (target) {
     for (const t of target.toLowerCase().split(/\s+/)) if (t.length >= 3) out.add(t);
   }
-  for (const w of words.slice(0, 10)) out.add(w);
+  for (const w of words2.slice(0, 10)) out.add(w);
   for (const m of text.matchAll(/["'“”‘’]([^"'“”‘’]{2,60})["'“”‘’]/g)) {
     out.add(m[1].toLowerCase().trim());
   }
@@ -142604,6 +142710,501 @@ var init_app_map = __esm({
   }
 });
 
+// src/server/context/design-intel.ts
+function top(values, n) {
+  const c = /* @__PURE__ */ new Map();
+  for (const v of values) c.set(v, (c.get(v) ?? 0) + 1);
+  return [...c.entries()].sort((a2, b) => b[1] - a2[1]).slice(0, n).map(([v]) => v);
+}
+function matchAll(src, re) {
+  const out = [];
+  let m;
+  const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+  while (m = g.exec(src)) out.push(m[1] ?? m[0]);
+  return out;
+}
+function extractDesignIntel(files) {
+  const css = files.filter((f) => f.path.endsWith(".css")).map((f) => f.content).join("\n");
+  const code = files.filter((f) => /\.(t|j)sx$/.test(f.path) && !/^src\/components\/(ui|examples)\//.test(f.path)).map((f) => f.content).join("\n");
+  const colors = {};
+  const rootBlock = /:root\s*\{([^}]*)\}/.exec(css)?.[1] ?? css;
+  for (const k of COLOR_KEYS) {
+    const v = new RegExp(`--${k}:\\s*([^;]+);`).exec(rootBlock)?.[1]?.trim();
+    if (v) colors[k] = v;
+  }
+  const fontVar = (name) => new RegExp(`--font-${name}:\\s*["']?([^,;"']+)`).exec(css)?.[1]?.trim() ?? null;
+  const display = fontVar("display") ?? fontVar("heading") ?? null;
+  const body = fontVar("body") ?? fontVar("sans") ?? null;
+  const cls = matchAll(code, /className=["'`{]([^"'`}]+)/);
+  const tokens2 = cls.join(" ").split(/\s+/);
+  const pick = (re) => tokens2.filter((t) => re.test(t));
+  const hasDark = /\.dark\s*\{/.test(css) || tokens2.some((t) => t.startsWith("dark:"));
+  const buttonsSrc = /<(?:Button|button)\b[^>]*className=["'`]([^"'`]+)/.exec(code)?.[1] ?? null;
+  const navSrc = /<(?:nav|header)\b[^>]*className=["'`]([^"'`]+)/.exec(code)?.[1] ?? null;
+  const heroSrc = /<section\b[^>]*className=["'`]([^"'`]*(?:min-h-|h-screen|py-2|py-3)[^"'`]*)/.exec(code)?.[1] ?? null;
+  const a11y = [];
+  if (/aria-label=/.test(code)) a11y.push("aria-labels used");
+  if (/\balt=/.test(code)) a11y.push("image alt text");
+  if (/focus-visible:/.test(code)) a11y.push("focus-visible rings");
+  const imgCount = (code.match(/<img\b/g) ?? []).length;
+  return {
+    fonts: { display, body },
+    colors,
+    radius: /--radius:\s*([^;]+);/.exec(css)?.[1]?.trim() ?? null,
+    typeScale: top(pick(/^(?:[a-z]+:)?text-(xs|sm|base|lg|[2-9]?xl)$/), 5),
+    spacing: top(pick(/^(?:[a-z]+:)?(py|px|gap|space-y)-\d+$/), 5),
+    containers: top(pick(/^max-w-/), 3),
+    shadows: top(pick(/^shadow(-|$)/), 3),
+    cornerStyle: top(pick(/^rounded(-|$)/), 3),
+    buttons: buttonsSrc ? buttonsSrc.split(/\s+/).slice(0, 10).join(" ") : null,
+    navigation: navSrc ? navSrc.split(/\s+/).slice(0, 10).join(" ") : null,
+    hero: heroSrc ? heroSrc.split(/\s+/).slice(0, 10).join(" ") : null,
+    responsive: top(tokens2.filter((t) => /^(sm|md|lg|xl):/.test(t)).map((t) => t.split(":")[0]), 4),
+    motion: /framer-motion|motion\/react/.test(code) ? "framer-motion" : /animate-|transition/.test(code) ? "css" : "none",
+    imagery: imgCount ? `${imgCount} <img> in app code${/object-cover/.test(code) ? ", object-cover" : ""}` : null,
+    accessibility: a11y,
+    mode: hasDark && /--background/.test(css) ? "both" : Object.keys(colors).length ? "light" : "unknown"
+  };
+}
+function renderDesignIntel(d, detail = "full") {
+  const lines = ["\n\nCURRENT DESIGN LANGUAGE (read from this project's files \u2014 match it unless the user asks to change it):"];
+  const kv = (k, v) => {
+    const s = Array.isArray(v) ? v.join(", ") : v;
+    if (s) lines.push(`- ${k}: ${s}`);
+  };
+  kv("fonts", [d.fonts.display && `display ${d.fonts.display}`, d.fonts.body && `body ${d.fonts.body}`].filter(Boolean));
+  kv("colors", Object.entries(d.colors).map(([k, v]) => `${k}=${v}`));
+  kv("radius", d.radius);
+  kv("mode", d.mode === "unknown" ? null : d.mode);
+  if (detail === "full") {
+    kv("type scale", d.typeScale);
+    kv("spacing", d.spacing);
+    kv("containers", d.containers);
+    kv("corners", d.cornerStyle);
+    kv("shadows", d.shadows);
+    kv("buttons", d.buttons);
+    kv("navigation", d.navigation);
+    kv("hero", d.hero);
+    kv("breakpoints", d.responsive);
+    kv("motion", d.motion === "none" ? null : d.motion);
+    kv("imagery", d.imagery);
+    kv("accessibility", d.accessibility);
+  }
+  return lines.length > 1 ? lines.join("\n") : "";
+}
+var COLOR_KEYS;
+var init_design_intel = __esm({
+  "src/server/context/design-intel.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    COLOR_KEYS = ["background", "foreground", "primary", "secondary", "accent", "muted", "border", "card"];
+  }
+});
+
+// src/server/context/manifest.ts
+function classifyPage(path, route) {
+  if (route === "/") return "home";
+  const name = path.split("/").pop() ?? path;
+  for (const [t, re] of PAGE_TYPES) if (re.test(name) || route && re.test(route)) return t;
+  return "other";
+}
+function buildProjectManifest(files, inputs = {}) {
+  const appMap = buildAppMap(files);
+  const paths = files.map((f) => f.path);
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const pages = appMap.pages.map((p) => {
+    const route = appMap.routes.find((r) => r.file === p)?.path ?? null;
+    return { path: p, route, type: classifyPage(p, route), imports: appMap.deps[p] ?? [] };
+  });
+  const components = paths.filter((p) => /^src\/components\/.+\.(t|j)sx$/.test(p) && !HIDDEN.test(p)).sort();
+  const importCounts = /* @__PURE__ */ new Map();
+  for (const deps of Object.values(appMap.deps)) for (const d of deps) importCounts.set(d, (importCounts.get(d) ?? 0) + 1);
+  const sharedComponents = components.filter((c) => (importCounts.get(c) ?? 0) >= 2 || appMap.layouts.includes(c));
+  const assets = paths.filter((p) => /^(public|src\/assets)\//.test(p)).sort();
+  const images = assets.filter((p) => /\.(png|jpe?g|webp|gif|svg|avif)(\.asset\.json)?$/i.test(p));
+  let dependencies = [];
+  try {
+    const pkg = JSON.parse(byPath.get("package.json") ?? "{}");
+    dependencies = Object.keys(pkg.dependencies ?? {}).sort();
+  } catch {
+    dependencies = [];
+  }
+  const config = paths.filter((p) => /^(package\.json|vite\.config\.[tj]s|tailwind\.config\.[tj]s|tsconfig\.json|index\.html|PETAL\.md|\.petalrc)$/.test(p)).sort();
+  const allCode = files.filter((f) => /\.(t|j)sx?$/.test(f.path) && !HIDDEN.test(f.path)).map((f) => f.content).join("\n");
+  const kind = inputs.backendKind ?? (paths.some((p) => p.startsWith("src/integrations/backend/")) ? "dedicated" : "none");
+  const backend2 = {
+    connected: kind !== "none",
+    kind,
+    usesAuth: /\buseAuth\b|auth\.sign(In|Up)/.test(allCode),
+    usesDb: /\bdb\.(list|create|update|remove)\b|supabase\.from\(/.test(allCode),
+    usesStorage: /\buploadFile\b|storage\.from\(/.test(allCode)
+  };
+  const features = Array.from(
+    /* @__PURE__ */ new Set([
+      ...pages.map((p) => p.type).filter((t) => t !== "other"),
+      ...backend2.usesAuth ? ["accounts"] : [],
+      ...backend2.usesDb ? ["saved data"] : [],
+      .../framer-motion|motion\/react/.test(allCode) ? ["animation"] : [],
+      .../<form\b/i.test(allCode) ? ["forms"] : []
+    ])
+  );
+  const styling = [
+    ...paths.some((p) => /tailwind|styles\.css|index\.css/.test(p)) || /className=/.test(allCode) ? ["tailwind"] : []
+  ];
+  return {
+    identity: { name: inputs.projectName ?? null, projectId: inputs.projectId ?? null },
+    framework: { runtime: dependencies.includes("react") || /from ["']react["']/.test(allCode) ? "react" : "unknown", router: appMap.router, styling },
+    appMap,
+    pages,
+    components,
+    sharedComponents,
+    layouts: appMap.layouts,
+    styles: appMap.styles,
+    design: extractDesignIntel(files),
+    assets,
+    images,
+    dependencies,
+    config,
+    integrations: inputs.integrations ?? [],
+    backend: backend2,
+    features,
+    recentChanges: (inputs.recentChanges ?? []).slice(-5),
+    knownIssues: inputs.verification?.issues.slice(0, 5) ?? [],
+    verification: inputs.verification ?? { status: "unknown", issues: [] },
+    fileCount: files.length
+  };
+}
+function renderStructureBlock(m, maxChars = 1400) {
+  const lines = [
+    "\n\nPROJECT STRUCTURE (index of the current files \u2014 read contents only from the files shown in full below):",
+    `- Runtime: ${m.framework.runtime}; router: ${m.framework.router}${m.appMap.routerFile ? ` (${m.appMap.routerFile})` : ""}; ${m.fileCount} files`
+  ];
+  if (m.pages.length)
+    lines.push(`- Pages: ${m.pages.map((p) => `${p.path}${p.route ? ` [${p.route}]` : ""} (${p.type})`).join("; ")}`);
+  if (m.layouts.length) lines.push(`- Shared layout: ${m.layouts.join(", ")}`);
+  const other = m.sharedComponents.filter((c) => !m.layouts.includes(c));
+  if (other.length) lines.push(`- Shared components: ${other.join(", ")}`);
+  const rest = m.components.filter((c) => !m.sharedComponents.includes(c));
+  if (rest.length) lines.push(`- Other components: ${rest.slice(0, 25).join(", ")}${rest.length > 25 ? ` (+${rest.length - 25})` : ""}`);
+  if (m.appMap.navLinks.length) lines.push(`- Navigation links: ${m.appMap.navLinks.join(", ")}`);
+  if (m.styles.length) lines.push(`- Styles: ${m.styles.join(", ")}`);
+  if (m.backend.connected) lines.push(`- Backend: ${m.backend.kind}${m.backend.usesAuth ? ", accounts in use" : ""}${m.backend.usesDb ? ", data in use" : ""}`);
+  if (m.integrations.length) lines.push(`- Integrations: ${m.integrations.join(", ")}`);
+  if (m.verification.status === "failed" && m.knownIssues.length) lines.push(`- Known issues: ${m.knownIssues.join("; ")}`);
+  let out = lines.join("\n");
+  if (out.length > maxChars) out = `${out.slice(0, maxChars - 16)}
+- \u2026(trimmed)`;
+  return out;
+}
+var PAGE_TYPES, HIDDEN;
+var init_manifest = __esm({
+  "src/server/context/manifest.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_app_map();
+    init_design_intel();
+    PAGE_TYPES = [
+      ["home", /(^|\/)(index|home|landing)\b/i],
+      ["auth", /(login|signin|sign-in|signup|sign-up|register|auth|reset)/i],
+      ["dashboard", /(dashboard|admin|overview|analytics)/i],
+      ["pricing", /pricing|plans/i],
+      ["contact", /contact/i],
+      ["about", /about|story|team/i],
+      ["commerce", /(shop|store|product|cart|checkout|order)/i],
+      ["blog", /(blog|post|article|news)/i],
+      ["settings", /(settings|profile|account)/i],
+      ["legal", /(privacy|terms|legal)/i]
+    ];
+    HIDDEN = /^src\/components\/(ui|examples|blocks|fx|three|mobile)\//;
+  }
+});
+
+// src/server/context/memory-model.ts
+var memory_model_exports = {};
+__export(memory_model_exports, {
+  PRECEDENCE: () => PRECEDENCE2,
+  classifyMemory: () => classifyMemory,
+  outranks: () => outranks,
+  renderResolvedMemory: () => renderResolvedMemory,
+  resolveMemory: () => resolveMemory,
+  shouldRecordMemory: () => shouldRecordMemory
+});
+function outranks(a2, b) {
+  return PRECEDENCE2.indexOf(a2) < PRECEDENCE2.indexOf(b);
+}
+function classifyMemory(e) {
+  const v = e.value.toLowerCase();
+  if (/\b(not (yet )?(configured|set up|connected|decided)|unknown|tbd)\b/.test(v)) return "UNKNOWN";
+  if (/\b(maybe|probably|likely|seems|might|guess)\b/.test(v)) return "INFERENCE";
+  if (DECISION_KEYS.has(e.key)) return "DECISION";
+  if (PREFERENCE_KEYS.has(e.key)) return "USER_PREFERENCE";
+  if (FACT_KEYS.has(e.key)) return "FACT";
+  if (HISTORY_KEYS.has(e.key)) return "HISTORY";
+  if (e.key.startsWith("state_") || e.key === "app_kind") return "CURRENT_STATE";
+  return "INFERENCE";
+}
+function authorityOf(kind) {
+  switch (kind) {
+    case "DECISION":
+    case "USER_PREFERENCE":
+    case "FACT":
+    case "CURRENT_STATE":
+      return "RECENT_MEMORY";
+    case "HISTORY":
+      return "HISTORY";
+    default:
+      return "INFERENCE";
+  }
+}
+function mentionedArtifacts(v) {
+  const out = /* @__PURE__ */ new Set();
+  for (const m of v.matchAll(/\bsrc\/[\w/.-]+\.(?:t|j)sx?\b/g)) out.add(m[0]);
+  for (const m of v.matchAll(/\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b/g)) out.add(m[1]);
+  return [...out];
+}
+function reversedTerms(request) {
+  const out = [];
+  for (const m of request.toLowerCase().matchAll(/\b(?:remove|delete|drop|replace|no longer|stop using|change|switch|get rid of)\s+(?:the\s+)?([a-z][\w-]*(?:\s[a-z][\w-]*)?)/g)) {
+    out.push(m[1].trim());
+  }
+  return out;
+}
+function resolveMemory(entries, manifest, request) {
+  const known = /* @__PURE__ */ new Set();
+  if (manifest) {
+    for (const p of [...manifest.components, ...manifest.pages.map((x) => x.path), ...manifest.layouts]) {
+      known.add(p);
+      known.add((p.split("/").pop() ?? "").replace(/\.(t|j)sx?$/, ""));
+    }
+  }
+  const reversed = reversedTerms(request);
+  return entries.filter((e) => e.key && e.value).map((e) => {
+    const kind = classifyMemory(e);
+    const base = { ...e, kind, authority: authorityOf(kind), status: "active" };
+    if (manifest && (kind === "CURRENT_STATE" || kind === "FACT" || kind === "HISTORY" || kind === "INFERENCE")) {
+      const missing = mentionedArtifacts(e.value).filter((a2) => /[/.]/.test(a2) || /[A-Z]/.test(a2)).filter((a2) => !known.has(a2));
+      if (missing.length > 0 && kind !== "HISTORY") {
+        return { ...base, status: "stale", reason: `source no longer has ${missing.join(", ")}` };
+      }
+    }
+    const lv = e.value.toLowerCase();
+    const hit = reversed.find((t) => t.length >= 3 && lv.includes(t));
+    if (hit) return { ...base, status: "overridden", reason: `current request changes "${hit}"` };
+    return base;
+  });
+}
+function renderResolvedMemory(items, opts = {}) {
+  const active = items.filter((i) => i.status === "active").filter((i) => opts.includeHistory !== false || i.kind !== "HISTORY" && i.kind !== "INFERENCE").sort((a2, b) => KIND_ORDER.indexOf(a2.kind) - KIND_ORDER.indexOf(b.kind));
+  if (active.length === 0) return "";
+  const lines = active.map((i) => `- [${i.kind}] ${i.key}: ${i.value}`);
+  return "\n\nProject Memory (precedence: the user's current request > current source files > build state > this memory; INFERENCE and HISTORY are hints, never facts \u2014 if memory disagrees with the files shown, the files win):\n" + lines.join("\n") + "\n";
+}
+function shouldRecordMemory(outcome) {
+  return outcome.committed && !outcome.rolledBack && !outcome.cancelled && (outcome.missingScope ?? 0) === 0;
+}
+var PRECEDENCE2, DECISION_KEYS, PREFERENCE_KEYS, FACT_KEYS, HISTORY_KEYS, KIND_ORDER;
+var init_memory_model = __esm({
+  "src/server/context/memory-model.ts"() {
+    init_define_import_meta_env();
+    PRECEDENCE2 = [
+      "USER_REQUEST",
+      "SOURCE",
+      "BUILD_STATE",
+      "MANIFEST",
+      "RECENT_MEMORY",
+      "HISTORY",
+      "INFERENCE"
+    ];
+    DECISION_KEYS = /* @__PURE__ */ new Set(["must_have", "dont_do", "locked", "always", "key_features"]);
+    PREFERENCE_KEYS = /* @__PURE__ */ new Set(["tone", "palette_intent", "typography_intent", "language", "audience"]);
+    FACT_KEYS = /* @__PURE__ */ new Set(["name"]);
+    HISTORY_KEYS = /* @__PURE__ */ new Set(["notes", "history", "last_change"]);
+    KIND_ORDER = ["DECISION", "USER_PREFERENCE", "FACT", "CURRENT_STATE", "UNKNOWN", "HISTORY", "INFERENCE"];
+  }
+});
+
+// src/server/context/select.ts
+function detectContextFlags(request, manifest, opts) {
+  const r = request || "";
+  const hasBackend = !!manifest?.backend.connected;
+  return {
+    // Backend/db only when the project has one AND the request touches it.
+    backend: hasBackend && RE.backend.test(r),
+    database: hasBackend && RE.database.test(r),
+    commerce: RE.commerce.test(r) || !!manifest && manifest.pages.some((p) => p.type === "commerce") && RE.commerce.test(r),
+    design: opts.isInitial || RE.design.test(r),
+    images: opts.isInitial || RE.images.test(r),
+    deployment: RE.deployment.test(r),
+    forms: RE.forms.test(r)
+  };
+}
+function words(s) {
+  return s.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+}
+function selectContext(request, manifest, opts = {}) {
+  const max = opts.max ?? 8;
+  const reasons = {};
+  const primary = [];
+  const add = (p, why, list3) => {
+    if (!p || list3.includes(p) || primary.includes(p)) return;
+    list3.push(p);
+    reasons[p] = why;
+  };
+  for (const t of opts.explicitTargets ?? []) add(t, "resolved target", primary);
+  if (primary.length === 0) {
+    for (const [type, re] of PAGE_WORDS) {
+      if (!re.test(request)) continue;
+      for (const pg of manifest.pages.filter((p) => p.type === type)) add(pg.path, `page type ${type}`, primary);
+      if (type === "home" && manifest.appMap.entry && !manifest.pages.some((p) => p.type === "home")) {
+        add(manifest.appMap.entry, "home is the entry", primary);
+      }
+    }
+    const req = new Set(words(request));
+    for (const c of [...manifest.components, ...manifest.pages.map((p) => p.path)]) {
+      const name = (c.split("/").pop() ?? "").replace(/\.(t|j)sx?$/, "");
+      const nameWords = words(name).filter((w) => !GENERIC.has(w));
+      if (nameWords.length && nameWords.every((w) => req.has(w) || req.has(w.replace(/s$/, "")))) add(c, `name matches "${name}"`, primary);
+    }
+  }
+  const supporting = [];
+  const known = new Set(manifest.components);
+  for (const p of primary) {
+    for (const d of manifest.appMap.deps[p] ?? []) if (known.has(d)) add(d, `imported by ${p}`, supporting);
+  }
+  if (/\b(nav|navbar|menu|header|footer|link)\b/i.test(request)) {
+    for (const l of manifest.layouts) add(l, "shared layout", supporting);
+  }
+  const styles = opts.flags?.design === false ? [] : manifest.styles.slice(0, 2);
+  const cappedPrimary = primary.slice(0, max);
+  return {
+    primary: cappedPrimary,
+    supporting: supporting.slice(0, Math.max(0, max - cappedPrimary.length)),
+    styles,
+    reasons
+  };
+}
+var RE, PAGE_WORDS, GENERIC;
+var init_select = __esm({
+  "src/server/context/select.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    RE = {
+      backend: /\b(log ?in|sign ?(in|up)|auth|account|user|backend|server|api|save|persist|database|db|table|supabase)\b/i,
+      database: /\b(database|db|table|record|column|query|save|persist|store data|crud|list of)\b/i,
+      commerce: /\b(shop|store|cart|checkout|product|order|payment|pay|price|pricing|stripe|paystack|subscription)\b/i,
+      design: /\b(design|look|style|colou?r|font|typograph|theme|palette|spacing|layout|hero|button|card|modern|premium|beautiful|redesign|visual|dark|light|bigger|smaller|bold)\b/i,
+      images: /\b(image|images|photo|picture|illustration|gallery|logo|icon|avatar|background|banner|hero)\b/i,
+      deployment: /\b(publish|deploy|domain|go live|launch|seo|hosting)\b/i,
+      forms: /\b(form|input|field|submit|contact|newsletter|sign ?up)\b/i
+    };
+    PAGE_WORDS = [
+      ["home", /\b(home ?page|homepage|landing|home|hero)\b/i],
+      ["auth", /\b(log ?in|sign ?(in|up)|register|auth|password)\b/i],
+      ["dashboard", /\b(dashboard|admin|analytics)\b/i],
+      ["pricing", /\b(pricing|plans?)\b/i],
+      ["contact", /\bcontact\b/i],
+      ["about", /\b(about|story|team)\b/i],
+      ["commerce", /\b(shop|store|product|cart|checkout)\b/i],
+      ["blog", /\b(blog|post|article)\b/i],
+      ["settings", /\b(settings|profile|account)\b/i],
+      ["legal", /\b(privacy|terms)\b/i]
+    ];
+    GENERIC = /* @__PURE__ */ new Set(["section", "page", "component", "block", "view", "screen", "container", "wrapper"]);
+  }
+});
+
+// src/server/context/budget.ts
+function applyContextBudget2(sections, budgetTokens) {
+  const perSection = {};
+  for (const s of sections) perSection[s.id] = estimateTokens(s.text);
+  let total = sections.reduce((n, s) => n + perSection[s.id], 0);
+  const dropped = [];
+  const drop = /* @__PURE__ */ new Set();
+  const candidates = sections.filter((s) => s.priority !== "required" && s.text).sort((a2, b) => RANK[b.priority] - RANK[a2.priority] || perSection[b.id] - perSection[a2.id]);
+  for (const s of candidates) {
+    if (total <= budgetTokens) break;
+    drop.add(s.id);
+    dropped.push(s.id);
+    total -= perSection[s.id];
+  }
+  return {
+    kept: sections.filter((s) => !drop.has(s.id)),
+    dropped,
+    tokens: total,
+    budget: budgetTokens,
+    perSection,
+    overRequired: total > budgetTokens
+  };
+}
+var RANK;
+var init_budget = __esm({
+  "src/server/context/budget.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_prompt_budget_server();
+    RANK = {
+      required: 0,
+      "project-state": 1,
+      design: 2,
+      memory: 3,
+      skills: 4,
+      history: 5,
+      inference: 6
+    };
+  }
+});
+
+// src/server/context/index.ts
+var context_exports = {};
+__export(context_exports, {
+  PRECEDENCE: () => PRECEDENCE2,
+  applyContextBudget: () => applyContextBudget2,
+  assembleProjectContext: () => assembleProjectContext,
+  buildProjectManifest: () => buildProjectManifest,
+  classifyMemory: () => classifyMemory,
+  classifyPage: () => classifyPage,
+  detectContextFlags: () => detectContextFlags,
+  extractDesignIntel: () => extractDesignIntel,
+  outranks: () => outranks,
+  renderDesignIntel: () => renderDesignIntel,
+  renderResolvedMemory: () => renderResolvedMemory,
+  renderStructureBlock: () => renderStructureBlock,
+  resolveMemory: () => resolveMemory,
+  selectContext: () => selectContext,
+  shouldRecordMemory: () => shouldRecordMemory
+});
+function assembleProjectContext(args) {
+  const manifest = args.isInitial ? null : buildProjectManifest(args.files, args.manifestInputs);
+  const flags = detectContextFlags(args.request, manifest, { isInitial: args.isInitial });
+  const selection = manifest ? selectContext(args.request, manifest, { explicitTargets: args.explicitTargets, flags }) : null;
+  const memory = resolveMemory(args.memoryEntries, manifest, args.request);
+  return {
+    manifest,
+    flags,
+    selection,
+    memory,
+    structureBlock: manifest ? renderStructureBlock(manifest) : "",
+    designBlock: manifest ? renderDesignIntel(manifest.design, flags.design ? "full" : "tokens") : "",
+    // History/inference hints only on first build or structural asks where
+    // they help; targeted edits get decisions, preferences and state.
+    memoryBlock: renderResolvedMemory(memory, { includeHistory: args.isInitial })
+  };
+}
+var init_context2 = __esm({
+  "src/server/context/index.ts"() {
+    init_define_import_meta_env();
+    init_manifest();
+    init_design_intel();
+    init_memory_model();
+    init_select();
+    init_budget();
+    init_manifest();
+    init_design_intel();
+    init_memory_model();
+    init_select();
+  }
+});
+
 // src/server/view-context.server.ts
 var view_context_server_exports = {};
 __export(view_context_server_exports, {
@@ -142688,9 +143289,9 @@ function findScreenTargets(prompt, paths) {
   const text = (prompt ?? "").toLowerCase();
   const wanted = /* @__PURE__ */ new Set();
   for (const m of text.matchAll(SCREEN_PHRASE)) {
-    const words = m[1].split(/\s+/).filter((w) => !STOP4.has(w));
-    if (words.length) wanted.add(norm2(words.join("")));
-    const last = words[words.length - 1];
+    const words2 = m[1].split(/\s+/).filter((w) => !STOP4.has(w));
+    if (words2.length) wanted.add(norm2(words2.join("")));
+    const last = words2[words2.length - 1];
     if (last) wanted.add(norm2(last));
   }
   for (const w of SECTION_WORDS) if (new RegExp(`\\b${w}\\b`).test(text.replace(/-/g, ""))) wanted.add(w);
@@ -146560,8 +147161,8 @@ function extractRoutes(prompt) {
 function detectSections(prompt) {
   const lower = prompt.toLowerCase();
   const hits = [];
-  for (const [key, words] of Object.entries(SECTION_VOCAB)) {
-    if (words.some((w) => lower.includes(w))) hits.push(key);
+  for (const [key, words2] of Object.entries(SECTION_VOCAB)) {
+    if (words2.some((w) => lower.includes(w))) hits.push(key);
   }
   return hits;
 }
@@ -146653,14 +147254,14 @@ function resolveEditIntent(prompt, files) {
       }
     }
     for (const section of sections) {
-      const words = SECTION_VOCAB[section] ?? [section];
-      if (words.some((w) => lowerPath.includes(w.replace(/\s+/g, "")))) {
+      const words2 = SECTION_VOCAB[section] ?? [section];
+      if (words2.some((w) => lowerPath.includes(w.replace(/\s+/g, "")))) {
         score += 40;
         reasons.push(`path looks like the ${section} surface`);
         continue;
       }
       const lowerContent = content.toLowerCase();
-      if (words.some((w) => lowerContent.includes(w))) {
+      if (words2.some((w) => lowerContent.includes(w))) {
         score += 10;
         reasons.push(`mentions ${section}`);
       }
@@ -146954,10 +147555,10 @@ var PLACEHOLDER_ICONS = [
   "Sparkles"
 ];
 function initialsFrom(name) {
-  const words = name.replace(/[^A-Za-z0-9\s&-]/g, " ").split(/[\s&-]+/).filter((w) => w && !/^(the|and|app|inc|co|ltd|studio)$/i.test(w));
-  if (words.length === 0) return "A";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
+  const words2 = name.replace(/[^A-Za-z0-9\s&-]/g, " ").split(/[\s&-]+/).filter((w) => w && !/^(the|and|app|inc|co|ltd|studio)$/i.test(w));
+  if (words2.length === 0) return "A";
+  if (words2.length === 1) return words2[0].slice(0, 2).toUpperCase();
+  return (words2[0][0] + words2[1][0]).toUpperCase();
 }
 function detectBrandName(files) {
   const html = files.find((f) => f.path === "index.html")?.content ?? "";
@@ -159529,22 +160130,22 @@ async function loadProjectPictures(projectId) {
   }
 }
 var MIN_SCORE2 = 4;
-function scoreProjectPicture(pic, words) {
-  const want = new Set(words);
+function scoreProjectPicture(pic, words2) {
+  const want = new Set(words2);
   let score = 0;
   for (const w of tokenize(pic.label)) if (want.has(w)) score += 4;
   for (const t of pic.tags) if (want.has(String(t).toLowerCase())) score += 3;
   return score;
 }
 async function findProjectPicture(projectId, request) {
-  const words = tokenize(request);
-  if (!words.length) return null;
+  const words2 = tokenize(request);
+  if (!words2.length) return null;
   const rows = await loadProjectPictures(projectId);
   if (!rows.length) return null;
   let best = null;
   let bestScore = 0;
   for (const pic of rows) {
-    const score = scoreProjectPicture(pic, words);
+    const score = scoreProjectPicture(pic, words2);
     if (score > bestScore) {
       bestScore = score;
       best = pic;
@@ -161152,11 +161753,11 @@ async function renderCategoryCompositionBlock(brief) {
     let best = null;
     let bestScore = 0;
     for (const pack of INDUSTRY_PACKS2) {
-      const words = new Set(
+      const words2 = new Set(
         `${pack.slug} ${pack.name} ${pack.tagline}`.toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").filter((w) => w.length > 3)
       );
       let score = 0;
-      for (const w of words) if (text.includes(w)) score += 1;
+      for (const w of words2) if (text.includes(w)) score += 1;
       if (text.includes(pack.slug.replace(/-/g, " ")) || text.includes(pack.name.toLowerCase())) score += 3;
       if (score > bestScore) {
         bestScore = score;
@@ -165486,8 +166087,8 @@ async function pickBestModel(args) {
       (s) => args.candidates.includes(s.model) && s.enoughData && s.score >= 0
     );
     if (eligible.length === 0) return null;
-    const top = eligible[0];
-    return { model: top.model, reason: "best_score", stat: top };
+    const top2 = eligible[0];
+    return { model: top2.model, reason: "best_score", stat: top2 };
   };
   const phaseKey = `${args.feature}|${args.phase}`;
   const fromPhase = tryRanked(snap.byFeaturePhase.get(phaseKey));
@@ -166131,105 +166732,8 @@ If the user's idea implies persistence (accounts, saved data, payments, file upl
 `;
 }
 
-// src/server/prompt-budget.server.ts
-init_define_import_meta_env();
-function estimateTokens(text) {
-  if (!text) return 0;
-  return Math.ceil(text.length / 3.2);
-}
-var CONTEXT_WINDOWS = [
-  { match: /deepseek/i, tokens: 128e3 },
-  { match: /gemini/i, tokens: 2e5 },
-  { match: /gpt-5|gpt-4|openai/i, tokens: 128e3 },
-  { match: /claude/i, tokens: 2e5 }
-];
-function contextWindowFor(model) {
-  const hit = CONTEXT_WINDOWS.find((c) => c.match.test(model ?? ""));
-  return hit?.tokens ?? 128e3;
-}
-function promptTokenCeiling(args) {
-  const window2 = contextWindowFor(args.model);
-  const reserve = Math.max(4e3, args.completionBudgetTokens);
-  const safety = Math.round(window2 * 0.12);
-  return Math.max(8e3, window2 - reserve - safety);
-}
-function anchoredWindows(content, opts) {
-  const lines = content.split("\n");
-  const pad = opts.pad ?? 40;
-  const maxLines = opts.maxLines ?? 400;
-  const anchors = [...new Set(opts.lines)].filter((n) => n >= 1 && n <= lines.length).sort((a2, b) => a2 - b);
-  if (anchors.length === 0) return content;
-  const ranges = [];
-  for (const line of anchors) {
-    const start = Math.max(1, line - pad);
-    const end = Math.min(lines.length, line + pad);
-    const last = ranges[ranges.length - 1];
-    if (last && start <= last[1] + 1) last[1] = Math.max(last[1], end);
-    else ranges.push([start, end]);
-  }
-  let budget = maxLines;
-  const kept = [];
-  for (const [start, end] of ranges) {
-    if (budget <= 0) break;
-    const span = end - start + 1;
-    if (span <= budget) {
-      kept.push([start, end]);
-      budget -= span;
-    } else {
-      kept.push([start, start + budget - 1]);
-      budget = 0;
-    }
-  }
-  if (kept.length === 0) return content;
-  if (kept.length === 1 && kept[0][0] === 1 && kept[0][1] === lines.length) return content;
-  const out = [];
-  let cursor = 1;
-  for (const [start, end] of kept) {
-    if (start > cursor) out.push(`/* \u2026 lines ${cursor}-${start - 1} unchanged, not shown \u2026 */`);
-    out.push(`/* lines ${start}-${end} */`);
-    out.push(lines.slice(start - 1, end).join("\n"));
-    cursor = end + 1;
-  }
-  if (cursor <= lines.length) {
-    out.push(`/* \u2026 lines ${cursor}-${lines.length} unchanged, not shown \u2026 */`);
-  }
-  return out.join("\n");
-}
-function readErrorFrame(json) {
-  if (!json || typeof json !== "object") return null;
-  const err = json.error;
-  if (!err) return null;
-  if (typeof err === "string") return classifyProviderError(err, null);
-  if (typeof err === "object") {
-    const e = err;
-    const message = typeof e.message === "string" && e.message ? e.message : JSON.stringify(err).slice(0, 500);
-    const rawCode = e.code ?? e.type ?? null;
-    const code = rawCode == null ? null : String(rawCode);
-    const meta = e.metadata && typeof e.metadata === "object" ? JSON.stringify(e.metadata).slice(0, 300) : "";
-    return classifyProviderError(`${message} ${meta}`.trim(), code);
-  }
-  return null;
-}
-function classifyProviderError(message, code) {
-  const m = message.toLowerCase();
-  const c = (code ?? "").toLowerCase();
-  const kind = /context|too (?:long|large|many tokens)|maximum context|token limit|exceeds? the (?:model|context)|prompt is too/.test(m) ? "context_overflow" : /rate.?limit|429|overloaded|capacity|temporarily unavailable|no (?:available )?(?:endpoints|providers)|timeout|503|502|upstream/.test(m) || c === "429" || c === "503" || c === "502" ? "capacity" : /tool|function call|schema|invalid.*(?:request|argument|parameter)|json|unsupported/.test(m) || c === "400" ? "schema_rejected" : /unauthor|forbidden|api key|credit|payment|insufficient/.test(m) || c === "401" || c === "402" || c === "403" ? "auth" : "unknown";
-  return { kind, code, message: message.slice(0, 500) };
-}
-function userFacingProviderMessage(kind) {
-  switch (kind) {
-    case "context_overflow":
-      return "That change reached across more of the app than Kimble could hold at once.";
-    case "capacity":
-      return "Kimble's build service was briefly busy.";
-    case "schema_rejected":
-      return "Kimble couldn't shape that change safely on the first pass.";
-    case "auth":
-      return "Kimble couldn't reach its build service.";
-    default:
-      return "Kimble's build service didn't complete that request.";
-  }
-}
+// src/routes/api/generate.ts
+init_prompt_budget_server();
 
 // src/server/turn-recorder.server.ts
 init_define_import_meta_env();
@@ -168386,7 +168890,7 @@ ${knowledge}
   const reqAuth = request.headers.get("authorization");
   const userJwt = reqAuth?.startsWith("Bearer ") ? reqAuth.slice("Bearer ".length) : "";
   const memoryEntries = body.projectId && userJwt ? await loadProjectMemory(userJwt, body.projectId) : [];
-  const memoryBlock = renderMemoryBlock(memoryEntries);
+  let memoryBlock = renderMemoryBlock(memoryEntries);
   const preservation = parsePreservationRules(currentFiles);
   const preservationBlock = renderPreservationBlock(preservation);
   const matchesUserProtectedGlob = makeProtectedGlobMatcher(preservation.protectedGlobs);
@@ -168585,9 +169089,28 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   }
   const { kitTargetGuidance: kitTargetGuidance2 } = await Promise.resolve().then(() => (init_change_set_server(), change_set_server_exports));
   const changeSetBlock = isInitial ? "" : `${renderChangeSetBlock2(turnChangeSet)}${kitTargetGuidance2(turnChangeSet, currentFiles)}`;
-  const { buildAppMap: buildAppMap2, renderAppMapBlock: renderAppMapBlock2, appMapFacts: appMapFacts2 } = await Promise.resolve().then(() => (init_app_map(), app_map_exports));
-  const turnAppMap = isInitial ? null : buildAppMap2(currentFiles);
-  const appMapBlock = turnAppMap ? renderAppMapBlock2(turnAppMap) : "";
+  const { renderAppMapBlock: renderAppMapBlock2, appMapFacts: appMapFacts2 } = await Promise.resolve().then(() => (init_app_map(), app_map_exports));
+  const { assembleProjectContext: assembleProjectContext2 } = await Promise.resolve().then(() => (init_context2(), context_exports));
+  const projectCtx = assembleProjectContext2({
+    files: currentFiles,
+    request: lastUserContent || "",
+    isInitial,
+    memoryEntries,
+    manifestInputs: {
+      projectId: body.projectId ?? null,
+      backendKind: sharedBackend ? "shared" : backend2 ? "dedicated" : "none"
+    }
+  });
+  const turnAppMap = projectCtx.manifest?.appMap ?? null;
+  memoryBlock = projectCtx.memoryBlock;
+  {
+    const stale = projectCtx.memory.filter((m) => m.status !== "active");
+    if (stale.length) {
+      console.info(`[project-context] memory not applied: ${stale.map((m) => `${m.key}(${m.status}: ${m.reason})`).join("; ")}`);
+    }
+    console.info(`[project-context] flags=${JSON.stringify(projectCtx.flags)}`);
+  }
+  const appMapBlock = turnAppMap ? renderAppMapBlock2(turnAppMap) + projectCtx.structureBlock + projectCtx.designBlock : "";
   const appMapRepairBlock = turnAppMap ? renderAppMapBlock2(turnAppMap, 900).trim() : "";
   if (turnChangeSet.items.length > 1) {
     console.info(
@@ -168658,6 +169181,17 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       `[edit-intent] verb=${editIntent.verb} resolved ${editTargetPaths.length} target file(s): ${editTargetPaths.join(", ")}`
     );
   }
+  if (!isInitial && !isCrossCutting && editTargetPaths.length === 0 && projectCtx.selection) {
+    const picked = projectCtx.selection.primary.filter(
+      (p) => editablePromptFiles.some((f) => f.path === p) && !isVerifierExempt(p)
+    );
+    if (picked.length > 0) {
+      editTargetPaths = picked;
+      console.info(
+        `[project-context] selected ${picked.map((p) => `${p} (${projectCtx.selection.reasons[p]})`).join(", ")}`
+      );
+    }
+  }
   let inspectorReport = null;
   const shouldInspect = !isInitial && !isCrossCutting && editTargetPaths.length === 0 && lastUserContent.trim().length > 12 && editablePromptFiles.length > 0;
   if (shouldInspect) {
@@ -168721,12 +169255,12 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   );
   const strictScope = !isInitial && !isCrossCutting && resolvedTargetPaths.length > 0 && (editClassification?.scope === "micro" || editClassification?.scope === "targeted");
   const contextFiles = strictScope ? (() => {
-    const keep = new Set(resolvedTargetPaths);
+    const keep2 = new Set(resolvedTargetPaths);
     if (editClassification?.scope === "targeted") {
-      for (const p of impactNeighbourPaths) keep.add(p);
+      for (const p of impactNeighbourPaths) keep2.add(p);
     }
-    keep.add("src/styles.css");
-    const narrowed = editablePromptFiles.filter((f) => keep.has(f.path));
+    keep2.add("src/styles.css");
+    const narrowed = editablePromptFiles.filter((f) => keep2.has(f.path));
     return narrowed.length > 0 ? narrowed : editablePromptFiles;
   })() : editablePromptFiles;
   if (strictScope) {
@@ -168931,7 +169465,9 @@ The latest request contains multiple coordinated asks. Treat this as one complet
     if (hasVisionTurn) {
       await keepChatPhotos(body.projectId ?? null, messages[lastUserIdx]?.attachments);
     }
-    ownPhotoBlock = renderProjectPictureBlock(await loadProjectPictures(body.projectId ?? null));
+    if (projectCtx.flags.images || hasVisionTurn) {
+      ownPhotoBlock = renderProjectPictureBlock(await loadProjectPictures(body.projectId ?? null));
+    }
   } catch {
   }
   designTasteBlock += ownPhotoBlock;
@@ -168943,23 +169479,45 @@ The latest request contains multiple coordinated asks. Treat this as one complet
       dimensions: editClassification?.dimensions ?? [],
       text: lastUserText || "",
       isInitial,
-      isCrossCutting
+      isCrossCutting,
+      touchesData: projectCtx.flags.database || projectCtx.flags.forms
     });
     skillsBlock = picked.text;
     if (picked.ids.length) console.info(`[skills] ${picked.ids.join(", ")}`);
   } catch (e) {
     console.warn("[skills] skipped:", e instanceof Error ? e.message : String(e));
   }
-  const dynamicSuffixText = changingProjectText + dateBlock + (intentBrief ? `
+  const contextBudget = (await Promise.resolve().then(() => (init_context2(), context_exports))).applyContextBudget(
+    [
+      { id: "system", priority: "required", text: staticPrefixText },
+      { id: "files", priority: "required", text: filesContext },
+      { id: "intent", priority: "required", text: (intentBrief ?? "") + resolvedBlock + groundingBlock + dynamic.text + intentActions.promptBlock + astPatchBlock + backendGateBlock + highStakesBlock + visionAddendum },
+      { id: "pic", priority: "project-state", text: picBlock },
+      { id: "prd", priority: "project-state", text: boundedEdit ? "" : prdBlock + prdScenarioBlock },
+      { id: "designTaste", priority: "design", text: designTasteBlock },
+      { id: "memory", priority: "memory", text: memoryBlock },
+      { id: "skills", priority: "skills", text: skillsBlock },
+      { id: "orchestration", priority: "history", text: orchestrationBlock },
+      { id: "learning", priority: "history", text: learningBlock },
+      { id: "suggestions", priority: "inference", text: suggestionsBlock }
+    ],
+    promptTokenCeiling({ model: null, completionBudgetTokens: 16e3 })
+  );
+  const keep = (id, text) => contextBudget.dropped.includes(id) ? "" : text;
+  console.info(
+    `[context-budget] tokens=${contextBudget.tokens} budget=${contextBudget.budget}${contextBudget.dropped.length ? ` dropped=${contextBudget.dropped.join(",")}` : ""}${contextBudget.overRequired ? " (required sections alone exceed budget)" : ""}`
+  );
+  const budgetedChanging = contextBudget.dropped.includes("memory") && memoryBlock ? changingProjectText.replace(memoryBlock, "") : changingProjectText;
+  const dynamicSuffixText = budgetedChanging + dateBlock + (intentBrief ? `
 
 ### Canonical turn intent (HARD CONTRACT)
 ${intentBrief}
 Satisfy this exact outcome. Use the original user message for detail, but do not substitute a different feature, page, or product. Before emitting files, verify every planned change directly supports this intent.
-` : "") + suggestionsBlock + resolvedBlock + groundingBlock + (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") + dynamic.text + // The product contract goes ahead of the taste blocks: what to build first,
+` : "") + keep("suggestions", suggestionsBlock) + resolvedBlock + groundingBlock + (approvedPlan ? renderApprovedPlanBlock(approvedPlan) : "") + dynamic.text + // The product contract goes ahead of the taste blocks: what to build first,
   // how it should look second.
   // Project Intelligence Context first: the canonical understanding and the
   // committed design system frame everything the contract blocks add.
-  picBlock + (boundedEdit ? "" : prdBlock + prdScenarioBlock) + orchestrationBlock + designTasteBlock + skillsBlock + learningBlock + highStakesBlock + visionAddendum + backendGateBlock + intentActions.promptBlock + astPatchBlock + filesContext;
+  keep("pic", picBlock) + keep("prd", boundedEdit ? "" : prdBlock + prdScenarioBlock) + keep("orchestration", orchestrationBlock) + keep("designTaste", designTasteBlock) + keep("skills", skillsBlock) + keep("learning", learningBlock) + highStakesBlock + visionAddendum + backendGateBlock + intentActions.promptBlock + astPatchBlock + filesContext;
   console.info(
     "[prompt-parts] " + Object.entries({
       staticPrefix: staticPrefixText,
@@ -171305,7 +171863,14 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
         {
           const turnChanged = turnChangedPaths;
           const { providersExhaustedForTurn: providersExhaustedForTurn2 } = await Promise.resolve().then(() => (init_turn_context_server(), turn_context_server_exports));
-          turnCommittedForMemory = scopeMissing.length === 0;
+          {
+            const { shouldRecordMemory: shouldRecordMemory2 } = await Promise.resolve().then(() => (init_memory_model(), memory_model_exports));
+            turnCommittedForMemory = shouldRecordMemory2({
+              committed: nextFiles.length > 0,
+              cancelled: request.signal.aborted,
+              missingScope: scopeMissing.length
+            });
+          }
           if (!isInitial) {
             controller.enqueue(
               encoder.encode(
