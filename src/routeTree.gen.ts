@@ -85,6 +85,7 @@ import { Route as ApiPublicWaitlistRouteImport } from './routes/api/public/waitl
 import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
 import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
+import { Route as ApiPublicMarketplaceFeatureRouteImport } from './routes/api/public/marketplace-feature'
 import { Route as ApiPublicInvestRouteImport } from './routes/api/public/invest'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
@@ -520,6 +521,12 @@ const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
   path: '/api/public/track',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMarketplaceFeatureRoute =
+  ApiPublicMarketplaceFeatureRouteImport.update({
+    id: '/api/public/marketplace-feature',
+    path: '/api/public/marketplace-feature',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicInvestRoute = ApiPublicInvestRouteImport.update({
   id: '/api/public/invest',
   path: '/api/public/invest',
@@ -886,6 +893,7 @@ export interface FileRoutesByFullPath {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/invest': typeof ApiPublicInvestRoute
+  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -1016,6 +1024,7 @@ export interface FileRoutesByTo {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/invest': typeof ApiPublicInvestRoute
+  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -1147,6 +1156,7 @@ export interface FileRoutesById {
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
   '/api/public/invest': typeof ApiPublicInvestRoute
+  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
@@ -1279,6 +1289,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/invest'
+    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -1409,6 +1420,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/invest'
+    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -1539,6 +1551,7 @@ export interface FileRouteTypes {
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
     | '/api/public/invest'
+    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
@@ -1667,6 +1680,7 @@ export interface RootRouteChildren {
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
   ApiPublicInvestRoute: typeof ApiPublicInvestRoute
+  ApiPublicMarketplaceFeatureRoute: typeof ApiPublicMarketplaceFeatureRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
   ApiPublicTrackRuntimeErrorRoute: typeof ApiPublicTrackRuntimeErrorRoute
@@ -2247,6 +2261,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTrackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/marketplace-feature': {
+      id: '/api/public/marketplace-feature'
+      path: '/api/public/marketplace-feature'
+      fullPath: '/api/public/marketplace-feature'
+      preLoaderRoute: typeof ApiPublicMarketplaceFeatureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/invest': {
       id: '/api/public/invest'
       path: '/api/public/invest'
@@ -2739,6 +2760,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
   ApiPublicInvestRoute: ApiPublicInvestRoute,
+  ApiPublicMarketplaceFeatureRoute: ApiPublicMarketplaceFeatureRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
   ApiPublicTrackRuntimeErrorRoute: ApiPublicTrackRuntimeErrorRoute,
