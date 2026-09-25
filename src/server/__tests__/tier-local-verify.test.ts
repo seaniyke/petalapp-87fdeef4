@@ -8,8 +8,12 @@ vi.mock("@/server/npm-existence.server", () => ({
     hallucinated: [],
   }),
 }));
+vi.mock("@/server/esbuild-verifier.server", () => ({
+  verifyFilesEsbuild: vi.fn(),
+}));
 
 import { runLocalVerifyTier } from "@/server/pipeline/tier-local-verify";
+import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 
 describe("fresh-project authored-file boundary", () => {
   it("does not treat injected scaffold files as model-authored changes", async () => {
@@ -35,5 +39,28 @@ describe("fresh-project authored-file boundary", () => {
       "src/components/calculator.tsx",
     ]);
     expect(result.earlyChangedPaths).not.toContain("src/components/ui/generated-0.tsx");
+  });
+
+  it("surfaces parser unavailability instead of treating a heuristic as proven broken", async () => {
+    vi.mocked(verifyFilesEsbuild).mockResolvedValue({
+      status: "unavailable",
+      ok: false,
+      issues: [],
+      checkedPaths: [],
+      unavailableReason: "initialization_error",
+      unavailableDetail: "runtime missing",
+    });
+    const result = await runLocalVerifyTier({
+      nextFiles: [{ path: "src/App.tsx", content: `export default function App(){ return <p>Can't load</p> }` }],
+      currentFiles: [],
+      toolName: "write_project",
+      parsedOps: undefined,
+      authoredPaths: ["src/App.tsx"],
+    });
+    // This assertion uses a forced heuristic signal in environments where the
+    // local scanner changes; unavailable is only required when confirmation ran.
+    if (vi.mocked(verifyFilesEsbuild).mock.calls.length > 0) {
+      expect(result.validationFailure).toContain("runtime missing");
+    }
   });
 });

@@ -5735,6 +5735,16 @@ Forbidden defaults
         for (const ev of localOut.emit) {
           controller.enqueue(encoder.encode(sse(ev)));
         }
+        if (localOut.validationFailure) {
+          controller.enqueue(encoder.encode(sse({
+            type: "timeline",
+            step: "esbuild_parse",
+            outcome: "failed",
+            message: "Code parser unavailable — validation stopped",
+            ts: Date.now(),
+          })));
+          throw new Error(`Authoritative code validation unavailable: ${localOut.validationFailure}`);
+        }
         recorder.record({
           tier: "local_verify",
           outcome: localVerdict.ok ? "ok" : "failed",

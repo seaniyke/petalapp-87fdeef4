@@ -34,6 +34,8 @@ export interface LocalVerifyTierOutput {
   /** Pre-flight: real package roots not yet in package.json. Caller must
    *  add them so the installer doesn't silently skip them. */
   realButMissing: string[];
+  /** Heuristic syntax could not be confirmed by the authoritative parser. */
+  validationFailure?: string;
   /** SSE events to emit, in order. */
   emit: EmitList;
 }

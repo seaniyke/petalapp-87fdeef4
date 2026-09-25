@@ -54,6 +54,7 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
       : (parsedOps ?? []).map((o) => o.path);
 
   const verdict = verifyFilesLocal(nextFiles, earlyChangedPaths);
+  let validationFailure: string | undefined;
 
   // Ground truth for syntax is a real parser. A heuristic syntax flag on a
   // file esbuild reads cleanly is dropped HERE, before it can trigger a
@@ -67,6 +68,7 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
       const ev = await verifyFilesEsbuild(nextFiles, paths);
       if (ev.status === "unavailable") {
         console.error("[local-verifier] parser confirmation unavailable:", ev.unavailableDetail);
+        validationFailure = `esbuild unavailable (${ev.unavailableReason ?? "unknown"}): ${ev.unavailableDetail ?? "no detail"}`;
       }
       const failed = new Set(ev.issues.map((i) => i.path));
       const clean = new Set(ev.checkedPaths.filter((p) => !failed.has(p)));
@@ -76,7 +78,8 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
         console.log(`[local-verifier] parser cleared heuristic syntax flags on: ${Array.from(clean).join(", ")}`);
       }
     } catch (e) {
-      console.warn("[local-verifier] parser confirmation skipped:", e);
+      validationFailure = `esbuild unavailable (unexpected_error): ${e instanceof Error ? e.message : String(e)}`;
+      console.error("[local-verifier] parser confirmation unavailable:", e);
     }
   }
 
@@ -180,6 +183,7 @@ export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTier
     preflightDropped,
     preflightHallucinated,
     realButMissing,
+    validationFailure,
     emit,
   };
 }
