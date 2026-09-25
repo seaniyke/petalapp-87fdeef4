@@ -529,7 +529,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
                 .eq("project_id", payload.projectId)
                 .eq("path", "package.json");
               const { retryStalledBuild } = await import("@/server/build-retry.server");
-              const res = await retryStalledBuild(payload.buildId, { minStuckMs: 0, source: "callback-missing-dep" });
+              const res = await retryStalledBuild(payload.buildId, { minStuckMs: 0, source: "callback-missing-dep", adoptCurrentRevision: true });
               console.warn(`[build-recovery] added ${pkgs.join(",")} → ${res.outcome}`);
               if (res.outcome === "retried" || res.outcome === "already_claimed") {
                 return new Response("ok", { status: 200 });

@@ -30,7 +30,10 @@ export type RetryOutcome =
   | "retried"
   | "failed"
   | "no_files"
-  | "retry_failed";
+  | "retry_failed"
+  /** The project code moved on since this build: retrying would pack newer
+   *  code under an older revision. Marked stale; the newer revision builds. */
+  | "superseded";
 
 export interface RetryResult {
   outcome: RetryOutcome;
@@ -47,6 +50,12 @@ interface RetryOptions {
   minStuckMs?: number;
   /** Log prefix so the two callers stay distinguishable in logs. */
   source?: string;
+  /**
+   * The caller itself changed project files for this rebuild (missing-package
+   * fix). The rebuild is then a NEW code revision and the build is re-bound
+   * to it. Without this, a retry only ever rebuilds its own revision.
+   */
+  adoptCurrentRevision?: boolean;
 }
 
 /**
@@ -62,7 +71,7 @@ export async function retryStalledBuild(
 
   const { data: build } = await supabaseAdmin
     .from("project_builds")
-    .select("id, project_id, status, retry_count, created_at, last_progress_at")
+    .select("id, project_id, status, retry_count, created_at, last_progress_at, project_revision")
     .eq("id", buildId)
     .maybeSingle();
   if (!build) return { outcome: "not_found" };
@@ -117,11 +126,35 @@ export async function retryStalledBuild(
     .maybeSingle();
   if (!claimed) return { outcome: "already_claimed", projectId: build.project_id };
 
-  const { data: rawFiles } = await supabaseAdmin
-    .from("project_files")
-    .select("path, content")
-    .eq("project_id", build.project_id);
-  const files = (rawFiles ?? []).map((r) => ({ path: r.path, content: r.content }));
+  // Revision identity: a retry rebuilds the SAME code revision. If the
+  // project moved on, sending today's files under this build id would label
+  // newer code with an older revision — refuse and mark the build stale.
+  const { readFilesAtRevision } = await import("@/server/project-revision.server");
+  const snap = await readFilesAtRevision(build.project_id);
+  if (!snap.ok) return { outcome: "retry_failed", attempt: nextRetry, error: snap.error, projectId: build.project_id };
+  if (opts.adoptCurrentRevision) {
+    await supabaseAdmin.from("project_builds").update({ project_revision: snap.revision }).eq("id", buildId);
+    console.info(`[revision] build=${buildId} re-bound to revision ${snap.revision} (${source})`);
+  } else {
+    const { buildRevisionStatus, staleReasonText } = await import("@/lib/build-revision");
+    const rs = buildRevisionStatus(build, { revision: snap.revision });
+    if (!rs.current) {
+      const reason = staleReasonText(rs);
+      await supabaseAdmin
+        .from("project_builds")
+        .update({
+          status: "failed",
+          stale_reason: reason,
+          error_message: "Superseded by newer changes.",
+          ready_at: new Date().toISOString(),
+        })
+        .eq("id", buildId)
+        .in("status", ["pending", "building"]);
+      console.info(`[revision] retry refused build=${buildId}: ${reason}`);
+      return { outcome: "superseded", projectId: build.project_id, ownerId: project.owner_id };
+    }
+  }
+  const files = snap.files.map((r) => ({ path: r.path, content: r.content }));
   if (files.length === 0) {
     await supabaseAdmin
       .from("project_builds")
