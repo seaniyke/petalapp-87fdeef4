@@ -91,6 +91,8 @@ describe("tool discipline", () => {
   });
   it("prevents a second writer", () => {
     const l = new TurnLedger();
+    l.recordRead("a.tsx");
+    l.recordRead("b.tsx");
     expect(l.write("a.tsx", "x", "y", "edit", "primary").ok).toBe(true);
     expect(l.write("b.tsx", "x", "y", "cleanup", "cleanup-agent")).toEqual({ ok: false, refusal: "foreign_writer" });
   });
@@ -123,8 +125,9 @@ describe("bounded repair", () => {
 
 describe("transactions", () => {
   const base = [{ path: "a.tsx", content: "old" }, { path: "b.tsx", content: "keep" }];
+  const readLedger = () => { const l = new TurnLedger(); for (const f of base) l.recordRead(f.path); return l; };
   it("successful transaction commits only changed files", () => {
-    const tx = new TurnTransaction(base, new TurnLedger());
+    const tx = new TurnTransaction(base, readLedger());
     tx.stage("a.tsx", "new");
     tx.recordCheck("syntax", "PASS");
     tx.recordCheck("browser", "UNAVAILABLE");
@@ -144,7 +147,7 @@ describe("transactions", () => {
     expect(out.files).toEqual(base);
   });
   it("cancellation beats completion", () => {
-    const l = new TurnLedger();
+    const l = readLedger();
     const tx = new TurnTransaction(base, l);
     tx.stage("a.tsx", "new");
     tx.recordCheck("syntax", "PASS");
@@ -154,7 +157,7 @@ describe("transactions", () => {
     expect(l.committed).toBe(false);
   });
   it("no writes after commit", () => {
-    const l = new TurnLedger();
+    const l = readLedger();
     const tx = new TurnTransaction(base, l);
     tx.stage("a.tsx", "new");
     tx.commit();
