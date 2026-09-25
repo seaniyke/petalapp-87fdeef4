@@ -107815,7 +107815,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -167999,8 +167998,21 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
   }
   return { ok: true, files: gated };
 }
-async function handleGenerateRequestCore(request, turnId, workSignal) {
+async function handleGenerateRequestCore(request, turnId, workSignal, onStage) {
   const abortSignal = workSignal ?? request.signal;
+  const setupStartedAt = Date.now();
+  let stageAt = setupStartedAt;
+  const stage = (name, message, phase) => {
+    const now = Date.now();
+    console.info(`[setup-timing] turn=${turnId ?? "n/a"} ${name} +${now - stageAt}ms total=${now - setupStartedAt}ms`);
+    stageAt = now;
+    if (message) {
+      try {
+        onStage?.({ message, phase });
+      } catch {
+      }
+    }
+  };
   const logicalTurnId = turnId ?? crypto.randomUUID();
   const authResult = await authorize(request);
   if (authResult instanceof Response) return authResult;
@@ -168041,6 +168053,7 @@ async function handleGenerateRequestCore(request, turnId, workSignal) {
     return new Response("messages must not be empty", { status: 400 });
   }
   const lastContent = latestUserMessage(messages);
+  let earlyBriefExpansion = null;
   const intentBrief = (body.intentBrief ?? "").trim().slice(0, 600);
   if (promptExceedsHardCeiling(lastContent)) {
     return new Response(
@@ -168180,6 +168193,7 @@ async function handleGenerateRequestCore(request, turnId, workSignal) {
     }
   }
   const isInitial = currentFiles.length === 0;
+  if (isInitial) earlyBriefExpansion = expandBriefIfVague(latestUserMessage(messages)).catch(() => ({ expanded: false, brief: latestUserMessage(messages) }));
   if (isInitial) {
     const tc = currentTurnContext();
     if (Object.keys(tc).length > 0) tc.holdSummary = true;
@@ -168201,6 +168215,7 @@ async function handleGenerateRequestCore(request, turnId, workSignal) {
   if (buildTarget.id === "web") {
     try {
       const { resolvePrdForTurn: resolvePrdForTurn2 } = await Promise.resolve().then(() => (init_prd_engine_server(), prd_engine_server_exports));
+      stage("pre_prd", "Working out what your app needs to do\u2026");
       resolvedPrd = await resolvePrdForTurn2({
         brief: lastContent,
         projectId: body.projectId,
@@ -168379,7 +168394,7 @@ ${knowledge}
   const multiEditPromptContext = messages.map((m) => typeof m.content === "string" ? m.content : "").join("\n");
   const multiEditIntent = !isInitial && detectMultiEditIntent(multiEditPromptContext);
   if (isInitial) {
-    const expansion = await expandBriefIfVague(lastUserContent);
+    const expansion = await (earlyBriefExpansion ?? expandBriefIfVague(lastUserContent));
     if (expansion.expanded) {
       lastUserContent = expansion.brief;
       const lastIdx = (() => {
@@ -168426,6 +168441,7 @@ Shape:
 
 When in doubt use "replace" \u2014 ast-patch is a power tool, not a default. keep-existing-expander and replace/update remain the fallback.
 ` : "";
+  stage("pre_design", "Choosing a design direction\u2026", "designing");
   const rawDesignDirection = userJwt ? await pickDesignDirection({
     jwt: userJwt,
     projectId: body.projectId,
@@ -168448,6 +168464,7 @@ When in doubt use "replace" \u2014 ast-patch is a power tool, not a default. kee
       const { assemblePic: assemblePic2 } = await Promise.resolve().then(() => (init_pic_assemble_server(), pic_assemble_server_exports));
       const { renderPicBlock: renderPicBlock2 } = await Promise.resolve().then(() => (init_pic_render(), pic_render_exports));
       const isStructural = isStructuralTurn;
+      stage("pre_pic", "Mapping your pages and sections\u2026");
       const assembled = await assemblePic2({
         projectId: body.projectId,
         brief: lastUserContent || lastContent,
@@ -169084,6 +169101,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
     chosenBy = `${chosenBy}+cost_ceiling`;
   }
   const reasoningField = preset === "deep" ? { reasoning: { effort: "high" } } : { reasoning: { enabled: false } };
+  stage("pre_web_intel");
   const webIntel = await gatherWebIntel({
     message: lastUserContent,
     signal: abortSignal,
@@ -169106,6 +169124,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
   }
   let finalMessages = budget.messages;
   const directLogoEdit = !isInitial && isDirectLogoPlacementRequest(lastUserContent) ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent }) : null;
+  stage("pre_write", "Starting to write your app\u2026");
   const upstream = directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
@@ -171691,7 +171710,10 @@ async function handleGenerateRequest(request) {
         };
         const response = await runWithTurnContext(
           attemptCtx,
-          () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal)
+          () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal, ({ message, phase }) => {
+            if (phase) emit({ type: "phase", phase });
+            emit({ type: "status", message });
+          })
         );
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
