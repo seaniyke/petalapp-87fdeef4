@@ -18,7 +18,7 @@ export type EconomicsKey =
   | "verification_minute_usd"
   | "deploy_event_usd"
   | "image_generation_usd"
-  | "min_purchase_ngn"
+  | "min_purchase_usd_cents"
   | "target_gross_margin_pct"
   | "free_user_monthly_cost_ceiling_usd"
   | "max_active_dedicated_backends"
@@ -38,7 +38,7 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   verification_minute_usd: 0.02,
   deploy_event_usd: 0.002,
   image_generation_usd: 0.02,
-  min_purchase_ngn: 5000,
+  min_purchase_usd_cents: 300,
   target_gross_margin_pct: 60,
   free_user_monthly_cost_ceiling_usd: 1.5,
   max_active_dedicated_backends: 25,
