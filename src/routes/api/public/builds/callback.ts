@@ -914,6 +914,7 @@ async function runTestLabForBuild(args: {
         .select("changed_paths, turn_id")
         .eq("project_id", args.projectId)
         .eq("turn_id", ident.turnId)
+        .limit(1)
         .maybeSingle();
       const row = edit as { changed_paths?: string[] | null; turn_id?: string | null } | null;
       turnId = ident.turnId;
