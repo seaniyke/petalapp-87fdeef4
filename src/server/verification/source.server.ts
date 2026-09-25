@@ -37,6 +37,8 @@ export async function verifyProposedSource(args: {
           ...identifierIssues.map((i) => ({
             path: i.path,
             line: i.line,
+            column: 0,
+            kind: "semantic" as const,
             message: `${i.message} — declared nowhere in this file; the preview would crash with a ReferenceError`,
           })),
         ],

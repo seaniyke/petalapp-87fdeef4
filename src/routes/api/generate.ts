@@ -242,6 +242,7 @@ type Body = {
    *  ONLY — it does NOT skip credit checks or charging. Every model call
    *  costs money, so every model call is metered. */
   isAutoFix?: boolean;
+  isInternalRepair?: boolean;
   /** Plan Mode v1 — when true, run the cheap planning model first, emit
    *  `plan_proposed`, persist the plan, and end the stream. */
   planFirst?: boolean;
