@@ -158,6 +158,8 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
       }
       for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
       if (verification.status === "FAILED") {
+        // Blocks commit on the status itself, not only via per-gate FAILs.
+        tx.recordCheck("source_verification", "FAIL", verification.reason ?? "source verification failed");
         for (const p of verification.repairTargets.length ? verification.repairTargets : [undefined]) {
           rejections.push({
             operation: "commit",

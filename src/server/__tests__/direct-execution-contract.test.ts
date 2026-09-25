@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { shouldAutoPlan, isExplicitPlanRequest } from "../plan-mode";
-import { classifyEdit } from "../edit-classifier.server";
+import { classifyRequest } from "../execution/classify";
 import { buildEditBoundary } from "../edit-boundary.server";
 
 const existing = [
@@ -27,7 +27,7 @@ async function classifyOffline(prompt: string) {
     throw new Error("network not allowed");
   }) as typeof fetch;
   try {
-    const c = await classifyEdit({ prompt, fileCount: 80 });
+    const c = classifyRequest(prompt, { isInitial: false }).edit!;
     return { c, called };
   } finally {
     globalThis.fetch = realFetch;

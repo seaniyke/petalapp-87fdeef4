@@ -12,8 +12,10 @@ export async function verifyProposedSource(args: {
   tree: Array<{ path: string; content: string }>;
   changedPaths: string[];
   requestedRoutes: string[];
+  /** First builds: the shared app frame is a required deliverable. */
+  requireShell?: boolean;
 }): Promise<VerificationRecord> {
   const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
   const esbuild = await verifyFilesEsbuild(args.tree, parseable);
-  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild }));
+  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild, requireShell: args.requireShell }));
 }

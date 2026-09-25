@@ -16,7 +16,7 @@
  * surfaced as "you ran out".
  */
 
-import { estimateMessagesTokens, type BudgetMessage } from "./context-budget.server";
+import { estimateMessagesTokens, type BudgetMessage } from "./context/budget";
 
 /** Hard ceiling on model spend for the repair phase of a single turn, USD. */
 export const TURN_REPAIR_COST_CEILING_USD = 0.35;

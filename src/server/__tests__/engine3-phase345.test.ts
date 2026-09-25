@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildImportGraph, computeImpact, resolveSpecifier } from "@/server/impact-graph.server";
-import { classifyEditDeterministic, parseClassification } from "@/server/edit-classifier.server";
+import { classifyEditFacet as classifyEditDeterministic } from "@/server/execution/classify";
 import { parseCraftDefects } from "@/server/craft-qa.server";
 import { parseAgentOutput, mergeAgentOutputs } from "@/server/agents/model-agent.server";
 import { reconcile } from "@/server/agents/runtime";
@@ -66,14 +66,7 @@ describe("edit classifier", () => {
     ).toBe("targeted");
   });
 
-  it("parses model verdicts and rejects junk", () => {
-    const ok = parseClassification('{"scope":"structural","dimensions":["visual","x"],"hints":["Hero"],"reason":"r"}');
-    expect(ok?.scope).toBe("structural");
-    expect(ok?.dimensions).toEqual(["visual"]);
-    expect(ok?.hints).toEqual(["hero"]);
-    expect(parseClassification('{"scope":"huge"}')).toBeNull();
-    expect(parseClassification("not json")).toBeNull();
-  });
+
 });
 
 describe("craft QA parsing", () => {

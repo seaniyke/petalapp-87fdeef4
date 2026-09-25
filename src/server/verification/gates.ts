@@ -15,6 +15,7 @@ import type { Verdict } from "@/server/execution/verdict";
 import { toVerdict } from "@/server/execution/verdict";
 import { buildAppMap } from "@/server/engine/app-map";
 import { assessCompleteness, isUnfinishedPage } from "@/server/engine/build-state";
+import { frameIsComplete } from "@/server/engine/write";
 export { isUnfinishedPage };
 
 export type GateId = "syntax" | "dependencies" | "routes" | "build" | "browser";
@@ -128,9 +129,15 @@ export function dependencyGate(files: ProjectFile[]): GateResult {
 
 /* ------------------------ routes / completeness ------------------------ */
 
-export function routesGate(files: ProjectFile[], requestedRoutes: string[]): GateResult {
+export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts: { requireShell?: boolean } = {}): GateResult {
   const reasons: string[] = [];
   const bad: string[] = [];
+  // First builds must ship the shared frame (routed App with nav + footer).
+  // Previously a separate post-commit check in /api/generate; now one gate.
+  if (opts.requireShell && !frameIsComplete(files, requestedRoutes.length)) {
+    reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation and footer)");
+    bad.push("src/App.tsx");
+  }
   const completeness = assessCompleteness({ requestedRoutes, files });
   if (!completeness.complete) {
     reasons.push(`missing requested: ${completeness.missingRoutes.join(", ")}`);
@@ -229,8 +236,13 @@ export function runSourceGates(args: {
   files: ProjectFile[];
   requestedRoutes: string[];
   esbuild: { status: string; issues?: Array<{ path: string; detail?: string; message?: string; line?: number }> } | null;
+  requireShell?: boolean;
 }): GateResult[] {
-  return [syntaxGate(args.esbuild), dependencyGate(args.files), routesGate(args.files, args.requestedRoutes)];
+  return [
+    syntaxGate(args.esbuild),
+    dependencyGate(args.files),
+    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell }),
+  ];
 }
 
 /* --------------------------- cleanup guard --------------------------- */

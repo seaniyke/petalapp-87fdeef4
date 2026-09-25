@@ -25,7 +25,7 @@ import {
 } from "@/server/tool-args-salvage.server";
 
 
-import { detectCrossCuttingIntent, pickPinnedPaths } from "@/server/intent-targets.server";
+import { pickPinnedPaths } from "@/server/intent-targets.server";
 import { resolveEditIntent } from "@/server/edit-intent.server";
 import { buildSectionExpansionPatch } from "@/server/section-expansion.server";
 
@@ -178,7 +178,7 @@ import {
 import { pickBestModel } from "@/server/smart-router.server";
 import { evaluateCostCeiling } from "@/server/cost-ceiling.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
-import { applyContextBudget, type BudgetMessage } from "@/server/context-budget.server";
+import { budgetMessages, type BudgetMessage } from "@/server/context/budget";
 import { expandBriefIfVague } from "@/server/brief-expander.server";
 import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
@@ -2876,25 +2876,15 @@ Forbidden defaults
   // semantic classifier can WIDEN it (never shrink it), which is what catches
   // "this looks generic" and "nothing works on my phone" — structural asks
   // that no keyword list will ever match.
-  let editClassification: import("@/server/edit-classifier.server").EditClassification | null =
-    null;
-  if (!isInitial) {
-    try {
-      const { classifyEdit } = await import("@/server/edit-classifier.server");
-      editClassification = await classifyEdit({
-        prompt: lastUserContent,
-        projectPurpose: picContext?.understanding?.summary ?? resolvedPrd?.prd?.purpose ?? null,
-        fileCount: currentFiles.length,
-        projectId: body.projectId ?? null,
-        userId,
-        signal: request.signal,
-      });
-      console.info(
-        `[edit-classifier] scope=${editClassification.scope} source=${editClassification.source} dims=${editClassification.dimensions.join(",")} — ${editClassification.reason}`,
-      );
-    } catch (e) {
-      console.warn("[edit-classifier] skipped:", e instanceof Error ? e.message : String(e));
-    }
+  // ONE classification for this request (operation, mode, edit size,
+  // dimensions, cross-cutting). Deterministic; no AI classifier call.
+  const { classifyRequest, buildExecutionScope, renderScopeBlock } = await import("@/server/execution");
+  const turnClassification = classifyRequest(lastUserContent || "", { isInitial });
+  const editClassification = turnClassification.edit;
+  if (editClassification) {
+    console.info(
+      `[classify] op=${turnClassification.operation} scope=${editClassification.scope} dims=${editClassification.dimensions.join(",")} cross=${turnClassification.crossCutting} — ${turnClassification.reason}`,
+    );
   }
 
   // Edit Intelligence phase 1 + 3 — turn the message into an explicit change
@@ -2970,9 +2960,7 @@ Forbidden defaults
     );
   }
 
-  const isCrossCutting =
-    !isInitial &&
-    (detectCrossCuttingIntent(lastUserContent) || editClassification?.scope === "structural");
+  const isCrossCutting = turnClassification.crossCutting;
   let pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
   if (isCrossCutting) {
     console.info(
@@ -3168,17 +3156,9 @@ Forbidden defaults
   // Execution discipline — deterministic operation class + enforced scope.
   // Shared chrome and unrelated pages are protected on targeted edits; the
   // scope never grows silently. No AI call.
-  const { classifyRequest, buildExecutionScope, renderScopeBlock } = await import("@/server/execution");
-  const turnClassification = classifyRequest(lastUserContent || "", {
-    isInitial,
-    manifest: projectCtx.manifest,
-    targetCount: resolvedTargetPaths.length,
-  });
   const executionScope = buildExecutionScope({
     request: lastUserContent || "",
-    classification: isCrossCutting && turnClassification.operation !== "first_build"
-      ? { ...turnClassification, operation: "architectural_change", mode: "staged" }
-      : turnClassification,
+    classification: turnClassification,
     manifest: projectCtx.manifest,
     targets: resolvedTargetPaths,
     neighbours: impactNeighbourPaths,
@@ -3860,17 +3840,18 @@ Forbidden defaults
     const at = Math.max(1, chatMessages.length - 1);
     (chatMessages as Array<{ role: string; content: unknown }>).splice(at, 0, { role: "system", content: webIntel.block });
   }
-  const budget = applyContextBudget(chatMessages as BudgetMessage[], model);
-  if (budget.action !== "none") {
+  // Same budget module and ceiling as the section budget above; the system
+  // prompt (already budgeted) is pinned, only conversation history is fitted.
+  const budget = budgetMessages(
+    chatMessages as BudgetMessage[],
+    promptTokenCeiling({ model, completionBudgetTokens: 16_000 }),
+  );
+  if (budget.droppedCount > 0) {
     console.log(
-      `[context-budget] action=${budget.action} est=${budget.estimatedTokens} safe=${budget.safeInputTokens} dropped=${budget.droppedCount} model=${model}${budget.modelOverride ? ` → ${budget.modelOverride}` : ""}`,
+      `[context-budget] history est=${budget.estimatedTokens} budget=${budget.budget} dropped=${budget.droppedCount} model=${model}`,
     );
-    if (budget.modelOverride) {
-      model = budget.modelOverride;
-      chosenBy = `${chosenBy}+ctx_upgrade`;
-    }
   }
-  let finalMessages = budget.messages;
+  let finalMessages = budget.messages as typeof chatMessages;
 
   // ---------------------------------------------------------------------
   // Pre-emit agent loop. For work that spans many files or is mechanical,
@@ -6572,6 +6553,7 @@ Forbidden defaults
               tree,
               changedPaths: changed,
               requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
+              requireShell: isInitial,
             });
           },
         });
@@ -6808,15 +6790,21 @@ Forbidden defaults
         // COMPLETENESS SAFETY GATE — success is a deterministic consequence of
         // the build state, never of an AI self-check. A first build that is
         // missing requested pages is reported as incomplete and not built.
+        // DIAGNOSTIC ONLY: the commit decision above (routes gate, incl. the
+        // app shell) is authoritative. This explains a rolled-back first
+        // build to the user; after a commit it is empty by construction and
+        // can never turn a committed/failed verdict into anything else.
         let scopeMissing: string[] = [];
         if (isInitial && nextFiles.length > 0) {
           const requested = requestedRoutesFor(lastUserText, plannedRoutes);
-          const verdict = assessCompleteness({ requestedRoutes: requested, files: nextFiles });
+          const verdict = txCommitted
+            ? { complete: true, missingRoutes: [] as string[] }
+            : assessCompleteness({ requestedRoutes: requested, files: nextFiles });
           scopeMissing = verdict.missingRoutes;
           {
             // The shared frame is a required deliverable, not an optional one.
             const { frameIsComplete } = await import("@/server/engine/write");
-            if (!frameIsComplete(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
+            if (!txCommitted && !frameIsComplete(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
               scopeMissing = ["app shell", ...scopeMissing];
               verdict.complete = false;
             }
