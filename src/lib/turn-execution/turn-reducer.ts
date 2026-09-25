@@ -335,7 +335,7 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
   }
 }
 
-function eventKey(e: RawTurnEvent, g: GenState): string | null {
+function eventKey(e: RawTurnEvent): string | null {
   if (typeof e.seq === "number" && e.seq > 0) return `s${e.seq}`;
   return null;
 }
@@ -385,16 +385,17 @@ export function turnReducer(state: TurnState, action: TurnAction): TurnState {
       if (g.done) return state;
       // Stop won: nothing after confirmation may resurrect the turn.
       if (state.stop.phase === "cancelled") return state;
-      const key = eventKey(e, g);
+      const key = eventKey(e);
       if (key) {
         const seq = e.seq as number;
         if (seq <= g.lastSeq || g.seen.includes(key)) return state;
         const next = applyEvent(g, e);
         return { ...state, gen: { ...next, lastSeq: seq, seen: [...g.seen, key].slice(-2000) } };
       }
-      // Live event: arrival ordinal mirrors the recorder's seq.
+      // Live event (no seq). Applied in arrival order; a later full replay
+      // (resume_start after=0) rebuilds from the durable log instead.
       const next = applyEvent(g, e);
-      return { ...state, gen: { ...next, liveCount: g.liveCount + 1, lastSeq: Math.max(g.lastSeq, g.liveCount + 1) } };
+      return { ...state, gen: { ...next, liveCount: g.liveCount + 1 } };
     }
   }
 }
