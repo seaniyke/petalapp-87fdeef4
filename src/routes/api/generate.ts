@@ -119,8 +119,8 @@ import { renderAppSpecBlock } from "@/server/app-spec.server";
 import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/lib/prompt-limits";
 
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
-import { COPY_CONTRACT_BLOCK } from "@/server/copy-slop.server";
-import { COMPOSITION_CONTRACT_BLOCK } from "@/server/composition-contract.server";
+import { loadCoreKnowledge } from "@/server/agent-knowledge";
+import { selectHistoryForGeneration } from "@/server/context/budget";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
 import { renderPetalCapabilitiesBlock } from "@/server/petal-capabilities.server";
@@ -393,9 +393,11 @@ function trimMessagesForGeneration(messages: ChatMessage[]): ChatMessage[] {
   const latestText = latestUserMessage([latest]).trim().toLowerCase();
   const needsPreviousContext =
     /^(yes|yeah|yep|ok|okay|sure|do it|do all|do all of (?:it|them|these)|do both|all of (?:it|them|these)|both|everything|ship it|go ahead|continue|proceed|that|this)$/i.test(latestText);
-  if (!needsPreviousContext) return [latest];
-  const previousContext = messages.slice(Math.max(0, lastUserIdx - 2), lastUserIdx);
-  return [...previousContext, latest];
+  // Constraint-aware retention BEFORE any truncation: earlier user messages
+  // that state a standing rule ("always…", "never…", brand, font) survive,
+  // alongside the immediate context for bare confirmations. budgetMessages()
+  // later fits the result to the token ceiling with the same priorities.
+  return selectHistoryForGeneration(messages, lastUserIdx, needsPreviousContext);
 }
 
 function detectMultiEditIntent(prompt: string): boolean {
@@ -2438,39 +2440,8 @@ async function handleGenerateRequestCore(
     ? `\n\n### Build target (HARD CONSTRAINT)\n${buildTarget.systemPromptAddendum}\n${webSubtypeBlock}`
     : webSubtypeBlock;
 
-  // Design + craft bar (applies to EVERY target). Kimble apps must look
-  // hand-designed, not template-y. Keep this short and specific — the
-  // model is much better at executing concrete rules than vibes.
-  const designQualityBlock = `\n\n### Design & craft (HARD CONSTRAINT — applies to every UI you generate)
-Kimble apps must feel hand-crafted, not AI-generic. Hold yourself to an Awwwards bar.
-
-Typography
-- Pair a distinctive display font with a refined body font (Google Fonts is fine). NEVER default to Inter+Poppins or Inter alone. Examples that work: Space Grotesk + DM Sans, Instrument Serif + Work Sans, Bricolage Grotesque + Inter Tight, Fraunces + Geist, General Sans + Söhne-ish.
-- Set type scale with intent: large editorial display sizes for hero, tight tracking on display, generous leading on body.
-
-Color & surfaces
-- Define semantic tokens in \`src/styles.css\` using \`oklch()\`. NEVER hard-code colors (\`text-white\`, \`bg-[#xxx]\`) in components — always go through tokens (\`bg-background\`, \`text-foreground\`, \`bg-primary\`, etc.).
-- Add at least one gradient token (\`--gradient-primary\`) and one shadow token (\`--shadow-elegant\`) and USE them on hero / CTA / cards.
-- Both light and dark mode must be tuned — no auto-inverted afterthought.
-
-Layout & space
-- Asymmetric, intentional whitespace. No "stacked card on white" defaults. Use a real grid (12-col, bento, split, masonry) chosen for the content.
-- Hero section must have a strong focal point: oversized type, an image with depth, or a single bold visual. Not three centered lines + a button.
-
-Motion
-- Use \`framer-motion\` for entry transitions, hover micro-interactions, and one signature hero animation. Stagger lists. Animate on scroll for marketing surfaces.
-- Respect \`prefers-reduced-motion\`.
-
-Iconography & components
-- Icons: \`lucide-react\` only, sized consistently per surface (16/20/24).
-- Build on shadcn/ui primitives but customize variants (\`buttonVariants\` etc.) — don't ship default-looking buttons. Add a \`premium\` / \`hero\` variant when the page calls for it.
-
-Imagery
-- For hero/feature/empty-state images use \`generate_image\` to produce custom art that matches the palette — never generic stock-y placeholders or solid blocks. Always set proper alt text.
-
-Forbidden defaults
-- Purple-gradient-on-white SaaS look, three equal feature cards centered under "Why us", emoji-as-icon for serious products, untouched shadcn button on a hero CTA, "lorem ipsum" anywhere shipped.
-`;
+  // Generic design/craft guidance now lives in the canonical agent
+  // knowledge (src/server/agent-knowledge), loaded below as `coreKnowledge`.
 
 
 
@@ -3493,12 +3464,16 @@ Forbidden defaults
   // reference (backend/schema/integrations/blueprint). Anything keyed on the
   // request text or on notes that change turn to turn lives in
   // `changingProjectText` at the head of the suffix.
+  const coreKnowledge = loadCoreKnowledge(isInitial ? "full" : "compact");
+  console.info(`[agent-knowledge] core=${coreKnowledge.file}`);
   const staticPrefixText =
     baseSystem +
     buildTargetBlock +
     capabilitiesBlock +
-    designQualityBlock +
-    "\n\n" + COPY_CONTRACT_BLOCK + "\n\n" + COMPOSITION_CONTRACT_BLOCK + "\n\n" +
+    // Canonical agent knowledge: full system.md on a first build, compact.md
+    // on edits/continuations. Only one of the two is ever loaded. Stable per
+    // mode, so it stays inside the cached prefix.
+    "\n\n" + coreKnowledge.text + "\n\n" +
     backendBlock +
     sharedBackendBlock +
     schemaBlock +
