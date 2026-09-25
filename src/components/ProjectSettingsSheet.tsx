@@ -3,6 +3,8 @@
  * the attached backend (BYO Supabase v1).
  */
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { getBadgeRemoval, buyBadgeRemoval } from "@/lib/badge-removal.functions";
 import {
   BookOpen,
   Cloud,
@@ -496,24 +498,45 @@ function PetalBadgeSection({
   project: ProjectRow;
   onChange: (next: ProjectRow) => void;
 }) {
-  const { plan, loading: walletLoading } = useWallet();
-  const isPaidPlan = !!plan && plan.code !== "free";
+  const { plan } = useWallet();
+  const legacyPlan = !!plan && plan.code !== "free";
+  const getRemoval = useServerFn(getBadgeRemoval);
+  const buyRemoval = useServerFn(buyBadgeRemoval);
+  const [info, setInfo] = useState<{ purchased: boolean; credits: number } | null>(null);
   const [saving, setSaving] = useState(false);
-  const hidden = !!project.hide_petal_badge;
-  // Effective: free-tier always shows badge regardless of flag.
-  const effectivelyShown = !(isPaidPlan && hidden);
+  useEffect(() => {
+    getRemoval({ data: { projectId: project.id } }).then(setInfo).catch(() => setInfo(null));
+  }, [project.id, getRemoval]);
+  const unlocked = legacyPlan || !!info?.purchased;
+  const hidden = unlocked && !!project.hide_petal_badge;
 
   async function toggle(nextHidden: boolean) {
-    if (!isPaidPlan) return;
+    if (!unlocked) return;
     setSaving(true);
     try {
-      const next = await updateProject(project.id, {
-        hide_petal_badge: nextHidden,
-      });
+      const next = await updateProject(project.id, { hide_petal_badge: nextHidden });
       onChange(next);
       toast.success(nextHidden ? "Badge will be hidden on next build" : "Badge will show on next build");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't update");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function buy() {
+    setSaving(true);
+    try {
+      const res = await buyRemoval({ data: { projectId: project.id } });
+      if (!res.ok) {
+        toast.error(res.reason === "insufficient_credits" ? "Not enough credits — top up first." : "Couldn't remove the badge. You weren't charged.");
+        return;
+      }
+      setInfo((i) => ({ credits: i?.credits ?? 0, purchased: true }));
+      onChange({ ...project, hide_petal_badge: true });
+      toast.success("Badge removed. It disappears on the next build.");
+    } catch {
+      toast.error("Couldn't remove the badge. You weren't charged.");
     } finally {
       setSaving(false);
     }
@@ -526,33 +549,28 @@ function PetalBadgeSection({
       </h3>
       <p className="mb-3 text-xs text-muted-foreground">
         A small floating badge appears in the bottom-right of your built app.
-        {isPaidPlan
-          ? " You can hide it anytime."
-          : " Upgrade to a paid plan to hide it on your deployed app."}
       </p>
-
-      <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-3">
-        <div className="flex items-start gap-2">
-          {!isPaidPlan && (
-            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          )}
-          <div className="text-sm">
-            <div className="font-medium">
-              {effectivelyShown ? "Showing on your app" : "Hidden on your app"}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {isPaidPlan
-                ? "Toggle to hide or show. Takes effect on the next build."
-                : "Free plan always shows the badge."}
-            </div>
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-3">
+        <div className="text-sm">
+          <div className="font-medium">{hidden ? "Hidden on your app" : "Showing on your app"}</div>
+          <div className="text-xs text-muted-foreground">
+            {unlocked
+              ? "Toggle to hide or show. Takes effect on the next build."
+              : `Remove it for good on this app for ${info?.credits ?? 25} credits, one time.`}
           </div>
         </div>
-        <Switch
-          checked={!hidden}
-          disabled={!isPaidPlan || saving || walletLoading}
-          onCheckedChange={(checked) => toggle(!checked)}
-          aria-label="Show Built with Kimble badge"
-        />
+        {unlocked ? (
+          <Switch
+            checked={!hidden}
+            disabled={saving}
+            onCheckedChange={(checked) => toggle(!checked)}
+            aria-label="Show Built with Kimble badge"
+          />
+        ) : (
+          <Button size="sm" onClick={buy} disabled={saving || !info}>
+            {saving ? "Removing…" : `Remove · ${info?.credits ?? 25} credits`}
+          </Button>
+        )}
       </div>
     </div>
   );

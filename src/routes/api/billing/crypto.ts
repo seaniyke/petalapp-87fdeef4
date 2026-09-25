@@ -86,6 +86,9 @@ export const Route = createFileRoute("/api/billing/crypto")({
           // Credit packs are pay-as-you-go: ANY signed-in user can buy one,
           // no subscription needed. Cloud + AI runtime top-ups still need
           // full access (subscription OR purchased credits remaining).
+          if (parsed.purpose === "plan" && process.env.SUBSCRIPTIONS_ENABLED !== "1") {
+            return new Response(JSON.stringify({ error: "Monthly plans are paused. Buy credits instead — they never expire." }), { status: 400, headers: { "Content-Type": "application/json" } });
+          }
           if (parsed.purpose === "runtime_topup") {
             const { hasFullAccess } = await import("@/server/entitlements.server");
             if (!(await hasFullAccess(user.id))) {

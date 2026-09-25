@@ -159,20 +159,8 @@ export async function retryStalledBuild(
     );
   }
 
-  let hideBadge = false;
-  try {
-    const { data: wallet } = await supabaseAdmin
-      .from("user_wallets")
-      .select("plan_code, topup_credits_remaining")
-      .eq("user_id", project.owner_id)
-      .maybeSingle();
-    const isPaidPlan =
-      (!!wallet?.plan_code && wallet.plan_code !== "free") ||
-      Number(wallet?.topup_credits_remaining ?? 0) > 0;
-    hideBadge = isPaidPlan && project.hide_petal_badge === true;
-  } catch {
-    hideBadge = false;
-  }
+  const { shouldHideBadge } = await import("@/server/badge-access.server");
+  const hideBadge = await shouldHideBadge(project.id, project.owner_id, project.hide_petal_badge);
 
   try {
     await postBuildToRailway({

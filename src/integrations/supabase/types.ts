@@ -3012,6 +3012,38 @@ export type Database = {
           },
         ]
       }
+      project_badge_removals: {
+        Row: {
+          created_at: string
+          credits: number
+          ledger_id: string | null
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits: number
+          ledger_id?: string | null
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          ledger_id?: string | null
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_badge_removals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_blueprints: {
         Row: {
           backend: string | null

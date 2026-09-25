@@ -53,6 +53,9 @@ export const Route = createFileRoute("/api/billing/initialize")({
           // without a subscription. Project add-ons and Cloud + AI runtime
           // top-ups require full access — a paid plan OR purchased credits
           // still remaining. Gated server-side so the UI can't be bypassed.
+          if (parsed.purpose === "plan" && process.env.SUBSCRIPTIONS_ENABLED !== "1") {
+            return new Response(JSON.stringify({ error: "Monthly plans are paused. Buy credits instead — they never expire." }), { status: 400, headers: { "Content-Type": "application/json" } });
+          }
           if (parsed.purpose === "addon" || parsed.purpose === "runtime_topup") {
             const { hasFullAccess } = await import("@/server/entitlements.server");
             if (!(await hasFullAccess(userData.user.id))) {

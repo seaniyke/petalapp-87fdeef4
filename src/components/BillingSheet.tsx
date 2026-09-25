@@ -39,6 +39,7 @@ import {
   dailyResetCountdown,
   monthlyResetDays as computeMonthlyResetDays,
   fetchCreditPacks,
+  SUBSCRIPTIONS_ENABLED,
   fetchCurrencies,
   fetchPriceOverrides,
   formatMoney,
@@ -409,7 +410,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
                 </h3>
                 {currentPlanCode === "free" ? (
                   <p className="text-xs text-muted-foreground">
-                    {payAsYouGo ? "Credits keep paid features on." : "Subscribe, or just buy credits."}
+                    {payAsYouGo ? "Credits keep paid features on." : "Buy credits to unlock everything. They never expire."}
                   </p>
                 ) : renewsLabel ? (
                   <p className="text-xs text-muted-foreground">
@@ -438,9 +439,11 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
             </ul>
 
             <div className="mt-4 flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={scrollToPlans}>
-                {currentPlanCode === "free" ? "See plans" : "Change plan"}
-              </Button>
+              {SUBSCRIPTIONS_ENABLED && (
+                <Button size="sm" variant="outline" onClick={scrollToPlans}>
+                  {currentPlanCode === "free" ? "See plans" : "Change plan"}
+                </Button>
+              )}
               {subStatus?.hasPaystackSubscription && (
                 <Button
                   size="sm"
@@ -509,7 +512,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
             <div className="mb-3">
               <h3 className="text-sm font-semibold">Top up credits</h3>
               <p className="text-xs text-muted-foreground">
-                Buy once, never expires. Same credits as a plan.
+                Buy once, never expires. Credits pay for building, hosting, AI, domains and badge removal.
               </p>
             </div>
 
@@ -552,9 +555,10 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
             </div>
           </section>
 
-          <Separator />
+          {SUBSCRIPTIONS_ENABLED && <Separator />}
 
           {/* 6. Plan picker — one selector, one card */}
+          {SUBSCRIPTIONS_ENABLED && (
           <section ref={plansRef} className="scroll-mt-4">
             <div className="mb-3">
               <h3 className="text-sm font-semibold">Or subscribe monthly</h3>
@@ -649,6 +653,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
               )}
             </div>
           </section>
+          )}
 
 
         </div>

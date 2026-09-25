@@ -1,3 +1,8 @@
+/** Subscriptions are switched OFF (kept, not deleted): Kimble is pay-as-you-go
+ *  credits only. Flip to true to bring monthly plans back. Existing
+ *  subscribers keep their plan until it ends. */
+export const SUBSCRIPTIONS_ENABLED = false;
+
 /**
  * Client-side helpers for the billing system.
  *
