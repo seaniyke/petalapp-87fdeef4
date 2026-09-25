@@ -30,7 +30,7 @@ import { evaluateReadiness } from "@/server/readiness.server";
 import { loadCasesForBuild } from "@/server/test-results.server";
 import { runBackendAcceptance } from "@/server/backend-acceptance.server";
 import { backendAcceptanceEnabled } from "@/server/completion-flags.server";
-import { attachBuildEconomicsByProject } from "@/server/turn-economics.server";
+import { attachBuildEconomics } from "@/server/turn-economics.server";
 import { warmProjectThumbnail } from "@/server/project-thumbnail.server";
 
 /**
@@ -227,11 +227,18 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   if (existing.operation_id) {
     const { advanceOperation } = await import("@/server/operations.server");
     const opId = existing.operation_id;
-    if (payload.status === "ready" || outcome.delivered) {
-      void advanceOperation(opId, "READY", { build_revision: existing.project_revision, outcome: "delivered" })
+    const reportClass =
+      outcome.failureClass === "verification" ? "verification_only"
+      : outcome.failureClass === "infrastructure" ? "infrastructure"
+      : outcome.failureClass === "source" || outcome.failureClass === "deployment" ? "customer_outcome"
+      : null;
+    if (outcome.reason === "stale revision") {
+      // A superseded revision's result never settles the operation.
+    } else if (payload.status === "ready" || !outcome.refundAllowed) {
+      void advanceOperation(opId, "READY", { build_revision: existing.project_revision, outcome: "delivered", failure_class: reportClass })
         .then(() => advanceOperation(opId, "SETTLED"));
     } else {
-      void advanceOperation(opId, "FAILED", { failure_class: outcome.failureClass ?? null, outcome: "failed" });
+      void advanceOperation(opId, "FAILED", { failure_class: reportClass, outcome: "failed" });
     }
   }
 
@@ -802,20 +809,38 @@ function buildEvidence(verification: Record<string, unknown>): string[] {
  */
 async function refundRolledBackBuild(projectId: string, buildId: string): Promise<void> {
   try {
+    // Exact identity: refund only the charge of THIS build's operation.
+    // A build with no operation (attribution unknown) is never refunded by guess.
+    const { buildOperation } = await import("@/server/operations.server");
+    const { operationId } = await buildOperation(buildId);
+    if (!operationId) {
+      console.warn(`[builds/callback] no refund for build ${buildId} project=${projectId}: attribution unknown`);
+      return;
+    }
     const { data, error } = await (supabaseAdmin as never as {
       rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
-    }).rpc("refund_build_charge", { _project_id: projectId, _build_id: buildId });
+    }).rpc("refund_build_charge", { _operation_id: operationId, _build_id: buildId });
     if (error) {
       console.error("[builds/callback] rollback refund failed", buildId, error.message);
       return;
     }
     const amount = Number(data ?? 0);
     if (amount > 0) {
-      console.info(`[builds/callback] refunded ${amount} credit(s) for rolled-back build ${buildId}`);
+      console.info(`[builds/callback] refunded ${amount} credit(s) for operation ${operationId} build ${buildId}`);
     }
   } catch (e) {
     console.error("[builds/callback] rollback refund threw", buildId, (e as Error).message);
   }
+}
+
+/** Count late/stale callbacks on the operation (economics: stale-callback rate). */
+async function noteStaleCallback(operationId: string): Promise<void> {
+  try {
+    const { data } = await supabaseAdmin.from("economic_operations" as never).select("metadata").eq("id", operationId).maybeSingle();
+    const meta = ((data as { metadata?: Record<string, unknown> } | null)?.metadata ?? {}) as Record<string, unknown>;
+    const n = Number(meta.stale_callbacks ?? 0) + 1;
+    await supabaseAdmin.from("economic_operations" as never).update({ metadata: { ...meta, stale_callbacks: n } } as never).eq("id", operationId);
+  } catch { /* economics only */ }
 }
 
 /** Persist builder-reported stage timings and failure class (economics). */
@@ -830,7 +855,6 @@ async function recordBuildTimings(
       .from("project_builds")
       .update({
         builder_job_id: typeof t.jobId === "string" ? t.jobId : undefined,
-        turn_id: typeof t.turnId === "string" ? t.turnId : undefined,
         install_ms: num(t.installMs),
         compile_ms: num(t.compileMs),
         browser_ms: num(t.browserMs),
@@ -880,14 +904,20 @@ async function runTestLabForBuild(args: {
   let changedPaths: string[] = [];
   let turnId: string | null = null;
   try {
-    const { listEdits } = await import("@/server/edit-history.server");
-    const recent = await listEdits(args.projectId, 1);
-    const latest = recent?.[0] as
-      | { changed_paths?: string[] | null; turn_id?: string | null }
-      | undefined;
-    if (latest) {
-      changedPaths = latest.changed_paths ?? [];
-      turnId = latest.turn_id ?? null;
+    // Exact: the edit record of the turn this build belongs to. No turn id →
+    // full run (never "the most recent edit on the project").
+    const { buildOperation } = await import("@/server/operations.server");
+    const ident = await buildOperation(args.buildId);
+    if (ident.turnId) {
+      const { data: edit } = await supabaseAdmin
+        .from("project_edit_history")
+        .select("changed_paths, turn_id")
+        .eq("project_id", args.projectId)
+        .eq("turn_id", ident.turnId)
+        .maybeSingle();
+      const row = edit as { changed_paths?: string[] | null; turn_id?: string | null } | null;
+      turnId = ident.turnId;
+      changedPaths = row?.changed_paths ?? [];
     }
   } catch {
     /* no edit record — treat as a full run */
