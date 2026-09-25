@@ -12,7 +12,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { initializeTransaction, getEnvironment, fetchPlan, createPlan } from "@/server/paystack.server";
 import { resolvePrice } from "@/server/billing-pricing.server";
-import { enforcePurchaseMinimum } from "@/server/purchase-minimum.server";
+import { belowMinimumMessage, minimumPurchaseUsdCents } from "@/server/credit-purchase.server";
 
 const SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
 
@@ -206,21 +206,44 @@ export const Route = createFileRoute("/api/billing/initialize")({
                 usdAmountCents: Number(pack.amount_cents),
               };
             }
+          } else if (parsed.purpose === "pack" && parsed.itemCode === "custom") {
+            // Custom credit amount typed by the user, in display-currency
+            // minor units. Converted to USD here; credits are derived from
+            // USD on the server when the payment is confirmed.
+            if (!parsed.customAmountMinor) {
+              return new Response(
+                JSON.stringify({ error: "Enter an amount to continue." }),
+                { status: 400, headers: { "Content-Type": "application/json" } },
+              );
+            }
+            let usdCents = parsed.customAmountMinor;
+            if (parsed.currency !== "USD") {
+              const { data: cur_row } = await supabaseAdmin
+                .from("billing_currencies")
+                .select("usd_rate, is_active")
+                .eq("code", parsed.currency)
+                .maybeSingle();
+              if (!cur_row || !cur_row.is_active) {
+                return new Response("Currency not available", { status: 400 });
+              }
+              const rate = Number(cur_row.usd_rate);
+              if (rate <= 0) return new Response("Bad currency rate", { status: 500 });
+              usdCents = Math.floor(parsed.customAmountMinor / rate);
+            }
+            price = { amountMinor: parsed.customAmountMinor, usdAmountCents: usdCents };
           } else {
             price = await resolvePrice(parsed.purpose, parsed.itemCode, parsed.currency);
           }
 
-          // Commercial floor: credit purchases and balance top-ups must clear
-          // the ₦5,000 equivalent. Subscriptions, add-ons and marketplace
-          // items are priced on their own terms and are not covered.
-          if (parsed.purpose === "pack" || parsed.purpose === "runtime_topup") {
-            const minCheck = await enforcePurchaseMinimum({
-              usdAmountCents: price.usdAmountCents,
-              currency: parsed.currency,
-            });
-            if (!minCheck.ok) {
+          // Minimum purchase ($3 by default) for every credit purchase.
+          if (parsed.purpose === "pack") {
+            const floor = await minimumPurchaseUsdCents();
+            if (price.usdAmountCents < floor) {
               return new Response(
-                JSON.stringify({ error: minCheck.message, code: "below_minimum" }),
+                JSON.stringify({
+                  error: await belowMinimumMessage(parsed.currency),
+                  code: "below_minimum",
+                }),
                 { status: 400, headers: { "Content-Type": "application/json" } },
               );
             }
