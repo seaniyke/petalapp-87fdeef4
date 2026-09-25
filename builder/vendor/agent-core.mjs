@@ -139469,7 +139469,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -153139,6 +153138,10 @@ ${guardTag}
   };
 }
 
+// src/server/pin-loose-deps.ts
+init_define_import_meta_env();
+init_known_packages();
+
 // src/server/builder.server.ts
 var MAX_AGE_SECONDS = 5 * 60;
 function signRequest2(secret, body) {
@@ -166378,11 +166381,103 @@ function webIntelLimits() {
   };
 }
 var URL_RE3 = /\bhttps?:\/\/[^\s<>"'`)\]]+/i;
+var BARE_TLDS = [
+  "com",
+  "org",
+  "net",
+  "io",
+  "co",
+  "app",
+  "dev",
+  "ai",
+  "xyz",
+  "shop",
+  "store",
+  "online",
+  "site",
+  "tech",
+  "info",
+  "biz",
+  "me",
+  "tv",
+  "cc",
+  "us",
+  "uk",
+  "ca",
+  "au",
+  "de",
+  "fr",
+  "es",
+  "it",
+  "nl",
+  "se",
+  "no",
+  "dk",
+  "fi",
+  "pl",
+  "pt",
+  "br",
+  "mx",
+  "ar",
+  "cl",
+  "in",
+  "jp",
+  "kr",
+  "cn",
+  "sg",
+  "hk",
+  "nz",
+  "za",
+  "ng",
+  "ke",
+  "gh",
+  "eg",
+  "ae",
+  "ie",
+  "ch",
+  "at",
+  "be",
+  "cz",
+  "gr",
+  "tr",
+  "ru",
+  "ua",
+  "il",
+  "studio",
+  "design",
+  "agency",
+  "media",
+  "cloud",
+  "health",
+  "law",
+  "life",
+  "live",
+  "world",
+  "space",
+  "digital",
+  "group",
+  "solutions",
+  "services",
+  "cafe"
+];
+var BARE_DOMAIN_RE = new RegExp(
+  `(?:^|[\\s(<"'\`])((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+(?:${BARE_TLDS.join("|")}))(?:\\/[^\\s<>"'\`)\\]]*)?(?=$|[\\s)>"'\`,.!?])`,
+  "i"
+);
 var MIGRATE_RE = /\b(rebuild|recreate|migrate|clone|copy|redo|remake|move)\b[^.]{0,60}\b(my|our|existing|current|this)\b[^.]{0,30}\b(site|website|web ?page|homepage)\b|\b(based on|from|using)\b[^.]{0,40}\b(my|our|existing|current)\b[^.]{0,20}\b(site|website)\b/i;
 function detectWebIntelNeed(message) {
   const m = message.match(URL_RE3);
-  if (!m) return { need: "none", url: null };
-  const url = m[0].replace(/[.,;:!?]+$/, "");
+  let url = null;
+  if (m) {
+    url = m[0].replace(/[.,;:!?]+$/, "");
+  } else {
+    const b = message.match(BARE_DOMAIN_RE);
+    if (b) {
+      const whole = b[0].replace(/^[\s(<"'`]+/, "").replace(/[.,;:!?]+$/, "");
+      url = `https://${whole}`;
+    }
+  }
+  if (!url) return { need: "none", url: null };
   return { need: MIGRATE_RE.test(message) ? "required" : "optional", url };
 }
 function ipv4Private(ip) {
