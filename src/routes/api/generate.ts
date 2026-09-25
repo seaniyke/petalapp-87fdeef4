@@ -178,7 +178,7 @@ import {
 import { pickBestModel } from "@/server/smart-router.server";
 import { evaluateCostCeiling } from "@/server/cost-ceiling.server";
 import { recordAiOutcome } from "@/server/ai-outcomes.server";
-import { applyContextBudget, type BudgetMessage } from "@/server/context-budget.server";
+import { budgetMessages, type BudgetMessage } from "@/server/context/budget";
 import { expandBriefIfVague } from "@/server/brief-expander.server";
 import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
@@ -3860,17 +3860,18 @@ Forbidden defaults
     const at = Math.max(1, chatMessages.length - 1);
     (chatMessages as Array<{ role: string; content: unknown }>).splice(at, 0, { role: "system", content: webIntel.block });
   }
-  const budget = applyContextBudget(chatMessages as BudgetMessage[], model);
-  if (budget.action !== "none") {
+  // Same budget module and ceiling as the section budget above; the system
+  // prompt (already budgeted) is pinned, only conversation history is fitted.
+  const budget = budgetMessages(
+    chatMessages as BudgetMessage[],
+    promptTokenCeiling({ model, completionBudgetTokens: 16_000 }),
+  );
+  if (budget.droppedCount > 0) {
     console.log(
-      `[context-budget] action=${budget.action} est=${budget.estimatedTokens} safe=${budget.safeInputTokens} dropped=${budget.droppedCount} model=${model}${budget.modelOverride ? ` → ${budget.modelOverride}` : ""}`,
+      `[context-budget] history est=${budget.estimatedTokens} budget=${budget.budget} dropped=${budget.droppedCount} model=${model}`,
     );
-    if (budget.modelOverride) {
-      model = budget.modelOverride;
-      chosenBy = `${chosenBy}+ctx_upgrade`;
-    }
   }
-  let finalMessages = budget.messages;
+  let finalMessages = budget.messages as typeof chatMessages;
 
   // ---------------------------------------------------------------------
   // Pre-emit agent loop. For work that spans many files or is mechanical,
