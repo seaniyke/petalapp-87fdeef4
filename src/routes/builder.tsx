@@ -105,6 +105,7 @@ import {
   loadProjectFiles,
   loadProjectMessages,
   maybeAutoTitleProject,
+  provisionProjectTitle,
   saveProjectFiles,
   truncateMessagesToCount,
   type ProjectRow,
@@ -981,6 +982,9 @@ function Builder() {
   // turn: duplicate builds, duplicate charges. This ref engages BEFORE any
   // await, so the second caller is rejected in the same tick.
   const turnLockRef = useRef(false);
+  // Working title attached the moment a build starts; the end-of-build
+  // auto-title may still replace it with a better name.
+  const provisionalTitleRef = useRef<string | null>(null);
   /** Last composer submission, for the identical-double-tap guard. */
   const lastSubmitRef = useRef<{ text: string; at: number }>({ text: "", at: 0 });
 
@@ -2395,6 +2399,22 @@ function Builder() {
         return;
       }
 
+      // Name the project the moment a build starts so it never shows
+      // "Untitled project" while Kimble works. Cosmetic only — a naming
+      // failure must never block the build.
+      provisionalTitleRef.current = null;
+      if (!internalRetry && proj.title === "Untitled project") {
+        try {
+          const provisional = await provisionProjectTitle(proj, text);
+          if (provisional) {
+            provisionalTitleRef.current = provisional;
+            setProject((p) => (p && p.id === proj.id ? { ...p, title: provisional } : p));
+          }
+        } catch {
+          // ignore — the end-of-build auto-title remains the fallback
+        }
+      }
+
       supersedeBuildId(proj.latest_build_id);
       setError(null);
       setFriendlyError(null);
@@ -3185,7 +3205,7 @@ function Builder() {
           await Promise.all([
             retryTransient(() => saveProjectFiles(proj.id, files2)),
             retryTransient(() => appendMessages(proj.id, persistMsgs)),
-            retryTransient(() => maybeAutoTitleProject(proj, summary2, text)),
+            retryTransient(() => maybeAutoTitleProject(proj, summary2, text, provisionalTitleRef.current)),
             retryTransient(() =>
               createVersion(proj.id, files2, {
                 origin: "auto",
