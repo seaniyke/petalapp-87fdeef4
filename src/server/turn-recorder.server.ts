@@ -130,9 +130,17 @@ export async function startTurn(opts: {
     }, FLUSH_INTERVAL_MS);
   }
 
+  // The settled charge travels on the `result` event; remember it so the
+  // turns row records what was actually charged (was always NULL before).
+  let chargedFromResult: number | null = null;
+
   return {
     turnId,
     record(kind, payload) {
+      if (kind === "result" && payload && typeof payload === "object") {
+        const c = (payload as { creditsCharged?: unknown }).creditsCharged;
+        if (typeof c === "number" && Number.isFinite(c)) chargedFromResult = c;
+      }
       seq += 1;
       queue.push({ seq, kind, payload });
       if (queue.length >= FLUSH_BATCH) {
@@ -149,7 +157,10 @@ export async function startTurn(opts: {
         /* swallow */
       }
       try {
-        await io().finishTurn(turnId, status, extras ?? {});
+        await io().finishTurn(turnId, status, {
+          ...(extras ?? {}),
+          creditsCharged: extras?.creditsCharged ?? chargedFromResult,
+        });
       } catch (e) {
         console.warn("[turn-recorder] finish update failed:", (e as Error).message);
       }
