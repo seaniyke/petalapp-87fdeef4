@@ -160,6 +160,11 @@ export interface PicDesignSystem {
   components: PicComponentRules;
   /** "model" when the design agent reasoned, "deterministic" on fallback. */
   source: "model" | "deterministic";
+  /**
+   * Selected design-system package + accent. Written only by the
+   * deterministic re-theme path; generations preserve it.
+   */
+  package?: { systemId: string; accent: string };
 }
 
 /* ------------------------------------------------------------------ */

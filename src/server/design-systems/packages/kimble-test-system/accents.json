@@ -1,0 +1,10 @@
+{
+  "lagoon": {
+    "light": { "primary": "oklch(0.56 0.11 200)", "primary-foreground": "oklch(0.99 0.004 190)", "ring": "oklch(0.56 0.11 200)", "accent": "oklch(0.92 0.04 195)" },
+    "dark": { "primary": "oklch(0.72 0.1 195)", "primary-foreground": "oklch(0.18 0.02 210)", "ring": "oklch(0.72 0.1 195)", "accent": "oklch(0.32 0.04 200)" }
+  },
+  "ember": {
+    "light": { "primary": "oklch(0.6 0.15 45)", "primary-foreground": "oklch(0.99 0.005 60)", "ring": "oklch(0.6 0.15 45)", "accent": "oklch(0.93 0.04 55)" },
+    "dark": { "primary": "oklch(0.74 0.13 50)", "primary-foreground": "oklch(0.2 0.03 40)", "ring": "oklch(0.74 0.13 50)", "accent": "oklch(0.33 0.05 45)" }
+  }
+}

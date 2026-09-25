@@ -15,6 +15,7 @@ import { understandRequest } from "@/server/understanding.server";
 import { commitDesignSystem } from "@/server/design/design-system.server";
 import { loadProjectPrd } from "@/server/prd/prd-store.server";
 import { loadPic, savePic } from "./pic-store.server";
+import { preserveDesignPackage } from "@/server/design-systems/context";
 import type { MemoryEntry } from "@/server/project-memory.server";
 import type { ProjectIntelligenceContext, PicUnderstanding } from "./pic-types";
 import type { DesignDirection } from "@/server/design-director.server";
@@ -92,7 +93,7 @@ export async function assemblePic(args: AssemblePicArgs): Promise<AssembledPic> 
 
   // Design is committed once. Later turns inherit it so the product does not
   // drift; a redesign request is handled by clearing it upstream.
-  const design =
+  const committed =
     args.designDirection || !base.design
       ? await commitDesignSystem({
       brief: args.brief,
@@ -104,6 +105,9 @@ export async function assemblePic(args: AssemblePicArgs): Promise<AssembledPic> 
       direction: args.designDirection,
         })
       : base.design;
+  // The selected design-system package is changed only by the deterministic
+  // re-theme path, never by a generation.
+  const design = preserveDesignPackage(base.design, committed);
 
   const prd = (await loadProjectPrd(projectId))?.prd ?? base.prd;
 
