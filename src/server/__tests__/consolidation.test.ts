@@ -86,7 +86,7 @@ describe("verification: completeness cannot override", () => {
 describe("writes: one generation write boundary", () => {
   it("generate has one replaceFiles call, guarded by txCommitted", () => {
     expect(gen.match(/replaceFiles\(/g)?.length).toBe(1);
-    expect(gen).toMatch(/if \(body\.projectId && txCommitted && nextFiles\.length > 0\)/);
+    expect(gen).toMatch(/if \(!\(body\.projectId && txCommitted && nextFiles\.length > 0\)\) return;/);
   });
   it("the browser no longer re-saves generated files after a turn", () => {
     const b = readFileSync("src/routes/builder.tsx", "utf8");

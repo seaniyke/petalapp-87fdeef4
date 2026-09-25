@@ -26,10 +26,14 @@ export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
     async startBuild(projectId, userId, turnId) {
       const secret = process.env.BUILDER_SHARED_SECRET;
       if (!secret || !appOrigin) return false;
+      // The revision this turn committed is passed explicitly so the build is
+      // bound to it (the trigger refuses a superseded revision).
+      const { data: t } = await db.from("turns").select("committed_revision").eq("id", turnId).maybeSingle();
+      const revision = (t as { committed_revision?: number | null } | null)?.committed_revision ?? undefined;
       const res = await fetch(new URL("/api/builds/trigger", appOrigin), {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret, "x-petal-internal-user": userId },
-        body: JSON.stringify({ projectId, turnId }),
+        body: JSON.stringify({ projectId, turnId, ...(revision != null ? { revision: Number(revision) } : {}) }),
       }).catch(() => null);
       return !!res?.ok;
     },
@@ -68,9 +72,14 @@ export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
       if (error) throw new Error(error.message);
       return (data ?? []).map((r) => ({ path: r.path, content: r.content ?? "" }));
     },
-    async replaceFiles(projectId, files) {
-      const { error } = await db.rpc("replace_project_files", { _project_id: projectId, _files: files } as Any);
+    async replaceFiles(projectId, files, turnId) {
+      const { data, error } = await db.rpc("replace_project_files", {
+        _project_id: projectId,
+        _files: files,
+        ...(turnId ? { _turn_id: turnId } : {}),
+      } as Any);
       if (error) throw new Error(error.message);
+      return data == null ? null : Number(data);
     },
     async readMemory(projectId) {
       const { data } = await db.from("project_memory").select("key,value").eq("project_id", projectId);

@@ -6577,6 +6577,32 @@ Forbidden defaults
           }
         }
         let finalCharged = 0;
+        // Server-side file persistence — the ONE generation write. Files,
+        // project code revision and turn.committed_revision are saved in one
+        // database transaction, BEFORE billing: a save that fails (including a
+        // revision_conflict because another save landed during this turn)
+        // leaves the project at its previous revision and is never charged.
+        let persistError: string | null = null;
+        let committedRevision: number | null = null;
+        const persistCommitted = async () => {
+          if (!(body.projectId && txCommitted && nextFiles.length > 0)) return;
+          const byPath = new Map<string, { path: string; content: string }>();
+          for (const f of nextFiles) {
+            const p = f.path.trim();
+            if (!p) continue;
+            byPath.set(p, { path: p, content: f.content ?? "" });
+          }
+          try {
+            const saved = await agentIO().replaceFiles(body.projectId, Array.from(byPath.values()), { turnId: logicalTurnId ?? turnId ?? null });
+            persistError = saved.error;
+            committedRevision = saved.error ? null : saved.revision;
+          } catch (e) {
+            persistError = (e as Error).message;
+          }
+          console.info(
+            `[revision] project=${body.projectId} turn=${logicalTurnId ?? turnId ?? "none"} committed_revision=${committedRevision ?? "none"}${persistError ? ` save_failed=${persistError.slice(0, 160)}` : ""}`,
+          );
+        };
         // Decide the terminal state BEFORE billing. Charging first meant a
         // turn where the user asked for an edit, the ops all failed to apply
         // and the project came out byte-identical still debited credits —
@@ -6611,8 +6637,11 @@ Forbidden defaults
           // whatever is actually available — including the daily/monthly FREE
           // buckets a brand-new user has — and books any remainder as debt
           // instead of failing the charge and silently losing the revenue.
+          await persistCommitted();
           const settleTurnId = logicalTurnId;
-          try {
+          if (persistError) {
+            console.warn(`[credits] turn not billed: save failed project=${body.projectId ?? "none"}`);
+          } else try {
             const row = await agentIO().settleCharge({
                 userId,
                 amount: priced.amount,
@@ -6647,9 +6676,23 @@ Forbidden defaults
             });
           }
         } else {
+          await persistCommitted();
           console.info(
             `[credits] internal recovery turn not billed project=${body.projectId ?? "none"} amount=${priced.amount}`,
           );
+        }
+
+        // A failed save (e.g. revision_conflict) means nothing landed: the
+        // project keeps its previous files AND previous revision.
+        const txSaved = txCommitted && !persistError;
+        if (persistError) {
+          const { isRevisionConflict } = await import("@/lib/build-revision");
+          nextFiles = turnBaselineFiles;
+          const note = isRevisionConflict(persistError)
+            ? `\n\nYour project changed while I was working, so I didn't save this change over the newer version. Your app is exactly as it was — send the request again and I'll apply it to the latest version.`
+            : `\n\nI couldn't save this change, so your app was left exactly as it was. Send it again and I'll retry.`;
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
 
         // Internal economics record for this turn. Admin-only accounting:
@@ -6686,41 +6729,6 @@ Forbidden defaults
         controller.enqueue(
           encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" })),
         );
-
-        // P0-A: Server-side file persistence. Historically the client wrote
-        // `project_files` after receiving the `result` SSE event. If the SSE
-        // connection dropped, the tab closed, or the user navigated away
-        // between `result` and the client write, the entire generation was
-        // lost. Write authoritatively from the server here, BEFORE the
-        // result event, so the work is durable even if delivery to the
-        // client fails. Client still updates its local file map from the
-        // SSE payload for instant preview without an extra round-trip.
-        // Only a committed transaction may reach persistent project_files.
-        if (body.projectId && txCommitted && nextFiles.length > 0) {
-          try {
-            const cleanFiles = (() => {
-              const byPath = new Map<string, { path: string; content: string }>();
-              for (const f of nextFiles) {
-                const p = f.path.trim();
-                if (!p) continue;
-                byPath.set(p, { path: p, content: f.content ?? "" });
-              }
-              return Array.from(byPath.values());
-            })();
-            const persistErr = await agentIO().replaceFiles(body.projectId, cleanFiles);
-            if (persistErr) {
-              console.error(
-                "[persistence] server-side replace_project_files failed",
-                { projectId: body.projectId, error: persistErr },
-              );
-            }
-          } catch (e) {
-            console.error(
-              "[persistence] server-side file write threw",
-              (e as Error).message,
-            );
-          }
-        }
 
         // v3 Phase F — write-gate disclosure. A refused write is the one
         // failure the user MUST hear about: their app is intact, but the part
@@ -6841,7 +6849,7 @@ Forbidden defaults
           {
             const { shouldRecordMemory } = await import("@/server/context/memory-model");
             turnCommittedForMemory = shouldRecordMemory({
-              committed: txCommitted,
+              committed: txSaved,
               cancelled: request.signal.aborted,
               missingScope: scopeMissing.length,
             });
@@ -6890,14 +6898,16 @@ Forbidden defaults
             );
           }
           const txBlocked =
-            !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
+            !!persistError ||
+            (!txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes");
           emitTurnOutcome(controller, encoder, txBlocked
             ? {
                 outcome: "failed",
                 changedPaths: [],
                 blockedPaths: txResult.rejections.map((r) => r.path).filter((p): p is string => Boolean(p)),
-                reason:
-                  sourceVerification.status === "FAILED"
+                reason: persistError
+                  ? "commit_rejected"
+                  : sourceVerification.status === "FAILED"
                     ? "verification_failed"
                     : sourceVerification.status === "UNVERIFIED" && txResult.rejections.some((r) => r.reason === "unverified")
                       ? "verification_unavailable"
@@ -6923,8 +6933,9 @@ Forbidden defaults
               plan,
               recap,
               creditsCharged: finalCharged,
-              persisted: Boolean(body.projectId && txCommitted && nextFiles.length > 0),
-              ...(txCommitted ? {} : { noFileChanges: true }),
+              persisted: Boolean(body.projectId && txSaved && nextFiles.length > 0),
+              committedRevision,
+              ...(txSaved ? {} : { noFileChanges: true }),
               ...(backendGate.gated && backendGate.suggestions.length > 0
                 ? { suggestions: backendGate.suggestions }
                 : {}),

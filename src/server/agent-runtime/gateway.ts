@@ -79,8 +79,11 @@ export function createGatewayAgentIO(send: SendOps): AgentIO {
       return { charged: d.charged, shortfall: d.shortfall, idempotent: d.idempotent };
     },
     async replaceFiles(_projectId, files) {
+      // The app side binds the save to this turn (files + revision + turn row).
       const r = await one(send, { op: "files.replace", files });
-      return r.ok ? null : r.error;
+      if (!r.ok) return { error: r.error, revision: null };
+      const rev = (r.data as { revision?: number | null } | undefined)?.revision;
+      return { error: null, revision: rev == null ? null : Number(rev) };
     },
     async appendEvents(_turnId, events) {
       const r = await one(send, { op: "events.append", events });

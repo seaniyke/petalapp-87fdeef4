@@ -3122,8 +3122,10 @@ export type Database = {
           last_retry_at: string | null
           progress_label: string | null
           project_id: string
+          project_revision: number | null
           ready_at: string | null
           retry_count: number
+          stale_reason: string | null
           status: string
           verification: Json | null
         }
@@ -3136,8 +3138,10 @@ export type Database = {
           last_retry_at?: string | null
           progress_label?: string | null
           project_id: string
+          project_revision?: number | null
           ready_at?: string | null
           retry_count?: number
+          stale_reason?: string | null
           status?: string
           verification?: Json | null
         }
@@ -3150,8 +3154,10 @@ export type Database = {
           last_retry_at?: string | null
           progress_label?: string | null
           project_id?: string
+          project_revision?: number | null
           ready_at?: string | null
           retry_count?: number
+          stale_reason?: string | null
           status?: string
           verification?: Json | null
         }
@@ -4015,6 +4021,7 @@ export type Database = {
           published_visibility: string
           remix_count: number
           remixed_from_id: string | null
+          revision: number
           runtime_grace_until: string | null
           runtime_paused: boolean
           site_description: string | null
@@ -4048,6 +4055,7 @@ export type Database = {
           published_visibility?: string
           remix_count?: number
           remixed_from_id?: string | null
+          revision?: number
           runtime_grace_until?: string | null
           runtime_paused?: boolean
           site_description?: string | null
@@ -4081,6 +4089,7 @@ export type Database = {
           published_visibility?: string
           remix_count?: number
           remixed_from_id?: string | null
+          revision?: number
           runtime_grace_until?: string | null
           runtime_paused?: boolean
           site_description?: string | null
@@ -4718,7 +4727,9 @@ export type Database = {
       }
       turns: {
         Row: {
+          base_revision: number | null
           committed_at: string | null
+          committed_revision: number | null
           created_at: string
           credits_charged: number | null
           ended_at: string | null
@@ -4736,7 +4747,9 @@ export type Database = {
           worker_lease: string | null
         }
         Insert: {
+          base_revision?: number | null
           committed_at?: string | null
+          committed_revision?: number | null
           created_at?: string
           credits_charged?: number | null
           ended_at?: string | null
@@ -4754,7 +4767,9 @@ export type Database = {
           worker_lease?: string | null
         }
         Update: {
+          base_revision?: number | null
           committed_at?: string | null
+          committed_revision?: number | null
           created_at?: string
           credits_charged?: number | null
           ended_at?: string | null
@@ -5620,8 +5635,13 @@ export type Database = {
         Returns: boolean
       }
       replace_project_files: {
-        Args: { _files: Json; _project_id: string }
-        Returns: undefined
+        Args: {
+          _check_base?: boolean
+          _files: Json
+          _project_id: string
+          _turn_id?: string
+        }
+        Returns: number
       }
       runtime_apply_monthly_grant: { Args: never; Returns: undefined }
       runtime_cap_check: {

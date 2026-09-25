@@ -701,6 +701,8 @@ export type StreamEvent =
        *  before emitting this event. Lets the client skip its own write and
        *  trust the durable copy. */
       persisted?: boolean;
+      /** Project code revision this turn created (null = none). */
+      committedRevision?: number | null;
       /** Two-phase gate: backend chips proposed for the NEXT turn. */
       suggestions?: string[];
 

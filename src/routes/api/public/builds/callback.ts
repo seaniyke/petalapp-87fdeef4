@@ -149,7 +149,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   // Defends against a compromised builder or a bug that scrambles ids.
   const { data: existing } = await supabaseAdmin
     .from("project_builds")
-    .select("id, project_id, created_at")
+    .select("id, project_id, created_at, project_revision")
     .eq("id", payload.buildId)
     .maybeSingle();
   if (!existing) {
@@ -178,6 +178,45 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     verifyMs,
     result: payload.status === "ready" ? "ready" : "failed",
   });
+
+  // REVISION IDENTITY — only a build of the project's CURRENT code revision
+  // may affect current readiness, the current build pointer, turn outcome,
+  // automatic repair or retries. A late result for an older (or unknown,
+  // legacy) revision is recorded as history with its stale reason and
+  // nothing else. Publishing reads the same rule.
+  {
+    const { data: proj } = await supabaseAdmin
+      .from("projects")
+      .select("revision")
+      .eq("id", payload.projectId)
+      .maybeSingle();
+    const { buildRevisionStatus, staleReasonText } = await import("@/lib/build-revision");
+    const rs = proj ? buildRevisionStatus(existing, proj) : null;
+    if (rs && !rs.current) {
+      const reason = staleReasonText(rs);
+      const failedMsg =
+        payload.status === "failed"
+          ? (payload.logs ? `${payload.errorMessage}\n\n--- logs ---\n${payload.logs}` : payload.errorMessage).slice(0, 8000)
+          : null;
+      await supabaseAdmin
+        .from("project_builds")
+        .update({
+          status: payload.status,
+          dist_path: payload.status === "ready" ? payload.url : null,
+          error_message: failedMsg,
+          ready_at: new Date().toISOString(),
+          stale_reason: reason,
+          ...(payload.verification ? { verification: { ...payload.verification, stale: true } as never } : {}),
+        })
+        .eq("id", payload.buildId);
+      // Billing is unchanged by staleness: a build that never shipped refunds.
+      if (payload.status === "failed") await refundRolledBackBuild(payload.projectId, payload.buildId);
+      console.info(
+        `[revision] stale build result ignored for readiness build=${payload.buildId} status=${payload.status} build_revision=${rs.buildRevision ?? "unknown"} project_revision=${rs.projectRevision} reason=${rs.reason}`,
+      );
+      return new Response("ok", { status: 200 });
+    }
+  }
 
   if (payload.status === "ready") {
     // AI Generation Bible §8 — the builder's own "ready" is a claim, not
@@ -419,13 +458,25 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     }
 
     // Always point the project at its newest build so the UI shows it.
-    const { error: projectUpdateError } = await supabaseAdmin
+    const { data: repointed, error: projectUpdateError } = await supabaseAdmin
       .from("projects")
       .update({ latest_build_id: payload.buildId })
-      .eq("id", payload.projectId);
+      .eq("id", payload.projectId)
+      // Compare-and-set on the code revision: if a newer revision committed
+      // since the check above, this build must not become the current one.
+      .eq("revision", Number(existing.project_revision))
+      .select("id");
     if (projectUpdateError) {
       console.error("Builder callback could not update project build", projectUpdateError.message);
       return new Response("Could not save project status", { status: 503 });
+    }
+    if (!repointed || repointed.length === 0) {
+      await supabaseAdmin
+        .from("project_builds")
+        .update({ stale_reason: `project moved past revision ${existing.project_revision} while this build finished` })
+        .eq("id", payload.buildId);
+      console.info(`[revision] stale build result ignored for readiness build=${payload.buildId} build_revision=${existing.project_revision} reason=superseded_during_callback`);
+      return new Response("ok", { status: 200 });
     }
 
     // Capture the app's preview image once, now that it is live, so gallery
@@ -491,6 +542,17 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       const w = browserGate(readiness);
       console.info(`[verification] build=${b.verdict} browser=${w.verdict} build=${payload.buildId}${w.reasons[0] ? ` — ${w.reasons[0]}` : ""}`);
     }
+    // The browser/Test Lab run takes time: the verdict may only establish
+    // readiness if the project is STILL at this build's revision.
+    const { data: nowProj } = await supabaseAdmin.from("projects").select("revision").eq("id", payload.projectId).maybeSingle();
+    if (!nowProj || Number(nowProj.revision) !== Number(existing.project_revision)) {
+      await supabaseAdmin
+        .from("project_builds")
+        .update({ stale_reason: `runtime verification finished after project moved to revision ${nowProj?.revision ?? "?"}` })
+        .eq("id", payload.buildId);
+      console.info(`[revision] stale runtime verdict ignored build=${payload.buildId} build_revision=${existing.project_revision} project_revision=${nowProj?.revision ?? "?"} verdict=${readiness.verdict}`);
+      return new Response("ok", { status: 200 });
+    }
     await recordBuildOutcome({
       projectId: payload.projectId,
       buildId: payload.buildId,
@@ -529,7 +591,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
                 .eq("project_id", payload.projectId)
                 .eq("path", "package.json");
               const { retryStalledBuild } = await import("@/server/build-retry.server");
-              const res = await retryStalledBuild(payload.buildId, { minStuckMs: 0, source: "callback-missing-dep" });
+              const res = await retryStalledBuild(payload.buildId, { minStuckMs: 0, source: "callback-missing-dep", adoptCurrentRevision: true });
               console.warn(`[build-recovery] added ${pkgs.join(",")} → ${res.outcome}`);
               if (res.outcome === "retried" || res.outcome === "already_claimed") {
                 return new Response("ok", { status: 200 });

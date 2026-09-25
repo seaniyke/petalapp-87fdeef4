@@ -40251,10 +40251,15 @@ function createDirectAgentIO() {
       const row = Array.isArray(data) ? data[0] : data;
       return { charged: Number(row?.charged ?? 0), shortfall: Number(row?.shortfall ?? 0), idempotent: !!row?.idempotent };
     },
-    async replaceFiles(projectId, files) {
+    async replaceFiles(projectId, files, opts) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-      const { error } = await supabaseAdmin2.rpc("replace_project_files", { _project_id: projectId, _files: files });
-      return error ? error.message : null;
+      const turnId = opts?.turnId && /^[0-9a-f-]{36}$/i.test(opts.turnId) ? opts.turnId : void 0;
+      const { data, error } = await supabaseAdmin2.rpc("replace_project_files", {
+        _project_id: projectId,
+        _files: files,
+        ...turnId ? { _turn_id: turnId } : {}
+      });
+      return error ? { error: error.message, revision: null } : { error: null, revision: data == null ? null : Number(data) };
     },
     async appendEvents(turnId, events) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
@@ -85286,6 +85291,7 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -110692,6 +110698,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -142408,6 +142415,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -146631,6 +146639,37 @@ var init_source_server = __esm({
   }
 });
 
+// src/lib/build-revision.ts
+var build_revision_exports = {};
+__export(build_revision_exports, {
+  buildRevisionStatus: () => buildRevisionStatus,
+  isRevisionConflict: () => isRevisionConflict,
+  staleReasonText: () => staleReasonText
+});
+function buildRevisionStatus(build, project) {
+  const projectRevision = Number(project.revision);
+  const raw = build.project_revision;
+  if (raw === null || raw === void 0) {
+    return { current: false, reason: "legacy_unknown_revision", buildRevision: null, projectRevision };
+  }
+  const buildRevision = Number(raw);
+  if (buildRevision !== projectRevision) {
+    return { current: false, reason: "superseded", buildRevision, projectRevision };
+  }
+  return { current: true };
+}
+function staleReasonText(s) {
+  return s.reason === "legacy_unknown_revision" ? `build has no recorded code revision (project is at revision ${s.projectRevision})` : `build is for revision ${s.buildRevision}; project is at revision ${s.projectRevision}`;
+}
+function isRevisionConflict(message) {
+  return !!message && /revision_conflict/i.test(message);
+}
+var init_build_revision = __esm({
+  "src/lib/build-revision.ts"() {
+    init_define_import_meta_env();
+  }
+});
+
 // src/server/agent-runtime/entry.ts
 init_define_import_meta_env();
 
@@ -149907,7 +149946,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -172551,6 +172589,27 @@ I couldn't save this change safely, so your app was left exactly as it was: ` + 
           }
         }
         let finalCharged = 0;
+        let persistError = null;
+        let committedRevision = null;
+        const persistCommitted = async () => {
+          if (!(body.projectId && txCommitted && nextFiles.length > 0)) return;
+          const byPath = /* @__PURE__ */ new Map();
+          for (const f of nextFiles) {
+            const p = f.path.trim();
+            if (!p) continue;
+            byPath.set(p, { path: p, content: f.content ?? "" });
+          }
+          try {
+            const saved = await agentIO().replaceFiles(body.projectId, Array.from(byPath.values()), { turnId: logicalTurnId ?? turnId ?? null });
+            persistError = saved.error;
+            committedRevision = saved.error ? null : saved.revision;
+          } catch (e) {
+            persistError = e.message;
+          }
+          console.info(
+            `[revision] project=${body.projectId} turn=${logicalTurnId ?? turnId ?? "none"} committed_revision=${committedRevision ?? "none"}${persistError ? ` save_failed=${persistError.slice(0, 160)}` : ""}`
+          );
+        };
         const turnChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
         const failedEditTurn = turnChangedPaths.length === 0 && unappliedPaths.length > 0 || !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
         if (failedEditTurn) {
@@ -172574,8 +172633,11 @@ I couldn't save this change safely, so your app was left exactly as it was: ` + 
             controller.enqueue(encoder.encode(sse({ type: "credits_paused", checkpointId, requiredCredits: priced.amount })));
             return;
           }
+          await persistCommitted();
           const settleTurnId = logicalTurnId;
-          try {
+          if (persistError) {
+            console.warn(`[credits] turn not billed: save failed project=${body.projectId ?? "none"}`);
+          } else try {
             const row = await agentIO().settleCharge({
               userId,
               amount: priced.amount,
@@ -172608,9 +172670,22 @@ I couldn't save this change safely, so your app was left exactly as it was: ` + 
             });
           }
         } else {
+          await persistCommitted();
           console.info(
             `[credits] internal recovery turn not billed project=${body.projectId ?? "none"} amount=${priced.amount}`
           );
+        }
+        const txSaved = txCommitted && !persistError;
+        if (persistError) {
+          const { isRevisionConflict: isRevisionConflict2 } = await Promise.resolve().then(() => (init_build_revision(), build_revision_exports));
+          nextFiles = turnBaselineFiles;
+          const note = isRevisionConflict2(persistError) ? `
+
+Your project changed while I was working, so I didn't save this change over the newer version. Your app is exactly as it was \u2014 send the request again and I'll apply it to the latest version.` : `
+
+I couldn't save this change, so your app was left exactly as it was. Send it again and I'll retry.`;
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
         void recordTurnEconomics({
           turnId: logicalTurnId,
@@ -172633,31 +172708,6 @@ I couldn't save this change safely, so your app was left exactly as it was: ` + 
         controller.enqueue(
           encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" }))
         );
-        if (body.projectId && txCommitted && nextFiles.length > 0) {
-          try {
-            const cleanFiles = (() => {
-              const byPath = /* @__PURE__ */ new Map();
-              for (const f of nextFiles) {
-                const p = f.path.trim();
-                if (!p) continue;
-                byPath.set(p, { path: p, content: f.content ?? "" });
-              }
-              return Array.from(byPath.values());
-            })();
-            const persistErr = await agentIO().replaceFiles(body.projectId, cleanFiles);
-            if (persistErr) {
-              console.error(
-                "[persistence] server-side replace_project_files failed",
-                { projectId: body.projectId, error: persistErr }
-              );
-            }
-          } catch (e) {
-            console.error(
-              "[persistence] server-side file write threw",
-              e.message
-            );
-          }
-        }
         if (writeGateRejections.length > 0) {
           const note = writeGateDisclosure(writeGateRejections);
           summary = `${summary}${note}`;
@@ -172742,7 +172792,7 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
           {
             const { shouldRecordMemory: shouldRecordMemory2 } = await Promise.resolve().then(() => (init_memory_model(), memory_model_exports));
             turnCommittedForMemory = shouldRecordMemory2({
-              committed: txCommitted,
+              committed: txSaved,
               cancelled: request.signal.aborted,
               missingScope: scopeMissing.length
             });
@@ -172783,12 +172833,12 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
               )
             );
           }
-          const txBlocked = !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
+          const txBlocked = !!persistError || !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
           emitTurnOutcome(controller, encoder, txBlocked ? {
             outcome: "failed",
             changedPaths: [],
             blockedPaths: txResult.rejections.map((r) => r.path).filter((p) => Boolean(p)),
-            reason: sourceVerification.status === "FAILED" ? "verification_failed" : sourceVerification.status === "UNVERIFIED" && txResult.rejections.some((r) => r.reason === "unverified") ? "verification_unavailable" : "commit_rejected"
+            reason: persistError ? "commit_rejected" : sourceVerification.status === "FAILED" ? "verification_failed" : sourceVerification.status === "UNVERIFIED" && txResult.rejections.some((r) => r.reason === "unverified") ? "verification_unavailable" : "commit_rejected"
           } : scopeMissing.length > 0 ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing", ...providersExhaustedForTurn2() ? { cause: "providers_exhausted" } : {} } : {
             outcome: turnChanged.length > 0 ? "applied" : "answered",
             changedPaths: turnChanged,
@@ -172804,8 +172854,9 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
               plan,
               recap,
               creditsCharged: finalCharged,
-              persisted: Boolean(body.projectId && txCommitted && nextFiles.length > 0),
-              ...txCommitted ? {} : { noFileChanges: true },
+              persisted: Boolean(body.projectId && txSaved && nextFiles.length > 0),
+              committedRevision,
+              ...txSaved ? {} : { noFileChanges: true },
               ...backendGate.gated && backendGate.suggestions.length > 0 ? { suggestions: backendGate.suggestions } : {}
             })
           )
@@ -173551,7 +173602,9 @@ function createGatewayAgentIO(send) {
     },
     async replaceFiles(_projectId, files) {
       const r = await one(send, { op: "files.replace", files });
-      return r.ok ? null : r.error;
+      if (!r.ok) return { error: r.error, revision: null };
+      const rev = r.data?.revision;
+      return { error: null, revision: rev == null ? null : Number(rev) };
     },
     async appendEvents(_turnId, events) {
       const r = await one(send, { op: "events.append", events });

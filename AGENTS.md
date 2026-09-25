@@ -1,0 +1,1 @@
+- Project code identity is `projects.revision`, advanced only inside the DB transaction that changes `project_files` (replace_project_files or per-statement file triggers); builds store `project_revision` and only a build of the current revision may affect readiness, the current-build pointer or publishing — why: stale build/verification results must never approve newer code.
