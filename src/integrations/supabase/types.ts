@@ -4705,6 +4705,7 @@ export type Database = {
           credits_charged: number | null
           ended_at: string | null
           error_message: string | null
+          heartbeat_at: string | null
           id: string
           last_progress_at: string | null
           last_seq: number
@@ -4714,6 +4715,7 @@ export type Database = {
           started_at: string
           status: string
           user_id: string
+          worker_lease: string | null
         }
         Insert: {
           committed_at?: string | null
@@ -4721,6 +4723,7 @@ export type Database = {
           credits_charged?: number | null
           ended_at?: string | null
           error_message?: string | null
+          heartbeat_at?: string | null
           id?: string
           last_progress_at?: string | null
           last_seq?: number
@@ -4730,6 +4733,7 @@ export type Database = {
           started_at?: string
           status?: string
           user_id: string
+          worker_lease?: string | null
         }
         Update: {
           committed_at?: string | null
@@ -4737,6 +4741,7 @@ export type Database = {
           credits_charged?: number | null
           ended_at?: string | null
           error_message?: string | null
+          heartbeat_at?: string | null
           id?: string
           last_progress_at?: string | null
           last_seq?: number
@@ -4746,6 +4751,7 @@ export type Database = {
           started_at?: string
           status?: string
           user_id?: string
+          worker_lease?: string | null
         }
         Relationships: []
       }
@@ -5280,6 +5286,10 @@ export type Database = {
           result_payload: Json
           turn_id: string
         }[]
+      }
+      claim_turn_heartbeat: {
+        Args: { _lease: string; _turn_id: string }
+        Returns: string
       }
       credit_runtime: {
         Args: {
