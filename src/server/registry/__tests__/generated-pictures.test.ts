@@ -199,10 +199,11 @@ describe("design intent — the person's words win", () => {
     display_font: "Sora",
     body_font: "Inter",
     palette_mood: "cool neutral",
-    density: "comfortable",
+    density: "balanced",
     motion: "subtle",
     design_moves: ["big hero", "card grid"],
   } as DesignDirection;
+
 
   it("overrides a generic direction with a stated style", () => {
     const intent = readStatedDesignIntent("Make it brutalist");
