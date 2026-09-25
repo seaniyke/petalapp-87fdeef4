@@ -187,6 +187,10 @@ type MadeRow = {
   orientation: string | null;
   shared: boolean;
   created_at: string;
+  category?: string | null;
+  industry?: string | null;
+  width?: number | null;
+  height?: number | null;
 };
 
 /**
@@ -203,7 +207,7 @@ function MadePictures() {
     setLoading(true);
     void supabase
       .from("generated_pictures")
-      .select("id,url,subject,prompt,style,mood,tags,aspect_ratio,orientation,shared,created_at")
+      .select("id,url,subject,prompt,style,mood,tags,aspect_ratio,orientation,shared,created_at,category,industry,width,height")
       .order("created_at", { ascending: false })
       .limit(500)
       .then(({ data, error }) => {
@@ -269,7 +273,7 @@ function MadePictures() {
               />
               <p className="line-clamp-2 text-sm font-medium">{row.subject ?? row.prompt}</p>
               <p className="text-xs text-muted-foreground">
-                {[row.style, row.mood, row.aspect_ratio, row.orientation].filter(Boolean).join(" · ")}
+                {[row.industry, row.category, row.style, row.mood, row.width && row.height ? `${row.width}×${row.height}` : row.aspect_ratio].filter(Boolean).join(" · ")}
               </p>
               <label className="flex items-center gap-2 pt-1 text-xs">
                 <Switch checked={row.shared} onCheckedChange={() => share(row)} />
