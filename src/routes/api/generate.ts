@@ -18,6 +18,7 @@ import { EMPTY_HOME_BUILD_FAILURE_MESSAGE } from "@/server/build-failure-copy";
 import { assessCompleteness, incompleteBuildMessage, requestedRoutesFor } from "@/server/engine/build-state";
 import { currentTurnContext, markUpstreamFailed, runWithTurnContext } from "@/server/turn-context.server";
 import { RecoveryBudget, RECOVERY_LIMITS } from "@/server/engine/recovery-policy";
+import { AgentCircuitBreaker, classifyFailure } from "@/server/execution/circuit-breaker";
 import {
   salvagePartialToolArgs,
   dropUnusableOps,
@@ -4124,8 +4125,15 @@ Forbidden defaults
         // THE bounded recovery table for this turn (engine/recovery-policy).
         const recovery = new RecoveryBudget();
         recovery.setTurn({ request: lastUserContent, targets: resolvedTargetPaths });
+        // THE agent circuit breaker for this turn (execution/circuit-breaker).
+        // RecoveryBudget bounds each recovery mechanism; the breaker decides
+        // whether the agent is making useful progress at all. A fresh one per
+        // turn — it never survives into an unrelated request.
+        const breaker = new AgentCircuitBreaker();
+        /** Guidance the breaker wants the next repair attempt to see. */
+        let breakerGuidance: string | null = null;
         const turnContextFor = (path: string | null): string =>
-          [recovery.summarize(path), appMapRepairBlock].filter(Boolean).join("\n\n");
+          [recovery.summarize(path), breakerGuidance, appMapRepairBlock].filter(Boolean).join("\n\n");
         try {
           // A stalled provider's partial output is never trusted: resend the
           // original request to a different upstream instead.
@@ -4159,6 +4167,16 @@ Forbidden defaults
           let lastErr: unknown = e;
           while (recovery.take("provider_failure")) {
             attempts++;
+            // Recorded for observability only. Provider trouble is owned by
+            // the provider layer (OpenRouter failover + per-turn upstream
+            // exclusions) and can NEVER trip the agent breaker: a model that
+            // stalled is not an agent that is reasoning badly.
+            breaker.recordFailure({
+              category: "provider_failure",
+              tool: "ai_provider",
+              path: null,
+              message: lastErr instanceof Error ? lastErr.message : "invalid structured response",
+            });
             recovery.record({
               kind: "provider_failure",
               stage: "generation",
@@ -5576,6 +5594,20 @@ Forbidden defaults
               // A broken generated page is repaired (that file only, once,
               // re-verified) instead of silently dropped.
               repair: async (file, detail) => {
+                // Circuit breaker first: a tripped turn makes no further AI
+                // calls, so a repeated failure stops here instead of paying
+                // for another attempt that already failed twice.
+                const verdict = breaker.recordFailure({
+                  category: classifyFailure(detail),
+                  tool: "write_gate",
+                  path: file.path,
+                  message: detail,
+                });
+                breakerGuidance = verdict.guidance;
+                if (verdict.tripped) {
+                  console.warn(`[circuit-breaker] ${JSON.stringify(breaker.snapshot())}`);
+                  return null;
+                }
                 controller.enqueue(
                   encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })),
                 );
@@ -5598,7 +5630,13 @@ Forbidden defaults
                   turnContext,
                 });
                 if (!out) recovery.resolve(n, "kept_previous");
-                else recovery.resolve(n, "pending", out);
+                else {
+                  recovery.resolve(n, "pending", out);
+                  // A repaired file is real progress: clear this file's
+                  // failure count and the consecutive-failure run.
+                  breaker.recordProgress("file_repaired", file.path);
+                  breakerGuidance = null;
+                }
                 return out;
               },
             });
@@ -5644,6 +5682,21 @@ Forbidden defaults
 
             }
           }
+        }
+
+        // CIRCUIT BREAKER STOP BOUNDARY. Tripped means the agent kept hitting
+        // the same failure without getting closer. Stop here: no further AI
+        // calls, no commit, no charge — the transaction never opens, so the
+        // project keeps its previous state by construction.
+        if (breaker.tripped) {
+          console.warn(`[circuit-breaker] tripped ${JSON.stringify(breaker.snapshot())}`);
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary: breaker.userMessage(),
+            outcome: "failed",
+            reason: `circuit_breaker:${breaker.reason()?.rule ?? "unknown"}`,
+          });
+          return;
         }
 
 
@@ -6275,6 +6328,19 @@ Forbidden defaults
           // to these instead of throwing the whole turn away.
           currentFiles,
           async (file, detail) => {
+            // Circuit breaker owns "is this worth another attempt"; the
+            // recovery budget owns "how many attempts this mechanism gets".
+            const verdict = breaker.recordFailure({
+              category: classifyFailure(detail),
+              tool: "final_parse_guard",
+              path: file.path,
+              message: detail,
+            });
+            breakerGuidance = verdict.guidance;
+            if (verdict.tripped) {
+              console.warn(`[circuit-breaker] ${JSON.stringify(breaker.snapshot())}`);
+              return null;
+            }
             if (!recovery.take("broken_file", file.path)) return null;
             controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })));
             // Build-server logs aren't retained — record the exact reason on
@@ -6291,6 +6357,10 @@ Forbidden defaults
             const { repairBrokenFile } = await import("@/server/engine/repair");
             const out = await repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext });
             recovery.resolve(n, out ? "pending" : "kept_previous", out);
+            if (out) {
+              breaker.recordProgress("file_repaired", file.path);
+              breakerGuidance = null;
+            }
             return out;
           },
         );
@@ -6321,11 +6391,16 @@ Forbidden defaults
 
           emitConversationalFallback(controller, encoder, {
             files: currentFiles,
-            summary:
-              "I drafted the change but it didn't pass my final safety check, so I rolled it back to keep your app building. Want me to try a smaller version of the same change, or break it into a couple of steps?",
+            // A tripped breaker explains WHY it stopped trying; otherwise the
+            // existing generic revert message stands.
+            summary: breaker.tripped
+              ? breaker.userMessage()
+              : "I drafted the change but it didn't pass my final safety check, so I rolled it back to keep your app building. Want me to try a smaller version of the same change, or break it into a couple of steps?",
             // A reverted change is a failed turn — never a "succeeded" done.
             outcome: "failed",
-            reason: "final_check_reverted",
+            reason: breaker.tripped
+              ? `circuit_breaker:${breaker.reason()?.rule ?? "unknown"}`
+              : "final_check_reverted",
           });
           return;
         }
@@ -6563,17 +6638,38 @@ Forbidden defaults
         );
         if (txResult.outcome.status === "committed") {
           nextFiles = txResult.outcome.files;
+          // The turn produced a verified, committed result. Lock the breaker:
+          // a late failure from an earlier tool call can never retroactively
+          // turn a successful turn into a tripped one.
+          breaker.recordProgress("verification_passed");
+          breaker.complete();
         } else {
+          // CANCELLATION HAS PRIORITY over every breaker rule: a user Stop is
+          // never reported or recorded as an agent failure.
           if (txResult.outcome.reason === "cancelled") throw new Error("Turn cancelled before commit");
+          // A blocked commit is an agent failure the breaker must see — this
+          // is the authoritative verification verdict, not a guess.
+          for (const r of txResult.rejections.slice(0, 3)) {
+            breaker.recordFailure({
+              category: r.reason === "scope_violation" ? "scope_violation" : "verification_failed",
+              tool: r.stage === "source_verification" ? (r.gate ?? "source_verification") : "execution",
+              path: r.path ?? null,
+              message: r.detail,
+            });
+          }
           // Nothing lands: the project keeps its previous state.
           nextFiles = txResult.outcome.files;
           if (txResult.outcome.reason !== "no changes") {
-            const note =
-              `\n\nI couldn't save this change safely, so your app was left exactly as it was: ` +
-              txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} — ` : ""}${r.detail}`).join("; ") +
-              `. Send it again and I'll retry just that part.`;
+            const note = breaker.tripped
+              ? `\n\n${breaker.userMessage()}`
+              : `\n\nI couldn't save this change safely, so your app was left exactly as it was: ` +
+                txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} — ` : ""}${r.detail}`).join("; ") +
+                `. Send it again and I'll retry just that part.`;
             summary = `${summary}${note}`;
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+          }
+          if (breaker.tripped) {
+            console.warn(`[circuit-breaker] tripped at commit ${JSON.stringify(breaker.snapshot())}`);
           }
         }
         let finalCharged = 0;
@@ -6715,6 +6811,9 @@ Forbidden defaults
             usage_missing: priced.usageMissing,
             clamped: priced.clamped,
             model,
+            // Reliability record for this turn. Counters only — never user
+            // content, prompts or secrets.
+            circuit_breaker: breaker.snapshot(),
           },
         });
 
