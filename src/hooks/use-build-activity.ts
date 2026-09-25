@@ -46,6 +46,8 @@ export type BuildSnapshot = {
   /** Post-deploy browser check: null when the build predates verification or
    *  the run was skipped. `defects` is already human-readable. */
   verification: { ok: boolean; defects: string[]; skipped?: string } | null;
+  /** Code revision this build was packed from (null = legacy, unknown). */
+  projectRevision: number | null;
 };
 
 /** Narrow the jsonb column without trusting its shape. */
@@ -94,6 +96,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
             progressAt: Date.now(),
             progressLabel: null,
             verification: null,
+            projectRevision: null,
           },
     );
 
@@ -126,6 +129,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       last_progress_at?: string | null;
       progress_label?: string | null;
       verification?: unknown;
+      project_revision?: number | null;
     }, buildId = latestBuildId) => {
       if (cancelled) return;
       setSnap((prev) => {
@@ -155,6 +159,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
               : Date.now(),
           progressLabel: data.progress_label ?? (sameBuild && prev ? prev.progressLabel : null),
           verification: readVerification(data.verification),
+          projectRevision: data.project_revision ?? null,
         };
         if (next.status === "ready" || next.status === "failed") {
           if (terminalSince == null) terminalSince = Date.now();
@@ -169,6 +174,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
           prev.errorMessage === next.errorMessage &&
           prev.progressAt === next.progressAt &&
           prev.progressLabel === next.progressLabel &&
+          prev.projectRevision === next.projectRevision &&
           (prev.verification?.defects.length ?? -1) === (next.verification?.defects.length ?? -1)
         ) {
           return prev;
@@ -177,7 +183,7 @@ export function useBuildActivity(latestBuildId: string | null): BuildSnapshot | 
       });
     };
 
-    const BUILD_COLUMNS = "status, dist_path, error_message, verification, created_at, last_progress_at, progress_label";
+    const BUILD_COLUMNS = "status, dist_path, error_message, verification, created_at, last_progress_at, progress_label, project_revision";
 
     const fetchOnce = async () => {
       const { data } = await supabase

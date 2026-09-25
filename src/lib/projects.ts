@@ -523,12 +523,22 @@ export async function saveProjectFiles(projectId: string, files: ProjectFile[]) 
   const cleanFiles = dedupeProjectFiles(files);
   // Cast: the generated types treat jsonb args narrowly, but our payload is a
   // plain JSON array of {path, content} which the RPC handles natively.
-  const { error } = await supabase.rpc(
+  const { data, error } = await supabase.rpc(
     "replace_project_files",
     { _project_id: projectId, _files: cleanFiles } as never
   );
   if (error) throw error;
+  // The RPC returns the authoritative code revision after the save. Announce
+  // it so open views drop readiness that belonged to the previous revision
+  // without waiting for realtime/polling.
+  const revision = typeof data === "number" ? data : null;
+  if (revision !== null && typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(PROJECT_REVISION_EVENT, { detail: { projectId, revision } }));
+  }
+  return revision;
 }
+
+export const PROJECT_REVISION_EVENT = "petal:project-revision";
 
 export async function appendMessages(projectId: string, msgs: ChatMessage[]) {
   if (msgs.length === 0) return;

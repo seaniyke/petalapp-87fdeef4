@@ -156,6 +156,8 @@ import { getCreditPause, updateCreditPause, type CreditPause } from "@/lib/credi
 import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import petalLogo from "@/assets/kimble-logo.png";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
+import { revisionAwareBuildSnapshot, newerRevision } from "@/lib/build-revision";
+import { PROJECT_REVISION_EVENT } from "@/lib/projects";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 // BuildTargetChips import removed — chip rail retired from the composer.
@@ -1176,7 +1178,12 @@ function Builder() {
   // because the previous build id was marked superseded during retry.
   const observedBuildId = buildSnap?.buildId ?? activeBuildId;
   const isSupersededBuild = !!observedBuildId && supersededBuildIds.has(observedBuildId);
-  const effectiveBuildSnap = isSupersededBuild ? null : buildSnap;
+  // Readiness shown for the build is only valid for the code revision it was
+  // built from; a build for an older revision reads as "needs a new build".
+  const effectiveBuildSnap = revisionAwareBuildSnapshot(
+    isSupersededBuild ? null : buildSnap,
+    project?.revision ?? null,
+  );
   const latestBuildIdRef = useRef<string | null>(null);
   latestBuildIdRef.current = project?.latest_build_id ?? null;
   // The build row is authoritative for build / live-check / ready. The
@@ -1351,6 +1358,20 @@ function Builder() {
   }, [deployElapsed, isDeploying, busy, effectiveBuildSnap?.progressAt]);
 
 
+  // Code saves from this tab (editor, restore, visual edit, undo) report the
+  // committed revision straight from the save response.
+  useEffect(() => {
+    const projectId = project?.id;
+    if (!projectId) return;
+    const onRev = (e: Event) => {
+      const d = (e as CustomEvent<{ projectId: string; revision: number }>).detail;
+      if (!d || d.projectId !== projectId) return;
+      setProject((prev) => (prev ? { ...prev, revision: newerRevision(prev.revision, d.revision) ?? prev.revision } : prev));
+    };
+    window.addEventListener(PROJECT_REVISION_EVENT, onRev);
+    return () => window.removeEventListener(PROJECT_REVISION_EVENT, onRev);
+  }, [project?.id]);
+
   // Subscribe to `projects` row changes so when the build callback writes a
   // new `latest_build_id` (or any other field), the UI picks it up immediately
   // without waiting for a manual refetch. Without this, the activity card
@@ -1369,11 +1390,12 @@ function Builder() {
         // Only swap when something material changed to avoid render churn.
         if (
           prev.latest_build_id === r.latest_build_id &&
+          prev.revision === r.revision &&
           prev.title === r.title
         ) {
           return prev;
         }
-        return { ...prev, ...r };
+        return { ...prev, ...r, revision: newerRevision(prev.revision, r.revision) ?? r.revision };
       });
     };
 
@@ -1390,7 +1412,9 @@ function Builder() {
         (payload) => {
           if (cancelled) return;
           const next = payload.new as Partial<ProjectRow>;
-          setProject((prev) => (prev ? { ...prev, ...next } : prev));
+          setProject((prev) =>
+            prev ? { ...prev, ...next, revision: newerRevision(prev.revision, next.revision) ?? prev.revision } : prev,
+          );
         },
       )
       .subscribe((status, err) => {
@@ -2771,6 +2795,12 @@ function Builder() {
               resultPlan = extras?.plan;
               resultRecap = extras?.recap;
               resultNoFileChanges = extras?.noFileChanges === true;
+              // The server's committed revision is now the current code: drop
+              // readiness that belonged to the previous revision immediately.
+              if (typeof extras?.committedRevision === "number") {
+                const rev = extras.committedRevision;
+                setProject((prev) => (prev ? { ...prev, revision: newerRevision(prev.revision, rev) ?? prev.revision } : prev));
+              }
               if (typeof extras?.creditsCharged === "number") {
                 setLastBuildCredits(extras.creditsCharged);
               }

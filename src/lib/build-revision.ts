@@ -43,3 +43,27 @@ export function staleReasonText(s: Exclude<BuildRevisionStatus, { current: true 
 export function isRevisionConflict(message: string | null | undefined): boolean {
   return !!message && /revision_conflict/i.test(message);
 }
+
+/**
+ * The UI view of a build snapshot for the CURRENT project code. Derived only
+ * from the two authoritative server values (projects.revision and
+ * project_builds.project_revision) — no separate client readiness state.
+ * A build for any other revision (or a legacy one) is never shown as ready or
+ * failed for the current code: it reads as "needs a new build" (pending).
+ */
+export const STALE_BUILD_LABEL = "Your latest changes need a new build";
+export function revisionAwareBuildSnapshot<
+  T extends { status: string; projectRevision: number | null; verification: unknown; errorMessage: string | null; progressLabel: string | null },
+>(snap: T | null, projectRevision: number | string | null | undefined): T | null {
+  if (!snap) return null;
+  if (projectRevision === null || projectRevision === undefined) return snap;
+  if (buildRevisionStatus({ project_revision: snap.projectRevision }, { revision: projectRevision }).current) return snap;
+  return { ...snap, status: "pending", verification: null, errorMessage: null, progressLabel: STALE_BUILD_LABEL };
+}
+
+/** Project revision is monotonic: never let an older payload lower it. */
+export function newerRevision(prev: number | null | undefined, next: number | null | undefined): number | null {
+  if (next === null || next === undefined) return prev ?? null;
+  if (prev === null || prev === undefined) return next;
+  return Math.max(Number(prev), Number(next));
+}
