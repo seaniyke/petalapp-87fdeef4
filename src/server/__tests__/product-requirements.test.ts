@@ -17,7 +17,7 @@ import { attachRequirements } from "@/server/prd/prd-engine.server";
 import { deterministicPrd } from "@/server/prd/prd-deterministic";
 import { amendPrd } from "@/server/prd/prd-amend";
 import { planProductStage } from "@/server/engine/plan";
-import { SYSTEM_PROMPT, SYSTEM_PROMPT_PATCH } from "@/server/generate.server";
+import { SYSTEM_PROMPT_INITIAL as SYSTEM_PROMPT, SYSTEM_PROMPT_PATCH } from "@/server/generate.server";
 import { archetypeBuildInstruction, archetypeRoadmapBlock, PROJECT_ARCHETYPES } from "@/lib/project-archetype";
 import { routesFromFiles, integrationsFromSecretNames } from "@/server/prd/prd-progress.server";
 
