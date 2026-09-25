@@ -109,6 +109,7 @@ function AdminEconomicsPage() {
       <SiteHeader />
       <AdminTabs />
       <div className="mx-auto max-w-6xl space-y-4 p-4">
+        <CohortPanel />
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold">Economics</h1>
