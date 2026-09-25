@@ -1,10 +1,10 @@
 /**
- * /packs/$slug — full pack brief with palette, typography, page list, and
+ * /packs/$slug — full pack brief with page list and
  * Cloud features, plus a "Build this with Kimble" CTA that ships the composed
  * brief into the builder.
  */
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ArrowRight, Cloud, Layout, Palette, Type } from "lucide-react";
+import { ArrowLeft, ArrowRight, Cloud, Layout } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useAuth } from "@/lib/auth";
 import { getPack, packToPrompt, INDUSTRY_PACKS, type IndustryPack } from "@/lib/industry-packs";
@@ -115,45 +115,6 @@ function PackDetail() {
             <ArrowRight className="h-4 w-4" />
           </button>
         </header>
-
-        {/* Palette + typography */}
-        <section className="mt-8 grid gap-5 md:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="inline-flex items-center gap-2 font-display text-lg">
-              <Palette className="h-4 w-4 text-muted-foreground" /> Palette
-            </h2>
-            <div className="mt-4 flex gap-3">
-              {pack.palette.map((c) => (
-                <div key={c.name} className="flex-1 text-center">
-                  <div
-                    className="mx-auto h-16 w-full rounded-xl border border-border"
-                    style={{ background: c.sample }}
-                  />
-                  <div className="mt-2 text-xs font-medium">{c.name}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {c.sample}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="inline-flex items-center gap-2 font-display text-lg">
-              <Type className="h-4 w-4 text-muted-foreground" /> Typography
-            </h2>
-            <div className="mt-4 grid gap-3">
-              <div className="rounded-xl bg-muted/40 p-4">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Display</div>
-                <div className="mt-1 font-display text-2xl">{pack.typography.display}</div>
-              </div>
-              <div className="rounded-xl bg-muted/40 p-4">
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Body</div>
-                <div className="mt-1 text-base">{pack.typography.body}</div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* Pages */}
         <section className="mt-8 rounded-2xl border border-border bg-card p-6">

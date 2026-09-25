@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { writePlannedPages } from "@/server/engine/write";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import {
@@ -138,6 +138,17 @@ describe("final done status derives from the turn outcome", () => {
 });
 
 describe("audit consolidation", () => {
+  // The real parser (esbuild-wasm) compiles its WASM module once per test
+  // worker. Under the full parallel suite that one-time start-up alone can
+  // take several seconds, and it was being charged to whichever assertion
+  // happened to call the parser first. Start it here so the assertions below
+  // measure clean-up behaviour only. A failed start-up still fails loudly.
+  beforeAll(async () => {
+    const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
+    const v = await verifyFilesEsbuild([{ path: "src/warm.tsx", content: "export default function W(){return null}" }], ["src/warm.tsx"]);
+    expect(v.status).toBe("passed");
+  }, 30_000);
+
   it("one AI repair per file across the whole turn (write-time + final check share it)", () => {
     const b = new RecoveryBudget();
     expect(b.take("broken_file", "src/pages/Home.tsx")).toBe(true);

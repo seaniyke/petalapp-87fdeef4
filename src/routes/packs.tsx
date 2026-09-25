@@ -2,7 +2,7 @@
  * /packs — gallery of industry packs (multi-page, opinionated starters).
  *
  * Heavier than /templates: each pack here is a full website brief with a
- * page list, palette, typography, and Cloud features. Click-through goes
+ * page list and Cloud features. Click-through goes
  * to /packs/$slug for the full breakdown before launching the builder.
  */
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -17,13 +17,13 @@ export const Route = createFileRoute("/packs")({
       {
         name: "description",
         content:
-          "Opinionated multi-page starters for restaurants, real estate, fitness studios, consultancies and newsletters. Full briefs, palettes, and Cloud features included.",
+          "Opinionated multi-page starters for restaurants, real estate, fitness studios, consultancies and newsletters. Full briefs and Cloud features included.",
       },
       { property: "og:title", content: "Kimble Industry Packs" },
       {
         property: "og:description",
         content:
-          "Full website briefs tuned per industry — pages, palette, typography, and Cloud features picked for you.",
+          "Full website briefs tuned per industry — pages, structure, and Cloud features picked for you.",
       },
     ],
   }),
@@ -44,7 +44,7 @@ function PacksGallery() {
           </h1>
           <p className="mt-3 text-muted-foreground">
             Multi-page briefs tuned for a specific kind of business. Each
-            pack ships with the page list, palette, typography pairing, and
+            pack ships with the page list and
             the Cloud features Kimble will turn on for you.
           </p>
         </header>
@@ -57,17 +57,6 @@ function PacksGallery() {
                 params={{ slug: pack.slug }}
                 className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[var(--shadow-soft)]"
               >
-                {/* Palette swatch strip */}
-                <div className="flex h-20 w-full">
-                  {pack.palette.map((c) => (
-                    <div
-                      key={c.name}
-                      className="flex-1"
-                      style={{ background: c.sample }}
-                      title={c.name}
-                    />
-                  ))}
-                </div>
                 <div className="flex flex-1 flex-col gap-3 p-5">
                   <div className="flex items-center gap-2">
                     <span className="grid h-9 w-9 place-items-center rounded-xl bg-muted text-foreground/80">

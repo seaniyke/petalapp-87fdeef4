@@ -40,10 +40,6 @@ export type IndustryPack = {
   Icon: LucideIcon;
   /** Short marketing blurb for the gallery card. */
   blurb: string;
-  /** Hex/oklch palette anchors used for the preview swatch. */
-  palette: { name: string; cssVar: string; sample: string }[];
-  /** Display fonts paired for the pack. */
-  typography: { display: string; body: string };
   /** Pages the AI should scaffold. */
   pages: { path: string; purpose: string }[];
   /** Cloud features to auto-suggest enabling after generation. */
@@ -60,12 +56,6 @@ export const INDUSTRY_PACKS: IndustryPack[] = [
     Icon: Utensils,
     blurb:
       "A warm, food-forward site for an independent restaurant — full menu, online reservations, gallery, and a press section.",
-    palette: [
-      { name: "Terracotta", cssVar: "--accent", sample: "#C75D3C" },
-      { name: "Cream", cssVar: "--background", sample: "#FBF6EE" },
-      { name: "Olive", cssVar: "--muted", sample: "#5A6B3B" },
-    ],
-    typography: { display: "Fraunces", body: "Inter" },
     pages: [
       { path: "/", purpose: "Hero with cuisine vibe, today's specials, story teaser, CTA to reserve" },
       { path: "/menu", purpose: "Full menu by section (starters, mains, desserts, drinks) with prices and dietary tags" },
@@ -93,12 +83,6 @@ Photography-led, generous whitespace, no stock-template feel.`,
     Icon: HomeIcon,
     blurb:
       "A polished agency site with searchable listings, agent profiles, and a buyer-lead capture funnel.",
-    palette: [
-      { name: "Deep navy", cssVar: "--primary", sample: "#0F2A4A" },
-      { name: "Sand", cssVar: "--background", sample: "#F4EFE6" },
-      { name: "Brass", cssVar: "--accent", sample: "#B8893C" },
-    ],
-    typography: { display: "Playfair Display", body: "Inter" },
     pages: [
       { path: "/", purpose: "Hero with featured listing, search bar, neighborhood highlights" },
       { path: "/listings", purpose: "Searchable/filterable grid (price, beds, baths, location)" },
@@ -127,12 +111,6 @@ Generous whitespace, large photography. Build the listings table with realistic 
     Icon: Dumbbell,
     blurb:
       "An energetic studio site with a weekly class schedule, trainer profiles, membership tiers, and free-trial booking.",
-    palette: [
-      { name: "Electric lime", cssVar: "--primary", sample: "#C5F23A" },
-      { name: "Charcoal", cssVar: "--background", sample: "#0F1112" },
-      { name: "White", cssVar: "--foreground", sample: "#FFFFFF" },
-    ],
-    typography: { display: "Space Grotesk", body: "Inter" },
     pages: [
       { path: "/", purpose: "Bold hero, class types row, member testimonials, trial CTA" },
       { path: "/schedule", purpose: "Weekly class grid with class type, trainer, time, capacity, book button" },
@@ -159,12 +137,6 @@ Use bold motion, big type, gritty energy. Not soft, not corporate.`,
     Icon: Briefcase,
     blurb:
       "A confident consultancy site with services, case studies, team, and a thoughtful inquiry form.",
-    palette: [
-      { name: "Ink", cssVar: "--foreground", sample: "#111418" },
-      { name: "Bone", cssVar: "--background", sample: "#F2EFE9" },
-      { name: "Signal red", cssVar: "--accent", sample: "#D33A2C" },
-    ],
-    typography: { display: "GT Sectra", body: "Inter" },
     pages: [
       { path: "/", purpose: "Editorial hero, services row, featured case study, client logos, CTA" },
       { path: "/services", purpose: "Service offerings with deliverables and engagement model" },
@@ -193,12 +165,6 @@ Tone: confident, restrained, premium. No buzzwords.`,
     Icon: Mail,
     blurb:
       "A newsletter site with conversion-focused signup, an archive of past issues, and per-issue pages.",
-    palette: [
-      { name: "Paper", cssVar: "--background", sample: "#FFFDF7" },
-      { name: "Ink", cssVar: "--foreground", sample: "#0E0E10" },
-      { name: "Marigold", cssVar: "--accent", sample: "#F5B042" },
-    ],
-    typography: { display: "Tiempos Headline", body: "Inter" },
     pages: [
       { path: "/", purpose: "Big signup hero, social proof, latest 3 issues, what-you'll-get" },
       { path: "/archive", purpose: "Full archive of past issues, sortable" },
@@ -214,7 +180,7 @@ Pages:
 3. /issues/$slug — single issue with rich editorial typography (drop cap, pull quotes), inline signup CTA two-thirds down.
 4. /about — author bio, why this newsletter exists, what to expect.
 
-Reading-first design: max-width prose, generous line-height, real serif typography. Not a SaaS landing page in disguise.`,
+Reading-first design: max-width prose, generous line-height, considered editorial typography. Not a SaaS landing page in disguise.`,
   },
   {
     slug: "booking",
@@ -223,12 +189,6 @@ Reading-first design: max-width prose, generous line-height, real serif typograp
     Icon: CalendarCheck,
     blurb:
       "A polished booking site for solo professionals (coaches, therapists, consultants) — services, availability calendar, online booking, payment, and a logged-in dashboard.",
-    palette: [
-      { name: "Sage", cssVar: "--primary", sample: "#5C7A6A" },
-      { name: "Bone", cssVar: "--background", sample: "#F4F1EA" },
-      { name: "Plum", cssVar: "--accent", sample: "#7A3E5C" },
-    ],
-    typography: { display: "Fraunces", body: "Inter" },
     pages: [
       { path: "/", purpose: "Hero, services overview, testimonials, prominent Book CTA" },
       { path: "/services", purpose: "Service list with duration, price, and Book button" },
@@ -257,12 +217,6 @@ Use a calm, considered aesthetic — not a SaaS landing page. Real database tabl
     Icon: Store,
     blurb:
       "A two-sided marketplace starter — seller onboarding, listings, buyer browse + purchase via Stripe Connect, in-app messaging, reviews.",
-    palette: [
-      { name: "Indigo", cssVar: "--primary", sample: "#3D3A8C" },
-      { name: "Paper", cssVar: "--background", sample: "#FAFAF7" },
-      { name: "Coral", cssVar: "--accent", sample: "#E8704F" },
-    ],
-    typography: { display: "Outfit", body: "Inter" },
     pages: [
       { path: "/", purpose: "Hero, featured listings, top categories, become-a-seller CTA" },
       { path: "/browse", purpose: "Searchable, filterable listing grid" },
@@ -295,12 +249,6 @@ Integration brief for the builder: every checkout / payout / refund call MUST be
     Icon: Megaphone,
     blurb:
       "A creator command center — link-in-bio landing, cross-platform post scheduler (X, LinkedIn, Threads), unified social inbox, and analytics.",
-    palette: [
-      { name: "Hot pink", cssVar: "--primary", sample: "#FF3D8A" },
-      { name: "Off-black", cssVar: "--background", sample: "#0B0B10" },
-      { name: "Citron", cssVar: "--accent", sample: "#E6FF55" },
-    ],
-    typography: { display: "Space Grotesk", body: "Inter" },
     pages: [
       { path: "/", purpose: "Marketing landing for the creator tool itself with signup CTA" },
       { path: "/u/$handle", purpose: "Public link-in-bio page (avatar, bio, links, latest posts, click tracking)" },
@@ -329,18 +277,12 @@ Integration brief for the builder: use per-user OAuth (not workspace connectors)
   {
     slug: "neobank",
     name: "Neobank dashboard",
-    tagline: "Accounts, transactions, transfers — KYC-aware, demo-safe",
+    tagline: "Accounts, transactions, transfers — KYC-aware and idempotent",
     Icon: Landmark,
     blurb:
-      "A modern banking dashboard with accounts list, transaction feed, transfer flow, KYC onboarding, and provider-webhook plumbing. Demo-safe by default.",
-    palette: [
-      { name: "Indigo", cssVar: "--primary", sample: "#3D5AFE" },
-      { name: "Ink", cssVar: "--background", sample: "#0A0F1F" },
-      { name: "Mint", cssVar: "--accent", sample: "#34D399" },
-    ],
-    typography: { display: "Söhne", body: "Inter" },
+      "A modern banking dashboard with accounts list, transaction feed, transfer flow, KYC onboarding, and provider-webhook plumbing.",
     pages: [
-      { path: "/", purpose: "Marketing landing — trust, security, FDIC-style copy (clearly labelled demo), signup CTA" },
+      { path: "/", purpose: "Marketing landing — trust, security, regulatory-style copy, signup CTA" },
       { path: "/signup", purpose: "Email + password signup, then redirect to KYC" },
       { path: "/onboarding/kyc", purpose: "Multi-step KYC: legal name, DOB, address, ID upload (Persona/Stripe Identity placeholder)" },
       { path: "/dashboard", purpose: "Accounts overview: balance cards, recent transactions, quick-transfer CTA" },
@@ -351,10 +293,10 @@ Integration brief for the builder: use per-user OAuth (not workspace connectors)
       { path: "/settings", purpose: "Profile, linked external accounts, notification prefs" },
     ],
     cloud: ["auth", "database", "email", "storage", "payments"],
-    brief: `A neobank-style banking dashboard. Calm, trustworthy, fintech-modern. Show clear "DEMO — simulated balances" notices everywhere money is displayed unless real provider keys are configured.
+    brief: `A neobank-style banking dashboard. Calm, trustworthy, fintech-modern.
 
 Pages:
-1. / — marketing landing: trust messaging, security highlights (encryption, audit log), labelled-demo disclosure, signup CTA.
+1. / — marketing landing: trust messaging, security highlights (encryption, audit log), signup CTA.
 2. /signup — email + password, redirect to /onboarding/kyc.
 3. /onboarding/kyc — multi-step form (legal name, DOB, address, government ID upload). Stub Persona / Stripe Identity integration with TODO comments. Save kyc_status to profiles.
 4. /dashboard — accounts list (cards with balance, last 4, type), recent transactions table, "New transfer" CTA. Account-scoped via RLS.
@@ -366,7 +308,7 @@ Pages:
 
 Tables: profiles (kyc_status, role), accounts (user_id, balance_cents, type, last4), transactions (account_id, amount_cents, currency, counterparty, status, posted_at), transfers (idempotency_key UNIQUE, status, provider_ref), webhook_events (provider, event_id UNIQUE, payload, received_at), user_roles (user_id, role).
 
-Integration brief for the builder: NEVER move real money. Use Plaid for account linking sandbox, Stripe Financial Connections or Increase/Unit/Modern Treasury for ledger — all server-side only via createServerFn, never from the browser. All amounts in integer cents. All money-moving handlers MUST be idempotent on Idempotency-Key. Webhook routes under /api/public/* MUST verify HMAC signature with timingSafeEqual before any write. Display a persistent "Demo balances" banner unless PLAID_SECRET / INCREASE_API_KEY etc. are set.`,
+Integration brief for the builder: NEVER move real money. Use Plaid for account linking sandbox, Stripe Financial Connections or Increase/Unit/Modern Treasury for ledger — all server-side only via createServerFn, never from the browser. All amounts in integer cents. All money-moving handlers MUST be idempotent on Idempotency-Key. Webhook routes under /api/public/* MUST verify HMAC signature with timingSafeEqual before any write.`,
   },
   {
     slug: "crypto-portfolio",
@@ -375,12 +317,6 @@ Integration brief for the builder: NEVER move real money. Use Plaid for account 
     Icon: Coins,
     blurb:
       "A non-custodial crypto portfolio tracker — wallet connect, multi-chain balances, transaction history, swap/onramp links. No private keys ever leave the wallet.",
-    palette: [
-      { name: "Electric violet", cssVar: "--primary", sample: "#7C3AED" },
-      { name: "Carbon", cssVar: "--background", sample: "#0E0E12" },
-      { name: "Lime", cssVar: "--accent", sample: "#A3E635" },
-    ],
-    typography: { display: "Space Grotesk", body: "Inter" },
     pages: [
       { path: "/", purpose: "Marketing landing — connect-wallet CTA, supported chains, non-custodial messaging" },
       { path: "/dashboard", purpose: "Portfolio overview: total value, per-chain breakdown, top holdings, 24h change" },
@@ -411,12 +347,6 @@ Integration brief for the builder: use wagmi + viem + RainbowKit for wallet conn
     Icon: FileText,
     blurb:
       "An invoicing tool for small businesses — clients, line-item invoices, Stripe-hosted payment links, automated reminders, and a clean public invoice page.",
-    palette: [
-      { name: "Slate blue", cssVar: "--primary", sample: "#1E40AF" },
-      { name: "Paper", cssVar: "--background", sample: "#F8FAFC" },
-      { name: "Emerald", cssVar: "--accent", sample: "#059669" },
-    ],
-    typography: { display: "Inter Tight", body: "Inter" },
     pages: [
       { path: "/", purpose: "Marketing landing for the tool itself, signup CTA" },
       { path: "/dashboard", purpose: "Outstanding total, overdue list, recent activity, MRR-style stats" },
