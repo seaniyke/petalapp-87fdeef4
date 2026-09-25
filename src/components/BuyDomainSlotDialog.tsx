@@ -29,13 +29,18 @@ import {
 import {
   fetchCurrencies,
   formatMoney,
+  computeBreakdown,
   type BillingCurrency,
 } from "@/lib/billing";
 import {
   searchDomains,
   purchaseDomain,
+  purchaseDomainWithCredits,
+  fetchCreditRate,
+  creditsForUsdCents,
   formatUsdCents,
   type DomainSearchResult,
+  type CreditPurchaseError,
 } from "@/lib/registrar";
 import { useWallet } from "@/hooks/use-wallet";
 import { BillingSheet } from "@/components/BillingSheet";
@@ -48,9 +53,13 @@ type Props = {
 };
 
 export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
-  const { plan } = useWallet();
-  const isPaidPlan = !!plan && plan.code !== "free";
+  const { wallet, plan } = useWallet();
+  const creditBalance = computeBreakdown(wallet ?? null, plan ?? null).total;
   const [billingOpen, setBillingOpen] = useState(false);
+  const [payWith, setPayWith] = useState<"credits" | "card">("credits");
+  // USD cents per credit, loaded from the server so pricing stays in one place.
+  const [usdCentsPerCredit, setUsdCentsPerCredit] = useState(20);
+
 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
