@@ -7,7 +7,7 @@
  * it into their generated app and POSTs to /api/public/email/send.
  */
 import { useEffect, useState } from "react";
-import { Mail, Copy, RotateCw, Check, ExternalLink } from "lucide-react";
+import { Mail, Copy, RotateCw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerFn } from "@tanstack/react-start";

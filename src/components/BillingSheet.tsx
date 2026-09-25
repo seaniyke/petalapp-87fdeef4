@@ -1,12 +1,8 @@
 /**
- * Billing sheet — Lovable-inspired layout.
+ * Credits sheet.
  *
  * Sections (top → bottom):
- *  1. Optional "expires soon" warning banner (red/amber, prominent)
- *  2. Credits remaining card with progress bar + Daily / Purchased breakdown
- *  4. Currency picker
- *  5. Plan picker (Pro / Business cards) — each shows price + credits + features + Upgrade CTA
- *  6. Top-up packs (dropdown + dynamic "Top up $X" button)
+ * Balance, usage, currency selection, and one-time credit packs.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
@@ -190,7 +186,7 @@ export function BillingSheet({ open, onOpenChange, returnTo }: Props) {
                   label="Daily"
                   sub={
                     !dailyCap
-                      ? "Not on this plan"
+                      ? "No free credits available"
                       : monthlyFreeRemaining === 0
                         ? `Free-credit limit used — back in ${monthlyResetDays ?? 0} ${monthlyResetDays === 1 ? "day" : "days"}`
                         : `Back to ${dailyCap} ${dailyResetText ?? "soon"}${
