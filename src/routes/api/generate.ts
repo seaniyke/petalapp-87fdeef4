@@ -3266,7 +3266,7 @@ Forbidden defaults
   // immediately with a smaller one instead of repeating the same request.
   const renderFilesContext = (budget: PromptBudgetResult): string =>
     isInitial
-      ? ""
+      ? appMapBlock
       : `\n\nEditable app file manifest (all app-owned files Kimble may target):\n${compactManifest(currentFiles)}\n\nCurrent project files (trimmed to the most relevant editable files; ${budget.omitted} lower-priority files omitted for speed. Some large files are shown as the regions around the lines that matter, with the untouched ranges marked — quote only bytes you can actually see. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden — they exist in the project but you must never edit them):\n\n${budget.files
           .map((f) => `--- ${f.path} ---\n${f.content}`)
           .join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}${appMapBlock}${executionScopeBlock}`;
