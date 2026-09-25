@@ -3566,6 +3566,7 @@ Forbidden defaults
       text: lastUserText || "",
       isInitial,
       isCrossCutting,
+      touchesData: projectCtx.flags.database || projectCtx.flags.forms,
     });
     skillsBlock = picked.text;
     if (picked.ids.length) console.info(`[skills] ${picked.ids.join(", ")}`);
