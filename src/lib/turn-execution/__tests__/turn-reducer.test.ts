@@ -173,3 +173,38 @@ describe("view states", () => {
     expect(deriveLifecycle(s)).toBe("answered");
   });
 });
+
+describe("stage 5 projections (replacing builder-local state)", () => {
+  const evs: RawTurnEvent[] = [
+    { type: "build_steps", steps: ["Home", "Menu"] },
+    { type: "step_status", index: 0, status: "active" },
+    { type: "file_progress", latestPath: "src/pages/Home.tsx" },
+    { type: "narration", path: "src/pages/Home.tsx", text: "Laying out the hero" },
+    { type: "file_complete", path: "src/pages/Home.tsx", bytes: 10, index: 0 },
+    { type: "file_progress", latestPath: "src/pages/Menu.tsx" },
+    { type: "narration", path: "src/pages/Home.tsx", text: "late narration" },
+    { type: "timeline", step: "image_resolve", outcome: "ok", message: "", url: "https://x/a.jpg", ts: 5 },
+    { type: "timeline", step: "image_resolve", outcome: "ok", message: "", url: "https://x/a.jpg", ts: 6 },
+  ];
+  const v = deriveView(run([start, ...evs.map(live)]));
+  it("keeps files in write order with completion ticks", () => {
+    expect(v.writtenPaths).toEqual(["src/pages/Home.tsx", "src/pages/Menu.tsx"]);
+    expect([...v.completedPaths]).toEqual(["src/pages/Home.tsx"]);
+  });
+  it("narration follows the current file and drops late lines", () => {
+    expect(v.latestPath).toBe("src/pages/Menu.tsx");
+    expect(v.latestNarration).toBeUndefined();
+  });
+  it("plan step stays active while files are written", () => {
+    expect(v.activeStepIndex).toBe(0);
+    expect(v.doneStepIndexes).toEqual([]);
+    expect(v.current?.label).toBe("Made 1 picture");
+  });
+  it("timeline dedupes pictures", () => {
+    expect(v.timeline.filter((t) => t.url)).toHaveLength(1);
+  });
+  it("finishing closes every step", () => {
+    const d = deriveView(run([start, ...evs.map(live), live({ type: "done", status: "succeeded" })]));
+    expect(d.doneStepIndexes).toEqual([0]);
+  });
+});

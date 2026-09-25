@@ -52,7 +52,6 @@ import {
   readPersistedTurn,
   bumpTurnSeq,
 } from "@/lib/turn-persistence";
-import { appendUniqueActivity } from "@/lib/build-activity-events";
 import {
   persistPendingPlan,
   clearPendingPlan,
@@ -85,7 +84,7 @@ import {
   PipelineError,
   type FriendlyError,
 } from "@/lib/friendly-errors";
-import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
+import { BuildActivityCard } from "@/components/BuildActivityCard";
 import { BuildResultCard } from "@/components/BuildResultCard";
 import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
@@ -426,7 +425,6 @@ function Builder() {
   const [historyKey, setHistoryKey] = useState(0);
   const [phases, setPhases] = useState<Phase[]>(defaultPhases);
   const [designCaption, setDesignCaption] = useState<string>("");
-  const [filesWritten, setFilesWritten] = useState<number>(0);
   const [lastBuildCredits, setLastBuildCredits] = useState<number | null>(null);
   const [liveCreditsEstimate, setLiveCreditsEstimate] = useState<number | null>(null);
   // Snapshot of `files` captured at the start of the current turn. Drives the
@@ -435,27 +433,10 @@ function Builder() {
   // without nuking the whole result via Time Machine.
   const preTurnFilesRef = useRef<ProjectFile[] | null>(null);
   const [turnDiffVersion, setTurnDiffVersion] = useState<VersionRow | null>(null);
-  const [latestPath, setLatestPath] = useState<string | undefined>(undefined);
-  // Model-written sentence for the most recent file ("Building the upload
-  // screen…"). When present, the activity card shows this instead of the
-  // path-derived fallback. Cleared at the start of each turn.
-  const [latestNarration, setLatestNarration] = useState<string | undefined>(undefined);
-  // Plan-first execution — the model's ordered checklist for this turn plus
-  // which item it is currently working through (0 = not started yet).
-  const [buildSteps, setBuildSteps] = useState<string[]>([]);
-  const [activeStepIndex, setActiveStepIndex] = useState<number>(-1);
-  const [doneStepIndexes, setDoneStepIndexes] = useState<number[]>([]);
   // Most recent agentic-loop progress string. Used as a fallback sub-caption
   // when no model-written narration / path narration is more recent — keeps
   // the activity card alive during silent verifier or autofix gaps.
   const [latestCycleProgress, setLatestCycleProgress] = useState<string | undefined>(undefined);
-  // Ordered, deduped list of every path Kimble streams during the writing phase.
-  // Drives the per-file progress list in BuildActivityCard.
-  const [writtenPaths, setWrittenPaths] = useState<string[]>([]);
-  // Set of paths whose `"content"` string has fully closed during streaming.
-  // Drives the per-file ✓ tick in the activity card the instant a file finishes,
-  // instead of waiting for the entire tool call to land (Phase D step 9).
-  const [completedPaths, setCompletedPaths] = useState<Set<string>>(() => new Set());
   // Final per-file line counts, populated after a successful run.
   const [finalFileLines, setFinalFileLines] = useState<Record<string, number>>({});
   // Per-file change summary computed against the pre-run snapshot. Drives the
@@ -467,10 +448,6 @@ function Builder() {
       { kind: "added" | "modified" | "unchanged" | "deleted"; addedLines: number; removedLines: number }
     >
   >({});
-  // Real-time pipeline timeline: ordered log of every recovery / verifier /
-  // autofix / image step the server ran for the in-flight (or last) turn.
-  // Drives the expanded "Build steps" panel inside BuildActivityCard.
-  const [timelineEvents, setTimelineEvents] = useState<TimelineEntry[]>([]);
   // Live, token-by-token assistant reply rendered in the chat thread while busy.
   // This mirrors what Lovable/Bolt/v0 do — the user sees Kimble "talking" in real
   // time, not just a structured timeline. Cleared when the run completes.
@@ -1688,20 +1665,12 @@ function Builder() {
     setError(null);
     setFriendlyError(null);
     setPhases(defaultPhases());
+    dispatchTurn({ type: "reset" });
     setActivityVisible(false);
     setDesignCaption("");
-    setFilesWritten(0);
-    setLatestPath(undefined);
-    setLatestNarration(undefined);
-    setBuildSteps([]);
-    setActiveStepIndex(-1);
-    setDoneStepIndexes([]);
     setLatestCycleProgress(undefined);
-    setWrittenPaths([]);
-    setCompletedPaths(new Set());
     setFinalFileLines({});
     setFileChanges({});
-    setTimelineEvents([]);
     setStreamingAssistant("");
     setStreamingPlan("");
     setStreamingRecap("");
@@ -2068,28 +2037,9 @@ function Builder() {
           onRecapDelta: (d) => {
             setStreamingRecap((s) => s + d);
           },
-          onFileProgress: (_n, path) => {
-            if (path) {
-              setLatestPath((prev) => {
-                // Reset narration when we move to a new file so the old
-                // sentence doesn't linger on the new path.
-                if (prev !== path) setLatestNarration(undefined);
-                return path;
-              });
-              setWrittenPaths((prev) => {
-                const next = prev.includes(path) ? prev : [...prev, path];
-                setFilesWritten(next.length);
-                return next;
-              });
-            }
-          },
+          // File list, steps, narration and timeline now live in the turn
+          // reducer (fed by onRawEvent). Only side effects remain here.
           onFileComplete: (path, _bytes, _index, content) => {
-            setCompletedPaths((prev) => {
-              if (prev.has(path)) return prev;
-              const next = new Set(prev);
-              next.add(path);
-              return next;
-            });
             // Phase 4 #12 — stream the file into the WebContainer the
             // moment it parses out of the tool call. No-op when the
             // container hasn't booted yet (initial turn) or the file is
@@ -2118,25 +2068,8 @@ function Builder() {
               );
             }
           },
-          onBuildSteps: (steps) => setBuildSteps(steps),
-          onStepStatus: (index, status) => {
-            if (status === "active") setActiveStepIndex(index);
-            else setDoneStepIndexes((prev) => (prev.includes(index) ? prev : [...prev, index]));
-          },
-          onNarration: (path, text) => {
-            // Only adopt narration for the currently-streaming file. Late
-            // narrations for earlier files are dropped to keep the caption
-            // truthful about what's on screen right now.
-            setLatestPath((curr) => {
-              if (curr === path || curr === undefined) setLatestNarration(text);
-              return curr;
-            });
-          },
           onCycleProgress: (_cycle, message) => setLatestCycleProgress(message),
           onCycleEnd: () => setLatestCycleProgress(undefined),
-          onTimeline: (entry) => {
-            setTimelineEvents((prev) => appendUniqueActivity(prev, entry));
-          },
           onCreditsPaused: (pause) => {
             setCreditPause({
               id: pause.checkpointId,
@@ -2587,18 +2520,9 @@ function Builder() {
       // flash users saw when Kimble auto-recovered from no-file/cut-off streams.
       if (!opts.isRetry) setPhases(defaultPhases());
       setDesignCaption("");
-      setFilesWritten(0);
-      setLatestPath(undefined);
-      setLatestNarration(undefined);
-      setBuildSteps([]);
-      setActiveStepIndex(-1);
-      setDoneStepIndexes([]);
       setLatestCycleProgress(undefined);
-      setWrittenPaths([]);
-      setCompletedPaths(new Set());
       setFinalFileLines({});
       setFileChanges({});
-      setTimelineEvents([]);
       setStreamingAssistant("");
       setStreamingPlan("");
       setStreamingRecap("");
@@ -2812,30 +2736,9 @@ function Builder() {
               setStreamingRecap((s) => s + d);
               draftWriter.queue({ content: partialAssistant, plan: partialPlan, recap: partialRecap });
             },
-            onFileProgress: (_n, path) => {
-              if (path) {
-                setLatestPath((prev) => {
-                  if (prev !== path) setLatestNarration(undefined);
-                  return path;
-                });
-                // Append to ordered, deduped list so the user sees each file
-                // appear in the activity card as Kimble writes it.
-                setWrittenPaths((prev) => {
-                  const next = prev.includes(path) ? prev : [...prev, path];
-                  setFilesWritten(next.length);
-                  return next;
-                });
-              }
-            },
+            // File list, steps, narration and timeline live in the turn
+            // reducer (onRawEvent). Only side effects remain here.
             onFileComplete: (path, _bytes, _index, content) => {
-              // Phase D step 9 — flip this file's row to ✓ the moment its
-              // streaming content closes, without waiting for the whole turn.
-              setCompletedPaths((prev) => {
-                if (prev.has(path)) return prev;
-                const next = new Set(prev);
-                next.add(path);
-                return next;
-              });
               // Phase 4 #12 — stream the file into the WebContainer mid-turn.
               if (content) {
                 // Phase 4 #23 — see the note on the sibling call above: never
@@ -2854,20 +2757,7 @@ function Builder() {
                 );
               }
             },
-            onBuildSteps: (steps) => {
-              setActivityVisible(true);
-              setBuildSteps(steps);
-            },
-            onStepStatus: (index, status) => {
-              if (status === "active") setActiveStepIndex(index);
-              else setDoneStepIndexes((prev) => (prev.includes(index) ? prev : [...prev, index]));
-            },
-            onNarration: (path, text) => {
-              setLatestPath((curr) => {
-                if (curr === path || curr === undefined) setLatestNarration(text);
-                return curr;
-              });
-            },
+            onBuildSteps: () => setActivityVisible(true),
             onCycleProgress: (_cycle, message) => setLatestCycleProgress(message),
             onCycleEnd: () => setLatestCycleProgress(undefined),
             onResult: (f, s, extras) => {
@@ -2896,11 +2786,6 @@ function Builder() {
                 resultSuggestions = v.suggestions;
               }
               resultVerdict = v.verdict;
-            },
-            onTimeline: (entry) => {
-              // Append every pipeline step to the live timeline. Cap at 30
-              // entries so a runaway server can't bloat React state.
-              setTimelineEvents((prev) => appendUniqueActivity(prev, entry));
             },
             // onContinuationHandoff removed — Continue-building chip retired.
 
@@ -3212,18 +3097,8 @@ function Builder() {
           }
         }
         setFileChanges(changes);
-        // Make deleted paths visible in the writing-phase file list too,
-        // otherwise the user has no way to know a file is gone.
-        if (deletedPaths.length > 0) {
-          setWrittenPaths((prev) => {
-            const set = new Set(prev);
-            const next = [...prev];
-            for (const p of deletedPaths) {
-              if (!set.has(p)) next.push(p);
-            }
-            return next;
-          });
-        }
+        // Deleted paths reach the activity card through `fileChanges`.
+        void deletedPaths;
 
         // A terminal failure (e.g. requested pages never written) ends the
         // active phase as failed — nothing is built, so never "deploying".
@@ -5163,7 +5038,7 @@ function Builder() {
               !streamingRecap && (() => {
                 const activePhase = phases.find((p) => p.status === "active");
                 const isWorking =
-                  filesWritten > 0 ||
+                  turnView.writtenPaths.length > 0 ||
                   (activePhase && activePhase.id !== "thinking");
                 return (
                   <div className="flex items-center gap-2 text-[13px]">
@@ -5198,7 +5073,7 @@ function Builder() {
                     ? "Writing"
                     : streamingPlan
                       ? "Planning"
-                      : filesWritten > 0 ||
+                      : turnView.writtenPaths.length > 0 ||
                           (activePhase && activePhase.id !== "thinking")
                         ? "Working"
                         : "Thinking";
@@ -5301,17 +5176,8 @@ function Builder() {
                 })()}
 
                 designCaption={designCaption}
-                latestPath={latestPath}
-                latestNarration={latestNarration}
-                buildSteps={buildSteps}
-                activeStepIndex={activeStepIndex}
-                doneStepIndexes={doneStepIndexes}
                 latestCycleProgress={latestCycleProgress}
-                filesWritten={filesWritten}
-                writtenPaths={writtenPaths}
-                completedPaths={completedPaths}
                 finalFileLines={finalFileLines}
-                timelineEvents={timelineEvents}
                 creditsCharged={lastBuildCredits}
                 creditsEstimate={liveCreditsEstimate}
                 fileChanges={fileChanges}
@@ -5953,7 +5819,7 @@ function Builder() {
                               return { ...err, fixed: false };
                             });
                           }}
-                          lastNarration={latestNarration ?? null}
+                          lastNarration={turnView.latestNarration ?? null}
                           instantSrc={instantPreviewUrl}
                           refusedUrl={latestReadyBuild.refusedUrl}
                           refusedReason={latestReadyBuild.refusedReason}

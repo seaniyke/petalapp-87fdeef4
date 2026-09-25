@@ -46,6 +46,16 @@ export type Activity = {
   tech?: string;
 };
 
+/** Pipeline timeline entry — same shape the Details sheet already renders. */
+export type TimelineItem = {
+  step: string;
+  outcome: "ok" | "fixed" | "skipped" | "failed";
+  message: string;
+  count?: number;
+  url?: string;
+  ts: number;
+};
+
 export type DeploySnapshot = {
   buildId: string;
   status: "pending" | "building" | "ready" | "failed";
@@ -76,6 +86,11 @@ type GenState = {
   noFileChanges: boolean;
   done: "succeeded" | "failed" | "aborted" | "awaiting_credits" | "plan_proposed" | null;
   tech: string[];
+  /** Files in the order Kimble started writing them. */
+  paths: string[];
+  latestPath: string | null;
+  latestNarration: string | null;
+  timeline: TimelineItem[];
 };
 
 export type TurnState = {
@@ -126,8 +141,22 @@ function emptyGen(): GenState {
     noFileChanges: false,
     done: null,
     tech: [],
+    paths: [],
+    latestPath: null,
+    latestNarration: null,
+    timeline: [],
   };
 }
+
+const TIMELINE_LIMIT = 30;
+function pushTimeline(g: GenState, item: TimelineItem): TimelineItem[] {
+  const dup = item.url
+    ? g.timeline.some((t) => t.url === item.url)
+    : g.timeline.some((t) => t.step === item.step && t.ts === item.ts && t.message === item.message);
+  if (dup || g.timeline.length >= TIMELINE_LIMIT) return g.timeline;
+  return [...g.timeline, item];
+}
+const OUTCOMES = ["ok", "fixed", "skipped", "failed"] as const;
 
 export const initialTurnState: TurnState = {
   turnId: null,
@@ -187,7 +216,12 @@ function upsert(list: Activity[], a: Activity): Activity[] {
 
 /** Close whatever was "active" so exactly one thing is current. */
 function settle(list: Activity[], exceptKey?: string): Activity[] {
-  return list.map((a) => (a.status === "active" && a.key !== exceptKey ? { ...a, status: "done" } : a));
+  // Plan steps close only on their own step_status event — never implicitly.
+  return list.map((a) =>
+    a.status === "active" && a.key !== exceptKey && !(a.key.startsWith("step:") && !exceptKey?.startsWith("step:"))
+      ? { ...a, status: "done" }
+      : a,
+  );
 }
 
 function pushTech(g: GenState, line: string): string[] {
@@ -195,6 +229,7 @@ function pushTech(g: GenState, line: string): string[] {
 }
 
 function applyEvent(g: GenState, e: RawTurnEvent): GenState {
+  // eslint-disable-next-line no-param-reassign -- local rebinding only
   const str = (k: string) => (typeof e[k] === "string" ? (e[k] as string) : "");
   switch (e.type) {
     case "phase": {
@@ -222,11 +257,18 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
     case "file_progress": {
       const path = str("latestPath");
       if (!path) return g;
-      if (g.files[path] && g.files[path].status !== "writing") return g;
+      const moved = g.latestPath !== path;
+      const base = {
+        ...g,
+        paths: g.paths.includes(path) ? g.paths : [...g.paths, path],
+        latestPath: path,
+        latestNarration: moved ? null : g.latestNarration,
+      };
+      if (g.files[path] && g.files[path].status !== "writing") return base;
       const key = `file:${path}`;
       const label = `Creating ${humanFileName(path)}`;
       return {
-        ...g,
+        ...base,
         current: label,
         files: { ...g.files, [path]: { status: "writing" } },
         activities: upsert(settle(g.activities, key), { key, kind: "file", status: "active", label, tech: path }),
@@ -258,8 +300,11 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
         activities: upsert(settle(g.activities, key), { key, kind: "repair", status: "active", label: `Fixing an issue in ${humanFileName(path)}`, tech: `${path}: ${(errors ?? []).join("; ")}` }),
       };
     }
-    case "narration":
-      return { ...g, tech: pushTech(g, `${str("path")}: ${str("text")}`) };
+    case "narration": {
+      const path = str("path");
+      const adopt = g.latestPath === null || g.latestPath === path;
+      return { ...g, latestNarration: adopt ? str("text") : g.latestNarration, tech: pushTech(g, `${path}: ${str("text")}`) };
+    }
     case "cycle_start": {
       if (str("intent") !== "fixing") return g;
       const key = `cycle:${e.cycle}`;
@@ -276,6 +321,18 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
       const outcome = str("outcome");
       const message = str("message");
       const url = str("url");
+      const oc = OUTCOMES.find((o) => o === outcome) ?? "ok";
+      g = {
+        ...g,
+        timeline: pushTimeline(g, {
+          step,
+          outcome: oc,
+          message,
+          count: typeof e.count === "number" ? e.count : undefined,
+          url: url || undefined,
+          ts: typeof e.ts === "number" ? e.ts : (g.timeline[g.timeline.length - 1]?.ts ?? 0),
+        }),
+      };
       if (url) {
         if (g.assets.includes(url)) return g;
         const assets = [...g.assets, url];
@@ -296,7 +353,15 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
       return { ...g, activities: upsert(g.activities, { key, kind: outcome === "fixed" ? "repair" : "validation", status, label, tech: message || undefined }), tech: pushTech(g, `${step}: ${outcome} ${message}`) };
     }
     case "tool_step":
-      return { ...g, tech: pushTech(g, `tool: ${str("label")}${e.isError ? " (error)" : ""}`) };
+      return {
+        ...g,
+        timeline: pushTimeline(g, {
+          step: "agent_tool",
+          outcome: e.isError ? "failed" : "ok",
+          message: str("label"),
+          ts: typeof e.ts === "number" ? e.ts : (g.timeline[g.timeline.length - 1]?.ts ?? 0),
+        }),
+        tech: pushTech(g, `tool: ${str("label")}${e.isError ? " (error)" : ""}`) };
     case "status": {
       const m = str("message");
       if (!m || FILLER.test(m)) return g;
@@ -328,7 +393,7 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
     case "done": {
       const s = str("status");
       const done = (["succeeded", "failed", "aborted", "awaiting_credits", "plan_proposed"] as const).find((x) => x === s) ?? "succeeded";
-      const acts = done === "succeeded" ? settle(g.activities) : g.activities.map((a) => (a.status === "active" ? { ...a, status: "failed" as const } : a));
+      const acts = done === "succeeded" ? g.activities.map((a) => (a.status === "active" ? { ...a, status: "done" as const } : a)) : g.activities.map((a) => (a.status === "active" ? { ...a, status: "failed" as const } : a));
       return { ...g, done, current: null, recovering: false, activities: acts };
     }
     default:
@@ -443,6 +508,15 @@ export type TurnView = {
   tech: string[];
   deploy: DeploySnapshot | null;
   hasActivity: boolean;
+  /** Legacy-shaped projections for the Details sheet / image strip. */
+  writtenPaths: string[];
+  completedPaths: Set<string>;
+  latestPath: string | undefined;
+  latestNarration: string | undefined;
+  buildSteps: string[];
+  activeStepIndex: number;
+  doneStepIndexes: number[];
+  timeline: TimelineItem[];
 };
 
 export function deriveView(s: TurnState): TurnView {
@@ -462,7 +536,8 @@ export function deriveView(s: TurnState): TurnView {
       else if (d.verification && !d.verification.ok) acts.push({ key: "verify", kind: "verify", status: "failed", label: "The live check found problems", tech: d.verification.defects.join("; ") });
     }
   }
-  const current = acts.find((a) => a.status === "active") ?? null;
+  const actives = acts.filter((a) => a.status === "active");
+  const current = [...actives].reverse().find((a) => !a.key.startsWith("step:")) ?? actives[actives.length - 1] ?? null;
   const completed = acts.filter((a) => a.status === "done");
   const failedSteps = acts.filter((a) => a.status === "failed");
 
@@ -507,5 +582,16 @@ export function deriveView(s: TurnState): TurnView {
     tech,
     deploy: d,
     hasActivity: acts.length > 0 || lifecycle !== "running",
+    writtenPaths: g.paths,
+    completedPaths: new Set(Object.entries(g.files).filter(([, f]) => f.status !== "writing").map(([p]) => p)),
+    latestPath: g.latestPath ?? undefined,
+    latestNarration: g.latestNarration ?? undefined,
+    buildSteps: g.steps,
+    activeStepIndex: (() => {
+      const a = g.activities.find((x) => x.key.startsWith("step:") && x.status === "active");
+      return a ? Number(a.key.slice(5)) : -1;
+    })(),
+    doneStepIndexes: g.activities.filter((x) => x.key.startsWith("step:") && x.status === "done").map((x) => Number(x.key.slice(5))),
+    timeline: g.timeline,
   };
 }
