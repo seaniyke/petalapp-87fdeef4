@@ -17,7 +17,7 @@ import {
   
   sanitizeVerificationDefects,
 } from "@/lib/verification-report";
-import { isInfrastructureBuildError } from "@/lib/friendly-errors";
+import { classifyBuildFailure, isInfrastructureBuildError } from "@/lib/friendly-errors";
 import { verifySignature } from "@/server/builder.server";
 import { judgeDefects } from "@/server/defect-judge.server";
 import { routeJudgedDefects, summarizeRouting } from "@/server/agents/qa-board";
@@ -509,9 +509,8 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // package that package.json doesn't list is fixed by adding the package
     // and rebuilding ONCE (shares the build's single retry claim). No AI.
     {
-      const pkgs = Array.from(message.matchAll(/failed to resolve import ["']([^"'./][^"']*)["']/gi))
-        .map((m) => (m[1]!.startsWith("@") ? m[1]!.split("/").slice(0, 2).join("/") : m[1]!.split("/")[0]!))
-        .filter((p) => !p.startsWith("@/"));
+      const failure = classifyBuildFailure(message);
+      const pkgs = failure.kind === "missing_dependency" ? failure.packages : [];
       if (!payload.verification && pkgs.length) {
         try {
           const { data: row } = await supabaseAdmin

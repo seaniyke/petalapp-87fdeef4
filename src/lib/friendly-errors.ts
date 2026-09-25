@@ -469,12 +469,7 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
   // mentions the @tailwindcss/vite plugin and "Invalid declaration" / a
   // styles.css path. Surface it as a styling issue so the user knows what's
   // about to be fixed.
-  const isCssError =
-    !!rawLog &&
-    (/@tailwindcss\/vite/i.test(rawLog) ||
-      /Invalid declaration/i.test(rawLog) ||
-      /Cannot apply unknown utility/i.test(rawLog) ||
-      /styles\.css/i.test(rawLog));
+  const isCssError = classifyBuildFailure(rawLog).css;
   if (isCssError) {
     return {
       title: "A styling rule isn't quite right",
@@ -499,31 +494,78 @@ export function friendlyBuildFailure(rawLog: string | null | undefined): Friendl
 
 
 /**
- * Detect build failures that are NOT the user's code — they're infrastructure
- * problems (build service unreachable, Cloudflare blocking, upstream 5xx).
- * These should NEVER trigger the AI auto-fix loop, because there's nothing in
- * the project files to fix. Instead we show a calm "service is busy, retry"
- * card and let the user re-trigger the build manually.
+ * THE build-failure classification. Every consumer (build callback recovery,
+ * builder cards, publish sheet) reads this one function, so the same log can
+ * never be "code" to one handler and "infrastructure" to another.
+ *
+ *  - infrastructure: build service / edge / upstream problem. Retry the
+ *    identical build; never auto-fix (nothing in the project to fix).
+ *  - timeout: the build or a network call timed out. Infrastructure family.
+ *  - missing_dependency: code imports a real package package.json lacks.
+ *    Deterministically fixable (add package, rebuild once).
+ *  - code: compiler / TypeScript / CSS error in the project. Auto-fix.
+ *  - unknown: no recognisable shape. Treated as code (targeted fix offered).
  */
-export function isInfrastructureBuildError(rawLog: string | null | undefined): boolean {
-  if (!rawLog) return false;
+export type BuildFailureKind = "infrastructure" | "timeout" | "missing_dependency" | "code" | "unknown";
+
+export interface BuildFailureClass {
+  kind: BuildFailureKind;
+  /** Re-running the identical build may succeed. */
+  retryable: boolean;
+  /** Sending the log to the AI for a targeted code fix makes sense. */
+  autoFix: boolean;
+  /** Packages to add (missing_dependency only). */
+  packages: string[];
+  /** CSS / Tailwind layer (code only) — used for the card wording. */
+  css: boolean;
+}
+
+export function classifyBuildFailure(rawLog: string | null | undefined): BuildFailureClass {
+  const out = (kind: BuildFailureKind, packages: string[] = [], css = false): BuildFailureClass => ({
+    kind,
+    retryable: kind === "infrastructure" || kind === "timeout",
+    autoFix: kind === "code" || kind === "unknown",
+    packages,
+    css,
+  });
+  if (!rawLog) return out("unknown");
   const s = rawLog.toLowerCase();
-  return (
-    s.includes("could not reach build service") ||
+  if (
+    s.includes("operation was aborted") ||
     s.includes("build service didn't respond") ||
     s.includes("build service did not respond") ||
-    s.includes("build service stopped responding") ||
+    s.includes("build service stopped responding")
+  ) return out("timeout");
+  if (
+    s.includes("could not reach build service") ||
     s.includes("builder unreachable") ||
     s.includes("build queue is full") ||
     s.includes("builder rejected request") ||
     s.includes("failed to reach builder") ||
-    s.includes("operation was aborted") ||
     s.includes("error code: 1000") ||
     s.includes("error code: 1016") ||
     s.includes("error code: 1020") ||
     s.includes("cloudflare") ||
-    /\b(403|429|502|503|504|530)\b/.test(s) && (s.includes("builder") || s.includes("build service") || s.includes("upstream"))
-  );
+    (/\b(403|429|502|503|504|530)\b/.test(s) && (s.includes("builder") || s.includes("build service") || s.includes("upstream")))
+  ) return out("infrastructure");
+  const pkgs = Array.from(rawLog.matchAll(/failed to resolve import ["']([^"'./][^"']*)["']/gi))
+    .map((m) => (m[1]!.startsWith("@") ? m[1]!.split("/").slice(0, 2).join("/") : m[1]!.split("/")[0]!))
+    .filter((p) => !p.startsWith("@/"));
+  if (pkgs.length) return out("missing_dependency", Array.from(new Set(pkgs)));
+  const css =
+    /@tailwindcss\/vite/i.test(rawLog) ||
+    /Invalid declaration/i.test(rawLog) ||
+    /Cannot apply unknown utility/i.test(rawLog) ||
+    /styles\.css/i.test(rawLog);
+  if (css || /error TS\d+|SyntaxError|Transform failed|Expected|Unexpected|is not defined|Could not resolve|does not provide an export/i.test(rawLog)) {
+    return out("code", [], css);
+  }
+  return out("unknown");
+}
+
+/** Infrastructure family (incl. timeouts): retry, never auto-fix. */
+export function isInfrastructureBuildError(rawLog: string | null | undefined): boolean {
+  return classifyBuildFailure(rawLog).retryable;
 }
 
 /** Friendly card for infrastructure build failures — no auto-fix, just retry. */
