@@ -63,7 +63,7 @@ export interface AgentOpsStore {
   runQuery(q: ScopedQuery): Promise<{ data: unknown; error: string | null }>;
   runRpc(fn: string, args: Record<string, unknown>): Promise<{ data: unknown; error: string | null }>;
   /** Make + store one picture on the Worker (it holds the storage access). */
-  generateImage(opts: { prompt: string; aspectRatio?: "1:1" | "16:9" | "4:3" | "3:4" | "9:16"; cacheKey?: string }): Promise<{ url: string; cached: boolean }>;
+  generateImage(opts: { prompt: string; aspectRatio?: "1:1" | "16:9" | "4:3" | "3:4" | "9:16"; cacheKey?: string; scope?: { projectId?: string | null; ownerId?: string | null; turnId?: string | null } }): Promise<{ url: string; cached: boolean }>;
   savePicture(row: { project_id: string; url: string; storage_path: string | null; label: string | null; tags: string[] }): Promise<void>;
 }
 
@@ -237,7 +237,17 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
         return { ok: false, error: fresh?.status === "aborted" ? "turn_stopped" : "turn_not_running" };
       }
       try {
-        return { ok: true, data: await store.generateImage({ prompt: op.prompt, aspectRatio: op.aspectRatio, cacheKey: op.cacheKey }) };
+        // Ownership comes from the turn on this side — never from the caller.
+        return {
+          ok: true,
+          data: await store.generateImage({
+            prompt: op.prompt,
+            aspectRatio: op.aspectRatio,
+            cacheKey: op.cacheKey,
+            scope: { projectId: turn.project_id, ownerId: turn.user_id, turnId: turn.id },
+          }),
+        };
+
       } catch (e) {
         return { ok: false, error: (e as Error).message.slice(0, 300) };
       }
