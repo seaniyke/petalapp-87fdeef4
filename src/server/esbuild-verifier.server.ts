@@ -22,7 +22,9 @@ export type EsbuildIssue = {
   line: number;
   column: number;
   message: string;
-  kind: "parse";
+  /** "parse" = esbuild could not parse the bytes; "semantic" = the real
+   *  TypeScript checker found an undeclared identifier (verification gate). */
+  kind: "parse" | "semantic";
 };
 
 export type EsbuildVerdict = {
