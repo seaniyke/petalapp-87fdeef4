@@ -49,6 +49,8 @@ describe("shared frame contract", () => {
   });
   it("an App with routes, nav and footer is", () => {
     expect(frameIsComplete([f("src/App.tsx", "<header><nav/></header><Routes><Route/></Routes><footer/>")])).toBe(true);
+    expect(frameIsComplete([f("src/App.tsx", "<header><nav/></header><Home/><footer/>")], 1)).toBe(true);
+    expect(frameIsComplete([f("src/App.tsx", "<header><nav/></header><Home/><footer/>")], 2)).toBe(false);
   });
   it("a missing frame triggers the frame call even when pages exist", async () => {
     const asked: string[] = [];

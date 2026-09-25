@@ -6403,7 +6403,7 @@ Forbidden defaults
           {
             // The shared frame is a required deliverable, not an optional one.
             const { frameIsComplete } = await import("@/server/engine/write");
-            if (!frameIsComplete(nextFiles) && !scopeMissing.includes("app shell")) {
+            if (!frameIsComplete(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
               scopeMissing = ["app shell", ...scopeMissing];
               verdict.complete = false;
             }
