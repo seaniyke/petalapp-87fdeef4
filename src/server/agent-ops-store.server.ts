@@ -14,9 +14,7 @@ export function titleFromPackageJson(content: string): string | null {
     return null;
   }
   name = name.replace(/^@[^/]+\//, "").trim();
-  if (!name || /^(app|my-app|vite|react|project|template|kimble|petal)([-_].*)?$/i.test(name) && !/-/.test(name.replace(/^(app|my-app|vite|react|project|template)/i, "").slice(1))) {
-    if (/^(app|my-app|vite-project|vite-react|react-app|project|template|vite_react_shadcn_ts|kimble-app|petal-app)$/i.test(name) || !name) return null;
-  }
+  if (!name || /^(app|my-app|vite-project|vite-react|react-app|project|template|vite_react_shadcn_ts|kimble-app|petal-app|generated-app)$/i.test(name)) return null;
   const words = name.split(/[-_\s]+/).filter(Boolean).slice(0, 6);
   if (!words.length) return null;
   return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ").slice(0, 60);
