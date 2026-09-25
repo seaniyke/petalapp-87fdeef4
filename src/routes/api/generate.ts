@@ -6567,18 +6567,12 @@ Forbidden defaults
           // is re-run on the proposed bytes (not a verdict computed earlier
           // on a different tree), then the existing source gates decide.
           verifySource: async (tree, changed) => {
-            const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
-            const { isVerifierExempt } = await import("@/server/scaffold-ownership.server");
-            const { runSourceGates, finalizeVerification } = await import("@/server/verification/gates");
-            const parseable = changed.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
-            const esbuild = await verifyFilesEsbuild(tree, parseable);
-            return finalizeVerification(
-              runSourceGates({
-                files: tree,
-                requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
-                esbuild,
-              }),
-            );
+            const { verifyProposedSource } = await import("@/server/verification/source.server");
+            return verifyProposedSource({
+              tree,
+              changedPaths: changed,
+              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
+            });
           },
         });
         const txCommitted = txResult.outcome.status === "committed";
