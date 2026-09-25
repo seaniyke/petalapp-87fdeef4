@@ -6682,6 +6682,19 @@ Forbidden defaults
           );
         }
 
+        // A failed save (e.g. revision_conflict) means nothing landed: the
+        // project keeps its previous files AND previous revision.
+        const txSaved = txCommitted && !persistError;
+        if (persistError) {
+          const { isRevisionConflict } = await import("@/lib/build-revision");
+          nextFiles = turnBaselineFiles;
+          const note = isRevisionConflict(persistError)
+            ? `\n\nYour project changed while I was working, so I didn't save this change over the newer version. Your app is exactly as it was — send the request again and I'll apply it to the latest version.`
+            : `\n\nI couldn't save this change, so your app was left exactly as it was. Send it again and I'll retry.`;
+          summary = `${summary}${note}`;
+          controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+        }
+
         // Internal economics record for this turn. Admin-only accounting:
         // what the customer paid next to what the turn cost Kimble, with the
         // cost explicitly marked actual / estimated / unknown. Best-effort —
@@ -6836,7 +6849,7 @@ Forbidden defaults
           {
             const { shouldRecordMemory } = await import("@/server/context/memory-model");
             turnCommittedForMemory = shouldRecordMemory({
-              committed: txCommitted,
+              committed: txSaved,
               cancelled: request.signal.aborted,
               missingScope: scopeMissing.length,
             });
@@ -6885,14 +6898,16 @@ Forbidden defaults
             );
           }
           const txBlocked =
-            !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
+            !!persistError ||
+            (!txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes");
           emitTurnOutcome(controller, encoder, txBlocked
             ? {
                 outcome: "failed",
                 changedPaths: [],
                 blockedPaths: txResult.rejections.map((r) => r.path).filter((p): p is string => Boolean(p)),
-                reason:
-                  sourceVerification.status === "FAILED"
+                reason: persistError
+                  ? "commit_rejected"
+                  : sourceVerification.status === "FAILED"
                     ? "verification_failed"
                     : sourceVerification.status === "UNVERIFIED" && txResult.rejections.some((r) => r.reason === "unverified")
                       ? "verification_unavailable"
@@ -6918,8 +6933,9 @@ Forbidden defaults
               plan,
               recap,
               creditsCharged: finalCharged,
-              persisted: Boolean(body.projectId && txCommitted && nextFiles.length > 0),
-              ...(txCommitted ? {} : { noFileChanges: true }),
+              persisted: Boolean(body.projectId && txSaved && nextFiles.length > 0),
+              committedRevision,
+              ...(txSaved ? {} : { noFileChanges: true }),
               ...(backendGate.gated && backendGate.suggestions.length > 0
                 ? { suggestions: backendGate.suggestions }
                 : {}),
