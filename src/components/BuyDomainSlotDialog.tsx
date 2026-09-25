@@ -148,56 +148,35 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
     }
   }
 
-  if (!isPaidPlan) {
-    return (
-      <>
-        <Dialog open={open} onOpenChange={onOpenChange}>
-          <DialogContent className="max-w-[calc(100vw-1.5rem)] sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                Buy a new domain
-              </DialogTitle>
-              <DialogDescription>
-                Custom domains are included with paid plans.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
-              <p className="font-medium text-foreground">
-                Upgrade to buy a domain.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Paid plans include $5 of runtime credit so you can connect a
-                backend, send email, and ship your domain right away.
-              </p>
-            </div>
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => {
-                  onOpenChange(false);
-                  setBillingOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5"
-              >
-                <Sparkles className="h-3.5 w-3.5" /> Upgrade plan
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
-      </>
-    );
+  /** Pay for the domain entirely with Kimble Credits. */
+  async function handleBuyWithCredits() {
+    if (!selected || selected.priceCents == null) return;
+    setSubmitting(true);
+    try {
+      const res = await purchaseDomainWithCredits({
+        projectId,
+        hostname: selected.hostname,
+      });
+      toast.success(
+        res.pending
+          ? `${res.hostname} is being registered — this can take a minute.`
+          : `${res.hostname} is yours. ${res.credits} credits used.`,
+      );
+      onOpenChange(false);
+    } catch (err) {
+      const e = err as CreditPurchaseError;
+      if (e.code === "insufficient_credits") {
+        toast.error("Not enough credits for that domain.");
+        onOpenChange(false);
+        setBillingOpen(true);
+      } else {
+        toast.error(e.message || "Couldn't buy that domain");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -315,28 +294,90 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
         )}
 
         {selected && selected.priceCents != null && (
-          <div className="space-y-1.5 border-t border-border pt-3">
-            <Label htmlFor="bds-currency" className="text-xs">
-              Pay in
-            </Label>
-            <Select value={currency} onValueChange={setCurrency}>
-              <SelectTrigger id="bds-currency">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {currencies.map((c) => (
-                  <SelectItem key={c.code} value={c.code}>
-                    {c.code} — {c.name} ({c.symbol})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-2 border-t border-border pt-3">
+            <Label className="text-xs">Pay with</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPayWith("credits")}
+                className={[
+                  "rounded-xl border px-3 py-2 text-left text-sm transition",
+                  payWith === "credits"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-muted/20 hover:bg-muted/40",
+                ].join(" ")}
+              >
+                <span className="block font-medium">{selectedCredits} credits</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {creditBalance} available
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayWith("card")}
+                className={[
+                  "rounded-xl border px-3 py-2 text-left text-sm transition",
+                  payWith === "card"
+                    ? "border-primary bg-primary/10"
+                    : "border-border bg-muted/20 hover:bg-muted/40",
+                ].join(" ")}
+              >
+                <span className="block font-medium">
+                  {localizedPrice(selected.priceCents)}
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  Card or bank
+                </span>
+              </button>
+            </div>
+
+            {payWith === "credits" && !canAffordSelected && (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                <span className="text-foreground">
+                  You need {Math.max(0, selectedCredits - creditBalance)} more credits.
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    onOpenChange(false);
+                    setBillingOpen(true);
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1.5"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Buy credits
+                </Button>
+              </div>
+            )}
+
+            {payWith === "card" && (
+              <>
+                <Label htmlFor="bds-currency" className="text-xs">
+                  Pay in
+                </Label>
+                <Select value={currency} onValueChange={setCurrency}>
+                  <SelectTrigger id="bds-currency">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencies.map((c) => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.code} — {c.name} ({c.symbol})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+
             <p className="text-[11px] text-muted-foreground">
               Charged once. Renews automatically each year — you'll be reminded
               before renewal.
             </p>
           </div>
         )}
+
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button
@@ -351,12 +392,13 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
           <Button
             type="button"
             size="sm"
-            onClick={handleBuy}
+            onClick={payWith === "credits" ? handleBuyWithCredits : handleBuy}
             disabled={
               submitting ||
               !selected ||
               selected.priceCents == null ||
-              !selectedCurrency
+              (payWith === "card" && !selectedCurrency) ||
+              (payWith === "credits" && !canAffordSelected)
             }
             className="inline-flex items-center gap-1.5"
           >
@@ -366,10 +408,13 @@ export function BuyDomainSlotDialog({ open, onOpenChange, projectId }: Props) {
               <Globe className="h-3.5 w-3.5" />
             )}
             {selected && selected.priceCents != null
-              ? `Buy ${selected.hostname} for ${localizedPrice(selected.priceCents)}`
+              ? payWith === "credits"
+                ? `Buy ${selected.hostname} for ${selectedCredits} credits`
+                : `Buy ${selected.hostname} for ${localizedPrice(selected.priceCents)}`
               : "Pick a domain"}
           </Button>
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
