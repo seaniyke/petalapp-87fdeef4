@@ -212,8 +212,23 @@ export async function generatePetalImage(
   if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
 
   const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(filename);
+  // Remember it so the next build can reuse it instead of paying again.
+  try {
+    const { rememberGeneratedPicture } = await import("./registry/generated-pictures.server");
+    await rememberGeneratedPicture({
+      url: pub.publicUrl,
+      prompt,
+      cacheKey: key,
+      aspectRatio: opts.aspectRatio ?? null,
+      model: defaultImageModel(),
+      scope,
+    });
+  } catch {
+    // Recording is a bonus, never a build failure.
+  }
   return { url: pub.publicUrl, cached: false };
 }
+
 
 /** Walk every file content, find `petal-image://...` URLs, and replace them
  *  with real generated images. Replacements are deduped by slug so the same
