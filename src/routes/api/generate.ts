@@ -6573,6 +6573,7 @@ Forbidden defaults
               tree,
               changedPaths: changed,
               requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
+              requireShell: isInitial,
             });
           },
         });
@@ -6809,8 +6810,12 @@ Forbidden defaults
         // COMPLETENESS SAFETY GATE — success is a deterministic consequence of
         // the build state, never of an AI self-check. A first build that is
         // missing requested pages is reported as incomplete and not built.
+        // DIAGNOSTIC ONLY: the commit decision above (routes gate, incl. the
+        // app shell) is authoritative. This explains a rolled-back first
+        // build to the user; after a commit it is empty by construction and
+        // can never turn a committed/failed verdict into anything else.
         let scopeMissing: string[] = [];
-        if (isInitial && nextFiles.length > 0) {
+        if (isInitial && !txCommitted && nextFiles.length > 0) {
           const requested = requestedRoutesFor(lastUserText, plannedRoutes);
           const verdict = assessCompleteness({ requestedRoutes: requested, files: nextFiles });
           scopeMissing = verdict.missingRoutes;
