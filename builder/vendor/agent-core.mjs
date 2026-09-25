@@ -38896,6 +38896,11 @@ DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (
 });
 
 // src/server/engine/recovery-policy.ts
+function fingerprint(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = h * 31 + s.charCodeAt(i) | 0;
+  return `${s.length}c#${(h >>> 0).toString(16)}`;
+}
 var RECOVERY_LIMITS, MAX_REPAIRED_FILES, RecoveryBudget;
 var init_recovery_policy = __esm({
   "src/server/engine/recovery-policy.ts"() {
@@ -38917,6 +38922,14 @@ var init_recovery_policy = __esm({
     MAX_REPAIRED_FILES = 3;
     RecoveryBudget = class {
       used = /* @__PURE__ */ new Map();
+      attempts = [];
+      request = "";
+      targets = [];
+      /** Turn identity for the record: original request + intended scope. */
+      setTurn(args) {
+        this.request = args.request.slice(0, 600);
+        this.targets = args.targets.slice(0, 20);
+      }
       /** True (and consumes one attempt) when another attempt is allowed. */
       take(kind, key = "") {
         const k = `${kind}:${key}`;
@@ -38928,6 +38941,60 @@ var init_recovery_policy = __esm({
         }
         this.used.set(k, n + 1);
         return true;
+      }
+      /** Remaining broken-file repairs for this turn. */
+      remainingFileRepairs() {
+        const files = [...this.used.keys()].filter((x) => x.startsWith("broken_file:")).length;
+        return Math.max(0, MAX_REPAIRED_FILES - files);
+      }
+      record(a2) {
+        const n = this.attempts.length + 1;
+        const { candidateContent, ...rest } = a2;
+        this.attempts.push({
+          ...rest,
+          reason: rest.reason.slice(0, 400),
+          outcome: a2.outcome ?? "pending",
+          ...candidateContent ? { candidate: fingerprint(candidateContent) } : {},
+          n,
+          at: Date.now()
+        });
+        return n;
+      }
+      resolve(n, outcome, candidateContent) {
+        const a2 = this.attempts.find((x) => x.n === n);
+        if (!a2) return;
+        a2.outcome = outcome;
+        if (candidateContent) a2.candidate = fingerprint(candidateContent);
+      }
+      /** Mark every still-pending attempt on a path. */
+      resolvePath(path, outcome) {
+        for (const a2 of this.attempts) if (a2.path === path && a2.outcome === "pending") a2.outcome = outcome;
+      }
+      history() {
+        return this.attempts;
+      }
+      /**
+       * Compact, relevant slice of the turn record for the next attempt. Path-
+       * specific attempts first, then turn-wide ones. Never the transcript.
+       */
+      summarize(path, maxChars = 1400) {
+        const relevant = this.attempts.filter((a2) => !path || a2.path === path || a2.path === null);
+        const lines = [];
+        if (this.request) lines.push(`Original request: ${this.request}`);
+        if (this.targets.length) lines.push(`Intended scope: ${this.targets.join(", ")}`);
+        if (relevant.length) {
+          lines.push("Earlier attempts in THIS request (same turn):");
+          for (const a2 of relevant) {
+            lines.push(
+              `  #${a2.n} [${a2.stage}] ${a2.path ?? "whole response"}: ${a2.action} \u2014 because: ${a2.reason} \u2192 ${a2.outcome}${a2.candidate ? ` (candidate ${a2.candidate})` : ""}`
+            );
+          }
+        }
+        lines.push(`Repairs left this turn: ${this.remainingFileRepairs()}.`);
+        let out = lines.join("\n");
+        if (out.length > maxChars) out = `${out.slice(0, maxChars - 12)}
+\u2026(trimmed)`;
+        return out;
       }
     };
   }
@@ -85158,6 +85225,7 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -101679,6 +101747,11 @@ function markKitFileCustomized(path, content) {
   return `// ${PETAL_CUSTOMIZED_MARKER} \u2014 customized for this project; kit refreshes will not overwrite it.
 ${content}`;
 }
+function sameKitModuloResolvedImages(kitContent, existing) {
+  if (kitContent === existing) return false;
+  if (!kitContent.includes("petal-image://")) return false;
+  return kitContent.replace(IMAGE_REF_RE, "@IMG@") === existing.replace(IMAGE_REF_RE, "@IMG@");
+}
 function shouldOverwriteDuringPatch(path) {
   return path === "vite.config.ts" || // Kit blocks are library-owned, exactly like `src/components/ui/*`. Old
   // projects otherwise keep a stale copy of a block forever (e.g. a hero
@@ -101695,6 +101768,7 @@ function applyScaffoldKitForPatch(files, opts) {
     if (keep.has(kit.path)) continue;
     const existing = map.get(kit.path);
     if (existing !== void 0 && isCustomizedKitFile(kit.path, existing)) continue;
+    if (existing !== void 0 && sameKitModuloResolvedImages(kit.content, existing)) continue;
     if (shouldOverwriteDuringPatch(kit.path) || !map.has(kit.path)) {
       map.set(kit.path, kit.content);
     }
@@ -101719,7 +101793,7 @@ function applyScaffoldKitForPatch(files, opts) {
   map.set("package.json", mergePackageJson(map.get("package.json"), extraDeps));
   return Array.from(map, ([path, content]) => ({ path, content }));
 }
-var VITE_CONFIG, TSCONFIG, STYLES_CSS, UTILS_TS, BUTTON, CARD, INPUT, INPUT_OTP, PAGINATION, ALERT_DIALOG, TEXTAREA, LABEL, BADGE, SEPARATOR, AVATAR, ALERT, SKELETON, SWITCH, TABS, DIALOG, SELECT, CHECKBOX, RADIO_GROUP, SLIDER, PROGRESS, TOOLTIP, POPOVER, DROPDOWN_MENU, ACCORDION, SCROLL_AREA, TABLE, SHEET, TOAST, THEME_PROVIDER, THEME_TOGGLE, ROUTER, CONTAINER, STACK, INLINE, GRID, LAYOUT_DOCS, EXAMPLE_DATA_TABLE_DIALOG, EXAMPLE_TABS_TABLE_DASHBOARD, EXAMPLE_SHEET_DETAIL_PANEL, EXAMPLE_TABS_SHEET_SETTINGS, CALENDAR, DATE_PICKER, COMBOBOX, FORM, DRAWER, CHART, KIT_FILES2, REQUIRED_DEPS, REQUIRED_DEV_DEPS, PETAL_CUSTOMIZED_MARKER, CUSTOMIZABLE_KIT_PREFIXES;
+var VITE_CONFIG, TSCONFIG, STYLES_CSS, UTILS_TS, BUTTON, CARD, INPUT, INPUT_OTP, PAGINATION, ALERT_DIALOG, TEXTAREA, LABEL, BADGE, SEPARATOR, AVATAR, ALERT, SKELETON, SWITCH, TABS, DIALOG, SELECT, CHECKBOX, RADIO_GROUP, SLIDER, PROGRESS, TOOLTIP, POPOVER, DROPDOWN_MENU, ACCORDION, SCROLL_AREA, TABLE, SHEET, TOAST, THEME_PROVIDER, THEME_TOGGLE, ROUTER, CONTAINER, STACK, INLINE, GRID, LAYOUT_DOCS, EXAMPLE_DATA_TABLE_DIALOG, EXAMPLE_TABS_TABLE_DASHBOARD, EXAMPLE_SHEET_DETAIL_PANEL, EXAMPLE_TABS_SHEET_SETTINGS, CALENDAR, DATE_PICKER, COMBOBOX, FORM, DRAWER, CHART, KIT_FILES2, REQUIRED_DEPS, REQUIRED_DEV_DEPS, PETAL_CUSTOMIZED_MARKER, CUSTOMIZABLE_KIT_PREFIXES, IMAGE_REF_RE;
 var init_scaffold_kit = __esm({
   "src/server/scaffold-kit.ts"() {
     init_define_import_meta_env();
@@ -105907,6 +105981,7 @@ export { Grid } from "./grid";
       "src/components/fx/",
       "src/components/sections/"
     ];
+    IMAGE_REF_RE = /petal-image:\/\/[^\s"'`<>)]+|https?:\/\/[^\s"'`<>)]+/g;
   }
 });
 
@@ -108554,7 +108629,7 @@ var init_economics_config_server = __esm({
       verification_minute_usd: 0.02,
       deploy_event_usd: 2e-3,
       image_generation_usd: 0.02,
-      min_purchase_ngn: 5e3,
+      min_purchase_usd_cents: 300,
       target_gross_margin_pct: 60,
       free_user_monthly_cost_ceiling_usd: 1.5,
       max_active_dedicated_backends: 25,
@@ -110443,6 +110518,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -138473,6 +138549,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -139392,6 +139469,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -142356,6 +142434,178 @@ var init_edit_focus_server = __esm({
   }
 });
 
+// src/server/engine/app-map.ts
+var app_map_exports = {};
+__export(app_map_exports, {
+  appMapFacts: () => appMapFacts,
+  buildAppMap: () => buildAppMap,
+  renderAppMapBlock: () => renderAppMapBlock
+});
+function isCode(p) {
+  return /\.(t|j)sx?$/.test(p) && !p.startsWith("src/components/examples/") && !p.startsWith("src/components/ui/");
+}
+function localImports(content) {
+  const out = [];
+  const re = /import\s+([^'";]+?)\s+from\s+["']([^"']+)["']/g;
+  let m;
+  while (m = re.exec(content)) {
+    const spec = m[2];
+    if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
+    const names = m[1].replace(/[{}]/g, " ").split(/[\s,]+/).filter((n) => n && n !== "type" && n !== "as" && n !== "*");
+    out.push({ names, spec });
+  }
+  return out;
+}
+function resolveSpec3(fromPath, spec, paths) {
+  let base;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else {
+    const dir = fromPath.split("/").slice(0, -1);
+    for (const part of spec.split("/")) {
+      if (part === "." || part === "") continue;
+      if (part === "..") dir.pop();
+      else dir.push(part);
+    }
+    base = dir.join("/");
+  }
+  for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
+    if (paths.has(base + ext)) return base + ext;
+  }
+  return null;
+}
+function buildAppMap(files) {
+  const paths = new Set(files.map((f) => f.path));
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const entry = ["src/App.tsx", "src/App.jsx", "src/main.tsx", "src/main.jsx"].find((p) => paths.has(p)) ?? null;
+  const code = files.filter((f) => isCode(f.path));
+  const ordered = entry ? [files.find((f) => f.path === entry), ...code] : code;
+  let router = "none";
+  let routerFile = null;
+  for (const f of ordered) {
+    const hit = ROUTER_SPECS.find(([, re]) => re.test(f.content));
+    if (hit) {
+      router = hit[0];
+      routerFile = f.path;
+      break;
+    }
+  }
+  if (router === "none" && entry && /useState\s*<?[^>]*>?\(\s*["'](home|landing)/i.test(byPath.get(entry) ?? "")) {
+    router = "state-switch";
+    routerFile = entry;
+  }
+  const routes = [];
+  const routerSrc = routerFile ? byPath.get(routerFile) ?? "" : "";
+  if (routerFile) {
+    const imports = localImports(routerSrc);
+    const fileFor = (name) => {
+      const imp = imports.find((i) => i.names.includes(name));
+      return imp ? resolveSpec3(routerFile, imp.spec, paths) : null;
+    };
+    const jsx4 = /<Route\b[^>]*?\bpath=["'{]+([^"'}]+)["'}]+[^>]*?element=\{\s*<\s*([A-Z]\w*)/g;
+    const jsxRev = /<Route\b[^>]*?element=\{\s*<\s*([A-Z]\w*)[^>]*?\bpath=["'{]+([^"'}]+)["'}]+/g;
+    const obj = /path:\s*["']([^"']+)["'][^}]*?(?:element|component):\s*<?\s*([A-Z]\w*)/g;
+    const indexRe = /<Route\b[^>]*?\bindex\b[^>]*?element=\{\s*<\s*([A-Z]\w*)/g;
+    const seen = /* @__PURE__ */ new Set();
+    const add = (path, component) => {
+      const key = `${path}|${component}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      routes.push({ path, component, file: fileFor(component) });
+    };
+    let m;
+    while (m = jsx4.exec(routerSrc)) add(m[1], m[2]);
+    while (m = jsxRev.exec(routerSrc)) add(m[2], m[1]);
+    while (m = obj.exec(routerSrc)) add(m[1], m[2]);
+    while (m = indexRe.exec(routerSrc)) add("/", m[1]);
+  }
+  const pages = [...paths].filter((p) => /^src\/(pages|routes|screens)\/[^/]+\.(t|j)sx$/.test(p)).sort();
+  const layouts = code.map((f) => f.path).filter((p) => /(Layout|Header|Footer|Nav(bar)?|Shell|SiteNav)\.(t|j)sx$/.test(p)).sort();
+  const navLinks = /* @__PURE__ */ new Set();
+  for (const p of [...layouts, ...entry ? [entry] : []]) {
+    const src = byPath.get(p) ?? "";
+    const re = /\b(?:to|href)=\{?["'](\/[^"'#?]*)["']/g;
+    let m;
+    while (m = re.exec(src)) navLinks.add(m[1]);
+    const arr = /\b(?:to|href|path):\s*["'](\/[^"'#?]*)["']/g;
+    while (m = arr.exec(src)) navLinks.add(m[1]);
+  }
+  const deps = {};
+  for (const p of [...pages, ...layouts]) {
+    const src = byPath.get(p) ?? "";
+    deps[p] = localImports(src).map((i) => resolveSpec3(p, i.spec, paths) ?? i.spec).slice(0, 12);
+  }
+  const styles = [...paths].filter((p) => /^(src\/(index|styles|globals|App)\.css|tailwind\.config\.(t|j)s)$/.test(p)).sort();
+  return {
+    router,
+    routerImport: SPEC_FOR[router],
+    entry,
+    routerFile,
+    routes,
+    pages,
+    layouts,
+    navLinks: [...navLinks].sort(),
+    styles,
+    deps
+  };
+}
+function renderAppMapBlock(map, maxChars = 1800) {
+  const lines = [];
+  lines.push("\n\nAPP MAP (read from the current files \u2014 authoritative; current files beat any project notes):");
+  if (map.routerImport) {
+    lines.push(
+      `- Routing: ${map.router} via "${map.routerImport}" in ${map.routerFile}. Add/change pages ONLY through this router. Never introduce another routing mechanism or import a different router package.`
+    );
+  } else if (map.router === "state-switch") {
+    lines.push(`- Routing: state-based page switching in ${map.routerFile}. Keep that approach.`);
+  } else {
+    lines.push("- Routing: none detected (single page).");
+  }
+  if (map.entry) lines.push(`- App entry: ${map.entry}`);
+  if (map.routes.length) {
+    lines.push(
+      `- Routes: ${map.routes.map((r) => `${r.path} \u2192 ${r.component}${r.file ? ` (${r.file})` : ""}`).join("; ")}`
+    );
+  }
+  if (map.pages.length) lines.push(`- Pages: ${map.pages.join(", ")}`);
+  if (map.layouts.length) lines.push(`- Shared layout/header/footer (reuse, don't duplicate): ${map.layouts.join(", ")}`);
+  if (map.navLinks.length) lines.push(`- Navigation links: ${map.navLinks.join(", ")}`);
+  if (map.styles.length) lines.push(`- Design system files: ${map.styles.join(", ")}`);
+  let out = lines.join("\n");
+  if (out.length > maxChars) out = `${out.slice(0, maxChars - 20)}
+- \u2026(trimmed)`;
+  return out;
+}
+function appMapFacts(map) {
+  return {
+    router: map.router,
+    routerFile: map.routerFile,
+    entry: map.entry,
+    routes: map.routes.map((r) => r.path),
+    pages: map.pages.length,
+    layouts: map.layouts
+  };
+}
+var ROUTER_SPECS, SPEC_FOR;
+var init_app_map = __esm({
+  "src/server/engine/app-map.ts"() {
+    init_define_import_meta_env();
+    ROUTER_SPECS = [
+      ["kit-router", /from\s+["']@\/components\/ui\/router["']/],
+      ["tanstack-router", /from\s+["']@tanstack\/react-router["']/],
+      ["react-router-dom", /from\s+["']react-router(?:-dom)?["']/],
+      ["wouter", /from\s+["']wouter["']/]
+    ];
+    SPEC_FOR = {
+      "kit-router": "@/components/ui/router",
+      "react-router-dom": "react-router-dom",
+      "tanstack-router": "@tanstack/react-router",
+      wouter: "wouter",
+      "state-switch": null,
+      none: null
+    };
+  }
+});
+
 // src/server/view-context.server.ts
 var view_context_server_exports = {};
 __export(view_context_server_exports, {
@@ -144493,11 +144743,23 @@ var init_write = __esm({
 // src/server/engine/repair.ts
 var repair_exports = {};
 __export(repair_exports, {
+  buildRepairUserMessage: () => buildRepairUserMessage,
   repairBrokenFile: () => repairBrokenFile,
   stripFences: () => stripFences2
 });
 function stripFences2(s) {
   return s.replace(/^\s*```[a-zA-Z]*\n?/, "").replace(/\n?```\s*$/, "");
+}
+function buildRepairUserMessage(file, detail, turnContext) {
+  const ctx = turnContext?.trim() ? `${turnContext.trim()}
+
+Rules: this file is the CURRENT authoritative version. Keep the approach already taken (same router, same imports, same structure) unless the error proves it wrong. Fix only the reported error; do not redesign, rename, or switch libraries.
+
+` : "";
+  return `${ctx}Path: ${file.path}
+Error: ${detail}
+
+${file.content}`;
 }
 async function repairBrokenFile(file, detail, meta) {
   if (isTruncationDetail(detail)) return null;
@@ -144521,10 +144783,7 @@ async function repairBrokenFile(file, detail, meta) {
       temperature: 0.1,
       messages: [
         { role: "system", content: SYSTEM5 },
-        { role: "user", content: `Path: ${file.path}
-Error: ${detail}
-
-${file.content}` }
+        { role: "user", content: buildRepairUserMessage(file, detail, meta?.turnContext ?? null) }
       ]
     }
   });
@@ -148145,7 +148404,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -152167,11 +152425,11 @@ function runAllRepairs(input, opts) {
   const brandWire = ensureBrandMarkWired(files);
   files = brandWire.files;
   for (const n of brandWire.notes) notes.push(n);
-  const localImports = repairUnresolvedImports(files);
-  files = localImports.files;
-  if (localImports.rewrites.length || localImports.stubsCreated.length) {
+  const localImports2 = repairUnresolvedImports(files);
+  files = localImports2.files;
+  if (localImports2.rewrites.length || localImports2.stubsCreated.length) {
     notes.push(
-      `import-resolver: remapped ${localImports.rewrites.length} import(s); stubbed ${localImports.stubsCreated.length} missing file(s)`
+      `import-resolver: remapped ${localImports2.rewrites.length} import(s); stubbed ${localImports2.stubsCreated.length} missing file(s)`
     );
   }
   const routerImports = fixRouterImports(files);
@@ -167681,6 +167939,7 @@ async function handleGenerateRequestCore(request, turnId, workSignal) {
   let messages = trimMessagesForGeneration(rawMessages);
   let currentFiles = Array.isArray(body.currentFiles) ? body.currentFiles : [];
   const kitSyncedPaths = /* @__PURE__ */ new Set();
+  let turnCommittedForMemory = false;
   const turnBaselineFiles = currentFiles;
   const repairMeter = new TurnCostMeter();
   if (messages.length === 0) {
@@ -168214,6 +168473,10 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   }
   const { kitTargetGuidance: kitTargetGuidance2 } = await Promise.resolve().then(() => (init_change_set_server(), change_set_server_exports));
   const changeSetBlock = isInitial ? "" : `${renderChangeSetBlock2(turnChangeSet)}${kitTargetGuidance2(turnChangeSet, currentFiles)}`;
+  const { buildAppMap: buildAppMap2, renderAppMapBlock: renderAppMapBlock2, appMapFacts: appMapFacts2 } = await Promise.resolve().then(() => (init_app_map(), app_map_exports));
+  const turnAppMap = isInitial ? null : buildAppMap2(currentFiles);
+  const appMapBlock = turnAppMap ? renderAppMapBlock2(turnAppMap) : "";
+  const appMapRepairBlock = turnAppMap ? renderAppMapBlock2(turnAppMap, 900).trim() : "";
   if (turnChangeSet.items.length > 1) {
     console.info(
       `[change-set] ${turnChangeSet.items.length} requested change(s), ${turnChangeSet.preserve.length} preservation rule(s)`
@@ -168399,7 +168662,7 @@ ${compactManifest(currentFiles)}
 Current project files (trimmed to the most relevant editable files; ${budget2.omitted} lower-priority files omitted for speed. Some large files are shown as the regions around the lines that matter, with the untouched ranges marked \u2014 quote only bytes you can actually see. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden \u2014 they exist in the project but you must never edit them):
 
 ${budget2.files.map((f) => `--- ${f.path} ---
-${f.content}`).join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}`;
+${f.content}`).join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}${appMapBlock}`;
   const filesContext = renderFilesContext(promptBudget);
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
   const lastUserIdx = (() => {
@@ -168965,6 +169228,8 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           `[collect] first tool=${collected.name} finish=${collected.finishReason ?? "?"} upstream=${collected.upstream ?? "?"} argsChars=${collected.args.length} pages=${(collected.args.match(/"path"\s*:\s*"src\/pages\/[^"]+"/g) ?? []).join(",")}`
         );
         const recovery = new RecoveryBudget();
+        recovery.setTurn({ request: lastUserContent, targets: resolvedTargetPaths });
+        const turnContextFor = (path) => [recovery.summarize(path), appMapRepairBlock].filter(Boolean).join("\n\n");
         try {
           if (firstStall) {
             controller.enqueue(
@@ -168986,6 +169251,14 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           let lastErr = e;
           while (recovery.take("provider_failure")) {
             attempts++;
+            recovery.record({
+              kind: "provider_failure",
+              stage: "generation",
+              path: null,
+              reason: lastErr instanceof Error ? lastErr.message : "invalid structured response",
+              action: providerFailed ? "resent the original request to another provider (partial output discarded)" : "resent the original request with more room",
+              upstream: lastFailedUpstream
+            });
             const retry = await structuredRetryCompletion({
               messages: finalMessages,
               isInitial,
@@ -169809,11 +170082,20 @@ Re-emit ONLY the refused work as a single patch_files tool call that respects th
               for (const failure of failuresToRetry) {
                 const path = failure.op.path;
                 const currentContent = patched.find((f) => f.path === path)?.content ?? currentFiles.find((f) => f.path === path)?.content ?? "";
+                const rewriteAttempt = recovery.record({
+                  kind: "apply_failure",
+                  stage: "apply",
+                  path,
+                  reason: failure.error,
+                  action: "one-file rewrite against the current bytes"
+                });
                 const rewriteMessages = [
                   ...finalMessages,
                   {
                     role: "user",
-                    content: `Your previous edit to ${path} could not be applied: ${failure.error}
+                    content: `${turnContextFor(path)}
+
+Your previous edit to ${path} could not be applied: ${failure.error}
 
 Current contents of ${path} (authoritative \u2014 your replace snippet did not match these bytes):
 --- ${path} ---
@@ -169858,11 +170140,17 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                     (op) => op.path === path && !isProtectedPath(op.path)
                   );
                   if (ops.length === 0) {
+                    recovery.resolve(rewriteAttempt, "kept_previous");
                     console.info(`[generate] per-file rewrite for ${path} returned no ops \u2014 accepting`);
                     continue;
                   }
                   const stepResult = applyOpsPartial(patched, ops);
                   patched = stepResult.files;
+                  recovery.resolve(
+                    rewriteAttempt,
+                    stepResult.applied.length > 0 ? "fixed" : "failed",
+                    stepResult.applied.length > 0 ? patched.find((f) => f.path === path)?.content : null
+                  );
                   if (stepResult.applied.length > 0) {
                     rewrittenPaths.push(path);
                     controller.enqueue(
@@ -170037,18 +170325,32 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                   encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}\u2026` }))
                 );
                 if (!recovery.take("broken_file", file.path)) return null;
+                const turnContext = turnContextFor(file.path);
+                const n = recovery.record({
+                  kind: "broken_file",
+                  stage: "validation",
+                  path: file.path,
+                  reason: detail,
+                  action: "compile repair of this file only (write gate)"
+                });
                 const { repairBrokenFile: repairBrokenFile2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
-                return repairBrokenFile2(file, detail, {
+                const out = await repairBrokenFile2(file, detail, {
                   turnId: logicalTurnId,
                   projectId: body.projectId ?? null,
-                  userId
+                  userId,
+                  turnContext
                 });
+                if (!out) recovery.resolve(n, "kept_previous");
+                else recovery.resolve(n, "pending", out);
+                return out;
               }
             });
             if (gate.validationFailure) {
               throw new Error(`Authoritative code validation unavailable: ${gate.validationFailure}`);
             }
             nextFiles = gate.files;
+            for (const p of gate.repairedPaths ?? []) recovery.resolvePath(p, "fixed");
+            for (const p of gate.repairFailedPaths ?? []) recovery.resolvePath(p, "kept_previous");
             if (gate.repairedPaths?.length || gate.repairFailedPaths?.length) {
               console.info(
                 `[write-gate] ai-repair repaired=${JSON.stringify(gate.repairedPaths ?? [])} failed=${JSON.stringify(gate.repairFailedPaths ?? [])}`
@@ -170464,7 +170766,11 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         }
         const agentLoopUsages = [];
         try {
-          const imageTargetPaths = isInitial ? void 0 : diffChangedPaths(turnBaselineFiles, nextFiles);
+          const imageTargetPaths = isInitial ? void 0 : diffChangedPaths(turnBaselineFiles, nextFiles).filter(
+            // Kimble's own building-block refresh is housekeeping, not
+            // this request: never make pictures for files nobody edited.
+            (p) => !kitSyncedPaths.has(p)
+          );
           const imageTargetSet = imageTargetPaths ? new Set(imageTargetPaths) : null;
           const hasPlaceholders = nextFiles.some(
             (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://")
@@ -170538,8 +170844,18 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             if (!recovery.take("broken_file", file.path)) return null;
             controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}\u2026` })));
             controller.enqueue(encoder.encode(sse({ type: "timeline", step: "esbuild_parse", outcome: "failed", message: `Final check on ${file.path}: ${detail}`.slice(0, 500), ts: Date.now() })));
+            const turnContext = turnContextFor(file.path);
+            const n = recovery.record({
+              kind: "broken_file",
+              stage: "validation",
+              path: file.path,
+              reason: detail,
+              action: "compile repair of this file only (final check)"
+            });
             const { repairBrokenFile: repairBrokenFile2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
-            return repairBrokenFile2(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId });
+            const out = await repairBrokenFile2(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext });
+            recovery.resolve(n, out ? "pending" : "kept_previous", out);
+            return out;
           }
         );
         if (!guardOut.ok) {
@@ -170875,6 +171191,28 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
         {
           const turnChanged = turnChangedPaths;
           const { providersExhaustedForTurn: providersExhaustedForTurn2 } = await Promise.resolve().then(() => (init_turn_context_server(), turn_context_server_exports));
+          turnCommittedForMemory = scopeMissing.length === 0;
+          if (!isInitial) {
+            controller.enqueue(
+              encoder.encode(
+                sse({
+                  // Stored with the turn for diagnosis; the client ignores it.
+                  type: "edit_record",
+                  outcome: scopeMissing.length === 0 ? "committed" : "not_committed",
+                  record: {
+                    request: lastUserContent.slice(0, 400),
+                    intent: editClassification?.scope ?? null,
+                    scope: resolvedTargetPaths,
+                    filesRead: contextFiles.map((f) => f.path).slice(0, 40),
+                    filesChanged: turnChanged.slice(0, 40),
+                    housekeeping: [...kitSyncedPaths].slice(0, 40),
+                    appMap: turnAppMap ? appMapFacts2(turnAppMap) : null,
+                    recovery: recovery.history()
+                  }
+                })
+              )
+            );
+          }
           emitTurnOutcome(controller, encoder, scopeMissing.length > 0 ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing", ...providersExhaustedForTurn2() ? { cause: "providers_exhausted" } : {} } : {
             outcome: turnChanged.length > 0 ? "applied" : "answered",
             changedPaths: turnChanged,
@@ -170911,7 +171249,7 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
           filesWritten: nextFiles.length
         });
         recordModelOutcome(typeof model === "string" ? model : null, true);
-        if (body.projectId && userJwt) {
+        if (body.projectId && userJwt && turnCommittedForMemory) {
           void savePendingMemory(logicalTurnId, {
             userMessage: lastUserContent,
             assistantSummary: summary
