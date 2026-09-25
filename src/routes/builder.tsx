@@ -1194,6 +1194,11 @@ function Builder() {
       },
     });
   }, [effectiveBuildSnap, dispatchTurn]);
+  // Published is authoritative from the project row, never inferred.
+  const publishedBuildId = project?.published_build_id ?? null;
+  useEffect(() => {
+    if (publishedBuildId && turnState.turnId) dispatchTurn({ type: "published", buildId: publishedBuildId });
+  }, [publishedBuildId, turnState.turnId, dispatchTurn]);
   const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
   const isLive = effectiveBuildSnap?.status === "ready";
 
@@ -5036,10 +5041,7 @@ function Builder() {
               !streamingPlan &&
               !streamingAssistant &&
               !streamingRecap && (() => {
-                const activePhase = phases.find((p) => p.status === "active");
-                const isWorking =
-                  turnView.writtenPaths.length > 0 ||
-                  (activePhase && activePhase.id !== "thinking");
+                const isWorking = !["idle", "queued", "starting", "understanding"].includes(turnView.stage);
                 return (
                   <div className="flex items-center gap-2 text-[13px]">
                     <span className="petal-shimmer font-medium">
@@ -5061,7 +5063,6 @@ function Builder() {
                 streamingPlan ||
                 streamingAssistant ||
                 streamingRecap) && (() => {
-                const activePhase = phases.find((p) => p.status === "active");
                 const gateBuiltOutput = !isLive;
                 const showAssistant = streamingAssistant && !gateBuiltOutput;
                 const showRecap = streamingRecap && !gateBuiltOutput;
@@ -5073,8 +5074,7 @@ function Builder() {
                     ? "Writing"
                     : streamingPlan
                       ? "Planning"
-                      : turnView.writtenPaths.length > 0 ||
-                          (activePhase && activePhase.id !== "thinking")
+                      : !["idle", "queued", "starting", "understanding"].includes(turnView.stage)
                         ? "Working"
                         : "Thinking";
                 return (

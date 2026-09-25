@@ -95,6 +95,8 @@ type GenState = {
   phaseRank: number;
   /** Latest real server status line (setup stages, repairs). */
   note: string | null;
+  /** Durable events that arrived ahead of a missing seq, held until the gap fills. */
+  pending: Record<number, RawTurnEvent>;
 };
 
 export type TurnState = {
@@ -104,6 +106,8 @@ export type TurnState = {
   gen: GenState;
   deploy: DeploySnapshot | null;
   stop: StopState;
+  /** Build id the project row reports as published. */
+  publishedBuildId: string | null;
 };
 
 export type Lifecycle =
@@ -127,6 +131,10 @@ export type TurnAction =
   | { type: "deploy"; snapshot: DeploySnapshot | null }
   | { type: "stop_requested" }
   | { type: "stop_result"; result: "cancelled" | "completion_won" | "unconfirmed" }
+  /** Apply held-back events in seq order, accepting that the gap will not fill. */
+  | { type: "flush_pending" }
+  /** The user published this build (authoritative project row). */
+  | { type: "published"; buildId: string }
   | { type: "reset" };
 
 function emptyGen(): GenState {
@@ -151,8 +159,12 @@ function emptyGen(): GenState {
     timeline: [],
     phaseRank: -1,
     note: null,
+    pending: {},
   };
 }
+
+/** Held-back events beyond this force a flush so a hole in the log can never freeze the story. */
+export const MAX_PENDING = 32;
 
 const PHASE_ORDER = ["thinking", "designing", "writing", "polishing"];
 
@@ -172,6 +184,7 @@ export const initialTurnState: TurnState = {
   gen: emptyGen(),
   deploy: null,
   stop: { phase: "none" },
+  publishedBuildId: null,
 };
 
 // ─── Human language ────────────────────────────────────────────────────────
@@ -413,6 +426,34 @@ function applyEvent(g: GenState, e: RawTurnEvent): GenState {
   }
 }
 
+function applySequenced(g: GenState, e: RawTurnEvent, seq: number): GenState {
+  if (g.done) return { ...g, lastSeq: Math.max(g.lastSeq, seq) };
+  const next = applyEvent(g, e);
+  return { ...next, lastSeq: seq, seen: [...g.seen, `s${seq}`].slice(-2000) };
+}
+
+/** Apply held events that are now contiguous; `force` also skips over holes. */
+function drain(state: TurnState, force: boolean): TurnState {
+  let g = state.gen;
+  const seqs = Object.keys(g.pending).map(Number).sort((a, b) => a - b);
+  if (!seqs.length) return state;
+  const pending = { ...g.pending };
+  for (const seq of seqs) {
+    if (seq <= g.lastSeq) { delete pending[seq]; continue; }
+    if (seq !== g.lastSeq + 1 && !force) break;
+    const e = pending[seq];
+    delete pending[seq];
+    if (state.stop.phase === "cancelled") continue;
+    g = applySequenced(g, e, seq);
+  }
+  return { ...state, gen: { ...g, pending } };
+}
+
+/** First missing seq when events are held back, else null — callers request a replay from here. */
+export function missingFrom(s: TurnState): number | null {
+  return Object.keys(s.gen.pending).length ? s.gen.lastSeq : null;
+}
+
 function eventKey(e: RawTurnEvent): string | null {
   if (typeof e.seq === "number" && e.seq > 0) return `s${e.seq}`;
   return null;
@@ -425,6 +466,10 @@ export function turnReducer(state: TurnState, action: TurnAction): TurnState {
     case "turn_started":
       if (state.turnId === action.turnId) return state;
       return { ...initialTurnState, turnId: action.turnId, baselineBuildId: action.baselineBuildId };
+    case "flush_pending":
+      return drain(state, true);
+    case "published":
+      return !state.turnId ? state : state.publishedBuildId === action.buildId ? state : { ...state, publishedBuildId: action.buildId };
     case "stop_requested":
       if (isTerminal(deriveLifecycle(state)) || state.stop.phase !== "none") return state;
       return { ...state, stop: { phase: "requested" } };
@@ -455,6 +500,8 @@ export function turnReducer(state: TurnState, action: TurnAction): TurnState {
       if (e.type === "resume_start") {
         const after = typeof e.after === "number" ? e.after : 0;
         if (after === 0) return { ...state, gen: emptyGen() };
+        // Fresh reducer resuming mid-log: the server replays strictly after `after`.
+        if (state.gen.lastSeq === 0 && !state.gen.liveCount) return { ...state, gen: { ...state.gen, lastSeq: after } };
         return state;
       }
       if (e.type === "resume_timeout") return state;
@@ -466,9 +513,14 @@ export function turnReducer(state: TurnState, action: TurnAction): TurnState {
       const key = eventKey(e);
       if (key) {
         const seq = e.seq as number;
-        if (seq <= g.lastSeq || g.seen.includes(key)) return state;
-        const next = applyEvent(g, e);
-        return { ...state, gen: { ...next, lastSeq: seq, seen: [...g.seen, key].slice(-2000) } };
+        if (seq <= g.lastSeq || g.seen.includes(key) || g.pending[seq]) return state;
+        // Ahead of a missing seq: hold it until the gap fills (or is flushed).
+        if (seq > g.lastSeq + 1) {
+          const pending = { ...g.pending, [seq]: e };
+          const held = { ...state, gen: { ...g, pending } };
+          return Object.keys(pending).length >= MAX_PENDING ? drain(held, true) : held;
+        }
+        return drain({ ...state, gen: applySequenced(g, e, seq) }, false);
       }
       // Live event (no seq). Applied in arrival order; a later full replay
       // (resume_start after=0) rebuilds from the durable log instead.
@@ -506,8 +558,57 @@ export function deriveLifecycle(s: TurnState): Lifecycle {
   return "running";
 }
 
+/** The one user-facing stage of a turn — a pure projection of backend state. */
+export type Stage =
+  | "idle"
+  | "queued"
+  | "starting"
+  | "understanding"
+  | "planning"
+  | "reading"
+  | "generating"
+  | "writing"
+  | "validating"
+  | "repairing"
+  | "building"
+  | "verifying"
+  | "ready"
+  | "published"
+  | "failed"
+  | "cancelled";
+
+const READING = /\b(reading|looking (at|through) your (project|files)|understanding your project|loading your project)\b/i;
+const VERIFY = /\b(verif|live check|checking (the )?live|browser)\w*/i;
+
+export function deriveStage(s: TurnState): Stage {
+  const l = deriveLifecycle(s);
+  const g = s.gen;
+  switch (l) {
+    case "idle": return "idle";
+    case "cancelled": return "cancelled";
+    case "failed": case "build_failed": case "verify_failed": return "failed";
+    case "answered": case "awaiting_approval": case "paused": return "ready";
+    case "ready": return s.deploy && s.publishedBuildId === s.deploy.buildId ? "published" : "ready";
+    case "generated": return "building";
+    case "building": return s.deploy?.progressLabel && VERIFY.test(s.deploy.progressLabel) ? "verifying" : "building";
+    default: break;
+  }
+  // running / stopping — read the latest real activity.
+  const active = [...g.activities].reverse().find((a) => a.status === "active" && !a.key.startsWith("step:"));
+  if (active?.kind === "repair") return "repairing";
+  if (active?.kind === "file" || active?.kind === "asset") return "writing";
+  if (active?.kind === "validation" || active?.key === "phase:polishing") return "validating";
+  if (g.note && READING.test(g.note)) return "reading";
+  if (active?.key === "phase:writing") return Object.keys(g.files).length ? "writing" : "generating";
+  if (active?.key === "phase:designing" || active?.kind === "plan" || (g.steps.length && !g.paths.length && g.phaseRank < 2)) return "planning";
+  if (active?.key === "phase:thinking") return "understanding";
+  if (g.lastSeq === 0 && g.liveCount === 0) return "queued";
+  return "starting";
+}
+
 export type TurnView = {
   lifecycle: Lifecycle;
+  stage: Stage;
   headline: string;
   detail: string | null;
   completed: Activity[];
@@ -580,9 +681,11 @@ export function deriveView(s: TurnState): TurnView {
   const tech = [...g.tech];
   if (d) tech.push(`build ${d.buildId.slice(0, 8)}: ${d.status}${d.progressLabel ? ` — ${d.progressLabel}` : ""}`);
 
+  const stage = deriveStage(s);
   return {
     lifecycle,
-    headline: HEAD[lifecycle],
+    stage,
+    headline: stage === "published" ? "Your app is live" : HEAD[lifecycle],
     detail,
     completed,
     current: lifecycle === "running" || lifecycle === "building" || lifecycle === "generated" ? current : null,
