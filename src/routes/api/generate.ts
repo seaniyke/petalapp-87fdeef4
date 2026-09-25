@@ -108,7 +108,7 @@ import {
 } from "@/server/self-recovery.server";
 import { recordModelOutcome } from "@/server/model-kill-switch.server";
 import { pickDynamicSnippets, renderCurrentDateBlock, renderSchemaBlock } from "@/server/dynamic-prompts.server";
-import { renderDesignTasteBlock, renderLandingChecklistBlock } from "@/server/design-taste.server";
+import { renderDesignTasteBlock } from "@/server/design-taste.server";
 import {
   keepChatPhotos,
   loadProjectPictures,
