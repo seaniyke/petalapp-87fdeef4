@@ -39601,6 +39601,52 @@ var init_turn_context_server = __esm({
   }
 });
 
+// src/server/intent-targets.server.ts
+function detectCrossCuttingIntent(prompt) {
+  if (!prompt) return false;
+  const text = prompt.slice(0, 4e3);
+  return CROSS_CUTTING_REGEXES.some((re) => re.test(text));
+}
+function isAppOwned(path) {
+  if (path.startsWith("src/components/ui/")) return false;
+  if (path.startsWith("src/components/blocks/")) return false;
+  if (path.startsWith("src/components/examples/")) return false;
+  if (path.startsWith("src/components/mobile/")) return false;
+  if (path.startsWith("src/integrations/")) return false;
+  return true;
+}
+function pickPinnedPaths(files) {
+  const pinned = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    if (!isAppOwned(f.path)) continue;
+    if (f.path === "src/App.tsx" || f.path === "src/main.tsx" || f.path === "src/styles.css" || f.path === "tailwind.config.ts" || f.path === "tailwind.config.js" || f.path.startsWith("src/pages/") || f.path.startsWith("src/routes/") || f.path.startsWith("src/components/") && /\.(tsx|jsx)$/.test(f.path)) {
+      pinned.add(f.path);
+    }
+  }
+  return Array.from(pinned);
+}
+var CROSS_CUTTING_REGEXES;
+var init_intent_targets_server = __esm({
+  "src/server/intent-targets.server.ts"() {
+    init_define_import_meta_env();
+    CROSS_CUTTING_REGEXES = [
+      /\b(mobile\s*-?\s*(responsive|friendly|first)|responsive\s+(design|layout|site|app)|make\s+(it|the\s+site|the\s+app|everything)\s+(mobile|responsive))\b/i,
+      /\b(across|every|all)\s+(pages?|routes?|screens?|forms?|sections?|components?)\b/i,
+      // "the entire website design", "the whole app", "the full landing page" —
+      // any broad surface noun, not just the four page synonyms we used to list.
+      /\b(entire|whole|full|complete)\s+(website|web\s?site|webpage|web\s?page|site|app|application|ui|design|look|theme|landing\s*page|home\s*page|homepage|front\s*page|main\s*page)\b/i,
+      /\b(site\s*-?\s*wide|app\s*-?\s*wide|app-wide|sitewide|whole\s+(site|app))\b/i,
+      /\b(redesign|rework|revamp|refresh|redo|remake|rebuild|restyle|re-?theme|overhaul|refactor)\s+(the\s+)?(site|website|app|whole|entire|everything|design|look|theme|style|layout|ui|colou?rs?|landing\s*page|home\s*page|homepage|front\s*page|main\s*page)\b/i,
+      // Plain verbs users actually type: "change the design", "update the whole
+      // look", "give the site a new style". These are redesigns, not tweaks.
+      /\b(change|update|switch|swap|give|make)\s+(the\s+|it\s+|us\s+)?(a\s+|an\s+)?(new\s+|different\s+|fresh\s+|entire\s+|whole\s+)?(website|site|app)?\s*(design|theme|look(\s+and\s+feel)?|style|colou?r\s*(scheme|palette)|palette|branding|vibe|aesthetic)\b/i,
+      /\b(every|all)\s+(page|route|screen|form|component)\b/i,
+      /\b(global|globally)\s+(change|update|fix|apply|restyle)\b/i,
+      /\b(tighten|fix|improve|polish)\s+(the\s+)?(spacing|typography|layout|design)\s+(everywhere|across|on\s+all)\b/i
+    ];
+  }
+});
+
 // src/lib/openrouter-budget-models.json
 var openrouter_budget_models_default;
 var init_openrouter_budget_models = __esm({
@@ -41521,7 +41567,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -41565,7 +41610,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -41910,7 +41954,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -85243,7 +85286,6 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -110650,7 +110692,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -138450,6 +138491,103 @@ var init_prompt_budget_server = __esm({
   }
 });
 
+// src/server/context/budget.ts
+function applyContextBudget(sections, budgetTokens) {
+  const perSection = {};
+  for (const s of sections) perSection[s.id] = estimateTokens(s.text);
+  let total = sections.reduce((n, s) => n + perSection[s.id], 0);
+  const dropped = [];
+  const drop = /* @__PURE__ */ new Set();
+  const candidates = sections.filter((s) => s.priority !== "required" && s.text).sort((a2, b) => RANK[b.priority] - RANK[a2.priority] || perSection[b.id] - perSection[a2.id]);
+  for (const s of candidates) {
+    if (total <= budgetTokens) break;
+    drop.add(s.id);
+    dropped.push(s.id);
+    total -= perSection[s.id];
+  }
+  return {
+    kept: sections.filter((s) => !drop.has(s.id)),
+    dropped,
+    tokens: total,
+    budget: budgetTokens,
+    perSection,
+    overRequired: total > budgetTokens
+  };
+}
+function partLength(part) {
+  if (typeof part === "string") return part.length;
+  let total = 0;
+  for (const p of part) {
+    if (p.type === "text" && p.text) total += p.text.length;
+    if (p.type === "image_url") total += 1500 * 4;
+  }
+  return total;
+}
+function estimateMessageTokens(m) {
+  return Math.ceil(partLength(m.content) / 4) + PER_MESSAGE_OVERHEAD_TOKENS;
+}
+function estimateMessagesTokens(messages) {
+  let sum = 0;
+  for (const m of messages) sum += estimateMessageTokens(m);
+  return sum;
+}
+function carriesConstraint(m) {
+  const text = typeof m.content === "string" ? m.content : m.content.filter((p) => p.type === "text" && p.text).map((p) => p.text).join(" ");
+  if (text.length > 2e3) return false;
+  return CONSTRAINT_RE.test(text);
+}
+function budgetMessages(messages, budgetTokens) {
+  const estimated = estimateMessagesTokens(messages);
+  if (estimated <= budgetTokens) {
+    return { messages, estimatedTokens: estimated, budget: budgetTokens, droppedCount: 0 };
+  }
+  let lastUserIdx = messages.length - 1;
+  for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "user") {
+    lastUserIdx = i;
+    break;
+  }
+  let lastAssistantIdx = -1;
+  for (let i = messages.length - 1; i >= 0; i--) if (messages[i].role === "assistant") {
+    lastAssistantIdx = i;
+    break;
+  }
+  const priorityOf = (m, i) => i === 0 || m.role === "system" ? 0 : i === lastUserIdx ? 1 : m.role === "user" && carriesConstraint(m) ? 2 : i === lastAssistantIdx ? 3 : 4;
+  const ranked = messages.map((m, i) => ({ i, p: priorityOf(m, i), t: estimateMessageTokens(m) })).sort((a2, b) => a2.p === b.p ? b.i - a2.i : a2.p - b.p);
+  const keep = /* @__PURE__ */ new Set();
+  let running = 0;
+  for (const r of ranked) {
+    if (r.p <= 1 || running + r.t <= budgetTokens) {
+      keep.add(r.i);
+      running += r.t;
+    }
+  }
+  const filtered = messages.filter((_, i) => keep.has(i));
+  return {
+    messages: filtered,
+    estimatedTokens: estimateMessagesTokens(filtered),
+    budget: budgetTokens,
+    droppedCount: messages.length - filtered.length
+  };
+}
+var RANK, PER_MESSAGE_OVERHEAD_TOKENS, CONSTRAINT_RE;
+var init_budget = __esm({
+  "src/server/context/budget.ts"() {
+    init_define_import_meta_env();
+    init_prompt_budget_server();
+    RANK = {
+      required: 0,
+      "project-state": 1,
+      design: 2,
+      memory: 3,
+      skills: 4,
+      history: 5,
+      inference: 6
+    };
+    PER_MESSAGE_OVERHEAD_TOKENS = 4;
+    CONSTRAINT_RE = /\b(always|never|don'?t|do not|must|make sure|remember|from now on|instead of|stop|i hate|i don'?t (like|want)|prefer|keep|use only|brand|our colou?rs?|font|logo|no (dark|light) mode)\b/i;
+  }
+});
+
 // src/server/turn-lease.ts
 var turn_lease_exports = {};
 __export(turn_lease_exports, {
@@ -138829,7 +138967,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -139749,7 +139886,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -142121,152 +142257,492 @@ var init_brand_contract_server = __esm({
   }
 });
 
-// src/server/edit-classifier.server.ts
-var edit_classifier_server_exports = {};
-__export(edit_classifier_server_exports, {
-  classifyEdit: () => classifyEdit,
-  classifyEditDeterministic: () => classifyEditDeterministic,
-  parseClassification: () => parseClassification
-});
-function dimensionsFor(text) {
-  const dims = [];
-  if (VISUAL_RE.test(text)) dims.push("visual");
-  if (CONTENT_RE.test(text)) dims.push("content");
-  if (BEHAVIOUR_RE.test(text)) dims.push("behaviour");
-  if (DATA_RE.test(text)) dims.push("data");
-  if (NAV_RE.test(text)) dims.push("navigation");
-  if (RESPONSIVE_RE.test(text)) dims.push("responsive");
-  return dims.length ? dims : ["visual"];
-}
-function classifyEditDeterministic(prompt) {
+// src/server/execution/classify.ts
+function classifyEditFacet(prompt) {
   const text = (prompt ?? "").trim();
-  const dimensions = dimensionsFor(text);
-  if (STRUCTURAL_RE.test(text)) {
-    return {
-      scope: "structural",
-      dimensions,
-      hints: [],
-      reason: "matched a cross-cutting phrase",
-      source: "deterministic"
-    };
-  }
-  if (MICRO_RE.test(text) && text.length <= 90) {
-    return {
-      scope: "micro",
-      dimensions,
-      hints: [],
-      reason: "short single-verb request",
-      source: "deterministic"
-    };
-  }
+  const found = DIMENSION_RE.filter(([, re]) => re.test(text)).map(([d]) => d);
+  const dimensions = found.length ? found : ["visual"];
+  if (STRUCTURAL_RE.test(text)) return { scope: "structural", dimensions, hints: [], reason: "matched a cross-cutting phrase", source: "deterministic" };
+  if (MICRO_RE.test(text) && text.length <= 90) return { scope: "micro", dimensions, hints: [], reason: "short single-verb request", source: "deterministic" };
   return { scope: "targeted", dimensions, hints: [], reason: "default", source: "deterministic" };
 }
-function classifierEnabled() {
-  const raw = process.env["PETAL_EDIT_CLASSIFIER"];
-  if (raw == null || raw === "") return true;
-  return !/^(0|false|off|no)$/i.test(raw.trim());
+function classifyRequest(request, opts) {
+  const r = request || "";
+  if (opts.isInitial) {
+    return { operation: "first_build", planRequired: false, mode: "staged", reason: "no project yet", edit: null, crossCutting: false };
+  }
+  const edit = classifyEditFacet(r);
+  const crossCutting = detectCrossCuttingIntent(r) || edit.scope === "structural";
+  const base = baseOperation(r, opts);
+  if (crossCutting && base.operation !== "architectural_change") {
+    return { operation: "architectural_change", planRequired: base.planRequired, mode: "staged", reason: `cross-cutting (${base.reason})`, edit, crossCutting };
+  }
+  return { ...base, edit, crossCutting };
 }
-async function classifyEdit(args) {
-  const prior = classifyEditDeterministic(args.prompt);
-  if (!classifierEnabled() || prior.scope === "structural") return prior;
-  if (IMPERATIVE_RE.test((args.prompt ?? "").trim())) return prior;
-  if ((args.prompt ?? "").trim().length < 4) return prior;
-  try {
-    const res = await aiChatCompletions({
-      feature: "triage",
-      budgetAware: true,
-      body: {
-        model: "deepseek/deepseek-v4-flash",
-        temperature: 0,
-        max_tokens: 220,
-        messages: [
-          { role: "system", content: SYSTEM4 },
-          {
-            role: "user",
-            content: [
-              args.projectPurpose ? `PROJECT: ${args.projectPurpose.slice(0, 300)}` : "",
-              typeof args.fileCount === "number" ? `FILES: ${args.fileCount}` : "",
-              `REQUEST: ${args.prompt.slice(0, 1200)}`
-            ].filter(Boolean).join("\n")
-          }
-        ]
-      },
-      signal: args.signal,
-      meta: {
-        projectId: args.projectId ?? null,
-        userId: args.userId ?? null,
-        phase: "edit-classifier"
-      }
-    });
-    if (!res.ok) return prior;
-    const json = await res.json();
-    const parsed = parseClassification(json.choices?.[0]?.message?.content ?? "");
-    if (!parsed) return prior;
-    return {
-      scope: widest(prior.scope, parsed.scope),
-      dimensions: parsed.dimensions.length ? parsed.dimensions : prior.dimensions,
-      hints: parsed.hints,
-      reason: parsed.reason || "model classification",
-      source: "model"
+function baseOperation(r, opts) {
+  const direct2 = (operation, reason) => ({ operation, planRequired: false, mode: "direct", reason });
+  if (opts.isRepairTurn || R.repair.test(r) && !R.newPage.test(r)) return direct2("repair", "defect reported");
+  if (R.arch.test(r)) return { operation: "architectural_change", planRequired: true, mode: "staged", reason: "reaches across the app" };
+  if (R.newPage.test(r)) return { operation: "page_creation", planRequired: false, mode: "staged", reason: "new page requested" };
+  if (R.dep.test(r)) return direct2("dependency_change", "dependency/config words");
+  if (R.asset.test(r)) return direct2("asset_change", "imagery words");
+  if (R.func.test(r)) return direct2("functionality_change", "behaviour words");
+  if (R.content.test(r)) return direct2("content_change", "copy words");
+  if (R.style.test(r)) return direct2("styling_change", "visual words");
+  const pageHit = PAGE_WORDS.test(r) || (opts.manifest?.pages.some((p) => r.toLowerCase().includes(p.type)) ?? false);
+  if (pageHit) return direct2("page_modification", "names a page");
+  return direct2("component_modification", "default targeted edit");
+}
+var STRUCTURAL_RE, MICRO_RE, DIMENSION_RE, R, PAGE_WORDS;
+var init_classify = __esm({
+  "src/server/execution/classify.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_intent_targets_server();
+    STRUCTURAL_RE = /\b(redesign|re-?design|rebuild|revamp|overhaul|from scratch|start over|entire (site|app|website|thing)|whole (site|app|website|thing)|every (page|screen)|all (the )?pages|site-?wide|new (page|screen|feature|section)|add (a |an )?(page|dashboard|auth|login|signup|payments?|checkout|blog)|make it (a )?real|looks? (bad|terrible|awful|plain|generic|unfinished)|doesn'?t look|nothing works)\b/i;
+    MICRO_RE = /^\s*(change|rename|fix|update|set|make)\b[^.!?]{0,80}$/i;
+    DIMENSION_RE = [
+      ["visual", /\b(design|theme|colou?rs?|palette|font|typography|spacing|layout|styling|style|look|hero|animation)\b/i],
+      ["content", /\b(copy|text|headline|wording|title|label|rename|typo|content)\b/i],
+      ["behaviour", /\b(click|button|form|submit|validate|route|link|navigate|filter|sort|search|state|toggle|modal|drawer)\b/i],
+      ["data", /\b(database|table|schema|auth|login|sign ?up|store|save|persist|api|backend)\b/i],
+      ["navigation", /\b(nav|navbar|navigation|menu|header|footer|sidebar|breadcrumb)\b/i],
+      ["responsive", /\b(mobile|phone|tablet|responsive|small screens?|breakpoints?)\b/i]
+    ];
+    R = {
+      repair: /\b(fix|broken|error|crash|not working|doesn'?t work|blank|bug|failed)\b/i,
+      newPage: /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(page|screen|route)s?\b/i,
+      arch: /\b(redesign|rebuild|restructure|refactor|entire|whole (site|app)|every page|all pages|across the (site|app)|migrate|convert to)\b/i,
+      dep: /\b(install|package|dependency|library|npm|upgrade|config(uration)?|env(ironment)?)\b/i,
+      asset: /\b(image|photo|picture|logo|icon|illustration|favicon|video|background image)\b/i,
+      style: /\b(colou?r|font|size|bigger|smaller|bold|spacing|padding|margin|rounded|shadow|style|dark|light|theme|align|layout|look)\b/i,
+      content: /\b(text|copy|headline|heading|title|wording|rename|say|typo|label|paragraph|description)\b|["“][^"”]{2,}["”]/i,
+      func: /\b(button (that|to)|click|submit|form|login|sign ?(in|up)|search|filter|sort|save|cart|checkout|toggle|modal|api|fetch|validate|works?)\b/i
     };
-  } catch {
-    return prior;
+    PAGE_WORDS = /\b(home|landing|about|contact|pricing|menu|blog|login|sign ?in|sign ?up|dashboard|shop|store|product|services|faq|gallery|team|careers|checkout|cart|profile|settings)\s+(page|screen)\b/i;
   }
+});
+
+// src/server/execution/scope.ts
+function constraintsFrom(request) {
+  const out = [];
+  for (const m of request.matchAll(/\b(?:don'?t|do not|never|keep|leave|without)\b[^.!?\n]{3,80}/gi)) out.push(m[0].trim());
+  return out.slice(0, 6);
 }
-function parseClassification(content) {
-  const start = content.indexOf("{");
-  const end = content.lastIndexOf("}");
-  if (start === -1 || end <= start) return null;
-  let parsed;
-  try {
-    parsed = JSON.parse(content.slice(start, end + 1));
-  } catch {
+function buildExecutionScope(args) {
+  const { request, classification, manifest } = args;
+  const targets = Array.from(new Set(args.targets));
+  const neighbours = (args.neighbours ?? []).filter((p) => !targets.includes(p));
+  const pagesSet = new Set(manifest?.pages.map((p) => p.path) ?? []);
+  const wide = classification.operation === "first_build" || classification.operation === "architectural_change" || classification.operation === "page_creation" || targets.length === 0;
+  const chromeNamed = CHROME_WORDS.test(request);
+  const reason = (p) => {
+    if (wide || targets.includes(p)) return null;
+    if (CHROME_RE.test(p) && !chromeNamed) return "shared navigation/layout was not part of this request";
+    if (pagesSet.has(p) && !neighbours.includes(p)) return "a different page than the one requested";
     return null;
-  }
-  const root = parsed;
-  const scope = typeof root.scope === "string" ? root.scope.toLowerCase() : "";
-  if (!ORDER2.includes(scope)) return null;
-  const allowed = /* @__PURE__ */ new Set(["visual", "content", "behaviour", "data", "navigation", "responsive"]);
-  const dimensions = Array.isArray(root.dimensions) ? root.dimensions.map((d) => typeof d === "string" ? d.toLowerCase().trim() : "").filter((d) => allowed.has(d)) : [];
-  const hints = Array.isArray(root.hints) ? root.hints.map((h) => typeof h === "string" ? h.toLowerCase().trim().slice(0, 30) : "").filter(Boolean).slice(0, 6) : [];
+  };
+  const protectedAreas = wide ? [] : [
+    ...chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l)),
+    ...[...pagesSet].filter((p) => !targets.includes(p) && !neighbours.includes(p))
+  ];
   return {
-    scope,
-    dimensions,
-    hints,
-    reason: typeof root.reason === "string" ? root.reason.slice(0, 140) : "",
-    source: "model"
+    operation: classification.operation,
+    outcome: request.trim().slice(0, 300),
+    affectedPages: targets.filter((t) => pagesSet.has(t)),
+    affectedComponents: targets.filter((t) => !pagesSet.has(t)),
+    affectedFiles: [...targets, ...neighbours],
+    constraints: constraintsFrom(request),
+    protectedAreas,
+    acceptance: [
+      "the requested outcome is visible in the changed files",
+      "every changed file compiles",
+      ...protectedAreas.length ? ["protected areas are byte-identical"] : []
+    ],
+    isProtected: (p) => reason(p) !== null,
+    protectionReason: reason
   };
 }
-var STRUCTURAL_RE, RESPONSIVE_RE, VISUAL_RE, BEHAVIOUR_RE, DATA_RE, NAV_RE, CONTENT_RE, IMPERATIVE_RE, MICRO_RE, ORDER2, widest, SYSTEM4;
-var init_edit_classifier_server = __esm({
-  "src/server/edit-classifier.server.ts"() {
+function renderScopeBlock(s) {
+  if (!s.protectedAreas.length && !s.constraints.length) return "";
+  const lines = ["\n\nEXECUTION SCOPE (enforced \u2014 writes outside it are rejected):", `- Operation: ${s.operation}`];
+  if (s.affectedFiles.length) lines.push(`- May change: ${s.affectedFiles.join(", ")}`);
+  if (s.protectedAreas.length) lines.push(`- Protected (do not touch): ${s.protectedAreas.slice(0, 12).join(", ")}`);
+  if (s.constraints.length) lines.push(`- User constraints: ${s.constraints.join(" | ")}`);
+  lines.push("- A new file is allowed only when a changed file imports it.");
+  return lines.join("\n");
+}
+var CHROME_RE, CHROME_WORDS;
+var init_scope = __esm({
+  "src/server/execution/scope.ts"() {
+    "use strict";
     init_define_import_meta_env();
-    init_ai_provider_server();
-    STRUCTURAL_RE = /\b(redesign|re-?design|rebuild|revamp|overhaul|from scratch|start over|entire (site|app|website|thing)|whole (site|app|website|thing)|every (page|screen)|all (the )?pages|site-?wide|new (page|screen|feature|section)|add (a |an )?(page|dashboard|auth|login|signup|payments?|checkout|blog)|make it (a )?real|looks? (bad|terrible|awful|plain|generic|unfinished)|doesn'?t look|nothing works)\b/i;
-    RESPONSIVE_RE = /\b(mobile|phone|tablet|responsive|small screens?|breakpoints?)\b/i;
-    VISUAL_RE = /\b(design|theme|colou?rs?|palette|font|typography|spacing|layout|styling|style|look|hero|animation)\b/i;
-    BEHAVIOUR_RE = /\b(click|button|form|submit|validate|route|link|navigate|filter|sort|search|state|toggle|modal|drawer)\b/i;
-    DATA_RE = /\b(database|table|schema|auth|login|sign ?up|store|save|persist|api|backend)\b/i;
-    NAV_RE = /\b(nav|navbar|navigation|menu|header|footer|sidebar|breadcrumb)\b/i;
-    CONTENT_RE = /\b(copy|text|headline|wording|title|label|rename|typo|content)\b/i;
-    IMPERATIVE_RE = /^\s*(please\s+)?(on|in|for)?\b[^.!?]{0,60}?\b(add|change|make|set|move|remove|delete|rename|replace|swap|update|fix|put|insert|show|hide|use|turn|increase|decrease|align|center|centre|shorten|lengthen|translate|rewrite|reword)\b/i;
-    MICRO_RE = /^\s*(change|rename|fix|update|set|make)\b[^.!?]{0,80}$/i;
-    ORDER2 = ["micro", "targeted", "structural"];
-    widest = (a2, b) => ORDER2.indexOf(a2) >= ORDER2.indexOf(b) ? a2 : b;
-    SYSTEM4 = `You classify edit requests for an AI app builder. You never write code.
+    CHROME_RE = /(Layout|Header|Footer|Nav(bar)?|SiteNav|Shell|Sidebar)\.(t|j)sx$/;
+    CHROME_WORDS = /\b(nav|navbar|navigation|menu|header|footer|layout|sidebar|site-?wide|every page|all pages)\b/i;
+  }
+});
 
-scope:
-- "micro": one visible value changes (a word, a colour, one button).
-- "targeted": one page, section or component changes materially.
-- "structural": the request spans multiple pages/components, changes the product's shape, adds a page or feature, or asks for a redesign/overhaul \u2014 including vague dissatisfaction like "this looks generic" or "make it feel real".
+// src/server/execution/verdict.ts
+function toVerdict(state) {
+  switch (state) {
+    case "passed":
+    case "ok":
+      return "PASS";
+    case "failed":
+    case "error":
+      return "FAIL";
+    case "unavailable":
+    case "timeout":
+      return "UNAVAILABLE";
+    case "warning":
+      return "WARNING";
+    default:
+      return "UNKNOWN";
+  }
+}
+function shouldRepair(v) {
+  return v === "FAIL";
+}
+function blocksCommit(v) {
+  return v === "FAIL";
+}
+var init_verdict = __esm({
+  "src/server/execution/verdict.ts"() {
+    init_define_import_meta_env();
+  }
+});
 
-When unsure between two scopes, choose the WIDER one.
+// src/server/execution/ledger.ts
+var TURN_LIMITS, TurnLedger;
+var init_ledger = __esm({
+  "src/server/execution/ledger.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    TURN_LIMITS = {
+      ai_call: 12,
+      read: 80,
+      write: 40,
+      delete: 10,
+      dependency: 6,
+      repair: 3,
+      build: 2,
+      browser: 1
+    };
+    TurnLedger = class {
+      constructor(limits = TURN_LIMITS) {
+        this.limits = limits;
+      }
+      limits;
+      counts = /* @__PURE__ */ new Map();
+      reads = /* @__PURE__ */ new Set();
+      events = [];
+      writer = null;
+      cancelled = false;
+      committed = false;
+      cancel() {
+        this.cancelled = true;
+      }
+      /** Claim the turn for one writer. A second writer is refused. */
+      claimWriter(id) {
+        if (this.writer && this.writer !== id) return false;
+        this.writer = id;
+        return true;
+      }
+      use(kind, purpose, target, writer) {
+        const refuse = (refusal) => {
+          this.events.push({ kind, target, purpose, ok: false, refusal });
+          return { ok: false, refusal };
+        };
+        if (this.cancelled) return refuse("cancelled");
+        if (this.committed && kind !== "read") return refuse("committed");
+        if ((kind === "write" || kind === "delete") && writer && !this.claimWriter(writer)) return refuse("foreign_writer");
+        if (kind === "read" && target) {
+          if (this.reads.has(target)) return refuse("duplicate_read");
+        }
+        const n = this.counts.get(kind) ?? 0;
+        if (n >= this.limits[kind]) return refuse("limit");
+        this.counts.set(kind, n + 1);
+        if (kind === "read" && target) this.reads.add(target);
+        this.events.push({ kind, target, purpose, ok: true });
+        return { ok: true };
+      }
+      /** Write discipline: refuse a write whose bytes equal the current file. */
+      write(path, next, current2, purpose, writer) {
+        if (current2 !== void 0 && current2 === next) {
+          this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "no_op_write" });
+          return { ok: false, refusal: "no_op_write" };
+        }
+        return this.use("write", purpose, path, writer);
+      }
+      count(kind) {
+        return this.counts.get(kind) ?? 0;
+      }
+      summary() {
+        return {
+          counts: Object.fromEntries(this.counts),
+          refusals: this.events.filter((e) => !e.ok).map((e) => `${e.kind}:${e.refusal}${e.target ? `:${e.target}` : ""}`).slice(0, 30),
+          filesRead: [...this.reads].slice(0, 40),
+          filesWritten: this.events.filter((e) => e.ok && e.kind === "write").map((e) => e.target).slice(0, 40),
+          cancelled: this.cancelled,
+          committed: this.committed
+        };
+      }
+    };
+  }
+});
 
-dimensions: any of visual, content, behaviour, data, navigation, responsive.
-hints: up to 6 lowercase nouns naming the surfaces or sections involved (e.g. "hero", "pricing", "checkout"). No verbs.
+// src/server/execution/transaction.ts
+var TurnTransaction;
+var init_transaction = __esm({
+  "src/server/execution/transaction.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_verdict();
+    TurnTransaction = class {
+      constructor(baseline, ledger, writer = "primary") {
+        this.ledger = ledger;
+        this.writer = writer;
+        this.base = new Map(baseline.map((f) => [f.path, f.content]));
+      }
+      ledger;
+      writer;
+      base;
+      staged = /* @__PURE__ */ new Map();
+      verdicts = [];
+      done = false;
+      /**
+       * Stage one file. `system: true` marks Kimble-managed files (scaffold kit,
+       * housekeeping) — they are staged atomically with the turn but do not
+       * consume the model's write budget. No-op writes are refused either way.
+       */
+      stage(path, content, purpose = "requested change", opts) {
+        if (this.done) return false;
+        const current2 = this.staged.has(path) ? this.staged.get(path) ?? void 0 : this.base.get(path);
+        if (this.ledger && !opts?.system) {
+          const r = this.ledger.write(path, content, current2, purpose, this.writer);
+          if (!r.ok) return false;
+        } else if (current2 === content) return false;
+        this.staged.set(path, content);
+        return true;
+      }
+      /** The complete proposed project tree (baseline + staged), uncommitted. */
+      proposedTree() {
+        const next = new Map(this.base);
+        for (const [p, c] of this.staged) {
+          if (c === null) next.delete(p);
+          else next.set(p, c);
+        }
+        return [...next].map(([path, content]) => ({ path, content }));
+      }
+      remove(path, opts) {
+        if (this.done || !this.base.has(path)) return false;
+        if (this.ledger && !opts?.system && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
+        this.staged.set(path, null);
+        return true;
+      }
+      recordCheck(check, verdict, detail) {
+        this.verdicts.push({ check, verdict, detail });
+      }
+      checks() {
+        return [...this.verdicts];
+      }
+      baseline() {
+        return [...this.base].map(([path, content]) => ({ path, content }));
+      }
+      rollback(reason) {
+        this.done = true;
+        this.staged.clear();
+        return { status: "rolled_back", files: this.baseline(), reason };
+      }
+      commit() {
+        if (this.done) return { status: "rolled_back", files: this.baseline(), reason: "already finished" };
+        if (this.ledger?.cancelled) return this.rollback("cancelled");
+        const failed = this.verdicts.find((v) => blocksCommit(v.verdict));
+        if (failed) return this.rollback(`${failed.check} failed${failed.detail ? `: ${failed.detail}` : ""}`);
+        if (this.staged.size === 0) return this.rollback("no changes");
+        const next = new Map(this.base);
+        for (const [p, c] of this.staged) {
+          if (c === null) next.delete(p);
+          else next.set(p, c);
+        }
+        this.done = true;
+        if (this.ledger) this.ledger.committed = true;
+        return {
+          status: "committed",
+          files: [...next].map(([path, content]) => ({ path, content })),
+          changed: [...this.staged.keys()]
+        };
+      }
+    };
+  }
+});
 
-Respond with JSON only:
-{"scope":"micro|targeted|structural","dimensions":["..."],"hints":["..."],"reason":"one short clause"}`;
+// src/server/execution/commit.ts
+async function commitTurn(args) {
+  const tx = new TurnTransaction(args.baseline, args.ledger);
+  const base = new Map(args.baseline.map((f) => [f.path, f.content]));
+  const next = /* @__PURE__ */ new Map();
+  for (const f of args.proposed) {
+    const p = f.path.trim();
+    if (p) next.set(p, f.content ?? "");
+  }
+  const rejections = [];
+  const noOps = [];
+  const refusalReason = () => {
+    const last = args.ledger.summary().refusals.at(-1) ?? "";
+    if (last.includes(":limit")) return "limit";
+    if (last.includes(":foreign_writer")) return "foreign_writer";
+    if (last.includes(":cancelled")) return "cancelled";
+    return "other";
+  };
+  for (const [path, content] of next) {
+    const system = args.isSystemPath(path);
+    if (base.get(path) === content) continue;
+    if (!system) {
+      const why = args.protectionReason(path);
+      if (why) {
+        rejections.push({
+          operation: "write",
+          path,
+          reason: "scope_violation",
+          detail: why,
+          recoverable: true,
+          next: "retry without changing this file, or name it explicitly in the request"
+        });
+        continue;
+      }
+    }
+    if (!tx.stage(path, content, "turn change", { system })) {
+      const reason = refusalReason();
+      rejections.push({
+        operation: "write",
+        path,
+        reason,
+        detail: `write refused (${reason})`,
+        recoverable: reason === "limit",
+        next: reason === "limit" ? "split the request into smaller steps" : "stop"
+      });
+    }
+  }
+  for (const path of base.keys()) {
+    if (next.has(path)) continue;
+    if (!args.isSystemPath(path) && args.protectionReason(path)) {
+      rejections.push({
+        operation: "delete",
+        path,
+        reason: "scope_violation",
+        detail: args.protectionReason(path),
+        recoverable: true,
+        next: "retry without removing this file"
+      });
+      continue;
+    }
+    if (!tx.remove(path, { system: args.isSystemPath(path) })) {
+      const reason = refusalReason();
+      rejections.push({ operation: "delete", path, reason, detail: `delete refused (${reason})`, recoverable: reason === "limit", next: "stop" });
+    }
+  }
+  for (const r of args.ledger.summary().refusals) {
+    if (r.startsWith("write:no_op_write:")) noOps.push(r.slice("write:no_op_write:".length));
+  }
+  for (const c of args.checks) tx.recordCheck(c.check, c.verdict, c.detail);
+  if (rejections.length) {
+    tx.recordCheck(
+      "execution_boundary",
+      "FAIL",
+      rejections.slice(0, 3).map((r) => `${r.operation} ${r.path ?? ""}: ${r.reason}`).join("; ")
+    );
+  }
+  let verification = null;
+  if (args.verifySource && rejections.length === 0 && !args.cancelled()) {
+    const tree = tx.proposedTree();
+    const changed = tree.filter((f) => base.get(f.path) !== f.content).map((f) => f.path);
+    if (changed.length > 0) {
+      try {
+        verification = await args.verifySource(tree, changed);
+      } catch (e) {
+        verification = {
+          status: "UNVERIFIED",
+          gates: [],
+          failedGate: null,
+          reason: `source verification could not run: ${e instanceof Error ? e.message : String(e)}`,
+          repairTargets: []
+        };
+      }
+      for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
+      if (verification.status === "FAILED") {
+        tx.recordCheck("source_verification", "FAIL", verification.reason ?? "source verification failed");
+        for (const p of verification.repairTargets.length ? verification.repairTargets : [void 0]) {
+          rejections.push({
+            operation: "commit",
+            path: p,
+            reason: "validation_failed",
+            stage: "source_verification",
+            gate: verification.failedGate ?? void 0,
+            detail: verification.reason ?? `${verification.failedGate} failed`,
+            recoverable: true,
+            next: "repair the named file(s) and retry"
+          });
+        }
+      } else if (verification.status === "UNVERIFIED") {
+        tx.recordCheck("source_verification", "FAIL", `unverified: ${verification.reason ?? "check could not complete"}`);
+        rejections.push({
+          operation: "commit",
+          reason: "unverified",
+          stage: "source_verification",
+          gate: verification.gates.find((g) => g.verdict !== "PASS" && g.verdict !== "WARNING")?.gate,
+          detail: verification.reason ?? "source verification could not complete",
+          recoverable: true,
+          next: "retry when the checker is available"
+        });
+      }
+    }
+  }
+  if (args.cancelled()) args.ledger.cancel();
+  const outcome = tx.commit();
+  if (outcome.status === "rolled_back" && rejections.length === 0) {
+    rejections.push({
+      operation: "commit",
+      reason: outcome.reason === "cancelled" ? "cancelled" : outcome.reason === "no changes" ? "no_changes" : "validation_failed",
+      detail: outcome.reason,
+      recoverable: outcome.reason !== "cancelled",
+      next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry"
+    });
+  }
+  return { outcome, rejections, noOps, verification };
+}
+var init_commit = __esm({
+  "src/server/execution/commit.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_transaction();
+  }
+});
+
+// src/server/execution/index.ts
+var execution_exports = {};
+__export(execution_exports, {
+  TURN_LIMITS: () => TURN_LIMITS,
+  TurnLedger: () => TurnLedger,
+  TurnTransaction: () => TurnTransaction,
+  blocksCommit: () => blocksCommit,
+  buildExecutionScope: () => buildExecutionScope,
+  classifyEditFacet: () => classifyEditFacet,
+  classifyRequest: () => classifyRequest,
+  commitTurn: () => commitTurn,
+  renderScopeBlock: () => renderScopeBlock,
+  shouldRepair: () => shouldRepair,
+  toVerdict: () => toVerdict
+});
+var init_execution = __esm({
+  "src/server/execution/index.ts"() {
+    init_define_import_meta_env();
+    init_classify();
+    init_scope();
+    init_verdict();
+    init_ledger();
+    init_transaction();
+    init_commit();
   }
 });
 
@@ -143228,7 +143704,7 @@ function selectContext(request, manifest, opts = {}) {
   };
   for (const t of opts.explicitTargets ?? []) add(t, "resolved target", primary);
   if (primary.length === 0) {
-    for (const [type, re] of PAGE_WORDS) {
+    for (const [type, re] of PAGE_WORDS2) {
       if (!re.test(request)) continue;
       for (const pg of manifest.pages.filter((p) => p.type === type)) add(pg.path, `page type ${type}`, primary);
       if (type === "home" && manifest.appMap.entry && !manifest.pages.some((p) => p.type === "home")) {
@@ -143259,7 +143735,7 @@ function selectContext(request, manifest, opts = {}) {
     reasons
   };
 }
-var RE, PAGE_WORDS, GENERIC;
+var RE, PAGE_WORDS2, GENERIC;
 var init_select = __esm({
   "src/server/context/select.ts"() {
     "use strict";
@@ -143273,7 +143749,7 @@ var init_select = __esm({
       deployment: /\b(publish|deploy|domain|go live|launch|seo|hosting)\b/i,
       forms: /\b(form|input|field|submit|contact|newsletter|sign ?up)\b/i
     };
-    PAGE_WORDS = [
+    PAGE_WORDS2 = [
       ["home", /\b(home ?page|homepage|landing|home|hero)\b/i],
       ["auth", /\b(log ?in|sign ?(in|up)|register|auth|password)\b/i],
       ["dashboard", /\b(dashboard|admin|analytics)\b/i],
@@ -143286,47 +143762,6 @@ var init_select = __esm({
       ["legal", /\b(privacy|terms)\b/i]
     ];
     GENERIC = /* @__PURE__ */ new Set(["section", "page", "component", "block", "view", "screen", "container", "wrapper"]);
-  }
-});
-
-// src/server/context/budget.ts
-function applyContextBudget2(sections, budgetTokens) {
-  const perSection = {};
-  for (const s of sections) perSection[s.id] = estimateTokens(s.text);
-  let total = sections.reduce((n, s) => n + perSection[s.id], 0);
-  const dropped = [];
-  const drop = /* @__PURE__ */ new Set();
-  const candidates = sections.filter((s) => s.priority !== "required" && s.text).sort((a2, b) => RANK[b.priority] - RANK[a2.priority] || perSection[b.id] - perSection[a2.id]);
-  for (const s of candidates) {
-    if (total <= budgetTokens) break;
-    drop.add(s.id);
-    dropped.push(s.id);
-    total -= perSection[s.id];
-  }
-  return {
-    kept: sections.filter((s) => !drop.has(s.id)),
-    dropped,
-    tokens: total,
-    budget: budgetTokens,
-    perSection,
-    overRequired: total > budgetTokens
-  };
-}
-var RANK;
-var init_budget = __esm({
-  "src/server/context/budget.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    init_prompt_budget_server();
-    RANK = {
-      required: 0,
-      "project-state": 1,
-      design: 2,
-      memory: 3,
-      skills: 4,
-      history: 5,
-      inference: 6
-    };
   }
 });
 
@@ -143419,13 +143854,16 @@ var context_exports = {};
 __export(context_exports, {
   DESIGN_KNOWLEDGE: () => DESIGN_KNOWLEDGE,
   PRECEDENCE: () => PRECEDENCE2,
-  applyContextBudget: () => applyContextBudget2,
+  applyContextBudget: () => applyContextBudget,
   assembleProjectContext: () => assembleProjectContext,
+  budgetMessages: () => budgetMessages,
   buildProjectManifest: () => buildProjectManifest,
+  carriesConstraint: () => carriesConstraint,
   classifyMemory: () => classifyMemory,
   classifyPage: () => classifyPage,
   detectContextFlags: () => detectContextFlags,
   detectSiteCategory: () => detectSiteCategory,
+  estimateMessagesTokens: () => estimateMessagesTokens,
   extractDesignIntel: () => extractDesignIntel,
   outranks: () => outranks,
   renderDesignIntel: () => renderDesignIntel,
@@ -143660,463 +144098,6 @@ var init_screen_target_server = __esm({
       navbar: ["nav", "siteheader", "header"],
       header: ["siteheader", "header", "nav"]
     };
-  }
-});
-
-// src/server/execution/classify.ts
-function classifyRequest(request, opts) {
-  const r = request || "";
-  const direct2 = (operation, reason) => ({ operation, planRequired: false, mode: "direct", reason });
-  if (opts.isInitial) return { operation: "first_build", planRequired: false, mode: "staged", reason: "no project yet" };
-  if (opts.isRepairTurn || R.repair.test(r) && !R.newPage.test(r)) return direct2("repair", "defect reported");
-  if (R.arch.test(r)) return { operation: "architectural_change", planRequired: true, mode: "staged", reason: "reaches across the app" };
-  if (R.newPage.test(r)) return { operation: "page_creation", planRequired: false, mode: "staged", reason: "new page requested" };
-  if (R.dep.test(r)) return direct2("dependency_change", "dependency/config words");
-  if (R.asset.test(r)) return direct2("asset_change", "imagery words");
-  if (R.func.test(r)) return direct2("functionality_change", "behaviour words");
-  if (R.content.test(r)) return direct2("content_change", "copy words");
-  if (R.style.test(r)) return direct2("styling_change", "visual words");
-  const pageHit = opts.manifest?.pages.some((p) => r.toLowerCase().includes(p.type)) ?? false;
-  if (pageHit) return direct2("page_modification", "names a page");
-  return direct2("component_modification", "default targeted edit");
-}
-var R;
-var init_classify = __esm({
-  "src/server/execution/classify.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    R = {
-      repair: /\b(fix|broken|error|crash|not working|doesn'?t work|blank|bug|failed)\b/i,
-      newPage: /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(page|screen|route)s?\b/i,
-      arch: /\b(redesign|rebuild|restructure|refactor|entire|whole (site|app)|every page|all pages|across the (site|app)|migrate|convert to)\b/i,
-      dep: /\b(install|package|dependency|library|npm|upgrade|config(uration)?|env(ironment)?)\b/i,
-      asset: /\b(image|photo|picture|logo|icon|illustration|favicon|video|background image)\b/i,
-      style: /\b(colou?r|font|size|bigger|smaller|bold|spacing|padding|margin|rounded|shadow|style|dark|light|theme|align|layout|look)\b/i,
-      content: /\b(text|copy|headline|heading|title|wording|rename|say|typo|label|paragraph|description)\b|["“][^"”]{2,}["”]/i,
-      func: /\b(button (that|to)|click|submit|form|login|sign ?(in|up)|search|filter|sort|save|cart|checkout|toggle|modal|api|fetch|validate|works?)\b/i
-    };
-  }
-});
-
-// src/server/execution/scope.ts
-function constraintsFrom(request) {
-  const out = [];
-  for (const m of request.matchAll(/\b(?:don'?t|do not|never|keep|leave|without)\b[^.!?\n]{3,80}/gi)) out.push(m[0].trim());
-  return out.slice(0, 6);
-}
-function buildExecutionScope(args) {
-  const { request, classification, manifest } = args;
-  const targets = Array.from(new Set(args.targets));
-  const neighbours = (args.neighbours ?? []).filter((p) => !targets.includes(p));
-  const pagesSet = new Set(manifest?.pages.map((p) => p.path) ?? []);
-  const wide = classification.operation === "first_build" || classification.operation === "architectural_change" || classification.operation === "page_creation" || targets.length === 0;
-  const chromeNamed = CHROME_WORDS.test(request);
-  const reason = (p) => {
-    if (wide || targets.includes(p)) return null;
-    if (CHROME_RE.test(p) && !chromeNamed) return "shared navigation/layout was not part of this request";
-    if (pagesSet.has(p) && !neighbours.includes(p)) return "a different page than the one requested";
-    return null;
-  };
-  const protectedAreas = wide ? [] : [
-    ...chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l)),
-    ...[...pagesSet].filter((p) => !targets.includes(p) && !neighbours.includes(p))
-  ];
-  return {
-    operation: classification.operation,
-    outcome: request.trim().slice(0, 300),
-    affectedPages: targets.filter((t) => pagesSet.has(t)),
-    affectedComponents: targets.filter((t) => !pagesSet.has(t)),
-    affectedFiles: [...targets, ...neighbours],
-    constraints: constraintsFrom(request),
-    protectedAreas,
-    acceptance: [
-      "the requested outcome is visible in the changed files",
-      "every changed file compiles",
-      ...protectedAreas.length ? ["protected areas are byte-identical"] : []
-    ],
-    isProtected: (p) => reason(p) !== null,
-    protectionReason: reason
-  };
-}
-function renderScopeBlock(s) {
-  if (!s.protectedAreas.length && !s.constraints.length) return "";
-  const lines = ["\n\nEXECUTION SCOPE (enforced \u2014 writes outside it are rejected):", `- Operation: ${s.operation}`];
-  if (s.affectedFiles.length) lines.push(`- May change: ${s.affectedFiles.join(", ")}`);
-  if (s.protectedAreas.length) lines.push(`- Protected (do not touch): ${s.protectedAreas.slice(0, 12).join(", ")}`);
-  if (s.constraints.length) lines.push(`- User constraints: ${s.constraints.join(" | ")}`);
-  lines.push("- A new file is allowed only when a changed file imports it.");
-  return lines.join("\n");
-}
-var CHROME_RE, CHROME_WORDS;
-var init_scope = __esm({
-  "src/server/execution/scope.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    CHROME_RE = /(Layout|Header|Footer|Nav(bar)?|SiteNav|Shell|Sidebar)\.(t|j)sx$/;
-    CHROME_WORDS = /\b(nav|navbar|navigation|menu|header|footer|layout|sidebar|site-?wide|every page|all pages)\b/i;
-  }
-});
-
-// src/server/execution/verdict.ts
-function toVerdict(state) {
-  switch (state) {
-    case "passed":
-    case "ok":
-      return "PASS";
-    case "failed":
-    case "error":
-      return "FAIL";
-    case "unavailable":
-    case "timeout":
-      return "UNAVAILABLE";
-    case "warning":
-      return "WARNING";
-    default:
-      return "UNKNOWN";
-  }
-}
-function shouldRepair(v) {
-  return v === "FAIL";
-}
-function blocksCommit(v) {
-  return v === "FAIL";
-}
-var init_verdict = __esm({
-  "src/server/execution/verdict.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-  }
-});
-
-// src/server/execution/ledger.ts
-var TURN_LIMITS, TurnLedger;
-var init_ledger = __esm({
-  "src/server/execution/ledger.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    TURN_LIMITS = {
-      ai_call: 12,
-      read: 80,
-      write: 40,
-      delete: 10,
-      dependency: 6,
-      repair: 3,
-      build: 2,
-      browser: 1
-    };
-    TurnLedger = class {
-      constructor(limits = TURN_LIMITS) {
-        this.limits = limits;
-      }
-      limits;
-      counts = /* @__PURE__ */ new Map();
-      reads = /* @__PURE__ */ new Set();
-      events = [];
-      writer = null;
-      cancelled = false;
-      committed = false;
-      cancel() {
-        this.cancelled = true;
-      }
-      /** Claim the turn for one writer. A second writer is refused. */
-      claimWriter(id) {
-        if (this.writer && this.writer !== id) return false;
-        this.writer = id;
-        return true;
-      }
-      use(kind, purpose, target, writer) {
-        const refuse = (refusal) => {
-          this.events.push({ kind, target, purpose, ok: false, refusal });
-          return { ok: false, refusal };
-        };
-        if (this.cancelled) return refuse("cancelled");
-        if (this.committed && kind !== "read") return refuse("committed");
-        if ((kind === "write" || kind === "delete") && writer && !this.claimWriter(writer)) return refuse("foreign_writer");
-        if (kind === "read" && target) {
-          if (this.reads.has(target)) return refuse("duplicate_read");
-        }
-        const n = this.counts.get(kind) ?? 0;
-        if (n >= this.limits[kind]) return refuse("limit");
-        this.counts.set(kind, n + 1);
-        if (kind === "read" && target) this.reads.add(target);
-        this.events.push({ kind, target, purpose, ok: true });
-        return { ok: true };
-      }
-      /** Write discipline: refuse a write whose bytes equal the current file. */
-      write(path, next, current2, purpose, writer) {
-        if (current2 !== void 0 && current2 === next) {
-          this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "no_op_write" });
-          return { ok: false, refusal: "no_op_write" };
-        }
-        return this.use("write", purpose, path, writer);
-      }
-      count(kind) {
-        return this.counts.get(kind) ?? 0;
-      }
-      summary() {
-        return {
-          counts: Object.fromEntries(this.counts),
-          refusals: this.events.filter((e) => !e.ok).map((e) => `${e.kind}:${e.refusal}${e.target ? `:${e.target}` : ""}`).slice(0, 30),
-          filesRead: [...this.reads].slice(0, 40),
-          filesWritten: this.events.filter((e) => e.ok && e.kind === "write").map((e) => e.target).slice(0, 40),
-          cancelled: this.cancelled,
-          committed: this.committed
-        };
-      }
-    };
-  }
-});
-
-// src/server/execution/transaction.ts
-var TurnTransaction;
-var init_transaction = __esm({
-  "src/server/execution/transaction.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    init_verdict();
-    TurnTransaction = class {
-      constructor(baseline, ledger, writer = "primary") {
-        this.ledger = ledger;
-        this.writer = writer;
-        this.base = new Map(baseline.map((f) => [f.path, f.content]));
-      }
-      ledger;
-      writer;
-      base;
-      staged = /* @__PURE__ */ new Map();
-      verdicts = [];
-      done = false;
-      /**
-       * Stage one file. `system: true` marks Kimble-managed files (scaffold kit,
-       * housekeeping) — they are staged atomically with the turn but do not
-       * consume the model's write budget. No-op writes are refused either way.
-       */
-      stage(path, content, purpose = "requested change", opts) {
-        if (this.done) return false;
-        const current2 = this.staged.has(path) ? this.staged.get(path) ?? void 0 : this.base.get(path);
-        if (this.ledger && !opts?.system) {
-          const r = this.ledger.write(path, content, current2, purpose, this.writer);
-          if (!r.ok) return false;
-        } else if (current2 === content) return false;
-        this.staged.set(path, content);
-        return true;
-      }
-      /** The complete proposed project tree (baseline + staged), uncommitted. */
-      proposedTree() {
-        const next = new Map(this.base);
-        for (const [p, c] of this.staged) {
-          if (c === null) next.delete(p);
-          else next.set(p, c);
-        }
-        return [...next].map(([path, content]) => ({ path, content }));
-      }
-      remove(path, opts) {
-        if (this.done || !this.base.has(path)) return false;
-        if (this.ledger && !opts?.system && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
-        this.staged.set(path, null);
-        return true;
-      }
-      recordCheck(check, verdict, detail) {
-        this.verdicts.push({ check, verdict, detail });
-      }
-      checks() {
-        return [...this.verdicts];
-      }
-      baseline() {
-        return [...this.base].map(([path, content]) => ({ path, content }));
-      }
-      rollback(reason) {
-        this.done = true;
-        this.staged.clear();
-        return { status: "rolled_back", files: this.baseline(), reason };
-      }
-      commit() {
-        if (this.done) return { status: "rolled_back", files: this.baseline(), reason: "already finished" };
-        if (this.ledger?.cancelled) return this.rollback("cancelled");
-        const failed = this.verdicts.find((v) => blocksCommit(v.verdict));
-        if (failed) return this.rollback(`${failed.check} failed${failed.detail ? `: ${failed.detail}` : ""}`);
-        if (this.staged.size === 0) return this.rollback("no changes");
-        const next = new Map(this.base);
-        for (const [p, c] of this.staged) {
-          if (c === null) next.delete(p);
-          else next.set(p, c);
-        }
-        this.done = true;
-        if (this.ledger) this.ledger.committed = true;
-        return {
-          status: "committed",
-          files: [...next].map(([path, content]) => ({ path, content })),
-          changed: [...this.staged.keys()]
-        };
-      }
-    };
-  }
-});
-
-// src/server/execution/commit.ts
-async function commitTurn(args) {
-  const tx = new TurnTransaction(args.baseline, args.ledger);
-  const base = new Map(args.baseline.map((f) => [f.path, f.content]));
-  const next = /* @__PURE__ */ new Map();
-  for (const f of args.proposed) {
-    const p = f.path.trim();
-    if (p) next.set(p, f.content ?? "");
-  }
-  const rejections = [];
-  const noOps = [];
-  const refusalReason = () => {
-    const last = args.ledger.summary().refusals.at(-1) ?? "";
-    if (last.includes(":limit")) return "limit";
-    if (last.includes(":foreign_writer")) return "foreign_writer";
-    if (last.includes(":cancelled")) return "cancelled";
-    return "other";
-  };
-  for (const [path, content] of next) {
-    const system = args.isSystemPath(path);
-    if (base.get(path) === content) continue;
-    if (!system) {
-      const why = args.protectionReason(path);
-      if (why) {
-        rejections.push({
-          operation: "write",
-          path,
-          reason: "scope_violation",
-          detail: why,
-          recoverable: true,
-          next: "retry without changing this file, or name it explicitly in the request"
-        });
-        continue;
-      }
-    }
-    if (!tx.stage(path, content, "turn change", { system })) {
-      const reason = refusalReason();
-      rejections.push({
-        operation: "write",
-        path,
-        reason,
-        detail: `write refused (${reason})`,
-        recoverable: reason === "limit",
-        next: reason === "limit" ? "split the request into smaller steps" : "stop"
-      });
-    }
-  }
-  for (const path of base.keys()) {
-    if (next.has(path)) continue;
-    if (!args.isSystemPath(path) && args.protectionReason(path)) {
-      rejections.push({
-        operation: "delete",
-        path,
-        reason: "scope_violation",
-        detail: args.protectionReason(path),
-        recoverable: true,
-        next: "retry without removing this file"
-      });
-      continue;
-    }
-    if (!tx.remove(path, { system: args.isSystemPath(path) })) {
-      const reason = refusalReason();
-      rejections.push({ operation: "delete", path, reason, detail: `delete refused (${reason})`, recoverable: reason === "limit", next: "stop" });
-    }
-  }
-  for (const r of args.ledger.summary().refusals) {
-    if (r.startsWith("write:no_op_write:")) noOps.push(r.slice("write:no_op_write:".length));
-  }
-  for (const c of args.checks) tx.recordCheck(c.check, c.verdict, c.detail);
-  if (rejections.length) {
-    tx.recordCheck(
-      "execution_boundary",
-      "FAIL",
-      rejections.slice(0, 3).map((r) => `${r.operation} ${r.path ?? ""}: ${r.reason}`).join("; ")
-    );
-  }
-  let verification = null;
-  if (args.verifySource && rejections.length === 0 && !args.cancelled()) {
-    const tree = tx.proposedTree();
-    const changed = tree.filter((f) => base.get(f.path) !== f.content).map((f) => f.path);
-    if (changed.length > 0) {
-      try {
-        verification = await args.verifySource(tree, changed);
-      } catch (e) {
-        verification = {
-          status: "UNVERIFIED",
-          gates: [],
-          failedGate: null,
-          reason: `source verification could not run: ${e instanceof Error ? e.message : String(e)}`,
-          repairTargets: []
-        };
-      }
-      for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
-      if (verification.status === "FAILED") {
-        for (const p of verification.repairTargets.length ? verification.repairTargets : [void 0]) {
-          rejections.push({
-            operation: "commit",
-            path: p,
-            reason: "validation_failed",
-            stage: "source_verification",
-            gate: verification.failedGate ?? void 0,
-            detail: verification.reason ?? `${verification.failedGate} failed`,
-            recoverable: true,
-            next: "repair the named file(s) and retry"
-          });
-        }
-      } else if (verification.status === "UNVERIFIED") {
-        tx.recordCheck("source_verification", "FAIL", `unverified: ${verification.reason ?? "check could not complete"}`);
-        rejections.push({
-          operation: "commit",
-          reason: "unverified",
-          stage: "source_verification",
-          gate: verification.gates.find((g) => g.verdict !== "PASS" && g.verdict !== "WARNING")?.gate,
-          detail: verification.reason ?? "source verification could not complete",
-          recoverable: true,
-          next: "retry when the checker is available"
-        });
-      }
-    }
-  }
-  if (args.cancelled()) args.ledger.cancel();
-  const outcome = tx.commit();
-  if (outcome.status === "rolled_back" && rejections.length === 0) {
-    rejections.push({
-      operation: "commit",
-      reason: outcome.reason === "cancelled" ? "cancelled" : outcome.reason === "no changes" ? "no_changes" : "validation_failed",
-      detail: outcome.reason,
-      recoverable: outcome.reason !== "cancelled",
-      next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry"
-    });
-  }
-  return { outcome, rejections, noOps, verification };
-}
-var init_commit = __esm({
-  "src/server/execution/commit.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    init_transaction();
-  }
-});
-
-// src/server/execution/index.ts
-var execution_exports = {};
-__export(execution_exports, {
-  TURN_LIMITS: () => TURN_LIMITS,
-  TurnLedger: () => TurnLedger,
-  TurnTransaction: () => TurnTransaction,
-  blocksCommit: () => blocksCommit,
-  buildExecutionScope: () => buildExecutionScope,
-  classifyRequest: () => classifyRequest,
-  commitTurn: () => commitTurn,
-  renderScopeBlock: () => renderScopeBlock,
-  shouldRepair: () => shouldRepair,
-  toVerdict: () => toVerdict
-});
-var init_execution = __esm({
-  "src/server/execution/index.ts"() {
-    init_define_import_meta_env();
-    init_classify();
-    init_scope();
-    init_verdict();
-    init_ledger();
-    init_transaction();
-    init_commit();
   }
 });
 
@@ -145881,7 +145862,7 @@ function selectSkills(ctx) {
   const room = ctx.scope === "micro" ? 2 : MAX_SKILLS;
   const wants = [
     [ctx.isInitial || ctx.isCrossCutting || has2("layout") || has2("visual"), "page-composition"],
-    [ctx.isInitial || has2("visual") || VISUAL_RE2.test(text), "typography-color"],
+    [ctx.isInitial || has2("visual") || VISUAL_RE.test(text), "typography-color"],
     [ctx.isInitial || has2("content") || IMAGE_RE.test(text), "imagery"],
     [ctx.isInitial || has2("copy") || COPY_RE.test(text), "copy-honesty"],
     [MOTION_RE.test(text) || has2("motion"), "motion"],
@@ -145925,13 +145906,13 @@ function renderSkillsForTurn(ctx) {
     ids: skills.map((s) => s.id)
   };
 }
-var VISUAL_RE2, COPY_RE, IMAGE_RE, MOTION_RE, FORM_RE, SEO_RE, MAX_SKILLS;
+var VISUAL_RE, COPY_RE, IMAGE_RE, MOTION_RE, FORM_RE, SEO_RE, MAX_SKILLS;
 var init_skills = __esm({
   "src/server/skills/index.ts"() {
     init_define_import_meta_env();
     init_catalog();
     init_catalog();
-    VISUAL_RE2 = /\b(design|look|style|colou?r|font|type|theme|layout|spacing|hero|section|redesign|beautiful|modern|ugly)\b/i;
+    VISUAL_RE = /\b(design|look|style|colou?r|font|type|theme|layout|spacing|hero|section|redesign|beautiful|modern|ugly)\b/i;
     COPY_RE = /\b(copy|text|wording|headline|title|label|says?|rename|rewrite|tagline|message)\b/i;
     IMAGE_RE = /\b(image|images|photo|photos|picture|pictures|icon|icons|logo|illustration|banner)\b/i;
     MOTION_RE = /\b(animate|animation|motion|transition|hover|scroll|fade|slide|parallax)\b/i;
@@ -146108,7 +146089,7 @@ async function repairBrokenFile(file, detail, meta) {
       max_tokens: Math.min(12e3, Math.max(3e3, Math.ceil(file.content.length / 2.5))),
       temperature: 0.1,
       messages: [
-        { role: "system", content: SYSTEM5 },
+        { role: "system", content: SYSTEM4 },
         { role: "user", content: buildRepairUserMessage(file, detail, meta?.turnContext ?? null) }
       ]
     }
@@ -146118,14 +146099,14 @@ async function repairBrokenFile(file, detail, meta) {
   const out = stripFences2(data.choices?.[0]?.message?.content ?? "");
   return out.trim() ? out : null;
 }
-var SYSTEM5;
+var SYSTEM4;
 var init_repair = __esm({
   "src/server/engine/repair.ts"() {
     init_define_import_meta_env();
     init_ai_provider_server();
     init_build_state();
     init_ai_model_config();
-    SYSTEM5 = "You fix one source file that fails to compile. Return ONLY the complete corrected file contents \u2014 no markdown fences, no commentary. Keep the file's purpose, content, exports and imports; change only what is needed to fix the error.";
+    SYSTEM4 = "You fix one source file that fails to compile. Return ONLY the complete corrected file contents \u2014 no markdown fences, no commentary. Keep the file's purpose, content, exports and imports; change only what is needed to fix the error.";
   }
 });
 
@@ -146208,9 +146189,13 @@ function dependencyGate(files) {
   if (undeclared.size) return gate("dependencies", "WARNING", [`packages added at build time: ${[...undeclared].slice(0, 8).join(", ")}`]);
   return gate("dependencies", "PASS");
 }
-function routesGate(files, requestedRoutes) {
+function routesGate(files, requestedRoutes, opts = {}) {
   const reasons = [];
   const bad = [];
+  if (opts.requireShell && !frameIsComplete(files, requestedRoutes.length)) {
+    reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation and footer)");
+    bad.push("src/App.tsx");
+  }
   const completeness = assessCompleteness({ requestedRoutes, files });
   if (!completeness.complete) {
     reasons.push(`missing requested: ${completeness.missingRoutes.join(", ")}`);
@@ -146287,7 +146272,11 @@ function finalizeVerification(results, kind = "web") {
   return { status: "READY", gates: ordered, failedGate: null, reason: null, repairTargets: [] };
 }
 function runSourceGates(args) {
-  return [syntaxGate(args.esbuild), dependencyGate(args.files), routesGate(args.files, args.requestedRoutes)];
+  return [
+    syntaxGate(args.esbuild),
+    dependencyGate(args.files),
+    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell })
+  ];
 }
 function guardCleanup(before, after, allowed) {
   const ok = new Set(allowed);
@@ -146323,6 +146312,7 @@ var init_gates = __esm({
     init_verdict();
     init_app_map();
     init_build_state();
+    init_write();
     GATE_ORDER = ["syntax", "dependencies", "routes", "build", "browser"];
     MAX_REPAIR_TARGETS = 3;
     gate = (g, verdict, reasons = [], paths = []) => ({
@@ -146560,7 +146550,7 @@ async function runCompletenessPass(args) {
       body: {
         model: args.model,
         messages: [
-          { role: "system", content: SYSTEM6 },
+          { role: "system", content: SYSTEM5 },
           {
             role: "user",
             content: `Original request:
@@ -146603,13 +146593,13 @@ ${f.content}`).join("\n\n")}`
     return idle;
   }
 }
-var SYSTEM6;
+var SYSTEM5;
 var init_edit_audit_server = __esm({
   "src/server/edit-audit.server.ts"() {
     init_define_import_meta_env();
     init_ai_provider_server();
     init_generate_server();
-    SYSTEM6 = `You are Kimble finishing an edit that was only partly completed.
+    SYSTEM5 = `You are Kimble finishing an edit that was only partly completed.
 
 You receive the user's original request, the parts that are still MISSING, and the current contents of the files most likely to own them.
 
@@ -146630,7 +146620,7 @@ __export(source_server_exports, {
 async function verifyProposedSource(args) {
   const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
   const esbuild2 = await verifyFilesEsbuild(args.tree, parseable);
-  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: esbuild2 }));
+  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: esbuild2, requireShell: args.requireShell }));
 }
 var init_source_server = __esm({
   "src/server/verification/source.server.ts"() {
@@ -147918,46 +147908,8 @@ function dropUnusableFiles(files) {
   return { files: kept, dropped: files.length - kept.length };
 }
 
-// src/server/intent-targets.server.ts
-init_define_import_meta_env();
-var CROSS_CUTTING_REGEXES = [
-  /\b(mobile\s*-?\s*(responsive|friendly|first)|responsive\s+(design|layout|site|app)|make\s+(it|the\s+site|the\s+app|everything)\s+(mobile|responsive))\b/i,
-  /\b(across|every|all)\s+(pages?|routes?|screens?|forms?|sections?|components?)\b/i,
-  // "the entire website design", "the whole app", "the full landing page" —
-  // any broad surface noun, not just the four page synonyms we used to list.
-  /\b(entire|whole|full|complete)\s+(website|web\s?site|webpage|web\s?page|site|app|application|ui|design|look|theme|landing\s*page|home\s*page|homepage|front\s*page|main\s*page)\b/i,
-  /\b(site\s*-?\s*wide|app\s*-?\s*wide|app-wide|sitewide|whole\s+(site|app))\b/i,
-  /\b(redesign|rework|revamp|refresh|redo|remake|rebuild|restyle|re-?theme|overhaul|refactor)\s+(the\s+)?(site|website|app|whole|entire|everything|design|look|theme|style|layout|ui|colou?rs?|landing\s*page|home\s*page|homepage|front\s*page|main\s*page)\b/i,
-  // Plain verbs users actually type: "change the design", "update the whole
-  // look", "give the site a new style". These are redesigns, not tweaks.
-  /\b(change|update|switch|swap|give|make)\s+(the\s+|it\s+|us\s+)?(a\s+|an\s+)?(new\s+|different\s+|fresh\s+|entire\s+|whole\s+)?(website|site|app)?\s*(design|theme|look(\s+and\s+feel)?|style|colou?r\s*(scheme|palette)|palette|branding|vibe|aesthetic)\b/i,
-  /\b(every|all)\s+(page|route|screen|form|component)\b/i,
-  /\b(global|globally)\s+(change|update|fix|apply|restyle)\b/i,
-  /\b(tighten|fix|improve|polish)\s+(the\s+)?(spacing|typography|layout|design)\s+(everywhere|across|on\s+all)\b/i
-];
-function detectCrossCuttingIntent(prompt) {
-  if (!prompt) return false;
-  const text = prompt.slice(0, 4e3);
-  return CROSS_CUTTING_REGEXES.some((re) => re.test(text));
-}
-function isAppOwned(path) {
-  if (path.startsWith("src/components/ui/")) return false;
-  if (path.startsWith("src/components/blocks/")) return false;
-  if (path.startsWith("src/components/examples/")) return false;
-  if (path.startsWith("src/components/mobile/")) return false;
-  if (path.startsWith("src/integrations/")) return false;
-  return true;
-}
-function pickPinnedPaths(files) {
-  const pinned = /* @__PURE__ */ new Set();
-  for (const f of files) {
-    if (!isAppOwned(f.path)) continue;
-    if (f.path === "src/App.tsx" || f.path === "src/main.tsx" || f.path === "src/styles.css" || f.path === "tailwind.config.ts" || f.path === "tailwind.config.js" || f.path.startsWith("src/pages/") || f.path.startsWith("src/routes/") || f.path.startsWith("src/components/") && /\.(tsx|jsx)$/.test(f.path)) {
-      pinned.add(f.path);
-    }
-  }
-  return Array.from(pinned);
-}
+// src/routes/api/generate.ts
+init_intent_targets_server();
 
 // src/server/edit-intent.server.ts
 init_define_import_meta_env();
@@ -148486,7 +148438,10 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 init_define_import_meta_env();
 
 // src/server/builder.server.ts
+init_source_escape_fixer_server();
+init_import_syntax_fixer_server();
 init_jsx_attr_literal_fixer_server();
+init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -149952,6 +149907,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -167119,121 +167075,8 @@ async function recordAiOutcome(args) {
   }
 }
 
-// src/server/context-budget.server.ts
-init_define_import_meta_env();
-var SAFE_INPUT_TOKENS = {
-  // DeepSeek V4 Flash: 1M context, capped to keep tool-call discipline.
-  "deepseek/deepseek-v4-flash": 2e5,
-  // GPT-5 family: 400K context window; safe input ~250K leaves room for output.
-  "openai/gpt-5": 25e4,
-  "openai/gpt-5-mini": 2e5,
-  "openai/gpt-5-nano": 1e5,
-  "openai/gpt-5.2": 25e4
-};
-var LARGER_CONTEXT_ALTERNATIVE = {
-  "openai/gpt-5-mini": "deepseek/deepseek-v4-flash",
-  "openai/gpt-5-nano": "openai/gpt-5-mini"
-};
-var DEFAULT_SAFE_INPUT = 1e5;
-var PER_MESSAGE_OVERHEAD_TOKENS = 4;
-function partLength(part) {
-  if (typeof part === "string") return part.length;
-  let total = 0;
-  for (const p of part) {
-    if (p.type === "text" && p.text) total += p.text.length;
-    if (p.type === "image_url") total += 1500 * 4;
-  }
-  return total;
-}
-function estimateMessageTokens(m) {
-  return Math.ceil(partLength(m.content) / 4) + PER_MESSAGE_OVERHEAD_TOKENS;
-}
-function estimateMessagesTokens(messages) {
-  let sum = 0;
-  for (const m of messages) sum += estimateMessageTokens(m);
-  return sum;
-}
-function safeInputTokensFor(model) {
-  return SAFE_INPUT_TOKENS[model] ?? DEFAULT_SAFE_INPUT;
-}
-function applyContextBudget(messages, model) {
-  const safe = safeInputTokensFor(model);
-  const estimated = estimateMessagesTokens(messages);
-  if (estimated <= safe) {
-    return {
-      estimatedTokens: estimated,
-      safeInputTokens: safe,
-      overBudget: false,
-      messages,
-      modelOverride: null,
-      droppedCount: 0,
-      action: "none"
-    };
-  }
-  const upgrade2 = LARGER_CONTEXT_ALTERNATIVE[model];
-  if (upgrade2) {
-    const upgradeSafe = safeInputTokensFor(upgrade2);
-    if (estimated <= upgradeSafe) {
-      return {
-        estimatedTokens: estimated,
-        safeInputTokens: upgradeSafe,
-        overBudget: true,
-        messages,
-        modelOverride: upgrade2,
-        droppedCount: 0,
-        action: "model_upgrade"
-      };
-    }
-  }
-  const lastUserIdx = (() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") return i;
-    }
-    return messages.length - 1;
-  })();
-  const lastAssistantIdx = (() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return i;
-    }
-    return -1;
-  })();
-  const targetSafe = upgrade2 ? safeInputTokensFor(upgrade2) : safe;
-  const priorityOf = (m, i) => {
-    if (i === 0 || m.role === "system") return 0;
-    if (i === lastUserIdx) return 1;
-    if (m.role === "user" && carriesConstraint(m)) return 2;
-    if (i === lastAssistantIdx) return 3;
-    return 4;
-  };
-  const ranked = messages.map((m, i) => ({ m, i, p: priorityOf(m, i), t: estimateMessageTokens(m) })).sort((a2, b) => a2.p === b.p ? b.i - a2.i : a2.p - b.p);
-  const keep = /* @__PURE__ */ new Set();
-  let running = 0;
-  for (const r of ranked) {
-    const mandatory = r.p <= 1;
-    if (mandatory || running + r.t <= targetSafe) {
-      keep.add(r.i);
-      running += r.t;
-    }
-  }
-  const filtered = messages.filter((_, i) => keep.has(i));
-  const droppedCount = messages.length - filtered.length;
-  const finalEstimate = estimateMessagesTokens(filtered);
-  return {
-    estimatedTokens: finalEstimate,
-    safeInputTokens: targetSafe,
-    overBudget: true,
-    messages: filtered,
-    modelOverride: upgrade2 ?? null,
-    droppedCount,
-    action: upgrade2 ? "model_upgrade+truncate" : "truncate"
-  };
-}
-var CONSTRAINT_RE = /\b(always|never|don'?t|do not|must|make sure|remember|from now on|instead of|stop|i hate|i don'?t (like|want)|prefer|keep|use only|brand|our colou?rs?|font|logo|no (dark|light) mode)\b/i;
-function carriesConstraint(m) {
-  const text = typeof m.content === "string" ? m.content : m.content.filter((p) => p.type === "text" && p.text).map((p) => p.text).join(" ");
-  if (text.length > 2e3) return false;
-  return CONSTRAINT_RE.test(text);
-}
+// src/routes/api/generate.ts
+init_budget();
 
 // src/server/brief-expander.server.ts
 init_define_import_meta_env();
@@ -167394,6 +167237,7 @@ init_renderable_shell_server();
 
 // src/server/turn-cost-ceiling.server.ts
 init_define_import_meta_env();
+init_budget();
 var TURN_REPAIR_COST_CEILING_USD = 0.35;
 var TURN_REPAIR_COST_WARN_USD = 0.22;
 var BLENDED_RATE_PER_MTOK = {
@@ -168696,7 +168540,7 @@ async function relayAndCollect(upstream, controller, encoder) {
   let activeStep = 0;
   const PATH_RE = /"path"\s*:\s*"((?:\\.|[^"\\])*)"/g;
   const NARRATION_RE = /"narration"\s*:\s*"((?:\\.|[^"\\])*)"(?=\s*[,}])/g;
-  const CONTENT_RE2 = /"content"\s*:\s*"((?:\\.|[^"\\])*)"(?=\s*[,}])/g;
+  const CONTENT_RE = /"content"\s*:\s*"((?:\\.|[^"\\])*)"(?=\s*[,}])/g;
   const STEP_RE = /"step"\s*:\s*(\d+)/g;
   const partialSteps = () => {
     const m = tool.args.match(/"steps"\s*:\s*\[([\s\S]*?)(\]|$)/);
@@ -168905,9 +168749,9 @@ async function relayAndCollect(upstream, controller, encoder) {
               encoder.encode(sse({ type: "narration", path: owner, text: trimmed }))
             );
           }
-          CONTENT_RE2.lastIndex = 0;
+          CONTENT_RE.lastIndex = 0;
           let cm;
-          while ((cm = CONTENT_RE2.exec(tool.args)) !== null) {
+          while ((cm = CONTENT_RE.exec(tool.args)) !== null) {
             const contentEnd = cm.index;
             const contentBytes = cm[1].length;
             let owner;
@@ -170014,24 +169858,13 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   } catch {
   }
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
-  let editClassification = null;
-  if (!isInitial) {
-    try {
-      const { classifyEdit: classifyEdit2 } = await Promise.resolve().then(() => (init_edit_classifier_server(), edit_classifier_server_exports));
-      editClassification = await classifyEdit2({
-        prompt: lastUserContent,
-        projectPurpose: picContext?.understanding?.summary ?? resolvedPrd?.prd?.purpose ?? null,
-        fileCount: currentFiles.length,
-        projectId: body.projectId ?? null,
-        userId,
-        signal: request.signal
-      });
-      console.info(
-        `[edit-classifier] scope=${editClassification.scope} source=${editClassification.source} dims=${editClassification.dimensions.join(",")} \u2014 ${editClassification.reason}`
-      );
-    } catch (e) {
-      console.warn("[edit-classifier] skipped:", e instanceof Error ? e.message : String(e));
-    }
+  const { classifyRequest: classifyRequest2, buildExecutionScope: buildExecutionScope2, renderScopeBlock: renderScopeBlock2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
+  const turnClassification = classifyRequest2(lastUserContent || "", { isInitial });
+  const editClassification = turnClassification.edit;
+  if (editClassification) {
+    console.info(
+      `[classify] op=${turnClassification.operation} scope=${editClassification.scope} dims=${editClassification.dimensions.join(",")} cross=${turnClassification.crossCutting} \u2014 ${turnClassification.reason}`
+    );
   }
   const { extractChangeSet: extractChangeSet2, renderChangeSetBlock: renderChangeSetBlock2 } = await Promise.resolve().then(() => (init_change_set_server(), change_set_server_exports));
   const turnChangeSet = isInitial ? { items: [], preserve: [], multi: false } : extractChangeSet2(lastUserContent);
@@ -170089,7 +169922,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       `[change-set] ${turnChangeSet.items.length} requested change(s), ${turnChangeSet.preserve.length} preservation rule(s)`
     );
   }
-  const isCrossCutting = !isInitial && (detectCrossCuttingIntent(lastUserContent) || editClassification?.scope === "structural");
+  const isCrossCutting = turnClassification.crossCutting;
   let pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
   if (isCrossCutting) {
     console.info(
@@ -170217,15 +170050,9 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       console.warn("[impact-graph] skipped:", e instanceof Error ? e.message : String(e));
     }
   }
-  const { classifyRequest: classifyRequest2, buildExecutionScope: buildExecutionScope2, renderScopeBlock: renderScopeBlock2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
-  const turnClassification = classifyRequest2(lastUserContent || "", {
-    isInitial,
-    manifest: projectCtx.manifest,
-    targetCount: resolvedTargetPaths.length
-  });
   const executionScope = buildExecutionScope2({
     request: lastUserContent || "",
-    classification: isCrossCutting && turnClassification.operation !== "first_build" ? { ...turnClassification, operation: "architectural_change", mode: "staged" } : turnClassification,
+    classification: turnClassification,
     manifest: projectCtx.manifest,
     targets: resolvedTargetPaths,
     neighbours: impactNeighbourPaths
@@ -170662,15 +170489,14 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
     const at = Math.max(1, chatMessages.length - 1);
     chatMessages.splice(at, 0, { role: "system", content: webIntel.block });
   }
-  const budget = applyContextBudget(chatMessages, model);
-  if (budget.action !== "none") {
+  const budget = budgetMessages(
+    chatMessages,
+    promptTokenCeiling({ model, completionBudgetTokens: 16e3 })
+  );
+  if (budget.droppedCount > 0) {
     console.log(
-      `[context-budget] action=${budget.action} est=${budget.estimatedTokens} safe=${budget.safeInputTokens} dropped=${budget.droppedCount} model=${model}${budget.modelOverride ? ` \u2192 ${budget.modelOverride}` : ""}`
+      `[context-budget] history est=${budget.estimatedTokens} budget=${budget.budget} dropped=${budget.droppedCount} model=${model}`
     );
-    if (budget.modelOverride) {
-      model = budget.modelOverride;
-      chosenBy = `${chosenBy}+ctx_upgrade`;
-    }
   }
   let finalMessages = budget.messages;
   const directLogoEdit = !isInitial && isDirectLogoPlacementRequest(lastUserContent) ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent }) : null;
@@ -172702,7 +172528,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             return verifyProposedSource2({
               tree,
               changedPaths: changed,
-              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : []
+              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
+              requireShell: isInitial
             });
           }
         });
@@ -172878,11 +172705,11 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
         let scopeMissing = [];
         if (isInitial && nextFiles.length > 0) {
           const requested = requestedRoutesFor(lastUserText, plannedRoutes);
-          const verdict = assessCompleteness({ requestedRoutes: requested, files: nextFiles });
+          const verdict = txCommitted ? { complete: true, missingRoutes: [] } : assessCompleteness({ requestedRoutes: requested, files: nextFiles });
           scopeMissing = verdict.missingRoutes;
           {
             const { frameIsComplete: frameIsComplete2 } = await Promise.resolve().then(() => (init_write(), write_exports));
-            if (!frameIsComplete2(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
+            if (!txCommitted && !frameIsComplete2(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
               scopeMissing = ["app shell", ...scopeMissing];
               verdict.complete = false;
             }
