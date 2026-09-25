@@ -6811,6 +6811,9 @@ Forbidden defaults
             usage_missing: priced.usageMissing,
             clamped: priced.clamped,
             model,
+            // Reliability record for this turn. Counters only — never user
+            // content, prompts or secrets.
+            circuit_breaker: breaker.snapshot(),
           },
         });
 
