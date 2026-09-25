@@ -2596,7 +2596,9 @@ Forbidden defaults
   const userJwt = reqAuth?.startsWith("Bearer ") ? reqAuth.slice("Bearer ".length) : "";
   const memoryEntries =
     body.projectId && userJwt ? await loadProjectMemory(userJwt, body.projectId) : [];
-  const memoryBlock = renderMemoryBlock(memoryEntries);
+  // Replaced below by the precedence-resolved memory once the project
+  // manifest exists (source beats memory; the current request beats both).
+  let memoryBlock = renderMemoryBlock(memoryEntries);
 
   // PETAL.md / .petalrc — user-authored preservation rules. Optional.
   // Adds protected globs to the patch filter and injects free-text rules
@@ -2924,9 +2926,32 @@ Forbidden defaults
   // Deterministic App Map from the CURRENT files (never memory). The writer
   // and every repair in this turn see the same facts: router, entry, routes,
   // pages, shared layout, navigation.
-  const { buildAppMap, renderAppMapBlock, appMapFacts } = await import("@/server/engine/app-map");
-  const turnAppMap = isInitial ? null : buildAppMap(currentFiles);
-  const appMapBlock = turnAppMap ? renderAppMapBlock(turnAppMap) : "";
+  const { renderAppMapBlock, appMapFacts } = await import("@/server/engine/app-map");
+  // Project Context layer — deterministic manifest, design language,
+  // precedence-resolved memory and fail-closed section flags. No AI call.
+  const { assembleProjectContext } = await import("@/server/context");
+  const projectCtx = assembleProjectContext({
+    files: currentFiles,
+    request: lastUserContent || "",
+    isInitial,
+    memoryEntries,
+    manifestInputs: {
+      projectId: body.projectId ?? null,
+      backendKind: sharedBackend ? "shared" : backend ? "dedicated" : "none",
+    },
+  });
+  const turnAppMap = projectCtx.manifest?.appMap ?? null;
+  memoryBlock = projectCtx.memoryBlock;
+  {
+    const stale = projectCtx.memory.filter((m) => m.status !== "active");
+    if (stale.length) {
+      console.info(`[project-context] memory not applied: ${stale.map((m) => `${m.key}(${m.status}: ${m.reason})`).join("; ")}`);
+    }
+    console.info(`[project-context] flags=${JSON.stringify(projectCtx.flags)}`);
+  }
+  const appMapBlock = turnAppMap
+    ? renderAppMapBlock(turnAppMap) + projectCtx.structureBlock + projectCtx.designBlock
+    : "";
   const appMapRepairBlock = turnAppMap ? renderAppMapBlock(turnAppMap, 900).trim() : "";
   if (turnChangeSet.items.length > 1) {
     console.info(
