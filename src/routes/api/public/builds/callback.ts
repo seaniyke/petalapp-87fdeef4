@@ -259,8 +259,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
           ...(payload.verification ? { verification: { ...payload.verification, stale: true } as never } : {}),
         })
         .eq("id", payload.buildId);
-      // Billing is unchanged by staleness: a build that never shipped refunds.
-      if (payload.status === "failed") await refundRolledBackBuild(payload.projectId, payload.buildId);
+      // A stale result never triggers a refund on its own (build-outcome.ts).
       console.info(
         `[revision] stale build result ignored for readiness build=${payload.buildId} status=${payload.status} build_revision=${rs.buildRevision ?? "unknown"} project_revision=${rs.projectRevision} reason=${rs.reason}`,
       );
@@ -723,8 +722,10 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       console.error("Builder callback could not mark build failed", buildUpdateError.message);
       return new Response("Could not save build status", { status: 503 });
     }
-    // The build never shipped — the user keeps their credits.
-    await refundRolledBackBuild(payload.projectId, payload.buildId);
+    // Refund only when the customer did not get the outcome. A live site
+    // with a failed browser expectation or a post-deploy timeout keeps its
+    // charge; all incurred cost stays recorded either way.
+    if (outcome.refundAllowed) await refundRolledBackBuild(payload.projectId, payload.buildId);
     const failedBlocking = Array.isArray(failedVerification?.blocking)
       ? (failedVerification.blocking as string[])
       : [];
@@ -785,6 +786,32 @@ async function refundRolledBackBuild(projectId: string, buildId: string): Promis
     }
   } catch (e) {
     console.error("[builds/callback] rollback refund threw", buildId, (e as Error).message);
+  }
+}
+
+/** Persist builder-reported stage timings and failure class (economics). */
+async function recordBuildTimings(
+  payload: { buildId: string; status: string; timings?: Record<string, unknown> | undefined; deployed?: boolean },
+  failureClass: string | null,
+): Promise<void> {
+  try {
+    const t = (payload.timings ?? {}) as Record<string, number | string | undefined>;
+    const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : undefined);
+    await supabaseAdmin
+      .from("project_builds")
+      .update({
+        builder_job_id: typeof t.jobId === "string" ? t.jobId : undefined,
+        turn_id: typeof t.turnId === "string" ? t.turnId : undefined,
+        install_ms: num(t.installMs),
+        compile_ms: num(t.compileMs),
+        browser_ms: num(t.browserMs),
+        deploy_ms: num(t.deployMs),
+        deployed: payload.status === "ready" ? true : (payload.deployed ?? undefined),
+        failure_class: failureClass ?? undefined,
+      } as never)
+      .eq("id", payload.buildId);
+  } catch (e) {
+    console.warn("[builds/callback] timings not recorded", (e as Error).message);
   }
 }
 
