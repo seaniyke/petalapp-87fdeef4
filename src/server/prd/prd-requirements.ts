@@ -210,8 +210,15 @@ export function mergeRequirements(
   const rejected: string[] = [];
   const removal = /\b(remove|delete|drop|get rid of|take out|don'?t want|no longer want)\b/i.test(brief);
 
-  const isAddRequest = /\b(add|build|create|include|need|want|wire|set up|integrate|with)\b/i.test(brief);
-  const fresh = isAddRequest || removal ? deriveRequirements(brief, now).filter((r) => r.id !== "home") : [];
+  const isAddRequest = /\b(add|build|create|include|need|want|wire|set up|integrate)\b/i.test(brief);
+  // Generic (non-concept) items only come from an explicit "add/build X"
+  // request, so a style edit like "…with softer colours" never invents one.
+  const explicitAdd = /^\s*(please\s+)?(add|build|create|include|integrate|set up|wire)\b/i.test(brief);
+  const fresh = isAddRequest || removal
+    ? deriveRequirements(brief, now).filter(
+        (r) => r.id !== "home" && (CONCEPT_BY_ID.has(r.id) ? true : explicitAdd && !removal),
+      )
+    : [];
   for (const r of fresh) {
     const current = byId.get(r.id);
     if (removal) {
