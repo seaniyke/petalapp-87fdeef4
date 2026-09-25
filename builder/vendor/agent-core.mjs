@@ -40212,7 +40212,7 @@ function createDirectAgentIO() {
     },
     async appendEvents(turnId, events) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-      const { error } = await supabaseAdmin2.from("turn_events").insert(events.map((e) => ({ turn_id: turnId, seq: e.seq, kind: e.kind, payload: e.payload ?? {} })));
+      const { error } = await supabaseAdmin2.from("turn_events").upsert(events.map((e) => ({ turn_id: turnId, seq: e.seq, kind: e.kind, payload: e.payload ?? {} })), { onConflict: "turn_id,seq", ignoreDuplicates: true });
       if (error) throw new Error(error.message);
       await supabaseAdmin2.from("turns").update({ last_seq: events[events.length - 1].seq, last_progress_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", turnId).eq("status", "running");
     },
@@ -40223,7 +40223,13 @@ function createDirectAgentIO() {
         ended_at: (/* @__PURE__ */ new Date()).toISOString(),
         error_message: extras.errorMessage ?? null,
         credits_charged: extras.creditsCharged ?? null
-      }).eq("id", turnId);
+      }).eq("id", turnId).in("status", ["running", "awaiting_credits"]);
+    },
+    async heartbeat(turnId, lease) {
+      const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+      const { data, error } = await supabaseAdmin2.rpc("claim_turn_heartbeat", { _turn_id: turnId, _lease: lease });
+      if (error) return "ok";
+      return data ?? "ok";
     },
     async logAiCall(row) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
@@ -41515,7 +41521,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -41559,7 +41564,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -41904,7 +41908,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -85237,7 +85240,6 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -107827,7 +107829,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -110530,7 +110531,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -138330,6 +138330,49 @@ var init_prompt_budget_server = __esm({
   }
 });
 
+// src/server/turn-lease.ts
+var turn_lease_exports = {};
+__export(turn_lease_exports, {
+  HEARTBEAT_INTERVAL_MS: () => HEARTBEAT_INTERVAL_MS,
+  startHeartbeat: () => startHeartbeat
+});
+function startHeartbeat(args) {
+  const si = args.setIntervalFn ?? setInterval;
+  const ci = args.clearIntervalFn ?? clearInterval;
+  let stopped = false;
+  let timer = null;
+  const stop = () => {
+    stopped = true;
+    if (timer) ci(timer);
+    timer = null;
+  };
+  const tick = async () => {
+    if (stopped) return "ok";
+    let state = "ok";
+    try {
+      state = await args.beat(args.turnId, args.lease);
+    } catch {
+      state = "ok";
+    }
+    if (state !== "ok" && !stopped) {
+      stop();
+      args.onLost(state);
+    }
+    return state;
+  };
+  void tick();
+  timer = si(() => void tick(), args.intervalMs ?? HEARTBEAT_INTERVAL_MS);
+  timer.unref?.();
+  return { stop, tick };
+}
+var HEARTBEAT_INTERVAL_MS;
+var init_turn_lease = __esm({
+  "src/server/turn-lease.ts"() {
+    init_define_import_meta_env();
+    HEARTBEAT_INTERVAL_MS = 2e4;
+  }
+});
+
 // src/server/engine/raw-file.ts
 var raw_file_exports = {};
 __export(raw_file_exports, {
@@ -148052,7 +148095,10 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 init_define_import_meta_env();
 
 // src/server/builder.server.ts
+init_source_escape_fixer_server();
+init_import_syntax_fixer_server();
 init_jsx_attr_literal_fixer_server();
+init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -149518,6 +149564,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -167293,6 +167340,21 @@ async function startTurn(opts) {
   };
   if (!resolvedIO) resolvedIO = (await Promise.resolve().then(() => (init_agent_io_server(), agent_io_server_exports))).agentIO();
   let seq2 = 0;
+  let beat = null;
+  const beatIO = resolvedIO;
+  if (opts.heartbeat !== false && beatIO?.heartbeat) {
+    const { startHeartbeat: startHeartbeat2 } = await Promise.resolve().then(() => (init_turn_lease(), turn_lease_exports));
+    beat = startHeartbeat2({
+      turnId,
+      lease: crypto.randomUUID(),
+      beat: (t, l) => beatIO.heartbeat(t, l),
+      onLost: (state) => {
+        console.warn(`[turn-lease] turn=${turnId} ${state} \u2014 stopping this worker's run`);
+        void Promise.resolve().then(() => (init_turn_cancel_server(), turn_cancel_server_exports)).then((m) => m.abortLocalTurn(turnId)).catch(() => {
+        });
+      }
+    });
+  }
   let queue = [];
   let timer = null;
   let finishing = false;
@@ -167337,6 +167399,7 @@ async function startTurn(opts) {
     },
     async finish(status, extras) {
       finishing = true;
+      beat?.stop();
       try {
         await flush();
       } catch {
@@ -172680,7 +172743,7 @@ async function handleGenerateRequest(request) {
         }
         if (!isInternalCaller && durableAgentEnabled2()) {
           const turnId = clientTurnId ?? crypto.randomUUID();
-          const opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId });
+          const opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId, heartbeat: false });
           const job = buildAgentJobPayload2(
             request,
             opened.turnId,
@@ -173220,6 +173283,10 @@ function createGatewayAgentIO(send) {
     async appendEvents(_turnId, events) {
       const r = await one(send, { op: "events.append", events });
       if (!r.ok) throw new Error(r.error);
+    },
+    async heartbeat(_turnId, lease) {
+      const r = await one(send, { op: "turn.heartbeat", lease });
+      return r.ok ? r.data?.state ?? "ok" : "ok";
     },
     async finishTurn(_turnId, status, extras) {
       await one(send, { op: "turn.finish", status, errorMessage: extras.errorMessage ?? null, creditsCharged: extras.creditsCharged ?? null });
