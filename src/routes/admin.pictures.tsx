@@ -297,17 +297,27 @@ function AdminPicturesPage() {
 
   if (!ready) return null;
 
+  if (tab === "made") {
+    return (
+      <div className="min-h-screen bg-background">
+        <SiteHeader />
+        <AdminTabs />
+        <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+          <PicturesHeading tab={tab} onTab={setTab} />
+          <MadePictures />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <AdminTabs />
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-        <div>
-          <h1 className="text-xl font-semibold">Pictures</h1>
-          <p className="text-sm text-muted-foreground">
-            The builder looks here first and only makes a new picture when nothing fits.
-          </p>
-        </div>
+        <PicturesHeading tab={tab} onTab={setTab} />
+
+
 
         <Card>
           <CardContent className="space-y-3 p-4">
