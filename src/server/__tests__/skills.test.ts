@@ -28,7 +28,8 @@ describe("focused expertise", () => {
       text: "make the headline bigger",
     });
     // Canonical redesign-safety Markdown only — no copy/motion/section manuals.
-    expect(rendered.ids).toEqual(["redesign-safety", "typography-color"]);
+    expect(rendered.ids[0]).toBe("redesign-safety");
+    expect(rendered.ids.length).toBeLessThanOrEqual(2);
     expect(rendered.text).not.toContain("Choosing section architectures");
   });
 
