@@ -151,7 +151,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
           {/* Quota */}
           <div className="grid grid-cols-2 gap-3">
             <Stat
-              label={`This month · ${status.subscription.plan === "pro" ? "Pro" : "Free"}`}
+              label="Email allowance"
               value={`${status.usage.monthly_used.toLocaleString()} / ${status.subscription.monthly_cap.toLocaleString()}`}
             />
             <Stat
@@ -242,18 +242,6 @@ export function EmailSection({ projectId }: { projectId: string }) {
             </div>
           )}
 
-          {/* Upgrade hint */}
-          {status.subscription.plan === "free" && (
-            <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs">
-              <div>
-                <div className="font-medium">Need more?</div>
-                <div className="text-muted-foreground">$25/mo for 50,000 emails + custom domain.</div>
-              </div>
-              <Button size="sm" variant="outline" className="gap-1" disabled>
-                Upgrade <ExternalLink className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
         </div>
       )}
     </div>

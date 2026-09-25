@@ -134,7 +134,7 @@ export function EnableBackendFromCloudDialog({
 
           {loading ? (
             <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Checking your plan…
+              <Loader2 className="h-4 w-4 animate-spin" /> Checking your credits…
             </div>
           ) : !isPaidPlan ? (
             <div className="space-y-3">
@@ -151,8 +151,8 @@ export function EnableBackendFromCloudDialog({
               <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm">
                 <p className="font-medium text-foreground">Want a dedicated backend?</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Upgrade for your own isolated database with unlimited rows,
-                  storage and SQL access. We'll add 100 bonus credits.
+                  Buy credits for your own isolated database with unlimited rows,
+                  storage and SQL access.
                 </p>
               </div>
             </div>
@@ -213,7 +213,7 @@ export function EnableBackendFromCloudDialog({
                   className="inline-flex items-center gap-1.5"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  Upgrade for dedicated
+                  Buy credits
                 </Button>
                 <Button
                   type="button"
