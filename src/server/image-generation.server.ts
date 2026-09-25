@@ -20,7 +20,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { OPENROUTER_CHAT_URL, defaultImageModel } from "@/lib/ai-model-config";
 import { findLibraryPicture } from "./registry/pictures.server";
 import { findProjectPicture } from "./registry/project-pictures.server";
+import { currentTurnContext } from "./turn-context.server";
 import type { ProjectFile } from "./generate.server";
+
 
 const BUCKET = "petal-images";
 
