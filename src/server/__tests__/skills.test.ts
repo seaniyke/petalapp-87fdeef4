@@ -27,9 +27,9 @@ describe("focused expertise", () => {
       scope: "micro",
       text: "make the headline bigger",
     });
-    // Rules only, no working detail.
-    expect(rendered.text).toContain("Never break these");
-    expect(rendered.text.length).toBeLessThan(1600);
+    // Canonical redesign-safety Markdown only — no copy/motion/section manuals.
+    expect(rendered.ids).toEqual(["redesign-safety", "typography-color"]);
+    expect(rendered.text).not.toContain("Choosing section architectures");
   });
 
   it("brings picture expertise when the ask is about pictures", () => {
