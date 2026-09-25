@@ -288,7 +288,7 @@ const REQUEST_CUES = [
  * Kimble's own screens. Checked before everything else.
  */
 const BUILD_CUES = [
-  /\b(?:build|make|create|add|generate|design|code)\s+(?:me\s+)?(?:a|an|the)\s+(?:app|site|website|page|landing|dashboard|tool|platform|marketplace|store|shop|clone)\b/i,
+  /\b(?:build|make|create|add|generate|design|code)\s+(?:me\s+)?(?:a|an|the)\s+(?:[\w-]+\s+){0,3}(?:app|site|website|page|landing|dashboard|tool|platform|marketplace|store|shop|clone)\b/i,
   /\b(?:app|site|website|platform|marketplace|page)\s+(?:that|where|which|to)\b/i,
   /\b(?:users?|people|customers?|visitors?)\s+(?:can|should|will|could)\b/i,
   /\blike\s+(?:airbnb|uber|shopify|notion|stripe)\b/i,
@@ -314,7 +314,9 @@ export type SurfaceSignal = {
 export function detectSurfaceIntent(
   text: string | null | undefined,
 ): SurfaceSignal | null {
-  const raw = (text ?? "").trim();
+  // A full link ("use https://x.com as reference") is a website to read,
+  // never a request to connect a domain — drop links before matching.
+  const raw = (text ?? "").replace(/\bhttps?:\/\/\S+/gi, " ").trim();
   if (raw.length < 4 || raw.length > 2000) return null;
 
   for (const cue of BUILD_CUES) if (cue.test(raw)) return null;
