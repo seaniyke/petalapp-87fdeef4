@@ -139,14 +139,15 @@ describe("G. file-specific failure limits", () => {
     const b = new AgentCircuitBreaker();
     b.recordFailure(syntaxFail("src/pages/Home.tsx", "one"));
     b.recordFailure(syntaxFail("src/pages/Home.tsx", "two"));
-    const third = b.recordFailure(syntaxFail("src/pages/Home.tsx", "three"));
-    expect(third.tripped).toBe(true);
+    b.recordFailure(syntaxFail("src/pages/Home.tsx", "three"));
+    const fourth = b.recordFailure(syntaxFail("src/pages/Home.tsx", "four"));
+    expect(fourth.tripped).toBe(true);
     expect(b.reason()?.rule).toBe("file_failures");
     expect(b.reason()?.path).toBe("src/pages/Home.tsx");
   });
 
-  it("matches MAX_REPAIRED_FILES so it never fires before the repair budget is meaningful", () => {
-    expect(BREAKER_THRESHOLDS.maxFileFailures).toBe(3);
+  it("sits one above the identical-error rule so progressive fixes survive", () => {
+    expect(BREAKER_THRESHOLDS.maxFileFailures).toBe(BREAKER_THRESHOLDS.maxIdenticalError + 1);
   });
 });
 
