@@ -44,6 +44,7 @@ import {
   MAX_ATTACHMENTS_PER_MESSAGE,
 } from "@/lib/attachments";
 import { streamGenerate, streamResumeTurn, guardHandlers, cancelTurn } from "@/lib/stream";
+import { useTurnExecution } from "@/lib/turn-execution/use-turn-execution";
 import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 import {
   persistTurnId,
@@ -413,6 +414,10 @@ function Builder() {
   // pipeline stops while a question is pending.)
   const [answeredQuestionAt, setAnsweredQuestionAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  // Single deterministic turn state: live + replayed events feed one reducer.
+  const { state: turnState, view: turnView, dispatch: dispatchTurn } = useTurnExecution();
+  const turnStateRef = useRef(turnState);
+  turnStateRef.current = turnState;
   const [bootstrapping, setBootstrapping] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeFile, setActiveFile] = useState<string | null>(null);
@@ -1195,6 +1200,23 @@ function Builder() {
   const observedBuildId = buildSnap?.buildId ?? activeBuildId;
   const isSupersededBuild = !!observedBuildId && supersededBuildIds.has(observedBuildId);
   const effectiveBuildSnap = isSupersededBuild ? null : buildSnap;
+  const latestBuildIdRef = useRef<string | null>(null);
+  latestBuildIdRef.current = project?.latest_build_id ?? null;
+  // The build row is authoritative for build / live-check / ready. The
+  // reducer ignores the row that was live before the turn started.
+  useEffect(() => {
+    if (!effectiveBuildSnap) return;
+    dispatchTurn({
+      type: "deploy",
+      snapshot: {
+        buildId: effectiveBuildSnap.buildId,
+        status: effectiveBuildSnap.status,
+        progressLabel: effectiveBuildSnap.progressLabel,
+        errorMessage: effectiveBuildSnap.errorMessage,
+        verification: effectiveBuildSnap.verification,
+      },
+    });
+  }, [effectiveBuildSnap, dispatchTurn]);
   const isDeploying = effectiveBuildSnap?.status === "pending" || effectiveBuildSnap?.status === "building";
   const isLive = effectiveBuildSnap?.status === "ready";
 
@@ -2012,15 +2034,22 @@ function Builder() {
       setBusy(true);
       setActivityVisible(true);
 
+      // Fresh page (or a turn this reducer hasn't seen): replay the durable
+      // log from the start so the activity story is complete, not just the
+      // tail. Legacy surfaces still skip what they already applied.
+      const reducerHasTurn = turnStateRef.current.turnId === persisted.turnId && turnStateRef.current.gen.lastSeq > 0;
+      if (turnStateRef.current.turnId !== persisted.turnId) {
+        dispatchTurn({ type: "turn_started", turnId: persisted.turnId, baselineBuildId: latestBuildIdRef.current });
+      }
+      const replayFrom = reducerHasTurn ? turnStateRef.current.gen.lastSeq : 0;
+      let replaySeq = 0;
+
       // Lightweight handlers: we hydrate the streaming UI surfaces but don't
       // try to rebuild the full turn state machine. On the terminal `done`
       // event we refresh files from the database (the pipeline persists them
       // server-side), so the user sees the finished result without any
       // manual click.
-      void streamResumeTurn(
-        persisted.turnId,
-        persisted.lastSeq,
-        guardHandlers({
+      const legacyHandlers = guardHandlers({
           onEventSeq: (seq) => bumpTurnSeq(pid, seq),
           onPhase: (phase) => {
             setPhases((p) => advanceTo(p, phase));
@@ -2143,7 +2172,18 @@ function Builder() {
               /* non-fatal */
             }
           },
-        }, () => activeTurnRef.current === resumeToken),
+        }, () => activeTurnRef.current === resumeToken && (replaySeq === 0 || replaySeq > persisted.lastSeq));
+      void streamResumeTurn(
+        persisted.turnId,
+        Math.min(replayFrom, persisted.lastSeq),
+        {
+          ...legacyHandlers,
+          onRawEvent: (evt, source) => {
+            replaySeq = typeof evt.seq === "number" ? evt.seq : 0;
+            if (activeTurnRef.current !== resumeToken) return;
+            dispatchTurn({ type: "event", event: evt, source });
+          },
+        },
         controller.signal,
       ).catch(() => {
         // Resume is best-effort. Silent failure leaves the user in the
@@ -2700,6 +2740,7 @@ function Builder() {
         persistTurnId(proj.id, clientTurnId);
         const turnToken: { projectId: string; turnId: string } = { projectId: proj.id, turnId: clientTurnId };
         activeTurnRef.current = turnToken;
+        dispatchTurn({ type: "turn_started", turnId: clientTurnId, baselineBuildId: latestBuildIdRef.current });
 
         await streamGenerate(
           {
@@ -2729,6 +2770,7 @@ function Builder() {
 
           },
           guardHandlers({
+            onRawEvent: (evt, source) => dispatchTurn({ type: "event", event: evt, source }),
             onPhase: (phase: PhaseId) => {
               setActivityVisible(true);
               setPhases((p) => advanceTo(p, phase));
@@ -3784,11 +3826,20 @@ function Builder() {
     abortRef.current = null;
     setBusy(false);
     releaseTurnLock();
-    setActivityVisible(false);
-    if (!active) return;
+    if (!active) {
+      setActivityVisible(false);
+      return;
+    }
+    // Keep the card on screen: it shows "Stopping…" and then the truthful
+    // outcome the server confirms — never a silent disappearance.
+    dispatchTurn({ type: "stop_requested" });
     clearPersistedTurnId(active.projectId);
     const t = toast.loading("Stopping…");
     void cancelTurn(active.turnId).then((r) => {
+      dispatchTurn({
+        type: "stop_result",
+        result: r.state === "cancelled" ? "cancelled" : r.state === "already_finished" ? "completion_won" : "unconfirmed",
+      });
       if (r.state === "cancelled") {
         toast.success("Stopped. Nothing further will run or be charged.", { id: t });
       } else if (r.state === "already_finished") {
@@ -3813,14 +3864,17 @@ function Builder() {
             /* non-fatal */
           }
         };
-        void streamResumeTurn(active.turnId, 0, { onDone: () => void refresh() })
+        void streamResumeTurn(active.turnId, 0, {
+          onRawEvent: (evt, source) => dispatchTurn({ type: "event", event: evt, source }),
+          onDone: () => void refresh(),
+        })
           .catch(() => false)
           .then(() => refresh());
       } else {
         toast.warning("Stop requested, but Kimble couldn't confirm it yet. Check your connection.", { id: t });
       }
     });
-  }, []);
+  }, [dispatchTurn]);
 
   const retry = useCallback(() => {
     // If the last failure left a real bundler/build error log behind, the
@@ -5224,6 +5278,7 @@ function Builder() {
               return activityVisible && !errorCardVisible;
             })() && (
               <BuildActivityCard
+                turn={turnView}
                 phases={phases}
                 isActive={busy || isDeploying || awaitingBuild || awaitingSilentResume}
                 // A project that shipped earlier keeps status "ready" while the
