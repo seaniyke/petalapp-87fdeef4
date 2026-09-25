@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { listProjects, type ProjectRow } from "@/lib/projects";
 import { CreatorEarningsPanel } from "@/components/marketplace/CreatorEarningsPanel";
+import { useMarketplaceFeature } from "@/hooks/use-marketplace-feature";
 import {
   createListingFromProject,
   deleteListing,
@@ -51,8 +52,19 @@ export const Route = createFileRoute("/sell")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: SellPage,
+  component: SellRoute,
 });
+
+function SellRoute() {
+  const { enabled, loading } = useMarketplaceFeature();
+  if (loading) {
+    return <div className="min-h-screen bg-background"><SiteHeader /><div className="grid place-items-center py-32"><PetalLoader size={56} label="Loading…" /></div></div>;
+  }
+  if (!enabled) {
+    return <div className="min-h-screen bg-background"><SiteHeader /><div className="mx-auto max-w-xl px-6 py-32 text-center"><h1 className="text-2xl font-bold">This page isn't available</h1><Button asChild className="mt-6"><Link to="/">Back to Kimble</Link></Button></div></div>;
+  }
+  return <SellPage />;
+}
 
 const STATUS_COPY: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },

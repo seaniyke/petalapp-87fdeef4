@@ -59,16 +59,16 @@ export const Route = createFileRoute("/")({
     search.focus === "composer" ? { focus: "composer" } : {},
   head: () => ({
     meta: [
-      { title: "Kimble — Build it, ship it, then sell it" },
+      { title: "Kimble — Build it and ship it" },
       {
         name: "description",
         content:
-          "Kimble is an app builder for web, mobile, backends, and extensions. Describe your idea, build it, publish it, and sell it.",
+          "Kimble is an app builder for web, mobile, backends, and extensions. Describe your idea, build it, and publish it.",
       },
-      { property: "og:title", content: "Kimble — Build it, ship it, then sell it" },
+      { property: "og:title", content: "Kimble — Build it and ship it" },
       {
         property: "og:description",
-        content: "Describe your app, build it, publish it, and sell it. Your code is yours, and credits never expire.",
+        content: "Describe your app, build it, and publish it. Your code is yours, and credits never expire.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
