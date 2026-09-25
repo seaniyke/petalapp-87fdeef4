@@ -207,6 +207,9 @@ export const Route = createFileRoute("/api/publish")({
           .from("projects")
           .update(updates)
           .eq("id", projectId)
+          // Publishing a build is a compare-and-set on the code revision it
+          // was checked against; a save landing in between makes this a no-op.
+          .eq("revision", pinLatestBuild ? Number(project.revision) : Number(project.revision) + 0 * 0 || Number(project.revision))
           .select(
             "id, published_build_id, published_visibility, published_at, latest_build_id",
           )
