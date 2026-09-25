@@ -85,6 +85,7 @@ import {
   type FriendlyError,
 } from "@/lib/friendly-errors";
 import { BuildActivityCard, type TimelineEntry } from "@/components/BuildActivityCard";
+import { BuildResultCard } from "@/components/BuildResultCard";
 import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { PetalErrorCard } from "@/components/PetalErrorCard";
@@ -519,6 +520,13 @@ function Builder() {
   }, [project?.id]);
 
   const [activityVisible, setActivityVisible] = useState(false);
+  const [savedResult, setSavedResult] = useState<{
+    credits: number | null;
+    files: number;
+    pictures: number;
+    seconds: number;
+    summary: string | null;
+  } | null>(null);
   /**
    * True while the server is finishing an interrupted turn on its own. The
    * working state stays on screen and a watcher below picks up the reply the
@@ -1589,13 +1597,17 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveBuildSnap?.status, effectiveBuildSnap?.errorMessage, effectiveBuildSnap?.verification, project?.id, project?.latest_build_id, project?.published_build_id, busy, awaitingBuild]);
 
-  // Auto-hide the success card a little after the app goes live so the chat
-  // returns to a calm state. The card itself also self-collapses.
+  // The finished result card stays on screen (no auto-hide) and is restored
+  // from local storage after a refresh.
   useEffect(() => {
-    if (!isLive || friendlyError) return;
-    const t = setTimeout(() => setActivityVisible(false), 12000);
-    return () => clearTimeout(t);
-  }, [isLive, friendlyError]);
+    if (!project?.id) return;
+    try {
+      const raw = window.localStorage.getItem(`petal:result:${project.id}`);
+      setSavedResult(raw ? JSON.parse(raw) : null);
+    } catch {
+      setSavedResult(null);
+    }
+  }, [project?.id]);
 
   // If a newer build flips to ready while the "Publishing is taking longer"
   // stall card is still on screen, clear it — the deploy did succeed, we were
@@ -5281,6 +5293,37 @@ function Builder() {
                       }
                     : undefined
                 }
+                onResultSnapshot={(snap) => {
+                  if (!project?.id) return;
+                  setSavedResult(snap);
+                  try {
+                    window.localStorage.setItem(`petal:result:${project.id}`, JSON.stringify(snap));
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+              />
+            )}
+            {/* After a refresh the live activity card is gone; keep the last
+                finished result on screen so the user still sees it. */}
+            {!activityVisible && !busy && !awaitingBuild && !isDeploying && isLive && savedResult && (
+              <BuildResultCard
+                credits={savedResult.credits}
+                files={savedResult.files}
+                pictures={savedResult.pictures}
+                seconds={savedResult.seconds}
+                summary={savedResult.summary}
+                showPreview={isMobile ? mobileTab !== "preview" : view !== "preview"}
+                onPreview={() => {
+                  if (isMobile) setMobileTab("preview");
+                  else setView("preview");
+                }}
+                onPublish={() => setPublishOpen(true)}
+                onKeepBuilding={() => {
+                  if (isMobile) setMobileTab("chat");
+                  composerTextareaRef.current?.focus();
+                }}
+                onDetails={() => {}}
               />
             )}
             {/* The newest error card always comes last — after the build
