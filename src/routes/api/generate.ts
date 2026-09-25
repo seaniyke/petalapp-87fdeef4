@@ -3862,6 +3862,8 @@ Forbidden defaults
             ),
           );
         }
+        // Every page-writing call's tokens are billed with the main call.
+        const pageWriteUsages: Array<GatewayUsage | null> = [];
         let collected: ParsedTool = directLogoEdit
           ? {
               name: "patch_files",
@@ -4368,6 +4370,8 @@ Forbidden defaults
                   if (!again.ok || !again.body) return null;
                   c = await relayAndCollect(again, controller, encoder);
                 }
+                // Page writing is billable work: count this page's tokens.
+                if (c.usage) pageWriteUsages.push(c.usage);
                 try {
                   // Plain-text page: the file is the single fenced block. An
                   // unclosed block is a cut-off file — discarded, never patched.
@@ -6268,6 +6272,7 @@ Forbidden defaults
         // appended here — same convention as `body.isAutoFix`.
         const turnUsages: Array<GatewayUsage | null> = [
           collected.usage ?? null,
+          ...pageWriteUsages,
           ...agentLoopUsages,
         ];
         const priced = priceTurn(turnUsages);
