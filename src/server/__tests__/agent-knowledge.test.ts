@@ -31,7 +31,7 @@ describe("agent knowledge loader", () => {
     for (const t of [loadCoreKnowledge("full").text, loadCoreKnowledge("compact").text]) {
       expect(t).not.toMatch(/\{\{/);
       expect(t).not.toMatch(/readFile\("template\.json"\)/);
-      expect(t).not.toMatch(/verifyIntegration/);
+      expect(t).not.toMatch(/MANDATORY PAGE CREATION WORKFLOW|## Tools \(Use|When to Use analyzeProject|Data Persistence with Supabase/);
       expect(t).not.toMatch(/## (TEMPLATE SELECTION|MANDATORY FIRST STEPS|Response Format)/i);
     }
   });
@@ -139,4 +139,3 @@ describe("multi-turn constraints survive", () => {
     expect(selectHistoryForGeneration(msgs, 2, true)).toHaveLength(3);
   });
 });
-it("TMPSIZE", () => { for (const m of ["full","compact"] as const) { const t = loadCoreKnowledge(m).text; console.log("SZ", m, t.length, Math.round(t.length/4), (t.match(/verifyBuild|verifyIntegration|readFile|editFile|analyzeProject|template\.json|askUser/g)||[]).length); console.log("HD", t.split("\n").filter(l=>/^##/.test(l)).join(" | ")); }});
