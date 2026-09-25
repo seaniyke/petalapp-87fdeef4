@@ -2758,7 +2758,10 @@ async function handleGenerateRequestCore(
       const { assemblePic } = await import("@/server/pic/pic-assemble.server");
       const { renderPicBlock } = await import("@/server/pic/pic-render");
       const isStructural = isStructuralTurn;
-      stage("pre_pic", "Mapping your pages and sections…");
+      stage(
+        "pre_pic",
+        isRepairTurn ? "Reviewing the affected area…" : "Mapping your pages and sections…",
+      );
       const assembled = await assemblePic({
         projectId: body.projectId,
         brief: lastUserContent || lastContent,
