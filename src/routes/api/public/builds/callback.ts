@@ -164,11 +164,14 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
 
   // Make sure the build row actually belongs to the claimed project.
   // Defends against a compromised builder or a bug that scrambles ids.
-  const { data: existing } = await supabaseAdmin
+  const { data: existingRow } = await supabaseAdmin
     .from("project_builds")
-    .select("id, project_id, created_at, project_revision, status")
+    .select("id, project_id, created_at, project_revision, status, operation_id, turn_id")
     .eq("id", payload.buildId)
     .maybeSingle();
+  const existing = existingRow as
+    | { id: string; project_id: string; created_at: string | null; project_revision: number | null; status: string; operation_id: string | null; turn_id: string | null }
+    | null;
   if (!existing) {
     console.warn("Builder callback for unknown build", payload.buildId);
     // Acknowledge so Railway doesn't retry forever.
@@ -177,6 +180,13 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   if (existing.project_id !== payload.projectId) {
     console.warn("Builder callback project mismatch", payload.buildId);
     return new Response("Project mismatch", { status: 400 });
+  }
+  // Identity is fixed at build creation. A callback that names a different
+  // turn than the build was created for is rejected, never re-attributed.
+  const reportedTurn = typeof payload.timings?.turnId === "string" ? payload.timings.turnId : null;
+  if (reportedTurn && existing.turn_id && reportedTurn !== existing.turn_id) {
+    console.warn(`[builds/callback] identity mismatch build=${payload.buildId}`);
+    return new Response("Identity mismatch", { status: 400 });
   }
   // ONE outcome decision (src/lib/build-outcome.ts): terminal success wins,
   // duplicates are no-ops, stale/out-of-order failures never refund.
@@ -209,7 +219,20 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   void recordBuildTimings(payload, outcome.failureClass);
   if (!outcome.apply) {
     console.warn(`[builds/callback] ignored callback build=${payload.buildId}: ${outcome.reason}`);
+    if (existing.operation_id) void noteStaleCallback(existing.operation_id);
     return new Response("ok", { status: 200 });
+  }
+  // Operation settlement follows the one outcome decision. The DB refuses
+  // invalid moves, so a late event cannot reopen a READY/SETTLED operation.
+  if (existing.operation_id) {
+    const { advanceOperation } = await import("@/server/operations.server");
+    const opId = existing.operation_id;
+    if (payload.status === "ready" || outcome.delivered) {
+      void advanceOperation(opId, "READY", { build_revision: existing.project_revision, outcome: "delivered" })
+        .then(() => advanceOperation(opId, "SETTLED"));
+    } else {
+      void advanceOperation(opId, "FAILED", { failure_class: outcome.failureClass ?? null, outcome: "failed" });
+    }
   }
 
   // Internal economics: how long this build occupied the builder, and how
@@ -221,13 +244,19 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     typeof payload.verification?.durationMs === "number"
       ? payload.verification.durationMs
       : null;
-  void attachBuildEconomicsByProject({
-    projectId: payload.projectId,
-    buildId: payload.buildId,
-    buildMs,
-    verifyMs,
-    result: payload.status === "ready" ? "ready" : "failed",
-  });
+  // Exact link only: the build's own turn id. No turn id → attribution unknown.
+  if (existing.turn_id) {
+    void attachBuildEconomics({
+      turnId: existing.turn_id,
+      projectId: payload.projectId,
+      buildId: payload.buildId,
+      buildMs,
+      verifyMs,
+      result: payload.status === "ready" ? "ready" : "failed",
+    });
+  } else {
+    console.info(`[builds/callback] build=${payload.buildId} attribution unknown (no operation)`);
+  }
 
   // REVISION IDENTITY — only a build of the project's CURRENT code revision
   // may affect current readiness, the current build pointer, turn outcome,
