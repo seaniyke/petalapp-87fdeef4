@@ -9,6 +9,7 @@ import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 import { useMarketplaceFeature } from "@/hooks/use-marketplace-feature";
 
 import type { BuildTargetId } from "@/lib/build-targets";
+import { INVEST_LINKS_ENABLED } from "@/lib/site-flags";
 
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
