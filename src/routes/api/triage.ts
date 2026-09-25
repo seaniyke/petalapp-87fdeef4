@@ -45,6 +45,7 @@ import { checkCreditBalance } from "@/server/credits.server";
 import { fastTriage } from "@/server/fast-triage.server";
 import {
   decideAskPolicy,
+  resolveTriageMode,
   noAskInstruction,
   stripQuestions,
   SENIOR_ENGINEER_POSTURE,
@@ -592,9 +593,10 @@ export const Route = createFileRoute("/api/triage")({
               // Hard ask policy: this turn was never allowed to ask. Convert a
               // stray clarify into real work and answer with the assumption
               // instead of a question.
-              if (meta.mode === "clarify" && askPolicy.forceAction) {
+              const resolved = resolveTriageMode(meta.mode, askPolicy, fileCount);
+              if (resolved.clarifyBlocked) {
                 console.warn(`[triage] clarify blocked (${askPolicy.reason}) → acting`);
-                meta.mode = fileCount === 0 ? "build" : "edit";
+                meta.mode = resolved.mode;
                 meta.scope = fileCount === 0 ? "large" : meta.scope === "tiny" ? "small" : meta.scope;
                 meta.suggestions = [];
                 meta.unknowns = [];
