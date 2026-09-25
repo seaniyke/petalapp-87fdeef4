@@ -107,6 +107,7 @@ export default defineConfig({
       "src/server/__tests__/circuit-breaker.test.ts",
       "src/server/__tests__/economics-foundation.test.ts",
       "src/server/__tests__/lifecycle-continuity.test.ts",
+      "src/server/__tests__/product-requirements.test.ts",
       "src/server/__tests__/agent-knowledge.test.ts",
       "src/server/__tests__/verification-gates.test.ts",
       "src/server/__tests__/durable-turn.test.ts",
