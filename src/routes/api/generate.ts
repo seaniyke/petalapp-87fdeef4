@@ -3048,6 +3048,21 @@ Forbidden defaults
   }
 
 
+  // Manifest-based focused selection: page types and component names matched
+  // against the request. Deterministic, so the Inspector AI only runs when
+  // project structure alone cannot name the target.
+  if (!isInitial && !isCrossCutting && editTargetPaths.length === 0 && projectCtx.selection) {
+    const picked = projectCtx.selection.primary.filter(
+      (p) => editablePromptFiles.some((f) => f.path === p) && !isVerifierExempt(p),
+    );
+    if (picked.length > 0) {
+      editTargetPaths = picked;
+      console.info(
+        `[project-context] selected ${picked.map((p) => `${p} (${projectCtx.selection!.reasons[p]})`).join(", ")}`,
+      );
+    }
+  }
+
   // When the deterministic resolver comes up empty on a follow-up edit, send
   // the read-only Inspector subagent in: it greps and reads the real bytes on
   // the budget tier and reports back which files and lines actually matter.
