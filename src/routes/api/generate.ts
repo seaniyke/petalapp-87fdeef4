@@ -77,7 +77,7 @@ import {
   updateLastCallUsage,
   hadRecentProviderPaymentFailure,
 } from "@/server/ai-provider.server";
-import { priceTurn, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import { priceTurn, priceTurnByCost, BUILD_FLOOR } from "@/server/credit-pricing.server";
 import { recordTurnEconomics } from "@/server/turn-economics.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
@@ -6275,7 +6275,10 @@ Forbidden defaults
           ...pageWriteUsages,
           ...agentLoopUsages,
         ];
-        const priced = priceTurn(turnUsages);
+        // Charge from OpenRouter's real cost when every call reported one;
+        // otherwise the token formula (same floor and cap either way).
+        const { economicsValue } = await import("@/server/economics-config.server");
+        const priced = priceTurnByCost(turnUsages, await economicsValue("target_variable_cost_per_credit_usd"));
 
         // Backfill the usage tokens onto the ai_call_log row that
         // `aiChatCompletions` inserted before the stream body was read.
@@ -6409,6 +6412,8 @@ Forbidden defaults
           result: failedEditTurn ? "no_op" : "generated",
           metadata: {
             priced_amount: priced.amount,
+            priced_from: priced.costUsd == null ? "tokens" : "openrouter_cost",
+            openrouter_cost_usd: priced.costUsd,
             usage_missing: priced.usageMissing,
             clamped: priced.clamped,
             model,

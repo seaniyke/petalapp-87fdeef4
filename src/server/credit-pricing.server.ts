@@ -37,6 +37,8 @@ export type GatewayUsage = {
   prompt_tokens?: number;
   completion_tokens?: number;
   total_tokens?: number;
+  /** Real USD amount OpenRouter charged for this call, when reported. */
+  cost?: number;
 };
 
 export type PricedBuild = {
@@ -102,4 +104,31 @@ export function priceTurn(usages: Array<GatewayUsage | null | undefined>): Price
     completion += Math.max(0, Math.floor(u.completion_tokens ?? 0));
   }
   return priceBuild({ prompt_tokens: prompt, completion_tokens: completion });
+}
+
+/**
+ * Price a turn from what OpenRouter actually charged Kimble.
+ *
+ * credits = realUsd / costPerCreditUsd, floored at BUILD_FLOOR and capped at
+ * BUILD_CAP. `costPerCreditUsd` is economics_config
+ * `target_variable_cost_per_credit_usd` — the single margin knob. If any call
+ * lacks a real cost, we fall back to the token formula (never a fake $0).
+ */
+export function priceTurnByCost(
+  usages: Array<GatewayUsage | null | undefined>,
+  costPerCreditUsd: number,
+): PricedBuild & { costUsd: number | null } {
+  const real = usages.filter((u): u is GatewayUsage => !!u);
+  const tokenPriced = priceTurn(real);
+  const allCosted = real.length > 0 && real.every((u) => typeof u.cost === "number" && Number.isFinite(u.cost));
+  if (!allCosted || !(costPerCreditUsd > 0)) return { ...tokenPriced, costUsd: null };
+  const costUsd = real.reduce((s, u) => s + (u.cost as number), 0);
+  const raw = costUsd / costPerCreditUsd;
+  const floored = Math.max(BUILD_FLOOR, raw);
+  return {
+    ...tokenPriced,
+    amount: round2(Math.min(BUILD_CAP, floored)),
+    clamped: floored > BUILD_CAP,
+    costUsd,
+  };
 }

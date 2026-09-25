@@ -88,3 +88,19 @@ describe("build cost transparency", () => {
     expect(costFootnote(2)).toMatch(/repairs?, retries and publishing are always free/i);
   });
 });
+
+import { priceTurnByCost } from "@/server/credit-pricing.server";
+describe("priceTurnByCost", () => {
+  it("prices from real OpenRouter cost", () => {
+    const p = priceTurnByCost([{ prompt_tokens: 1, completion_tokens: 1, cost: 0.1 }, { cost: 0.05, prompt_tokens: 1 }], 0.05);
+    expect(p.amount).toBe(3);
+    expect(p.costUsd).toBeCloseTo(0.15);
+  });
+  it("floors tiny builds", () => {
+    expect(priceTurnByCost([{ prompt_tokens: 5, cost: 0.001 }], 0.05).amount).toBe(1);
+  });
+  it("falls back to tokens when any cost is missing", () => {
+    const p = priceTurnByCost([{ prompt_tokens: 1000, cost: 0.1 }, { prompt_tokens: 1000 }], 0.05);
+    expect(p.costUsd).toBeNull();
+  });
+});
