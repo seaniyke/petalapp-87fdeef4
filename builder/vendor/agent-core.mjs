@@ -106266,6 +106266,12 @@ function looksTruncated(src) {
   if (trimmed.length === 0) return false;
   const last = trimmed[trimmed.length - 1];
   if ([")", "}", "]", ";"].includes(last)) return false;
+  if (/(?:^|\n)[ \t]*export[ \t]+default[ \t]+[A-Za-z_$][\w$]*[ \t]*$/.test(trimmed)) return false;
+  if (/(?:^|\n)[ \t]*export[ \t]*\{[^{}]*\}[ \t]*$/.test(trimmed)) return false;
+  if (trimmed.endsWith("*/")) return false;
+  if (/(?:^|\n)[ \t]*\/\/[^\n]*$/.test(trimmed)) return false;
+  if (last === '"' || last === "'" || last === "`") return false;
+  if (/\bas[ \t]+const[ \t]*$/.test(trimmed)) return false;
   if (last === ">") {
     if (trimmed.endsWith("/>")) return false;
     const lastOpen = trimmed.lastIndexOf("<");
@@ -108504,6 +108510,13 @@ var init_shared_backend_server = __esm({
 });
 
 // src/server/economics-config.server.ts
+var economics_config_server_exports = {};
+__export(economics_config_server_exports, {
+  ECONOMICS_DEFAULTS: () => ECONOMICS_DEFAULTS,
+  economicsValue: () => economicsValue,
+  economicsValues: () => economicsValues,
+  invalidateEconomicsCache: () => invalidateEconomicsCache
+});
 async function load() {
   if (cache3 && Date.now() - cache3.at < CACHE_TTL_MS3) return cache3.values;
   const values = { ...ECONOMICS_DEFAULTS };
@@ -108527,6 +108540,9 @@ async function economicsValues() {
   const values = await load();
   return { ...ECONOMICS_DEFAULTS, ...values };
 }
+function invalidateEconomicsCache() {
+  cache3 = null;
+}
 var ECONOMICS_DEFAULTS, CACHE_TTL_MS3, cache3;
 var init_economics_config_server = __esm({
   "src/server/economics-config.server.ts"() {
@@ -108549,7 +108565,11 @@ var init_economics_config_server = __esm({
       // Kimble Compute: 8¢ per awake hour (~$58/mo full-time) against an
       // underlying container cost of roughly 3¢/hr.
       compute_hour_usd: 0.08,
-      max_active_compute: 25
+      max_active_compute: 25,
+      badge_removal_credits: 25,
+      // What one credit is worth in USD cents when we charge a real cash cost
+      // (domain registration). Conservative vs the cheapest pack (20 credits/$5).
+      credit_retail_usd_cents: 20
     };
     CACHE_TTL_MS3 = 5 * 60 * 1e3;
     cache3 = null;
@@ -109018,7 +109038,7 @@ async function provisionCompute(opts) {
     return {
       ok: false,
       reason: "not_entitled",
-      message: "A paid plan or purchased credits are needed to run a dedicated server."
+      message: "Credits are needed to run a dedicated server."
     };
   }
   const ceiling = await economicsValue("max_active_compute");
@@ -137936,7 +137956,7 @@ var init_preemit_gate_server = __esm({
       // the product the user asked for is still a failed build.
       "prd-contract"
     ]);
-    HEURISTIC_SYNTAX_KINDS2 = /* @__PURE__ */ new Set(["jsx", "braces", "unterminated-string"]);
+    HEURISTIC_SYNTAX_KINDS2 = /* @__PURE__ */ new Set(["jsx", "braces", "unterminated-string", "truncation"]);
   }
 });
 
@@ -159848,6 +159868,21 @@ function priceTurn(usages) {
   }
   return priceBuild({ prompt_tokens: prompt, completion_tokens: completion });
 }
+function priceTurnByCost(usages, costPerCreditUsd) {
+  const real = usages.filter((u) => !!u);
+  const tokenPriced = priceTurn(real);
+  const allCosted = real.length > 0 && real.every((u) => typeof u.cost === "number" && Number.isFinite(u.cost));
+  if (!allCosted || !(costPerCreditUsd > 0)) return { ...tokenPriced, costUsd: null };
+  const costUsd = real.reduce((s, u) => s + u.cost, 0);
+  const raw = costUsd / costPerCreditUsd;
+  const floored = Math.max(BUILD_FLOOR, raw);
+  return {
+    ...tokenPriced,
+    amount: round2(Math.min(BUILD_CAP, floored)),
+    clamped: floored > BUILD_CAP,
+    costUsd
+  };
+}
 
 // src/server/turn-economics.server.ts
 init_define_import_meta_env();
@@ -163298,7 +163333,7 @@ async function applyNpmPreflight(issues, opts = {}) {
 }
 
 // src/server/pipeline/tier-local-verify.ts
-var HEURISTIC_SYNTAX_KINDS = /* @__PURE__ */ new Set(["jsx", "braces", "unterminated-string"]);
+var HEURISTIC_SYNTAX_KINDS = /* @__PURE__ */ new Set(["jsx", "braces", "unterminated-string", "truncation"]);
 async function runLocalVerifyTier(args) {
   const { nextFiles, currentFiles, toolName, parsedOps, authoredPaths } = args;
   const priorByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
@@ -167666,7 +167701,7 @@ async function handleGenerateRequestCore(request, turnId, workSignal) {
     if (balance.reason === "insufficient_credits") {
       return new Response(
         JSON.stringify({
-          error: "You're out of credits. Add credits in Settings \u2192 Plans & Credits to keep generating."
+          error: "You're out of credits. Add credits in Settings \u2192 Credits to keep generating."
         }),
         { status: 402, headers: { "Content-Type": "application/json" } }
       );
@@ -168825,6 +168860,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             )
           );
         }
+        const pageWriteUsages = [];
         let collected = directLogoEdit ? {
           name: "patch_files",
           args: JSON.stringify(directLogoEdit.parsed),
@@ -169224,6 +169260,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                     if (!again.ok || !again.body) return null;
                     c = await relayAndCollect(again, controller, encoder);
                   }
+                  if (c.usage) pageWriteUsages.push(c.usage);
                   try {
                     const { parseRawFile: parseRawFile2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
                     const content = wantPath ? parseRawFile2(c.text) : null;
@@ -170621,9 +170658,11 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         await saveProjectArchitecture(body.projectId, nextFiles);
         const turnUsages = [
           collected.usage ?? null,
+          ...pageWriteUsages,
           ...agentLoopUsages
         ];
-        const priced = priceTurn(turnUsages);
+        const { economicsValue: economicsValue2 } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
+        const priced = priceTurnByCost(turnUsages, await economicsValue2("target_variable_cost_per_credit_usd"));
         const cachedPromptTokens = collected.usage?.prompt_tokens_details?.cached_tokens ?? collected.usage?.cache_read_input_tokens ?? null;
         void updateLastCallUsage({
           feature: "generate",
@@ -170720,6 +170759,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           result: failedEditTurn ? "no_op" : "generated",
           metadata: {
             priced_amount: priced.amount,
+            priced_from: priced.costUsd == null ? "tokens" : "openrouter_cost",
+            openrouter_cost_usd: priced.costUsd,
             usage_missing: priced.usageMissing,
             clamped: priced.clamped,
             model
