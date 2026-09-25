@@ -25,7 +25,7 @@ const Body = z.object({
   walletId: z.string().min(1).max(40),
   txHash: z.string().trim().min(6).max(200),
   amountSent: z.number().positive().max(1_000_000).optional(),
-  /** Only for runtime_topup with a custom amount — USD cents. */
+  /** Custom amount (runtime_topup, or pack with itemCode "custom") — USD cents. */
   customUsdCents: z.number().int().positive().max(10_000_00).optional(),
 });
 
@@ -123,9 +123,20 @@ export const Route = createFileRoute("/api/billing/crypto")({
               }
               usdAmountCents = Number(pack.amount_cents);
             }
+          } else if (parsed.purpose === "pack" && parsed.itemCode === "custom") {
+            if (!parsed.customUsdCents) return json({ error: "Enter an amount to continue." }, 400);
+            usdAmountCents = parsed.customUsdCents;
           } else {
             const price = await resolvePrice(parsed.purpose, parsed.itemCode, "USD");
             usdAmountCents = price.usdAmountCents;
+          }
+          if (parsed.purpose === "pack") {
+            const { minimumPurchaseUsdCents, belowMinimumMessage } = await import(
+              "@/server/credit-purchase.server"
+            );
+            if (usdAmountCents < (await minimumPurchaseUsdCents())) {
+              return json({ error: await belowMinimumMessage("USD"), code: "below_minimum" }, 400);
+            }
           }
 
           const reference = `crypto_${parsed.txHash.replace(/[^a-zA-Z0-9]/g, "").slice(0, 48)}`;

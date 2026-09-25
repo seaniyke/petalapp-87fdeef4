@@ -11,6 +11,7 @@
  * Server-only.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { creditsForUsdCents } from "@/server/credit-purchase.server";
 import { sendBillingEmail } from "@/server/billing-email.server";
 
 export type CryptoPaymentRow = {
@@ -105,6 +106,10 @@ export async function creditCryptoPayment(args: {
         _pack_code: payment.item_code,
         _reference: payment.reference,
         _environment: payment.environment,
+        _custom_credits:
+          payment.item_code === "custom"
+            ? await creditsForUsdCents(Number(payment.usd_amount_cents))
+            : undefined,
       });
       if (error) throw new Error(error.message);
     } else if (payment.purpose === "plan") {

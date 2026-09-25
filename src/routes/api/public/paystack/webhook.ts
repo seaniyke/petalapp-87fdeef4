@@ -13,6 +13,7 @@
  *
  * Idempotent: every event id is recorded in paystack_events.
  */
+import { creditsForUsdCents } from "@/server/credit-purchase.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -478,6 +479,7 @@ async function handleChargeSuccess(payload: AnyEvent, origin: string): Promise<v
       _pack_code: tx.item_code,
       _reference: ref,
       _environment: tx.environment,
+      _custom_credits: tx.item_code === "custom" ? await creditsForUsdCents(Number(tx.usd_amount_cents)) : undefined,
     });
   } else if (tx.purpose === "runtime_topup") {
     await supabaseAdmin.rpc("apply_paystack_runtime_topup", {

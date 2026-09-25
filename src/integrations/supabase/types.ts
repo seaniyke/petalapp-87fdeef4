@@ -5215,6 +5215,7 @@ export type Database = {
       }
       apply_paystack_topup: {
         Args: {
+          _custom_credits?: number
           _environment: string
           _pack_code: string
           _reference: string

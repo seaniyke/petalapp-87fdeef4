@@ -327,7 +327,7 @@ const CONFIG_LABELS: Record<string, string> = {
   verification_minute_usd: "Verification minute (USD)",
   deploy_event_usd: "Deploy event (USD)",
   image_generation_usd: "Image generation (USD)",
-  min_purchase_ngn: "Minimum purchase (NGN)",
+  min_purchase_usd_cents: "Minimum credit purchase (USD cents)",
   target_gross_margin_pct: "Target gross margin (%)",
   free_user_monthly_cost_ceiling_usd: "Free user monthly cost ceiling (USD)",
   max_active_dedicated_backends: "Max active dedicated backends",

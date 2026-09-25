@@ -12,6 +12,7 @@
  *   - Conditional UPDATE on status='pending' so concurrent webhook + return
  *     callers can't double-write the row.
  */
+import { creditsForUsdCents } from "@/server/credit-purchase.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -123,6 +124,7 @@ export const Route = createFileRoute("/api/billing/verify")({
                 _pack_code: tx.item_code,
                 _reference: q.reference,
                 _environment: tx.environment,
+                _custom_credits: tx.item_code === "custom" ? await creditsForUsdCents(Number(tx.usd_amount_cents)) : undefined,
               });
             } else if (tx.purpose === "runtime_topup") {
               await supabaseAdmin.rpc("apply_paystack_runtime_topup", {
