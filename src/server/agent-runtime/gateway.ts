@@ -86,6 +86,10 @@ export function createGatewayAgentIO(send: SendOps): AgentIO {
       const r = await one(send, { op: "events.append", events });
       if (!r.ok) throw new Error(r.error);
     },
+    async heartbeat(_turnId, lease) {
+      const r = await one(send, { op: "turn.heartbeat", lease });
+      return r.ok ? (((r.data as { state?: "ok" | "lost" | "terminal" } | undefined)?.state) ?? "ok") : "ok";
+    },
     async finishTurn(_turnId, status, extras) {
       await one(send, { op: "turn.finish", status, errorMessage: extras.errorMessage ?? null, creditsCharged: extras.creditsCharged ?? null });
     },

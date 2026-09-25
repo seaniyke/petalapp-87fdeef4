@@ -47,6 +47,8 @@ export interface AgentIO {
   readBlueprint(projectId: string): Promise<Record<string, unknown> | null>;
   /** Upsert plan columns; `blueprint` is merged with existing sibling keys. */
   saveBlueprint(projectId: string, columns: Record<string, unknown>, blueprint: Record<string, unknown>): Promise<void>;
+  /** Worker liveness + lease. 'lost' = another worker owns the turn; 'terminal' = turn ended. */
+  heartbeat?(turnId: string, lease: string): Promise<"ok" | "lost" | "terminal">;
   /** Railway only: make + store a picture through the app (it holds storage). */
   generateImage?(opts: { prompt: string; aspectRatio?: "1:1" | "16:9" | "4:3" | "3:4" | "9:16"; cacheKey?: string }): Promise<{ url: string; cached: boolean }>;
 }
@@ -90,7 +92,8 @@ export function createDirectAgentIO(): AgentIO {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error } = await supabaseAdmin
         .from("turn_events")
-        .insert(events.map((e) => ({ turn_id: turnId, seq: e.seq, kind: e.kind, payload: (e.payload ?? {}) as never })));
+        // Idempotent: a retried flush never duplicates or fails on a seen seq.
+        .upsert(events.map((e) => ({ turn_id: turnId, seq: e.seq, kind: e.kind, payload: (e.payload ?? {}) as never })), { onConflict: "turn_id,seq", ignoreDuplicates: true });
       if (error) throw new Error(error.message);
       // Every flushed event proves the turn is alive (stalled-turn reaper).
       await supabaseAdmin
@@ -109,7 +112,15 @@ export function createDirectAgentIO(): AgentIO {
           error_message: extras.errorMessage ?? null,
           credits_charged: extras.creditsCharged ?? null,
         })
-        .eq("id", turnId);
+        .eq("id", turnId)
+        // A terminal status is final: a late worker can't overwrite Stop.
+        .in("status", ["running", "awaiting_credits"]);
+    },
+    async heartbeat(turnId, lease) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await supabaseAdmin.rpc("claim_turn_heartbeat" as never, { _turn_id: turnId, _lease: lease } as never);
+      if (error) return "ok"; // a missed beat never kills a run; the sweeper is the judge
+      return (data as unknown as "ok" | "lost" | "terminal") ?? "ok";
     },
     async logAiCall(row) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

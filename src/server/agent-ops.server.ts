@@ -41,6 +41,8 @@ export interface AgentOpsStore {
   readBlueprint(projectId: string): Promise<Record<string, unknown> | null>;
   saveBlueprint(projectId: string, columns: Record<string, unknown>, blueprint: Record<string, unknown>): Promise<void>;
   appendEvents(turnId: string, events: EventRow[]): Promise<void>;
+  /** Worker lease + liveness (claim_turn_heartbeat). */
+  heartbeat?(turnId: string, lease: string): Promise<"ok" | "lost" | "terminal">;
   /** Atomic: set committed_at only while running + uncommitted. */
   claimCommit(turnId: string): Promise<boolean>;
   finishTurn(
@@ -109,6 +111,7 @@ export const AgentOpSchema = z.discriminatedUnion("op", [
       .max(64),
   }),
   z.object({ op: z.literal("turn.status") }),
+  z.object({ op: z.literal("turn.heartbeat"), lease: z.string().uuid() }),
   z.object({ op: z.literal("build.start") }),
   z.object({ op: z.literal("turn.claimCommit") }),
   z.object({
@@ -254,6 +257,8 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
         return { ok: false, error: (e as Error).message.slice(0, 300) };
       }
     }
+    case "turn.heartbeat":
+      return { ok: true, data: { state: store.heartbeat ? await store.heartbeat(turn.id, op.lease) : "ok" } };
     case "events.append":
       await store.appendEvents(turn.id, op.events);
       return { ok: true };
