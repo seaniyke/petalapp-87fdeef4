@@ -15,7 +15,9 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useWallet } from "@/hooks/use-wallet";
+import { hasFullAccess } from "@/lib/billing";
 import { BillingSheet } from "@/components/BillingSheet";
+
 import { supabase } from "@/integrations/supabase/client";
 import {
   getMobileAppStatus,
@@ -47,8 +49,9 @@ const STATUS_COLOR: Record<MobileBuild["status"], string> = {
 };
 
 export function MobileAppPanel({ projectId }: { projectId: string }) {
-  const { plan } = useWallet();
-  const isPaidPlan = !!plan && plan.code !== "free";
+  const { wallet } = useWallet();
+  const canBuild = hasFullAccess(wallet);
+
 
   const [billingOpen, setBillingOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,15 +82,15 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
   }
 
   useEffect(() => {
-    if (!isPaidPlan) {
+    if (!canBuild) {
       setLoading(false);
       return;
     }
     void refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, isPaidPlan]);
+  }, [projectId, canBuild]);
 
-  if (!isPaidPlan) {
+  if (!canBuild) {
     return (
       <div id="settings-mobile" className="mt-8 scroll-mt-4 border-t border-border pt-6">
         <h3 className="mb-2 flex items-center gap-2 text-sm font-medium">
@@ -99,8 +102,8 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
             push notifications, the lot.
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Mobile builds are included with paid plans. Each build is metered
-            from your credits (about 4 credits unsigned, 8 signed).
+            Each build is paid for with credits (about 4 credits unsigned, 8
+            signed). Buy credits to start — they never expire.
           </p>
           <Button
             type="button"
@@ -108,13 +111,14 @@ export function MobileAppPanel({ projectId }: { projectId: string }) {
             className="mt-3 inline-flex items-center gap-1.5"
             onClick={() => setBillingOpen(true)}
           >
-            <Sparkles className="h-3.5 w-3.5" /> Upgrade to enable
+            <Sparkles className="h-3.5 w-3.5" /> Buy credits
           </Button>
         </div>
         <BillingSheet open={billingOpen} onOpenChange={setBillingOpen} />
       </div>
     );
   }
+
 
   if (loading) {
     return (

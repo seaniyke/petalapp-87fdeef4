@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useWallet } from "@/hooks/use-wallet";
+import { hasFullAccess } from "@/lib/billing";
 import { fetchRuntimeWallet, formatUsdCents } from "@/lib/runtime-wallet";
 import { enableManagedBackend, enableSharedBackend } from "@/lib/projects";
 import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
@@ -45,8 +46,10 @@ export function EnableBackendFromCloudDialog({
   onEnabled,
 }: Props) {
   const { user } = useAuth();
-  const { plan } = useWallet();
-  const isPaidPlan = !!plan && plan.code !== "free";
+  const { wallet } = useWallet();
+  // Credits unlock everything — a legacy plan or any purchased credits count.
+  const isPaidPlan = hasFullAccess(wallet);
+
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

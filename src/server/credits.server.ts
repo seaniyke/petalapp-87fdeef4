@@ -40,7 +40,12 @@ export type SpendReason =
   // Cloud + AI meter charged directly to the single credit balance.
   | "runtime_charge"
   // One-time purchase: remove the Kimble badge from a project.
-  | "badge_removal";
+  | "badge_removal"
+  // One-time purchase: register a domain, paid for with credits.
+  | "domain_purchase"
+  // Metered: a native iOS/Android build.
+  | "mobile_build";
+
 
 export type SpendCreditOptions = {
   userId: string;

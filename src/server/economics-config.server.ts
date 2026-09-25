@@ -28,7 +28,9 @@ export type EconomicsKey =
   | "auto_upgrade_min_credits"
   | "compute_hour_usd"
   | "max_active_compute"
-  | "badge_removal_credits";
+  | "badge_removal_credits"
+  | "credit_retail_usd_cents";
+
 
 export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   target_variable_cost_per_credit_usd: 0.05,
@@ -49,6 +51,10 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   compute_hour_usd: 0.08,
   max_active_compute: 25,
   badge_removal_credits: 25,
+  // What one credit is worth in USD cents when we charge a real cash cost
+  // (domain registration). Conservative vs the cheapest pack (20 credits/$5).
+  credit_retail_usd_cents: 20,
+
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;

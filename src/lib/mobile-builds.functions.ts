@@ -367,16 +367,21 @@ export const startMobileBuild = createServerFn({ method: "POST" })
     const platform = data.platform as MobilePlatform;
     const kind = data.kind as MobileBuildKind;
 
-    // 1. Paid-plan gate. Mobile is paid-only, like backend/email/domain.
+    // 1. Access gate. Mobile builds need a paid plan OR purchased credits —
+    //    pay-as-you-go users are first-class (mirrors public.has_full_access).
     const { data: wallet, error: walletErr } = await supabase
       .from("user_wallets")
-      .select("plan_code")
+      .select("plan_code, topup_credits_remaining")
       .eq("user_id", userId)
       .maybeSingle();
     if (walletErr) return { ok: false, reason: "internal_error", message: walletErr.message };
-    if ((wallet?.plan_code ?? "free") === "free") {
+    const hasAccess =
+      (wallet?.plan_code ?? "free") !== "free" ||
+      Number(wallet?.topup_credits_remaining ?? 0) > 0;
+    if (!hasAccess) {
       return { ok: false, reason: "plan_required" };
     }
+
 
     // 2. Provision (idempotent) — GitHub mirror + Codemagic app + bundle id.
     let app: Awaited<ReturnType<typeof ensurePetalMobileApp>>;
