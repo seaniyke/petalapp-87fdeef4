@@ -50,12 +50,16 @@ describe("read-before-edit", () => {
 });
 
 describe("operation identity", () => {
-  it("purpose is BUILD for build operations regardless of free/paid source", () => {
-    expect(creditPurposeFor(toOperationType("styling_change", { isInitial: false }))).toBe("BUILD");
+  it("purpose is server-derived: BUILD needs an allow-listed type AND a new revision", () => {
+    expect(creditPurposeFor(toOperationType("styling_change", { isInitial: false }), true)).toBe("BUILD");
+    expect(creditPurposeFor("ITERATION", false)).toBe("NON_BUILD");
+    expect(creditPurposeFor("SOMETHING_UNKNOWN", true)).toBe("NON_BUILD");
     expect(toOperationType("anything", { isInitial: true })).toBe("FIRST_BUILD");
   });
-  it("settled operations cannot be moved back", () => {
-    expect(transitionAllowed("SETTLED" as never, "PENDING" as never)).toBe(false);
+  it("terminal settlement states cannot move", () => {
+    expect(transitionAllowed("SETTLED", "BUILDING")).toBe(false);
+    expect(transitionAllowed("REFUNDED", "SETTLED")).toBe(false);
+    expect(transitionAllowed("READY", "FAILED")).toBe(false);
   });
 });
 
