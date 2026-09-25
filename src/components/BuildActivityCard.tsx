@@ -157,8 +157,9 @@ export function BuildActivityCard({
   buildSteps,
   activeStepIndex = -1,
   doneStepIndexes,
-  isActive,
-  isComplete,
+  turn,
+  isActive: isActiveProp,
+  isComplete: isCompleteProp,
   error,
   designCaption,
   latestPath,
@@ -189,6 +190,14 @@ export function BuildActivityCard({
   onResultSnapshot,
 }: Props) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  // Authoritative lifecycle wins. "AI finished" is never "ready": a failed
+  // build, failed live check, failure or Stop can never show the success card.
+  const lc = turn?.lifecycle;
+  const blocksSuccess =
+    lc === "failed" || lc === "cancelled" || lc === "stopping" || lc === "build_failed" || lc === "verify_failed" || lc === "running" || lc === "generated" || lc === "building";
+  const isComplete = isCompleteProp && !blocksSuccess;
+  const isActive = (isActiveProp || lc === "stopping") && lc !== "cancelled";
+  const storyMode = !!turn && turn.lifecycle !== "idle" && turn.hasActivity && !isComplete;
 
   // Tick once a second while active so the elapsed counter updates in real
   // time. `tick` is a memo dependency on purpose — without it the elapsed
@@ -415,7 +424,9 @@ export function BuildActivityCard({
 
   const headline = isComplete
     ? `Done${doneBits.length ? ` · ${doneBits.join(" · ")}` : " — your app is live"}`
-    : (currentPhase?.label ?? "Working…");
+    : storyMode && turn
+      ? turn.headline
+      : (currentPhase?.label ?? "Working…");
 
   // Verb + filename chip for the live step, the way a teammate would say it.
   const activeFile =
@@ -507,7 +518,7 @@ export function BuildActivityCard({
               )}
             </div>
             <LiveNarration
-              line={subCaption ?? null}
+              line={(storyMode ? turn?.detail : null) ?? (storyMode && !isActive ? null : subCaption) ?? null}
               phaseId={currentPhase?.id}
               active={isActive}
             />
@@ -518,10 +529,14 @@ export function BuildActivityCard({
             pages landing one by one. Everything verbose stays behind
             "Details". */}
         <ImageStrip urls={imageUrls} pending={imagesPending} />
-        <FileStack
-          paths={writtenPaths ?? []}
-          activePath={isActive && currentPhase?.id === "writing" ? latestPath : null}
-        />
+        {storyMode && turn ? (
+          <TurnStory view={turn} />
+        ) : (
+          <FileStack
+            paths={writtenPaths ?? []}
+            activePath={isActive && currentPhase?.id === "writing" ? latestPath : null}
+          />
+        )}
 
 
 
