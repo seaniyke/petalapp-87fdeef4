@@ -69,6 +69,7 @@ export default defineConfig({
       "src/lib/__tests__/retry-transient.test.ts",
       "src/lib/__tests__/infra-build-failures.test.ts",
       "src/lib/__tests__/stream-reconnect.test.ts",
+      "src/lib/__tests__/turn-reconcile.test.ts",
       "src/server/__tests__/turn-recorder-client-id.test.ts",
       "src/server/__tests__/edit-scope-guard-scaffold.test.ts",
       "src/lib/friendly-errors.test.ts",

@@ -52,6 +52,7 @@ import {
   readPersistedTurn,
   bumpTurnSeq,
 } from "@/lib/turn-persistence";
+import { reconcileAuthoritativeTurn } from "@/lib/turn-reconcile";
 import {
   persistPendingPlan,
   clearPendingPlan,
@@ -2016,6 +2017,49 @@ function Builder() {
     let cancelled = false;
     let controller: AbortController | null = null;
 
+    // Set while a reconcile lookup is in flight so the visibility/online/
+    // heartbeat triggers can't stack several of them on top of each other.
+    let reconciling = false;
+
+    /**
+     * A turn that finished while the tab was away needs no stream at all —
+     * the database already holds the answer. Check that first: it turns a
+     * returning phone into an instant, correct view instead of a reconnect
+     * that may fail and look like a lost build.
+     */
+    async function reconcileThenResume(): Promise<void> {
+      if (cancelled || reconciling || abortRef.current) return;
+      const persisted = readPersistedTurn(pid);
+      if (!persisted) return;
+      reconciling = true;
+      try {
+        const verdict = await reconcileAuthoritativeTurn(pid, persisted.turnId);
+        if (cancelled) return;
+        if (verdict.state === "SUCCEEDED") {
+          const [fs, ms] = await Promise.all([
+            loadProjectFiles(pid).catch(() => null),
+            loadProjectMessages(pid).catch(() => null),
+          ]);
+          if (cancelled) return;
+          if (fs) setFiles(fs);
+          if (ms) setMessages(ms);
+          setStreamingAssistant("");
+          setStreamingPlan("");
+          setStreamingRecap("");
+          setLatestCycleProgress(undefined);
+          setActivityVisible(false);
+          setBusy(false);
+          clearPersistedTurnId(pid);
+          return;
+        }
+      } catch {
+        /* fall through to the normal resume */
+      } finally {
+        reconciling = false;
+      }
+      if (!cancelled) attemptResume();
+    }
+
     function attemptResume() {
       if (cancelled) return;
       const persisted = readPersistedTurn(pid);
@@ -2158,13 +2202,13 @@ function Builder() {
       });
     }
 
-    attemptResume();
+    void reconcileThenResume();
 
     // Also re-attempt when the tab returns to focus (mobile users locking
     // and unlocking the phone). If the previous resume already finished
     // and cleared localStorage, this is a no-op.
     const onVisible = () => {
-      if (document.visibilityState === "visible") attemptResume();
+      if (document.visibilityState === "visible") void reconcileThenResume();
     };
     document.addEventListener("visibilitychange", onVisible);
 
@@ -2174,11 +2218,11 @@ function Builder() {
     // the browser `online` event, and a light heartbeat that re-attempts
     // while the tab is visible and a turn is still persisted. attemptResume
     // no-ops when a send is already running in this tab.
-    const onOnline = () => attemptResume();
+    const onOnline = () => void reconcileThenResume();
     window.addEventListener("online", onOnline);
     const heartbeat = window.setInterval(() => {
       if (document.visibilityState === "visible" && readPersistedTurn(pid)) {
-        attemptResume();
+        void reconcileThenResume();
       }
     }, 20_000);
 
@@ -2937,13 +2981,56 @@ function Builder() {
           throw new PipelineError(streamError, streamErrorKind ?? "unknown", streamErrorRaw);
         }
         if (!resultFiles) {
-          // The stream closed cleanly but never delivered a result: the model
-          // hung or the connection dropped mid-turn. This was the top failure
-          // signature in the daily digest ("No result returned.") precisely
-          // because it threw a bare Error — no `kind`, so no friendly card, no
-          // retry affordance, and telemetry couldn't tell it apart from a
-          // genuine crash. Classify it as what it is so the user gets the
-          // timeout card with a retry button.
+          // The stream closed without delivering a result frame. That frame is
+          // TRANSPORT, not truth: a locked phone or a radio switch loses it for
+          // turns the server already committed. So ask the database what really
+          // happened before ever showing a failure.
+          setLatestCycleProgress("Connection interrupted — checking your build status…");
+          setActivityVisible(true);
+          const verdict = await reconcileAuthoritativeTurn(proj.id, turnToken.turnId);
+          if (verdict.state === "SUCCEEDED" || verdict.state === "BUILDING") {
+            // Committed server-side. Rehydrate from the source of truth; never
+            // resend, never charge twice, never show an error.
+            try {
+              const [fs, ms] = await Promise.all([
+                loadProjectFiles(proj.id),
+                loadProjectMessages(proj.id),
+              ]);
+              if (projectIdRef.current !== proj.id) return;
+              setFiles(fs);
+              setMessages(ms);
+            } catch {
+              /* the reply still lands on reload */
+            }
+            setStreamingAssistant("");
+            setStreamingPlan("");
+            setStreamingRecap("");
+            clearPersistedTurnId(proj.id);
+            if (verdict.state === "BUILDING") {
+              setPhases((p) => advanceTo(p, "deploying"));
+              setLatestCycleProgress("Finishing the build…");
+            } else {
+              setLatestCycleProgress(undefined);
+              setActivityVisible(false);
+            }
+            return;
+          }
+          if (verdict.state === "RUNNING" || verdict.state === "WAITING_FOR_USER") {
+            // Still alive on the server — stay in the working state and let the
+            // resume watcher reattach.
+            setAwaitingSilentResume(true);
+            setLatestCycleProgress("Still working — Kimble is finishing this off.");
+            return;
+          }
+          if (verdict.state === "FAILED" || verdict.state === "ABORTED") {
+            throw new PipelineError(
+              verdict.errorMessage?.trim() ||
+                "Kimble couldn't finish this one. Nothing was saved.",
+              "unknown",
+              "reconciled terminal failure from turns row",
+            );
+          }
+          // Genuinely unknown (no turn row, or the lookup itself failed).
           throw new PipelineError(
             "The model stopped responding before it finished this turn.",
             "upstream_timeout",
