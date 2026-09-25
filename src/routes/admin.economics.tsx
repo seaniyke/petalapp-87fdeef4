@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { adminApi } from "@/lib/admin-api";
 import { toast } from "sonner";
+import { CohortPanel, OperationEconomicsPanel } from "@/components/admin/OperationEconomics";
 
 export const Route = createFileRoute("/admin/economics")({
   head: () => ({
@@ -110,6 +111,7 @@ function AdminEconomicsPage() {
       <AdminTabs />
       <div className="mx-auto max-w-6xl space-y-4 p-4">
         <CohortPanel />
+        <OperationEconomicsPanel />
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold">Economics</h1>

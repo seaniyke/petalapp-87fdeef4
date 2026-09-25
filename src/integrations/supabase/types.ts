@@ -103,6 +103,7 @@ export type Database = {
           last_token_ms: number | null
           latency_ms: number | null
           model: string | null
+          operation_id: string | null
           parent_stage: string | null
           phase: string | null
           project_id: string | null
@@ -159,6 +160,7 @@ export type Database = {
           last_token_ms?: number | null
           latency_ms?: number | null
           model?: string | null
+          operation_id?: string | null
           parent_stage?: string | null
           phase?: string | null
           project_id?: string | null
@@ -215,6 +217,7 @@ export type Database = {
           last_token_ms?: number | null
           latency_ms?: number | null
           model?: string | null
+          operation_id?: string | null
           parent_stage?: string | null
           phase?: string | null
           project_id?: string | null
@@ -240,7 +243,15 @@ export type Database = {
           usage_state?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_call_log_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "economic_operations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_call_outcomes: {
         Row: {
@@ -781,6 +792,7 @@ export type Database = {
       }
       cost_events: {
         Row: {
+          attribution: string | null
           build_id: string | null
           category: string
           cost_basis: string
@@ -790,6 +802,7 @@ export type Database = {
           funded_by: string | null
           id: string
           metadata: Json
+          operation_id: string | null
           project_id: string | null
           provider: string | null
           quantity: number | null
@@ -802,6 +815,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          attribution?: string | null
           build_id?: string | null
           category: string
           cost_basis: string
@@ -811,6 +825,7 @@ export type Database = {
           funded_by?: string | null
           id?: string
           metadata?: Json
+          operation_id?: string | null
           project_id?: string | null
           provider?: string | null
           quantity?: number | null
@@ -823,6 +838,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          attribution?: string | null
           build_id?: string | null
           category?: string
           cost_basis?: string
@@ -832,6 +848,7 @@ export type Database = {
           funded_by?: string | null
           id?: string
           metadata?: Json
+          operation_id?: string | null
           project_id?: string | null
           provider?: string | null
           quantity?: number | null
@@ -843,43 +860,68 @@ export type Database = {
           unit?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cost_events_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "economic_operations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       credit_ledger: {
         Row: {
+          attribution: string | null
           balance_after: number
           created_at: string
+          credit_purpose: string | null
           delta: number
           id: string
           metadata: Json
+          operation_id: string | null
           project_id: string | null
           reason: string
           turn_id: string | null
           user_id: string
         }
         Insert: {
+          attribution?: string | null
           balance_after: number
           created_at?: string
+          credit_purpose?: string | null
           delta: number
           id?: string
           metadata?: Json
+          operation_id?: string | null
           project_id?: string | null
           reason: string
           turn_id?: string | null
           user_id: string
         }
         Update: {
+          attribution?: string | null
           balance_after?: number
           created_at?: string
+          credit_purpose?: string | null
           delta?: number
           id?: string
           metadata?: Json
+          operation_id?: string | null
           project_id?: string | null
           reason?: string
           turn_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "economic_operations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       credit_packs: {
         Row: {
@@ -1200,6 +1242,98 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      economic_operations: {
+        Row: {
+          attribution: string
+          base_revision: number | null
+          build_attempts: number
+          build_revision: number | null
+          committed_revision: number | null
+          created_at: string
+          credit_purpose: string
+          credits_charged: number
+          credits_estimated: number | null
+          credits_refunded: number
+          credits_reserved: number | null
+          economics_cohort: string | null
+          failure_class: string | null
+          free_credits_charged: number
+          id: string
+          metadata: Json
+          operation_type: string
+          outcome: string | null
+          paid_credits_charged: number
+          project_id: string
+          published_revision: number | null
+          settlement_state: string
+          turn_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attribution?: string
+          base_revision?: number | null
+          build_attempts?: number
+          build_revision?: number | null
+          committed_revision?: number | null
+          created_at?: string
+          credit_purpose?: string
+          credits_charged?: number
+          credits_estimated?: number | null
+          credits_refunded?: number
+          credits_reserved?: number | null
+          economics_cohort?: string | null
+          failure_class?: string | null
+          free_credits_charged?: number
+          id?: string
+          metadata?: Json
+          operation_type?: string
+          outcome?: string | null
+          paid_credits_charged?: number
+          project_id: string
+          published_revision?: number | null
+          settlement_state?: string
+          turn_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attribution?: string
+          base_revision?: number | null
+          build_attempts?: number
+          build_revision?: number | null
+          committed_revision?: number | null
+          created_at?: string
+          credit_purpose?: string
+          credits_charged?: number
+          credits_estimated?: number | null
+          credits_refunded?: number
+          credits_reserved?: number | null
+          economics_cohort?: string | null
+          failure_class?: string | null
+          free_credits_charged?: number
+          id?: string
+          metadata?: Json
+          operation_type?: string
+          outcome?: string | null
+          paid_credits_charged?: number
+          project_id?: string
+          published_revision?: number | null
+          settlement_state?: string
+          turn_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "economic_operations_turn_id_fkey"
+            columns: ["turn_id"]
+            isOneToOne: true
+            referencedRelation: "turns"
             referencedColumns: ["id"]
           },
         ]
@@ -3237,7 +3371,9 @@ export type Database = {
       }
       project_builds: {
         Row: {
+          attribution: string | null
           browser_ms: number | null
+          build_attempt: number | null
           builder_job_id: string | null
           compile_ms: number | null
           created_at: string
@@ -3250,6 +3386,7 @@ export type Database = {
           install_ms: number | null
           last_progress_at: string | null
           last_retry_at: string | null
+          operation_id: string | null
           progress_label: string | null
           project_id: string
           project_revision: number | null
@@ -3261,7 +3398,9 @@ export type Database = {
           verification: Json | null
         }
         Insert: {
+          attribution?: string | null
           browser_ms?: number | null
+          build_attempt?: number | null
           builder_job_id?: string | null
           compile_ms?: number | null
           created_at?: string
@@ -3274,6 +3413,7 @@ export type Database = {
           install_ms?: number | null
           last_progress_at?: string | null
           last_retry_at?: string | null
+          operation_id?: string | null
           progress_label?: string | null
           project_id: string
           project_revision?: number | null
@@ -3285,7 +3425,9 @@ export type Database = {
           verification?: Json | null
         }
         Update: {
+          attribution?: string | null
           browser_ms?: number | null
+          build_attempt?: number | null
           builder_job_id?: string | null
           compile_ms?: number | null
           created_at?: string
@@ -3298,6 +3440,7 @@ export type Database = {
           install_ms?: number | null
           last_progress_at?: string | null
           last_retry_at?: string | null
+          operation_id?: string | null
           progress_label?: string | null
           project_id?: string
           project_revision?: number | null
@@ -3309,6 +3452,13 @@ export type Database = {
           verification?: Json | null
         }
         Relationships: [
+          {
+            foreignKeyName: "project_builds_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "economic_operations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_builds_project_id_fkey"
             columns: ["project_id"]
@@ -4758,6 +4908,8 @@ export type Database = {
           is_auto_fix: boolean
           metadata: Json
           models: Json
+          operation_id: string | null
+          operation_type: string | null
           other_cost_usd_micro: number | null
           paid_credits_charged: number
           project_id: string | null
@@ -4807,6 +4959,8 @@ export type Database = {
           is_auto_fix?: boolean
           metadata?: Json
           models?: Json
+          operation_id?: string | null
+          operation_type?: string | null
           other_cost_usd_micro?: number | null
           paid_credits_charged?: number
           project_id?: string | null
@@ -4856,6 +5010,8 @@ export type Database = {
           is_auto_fix?: boolean
           metadata?: Json
           models?: Json
+          operation_id?: string | null
+          operation_type?: string | null
           other_cost_usd_micro?: number | null
           paid_credits_charged?: number
           project_id?: string | null
@@ -4879,6 +5035,13 @@ export type Database = {
           verify_ms?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "turn_economics_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "economic_operations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "turn_economics_project_id_fkey"
             columns: ["project_id"]
@@ -5734,6 +5897,16 @@ export type Database = {
         }
         Returns: number
       }
+      operation_credit_purpose: {
+        Args: { _produced_revision: boolean; _type: string }
+        Returns: string
+      }
+      operation_economics_report: { Args: { _since?: string }; Returns: Json }
+      operation_for_turn_text: { Args: { _turn: string }; Returns: string }
+      operation_transition_allowed: {
+        Args: { _from: string; _to: string }
+        Returns: boolean
+      }
       project_screenshot_url: {
         Args: { p_project_id: string }
         Returns: string
@@ -5825,7 +5998,7 @@ export type Database = {
         Returns: undefined
       }
       refund_build_charge: {
-        Args: { _build_id: string; _project_id: string; _reason?: string }
+        Args: { _build_id: string; _operation_id: string; _reason?: string }
         Returns: number
       }
       refund_credit: {
@@ -5857,6 +6030,10 @@ export type Database = {
           ok: boolean
           reason: string
         }[]
+      }
+      set_operation_type: {
+        Args: { _turn_id: string; _type: string }
+        Returns: undefined
       }
       set_user_plan: {
         Args: {
@@ -5890,6 +6067,7 @@ export type Database = {
             Args: {
               _amount: number
               _metadata?: Json
+              _operation_id?: string
               _project_id?: string
               _reason?: string
               _user_id: string

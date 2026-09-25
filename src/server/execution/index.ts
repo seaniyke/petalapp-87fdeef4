@@ -12,3 +12,4 @@ export * from "./ledger";
 export * from "./transaction";
 export * from "./commit";
 export * from "./circuit-breaker";
+export * from "./depth";

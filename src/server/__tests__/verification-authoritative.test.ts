@@ -15,7 +15,7 @@ const commit = (proposed: typeof base, verifySource: (t: typeof base, c: string[
   commitTurn({
     baseline: base,
     proposed,
-    ledger: new TurnLedger(),
+    ledger: (() => { const l = new TurnLedger(); for (const f of base) l.recordRead(f.path); return l; })(),
     isSystemPath: () => false,
     protectionReason: () => null,
     checks: [],

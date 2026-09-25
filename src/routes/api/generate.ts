@@ -1,3 +1,4 @@
+import { toOperationType } from "@/lib/operation-identity";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -3144,7 +3145,56 @@ async function handleGenerateRequestCore(
     targets: resolvedTargetPaths,
     neighbours: impactNeighbourPaths,
   });
-  const executionScopeBlock = isInitial ? "" : renderScopeBlock(executionScope);
+  const executionScopeBlockBase = isInitial ? "" : renderScopeBlock(executionScope);
+  // Lifecycle phase in the agent context (existing prompt assembly).
+  const { initialDepth } = await import("@/server/execution");
+  const turnInitialDepth = initialDepth(turnClassification, lastUserContent || "");
+  const lifecycleBlock = await (async () => {
+    try {
+      const { renderLifecycleContext } = await import("@/server/context/lifecycle");
+      let currentRevision: number | null = null;
+      let buildRevision: number | null = null;
+      let buildStatus: string | null = null;
+      let publishedRevision: number | null = null;
+      const knownIssues: string[] = [];
+      if (!isInitial && body.projectId) {
+        const { data: proj } = await supabaseAdmin
+          .from("projects").select("revision, latest_build_id, published_build_id").eq("id", body.projectId).maybeSingle();
+        currentRevision = (proj?.revision as number | null) ?? null;
+        const ids = [proj?.latest_build_id, proj?.published_build_id].filter(Boolean) as string[];
+        if (ids.length) {
+          const { data: builds } = await supabaseAdmin.from("project_builds").select("id, status, project_revision, error_message").in("id", ids);
+          for (const b of builds ?? []) {
+            if (b.id === proj?.latest_build_id) {
+              buildRevision = (b.project_revision as number | null) ?? null;
+              buildStatus = b.status as string;
+              if (b.status === "failed" && b.error_message) knownIssues.push(String(b.error_message).slice(0, 160));
+            }
+            if (b.id === proj?.published_build_id) publishedRevision = (b.project_revision as number | null) ?? null;
+          }
+        }
+      }
+      return "\n\n" + renderLifecycleContext({
+        isInitial,
+        operationType: toOperationType(turnClassification.operation, { isInitial }),
+        executionDepth: turnInitialDepth,
+        currentRevision,
+        buildRevision,
+        buildStatus,
+        publishedRevision,
+        designSystem: picContext?.design?.package?.systemId ?? null,
+        accent: picContext?.design?.package?.accent ?? null,
+        routes: (projectCtx.manifest?.pages ?? []).map((p) => String((p as { route?: string; path?: string }).route ?? (p as { path?: string }).path ?? "")).filter(Boolean),
+        relevantFiles: resolvedTargetPaths,
+        recentChanges: [],
+        knownIssues,
+      });
+    } catch (e) {
+      console.warn("[lifecycle] context unavailable", (e as Error).message);
+      return "";
+    }
+  })();
+  const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}`;
   // One TurnLedger per turn: enforces TURN_LIMITS on repairs, writes and
   // deletes; the TurnTransaction at the commit point is accounted by it.
   const { TurnLedger, commitTurn } = await import("@/server/execution");
@@ -3206,6 +3256,10 @@ async function handleGenerateRequestCore(
     { tokenCeiling: fileBlockCeiling, anchors: promptAnchors },
   );
 
+  // Read-before-edit: exactly the files whose current content the model
+  // receives this operation count as inspected. Nothing else may be
+  // overwritten (enforced at TurnLedger.write, the write boundary).
+  for (const f of promptBudget.files) turnLedger.recordRead(f.path);
   console.info(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`,
   );
@@ -6654,6 +6708,9 @@ async function handleGenerateRequestCore(
             if (lint.findings.length) console.info(`[design-lint] errors=${lint.errorCount} warnings=${lint.warningCount}: ${lint.findings.slice(0, 5).map((v) => `${v.rule}@${v.path}`).join(", ")}`);
           }
         }
+        // Documented read-before-edit exception: on a FIRST_BUILD the starter
+        // template is the foundation the build is designed to author over.
+        if (isInitial) for (const f of turnBaselineFiles) turnLedger.recordRead(f.path);
         const txResult = await commitTurn({
           baseline: turnBaselineFiles,
           proposed: nextFiles,
@@ -6680,6 +6737,22 @@ async function handleGenerateRequestCore(
           },
         });
         const txCommitted = txResult.outcome.status === "committed";
+        // FINAL execution depth: classifier's initial depth, raised (never
+        // lowered) by deterministic impact analysis of what actually changed.
+        if (txResult.outcome.status === "committed") {
+          const { finalDepth } = await import("@/server/execution");
+          const fd = finalDepth(turnInitialDepth, txResult.outcome.changed, { codeChanged: true });
+          console.info(`[depth] initial=${turnInitialDepth} final=${fd.depth}${fd.escalatedBy.length ? ` escalated_by=${fd.escalatedBy.map((f) => `${f.path}:${f.reason}`).slice(0, 5).join(",")}` : ""}`);
+          if (turnId && /^[0-9a-f-]{36}$/i.test(turnId)) {
+            void (async () => {
+              const { data: op } = await supabaseAdmin.from("economic_operations" as never).select("metadata").eq("turn_id", turnId).maybeSingle();
+              const meta = ((op as { metadata?: Record<string, unknown> } | null)?.metadata ?? {}) as Record<string, unknown>;
+              await supabaseAdmin.from("economic_operations" as never).update({
+                metadata: { ...meta, initial_depth: turnInitialDepth, final_depth: fd.depth, escalated_by: fd.escalatedBy.slice(0, 10) },
+              } as never).eq("turn_id", turnId);
+            })().catch(() => {});
+          }
+        }
         console.info(
           `[execution] tx=${txResult.outcome.status} changed=${txCommitted && txResult.outcome.status === "committed" ? txResult.outcome.changed.length : 0} rejections=${JSON.stringify(txResult.rejections.slice(0, 5))} ledger=${JSON.stringify(turnLedger.summary().counts)}`,
         );
@@ -6792,6 +6865,9 @@ async function handleGenerateRequestCore(
                 turnId: settleTurnId ?? null,
                 metadata: {
                   route: "/api/generate",
+                  // Server-side classifier result; the DB derives credit
+                  // purpose from it (allow-list), never from the caller.
+                  operation_type: toOperationType(turnClassification.operation, { isInitial }),
                   prompt_tokens: priced.promptTokens,
                   completion_tokens: priced.completionTokens,
                   usage_missing: priced.usageMissing,

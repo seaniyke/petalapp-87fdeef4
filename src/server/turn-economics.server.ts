@@ -200,15 +200,16 @@ export async function syncTurnCosts(turnId: string): Promise<void> {
     let free = 0;
     let paid = 0;
     if (te?.user_id && te.project_id) {
-      const since = new Date(new Date(te.created_at as string).getTime() - 30 * 60_000).toISOString();
+      // Exact: the charge(s) of this turn's own operation. No time windows.
       const { data: led } = await supabaseAdmin
-        .from("credit_ledger").select("delta, reason, metadata")
-        .eq("user_id", te.user_id).eq("project_id", te.project_id).eq("reason", "ai_build_charge")
-        .lt("delta", 0).gte("created_at", since).order("created_at", { ascending: false }).limit(1);
-      const m = (led?.[0]?.metadata ?? {}) as { sources?: Array<{ bucket: string; amount: number }> };
-      for (const s of m.sources ?? []) {
-        if (s.bucket === "daily_free") free += Number(s.amount);
-        else paid += Number(s.amount);
+        .from("credit_ledger").select("delta, reason, metadata, operation_id")
+        .eq("turn_id", turnId).eq("reason", "ai_build_charge").lt("delta", 0);
+      for (const row of led ?? []) {
+        const m = (row.metadata ?? {}) as { sources?: Array<{ bucket: string; amount: number }> };
+        for (const s of m.sources ?? []) {
+          if (s.bucket === "daily_free") free += Number(s.amount);
+          else paid += Number(s.amount);
+        }
       }
     }
     await supabaseAdmin
@@ -340,57 +341,6 @@ export async function recordTurnRefund(turnId: string, credits: number): Promise
   }
 }
 
-/**
- * Attach build cost to the turn that most likely produced it.
- *
- * `project_builds` carries no turn id today, so we match the newest economics
- * record for the project that has no build attached yet, within an hour. The
- * match is recorded in metadata as a heuristic so nobody later mistakes it for
- * a hard link.
- */
-export async function attachBuildEconomicsByProject(args: {
-  projectId: string;
-  buildId: string;
-  buildMs?: number | null;
-  verifyMs?: number | null;
-  result: "ready" | "failed" | "rolled_back";
-}): Promise<void> {
-  try {
-    const since = new Date(Date.now() - 60 * 60_000).toISOString();
-    const { data } = await supabaseAdmin
-      .from("turn_economics")
-      .select("turn_id")
-      .eq("project_id", args.projectId)
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const turnId = data?.[0]?.turn_id;
-    if (!turnId) return;
-    await attachBuildEconomics({
-      turnId,
-      projectId: args.projectId,
-      buildId: args.buildId,
-      buildMs: args.buildMs ?? null,
-      verifyMs: args.verifyMs ?? null,
-      result: args.result,
-    });
-    // Browser-review AI calls run on the builder with no turn id: link the
-    // un-stamped calls for this project made while this build ran.
-    if (args.buildMs != null) {
-      const started = new Date(Date.now() - args.buildMs - 60_000).toISOString();
-      await supabaseAdmin
-        .from("ai_call_log")
-        .update({ turn_id: turnId, build_id: args.buildId } as never)
-        .eq("project_id", args.projectId)
-        .is("turn_id", null)
-        .gte("created_at", started);
-    }
-    await syncTurnCosts(turnId);
-    await supabaseAdmin
-      .from("turn_economics")
-      .update({ metadata: { build_link: "heuristic_recent_project_turn" } as never })
-      .eq("turn_id", turnId);
-  } catch (err) {
-    console.warn("[turn-economics] build attach by project failed", err);
-  }
-}
+// NOTE: the former attachBuildEconomicsByProject ("newest turn on the project
+// within an hour" + time-window linking of browser calls) was removed. Builds
+// are attributed only through their own operation/turn id; otherwise UNKNOWN.

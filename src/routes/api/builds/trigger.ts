@@ -251,9 +251,23 @@ export const Route = createFileRoute("/api/builds/trigger")({
 
         // 3) Insert pending build row + bump latest_build_id BEFORE calling
         //    Railway, so a fast callback never races ahead of our own write.
+        // Exact identity: the build belongs to the operation of the turn that
+        // asked for it — resolved from that turn id only, never "latest".
+        // No turn id → attribution "unknown" (the DB marks it), never guessed.
+        const { resolveBuildIdentity } = await import("@/server/operations.server");
+        const identity = await resolveBuildIdentity({
+          turnId: parsed.data.turnId ?? null,
+          projectId,
+          userId,
+        });
         const { data: build, error: insertErr } = await supabaseAdmin
           .from("project_builds")
-          .insert({ project_id: projectId, status: "pending", project_revision: projectRevision })
+          .insert({
+            project_id: projectId,
+            status: "pending",
+            project_revision: projectRevision,
+            ...(identity ? { operation_id: identity.operationId, build_attempt: identity.attempt } : {}),
+          } as never)
           .select("id")
           .single();
         if (insertErr || !build) {

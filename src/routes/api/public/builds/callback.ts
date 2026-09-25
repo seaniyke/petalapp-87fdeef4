@@ -30,7 +30,7 @@ import { evaluateReadiness } from "@/server/readiness.server";
 import { loadCasesForBuild } from "@/server/test-results.server";
 import { runBackendAcceptance } from "@/server/backend-acceptance.server";
 import { backendAcceptanceEnabled } from "@/server/completion-flags.server";
-import { attachBuildEconomicsByProject } from "@/server/turn-economics.server";
+import { attachBuildEconomics, syncTurnCosts } from "@/server/turn-economics.server";
 import { warmProjectThumbnail } from "@/server/project-thumbnail.server";
 
 /**
@@ -164,11 +164,14 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
 
   // Make sure the build row actually belongs to the claimed project.
   // Defends against a compromised builder or a bug that scrambles ids.
-  const { data: existing } = await supabaseAdmin
+  const { data: existingRow } = await supabaseAdmin
     .from("project_builds")
-    .select("id, project_id, created_at, project_revision, status")
+    .select("id, project_id, created_at, project_revision, status, operation_id, turn_id")
     .eq("id", payload.buildId)
     .maybeSingle();
+  const existing = existingRow as
+    | { id: string; project_id: string; created_at: string | null; project_revision: number | null; status: string; operation_id: string | null; turn_id: string | null }
+    | null;
   if (!existing) {
     console.warn("Builder callback for unknown build", payload.buildId);
     // Acknowledge so Railway doesn't retry forever.
@@ -177,6 +180,13 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   if (existing.project_id !== payload.projectId) {
     console.warn("Builder callback project mismatch", payload.buildId);
     return new Response("Project mismatch", { status: 400 });
+  }
+  // Identity is fixed at build creation. A callback that names a different
+  // turn than the build was created for is rejected, never re-attributed.
+  const reportedTurn = typeof payload.timings?.turnId === "string" ? payload.timings.turnId : null;
+  if (reportedTurn && existing.turn_id && reportedTurn !== existing.turn_id) {
+    console.warn(`[builds/callback] identity mismatch build=${payload.buildId}`);
+    return new Response("Identity mismatch", { status: 400 });
   }
   // ONE outcome decision (src/lib/build-outcome.ts): terminal success wins,
   // duplicates are no-ops, stale/out-of-order failures never refund.
@@ -209,7 +219,27 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   void recordBuildTimings(payload, outcome.failureClass);
   if (!outcome.apply) {
     console.warn(`[builds/callback] ignored callback build=${payload.buildId}: ${outcome.reason}`);
+    if (existing.operation_id) void noteStaleCallback(existing.operation_id);
     return new Response("ok", { status: 200 });
+  }
+  // Operation settlement follows the one outcome decision. The DB refuses
+  // invalid moves, so a late event cannot reopen a READY/SETTLED operation.
+  if (existing.operation_id) {
+    const { advanceOperation } = await import("@/server/operations.server");
+    const opId = existing.operation_id;
+    const reportClass =
+      outcome.failureClass === "verification" ? "verification_only"
+      : outcome.failureClass === "infrastructure" ? "infrastructure"
+      : outcome.failureClass === "source" || outcome.failureClass === "deployment" ? "customer_outcome"
+      : null;
+    if (outcome.reason === "stale revision") {
+      // A superseded revision's result never settles the operation.
+    } else if (payload.status === "ready" || !outcome.refundAllowed) {
+      void advanceOperation(opId, "READY", { build_revision: existing.project_revision, outcome: "delivered", failure_class: reportClass })
+        .then(() => advanceOperation(opId, "SETTLED"));
+    } else {
+      void advanceOperation(opId, "FAILED", { failure_class: reportClass, outcome: "failed" });
+    }
   }
 
   // Internal economics: how long this build occupied the builder, and how
@@ -221,13 +251,19 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     typeof payload.verification?.durationMs === "number"
       ? payload.verification.durationMs
       : null;
-  void attachBuildEconomicsByProject({
-    projectId: payload.projectId,
-    buildId: payload.buildId,
-    buildMs,
-    verifyMs,
-    result: payload.status === "ready" ? "ready" : "failed",
-  });
+  // Exact link only: the build's own turn id. No turn id → attribution unknown.
+  if (existing.turn_id) {
+    void attachBuildEconomics({
+      turnId: existing.turn_id,
+      projectId: payload.projectId,
+      buildId: payload.buildId,
+      buildMs,
+      verifyMs,
+      result: payload.status === "ready" ? "ready" : "failed",
+    }).then(() => syncTurnCosts(existing.turn_id as string));
+  } else {
+    console.info(`[builds/callback] build=${payload.buildId} attribution unknown (no operation)`);
+  }
 
   // REVISION IDENTITY — only a build of the project's CURRENT code revision
   // may affect current readiness, the current build pointer, turn outcome,
@@ -773,20 +809,38 @@ function buildEvidence(verification: Record<string, unknown>): string[] {
  */
 async function refundRolledBackBuild(projectId: string, buildId: string): Promise<void> {
   try {
+    // Exact identity: refund only the charge of THIS build's operation.
+    // A build with no operation (attribution unknown) is never refunded by guess.
+    const { buildOperation } = await import("@/server/operations.server");
+    const { operationId } = await buildOperation(buildId);
+    if (!operationId) {
+      console.warn(`[builds/callback] no refund for build ${buildId} project=${projectId}: attribution unknown`);
+      return;
+    }
     const { data, error } = await (supabaseAdmin as never as {
       rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
-    }).rpc("refund_build_charge", { _project_id: projectId, _build_id: buildId });
+    }).rpc("refund_build_charge", { _operation_id: operationId, _build_id: buildId });
     if (error) {
       console.error("[builds/callback] rollback refund failed", buildId, error.message);
       return;
     }
     const amount = Number(data ?? 0);
     if (amount > 0) {
-      console.info(`[builds/callback] refunded ${amount} credit(s) for rolled-back build ${buildId}`);
+      console.info(`[builds/callback] refunded ${amount} credit(s) for operation ${operationId} build ${buildId}`);
     }
   } catch (e) {
     console.error("[builds/callback] rollback refund threw", buildId, (e as Error).message);
   }
+}
+
+/** Count late/stale callbacks on the operation (economics: stale-callback rate). */
+async function noteStaleCallback(operationId: string): Promise<void> {
+  try {
+    const { data } = await supabaseAdmin.from("economic_operations" as never).select("metadata").eq("id", operationId).maybeSingle();
+    const meta = ((data as { metadata?: Record<string, unknown> } | null)?.metadata ?? {}) as Record<string, unknown>;
+    const n = Number(meta.stale_callbacks ?? 0) + 1;
+    await supabaseAdmin.from("economic_operations" as never).update({ metadata: { ...meta, stale_callbacks: n } } as never).eq("id", operationId);
+  } catch { /* economics only */ }
 }
 
 /** Persist builder-reported stage timings and failure class (economics). */
@@ -801,7 +855,6 @@ async function recordBuildTimings(
       .from("project_builds")
       .update({
         builder_job_id: typeof t.jobId === "string" ? t.jobId : undefined,
-        turn_id: typeof t.turnId === "string" ? t.turnId : undefined,
         install_ms: num(t.installMs),
         compile_ms: num(t.compileMs),
         browser_ms: num(t.browserMs),
@@ -851,14 +904,21 @@ async function runTestLabForBuild(args: {
   let changedPaths: string[] = [];
   let turnId: string | null = null;
   try {
-    const { listEdits } = await import("@/server/edit-history.server");
-    const recent = await listEdits(args.projectId, 1);
-    const latest = recent?.[0] as
-      | { changed_paths?: string[] | null; turn_id?: string | null }
-      | undefined;
-    if (latest) {
-      changedPaths = latest.changed_paths ?? [];
-      turnId = latest.turn_id ?? null;
+    // Exact: the edit record of the turn this build belongs to. No turn id →
+    // full run (never "the most recent edit on the project").
+    const { buildOperation } = await import("@/server/operations.server");
+    const ident = await buildOperation(args.buildId);
+    if (ident.turnId) {
+      const { data: edit } = await supabaseAdmin
+        .from("project_edit_history")
+        .select("changed_paths, turn_id")
+        .eq("project_id", args.projectId)
+        .eq("turn_id", ident.turnId)
+        .limit(1)
+        .maybeSingle();
+      const row = edit as { changed_paths?: string[] | null; turn_id?: string | null } | null;
+      turnId = ident.turnId;
+      changedPaths = row?.changed_paths ?? [];
     }
   } catch {
     /* no edit record — treat as a full run */

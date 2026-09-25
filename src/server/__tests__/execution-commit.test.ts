@@ -7,13 +7,15 @@ const base = [
   { path: "src/routes.ts", content: "routes v1" },
   { path: "package.json", content: "{}" },
 ];
+// The model was given these files this operation (read-before-edit).
+const inspected = (l: TurnLedger) => { for (const f of base) l.recordRead(f.path); return l; };
 const none = () => null;
 const noSys = () => false;
 const run = (proposed: typeof base, o: Partial<Parameters<typeof commitTurn>[0]> = {}) =>
   commitTurn({
     baseline: base,
     proposed,
-    ledger: o.ledger ?? new TurnLedger(),
+    ledger: inspected(o.ledger ?? new TurnLedger()),
     isSystemPath: o.isSystemPath ?? noSys,
     protectionReason: o.protectionReason ?? none,
     checks: o.checks ?? [],
