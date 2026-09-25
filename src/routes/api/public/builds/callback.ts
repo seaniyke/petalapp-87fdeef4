@@ -30,7 +30,7 @@ import { evaluateReadiness } from "@/server/readiness.server";
 import { loadCasesForBuild } from "@/server/test-results.server";
 import { runBackendAcceptance } from "@/server/backend-acceptance.server";
 import { backendAcceptanceEnabled } from "@/server/completion-flags.server";
-import { attachBuildEconomics } from "@/server/turn-economics.server";
+import { attachBuildEconomics, syncTurnCosts } from "@/server/turn-economics.server";
 import { warmProjectThumbnail } from "@/server/project-thumbnail.server";
 
 /**
@@ -260,7 +260,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
       buildMs,
       verifyMs,
       result: payload.status === "ready" ? "ready" : "failed",
-    });
+    }).then(() => syncTurnCosts(existing.turn_id as string));
   } else {
     console.info(`[builds/callback] build=${payload.buildId} attribution unknown (no operation)`);
   }
