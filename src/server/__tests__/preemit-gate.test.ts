@@ -154,6 +154,16 @@ describe("parser beats heuristics", () => {
     expect(issues).toHaveLength(0);
   });
 
+  it("ignores a heuristic truncation flag when esbuild parsed the file cleanly", async () => {
+    setVerifiers({
+      esbuildCheckedPaths: ["src/App.tsx"],
+      local: [{ path: "src/App.tsx", kind: "truncation", detail: 'file ends mid-statement: "…export default Login"' }],
+    });
+    const issues = await collectGateIssues(files, changed);
+    expect(issues).toHaveLength(0);
+  });
+
+
   it("still blocks when esbuild did not check the file", async () => {
     setVerifiers({
       local: [{ path: "src/App.tsx", kind: "jsx", detail: "<Sidebar>: 7 open vs 1 close" }],
