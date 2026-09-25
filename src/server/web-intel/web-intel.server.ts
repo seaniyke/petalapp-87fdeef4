@@ -34,16 +34,47 @@ export function webIntelLimits() {
 export type WebIntelNeed = "none" | "optional" | "required";
 
 const URL_RE = /\bhttps?:\/\/[^\s<>"'`)\]]+/i;
+
+/**
+ * Bare domains ("airbnb.com", "www.example.co.uk"). Users rarely type a scheme.
+ * Restricted to a curated list of real web endings so that source file names
+ * (App.tsx, index.ts, styles.css, data.json) are never mistaken for websites.
+ */
+const BARE_TLDS = [
+  "com", "org", "net", "io", "co", "app", "dev", "ai", "xyz", "shop", "store",
+  "online", "site", "tech", "info", "biz", "me", "tv", "cc", "us", "uk", "ca",
+  "au", "de", "fr", "es", "it", "nl", "se", "no", "dk", "fi", "pl", "pt", "br",
+  "mx", "ar", "cl", "in", "jp", "kr", "cn", "sg", "hk", "nz", "za", "ng", "ke",
+  "gh", "eg", "ae", "ie", "ch", "at", "be", "cz", "gr", "tr", "ru", "ua", "il",
+  "studio", "design", "agency", "media", "cloud", "health", "law", "life",
+  "live", "world", "space", "digital", "group", "solutions", "services", "cafe",
+];
+const BARE_DOMAIN_RE = new RegExp(
+  `(?:^|[\\s(<"'\`])((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+(?:${BARE_TLDS.join("|")}))(?:\\/[^\\s<>"'\`)\\]]*)?(?=$|[\\s)>"'\`,.!?])`,
+  "i",
+);
+
 const MIGRATE_RE =
   /\b(rebuild|recreate|migrate|clone|copy|redo|remake|move)\b[^.]{0,60}\b(my|our|existing|current|this)\b[^.]{0,30}\b(site|website|web ?page|homepage)\b|\b(based on|from|using)\b[^.]{0,40}\b(my|our|existing|current)\b[^.]{0,20}\b(site|website)\b/i;
 
 /** Deterministic: runs only when the user supplied a URL. No AI call. */
 export function detectWebIntelNeed(message: string): { need: WebIntelNeed; url: string | null } {
   const m = message.match(URL_RE);
-  if (!m) return { need: "none", url: null };
-  const url = m[0].replace(/[.,;:!?]+$/, "");
+  let url: string | null = null;
+  if (m) {
+    url = m[0].replace(/[.,;:!?]+$/, "");
+  } else {
+    // No scheme given — accept a bare domain and normalise it to https://.
+    const b = message.match(BARE_DOMAIN_RE);
+    if (b) {
+      const whole = b[0].replace(/^[\s(<"'`]+/, "").replace(/[.,;:!?]+$/, "");
+      url = `https://${whole}`;
+    }
+  }
+  if (!url) return { need: "none", url: null };
   return { need: MIGRATE_RE.test(message) ? "required" : "optional", url };
 }
+
 
 // ---------------------------------------------------------------- URL safety
 function ipv4Private(ip: string): boolean {
