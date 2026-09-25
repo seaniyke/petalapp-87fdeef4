@@ -11,7 +11,7 @@ export type FailureKind =
   | "browser_failure";
 
 export const RECOVERY_LIMITS: Readonly<Record<FailureKind, number>> = {
-  provider_failure: 1, // same request, next allowed provider
+  provider_failure: 2, // same request, next allowed provider (two providers can stall in a row)
   truncated_output: 1, // continue only the missing files
   broken_file: 1, // per file, max MAX_REPAIRED_FILES files
   build_failure: 1, // repair only files named in the error
