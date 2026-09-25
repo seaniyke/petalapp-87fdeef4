@@ -203,17 +203,21 @@ export const Route = createFileRoute("/api/publish")({
           return Response.json({ error: "Nothing to update" }, { status: 400 });
         }
 
-        const { data: updated, error: updateErr } = await supabaseAdmin
-          .from("projects")
-          .update(updates)
-          .eq("id", projectId)
-          // Publishing a build is a compare-and-set on the code revision it
-          // was checked against; a save landing in between makes this a no-op.
-          .eq("revision", pinLatestBuild ? Number(project.revision) : Number(project.revision) + 0 * 0 || Number(project.revision))
+        let publishQuery = supabaseAdmin.from("projects").update(updates).eq("id", projectId);
+        // Pinning a build is a compare-and-set on the code revision it was
+        // checked against; a save landing in between rejects the publish.
+        if (pinLatestBuild) publishQuery = publishQuery.eq("revision", Number(project.revision));
+        const { data: updated, error: updateErr } = await publishQuery
           .select(
             "id, published_build_id, published_visibility, published_at, latest_build_id",
           )
-          .single();
+          .maybeSingle();
+        if (!updateErr && !updated) {
+          return Response.json(
+            { error: "Your project changed while publishing. Wait for the newest build to finish, then publish." },
+            { status: 409 },
+          );
+        }
         if (updateErr) {
           return Response.json(
             { error: `Failed to update publish state: ${updateErr.message}` },
