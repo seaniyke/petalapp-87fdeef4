@@ -191,7 +191,7 @@ describe("I/J/R — stages and continuation from real state", () => {
     expect(ids(stage)).toEqual(["payments"]);
   });
   it("L: repair request stays scoped to the affected feature", () => {
-    expect(ids(requirementsTargetedBy(stage1, "The checkout is broken"))).toEqual(["payments"].filter((id) => ids(stage1).includes(id)).length ? ids(requirementsTargetedBy(stage1, "The checkout is broken")) : []);
+    expect(ids(requirementsTargetedBy(stage1, "The checkout is broken"))).not.toContain("catalog");
     const { stage } = stageForTurn(stage1, "The booking confirmation email isn't working", false);
     expect(ids(stage)).not.toContain("admin");
     expect(ids(stage)).not.toContain("catalog");
