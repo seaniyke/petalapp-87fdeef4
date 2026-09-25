@@ -95,6 +95,7 @@ export default defineConfig({
       "src/server/__tests__/project-context.test.ts",
       "src/server/__tests__/execution-discipline.test.ts",
       "src/server/__tests__/execution-commit.test.ts",
+      "src/server/__tests__/verification-authoritative.test.ts",
       "src/server/__tests__/verification-gates.test.ts",
       "src/server/__tests__/durable-turn.test.ts",
       "src/server/__tests__/pin-loose-deps.test.ts",

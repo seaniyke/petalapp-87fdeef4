@@ -41521,6 +41521,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -41564,6 +41565,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -41908,6 +41910,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -85240,6 +85243,7 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -110646,6 +110650,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -138824,6 +138829,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -139743,6 +139749,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -143776,6 +143783,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -143946,7 +143954,7 @@ var init_transaction = __esm({
 });
 
 // src/server/execution/commit.ts
-function commitTurn(args) {
+async function commitTurn(args) {
   const tx = new TurnTransaction(args.baseline, args.ledger);
   const base = new Map(args.baseline.map((f) => [f.path, f.content]));
   const next = /* @__PURE__ */ new Map();
@@ -144021,6 +144029,50 @@ function commitTurn(args) {
       rejections.slice(0, 3).map((r) => `${r.operation} ${r.path ?? ""}: ${r.reason}`).join("; ")
     );
   }
+  let verification = null;
+  if (args.verifySource && rejections.length === 0 && !args.cancelled()) {
+    const tree = tx.proposedTree();
+    const changed = tree.filter((f) => base.get(f.path) !== f.content).map((f) => f.path);
+    if (changed.length > 0) {
+      try {
+        verification = await args.verifySource(tree, changed);
+      } catch (e) {
+        verification = {
+          status: "UNVERIFIED",
+          gates: [],
+          failedGate: null,
+          reason: `source verification could not run: ${e instanceof Error ? e.message : String(e)}`,
+          repairTargets: []
+        };
+      }
+      for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
+      if (verification.status === "FAILED") {
+        for (const p of verification.repairTargets.length ? verification.repairTargets : [void 0]) {
+          rejections.push({
+            operation: "commit",
+            path: p,
+            reason: "validation_failed",
+            stage: "source_verification",
+            gate: verification.failedGate ?? void 0,
+            detail: verification.reason ?? `${verification.failedGate} failed`,
+            recoverable: true,
+            next: "repair the named file(s) and retry"
+          });
+        }
+      } else if (verification.status === "UNVERIFIED") {
+        tx.recordCheck("source_verification", "FAIL", `unverified: ${verification.reason ?? "check could not complete"}`);
+        rejections.push({
+          operation: "commit",
+          reason: "unverified",
+          stage: "source_verification",
+          gate: verification.gates.find((g) => g.verdict !== "PASS" && g.verdict !== "WARNING")?.gate,
+          detail: verification.reason ?? "source verification could not complete",
+          recoverable: true,
+          next: "retry when the checker is available"
+        });
+      }
+    }
+  }
   if (args.cancelled()) args.ledger.cancel();
   const outcome = tx.commit();
   if (outcome.status === "rolled_back" && rejections.length === 0) {
@@ -144032,7 +144084,7 @@ function commitTurn(args) {
       next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry"
     });
   }
-  return { outcome, rejections, noOps };
+  return { outcome, rejections, noOps, verification };
 }
 var init_commit = __esm({
   "src/server/execution/commit.ts"() {
@@ -146570,6 +146622,25 @@ Rules:
   }
 });
 
+// src/server/verification/source.server.ts
+var source_server_exports = {};
+__export(source_server_exports, {
+  verifyProposedSource: () => verifyProposedSource
+});
+async function verifyProposedSource(args) {
+  const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
+  const esbuild2 = await verifyFilesEsbuild(args.tree, parseable);
+  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: esbuild2 }));
+}
+var init_source_server = __esm({
+  "src/server/verification/source.server.ts"() {
+    init_define_import_meta_env();
+    init_esbuild_verifier_server();
+    init_scaffold_ownership_server();
+    init_gates();
+  }
+});
+
 // src/server/agent-runtime/entry.ts
 init_define_import_meta_env();
 
@@ -148415,10 +148486,7 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 init_define_import_meta_env();
 
 // src/server/builder.server.ts
-init_source_escape_fixer_server();
-init_import_syntax_fixer_server();
 init_jsx_attr_literal_fixer_server();
-init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -149884,7 +149952,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -172619,14 +172686,25 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           );
         }
         await agentIO().claimCommit(turnId, abortSignal);
-        const txResult = commitTurn2({
+        const txResult = await commitTurn2({
           baseline: turnBaselineFiles,
           proposed: nextFiles,
           ledger: turnLedger,
           isSystemPath: (p) => isScaffoldOwnedPath(p) || kitSyncedPaths.has(p) || authoredPaths !== void 0 && !authoredPaths.includes(p),
           protectionReason: (p) => isInitial || isCrossCutting ? null : executionScope.protectionReason(p),
           checks: turnChecks,
-          cancelled: () => abortSignal.aborted
+          cancelled: () => abortSignal.aborted,
+          // AUTHORITATIVE source verification of the proposed tree. esbuild
+          // is re-run on the proposed bytes (not a verdict computed earlier
+          // on a different tree), then the existing source gates decide.
+          verifySource: async (tree, changed) => {
+            const { verifyProposedSource: verifyProposedSource2 } = await Promise.resolve().then(() => (init_source_server(), source_server_exports));
+            return verifyProposedSource2({
+              tree,
+              changedPaths: changed,
+              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : []
+            });
+          }
         });
         const txCommitted = txResult.outcome.status === "committed";
         console.info(
@@ -172837,19 +172915,18 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
           {
             const { shouldRecordMemory: shouldRecordMemory2 } = await Promise.resolve().then(() => (init_memory_model(), memory_model_exports));
             turnCommittedForMemory = shouldRecordMemory2({
-              committed: nextFiles.length > 0,
+              committed: txCommitted,
               cancelled: request.signal.aborted,
               missingScope: scopeMissing.length
             });
           }
-          const { runSourceGates: runSourceGates2, finalizeVerification: finalizeVerification2 } = await Promise.resolve().then(() => (init_gates(), gates_exports));
-          const sourceVerification = finalizeVerification2(
-            runSourceGates2({
-              files: nextFiles,
-              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
-              esbuild: esbuildVerdict
-            })
-          );
+          const sourceVerification = txResult.verification ?? {
+            status: "UNVERIFIED",
+            gates: [],
+            failedGate: null,
+            reason: txCommitted ? "no changed files to verify" : txResult.outcome.status === "rolled_back" ? txResult.outcome.reason : null,
+            repairTargets: []
+          };
           console.info(
             `[verification] ${sourceVerification.gates.map((g) => `${g.gate}=${g.verdict}`).join(" ")} status=${sourceVerification.status}${sourceVerification.failedGate ? ` failed=${sourceVerification.failedGate}: ${sourceVerification.reason}` : ""}`
           );
@@ -172879,7 +172956,13 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
               )
             );
           }
-          emitTurnOutcome(controller, encoder, scopeMissing.length > 0 ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing", ...providersExhaustedForTurn2() ? { cause: "providers_exhausted" } : {} } : {
+          const txBlocked = !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
+          emitTurnOutcome(controller, encoder, txBlocked ? {
+            outcome: "failed",
+            changedPaths: [],
+            blockedPaths: txResult.rejections.map((r) => r.path).filter((p) => Boolean(p)),
+            reason: sourceVerification.status === "FAILED" ? "verification_failed" : sourceVerification.status === "UNVERIFIED" && txResult.rejections.some((r) => r.reason === "unverified") ? "verification_unavailable" : "commit_rejected"
+          } : scopeMissing.length > 0 ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing", ...providersExhaustedForTurn2() ? { cause: "providers_exhausted" } : {} } : {
             outcome: turnChanged.length > 0 ? "applied" : "answered",
             changedPaths: turnChanged,
             ...unappliedPaths.length > 0 ? { blockedPaths: unappliedPaths, reason: "unapplied_claims" } : {}
@@ -172894,7 +172977,8 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
               plan,
               recap,
               creditsCharged: finalCharged,
-              persisted: Boolean(body.projectId && nextFiles.length > 0),
+              persisted: Boolean(body.projectId && txCommitted && nextFiles.length > 0),
+              ...txCommitted ? {} : { noFileChanges: true },
               ...backendGate.gated && backendGate.suggestions.length > 0 ? { suggestions: backendGate.suggestions } : {}
             })
           )

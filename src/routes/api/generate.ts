@@ -6551,7 +6551,7 @@ Forbidden defaults
         // LIVE MUTATION BOUNDARY — the proposed tree is staged into one
         // TurnTransaction (accounted by turnLedger), scope-enforced and
         // checked; only a committed outcome is billed and persisted.
-        const txResult = commitTurn({
+        const txResult = await commitTurn({
           baseline: turnBaselineFiles,
           proposed: nextFiles,
           ledger: turnLedger,
@@ -6563,6 +6563,17 @@ Forbidden defaults
             isInitial || isCrossCutting ? null : executionScope.protectionReason(p),
           checks: turnChecks,
           cancelled: () => abortSignal.aborted,
+          // AUTHORITATIVE source verification of the proposed tree. esbuild
+          // is re-run on the proposed bytes (not a verdict computed earlier
+          // on a different tree), then the existing source gates decide.
+          verifySource: async (tree, changed) => {
+            const { verifyProposedSource } = await import("@/server/verification/source.server");
+            return verifyProposedSource({
+              tree,
+              changedPaths: changed,
+              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
+            });
+          },
         });
         const txCommitted = txResult.outcome.status === "committed";
         console.info(
@@ -6842,7 +6853,7 @@ Forbidden defaults
           {
             const { shouldRecordMemory } = await import("@/server/context/memory-model");
             turnCommittedForMemory = shouldRecordMemory({
-              committed: nextFiles.length > 0,
+              committed: txCommitted,
               cancelled: request.signal.aborted,
               missingScope: scopeMissing.length,
             });
@@ -6850,14 +6861,15 @@ Forbidden defaults
           // Verification pipeline — source gates (syntax, dependencies, routes).
           // Build and browser gates are added by the build callback. The record
           // names the first failing gate; UNAVAILABLE/UNKNOWN never count as FAIL.
-          const { runSourceGates, finalizeVerification } = await import("@/server/verification/gates");
-          const sourceVerification = finalizeVerification(
-            runSourceGates({
-              files: nextFiles,
-              requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
-              esbuild: esbuildVerdict,
-            }),
-          );
+          // The authoritative record is the one commitTurn() produced on the
+          // proposed tree; it is never recomputed here from other files.
+          const sourceVerification = txResult.verification ?? {
+            status: "UNVERIFIED" as const,
+            gates: [],
+            failedGate: null,
+            reason: txCommitted ? "no changed files to verify" : txResult.outcome.status === "rolled_back" ? txResult.outcome.reason : null,
+            repairTargets: [],
+          };
           console.info(
             `[verification] ${sourceVerification.gates.map((g) => `${g.gate}=${g.verdict}`).join(" ")} status=${sourceVerification.status}${sourceVerification.failedGate ? ` failed=${sourceVerification.failedGate}: ${sourceVerification.reason}` : ""}`,
           );
@@ -6889,7 +6901,21 @@ Forbidden defaults
               ),
             );
           }
-          emitTurnOutcome(controller, encoder, scopeMissing.length > 0
+          const txBlocked =
+            !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
+          emitTurnOutcome(controller, encoder, txBlocked
+            ? {
+                outcome: "failed",
+                changedPaths: [],
+                blockedPaths: txResult.rejections.map((r) => r.path).filter((p): p is string => Boolean(p)),
+                reason:
+                  sourceVerification.status === "FAILED"
+                    ? "verification_failed"
+                    : sourceVerification.status === "UNVERIFIED" && txResult.rejections.some((r) => r.reason === "unverified")
+                      ? "verification_unavailable"
+                      : "commit_rejected",
+              }
+            : scopeMissing.length > 0
             ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing", ...(providersExhaustedForTurn() ? { cause: "providers_exhausted" } : {}) }
             : {
                 outcome: turnChanged.length > 0 ? "applied" : "answered",
@@ -6909,7 +6935,8 @@ Forbidden defaults
               plan,
               recap,
               creditsCharged: finalCharged,
-              persisted: Boolean(body.projectId && nextFiles.length > 0),
+              persisted: Boolean(body.projectId && txCommitted && nextFiles.length > 0),
+              ...(txCommitted ? {} : { noFileChanges: true }),
               ...(backendGate.gated && backendGate.suggestions.length > 0
                 ? { suggestions: backendGate.suggestions }
                 : {}),

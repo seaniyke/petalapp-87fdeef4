@@ -14,7 +14,10 @@ import type { Verdict } from "./verdict";
 export interface CommitRejection {
   operation: "write" | "delete" | "commit";
   path?: string;
-  reason: "scope_violation" | "limit" | "foreign_writer" | "cancelled" | "validation_failed" | "no_changes" | "other";
+  reason: "scope_violation" | "limit" | "foreign_writer" | "cancelled" | "validation_failed" | "unverified" | "no_changes" | "other";
+  /** Verification stage/gate that produced this rejection, when applicable. */
+  stage?: "execution" | "source_verification";
+  gate?: string;
   detail: string;
   recoverable: boolean;
   next: string;
@@ -31,15 +34,32 @@ export interface CommitTurnArgs {
   /** Verdicts from validation that already ran on the proposed tree. */
   checks: Array<{ check: string; verdict: Verdict; detail?: string }>;
   cancelled: () => boolean;
+  /**
+   * Authoritative source verification of the PROPOSED tree (baseline +
+   * staged, from TurnTransaction.proposedTree()) — never the persisted state.
+   * FAILED blocks commit; UNVERIFIED blocks commit (not proven); anything
+   * else (IN_PROGRESS = source passed, build pending) permits the commit.
+   */
+  verifySource?: (proposedTree: TxFile[], changedPaths: string[]) => Promise<SourceVerification>;
+}
+
+export interface SourceVerification {
+  status: "READY" | "FAILED" | "UNVERIFIED" | "IN_PROGRESS";
+  gates: Array<{ gate: string; verdict: Verdict; reasons: string[]; paths: string[] }>;
+  failedGate: string | null;
+  reason: string | null;
+  repairTargets: string[];
 }
 
 export interface CommitTurnResult {
   outcome: TxOutcome;
   rejections: CommitRejection[];
   noOps: string[];
+  /** Source verification of the proposed tree (null when not run). */
+  verification: SourceVerification | null;
 }
 
-export function commitTurn(args: CommitTurnArgs): CommitTurnResult {
+export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult> {
   const tx = new TurnTransaction(args.baseline, args.ledger);
   const base = new Map(args.baseline.map((f) => [f.path, f.content]));
   const next = new Map<string, string>();
@@ -120,6 +140,50 @@ export function commitTurn(args: CommitTurnArgs): CommitTurnResult {
       rejections.slice(0, 3).map((r) => `${r.operation} ${r.path ?? ""}: ${r.reason}`).join("; "),
     );
   }
+  let verification: SourceVerification | null = null;
+  if (args.verifySource && rejections.length === 0 && !args.cancelled()) {
+    const tree = tx.proposedTree();
+    const changed = tree.filter((f) => base.get(f.path) !== f.content).map((f) => f.path);
+    if (changed.length > 0) {
+      try {
+        verification = await args.verifySource(tree, changed);
+      } catch (e) {
+        verification = {
+          status: "UNVERIFIED",
+          gates: [],
+          failedGate: null,
+          reason: `source verification could not run: ${e instanceof Error ? e.message : String(e)}`,
+          repairTargets: [],
+        };
+      }
+      for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
+      if (verification.status === "FAILED") {
+        for (const p of verification.repairTargets.length ? verification.repairTargets : [undefined]) {
+          rejections.push({
+            operation: "commit",
+            path: p,
+            reason: "validation_failed",
+            stage: "source_verification",
+            gate: verification.failedGate ?? undefined,
+            detail: verification.reason ?? `${verification.failedGate} failed`,
+            recoverable: true,
+            next: "repair the named file(s) and retry",
+          });
+        }
+      } else if (verification.status === "UNVERIFIED") {
+        tx.recordCheck("source_verification", "FAIL", `unverified: ${verification.reason ?? "check could not complete"}`);
+        rejections.push({
+          operation: "commit",
+          reason: "unverified",
+          stage: "source_verification",
+          gate: verification.gates.find((g) => g.verdict !== "PASS" && g.verdict !== "WARNING")?.gate,
+          detail: verification.reason ?? "source verification could not complete",
+          recoverable: true,
+          next: "retry when the checker is available",
+        });
+      }
+    }
+  }
   if (args.cancelled()) args.ledger.cancel();
 
   const outcome = tx.commit();
@@ -132,5 +196,5 @@ export function commitTurn(args: CommitTurnArgs): CommitTurnResult {
       next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry",
     });
   }
-  return { outcome, rejections, noOps };
+  return { outcome, rejections, noOps, verification };
 }
