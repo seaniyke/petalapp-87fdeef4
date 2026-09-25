@@ -67,6 +67,8 @@ type Props = {
   /** Up to three follow-up ideas, revealed under "Keep building". */
   suggestions?: string[];
   onSuggest?: (prompt: string) => void;
+  /** Shows real requirement progress for this project when available. */
+  projectId?: string | null;
 };
 
 function creditLabel(credits: number | null | undefined): string | null {
@@ -88,6 +90,7 @@ export function BuildResultCard({
   onDetails,
   suggestions,
   onSuggest,
+  projectId,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const ideas = (suggestions ?? []).slice(0, 3);
@@ -121,6 +124,8 @@ export function BuildResultCard({
           <Stats files={files} pictures={pictures} seconds={seconds} />
         </div>
       </div>
+
+      <ProductProgress projectId={projectId} refreshKey={summary} />
 
       <div className="grid grid-cols-1 gap-1.5 px-2 pb-2 @[24rem]:grid-cols-3">
         {showPreview && (
