@@ -42,6 +42,8 @@ describe("fresh-project authored-file boundary", () => {
   });
 
   it("surfaces parser unavailability instead of treating a heuristic as proven broken", async () => {
+    // Deliberately malformed JSX makes the local structural scanner request
+    // authoritative confirmation; this is not an apostrophe false positive.
     vi.mocked(verifyFilesEsbuild).mockResolvedValue({
       status: "unavailable",
       ok: false,
@@ -51,16 +53,13 @@ describe("fresh-project authored-file boundary", () => {
       unavailableDetail: "runtime missing",
     });
     const result = await runLocalVerifyTier({
-      nextFiles: [{ path: "src/App.tsx", content: `export default function App(){ return <p>Can't load</p> }` }],
+      nextFiles: [{ path: "src/App.tsx", content: `export default function App(){ return <main><Card>Can't load</main> }` }],
       currentFiles: [],
       toolName: "write_project",
       parsedOps: undefined,
       authoredPaths: ["src/App.tsx"],
     });
-    // This assertion uses a forced heuristic signal in environments where the
-    // local scanner changes; unavailable is only required when confirmation ran.
-    if (vi.mocked(verifyFilesEsbuild).mock.calls.length > 0) {
-      expect(result.validationFailure).toContain("runtime missing");
-    }
+    expect(verifyFilesEsbuild).toHaveBeenCalledOnce();
+    expect(result.validationFailure).toContain("runtime missing");
   });
 });
