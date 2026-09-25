@@ -4167,6 +4167,16 @@ Forbidden defaults
           let lastErr: unknown = e;
           while (recovery.take("provider_failure")) {
             attempts++;
+            // Recorded for observability only. Provider trouble is owned by
+            // the provider layer (OpenRouter failover + per-turn upstream
+            // exclusions) and can NEVER trip the agent breaker: a model that
+            // stalled is not an agent that is reasoning badly.
+            breaker.recordFailure({
+              category: "provider_failure",
+              tool: "ai_provider",
+              path: null,
+              message: lastErr instanceof Error ? lastErr.message : "invalid structured response",
+            });
             recovery.record({
               kind: "provider_failure",
               stage: "generation",
