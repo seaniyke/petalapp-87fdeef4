@@ -41506,6 +41506,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -41549,6 +41550,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -41703,6 +41705,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -41893,6 +41896,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -110518,7 +110522,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139574,6 +139577,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -143390,6 +143394,306 @@ var init_screen_target_server = __esm({
       navbar: ["nav", "siteheader", "header"],
       header: ["siteheader", "header", "nav"]
     };
+  }
+});
+
+// src/server/execution/classify.ts
+function classifyRequest(request, opts) {
+  const r = request || "";
+  const direct2 = (operation, reason) => ({ operation, planRequired: false, mode: "direct", reason });
+  if (opts.isInitial) return { operation: "first_build", planRequired: false, mode: "staged", reason: "no project yet" };
+  if (opts.isRepairTurn || R.repair.test(r) && !R.newPage.test(r)) return direct2("repair", "defect reported");
+  if (R.arch.test(r)) return { operation: "architectural_change", planRequired: true, mode: "staged", reason: "reaches across the app" };
+  if (R.newPage.test(r)) return { operation: "page_creation", planRequired: false, mode: "staged", reason: "new page requested" };
+  if (R.dep.test(r)) return direct2("dependency_change", "dependency/config words");
+  if (R.asset.test(r)) return direct2("asset_change", "imagery words");
+  if (R.func.test(r)) return direct2("functionality_change", "behaviour words");
+  if (R.content.test(r)) return direct2("content_change", "copy words");
+  if (R.style.test(r)) return direct2("styling_change", "visual words");
+  const pageHit = opts.manifest?.pages.some((p) => r.toLowerCase().includes(p.type)) ?? false;
+  if (pageHit) return direct2("page_modification", "names a page");
+  return direct2("component_modification", "default targeted edit");
+}
+var R;
+var init_classify = __esm({
+  "src/server/execution/classify.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    R = {
+      repair: /\b(fix|broken|error|crash|not working|doesn'?t work|blank|bug|failed)\b/i,
+      newPage: /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(page|screen|route)s?\b/i,
+      arch: /\b(redesign|rebuild|restructure|refactor|entire|whole (site|app)|every page|all pages|across the (site|app)|migrate|convert to)\b/i,
+      dep: /\b(install|package|dependency|library|npm|upgrade|config(uration)?|env(ironment)?)\b/i,
+      asset: /\b(image|photo|picture|logo|icon|illustration|favicon|video|background image)\b/i,
+      style: /\b(colou?r|font|size|bigger|smaller|bold|spacing|padding|margin|rounded|shadow|style|dark|light|theme|align|layout|look)\b/i,
+      content: /\b(text|copy|headline|heading|title|wording|rename|say|typo|label|paragraph|description)\b|["“][^"”]{2,}["”]/i,
+      func: /\b(button (that|to)|click|submit|form|login|sign ?(in|up)|search|filter|sort|save|cart|checkout|toggle|modal|api|fetch|validate|works?)\b/i
+    };
+  }
+});
+
+// src/server/execution/scope.ts
+function constraintsFrom(request) {
+  const out = [];
+  for (const m of request.matchAll(/\b(?:don'?t|do not|never|keep|leave|without)\b[^.!?\n]{3,80}/gi)) out.push(m[0].trim());
+  return out.slice(0, 6);
+}
+function buildExecutionScope(args) {
+  const { request, classification, manifest } = args;
+  const targets = Array.from(new Set(args.targets));
+  const neighbours = (args.neighbours ?? []).filter((p) => !targets.includes(p));
+  const pagesSet = new Set(manifest?.pages.map((p) => p.path) ?? []);
+  const wide = classification.operation === "first_build" || classification.operation === "architectural_change" || classification.operation === "page_creation" || targets.length === 0;
+  const chromeNamed = CHROME_WORDS.test(request);
+  const reason = (p) => {
+    if (wide || targets.includes(p)) return null;
+    if (CHROME_RE.test(p) && !chromeNamed) return "shared navigation/layout was not part of this request";
+    if (pagesSet.has(p) && !neighbours.includes(p)) return "a different page than the one requested";
+    return null;
+  };
+  const protectedAreas = wide ? [] : [
+    ...chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l)),
+    ...[...pagesSet].filter((p) => !targets.includes(p) && !neighbours.includes(p))
+  ];
+  return {
+    operation: classification.operation,
+    outcome: request.trim().slice(0, 300),
+    affectedPages: targets.filter((t) => pagesSet.has(t)),
+    affectedComponents: targets.filter((t) => !pagesSet.has(t)),
+    affectedFiles: [...targets, ...neighbours],
+    constraints: constraintsFrom(request),
+    protectedAreas,
+    acceptance: [
+      "the requested outcome is visible in the changed files",
+      "every changed file compiles",
+      ...protectedAreas.length ? ["protected areas are byte-identical"] : []
+    ],
+    isProtected: (p) => reason(p) !== null,
+    protectionReason: reason
+  };
+}
+function renderScopeBlock(s) {
+  if (!s.protectedAreas.length && !s.constraints.length) return "";
+  const lines = ["\n\nEXECUTION SCOPE (enforced \u2014 writes outside it are rejected):", `- Operation: ${s.operation}`];
+  if (s.affectedFiles.length) lines.push(`- May change: ${s.affectedFiles.join(", ")}`);
+  if (s.protectedAreas.length) lines.push(`- Protected (do not touch): ${s.protectedAreas.slice(0, 12).join(", ")}`);
+  if (s.constraints.length) lines.push(`- User constraints: ${s.constraints.join(" | ")}`);
+  lines.push("- A new file is allowed only when a changed file imports it.");
+  return lines.join("\n");
+}
+var CHROME_RE, CHROME_WORDS;
+var init_scope = __esm({
+  "src/server/execution/scope.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    CHROME_RE = /(Layout|Header|Footer|Nav(bar)?|SiteNav|Shell|Sidebar)\.(t|j)sx$/;
+    CHROME_WORDS = /\b(nav|navbar|navigation|menu|header|footer|layout|sidebar|site-?wide|every page|all pages)\b/i;
+  }
+});
+
+// src/server/execution/verdict.ts
+function toVerdict(state) {
+  switch (state) {
+    case "passed":
+    case "ok":
+      return "PASS";
+    case "failed":
+    case "error":
+      return "FAIL";
+    case "unavailable":
+    case "timeout":
+      return "UNAVAILABLE";
+    case "warning":
+      return "WARNING";
+    default:
+      return "UNKNOWN";
+  }
+}
+function shouldRepair(v) {
+  return v === "FAIL";
+}
+function blocksCommit(v) {
+  return v === "FAIL";
+}
+var init_verdict = __esm({
+  "src/server/execution/verdict.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+  }
+});
+
+// src/server/execution/ledger.ts
+var TURN_LIMITS, TurnLedger;
+var init_ledger = __esm({
+  "src/server/execution/ledger.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    TURN_LIMITS = {
+      ai_call: 12,
+      read: 80,
+      write: 40,
+      delete: 10,
+      dependency: 6,
+      repair: 3,
+      build: 2,
+      browser: 1
+    };
+    TurnLedger = class {
+      constructor(limits = TURN_LIMITS) {
+        this.limits = limits;
+      }
+      limits;
+      counts = /* @__PURE__ */ new Map();
+      reads = /* @__PURE__ */ new Set();
+      events = [];
+      writer = null;
+      cancelled = false;
+      committed = false;
+      cancel() {
+        this.cancelled = true;
+      }
+      /** Claim the turn for one writer. A second writer is refused. */
+      claimWriter(id) {
+        if (this.writer && this.writer !== id) return false;
+        this.writer = id;
+        return true;
+      }
+      use(kind, purpose, target, writer) {
+        const refuse = (refusal) => {
+          this.events.push({ kind, target, purpose, ok: false, refusal });
+          return { ok: false, refusal };
+        };
+        if (this.cancelled) return refuse("cancelled");
+        if (this.committed && kind !== "read") return refuse("committed");
+        if ((kind === "write" || kind === "delete") && writer && !this.claimWriter(writer)) return refuse("foreign_writer");
+        if (kind === "read" && target) {
+          if (this.reads.has(target)) return refuse("duplicate_read");
+        }
+        const n = this.counts.get(kind) ?? 0;
+        if (n >= this.limits[kind]) return refuse("limit");
+        this.counts.set(kind, n + 1);
+        if (kind === "read" && target) this.reads.add(target);
+        this.events.push({ kind, target, purpose, ok: true });
+        return { ok: true };
+      }
+      /** Write discipline: refuse a write whose bytes equal the current file. */
+      write(path, next, current2, purpose, writer) {
+        if (current2 !== void 0 && current2 === next) {
+          this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "no_op_write" });
+          return { ok: false, refusal: "no_op_write" };
+        }
+        return this.use("write", purpose, path, writer);
+      }
+      count(kind) {
+        return this.counts.get(kind) ?? 0;
+      }
+      summary() {
+        return {
+          counts: Object.fromEntries(this.counts),
+          refusals: this.events.filter((e) => !e.ok).map((e) => `${e.kind}:${e.refusal}${e.target ? `:${e.target}` : ""}`).slice(0, 30),
+          filesRead: [...this.reads].slice(0, 40),
+          filesWritten: this.events.filter((e) => e.ok && e.kind === "write").map((e) => e.target).slice(0, 40),
+          cancelled: this.cancelled,
+          committed: this.committed
+        };
+      }
+    };
+  }
+});
+
+// src/server/execution/transaction.ts
+var TurnTransaction;
+var init_transaction = __esm({
+  "src/server/execution/transaction.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_verdict();
+    TurnTransaction = class {
+      constructor(baseline, ledger, writer = "primary") {
+        this.ledger = ledger;
+        this.writer = writer;
+        this.base = new Map(baseline.map((f) => [f.path, f.content]));
+      }
+      ledger;
+      writer;
+      base;
+      staged = /* @__PURE__ */ new Map();
+      verdicts = [];
+      done = false;
+      stage(path, content, purpose = "requested change") {
+        if (this.done) return false;
+        const current2 = this.staged.has(path) ? this.staged.get(path) ?? void 0 : this.base.get(path);
+        if (this.ledger) {
+          const r = this.ledger.write(path, content, current2, purpose, this.writer);
+          if (!r.ok) return false;
+        } else if (current2 === content) return false;
+        this.staged.set(path, content);
+        return true;
+      }
+      remove(path) {
+        if (this.done || !this.base.has(path)) return false;
+        if (this.ledger && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
+        this.staged.set(path, null);
+        return true;
+      }
+      recordCheck(check, verdict, detail) {
+        this.verdicts.push({ check, verdict, detail });
+      }
+      checks() {
+        return [...this.verdicts];
+      }
+      baseline() {
+        return [...this.base].map(([path, content]) => ({ path, content }));
+      }
+      rollback(reason) {
+        this.done = true;
+        this.staged.clear();
+        return { status: "rolled_back", files: this.baseline(), reason };
+      }
+      commit() {
+        if (this.done) return { status: "rolled_back", files: this.baseline(), reason: "already finished" };
+        if (this.ledger?.cancelled) return this.rollback("cancelled");
+        const failed = this.verdicts.find((v) => blocksCommit(v.verdict));
+        if (failed) return this.rollback(`${failed.check} failed${failed.detail ? `: ${failed.detail}` : ""}`);
+        if (this.staged.size === 0) return this.rollback("no changes");
+        const next = new Map(this.base);
+        for (const [p, c] of this.staged) {
+          if (c === null) next.delete(p);
+          else next.set(p, c);
+        }
+        this.done = true;
+        if (this.ledger) this.ledger.committed = true;
+        return {
+          status: "committed",
+          files: [...next].map(([path, content]) => ({ path, content })),
+          changed: [...this.staged.keys()]
+        };
+      }
+    };
+  }
+});
+
+// src/server/execution/index.ts
+var execution_exports = {};
+__export(execution_exports, {
+  TURN_LIMITS: () => TURN_LIMITS,
+  TurnLedger: () => TurnLedger,
+  TurnTransaction: () => TurnTransaction,
+  blocksCommit: () => blocksCommit,
+  buildExecutionScope: () => buildExecutionScope,
+  classifyRequest: () => classifyRequest,
+  renderScopeBlock: () => renderScopeBlock,
+  shouldRepair: () => shouldRepair,
+  toVerdict: () => toVerdict
+});
+var init_execution = __esm({
+  "src/server/execution/index.ts"() {
+    init_define_import_meta_env();
+    init_classify();
+    init_scope();
+    init_verdict();
+    init_ledger();
+    init_transaction();
   }
 });
 
@@ -147532,12 +147836,6 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
-
-// src/server/builder.server.ts
-init_source_escape_fixer_server();
-init_import_syntax_fixer_server();
-init_jsx_attr_literal_fixer_server();
-init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -169245,6 +169543,23 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       console.warn("[impact-graph] skipped:", e instanceof Error ? e.message : String(e));
     }
   }
+  const { classifyRequest: classifyRequest2, buildExecutionScope: buildExecutionScope2, renderScopeBlock: renderScopeBlock2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
+  const turnClassification = classifyRequest2(lastUserContent || "", {
+    isInitial,
+    manifest: projectCtx.manifest,
+    targetCount: resolvedTargetPaths.length
+  });
+  const executionScope = buildExecutionScope2({
+    request: lastUserContent || "",
+    classification: isCrossCutting && turnClassification.operation !== "first_build" ? { ...turnClassification, operation: "architectural_change", mode: "staged" } : turnClassification,
+    manifest: projectCtx.manifest,
+    targets: resolvedTargetPaths,
+    neighbours: impactNeighbourPaths
+  });
+  const executionScopeBlock = isInitial ? "" : renderScopeBlock2(executionScope);
+  console.info(
+    `[execution] op=${executionScope.operation} mode=${turnClassification.mode} plan=${turnClassification.planRequired} targets=${executionScope.affectedFiles.length} protected=${executionScope.protectedAreas.length} (${turnClassification.reason})`
+  );
   const promptAnchors = {};
   for (const target of editIntent?.targets ?? []) {
     const lines = target.anchors.map((a2) => a2.line).filter((n) => Number.isFinite(n));
@@ -169308,7 +169623,7 @@ ${compactManifest(currentFiles)}
 Current project files (trimmed to the most relevant editable files; ${budget2.omitted} lower-priority files omitted for speed. Some large files are shown as the regions around the lines that matter, with the untouched ranges marked \u2014 quote only bytes you can actually see. Kimble-managed UI kit, reusable block library, mobile primitives, examples, and backend integration files are hidden \u2014 they exist in the project but you must never edit them):
 
 ${budget2.files.map((f) => `--- ${f.path} ---
-${f.content}`).join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}${appMapBlock}`;
+${f.content}`).join("\n\n")}${crossCuttingAddendum}${viewBlock}${focusBlock}${changeSetBlock}${appMapBlock}${executionScopeBlock}`;
   const filesContext = renderFilesContext(promptBudget);
   const tool = isInitial ? WRITE_PROJECT_TOOL : PATCH_FILES_TOOL;
   const lastUserIdx = (() => {
@@ -170433,7 +170748,8 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           const isProtectedPath = (p) => isScaffoldOwnedPath(p) || matchesUserProtectedGlob(p) || // Plan Mode v1 — when a plan was approved, ANY file outside its
           // allow-list is treated as protected and dropped.
           allowedPathSet !== null && !allowedPathSet.has(p) || // A file the request never pointed at, on a small edit.
-          !editBoundary.allows(p);
+          !editBoundary.allows(p) || // Shared chrome / unrelated page outside the execution scope.
+          !isInitial && !isCrossCutting && executionScope.isProtected(p);
           let opRepairRoundUsed = false;
           const requestOpRepair = async (args) => {
             if (opRepairRoundUsed || isInitial) return [];
@@ -171882,6 +172198,10 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
                     request: lastUserContent.slice(0, 400),
                     intent: editClassification?.scope ?? null,
                     scope: resolvedTargetPaths,
+                    operation: executionScope.operation,
+                    mode: turnClassification.mode,
+                    protectedAreas: executionScope.protectedAreas.slice(0, 20),
+                    protectedTouched: turnChanged.filter((p) => executionScope.isProtected(p)),
                     filesRead: contextFiles.map((f) => f.path).slice(0, 40),
                     filesChanged: turnChanged.slice(0, 40),
                     housekeeping: [...kitSyncedPaths].slice(0, 40),
