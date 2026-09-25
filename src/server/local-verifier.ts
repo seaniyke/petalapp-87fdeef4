@@ -324,6 +324,16 @@ function looksTruncated(src: string): boolean {
   const last = trimmed[trimmed.length - 1];
   // Healthy file endings: closing brace, paren, bracket, semicolon.
   if ([")", "}", "]", ";"].includes(last)) return false;
+  // Semicolon-less style is legal and extremely common in generated pages.
+  // A file whose last statement is a complete export/declaration is NOT cut
+  // off (real case: `export default Login` rolled back a valid login page).
+  if (/(?:^|\n)[ \t]*export[ \t]+default[ \t]+[A-Za-z_$][\w$]*[ \t]*$/.test(trimmed)) return false;
+  if (/(?:^|\n)[ \t]*export[ \t]*\{[^{}]*\}[ \t]*$/.test(trimmed)) return false;
+  // Trailing comment or closed string/template literal — both complete.
+  if (trimmed.endsWith("*/")) return false;
+  if (/(?:^|\n)[ \t]*\/\/[^\n]*$/.test(trimmed)) return false;
+  if (last === '"' || last === "'" || last === "`") return false;
+  if (/\bas[ \t]+const[ \t]*$/.test(trimmed)) return false;
   // A trailing `>` is only healthy when it closes a tag — `/>` (self-close)
   // or `</…>` (closing tag). A bare opening `<Card …>` ends in `>` too, and
   // those are exactly the truncation cases we need to catch (real-world
@@ -340,6 +350,7 @@ function looksTruncated(src: string): boolean {
   // Allow trailing comma (rare but valid in some configs) — but flag everything else.
   return true;
 }
+
 
 function braceBalance(src: string): { braces: number; parens: number; brackets: number } {
   let braces = 0;

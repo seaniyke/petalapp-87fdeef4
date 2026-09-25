@@ -39,7 +39,7 @@ interface RunArgs {
   authoredPaths?: string[];
 }
 
-const HEURISTIC_SYNTAX_KINDS = new Set(["jsx", "braces", "unterminated-string"]);
+const HEURISTIC_SYNTAX_KINDS = new Set(["jsx", "braces", "unterminated-string", "truncation"]);
 
 export async function runLocalVerifyTier(args: RunArgs): Promise<LocalVerifyTierOutput> {
   const { nextFiles, currentFiles, toolName, parsedOps, authoredPaths } = args;
