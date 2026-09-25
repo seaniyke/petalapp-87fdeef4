@@ -3952,39 +3952,73 @@ Forbidden defaults
           const firstWasTruncated =
             isTruncatedFinishReason(collected.finishReason) ||
             (collected.args.trim().length > 0 && !collected.args.trimEnd().endsWith("}"));
-          // Bounded recovery table: exactly one resend (provider_failure).
-          // Routing away from failed upstreams is the provider policy's job.
-          if (!recovery.take("provider_failure")) throw e;
-          const retry = await structuredRetryCompletion({
-            messages: finalMessages,
-            isInitial,
-            problem: e instanceof Error ? e.message : "invalid structured response",
-            hasBackend: Boolean(backend),
-            tool,
-            maxTokens: isInitial
-              ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
-              : firstWasTruncated
-                ? Math.min(20_000, Math.max(16_000, Math.round(maxCompletionTokens * 1.6)))
-                : Math.max(maxCompletionTokens, 8_000),
-            crossCuttingIntent: isCrossCutting,
-            signal: abortSignal,
-            providerStalled: Boolean(firstStall),
-            meta: {
-              phase: phaseTag.phase,
-              promptChars: lastUserContent.length,
-              hadAttachments: hasVisionTurn,
-              chosenBy: firstStall ? "provider_stall_retry" : "structured_retry",
-              projectId: body.projectId ?? null,
-              userId,
-              turnId: logicalTurnId,
-              fallbackNumber: 1,
-              fallbackFromUpstream: firstStall?.upstream ?? null,
-              recoveryReason: firstStall ? "provider_stall" : "invalid_structured_output",
-            },
-          });
-          if (!retry.ok || !retry.body) throw e;
-          collected = await relayAndCollect(retry, controller, encoder);
+          // Bounded recovery table (provider_failure). A resend whose own
+          // upstream stalls, errors or drops the stream is a provider failure
+          // too — it gets the next allowed provider, never a parse attempt on
+          // untrusted partial output. Routing away from failed upstreams is
+          // the provider policy's job.
+          let providerFailed = Boolean(firstStall);
+          let lastFailedUpstream: string | null = firstStall?.upstream ?? null;
+          let attempts = 0;
+          let retryTrusted = false;
+          let lastErr: unknown = e;
+          while (recovery.take("provider_failure")) {
+            attempts++;
+            const retry = await structuredRetryCompletion({
+              messages: finalMessages,
+              isInitial,
+              problem: lastErr instanceof Error ? lastErr.message : "invalid structured response",
+              hasBackend: Boolean(backend),
+              tool,
+              maxTokens: isInitial
+                ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
+                : firstWasTruncated
+                  ? Math.min(20_000, Math.max(16_000, Math.round(maxCompletionTokens * 1.6)))
+                  : Math.max(maxCompletionTokens, 8_000),
+              crossCuttingIntent: isCrossCutting,
+              signal: abortSignal,
+              providerStalled: providerFailed,
+              meta: {
+                phase: phaseTag.phase,
+                promptChars: lastUserContent.length,
+                hadAttachments: hasVisionTurn,
+                chosenBy: providerFailed ? "provider_stall_retry" : "structured_retry",
+                projectId: body.projectId ?? null,
+                userId,
+                turnId: logicalTurnId,
+                fallbackNumber: attempts,
+                fallbackFromUpstream: lastFailedUpstream,
+                recoveryReason: providerFailed ? "provider_stall" : "invalid_structured_output",
+              },
+            });
+            if (!retry.ok || !retry.body) break;
+            try {
+              collected = await relayAndCollect(retry, controller, encoder);
+            } catch (streamErr) {
+              if (abortSignal.aborted) throw streamErr;
+              lastErr = streamErr;
+              providerFailed = true;
+              lastFailedUpstream = null;
+              console.warn("[generate] resend stream failed:", streamErr instanceof Error ? streamErr.message : String(streamErr));
+              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })));
+              continue;
+            }
+            const retryStall =
+              collected.stall ??
+              (collected.finishReason === "error" ? { upstream: collected.upstream ?? null, ms: 0 } : null);
+            if (retryStall) {
+              lastErr = new Error(`provider stream stalled (${retryStall.upstream ?? "unknown upstream"})`);
+              providerFailed = true;
+              lastFailedUpstream = retryStall.upstream ?? null;
+              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })));
+              continue;
+            }
+            retryTrusted = true;
+            break;
+          }
+          if (attempts === 0) throw e;
           try {
+            if (!retryTrusted) throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
             payload = parseCollectedProject(collected, isInitial);
           } catch (retryErr) {
             // Both attempts failed to produce usable tool output. Never turn

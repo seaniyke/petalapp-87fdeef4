@@ -38907,8 +38907,8 @@ var init_recovery_policy = __esm({
   "src/server/engine/recovery-policy.ts"() {
     init_define_import_meta_env();
     RECOVERY_LIMITS = {
-      provider_failure: 1,
-      // same request, next allowed provider
+      provider_failure: 2,
+      // same request, next allowed provider (two providers can stall in a row)
       truncated_output: 1,
       // continue only the missing files
       broken_file: 1,
@@ -41445,7 +41445,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -41489,7 +41488,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -41644,7 +41642,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -41835,7 +41832,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -84385,7 +84381,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -85169,7 +85164,6 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -109761,7 +109755,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -112242,7 +112235,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -115496,7 +115488,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -116416,7 +116407,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -123700,6 +123690,12 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
 
+// src/server/builder.server.ts
+init_source_escape_fixer_server();
+init_import_syntax_fixer_server();
+init_jsx_attr_literal_fixer_server();
+init_markdown_fence_fixer_server();
+
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
 var BRAND_MARK_PATH = "src/components/brand-mark.tsx";
@@ -125164,6 +125160,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -145601,33 +145598,62 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           );
           const firstCollected = collected;
           const firstWasTruncated = isTruncatedFinishReason(collected.finishReason) || collected.args.trim().length > 0 && !collected.args.trimEnd().endsWith("}");
-          if (!recovery.take("provider_failure")) throw e;
-          const retry = await structuredRetryCompletion({
-            messages: finalMessages,
-            isInitial,
-            problem: e instanceof Error ? e.message : "invalid structured response",
-            hasBackend: Boolean(backend2),
-            tool,
-            maxTokens: isInitial ? Math.min(24e3, Math.max(18e3, Math.round(maxCompletionTokens * 1.35))) : firstWasTruncated ? Math.min(2e4, Math.max(16e3, Math.round(maxCompletionTokens * 1.6))) : Math.max(maxCompletionTokens, 8e3),
-            crossCuttingIntent: isCrossCutting,
-            signal: abortSignal,
-            providerStalled: Boolean(firstStall),
-            meta: {
-              phase: phaseTag.phase,
-              promptChars: lastUserContent.length,
-              hadAttachments: hasVisionTurn,
-              chosenBy: firstStall ? "provider_stall_retry" : "structured_retry",
-              projectId: body.projectId ?? null,
-              userId,
-              turnId: logicalTurnId,
-              fallbackNumber: 1,
-              fallbackFromUpstream: firstStall?.upstream ?? null,
-              recoveryReason: firstStall ? "provider_stall" : "invalid_structured_output"
+          let providerFailed = Boolean(firstStall);
+          let lastFailedUpstream = firstStall?.upstream ?? null;
+          let attempts = 0;
+          let retryTrusted = false;
+          let lastErr = e;
+          while (recovery.take("provider_failure")) {
+            attempts++;
+            const retry = await structuredRetryCompletion({
+              messages: finalMessages,
+              isInitial,
+              problem: lastErr instanceof Error ? lastErr.message : "invalid structured response",
+              hasBackend: Boolean(backend2),
+              tool,
+              maxTokens: isInitial ? Math.min(24e3, Math.max(18e3, Math.round(maxCompletionTokens * 1.35))) : firstWasTruncated ? Math.min(2e4, Math.max(16e3, Math.round(maxCompletionTokens * 1.6))) : Math.max(maxCompletionTokens, 8e3),
+              crossCuttingIntent: isCrossCutting,
+              signal: abortSignal,
+              providerStalled: providerFailed,
+              meta: {
+                phase: phaseTag.phase,
+                promptChars: lastUserContent.length,
+                hadAttachments: hasVisionTurn,
+                chosenBy: providerFailed ? "provider_stall_retry" : "structured_retry",
+                projectId: body.projectId ?? null,
+                userId,
+                turnId: logicalTurnId,
+                fallbackNumber: attempts,
+                fallbackFromUpstream: lastFailedUpstream,
+                recoveryReason: providerFailed ? "provider_stall" : "invalid_structured_output"
+              }
+            });
+            if (!retry.ok || !retry.body) break;
+            try {
+              collected = await relayAndCollect(retry, controller, encoder);
+            } catch (streamErr) {
+              if (abortSignal.aborted) throw streamErr;
+              lastErr = streamErr;
+              providerFailed = true;
+              lastFailedUpstream = null;
+              console.warn("[generate] resend stream failed:", streamErr instanceof Error ? streamErr.message : String(streamErr));
+              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection\u2026" })));
+              continue;
             }
-          });
-          if (!retry.ok || !retry.body) throw e;
-          collected = await relayAndCollect(retry, controller, encoder);
+            const retryStall = collected.stall ?? (collected.finishReason === "error" ? { upstream: collected.upstream ?? null, ms: 0 } : null);
+            if (retryStall) {
+              lastErr = new Error(`provider stream stalled (${retryStall.upstream ?? "unknown upstream"})`);
+              providerFailed = true;
+              lastFailedUpstream = retryStall.upstream ?? null;
+              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection\u2026" })));
+              continue;
+            }
+            retryTrusted = true;
+            break;
+          }
+          if (attempts === 0) throw e;
           try {
+            if (!retryTrusted) throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
             payload = parseCollectedProject(collected, isInitial);
           } catch (retryErr) {
             const recoverySource = assistantTextFromCollected(collected) ? collected : firstStall ? null : firstCollected;
