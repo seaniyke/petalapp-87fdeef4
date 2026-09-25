@@ -2728,7 +2728,17 @@ Forbidden defaults
       : "") +
     // Composition guidance only matters while new surface is being built.
     (isStructuralTurn ? await renderCategoryCompositionBlock(lastUserContent || "") : "") +
-    renderStatedIntentBlock(statedIntent);
+    renderStatedIntentBlock(statedIntent) +
+    // Pictures already made for this project/owner (or admin-shared): a few
+    // compact lines so the AI reuses instead of asking for a new one.
+    (isStructuralTurn || /\b(image|photo|picture|hero|gallery|banner)\b/i.test(lastUserContent || "")
+      ? await (await import("@/server/registry/generated-pictures.server"))
+          .renderReusablePicturesBlock({
+            request: lastUserContent || "",
+            scope: { projectId: body.projectId ?? null, ownerId: userId ?? null },
+          })
+          .catch(() => "")
+      : "");
 
 
   // ---------------------------------------------------------------------------
