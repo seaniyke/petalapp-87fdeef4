@@ -31,6 +31,33 @@ export function integrationsFromSecretNames(names: string[]): string[] {
   return out;
 }
 
+/**
+ * Evidence from the project's current build row. Only a ready build of the
+ * CURRENT revision with a stored verification counts; anything else is
+ * reported as stale/unverified so nothing is promoted to COMPLETED.
+ */
+export function buildEvidenceFromRow(
+  row: { status?: string | null; project_revision?: number | string | null; verification?: any } | null,
+  projectRevision: number,
+): RequirementEvidence["build"] {
+  if (!row) return null;
+  const revision = row.project_revision == null ? null : Number(row.project_revision);
+  const visual = Array.isArray(row.verification?.visual) ? row.verification.visual : [];
+  const status =
+    row.status === "ready" ? (revision === projectRevision ? "ready" : "stale")
+    : row.status === "failed" ? "failed"
+    : row.status === "cancelled" ? "cancelled"
+    : "building";
+  return {
+    revision,
+    status,
+    verified: row.status === "ready" && !!row.verification,
+    phoneChecked:
+      visual.some((v: { width?: number }) => typeof v?.width === "number" && v.width <= 480) ||
+      row.verification?.phoneChecked === true,
+  };
+}
+
 export function evidenceFromFiles(
   files: Array<{ path: string; content: string }>,
   projectRevision: number,
@@ -52,7 +79,10 @@ export function evidenceFromFiles(
  */
 export async function recordRequirementEvidence(args: {
   projectId: string;
-  build: RequirementEvidence["build"];
+  /** "latest" reconciles against the project's current build row. */
+  build: RequirementEvidence["build"] | "latest";
+  /** Requirements to evaluate instead of the stored ones (e.g. freshly derived). */
+  requirements?: PrdRequirement[];
   files?: Array<{ path: string; content: string }>;
   projectRevision?: number;
 }): Promise<PrdRequirement[] | null> {
@@ -64,14 +94,27 @@ export async function recordRequirementEvidence(args: {
       .eq("project_id", args.projectId)
       .maybeSingle();
     const versioned = bp?.blueprint?.prd;
-    const reqs: PrdRequirement[] | undefined = versioned?.prd?.requirements;
+    const reqs: PrdRequirement[] | undefined = args.requirements ?? versioned?.prd?.requirements;
     if (!reqs?.length) return null;
 
     let revision = args.projectRevision;
-    if (typeof revision !== "number") {
-      const { data: p } = await db.from("projects").select("revision").eq("id", args.projectId).maybeSingle();
-      revision = Number(p?.revision ?? 0);
+    let latestBuildId: string | null = null;
+    if (typeof revision !== "number" || args.build === "latest") {
+      const { data: p } = await db.from("projects").select("revision, latest_build_id").eq("id", args.projectId).maybeSingle();
+      if (typeof revision !== "number") revision = Number(p?.revision ?? 0);
+      latestBuildId = p?.latest_build_id ?? null;
     }
+    let build: RequirementEvidence["build"] = null;
+    if (args.build === "latest") {
+      if (latestBuildId) {
+        const { data: b } = await db
+          .from("project_builds")
+          .select("status, project_revision, verification")
+          .eq("id", latestBuildId)
+          .maybeSingle();
+        build = buildEvidenceFromRow(b ?? null, revision);
+      }
+    } else build = args.build;
     let files = args.files;
     if (!files) {
       const { data: rows } = await db.from("project_files").select("path, content").eq("project_id", args.projectId);
@@ -80,7 +123,10 @@ export async function recordRequirementEvidence(args: {
     const { data: secrets } = await db.from("project_secrets").select("name").eq("project_id", args.projectId);
     const configured = integrationsFromSecretNames(((secrets ?? []) as Array<{ name: string }>).map((s) => s.name));
 
-    const next = evaluateRequirements(reqs, evidenceFromFiles(files, revision, args.build, configured));
+    const next = evaluateRequirements(reqs, evidenceFromFiles(files, revision, build, configured));
+    if (!versioned?.prd) return next;
+    const unchanged = versioned.prd.requirements && next.every((r, i) => r === versioned.prd.requirements[i]) && next.length === versioned.prd.requirements.length;
+    if (unchanged) return next;
     const blueprint = {
       ...bp.blueprint,
       prd: { ...versioned, prd: { ...versioned.prd, requirements: next } },
