@@ -3124,8 +3124,10 @@ function Builder() {
           // hand-off mid-turn) must be retried, never reported. Surfacing it
           // put a "Kimble is picking this back up" card under a finished
           // recap and left the deploy unstarted.
+          // Generated files are NOT written from the browser: the server's
+          // commitTurn() → replaceFiles() is the only generation write path
+          // (a browser re-save could persist state the server rolled back).
           await Promise.all([
-            retryTransient(() => saveProjectFiles(proj.id, files2)),
             retryTransient(() => appendMessages(proj.id, persistMsgs)),
             retryTransient(() => maybeAutoTitleProject(proj, summary2, text, provisionalTitleRef.current)),
             retryTransient(() =>
