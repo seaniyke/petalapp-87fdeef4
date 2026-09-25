@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { useWallet } from "@/hooks/use-wallet";
+import { hasFullAccess } from "@/lib/billing";
 import { fetchRuntimeWallet, formatUsdCents } from "@/lib/runtime-wallet";
 import { enableManagedBackend, enableSharedBackend } from "@/lib/projects";
 import { RuntimeTopupModal } from "@/components/RuntimeTopupModal";
