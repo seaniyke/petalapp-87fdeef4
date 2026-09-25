@@ -616,9 +616,35 @@ export function slugifyForProject(text: string, projectId: string): string {
   return `${base}-${suffix}`;
 }
 
+/**
+ * Attach a short, prompt-related working title the moment a build starts, so
+ * the project never sits as "Untitled project" while Kimble works. Returns the
+ * provisional title (or null when not applied). The end-of-build auto-title
+ * may still replace it with a better name — pass it as `provisionalTitle`.
+ */
+export async function provisionProjectTitle(project: ProjectRow, prompt: string): Promise<string | null> {
+  if (project.title !== "Untitled project") return null;
+  const { fallbackTitle } = await import("./project-title.functions");
+  const candidate = fallbackTitle(prompt ?? "", "").trim().slice(0, 60);
+  if (!candidate || candidate === "Untitled project") return null;
+  await updateProject(project.id, {
+    title: candidate,
+    slug: slugifyForProject(candidate, project.id),
+  });
+  return candidate;
+}
+
 /** Update the project title from a generated summary if still default. */
-export async function maybeAutoTitleProject(project: ProjectRow, summary: string, firstUserPrompt: string) {
-  if (project.title !== "Untitled project") return;
+export async function maybeAutoTitleProject(
+  project: ProjectRow,
+  summary: string,
+  firstUserPrompt: string,
+  provisionalTitle?: string | null,
+) {
+  const replaceable =
+    project.title === "Untitled project" ||
+    (provisionalTitle != null && project.title === provisionalTitle);
+  if (!replaceable) return;
   const { generateProjectTitle, fallbackTitle } = await import("./project-title.functions");
   let candidate = "";
   try {
