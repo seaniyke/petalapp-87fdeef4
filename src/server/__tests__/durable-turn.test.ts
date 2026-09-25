@@ -119,7 +119,7 @@ describe("duplicate / missed events", () => {
   it("missed event: replay fills the gap", () => {
     const gappy = run([start, live(script[0]!), live(script[1]!), live(script[3]!)]);
     const healed = run([replay({ type: "resume_start", after: 0 }), ...script.map(replay)], gappy);
-    expect(deriveView(healed).lifecycle ?? deriveView(healed)).toEqual(deriveView(run([start, ...script.map(live)])).lifecycle ?? deriveView(run([start, ...script.map(live)])));
+    expect(deriveView(healed)).toEqual(deriveView(run([start, ...script.map(live)])));
   });
 });
 
