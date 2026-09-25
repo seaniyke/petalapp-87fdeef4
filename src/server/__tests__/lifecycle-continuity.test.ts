@@ -33,14 +33,14 @@ describe("execution depth", () => {
 describe("read-before-edit", () => {
   it("refuses overwriting an existing file that was not read", () => {
     const l = new TurnLedger();
-    const r = l.write("src/a.tsx", "old", "new", "edit", "primary");
+    const r = l.write("src/a.tsx", "new", "old", "edit", "primary");
     expect(r.ok).toBe(false);
   });
   it("allows the write after the file was read, and new files need no read", () => {
     const l = new TurnLedger();
     l.recordRead("src/a.tsx");
-    expect(l.write("src/a.tsx", "old", "new", "edit", "primary").ok).toBe(true);
-    expect(l.write("src/new.tsx", null, "x", "create", "primary").ok).toBe(true);
+    expect(l.write("src/a.tsx", "new", "old", "edit", "primary").ok).toBe(true);
+    expect(l.write("src/new.tsx", "x", undefined, "create", "primary").ok).toBe(true);
   });
   it("reads do not carry over to a new operation", () => {
     const a = new TurnLedger();
