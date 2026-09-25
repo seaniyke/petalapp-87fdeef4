@@ -461,7 +461,10 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     const { error: projectUpdateError } = await supabaseAdmin
       .from("projects")
       .update({ latest_build_id: payload.buildId })
-      .eq("id", payload.projectId);
+      .eq("id", payload.projectId)
+      // Compare-and-set on the code revision: if a newer revision committed
+      // since the check above, this build must not become the current one.
+      .eq("revision", Number(existing.project_revision));
     if (projectUpdateError) {
       console.error("Builder callback could not update project build", projectUpdateError.message);
       return new Response("Could not save project status", { status: 503 });
