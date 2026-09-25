@@ -149,7 +149,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   // Defends against a compromised builder or a bug that scrambles ids.
   const { data: existing } = await supabaseAdmin
     .from("project_builds")
-    .select("id, project_id, created_at")
+    .select("id, project_id, created_at, project_revision")
     .eq("id", payload.buildId)
     .maybeSingle();
   if (!existing) {
@@ -178,6 +178,45 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     verifyMs,
     result: payload.status === "ready" ? "ready" : "failed",
   });
+
+  // REVISION IDENTITY — only a build of the project's CURRENT code revision
+  // may affect current readiness, the current build pointer, turn outcome,
+  // automatic repair or retries. A late result for an older (or unknown,
+  // legacy) revision is recorded as history with its stale reason and
+  // nothing else. Publishing reads the same rule.
+  {
+    const { data: proj } = await supabaseAdmin
+      .from("projects")
+      .select("revision")
+      .eq("id", payload.projectId)
+      .maybeSingle();
+    const { buildRevisionStatus, staleReasonText } = await import("@/lib/build-revision");
+    const rs = proj ? buildRevisionStatus(existing, proj) : null;
+    if (rs && !rs.current) {
+      const reason = staleReasonText(rs);
+      const failedMsg =
+        payload.status === "failed"
+          ? (payload.logs ? `${payload.errorMessage}\n\n--- logs ---\n${payload.logs}` : payload.errorMessage).slice(0, 8000)
+          : null;
+      await supabaseAdmin
+        .from("project_builds")
+        .update({
+          status: payload.status,
+          dist_path: payload.status === "ready" ? payload.url : null,
+          error_message: failedMsg,
+          ready_at: new Date().toISOString(),
+          stale_reason: reason,
+          ...(payload.verification ? { verification: { ...payload.verification, stale: true } as never } : {}),
+        })
+        .eq("id", payload.buildId);
+      // Billing is unchanged by staleness: a build that never shipped refunds.
+      if (payload.status === "failed") await refundRolledBackBuild(payload.projectId, payload.buildId);
+      console.info(
+        `[revision] stale build result ignored for readiness build=${payload.buildId} status=${payload.status} build_revision=${rs.buildRevision ?? "unknown"} project_revision=${rs.projectRevision} reason=${rs.reason}`,
+      );
+      return new Response("ok", { status: 200 });
+    }
+  }
 
   if (payload.status === "ready") {
     // AI Generation Bible §8 — the builder's own "ready" is a claim, not
