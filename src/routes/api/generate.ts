@@ -2056,8 +2056,26 @@ async function handleGenerateRequestCore(
   // that only aborts on an explicit user stop, so the pipeline runs to
   // completion server-side and the client can reattach via the turn id.
   workSignal?: AbortSignal,
+  /** Real setup-stage progress for the user while no stream exists yet.
+   *  `phase` moves the phase rail only when that stage truly starts. */
+  onStage?: (stage: { message: string; phase?: "thinking" | "designing" }) => void,
 ): Promise<Response> {
   const abortSignal = workSignal ?? request.signal;
+  // Setup-stage timing: one log line per stage so slow starts are measurable.
+  const setupStartedAt = Date.now();
+  let stageAt = setupStartedAt;
+  const stage = (name: string, message?: string, phase?: "thinking" | "designing") => {
+    const now = Date.now();
+    console.info(`[setup-timing] turn=${turnId ?? "n/a"} ${name} +${now - stageAt}ms total=${now - setupStartedAt}ms`);
+    stageAt = now;
+    if (message) {
+      try {
+        onStage?.({ message, phase });
+      } catch {
+        /* progress is cosmetic */
+      }
+    }
+  };
   // One durable identity must follow the logical turn through telemetry,
   // reconnects and billing. Creating a second id inside the stream broke the
   // database's exactly-once settlement guarantee on transport retries.
@@ -2132,6 +2150,9 @@ async function handleGenerateRequestCore(
   // by the context-budget layer; only an exceptional memory-safety ceiling is
   // rejected here.
   const lastContent = latestUserMessage(messages);
+  // Started now so it overlaps the requirements pass instead of queueing
+  // behind it. Awaited at its original place; same input, same result.
+  let earlyBriefExpansion: ReturnType<typeof expandBriefIfVague> | null = null;
   const intentBrief = (body.intentBrief ?? "").trim().slice(0, 600);
   if (promptExceedsHardCeiling(lastContent)) {
     return new Response(
@@ -2322,6 +2343,7 @@ async function handleGenerateRequestCore(
   // token usage (see post-flight section below). This keeps the
   // experience honest: failed/aborted builds cost nothing.
   const isInitial = currentFiles.length === 0;
+  if (isInitial) earlyBriefExpansion = expandBriefIfVague(latestUserMessage(messages)).catch(() => ({ expanded: false, brief: latestUserMessage(messages) }) as Awaited<ReturnType<typeof expandBriefIfVague>>);
   if (isInitial) {
     const tc = currentTurnContext();
     if (Object.keys(tc).length > 0) tc.holdSummary = true;
@@ -2358,6 +2380,7 @@ async function handleGenerateRequestCore(
   if (buildTarget.id === "web") {
     try {
       const { resolvePrdForTurn } = await import("@/server/prd/prd-engine.server");
+      stage("pre_prd", "Working out what your app needs to do…");
       resolvedPrd = await resolvePrdForTurn({
         brief: lastContent,
         projectId: body.projectId,
@@ -2600,7 +2623,7 @@ Forbidden defaults
   // concrete brief BEFORE the main call, server-side, with a tiny cheap
   // model. Failure-tolerant: any error returns the original brief.
   if (isInitial) {
-    const expansion = await expandBriefIfVague(lastUserContent);
+    const expansion = await (earlyBriefExpansion ?? expandBriefIfVague(lastUserContent));
     if (expansion.expanded) {
       lastUserContent = expansion.brief;
       // Replace the last user message in `messages` so the main model sees
@@ -2673,6 +2696,7 @@ Forbidden defaults
   // the persisted value first, so edits retain density, motion, FX recipe and
   // concrete design moves instead of degrading to the blueprint's one-line
   // visual summary.
+  stage("pre_design", "Choosing a design direction…", "designing");
   const rawDesignDirection = userJwt
     ? await pickDesignDirection({
         jwt: userJwt,
@@ -2723,6 +2747,7 @@ Forbidden defaults
       const { assemblePic } = await import("@/server/pic/pic-assemble.server");
       const { renderPicBlock } = await import("@/server/pic/pic-render");
       const isStructural = isStructuralTurn;
+      stage("pre_pic", "Mapping your pages and sections…");
       const assembled = await assemblePic({
         projectId: body.projectId,
         brief: lastUserContent || lastContent,
@@ -3715,6 +3740,7 @@ Forbidden defaults
   // Web Intelligence (information only). Runs only when the user supplied a
   // URL; its sole output is one bounded system block placed before the
   // latest user message. It never writes files or calls a model.
+  stage("pre_web_intel");
   const webIntel = await gatherWebIntel({
     message: lastUserContent,
     signal: abortSignal,
@@ -3748,6 +3774,7 @@ Forbidden defaults
     ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent })
     : null;
 
+  stage("pre_write", "Starting to write your app…");
   const upstream = directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
@@ -7239,7 +7266,11 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         };
         const response = await runWithTurnContext(
           attemptCtx,
-          () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal),
+          () =>
+            handleGenerateRequestCore(request, recorder?.turnId, workController.signal, ({ message, phase }) => {
+              if (phase) emit({ type: "phase", phase });
+              emit({ type: "status", message });
+            }),
         );
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);

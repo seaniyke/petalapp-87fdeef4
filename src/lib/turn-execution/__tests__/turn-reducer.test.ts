@@ -208,3 +208,19 @@ describe("stage 5 projections (replacing builder-local state)", () => {
     expect(d.doneStepIndexes).toEqual([0]);
   });
 });
+
+describe("setup stages", () => {
+  it("shows real setup status lines and never moves the phase backwards", () => {
+    const s = run([
+      start,
+      live({ type: "phase", phase: "thinking" }),
+      live({ type: "status", message: "Working out what your app needs to do…" }),
+      live({ type: "phase", phase: "designing" }),
+      live({ type: "status", message: "Choosing a design direction…" }),
+      live({ type: "phase", phase: "thinking" }),
+    ]);
+    const v = deriveView(s);
+    expect(v.current?.label).toBe("Choosing a design direction");
+    expect(v.detail).toBe("Choosing a design direction…");
+  });
+});
