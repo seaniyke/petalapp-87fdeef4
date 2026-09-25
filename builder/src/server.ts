@@ -612,7 +612,7 @@ async function runBuildInner(body: BuildBody): Promise<void> {
         url: result.url,
         ...(verification ? { verification } : {}),
         timings: {
-          ...(typeof body.turnId === "string" ? { turnId: body.turnId } : {}),
+          ...(typeof (body as { turnId?: unknown }).turnId === "string" ? { turnId: (body as { turnId?: string }).turnId as string } : {}),
           ...(verification?.durationMs != null ? { browserMs: verification.durationMs } : {}),
         },
       });
@@ -639,7 +639,7 @@ async function runBuildInner(body: BuildBody): Promise<void> {
       // Lets the app tell "never went live" from "live, then a late problem".
       deployed: false,
       timings: {
-        ...(typeof body.turnId === "string" ? { turnId: body.turnId } : {}),
+        ...(typeof (body as { turnId?: unknown }).turnId === "string" ? { turnId: (body as { turnId?: string }).turnId as string } : {}),
         ...(verification?.durationMs != null ? { browserMs: verification.durationMs } : {}),
       },
     }).catch((e) => log.error({ err: String(e) }, "Callback also failed"));
