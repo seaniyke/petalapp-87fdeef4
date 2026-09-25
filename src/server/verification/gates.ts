@@ -50,12 +50,12 @@ const gate = (g: GateId, verdict: Verdict, reasons: string[] = [], paths: string
 /* ------------------------------ syntax ------------------------------ */
 
 /** Wrap the authoritative esbuild verdict. Heuristic scanners are advisory. */
-export function syntaxGate(esbuild: { status: string; issues?: Array<{ path: string; detail: string }> } | null): GateResult {
+export function syntaxGate(esbuild: { status: string; issues?: Array<{ path: string; detail?: string; message?: string; line?: number }> } | null): GateResult {
   if (!esbuild) return gate("syntax", "UNKNOWN", ["syntax check did not run"]);
   const v = esbuild.status === "not_checked" ? "PASS" : toVerdict(esbuild.status);
   const issues = esbuild.issues ?? [];
   if (v === "FAIL") {
-    return gate("syntax", "FAIL", issues.slice(0, 6).map((i) => `${i.path}: ${i.detail}`), uniq(issues.map((i) => i.path)));
+    return gate("syntax", "FAIL", issues.slice(0, 6).map((i) => `${i.path}${i.line ? `:${i.line}` : ""}: ${i.message ?? i.detail ?? "syntax error"}`), uniq(issues.map((i) => i.path)));
   }
   if (v === "UNAVAILABLE") return gate("syntax", "UNAVAILABLE", ["syntax checker unavailable — code kept as written"]);
   return gate("syntax", v);
@@ -228,7 +228,7 @@ export function finalizeVerification(results: GateResult[], kind: ProjectKind = 
 export function runSourceGates(args: {
   files: ProjectFile[];
   requestedRoutes: string[];
-  esbuild: { status: string; issues?: Array<{ path: string; detail: string }> } | null;
+  esbuild: { status: string; issues?: Array<{ path: string; detail?: string; message?: string; line?: number }> } | null;
 }): GateResult[] {
   return [syntaxGate(args.esbuild), dependencyGate(args.files), routesGate(args.files, args.requestedRoutes)];
 }
