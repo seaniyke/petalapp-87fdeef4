@@ -142,8 +142,8 @@ describe("output-limit continuation (first build WRITE stage)", () => {
     const breaker = new AgentCircuitBreaker();
     let tripped = false;
     for (let i = 0; i < 3; i++) {
-      const d = breaker.recordFailure({ category: "verification", tool: "verify", path: "src/pages/Rooms.tsx", message: "Unexpected end of file" });
-      if ((d as { stop?: boolean }).stop) tripped = true;
+      const d = breaker.recordFailure({ category: "syntax_error", tool: "verify", path: "src/pages/Rooms.tsx", message: "Unexpected end of file" });
+      if (d.tripped) tripped = true;
     }
     expect(tripped).toBe(true);
   });
