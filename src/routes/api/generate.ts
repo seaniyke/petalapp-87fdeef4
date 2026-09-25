@@ -2343,6 +2343,7 @@ async function handleGenerateRequestCore(
   // token usage (see post-flight section below). This keeps the
   // experience honest: failed/aborted builds cost nothing.
   const isInitial = currentFiles.length === 0;
+  if (isInitial) earlyBriefExpansion = expandBriefIfVague(latestUserMessage(messages)).catch(() => ({ expanded: false, brief: latestUserMessage(messages) }) as Awaited<ReturnType<typeof expandBriefIfVague>>);
   if (isInitial) {
     const tc = currentTurnContext();
     if (Object.keys(tc).length > 0) tc.holdSummary = true;
@@ -2695,6 +2696,7 @@ Forbidden defaults
   // the persisted value first, so edits retain density, motion, FX recipe and
   // concrete design moves instead of degrading to the blueprint's one-line
   // visual summary.
+  stage("pre_design", "Choosing a design direction…", "designing");
   const rawDesignDirection = userJwt
     ? await pickDesignDirection({
         jwt: userJwt,
@@ -2745,6 +2747,7 @@ Forbidden defaults
       const { assemblePic } = await import("@/server/pic/pic-assemble.server");
       const { renderPicBlock } = await import("@/server/pic/pic-render");
       const isStructural = isStructuralTurn;
+      stage("pre_pic", "Mapping your pages and sections…");
       const assembled = await assemblePic({
         projectId: body.projectId,
         brief: lastUserContent || lastContent,
@@ -3737,6 +3740,7 @@ Forbidden defaults
   // Web Intelligence (information only). Runs only when the user supplied a
   // URL; its sole output is one bounded system block placed before the
   // latest user message. It never writes files or calls a model.
+  stage("pre_web_intel");
   const webIntel = await gatherWebIntel({
     message: lastUserContent,
     signal: abortSignal,
@@ -3770,6 +3774,7 @@ Forbidden defaults
     ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent })
     : null;
 
+  stage("pre_write", "Starting to write your app…");
   const upstream = directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
@@ -7261,7 +7266,11 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         };
         const response = await runWithTurnContext(
           attemptCtx,
-          () => handleGenerateRequestCore(request, recorder?.turnId, workController.signal),
+          () =>
+            handleGenerateRequestCore(request, recorder?.turnId, workController.signal, ({ message, phase }) => {
+              if (phase) emit({ type: "phase", phase });
+              emit({ type: "status", message });
+            }),
         );
         if (!response.ok || !response.body) {
           const raw = await response.text().catch(() => `Request failed (${response.status})`);
