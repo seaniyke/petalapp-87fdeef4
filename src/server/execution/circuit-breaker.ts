@@ -265,6 +265,9 @@ export class AgentCircuitBreaker {
     this.lastProgressAt = Date.now();
     this.lastFingerprint = null;
     if (path) this.byFile.delete(path);
+    // A tool that just succeeded is working; its earlier failures were
+    // transient, so they must not accumulate across a productive turn.
+    this.byTool.clear();
     void kind;
   }
 
