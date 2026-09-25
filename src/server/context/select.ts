@@ -67,6 +67,8 @@ function words(s: string): string[] {
     .filter((w) => w.length >= 3);
 }
 
+const GENERIC = new Set(["section", "page", "component", "block", "view", "screen", "container", "wrapper"]);
+
 export interface Selection {
   /** Files the change is about. */
   primary: string[];
@@ -110,7 +112,7 @@ export function selectContext(
     const req = new Set(words(request));
     for (const c of [...manifest.components, ...manifest.pages.map((p) => p.path)]) {
       const name = (c.split("/").pop() ?? "").replace(/\.(t|j)sx?$/, "");
-      const nameWords = words(name);
+      const nameWords = words(name).filter((w) => !GENERIC.has(w));
       if (nameWords.length && nameWords.every((w) => req.has(w) || req.has(w.replace(/s$/, "")))) add(c, `name matches "${name}"`, primary);
     }
   }
