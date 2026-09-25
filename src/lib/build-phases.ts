@@ -88,6 +88,8 @@ const PHASE_TEMPLATES: Record<PhaseId, Omit<Phase, "id" | "status">> = {
 export function advanceTo(phases: Phase[], nextActive: PhaseId, now = Date.now()): Phase[] {
   const targetIdx = ORDERED_PHASE_IDS.indexOf(nextActive);
   if (targetIdx < 0) return phases;
+  // Never move backwards: a repeated early phase event must not reopen it.
+  if (phases.some((p, i) => i > targetIdx && p.status !== "pending")) return phases;
   return phases.map((p, i) => {
     if (i < targetIdx) {
       // Earlier phases — mark done if not already.
