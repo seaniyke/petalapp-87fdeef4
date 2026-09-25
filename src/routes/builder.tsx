@@ -157,6 +157,7 @@ import { PetalShieldSheet } from "@/components/PetalShieldSheet";
 import petalLogo from "@/assets/kimble-logo.png";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { revisionAwareBuildSnapshot, newerRevision } from "@/lib/build-revision";
+import { PROJECT_REVISION_EVENT } from "@/lib/projects";
 import { SharePreviewDialog } from "@/components/SharePreviewDialog";
 import { CommentsInboxSheet } from "@/components/CommentsInboxSheet";
 // BuildTargetChips import removed — chip rail retired from the composer.
@@ -1356,6 +1357,20 @@ function Builder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deployElapsed, isDeploying, busy, effectiveBuildSnap?.progressAt]);
 
+
+  // Code saves from this tab (editor, restore, visual edit, undo) report the
+  // committed revision straight from the save response.
+  useEffect(() => {
+    const projectId = project?.id;
+    if (!projectId) return;
+    const onRev = (e: Event) => {
+      const d = (e as CustomEvent<{ projectId: string; revision: number }>).detail;
+      if (!d || d.projectId !== projectId) return;
+      setProject((prev) => (prev ? { ...prev, revision: newerRevision(prev.revision, d.revision) ?? prev.revision } : prev));
+    };
+    window.addEventListener(PROJECT_REVISION_EVENT, onRev);
+    return () => window.removeEventListener(PROJECT_REVISION_EVENT, onRev);
+  }, [project?.id]);
 
   // Subscribe to `projects` row changes so when the build callback writes a
   // new `latest_build_id` (or any other field), the UI picks it up immediately
