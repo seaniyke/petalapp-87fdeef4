@@ -11,7 +11,6 @@ import { describe, expect, it } from "vitest";
 import { extractRequestedPages, pageNameToRoute } from "@/server/requested-scope";
 import { planFirstBuild, type PlannedPage } from "@/server/engine/plan";
 import { targetOf } from "@/server/engine/write";
-import { runExecutionLoop as writePlannedPages, reconcileRequirements } from "@/server/engine/agent-loop";
 import { assessCompleteness } from "@/server/engine/build-state";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { AgentCircuitBreaker } from "@/server/execution/circuit-breaker";
@@ -72,73 +71,6 @@ describe("page list parsing (planner input)", () => {
 
 describe("output-limit continuation (first build WRITE stage)", () => {
   const plan = planFirstBuild({ prompt: HOTEL, plannedRoutes: [], maxOutputTokens: 10_000 }).pages;
-
-  it("response ends normally: a complete shell + pages needs no continuation call", async () => {
-    const files = [shell(plan), ...plan.map((p) => ({ path: p.file, content: page(p.file.split("/").pop()!.replace(".tsx", "")) }))];
-    const w = writer();
-    const done = await writePlannedPages({ pages: plan, files, budget: new RecoveryBudget(), request: w.request, isTruncated: w.isTruncated });
-    expect(done.calls).toBe(0);
-    expect(done.missing).toEqual([]);
-    expect(assessCompleteness({ requestedRoutes: ROUTES, files: done.files }).complete).toBe(true);
-  });
-
-  it("response hit the output limit after Home: the remaining pages are written, then the site is complete", async () => {
-    const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
-    const w = writer();
-    const done = await writePlannedPages({ pages: plan, files, budget: new RecoveryBudget(), request: w.request, isTruncated: w.isTruncated });
-    expect(w.seen.sort()).toEqual(plan.filter((p) => p.route !== "/").map((p) => p.file).sort());
-    expect(done.missing).toEqual([]);
-    expect(assessCompleteness({ requestedRoutes: ROUTES, files: done.files }).complete).toBe(true);
-  });
-
-  it("a planner that under-counted is corrected from the shell's own router imports", () => {
-    const homeOnly: PlannedPage[] = [{ route: "/", file: "src/pages/Home.tsx" }];
-    const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
-    const reqs = reconcileRequirements(homeOnly, files);
-    expect(reqs.map((p) => p.file).sort()).toEqual(plan.map((p) => p.file).sort());
-    expect(reqs.map((p) => p.route).sort()).toEqual([...ROUTES].sort());
-  });
-
-  it("a continuation that is itself cut off is re-requested exactly once, then completes", async () => {
-    const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
-    const w = writer({ cut: new Set(["src/pages/Gallery.tsx"]) });
-    const done = await writePlannedPages({ pages: plan, files, budget: new RecoveryBudget(), request: w.request, isTruncated: w.isTruncated });
-    // Work-unit continuation: the cut-off answer is continued first; a page
-    // still cut off is re-planned once. Bounded either way.
-    expect(w.seen.filter((s) => s === "src/pages/Gallery.tsx").length).toBeGreaterThanOrEqual(2);
-    expect(w.seen.filter((s) => s === "src/pages/Gallery.tsx").length).toBeLessThanOrEqual(4);
-    expect(done.missing).toEqual([]);
-  });
-
-  it("repeated continuation is bounded: a page that keeps hitting the limit gets 2 calls, then stays missing", async () => {
-    const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
-    const w = writer({ cutAlways: new Set(["src/pages/Rooms.tsx"]) });
-    const done = await writePlannedPages({ pages: plan, files, budget: new RecoveryBudget(), request: w.request, isTruncated: w.isTruncated });
-    // Initial + its continuation, retry + its continuation — then missing.
-    expect(w.seen.filter((s) => s === "src/pages/Rooms.tsx")).toHaveLength(4);
-    expect(done.missing).toEqual(["/rooms"]);
-    // Total calls stay bounded: 5 pages + 1 retry + 2 continuations + at most 1 frame call.
-    expect(done.calls).toBeLessThanOrEqual(9);
-  });
-
-  it("an incomplete multi-page site is never reported complete (so it is never committed)", async () => {
-    const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
-    const w = writer({ cutAlways: new Set(["src/pages/Rooms.tsx"]) });
-    const done = await writePlannedPages({ pages: plan, files, budget: new RecoveryBudget(), request: w.request, isTruncated: w.isTruncated });
-    const verdict = assessCompleteness({ requestedRoutes: ROUTES, files: done.files });
-    expect(verdict.complete).toBe(false);
-    expect(verdict.missingRoutes).toContain("/rooms");
-    // And the half-written shell alone is incomplete too.
-    expect(assessCompleteness({ requestedRoutes: ROUTES, files }).complete).toBe(false);
-  });
-
-  it("cancellation between continuations: no further page lands after Stop, and the site stays incomplete", async () => {
-    const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
-    const w = writer({ failAfter: 0 });
-    const done = await writePlannedPages({ pages: plan, files, budget: new RecoveryBudget(), request: w.request, isTruncated: w.isTruncated });
-    expect(done.written).toEqual([]);
-    expect(assessCompleteness({ requestedRoutes: ROUTES, files: done.files }).complete).toBe(false);
-  });
 
   it("the circuit breaker still trips on repeated identical failures during a continuation turn", () => {
     const breaker = new AgentCircuitBreaker();

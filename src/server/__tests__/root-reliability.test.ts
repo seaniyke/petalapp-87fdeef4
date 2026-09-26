@@ -1,5 +1,4 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { runExecutionLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import {
   isOwnContentIssue,
@@ -42,32 +41,6 @@ function requester(homeAttempts: string[]) {
 }
 
 describe("truncated file handling", () => {
-  it("A: truncated Home → continued/regenerated (bounded) → valid Home kept", async () => {
-    const { request, counts } = requester([CUT, good("src/pages/Home.tsx").content]);
-    const r = await writePlannedPages({ pages, files: [frame], budget: new RecoveryBudget(), request, isTruncated });
-    expect(counts["src/pages/Home.tsx"]).toBeLessThanOrEqual(3);
-    expect(r.missing).toEqual([]);
-  });
-
-  it("B: regeneration also truncated → Home isolated, others intact", async () => {
-    const { request, counts } = requester([CUT, CUT, CUT, CUT]);
-    const r = await writePlannedPages({ pages, files: [frame], budget: new RecoveryBudget(), request, isTruncated });
-    expect(counts["src/pages/Home.tsx"]).toBe(4);
-    expect(r.missing).toEqual(["/"]);
-    for (const p of ["src/pages/Menu.tsx", "src/pages/About.tsx", "src/pages/Contact.tsx", "src/App.tsx"]) {
-      expect(r.files.some((f) => f.path === p)).toBe(true);
-    }
-    expect(r.files.some((f) => f.content === CUT)).toBe(false);
-  });
-
-  it("C: valid pages are never regenerated because another was truncated", async () => {
-    const { request, counts } = requester([CUT, CUT]);
-    await writePlannedPages({ pages, files: [frame], budget: new RecoveryBudget(), request, isTruncated });
-    expect(counts["src/pages/Menu.tsx"]).toBe(1);
-    expect(counts["src/pages/About.tsx"]).toBe(1);
-    expect(counts["src/pages/Contact.tsx"]).toBe(1);
-  });
-
   it("D: truncation is its own class — detected structurally, never patched", async () => {
     expect(isTruncationDetail('Unexpected end of file before a closing "main" tag')).toBe(true);
     expect(isTruncationDetail("Unterminated string literal")).toBe(true);

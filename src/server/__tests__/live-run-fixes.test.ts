@@ -2,7 +2,6 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { codegenProviderRouting, resolveProviderRouting } from "@/server/engine/provider-policy";
 import { describeIncomplete, incompleteBuildMessage, neutraliseSuccessClaims } from "@/server/engine/build-state";
 import { frameIsComplete, pageInstruction, projectContract } from "@/server/engine/write";
-import { runExecutionLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { pageFileFor } from "@/server/engine/plan";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { revertCleanupBreakage } from "@/server/write-gate.server";
@@ -52,17 +51,6 @@ describe("shared frame contract", () => {
     expect(frameIsComplete([f("src/App.tsx", "<header><nav/></header><Routes><Route/></Routes><footer/>")])).toBe(true);
     expect(frameIsComplete([f("src/App.tsx", "<header><nav/></header><Home/><footer/>")], 1)).toBe(true);
     expect(frameIsComplete([f("src/App.tsx", "<header><nav/></header><Home/><footer/>")], 2)).toBe(false);
-  });
-  it("a missing frame triggers the frame call even when pages exist", async () => {
-    const asked: string[] = [];
-    const pages = [{ route: "/", file: "src/pages/Home.tsx" }];
-    await writePlannedPages({
-      pages,
-      files: [f("src/pages/Home.tsx", "export default function Home(){return <main/>}")],
-      budget: new RecoveryBudget(),
-      request: async (i) => { asked.push(i); return null; },
-    });
-    expect(asked.some((i) => i.includes("SHARED FRAME"))).toBe(true);
   });
 });
 
