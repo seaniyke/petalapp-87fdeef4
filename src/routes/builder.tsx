@@ -1723,7 +1723,10 @@ function Builder() {
   const didInitialChatScrollRef = useRef(false);
 
   const scrollChatToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
-    chatEndRef.current?.scrollIntoView({ behavior });
+    // Scroll only the chat pane. scrollIntoView also scrolls every scrollable
+    // ancestor — on phones that pushed the whole page (header included) up.
+    const el = chatScrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior });
     setShowJumpToLatest(false);
   }, []);
 
@@ -1771,7 +1774,8 @@ function Builder() {
       setShowJumpToLatest(true);
       return;
     }
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
 
   }, [messages, busy, isNearBottom]);
 
