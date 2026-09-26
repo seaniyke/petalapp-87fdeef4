@@ -35113,15 +35113,15 @@ var require_lib = __commonJS({
           }
           this.sawUnambiguousESM = true;
         } else if (this.isContextual(105) || this.isContextual(97)) {
-          const isSource2 = this.isContextual(105);
-          this.expectPlugin(isSource2 ? "sourcePhaseImports" : "deferredImportEvaluation");
+          const isSource3 = this.isContextual(105);
+          this.expectPlugin(isSource3 ? "sourcePhaseImports" : "deferredImportEvaluation");
           if (!(this.optionFlags & 512)) {
             throw this.raise(Errors.DynamicImportPhaseRequiresImportExpressions, this.state.startLoc, {
               phase: this.state.value
             });
           }
           this.next();
-          node.phase = isSource2 ? "source" : "defer";
+          node.phase = isSource3 ? "source" : "defer";
           return this.parseImportCall(node);
         }
         return this.parseMetaProperty(node, id, "meta");
@@ -40604,7 +40604,6 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
-    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -42256,7 +42255,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -42300,7 +42298,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -42455,7 +42452,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -42646,7 +42642,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -90474,7 +90469,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS2, ROOT_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader2();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -115175,7 +115169,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -143261,6 +143254,68 @@ var init_raw_file = __esm({
   }
 });
 
+// src/server/engine/provider-retry.ts
+var provider_retry_exports = {};
+__export(provider_retry_exports, {
+  BASE_DELAY_MS: () => BASE_DELAY_MS,
+  MAX_DELAY_MS: () => MAX_DELAY_MS,
+  MAX_PROVIDER_RETRIES: () => MAX_PROVIDER_RETRIES,
+  RETRYABLE_STATUS: () => RETRYABLE_STATUS,
+  backoffDelay: () => backoffDelay,
+  classifyProviderStatus: () => classifyProviderStatus,
+  withProviderRetry: () => withProviderRetry
+});
+function classifyProviderStatus(status) {
+  if (status === null) return "connection";
+  if (status >= 200 && status < 300) return "ok";
+  if (status === 429) return "rate_limited";
+  if (RETRYABLE_STATUS.has(status)) return "server_error";
+  return "deterministic";
+}
+function backoffDelay(attempt, random = Math.random) {
+  const exp = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (attempt - 1));
+  return Math.round(exp / 2 + random() * (exp / 2));
+}
+async function withProviderRetry(run, opts = {}) {
+  const sleep3 = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  let last = null;
+  let lastErr = null;
+  for (let attempt = 1; attempt <= MAX_PROVIDER_RETRIES + 1; attempt++) {
+    let status = null;
+    try {
+      last = await run();
+      status = last.status;
+      lastErr = null;
+    } catch (e) {
+      if (opts.signal?.aborted) throw e;
+      lastErr = e;
+      last = null;
+    }
+    const cls = classifyProviderStatus(status);
+    const retry = (cls === "rate_limited" || cls === "server_error" || cls === "connection") && attempt <= MAX_PROVIDER_RETRIES && !opts.signal?.aborted;
+    const delayMs = retry ? backoffDelay(attempt, opts.random) : 0;
+    opts.onAttempt?.({ attempt, status, failureClass: cls, delayMs });
+    if (!retry) break;
+    try {
+      await last?.body?.cancel();
+    } catch {
+    }
+    await sleep3(delayMs);
+  }
+  if (last) return last;
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+var RETRYABLE_STATUS, MAX_PROVIDER_RETRIES, BASE_DELAY_MS, MAX_DELAY_MS;
+var init_provider_retry = __esm({
+  "src/server/engine/provider-retry.ts"() {
+    init_define_import_meta_env();
+    RETRYABLE_STATUS = /* @__PURE__ */ new Set([429, 500, 502, 503, 504]);
+    MAX_PROVIDER_RETRIES = 2;
+    BASE_DELAY_MS = 800;
+    MAX_DELAY_MS = 6e3;
+  }
+});
+
 // src/server/engine/structural-deps.ts
 var structural_deps_exports = {};
 __export(structural_deps_exports, {
@@ -143545,31 +143600,36 @@ ${uses.join("\n")}`);
 ${types.slice(0, 4e3)}`);
   return lines.join("\n\n");
 }
-async function resolveMissingNodes(files, scopePaths, create) {
+async function resolveMissingNodes(files, scopePaths, create, opts = {}) {
   const nodes = findMissingNodes(files, scopePaths);
   const created = [];
   const blocked = [];
   let out = files;
-  for (const node of nodes) {
-    const importers = node.importers.map((i) => i.path);
-    let content = null;
-    try {
-      content = await create(node, usageContext(out, node));
-    } catch (e) {
-      throw e;
+  const limit = Math.max(1, opts.concurrency ?? 1);
+  const contents = new Array(nodes.length).fill(null);
+  let next = 0;
+  const worker = async () => {
+    while (next < nodes.length) {
+      const i = next++;
+      contents[i] = await create(nodes[i], usageContext(files, nodes[i]));
     }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, Math.max(1, nodes.length)) }, worker));
+  nodes.forEach((node, i) => {
+    const importers = node.importers.map((x) => x.path);
+    const content = contents[i];
     if (!content || !content.trim()) {
       blocked.push({ target: node.target, reason: "no module was produced", importers });
-      continue;
+      return;
     }
     const missing = exportsSatisfy(content, node);
     if (missing.length) {
       blocked.push({ target: node.target, reason: `created module is missing exports: ${missing.join(", ")}`, importers });
-      continue;
+      return;
     }
     out = [...out.filter((f) => f.path !== node.target), { path: node.target, content }];
     created.push(node.target);
-  }
+  });
   return { files: out, created, blocked };
 }
 var IMPORT_STMT, NEVER_CREATE;
@@ -143894,7 +143954,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145824,7 +145883,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -149829,6 +149887,168 @@ var init_lifecycle = __esm({
   }
 });
 
+// src/server/engine/work-unit.ts
+function exportSignature(path, content) {
+  const named = /* @__PURE__ */ new Set();
+  const types = /* @__PURE__ */ new Set();
+  const functions = /* @__PURE__ */ new Set();
+  for (const m of content.matchAll(DECL)) {
+    const kind = m[1];
+    const name = m[2];
+    if (kind === "type" || kind === "interface") types.add(name);
+    else {
+      named.add(name);
+      if (kind.startsWith("function")) functions.add(name);
+    }
+  }
+  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
+    for (const part of m[2].split(",")) {
+      const raw = part.trim();
+      if (!raw) continue;
+      const isType = Boolean(m[1]) || raw.startsWith("type ");
+      const exported = raw.replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
+      if (exported === "default") continue;
+      (isType ? types : named).add(exported);
+    }
+  }
+  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}\s*from/g)) {
+    for (const part of m[2].split(",")) {
+      const exported = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
+      if (exported && exported !== "default") (m[1] ? types : named).add(exported);
+    }
+  }
+  const hasDefault = /export\s+default\b/.test(content) || /export\s*\{[^}]*\bas\s+default\b[^}]*\}/.test(content);
+  const components = [...named].filter((n) => /^[A-Z][a-z0-9]/.test(n) && !/^[A-Z0-9_]+$/.test(n));
+  return {
+    path,
+    hasDefault,
+    named: [...named].sort(),
+    components: components.sort(),
+    functions: [...functions].sort(),
+    types: [...types].sort()
+  };
+}
+function describeSignature(sig) {
+  const alias = "@/" + sig.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "");
+  const parts = [];
+  if (sig.named.length) parts.push(`named { ${sig.named.slice(0, 30).join(", ")} }`);
+  if (sig.types.length) parts.push(`types { ${sig.types.slice(0, 15).join(", ")} }`);
+  parts.push(sig.hasDefault ? "HAS a default export" : "NO default export");
+  return `- ${alias}: ${parts.join("; ")}`;
+}
+function sharedSignatures(files) {
+  return files.filter(
+    (f) => isSource2(f.path) && f.path.startsWith("src/") && !isPage(f.path) && !f.path.startsWith("src/components/ui/") && !f.path.startsWith("src/integrations/supabase/") && !/^src\/(main|App)\.tsx$/.test(f.path) && !/\.d\.ts$/.test(f.path)
+  ).map((f) => exportSignature(f.path, f.content)).filter((s) => s.named.length || s.hasDefault || s.types.length).sort((a2, b) => a2.path.localeCompare(b.path));
+}
+function signatureContext(files) {
+  const sigs = sharedSignatures(files);
+  if (!sigs.length) return "";
+  return [
+    "REAL EXPORT SIGNATURES of the modules that already exist (import them exactly like this \u2014 a module with NO default export must be imported with braces):",
+    ...sigs.slice(0, 80).map(describeSignature)
+  ].join("\n");
+}
+function resolveStaged(from, spec, byPath) {
+  const hit = resolveSpecifier2(from, spec, new Set(byPath.keys()));
+  if (!hit) return null;
+  return typeof hit === "string" ? hit : null;
+}
+function validateUnitImports(file, staged) {
+  if (!isSource2(file.path)) return [];
+  const byPath = new Map(staged.map((f) => [f.path, f.content]));
+  byPath.set(file.path, file.content);
+  const out = [];
+  IMPORT.lastIndex = 0;
+  let m;
+  while (m = IMPORT.exec(file.content)) {
+    const typeOnly = Boolean(m[1]);
+    const def = m[2];
+    const spec = m[4];
+    if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
+    if (/\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
+    const target = resolveStaged(file.path, spec, byPath);
+    if (!target) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" does not exist. Import only from the existing modules listed in the signatures, or define it inside ${file.path}.`
+      });
+      continue;
+    }
+    if (typeOnly || !isSource2(target)) continue;
+    const sig = exportSignature(target, byPath.get(target) ?? "");
+    const avail = sig.named.length ? `Available named exports: { ${sig.named.slice(0, 20).join(", ")} }.` : "";
+    if (def && !sig.hasDefault) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" has NO default export, so \`import ${def} from "${spec}"\` is invalid. ${avail}${sig.named.includes(def) ? ` Use \`import { ${def} } from "${spec}"\`.` : ""}`
+      });
+    }
+    const names = (m[3] ?? "").replace(/[{}]/g, "").split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("type ")).map((s) => s.split(/\s+as\s+/)[0].trim());
+    const all = /* @__PURE__ */ new Set([...sig.named, ...sig.types]);
+    const missing = names.filter((n) => n !== "default" && !all.has(n));
+    if (missing.length) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" does not export ${missing.map((n) => `\`${n}\``).join(", ")}. ${avail}${sig.hasDefault ? " It has a default export." : ""}`
+      });
+    }
+  }
+  return out;
+}
+function feedbackInstruction(original, file, diags) {
+  return [
+    original,
+    "",
+    "IMMEDIATE VALIDATION FEEDBACK \u2014 your previous answer for this file failed these exact checks against the real project:",
+    ...diags.map((d) => `- ${d.message}`),
+    "Rewrite the SAME file, complete, fixing only these problems. Keep everything else as it was.",
+    `Your previous version of ${file.path}:`,
+    "```tsx",
+    file.content,
+    "```"
+  ].join("\n");
+}
+function completedPortion(partial) {
+  const cut = partial.lastIndexOf("\n");
+  return cut === -1 ? "" : partial.slice(0, cut + 1);
+}
+function continuationInstruction(target, partial) {
+  const done = completedPortion(partial);
+  return [
+    `CONTINUATION: your answer for ${target} was cut off. The completed portion is below.`,
+    `WRITE SCOPE: exactly one file \u2014 write it as ${target}, but its content must be ONLY the remaining source that comes AFTER the last line shown, so that (completed portion + your answer) is the whole file.`,
+    "Do not repeat any line already written. Do not add imports that are already present. Finish every open JSX element, function and the default export.",
+    "Completed portion:",
+    "```tsx",
+    done,
+    "```"
+  ].join("\n");
+}
+function stitchContinuation(partial, continuation) {
+  const done = completedPortion(partial);
+  let rest = continuation.replace(/^\s*\n/, "");
+  const lastLine = done.trimEnd().split("\n").pop()?.trim();
+  if (lastLine && rest.trimStart().startsWith(lastLine) && lastLine.length > 8) {
+    rest = rest.trimStart().slice(lastLine.length).replace(/^\s*\n/, "");
+  }
+  return done + rest;
+}
+var DECL, isSource2, isPage, IMPORT;
+var init_work_unit = __esm({
+  "src/server/engine/work-unit.ts"() {
+    init_define_import_meta_env();
+    init_structural_deps();
+    DECL = /export\s+(?:declare\s+)?(?:async\s+)?(function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
+    isSource2 = (p2) => /\.(tsx?|jsx?)$/.test(p2);
+    isPage = (p2) => p2.startsWith("src/pages/");
+    IMPORT = /import\s+(type\s+)?([\w$]+)?\s*,?\s*(\{[^}]*\})?\s*(?:\*\s+as\s+[\w$]+\s*)?from\s*["']([^"']+)["']/g;
+  }
+});
+
 // src/server/engine/write.ts
 var write_exports = {};
 __export(write_exports, {
@@ -149978,7 +150198,16 @@ async function writePlannedPages(args) {
   const truncated = [];
   const decomposed = [];
   const decisions = /* @__PURE__ */ new Map();
+  const units = [];
   let calls = 0;
+  let layer = 0;
+  const record = (r) => {
+    units.push(r);
+    try {
+      args.onUnit?.(r);
+    } catch {
+    }
+  };
   const inScope = (instruction, path) => {
     const want = targetOf(instruction);
     if (path === want) return true;
@@ -149986,36 +150215,71 @@ async function writePlannedPages(args) {
     const dir = /plus its section components in (src\/components\/[^\s/]+)\//.exec(instruction)?.[1];
     return Boolean(dir && path.startsWith(dir + "/") && /^[\w/-]+\.tsx$/.test(path) && !path.slice(dir.length + 1).includes("/"));
   };
-  const call = async (instruction) => {
+  const ask = async (instruction) => {
     calls++;
     try {
-      const got = (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
-      if (!args.isTruncated) {
-        if (got.length) try {
-          args.onFilesDone?.(got);
-        } catch {
-        }
-        return got;
-      }
-      const whole = [];
-      for (const f of got) {
-        let cut = false;
-        try {
-          cut = await args.isTruncated(f);
-        } catch {
-          cut = false;
-        }
-        if (cut) truncated.push(f.path);
-        else whole.push(f);
-      }
-      if (whole.length) try {
-        args.onFilesDone?.(whole);
-      } catch {
-      }
-      return whole;
+      return (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
     } catch {
       return [];
     }
+  };
+  const cutOff = async (f) => {
+    if (!args.isTruncated) return false;
+    try {
+      return await args.isTruncated(f);
+    } catch {
+      return false;
+    }
+  };
+  const call = async (instruction, kind = "page") => {
+    const started = Date.now();
+    const target = targetOf(instruction) ?? "?";
+    const rec = { id: `${kind}:${target}`, kind, target, layer, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "ok" };
+    const before = calls;
+    const single = !instruction.startsWith(DECOMPOSED_MARKER);
+    const got = await ask(instruction);
+    const whole = [];
+    for (let f of got) {
+      if (await cutOff(f)) {
+        if (single && f.path === target) {
+          const cont = (await ask(continuationInstruction(f.path, f.content))).find((x) => x.path === f.path);
+          if (cont) {
+            const stitched = { path: f.path, content: stitchContinuation(f.content, cont.content) };
+            if (!await cutOff(stitched)) {
+              rec.continued = true;
+              f = stitched;
+            }
+          }
+        }
+        if (!rec.continued) {
+          truncated.push(f.path);
+          continue;
+        }
+      }
+      whole.push(f);
+    }
+    if (single) {
+      for (let i = 0; i < whole.length; i++) {
+        const diags = validateUnitImports(whole[i], files);
+        if (!diags.length) continue;
+        rec.diagnostics.push(...diags.map((d) => d.message));
+        rec.feedbackRounds++;
+        const fixed = (await ask(feedbackInstruction(instruction, whole[i], diags))).find((x) => x.path === whole[i].path);
+        if (fixed && !await cutOff(fixed) && validateUnitImports(fixed, files).length < diags.length) {
+          whole[i] = fixed;
+          rec.outcome = "corrected";
+        }
+      }
+    }
+    if (whole.length) try {
+      args.onFilesDone?.(whole);
+    } catch {
+    }
+    rec.calls = calls - before;
+    rec.ms = Date.now() - started;
+    if (!whole.length) rec.outcome = "failed";
+    record(rec);
+    return whole;
   };
   const put2 = (got) => {
     for (const f of got) {
@@ -150026,18 +150290,35 @@ async function writePlannedPages(args) {
   };
   const writePages = async (pages) => {
     const paths = files.map((f) => f.path);
-    const contract = projectContract(files);
+    const contract = [projectContract(files), signatureContext(files)].filter(Boolean).join("\n");
     const shared = sharedFiles(files, args.pages);
     const results = await mapBounded(pages, PAGE_CONCURRENCY, (p2) => {
       const d = args.decide?.(p2, truncated.includes(p2.file));
       if (d?.decompose) {
         decisions.set(p2.file, d);
-        return call(decomposedPageInstruction(p2, d, paths, contract, shared));
+        return call(decomposedPageInstruction(p2, d, paths, contract, shared), "page");
       }
-      return call(pageInstruction(p2, paths, contract, shared));
+      return call(pageInstruction(p2, paths, contract, shared), "page");
     });
     results.forEach(put2);
   };
+  for (const p2 of args.pages) if (hasRealPage(files, p2.file)) record({ id: `page:${p2.file}`, kind: "page", target: p2.file, layer: 1, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "skipped_done" });
+  if (args.createFoundation) {
+    const started = Date.now();
+    try {
+      const f = await args.createFoundation(files);
+      files = f.files;
+      for (const t of f.created) record({ id: `foundation:${t}`, kind: "foundation", target: t, layer: 0, calls: 1, feedbackRounds: 0, continued: false, diagnostics: [], ms: Date.now() - started, outcome: "ok" });
+      if (f.created.length) try {
+        args.onFilesDone?.(files.filter((x) => f.created.includes(x.path)));
+      } catch {
+      }
+      calls += f.created.length;
+    } catch (e) {
+      throw e;
+    }
+  }
+  layer = 1;
   await writePages(args.pages.filter((p2) => !hasRealPage(files, p2.file)));
   const retry = args.pages.filter((p2) => !hasRealPage(files, p2.file) && args.budget.take("missing_page", p2.route));
   if (retry.length) await writePages(retry);
@@ -150049,7 +150330,7 @@ async function writePlannedPages(args) {
     if (todo.length) {
       const contract = projectContract(files);
       const src2 = files.find((f) => f.path === pageFile).content;
-      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src2, contract)));
+      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src2, contract), "section"));
       got.forEach(put2);
     }
     decomposed.push({
@@ -150061,10 +150342,11 @@ async function writePlannedPages(args) {
   const routes = args.pages.filter((p2) => hasRealPage(files, p2.file)).map((p2) => p2.route);
   const needFrame = !frameIsComplete(files, args.pages.length) || routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete;
   if (needFrame && args.budget.take("missing_page", "app shell")) {
-    put2(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
+    layer = 2;
+    put2(await call(routerInstruction(args.pages, files.map((f) => f.path), [projectContract(files), signatureContext(files)].filter(Boolean).join("\n")), "router"));
   }
   const missing = args.pages.filter((p2) => !hasRealPage(files, p2.file)).map((p2) => p2.route);
-  return { files, written, missing, calls, truncated, decomposed };
+  return { files, written, missing, calls, truncated, decomposed, units };
 }
 async function mapBounded(items, limit, fn) {
   const out = new Array(items.length);
@@ -150083,6 +150365,7 @@ var init_write = __esm({
   "src/server/engine/write.ts"() {
     init_define_import_meta_env();
     init_build_state();
+    init_work_unit();
     DECOMPOSED_MARKER = "DECOMPOSED PAGE";
     PAGE_CONCURRENCY = 4;
   }
@@ -151992,10 +152275,10 @@ async function saveShellCheckpoint(args) {
   try {
     const { data: existing } = await db().from("build_checkpoints").select("id,turn_id,status").eq("project_id", args.projectId).in("status", ["active", "resumable", "resuming"]).maybeSingle();
     if (existing) {
-      if (existing.turn_id === args.turnId) return;
+      if (existing.turn_id === args.turnId) return { ok: true };
       await db().from("build_checkpoints").update({ status: "discarded", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", existing.id);
     }
-    await db().from("build_checkpoints").insert({
+    const { error } = await db().from("build_checkpoints").insert({
       project_id: args.projectId,
       user_id: args.userId,
       origin_turn_id: args.turnId,
@@ -152007,8 +152290,14 @@ async function saveShellCheckpoint(args) {
       planned: args.planned,
       remaining: args.planned.map((p2) => p2.file)
     });
+    if (error) {
+      console.error("[checkpoint] shell save failed", error.message);
+      return { ok: false, error: String(error.message).slice(0, 300) };
+    }
+    return { ok: true };
   } catch (e) {
-    console.warn("[checkpoint] shell save failed", e.message);
+    console.error("[checkpoint] shell save failed", e.message);
+    return { ok: false, error: e.message.slice(0, 300) };
   }
 }
 async function checkpointFiles(turnId, files, remaining) {
@@ -152022,8 +152311,10 @@ async function checkpointFiles(turnId, files, remaining) {
       _remaining: remaining ?? null,
       _stage: null
     });
+    if (error) console.error("[checkpoint] merge failed", error.message);
     return !error && data2 === true;
-  } catch {
+  } catch (e) {
+    console.error("[checkpoint] merge failed", e.message);
     return false;
   }
 }
@@ -155363,6 +155654,12 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
+
+// src/server/builder.server.ts
+init_source_escape_fixer_server();
+init_import_syntax_fixer_server();
+init_jsx_attr_literal_fixer_server();
+init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -175703,15 +176000,24 @@ async function rawPageCompletion(args) {
   msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}
 
 ${String(last?.content ?? "").startsWith("DECOMPOSED PAGE") ? RAW_FILES_FORMAT2 : RAW_FILE_FORMAT2}` };
-  return aiChatCompletions({
-    feature: "generate",
-    body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
-    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
-    lockCallerModel: true,
-    codeOutput: true,
-    signal: args.signal,
-    meta: args.meta
-  });
+  const { withProviderRetry: withProviderRetry2 } = await Promise.resolve().then(() => (init_provider_retry(), provider_retry_exports));
+  return withProviderRetry2(
+    () => aiChatCompletions({
+      feature: "generate",
+      body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
+      timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+      lockCallerModel: true,
+      codeOutput: true,
+      signal: args.signal,
+      meta: args.meta
+    }),
+    {
+      signal: args.signal,
+      onAttempt: (a2) => {
+        if (a2.failureClass !== "ok") console.warn(`[provider-retry] model=${MODEL_STRUCTURED_RETRY} attempt=${a2.attempt} status=${a2.status ?? "conn"} class=${a2.failureClass} delay=${a2.delayMs}ms`);
+      }
+    }
+  );
 }
 async function recoverMissingToolOutput(args) {
   const assistantText = assistantTextFromCollected(args.collected);
@@ -177990,7 +178296,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             const planned = resumed?.checkpoint.planned?.length ? resumed.checkpoint.planned : firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor2(route) }));
             if (!resumed && checkpointTurnId && body.projectId) {
-              await checkpointApi.saveShellCheckpoint({
+              const shellSaved = await checkpointApi.saveShellCheckpoint({
                 projectId: body.projectId,
                 userId,
                 turnId: checkpointTurnId,
@@ -177998,6 +178304,8 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 shell: shellSnapshot,
                 planned
               });
+              turnStrategy.checkpoint = { saved: shellSaved.ok ? 1 : 0, failed: shellSaved.ok ? 0 : 1, shellError: shellSaved.ok ? null : shellSaved.error };
+              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: shellSaved.ok ? "ok" : "failed", message: shellSaved.ok ? "Saved the shared layout" : "Could not save progress (the build continues, but can't resume if interrupted)", ts: Date.now() })));
             }
             let fromRouter = pagesReferencedByRouter2(parsed.files, planned);
             if (intentContract && fromRouter.length) {
@@ -178043,11 +178351,37 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               // that is already real, so no finished page is written twice.
               files: resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files,
               budget: recovery,
-              // Durable progress: each whole (non-truncated) file is saved the
-              // moment it finishes, only by the turn that owns the checkpoint.
+              // Durable progress: each validated work unit is saved the moment
+              // it finishes, only by the turn that owns the checkpoint. The
+              // result is surfaced — a failed save is never reported as saved.
               onFilesDone: checkpointTurnId ? (got) => {
-                void checkpointApi.checkpointFiles(checkpointTurnId, got);
+                void checkpointApi.checkpointFiles(checkpointTurnId, got).then((ok) => {
+                  const cs = turnStrategy.checkpoint ??= { saved: 0, failed: 0 };
+                  if (ok) cs.saved += got.length;
+                  else cs.failed += got.length;
+                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
+                });
               } : void 0,
+              // Foundation layer first: missing shared modules the frame
+              // imports are created (in parallel) before any page is written,
+              // so pages consume real export signatures, never guesses.
+              createFoundation: async (staged) => {
+                const { resolveMissingNodes: resolveMissingNodes2 } = await Promise.resolve().then(() => (init_missing_nodes(), missing_nodes_exports));
+                const { createMissingModule: createMissingModule2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
+                const scope = staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
+                const r = await resolveMissingNodes2(staged, scope, async (node, context) => {
+                  if (!turnLedger.use("repair", "foundation module", node.target).ok) return null;
+                  controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating shared ${node.target}\u2026` })));
+                  return createMissingModule2(node, context, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext: turnContextFor(node.target) });
+                }, { concurrency: 4 });
+                return { files: r.files, created: r.created };
+              },
+              // Per-unit record: observable progress + economics evidence.
+              onUnit: (u) => {
+                (turnStrategy.workUnits ??= []).push(u);
+                if (u.outcome === "skipped_done") return;
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "work_unit", outcome: u.outcome === "failed" ? "failed" : "ok", message: `${u.kind} ${u.target}: ${u.outcome}${u.feedbackRounds ? ` after ${u.feedbackRounds} correction` : ""}${u.continued ? " (continued, not regenerated)" : ""}`, ts: Date.now() })));
+              },
               // Structural completeness check: a candidate cut off mid-file is
               // discarded (never patched) so the page is re-requested once.
               isTruncated: async (file) => {
@@ -178552,9 +178886,10 @@ Re-emit ONLY the refused work as a single patch_files tool call that respects th
               userId,
               signal: abortSignal,
               prd: resolvedPrd?.prd ?? null,
-              // Ordinary edits get the deterministic rules only; the model
-              // review is reserved for initial builds.
-              deterministicOnly: !isInitial
+              // Ordinary edits get the deterministic rules only. On initial
+              // builds the model review runs only when there is evidence it
+              // adds value: a work unit failed or needed correction.
+              deterministicOnly: !isInitial || Array.isArray(turnStrategy.workUnits) && turnStrategy.workUnits.length > 0 && turnStrategy.workUnits.every((u) => u.outcome === "ok" || u.outcome === "skipped_done")
             });
             if (verdict.rejections.length > 0) {
               criticRejections.push(...verdict.rejections);
