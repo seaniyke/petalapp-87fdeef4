@@ -116,3 +116,27 @@ describe("read-only exploration", () => {
     expect(JSON.stringify(files)).toBe(before);
   });
 });
+
+import { checkUndefinedIdentifiers, isPlatformGlobal } from "@/server/verification/identifiers.server";
+describe("identifier gate never flags platform globals", () => {
+  it("treats Date/Math/JSON/Intl/HTMLDialogElement as defined", () => {
+    for (const n of ["Date", "Math", "JSON", "Intl", "Array", "Promise", "HTMLDialogElement", "matchMedia"]) expect(isPlatformGlobal(n)).toBe(true);
+    expect(isPlatformGlobal("mode")).toBe(false);
+  });
+  it("passes real code using Date and still fails a truly undefined name", () => {
+    const ok = checkUndefinedIdentifiers([{ path: "src/a.tsx", content: "export const d = new Date(Date.now()).getTime() + Math.max(1, JSON.parse('2'));" }], ["src/a.tsx"]);
+    expect(ok.status).toBe("verified");
+    const bad = checkUndefinedIdentifiers([{ path: "src/b.tsx", content: "export const x = mode + 1;" }], ["src/b.tsx"]);
+    expect(bad.status).toBe("failed");
+  });
+});
+
+import { stripRoutesFromRouter as stripR } from "@/server/prd/intent-contract";
+describe("router cleanup handles relative page imports", () => {
+  it("removes ./pages/Settings import and route", () => {
+    const app = `import Home from "./pages/Home";\nimport Settings from "./pages/Settings";\nexport default () => (<Routes>\n<Route path="/" element={<Home />} />\n<Route path="/settings" element={<Settings />} />\n</Routes>);`;
+    const out = stripR(app, ["src/pages/Settings.tsx"])!;
+    expect(out).not.toMatch(/Settings/);
+    expect(out).toMatch(/Home/);
+  });
+});

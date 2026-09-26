@@ -4702,6 +4702,7 @@ async function handleGenerateRequestCore(
             // decomposed pages on the retry (strategy change, not a repeat).
             const cutOffPages = new Set<string>();
             const { assessPageComplexity } = await import("@/server/execution/complexity");
+            const pageProviderFailures: Array<{ path: string; status: number }> = [];
             const done = await writePlannedPages({
               pages,
               decide: (p, truncatedBefore) =>
@@ -4748,9 +4749,15 @@ async function handleGenerateRequestCore(
                     recoveryReason: "missing_page",
                   },
                 });
-                if (!res.ok || !res.body) return null;
-                let c = await relayAndCollect(res, controller, encoder);
                 const wantPath = wantOf(instruction);
+                if (!res.ok || !res.body) {
+                  // Durable evidence: a page that failed at the provider is an
+                  // infrastructure failure, never silently "missing".
+                  pageProviderFailures.push({ path: wantPath ?? "?", status: res.status });
+                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} (HTTP ${res.status})`, ts: Date.now() })));
+                  return null;
+                }
+                let c = await relayAndCollect(res, controller, encoder);
                 // A truncated response is a model-output problem, not a
                 // provider failure: never fail the provider for it and never
                 // resend here — the WRITE stage re-requests the file once.
@@ -4784,7 +4791,11 @@ async function handleGenerateRequestCore(
                       recoveryReason: "provider_error",
                     },
                   });
-                  if (!again.ok || !again.body) return null;
+                  if (!again.ok || !again.body) {
+                    pageProviderFailures.push({ path: wantPath ?? "?", status: again.status });
+                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} again (HTTP ${again.status})`, ts: Date.now() })));
+                    return null;
+                  }
                   c = await relayAndCollect(again, controller, encoder);
                 }
                 // Page writing is billable work: count this page's tokens.
@@ -4837,6 +4848,28 @@ async function handleGenerateRequestCore(
               `[write] pages=${JSON.stringify(pages.map((p) => p.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`,
             );
             parsed.files = done.files;
+            // A page the router links but the writer never produced, which the
+            // user did not ask for and the product contract does not require,
+            // is dropped from the router — the verified rest still ships.
+            // Requested/core pages are never dropped (that fails honestly).
+            if (done.missing.length) {
+              const { stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
+              const core = new Set((intentContract?.pages ?? []).map((pg) => pg.route));
+              const named = new Set(requestedRoutesFor(lastUserText, []));
+              const optional = pages.filter((pg) => done.missing.includes(pg.file) || done.missing.includes(pg.route))
+                .filter((pg) => pg.route !== "/" && !core.has(pg.route) && !named.has(pg.route));
+              const app = parsed.files.find((f) => f.path === "src/App.tsx");
+              const cleaned = app && optional.length ? stripRoutesFromRouter(app.content, optional.map((pg) => pg.file)) : null;
+              if (app && cleaned !== null) {
+                app.content = cleaned;
+                turnStrategy.droppedOptionalPages = optional.map((pg) => pg.route);
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "fixed", message: `Left out unfinished optional pages: ${optional.map((pg) => pg.route).join(", ")}`, ts: Date.now() })));
+              }
+            }
+            if (done.missing.length) {
+              turnStrategy.missingPages = { missing: done.missing, providerFailures: pageProviderFailures };
+              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Pages not written: ${done.missing.join(", ")}${pageProviderFailures.length ? ` (provider failures: ${pageProviderFailures.map((f) => `${f.path} HTTP ${f.status}`).join(", ")})` : ""}`, ts: Date.now() })));
+            }
           }
 
           if (chunkAssessment.needed && !isInitial) {

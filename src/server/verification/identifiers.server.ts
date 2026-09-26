@@ -191,6 +191,30 @@ declare namespace JSX {
 declare module "*";
 `;
 
+/**
+ * Real platform globals are never undefined identifiers. Decided by the
+ * running JS engine itself (`name in globalThis` — Date, Math, JSON, Intl,
+ * Map, Promise, …) plus the ES/DOM names a server runtime lacks. A general
+ * rule, not a hand-kept allowlist that silently misses core built-ins.
+ */
+const ES_AND_DOM_GLOBALS = new Set([
+  "Date","Math","JSON","Intl","Reflect","Proxy","Symbol","Object","Array","String","Number","Boolean","BigInt",
+  "Function","RegExp","Error","TypeError","RangeError","SyntaxError","ReferenceError","EvalError","URIError","AggregateError",
+  "Map","Set","WeakMap","WeakSet","WeakRef","FinalizationRegistry","Promise","ArrayBuffer","SharedArrayBuffer","DataView",
+  "Int8Array","Uint8Array","Uint8ClampedArray","Int16Array","Uint16Array","Int32Array","Uint32Array","Float32Array","Float64Array",
+  "BigInt64Array","BigUint64Array","Atomics","Iterator","Record","Partial","Required","Readonly","Pick","Omit","Exclude","Extract",
+  "NonNullable","ReturnType","Parameters","InstanceType","Awaited","PropertyKey","ArrayLike","PromiseLike","Iterable","AsyncIterable",
+  "screen","innerWidth","innerHeight","scrollX","scrollY","scrollTo","matchMedia","getComputedStyle","open","close","print","self","top","parent","frames",
+  "customElements","indexedDB","caches","origin","devicePixelRatio","speechSynthesis","Notification","DOMParser","XMLHttpRequest",
+  "Option","Range","Selection","ShadowRoot","DocumentFragment","DOMRect","Touch","EventSource","BroadcastChannel","MessageChannel",
+  "PerformanceObserver","CSS","CSSStyleDeclaration","ImageData","OffscreenCanvas","ReadableStream","WritableStream","TransformStream",
+  "Deno","Bun","NodeJS",
+]);
+const DOM_NAME = /^(HTML\w*Element|SVG\w*Element|\w+Event|\w+Observer(Entry)?|\w+Element|\w+List|DOM\w+|Media\w+|Speech\w+|RTC\w+|WebGL\w+|Web\w+|GPU\w+|Canvas\w+|Audio\w+|Video\w+|Clipboard\w*|Intl\w*)$/;
+export function isPlatformGlobal(name: string): boolean {
+  return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
+}
+
 const AMBIENT_PATH = "/petal-ambient-globals.d.ts";
 
 /**
@@ -258,6 +282,8 @@ export function checkUndefinedIdentifiers(
       const file = d.file?.fileName;
       if (!file || !wanted.has(file)) continue;
       const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
+      const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
+      if (name && isPlatformGlobal(name)) continue;
       const key = `${file}::${message}`;
       if (seen.has(key)) continue;
       seen.add(key);
