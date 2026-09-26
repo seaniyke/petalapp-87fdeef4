@@ -78,7 +78,7 @@ export function makeCallModel(
 ): CallModel {
   return async (messages, tools, signal) => {
     const startedAt = Date.now();
-    const res = await send({ messages, tools, tool_choice: "auto", parallel_tool_calls: true, stream: true, stream_options: { include_usage: true } }, signal);
+    const res = await send({ messages, tools, tool_choice: "auto", stream: true, stream_options: { include_usage: true } }, signal);
     if (!res.ok || !res.body) throw new InfrastructureFailure(`AI provider returned HTTP ${res.status}`, res.status);
     const reply = await parseToolStream(res, startedAt);
     onUsage?.(reply.rawUsage);
