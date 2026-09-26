@@ -227,6 +227,11 @@ export async function streamGenerate(
     const text = await resp.text().catch(() => "");
     // Dedicated "Buy credits" card instead of the generic fallback.
     throwIfCreditsExhausted(resp, text);
+    // The per-worker build lock refused because this project's build is
+    // still running — that is a lifecycle fact, not an outage.
+    if (resp.status === 429 && /already have a build running/i.test(text)) {
+      throw new PipelineError("Generation already running", "generation_running", text);
+    }
     throw new Error(text || `Request failed (${resp.status})`);
   }
 
