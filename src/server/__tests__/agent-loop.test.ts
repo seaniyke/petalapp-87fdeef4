@@ -1,101 +1,81 @@
-import { strict as assert } from "node:assert";
-import { shouldRunAgentLoop, agentLoopSummaryBlock } from "../agent-loop.server";
+import { describe, expect, it } from "vitest";
+import { runAgentLoop, reconcileRequirements, routerPages, pageKey } from "@/server/engine/agent-loop";
+import { targetOf } from "@/server/engine/write";
+import { RecoveryBudget } from "@/server/engine/recovery-policy";
 
-// --- Gating: the loop must never tax a cheap turn -------------------------
-
-// 1. First builds have nothing to inspect.
-assert.equal(
-  shouldRunAgentLoop({ isInitial: true, isCrossCutting: true, prompt: "rename everything", fileCount: 40 }),
-  false,
-);
-
-// 2. A one-line copy tweak stays on the fast path.
-assert.equal(
-  shouldRunAgentLoop({
-    isInitial: false,
-    isCrossCutting: false,
-    prompt: 'change the hero headline to "Ship faster"',
-    fileCount: 30,
-  }),
-  false,
-);
-
-// 3. Cross-cutting work always earns the loop.
-assert.equal(
-  shouldRunAgentLoop({ isInitial: false, isCrossCutting: true, prompt: "redesign the app", fileCount: 30 }),
-  true,
-);
-
-// 4. Mechanical/bulk phrasing earns it even when the resolver saw no spread.
-for (const prompt of [
-  "rename the Button variant prop",
-  "make the spacing consistent throughout",
-  "update the footer on every page",
-  "refactor the auth helpers",
-  "replace all the old logos",
-]) {
-  assert.equal(
-    shouldRunAgentLoop({ isInitial: false, isCrossCutting: false, prompt, fileCount: 20 }),
-    true,
-    `expected loop for: ${prompt}`,
-  );
+const page = (n: string) => `export default function ${n}() {\n  return <main><h1>${n}</h1></main>;\n}\n`;
+const app = (routes: Array<[string, string]>) => ({
+  path: "src/App.tsx",
+  content: [
+    `import { Routes, Route } from "@/components/ui/router";`,
+    ...routes.map(([, n]) => `import ${n} from "@/pages/${n}";`),
+    `export default function App(){return (<div><header><nav/></header><Routes>`,
+    ...routes.map(([r, n]) => `<Route path="${r}" element={<${n} />} />`),
+    `</Routes><footer/></div>);}`,
+  ].join("\n"),
+});
+function writer() {
+  const seen: string[] = [];
+  return {
+    seen,
+    request: async (i: string) => {
+      const t = targetOf(i)!;
+      seen.push(t);
+      if (t === "src/App.tsx") return null;
+      return [{ path: t, content: page(t.split("/").pop()!.replace(".tsx", "")) }];
+    },
+  };
 }
 
-// 5. A near-empty project has nothing to sweep.
-assert.equal(
-  shouldRunAgentLoop({ isInitial: false, isCrossCutting: true, prompt: "rename everywhere", fileCount: 1 }),
-  false,
-);
+describe("agent loop", () => {
+  it("Home vs Dashboard: the home page is one identity and written exactly once", async () => {
+    const files = [app([["/", "Dashboard"], ["/patients", "Patients"]])];
+    const seed = [{ route: "/", file: "src/pages/Home.tsx" }, { route: "/patients", file: "src/pages/Patients.tsx" }];
+    expect(reconcileRequirements(seed, files).map((p) => p.file).sort()).toEqual(["src/pages/Dashboard.tsx", "src/pages/Patients.tsx"]);
+    const w = writer();
+    const r = await runAgentLoop({ pages: seed, files, budget: new RecoveryBudget(), request: w.request });
+    expect(w.seen.filter((s) => /Dashboard|Home/.test(s))).toEqual(["src/pages/Dashboard.tsx"]);
+    expect(r.missing).toEqual([]);
+  });
 
-// 6. Matching is case-insensitive.
-assert.equal(
-  shouldRunAgentLoop({ isInitial: false, isCrossCutting: false, prompt: "RENAME the nav links", fileCount: 9 }),
-  true,
-);
+  it("dependencies are discovered from the live router, not a precomputed list", async () => {
+    const files = [app([["/", "Home"], ["/wards", "Wards"], ["/billing", "Billing"]])];
+    const w = writer();
+    const r = await runAgentLoop({ pages: [{ route: "/", file: "src/pages/Home.tsx" }], files, budget: new RecoveryBudget(), request: w.request });
+    expect(w.seen.sort()).toEqual(["src/pages/Billing.tsx", "src/pages/Home.tsx", "src/pages/Wards.tsx"]);
+    expect(r.state.completed).toEqual(expect.arrayContaining([pageKey("/wards"), pageKey("/billing")]));
+  });
 
-// --- Summary block: what the emit call is told ----------------------------
+  it("foundation runs before any page and exactly once", async () => {
+    const order: string[] = [];
+    const files = [app([["/", "Home"]])];
+    await runAgentLoop({
+      pages: [{ route: "/", file: "src/pages/Home.tsx" }], files, budget: new RecoveryBudget(),
+      request: async (i) => { order.push(targetOf(i)!); return [{ path: targetOf(i)!, content: page("Home") }]; },
+      createFoundation: async (f) => { order.push("foundation"); return { files: f, created: [] }; },
+    });
+    expect(order).toEqual(["foundation", "src/pages/Home.tsx"]);
+  });
 
-// 7. No steps → no block at all (nothing appended to the prompt).
-assert.equal(
-  agentLoopSummaryBlock({
-    transcript: [],
-    steps: [],
-    files: [],
-    changedPaths: [],
-    rounds: 0,
-    converged: true,
-  }),
-  "",
-);
+  it("completed files are never regenerated", async () => {
+    const files = [app([["/", "Home"], ["/a", "A"]]), { path: "src/pages/Home.tsx", content: page("Home") }];
+    const w = writer();
+    await runAgentLoop({ pages: [], files, budget: new RecoveryBudget(), request: w.request });
+    expect(w.seen).toEqual(["src/pages/A.tsx"]);
+  });
 
-// 8. Read-only work is reported, and no stale-file warning is emitted.
-const readOnly = agentLoopSummaryBlock({
-  transcript: [],
-  steps: [
-    { tool: "search_files", label: 'Searched for "Get Started" — 3 matches' },
-    { tool: "read_file", label: "Read src/components/Nav.tsx", isError: true },
-  ],
-  files: [],
-  changedPaths: [],
-  rounds: 2,
-  converged: true,
+  it("checkpoint is awaited before the next operation starts", async () => {
+    const events: string[] = [];
+    const files = [app([["/", "Home"]])];
+    await runAgentLoop({
+      pages: [{ route: "/", file: "src/pages/Home.tsx" }], files, budget: new RecoveryBudget(),
+      request: async (i) => { events.push("write"); return [{ path: targetOf(i)!, content: page("Home") }]; },
+      onFilesDone: async () => { await new Promise((r) => setTimeout(r, 5)); events.push("saved"); return true; },
+    });
+    expect(events).toEqual(["write", "saved"]);
+  });
+
+  it("routerPages reads explicit route → file mapping", () => {
+    expect(routerPages([app([["/", "Dashboard"]])])).toEqual([{ route: "/", file: "src/pages/Dashboard.tsx" }]);
+  });
 });
-assert.ok(readOnly.includes('Searched for "Get Started" — 3 matches'));
-assert.ok(readOnly.includes("(failed)"));
-assert.ok(!readOnly.includes("stale"));
-
-// 9. After a codemod the model is told the snapshot is stale for those files
-//    and told not to re-edit them — the double-edit guard.
-const withCodemod = agentLoopSummaryBlock({
-  transcript: [],
-  steps: [{ tool: "run_script", label: "Ran script — swap logo (4 files changed)" }],
-  files: [],
-  changedPaths: ["src/routes/index.tsx", "src/components/Nav.tsx"],
-  rounds: 1,
-  converged: true,
-});
-assert.ok(withCodemod.includes("stale"));
-assert.ok(withCodemod.includes("src/components/Nav.tsx"));
-assert.match(withCodemod, /Do NOT re-edit/);
-
-console.log("agent-loop: all assertions passed");
