@@ -130,3 +130,13 @@ describe("identifier gate never flags platform globals", () => {
     expect(bad.status).toBe("failed");
   });
 });
+
+import { stripRoutesFromRouter as stripR } from "@/server/prd/intent-contract";
+describe("router cleanup handles relative page imports", () => {
+  it("removes ./pages/Settings import and route", () => {
+    const app = `import Home from "./pages/Home";\nimport Settings from "./pages/Settings";\nexport default () => (<Routes>\n<Route path="/" element={<Home />} />\n<Route path="/settings" element={<Settings />} />\n</Routes>);`;
+    const out = stripR(app, ["src/pages/Settings.tsx"])!;
+    expect(out).not.toMatch(/Settings/);
+    expect(out).toMatch(/Home/);
+  });
+});
