@@ -133,6 +133,7 @@ import {
   parseStepsFromArgs,
   runChunkedGeneration,
 } from "@/server/chunked-generation.server";
+import { firstBuildSeedFiles, FIRST_BUILD_TOOL_NOTE, firstBuildBrief } from "@/server/engine/first-build";
 
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
@@ -4022,7 +4023,10 @@ async function handleGenerateRequestCore(
   const resumeShell = resumed?.checkpoint.shell ?? null;
 
   stage("pre_write", resumeShell ? "Picking up where the build left off…" : "Starting to write your app…");
-  const upstream = directLogoEdit || resumeShell ? null : await aiChatCompletions({
+  // First builds never make a monolithic write_project call: the tool loop
+  // below IS the first-build executor, starting from the (possibly resumed)
+  // workspace. Only edits send the single structured patch request.
+  const upstream = isInitial || directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
     body: {
@@ -4052,7 +4056,7 @@ async function handleGenerateRequestCore(
     },
   });
 
-  if (!directLogoEdit && !resumeShell && (!upstream || !upstream.ok || !upstream.body)) {
+  if (!isInitial && !directLogoEdit && (!upstream || !upstream.ok || !upstream.body)) {
     // Upstream rejected before doing any work — nothing was charged,
     // nothing to refund. Just surface a friendly error.
     const upstreamStatus = upstream?.status ?? 502;
@@ -4138,21 +4142,23 @@ async function handleGenerateRequestCore(
             ts: Date.now(),
           })));
         }
-        let collected: ParsedTool = directLogoEdit
+        // First builds: no model call here. The workspace (empty, or the
+        // resumed checkpoint) is handed straight to the tool loop.
+        let collected: ParsedTool = isInitial
           ? {
-              name: "patch_files",
-              args: JSON.stringify(directLogoEdit.parsed),
+              name: "write_project",
+              args: JSON.stringify({ files: firstBuildSeedFiles(resumeShell?.args) }),
               text: "",
               finishReason: "stop",
               usage: null,
               providerError: null,
             }
-          : resumeShell
+          : directLogoEdit
           ? {
-              name: resumeShell.name as ParsedTool["name"],
-              args: resumeShell.args,
-              text: resumeShell.text,
-              finishReason: resumeShell.finishReason ?? "stop",
+              name: "patch_files",
+              args: JSON.stringify(directLogoEdit.parsed),
+              text: "",
+              finishReason: "stop",
               usage: null,
               providerError: null,
             }
@@ -4303,7 +4309,9 @@ async function handleGenerateRequestCore(
             );
             throw new Error(`provider stream stalled (${firstStall.upstream ?? "unknown upstream"}, ${firstStall.ms}ms without output)`);
           }
-          payload = parseCollectedProject(collected, isInitial);
+          payload = isInitial
+            ? { parsed: { files: firstBuildSeedFiles(collected.args) }, summary: "" }
+            : parseCollectedProject(collected, isInitial);
         } catch (e) {
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
@@ -4605,9 +4613,10 @@ async function handleGenerateRequestCore(
             }
           }
 
-          // WRITE stage (first builds): the shell call above wrote the shared
-          // shell; every planned page is now written by its own call.
-          if (isInitial && parsed.files?.length) {
+          // WRITE stage (first builds): the tool loop is the ONLY executor.
+          // It starts from the empty (or resumed) workspace; there is no
+          // earlier generation call.
+          if (isInitial) {
             const { targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
             const { pageFileFor } = await import("@/server/engine/plan");
             const checkpointApi = await import("@/server/build-checkpoint.server");
@@ -4643,13 +4652,13 @@ async function handleGenerateRequestCore(
               const { routerPages } = await import("@/server/engine/router-facts");
               const { pageKey } = await import("@/server/engine/router-facts");
               const plannedKeys = new Set(planned.map((p: { route: string }) => pageKey(p.route)));
-              const extra = routerPages(parsed.files).filter((p) => !plannedKeys.has(pageKey(p.route)));
+              const extra = routerPages(parsed.files ?? []).filter((p) => !plannedKeys.has(pageKey(p.route)));
               if (extra.length) {
                 const { divergentPages, stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
                 const bad = new Set(divergentPages(intentContract, extra.map((p) => p.route), lastUserText));
                 if (bad.size) {
                   const badFiles = extra.filter((p) => bad.has(p.route)).map((p) => p.file);
-                  const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                  const app = parsed.files?.find((f) => f.path === "src/App.tsx");
                   const cleaned = app ? stripRoutesFromRouter(app.content, badFiles) : null;
                   if (app && cleaned !== null) {
                     app.content = cleaned;
@@ -4672,7 +4681,7 @@ async function handleGenerateRequestCore(
             const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await import("@/server/verification/identifiers.server");
             const { withProviderRetry } = await import("@/server/engine/provider-retry");
-            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files;
+            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files ?? []) : (parsed.files ?? []);
             const pendingWrites: Array<{ path: string; content: string }> = [];
             const loopTraces: unknown[] = [];
             const callModel = makeCallModel(
@@ -4702,12 +4711,12 @@ async function handleGenerateRequestCore(
             );
             const done = await runToolLoop({
               goal: lastUserText,
-              system: String(finalMessages[0]?.content ?? ""),
-              brief:
-                `${lastUserText}\n\nThe first draft of the app is already in the workspace (${seedFiles.length} files). ` +
-                `Finish the build with tools: create every page the router needs, fix any failing file, then call finish. ` +
-                `Several tool calls per response are encouraged. Planned pages: ${planned.map((p: { route: string; file: string }) => `${p.route} → ${p.file}`).join(", ")}.\n\n` +
-                `Files: ${seedFiles.map((f) => f.path).join(", ")}`,
+              system: String(finalMessages[0]?.content ?? "") + FIRST_BUILD_TOOL_NOTE,
+              brief: firstBuildBrief(
+                lastUserText,
+                planned as Array<{ route: string; file: string }>,
+                seedFiles.map((f) => f.path),
+              ),
               files: seedFiles,
               seedPaths: seedFiles.map((f) => f.path),
               callModel,

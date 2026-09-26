@@ -62774,6 +62774,7 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
+    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -70466,6 +70467,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140075,6 +140077,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141100,6 +141103,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141264,6 +141268,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141307,6 +141312,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141528,6 +141534,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143844,7 +143851,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145774,6 +145780,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -151169,8 +151176,7 @@ var plan_exports = {};
 __export(plan_exports, {
   pageFileFor: () => pageFileFor,
   planFirstBuild: () => planFirstBuild,
-  planProductStage: () => planProductStage,
-  shellInstruction: () => shellInstruction
+  planProductStage: () => planProductStage
 });
 function planProductStage(requirements, brief, isFirstBuild) {
   return stageForTurn(requirements, brief, isFirstBuild);
@@ -151179,19 +151185,6 @@ function pageFileFor(route) {
   const seg = route.replace(/^\//, "").split("/")[0] || "home";
   const name = seg.split(/[-_]/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join("");
   return `src/pages/${name}.tsx`;
-}
-function shellInstruction(pages) {
-  return `
-
-### Build contract (first build)
-Planned pages \u2014 exactly these, no others:
-` + pages.map((p2) => `- "${p2.route}" \u2192 ${p2.file} (default export)`).join("\n") + `
-
-In THIS call write ONLY the shared shell: src/App.tsx (router registering every planned route, each importing its page from the file above, wrapped in the shared layout), navigation, footer, styles, brand mark and shared components.
-FOUNDATION FIRST: also write, in this call, every shared module the pages will need \u2014 src/types.ts (types for every core entity), src/lib/data.ts (realistic records plus accessor functions/hooks for every core entity), and, if the product has roles or sign-in, src/lib/auth.tsx (AuthProvider + useAuth). Pages are written next and may import ONLY shared modules that exist after this call, so do not reference any helper you do not write here.
-Do NOT write any of the page files listed above \u2014 each page is written in its own dedicated call right after this one, and will use your shell and components.
-Finish every file you start.
-`;
 }
 function planFirstBuild(args) {
   const units = buildGenerationUnits(args.prompt, args.plannedRoutes, {
@@ -151203,7 +151196,6 @@ function planFirstBuild(args) {
   return {
     routes,
     pages,
-    instruction: shellInstruction(pages),
     log: `[plan] pages=${pages.map((p2) => `${p2.route}\u2192${p2.file}`).join(" ")} estimatedOutput=${units.estimate.total} maxOutputPerCall=${args.maxOutputTokens}`
   };
 }
@@ -166862,6 +166854,30 @@ async function runLocalVerifyTier(args) {
 // src/routes/api/generate.ts
 init_chunked_generation_server();
 
+// src/server/engine/first-build.ts
+init_define_import_meta_env();
+function firstBuildSeedFiles(args) {
+  if (!args) return [];
+  try {
+    const parsed = JSON.parse(args);
+    if (!Array.isArray(parsed.files)) return [];
+    return parsed.files.filter(
+      (f) => !!f && typeof f.path === "string" && typeof f.content === "string"
+    );
+  } catch {
+    return [];
+  }
+}
+var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done. Emit several create_file calls in one response (shared modules, layout/router and pages together) \u2014 useful work per response is what matters.\n";
+function firstBuildBrief(request, planned, existing) {
+  const pages = planned.map((p2) => `${p2.route} \u2192 ${p2.file}`).join(", ");
+  const workspace = existing.length ? `The workspace already holds ${existing.length} saved files from an interrupted run: ${existing.join(", ")}. Do not rewrite them; write what is still missing.` : `The workspace is empty \u2014 you already know everything in it, so do not list or read files before writing. Start writing immediately.`;
+  return `${request}
+
+${workspace}
+Write src/App.tsx (router + shared layout with navigation and footer), every shared module the pages import, and every planned page, then call finish. Planned pages: ${pages}.`;
+}
+
 // src/server/pipeline/tier-esbuild.ts
 init_define_import_meta_env();
 init_esbuild_verifier_server();
@@ -170125,7 +170141,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -177436,7 +177451,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
   }
   const resumeShell = resumed?.checkpoint.shell ?? null;
   stage("pre_write", resumeShell ? "Picking up where the build left off\u2026" : "Starting to write your app\u2026");
-  const upstream = directLogoEdit || resumeShell ? null : await aiChatCompletions({
+  const upstream = isInitial || directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
     body: {
@@ -177465,7 +177480,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
       turnId: logicalTurnId
     }
   });
-  if (!directLogoEdit && !resumeShell && (!upstream || !upstream.ok || !upstream.body)) {
+  if (!isInitial && !directLogoEdit && (!upstream || !upstream.ok || !upstream.body)) {
     const upstreamStatus = upstream?.status ?? 502;
     let msg = `AI gateway error (${upstreamStatus})`;
     if (upstreamStatus === 429) msg = "Rate limit reached. Please wait a moment.";
@@ -177542,18 +177557,18 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             ts: Date.now()
           })));
         }
-        let collected = directLogoEdit ? {
-          name: "patch_files",
-          args: JSON.stringify(directLogoEdit.parsed),
+        let collected = isInitial ? {
+          name: "write_project",
+          args: JSON.stringify({ files: firstBuildSeedFiles(resumeShell?.args) }),
           text: "",
           finishReason: "stop",
           usage: null,
           providerError: null
-        } : resumeShell ? {
-          name: resumeShell.name,
-          args: resumeShell.args,
-          text: resumeShell.text,
-          finishReason: resumeShell.finishReason ?? "stop",
+        } : directLogoEdit ? {
+          name: "patch_files",
+          args: JSON.stringify(directLogoEdit.parsed),
+          text: "",
+          finishReason: "stop",
           usage: null,
           providerError: null
         } : await relayAndCollect(
@@ -177665,7 +177680,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             );
             throw new Error(`provider stream stalled (${firstStall.upstream ?? "unknown upstream"}, ${firstStall.ms}ms without output)`);
           }
-          payload = parseCollectedProject(collected, isInitial);
+          payload = isInitial ? { parsed: { files: firstBuildSeedFiles(collected.args) }, summary: "" } : parseCollectedProject(collected, isInitial);
         } catch (e) {
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Retrying the response safely\u2026" }))
@@ -177894,7 +177909,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               if (coverage.needed) chunkAssessment = coverage;
             }
           }
-          if (isInitial && parsed.files?.length) {
+          if (isInitial) {
             const { targetOf: wantOf, DECOMPOSED_MARKER: DECOMPOSED_MARKER2 } = await Promise.resolve().then(() => (init_write(), write_exports));
             const { pageFileFor: pageFileFor2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
             const checkpointApi = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
@@ -177917,13 +177932,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               const { routerPages: routerPages2 } = await Promise.resolve().then(() => (init_router_facts(), router_facts_exports));
               const { pageKey: pageKey2 } = await Promise.resolve().then(() => (init_router_facts(), router_facts_exports));
               const plannedKeys = new Set(planned.map((p2) => pageKey2(p2.route)));
-              const extra = routerPages2(parsed.files).filter((p2) => !plannedKeys.has(pageKey2(p2.route)));
+              const extra = routerPages2(parsed.files ?? []).filter((p2) => !plannedKeys.has(pageKey2(p2.route)));
               if (extra.length) {
                 const { divergentPages: divergentPages2, stripRoutesFromRouter: stripRoutesFromRouter2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
                 const bad = new Set(divergentPages2(intentContract, extra.map((p2) => p2.route), lastUserText));
                 if (bad.size) {
                   const badFiles = extra.filter((p2) => bad.has(p2.route)).map((p2) => p2.file);
-                  const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                  const app = parsed.files?.find((f) => f.path === "src/App.tsx");
                   const cleaned = app ? stripRoutesFromRouter2(app.content, badFiles) : null;
                   if (app && cleaned !== null) {
                     app.content = cleaned;
@@ -177941,7 +177956,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const { verifyFilesEsbuild: verifyFilesEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_verifier_server(), esbuild_verifier_server_exports));
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await Promise.resolve().then(() => (init_identifiers_server(), identifiers_server_exports));
             const { withProviderRetry: withProviderRetry2 } = await Promise.resolve().then(() => (init_provider_retry(), provider_retry_exports));
-            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files;
+            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files ?? []) : parsed.files ?? [];
             const pendingWrites = [];
             const loopTraces = [];
             const callModel = makeCallModel2(
@@ -177971,12 +177986,12 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             );
             const done = await runToolLoop2({
               goal: lastUserText,
-              system: String(finalMessages[0]?.content ?? ""),
-              brief: `${lastUserText}
-
-The first draft of the app is already in the workspace (${seedFiles.length} files). Finish the build with tools: create every page the router needs, fix any failing file, then call finish. Several tool calls per response are encouraged. Planned pages: ${planned.map((p2) => `${p2.route} \u2192 ${p2.file}`).join(", ")}.
-
-Files: ${seedFiles.map((f) => f.path).join(", ")}`,
+              system: String(finalMessages[0]?.content ?? "") + FIRST_BUILD_TOOL_NOTE,
+              brief: firstBuildBrief(
+                lastUserText,
+                planned,
+                seedFiles.map((f) => f.path)
+              ),
               files: seedFiles,
               seedPaths: seedFiles.map((f) => f.path),
               callModel,

@@ -41,9 +41,9 @@ describe("durable checkpoint: interrupted long build resumes, never restarts", (
     expect(sql).toMatch(/WHERE turn_id = _turn_id AND status IN \('active','resuming'\)/);
   });
 
-  it("generate.ts skips the shell call on resume and retires the checkpoint on commit", () => {
+  it("generate.ts never sends a first-build generation call (resume included) and retires the checkpoint on commit", () => {
     const src = readFileSync("src/routes/api/generate.ts", "utf8");
-    expect(src).toMatch(/directLogoEdit \|\| resumeShell \? null : await aiChatCompletions/);
+    expect(src).toMatch(/isInitial \|\| directLogoEdit \? null : await aiChatCompletions/);
     expect(src).toMatch(/markCheckpointConsumed\(checkpointTurnId\)/);
     expect(src).toMatch(/checkpointApi\.checkpointFiles\(checkpointTurnId, \[f\]\)/);
   });
