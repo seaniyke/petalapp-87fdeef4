@@ -5,8 +5,8 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+var __esm = (fn2, res) => function __init() {
+  return fn2 && (res = (0, fn2[__getOwnPropNames(fn2)[0]])(fn2 = 0)), res;
 };
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
@@ -324,9 +324,9 @@ var require_react_production = __commonJS({
         return ReactSharedInternals.H.useMemoCache(size);
       }
     };
-    exports.cache = function(fn) {
+    exports.cache = function(fn2) {
       return function() {
-        return fn.apply(null, arguments);
+        return fn2.apply(null, arguments);
       };
     };
     exports.cacheSignal = function() {
@@ -1168,9 +1168,9 @@ var require_react_development = __commonJS({
           }
         };
       };
-      exports.cache = function(fn) {
+      exports.cache = function(fn2) {
         return function() {
-          return fn.apply(null, arguments);
+          return fn2.apply(null, arguments);
         };
       };
       exports.cacheSignal = function() {
@@ -2113,10 +2113,10 @@ var require_react_dom_production = __commonJS({
         throw Error(formatProdErrorMessage(299));
       return createPortal$1(children, container, null, key);
     };
-    exports.flushSync = function(fn) {
+    exports.flushSync = function(fn2) {
       var previousTransition = ReactSharedInternals.T, previousUpdatePriority = Internals.p;
       try {
-        if (ReactSharedInternals.T = null, Internals.p = 2, fn) return fn();
+        if (ReactSharedInternals.T = null, Internals.p = 2, fn2) return fn2();
       } finally {
         ReactSharedInternals.T = previousTransition, Internals.p = previousUpdatePriority, Internals.d.f();
       }
@@ -2192,8 +2192,8 @@ var require_react_dom_production = __commonJS({
     exports.requestFormReset = function(form) {
       Internals.d.r(form);
     };
-    exports.unstable_batchedUpdates = function(fn, a2) {
-      return fn(a2);
+    exports.unstable_batchedUpdates = function(fn2, a2) {
+      return fn2(a2);
     };
     exports.useFormState = function(action, initialState, permalink) {
       return ReactSharedInternals.H.useFormState(action, initialState, permalink);
@@ -2284,11 +2284,11 @@ var require_react_dom_development = __commonJS({
           throw Error("Target container is not a DOM element.");
         return createPortal$1(children, container, null, key);
       };
-      exports.flushSync = function(fn) {
+      exports.flushSync = function(fn2) {
         var previousTransition = ReactSharedInternals.T, previousUpdatePriority = Internals.p;
         try {
-          if (ReactSharedInternals.T = null, Internals.p = 2, fn)
-            return fn();
+          if (ReactSharedInternals.T = null, Internals.p = 2, fn2)
+            return fn2();
         } finally {
           ReactSharedInternals.T = previousTransition, Internals.p = previousUpdatePriority, Internals.d.f() && console.error(
             "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task."
@@ -2435,8 +2435,8 @@ var require_react_dom_development = __commonJS({
       exports.requestFormReset = function(form) {
         Internals.d.r(form);
       };
-      exports.unstable_batchedUpdates = function(fn, a2) {
-        return fn(a2);
+      exports.unstable_batchedUpdates = function(fn2, a2) {
+        return fn2(a2);
       };
       exports.useFormState = function(action, initialState, permalink) {
         return resolveDispatcher().useFormState(action, initialState, permalink);
@@ -8254,10 +8254,10 @@ ${cause.stack}`;
       * }
       * ```
       */
-      rpc(fn, args = {}, { head: head2 = false, get: get2 = false, count } = {}) {
+      rpc(fn2, args = {}, { head: head2 = false, get: get2 = false, count } = {}) {
         var _this$fetch;
         let method;
-        const url = new URL(`${this.url}/rpc/${fn}`);
+        const url = new URL(`${this.url}/rpc/${fn2}`);
         let body;
         const _isObject = (v) => v !== null && typeof v === "object" && (!Array.isArray(v) || v.some(_isObject));
         const _hasObjectArg = head2 && Object.values(args).some(_isObject);
@@ -15976,13 +15976,13 @@ var require_helpers = __commonJS({
         setTimeout(() => accept(null), time);
       });
     }
-    function retryable(fn, isRetryable) {
+    function retryable(fn2, isRetryable) {
       const promise = new Promise((accept, reject) => {
         ;
         (async () => {
           for (let attempt = 0; attempt < Infinity; attempt++) {
             try {
-              const result = await fn(attempt);
+              const result = await fn2(attempt);
               if (!isRetryable(attempt, null, result)) {
                 accept(result);
                 return;
@@ -16019,8 +16019,8 @@ var require_helpers = __commonJS({
     async function sha256(randomString) {
       const encoder = new TextEncoder();
       const encodedData = encoder.encode(randomString);
-      const hash = await crypto.subtle.digest("SHA-256", encodedData);
-      const bytes2 = new Uint8Array(hash);
+      const hash2 = await crypto.subtle.digest("SHA-256", encodedData);
+      const bytes2 = new Uint8Array(hash2);
       return Array.from(bytes2).map((c) => String.fromCharCode(c)).join("");
     }
     async function generatePKCEChallenge(verifier) {
@@ -17396,7 +17396,7 @@ var require_locks = __commonJS({
     var ProcessLockAcquireTimeoutError = class extends LockAcquireTimeoutError {
     };
     exports.ProcessLockAcquireTimeoutError = ProcessLockAcquireTimeoutError;
-    async function navigatorLock(name, acquireTimeout, fn) {
+    async function navigatorLock(name, acquireTimeout, fn2) {
       if (exports.internals.debug) {
         console.log("@supabase/gotrue-js: navigatorLock: acquire lock", name, acquireTimeout);
       }
@@ -17425,7 +17425,7 @@ var require_locks = __commonJS({
               console.log("@supabase/gotrue-js: navigatorLock: acquired", name, lock.name);
             }
             try {
-              return await fn();
+              return await fn2();
             } finally {
               if (exports.internals.debug) {
                 console.log("@supabase/gotrue-js: navigatorLock: released", name, lock.name);
@@ -17448,7 +17448,7 @@ var require_locks = __commonJS({
               }
               console.warn("@supabase/gotrue-js: Navigator LockManager returned a null lock when using #request without ifAvailable set to true, it appears this browser is not following the LockManager spec https://developer.mozilla.org/en-US/docs/Web/API/LockManager/request");
               clearTimeout(acquireTimeoutTimer);
-              return await fn();
+              return await fn2();
             }
           }
         });
@@ -17471,7 +17471,7 @@ var require_locks = __commonJS({
                   console.log("@supabase/gotrue-js: navigatorLock: recovered (stolen)", name, lock.name);
                 }
                 try {
-                  return await fn();
+                  return await fn2();
                 } finally {
                   if (exports.internals.debug) {
                     console.log("@supabase/gotrue-js: navigatorLock: released (stolen)", name, lock.name);
@@ -17479,7 +17479,7 @@ var require_locks = __commonJS({
                 }
               } else {
                 console.warn("@supabase/gotrue-js: Navigator LockManager returned null lock even with steal: true");
-                return await fn();
+                return await fn2();
               }
             }));
           } else {
@@ -17493,7 +17493,7 @@ var require_locks = __commonJS({
       }
     }
     var PROCESS_LOCKS = {};
-    async function processLock(name, acquireTimeout, fn) {
+    async function processLock(name, acquireTimeout, fn2) {
       var _a;
       const previousOperation = (_a = PROCESS_LOCKS[name]) !== null && _a !== void 0 ? _a : Promise.resolve();
       const previousOperationHandled = (async () => {
@@ -17525,7 +17525,7 @@ var require_locks = __commonJS({
             throw e;
           }
         }
-        return await fn();
+        return await fn2();
       })();
       PROCESS_LOCKS[name] = (async () => {
         try {
@@ -18432,8 +18432,8 @@ var require_GoTrueClient = __commonJS({
       // 5 seconds
       skipAutoInitialize: false
     };
-    async function lockNoOp(name, acquireTimeout, fn) {
-      return await fn();
+    async function lockNoOp(name, acquireTimeout, fn2) {
+      return await fn2();
     }
     var GLOBAL_JWKS = {};
     var GoTrueClient = class _GoTrueClient {
@@ -20525,14 +20525,14 @@ var require_GoTrueClient = __commonJS({
       /**
        * Acquires a global lock based on the storage key.
        */
-      async _acquireLock(acquireTimeout, fn) {
+      async _acquireLock(acquireTimeout, fn2) {
         this._debug("#_acquireLock", "begin", acquireTimeout);
         try {
           if (this.lockAcquired) {
             const last = this.pendingInLock.length ? this.pendingInLock[this.pendingInLock.length - 1] : Promise.resolve();
             const result = (async () => {
               await last;
-              return await fn();
+              return await fn2();
             })();
             this.pendingInLock.push((async () => {
               try {
@@ -20546,7 +20546,7 @@ var require_GoTrueClient = __commonJS({
             this._debug("#_acquireLock", "lock acquired for storage key", this.storageKey);
             try {
               this.lockAcquired = true;
-              const result = fn();
+              const result = fn2();
               this.pendingInLock.push((async () => {
                 try {
                   await result;
@@ -20575,11 +20575,11 @@ var require_GoTrueClient = __commonJS({
        * processing afterwards that requires only one client operating on the
        * session at once across multiple tabs or processes.
        */
-      async _useSession(fn) {
+      async _useSession(fn2) {
         this._debug("#_useSession", "begin");
         try {
           const result = await this.__loadSession();
-          return await fn(result);
+          return await fn2(result);
         } finally {
           this._debug("#_useSession", "end");
         }
@@ -23473,12 +23473,12 @@ var init_dist4 = __esm({
       * `"estimated"`: Uses exact count for low numbers and planned count for high
       * numbers.
       */
-      rpc(fn, args = {}, options = {
+      rpc(fn2, args = {}, options = {
         head: false,
         get: false,
         count: void 0
       }) {
-        return this.rest.rpc(fn, args, options);
+        return this.rest.rpc(fn2, args, options);
       }
       /**
       * Creates a Realtime channel with Broadcast, Presence, and Postgres Changes.
@@ -27518,12 +27518,12 @@ var require_lib = __commonJS({
           this.unexpected(loc, type);
         }
       }
-      tryParse(fn, oldState = this.state.clone()) {
+      tryParse(fn2, oldState = this.state.clone()) {
         const abortSignal = {
           node: null
         };
         try {
-          const node = fn((node2 = null) => {
+          const node = fn2((node2 = null) => {
             abortSignal.node = node2;
             throw abortSignal;
           });
@@ -39538,9 +39538,9 @@ __export(turn_context_server_exports, {
   upstreamSlug: () => upstreamSlug
 });
 import { AsyncLocalStorage } from "node:async_hooks";
-async function runWithTurnContext(ctx, fn) {
-  if (!storage) return fn();
-  return storage.run(ctx, fn);
+async function runWithTurnContext(ctx, fn2) {
+  if (!storage) return fn2();
+  return storage.run(ctx, fn2);
 }
 function currentTurnContext() {
   try {
@@ -60401,7 +60401,7 @@ var init_client_server_shim = __esm({
       {
         get(_t, prop) {
           if (prop === "from") return (table) => current().from(table);
-          if (prop === "rpc") return (fn, args) => current().rpc(fn, args);
+          if (prop === "rpc") return (fn2, args) => current().rpc(fn2, args);
           if (prop === "then") return void 0;
           if (prop === "storage") return new Proxy({}, { get: () => () => unsupported("file storage") });
           if (prop === "auth") return new Proxy({}, { get: () => () => unsupported("account admin") });
@@ -60443,7 +60443,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -62344,9 +62343,9 @@ function explainAiCall(i) {
   if (f === "recovery") return { stage: "repair", purpose: "recovery", kind: "repair", reason: rr || "unspecified", parent: "validate" };
   return { stage: "unclassified", purpose: `${f}/${ph}/${cb}`, kind: "normal", reason: rr || "unknown", parent: null };
 }
-async function withCallFrame(fn) {
+async function withCallFrame(fn2) {
   const frame = { callIds: [] };
-  const value = store ? await store.run(frame, fn) : await fn();
+  const value = store ? await store.run(frame, fn2) : await fn2();
   return { value, callIds: frame.callIds };
 }
 function noteCallRow(id) {
@@ -69188,7 +69187,7 @@ var init_types = __esm({
           });
         }
         const params = { errorMap: ctx.common.contextualErrorMap };
-        const fn = ctx.data;
+        const fn2 = ctx.data;
         if (this._def.returns instanceof ZodPromise) {
           const me = this;
           return OK(async function(...args) {
@@ -69197,7 +69196,7 @@ var init_types = __esm({
               error.addIssue(makeArgsIssue(args, e));
               throw error;
             });
-            const result = await Reflect.apply(fn, this, parsedArgs);
+            const result = await Reflect.apply(fn2, this, parsedArgs);
             const parsedReturns = await me._def.returns._def.type.parseAsync(result, params).catch((e) => {
               error.addIssue(makeReturnsIssue(result, e));
               throw error;
@@ -69211,7 +69210,7 @@ var init_types = __esm({
             if (!parsedArgs.success) {
               throw new ZodError([makeArgsIssue(args, parsedArgs.error)]);
             }
-            const result = Reflect.apply(fn, this, parsedArgs.data);
+            const result = Reflect.apply(fn2, this, parsedArgs.data);
             const parsedReturns = me._def.returns.safeParse(result, params);
             if (!parsedReturns.success) {
               throw new ZodError([makeReturnsIssue(result, parsedReturns.error)]);
@@ -141100,7 +141099,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141265,7 +141263,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141309,7 +141306,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141531,6 +141527,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143206,108 +143203,6 @@ var init_turn_lease = __esm({
   "src/server/turn-lease.ts"() {
     init_define_import_meta_env();
     HEARTBEAT_INTERVAL_MS = 2e4;
-  }
-});
-
-// src/server/engine/raw-file.ts
-var raw_file_exports = {};
-__export(raw_file_exports, {
-  RAW_FILES_FORMAT: () => RAW_FILES_FORMAT,
-  RAW_FILE_FORMAT: () => RAW_FILE_FORMAT,
-  parseRawFile: () => parseRawFile,
-  parseRawFiles: () => parseRawFiles
-});
-function parseRawFile(text) {
-  const open = /^[ \t]*```[^\n]*\n/m.exec(text);
-  if (!open) return null;
-  const start = open.index + open[0].length;
-  const rest = text.slice(start);
-  const close = /^[ \t]*```[ \t]*$/m.exec(rest);
-  if (!close) return null;
-  const body = rest.slice(0, close.index).replace(/\s+$/, "") + "\n";
-  return body.trim() ? body : null;
-}
-function parseRawFiles(text) {
-  const out = [];
-  const re = /^[ \t]*```[^\n]*\n([\s\S]*?)^[ \t]*```[ \t]*$/gm;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const body = m[1];
-    const head2 = /^\s*\/\/\s*file:\s*(\S+)\s*\n/.exec(body);
-    if (!head2) continue;
-    const content = body.slice(head2[0].length).replace(/\s+$/, "") + "\n";
-    if (content.trim()) out.push({ path: head2[1].replace(/^\.\//, ""), content });
-  }
-  return out;
-}
-var RAW_FILE_FORMAT, RAW_FILES_FORMAT;
-var init_raw_file = __esm({
-  "src/server/engine/raw-file.ts"() {
-    init_define_import_meta_env();
-    RAW_FILE_FORMAT = "OUTPUT FORMAT (strict): reply with ONLY the complete file inside ONE fenced code block \u2014 a line ```tsx, then the full file, then a line ```. No tool call, no JSON, no prose before or after. Write the code exactly as it should be saved (no escaping).";
-    RAW_FILES_FORMAT = "OUTPUT FORMAT (strict): one fenced code block per file. Each block starts with a line ```tsx, then a first line `// file: <path>`, then the full file, then a line ```. Write the page file FIRST, then each section file it imports. No tool call, no JSON, no prose between blocks.";
-  }
-});
-
-// src/server/engine/provider-retry.ts
-var provider_retry_exports = {};
-__export(provider_retry_exports, {
-  BASE_DELAY_MS: () => BASE_DELAY_MS,
-  MAX_DELAY_MS: () => MAX_DELAY_MS,
-  MAX_PROVIDER_RETRIES: () => MAX_PROVIDER_RETRIES,
-  RETRYABLE_STATUS: () => RETRYABLE_STATUS,
-  backoffDelay: () => backoffDelay,
-  classifyProviderStatus: () => classifyProviderStatus,
-  withProviderRetry: () => withProviderRetry
-});
-function classifyProviderStatus(status) {
-  if (status === null) return "connection";
-  if (status >= 200 && status < 300) return "ok";
-  if (status === 429) return "rate_limited";
-  if (RETRYABLE_STATUS.has(status)) return "server_error";
-  return "deterministic";
-}
-function backoffDelay(attempt, random = Math.random) {
-  const exp = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (attempt - 1));
-  return Math.round(exp / 2 + random() * (exp / 2));
-}
-async function withProviderRetry(run, opts = {}) {
-  const sleep3 = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-  let last = null;
-  let lastErr = null;
-  for (let attempt = 1; attempt <= MAX_PROVIDER_RETRIES + 1; attempt++) {
-    let status = null;
-    try {
-      last = await run();
-      status = last.status;
-      lastErr = null;
-    } catch (e) {
-      if (opts.signal?.aborted) throw e;
-      lastErr = e;
-      last = null;
-    }
-    const cls = classifyProviderStatus(status);
-    const retry = (cls === "rate_limited" || cls === "server_error" || cls === "connection") && attempt <= MAX_PROVIDER_RETRIES && !opts.signal?.aborted;
-    const delayMs = retry ? backoffDelay(attempt, opts.random) : 0;
-    opts.onAttempt?.({ attempt, status, failureClass: cls, delayMs });
-    if (!retry) break;
-    try {
-      await last?.body?.cancel();
-    } catch {
-    }
-    await sleep3(delayMs);
-  }
-  if (last) return last;
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
-}
-var RETRYABLE_STATUS, MAX_PROVIDER_RETRIES, BASE_DELAY_MS, MAX_DELAY_MS;
-var init_provider_retry = __esm({
-  "src/server/engine/provider-retry.ts"() {
-    init_define_import_meta_env();
-    RETRYABLE_STATUS = /* @__PURE__ */ new Set([429, 500, 502, 503, 504]);
-    MAX_PROVIDER_RETRIES = 2;
-    BASE_DELAY_MS = 800;
-    MAX_DELAY_MS = 6e3;
   }
 });
 
@@ -150005,13 +149900,13 @@ function frameIsComplete(files, pageCount = 2) {
 function targetOf(instruction) {
   return /as (src\/(?:pages|components)\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? /the page file (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
 }
-async function mapBounded(items, limit, fn) {
+async function mapBounded(items, limit, fn2) {
   const out = new Array(items.length);
   let next = 0;
   const worker = async () => {
     while (next < items.length) {
       const i = next++;
-      out[i] = await fn(items[i]);
+      out[i] = await fn2(items[i]);
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
@@ -152082,6 +151977,21 @@ var init_build_checkpoint_server = __esm({
 });
 
 // src/server/engine/work-unit.ts
+var work_unit_exports = {};
+__export(work_unit_exports, {
+  completedPortion: () => completedPortion,
+  continuationInstruction: () => continuationInstruction,
+  describeSignature: () => describeSignature,
+  exportSignature: () => exportSignature,
+  feedbackInstruction: () => feedbackInstruction,
+  planWorkUnits: () => planWorkUnits,
+  safeReactImportRepair: () => safeReactImportRepair,
+  sharedSignatures: () => sharedSignatures,
+  signatureContext: () => signatureContext,
+  stitchContinuation: () => stitchContinuation,
+  undefinedNames: () => undefinedNames,
+  validateUnitImports: () => validateUnitImports
+});
 function exportSignature(path, content) {
   const named = /* @__PURE__ */ new Set();
   const types = /* @__PURE__ */ new Set();
@@ -152230,6 +152140,36 @@ function stitchContinuation(partial, continuation) {
     rest = rest.trimStart().slice(lastLine.length).replace(/^\s*\n/, "");
   }
   return done + rest;
+}
+function planWorkUnits(pages, foundationTargets) {
+  const foundation = foundationTargets.map((t) => ({
+    id: `foundation:${t}`,
+    kind: "foundation",
+    target: t,
+    reason: "shared module imported by the frame but not yet created",
+    dependsOn: [],
+    mayWrite: [t],
+    onFailure: "same_writer_then_recovery"
+  }));
+  const pageUnits = pages.map((p2) => ({
+    id: `page:${p2.file}`,
+    kind: "page",
+    target: p2.file,
+    reason: `planned route ${p2.route}`,
+    dependsOn: foundation.map((f) => f.id),
+    mayWrite: [p2.file],
+    onFailure: "same_writer_then_recovery"
+  }));
+  const router = {
+    id: "router:src/App.tsx",
+    kind: "router",
+    target: "src/App.tsx",
+    reason: "register every written page (only if the frame is incomplete)",
+    dependsOn: pageUnits.map((p2) => p2.id),
+    mayWrite: ["src/App.tsx"],
+    onFailure: "same_writer_then_recovery"
+  };
+  return [foundation, pageUnits, [router]].filter((l) => l.length);
 }
 function undefinedNames(file, staged, check) {
   if (!isSource2(file.path)) return [];
@@ -152613,6 +152553,705 @@ var init_agent_loop = __esm({
   }
 });
 
+// src/server/engine/tool-loop.ts
+var tool_loop_exports = {};
+__export(tool_loop_exports, {
+  FULL_CONFIG: () => FULL_CONFIG,
+  LIGHT_CONFIG: () => LIGHT_CONFIG,
+  TOOLS: () => TOOLS,
+  compact: () => compact2,
+  completionGaps: () => completionGaps,
+  createToolLoopState: () => createToolLoopState,
+  opId: () => opId,
+  routerReferences: () => routerReferences,
+  runToolLoop: () => runToolLoop,
+  toolsFor: () => toolsFor
+});
+function toolsFor(light) {
+  const names = light ? ["read_file", "search", "edit_file", "create_file", "finish"] : ["read_file", "list_files", "search", "create_file", "edit_file", "plan_tasks", "finish"];
+  return names.map((n) => TOOLS[n]);
+}
+function hash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
+  return h.toString(36);
+}
+function opId(kind, path, detail = "") {
+  return kind === "create" ? `create:${path}` : `edit:${path}:${hash(detail)}`;
+}
+function clip(s, max) {
+  return s.length <= max ? s : `${s.slice(0, max)}
+\u2026[truncated ${s.length - max} chars]`;
+}
+function countOccurrences3(hay, needle) {
+  const at = [];
+  if (!needle) return at;
+  let i = hay.indexOf(needle);
+  while (i !== -1) {
+    at.push(i);
+    i = hay.indexOf(needle, i + needle.length);
+  }
+  return at;
+}
+function routerReferences(files) {
+  const app = files.get("src/App.tsx");
+  if (!app) return [];
+  const out = [];
+  const rx = /import\s+[\w$]+\s+from\s+["']@\/(pages\/[\w/.-]+)["']|lazy\(\s*\(\)\s*=>\s*import\(\s*["']@\/(pages\/[\w/.-]+)["']/g;
+  let m;
+  while (m = rx.exec(app)) {
+    const rel = (m[1] ?? m[2]).replace(/\.(tsx?|jsx?)$/, "");
+    out.push(`src/${rel}`);
+  }
+  return [...new Set(out)];
+}
+function resolves2(files, base) {
+  return [".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"].some((ext) => (files.get(base + ext) ?? "").trim().length > 0);
+}
+function completionGaps(state, files) {
+  const gaps = [];
+  for (const r of state.requirements) {
+    if (!(files.get(r.file) ?? "").trim()) gaps.push(`required file missing: ${r.file}${r.route ? ` (route ${r.route})` : ""}`);
+  }
+  for (const base of routerReferences(files)) {
+    if (!resolves2(files, base)) gaps.push(`router imports a file that does not exist: ${base}`);
+  }
+  for (const [path, errs] of state.validation) {
+    if (errs.length && files.has(path)) gaps.push(`${path} still fails validation: ${errs[0]}`);
+  }
+  for (const t of state.tasks.values()) {
+    if (t.status === "pending" || t.status === "blocked") gaps.push(`task not done: ${t.id}${t.title ? ` \u2014 ${t.title}` : ""}`);
+  }
+  return gaps;
+}
+function estimateTokens2(messages) {
+  let chars = 0;
+  for (const m of messages) {
+    chars += typeof m.content === "string" ? m.content.length : 0;
+    if (m.role === "assistant" && m.tool_calls) for (const c of m.tool_calls) chars += c.function.arguments.length;
+  }
+  return Math.ceil(chars / 4);
+}
+function compact2(messages, state, keepRecent) {
+  if (messages.length <= keepRecent + 3) return messages;
+  let cut = messages.length - keepRecent;
+  while (cut > 2 && messages[cut]?.role === "tool") cut--;
+  if (cut <= 2) return messages;
+  const tasks = [...state.tasks.values()].map((t) => `- [${t.status}] ${t.id}${t.title ? `: ${t.title}` : ""}`).join("\n");
+  const failing = [...state.validation].filter(([, e]) => e.length).map(([p2, e]) => `- ${p2}: ${e[0]}`).join("\n");
+  const summary = [
+    "[Earlier work in this turn, compacted]",
+    `Files written so far (${state.written.length}): ${[...new Set(state.written)].join(", ") || "none"}`,
+    `Files read: ${[...state.read].slice(-60).join(", ") || "none"}`,
+    tasks ? `Tasks:
+${tasks}` : "",
+    failing ? `Files still failing validation:
+${failing}` : "",
+    "Continue from here. Re-read a file before editing it if you need its current content."
+  ].filter(Boolean).join("\n");
+  return [messages[0], messages[1], { role: "user", content: summary }, ...messages.slice(cut)];
+}
+function createToolLoopState(goal, requirements = []) {
+  return {
+    goal,
+    requirements,
+    tasks: /* @__PURE__ */ new Map(),
+    completedOps: /* @__PURE__ */ new Set(),
+    read: /* @__PURE__ */ new Set(),
+    validation: /* @__PURE__ */ new Map(),
+    written: [],
+    writesSinceTypecheck: 0,
+    iteration: 0,
+    finished: false,
+    stopReason: null
+  };
+}
+async function runToolLoop(args) {
+  const cfg = { ...args.light ? LIGHT_CONFIG : FULL_CONFIG, ...args.config };
+  const tools = toolsFor(!!args.light);
+  const allowed = new Set(tools.map((t) => t.function.name));
+  const tree = new Map(args.files.map((f) => [f.path, f.content]));
+  const state = createToolLoopState(args.goal, args.requirements ?? []);
+  const breaker = new AgentCircuitBreaker(cfg.breaker);
+  const traces = [];
+  const emit = args.onEvent ?? (() => {
+  });
+  const treeFiles = () => [...tree].map(([path, content]) => ({ path, content }));
+  let messages = [
+    { role: "system", content: args.system },
+    { role: "user", content: args.brief }
+  ];
+  let validationMs = 0;
+  const validate = async (path, content) => {
+    const t0 = Date.now();
+    try {
+      const next = treeFiles().filter((f) => f.path !== path);
+      next.push({ path, content });
+      return await args.validate({ path, content }, next);
+    } catch (e) {
+      return [`validation unavailable: ${e instanceof Error ? e.message : String(e)}`];
+    } finally {
+      validationMs += Date.now() - t0;
+    }
+  };
+  if (args.seedPaths?.length) {
+    const failing = [];
+    for (const p2 of args.seedPaths) {
+      const c = tree.get(p2);
+      if (c === void 0) continue;
+      const errs = await validate(p2, c);
+      state.validation.set(p2, errs);
+      state.written.push(p2);
+      if (errs.length) failing.push(`${p2}:
+${errs.slice(0, 6).map((e) => `- ${e}`).join("\n")}`);
+    }
+    if (failing.length) {
+      messages[1] = { role: "user", content: `${args.brief}
+
+These already-written files FAIL validation \u2014 read and fix them:
+${failing.join("\n")}` };
+    }
+  }
+  const persist = async (path, content) => {
+    if (args.onWrite) {
+      const ok = await args.onWrite({ path, content });
+      if (!ok) return false;
+    }
+    tree.set(path, content);
+    state.written.push(path);
+    state.writesSinceTypecheck++;
+    return true;
+  };
+  const fail = (tool, path, message, category = "tool_error") => {
+    const o = breaker.recordFailure({ category, tool, path, message });
+    return o.guidance ? `${message}
+
+Guidance: ${o.guidance}` : message;
+  };
+  const report = (path, errs) => errs.length ? `Written, but ${path} FAILS validation (fix it before finish):
+${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}` : `OK: ${path} written and validated.`;
+  async function exec(call) {
+    const name = call.function.name;
+    if (!allowed.has(name)) return { output: fail(name, null, `Unknown or unavailable tool: ${name}`), isError: true };
+    let a2;
+    try {
+      a2 = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+    } catch {
+      return { output: fail(name, null, `Invalid JSON arguments for ${name}. If the content was long, it may have been cut off \u2014 write smaller files or use edit_file.`), isError: true };
+    }
+    const path = normPath(a2.path);
+    switch (name) {
+      case "read_file": {
+        const c = tree.get(path);
+        if (c === void 0) {
+          const base = path.split("/").pop() ?? "";
+          const near = [...tree.keys()].filter((p2) => base && p2.endsWith(base)).slice(0, 5);
+          return { output: `File not found: ${path}${near.length ? `
+Did you mean: ${near.join(", ")}` : ""}`, isError: true };
+        }
+        state.read.add(path);
+        const lines = c.split("\n");
+        const s = Math.max(1, Number(a2.start_line) || 1);
+        const e = Math.min(lines.length, Number(a2.end_line) || lines.length);
+        return { output: clip(lines.slice(s - 1, e).map((l, i) => `${s + i}: ${l}`).join("\n"), cfg.maxToolOutput), isError: false };
+      }
+      case "list_files": {
+        const prefix = normPath(a2.prefix);
+        const list4 = [...tree.keys()].filter((p2) => p2.startsWith(prefix)).sort();
+        return { output: clip(list4.join("\n") || "(no files)", cfg.maxToolOutput), isError: false };
+      }
+      case "search": {
+        const q = String(a2.query ?? "");
+        if (!q) return { output: "Empty query.", isError: true };
+        const prefix = normPath(a2.prefix);
+        const hits = [];
+        for (const [p2, c] of tree) {
+          if (!p2.startsWith(prefix)) continue;
+          const lines = c.split("\n");
+          for (let i = 0; i < lines.length && hits.length < 80; i++) if (lines[i].includes(q)) hits.push(`${p2}:${i + 1}: ${lines[i].trim().slice(0, 160)}`);
+        }
+        return { output: hits.join("\n") || "No matches.", isError: false };
+      }
+      case "create_file": {
+        if (!path) return { output: fail(name, null, "create_file needs a path."), isError: true };
+        if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
+        const content = String(a2.content ?? "");
+        if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
+        const existing = tree.get(path);
+        if (existing !== void 0 && existing === content) return { output: `No change: ${path} already has this content.`, isError: false };
+        if (existing !== void 0 && existing.trim() && !state.read.has(path) && !state.written.includes(path)) {
+          return { output: fail(name, path, `Refused: ${path} exists. read_file it first, then use edit_file (or create_file to replace it fully).`), isError: true };
+        }
+        const errs = await validate(path, content);
+        if (!await persist(path, content)) return { output: fail(name, path, `Refused by the write gate: ${path}.`, "scope_violation"), isError: true };
+        state.read.add(path);
+        state.completedOps.add(opId("create", path));
+        state.validation.set(path, errs);
+        emit({ kind: errs.length ? "write_failed_validation" : "write_ok", path, detail: errs[0] });
+        if (errs.length) {
+          breaker.recordFailure({ category: "syntax_error", tool: name, path, message: errs[0] });
+          return { output: report(path, errs), isError: true };
+        }
+        breaker.recordProgress("file_written", path);
+        return { output: report(path, errs), isError: false };
+      }
+      case "edit_file": {
+        const current2 = tree.get(path);
+        if (current2 === void 0) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
+        if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
+        if (!state.read.has(path)) return { output: fail(name, path, `Read ${path} with read_file before editing it.`), isError: true };
+        const search = String(a2.search ?? "");
+        const replace = String(a2.replace ?? "");
+        if (!search) return { output: fail(name, path, "edit_file needs a non-empty search string."), isError: true };
+        if (search === replace) return { output: "No change: search and replace are identical.", isError: false };
+        const id = opId("edit", path, `${search}\0${replace}`);
+        if (state.completedOps.has(id)) return { output: `Already applied this exact edit to ${path}.`, isError: false };
+        const at = countOccurrences3(current2, search);
+        if (at.length === 0) return { output: fail(name, path, `search text not found in ${path}. Re-read the file and copy the exact text.`), isError: true };
+        const occ = Number(a2.occurrence) || 0;
+        if (at.length > 1 && !(occ >= 1 && occ <= at.length)) {
+          return { output: fail(name, path, `search text matches ${at.length} places in ${path}. Add surrounding lines to make it unique, or pass occurrence (1-${at.length}).`), isError: true };
+        }
+        const pos = at[at.length > 1 ? occ - 1 : 0];
+        const next = current2.slice(0, pos) + replace + current2.slice(pos + search.length);
+        if (current2.length > 400 && next.trim().length < current2.trim().length * 0.5 && replace.length < search.length * 0.5) {
+          return { output: fail(name, path, `Refused: this edit would remove more than half of ${path}. Use create_file to replace the file deliberately.`), isError: true };
+        }
+        const before = state.validation.get(path) ?? [];
+        const errs = await validate(path, next);
+        const introduced = errs.filter((e) => !before.includes(e));
+        if (introduced.length) {
+          return { output: fail(name, path, `Edit rolled back \u2014 it introduced errors in ${path}:
+${introduced.slice(0, 6).map((e) => `- ${e}`).join("\n")}`, "syntax_error"), isError: true };
+        }
+        if (!await persist(path, next)) return { output: fail(name, path, `Refused by the write gate: ${path}.`, "scope_violation"), isError: true };
+        state.completedOps.add(id);
+        state.validation.set(path, errs);
+        breaker.recordProgress(errs.length < before.length ? "file_repaired" : "file_written", path);
+        emit({ kind: "edit_ok", path });
+        return { output: errs.length ? report(path, errs) : `OK: edited ${path} and validated.`, isError: false };
+      }
+      case "plan_tasks": {
+        const list4 = Array.isArray(a2.tasks) ? a2.tasks : [];
+        for (const t of list4) {
+          const id = String(t.id ?? "").trim();
+          if (!id) continue;
+          const prev = state.tasks.get(id);
+          const status = ["pending", "done", "skipped"].includes(String(t.status)) ? t.status : "pending";
+          state.tasks.set(id, {
+            id,
+            title: String(t.title ?? prev?.title ?? ""),
+            status,
+            files: Array.isArray(t.files) ? t.files.map(normPath) : prev?.files ?? []
+          });
+        }
+        const lines = [...state.tasks.values()].map((t) => `[${t.status}] ${t.id}`);
+        return { output: `Tasks (${state.tasks.size}):
+${lines.join("\n")}`, isError: false };
+      }
+      case "finish": {
+        for (const t of state.tasks.values()) {
+          if (t.status === "done" && t.files.some((f) => !(tree.get(f) ?? "").trim() || (state.validation.get(f) ?? []).length)) t.status = "pending";
+        }
+        const gaps = completionGaps(state, tree);
+        if (gaps.length) return { output: `finish refused \u2014 the workspace is not complete:
+${gaps.slice(0, 20).map((g) => `- ${g}`).join("\n")}`, isError: true };
+        state.finished = true;
+        return { output: "Finished.", isError: false };
+      }
+    }
+  }
+  const hardCeiling = cfg.maxIterations + cfg.finalizeIterations;
+  let finalizing = false;
+  while (state.iteration < hardCeiling) {
+    if (args.signal?.aborted) {
+      state.stopReason = "cancelled";
+      return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "cancelled" };
+    }
+    if (!finalizing && state.iteration >= cfg.maxIterations) {
+      finalizing = true;
+      messages.push({ role: "user", content: "Iteration budget reached. Stop adding features. Only fix what blocks finish, then call finish." });
+    }
+    let compacted = false;
+    if (estimateTokens2(messages) > cfg.contextWindow * cfg.compactAt) {
+      messages = compact2(messages, state, cfg.keepRecent);
+      compacted = true;
+    }
+    state.iteration++;
+    const startedAt = Date.now();
+    const reply = await args.callModel(messages, tools, args.signal);
+    const durationMs = Date.now() - startedAt;
+    messages.push({ role: "assistant", content: reply.content ?? null, ...reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {} });
+    const t0 = Date.now();
+    validationMs = 0;
+    const writesBefore = state.written.length;
+    if (reply.toolCalls.length === 0) {
+      const gaps = completionGaps(state, tree);
+      if (!gaps.length) state.finished = true;
+      else messages.push({ role: "user", content: `You stopped, but the workspace is not complete:
+${gaps.slice(0, 20).map((g) => `- ${g}`).join("\n")}
+Continue with tools.` });
+    } else {
+      const results = [];
+      let i = 0;
+      while (i < reply.toolCalls.length) {
+        const c = reply.toolCalls[i];
+        if (READ_ONLY.has(c.function.name)) {
+          let j = i;
+          while (j < reply.toolCalls.length && READ_ONLY.has(reply.toolCalls[j].function.name)) j++;
+          const batch = reply.toolCalls.slice(i, j);
+          const outs = await Promise.all(batch.map(exec));
+          outs.forEach((o, k) => results.push({ id: batch[k].id, output: o.output }));
+          i = j;
+        } else {
+          const o = await exec(c);
+          results.push({ id: c.id, output: o.output });
+          i++;
+        }
+      }
+      for (const r of results) messages.push({ role: "tool", tool_call_id: r.id, content: clip(r.output, cfg.maxToolOutput) });
+      if (args.typecheck && state.writesSinceTypecheck >= cfg.typecheckEvery) {
+        state.writesSinceTypecheck = 0;
+        const v0 = Date.now();
+        const errs = await Promise.resolve(args.typecheck(treeFiles(), [...new Set(state.written)])).catch((e) => [`type check unavailable: ${String(e)}`]);
+        validationMs += Date.now() - v0;
+        if (errs.length) {
+          breaker.recordFailure({ category: "type_error", tool: "typecheck", path: null, message: errs[0] });
+          messages.push({ role: "user", content: `Type check after recent writes found errors:
+${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
+        }
+      }
+    }
+    const trace = {
+      call: state.iteration,
+      startedAt,
+      durationMs,
+      ttftMs: reply.ttftMs ?? null,
+      usage: reply.usage ?? null,
+      model: reply.model ?? null,
+      toolCalls: reply.toolCalls.map((c) => c.function.name),
+      toolMs: Date.now() - t0,
+      validationMs,
+      writes: state.written.length - writesBefore,
+      compacted,
+      finishReason: reply.finishReason ?? null
+    };
+    traces.push(trace);
+    args.onTrace?.(trace);
+    if (state.finished) {
+      breaker.complete();
+      return { files: treeFiles(), state, traces, incomplete: [], outcome: "finished" };
+    }
+    if (breaker.tripped) {
+      state.stopReason = breaker.reason()?.detail ?? "circuit breaker";
+      return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "breaker" };
+    }
+  }
+  state.stopReason = "iteration budget exhausted";
+  return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "incomplete" };
+}
+var FULL_CONFIG, LIGHT_CONFIG, fn, TOOLS, READ_ONLY, normPath;
+var init_tool_loop = __esm({
+  "src/server/engine/tool-loop.ts"() {
+    init_define_import_meta_env();
+    init_circuit_breaker();
+    FULL_CONFIG = {
+      maxIterations: 100,
+      finalizeIterations: 8,
+      typecheckEvery: 3,
+      contextWindow: 64e3,
+      compactAt: 0.7,
+      keepRecent: 12,
+      maxToolOutput: 12e3,
+      breaker: BREAKER_THRESHOLDS
+    };
+    LIGHT_CONFIG = { ...FULL_CONFIG, maxIterations: 6, finalizeIterations: 2 };
+    fn = (name, description, properties, required) => ({
+      type: "function",
+      function: { name, description, parameters: { type: "object", properties, required, additionalProperties: false } }
+    });
+    TOOLS = {
+      read_file: fn("read_file", "Read a file (numbered lines). Required before editing or overwriting an existing file.", {
+        path: { type: "string" },
+        start_line: { type: "integer" },
+        end_line: { type: "integer" }
+      }, ["path"]),
+      list_files: fn("list_files", "List project files under a directory prefix.", { prefix: { type: "string" } }, []),
+      search: fn("search", "Literal text search across project files. Returns path:line matches.", { query: { type: "string" }, prefix: { type: "string" } }, ["query"]),
+      create_file: fn("create_file", "Create a new file, or fully replace an existing file you have read. Prefer edit_file for small changes. Validated immediately.", {
+        path: { type: "string" },
+        content: { type: "string" }
+      }, ["path", "content"]),
+      edit_file: fn("edit_file", "Exact search/replace in a file you have read. `search` must match exactly once (or set occurrence). Validated before it is kept; rolled back if it introduces errors.", {
+        path: { type: "string" },
+        search: { type: "string" },
+        replace: { type: "string" },
+        occurrence: { type: "integer", description: "1-based match to replace when search appears more than once" }
+      }, ["path", "search", "replace"]),
+      plan_tasks: fn("plan_tasks", "Declare or update the task list for this request. Tasks with status pending block finish.", {
+        tasks: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              title: { type: "string" },
+              status: { type: "string", enum: ["pending", "done", "skipped"] },
+              files: { type: "array", items: { type: "string" } }
+            },
+            required: ["id", "status"]
+          }
+        }
+      }, ["tasks"]),
+      finish: fn("finish", "Declare the request complete. Refused while required files/routes are missing, files fail validation, or tasks are pending.", { summary: { type: "string" } }, [])
+    };
+    READ_ONLY = /* @__PURE__ */ new Set(["read_file", "list_files", "search"]);
+    normPath = (p2) => String(p2 ?? "").trim().replace(/^\.?\/+/, "");
+  }
+});
+
+// src/lib/failure-classification.ts
+var failure_classification_exports = {};
+__export(failure_classification_exports, {
+  InfrastructureFailure: () => InfrastructureFailure,
+  classifyFailureOrigin: () => classifyFailureOrigin,
+  classifyHttpStatus: () => classifyHttpStatus,
+  guidanceFor: () => guidanceFor,
+  isInfrastructureFailure: () => isInfrastructureFailure,
+  originFromErrorKind: () => originFromErrorKind,
+  originFromReason: () => originFromReason,
+  permitsDestructiveRecovery: () => permitsDestructiveRecovery,
+  projectChangedBy: () => projectChangedBy
+});
+function isInfrastructureFailure(e) {
+  return e instanceof InfrastructureFailure || typeof e === "object" && e !== null && e.origin === "infrastructure";
+}
+function classifyHttpStatus(status) {
+  if (status === 408 || status === 425 || status === 429 || status >= 500) return "infrastructure";
+  return "unknown";
+}
+function classifyFailureOrigin(input) {
+  if (isInfrastructureFailure(input)) return "infrastructure";
+  if (typeof input === "object" && input !== null && typeof input.status === "number") {
+    const byStatus = classifyHttpStatus(input.status);
+    if (byStatus !== "unknown") return byStatus;
+  }
+  const text = input instanceof Error ? `${input.name} ${input.message}` : typeof input === "string" ? input : "";
+  if (!text) return "unknown";
+  if (CANCEL.test(text)) return "cancelled";
+  if (USER.test(text)) return "user_input";
+  if (TRANSPORT.test(text)) return "transport";
+  if (INFRA.test(text)) return "infrastructure";
+  if (CODE2.test(text)) return "code";
+  return "unknown";
+}
+function permitsDestructiveRecovery(origin) {
+  return origin === "code";
+}
+function guidanceFor(origin) {
+  switch (origin) {
+    case "infrastructure":
+      return {
+        origin,
+        headline: "The AI service was temporarily unavailable.",
+        preserved: "Your project is exactly as it was \u2014 nothing was removed or charged.",
+        action: "continue",
+        actionLabel: "Continue",
+        userMustAct: false
+      };
+    case "transport":
+      return {
+        origin,
+        headline: "The connection to the builder was interrupted.",
+        preserved: "Kimble checks the saved result instead of guessing \u2014 no work is repeated and nothing is charged twice.",
+        action: null,
+        actionLabel: null,
+        userMustAct: false
+      };
+    case "code":
+      return {
+        origin,
+        headline: "Kimble found a problem in the generated code.",
+        preserved: "Your last working version is kept.",
+        action: "fix",
+        actionLabel: "Fix it",
+        userMustAct: false
+      };
+    case "user_input":
+      return {
+        origin,
+        headline: "Kimble needs one decision before continuing.",
+        preserved: "Everything so far is saved.",
+        action: "answer",
+        actionLabel: null,
+        userMustAct: true
+      };
+    case "in_progress":
+      return {
+        origin,
+        headline: "Kimble is still working on your last request.",
+        preserved: "Nothing new was started and nothing extra is charged.",
+        action: "follow",
+        actionLabel: "Keep watching",
+        userMustAct: false
+      };
+    case "cancelled":
+      return {
+        origin,
+        headline: "Generation cancelled.",
+        preserved: "Your previous verified version is kept exactly as it was.",
+        action: null,
+        actionLabel: null,
+        userMustAct: false
+      };
+    default:
+      return {
+        origin,
+        headline: "Kimble couldn't finish this one.",
+        preserved: "Your last working version is kept.",
+        action: "try_again",
+        actionLabel: "Try again",
+        userMustAct: false
+      };
+  }
+}
+function originFromReason(reason) {
+  if (!reason) return "unknown";
+  const prefix = reason.split(":")[0];
+  if (["infrastructure", "transport", "code", "user_input", "cancelled", "in_progress"].includes(prefix)) return prefix;
+  return classifyFailureOrigin(reason);
+}
+function originFromErrorKind(kind) {
+  switch (kind) {
+    case "rate_limit":
+    case "upstream_unavailable":
+    case "provider_credits_exhausted":
+      return "infrastructure";
+    case "upstream_timeout":
+      return "transport";
+    case "aborted":
+      return "cancelled";
+    case "generation_running":
+      return "in_progress";
+    case "no_files_emitted":
+    case "no_edit_emitted":
+    case "credits_exhausted":
+    case "unauthorized":
+      return "user_input";
+    case "generation_incomplete":
+    case "truncated_response":
+      return "code";
+    default:
+      return null;
+  }
+}
+function projectChangedBy(_origin) {
+  return false;
+}
+var InfrastructureFailure, INFRA, TRANSPORT, CANCEL, USER, CODE2;
+var init_failure_classification = __esm({
+  "src/lib/failure-classification.ts"() {
+    init_define_import_meta_env();
+    InfrastructureFailure = class extends Error {
+      constructor(message, status = null) {
+        super(message);
+        this.status = status;
+        this.name = "InfrastructureFailure";
+      }
+      status;
+      origin = "infrastructure";
+    };
+    INFRA = /\b(50[0-4]|429|bad gateway|service unavailable|gateway time-?out|upstream|provider (error|unavailable|outage)|rate.?limit|overloaded|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|fetch failed|timed? ?out|socket hang up|network error)\b/i;
+    TRANSPORT = /\b(stream closed|no result payload|connection (interrupted|lost|closed)|websocket|sse|eventsource|reverb|load failed|network connection was lost)\b/i;
+    CANCEL = /\b(abort(ed)?|cancell?ed|user stop|stopped by user)\b/i;
+    USER = /\b(needs? (your|a) (decision|answer)|missing (secret|credential|api key)|connect (your|an) account)\b/i;
+    CODE2 = /\b(TS\d{4}|SyntaxError|ReferenceError|TypeError|parse|unterminated|unexpected token|cannot find (module|name)|could not resolve|failed to resolve|missing import|not exported|build failed|compile|verification_failed|render)\b/i;
+  }
+});
+
+// src/server/engine/tool-loop-model.ts
+var tool_loop_model_exports = {};
+__export(tool_loop_model_exports, {
+  makeCallModel: () => makeCallModel,
+  parseToolStream: () => parseToolStream
+});
+async function parseToolStream(res, startedAt) {
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  let content = "";
+  let finishReason = null;
+  let model;
+  let rawUsage = null;
+  let ttftMs;
+  const calls = /* @__PURE__ */ new Map();
+  const handle = (line) => {
+    if (!line.startsWith("data:")) return;
+    const data2 = line.slice(5).trim();
+    if (!data2 || data2 === "[DONE]") return;
+    let j;
+    try {
+      j = JSON.parse(data2);
+    } catch {
+      return;
+    }
+    if (j.error) throw new InfrastructureFailure(`provider stream error: ${j.error.message ?? JSON.stringify(j.error)}`, j.error.code ?? null);
+    if (j.model) model = j.model;
+    if (j.usage) rawUsage = j.usage;
+    const ch = j.choices?.[0];
+    if (!ch) return;
+    if (ch.finish_reason) finishReason = ch.finish_reason;
+    const d = ch.delta ?? {};
+    if ((d.content || d.tool_calls) && ttftMs === void 0) ttftMs = Date.now() - startedAt;
+    if (typeof d.content === "string") content += d.content;
+    for (const tc of d.tool_calls ?? []) {
+      const i = tc.index ?? 0;
+      const cur = calls.get(i) ?? { id: tc.id ?? `call_${i}`, type: "function", function: { name: "", arguments: "" } };
+      if (tc.id) cur.id = tc.id;
+      if (tc.function?.name) cur.function.name += tc.function.name;
+      if (tc.function?.arguments) cur.function.arguments += tc.function.arguments;
+      calls.set(i, cur);
+    }
+  };
+  for (; ; ) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let nl;
+    while ((nl = buf.indexOf("\n")) >= 0) {
+      handle(buf.slice(0, nl).trim());
+      buf = buf.slice(nl + 1);
+    }
+  }
+  if (buf.trim()) handle(buf.trim());
+  const u = rawUsage;
+  return {
+    content: content || null,
+    toolCalls: [...calls.entries()].sort((a2, b) => a2[0] - b[0]).map(([, c]) => c).filter((c) => c.function.name),
+    usage: u ? { promptTokens: u.prompt_tokens ?? 0, cachedTokens: u.prompt_tokens_details?.cached_tokens ?? 0, completionTokens: u.completion_tokens ?? 0 } : void 0,
+    ttftMs,
+    finishReason,
+    model,
+    rawUsage
+  };
+}
+function makeCallModel(send, onUsage) {
+  return async (messages, tools, signal) => {
+    const startedAt = Date.now();
+    const res = await send({ messages, tools, tool_choice: "auto", parallel_tool_calls: true, stream: true, stream_options: { include_usage: true } }, signal);
+    if (!res.ok || !res.body) throw new InfrastructureFailure(`AI provider returned HTTP ${res.status}`, res.status);
+    const reply = await parseToolStream(res, startedAt);
+    onUsage?.(reply.rawUsage);
+    return reply;
+  };
+}
+var init_tool_loop_model = __esm({
+  "src/server/engine/tool-loop-model.ts"() {
+    init_define_import_meta_env();
+    init_failure_classification();
+  }
+});
+
 // src/server/verification/identifiers.server.ts
 var identifiers_server_exports = {};
 __export(identifiers_server_exports, {
@@ -152964,162 +153603,65 @@ declare module "*";
   }
 });
 
-// src/lib/failure-classification.ts
-var failure_classification_exports = {};
-__export(failure_classification_exports, {
-  InfrastructureFailure: () => InfrastructureFailure,
-  classifyFailureOrigin: () => classifyFailureOrigin,
-  classifyHttpStatus: () => classifyHttpStatus,
-  guidanceFor: () => guidanceFor,
-  isInfrastructureFailure: () => isInfrastructureFailure,
-  originFromErrorKind: () => originFromErrorKind,
-  originFromReason: () => originFromReason,
-  permitsDestructiveRecovery: () => permitsDestructiveRecovery,
-  projectChangedBy: () => projectChangedBy
+// src/server/engine/provider-retry.ts
+var provider_retry_exports = {};
+__export(provider_retry_exports, {
+  BASE_DELAY_MS: () => BASE_DELAY_MS,
+  MAX_DELAY_MS: () => MAX_DELAY_MS,
+  MAX_PROVIDER_RETRIES: () => MAX_PROVIDER_RETRIES,
+  RETRYABLE_STATUS: () => RETRYABLE_STATUS,
+  backoffDelay: () => backoffDelay,
+  classifyProviderStatus: () => classifyProviderStatus,
+  withProviderRetry: () => withProviderRetry
 });
-function isInfrastructureFailure(e) {
-  return e instanceof InfrastructureFailure || typeof e === "object" && e !== null && e.origin === "infrastructure";
+function classifyProviderStatus(status) {
+  if (status === null) return "connection";
+  if (status >= 200 && status < 300) return "ok";
+  if (status === 429) return "rate_limited";
+  if (RETRYABLE_STATUS.has(status)) return "server_error";
+  return "deterministic";
 }
-function classifyHttpStatus(status) {
-  if (status === 408 || status === 425 || status === 429 || status >= 500) return "infrastructure";
-  return "unknown";
+function backoffDelay(attempt, random = Math.random) {
+  const exp = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** (attempt - 1));
+  return Math.round(exp / 2 + random() * (exp / 2));
 }
-function classifyFailureOrigin(input) {
-  if (isInfrastructureFailure(input)) return "infrastructure";
-  if (typeof input === "object" && input !== null && typeof input.status === "number") {
-    const byStatus = classifyHttpStatus(input.status);
-    if (byStatus !== "unknown") return byStatus;
+async function withProviderRetry(run, opts = {}) {
+  const sleep3 = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  let last = null;
+  let lastErr = null;
+  for (let attempt = 1; attempt <= MAX_PROVIDER_RETRIES + 1; attempt++) {
+    let status = null;
+    try {
+      last = await run();
+      status = last.status;
+      lastErr = null;
+    } catch (e) {
+      if (opts.signal?.aborted) throw e;
+      lastErr = e;
+      last = null;
+    }
+    const cls = classifyProviderStatus(status);
+    const retry = (cls === "rate_limited" || cls === "server_error" || cls === "connection") && attempt <= MAX_PROVIDER_RETRIES && !opts.signal?.aborted;
+    const delayMs = retry ? backoffDelay(attempt, opts.random) : 0;
+    opts.onAttempt?.({ attempt, status, failureClass: cls, delayMs });
+    if (!retry) break;
+    try {
+      await last?.body?.cancel();
+    } catch {
+    }
+    await sleep3(delayMs);
   }
-  const text = input instanceof Error ? `${input.name} ${input.message}` : typeof input === "string" ? input : "";
-  if (!text) return "unknown";
-  if (CANCEL.test(text)) return "cancelled";
-  if (USER.test(text)) return "user_input";
-  if (TRANSPORT.test(text)) return "transport";
-  if (INFRA.test(text)) return "infrastructure";
-  if (CODE2.test(text)) return "code";
-  return "unknown";
+  if (last) return last;
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
-function permitsDestructiveRecovery(origin) {
-  return origin === "code";
-}
-function guidanceFor(origin) {
-  switch (origin) {
-    case "infrastructure":
-      return {
-        origin,
-        headline: "The AI service was temporarily unavailable.",
-        preserved: "Your project is exactly as it was \u2014 nothing was removed or charged.",
-        action: "continue",
-        actionLabel: "Continue",
-        userMustAct: false
-      };
-    case "transport":
-      return {
-        origin,
-        headline: "The connection to the builder was interrupted.",
-        preserved: "Kimble checks the saved result instead of guessing \u2014 no work is repeated and nothing is charged twice.",
-        action: null,
-        actionLabel: null,
-        userMustAct: false
-      };
-    case "code":
-      return {
-        origin,
-        headline: "Kimble found a problem in the generated code.",
-        preserved: "Your last working version is kept.",
-        action: "fix",
-        actionLabel: "Fix it",
-        userMustAct: false
-      };
-    case "user_input":
-      return {
-        origin,
-        headline: "Kimble needs one decision before continuing.",
-        preserved: "Everything so far is saved.",
-        action: "answer",
-        actionLabel: null,
-        userMustAct: true
-      };
-    case "in_progress":
-      return {
-        origin,
-        headline: "Kimble is still working on your last request.",
-        preserved: "Nothing new was started and nothing extra is charged.",
-        action: "follow",
-        actionLabel: "Keep watching",
-        userMustAct: false
-      };
-    case "cancelled":
-      return {
-        origin,
-        headline: "Generation cancelled.",
-        preserved: "Your previous verified version is kept exactly as it was.",
-        action: null,
-        actionLabel: null,
-        userMustAct: false
-      };
-    default:
-      return {
-        origin,
-        headline: "Kimble couldn't finish this one.",
-        preserved: "Your last working version is kept.",
-        action: "try_again",
-        actionLabel: "Try again",
-        userMustAct: false
-      };
-  }
-}
-function originFromReason(reason) {
-  if (!reason) return "unknown";
-  const prefix = reason.split(":")[0];
-  if (["infrastructure", "transport", "code", "user_input", "cancelled", "in_progress"].includes(prefix)) return prefix;
-  return classifyFailureOrigin(reason);
-}
-function originFromErrorKind(kind) {
-  switch (kind) {
-    case "rate_limit":
-    case "upstream_unavailable":
-    case "provider_credits_exhausted":
-      return "infrastructure";
-    case "upstream_timeout":
-      return "transport";
-    case "aborted":
-      return "cancelled";
-    case "generation_running":
-      return "in_progress";
-    case "no_files_emitted":
-    case "no_edit_emitted":
-    case "credits_exhausted":
-    case "unauthorized":
-      return "user_input";
-    case "generation_incomplete":
-    case "truncated_response":
-      return "code";
-    default:
-      return null;
-  }
-}
-function projectChangedBy(_origin) {
-  return false;
-}
-var InfrastructureFailure, INFRA, TRANSPORT, CANCEL, USER, CODE2;
-var init_failure_classification = __esm({
-  "src/lib/failure-classification.ts"() {
+var RETRYABLE_STATUS, MAX_PROVIDER_RETRIES, BASE_DELAY_MS, MAX_DELAY_MS;
+var init_provider_retry = __esm({
+  "src/server/engine/provider-retry.ts"() {
     init_define_import_meta_env();
-    InfrastructureFailure = class extends Error {
-      constructor(message, status = null) {
-        super(message);
-        this.status = status;
-        this.name = "InfrastructureFailure";
-      }
-      status;
-      origin = "infrastructure";
-    };
-    INFRA = /\b(50[0-4]|429|bad gateway|service unavailable|gateway time-?out|upstream|provider (error|unavailable|outage)|rate.?limit|overloaded|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|fetch failed|timed? ?out|socket hang up|network error)\b/i;
-    TRANSPORT = /\b(stream closed|no result payload|connection (interrupted|lost|closed)|websocket|sse|eventsource|reverb|load failed|network connection was lost)\b/i;
-    CANCEL = /\b(abort(ed)?|cancell?ed|user stop|stopped by user)\b/i;
-    USER = /\b(needs? (your|a) (decision|answer)|missing (secret|credential|api key)|connect (your|an) account)\b/i;
-    CODE2 = /\b(TS\d{4}|SyntaxError|ReferenceError|TypeError|parse|unterminated|unexpected token|cannot find (module|name)|could not resolve|failed to resolve|missing import|not exported|build failed|compile|verification_failed|render)\b/i;
+    RETRYABLE_STATUS = /* @__PURE__ */ new Set([429, 500, 502, 503, 504]);
+    MAX_PROVIDER_RETRIES = 2;
+    BASE_DELAY_MS = 800;
+    MAX_DELAY_MS = 6e3;
   }
 });
 
@@ -153572,11 +154114,11 @@ function evidenceFor(item, text, paths) {
   ];
   if (tokens2.length === 0) return paths.length > 0;
   for (const t of tokens2) {
-    const compact2 = t.replace(/\s+/g, "");
-    if (!compact2) continue;
-    if (pathBlob.includes(compact2) || pathBlob.includes(t)) return true;
+    const compact3 = t.replace(/\s+/g, "");
+    if (!compact3) continue;
+    if (pathBlob.includes(compact3) || pathBlob.includes(t)) return true;
     if (text.includes(t)) return true;
-    if (compact2.length >= 4 && text.includes(compact2)) return true;
+    if (compact3.length >= 4 && text.includes(compact3)) return true;
   }
   return false;
 }
@@ -162590,11 +163132,11 @@ var DIRECTOR_TOOL = {
   }
 };
 function renderDesignDirectionBlock(d, opts) {
-  const compact2 = opts?.detail === "compact";
+  const compact3 = opts?.detail === "compact";
   const pkg = opts?.packageOwnsVisuals === true;
   const moves = d.design_moves.map((m) => `  - ${m}`).join("\n");
-  const templateBlock = !compact2 && d.template ? renderTemplatePlanBlock(d.template) : "";
-  if (compact2) {
+  const templateBlock = !compact3 && d.template ? renderTemplatePlanBlock(d.template) : "";
+  if (compact3) {
     return `
 
 ### Design Direction (already committed for this project \u2014 keep it)
@@ -166947,10 +167489,10 @@ var TurnRecorder = class {
   /** Time a sync or async tier and record its outcome.
    *  The classifier turns the tier output into an `(outcome, count, details)`
    *  triple so each call site can express tier-specific semantics. */
-  async time(tier, fn, classify) {
+  async time(tier, fn2, classify) {
     const start = Date.now();
     try {
-      const result = await fn();
+      const result = await fn2();
       const c = classify(result);
       this.record({
         tier,
@@ -169723,7 +170265,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -170308,8 +170849,8 @@ function aliasDefaultExports(files, byPath) {
   return aliases;
 }
 function defaultExportIdentifier(src2) {
-  const fn = /export\s+default\s+(?:async\s+)?(?:function|class)\s+([A-Za-z_$][\w$]*)/.exec(src2);
-  if (fn) return fn[1];
+  const fn2 = /export\s+default\s+(?:async\s+)?(?:function|class)\s+([A-Za-z_$][\w$]*)/.exec(src2);
+  if (fn2) return fn2[1];
   const ident = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;/.exec(src2);
   if (ident) return ident[1];
   return null;
@@ -175265,32 +175806,6 @@ async function structuredRetryCompletion(args) {
   });
   return primary;
 }
-async function rawPageCompletion(args) {
-  const { RAW_FILE_FORMAT: RAW_FILE_FORMAT2, RAW_FILES_FORMAT: RAW_FILES_FORMAT2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
-  const msgs = args.messages.slice();
-  const last = msgs[msgs.length - 1];
-  msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}
-
-${String(last?.content ?? "").startsWith("DECOMPOSED PAGE") ? RAW_FILES_FORMAT2 : RAW_FILE_FORMAT2}` };
-  const { withProviderRetry: withProviderRetry2 } = await Promise.resolve().then(() => (init_provider_retry(), provider_retry_exports));
-  return withProviderRetry2(
-    () => aiChatCompletions({
-      feature: "generate",
-      body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
-      timeoutTier: args.isInitial ? "stream_first_build" : "stream",
-      lockCallerModel: true,
-      codeOutput: true,
-      signal: args.signal,
-      meta: args.meta
-    }),
-    {
-      signal: args.signal,
-      onAttempt: (a2) => {
-        if (a2.failureClass !== "ok") console.warn(`[provider-retry] model=${MODEL_STRUCTURED_RETRY} attempt=${a2.attempt} status=${a2.status ?? "conn"} class=${a2.failureClass} delay=${a2.delayMs}ms`);
-      }
-    }
-  );
-}
 async function recoverMissingToolOutput(args) {
   const assistantText = assistantTextFromCollected(args.collected);
   if (!assistantText) return null;
@@ -175606,10 +176121,10 @@ function deterministicPatchFallback(args) {
   };
 }
 function isDirectLogoPlacementRequest(prompt) {
-  const compact2 = prompt.trim();
-  if (!/\b(?:logo|brand ?mark|wordmark|monogram|favicon|app icon)\b/i.test(compact2)) return false;
-  if (!/\b(?:add|create|include|put|place|show|use|make)\b/i.test(compact2)) return false;
-  return !/\b(?:change|replace|redesign|restyle|colour|color|font|bigger|smaller|animate|upload|image)\b/i.test(compact2);
+  const compact3 = prompt.trim();
+  if (!/\b(?:logo|brand ?mark|wordmark|monogram|favicon|app icon)\b/i.test(compact3)) return false;
+  if (!/\b(?:add|create|include|put|place|show|use|make)\b/i.test(compact3)) return false;
+  return !/\b(?:change|replace|redesign|restyle|colour|color|font|bigger|smaller|animate|upload|image)\b/i.test(compact3);
 }
 async function runFinalParseGuard(files, changedPaths, controller, encoder, prd, priorFiles = [], repair, infraFailure = () => null, createMissing) {
   const { runPreEmitGate: runPreEmitGate2, formatGateIssues: formatGateIssues2 } = await Promise.resolve().then(() => (init_preemit_gate_server(), preemit_gate_server_exports));
@@ -176767,7 +177282,6 @@ The latest request contains multiple coordinated asks. Treat this as one complet
       });
       const firstPlan = planFirstBuild2({ prompt: lastUserText, plannedRoutes, maxOutputTokens: firstUnitMaxOutput });
       for (const r of firstPlan.routes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
-      archetypeBlock += firstPlan.instruction;
       firstBuildPlan = firstPlan;
       console.log(firstPlan.log);
     } catch {
@@ -177521,7 +178035,6 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           }
           if (isInitial && parsed.files?.length) {
             const { targetOf: wantOf, DECOMPOSED_MARKER: DECOMPOSED_MARKER2 } = await Promise.resolve().then(() => (init_write(), write_exports));
-            const { runExecutionLoop: runExecutionLoop2 } = await Promise.resolve().then(() => (init_agent_loop(), agent_loop_exports));
             const { pageFileFor: pageFileFor2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
             const checkpointApi = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
             const shellSnapshot = { name: "write_project", args: JSON.stringify(parsed), text: "", finishReason: "stop" };
@@ -177561,191 +178074,95 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             }
             const pages = planned;
             await agentIO().assertActive(turnId, abortSignal, "page writing");
-            let pagesWritten = 0;
-            const cutOffPages = /* @__PURE__ */ new Set();
-            const { assessPageComplexity: assessPageComplexity2 } = await Promise.resolve().then(() => (init_complexity(), complexity_exports));
-            const pageProviderFailures = [];
+            const { runToolLoop: runToolLoop2 } = await Promise.resolve().then(() => (init_tool_loop(), tool_loop_exports));
+            const { makeCallModel: makeCallModel2 } = await Promise.resolve().then(() => (init_tool_loop_model(), tool_loop_model_exports));
+            const { validateUnitImports: validateUnitImports2, undefinedNames: undefinedNames2 } = await Promise.resolve().then(() => (init_work_unit(), work_unit_exports));
+            const { verifyFilesEsbuild: verifyFilesEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_verifier_server(), esbuild_verifier_server_exports));
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await Promise.resolve().then(() => (init_identifiers_server(), identifiers_server_exports));
-            const done = await runExecutionLoop2({
+            const { withProviderRetry: withProviderRetry2 } = await Promise.resolve().then(() => (init_provider_retry(), provider_retry_exports));
+            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files;
+            const pendingWrites = [];
+            const loopTraces = [];
+            const callModel = makeCallModel2(
+              (reqBody, signal) => withProviderRetry2(
+                () => aiChatCompletions({
+                  feature: "generate",
+                  body: { ...reqBody, reasoning: { enabled: false }, model: MODEL_STRUCTURED_RETRY },
+                  timeoutTier: "stream_first_build",
+                  lockCallerModel: true,
+                  codeOutput: true,
+                  signal: signal ?? abortSignal,
+                  meta: {
+                    phase: phaseTag.phase,
+                    promptChars: lastUserContent.length,
+                    hadAttachments: hasVisionTurn,
+                    chosenBy: "tool_loop",
+                    projectId: body.projectId ?? null,
+                    userId,
+                    turnId: logicalTurnId
+                  }
+                }),
+                { signal: signal ?? abortSignal }
+              ),
+              (u) => {
+                if (u) pageWriteUsages.push(u);
+              }
+            );
+            const done = await runToolLoop2({
               goal: lastUserText,
-              pages,
-              decide: (p2, truncatedBefore) => assessPageComplexity2({
-                route: p2.route,
-                file: p2.file,
-                request: lastUserContent || "",
-                requirementCount: turnRequirementCount,
-                pageCount: pages.length,
-                truncatedBefore: truncatedBefore || cutOffPages.has(p2.file)
-              }),
-              // Resume: saved pages are re-staged; the writer skips every page
-              // that is already real, so no finished page is written twice.
-              files: resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files,
-              budget: recovery,
-              // Durable progress: each validated work unit is saved the moment
-              // it finishes, only by the turn that owns the checkpoint. The
-              // result is surfaced — a failed save is never reported as saved.
-              onFilesDone: checkpointTurnId ? async (got) => {
-                const ok = await checkpointApi.checkpointFiles(checkpointTurnId, got);
-                const cs = turnStrategy.checkpoint ??= { saved: 0, failed: 0 };
-                if (ok) cs.saved += got.length;
-                else cs.failed += got.length;
-                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
-                return ok;
-              } : void 0,
-              // Foundation layer first: missing shared modules the frame
-              // imports are created (in parallel) before any page is written,
-              // so pages consume real export signatures, never guesses.
-              createFoundation: async (staged, changed) => {
-                const { resolveMissingNodes: resolveMissingNodes2 } = await Promise.resolve().then(() => (init_missing_nodes(), missing_nodes_exports));
-                const { createMissingModule: createMissingModule2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
-                const scope = changed ?? staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
-                const r = await resolveMissingNodes2(staged, scope, async (node, context) => {
-                  if (!turnLedger.use("repair", "foundation module", node.target).ok) return null;
-                  controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating shared ${node.target}\u2026` })));
-                  return createMissingModule2(node, context, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext: turnContextFor(node.target) });
-                }, { concurrency: 4 });
-                return { files: r.files, created: r.created };
+              system: String(finalMessages[0]?.content ?? ""),
+              brief: `${lastUserText}
+
+The first draft of the app is already in the workspace (${seedFiles.length} files). Finish the build with tools: create every page the router needs, fix any failing file, then call finish. Several tool calls per response are encouraged. Planned pages: ${planned.map((p2) => `${p2.route} \u2192 ${p2.file}`).join(", ")}.
+
+Files: ${seedFiles.map((f) => f.path).join(", ")}`,
+              files: seedFiles,
+              seedPaths: seedFiles.map((f) => f.path),
+              requirements: planned.map((p2) => ({ id: `page:${p2.route}`, file: p2.file, route: p2.route })),
+              callModel,
+              validate: async (file, tree) => {
+                if (!/\.(tsx?|jsx?)$/.test(file.path)) return [];
+                const v = await verifyFilesEsbuild2([file], [file.path]);
+                if (v.status === "unavailable") throw new Error(v.unavailableDetail ?? v.unavailableReason ?? "esbuild unavailable");
+                const out = v.issues.map((i) => i.message);
+                if (out.length) return out;
+                return [
+                  ...validateUnitImports2(file, tree).map((d) => d.message),
+                  ...undefinedNames2(file, tree, (t, c) => checkIdsForUnits(t, c)).map((d) => d.message)
+                ];
               },
-              // Per-unit record: observable progress + economics evidence.
-              checkIdentifiers: (tree, changed) => checkIdsForUnits(tree, changed),
-              onUnit: (u) => {
-                (turnStrategy.workUnits ??= []).push(u);
-                if (u.outcome === "skipped_done") return;
-                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "work_unit", outcome: u.outcome === "failed" ? "failed" : "ok", message: `${u.kind} ${u.target}: ${u.outcome}${u.feedbackRounds ? ` after ${u.feedbackRounds} correction` : ""}${u.continued ? " (continued, not regenerated)" : ""}`, ts: Date.now() })));
+              typecheck: (tree, paths) => {
+                const r = checkIdsForUnits(tree, paths);
+                return r.status === "failed" ? r.issues.map((i) => `${i.path}:${i.line} ${i.message}`) : [];
               },
-              // Structural completeness check: a candidate cut off mid-file is
-              // discarded (never patched) so the page is re-requested once.
-              isTruncated: async (file) => {
-                const { verifyFilesEsbuild: verifyFilesEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_verifier_server(), esbuild_verifier_server_exports));
-                const { isTruncationDetail: isTruncationDetail2 } = await Promise.resolve().then(() => (init_build_state(), build_state_exports));
-                const verdict = await verifyFilesEsbuild2([file], [file.path]);
-                if (verdict.status === "unavailable") {
-                  throw new Error(`Authoritative code validation unavailable: ${verdict.unavailableDetail ?? verdict.unavailableReason ?? "unknown error"}`);
+              onWrite: async (f) => {
+                pendingWrites.push(f);
+                controller.enqueue(encoder.encode(sse({ type: "file_complete", path: f.path, bytes: f.content.length, index: 1, content: f.content })));
+                if (checkpointTurnId) {
+                  const ok = await checkpointApi.checkpointFiles(checkpointTurnId, [f]);
+                  const cs = turnStrategy.checkpoint ??= { saved: 0, failed: 0 };
+                  if (ok) cs.saved += 1;
+                  else cs.failed += 1;
                 }
-                return verdict.issues.some((i) => isTruncationDetail2(i.message));
+                return true;
               },
-              request: async (instruction) => {
-                const { withCallFrame: withCallFrame2, attachFiles: attachFiles2 } = await Promise.resolve().then(() => (init_call_accounting(), call_accounting_exports));
-                const framed = await withCallFrame2(async () => {
-                  controller.enqueue(
-                    encoder.encode(sse({ type: "status", message: "Writing the remaining pages\u2026" }))
-                  );
-                  const res = await rawPageCompletion({
-                    messages: [...finalMessages, { role: "user", content: instruction }],
-                    isInitial,
-                    maxTokens: 12e3,
-                    signal: abortSignal,
-                    meta: {
-                      phase: phaseTag.phase,
-                      promptChars: lastUserContent.length,
-                      hadAttachments: hasVisionTurn,
-                      chosenBy: "missing_pages",
-                      projectId: body.projectId ?? null,
-                      userId,
-                      turnId: logicalTurnId,
-                      recoveryReason: "missing_page"
-                    }
-                  });
-                  const wantPath = wantOf(instruction);
-                  if (!res.ok || !res.body) {
-                    pageProviderFailures.push({ path: wantPath ?? "?", status: res.status });
-                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} (HTTP ${res.status})`, ts: Date.now() })));
-                    return null;
-                  }
-                  let c = await relayAndCollect(res, controller, encoder);
-                  const truncatedOutput = isTruncatedFinishReason(c.finishReason);
-                  const decomposedAsk = instruction.startsWith(DECOMPOSED_MARKER2);
-                  if (truncatedOutput && wantPath && !decomposedAsk) {
-                    cutOffPages.add(wantPath);
-                    if (!turnEscalations.includes("output_limit")) turnEscalations.push("output_limit");
-                    controller.enqueue(encoder.encode(sse({ type: "status", message: "That page is large \u2014 splitting it into sections\u2026" })));
-                  }
-                  const underDelivered = !truncatedOutput && !c.stall && c.finishReason !== "error" && !c.text.includes("```");
-                  if (underDelivered) markUpstreamFailed(c.upstream);
-                  if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
-                    const again = await rawPageCompletion({
-                      messages: [...finalMessages, { role: "user", content: instruction }],
-                      isInitial,
-                      maxTokens: 12e3,
-                      signal: abortSignal,
-                      providerStalled: true,
-                      meta: {
-                        phase: phaseTag.phase,
-                        promptChars: lastUserContent.length,
-                        hadAttachments: hasVisionTurn,
-                        chosenBy: "missing_pages_provider_retry",
-                        projectId: body.projectId ?? null,
-                        userId,
-                        turnId: logicalTurnId,
-                        fallbackNumber: 1,
-                        fallbackFromUpstream: c.upstream ?? null,
-                        recoveryReason: "provider_error"
-                      }
-                    });
-                    if (!again.ok || !again.body) {
-                      pageProviderFailures.push({ path: wantPath ?? "?", status: again.status });
-                      controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} again (HTTP ${again.status})`, ts: Date.now() })));
-                      return null;
-                    }
-                    c = await relayAndCollect(again, controller, encoder);
-                  }
-                  if (c.usage) pageWriteUsages.push(c.usage);
-                  try {
-                    const { parseRawFile: parseRawFile2, parseRawFiles: parseRawFiles2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
-                    if (decomposedAsk) {
-                      const many = parseRawFiles2(c.text);
-                      for (const f of many) {
-                        controller.enqueue(encoder.encode(sse({ type: "file_complete", path: f.path, bytes: f.content.length, index: 1, content: f.content })));
-                      }
-                      if (wantPath && many.some((f) => f.path === wantPath)) {
-                        pagesWritten += 1;
-                        turnStrategy.decomposedPages.push(wantPath);
-                        const pageName = wantPath.split("/").pop().replace(/\.[jt]sx?$/, "");
-                        controller.enqueue(encoder.encode(sse({ type: "narration", path: wantPath, text: `Finished the ${pageName} page (${many.length - 1} sections).` })));
-                      }
-                      console.log(`[write] decomposed want=${wantPath ?? "?"} parsed=${many.map((f) => f.path).join(",")}`);
-                      return many.length ? many : null;
-                    }
-                    const content = wantPath ? parseRawFile2(c.text) : null;
-                    const got = wantPath && content ? [{ path: wantPath, content }] : null;
-                    if (got) {
-                      controller.enqueue(encoder.encode(sse({ type: "file_complete", path: wantPath, bytes: content.length, index: 1, content })));
-                      pagesWritten += 1;
-                      const pageName = wantPath.split("/").pop().replace(/\.[jt]sx?$/, "");
-                      controller.enqueue(encoder.encode(sse({ type: "file_progress", written: (parsed.files?.length ?? 0) + pagesWritten, latestPath: wantPath })));
-                      controller.enqueue(encoder.encode(sse({ type: "narration", path: wantPath, text: `Finished the ${pageName} page.` })));
-                    }
-                    console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} textChars=${c.text.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
-                    return got;
-                  } catch {
-                    return null;
-                  }
-                });
-                const kept = (framed.value ?? []).map((f) => f.path).filter((p2) => instruction.startsWith(DECOMPOSED_MARKER2) || !wantOf(instruction) || p2 === wantOf(instruction));
-                void attachFiles2(framed.callIds, kept);
-                return framed.value;
+              isProtected: (p2) => executionScope.isProtected(p2),
+              signal: abortSignal,
+              onTrace: (t) => {
+                loopTraces.push(t);
+                console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} tools=${t.toolCalls.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "agent_tool", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
+              },
+              onEvent: (e) => {
+                if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               }
             });
-            console.log(
-              `[write] pages=${JSON.stringify(pages.map((p2) => p2.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`
-            );
+            turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
+            console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
-            if (done.missing.length) {
-              const { stripRoutesFromRouter: stripRoutesFromRouter2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
-              const core = new Set((intentContract?.pages ?? []).map((pg) => pg.route));
-              const named = new Set(requestedRoutesFor(lastUserText, []));
-              const optional = pages.filter((pg) => done.missing.includes(pg.file) || done.missing.includes(pg.route)).filter((pg) => pg.route !== "/" && !core.has(pg.route) && !named.has(pg.route));
-              const app = parsed.files.find((f) => f.path === "src/App.tsx");
-              const cleaned = app && optional.length ? stripRoutesFromRouter2(app.content, optional.map((pg) => pg.file)) : null;
-              if (app && cleaned !== null) {
-                app.content = cleaned;
-                turnStrategy.droppedOptionalPages = optional.map((pg) => pg.route);
-                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "fixed", message: `Left out unfinished optional pages: ${optional.map((pg) => pg.route).join(", ")}`, ts: Date.now() })));
-              }
-            }
-            if (done.missing.length) {
-              turnStrategy.missingPages = { missing: done.missing, providerFailures: pageProviderFailures };
-              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Pages not written: ${done.missing.join(", ")}${pageProviderFailures.length ? ` (provider failures: ${pageProviderFailures.map((f) => `${f.path} HTTP ${f.status}`).join(", ")})` : ""}`, ts: Date.now() })));
+            if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
+            if (done.incomplete.length) {
+              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Still incomplete: ${done.incomplete.slice(0, 5).join("; ")}`, ts: Date.now() })));
             }
           }
           if (chunkAssessment.needed && !isInitial) {
@@ -177860,6 +178277,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             }
           }
         } catch (chunkErr) {
+          if (isInitial || abortSignal.aborted) throw chunkErr;
           console.warn(
             "[chunked-generation] skipped:",
             chunkErr instanceof Error ? chunkErr.message : String(chunkErr)
@@ -180604,8 +181022,8 @@ function createGatewayDb(send) {
   const base = createAgentDbClient(sendQuery);
   return {
     ...base,
-    rpc: async (fn, args = {}) => {
-      const r = await one(send, { op: "db.rpc", fn, args });
+    rpc: async (fn2, args = {}) => {
+      const r = await one(send, { op: "db.rpc", fn: fn2, args });
       return r.ok ? { data: r.data ?? null, error: null } : { data: null, error: { message: r.error } };
     }
   };

@@ -9,6 +9,6 @@
 
 ## Webby-style engine (approved)
 - [x] Stage A: tool-calling loop (read/list/search/create/edit/plan/finish), per-write validation, periodic typecheck, state-based finish, circuit breaker, tests
-- [ ] Stage B: wire first builds + edits to the loop; delete planFirstBuild shell scheduling, rawPageCompletion, runChunkedGeneration, swallowed catch
+- [x] Stage B (first builds; edits still on patch path): wire first builds + edits to the loop; delete planFirstBuild shell scheduling, rawPageCompletion, runChunkedGeneration, swallowed catch
 - [ ] Stage C: compaction at 70%, per-call tracing (TTFT, tokens, tool/validation time) into turn_events/turn_economics
 - [ ] Stage D: live benchmarks A-D, then hospital (E) only after A-D pass
