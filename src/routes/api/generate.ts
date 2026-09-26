@@ -6178,9 +6178,13 @@ async function handleGenerateRequestCore(
         // Phase 1 — a long file is only thrown away when it's genuinely
         // unfinished. Complete work reaches the user, however large it is.
         const contentByPathBudget = new Map(nextFiles.map((f) => [f.path, f.content]));
-        const budgetRejections: FileBudgetIssue[] = budgetVerdict.rejections.filter((r) =>
-          looksIncomplete(contentByPathBudget.get(r.path) ?? ""),
-        );
+        // Size is NEVER a correctness rule. Whether a file is unfinished is
+        // decided by the parser/verifier at any size; size only signals that
+        // the next write of this page should be decomposed.
+        void contentByPathBudget;
+        void looksIncomplete;
+        void enforceFileBudgets;
+        const budgetRejections: FileBudgetIssue[] = [];
         const budgetDowngraded = budgetVerdict.rejections.filter(
           (r) => !budgetRejections.includes(r),
         );
