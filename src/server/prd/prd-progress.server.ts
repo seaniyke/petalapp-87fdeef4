@@ -85,6 +85,8 @@ export async function recordRequirementEvidence(args: {
   requirements?: PrdRequirement[];
   files?: Array<{ path: string; content: string }>;
   projectRevision?: number;
+  /** The committed turn, so blocked parts of it keep requirements open. */
+  turn?: RequirementEvidence["turn"];
 }): Promise<PrdRequirement[] | null> {
   try {
     const db = supabaseAdmin as any;
@@ -123,7 +125,7 @@ export async function recordRequirementEvidence(args: {
     const { data: secrets } = await db.from("project_secrets").select("name").eq("project_id", args.projectId);
     const configured = integrationsFromSecretNames(((secrets ?? []) as Array<{ name: string }>).map((s) => s.name));
 
-    const next = evaluateRequirements(reqs, evidenceFromFiles(files, revision, build, configured));
+    const next = evaluateRequirements(reqs, { ...evidenceFromFiles(files, revision, build, configured), ...(args.turn ? { turn: args.turn } : {}) });
     if (!versioned?.prd) return next;
     const unchanged = versioned.prd.requirements && next.every((r, i) => r === versioned.prd.requirements[i]) && next.length === versioned.prd.requirements.length;
     if (unchanged) return next;

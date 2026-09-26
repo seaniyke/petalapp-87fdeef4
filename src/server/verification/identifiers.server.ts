@@ -18,12 +18,29 @@
  * is owned by other gates and is filtered out here.
  *
  * Contract:
- *   - Never throws. Any compiler failure returns no issues (fail-open);
- *     esbuild remains the authoritative parse gate.
+ *   - Never throws. Returns an explicit status:
+ *       verified    — checker ran, no undeclared names in changed files
+ *       failed      — checker ran and proved an undeclared name
+ *       unavailable — checker could not run / timed out; NEVER "verified".
+ *     Callers apply the existing syntax-gate policy to "unavailable".
+ *   - Checks the PROPOSED tree (untouched files + this turn's changes),
+ *     never the persisted snapshot; diagnostics only for changed files.
  *   - Only reports on files the turn actually changed.
  *   - No network, no filesystem, no AI.
  */
 import ts from "typescript";
+
+export type IdentifierCheckStatus = "verified" | "failed" | "unavailable";
+
+export interface IdentifierCheckResult {
+  status: IdentifierCheckStatus;
+  issues: IdentifierIssue[];
+  /** Why the checker could not reach a verdict (status "unavailable"). */
+  reason?: string;
+}
+
+/** Past this, a slow compile is reported unavailable rather than trusted. */
+export const IDENTIFIER_CHECK_BUDGET_MS = 8_000;
 
 export interface IdentifierIssue {
   path: string;
@@ -178,16 +195,18 @@ const AMBIENT_PATH = "/petal-ambient-globals.d.ts";
 
 /**
  * Check the changed files of a proposed tree for identifiers the real
- * TypeScript checker cannot resolve to any declaration. Returns one issue
- * per unresolved name (deduped per name+file), or [] when clean / unable
- * to run.
+ * TypeScript checker cannot resolve to any declaration.
  */
 export function checkUndefinedIdentifiers(
   tree: Array<{ path: string; content: string }>,
   changedPaths: string[],
-): IdentifierIssue[] {
+  opts: { budgetMs?: number; now?: () => number } = {},
+): IdentifierCheckResult {
   const targets = changedPaths.filter((p) => PARSEABLE.test(p));
-  if (targets.length === 0) return [];
+  if (targets.length === 0) return { status: "verified", issues: [] };
+  const now = opts.now ?? (() => Date.now());
+  const started = now();
+  const budget = opts.budgetMs ?? IDENTIFIER_CHECK_BUDGET_MS;
   try {
     const files = new Map(tree.map((f) => [`/${f.path}`, f.content]));
     const options: ts.CompilerOptions = {
@@ -224,7 +243,17 @@ export function checkUndefinedIdentifiers(
     const wanted = new Set(targets.map((p) => `/${p}`));
     const seen = new Set<string>();
     const issues: IdentifierIssue[] = [];
-    for (const d of program.getSemanticDiagnostics()) {
+    const diagnostics: ts.Diagnostic[] = [];
+    // Scoped: semantic diagnostics only for the changed files. The program
+    // still holds the whole proposed tree so imports between changed and
+    // untouched files resolve against the bytes that would be committed.
+    for (const path of wanted) {
+      const sf = program.getSourceFile(path);
+      if (!sf) return { status: "unavailable", issues: [], reason: `changed file ${path.slice(1)} missing from the proposed tree` };
+      diagnostics.push(...program.getSemanticDiagnostics(sf));
+      if (now() - started > budget) return { status: "unavailable", issues: [], reason: `semantic check exceeded ${budget}ms` };
+    }
+    for (const d of diagnostics) {
       if (d.code !== CANNOT_FIND_NAME) continue;
       const file = d.file?.fileName;
       if (!file || !wanted.has(file)) continue;
@@ -235,13 +264,10 @@ export function checkUndefinedIdentifiers(
       const { line } = d.file!.getLineAndCharacterOfPosition(d.start ?? 0);
       issues.push({ path: file.slice(1), line: line + 1, message });
     }
-    return issues;
+    return { status: issues.length ? "failed" : "verified", issues };
   } catch (e) {
-    // Fail-open: the compiler itself failing must never block a commit.
-    console.warn(
-      "[identifier-gate] skipped:",
-      e instanceof Error ? e.message : String(e),
-    );
-    return [];
+    const reason = `semantic checker could not run: ${e instanceof Error ? e.message : String(e)}`;
+    console.warn("[identifier-gate] unavailable:", reason);
+    return { status: "unavailable", issues: [], reason };
   }
 }

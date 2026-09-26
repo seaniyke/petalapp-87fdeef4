@@ -44,6 +44,13 @@ export interface PrdRequirement {
   integration?: "stripe" | "email" | null;
   /** Short action phrase used for continuation suggestions. */
   nextAction: string;
+  /**
+   * Files a turn for this requirement tried to change but was blocked from
+   * changing (critic/commit rejection, unapplied claims). While non-empty the
+   * requirement can never be COMPLETED; cleared when a later committed turn
+   * actually changes those paths.
+   */
+  pendingPaths?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -270,6 +277,8 @@ export interface RequirementEvidence {
   } | null;
   /** Integrations with real account credentials configured. */
   configuredIntegrations: string[];
+  /** The committed turn this evaluation follows, when there is one. */
+  turn?: { brief: string; changedPaths: string[]; blockedPaths: string[] };
 }
 
 export function hashContent(s: string): string {
@@ -320,18 +329,46 @@ export function evaluateRequirements(
     ev.build.revision !== null &&
     ev.build.revision === ev.projectRevision;
 
+  const targeted = ev.turn && ev.turn.blockedPaths.length
+    ? new Set(requirementsTargetedBy(reqs, ev.turn.brief).map((r) => r.id))
+    : new Set<string>();
   const next = reqs.map((r) => {
-    const out = evaluateOne(r);
+    const out = withPending(r, evaluateOne(r));
     // Idempotent: an unchanged result keeps the original object (and its
     // updatedAt), so re-running reconciliation on unchanged state is a no-op.
     return out.status === r.status &&
       out.evidence.join("|") === r.evidence.join("|") &&
       (out.evidenceFingerprint ?? null) === (r.evidenceFingerprint ?? null) &&
-      out.lastVerifiedRevision === r.lastVerifiedRevision
+      out.lastVerifiedRevision === r.lastVerifiedRevision &&
+      (out.pendingPaths ?? []).join("|") === (r.pendingPaths ?? []).join("|")
       ? r
       : out;
   });
   return next;
+
+  /** Blocked parts of a requested change keep the requirement open. */
+  function withPending(orig: PrdRequirement, out: PrdRequirement): PrdRequirement {
+    const changed = new Set(ev.turn?.changedPaths ?? []);
+    const pending = new Set((orig.pendingPaths ?? []).filter((p) => !changed.has(p)));
+    if (targeted.has(orig.id)) for (const p of ev.turn!.blockedPaths) pending.add(p);
+    const list = [...pending].sort();
+    if (!list.length) {
+      if (!orig.pendingPaths?.length) return out;
+      const { pendingPaths: _drop, ...rest } = out;
+      return rest;
+    }
+    if (out.status === "REJECTED" || out.status === "SUPERSEDED" || out.status === "BLOCKED") return { ...out, pendingPaths: list };
+    const owed = `Still owed: ${list.join(", ")} (change was not applied)`;
+    const evidence = [...out.evidence.filter((e) => !e.startsWith("Still owed:")), owed];
+    return {
+      ...out,
+      status: out.status === "NOT_STARTED" ? "NOT_STARTED" : "IN_PROGRESS",
+      evidence,
+      pendingPaths: list,
+      ...(out.status === "COMPLETED" ? { lastVerifiedRevision: orig.lastVerifiedRevision, evidenceFingerprint: null } : {}),
+      updatedAt: out === orig ? orig.updatedAt : now,
+    };
+  }
 
   function evaluateOne(r: PrdRequirement): PrdRequirement {
     if (r.status === "REJECTED" || r.status === "SUPERSEDED") return r;
