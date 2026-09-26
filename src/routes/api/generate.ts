@@ -5094,7 +5094,6 @@ async function handleGenerateRequestCore(
                       `constraint, return an empty ops array — do not invent a workaround that breaks the app.`,
                   },
                 ],
-                isInitial: false,
                 problem: `op_repair:${args.problem.slice(0, 80)}`,
                 hasBackend: Boolean(backend),
                 tool: PATCH_FILES_TOOL,
@@ -5521,7 +5520,6 @@ async function handleGenerateRequestCore(
                 ];
                 const rewrite = await structuredRetryCompletion({
                   messages: rewriteMessages,
-                  isInitial: false,
                   problem: `single_file_rewrite:${failure.error.slice(0, 80)}`,
                   hasBackend: Boolean(backend),
                   tool: PATCH_FILES_TOOL,
