@@ -7068,20 +7068,20 @@ async function handleGenerateRequestCore(
         // sub-caption back to the success line instead of leaving the last
         // verifier message on screen.
         controller.enqueue(
-          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" })),
+          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: txCommitted ? "clean" : "failed" })),
         );
 
         // v3 Phase F — write-gate disclosure. A refused write is the one
         // failure the user MUST hear about: their app is intact, but the part
         // they asked for isn't there. Silence here reads as a silent no-op.
-        if (writeGateRejections.length > 0) {
+        if (txCommitted && writeGateRejections.length > 0) {
           const note = writeGateDisclosure(writeGateRejections);
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
 
         // Critic gate disclosure: name every op that was refused before apply.
-        if (criticRejections.length > 0) {
+        if (txCommitted && criticRejections.length > 0) {
           const note = criticDisclosure(criticRejections);
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
@@ -7090,7 +7090,7 @@ async function handleGenerateRequestCore(
         // Honesty gate: if the model claimed edits to files that never
         // actually changed, say so instead of letting its "done!" summary
         // ship unchallenged.
-        if (unappliedPaths.length > 0) {
+        if (txCommitted && unappliedPaths.length > 0) {
           const list = unappliedPaths.slice(0, 5).join(", ");
           const more = unappliedPaths.length > 5 ? ` (+${unappliedPaths.length - 5} more)` : "";
           const note =
@@ -7102,7 +7102,7 @@ async function handleGenerateRequestCore(
           console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
         }
 
-        if (unlandedOps > 0 && unappliedPaths.length === 0) {
+        if (txCommitted && unlandedOps > 0 && unappliedPaths.length === 0) {
           const note =
             `\n\nHeads up — ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of what you asked didn't land on this pass. ` +
             `Send it again and I'll finish just that part.`;
@@ -7123,7 +7123,7 @@ async function handleGenerateRequestCore(
             editClassification?.scope,
           );
 
-          if (scope.flagged) {
+          if (txCommitted && scope.flagged) {
             const note = scopeDisclosure(scope);
             summary = `${summary}${note}`;
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
