@@ -8,7 +8,7 @@
  * it really exports. Every result still passes the normal source/build gates.
  */
 import type { ProjectFile } from "@/server/generate.server";
-import { importsOf, resolveSpecifier } from "@/server/engine/structural-deps";
+import { resolveSpecifier } from "@/server/engine/structural-deps";
 
 interface Primitive {
   /** Canonical path (without extension variants). */
@@ -85,8 +85,6 @@ export function recoverMissingPrimitives(files: ProjectFile[]): PrimitiveRecover
   const unresolved = new Set<string>();
   for (const f of files) {
     if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
-    const resolvedCount = importsOf(f, paths).length; // warm check, cheap
-    void resolvedCount;
     NAMED_IMPORT.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = NAMED_IMPORT.exec(f.content))) {

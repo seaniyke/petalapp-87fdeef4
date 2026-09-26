@@ -36,6 +36,6 @@ export function deriveActivityState(
   if (isTerminal(lifecycle as Lifecycle)) {
     return { active: false, complete: completeHint && !SUCCESS_BLOCKERS.has(lifecycle) };
   }
-  // Non-terminal authoritative lifecycle (running/generated/building) is active by itself.
-  return { active: true, complete: false };
+  // Non-terminal: the client's observation decides, as before; success can't show yet.
+  return { active: local, complete: false };
 }
