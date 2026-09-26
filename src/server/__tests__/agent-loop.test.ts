@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runAgentLoop, reconcileRequirements, routerPages, pageKey } from "@/server/engine/agent-loop";
+import { runExecutionLoop, reconcileRequirements, routerPages, pageKey } from "@/server/engine/agent-loop";
 import { targetOf } from "@/server/engine/write";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 
@@ -33,7 +33,7 @@ describe("agent loop", () => {
     const seed = [{ route: "/", file: "src/pages/Home.tsx" }, { route: "/patients", file: "src/pages/Patients.tsx" }];
     expect(reconcileRequirements(seed, files).map((p) => p.file).sort()).toEqual(["src/pages/Dashboard.tsx", "src/pages/Patients.tsx"]);
     const w = writer();
-    const r = await runAgentLoop({ pages: seed, files, budget: new RecoveryBudget(), request: w.request });
+    const r = await runExecutionLoop({ pages: seed, files, budget: new RecoveryBudget(), request: w.request });
     expect(w.seen.filter((s) => /Dashboard|Home/.test(s))).toEqual(["src/pages/Dashboard.tsx"]);
     expect(r.missing).toEqual([]);
   });
@@ -41,7 +41,7 @@ describe("agent loop", () => {
   it("dependencies are discovered from the live router, not a precomputed list", async () => {
     const files = [app([["/", "Home"], ["/wards", "Wards"], ["/billing", "Billing"]])];
     const w = writer();
-    const r = await runAgentLoop({ pages: [{ route: "/", file: "src/pages/Home.tsx" }], files, budget: new RecoveryBudget(), request: w.request });
+    const r = await runExecutionLoop({ pages: [{ route: "/", file: "src/pages/Home.tsx" }], files, budget: new RecoveryBudget(), request: w.request });
     expect(w.seen.sort()).toEqual(["src/pages/Billing.tsx", "src/pages/Home.tsx", "src/pages/Wards.tsx"]);
     expect(r.state.completed).toEqual(expect.arrayContaining([pageKey("/wards"), pageKey("/billing")]));
   });
@@ -49,7 +49,7 @@ describe("agent loop", () => {
   it("foundation runs before any page and exactly once", async () => {
     const order: string[] = [];
     const files = [app([["/", "Home"]])];
-    await runAgentLoop({
+    await runExecutionLoop({
       pages: [{ route: "/", file: "src/pages/Home.tsx" }], files, budget: new RecoveryBudget(),
       request: async (i) => { order.push(targetOf(i)!); return [{ path: targetOf(i)!, content: page("Home") }]; },
       createFoundation: async (f) => { order.push("foundation"); return { files: f, created: [] }; },
@@ -60,14 +60,14 @@ describe("agent loop", () => {
   it("completed files are never regenerated", async () => {
     const files = [app([["/", "Home"], ["/a", "A"]]), { path: "src/pages/Home.tsx", content: page("Home") }];
     const w = writer();
-    await runAgentLoop({ pages: [], files, budget: new RecoveryBudget(), request: w.request });
+    await runExecutionLoop({ pages: [], files, budget: new RecoveryBudget(), request: w.request });
     expect(w.seen).toEqual(["src/pages/A.tsx"]);
   });
 
   it("checkpoint is awaited before the next operation starts", async () => {
     const events: string[] = [];
     const files = [app([["/", "Home"]])];
-    await runAgentLoop({
+    await runExecutionLoop({
       pages: [{ route: "/", file: "src/pages/Home.tsx" }], files, budget: new RecoveryBudget(),
       request: async (i) => { events.push("write"); return [{ path: targetOf(i)!, content: page("Home") }]; },
       onFilesDone: async () => { await new Promise((r) => setTimeout(r, 5)); events.push("saved"); return true; },

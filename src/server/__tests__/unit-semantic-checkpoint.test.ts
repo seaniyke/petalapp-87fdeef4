@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { undefinedNames, safeReactImportRepair } from "@/server/engine/work-unit";
 import { checkUndefinedIdentifiers } from "@/server/verification/identifiers.server";
-import { runAgentLoop as writePlannedPages } from "@/server/engine/agent-loop";
+import { runExecutionLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { retirementFor, checkpointUsable, checkpointSeedFiles } from "@/server/build-checkpoint.server";
 
-const frame = { path: "src/App.tsx", content: 'import P from "@/pages/Prescriptions";\n<Routes><Route/></Routes> nav footer' };
+const frame = { path: "src/App.tsx", content: '<Routes><Route/></Routes> nav footer' };
 const reactBug = 'export default function P(){ const [a] = React.useState(1); return <div>{a}</div> }';
 
 describe("per-unit used-but-undefined check", () => {

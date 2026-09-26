@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { exportSignature, validateUnitImports, stitchContinuation, planWorkUnits, signatureContext } from "@/server/engine/work-unit";
 import { withProviderRetry, classifyProviderStatus } from "@/server/engine/provider-retry";
-import { runAgentLoop as writePlannedPages } from "@/server/engine/agent-loop";
+import { runExecutionLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 
 const container = { path: "src/components/layout/Container.tsx", content: "export function Container({children}:{children:any}){return <div>{children}</div>}\nexport type Size='sm';" };

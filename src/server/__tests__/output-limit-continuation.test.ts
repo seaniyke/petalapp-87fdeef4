@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { extractRequestedPages, pageNameToRoute } from "@/server/requested-scope";
 import { planFirstBuild, type PlannedPage } from "@/server/engine/plan";
 import { targetOf } from "@/server/engine/write";
-import { runAgentLoop as writePlannedPages, reconcileRequirements } from "@/server/engine/agent-loop";
+import { runExecutionLoop as writePlannedPages, reconcileRequirements } from "@/server/engine/agent-loop";
 import { assessCompleteness } from "@/server/engine/build-state";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { AgentCircuitBreaker } from "@/server/execution/circuit-breaker";

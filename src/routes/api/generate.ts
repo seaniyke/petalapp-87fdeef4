@@ -4705,7 +4705,7 @@ async function handleGenerateRequestCore(
           // shell; every planned page is now written by its own call.
           if (isInitial && parsed.files?.length) {
             const { targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
-            const { runAgentLoop } = await import("@/server/engine/agent-loop");
+            const { runExecutionLoop } = await import("@/server/engine/agent-loop");
             const { pageFileFor } = await import("@/server/engine/plan");
             const checkpointApi = await import("@/server/build-checkpoint.server");
             // Snapshot of the shell answer exactly as parsed, taken before any
@@ -4766,7 +4766,7 @@ async function handleGenerateRequestCore(
             const { assessPageComplexity } = await import("@/server/execution/complexity");
             const pageProviderFailures: Array<{ path: string; status: number }> = [];
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await import("@/server/verification/identifiers.server");
-            const done = await runAgentLoop({
+            const done = await runExecutionLoop({
               goal: lastUserText,
               pages,
               decide: (p, truncatedBefore) =>

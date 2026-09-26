@@ -193,7 +193,7 @@ export interface LoopArgs {
   isTruncated?: (file: ProjectFile) => Promise<boolean>;
   decide?: (page: PlannedPage, truncatedBefore: boolean) => PageDecision;
   /** Durable checkpoint. Awaited before dependent work continues. */
-  onFilesDone?: (files: ProjectFile[]) => void | boolean | Promise<void | boolean>;
+  onFilesDone?: (files: ProjectFile[]) => unknown;
   createFoundation?: (files: ProjectFile[]) => Promise<{ files: ProjectFile[]; created: string[] }>;
   onUnit?: (record: UnitRecord) => void;
   checkIdentifiers?: (tree: ProjectFile[], changed: string[]) => { status: string; issues: Array<{ path: string; line: number; message: string }> };
@@ -203,7 +203,7 @@ export interface LoopArgs {
 /** Max attempts for any page op: first try + one budgeted re-plan. */
 const MAX_PAGE_ATTEMPTS = 2;
 
-export async function runAgentLoop(args: LoopArgs): Promise<LoopResult> {
+export async function runExecutionLoop(args: LoopArgs): Promise<LoopResult> {
   const state = createExecutionState(args.goal ?? "build", args.pages, args.files);
   const written: string[] = [];
   const truncated: string[] = [];
@@ -399,7 +399,22 @@ export async function runAgentLoop(args: LoopArgs): Promise<LoopResult> {
     const paths = state.files.map((f) => f.path);
     const contract = [projectContract(state.files), signatureContext(state.files)].filter(Boolean).join("\n");
     const shared = sharedFiles(state.files, state.requirements);
-    const results = await mapBounded(next.ops, PAGE_CONCURRENCY, async (op) => {
+    await mapBounded(next.ops, PAGE_CONCURRENCY, async (op) => {
+      // RECORD: each op lands through the single staged writer and is
+      // durably checkpointed before this worker picks up more work.
+      const got = await run(op);
+      const before = new Set(written);
+      apply(got);
+      await checkpoint(got.filter((f) => (written.includes(f.path) && !before.has(f.path)) || f.path === "src/App.tsx"));
+    });
+    for (const op of next.ops) {
+      const ok = op.kind === "router" ? frameIsComplete(state.files, state.requirements.length) : hasRealFile(state.files, op.target);
+      if (ok) markDone(op); else op.status = op.kind === "page" ? "pending" : "failed";
+    }
+    state.current = [];
+    continue;
+
+    async function run(op: Operation): Promise<ProjectFile[]> {
       if (op.kind === "router") {
         return execute(op, routerInstruction(state.requirements, paths, contract), 2);
       }
@@ -415,16 +430,7 @@ export async function runAgentLoop(args: LoopArgs): Promise<LoopResult> {
         return execute(op, decomposedPageInstruction(page, d, paths, contract, shared), 1);
       }
       return execute(op, pageInstruction(page, paths, contract, shared), 1);
-    });
-    // RECORD: apply through the single staged writer, then checkpoint durably.
-    const landed: ProjectFile[] = [];
-    results.forEach((got) => { const before = new Set(written); apply(got); landed.push(...got.filter((f) => written.includes(f.path) && !before.has(f.path) || f.path === "src/App.tsx")); });
-    await checkpoint(landed);
-    for (const op of next.ops) {
-      const ok = op.kind === "router" ? frameIsComplete(state.files, state.requirements.length) : hasRealFile(state.files, op.target);
-      if (ok) markDone(op); else op.status = op.kind === "page" ? "pending" : "failed";
     }
-    state.current = [];
   }
 
   const decomposed: LoopResult["decomposed"] = [];
