@@ -19,7 +19,11 @@ describe("first build enters the tool loop directly", () => {
   it("B: no fallback route back to the old generator after a loop failure", () => {
     // Chunked generation and the small-chunk / deterministic fallbacks are edit-only.
     expect(gen).toMatch(/if \(chunkAssessment\.needed && !isInitial\)/);
-    expect(gen).toMatch(/if \(!isInitial && firstWasTruncated && recovery\.take\("truncated_output"\)\)/);
+    // Recovery helpers are edit-only: no whole-project mode survives.
+    expect(gen).toMatch(/function parseCollectedProject\(collected: ParsedTool\): ParsedProjectPayload/);
+    expect(gen).not.toMatch(/isInitial \? "stream_first_build"/);
+    expect(gen).not.toMatch(/initial_generation_no_files/);
+    expect(gen).not.toMatch(/structuredRetryCompletion\(\{[^}]*isInitial/);
     // A loop failure is rethrown for first builds, never swallowed into another path.
     expect(gen).toMatch(/if \(isInitial \|\| abortSignal\.aborted\) throw chunkErr;/);
   });

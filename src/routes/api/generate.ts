@@ -1237,7 +1237,6 @@ function isMissingToolOutputError(error: unknown): boolean {
 
 async function structuredRetryCompletion(args: {
   messages: Array<{ role: string; content: unknown }>;
-  isInitial: boolean;
   problem: string;
   hasBackend: boolean;
   tool: typeof WRITE_PROJECT_TOOL | typeof PATCH_FILES_TOOL;
@@ -1264,7 +1263,6 @@ async function structuredRetryCompletion(args: {
     messages: args.providerStalled
       ? args.messages
       : addStructuredRetryInstruction(args.messages, {
-          isInitial: args.isInitial,
           problem: args.problem,
           hasBackend: args.hasBackend,
           crossCuttingIntent: args.crossCuttingIntent,
@@ -1277,11 +1275,10 @@ async function structuredRetryCompletion(args: {
     stream: true,
   };
 
-  const timeoutTier = args.isInitial ? "stream_first_build" : "stream";
   const primary = await aiChatCompletions({
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
-    timeoutTier,
+    timeoutTier: "stream",
     // No providerOverride: follow the resolved provider (DB → env → OpenRouter
     // when its key is set). Pinning "lovable" here meant a funded OpenRouter
     // account was never used and every turn died on the Lovable gateway's 402.
@@ -1297,7 +1294,6 @@ async function structuredRetryCompletion(args: {
 async function recoverMissingToolOutput(args: {
   chatMessages: Array<{ role: string; content: unknown }>;
   collected: ParsedTool;
-  isInitial: boolean;
   tool: typeof WRITE_PROJECT_TOOL | typeof PATCH_FILES_TOOL;
   model: string;
   phaseTag: { phase: Phase };
@@ -1317,7 +1313,7 @@ async function recoverMissingToolOutput(args: {
   args.controller.enqueue(
     args.encoder.encode(sse({ type: "status", message: "Converting the draft into safe edits…" })),
   );
-  const requiredTool = args.isInitial ? "write_project" : "patch_files";
+  const requiredTool = "patch_files";
   const recoveryMessages = [
     ...args.chatMessages,
     {
@@ -1333,11 +1329,10 @@ async function recoverMissingToolOutput(args: {
   ];
   const recovery = await structuredRetryCompletion({
     messages: recoveryMessages,
-    isInitial: args.isInitial,
     problem: "previous response contained prose instead of the required tool call",
     hasBackend: Boolean(args.backend),
     tool: args.tool,
-    maxTokens: args.isInitial ? 22_000 : 10_000,
+    maxTokens: 10_000,
     crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
     meta: {
@@ -1352,7 +1347,7 @@ async function recoverMissingToolOutput(args: {
   if (!recovery.ok || !recovery.body) return null;
 
   const recoveredCollected = await relayAndCollect(recovery, args.controller, args.encoder);
-  const parsed = parseCollectedProject(recoveredCollected, args.isInitial);
+  const parsed = parseCollectedProject(recoveredCollected);
   return { ...parsed, collected: recoveredCollected, usedRecovery: true };
 }
 
@@ -1540,19 +1535,13 @@ function validateTargetShape(
 }
 
 
-function parseCollectedProject(collected: ParsedTool, isInitial: boolean): ParsedProjectPayload {
+/** Edit turns only — first builds never produce a collected reply (tool loop). */
+function parseCollectedProject(collected: ParsedTool): ParsedProjectPayload {
   if (!collected.name || !collected.args) {
-    throw new Error(
-      isInitial
-        ? "AI did not return a project. Try rephrasing."
-        : "AI did not return usable edits for this request.",
-    );
+    throw new Error("AI did not return usable edits for this request.");
   }
-  if (collected.name === "write_project" && !isInitial) {
+  if (collected.name === "write_project") {
     throw new Error("AI tried to rewrite the whole project. Edits must be incremental patches.");
-  }
-  if (collected.name === "patch_files" && isInitial) {
-    throw new Error("AI tried to patch an empty project. Initial generation must create files.");
   }
 
   let parsed: ParsedProjectPayload["parsed"];
@@ -1567,7 +1556,7 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
     const salvaged = salvagePartialToolArgs(collected.args, collected.name);
     if (salvaged) {
       console.warn(
-        `[generate] salvaged ${salvaged.recovered} ${collected.name === "write_project" ? "file(s)" : "op(s)"} from a ${salvaged.truncated ? "truncated" : "malformed"} tool payload`,
+        `[generate] salvaged ${salvaged.recovered} op(s) from a ${salvaged.truncated ? "truncated" : "malformed"} tool payload`,
       );
       parsed = salvaged.parsed as ParsedProjectPayload["parsed"];
     } else {
@@ -1576,9 +1565,7 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
       throw new Error(
         looksCutOff
           ? "AI response was cut off before the project JSON finished. Retrying with smaller files."
-          : isInitial
-            ? "AI returned invalid project data."
-            : "AI returned invalid edit data.",
+          : "AI returned invalid edit data.",
       );
     }
   }
@@ -1619,9 +1606,6 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
     }
   }
 
-  if (collected.name === "write_project" && !parsed.files?.length) {
-    throw new Error("AI returned no files.");
-  }
   if (collected.name === "patch_files" && (!Array.isArray(parsed.ops) || parsed.ops.length === 0)) {
     throw new Error("AI returned no ops.");
   }
@@ -1656,9 +1640,9 @@ function parseCollectedProject(collected: ParsedTool, isInitial: boolean): Parse
 
 function addStructuredRetryInstruction<T extends Array<{ role: string; content: unknown }>>(
   messages: T,
-  args: { isInitial: boolean; problem: string; hasBackend?: boolean; crossCuttingIntent?: boolean },
+  args: { problem: string; hasBackend?: boolean; crossCuttingIntent?: boolean },
 ): T {
-  const requiredTool = args.isInitial ? "write_project" : "patch_files";
+  const requiredTool = "patch_files";
   const backendHint =
     args.hasBackend === false
       ? ` This project has no backend connected. Do not import from "@/integrations/backend/*" or "@supabase/supabase-js" and do not add real auth or persistence wiring. Still complete the requested frontend with realistic inline data. Marketing navigation labels such as "Log in" and "Sign up" are valid presentation UI and must not block the build. Do not mention backend setup unless the user's latest request explicitly asks for working accounts, authentication, or persistent data.`
@@ -1671,7 +1655,7 @@ function addStructuredRetryInstruction<T extends Array<{ role: string; content: 
   const scopeHint = args.crossCuttingIntent
     ? " This is a broad redesign/cross-page edit with enough scope already; DO NOT ask for a smaller target. Emit real file edits that satisfy the whole requested surface."
     : "";
-  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field.${scopeHint} For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
+  const retryBlock = `\n\nSTRUCTURED RETRY — your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field.${scopeHint} For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components.${backendHint}`;
   return messages.map((m, i) =>
     i === 0 && typeof m.content === "string" ? { ...m, content: `${m.content}${retryBlock}` } : m,
   ) as T;
@@ -4040,7 +4024,7 @@ async function handleGenerateRequestCore(
     },
     // First-build scaffolds emit many files in one stream — give them the
     // 240s ceiling instead of the default 120s. Patches keep the default.
-    timeoutTier: isInitial ? "stream_first_build" : "stream",
+    timeoutTier: "stream",
     // Propagate client-cancel: if the user closes the tab / hits Stop, the
     // SSE Response is aborted and we want the upstream provider call to
     // stop too — otherwise it runs (and bills) until the wall-clock cap.
@@ -4196,7 +4180,7 @@ async function handleGenerateRequestCore(
                 stream: true,
                 ...reasoningField,
               },
-              timeoutTier: isInitial ? "stream_first_build" : "stream",
+              timeoutTier: "stream",
               signal: abortSignal,
               meta: {
                 phase: phaseTag.phase,
@@ -4212,7 +4196,7 @@ async function handleGenerateRequestCore(
             return relayAndCollect(retryUpstream, controller, encoder);
           };
 
-          if (refusal.kind === "context_overflow" && !isInitial) {
+          if (refusal.kind === "context_overflow") {
             controller.enqueue(
               encoder.encode(sse({ type: "status", message: "Narrowing in on the files that matter…" })),
             );
@@ -4311,7 +4295,7 @@ async function handleGenerateRequestCore(
           }
           payload = isInitial
             ? { parsed: { files: firstBuildSeedFiles(collected.args) }, summary: "" }
-            : parseCollectedProject(collected, isInitial);
+            : parseCollectedProject(collected);
         } catch (e) {
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
@@ -4357,13 +4341,10 @@ async function handleGenerateRequestCore(
             });
             const retry = await structuredRetryCompletion({
               messages: finalMessages,
-              isInitial,
               problem: lastErr instanceof Error ? lastErr.message : "invalid structured response",
               hasBackend: Boolean(backend),
               tool,
-              maxTokens: isInitial
-                ? Math.min(24_000, Math.max(18_000, Math.round(maxCompletionTokens * 1.35)))
-                : firstWasTruncated
+              maxTokens: firstWasTruncated
                   ? Math.min(20_000, Math.max(16_000, Math.round(maxCompletionTokens * 1.6)))
                   : Math.max(maxCompletionTokens, 8_000),
               crossCuttingIntent: isCrossCutting,
@@ -4410,7 +4391,7 @@ async function handleGenerateRequestCore(
           if (attempts === 0) throw e;
           try {
             if (!retryTrusted) throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
-            payload = parseCollectedProject(collected, isInitial);
+            payload = parseCollectedProject(collected);
           } catch (retryErr) {
             // Both attempts failed to produce usable tool output. Never turn
             // that parser/model failure into a prerequisite refusal: recover
@@ -4422,11 +4403,10 @@ async function handleGenerateRequestCore(
               : firstStall
                 ? null
                 : firstCollected;
-            const recovered = !isInitial && isMissingToolOutputError(retryErr) && recoverySource
+            const recovered = isMissingToolOutputError(retryErr) && recoverySource
               ? await recoverMissingToolOutput({
                   chatMessages: finalMessages,
                   collected: recoverySource,
-                  isInitial,
                   tool,
                   model,
                   phaseTag,
@@ -4457,7 +4437,7 @@ async function handleGenerateRequestCore(
             // small enough that it cannot overflow. The chunk continuation
             // loop below then finishes the rest in the same turn.
             let smallChunk: ParsedProjectPayload | null = null;
-            if (!isInitial && firstWasTruncated && recovery.take("truncated_output")) {
+            if (firstWasTruncated && recovery.take("truncated_output")) {
               try {
                 controller.enqueue(
                   encoder.encode(
@@ -4475,14 +4455,13 @@ async function handleGenerateRequestCore(
                       role: "user",
                       content: buildChunkInstruction({
                         round: 1,
-                        isInitial,
+                        isInitial: false,
                         deliveredPaths: [],
                         remainingSteps: parseStepsFromArgs(firstCollected.args),
                         reason: "truncated_output",
                       }),
                     },
                   ],
-                  isInitial,
                   problem: "output_truncated_first_chunk",
                   hasBackend: Boolean(backend),
                   tool,
@@ -4501,7 +4480,7 @@ async function handleGenerateRequestCore(
                 });
                 if (chunkRes.ok && chunkRes.body) {
                   const chunkCollected = await relayAndCollect(chunkRes, controller, encoder);
-                  smallChunk = parseCollectedProject(chunkCollected, isInitial);
+                  smallChunk = parseCollectedProject(chunkCollected);
                   collected = chunkCollected;
                 }
               } catch (chunkErr) {
@@ -4516,9 +4495,7 @@ async function handleGenerateRequestCore(
               payload = smallChunk;
             } else {
 
-            const deterministic = !isInitial
-              ? deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent })
-              : null;
+            const deterministic = deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent });
             if (deterministic) {
               controller.enqueue(
                 encoder.encode(sse({ type: "status", message: "Applying a safe targeted edit path…" })),
@@ -4534,20 +4511,16 @@ async function handleGenerateRequestCore(
             } else {
 
             // Generic case: the model didn't emit usable output after all
-            // recovery passes. On an initial build this is a generation
-            // failure, never evidence that a detailed brief is ambiguous.
-            // Do not ask the user to repeat or explain the same request.
+            // recovery passes (edit turns only — first builds never get here).
             console.warn(
               "[generate] both attempts produced no usable output, falling back conversationally:",
               retryErr instanceof Error ? retryErr.message : String(retryErr),
             );
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
-              summary: isInitial
-                ? "I couldn't complete the build because the app generator failed to return files after its recovery attempts. Your brief is clear — retry this build; you do not need to rewrite the prompt."
-                : "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
-              outcome: isInitial ? "blocked" : "answered",
-              reason: isInitial ? "initial_generation_no_files" : "no_safe_edit",
+              summary: "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
+              outcome: "answered",
+              reason: "no_safe_edit",
             });
             return;
             }
@@ -4800,7 +4773,7 @@ async function handleGenerateRequestCore(
               ),
             );
             const chunked = await runChunkedGeneration({
-              isInitial,
+              isInitial: false,
               assessment: chunkAssessment,
               ops: parsed.ops ?? [],
               files: parsed.files ?? [],
@@ -4823,7 +4796,6 @@ async function handleGenerateRequestCore(
                     { role: "assistant", content: assistantTextFromCollected(collected).slice(0, 4_000) },
                     { role: "user", content: req.instruction },
                   ],
-                  isInitial,
                   problem: "output_truncated_chunk",
                   hasBackend: Boolean(backend),
                   tool,
@@ -4859,7 +4831,6 @@ async function handleGenerateRequestCore(
                       { role: "assistant", content: assistantTextFromCollected(collected).slice(0, 4_000) },
                       { role: "user", content: req.instruction },
                     ],
-                    isInitial,
                     problem: "output_truncated_chunk",
                     hasBackend: Boolean(backend),
                     tool,
@@ -4883,7 +4854,7 @@ async function handleGenerateRequestCore(
                   chunkCollected = await relayAndCollect(again, controller, encoder);
                 }
                 try {
-                  const chunkPayload = parseCollectedProject(chunkCollected, isInitial);
+                  const chunkPayload = parseCollectedProject(chunkCollected);
                   return {
                     ops: chunkPayload.parsed.ops,
                     files: chunkPayload.parsed.files,
@@ -4898,8 +4869,7 @@ async function handleGenerateRequestCore(
               },
             });
             if (chunked.added > 0) {
-              if (isInitial) parsed.files = chunked.files;
-              else parsed.ops = chunked.ops;
+              parsed.ops = chunked.ops;
               console.log(
                 `[chunked-generation] rounds=${chunked.rounds} added=${chunked.added} — ${chunked.notes.join("; ")}`,
               );
@@ -5121,7 +5091,6 @@ async function handleGenerateRequestCore(
                       `constraint, return an empty ops array — do not invent a workaround that breaks the app.`,
                   },
                 ],
-                isInitial: false,
                 problem: `op_repair:${args.problem.slice(0, 80)}`,
                 hasBackend: Boolean(backend),
                 tool: PATCH_FILES_TOOL,
@@ -5140,7 +5109,7 @@ async function handleGenerateRequestCore(
               });
               if (!res.ok || !res.body) return [];
               const repairedCollected = await relayAndCollect(res, controller, encoder);
-              const payload = parseCollectedProject(repairedCollected, false);
+              const payload = parseCollectedProject(repairedCollected);
               return (payload.parsed.ops ?? []).filter((op) => !isProtectedPath(op.path));
             } catch (err) {
               console.warn(
@@ -5548,7 +5517,6 @@ async function handleGenerateRequestCore(
                 ];
                 const rewrite = await structuredRetryCompletion({
                   messages: rewriteMessages,
-                  isInitial: false,
                   problem: `single_file_rewrite:${failure.error.slice(0, 80)}`,
                   hasBackend: Boolean(backend),
                   tool: PATCH_FILES_TOOL,
@@ -5571,7 +5539,7 @@ async function handleGenerateRequestCore(
                 }
                 const rewriteCollected = await relayAndCollect(rewrite, controller, encoder);
                 try {
-                  const rewritePayload = parseCollectedProject(rewriteCollected, false);
+                  const rewritePayload = parseCollectedProject(rewriteCollected);
                   const ops = (rewritePayload.parsed.ops ?? []).filter(
                     (op) => op.path === path && !isProtectedPath(op.path),
                   );
