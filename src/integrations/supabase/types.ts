@@ -5681,6 +5681,18 @@ export type Database = {
           turn_id: string
         }[]
       }
+      claim_generation_turn: {
+        Args: {
+          p_project_id: string
+          p_stale_seconds?: number
+          p_turn_id: string
+          p_user_id: string
+        }
+        Returns: {
+          claimed: boolean
+          turn_id: string
+        }[]
+      }
       claim_turn_heartbeat: {
         Args: { _lease: string; _turn_id: string }
         Returns: string
