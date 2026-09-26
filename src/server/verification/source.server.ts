@@ -6,7 +6,7 @@
  */
 import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { isVerifierExempt } from "@/server/scaffold-ownership.server";
-import { checkUndefinedIdentifiers } from "./identifiers.server";
+import { checkUndefinedIdentifiers, type IdentifierCheckStatus } from "./identifiers.server";
 import { finalizeVerification, runSourceGates, type VerificationRecord } from "./gates";
 
 export async function verifyProposedSource(args: {
@@ -15,7 +15,7 @@ export async function verifyProposedSource(args: {
   requestedRoutes: string[];
   /** First builds: the shared app frame is a required deliverable. */
   requireShell?: boolean;
-}): Promise<VerificationRecord> {
+}): Promise<VerificationRecord & { semantic: { status: IdentifierCheckStatus | "not_run"; reason?: string } }> {
   const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
   const esbuild = await verifyFilesEsbuild(args.tree, parseable);
   // Semantic gate: esbuild proves the bytes PARSE; the real TypeScript
@@ -25,9 +25,15 @@ export async function verifyProposedSource(args: {
   // passed — a file that doesn't parse is already a FAIL with a better
   // diagnostic, and the checker would just echo it.
   let merged = esbuild;
+  let semantic: { status: IdentifierCheckStatus | "not_run"; reason?: string } = { status: "not_run" };
   if (esbuild && (esbuild.status === "passed" || esbuild.status === "not_checked")) {
-    const identifierIssues = checkUndefinedIdentifiers(args.tree, parseable);
-    if (identifierIssues.length) {
+    const check = checkUndefinedIdentifiers(args.tree, parseable);
+    const identifierIssues = check.issues;
+    semantic = { status: check.status, ...(check.reason ? { reason: check.reason } : {}) };
+    // "unavailable" follows the existing syntax-gate policy for this path
+    // (checker unavailable → code kept, esbuild stays the parse authority)
+    // but is carried on the record so it is never reported as verified.
+    if (check.status === "failed") {
       merged = {
         ...esbuild,
         status: "failed",
@@ -45,5 +51,6 @@ export async function verifyProposedSource(args: {
       };
     }
   }
-  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
+  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
+  return { ...record, semantic };
 }
