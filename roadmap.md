@@ -6,3 +6,9 @@
 - [x] Stage 6: reviewed — context already has one entry point (context/index); design-intel (what the project is) and design-knowledge (craft rules) are intentionally separate inputs, no merge
 - [x] Stage 7: build-server syntax fixer is report-only (never rewrites verified source); callback shim and chunk-recovery rewrite already gone
 - [ ] Stage 8: live benchmarks (small edit, 4-page site, medium app, hospital) — blocked on user publishing
+
+## Webby-style engine (approved)
+- [x] Stage A: tool-calling loop (read/list/search/create/edit/plan/finish), per-write validation, periodic typecheck, state-based finish, circuit breaker, tests
+- [ ] Stage B: wire first builds + edits to the loop; delete planFirstBuild shell scheduling, rawPageCompletion, runChunkedGeneration, swallowed catch
+- [ ] Stage C: compaction at 70%, per-call tracing (TTFT, tokens, tool/validation time) into turn_events/turn_economics
+- [ ] Stage D: live benchmarks A-D, then hospital (E) only after A-D pass
