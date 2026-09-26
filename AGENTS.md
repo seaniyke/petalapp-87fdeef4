@@ -19,3 +19,5 @@
 - First-build intent comes from `prd/intent-contract.ts` stored on `Prd.intent`; router pages that diverge from the request's archetype are dropped — why: a hospital request produced a shop.
 - File size is never a correctness rule (only a decomposition signal); incompleteness is decided by the parser/verifier — why: complete large files were being reverted.
 - Non-success exits write the `turn_economics` record (opened as `running` at turn start, finalized with `finalizeOnly`) and the assistant reply BEFORE the terminal turn status — why: the builder may only write for a running turn, so failures vanished.
+- Project exploration is read-only and deterministic (`src/server/context/explore.ts`: pure functions over a frozen snapshot, run concurrently, skipped for LIGHT and first builds); the generation executor stays the single writer — why: faster discovery without extra AI calls or a second writer.
+- First-build plan validation covers the intent contract's core modules: under half covered → contract modules are added before any page is written and recorded as `turnStrategy.planCorrection` — why: the hospital plan drifted into template pages.
