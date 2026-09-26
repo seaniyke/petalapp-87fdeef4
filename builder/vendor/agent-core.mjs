@@ -2525,12 +2525,12 @@ function __extends(d, b) {
 }
 function __rest(s, e) {
   var t = {};
-  for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-    t[p] = s[p];
+  for (var p2 in s) if (Object.prototype.hasOwnProperty.call(s, p2) && e.indexOf(p2) < 0)
+    t[p2] = s[p2];
   if (s != null && typeof Object.getOwnPropertySymbols === "function")
-    for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-      if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-        t[p[i]] = s[p[i]];
+    for (var i = 0, p2 = Object.getOwnPropertySymbols(s); i < p2.length; i++) {
+      if (e.indexOf(p2[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p2[i]))
+        t[p2[i]] = s[p2[i]];
     }
   return t;
 }
@@ -2556,8 +2556,8 @@ function __esDecorate(ctor, descriptorIn, decorators, contextIn, initializers, e
   var _, done = false;
   for (var i = decorators.length - 1; i >= 0; i--) {
     var context = {};
-    for (var p in contextIn) context[p] = p === "access" ? {} : contextIn[p];
-    for (var p in contextIn.access) context.access[p] = contextIn.access[p];
+    for (var p2 in contextIn) context[p2] = p2 === "access" ? {} : contextIn[p2];
+    for (var p2 in contextIn.access) context.access[p2] = contextIn.access[p2];
     context.addInitializer = function(f) {
       if (done) throw new TypeError("Cannot add initializers after decoration has completed");
       extraInitializers.push(accept(f || null));
@@ -2691,7 +2691,7 @@ function __generator(thisArg, body) {
   }
 }
 function __exportStar(m, o) {
-  for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(o, p)) __createBinding(o, m, p);
+  for (var p2 in m) if (p2 !== "default" && !Object.prototype.hasOwnProperty.call(o, p2)) __createBinding(o, m, p2);
 }
 function __values(o) {
   var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
@@ -2787,7 +2787,7 @@ function __asyncGenerator(thisArg, _arguments, generator) {
   }
 }
 function __asyncDelegator(o) {
-  var i, p;
+  var i, p2;
   return i = {}, verb("next"), verb("throw", function(e) {
     throw e;
   }), verb("return"), i[Symbol.iterator] = function() {
@@ -2795,7 +2795,7 @@ function __asyncDelegator(o) {
   }, i;
   function verb(n, f) {
     i[n] = o[n] ? function(v) {
-      return (p = !p) ? { value: __await(o[n](v)), done: false } : f ? f(v) : v;
+      return (p2 = !p2) ? { value: __await(o[n](v)), done: false } : f ? f(v) : v;
     } : f;
   }
 }
@@ -2922,7 +2922,7 @@ var init_tslib_es6 = __esm({
       extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
         d2.__proto__ = b2;
       } || function(d2, b2) {
-        for (var p in b2) if (Object.prototype.hasOwnProperty.call(b2, p)) d2[p] = b2[p];
+        for (var p2 in b2) if (Object.prototype.hasOwnProperty.call(b2, p2)) d2[p2] = b2[p2];
       };
       return extendStatics(d, b);
     };
@@ -2930,7 +2930,7 @@ var init_tslib_es6 = __esm({
       __assign = Object.assign || function __assign2(t) {
         for (var s, i = 1, n = arguments.length; i < n; i++) {
           s = arguments[i];
-          for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+          for (var p2 in s) if (Object.prototype.hasOwnProperty.call(s, p2)) t[p2] = s[p2];
         }
         return t;
       };
@@ -9771,8 +9771,8 @@ var require_phoenix_cjs = __commonJS({
             return;
           }
           let refsToRemove = leftPresence.metas.map((m) => m.phx_ref);
-          currentPresence.metas = currentPresence.metas.filter((p) => {
-            return refsToRemove.indexOf(p.phx_ref) < 0;
+          currentPresence.metas = currentPresence.metas.filter((p2) => {
+            return refsToRemove.indexOf(p2.phx_ref) < 0;
           });
           onLeave(key, currentPresence, leftPresence);
           if (currentPresence.metas.length === 0) {
@@ -34197,7 +34197,7 @@ var require_lib = __commonJS({
         var _pluginsMap$get;
         const proposal = pluginsMap.get("pipelineOperator").proposal;
         if (!PIPELINE_PROPOSALS.includes(proposal)) {
-          const proposalList = PIPELINE_PROPOSALS.map((p) => `"${p}"`).join(", ");
+          const proposalList = PIPELINE_PROPOSALS.map((p2) => `"${p2}"`).join(", ");
           throw new Error(`"pipelineOperator" requires "proposal" option whose value must be one of: ${proposalList}.`);
         }
         const tupleSyntaxIsHash = ((_pluginsMap$get = pluginsMap.get("recordAndTuple")) == null ? void 0 : _pluginsMap$get.syntaxType) === "hash";
@@ -34247,7 +34247,7 @@ var require_lib = __commonJS({
           {
             const RECORD_AND_TUPLE_SYNTAX_TYPES = ["hash", "bar"];
             if (!RECORD_AND_TUPLE_SYNTAX_TYPES.includes(syntaxType)) {
-              throw new Error("The 'syntaxType' option of the 'recordAndTuple' plugin must be one of: " + RECORD_AND_TUPLE_SYNTAX_TYPES.map((p) => `'${p}'`).join(", "));
+              throw new Error("The 'syntaxType' option of the 'recordAndTuple' plugin must be one of: " + RECORD_AND_TUPLE_SYNTAX_TYPES.map((p2) => `'${p2}'`).join(", "));
             }
           }
         }
@@ -35113,15 +35113,15 @@ var require_lib = __commonJS({
           }
           this.sawUnambiguousESM = true;
         } else if (this.isContextual(105) || this.isContextual(97)) {
-          const isSource = this.isContextual(105);
-          this.expectPlugin(isSource ? "sourcePhaseImports" : "deferredImportEvaluation");
+          const isSource2 = this.isContextual(105);
+          this.expectPlugin(isSource2 ? "sourcePhaseImports" : "deferredImportEvaluation");
           if (!(this.optionFlags & 512)) {
             throw this.raise(Errors.DynamicImportPhaseRequiresImportExpressions, this.state.startLoc, {
               phase: this.state.value
             });
           }
           this.next();
-          node.phase = isSource ? "source" : "defer";
+          node.phase = isSource2 ? "source" : "defer";
           return this.parseImportCall(node);
         }
         return this.parseMetaProperty(node, id, "meta");
@@ -38405,8 +38405,8 @@ function diffChangedPaths(before, after) {
   const prev = new Map(before.map((f) => [f.path, f.content]));
   const next = new Map(after.map((f) => [f.path, f.content]));
   const changed = [];
-  for (const [p, c] of next) if (prev.get(p) !== c) changed.push(p);
-  for (const p of prev.keys()) if (!next.has(p)) changed.push(p);
+  for (const [p2, c] of next) if (prev.get(p2) !== c) changed.push(p2);
+  for (const p2 of prev.keys()) if (!next.has(p2)) changed.push(p2);
   return changed;
 }
 function applyOpsPartial(current2, ops) {
@@ -39053,31 +39053,31 @@ function assessChunking(args) {
 function assessRouteCoverage(args) {
   const deliveredPaths = pathsOf(args);
   const emitted = deliveredPaths.length;
-  const shellMissing = args.requireAppShell === true && ![...deliveredPaths, ...args.existingPaths ?? []].some((p) => /^src\/App\.(t|j)sx$/i.test(p));
+  const shellMissing = args.requireAppShell === true && ![...deliveredPaths, ...args.existingPaths ?? []].some((p2) => /^src\/App\.(t|j)sx$/i.test(p2));
   const routeFiles = [
     ...deliveredPaths,
     ...args.existingPaths ?? []
-  ].filter((p) => /^src\/(routes|pages)\//i.test(p));
-  const haystack = routeFiles.map((p) => p.toLowerCase()).join("\n");
+  ].filter((p2) => /^src\/(routes|pages)\//i.test(p2));
+  const haystack = routeFiles.map((p2) => p2.toLowerCase()).join("\n");
   const missing = [];
   for (const raw of args.expectedRoutes) {
     const route = String(raw ?? "").trim();
     if (!route) continue;
-    const slug3 = route.replace(/^\/+|\/+$/g, "").split("/")[0]?.toLowerCase() ?? "";
-    if (!slug3) {
+    const slug4 = route.replace(/^\/+|\/+$/g, "").split("/")[0]?.toLowerCase() ?? "";
+    if (!slug4) {
       if (!/\/(index|home|landing)\.(t|j)sx?$/im.test(haystack) && !/index/.test(haystack)) {
         missing.push("/");
       }
       continue;
     }
-    if (/[:$*]/.test(slug3)) continue;
-    if (!haystack.includes(slug3)) {
+    if (/[:$*]/.test(slug4)) continue;
+    if (!haystack.includes(slug4)) {
       missing.push(route);
       continue;
     }
     if (args.routerSource) {
       const registered = new RegExp(
-        `path\\s*[=:]\\s*["'\`][^"'\`]*${slug3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        `path\\s*[=:]\\s*["'\`][^"'\`]*${slug4.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
         "i"
       ).test(args.routerSource);
       if (!registered) missing.push(route);
@@ -39286,20 +39286,20 @@ function estimateFirstBuildSize(prompt, routes) {
   extras += Math.min(4, workflows?.length ?? 0) * 700;
   const per = PAGE_TOKENS[kind];
   const pages = routes.filter((r) => r !== "/" && !r.includes("$")).map((route) => ({ route, tokens: per }));
-  const total = SHELL_TOKENS + HOME_TOKENS + extras + pages.reduce((n, p) => n + p.tokens, 0);
+  const total = SHELL_TOKENS + HOME_TOKENS + extras + pages.reduce((n, p2) => n + p2.tokens, 0);
   return { kind, shell: SHELL_TOKENS, home: HOME_TOKENS, pages, extras, total };
 }
 function planUnits(est, budget = SAFE_UNIT_BUDGET) {
   const units = [
     { routes: ["/"], estimatedTokens: est.shell + est.home + est.extras }
   ];
-  for (const p of est.pages) {
+  for (const p2 of est.pages) {
     const cur = units[units.length - 1];
-    if (cur.estimatedTokens + p.tokens <= budget) {
-      cur.routes.push(p.route);
-      cur.estimatedTokens += p.tokens;
+    if (cur.estimatedTokens + p2.tokens <= budget) {
+      cur.routes.push(p2.route);
+      cur.estimatedTokens += p2.tokens;
     } else {
-      units.push({ routes: [p.route], estimatedTokens: UNIT_OVERHEAD + p.tokens });
+      units.push({ routes: [p2.route], estimatedTokens: UNIT_OVERHEAD + p2.tokens });
     }
   }
   return units;
@@ -40740,6 +40740,10 @@ async function recordTurnEconomics(args) {
         shadow_charge: decision
       };
     }
+    if (args.finalizeOnly) {
+      const { data: existing } = await supabaseAdmin.from("turn_economics").select("result").eq("turn_id", args.turnId).maybeSingle();
+      if (existing && existing.result !== "running") return;
+    }
     await supabaseAdmin.from("turn_economics").upsert(
       {
         turn_id: args.turnId,
@@ -41494,13 +41498,13 @@ async function fetchGenerationUsage(requestId) {
       if (!res.ok) continue;
       const d = (await res.json()).data;
       if (!d) continue;
-      const p = num(d.native_tokens_prompt) ?? num(d.tokens_prompt);
+      const p2 = num(d.native_tokens_prompt) ?? num(d.tokens_prompt);
       const c = num(d.native_tokens_completion) ?? num(d.tokens_completion);
-      if (p == null && c == null) continue;
+      if (p2 == null && c == null) continue;
       return {
-        promptTokens: p,
+        promptTokens: p2,
         completionTokens: c,
-        totalTokens: p != null && c != null ? p + c : null,
+        totalTokens: p2 != null && c != null ? p2 + c : null,
         cachedTokens: num(d.native_tokens_cached),
         cacheWriteTokens: null,
         reasoningTokens: num(d.native_tokens_reasoning),
@@ -42044,11 +42048,11 @@ function ownershipVariants(path) {
   return [path];
 }
 function isScaffoldOwnedPath(path) {
-  if (ownershipVariants(path).some((p) => SCAFFOLD_OWNED_PATHS.has(p))) return true;
+  if (ownershipVariants(path).some((p2) => SCAFFOLD_OWNED_PATHS.has(p2))) return true;
   return SCAFFOLD_OWNED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 function isScaffoldAbsorbedPath(path) {
-  return ownershipVariants(path).some((p) => SCAFFOLD_ABSORBED_PATHS.has(p));
+  return ownershipVariants(path).some((p2) => SCAFFOLD_ABSORBED_PATHS.has(p2));
 }
 function isVerifierExempt(path) {
   if (isScaffoldOwnedPath(path)) return true;
@@ -42250,7 +42254,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -42294,7 +42297,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -42449,7 +42451,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -42640,7 +42641,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -85666,7 +85666,7 @@ var init_known_packages = __esm({
     try {
       const manifest = dynamicIconImports;
       for (const kebab2 of Object.keys(manifest ?? {})) {
-        const pascal = kebab2.split("-").map((p) => p ? p[0].toUpperCase() + p.slice(1) : p).join("");
+        const pascal = kebab2.split("-").map((p2) => p2 ? p2[0].toUpperCase() + p2.slice(1) : p2).join("");
         if (pascal) COMMON_LUCIDE_ICONS.add(pascal);
       }
     } catch {
@@ -85829,12 +85829,12 @@ function isRouteFile(path) {
 function hasSurface(files, surface) {
   const patterns = SURFACE_EVIDENCE[surface] ?? [];
   for (const f of files) {
-    if (patterns.some((p) => p.test(f.path))) return true;
+    if (patterns.some((p2) => p2.test(f.path))) return true;
   }
   if (!ROUTE_SURFACES.includes(surface)) {
     for (const f of files) {
       if (!/^src\//.test(f.path)) continue;
-      if (patterns.some((p) => p.test(f.content.slice(0, 2e4)))) return true;
+      if (patterns.some((p2) => p2.test(f.content.slice(0, 2e4)))) return true;
     }
   }
   return false;
@@ -85855,7 +85855,7 @@ function checkPrdStatically(prd, files, changedPaths) {
   }
   for (const surface of prd.excludedSurfaces) {
     const routeHit = src.find(
-      (f) => isRouteFile(f.path) && (!changed || changed.has(f.path)) && (SURFACE_EVIDENCE[surface] ?? []).some((p) => p.test(f.path))
+      (f) => isRouteFile(f.path) && (!changed || changed.has(f.path)) && (SURFACE_EVIDENCE[surface] ?? []).some((p2) => p2.test(f.path))
     );
     if (routeHit) {
       findings.push({
@@ -85973,7 +85973,6 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -86044,8 +86043,8 @@ __export(impact_graph_server_exports, {
   computeImpact: () => computeImpact,
   resolveSpecifier: () => resolveSpecifier
 });
-function norm(p) {
-  return p.replace(/^\.?\//, "");
+function norm(p2) {
+  return p2.replace(/^\.?\//, "");
 }
 function resolveSpecifier(from, spec, known) {
   let base;
@@ -86089,7 +86088,7 @@ function computeImpact(files, seeds, opts = {}) {
   const radius = Math.max(1, opts.radius ?? 1);
   const max = Math.max(1, opts.max ?? 24);
   const graph = buildImportGraph(files);
-  const seedSet = new Set(seeds.map(norm).filter((p) => graph.has(p)));
+  const seedSet = new Set(seeds.map(norm).filter((p2) => graph.has(p2)));
   if (seedSet.size === 0) return { paths: [], dependents: [], dependencies: [] };
   const reverse = /* @__PURE__ */ new Map();
   for (const [from, tos] of graph) {
@@ -86119,7 +86118,7 @@ function computeImpact(files, seeds, opts = {}) {
   };
   const dependencies = walk(graph);
   const dependents = walk(reverse);
-  const paths = [...seedSet, ...dependents, ...dependencies].filter((p, i, arr) => arr.indexOf(p) === i).slice(0, max);
+  const paths = [...seedSet, ...dependents, ...dependencies].filter((p2, i, arr) => arr.indexOf(p2) === i).slice(0, max);
   return { paths, dependents, dependencies };
 }
 var IMPORT_RE4, EXTS;
@@ -86824,9 +86823,9 @@ function createZodEnum(values, params) {
   });
 }
 function cleanParams(params, data) {
-  const p = typeof params === "function" ? params(data) : typeof params === "string" ? { message: params } : params;
-  const p2 = typeof p === "string" ? { message: p } : p;
-  return p2;
+  const p2 = typeof params === "function" ? params(data) : typeof params === "string" ? { message: params } : params;
+  const p22 = typeof p2 === "string" ? { message: p2 } : p2;
+  return p22;
 }
 function custom(check, _params = {}, fatal) {
   if (check)
@@ -90328,11 +90327,11 @@ function parseDesignSystemPackage(files, folder) {
   const { fonts, errors: fontErrors } = parseFontsHtml(files["fonts.html"]);
   errors.push(...fontErrors);
   const components = {};
-  for (const [p, c] of Object.entries(files)) {
-    if (!p.startsWith("components/")) continue;
-    const rel = p.slice("components/".length);
+  for (const [p2, c] of Object.entries(files)) {
+    if (!p2.startsWith("components/")) continue;
+    const rel = p2.slice("components/".length);
     if (!/^[A-Za-z0-9_\-/]+\.(tsx|ts|css)$/.test(rel) || rel.includes("..")) {
-      errors.push(`invalid component path ${p}`);
+      errors.push(`invalid component path ${p2}`);
       continue;
     }
     components[rel] = c;
@@ -90447,7 +90446,7 @@ function applyFonts(rootSrc, pkg) {
 }
 function applyDesignSystem(files, pkg, accent) {
   if (!isValidAccent(pkg, accent)) return { ok: false, error: `accent "${accent}" does not belong to ${pkg.meta.slug}` };
-  const styles = STYLE_PATHS2.map((p) => files.find((f) => f.path === p)).find(Boolean);
+  const styles = STYLE_PATHS2.map((p2) => files.find((f) => f.path === p2)).find(Boolean);
   if (!styles) return { ok: false, error: "project has no stylesheet (src/styles.css)" };
   const root = files.find((f) => f.path === ROOT_PATH);
   if (!root) return { ok: false, error: `project has no ${ROOT_PATH}` };
@@ -90461,9 +90460,9 @@ function applyDesignSystem(files, pkg, accent) {
   }
   const byPath = new Map(files.map((f) => [f.path, f]));
   const changedPaths = [];
-  for (const [p, c] of updates) if (byPath.get(p)?.content !== c) changedPaths.push(p);
+  for (const [p2, c] of updates) if (byPath.get(p2)?.content !== c) changedPaths.push(p2);
   const out = files.map((f) => updates.has(f.path) ? { ...f, content: updates.get(f.path) } : f);
-  for (const [p, c] of updates) if (!byPath.has(p)) out.push({ path: p, content: c });
+  for (const [p2, c] of updates) if (!byPath.has(p2)) out.push({ path: p2, content: c });
   return { ok: true, files: out, changedPaths: changedPaths.sort(), changed: changedPaths.length > 0 };
 }
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS2, ROOT_PATH;
@@ -90838,10 +90837,10 @@ function resolveImport(fromPath, spec, byPath) {
   } else if (spec.startsWith(".")) {
     const dir = fromPath.split("/").slice(0, -1);
     const parts = spec.split("/");
-    for (const p of parts) {
-      if (p === "." || p === "") continue;
-      if (p === "..") dir.pop();
-      else dir.push(p);
+    for (const p2 of parts) {
+      if (p2 === "." || p2 === "") continue;
+      if (p2 === "..") dir.pop();
+      else dir.push(p2);
     }
     base = dir.join("/");
   } else {
@@ -106836,7 +106835,7 @@ function applyScaffoldKit(aiFiles, opts) {
   return Array.from(map, ([path, content]) => ({ path, content }));
 }
 function isCustomizableKitPath(path) {
-  return CUSTOMIZABLE_KIT_PREFIXES.some((p) => path.startsWith(p));
+  return CUSTOMIZABLE_KIT_PREFIXES.some((p2) => path.startsWith(p2));
 }
 function isCustomizedKitFile(path, content) {
   return isCustomizableKitPath(path) && content.includes(PETAL_CUSTOMIZED_MARKER);
@@ -111288,9 +111287,9 @@ function maskJsxText(src) {
     if (!inText) {
       out += ch;
       if (!inTag && ch === "<") {
-        let p = i - 1;
-        while (p >= 0 && /\s/.test(src[p])) p--;
-        const prev = p >= 0 ? src[p] : "";
+        let p2 = i - 1;
+        while (p2 >= 0 && /\s/.test(src[p2])) p2--;
+        const prev = p2 >= 0 ? src[p2] : "";
         const next = src[i + 1] ?? "";
         inTag = (next === "/" || /[A-Za-z]/.test(next)) && !/[\w$\])]/.test(prev);
         tagClosing = inTag && next === "/";
@@ -111394,9 +111393,9 @@ function jsxTagBalance(src) {
       i++;
       continue;
     }
-    let p = i - 1;
-    while (p >= 0 && /\s/.test(src[p])) p--;
-    const prev = p >= 0 ? src[p] : void 0;
+    let p2 = i - 1;
+    while (p2 >= 0 && /\s/.test(src[p2])) p2--;
+    const prev = p2 >= 0 ? src[p2] : void 0;
     if (isGenericPrev(prev)) {
       i = j;
       continue;
@@ -111558,9 +111557,9 @@ function findUndefinedComponents(src, clean) {
     while (j < n && /[A-Za-z0-9_]/.test(clean[j])) j++;
     const name = clean.slice(start, j);
     if (!name || !/^[A-Z]/.test(name)) continue;
-    let p = i - 1;
-    while (p >= 0 && /\s/.test(clean[p])) p--;
-    const prev = p >= 0 ? clean[p] : void 0;
+    let p2 = i - 1;
+    while (p2 >= 0 && /\s/.test(clean[p2])) p2--;
+    const prev = p2 >= 0 ? clean[p2] : void 0;
     if (prev && /[A-Za-z0-9_$\])]/.test(prev)) continue;
     tags.add(name);
   }
@@ -111651,7 +111650,7 @@ function resolveImportPath2(fromPath, spec, byPath) {
   const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? normalizePath4(`${fromPath.split("/").slice(0, -1).join("/")}/${spec}`) : null;
   if (!base) return null;
   const candidates = [base, `${base}.tsx`, `${base}.ts`, `${base}.jsx`, `${base}.js`, `${base}/index.tsx`, `${base}/index.ts`];
-  return candidates.find((p) => byPath.has(p)) ?? null;
+  return candidates.find((p2) => byPath.has(p2)) ?? null;
 }
 function findLazyNamedExportIssues(files, changedPaths) {
   const byPath = new Map(files.map((f) => [f.path, f.content]));
@@ -111816,7 +111815,7 @@ function findUnresolvedImports(files, changedPaths) {
     "@/styles.css"
   ];
   function isScaffoldAlias(spec) {
-    return SCAFFOLD_PREFIXES2.some((p) => spec === p || spec.startsWith(p));
+    return SCAFFOLD_PREFIXES2.some((p2) => spec === p2 || spec.startsWith(p2));
   }
   const kitUiPaths = /* @__PURE__ */ new Set();
   try {
@@ -112167,7 +112166,7 @@ function findAuthLoaderIssues(files, changed) {
       if (!target) continue;
       const protectedNames = authProtectedExports.get(target);
       if (!protectedNames || protectedNames.size === 0) continue;
-      const imported = m[1].split(",").map((p) => p.trim().split(/\s+as\s+/i).pop()?.trim()).filter((s) => Boolean(s));
+      const imported = m[1].split(",").map((p2) => p2.trim().split(/\s+as\s+/i).pop()?.trim()).filter((s) => Boolean(s));
       const loaderMatch = /loader\s*:\s*(?:async\s*)?\(?[^)]*\)?\s*=>\s*([\s\S]*?)(?:,\s*\n\s*(?:component|errorComponent|notFoundComponent|beforeLoad)|\}\s*\))/.exec(
         f.content
       );
@@ -114489,10 +114488,10 @@ async function runGrowthWatcher(limit = 10) {
   const pending = /* @__PURE__ */ new Set();
   const { data: requests } = await supabaseAdmin.from("project_upgrade_events").select("project_id").eq("status", "requested").order("created_at", { ascending: false }).limit(200);
   for (const r of requests ?? []) pending.add(r.project_id);
-  for (const p of projects ?? []) {
+  for (const p2 of projects ?? []) {
     if (summary.upgraded >= limit) break;
     summary.checked++;
-    const result = await considerUpgrade(p.id, pending.has(p.id));
+    const result = await considerUpgrade(p2.id, pending.has(p2.id));
     if (result.upgraded) summary.upgraded++;
     else if (result.error) summary.errors++;
     else if (result.blocked) summary.blocked++;
@@ -114680,9 +114679,9 @@ function orientationFor(aspectRatio) {
   }
 }
 function describePrompt(prompt) {
-  const p = String(prompt ?? "").toLowerCase();
-  const pick = (k) => VOCAB[k].find(([, re]) => re.test(p))?.[0] ?? null;
-  const traits = Array.from(new Set(p.match(TRAITS) ?? [])).slice(0, 8);
+  const p2 = String(prompt ?? "").toLowerCase();
+  const pick = (k) => VOCAB[k].find(([, re]) => re.test(p2))?.[0] ?? null;
+  const traits = Array.from(new Set(p2.match(TRAITS) ?? [])).slice(0, 8);
   return { style: pick("style"), mood: pick("mood"), industry: pick("industry"), category: pick("category"), visual_traits: traits };
 }
 function imageDimensions(bytes2) {
@@ -114968,13 +114967,13 @@ function loadAllDesignSystems(raw = RAW) {
   if (raw === RAW) cache6 = result;
   return result;
 }
-function getDesignSystem(slug3) {
-  if (!slug3) return null;
-  const r = loadAllDesignSystems().get(slug3);
+function getDesignSystem(slug4) {
+  if (!slug4) return null;
+  const r = loadAllDesignSystems().get(slug4);
   return r && r.ok ? r.pkg : null;
 }
 function listDesignSystems(opts = {}) {
-  return [...loadAllDesignSystems().values()].filter((r) => r.ok).map((r) => r.pkg).filter((p) => opts.includeInternal || !p.meta.internal);
+  return [...loadAllDesignSystems().values()].filter((r) => r.ok).map((r) => r.pkg).filter((p2) => opts.includeInternal || !p2.meta.internal);
 }
 var RAW, cache6;
 var init_registry = __esm({
@@ -140470,8 +140469,8 @@ __export(industry_packs_exports, {
   getPack: () => getPack,
   packToPrompt: () => packToPrompt
 });
-function getPack(slug3) {
-  return INDUSTRY_PACKS.find((p) => p.slug === slug3);
+function getPack(slug4) {
+  return INDUSTRY_PACKS.find((p2) => p2.slug === slug4);
 }
 function packToPrompt(pack) {
   const cloudHints = pack.cloud.length > 0 ? `
@@ -140896,7 +140895,7 @@ function filterWebbyOnly(md) {
       if (skipLevel && level <= skipLevel) skipLevel = 0;
       if (!skipLevel) {
         const name = normHeading(raw);
-        if (WEBBY_ONLY_HEADINGS.some((p) => name.startsWith(p))) {
+        if (WEBBY_ONLY_HEADINGS.some((p2) => name.startsWith(p2))) {
           skipLevel = level;
           continue;
         }
@@ -141119,9 +141118,9 @@ function applyContextBudget(sections, budgetTokens) {
 function partLength(part) {
   if (typeof part === "string") return part.length;
   let total = 0;
-  for (const p of part) {
-    if (p.type === "text" && p.text) total += p.text.length;
-    if (p.type === "image_url") total += 1500 * 4;
+  for (const p2 of part) {
+    if (p2.type === "text" && p2.text) total += p2.text.length;
+    if (p2.type === "image_url") total += 1500 * 4;
   }
   return total;
 }
@@ -141134,7 +141133,7 @@ function estimateMessagesTokens(messages) {
   return sum;
 }
 function carriesConstraint(m) {
-  const text = typeof m.content === "string" ? m.content : m.content.filter((p) => p.type === "text" && p.text).map((p) => p.text).join(" ");
+  const text = typeof m.content === "string" ? m.content : m.content.filter((p2) => p2.type === "text" && p2.text).map((p2) => p2.text).join(" ");
   if (text.length > 2e3) return false;
   return CONSTRAINT_RE.test(text);
 }
@@ -142468,7 +142467,7 @@ function findForwardRefIconRenders(src, clean) {
   while (im = importRe.exec(src)) {
     const source = im[3];
     const matched = FORWARD_REF_ICON_PACKAGES.some(
-      (p) => source === p || source.startsWith(`${p}/`)
+      (p2) => source === p2 || source.startsWith(`${p2}/`)
     );
     if (!matched) continue;
     if (im[1]) iconNames.add(im[1]);
@@ -142605,18 +142604,18 @@ function lintRenderRisks(files, changedPaths) {
   for (const f of files) {
     if (!changed.has(f.path)) continue;
     if (!SCANNABLE16.test(f.path)) continue;
-    if (SKIP_PREFIXES.some((p) => f.path.startsWith(p))) continue;
+    if (SKIP_PREFIXES.some((p2) => f.path.startsWith(p2))) continue;
     const clean = stripStringsAndComments(f.content);
     if (ENABLED_RULES.has("R1")) {
       const { props, bodyByOwner } = findOptionalDestructuredProps(clean);
-      for (const p of props) {
-        const body = bodyByOwner.get(p.ownerName) ?? "";
-        const hit = bodyHasUnsafeAccess(body, p.name);
+      for (const p2 of props) {
+        const body = bodyByOwner.get(p2.ownerName) ?? "";
+        const hit = bodyHasUnsafeAccess(body, p2.name);
         if (hit) {
           issues.push({
             path: f.path,
             kind: "render-risk",
-            detail: `<${p.ownerName}>: prop "${p.name}" is optional but accessed via .${hit.method} without ?. or default \u2014 will throw on render`
+            detail: `<${p2.ownerName}>: prop "${p2.name}" is optional but accessed via .${hit.method} without ?. or default \u2014 will throw on render`
           });
         }
       }
@@ -142879,7 +142878,7 @@ async function collectGateIssues(files, changedPaths, prd) {
       });
     }
     const failed = new Set(verdict.issues.map((i) => i.path));
-    for (const p of verdict.checkedPaths) if (!failed.has(p)) parsedClean.add(p);
+    for (const p2 of verdict.checkedPaths) if (!failed.has(p2)) parsedClean.add(p2);
     for (const i of verdict.issues) {
       issues.push({
         path: i.path,
@@ -142990,7 +142989,7 @@ __export(write_gate_server_exports, {
   writeGateDisclosure: () => writeGateDisclosure
 });
 function parseCandidates(changedPaths) {
-  return changedPaths.filter((p) => PARSEABLE.test(p) && !isVerifierExempt(p));
+  return changedPaths.filter((p2) => PARSEABLE.test(p2) && !isVerifierExempt(p2));
 }
 function healOne(file) {
   let out = [file];
@@ -143054,7 +143053,7 @@ async function runWriteGate(args) {
     return { files: args.after, healedPaths: [], rejected: [], validationFailure: healedCheck.unavailable };
   }
   const stillFailing = healedCheck.failures;
-  const actuallyHealed = healedPaths.filter((p) => !stillFailing.has(p));
+  const actuallyHealed = healedPaths.filter((p2) => !stillFailing.has(p2));
   if (stillFailing.size === 0) {
     return { files, healedPaths: actuallyHealed, rejected: [] };
   }
@@ -143071,7 +143070,7 @@ async function runWriteGate(args) {
         fixed = null;
       }
       if (fixed && fixed.trim() && fixed !== content) {
-        const candidate = Array.from(byPath, ([p, c]) => ({ path: p, content: p === path ? fixed : c }));
+        const candidate = Array.from(byPath, ([p2, c]) => ({ path: p2, content: p2 === path ? fixed : c }));
         const recheck = await failingPaths(candidate, [path]);
         if (recheck.unavailable) {
           return { files: args.after, healedPaths: [], rejected: [], validationFailure: recheck.unavailable };
@@ -143127,13 +143126,13 @@ async function revertCleanupBreakage(before, after, paths) {
   const { runPreEmitGate: runPreEmitGate2 } = await Promise.resolve().then(() => (init_preemit_gate_server(), preemit_gate_server_exports));
   const flagged = async (files, only) => {
     const { report } = await runPreEmitGate2(files, only, { maxRounds: 0 });
-    return new Set(report.issues.map((i) => i.path).filter((p) => only.includes(p)));
+    return new Set(report.issues.map((i) => i.path).filter((p2) => only.includes(p2)));
   };
   const failingAfter = await flagged(after, candidates);
   if (failingAfter.size === 0) return { files: after, reverted: [] };
   const failingBefore = await flagged(before, Array.from(failingAfter));
   const beforeByPath = new Map(before.map((f) => [f.path, f.content]));
-  const reverted = Array.from(failingAfter).filter((p) => !failingBefore.has(p) && beforeByPath.has(p));
+  const reverted = Array.from(failingAfter).filter((p2) => !failingBefore.has(p2) && beforeByPath.has(p2));
   if (reverted.length === 0) return { files: after, reverted };
   const set = new Set(reverted);
   return {
@@ -143249,9 +143248,9 @@ __export(structural_deps_exports, {
   resolveSpecifier: () => resolveSpecifier2,
   structurallyCriticalPaths: () => structurallyCriticalPaths
 });
-function norm2(p) {
+function norm2(p2) {
   const out = [];
-  for (const seg of p.split("/")) {
+  for (const seg of p2.split("/")) {
     if (!seg || seg === ".") continue;
     if (seg === "..") out.pop();
     else out.push(seg);
@@ -143289,7 +143288,7 @@ function entryModules(files) {
       if (r) entries.add(r);
     }
   }
-  for (const p of ["src/main.tsx", "src/main.ts", "src/main.jsx", "src/main.js"]) if (paths.has(p)) entries.add(p);
+  for (const p2 of ["src/main.tsx", "src/main.ts", "src/main.jsx", "src/main.js"]) if (paths.has(p2)) entries.add(p2);
   return [...entries];
 }
 function structurallyCriticalPaths(files, candidates) {
@@ -143300,14 +143299,14 @@ function structurallyCriticalPaths(files, candidates) {
   const importers = /* @__PURE__ */ new Map();
   const queue = [...entries];
   while (queue.length) {
-    const p = queue.shift();
-    if (reachable.has(p)) continue;
-    reachable.add(p);
-    const f = byPath.get(p);
+    const p2 = queue.shift();
+    if (reachable.has(p2)) continue;
+    reachable.add(p2);
+    const f = byPath.get(p2);
     if (!f) continue;
     for (const dep of importsOf(f, paths)) {
       if (!importers.has(dep)) importers.set(dep, /* @__PURE__ */ new Set());
-      importers.get(dep).add(p);
+      importers.get(dep).add(p2);
       queue.push(dep);
     }
   }
@@ -143325,7 +143324,7 @@ function structurallyCriticalPaths(files, candidates) {
 }
 function blockedRemovals(files, toRemove, hasValidatedReplacement) {
   const critical = structurallyCriticalPaths(files, toRemove);
-  return [...critical].filter((p) => !hasValidatedReplacement(p));
+  return [...critical].filter((p2) => !hasValidatedReplacement(p2));
 }
 var EXTS3, IMPORT_RE6;
 var init_structural_deps = __esm({
@@ -143344,7 +143343,7 @@ __export(deterministic_primitives_exports, {
 });
 function primitiveFor(target) {
   const bare2 = target.replace(STRIP_EXT, "");
-  return DETERMINISTIC_PRIMITIVES.find((p) => p.path.replace(STRIP_EXT, "") === bare2) ?? null;
+  return DETERMINISTIC_PRIMITIVES.find((p2) => p2.path.replace(STRIP_EXT, "") === bare2) ?? null;
 }
 function targetFor(from, spec) {
   if (spec.startsWith("@/")) return `src/${spec.slice(2)}`;
@@ -143384,7 +143383,7 @@ function recoverMissingPrimitives(files) {
   const added = [];
   const out = [...files];
   for (const [path, names] of wanted) {
-    const prim = DETERMINISTIC_PRIMITIVES.find((p) => p.path === path);
+    const prim = DETERMINISTIC_PRIMITIVES.find((p2) => p2.path === path);
     if ([...names].some((n) => !prim.exports.includes(n))) {
       unresolved.add(path.replace(STRIP_EXT, ""));
       continue;
@@ -143437,18 +143436,142 @@ export function useIsMobile() {
   }
 });
 
+// src/server/engine/missing-nodes.ts
+var missing_nodes_exports = {};
+__export(missing_nodes_exports, {
+  exportsSatisfy: () => exportsSatisfy,
+  findMissingNodes: () => findMissingNodes,
+  requiredExports: () => requiredExports,
+  resolveMissingNodes: () => resolveMissingNodes,
+  usageContext: () => usageContext
+});
+function isSource(p2) {
+  return /\.(tsx?|jsx?)$/.test(p2);
+}
+function targetFor2(from, spec, named, hasDefault) {
+  let base;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith(".")) {
+    const segs = [];
+    for (const s of `${from.split("/").slice(0, -1).join("/")}/${spec}`.split("/")) {
+      if (!s || s === ".") continue;
+      if (s === "..") segs.pop();
+      else segs.push(s);
+    }
+    base = segs.join("/");
+  } else return null;
+  if (/\.(tsx?|jsx?|css|json|svg|png|jpe?g|webp)$/.test(base)) return /\.(tsx?|jsx?)$/.test(base) ? base : null;
+  if (base.startsWith("src/pages/")) return null;
+  const jsx4 = hasDefault || /context|provider|components?\//i.test(base) || named.some((n) => /^[A-Z]/.test(n) && !/^[A-Z][A-Z0-9_]+$/.test(n) && !/Type$|Props$/.test(n));
+  return `${base}${jsx4 ? ".tsx" : ".ts"}`;
+}
+function findMissingNodes(files, scopePaths) {
+  const paths = new Set(files.map((f) => f.path));
+  const scope = new Set(scopePaths);
+  const byTarget = /* @__PURE__ */ new Map();
+  for (const f of files) {
+    if (!scope.has(f.path) || !isSource(f.path)) continue;
+    IMPORT_STMT.lastIndex = 0;
+    let m;
+    while (m = IMPORT_STMT.exec(f.content)) {
+      const spec = m[4];
+      if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
+      if (NEVER_CREATE.some((re) => re.test(spec))) continue;
+      if (resolveSpecifier2(f.path, spec, paths)) continue;
+      const named = (m[3] ?? "").replace(/[{}]/g, "").split(",").map((s) => s.trim().replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim()).filter(Boolean);
+      const hasDefault = Boolean(m[2]);
+      const target = targetFor2(f.path, spec, named, hasDefault);
+      if (!target) continue;
+      const key = target.replace(/\.(tsx?|jsx?)$/, "");
+      const node = byTarget.get(key) ?? { target, spec, importers: [] };
+      node.importers.push({ path: f.path, named, hasDefault, statement: m[0] });
+      if (target.endsWith(".tsx")) node.target = target;
+      byTarget.set(key, node);
+    }
+  }
+  return Array.from(byTarget.values());
+}
+function requiredExports(node) {
+  const named = Array.from(new Set(node.importers.flatMap((i) => i.named)));
+  return { named, needsDefault: node.importers.some((i) => i.hasDefault) };
+}
+function exportsSatisfy(content, node) {
+  const { named, needsDefault } = requiredExports(node);
+  const missing = [];
+  for (const n of named) {
+    const re = new RegExp(
+      `export\\s+(?:declare\\s+)?(?:async\\s+)?(?:function\\*?|const|let|var|class|type|interface|enum)\\s+${n}\\b|export\\s*\\{[^}]*\\b${n}\\b[^}]*\\}`
+    );
+    if (!re.test(content)) missing.push(n);
+  }
+  if (needsDefault && !/export\s+default\b/.test(content)) missing.push("default export");
+  return missing;
+}
+function usageContext(files, node) {
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const { named } = requiredExports(node);
+  const lines = [];
+  for (const imp of node.importers) {
+    const src = byPath.get(imp.path) ?? "";
+    const uses = src.split("\n").filter((l) => named.some((n) => new RegExp(`\\b${n}\\b`).test(l)) && !/^\s*import\b/.test(l)).slice(0, 12).map((l) => l.trim().slice(0, 200));
+    lines.push(`// ${imp.path}
+${imp.statement}
+${uses.join("\n")}`);
+  }
+  const types = byPath.get("src/types.ts") ?? byPath.get("src/types/index.ts");
+  if (types) lines.push(`// src/types.ts (shared types \u2014 import from "@/types")
+${types.slice(0, 4e3)}`);
+  return lines.join("\n\n");
+}
+async function resolveMissingNodes(files, scopePaths, create) {
+  const nodes = findMissingNodes(files, scopePaths);
+  const created = [];
+  const blocked = [];
+  let out = files;
+  for (const node of nodes) {
+    const importers = node.importers.map((i) => i.path);
+    let content = null;
+    try {
+      content = await create(node, usageContext(out, node));
+    } catch (e) {
+      throw e;
+    }
+    if (!content || !content.trim()) {
+      blocked.push({ target: node.target, reason: "no module was produced", importers });
+      continue;
+    }
+    const missing = exportsSatisfy(content, node);
+    if (missing.length) {
+      blocked.push({ target: node.target, reason: `created module is missing exports: ${missing.join(", ")}`, importers });
+      continue;
+    }
+    out = [...out.filter((f) => f.path !== node.target), { path: node.target, content }];
+    created.push(node.target);
+  }
+  return { files: out, created, blocked };
+}
+var IMPORT_STMT, NEVER_CREATE;
+var init_missing_nodes = __esm({
+  "src/server/engine/missing-nodes.ts"() {
+    init_define_import_meta_env();
+    init_structural_deps();
+    IMPORT_STMT = /import\s+(type\s+)?([\w$]+)?\s*,?\s*(\{[^}]*\})?\s*(?:\*\s+as\s+[\w$]+\s*)?from\s*["']([^"']+)["'];?/g;
+    NEVER_CREATE = [/^@\/components\/ui\//, /^@\/components\/blocks\//, /^@\/integrations\/supabase\//, /^@\/pages\//];
+  }
+});
+
 // src/server/prd/prd-deterministic.ts
 function detectProductType(brief) {
   const scores = /* @__PURE__ */ new Map();
   for (const rule of TYPE_RULES) {
-    for (const p of rule.patterns) {
-      if (p.test(brief)) scores.set(rule.type, (scores.get(rule.type) ?? 0) + rule.weight);
+    for (const p2 of rule.patterns) {
+      if (p2.test(brief)) scores.set(rule.type, (scores.get(rule.type) ?? 0) + rule.weight);
     }
   }
   if (CALCULATORS.some((c) => c.needles.some((n) => n.test(brief)))) {
     return { type: "utility", confidence: 0.95 };
   }
-  if (GENERIC_UTILITY.some((p) => p.test(brief))) {
+  if (GENERIC_UTILITY.some((p2) => p2.test(brief))) {
     scores.set("utility", (scores.get("utility") ?? 0) + 5);
   }
   let best = null;
@@ -143685,8 +143808,8 @@ function deterministicPrd(brief) {
     (s, i, arr) => arr.indexOf(s) === i
   );
   const semanticPersistence = ["workflow-app", "marketplace", "social", "storefront"].includes(type);
-  const needsPersistence = semanticPersistence || PERSISTENCE.some((p) => p.test(b));
-  const needsAuth = AUTH.some((p) => p.test(b)) || type === "marketplace" || type === "social" || type === "workflow-app" && MULTI_USER.test(b);
+  const needsPersistence = semanticPersistence || PERSISTENCE.some((p2) => p2.test(b));
+  const needsAuth = AUTH.some((p2) => p2.test(b)) || type === "marketplace" || type === "social" || type === "workflow-app" && MULTI_USER.test(b);
   const excluded = base.excluded.filter((s) => {
     if (needsAuth && (s === "auth" || s === "account")) return false;
     if (needsPersistence && s === "dashboard") return false;
@@ -143749,7 +143872,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144146,7 +144268,7 @@ function mergePrd(prior, raw) {
     example: f.exampleInput && f.exampleExpected ? { input: String(f.exampleInput), expected: String(f.exampleExpected) } : void 0
   })) : [];
   const formulas = [...prior.formulas];
-  for (const f of modelFormulas) if (!formulas.some((p) => p.id === f.id)) formulas.push(f);
+  for (const f of modelFormulas) if (!formulas.some((p2) => p2.id === f.id)) formulas.push(f);
   const required = coerceSurfaces(raw.requiredSurfaces, prior.requiredSurfaces);
   const excluded = coerceSurfaces(raw.excludedSurfaces, prior.excludedSurfaces).filter(
     (s) => !required.includes(s)
@@ -144161,7 +144283,7 @@ function mergePrd(prior, raw) {
     route: c.route ? String(c.route) : void 0
   })) : [];
   const mergedAcceptance = [...prior.acceptance];
-  for (const c of acceptance) if (!mergedAcceptance.some((p) => p.id === c.id)) mergedAcceptance.push(c);
+  for (const c of acceptance) if (!mergedAcceptance.some((p2) => p2.id === c.id)) mergedAcceptance.push(c);
   const name = (raw.productName ?? "").trim();
   const looksLikeCategory = /^(my |the )?[\w\s]*\b(app|calculator|tracker|tool|site|website|dashboard)$/i.test(name);
   return {
@@ -144193,10 +144315,10 @@ function mergePrd(prior, raw) {
     needsPersistence: typeof raw.needsPersistence === "boolean" ? raw.needsPersistence : prior.needsPersistence,
     needsAuth: typeof raw.needsAuth === "boolean" ? raw.needsAuth : prior.needsAuth,
     roles: Array.isArray(raw.roles) ? raw.roles.map(String) : prior.roles,
-    permissions: Array.isArray(raw.permissions) ? raw.permissions.filter((p) => p?.role && p?.entity).map((p) => ({
-      role: String(p.role),
-      entity: String(p.entity),
-      operations: (p.operations ?? []).filter((op) => ["create", "read", "update", "delete"].includes(op))
+    permissions: Array.isArray(raw.permissions) ? raw.permissions.filter((p2) => p2?.role && p2?.entity).map((p2) => ({
+      role: String(p2.role),
+      entity: String(p2.entity),
+      operations: (p2.operations ?? []).filter((op) => ["create", "read", "update", "delete"].includes(op))
     })) : prior.permissions,
     requiredSurfaces: required,
     excludedSurfaces: excluded,
@@ -144544,7 +144666,7 @@ function amendPrd(stored, request) {
   const added = requestedSurfaces(text);
   const removed = removedSurfaces(text);
   const wantsPersistence = PERSISTENCE_REQUEST.test(text);
-  if (!added.length && !removed.length && !wantsPersistence && COSMETIC.some((p) => p.test(text))) {
+  if (!added.length && !removed.length && !wantsPersistence && COSMETIC.some((p2) => p2.test(text))) {
     return { kind: "cosmetic", prd: stored, changed: false, note: "" };
   }
   if (!added.length && !removed.length && !wantsPersistence) {
@@ -144669,7 +144791,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -144734,7 +144855,7 @@ function renderPrdBlock(prd) {
   if (prd.permissions?.length) {
     out.push("");
     out.push("Permissions (enforce in data access and reflect in the UI):");
-    for (const p of prd.permissions) out.push(`  - ${p.role} \u2192 ${p.entity}: ${p.operations.join(", ")}`);
+    for (const p2 of prd.permissions) out.push(`  - ${p2.role} \u2192 ${p2.entity}: ${p2.operations.join(", ")}`);
   }
   out.push("");
   out.push("States that must be handled:");
@@ -144919,14 +145040,14 @@ function matchEvidence(req, ev) {
     const re = new RegExp(words2.map((w) => `(?=.*${w.replace(/s$/, "")})`).join(""));
     test = re;
   }
-  const files = ev.files.map((f) => f.path).filter((p) => /^src\//.test(p) && !/\.(test|spec)\./.test(p) && !/components\/ui\//.test(p)).filter((p) => test.test(p.toLowerCase()));
+  const files = ev.files.map((f) => f.path).filter((p2) => /^src\//.test(p2) && !/\.(test|spec)\./.test(p2) && !/components\/ui\//.test(p2)).filter((p2) => test.test(p2.toLowerCase()));
   const routes = ev.routes.filter((r) => test.test(r.toLowerCase()));
   return { files, routes };
 }
 function fingerprint2(paths, ev) {
   const byPath = new Map(ev.files.map((f) => [f.path, f.hash]));
   return hashContent(
-    [...paths].sort().map((p) => `${p}:${byPath.get(p) ?? "missing"}`).join("|")
+    [...paths].sort().map((p2) => `${p2}:${byPath.get(p2) ?? "missing"}`).join("|")
   );
 }
 function evaluateRequirements(reqs, ev, now = (/* @__PURE__ */ new Date()).toISOString()) {
@@ -144939,8 +145060,8 @@ function evaluateRequirements(reqs, ev, now = (/* @__PURE__ */ new Date()).toISO
   return next;
   function withPending(orig, out) {
     const changed = new Set(ev.turn?.changedPaths ?? []);
-    const pending = new Set((orig.pendingPaths ?? []).filter((p) => !changed.has(p)));
-    if (targeted.has(orig.id)) for (const p of ev.turn.blockedPaths) pending.add(p);
+    const pending = new Set((orig.pendingPaths ?? []).filter((p2) => !changed.has(p2)));
+    if (targeted.has(orig.id)) for (const p2 of ev.turn.blockedPaths) pending.add(p2);
     const list4 = [...pending].sort();
     if (!list4.length) {
       if (!orig.pendingPaths?.length) return out;
@@ -145043,14 +145164,14 @@ function continuationSuggestions(reqs) {
   return [...new Set(out)].slice(0, 4);
 }
 function renderProgressSummary(reqs, productName) {
-  const p = productProgress(reqs);
-  if (p.total === 0) return "";
+  const p2 = productProgress(reqs);
+  if (p2.total === 0) return "";
   const by = (s) => reqs.filter((r) => r.status === s).map((r) => r.description);
   const done = by("COMPLETED");
   const building = by("IN_PROGRESS");
   const remaining = by("NOT_STARTED");
   const blocked = by("BLOCKED");
-  const lines = [`${productName} \u2014 ${p.completed}/${p.total} requirements verified.`];
+  const lines = [`${productName} \u2014 ${p2.completed}/${p2.total} requirements verified.`];
   if (done.length) lines.push(`Verified: ${done.join(", ")}.`);
   if (building.length) lines.push(`Built, waiting on checks: ${building.join(", ")}.`);
   if (remaining.length) lines.push(`Remaining: ${remaining.join(", ")}.`);
@@ -145123,6 +145244,231 @@ var init_prd_requirements = __esm({
   }
 });
 
+// src/server/prd/intent-contract.ts
+var intent_contract_exports = {};
+__export(intent_contract_exports, {
+  COMMERCE_PAGE: () => COMMERCE_PAGE,
+  applyIntentContract: () => applyIntentContract,
+  deriveIntentContract: () => deriveIntentContract,
+  divergentPages: () => divergentPages,
+  renderIntentBlock: () => renderIntentBlock,
+  stripRoutesFromRouter: () => stripRoutesFromRouter
+});
+function deriveIntentContract(brief, prd) {
+  const text = brief || "";
+  const commerceFamily = FAMILIES.find((f) => f.id === "commerce");
+  const commerceRequested = commerceFamily.triggers.test(text);
+  const family = FAMILIES.find((f) => f.id !== "commerce" && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
+  const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
+  if (!family) {
+    return {
+      archetype: null,
+      label: prd?.domain || "",
+      domain: prd?.domain || "",
+      productType: APP_REQUEST.test(text) ? "workflow-app" : null,
+      roles: prd?.roles ?? [],
+      entities: (prd?.dataModel ?? []).map((e) => e.name),
+      workflows: prd?.primaryWorkflow ? [prd.primaryWorkflow.name] : [],
+      pages: [],
+      exclusions,
+      commerceRequested
+    };
+  }
+  return {
+    archetype: family.id,
+    label: family.label,
+    domain: prd?.domain || family.label,
+    productType: family.productType,
+    roles: family.roles,
+    entities: family.entities,
+    workflows: family.workflows,
+    pages: family.pages,
+    exclusions,
+    commerceRequested
+  };
+}
+function divergentPages(contract, routes, brief) {
+  if (contract.commerceRequested) return [];
+  const contractRoutes = new Set(contract.pages.map((x) => x.route));
+  const briefMentions = (r) => {
+    const word = r.replace(/^\//, "").split(/[/-]/)[0] ?? "";
+    return word.length > 2 && new RegExp(`\\b${word.replace(/s$/, "")}`, "i").test(brief);
+  };
+  const out = [];
+  for (const r of routes) {
+    if (contractRoutes.has(r) || briefMentions(r)) continue;
+    if (COMMERCE_PAGE.test(r)) out.push(r);
+    else if (COMMERCE_ORDERS.test(r) && routes.some((x) => COMMERCE_PAGE.test(x))) out.push(r);
+  }
+  return out;
+}
+function renderIntentBlock(c) {
+  if (!c.archetype && !c.exclusions.length) return "";
+  return [
+    `
+
+### Product contract (authoritative \u2014 do not drift)`,
+    c.archetype ? `Product: ${c.label}${c.domain && c.domain !== c.label ? ` (${c.domain})` : ""}.` : "",
+    c.roles.length ? `Users/roles: ${c.roles.join(", ")}.` : "",
+    c.entities.length ? `Core entities: ${c.entities.join(", ")}.` : "",
+    c.workflows.length ? `Primary workflows: ${c.workflows.join("; ")}.` : "",
+    c.pages.length ? `Pages: ${c.pages.map((x) => `${x.label} (${x.route})`).join(", ")}.` : "",
+    c.exclusions.length ? `OUT OF SCOPE \u2014 never add: ${c.exclusions.join(", ")}.` : ""
+  ].filter(Boolean).join("\n");
+}
+function applyIntentContract(prd, brief, now = (/* @__PURE__ */ new Date()).toISOString()) {
+  const c = deriveIntentContract(brief, prd);
+  const next = { ...prd, intent: c };
+  if (!c.archetype) {
+    if (c.productType === "workflow-app" && prd.productType === "content-site") {
+      next.productType = "workflow-app";
+      next.requiredSurfaces = Array.from(/* @__PURE__ */ new Set([...prd.requiredSurfaces.filter((s) => s !== "content"), "dashboard"]));
+    }
+    return next;
+  }
+  if (c.productType && c.productType !== "storefront" && (prd.productType === "storefront" || prd.productType === "content-site")) {
+    next.productType = c.productType;
+  }
+  if (c.productType === "workflow-app") {
+    const keep = prd.requiredSurfaces.filter((s) => s !== "content" && s !== "catalog" && s !== "checkout");
+    next.requiredSurfaces = Array.from(/* @__PURE__ */ new Set([...keep, "dashboard", "settings"]));
+    next.excludedSurfaces = Array.from(/* @__PURE__ */ new Set([...prd.excludedSurfaces.filter((s) => s !== "dashboard"), ...c.commerceRequested ? [] : ["checkout", "catalog"]]));
+  }
+  if (!prd.roles?.length) next.roles = c.roles;
+  if (!prd.dataModel?.length) {
+    next.dataModel = c.entities.map((name) => ({
+      name,
+      fields: [],
+      operations: ["create", "read", "update", "delete"],
+      visibility: "role",
+      allowedRoles: c.roles.slice(0, 2),
+      relationships: []
+    }));
+  }
+  if (c.exclusions.length) next.outOfScope = Array.from(/* @__PURE__ */ new Set([...prd.outOfScope ?? [], ...c.exclusions]));
+  const reqs = [...prd.requirements ?? []];
+  const have = new Set(reqs.map((r) => r.id));
+  for (const page of c.pages) {
+    const id = page.route === "/" ? "home" : slug3(page.label);
+    if (have.has(id)) continue;
+    const r = {
+      id,
+      description: page.label,
+      category: "page",
+      status: "NOT_STARTED",
+      dependsOn: [],
+      evidence: [],
+      lastVerifiedRevision: null,
+      updatedAt: now,
+      evidenceFingerprint: null,
+      integration: null,
+      nextAction: `Build the ${page.label} page`
+    };
+    reqs.push(r);
+    have.add(id);
+  }
+  next.requirements = reqs;
+  return next;
+}
+function stripRoutesFromRouter(app, pageFiles) {
+  let out = app;
+  for (const file of pageFiles) {
+    const name = file.split("/").pop().replace(/\.(tsx?|jsx?)$/, "");
+    const importRe = new RegExp(`^\\s*import\\s+([A-Za-z_$][\\w$]*)\\s+from\\s*["']@/pages/${name}["'];?\\s*$\\n?`, "m");
+    const lazyRe = new RegExp(`^\\s*const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\([^\\n]*@/pages/${name}[^\\n]*$\\n?`, "m");
+    const m = importRe.exec(out) ?? lazyRe.exec(out);
+    if (!m) continue;
+    const ident = m[1];
+    out = out.replace(m[0], "");
+    out = out.replace(new RegExp(`^[^\\n]*<Route\\b[^\\n]*<${ident}\\b[^\\n]*$\\n?`, "gm"), "");
+    if (new RegExp(`\\b${ident}\\b`).test(out)) return null;
+  }
+  return out;
+}
+var p, FAMILIES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, slug3;
+var init_intent_contract = __esm({
+  "src/server/prd/intent-contract.ts"() {
+    init_define_import_meta_env();
+    p = (route, label2) => ({ route, label: label2 });
+    FAMILIES = [
+      {
+        id: "healthcare",
+        label: "hospital / clinic management",
+        triggers: /\b(hospital|clinic|clinical|patients?|medical records?|healthcare|health ?care|ehr|emr|physicians?|nurs(e|es|ing)|ward|outpatient|inpatient|pharmacy|prescriptions?)\b/i,
+        productType: "workflow-app",
+        roles: ["admin", "doctor", "nurse", "receptionist", "patient"],
+        entities: ["Patient", "Doctor", "Appointment", "MedicalRecord", "Prescription", "Department", "Staff", "Invoice"],
+        workflows: ["Register a patient", "Book and manage appointments", "Record a visit in the medical record", "Issue a prescription", "Bill a patient"],
+        pages: [p("/", "Dashboard"), p("/patients", "Patients"), p("/doctors", "Doctors"), p("/appointments", "Appointments"), p("/records", "Medical Records"), p("/prescriptions", "Prescriptions"), p("/billing", "Billing"), p("/departments", "Departments"), p("/staff", "Staff"), p("/settings", "Settings")]
+      },
+      {
+        id: "education",
+        label: "school / learning management",
+        triggers: /\b(school|students?|teachers?|classroom|lms|learning management|university|college|enrol(l)?ments?|gradebook|grades)\b/i,
+        productType: "workflow-app",
+        roles: ["admin", "teacher", "student", "parent"],
+        entities: ["Student", "Teacher", "Class", "Course", "Enrollment", "Grade", "Attendance"],
+        workflows: ["Enrol a student", "Take attendance", "Record grades"],
+        pages: [p("/", "Dashboard"), p("/students", "Students"), p("/teachers", "Teachers"), p("/classes", "Classes"), p("/attendance", "Attendance"), p("/grades", "Grades"), p("/settings", "Settings")]
+      },
+      {
+        id: "hr",
+        label: "HR / people management",
+        triggers: /\b(hr|human resources|employees?|payroll|recruit(ing|ment)?|leave requests?|onboarding staff)\b/i,
+        productType: "workflow-app",
+        roles: ["admin", "manager", "employee"],
+        entities: ["Employee", "Department", "LeaveRequest", "PayrollRun", "Candidate"],
+        workflows: ["Add an employee", "Approve leave", "Run payroll"],
+        pages: [p("/", "Dashboard"), p("/employees", "Employees"), p("/departments", "Departments"), p("/leave", "Leave"), p("/payroll", "Payroll"), p("/settings", "Settings")]
+      },
+      {
+        id: "crm",
+        label: "CRM / sales pipeline",
+        triggers: /\b(crm|leads?|sales pipeline|deals?|prospects?|customer relationship)\b/i,
+        productType: "workflow-app",
+        roles: ["admin", "sales rep"],
+        entities: ["Contact", "Company", "Deal", "Activity"],
+        workflows: ["Capture a lead", "Move a deal through the pipeline", "Log an activity"],
+        pages: [p("/", "Dashboard"), p("/contacts", "Contacts"), p("/companies", "Companies"), p("/deals", "Deals"), p("/activities", "Activities"), p("/settings", "Settings")]
+      },
+      {
+        id: "inventory",
+        label: "inventory / warehouse management",
+        triggers: /\b(inventory|warehouse|stock (levels?|control|management)|suppliers?|purchase orders?)\b/i,
+        productType: "workflow-app",
+        roles: ["admin", "staff"],
+        entities: ["Item", "Supplier", "StockMovement", "PurchaseOrder", "Location"],
+        workflows: ["Receive stock", "Adjust stock", "Raise a purchase order"],
+        pages: [p("/", "Dashboard"), p("/items", "Items"), p("/suppliers", "Suppliers"), p("/purchase-orders", "Purchase Orders"), p("/movements", "Stock Movements"), p("/settings", "Settings")]
+      },
+      {
+        id: "projects",
+        label: "project / task management",
+        triggers: /\b(project management|task management|kanban|to-?do|issue tracker|sprints?)\b/i,
+        productType: "workflow-app",
+        roles: ["admin", "member"],
+        entities: ["Project", "Task", "Member", "Comment"],
+        workflows: ["Create a task", "Move a task across the board", "Assign a task"],
+        pages: [p("/", "Dashboard"), p("/projects", "Projects"), p("/tasks", "Tasks"), p("/team", "Team"), p("/settings", "Settings")]
+      },
+      {
+        id: "commerce",
+        label: "online store",
+        triggers: /\b(e-?commerce|online (store|shop)|storefront|shopping cart|\bcart\b|checkout|sell (products|goods|online)|webshop|\bshop\b|\bstore\b)\b/i,
+        productType: "storefront",
+        roles: ["customer", "admin"],
+        entities: ["Product", "Order", "Customer"],
+        workflows: ["Browse products", "Add to cart", "Check out"],
+        pages: [p("/", "Home"), p("/shop", "Shop"), p("/cart", "Cart"), p("/checkout", "Checkout")]
+      }
+    ];
+    APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
+    COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
+    COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
+    slug3 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+  }
+});
+
 // src/server/prd/prd-progress.server.ts
 var prd_progress_server_exports = {};
 __export(prd_progress_server_exports, {
@@ -145178,9 +145524,9 @@ async function recordRequirementEvidence(args) {
     let revision = args.projectRevision;
     let latestBuildId = null;
     if (typeof revision !== "number" || args.build === "latest") {
-      const { data: p } = await db.from("projects").select("revision, latest_build_id").eq("id", args.projectId).maybeSingle();
-      if (typeof revision !== "number") revision = Number(p?.revision ?? 0);
-      latestBuildId = p?.latest_build_id ?? null;
+      const { data: p2 } = await db.from("projects").select("revision, latest_build_id").eq("id", args.projectId).maybeSingle();
+      if (typeof revision !== "number") revision = Number(p2?.revision ?? 0);
+      latestBuildId = p2?.latest_build_id ?? null;
     }
     let build = null;
     if (args.build === "latest") {
@@ -145242,7 +145588,8 @@ async function resolvePrdForTurn(args) {
   let note = "";
   if (!stored) {
     const authoredPrd = args.deterministicOnly ? deterministicPrd(brief) : await modelPrd(brief, args.userId ?? void 0);
-    prd = attachRequirements(authoredPrd, brief, null).prd;
+    const { applyIntentContract: applyIntentContract2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
+    prd = applyIntentContract2(attachRequirements(authoredPrd, brief, null).prd, brief);
     versioned = await saveProjectPrd(args.projectId, prd, brief, null);
     authored = true;
   } else {
@@ -145333,7 +145680,7 @@ function baseOperation(r, opts) {
   if (R.func.test(r)) return direct2("functionality_change", "behaviour words");
   if (R.content.test(r)) return direct2("content_change", "copy words");
   if (R.style.test(r)) return direct2("styling_change", "visual words");
-  const pageHit = PAGE_WORDS.test(r) || (opts.manifest?.pages.some((p) => r.toLowerCase().includes(p.type)) ?? false);
+  const pageHit = PAGE_WORDS.test(r) || (opts.manifest?.pages.some((p2) => r.toLowerCase().includes(p2.type)) ?? false);
   if (pageHit) return direct2("page_modification", "names a page");
   return direct2("component_modification", "default targeted edit");
 }
@@ -145376,19 +145723,19 @@ function constraintsFrom(request) {
 function buildExecutionScope(args) {
   const { request, classification, manifest } = args;
   const targets = Array.from(new Set(args.targets));
-  const neighbours = (args.neighbours ?? []).filter((p) => !targets.includes(p));
-  const pagesSet = new Set(manifest?.pages.map((p) => p.path) ?? []);
+  const neighbours = (args.neighbours ?? []).filter((p2) => !targets.includes(p2));
+  const pagesSet = new Set(manifest?.pages.map((p2) => p2.path) ?? []);
   const wide = classification.operation === "first_build" || classification.operation === "architectural_change" || classification.operation === "page_creation" || targets.length === 0;
   const chromeNamed = CHROME_WORDS.test(request);
-  const reason = (p) => {
-    if (wide || targets.includes(p)) return null;
-    if (CHROME_RE.test(p) && !chromeNamed) return "shared navigation/layout was not part of this request";
-    if (pagesSet.has(p) && !neighbours.includes(p)) return "a different page than the one requested";
+  const reason = (p2) => {
+    if (wide || targets.includes(p2)) return null;
+    if (CHROME_RE.test(p2) && !chromeNamed) return "shared navigation/layout was not part of this request";
+    if (pagesSet.has(p2) && !neighbours.includes(p2)) return "a different page than the one requested";
     return null;
   };
   const protectedAreas = wide ? [] : [
     ...chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l)),
-    ...[...pagesSet].filter((p) => !targets.includes(p) && !neighbours.includes(p))
+    ...[...pagesSet].filter((p2) => !targets.includes(p2) && !neighbours.includes(p2))
   ];
   return {
     operation: classification.operation,
@@ -145403,7 +145750,7 @@ function buildExecutionScope(args) {
       "every changed file compiles",
       ...protectedAreas.length ? ["protected areas are byte-identical"] : []
     ],
-    isProtected: (p) => reason(p) !== null,
+    isProtected: (p2) => reason(p2) !== null,
     protectionReason: reason
   };
 }
@@ -145452,7 +145799,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -145596,9 +145942,9 @@ var init_transaction = __esm({
       /** The complete proposed project tree (baseline + staged), uncommitted. */
       proposedTree() {
         const next = new Map(this.base);
-        for (const [p, c] of this.staged) {
-          if (c === null) next.delete(p);
-          else next.set(p, c);
+        for (const [p2, c] of this.staged) {
+          if (c === null) next.delete(p2);
+          else next.set(p2, c);
         }
         return [...next].map(([path, content]) => ({ path, content }));
       }
@@ -145629,9 +145975,9 @@ var init_transaction = __esm({
         if (failed) return this.rollback(`${failed.check} failed${failed.detail ? `: ${failed.detail}` : ""}`);
         if (this.staged.size === 0) return this.rollback("no changes");
         const next = new Map(this.base);
-        for (const [p, c] of this.staged) {
-          if (c === null) next.delete(p);
-          else next.set(p, c);
+        for (const [p2, c] of this.staged) {
+          if (c === null) next.delete(p2);
+          else next.set(p2, c);
         }
         this.done = true;
         if (this.ledger) this.ledger.committed = true;
@@ -145651,8 +145997,8 @@ async function commitTurn(args) {
   const base = new Map(args.baseline.map((f) => [f.path, f.content]));
   const next = /* @__PURE__ */ new Map();
   for (const f of args.proposed) {
-    const p = f.path.trim();
-    if (p) next.set(p, f.content ?? "");
+    const p2 = f.path.trim();
+    if (p2) next.set(p2, f.content ?? "");
   }
   const rejections = [];
   const noOps = [];
@@ -145740,10 +146086,10 @@ async function commitTurn(args) {
       for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
       if (verification.status === "FAILED") {
         tx.recordCheck("source_verification", "FAIL", verification.reason ?? "source verification failed");
-        for (const p of verification.repairTargets.length ? verification.repairTargets : [void 0]) {
+        for (const p2 of verification.repairTargets.length ? verification.repairTargets : [void 0]) {
           rejections.push({
             operation: "commit",
-            path: p,
+            path: p2,
             reason: "validation_failed",
             stage: "source_verification",
             gate: verification.failedGate ?? void 0,
@@ -145896,15 +146242,15 @@ function sectionDirFor(file) {
   const name = file.split("/").pop().replace(/\.[jt]sx?$/, "");
   return `src/components/${name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}`;
 }
-function assessPageComplexity(p) {
+function assessPageComplexity(p2) {
   const reasons = [];
-  const sectionDir = sectionDirFor(p.file);
-  if (p.truncatedBefore) reasons.push("output_limit_hit");
-  if (SIMPLE_ROUTE.test(p.route)) return { decompose: reasons.length > 0, reasons, sectionDir };
-  const primary = p.route === "/" || /dashboard|home|overview|index/i.test(p.route);
-  const heavyDomain = UI_HEAVY.test(p.request) || UI_HEAVY.test(p.route);
-  const perPage = p.requirementCount / Math.max(1, p.pageCount);
-  if (primary && heavyDomain && p.requirementCount >= 4) reasons.push("primary_surface_of_multi_feature_product");
+  const sectionDir = sectionDirFor(p2.file);
+  if (p2.truncatedBefore) reasons.push("output_limit_hit");
+  if (SIMPLE_ROUTE.test(p2.route)) return { decompose: reasons.length > 0, reasons, sectionDir };
+  const primary = p2.route === "/" || /dashboard|home|overview|index/i.test(p2.route);
+  const heavyDomain = UI_HEAVY.test(p2.request) || UI_HEAVY.test(p2.route);
+  const perPage = p2.requirementCount / Math.max(1, p2.pageCount);
+  if (primary && heavyDomain && p2.requirementCount >= 4) reasons.push("primary_surface_of_multi_feature_product");
   else if (heavyDomain && perPage >= 3) reasons.push("dense_feature_page");
   return { decompose: reasons.length > 0, reasons, sectionDir };
 }
@@ -146091,7 +146437,7 @@ ${JSON.stringify(
     if (!args) return fallback;
     const raw = JSON.parse(args);
     const platforms = strings(raw.platforms, 3).filter(
-      (p) => PLATFORMS.includes(p)
+      (p2) => PLATFORMS.includes(p2)
     );
     const needsAuth = raw.needsAuth === true;
     const needsPayments = raw.needsPayments === true;
@@ -147485,19 +147831,19 @@ var init_model_agent_server = __esm({
 
 // src/server/agents/selection.ts
 function scoreComplexity(ctx) {
-  const p = ctx.input.prompt;
+  const p2 = ctx.input.prompt;
   let score = 0;
   if (ctx.isInitial) score += 2;
-  if (p.length > 240) score += 1;
-  if (p.length > 900) score += 1;
-  if (BACKEND_HINTS.test(p)) score += 2;
-  if (HIGH_STAKES.test(p)) score += 2;
-  if (MULTI_ROLE.test(p)) score += 1;
+  if (p2.length > 240) score += 1;
+  if (p2.length > 900) score += 1;
+  if (BACKEND_HINTS.test(p2)) score += 2;
+  if (HIGH_STAKES.test(p2)) score += 2;
+  if (MULTI_ROLE.test(p2)) score += 1;
   if (ctx.prd?.needsPersistence) score += 1;
   if (ctx.prd?.needsAuth) score += 1;
   if ((ctx.prd?.requiredSurfaces?.length ?? 0) >= 5) score += 1;
   if ((ctx.prd?.dataModel?.length ?? 0) >= 3) score += 1;
-  if (!ctx.isInitial && TRIVIAL.test(p.trim()) && COSMETIC2.test(p) && p.length < 160) score -= 4;
+  if (!ctx.isInitial && TRIVIAL.test(p2.trim()) && COSMETIC2.test(p2) && p2.length < 160) score -= 4;
   return Math.max(0, Math.min(10, score));
 }
 function selectAgents(ctx) {
@@ -147575,11 +147921,11 @@ var init_selection = __esm({
 function log2(ctx, entry) {
   ctx.log.push({ at: Date.now(), ...entry });
 }
-async function withTimeout(p, ms, label2) {
+async function withTimeout(p2, ms, label2) {
   let timer;
   try {
     return await Promise.race([
-      p,
+      p2,
       new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error(`${label2} timed out after ${ms}ms`)), ms);
       })
@@ -148151,8 +148497,8 @@ function renderChangeSetBlock(cs) {
   });
   if (cs.preserve.length > 0) {
     lines.push("", "MUST NOT CHANGE \u2014 the user explicitly asked you to leave these alone:");
-    for (const p of cs.preserve) {
-      lines.push(`- ${p.text}${p.target ? ` [${p.target}]` : ""}`);
+    for (const p2 of cs.preserve) {
+      lines.push(`- ${p2.text}${p2.target ? ` [${p2.target}]` : ""}`);
     }
   }
   lines.push(
@@ -148511,8 +148857,8 @@ __export(app_map_exports, {
   buildAppMap: () => buildAppMap,
   renderAppMapBlock: () => renderAppMapBlock
 });
-function isCode(p) {
-  return /\.(t|j)sx?$/.test(p) && !p.startsWith("src/components/examples/") && !p.startsWith("src/components/ui/");
+function isCode(p2) {
+  return /\.(t|j)sx?$/.test(p2) && !p2.startsWith("src/components/examples/") && !p2.startsWith("src/components/ui/");
 }
 function localImports(content) {
   const out = [];
@@ -148546,7 +148892,7 @@ function resolveSpec3(fromPath, spec, paths) {
 function buildAppMap(files) {
   const paths = new Set(files.map((f) => f.path));
   const byPath = new Map(files.map((f) => [f.path, f.content]));
-  const entry = ["src/App.tsx", "src/App.jsx", "src/main.tsx", "src/main.jsx"].find((p) => paths.has(p)) ?? null;
+  const entry = ["src/App.tsx", "src/App.jsx", "src/main.tsx", "src/main.jsx"].find((p2) => paths.has(p2)) ?? null;
   const code = files.filter((f) => isCode(f.path));
   const ordered = entry ? [files.find((f) => f.path === entry), ...code] : code;
   let router = "none";
@@ -148588,11 +148934,11 @@ function buildAppMap(files) {
     while (m = obj.exec(routerSrc)) add(m[1], m[2]);
     while (m = indexRe.exec(routerSrc)) add("/", m[1]);
   }
-  const pages = [...paths].filter((p) => /^src\/(pages|routes|screens)\/[^/]+\.(t|j)sx$/.test(p)).sort();
-  const layouts = code.map((f) => f.path).filter((p) => /(Layout|Header|Footer|Nav(bar)?|Shell|SiteNav)\.(t|j)sx$/.test(p)).sort();
+  const pages = [...paths].filter((p2) => /^src\/(pages|routes|screens)\/[^/]+\.(t|j)sx$/.test(p2)).sort();
+  const layouts = code.map((f) => f.path).filter((p2) => /(Layout|Header|Footer|Nav(bar)?|Shell|SiteNav)\.(t|j)sx$/.test(p2)).sort();
   const navLinks = /* @__PURE__ */ new Set();
-  for (const p of [...layouts, ...entry ? [entry] : []]) {
-    const src = byPath.get(p) ?? "";
+  for (const p2 of [...layouts, ...entry ? [entry] : []]) {
+    const src = byPath.get(p2) ?? "";
     const re = /\b(?:to|href)=\{?["'](\/[^"'#?]*)["']/g;
     let m;
     while (m = re.exec(src)) navLinks.add(m[1]);
@@ -148600,11 +148946,11 @@ function buildAppMap(files) {
     while (m = arr.exec(src)) navLinks.add(m[1]);
   }
   const deps = {};
-  for (const p of [...pages, ...layouts]) {
-    const src = byPath.get(p) ?? "";
-    deps[p] = localImports(src).map((i) => resolveSpec3(p, i.spec, paths) ?? i.spec).slice(0, 12);
+  for (const p2 of [...pages, ...layouts]) {
+    const src = byPath.get(p2) ?? "";
+    deps[p2] = localImports(src).map((i) => resolveSpec3(p2, i.spec, paths) ?? i.spec).slice(0, 12);
   }
-  const styles = [...paths].filter((p) => /^(src\/(index|styles|globals|App)\.css|tailwind\.config\.(t|j)s)$/.test(p)).sort();
+  const styles = [...paths].filter((p2) => /^(src\/(index|styles|globals|App)\.css|tailwind\.config\.(t|j)s)$/.test(p2)).sort();
   return {
     router,
     routerImport: SPEC_FOR[router],
@@ -148778,16 +149124,16 @@ function buildProjectManifest(files, inputs = {}) {
   const appMap = buildAppMap(files);
   const paths = files.map((f) => f.path);
   const byPath = new Map(files.map((f) => [f.path, f.content]));
-  const pages = appMap.pages.map((p) => {
-    const route = appMap.routes.find((r) => r.file === p)?.path ?? null;
-    return { path: p, route, type: classifyPage(p, route), imports: appMap.deps[p] ?? [] };
+  const pages = appMap.pages.map((p2) => {
+    const route = appMap.routes.find((r) => r.file === p2)?.path ?? null;
+    return { path: p2, route, type: classifyPage(p2, route), imports: appMap.deps[p2] ?? [] };
   });
-  const components = paths.filter((p) => /^src\/components\/.+\.(t|j)sx$/.test(p) && !HIDDEN.test(p)).sort();
+  const components = paths.filter((p2) => /^src\/components\/.+\.(t|j)sx$/.test(p2) && !HIDDEN.test(p2)).sort();
   const importCounts = /* @__PURE__ */ new Map();
   for (const deps of Object.values(appMap.deps)) for (const d of deps) importCounts.set(d, (importCounts.get(d) ?? 0) + 1);
   const sharedComponents = components.filter((c) => (importCounts.get(c) ?? 0) >= 2 || appMap.layouts.includes(c));
-  const assets = paths.filter((p) => /^(public|src\/assets)\//.test(p)).sort();
-  const images = assets.filter((p) => /\.(png|jpe?g|webp|gif|svg|avif)(\.asset\.json)?$/i.test(p));
+  const assets = paths.filter((p2) => /^(public|src\/assets)\//.test(p2)).sort();
+  const images = assets.filter((p2) => /\.(png|jpe?g|webp|gif|svg|avif)(\.asset\.json)?$/i.test(p2));
   let dependencies = [];
   try {
     const pkg = JSON.parse(byPath.get("package.json") ?? "{}");
@@ -148795,9 +149141,9 @@ function buildProjectManifest(files, inputs = {}) {
   } catch {
     dependencies = [];
   }
-  const config = paths.filter((p) => /^(package\.json|vite\.config\.[tj]s|tailwind\.config\.[tj]s|tsconfig\.json|index\.html|PETAL\.md|\.petalrc)$/.test(p)).sort();
+  const config = paths.filter((p2) => /^(package\.json|vite\.config\.[tj]s|tailwind\.config\.[tj]s|tsconfig\.json|index\.html|PETAL\.md|\.petalrc)$/.test(p2)).sort();
   const allCode = files.filter((f) => /\.(t|j)sx?$/.test(f.path) && !HIDDEN.test(f.path)).map((f) => f.content).join("\n");
-  const kind = inputs.backendKind ?? (paths.some((p) => p.startsWith("src/integrations/backend/")) ? "dedicated" : "none");
+  const kind = inputs.backendKind ?? (paths.some((p2) => p2.startsWith("src/integrations/backend/")) ? "dedicated" : "none");
   const backend2 = {
     connected: kind !== "none",
     kind,
@@ -148807,7 +149153,7 @@ function buildProjectManifest(files, inputs = {}) {
   };
   const features = Array.from(
     /* @__PURE__ */ new Set([
-      ...pages.map((p) => p.type).filter((t) => t !== "other"),
+      ...pages.map((p2) => p2.type).filter((t) => t !== "other"),
       ...backend2.usesAuth ? ["accounts"] : [],
       ...backend2.usesDb ? ["saved data"] : [],
       .../framer-motion|motion\/react/.test(allCode) ? ["animation"] : [],
@@ -148815,7 +149161,7 @@ function buildProjectManifest(files, inputs = {}) {
     ])
   );
   const styling = [
-    ...paths.some((p) => /tailwind|styles\.css|index\.css/.test(p)) || /className=/.test(allCode) ? ["tailwind"] : []
+    ...paths.some((p2) => /tailwind|styles\.css|index\.css/.test(p2)) || /className=/.test(allCode) ? ["tailwind"] : []
   ];
   return {
     identity: { name: inputs.projectName ?? null, projectId: inputs.projectId ?? null },
@@ -148846,7 +149192,7 @@ function renderStructureBlock2(m, maxChars = 1400) {
     `- Runtime: ${m.framework.runtime}; router: ${m.framework.router}${m.appMap.routerFile ? ` (${m.appMap.routerFile})` : ""}; ${m.fileCount} files`
   ];
   if (m.pages.length)
-    lines.push(`- Pages: ${m.pages.map((p) => `${p.path}${p.route ? ` [${p.route}]` : ""} (${p.type})`).join("; ")}`);
+    lines.push(`- Pages: ${m.pages.map((p2) => `${p2.path}${p2.route ? ` [${p2.route}]` : ""} (${p2.type})`).join("; ")}`);
   if (m.layouts.length) lines.push(`- Shared layout: ${m.layouts.join(", ")}`);
   const other = m.sharedComponents.filter((c) => !m.layouts.includes(c));
   if (other.length) lines.push(`- Shared components: ${other.join(", ")}`);
@@ -148938,9 +149284,9 @@ function reversedTerms(request) {
 function resolveMemory(entries, manifest, request) {
   const known = /* @__PURE__ */ new Set();
   if (manifest) {
-    for (const p of [...manifest.components, ...manifest.pages.map((x) => x.path), ...manifest.layouts]) {
-      known.add(p);
-      known.add((p.split("/").pop() ?? "").replace(/\.(t|j)sx?$/, ""));
+    for (const p2 of [...manifest.components, ...manifest.pages.map((x) => x.path), ...manifest.layouts]) {
+      known.add(p2);
+      known.add((p2.split("/").pop() ?? "").replace(/\.(t|j)sx?$/, ""));
     }
   }
   const reversed = reversedTerms(request);
@@ -148997,7 +149343,7 @@ function detectContextFlags(request, manifest, opts) {
     // Backend/db only when the project has one AND the request touches it.
     backend: hasBackend && RE.backend.test(r),
     database: hasBackend && RE.database.test(r),
-    commerce: RE.commerce.test(r) || !!manifest && manifest.pages.some((p) => p.type === "commerce") && RE.commerce.test(r),
+    commerce: RE.commerce.test(r) || !!manifest && manifest.pages.some((p2) => p2.type === "commerce") && RE.commerce.test(r),
     design: opts.isInitial || RE.design.test(r),
     images: opts.isInitial || RE.images.test(r),
     deployment: RE.deployment.test(r),
@@ -149011,22 +149357,22 @@ function selectContext(request, manifest, opts = {}) {
   const max = opts.max ?? 8;
   const reasons = {};
   const primary = [];
-  const add = (p, why, list4) => {
-    if (!p || list4.includes(p) || primary.includes(p)) return;
-    list4.push(p);
-    reasons[p] = why;
+  const add = (p2, why, list4) => {
+    if (!p2 || list4.includes(p2) || primary.includes(p2)) return;
+    list4.push(p2);
+    reasons[p2] = why;
   };
   for (const t of opts.explicitTargets ?? []) add(t, "resolved target", primary);
   if (primary.length === 0) {
     for (const [type, re] of PAGE_WORDS2) {
       if (!re.test(request)) continue;
-      for (const pg of manifest.pages.filter((p) => p.type === type)) add(pg.path, `page type ${type}`, primary);
-      if (type === "home" && manifest.appMap.entry && !manifest.pages.some((p) => p.type === "home")) {
+      for (const pg of manifest.pages.filter((p2) => p2.type === type)) add(pg.path, `page type ${type}`, primary);
+      if (type === "home" && manifest.appMap.entry && !manifest.pages.some((p2) => p2.type === "home")) {
         add(manifest.appMap.entry, "home is the entry", primary);
       }
     }
     const req = new Set(words(request));
-    for (const c of [...manifest.components, ...manifest.pages.map((p) => p.path)]) {
+    for (const c of [...manifest.components, ...manifest.pages.map((p2) => p2.path)]) {
       const name = (c.split("/").pop() ?? "").replace(/\.(t|j)sx?$/, "");
       const nameWords = words(name).filter((w) => !GENERIC.has(w));
       if (nameWords.length && nameWords.every((w) => req.has(w) || req.has(w.replace(/s$/, "")))) add(c, `name matches "${name}"`, primary);
@@ -149034,8 +149380,8 @@ function selectContext(request, manifest, opts = {}) {
   }
   const supporting = [];
   const known = new Set(manifest.components);
-  for (const p of primary) {
-    for (const d of manifest.appMap.deps[p] ?? []) if (known.has(d)) add(d, `imported by ${p}`, supporting);
+  for (const p2 of primary) {
+    for (const d of manifest.appMap.deps[p2] ?? []) if (known.has(d)) add(d, `imported by ${p2}`, supporting);
   }
   if (/\b(nav|navbar|menu|header|footer|link)\b/i.test(request)) {
     for (const l of manifest.layouts) add(l, "shared layout", supporting);
@@ -149243,10 +149589,10 @@ function routeCandidatePaths(view, allPaths, limit = 4) {
   const tokens2 = routeTokens(path);
   const wanted = tokens2.length > 0 ? tokens2 : ["home", "index", "landing"];
   const scored = [];
-  for (const p of allPaths) {
-    if (!/^src\//.test(p)) continue;
-    if (!/\.(tsx|jsx)$/.test(p)) continue;
-    const lower = p.toLowerCase();
+  for (const p2 of allPaths) {
+    if (!/^src\//.test(p2)) continue;
+    if (!/\.(tsx|jsx)$/.test(p2)) continue;
+    const lower = p2.toLowerCase();
     const isPageish = /\/(pages|routes|screens|views|app)\//.test(lower);
     let score = 0;
     for (const token2 of wanted) {
@@ -149255,7 +149601,7 @@ function routeCandidatePaths(view, allPaths, limit = 4) {
     }
     if (score === 0) continue;
     if (isPageish) score += 2;
-    scored.push({ p, score });
+    scored.push({ p: p2, score });
   }
   scored.sort((a2, b) => b.score - a2.score || a2.p.localeCompare(b.p));
   return scored.slice(0, limit).map((s) => s.p);
@@ -149323,11 +149669,11 @@ function findScreenTargets(prompt, paths) {
   for (const w of wanted) for (const k of ALIASES2[w] ?? [w]) if (k.length >= 3) keys.add(k);
   const candidates = paths.filter(isAppOwned3);
   const hits = [];
-  for (const p of candidates) {
-    const base = norm3(p.split("/").pop().replace(/\.(t|j)sx?$/, "").replace(/(page|section|screen)$/i, ""));
+  for (const p2 of candidates) {
+    const base = norm3(p2.split("/").pop().replace(/\.(t|j)sx?$/, "").replace(/(page|section|screen)$/i, ""));
     for (const k of keys) {
       if (base === k || base.startsWith(k)) {
-        hits.push({ path: p, score: (base === k ? 2 : 1) + (p.startsWith("src/pages/") ? 1 : 0) });
+        hits.push({ path: p2, score: (base === k ? 2 : 1) + (p2.startsWith("src/pages/") ? 1 : 0) });
         break;
       }
     }
@@ -149345,7 +149691,7 @@ function expandPageSections(prompt, targets, files) {
     const src = byPath.get(t) ?? "";
     for (const m of src.matchAll(/from\s+["']@\/(components\/sections\/[^"']+)["']/g)) {
       const base = `src/${m[1]}`;
-      const path = [".tsx", ".ts", ".jsx"].map((e) => base + e).find((p) => byPath.has(p));
+      const path = [".tsx", ".ts", ".jsx"].map((e) => base + e).find((p2) => byPath.has(p2));
       if (!path) continue;
       if (!chromeNamed && /(header|nav|footer)/i.test(path.split("/").pop())) continue;
       out.add(path);
@@ -149364,7 +149710,7 @@ function findAdjacentSection(prompt, files) {
     for (const im of page.content.matchAll(/import\s+(?:(\w+)|\{\s*(\w+)[^}]*\})\s+from\s+["']@\/(components\/sections\/[^"']+)["']/g)) {
       const name = im[1] ?? im[2];
       const base = `src/${im[3]}`;
-      const path = [".tsx", ".ts", ".jsx"].map((e) => base + e).find((p) => files.some((f) => f.path === p));
+      const path = [".tsx", ".ts", ".jsx"].map((e) => base + e).find((p2) => files.some((f) => f.path === p2));
       if (name && path) imports.set(name, path);
     }
     if (imports.size < 2) continue;
@@ -150482,14 +150828,14 @@ Scaffold these routes (use these exact paths) \u2014 build no other pages:`);
   if (b.kitBlockPaths.length) {
     out.push(`
 Reuse these kit blocks instead of inventing UI (import them, do not redefine):`);
-    for (const p of b.kitBlockPaths) out.push(`  - ${p}`);
+    for (const p2 of b.kitBlockPaths) out.push(`  - ${p2}`);
   }
   if (b.examplePaths.length) {
     out.push(
       `
 Study these example files for layout + token usage (read, do not import \u2014 they're under src/components/examples/):`
     );
-    for (const p of b.examplePaths) out.push(`  - ${p}`);
+    for (const p2 of b.examplePaths) out.push(`  - ${p2}`);
   }
   out.push(`
 Patterns that MAY fit \u2014 use one only if it serves a page or feature the user asked for; never add a form, workflow or page for it:`);
@@ -150601,9 +150947,10 @@ function shellInstruction(pages) {
 
 ### Build contract (first build)
 Planned pages \u2014 exactly these, no others:
-` + pages.map((p) => `- "${p.route}" \u2192 ${p.file} (default export)`).join("\n") + `
+` + pages.map((p2) => `- "${p2.route}" \u2192 ${p2.file} (default export)`).join("\n") + `
 
 In THIS call write ONLY the shared shell: src/App.tsx (router registering every planned route, each importing its page from the file above, wrapped in the shared layout), navigation, footer, styles, brand mark and shared components.
+FOUNDATION FIRST: also write, in this call, every shared module the pages will need \u2014 src/types.ts (types for every core entity), src/lib/data.ts (realistic records plus accessor functions/hooks for every core entity), and, if the product has roles or sign-in, src/lib/auth.tsx (AuthProvider + useAuth). Pages are written next and may import ONLY shared modules that exist after this call, so do not reference any helper you do not write here.
 Do NOT write any of the page files listed above \u2014 each page is written in its own dedicated call right after this one, and will use your shell and components.
 Finish every file you start.
 `;
@@ -150619,7 +150966,7 @@ function planFirstBuild(args) {
     routes,
     pages,
     instruction: shellInstruction(pages),
-    log: `[plan] pages=${pages.map((p) => `${p.route}\u2192${p.file}`).join(" ")} estimatedOutput=${units.estimate.total} maxOutputPerCall=${args.maxOutputTokens}`
+    log: `[plan] pages=${pages.map((p2) => `${p2.route}\u2192${p2.file}`).join(" ")} estimatedOutput=${units.estimate.total} maxOutputPerCall=${args.maxOutputTokens}`
   };
 }
 var init_plan = __esm({
@@ -151210,7 +151557,7 @@ function renderSkillsBlock(skills, opts = {}) {
     }
     if (s.prefer.length) {
       lines.push("Defaults (an explicit instruction from the user wins):");
-      for (const p of s.prefer) lines.push(`- ${p}`);
+      for (const p2 of s.prefer) lines.push(`- ${p2}`);
     }
     if (includeBody && s.body.trim()) lines.push("", s.body.trim());
     return lines.join("\n");
@@ -151266,6 +151613,7 @@ __export(write_exports, {
   routerInstruction: () => routerInstruction,
   sectionInstruction: () => sectionInstruction,
   sharedFiles: () => sharedFiles,
+  sharedModules: () => sharedModules,
   targetOf: () => targetOf,
   writePlannedPages: () => writePlannedPages
 });
@@ -151279,16 +151627,35 @@ function projectContract(files) {
   }
   const ui = files.map((f) => /^src\/components\/ui\/([^/]+)\.tsx$/.exec(f.path)?.[1]).filter((x) => !!x).sort();
   const hasRouter = files.some((f) => f.path === "src/components/ui/router.tsx");
+  const shared = sharedModules(files);
   return [
     `Installed packages (import ONLY these, nothing else): ${deps.join(", ") || "none listed"}.`,
     ui.length ? `UI primitives available at @/components/ui/<name>: ${ui.join(", ")}. Do not import any other @/components/ui path.` : "",
     hasRouter ? `Routing: import Link/NavLink/Routes/Route/useLocation from "@/components/ui/router" \u2014 never from "react-router-dom".` : "",
-    "Icons: lucide-react only, and import every icon you use. Page titles/meta: set document.title in an effect \u2014 no helmet libraries."
+    "Icons: lucide-react only, and import every icon you use. Page titles/meta: set document.title in an effect \u2014 no helmet libraries.",
+    shared.length ? `Shared app modules (foundation) \u2014 import app data, auth, hooks and types ONLY from these, using exactly these export names:
+${shared.map((m) => `- @/${m.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "")}: ${m.exports.join(", ") || "(default)"}`).join("\n")}
+Do not import any other @/lib, @/hooks, @/contexts, @/data, @/integrations or @/services path. If you need something not listed, define it inside your own file.` : "No shared app modules exist yet: do not import from @/lib, @/hooks, @/contexts, @/data, @/integrations or @/services \u2014 define what you need inside your own file."
   ].filter(Boolean).join("\n");
 }
+function sharedModules(files) {
+  const out = [];
+  for (const f of files) {
+    if (!/^src\/(lib|hooks|contexts|context|data|services|store|integrations|types)(\/|\.)/.test(f.path)) continue;
+    if (!/\.(tsx?|jsx?)$/.test(f.path) || f.path.startsWith("src/integrations/supabase/")) continue;
+    const names = /* @__PURE__ */ new Set();
+    for (const m of f.content.matchAll(/export\s+(?:declare\s+)?(?:async\s+)?(?:function\*?|const|let|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g)) names.add(m[1]);
+    for (const m of f.content.matchAll(/export\s*\{([^}]*)\}/g)) for (const n of m[1].split(",")) {
+      const k = n.trim().split(/\s+as\s+/).pop().trim();
+      if (k) names.add(k);
+    }
+    out.push({ path: f.path, exports: Array.from(names).slice(0, 40) });
+  }
+  return out.sort((a2, b) => a2.path.localeCompare(b.path));
+}
 function sharedFiles(files, pages) {
-  const pageFiles = new Set(pages.map((p) => p.file));
-  return files.map((f) => f.path).filter((p) => !pageFiles.has(p) && (p === "src/App.tsx" || p === "src/styles.css" || p === "index.html" || p === "package.json" || /^src\/components\/(sections|layout|brand)/.test(p) || /brand-mark|nav|header|footer/i.test(p)));
+  const pageFiles = new Set(pages.map((p2) => p2.file));
+  return files.map((f) => f.path).filter((p2) => !pageFiles.has(p2) && (p2 === "src/App.tsx" || p2 === "src/styles.css" || p2 === "index.html" || p2 === "package.json" || /^src\/components\/(sections|layout|brand)/.test(p2) || /brand-mark|nav|header|footer/i.test(p2)));
 }
 function pageInstruction(page, deliveredPaths, contract = "", shared = []) {
   return [
@@ -151340,7 +151707,7 @@ function missingSections(files, pageFile, sectionDir) {
 function routerInstruction(pages, deliveredPaths, contract = "") {
   return [
     "You own the SHARED FRAME. Write ONLY src/App.tsx. One file in this call \u2014 nothing else.",
-    `It must route exactly these pages: ${pages.map((p) => `"${p.route}" -> ${p.file}`).join(", ")}.`,
+    `It must route exactly these pages: ${pages.map((p2) => `"${p2.route}" -> ${p2.file}`).join(", ")}.`,
     "It must contain the shared layout every page renders inside: a header with the brand and navigation to every page, and a footer. Use existing header/nav/footer components from the list below if present; otherwise define them inside src/App.tsx.",
     contract,
     `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
@@ -151362,15 +151729,15 @@ function hasRealPage(files, file) {
 }
 function pagesReferencedByRouter(files, known) {
   const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
-  const knownFiles = new Set(known.map((p) => p.file));
+  const knownFiles = new Set(known.map((p2) => p2.file));
   const out = [];
   for (const m of app.matchAll(/from\s+["']@\/pages\/([A-Za-z][\w-]*)(?:\.tsx)?["']/g)) {
     const name = m[1];
     const file = `src/pages/${name}.tsx`;
     if (knownFiles.has(file) || hasRealPage(files, file)) continue;
     knownFiles.add(file);
-    const slug3 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-    out.push({ route: /^(home|index|landing)$/.test(slug3) ? "/" : `/${slug3}`, file });
+    const slug4 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+    out.push({ route: /^(home|index|landing)$/.test(slug4) ? "/" : `/${slug4}`, file });
   }
   return out;
 }
@@ -151420,21 +151787,21 @@ async function writePlannedPages(args) {
     const paths = files.map((f) => f.path);
     const contract = projectContract(files);
     const shared = sharedFiles(files, args.pages);
-    const results = await mapBounded(pages, PAGE_CONCURRENCY, (p) => {
-      const d = args.decide?.(p, truncated.includes(p.file));
+    const results = await mapBounded(pages, PAGE_CONCURRENCY, (p2) => {
+      const d = args.decide?.(p2, truncated.includes(p2.file));
       if (d?.decompose) {
-        decisions.set(p.file, d);
-        return call(decomposedPageInstruction(p, d, paths, contract, shared));
+        decisions.set(p2.file, d);
+        return call(decomposedPageInstruction(p2, d, paths, contract, shared));
       }
-      return call(pageInstruction(p, paths, contract, shared));
+      return call(pageInstruction(p2, paths, contract, shared));
     });
     results.forEach(put2);
   };
-  await writePages(args.pages.filter((p) => !hasRealPage(files, p.file)));
-  const retry = args.pages.filter((p) => !hasRealPage(files, p.file) && args.budget.take("missing_page", p.route));
+  await writePages(args.pages.filter((p2) => !hasRealPage(files, p2.file)));
+  const retry = args.pages.filter((p2) => !hasRealPage(files, p2.file) && args.budget.take("missing_page", p2.route));
   if (retry.length) await writePages(retry);
   for (const [pageFile, d] of decisions) {
-    const page = args.pages.find((p) => p.file === pageFile);
+    const page = args.pages.find((p2) => p2.file === pageFile);
     if (!hasRealPage(files, pageFile)) continue;
     const missingSecs = missingSections(files, pageFile, d.sectionDir);
     const todo = missingSecs.filter((f) => args.budget.take("missing_page", f));
@@ -151450,12 +151817,12 @@ async function writePlannedPages(args) {
       sections: files.filter((f) => f.path.startsWith(d.sectionDir + "/")).map((f) => f.path)
     });
   }
-  const routes = args.pages.filter((p) => hasRealPage(files, p.file)).map((p) => p.route);
+  const routes = args.pages.filter((p2) => hasRealPage(files, p2.file)).map((p2) => p2.route);
   const needFrame = !frameIsComplete(files, args.pages.length) || routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete;
   if (needFrame && args.budget.take("missing_page", "app shell")) {
     put2(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
   }
-  const missing = args.pages.filter((p) => !hasRealPage(files, p.file)).map((p) => p.route);
+  const missing = args.pages.filter((p2) => !hasRealPage(files, p2.file)).map((p2) => p2.route);
   return { files, written, missing, calls, truncated, decomposed };
 }
 async function mapBounded(items, limit, fn) {
@@ -151644,6 +152011,7 @@ var repair_exports = {};
 __export(repair_exports, {
   applyPatches: () => applyPatches,
   buildRepairUserMessage: () => buildRepairUserMessage,
+  createMissingModule: () => createMissingModule,
   repairBrokenFile: () => repairBrokenFile,
   stripFences: () => stripFences2
 });
@@ -151696,8 +152064,8 @@ async function callRepair(system, user, maxTokens, mode, meta) {
       noFallback: true,
       timeoutTier: "default",
       meta: {
-        chosenBy: mode === "targeted_patch" ? "broken_file_repair_patch" : "broken_file_repair",
-        recoveryReason: "parse_error",
+        chosenBy: mode === "targeted_patch" ? "broken_file_repair_patch" : mode === "create_module" ? "missing_node_create" : "broken_file_repair",
+        recoveryReason: mode === "create_module" ? "missing_dependency" : "parse_error",
         turnId: meta?.turnId ?? null,
         projectId: meta?.projectId ?? null,
         userId: meta?.userId ?? null
@@ -151726,7 +152094,22 @@ async function callRepair(system, user, maxTokens, mode, meta) {
   const data = await resp.json();
   return data.choices?.[0]?.message?.content ?? null;
 }
-var SYSTEM3, PATCH_SYSTEM;
+async function createMissingModule(node, context, meta) {
+  const { requiredExports: requiredExports2 } = await Promise.resolve().then(() => (init_missing_nodes(), missing_nodes_exports));
+  const req = requiredExports2(node);
+  const user = (meta?.turnContext?.trim() ? `${meta.turnContext.trim()}
+
+` : "") + `Create: ${node.target}
+Required named exports: ${req.named.join(", ") || "(none)"}
+Default export required: ${req.needsDefault ? "yes" : "no"}
+
+How the importers use it:
+${context}`;
+  const reply = await callRepair(CREATE_SYSTEM, user, 8e3, "create_module", meta);
+  const out = reply ? stripFences2(reply) : "";
+  return out.trim() ? out : null;
+}
+var SYSTEM3, PATCH_SYSTEM, CREATE_SYSTEM;
 var init_repair = __esm({
   "src/server/engine/repair.ts"() {
     init_define_import_meta_env();
@@ -151736,6 +152119,7 @@ var init_repair = __esm({
     init_failure_classification();
     SYSTEM3 = "You fix one source file that fails to compile. Return ONLY the complete corrected file contents \u2014 no markdown fences, no commentary. Keep the file's purpose, content, exports and imports; change only what is needed to fix the error.";
     PATCH_SYSTEM = "You fix one source file that fails to compile by returning ONLY search/replace edits, never the whole file. Format each edit exactly as:\n<<<<<<< SEARCH\n(exact lines copied from the file)\n=======\n(replacement lines)\n>>>>>>> REPLACE\nSEARCH text must match the file exactly and be unique. Change only what fixes the error; keep purpose, exports and imports.";
+    CREATE_SYSTEM = 'You create ONE missing shared source module that other files in a React + TypeScript app already import. Return ONLY the complete file contents \u2014 no markdown fences, no commentary. Export EVERY name listed, with signatures that fit how the importers use them. Only import from: react, packages already used by the importers, "@/types" and other files shown. If data is needed and no backend exists, keep realistic in-memory data in this module.';
   }
 });
 
@@ -152008,13 +152392,13 @@ function missingReachableDeps(files, entry = "src/main.tsx") {
       needed.add(rootOf(spec));
     }
   }
-  const missing = [...needed].filter((p) => !declared[p] && !BUILTINS.has(p));
-  return withRequiredPeers(missing).filter((p) => !declared[p]);
+  const missing = [...needed].filter((p2) => !declared[p2] && !BUILTINS.has(p2));
+  return withRequiredPeers(missing).filter((p2) => !declared[p2]);
 }
 function addMissingDeps(pkgContent, missing) {
   const pkg = JSON.parse(pkgContent);
   const deps = pkg.dependencies ??= {};
-  for (const p of missing) if (!deps[p]) deps[p] = KNOWN_PACKAGES[p] ?? "*";
+  for (const p2 of missing) if (!deps[p2]) deps[p2] = KNOWN_PACKAGES[p2] ?? "*";
   return JSON.stringify(pkg, null, 2) + "\n";
 }
 var IMPORT_RE7, EXTS4, BUILTINS;
@@ -152091,12 +152475,12 @@ function auditChangeSet(args) {
     (evidenceFor(item, text, paths) ? met : unmet).push(item);
   }
   const violations = [];
-  for (const p of args.changeSet.preserve) {
-    if (!p.target) continue;
-    const token2 = p.target.toLowerCase().replace(/\s+/g, "");
+  for (const p2 of args.changeSet.preserve) {
+    if (!p2.target) continue;
+    const token2 = p2.target.toLowerCase().replace(/\s+/g, "");
     if (token2.length < 4) continue;
     const hit = paths.filter((path) => path.toLowerCase().replace(/[-_]/g, "").includes(token2));
-    if (hit.length > 0) violations.push({ preserve: p, paths: hit });
+    if (hit.length > 0) violations.push({ preserve: p2, paths: hit });
   }
   const requestBlob = args.changeSet.items.map((i) => i.text).join(" ").toLowerCase();
   const memory = args.memory ?? [];
@@ -152249,7 +152633,7 @@ __export(design_system_lint_server_exports, {
 });
 function isTokenUtility(match) {
   const parts = match.split("-");
-  return parts.some((p) => ALLOWED_TOKENS.has(p));
+  return parts.some((p2) => ALLOWED_TOKENS.has(p2));
 }
 function stripNoise5(src) {
   return src.replace(/^import[\s\S]*?from\s+["'][^"']+["'];?$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\bd="[^"]*"/g, "");
@@ -152262,7 +152646,7 @@ function firstMatch(re, src) {
 function lintDesignSystem(files, design2, opts = {}) {
   const findings = [];
   if (!design2) return { findings, errorCount: 0, warningCount: 0, ok: true };
-  const skip = opts.skip ?? ((p) => /(^|\/)(components\/ui|node_modules)\//.test(p));
+  const skip = opts.skip ?? ((p2) => /(^|\/)(components\/ui|node_modules)\//.test(p2));
   const stylesFile = files.find((f) => /src\/(styles|index)\.css$/.test(f.path));
   if (stylesFile) {
     const css = stylesFile.content;
@@ -152401,7 +152785,7 @@ var init_design_system_lint_server = __esm({
 // src/server/verification/identifiers.server.ts
 import ts from "typescript";
 function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
-  const targets = changedPaths.filter((p) => PARSEABLE2.test(p));
+  const targets = changedPaths.filter((p2) => PARSEABLE2.test(p2));
   if (targets.length === 0) return { status: "verified", issues: [] };
   const now = opts.now ?? (() => Date.now());
   const started = now();
@@ -152440,7 +152824,7 @@ function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
       readFile: (name) => name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name)
     };
     const program = ts.createProgram([AMBIENT_PATH, ...files.keys()], options, host);
-    const wanted = new Set(targets.map((p) => `/${p}`));
+    const wanted = new Set(targets.map((p2) => `/${p2}`));
     const seen = /* @__PURE__ */ new Set();
     const issues = [];
     const diagnostics = [];
@@ -152616,7 +153000,7 @@ __export(source_server_exports, {
   verifyProposedSource: () => verifyProposedSource
 });
 async function verifyProposedSource(args) {
-  const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
+  const parseable = args.changedPaths.filter((p2) => /\.(tsx?|jsx?|mts|cts)$/i.test(p2) && !isVerifierExempt(p2));
   const esbuild2 = await verifyFilesEsbuild(args.tree, parseable);
   let merged = esbuild2;
   let semantic = { status: "not_run" };
@@ -152850,20 +153234,20 @@ function replaceEqualDeep(prev, _next, _makeObj = () => ({}), _depth = 0) {
   let equalItems = 0;
   for (let i = 0; i < nextSize; i++) {
     const key = array ? i : nextItems[i];
-    const p = prev[key];
+    const p2 = prev[key];
     const n = next[key];
-    if (p === n) {
-      copy[key] = p;
+    if (p2 === n) {
+      copy[key] = p2;
       if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++;
       continue;
     }
-    if (p === null || n === null || typeof p !== "object" || typeof n !== "object") {
+    if (p2 === null || n === null || typeof p2 !== "object" || typeof n !== "object") {
       copy[key] = n;
       continue;
     }
-    const v = replaceEqualDeep(p, n, _makeObj, _depth + 1);
+    const v = replaceEqualDeep(p2, n, _makeObj, _depth + 1);
     copy[key] = v;
-    if (v === p) equalItems++;
+    if (v === p2) equalItems++;
   }
   return prevSize === nextSize && equalItems === prevSize ? prev : copy;
 }
@@ -154381,8 +154765,8 @@ function pickSectionTarget(files) {
     "src/routes/index.tsx",
     "src/App.tsx"
   ];
-  for (const p of byPath) {
-    const hit = files.find((f) => f.path === p);
+  for (const p2 of byPath) {
+    const hit = files.find((f) => f.path === p2);
     if (hit && /return\s*\(/.test(hit.content)) return hit;
   }
   const candidates = files.filter((f) => isAppOwned2(f.path) && /return\s*\(/.test(f.content)).filter((f) => /<h1|hero|landing|homepage/i.test(f.content)).sort((a2, b) => b.content.length - a2.content.length);
@@ -154580,6 +154964,12 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
+
+// src/server/builder.server.ts
+init_source_escape_fixer_server();
+init_import_syntax_fixer_server();
+init_jsx_attr_literal_fixer_server();
+init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -155181,9 +155571,9 @@ function collectUsedJsxTags(clean) {
     while (j < n && /[A-Za-z0-9_]/.test(clean[j])) j++;
     const name = clean.slice(start, j);
     if (!name || !/^[A-Z]/.test(name)) continue;
-    let p = i - 1;
-    while (p >= 0 && /\s/.test(clean[p])) p--;
-    const prev = p >= 0 ? clean[p] : void 0;
+    let p2 = i - 1;
+    while (p2 >= 0 && /\s/.test(clean[p2])) p2--;
+    const prev = p2 >= 0 ? clean[p2] : void 0;
     if (prev && /[A-Za-z0-9_$\])]/.test(prev)) continue;
     tags.add(name);
   }
@@ -155395,11 +155785,11 @@ function resolveSpec(fromPath, spec, byPath) {
     `${base}/index.tsx`,
     `${base}/index.ts`
   ];
-  const exact = candidates.find((p) => byPath.has(p));
+  const exact = candidates.find((p2) => byPath.has(p2));
   if (exact) return exact;
-  const lowerCands = new Set(candidates.map((p) => p.toLowerCase()));
-  for (const p of byPath.keys()) {
-    if (lowerCands.has(p.toLowerCase())) return p;
+  const lowerCands = new Set(candidates.map((p2) => p2.toLowerCase()));
+  for (const p2 of byPath.keys()) {
+    if (lowerCands.has(p2.toLowerCase())) return p2;
   }
   return null;
 }
@@ -155413,13 +155803,13 @@ function pickRemapTarget(spec, byPath) {
   const key = basenameKey(spec);
   if (!key) return null;
   const candidates = [];
-  for (const p of byPath.keys()) {
-    if (!SCANNABLE3.test(p)) continue;
-    if (!p.startsWith("src/")) continue;
-    if (basenameKey(p) === key) candidates.push(p);
+  for (const p2 of byPath.keys()) {
+    if (!SCANNABLE3.test(p2)) continue;
+    if (!p2.startsWith("src/")) continue;
+    if (basenameKey(p2) === key) candidates.push(p2);
   }
   if (candidates.length === 0) return null;
-  const rank3 = (p) => p.startsWith("src/sections/") ? 0 : p.startsWith("src/components/app/") ? 1 : p.startsWith("src/components/") ? 2 : 3;
+  const rank3 = (p2) => p2.startsWith("src/sections/") ? 0 : p2.startsWith("src/components/app/") ? 1 : p2.startsWith("src/components/") ? 2 : 3;
   candidates.sort((a2, b) => rank3(a2) - rank3(b));
   return candidates[0];
 }
@@ -155540,8 +155930,8 @@ init_scaffold_ownership_server();
 init_known_packages();
 var SCANNABLE4 = /\.(tsx?|jsx?)$/;
 var CONFIG_FILES = /(^|\/)(vite|vitest|tailwind|postcss|eslint)\.config\.[cm]?[jt]s$/;
-function isBuildConfig(p) {
-  return CONFIG_FILES.test(p) || p === "petal-source-plugin.mjs";
+function isBuildConfig(p2) {
+  return CONFIG_FILES.test(p2) || p2 === "petal-source-plugin.mjs";
 }
 var IMPORT_RE2 = /(^|\n)([ \t]*)import\s+(?:type\s+)?(?:([\w*${}\s,]+)\s+from\s+)?["']([^"']+)["']\s*;?/g;
 var NODE_BUILTINS = /* @__PURE__ */ new Set([
@@ -155842,10 +156232,10 @@ function resolvePath2(spec, fromPath, paths) {
   } else if (isRelative(spec)) {
     const dir = fromPath.split("/").slice(0, -1);
     const parts = spec.split("/");
-    for (const p of parts) {
-      if (p === "." || p === "") continue;
-      if (p === "..") dir.pop();
-      else dir.push(p);
+    for (const p2 of parts) {
+      if (p2 === "." || p2 === "") continue;
+      if (p2 === "..") dir.pop();
+      else dir.push(p2);
     }
     base = dir.join("/");
   } else {
@@ -155902,7 +156292,7 @@ function syncTsconfigExcludes(files, reached) {
   }
   const reachedList = [...reached];
   const nextExclude = ON_DEMAND_KIT_PATHS.filter(
-    (prefix) => !reachedList.some((p) => isUnder(p, prefix))
+    (prefix) => !reachedList.some((p2) => isUnder(p2, prefix))
   );
   const current2 = Array.isArray(parsed.exclude) ? parsed.exclude : [];
   const foreign = current2.filter((e) => !ON_DEMAND_KIT_PATHS.includes(e));
@@ -155940,7 +156330,7 @@ function closeKitDependencies(files) {
   }
   const deps = pkg.dependencies ?? {};
   const devDeps = pkg.devDependencies ?? {};
-  const entries = ENTRY_CANDIDATES.filter((p) => paths.has(p));
+  const entries = ENTRY_CANDIDATES.filter((p2) => paths.has(p2));
   if (entries.length === 0) return empty();
   const seen = /* @__PURE__ */ new Set();
   const queue = [...entries];
@@ -156045,6 +156435,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -156249,10 +156640,10 @@ function validateRouteGraph(files) {
     let m;
     let fileHasRoot = false;
     for (const raw of collectJsxRoutes(f.content)) {
-      const p = normalizeTarget(raw);
-      if (!p) continue;
-      declaredPaths.push(p);
-      if (p === "/") fileHasRoot = true;
+      const p2 = normalizeTarget(raw);
+      if (!p2) continue;
+      declaredPaths.push(p2);
+      if (p2 === "/") fileHasRoot = true;
     }
     if (fileHasRoot) rootDeclFiles.push(f.path);
     const reDef = new RegExp(COMPONENT_DEF_RE.source, "g");
@@ -156285,7 +156676,7 @@ function validateRouteGraph(files) {
       if (t.startsWith("/")) navTargets.add(t);
     }
   }
-  const matchers = declaredPaths.map((p) => ({ path: p, m: pathToMatcher(p) }));
+  const matchers = declaredPaths.map((p2) => ({ path: p2, m: pathToMatcher(p2) }));
   const hasWildcard = matchers.some((x) => x.m === "wildcard");
   for (const t of navTargets) {
     const hit = matchers.some((x) => x.m !== "wildcard" && x.m.test(t));
@@ -156307,7 +156698,7 @@ function validateRouteGraph(files) {
   });
   if (rootDeclFiles.length > 1) {
     rootDeclFiles.sort((a2, b) => {
-      const score = (p) => /App\.tsx$/.test(p) ? 0 : /router|routes/i.test(p) ? 1 : 2;
+      const score = (p2) => /App\.tsx$/.test(p2) ? 0 : /router|routes/i.test(p2) ? 1 : 2;
       return score(a2) - score(b);
     });
     const keep = rootDeclFiles[0];
@@ -156445,16 +156836,16 @@ function wireOrphanPages(files) {
     const component = exportedComponent(page.content, base);
     if (!component) continue;
     if (new RegExp(`\\b${component}\\b`).test(content)) continue;
-    const slug3 = `/${kebab(base)}`;
-    if (declaredPaths.has(slug3)) continue;
-    declaredPaths.add(slug3);
+    const slug4 = `/${kebab(base)}`;
+    if (declaredPaths.has(slug4)) continue;
+    declaredPaths.add(slug4);
     const spec = `./${page.path.replace(/^src\//, "").replace(/\.(tsx|jsx)$/, "")}`;
     const importLine = isDefaultExport(page.content, component) ? `import ${component} from "${spec}";` : `import { ${component} } from "${spec}";`;
     additions.push({
       importLine,
-      route: `              <Route path="${slug3}" element={<${component} />} />`,
+      route: `              <Route path="${slug4}" element={<${component} />} />`,
       label: titleize(base),
-      path: slug3
+      path: slug4
     });
   }
   if (!additions.length) return { files, notes, wired };
@@ -156531,20 +156922,20 @@ function pruneJunkPages(files) {
   const kept = /* @__PURE__ */ new Set();
   for (const f of files) {
     if (doomed.has(f.path)) continue;
-    for (const p of doomed) {
-      const bare2 = p.replace(/^src\//, "").replace(/\.(tsx|jsx)$/, "");
+    for (const p2 of doomed) {
+      const bare2 = p2.replace(/^src\//, "").replace(/\.(tsx|jsx)$/, "");
       const leaf = bare2.split("/").pop();
       if (f.content.includes(`@/${bare2}`) || new RegExp(`["']\\.{1,2}/(?:[^"']*/)?${leaf}["']`).test(f.content)) {
-        kept.add(p);
+        kept.add(p2);
       }
     }
   }
-  const removed = [...doomed].filter((p) => !kept.has(p));
+  const removed = [...doomed].filter((p2) => !kept.has(p2));
   if (removed.length === 0) return { files, notes: [], removed: [] };
   return {
     files: files.filter((f) => !removed.includes(f.path)),
     notes: [
-      `junk-pages: removed ${removed.length} placeholder page(s) named after code concepts (${removed.map((p) => p.split("/").pop()).join(", ")})`
+      `junk-pages: removed ${removed.length} placeholder page(s) named after code concepts (${removed.map((p2) => p2.split("/").pop()).join(", ")})`
     ],
     removed
   };
@@ -156695,7 +157086,7 @@ ${decls}
     files: next,
     notes: [
       ...notesExtra,
-      `export-shape: added a default export to ${additions.size} file(s) that were default-imported (${[...additions.keys()].map((p) => p.split("/").pop()).slice(0, 3).join(", ")})`
+      `export-shape: added a default export to ${additions.size} file(s) that were default-imported (${[...additions.keys()].map((p2) => p2.split("/").pop()).slice(0, 3).join(", ")})`
     ],
     fixes: additions.size + aliases.size
   };
@@ -157098,8 +157489,8 @@ var CORE_TOKENS = [
   "border"
 ];
 function findStylesFile(files) {
-  for (const p of STYLE_PATHS) {
-    const f = files.find((x) => x.path === p);
+  for (const p2 of STYLE_PATHS) {
+    const f = files.find((x) => x.path === p2);
     if (f) return f;
   }
   return files.find((x) => /^src\/.*\.css$/.test(x.path));
@@ -157322,10 +157713,10 @@ function normalizeLocal(ref, fromPath) {
     const dir = fromPath.split("/").slice(0, -1).join("/");
     const parts = (dir + "/" + ref).split("/");
     const out = [];
-    for (const p of parts) {
-      if (!p || p === ".") continue;
-      if (p === "..") out.pop();
-      else out.push(p);
+    for (const p2 of parts) {
+      if (!p2 || p2 === ".") continue;
+      if (p2 === "..") out.pop();
+      else out.push(p2);
     }
     return out.join("/");
   }
@@ -157981,7 +158372,7 @@ function hashString(s) {
   return h >>> 0;
 }
 function pickTagged(pool, tags, seed) {
-  const scored = pool.map((p) => ({ p, score: p.tags.reduce((n, t) => n + (tags.includes(t) ? 1 : 0), 0) }));
+  const scored = pool.map((p2) => ({ p: p2, score: p2.tags.reduce((n, t) => n + (tags.includes(t) ? 1 : 0), 0) }));
   const best = Math.max(...scored.map((s) => s.score));
   const eligible = best > 0 ? scored.filter((s) => s.score === best).map((s) => s.p) : pool;
   return eligible[hashString(seed) % eligible.length];
@@ -158150,8 +158541,8 @@ function stripCssComments(css) {
   return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 function findStyles(files) {
-  for (const p of STYLE_PATHS3) {
-    const f = files.find((x) => x.path === p);
+  for (const p2 of STYLE_PATHS3) {
+    const f = files.find((x) => x.path === p2);
     if (f) return f;
   }
   return files.find((x) => /^src\/.*\.css$/.test(x.path));
@@ -158458,9 +158849,9 @@ var SCAFFOLD_PREFIXES = [
   "@/lib/utils",
   "@/hooks/use-mobile"
 ];
-function normalizePath2(p) {
+function normalizePath2(p2) {
   const out = [];
-  for (const seg of p.split("/")) {
+  for (const seg of p2.split("/")) {
     if (!seg || seg === ".") continue;
     if (seg === "..") out.pop();
     else out.push(seg);
@@ -158504,11 +158895,11 @@ function findIntendedTarget(spec, fromPath, byPath) {
   if (!wantName) return null;
   const sameDir = [];
   const anywhere = [];
-  for (const p of byPath.keys()) {
-    if (!SCANNABLE12.test(p) || !p.startsWith("src/")) continue;
-    if (fold(moduleName(p)) !== wantName) continue;
-    if (p.split("/").slice(0, -1).join("/") === wantDir) sameDir.push(p);
-    anywhere.push(p);
+  for (const p2 of byPath.keys()) {
+    if (!SCANNABLE12.test(p2) || !p2.startsWith("src/")) continue;
+    if (fold(moduleName(p2)) !== wantName) continue;
+    if (p2.split("/").slice(0, -1).join("/") === wantDir) sameDir.push(p2);
+    anywhere.push(p2);
   }
   if (sameDir.length === 1) return sameDir[0];
   if (sameDir.length > 1) return null;
@@ -158531,7 +158922,7 @@ function resolveSiblingImports(input, changedPaths) {
     while (m = re.exec(f.content)) specs.add(m[1]);
     for (const spec of specs) {
       if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
-      if (SCAFFOLD_PREFIXES.some((p) => spec === p || spec.startsWith(p))) continue;
+      if (SCAFFOLD_PREFIXES.some((p2) => spec === p2 || spec.startsWith(p2))) continue;
       const base = toBase(f.path, spec);
       if (base && resolves(base, byPath)) continue;
       const target = findIntendedTarget(spec, f.path, byPath);
@@ -158965,9 +159356,9 @@ function routeTreeImportBroken(files) {
   }
   return false;
 }
-function normalize(p) {
+function normalize(p2) {
   const out = [];
-  for (const seg of p.split("/")) {
+  for (const seg of p2.split("/")) {
     if (seg === "." || seg === "") continue;
     if (seg === "..") out.pop();
     else out.push(seg);
@@ -159527,7 +159918,7 @@ function fixBlockProps(files) {
   let touched = 0;
   const next = files.map((f) => {
     if (!/\.(tsx|jsx)$/.test(f.path)) return f;
-    if (!GROUPED_PROPS.some((p) => f.content.includes(`${p}={{`))) return f;
+    if (!GROUPED_PROPS.some((p2) => f.content.includes(`${p2}={{`))) return f;
     const { content, changes } = flattenInFile(f.content);
     if (changes === 0) return f;
     total += changes;
@@ -159966,14 +160357,14 @@ function resolveSpec2(from, spec, paths) {
 function localRepairView(files, touched) {
   const paths = new Set(files.map((f) => f.path));
   const byPath = new Map(files.map((f) => [f.path, f]));
-  const keep = new Set(touched.filter((p) => paths.has(p)));
-  for (const p of touched) {
-    const f = byPath.get(p);
+  const keep = new Set(touched.filter((p2) => paths.has(p2)));
+  for (const p2 of touched) {
+    const f = byPath.get(p2);
     if (!f) continue;
     for (const m of f.content.matchAll(IMPORT_SPEC_RE)) {
       const spec = m[1] ?? m[2] ?? m[3];
       if (!spec) continue;
-      const hit = resolveSpec2(p, spec, paths);
+      const hit = resolveSpec2(p2, spec, paths);
       if (hit) keep.add(hit);
     }
   }
@@ -159996,17 +160387,17 @@ function runAllRepairs(input, opts) {
       if (!viewPaths.has(f.path)) merged.push(f);
       else merged.push(out.get(f.path) ?? f);
     }
-    const stem = (p) => p.replace(/\.(tsx|ts|jsx|js|mjs)$/g, "").replace(/\.(tsx|ts|jsx|js|mjs)$/g, "");
+    const stem = (p2) => p2.replace(/\.(tsx|ts|jsx|js|mjs)$/g, "").replace(/\.(tsx|ts|jsx|js|mjs)$/g, "");
     const inputStems = new Set(input.map((f) => stem(f.path)));
     const pathSet = new Set(inner.files.map((f) => f.path));
     const wanted = /* @__PURE__ */ new Set();
-    for (const p of opts.scopeLock.touchedPaths) {
-      if (!input.some((f2) => f2.path === p)) continue;
-      const f = inner.files.find((x) => x.path === p);
+    for (const p2 of opts.scopeLock.touchedPaths) {
+      if (!input.some((f2) => f2.path === p2)) continue;
+      const f = inner.files.find((x) => x.path === p2);
       if (!f) continue;
       for (const m of f.content.matchAll(IMPORT_SPEC_RE)) {
         const spec = m[1] ?? m[2] ?? m[3];
-        const hit = spec ? resolveSpec2(p, spec, pathSet) : null;
+        const hit = spec ? resolveSpec2(p2, spec, pathSet) : null;
         if (hit) wanted.add(hit);
       }
     }
@@ -160230,7 +160621,7 @@ var VALID_LUCIDE_ICONS = (() => {
   const set = /* @__PURE__ */ new Set();
   const names = dynamicIconImports ?? {};
   for (const kebab2 of Object.keys(names)) {
-    const pascal = kebab2.split("-").map((p) => p ? p[0].toUpperCase() + p.slice(1) : p).join("");
+    const pascal = kebab2.split("-").map((p2) => p2 ? p2[0].toUpperCase() + p2.slice(1) : p2).join("");
     if (pascal) set.add(pascal);
   }
   set.add("Icon");
@@ -160282,10 +160673,10 @@ function fixLucideIcons(content, report) {
       const parts = names.split(",").map((s) => s.trim()).filter(Boolean);
       const seenLocals = /* @__PURE__ */ new Set();
       const fixedParts = [];
-      for (const p of parts) {
-        const aliasMatch = p.match(/^(\w+)\s+as\s+(\w+)$/);
-        const importName = aliasMatch ? aliasMatch[1] : p;
-        const localName = aliasMatch ? aliasMatch[2] : p;
+      for (const p2 of parts) {
+        const aliasMatch = p2.match(/^(\w+)\s+as\s+(\w+)$/);
+        const importName = aliasMatch ? aliasMatch[1] : p2;
+        const localName = aliasMatch ? aliasMatch[2] : p2;
         let resolved = null;
         if (VALID_LUCIDE_ICONS.has(importName)) {
           resolved = importName;
@@ -160380,14 +160771,14 @@ function capPetalImages(content, report) {
   const re = /petal-image:\/\/([a-zA-Z0-9_\-%]+)/g;
   const seen = /* @__PURE__ */ new Set();
   let stripped = 0;
-  const out = content.replace(re, (whole, slug3) => {
-    if (seen.has(slug3)) return whole;
+  const out = content.replace(re, (whole, slug4) => {
+    if (seen.has(slug4)) return whole;
     if (seen.size < 6) {
-      seen.add(slug3);
+      seen.add(slug4);
       return whole;
     }
     stripped++;
-    return `https://picsum.photos/seed/${slug3.slice(0, 16)}/800/600`;
+    return `https://picsum.photos/seed/${slug4.slice(0, 16)}/800/600`;
   });
   if (stripped > 0) {
     report.fixedCount += stripped;
@@ -160408,7 +160799,7 @@ function resolveImportPath(fromPath, spec, byPath) {
   const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? normalizePath3(`${fromPath.split("/").slice(0, -1).join("/")}/${spec}`) : null;
   if (!base) return null;
   const candidates = [base, `${base}.tsx`, `${base}.ts`, `${base}.jsx`, `${base}.js`, `${base}/index.tsx`, `${base}/index.ts`];
-  return candidates.find((p) => byPath.has(p)) ?? null;
+  return candidates.find((p2) => byPath.has(p2)) ?? null;
 }
 function fixLazyNamedExports(files, report) {
   const byPath = new Map(files.map((f) => [f.path, f]));
@@ -161026,8 +161417,8 @@ function allAgentTools() {
   }
   return tools;
 }
-function normalizeDir(p) {
-  const cleaned = String(p ?? "").trim().replace(/^\.?\/+/, "").replace(/\/+$/, "");
+function normalizeDir(p2) {
+  const cleaned = String(p2 ?? "").trim().replace(/^\.?\/+/, "").replace(/\/+$/, "");
   return cleaned === "." ? "" : cleaned;
 }
 function listDir(files, rawPath, depth) {
@@ -161209,7 +161600,7 @@ async function installPackages(args) {
     };
   }
   const raw = Array.isArray(args.packages) ? args.packages.map(String) : [];
-  const specs = raw.map((p) => p.trim()).filter(Boolean);
+  const specs = raw.map((p2) => p2.trim()).filter(Boolean);
   if (specs.length === 0) {
     return { label: "No packages given", isError: true, output: "No package names were supplied." };
   }
@@ -165819,11 +166210,11 @@ var GATEWAY_AWARE_SERVICES = {
   // Storage
   "aws-s3": { connectorId: "aws_s3", displayName: "AWS S3", reason: "Credentials proxied via the gateway." }
 };
-function gatewayHintFor(slug3) {
-  return GATEWAY_AWARE_SERVICES[slug3] ?? null;
+function gatewayHintFor(slug4) {
+  return GATEWAY_AWARE_SERVICES[slug4] ?? null;
 }
-function renderGatewayHint(slug3, displayName) {
-  const hint = gatewayHintFor(slug3);
+function renderGatewayHint(slug4, displayName) {
+  const hint = gatewayHintFor(slug4);
   if (!hint) return "";
   return [
     "",
@@ -165840,15 +166231,15 @@ var FETCH_TIMEOUT_MS = 6e3;
 function slugifyService(name) {
   return name.toLowerCase().trim().replace(/^@/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 }
-async function readCache(slug3) {
+async function readCache(slug4) {
   const { data } = await supabaseAdmin.from("integration_docs_cache").select(
     "service_slug, display_name, npm_package, docs_url, prompt_block, required_secrets, source, refreshed_at"
-  ).eq("service_slug", slug3).maybeSingle();
+  ).eq("service_slug", slug4).maybeSingle();
   if (!data) return null;
   const ageMs = Date.now() - new Date(data.refreshed_at).getTime();
   const maxMs = CACHE_MAX_AGE_DAYS * 24 * 60 * 60 * 1e3;
   if (ageMs > maxMs) return null;
-  void supabaseAdmin.from("integration_docs_cache").update({ hit_count: data.hit_count ?? 0 + 1 }).eq("service_slug", slug3);
+  void supabaseAdmin.from("integration_docs_cache").update({ hit_count: data.hit_count ?? 0 + 1 }).eq("service_slug", slug4);
   return {
     serviceSlug: data.service_slug,
     displayName: data.display_name,
@@ -165885,14 +166276,14 @@ async function fetchWithTimeout(url, ms = FETCH_TIMEOUT_MS) {
     clearTimeout(t);
   }
 }
-async function tryNpm(slug3, displayName) {
+async function tryNpm(slug4, displayName) {
   const guesses = [
-    slug3,
-    slug3.replace(/-/g, ""),
-    `@${slug3}/sdk`,
-    `${slug3}-sdk`,
-    `${slug3}-node`,
-    `node-${slug3}`
+    slug4,
+    slug4.replace(/-/g, ""),
+    `@${slug4}/sdk`,
+    `${slug4}-sdk`,
+    `${slug4}-node`,
+    `node-${slug4}`
   ];
   for (const pkg of guesses) {
     const res = await fetchWithTimeout(`https://registry.npmjs.org/${encodeURIComponent(pkg)}`);
@@ -165922,7 +166313,7 @@ ${readmeSnippet}
 """` : ""
     ].filter(Boolean).join("\n");
     return {
-      serviceSlug: slug3,
+      serviceSlug: slug4,
       displayName,
       npmPackage: data.name,
       docsUrl: homepage,
@@ -165938,7 +166329,7 @@ function guessSecrets(displayName) {
   if (!base) return [];
   return [`${base}_API_KEY`];
 }
-async function tryAiSynth(slug3, displayName) {
+async function tryAiSynth(slug4, displayName) {
   if (!process.env.OPENROUTER_API_KEY) return null;
   try {
     const { aiChatCompletions: aiChatCompletions2 } = await Promise.resolve().then(() => (init_ai_provider_server(), ai_provider_server_exports));
@@ -165968,7 +166359,7 @@ async function tryAiSynth(slug3, displayName) {
     const brief = String(parsed.brief ?? "").slice(0, 4e3);
     if (!brief) return null;
     return {
-      serviceSlug: slug3,
+      serviceSlug: slug4,
       displayName,
       npmPackage: typeof parsed.npm === "string" ? parsed.npm : null,
       docsUrl: typeof parsed.docs === "string" ? parsed.docs : null,
@@ -165992,30 +166383,30 @@ function safeJson(s) {
 async function resolveIntegration(rawName) {
   const displayName = rawName.trim();
   if (!displayName) return null;
-  const slug3 = slugifyService(displayName);
-  if (!slug3) return null;
-  const cached7 = await readCache(slug3);
+  const slug4 = slugifyService(displayName);
+  if (!slug4) return null;
+  const cached7 = await readCache(slug4);
   if (cached7) return cached7;
-  const curated = CURATED_INTEGRATIONS[slug3];
+  const curated = CURATED_INTEGRATIONS[slug4];
   if (curated) {
-    const r = { ...curated, serviceSlug: slug3, source: "curated" };
-    const hint = renderGatewayHint(slug3, r.displayName);
+    const r = { ...curated, serviceSlug: slug4, source: "curated" };
+    const hint = renderGatewayHint(slug4, r.displayName);
     if (hint) r.promptBlock = `${r.promptBlock}
 ${hint}`;
     void writeCache(r);
     return r;
   }
-  const npm = await tryNpm(slug3, displayName);
+  const npm = await tryNpm(slug4, displayName);
   if (npm) {
-    const hint = renderGatewayHint(slug3, npm.displayName);
+    const hint = renderGatewayHint(slug4, npm.displayName);
     if (hint) npm.promptBlock = `${npm.promptBlock}
 ${hint}`;
     void writeCache(npm);
     return npm;
   }
-  const ai = await tryAiSynth(slug3, displayName);
+  const ai = await tryAiSynth(slug4, displayName);
   if (ai) {
-    const hint = renderGatewayHint(slug3, ai.displayName);
+    const hint = renderGatewayHint(slug4, ai.displayName);
     if (hint) ai.promptBlock = `${ai.promptBlock}
 ${hint}`;
     void writeCache(ai);
@@ -166276,10 +166667,10 @@ async function fetchGroundingPages(prompt) {
 function renderGroundingBlock(pages) {
   if (pages.length === 0) return "";
   const sections = pages.map(
-    (p, i) => `### Source ${i + 1}: ${p.url}
-${p.title ? `Title: ${p.title}
+    (p2, i) => `### Source ${i + 1}: ${p2.url}
+${p2.title ? `Title: ${p2.title}
 ` : ""}\`\`\`
-${p.text}
+${p2.text}
 \`\`\``
   ).join("\n\n");
   return `
@@ -167201,10 +167592,10 @@ async function findProjectPicture(projectId, request) {
 }
 function renderProjectPictureBlock(pictures) {
   if (!pictures.length) return "";
-  const lines = pictures.slice(0, MAX_IN_PROMPT).map((p) => {
-    const label2 = p.label.trim() || "untitled photo";
-    const tags = p.tags.length ? ` (${p.tags.slice(0, 6).join(", ")})` : "";
-    return `- ${label2}${tags} \u2192 ${p.url}`;
+  const lines = pictures.slice(0, MAX_IN_PROMPT).map((p2) => {
+    const label2 = p2.label.trim() || "untitled photo";
+    const tags = p2.tags.length ? ` (${p2.tags.slice(0, 6).join(", ")})` : "";
+    return `- ${label2}${tags} \u2192 ${p2.url}`;
   }).join("\n");
   return `
 
@@ -167249,10 +167640,10 @@ init_turn_context_server();
 var BUCKET = "petal-images";
 var MAX_IMAGES_PER_GENERATION = 6;
 var PLACEHOLDER_RE = /petal-image:\/\/([^\s"'`<>\)]+)/g;
-function slugToPrompt(slug3) {
-  let decoded = slug3;
+function slugToPrompt(slug4) {
+  let decoded = slug4;
   try {
-    decoded = decodeURIComponent(slug3);
+    decoded = decodeURIComponent(slug4);
   } catch {
   }
   if (/\s/.test(decoded) || decoded.length > 40) return decoded;
@@ -167394,66 +167785,66 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
   let failed = 0;
   const queue = [...ordered];
   const liveUrls = [];
-  const fallbackUrl = (slug3) => {
-    const label2 = slug3.replace(/[-_]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim().slice(0, 48) || "Picture";
-    const hue = Math.abs([...slug3].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
+  const fallbackUrl = (slug4) => {
+    const label2 = slug4.replace(/[-_]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim().slice(0, 48) || "Picture";
+    const hue = Math.abs([...slug4].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue} 60% 88%)"/><stop offset="1" stop-color="hsl(${(hue + 55) % 360} 58% 72%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><circle cx="920" cy="170" r="240" fill="white" opacity=".2"/><path d="M0 700 330 390l210 190 170-150 490 370H0Z" fill="white" opacity=".35"/><text x="70" y="720" font-family="Arial,sans-serif" font-size="42" fill="#172033" opacity=".72">${label2}</text></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   };
-  const announce = (slug3, url) => {
+  const announce = (slug4, url) => {
     liveUrls.push(url);
     try {
-      onImage?.({ url, slug: slug3, index: liveUrls.length });
+      onImage?.({ url, slug: slug4, index: liveUrls.length });
     } catch {
     }
   };
   async function worker() {
     while (queue.length) {
-      const slug3 = queue.shift();
-      if (!slug3) return;
+      const slug4 = queue.shift();
+      if (!slug4) return;
       try {
-        const own = await findProjectPicture(projectId, slugToPrompt(slug3));
+        const own = await findProjectPicture(projectId, slugToPrompt(slug4));
         if (own) {
-          urlMap.set(slug3, own.url);
+          urlMap.set(slug4, own.url);
           resolved += 1;
-          announce(slug3, own.url);
+          announce(slug4, own.url);
           continue;
         }
       } catch {
       }
       try {
-        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug3) });
+        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug4) });
         if (fromLibrary) {
-          urlMap.set(slug3, fromLibrary.url);
+          urlMap.set(slug4, fromLibrary.url);
           resolved += 1;
-          announce(slug3, fromLibrary.url);
+          announce(slug4, fromLibrary.url);
           continue;
         }
       } catch {
       }
       try {
-        const r = await generatePetalImage({ prompt: slugToPrompt(slug3) });
-        urlMap.set(slug3, r.url);
+        const r = await generatePetalImage({ prompt: slugToPrompt(slug4) });
+        urlMap.set(slug4, r.url);
         resolved += 1;
-        announce(slug3, r.url);
+        announce(slug4, r.url);
       } catch (e) {
         failed += 1;
-        console.warn(`[petal-image] generation failed for "${slug3}":`, e);
-        const url = fallbackUrl(slug3);
-        urlMap.set(slug3, url);
-        announce(slug3, url);
+        console.warn(`[petal-image] generation failed for "${slug4}":`, e);
+        const url = fallbackUrl(slug4);
+        urlMap.set(slug4, url);
+        announce(slug4, url);
       }
     }
   }
   await Promise.all([worker(), worker()]);
-  for (const slug3 of skipped) {
-    urlMap.set(slug3, fallbackUrl(slug3));
+  for (const slug4 of skipped) {
+    urlMap.set(slug4, fallbackUrl(slug4));
   }
   const next = files.map((f) => {
     if (allowed && !allowed.has(f.path)) return f;
     if (!f.content.includes("petal-image://")) return f;
-    const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug3) => {
-      return urlMap.get(slug3) ?? fallbackUrl(slug3);
+    const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug4) => {
+      return urlMap.get(slug4) ?? fallbackUrl(slug4);
     });
     return updated === f.content ? f : { ...f, content: updated };
   });
@@ -168238,12 +168629,12 @@ function pickFontDefault(brief) {
   try {
     const shape2 = classifyAppShape(brief);
     if (shape2.businessDomain && DOMAIN_FONT_DEFAULTS[shape2.businessDomain]) {
-      const p = DOMAIN_FONT_DEFAULTS[shape2.businessDomain];
-      return { ...p, reason: `domain=${shape2.businessDomain}` };
+      const p2 = DOMAIN_FONT_DEFAULTS[shape2.businessDomain];
+      return { ...p2, reason: `domain=${shape2.businessDomain}` };
     }
     if (CATEGORY_FONT_DEFAULTS[shape2.category]) {
-      const p = CATEGORY_FONT_DEFAULTS[shape2.category];
-      return { ...p, reason: `category=${shape2.category}` };
+      const p2 = CATEGORY_FONT_DEFAULTS[shape2.category];
+      return { ...p2, reason: `category=${shape2.category}` };
     }
   } catch {
   }
@@ -168729,7 +169120,7 @@ async function renderCategoryCompositionBlock(brief) {
       }
     }
     if (!best || bestScore < 3) return "";
-    const sections = best.pages.map((p) => `  - ${p.path} \u2014 ${p.purpose}`).join("\n");
+    const sections = best.pages.map((p2) => `  - ${p2.path} \u2014 ${p2.purpose}`).join("\n");
     return `
 
 ### Composition for this kind of site (${best.name})
@@ -169705,7 +170096,7 @@ function messageText(content) {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
     return content.map(
-      (p) => typeof p === "object" && p && "text" in p ? String(p.text) : ""
+      (p2) => typeof p2 === "object" && p2 && "text" in p2 ? String(p2.text) : ""
     ).join(" ");
   }
   return "";
@@ -170110,7 +170501,7 @@ function pickIcons(briefTags, briefText = "", limit = 18) {
 function renderIconBlock(briefTags, briefText = "") {
   const picks = pickIcons(briefTags, briefText, 18);
   if (!picks.length) return "";
-  const pairs = picks.map((p) => `${p.label}=${p.icon}`).join(", ");
+  const pairs = picks.map((p2) => `${p2.label}=${p2.icon}`).join(", ");
   return [
     ``,
     `[Icons \u2014 use these lucide-react names]`,
@@ -170201,7 +170592,7 @@ function pickIllustrations(briefTags, briefText = "", limit = 3) {
 function renderIllustrationBlock(briefTags, briefText = "") {
   const picks = pickIllustrations(briefTags, briefText, 3);
   if (!picks.length) return "";
-  const lines = picks.map((p) => `- ${p.label} (${p.technique}): ${p.description} Use when: ${p.useWhen}`);
+  const lines = picks.map((p2) => `- ${p2.label} (${p2.technique}): ${p2.description} Use when: ${p2.useWhen}`);
   return [
     ``,
     `[Imagery approach \u2014 choose per section, not once for the whole page]`,
@@ -170745,18 +171136,18 @@ var RX_PLAN = /\b(plan|architecture|design (?:approach|the system)|how (?:should
 var RX_DOCS = /\b(doc|docs|documentation|readme|comment(?:s)?|explain (?:this|the code)|write up|describe (?:how|what))\b/i;
 var RX_IMPLEMENT = /\b(add|build|create|make|implement|generate|new (?:page|component|route|button|form|section)|hook (?:up|it up)|wire up)\b/i;
 function classifyPhaseHeuristic(prompt) {
-  const p = prompt.trim();
-  if (!p) return { phase: "implement", confidence: "low", source: "fallback" };
+  const p2 = prompt.trim();
+  if (!p2) return { phase: "implement", confidence: "low", source: "fallback" };
   const hits = [];
-  if (RX_DEBUG.test(p)) hits.push("debug");
-  if (RX_REFACTOR.test(p)) hits.push("refactor");
-  if (RX_PLAN.test(p)) hits.push("plan");
-  if (RX_DOCS.test(p)) hits.push("docs");
-  if (RX_IMPLEMENT.test(p)) hits.push("implement");
+  if (RX_DEBUG.test(p2)) hits.push("debug");
+  if (RX_REFACTOR.test(p2)) hits.push("refactor");
+  if (RX_PLAN.test(p2)) hits.push("plan");
+  if (RX_DOCS.test(p2)) hits.push("docs");
+  if (RX_IMPLEMENT.test(p2)) hits.push("implement");
   if (hits.length === 1) {
     return { phase: hits[0], confidence: "high", source: "regex" };
   }
-  if (hits.length === 0 && p.length < 120) {
+  if (hits.length === 0 && p2.length < 120) {
     return { phase: "implement", confidence: "low", source: "regex" };
   }
   return null;
@@ -170919,9 +171310,9 @@ async function probePackages(pkgs, opts = {}) {
     toProbe.add(root);
   }
   const probed = await Promise.all(
-    [...toProbe].map(async (p) => [p, await probeOne(p, opts)])
+    [...toProbe].map(async (p2) => [p2, await probeOne(p2, opts)])
   );
-  for (const [p, v] of probed) out.set(p, v);
+  for (const [p2, v] of probed) out.set(p2, v);
   return out;
 }
 var NODE_BUILTIN_ROOTS = /* @__PURE__ */ new Set([
@@ -171031,7 +171422,7 @@ async function runLocalVerifyTier(args) {
         validationFailure = `esbuild unavailable (${ev.unavailableReason ?? "unknown"}): ${ev.unavailableDetail ?? "no detail"}`;
       }
       const failed = new Set(ev.issues.map((i) => i.path));
-      const clean = new Set(ev.checkedPaths.filter((p) => !failed.has(p)));
+      const clean = new Set(ev.checkedPaths.filter((p2) => !failed.has(p2)));
       if (clean.size) {
         verdict.issues = verdict.issues.filter((i) => !(HEURISTIC_SYNTAX_KINDS.has(i.kind) && clean.has(i.path)));
         verdict.ok = verdict.issues.length === 0;
@@ -171297,7 +171688,7 @@ function findFromCalls(codeFiles) {
   const re = /(?<![A-Za-z0-9_$])([A-Za-z_$][\w$]*)\s*\.\s*from\s*\(\s*['"]([^'"]+)['"]\s*[),]/g;
   for (const file of codeFiles) {
     if (!SCANNABLE_CODE.test(file.path)) continue;
-    if (SKIP_PREFIXES2.some((p) => file.path.startsWith(p))) continue;
+    if (SKIP_PREFIXES2.some((p2) => file.path.startsWith(p2))) continue;
     const clean = stripJsNoise(file.content);
     const fileLooksAdmin = /SUPABASE_SERVICE_ROLE_KEY|serviceRoleKey|service_role\b|supabaseServiceKey/.test(clean) || /import\s+\{[^}]*\bsupabaseAdmin\b[^}]*\}\s+from\s+['"][^'"]*client\.server/.test(clean) || /\.server\.(tsx?|jsx?)$/.test(file.path) && /createClient\s*\(/.test(clean);
     let m;
@@ -171860,11 +172251,11 @@ function aliasSpecifier(path) {
 function stripTypeOnlyValueImports(files) {
   const byPath = new Map(files.map((f) => [f.path, f.content]));
   const exportCache = /* @__PURE__ */ new Map();
-  const exportsOf = (p) => {
-    let e = exportCache.get(p);
+  const exportsOf = (p2) => {
+    let e = exportCache.get(p2);
     if (!e) {
-      e = collectExports2(byPath.get(p) ?? "");
-      exportCache.set(p, e);
+      e = collectExports2(byPath.get(p2) ?? "");
+      exportCache.set(p2, e);
     }
     return e;
   };
@@ -171878,10 +172269,10 @@ function stripTypeOnlyValueImports(files) {
     }
   }
   const findRedirect = (name, target, importer) => {
-    const all = (valueExporters.get(name) ?? []).filter((p) => p !== target && p !== importer);
+    const all = (valueExporters.get(name) ?? []).filter((p2) => p2 !== target && p2 !== importer);
     if (all.length === 0) return null;
-    const dirOf = (p) => p.slice(0, p.lastIndexOf("/"));
-    const sameDir = all.filter((p) => dirOf(p) === dirOf(target));
+    const dirOf = (p2) => p2.slice(0, p2.lastIndexOf("/"));
+    const sameDir = all.filter((p2) => dirOf(p2) === dirOf(target));
     const pick = sameDir.length === 1 ? sameDir[0] : all.length === 1 ? all[0] : null;
     return pick ? aliasSpecifier(pick) : null;
   };
@@ -172013,7 +172404,7 @@ function makeBuildBlueprint(args) {
     navigation: Array.from(/* @__PURE__ */ new Set([...routes, ...navLabels])).slice(0, 12),
     designLanguage: args.designDirection ? `${args.designDirection.vibe}; colours and fonts from the selected design system` : "Use the committed design direction and semantic theme tokens.",
     backend: args.hasBackend ? "connected" : "none",
-    files: args.files.map((f) => f.path).filter((p) => !p.startsWith("src/components/ui/")).slice(0, 40),
+    files: args.files.map((f) => f.path).filter((p2) => !p2.startsWith("src/components/ui/")).slice(0, 40),
     highStakes: args.highStakes ?? void 0
   };
 }
@@ -172068,7 +172459,7 @@ async function saveProjectBlueprint(projectId, blueprint) {
 init_define_import_meta_env();
 init_client_server_shim();
 var SOURCE_RE = /\.(tsx|jsx)$/;
-var isAppSource2 = (p) => SOURCE_RE.test(p) && !p.startsWith("src/components/ui/") && !p.startsWith("src/components/examples/");
+var isAppSource2 = (p2) => SOURCE_RE.test(p2) && !p2.startsWith("src/components/ui/") && !p2.startsWith("src/components/examples/");
 var ROUTE_DECL_RE = /<Route\b[^>]*>/g;
 var ROUTE_PATH_ATTR_RE = /\bpath\s*=\s*(?:["']([^"']+)["']|\{\s*["']([^"']+)["']\s*\})/;
 var ROUTE_ELEMENT_ATTR_RE = /\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*)/;
@@ -172082,8 +172473,8 @@ function normalizePath5(t) {
   if (s.length > 1 && s.endsWith("/")) s = s.slice(0, -1);
   return s;
 }
-function componentFromPath(p) {
-  const m = p.match(/([A-Za-z0-9_]+)\.(tsx|jsx)$/);
+function componentFromPath(p2) {
+  const m = p2.match(/([A-Za-z0-9_]+)\.(tsx|jsx)$/);
   return m ? m[1] : void 0;
 }
 function deriveArchitectureDoc(files) {
@@ -172149,7 +172540,7 @@ function deriveArchitectureDoc(files) {
     usedBy: users.size
   })).sort((a2, b) => b.usedBy - a2.usedBy).slice(0, 12);
   const shell = files.map((f) => f.path).filter(
-    (p) => /^(src\/(App|main)\.(tsx|jsx)|index\.html|src\/routes\/__root\.(tsx|jsx))$/.test(p) || /\/(Layout|RootLayout|AppShell|NavBar|Navbar|Header|Footer)\.(tsx|jsx)$/.test(p)
+    (p2) => /^(src\/(App|main)\.(tsx|jsx)|index\.html|src\/routes\/__root\.(tsx|jsx))$/.test(p2) || /\/(Layout|RootLayout|AppShell|NavBar|Navbar|Header|Footer)\.(tsx|jsx)$/.test(p2)
   ).slice(0, 10);
   const libs = /* @__PURE__ */ new Set();
   for (const f of src) {
@@ -172577,7 +172968,7 @@ function lintProductPrinciples(files) {
   const seen = /* @__PURE__ */ new Set();
   for (const file of files) {
     if (!UI_FILE.test(file.path)) continue;
-    if (SKIP_PREFIXES3.some((p) => file.path.startsWith(p))) continue;
+    if (SKIP_PREFIXES3.some((p2) => file.path.startsWith(p2))) continue;
     const src = stripComments2(file.content);
     for (const r of RULES5) {
       if (!ENABLED_RULES4.has(r.rule)) continue;
@@ -172604,7 +172995,7 @@ function findGenerationQualityIssues(files, subtype, opts = {}) {
   const paths = productFiles.map((f) => f.path);
   const joined = productFiles.map((f) => f.content).join("\n").slice(0, 18e4);
   if (subtype === "marketing") {
-    const offenders = paths.filter((p) => /(^|\/)(auth|login|sign-in|sign-up|dashboard)(\.|\/)/i.test(p));
+    const offenders = paths.filter((p2) => /(^|\/)(auth|login|sign-in|sign-up|dashboard)(\.|\/)/i.test(p2));
     const shellLeak = /\b(Sidebar|DashboardLayout|SidebarShell|KpiGrid|StatCard)\b/.test(joined);
     if (offenders.length || shellLeak) {
       issues.push({
@@ -172648,7 +173039,7 @@ function findGenerationQualityIssues(files, subtype, opts = {}) {
         detail: "the tool's domain logic is not in a typed module. Extract pure exported functions into `src/lib/<domain>.ts` and call them from the UI."
       });
     }
-    const shellLeak = paths.some((p) => /(^|\/)(auth|login|sign-in|sign-up|dashboard|admin)(\.|\/)/i.test(p));
+    const shellLeak = paths.some((p2) => /(^|\/)(auth|login|sign-in|sign-up|dashboard|admin)(\.|\/)/i.test(p2));
     if (shellLeak) {
       issues.push({
         path: entry?.path ?? "src/App.tsx",
@@ -173396,11 +173787,11 @@ var SMALL_EDIT_HINTS = /\b(change|rename|tweak|adjust|fix|update|make|set|move|s
 var BIG_ASK_HINTS = /\b(rebuild|redesign|from scratch|start over|overhaul|revamp|restyle|re-?theme|new (app|site|page|design|look|theme|style)|add (a )?(dashboard|auth|payments|backend|footer|header|nav(bar)?|page|section)|migrate|refactor everything)\b/i;
 var BROAD_SURFACE_HINTS = /\b((entire|whole|full|complete)\s+(website|web\s?site|site|app|application|design|look|theme|ui|page)|(every|all)\s+(page|route|screen|component)s?|site\s*-?\s*wide|app\s*-?\s*wide|(change|update|switch|swap|give|make)\s+[\w\s]{0,24}?\b(design|theme|look|style|colou?r\s*(scheme|palette)|palette|branding|aesthetic)\b|\b(new|different|fresh)\s+(design|theme|look|style|palette|branding))\b/i;
 function isSmallEditRequest(prompt) {
-  const p = prompt.trim();
-  if (p.length > 400) return false;
-  if (BIG_ASK_HINTS.test(p)) return false;
-  if (BROAD_SURFACE_HINTS.test(p)) return false;
-  return SMALL_EDIT_HINTS.test(p);
+  const p2 = prompt.trim();
+  if (p2.length > 400) return false;
+  if (BIG_ASK_HINTS.test(p2)) return false;
+  if (BROAD_SURFACE_HINTS.test(p2)) return false;
+  return SMALL_EDIT_HINTS.test(p2);
 }
 var bytes = (s) => new TextEncoder().encode(s).length;
 function isVolatilePath(path) {
@@ -173514,10 +173905,10 @@ function buildEditBoundary(args) {
   if (targets.length > 8) return OPEN2;
   const allowed = new Set(targets);
   if (args.allowNewPages) {
-    for (const p of args.existingPaths) if (/^src\/(App|main|router)\.(t|j)sx?$/.test(p)) allowed.add(p);
+    for (const p2 of args.existingPaths) if (/^src\/(App|main|router)\.(t|j)sx?$/.test(p2)) allowed.add(p2);
   }
   const existing = new Set(args.existingPaths);
-  const isPageFile = (p) => /^src\/(pages|routes)\//.test(p);
+  const isPageFile = (p2) => /^src\/(pages|routes)\//.test(p2);
   return {
     enforced: true,
     targets,
@@ -173860,9 +174251,9 @@ function detectWebIntelNeed(message) {
   return { need: MIGRATE_RE.test(message) ? "required" : "optional", url };
 }
 function ipv4Private(ip) {
-  const p = ip.split(".").map(Number);
-  if (p.length !== 4 || p.some((x) => !Number.isInteger(x) || x < 0 || x > 255)) return true;
-  const [a2, b] = p;
+  const p2 = ip.split(".").map(Number);
+  if (p2.length !== 4 || p2.some((x) => !Number.isInteger(x) || x < 0 || x > 255)) return true;
+  const [a2, b] = p2;
   return a2 === 0 || a2 === 10 || a2 === 127 || a2 >= 224 || a2 === 100 && b >= 64 && b <= 127 || a2 === 169 && b === 254 || a2 === 172 && b >= 16 && b <= 31 || a2 === 192 && b === 168 || a2 === 192 && b === 0 || a2 === 198 && (b === 18 || b === 19);
 }
 function ipv6Private(ip) {
@@ -173944,15 +174335,15 @@ function buildReferenceBlock(intel, need, maxChars) {
   ].filter(Boolean).join("\n");
   let out = head2;
   const perPage = Math.max(400, Math.floor((maxChars - head2.length) / Math.max(1, intel.pages.length)));
-  for (const p of intel.pages) {
+  for (const p2 of intel.pages) {
     const section = [
       `
---- ${p.url}${p.title ? ` \u2014 ${p.title}` : ""}`,
-      p.description ? `Description: ${p.description}` : "",
-      p.headings.length ? `Headings: ${p.headings.join(" / ")}` : "",
-      p.ctas.length ? `Calls to action: ${p.ctas.join(", ")}` : "",
-      p.images.length ? `Images: ${p.images.join(" ")}` : "",
-      `Content: ${p.text}`
+--- ${p2.url}${p2.title ? ` \u2014 ${p2.title}` : ""}`,
+      p2.description ? `Description: ${p2.description}` : "",
+      p2.headings.length ? `Headings: ${p2.headings.join(" / ")}` : "",
+      p2.ctas.length ? `Calls to action: ${p2.ctas.join(", ")}` : "",
+      p2.images.length ? `Images: ${p2.images.join(" ")}` : "",
+      `Content: ${p2.text}`
     ].filter(Boolean).join("\n");
     out += section.slice(0, perPage);
   }
@@ -174035,25 +174426,25 @@ async function gatherWebIntel(args) {
     }
     const picked = [safe.url, ...[...new Set(discovered)].filter((l) => l.replace(/\/$/, "") !== safe.url.replace(/\/$/, "")).filter((l) => !/\.(pdf|jpg|jpeg|png|gif|svg|webp|zip|xml)$|\/(wp-|cdn-cgi|tag\/|category\/|feed)/i.test(l)).sort((a2, b) => new URL(a2).pathname.split("/").length - new URL(b).pathname.split("/").length || a2.length - b.length)].slice(0, L.maxPages);
     const pages = [];
-    for (const p of picked) {
+    for (const p2 of picked) {
       if (args.signal.aborted) return fail("cancelled");
       if (total.aborted) break;
       try {
-        const r = await fcPost(f, "/scrape", { url: p, formats: ["markdown"], onlyMainContent: true }, sig());
+        const r = await fcPost(f, "/scrape", { url: p2, formats: ["markdown"], onlyMainContent: true }, sig());
         const d = r.data ?? r;
-        const finalUrl = String(d.metadata?.sourceURL ?? d.metadata?.url ?? p);
+        const finalUrl = String(d.metadata?.sourceURL ?? d.metadata?.url ?? p2);
         const finalSafe = await assertSafeUrl(finalUrl, args.resolve);
         if (!finalSafe.ok) {
-          if (p === safe.url) return fail(`redirect_${finalSafe.reason}`);
+          if (p2 === safe.url) return fail(`redirect_${finalSafe.reason}`);
           continue;
         }
         pages.push(toPage(finalUrl, d, L.maxPageChars));
       } catch (e) {
         if (args.signal.aborted) return fail("cancelled");
-        if (p === safe.url) return fail(e.name === "TimeoutError" ? "timeout" : e.message.slice(0, 120));
+        if (p2 === safe.url) return fail(e.name === "TimeoutError" ? "timeout" : e.message.slice(0, 120));
       }
     }
-    if (pages.length === 0 || pages.every((p) => !p.text.trim())) return fail("no_content");
+    if (pages.length === 0 || pages.every((p2) => !p2.text.trim())) return fail("no_content");
     const navigation = picked.map((l) => new URL(l).pathname || "/").slice(0, 12);
     const intel = { sourceUrl: safe.url, pages, navigation, crawlTimestamp: (/* @__PURE__ */ new Date()).toISOString() };
     cache9.set(safe.url, { at: Date.now(), intel });
@@ -174066,7 +174457,7 @@ async function gatherWebIntel(args) {
       ms: Date.now() - started,
       discovered: discovered.length,
       scraped: pages.length,
-      content_chars: pages.reduce((n, p) => n + p.text.length, 0),
+      content_chars: pages.reduce((n, p2) => n + p2.text.length, 0),
       context_chars: block2.length,
       firecrawl_credits_est: 1 + pages.length
     });
@@ -174236,7 +174627,7 @@ async function loadAndConsumePlan(opts) {
 function buildAllowedPathSet(planPaths, userAllowed) {
   if (!userAllowed || userAllowed.length === 0) return new Set(planPaths);
   const userSet = new Set(userAllowed);
-  return new Set(planPaths.filter((p) => userSet.has(p)));
+  return new Set(planPaths.filter((p2) => userSet.has(p2)));
 }
 function renderApprovedPlanBlock(plan) {
   const list4 = plan.files.map((f) => `- [${f.intent}] ${f.path} \u2014 ${f.reason}`).join("\n");
@@ -174253,10 +174644,10 @@ ${list4}
 `;
 }
 function isExplicitPlanRequest(prompt) {
-  const p = (prompt ?? "").trim().toLowerCase();
-  if (!p) return false;
-  if (/\b(just do it|no plan|don'?t plan|skip the plan)\b/.test(p)) return false;
-  return /\b(give|show|write|draft|make|propose|outline|suggest)\b[^.!?]{0,20}\b(me |us |a |an |the )*(plan|roadmap|approach|proposal|outline|strategy)\b/.test(p) || /\bplan (out |the |how |for )/.test(p) || /^(how should (we|i)|what would you recommend|what should (we|i) build|which approach)\b/.test(p) || /\b(before (you )?(code|coding|building|writing|touching)|plan first|plan it first)\b/.test(p);
+  const p2 = (prompt ?? "").trim().toLowerCase();
+  if (!p2) return false;
+  if (/\b(just do it|no plan|don'?t plan|skip the plan)\b/.test(p2)) return false;
+  return /\b(give|show|write|draft|make|propose|outline|suggest)\b[^.!?]{0,20}\b(me |us |a |an |the )*(plan|roadmap|approach|proposal|outline|strategy)\b/.test(p2) || /\bplan (out |the |how |for )/.test(p2) || /^(how should (we|i)|what would you recommend|what should (we|i) build|which approach)\b/.test(p2) || /\b(before (you )?(code|coding|building|writing|touching)|plan first|plan it first)\b/.test(p2);
 }
 function shouldAutoPlan(args) {
   if (args.isInitial || args.isAutoFix) return false;
@@ -174278,7 +174669,7 @@ var MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
 var MODEL_STRUCTURED_RETRY = "deepseek/deepseek-v4-flash";
 var MODEL_VISION = "deepseek/deepseek-v4-flash";
 function pickSmartModel(latestPrompt, fileCount) {
-  const p = latestPrompt.toLowerCase();
+  const p2 = latestPrompt.toLowerCase();
   const heavyKeywords = [
     "refactor",
     "redesign",
@@ -174292,7 +174683,7 @@ function pickSmartModel(latestPrompt, fileCount) {
     "restructure",
     "migrate"
   ];
-  if (heavyKeywords.some((k) => p.includes(k))) return MODEL_BEST;
+  if (heavyKeywords.some((k) => p2.includes(k))) return MODEL_BEST;
   if (fileCount > 12 && latestPrompt.length > 240) return MODEL_BEST;
   return MODEL_FAST;
 }
@@ -174333,10 +174724,10 @@ function trimMessagesForGeneration(messages) {
   return selectHistoryForGeneration(messages, lastUserIdx, needsPreviousContext);
 }
 function detectMultiEditIntent(prompt) {
-  const p = prompt.toLowerCase();
-  const explicitMulti = /\b(multiple|several|many|batch|coordinated|across|throughout|site[-\s]?wide|app[-\s]?wide|whole app|entire app|all pages|every page|multi[-\s]?(?:file|edit|step|task|thing|part))\b/i.test(p) || /\b(do|handle|work on|change|update|fix|implement)\s+(?:all|both|these|them)\b/i.test(p);
+  const p2 = prompt.toLowerCase();
+  const explicitMulti = /\b(multiple|several|many|batch|coordinated|across|throughout|site[-\s]?wide|app[-\s]?wide|whole app|entire app|all pages|every page|multi[-\s]?(?:file|edit|step|task|thing|part))\b/i.test(p2) || /\b(do|handle|work on|change|update|fix|implement)\s+(?:all|both|these|them)\b/i.test(p2);
   const enumeratedItems = (prompt.match(/(?:^|\n|;|,)\s*(?:\d+[.)]|[-*])\s+\S/g) ?? []).length;
-  const connectorCount = (p.match(/\b(?:and|also|plus|then|as well as|along with)\b/g) ?? []).length;
+  const connectorCount = (p2.match(/\b(?:and|also|plus|then|as well as|along with)\b/g) ?? []).length;
   return explicitMulti || enumeratedItems >= 2 || connectorCount >= 3;
 }
 var DEFAULT_FILE_BLOCK_TOKEN_CEILING = 6e4;
@@ -175031,7 +175422,7 @@ function emitDeterministicRepair(controller, encoder, args) {
 }
 function validateTargetShape(files, targetId) {
   const paths = new Set(files.map((f) => f.path));
-  const has2 = (p) => paths.has(p);
+  const has2 = (p2) => paths.has(p2);
   const hasAny = (pred) => files.some((f) => pred(f.path));
   if (targetId === "extension") {
     if (!has2("manifest.json") && !has2("public/manifest.json") && !has2("src/manifest.json")) {
@@ -175040,20 +175431,20 @@ function validateTargetShape(files, targetId) {
     return null;
   }
   if (targetId === "backend") {
-    if (!hasAny((p) => p.startsWith("src/routes/api/")) && !hasAny((p) => p.includes(".server."))) {
+    if (!hasAny((p2) => p2.startsWith("src/routes/api/")) && !hasAny((p2) => p2.includes(".server."))) {
       return "I started building this as a backend / API but didn't ship any server routes, so I rolled it back. Re-send the prompt and tell me which endpoints you want (e.g. 'POST /invoices, GET /invoices/:id') and I'll wire them up.";
     }
     return null;
   }
   if (targetId === "mobile" || targetId === "ios" || targetId === "android") {
-    if (!hasAny((p) => p.startsWith("src/pages/")) && !has2("src/App.tsx")) {
+    if (!hasAny((p2) => p2.startsWith("src/pages/")) && !has2("src/App.tsx")) {
       return "I started building this as a mobile app but the output had no screens in it, so I rolled it back rather than hand you an empty app. Re-send the prompt and name the screens you want (e.g. 'home feed, add item, profile') and I'll build them.";
     }
     return null;
   }
   if (targetId === "web-mobile") {
-    const hasWeb = has2("src/App.tsx") || has2("src/main.tsx") || hasAny((p) => p.startsWith("src/pages/"));
-    const hasMobile = hasAny((p) => p.startsWith("mobile/")) || hasAny((p) => p === "mobile/app.json");
+    const hasWeb = has2("src/App.tsx") || has2("src/main.tsx") || hasAny((p2) => p2.startsWith("src/pages/"));
+    const hasMobile = hasAny((p2) => p2.startsWith("mobile/")) || hasAny((p2) => p2 === "mobile/app.json");
     if (!hasWeb || !hasMobile) {
       return "I started building this as a web + mobile project but only shipped one side, so I rolled it back. Re-send the prompt and confirm you want both clients sharing a backend, and I'll scaffold `src/` for web and `mobile/` for the Expo app together.";
     }
@@ -175249,7 +175640,7 @@ function isDirectLogoPlacementRequest(prompt) {
   if (!/\b(?:add|create|include|put|place|show|use|make)\b/i.test(compact2)) return false;
   return !/\b(?:change|replace|redesign|restyle|colour|color|font|bigger|smaller|animate|upload|image)\b/i.test(compact2);
 }
-async function runFinalParseGuard(files, changedPaths, controller, encoder, prd, priorFiles = [], repair, infraFailure = () => null) {
+async function runFinalParseGuard(files, changedPaths, controller, encoder, prd, priorFiles = [], repair, infraFailure = () => null, createMissing) {
   const { runPreEmitGate: runPreEmitGate2, formatGateIssues: formatGateIssues2 } = await Promise.resolve().then(() => (init_preemit_gate_server(), preemit_gate_server_exports));
   const { blockedRemovals: blockedRemovals2 } = await Promise.resolve().then(() => (init_structural_deps(), structural_deps_exports));
   const { recoverMissingPrimitives: recoverMissingPrimitives2 } = await Promise.resolve().then(() => (init_deterministic_primitives(), deterministic_primitives_exports));
@@ -175258,6 +175649,21 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
     console.log(`[deterministic-primitives] provided ${JSON.stringify(primitives.added)}`);
     files = primitives.files;
     changedPaths = [...changedPaths, ...primitives.added];
+  }
+  if (createMissing) {
+    const { resolveMissingNodes: resolveMissingNodes2 } = await Promise.resolve().then(() => (init_missing_nodes(), missing_nodes_exports));
+    const nodes = await resolveMissingNodes2(files, changedPaths, createMissing);
+    if (nodes.created.length) {
+      console.log(`[missing-nodes] created ${JSON.stringify(nodes.created)}`);
+      controller.enqueue(encoder.encode(sse({ type: "timeline", step: "missing_nodes", outcome: "ok", count: nodes.created.length, message: `Created ${nodes.created.length} missing shared file(s): ${nodes.created.join(", ")}`, ts: Date.now() })));
+      files = nodes.files;
+      changedPaths = [...changedPaths, ...nodes.created];
+    }
+    if (nodes.blocked.length) {
+      console.warn(`[missing-nodes] blocked ${JSON.stringify(nodes.blocked)}`);
+      const inf = infraFailure();
+      if (inf) return { ok: false, detail: inf.message, origin: "infrastructure" };
+    }
   }
   const { files: gated, report } = await runPreEmitGate2(files, changedPaths, {
     maxRounds: 2,
@@ -175308,10 +175714,10 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
     if (repair && badPaths.length > 0) {
       let working = gated;
       const fixedPaths = [];
-      for (const p of badPaths) {
-        const file = working.find((f) => f.path === p);
+      for (const p2 of badPaths) {
+        const file = working.find((f) => f.path === p2);
         if (!file) continue;
-        const detail = report.issues.filter((i) => i.path === p).map((i) => `${i.kind}: ${i.detail}`).join("; ");
+        const detail = report.issues.filter((i) => i.path === p2).map((i) => `${i.kind}: ${i.detail}`).join("; ");
         let out = null;
         try {
           out = await repair(file, detail);
@@ -175319,8 +175725,8 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
           out = null;
         }
         if (out && out !== file.content) {
-          working = working.map((f) => f.path === p ? { path: p, content: out } : f);
-          fixedPaths.push(p);
+          working = working.map((f) => f.path === p2 ? { path: p2, content: out } : f);
+          fixedPaths.push(p2);
         }
       }
       const infra = infraFailure();
@@ -175333,11 +175739,11 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
         if (again.report.ok) return { ok: true, files: again.files };
         const still = new Set(again.report.issues.map((i) => i.path));
         gated.splice(0, gated.length, ...again.files);
-        badPaths = badPaths.filter((p) => still.has(p));
+        badPaths = badPaths.filter((p2) => still.has(p2));
       }
     }
     const priorPaths = new Set(priorFiles.map((f) => f.path));
-    const blocked = blockedRemovals2(gated, badPaths, (p) => priorPaths.has(p));
+    const blocked = blockedRemovals2(gated, badPaths, (p2) => priorPaths.has(p2));
     if (blocked.length) {
       console.warn(`[preemit-gate] refusing to remove structurally critical file(s) ${JSON.stringify(blocked)}`);
       return { ok: false, detail: `critical file failed verification: ${formatGateIssues2(report.issues.filter((i) => blocked.includes(i.path)), 3)}`, origin: "code" };
@@ -175348,9 +175754,9 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
         const bad = new Set(badPaths);
         const priorByPath = new Map(priorFiles.map((f) => [f.path, f.content]));
         const kept = gated.filter((f) => !bad.has(f.path));
-        for (const p of badPaths) {
-          const previous = priorByPath.get(p);
-          if (previous !== void 0) kept.push({ path: p, content: previous });
+        for (const p2 of badPaths) {
+          const previous = priorByPath.get(p2);
+          if (previous !== void 0) kept.push({ path: p2, content: previous });
         }
         const repaired = runAllRepairs(
           kept,
@@ -175358,7 +175764,7 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
         ).files;
         const recheck = await runPreEmitGate2(
           repaired,
-          changedPaths.filter((p) => !bad.has(p)),
+          changedPaths.filter((p2) => !bad.has(p2)),
           { maxRounds: 0, prd }
         );
         if (recheck.report.ok) {
@@ -175385,10 +175791,10 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
         }
         isolated.push(...bad);
         kept = isolateBrokenFiles2(kept, bad);
-        const again = await runPreEmitGate2(kept, changedPaths.filter((p) => !isolated.includes(p)), { maxRounds: 0, prd });
+        const again = await runPreEmitGate2(kept, changedPaths.filter((p2) => !isolated.includes(p2)), { maxRounds: 0, prd });
         kept = again.files;
         bad = new Set(
-          again.report.issues.filter((i) => isOwnContentIssue2(i.kind)).map((i) => i.path).filter((p) => p && !isolated.includes(p))
+          again.report.issues.filter((i) => isOwnContentIssue2(i.kind)).map((i) => i.path).filter((p2) => p2 && !isolated.includes(p2))
         );
       }
       console.warn(`[preemit-gate] first build: isolated ${JSON.stringify(isolated)}; kept ${kept.length} file(s)`);
@@ -175999,9 +176405,9 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       `[intent-targets] cross-cutting ask detected \u2014 pinning ${pinnedPaths.length} file(s) into prompt context`
     );
   }
-  for (const p of focusPinnedPaths) {
-    if (!pinnedPaths.includes(p) && editablePromptFiles.some((f) => f.path === p)) {
-      pinnedPaths.push(p);
+  for (const p2 of focusPinnedPaths) {
+    if (!pinnedPaths.includes(p2) && editablePromptFiles.some((f) => f.path === p2)) {
+      pinnedPaths.push(p2);
     }
   }
   let viewBlock = "";
@@ -176014,9 +176420,9 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       );
       viewBlock = renderViewContext2(body.viewContext, viewPaths);
       const picked = body.viewContext.element?.sourceFile;
-      for (const p of [...viewPaths, ...picked ? [picked] : []]) {
-        if (!pinnedPaths.includes(p) && editablePromptFiles.some((f) => f.path === p)) {
-          pinnedPaths.push(p);
+      for (const p2 of [...viewPaths, ...picked ? [picked] : []]) {
+        if (!pinnedPaths.includes(p2) && editablePromptFiles.some((f) => f.path === p2)) {
+          pinnedPaths.push(p2);
         }
       }
       if (viewBlock) {
@@ -176045,7 +176451,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     if (screen.length > 0) {
       editTargetPaths = Array.from(/* @__PURE__ */ new Set([...screen, ...editTargetPaths])).slice(0, 8);
     }
-    const ownTargets = editTargetPaths.filter((p) => !isVerifierExempt(p));
+    const ownTargets = editTargetPaths.filter((p2) => !isVerifierExempt(p2));
     if (ownTargets.length > 0) editTargetPaths = ownTargets;
     if (screen.length > 0) {
       console.info(`[screen-target] ${screen.join(", ")}`);
@@ -176058,12 +176464,12 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   }
   if (!isInitial && !isCrossCutting && editTargetPaths.length === 0 && projectCtx.selection) {
     const picked = projectCtx.selection.primary.filter(
-      (p) => editablePromptFiles.some((f) => f.path === p) && !isVerifierExempt(p)
+      (p2) => editablePromptFiles.some((f) => f.path === p2) && !isVerifierExempt(p2)
     );
     if (picked.length > 0) {
       editTargetPaths = picked;
       console.info(
-        `[project-context] selected ${picked.map((p) => `${p} (${projectCtx.selection.reasons[p]})`).join(", ")}`
+        `[project-context] selected ${picked.map((p2) => `${p2} (${projectCtx.selection.reasons[p2]})`).join(", ")}`
       );
     }
   }
@@ -176083,7 +176489,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     }
   }
   const inspectorTargets = (inspectorReport?.targetPaths ?? []).filter(
-    (p) => editablePromptFiles.some((f) => f.path === p)
+    (p2) => editablePromptFiles.some((f) => f.path === p2)
   );
   let resolvedTargetPaths = editTargetPaths.length > 0 ? editTargetPaths : inspectorTargets;
   if (!isInitial && !isCrossCutting && (editClassification?.hints.length ?? 0) > 0) {
@@ -176092,7 +176498,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       return editClassification.hints.some(
         (h) => h.length >= 3 && (name === h || name.includes(h.replace(/\s+/g, "-")))
       );
-    }).map((f) => f.path).filter((p) => !resolvedTargetPaths.includes(p) && !isVerifierExempt(p)).slice(0, 6);
+    }).map((f) => f.path).filter((p2) => !resolvedTargetPaths.includes(p2) && !isVerifierExempt(p2)).slice(0, 6);
     if (hintMatches.length > 0) {
       resolvedTargetPaths = [...resolvedTargetPaths, ...hintMatches];
       console.info(`[edit-classifier] hint-matched target(s): ${hintMatches.join(", ")}`);
@@ -176106,9 +176512,9 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
         radius: 1,
         max: 18
       });
-      impactNeighbourPaths = impact.paths.filter((p) => !resolvedTargetPaths.includes(p));
+      impactNeighbourPaths = impact.paths.filter((p2) => !resolvedTargetPaths.includes(p2));
       const extra = impact.paths.filter(
-        (p) => !resolvedTargetPaths.includes(p) && !pinnedPaths.includes(p)
+        (p2) => !resolvedTargetPaths.includes(p2) && !pinnedPaths.includes(p2)
       );
       if (extra.length > 0) {
         pinnedPaths = [...pinnedPaths, ...extra];
@@ -176149,6 +176555,19 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   const turnEscalations = [];
   const turnStrategy = { decomposedPages: [] };
   console.info(`[complexity] ${JSON.stringify(assessExecution2(turnComplexityBase))}`);
+  {
+    const opened = assessExecution2(turnComplexityBase);
+    void agentIO().recordEconomics({
+      turnId: logicalTurnId,
+      userId,
+      projectId: body.projectId ?? null,
+      feature: "generate",
+      creditsCharged: 0,
+      isAutoFix: Boolean(body.isAutoFix),
+      result: "running",
+      metadata: { opened_at: (/* @__PURE__ */ new Date()).toISOString(), execution_class: opened.class, expected_cost_usd: opened.expectedCostUsd }
+    });
+  }
   const lifecycleBlock = await (async () => {
     try {
       const { renderLifecycleContext: renderLifecycleContext2 } = await Promise.resolve().then(() => (init_lifecycle(), lifecycle_exports));
@@ -176183,7 +176602,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
         publishedRevision,
         designSystem: picContext?.design?.package?.systemId ?? null,
         accent: picContext?.design?.package?.accent ?? null,
-        routes: (projectCtx.manifest?.pages ?? []).map((p) => String(p.route ?? p.path ?? "")).filter(Boolean),
+        routes: (projectCtx.manifest?.pages ?? []).map((p2) => String(p2.route ?? p2.path ?? "")).filter(Boolean),
         relevantFiles: resolvedTargetPaths,
         recentChanges: [],
         knownIssues
@@ -176212,7 +176631,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   const contextFiles = strictScope ? (() => {
     const keep2 = new Set(resolvedTargetPaths);
     if (editClassification?.scope === "targeted") {
-      for (const p of impactNeighbourPaths) keep2.add(p);
+      for (const p2 of impactNeighbourPaths) keep2.add(p2);
     }
     keep2.add("src/styles.css");
     const narrowed = editablePromptFiles.filter((f) => keep2.has(f.path));
@@ -176226,7 +176645,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   const promptBudget = trimFilesForPrompt(
     contextFiles,
     multiEditPromptContext || lastUserContent,
-    strictScope ? pinnedPaths.filter((p) => contextFiles.some((f) => f.path === p)) : pinnedPaths,
+    strictScope ? pinnedPaths.filter((p2) => contextFiles.some((f) => f.path === p2)) : pinnedPaths,
     resolvedTargetPaths,
     { tokenCeiling: fileBlockCeiling, anchors: promptAnchors }
   );
@@ -176349,6 +176768,25 @@ The latest request contains multiple coordinated asks. Treat this as one complet
       for (const r of composed.blueprint.routes ?? []) if (r) plannedRoutes.push(r);
     }
   } catch {
+  }
+  let intentContract = null;
+  if (isInitial) {
+    try {
+      const { deriveIntentContract: deriveIntentContract2, divergentPages: divergentPages2, renderIntentBlock: renderIntentBlock2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
+      intentContract = resolvedPrd?.prd.intent ?? deriveIntentContract2(lastUserText, resolvedPrd?.prd ?? null);
+      const bad = divergentPages2(intentContract, plannedRoutes, lastUserText);
+      if (bad.length) {
+        console.warn(`[intent] removed divergent planned routes ${JSON.stringify(bad)} (archetype=${intentContract.archetype})`);
+        for (const r of bad) plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
+      }
+      if (plannedRoutes.filter((r) => r !== "/").length === 0 && intentContract.pages.length) {
+        for (const pg of intentContract.pages) if (!plannedRoutes.includes(pg.route)) plannedRoutes.push(pg.route);
+        console.log(`[intent] archetype=${intentContract.archetype} plan=${JSON.stringify(plannedRoutes)}`);
+      }
+      archetypeBlock += renderIntentBlock2(intentContract);
+    } catch (e) {
+      console.warn(`[intent] contract unavailable: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
   let firstBuildPlan = null;
   if (isInitial) {
@@ -177112,12 +177550,29 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const { pageFileFor: pageFileFor2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             const planned = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor2(route) }));
-            const fromRouter = pagesReferencedByRouter2(parsed.files, planned);
+            let fromRouter = pagesReferencedByRouter2(parsed.files, planned);
+            if (intentContract && fromRouter.length) {
+              const { divergentPages: divergentPages2, stripRoutesFromRouter: stripRoutesFromRouter2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
+              const bad = new Set(divergentPages2(intentContract, fromRouter.map((p2) => p2.route), lastUserText));
+              if (bad.size) {
+                const badFiles = fromRouter.filter((p2) => bad.has(p2.route)).map((p2) => p2.file);
+                const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                const cleaned = app ? stripRoutesFromRouter2(app.content, badFiles) : null;
+                if (app && cleaned !== null) {
+                  app.content = cleaned;
+                  fromRouter = fromRouter.filter((p2) => !bad.has(p2.route));
+                  console.warn(`[intent] dropped divergent router pages ${JSON.stringify([...bad])}`);
+                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "intent_check", outcome: "ok", message: `Removed pages that don't belong in this product: ${[...bad].join(", ")}`, ts: Date.now() })));
+                } else {
+                  console.warn(`[intent] divergent router pages kept (router not safely cleanable): ${JSON.stringify([...bad])}`);
+                }
+              }
+            }
             const pages = [...planned, ...fromRouter];
-            for (const p of fromRouter) if (!plannedRoutes.includes(p.route)) plannedRoutes.push(p.route);
+            for (const p2 of fromRouter) if (!plannedRoutes.includes(p2.route)) plannedRoutes.push(p2.route);
             if (isTruncatedFinishReason(collected.finishReason) || fromRouter.length) {
               console.warn(
-                `[output-limit] first-build shell finish=${collected.finishReason ?? "?"} \u2014 continuing: ${JSON.stringify(pages.map((p) => p.route))} (router-referenced extra: ${JSON.stringify(fromRouter.map((p) => p.route))})`
+                `[output-limit] first-build shell finish=${collected.finishReason ?? "?"} \u2014 continuing: ${JSON.stringify(pages.map((p2) => p2.route))} (router-referenced extra: ${JSON.stringify(fromRouter.map((p2) => p2.route))})`
               );
             }
             await agentIO().assertActive(turnId, abortSignal, "page writing");
@@ -177126,13 +177581,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const { assessPageComplexity: assessPageComplexity2 } = await Promise.resolve().then(() => (init_complexity(), complexity_exports));
             const done = await writePlannedPages2({
               pages,
-              decide: (p, truncatedBefore) => assessPageComplexity2({
-                route: p.route,
-                file: p.file,
+              decide: (p2, truncatedBefore) => assessPageComplexity2({
+                route: p2.route,
+                file: p2.file,
                 request: lastUserContent || "",
                 requirementCount: turnRequirementCount,
                 pageCount: pages.length,
-                truncatedBefore: truncatedBefore || cutOffPages.has(p.file)
+                truncatedBefore: truncatedBefore || cutOffPages.has(p2.file)
               }),
               files: parsed.files,
               budget: recovery,
@@ -177236,13 +177691,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                     return null;
                   }
                 });
-                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => instruction.startsWith(DECOMPOSED_MARKER2) || !wantOf(instruction) || p === wantOf(instruction));
+                const kept = (framed.value ?? []).map((f) => f.path).filter((p2) => instruction.startsWith(DECOMPOSED_MARKER2) || !wantOf(instruction) || p2 === wantOf(instruction));
                 void attachFiles2(framed.callIds, kept);
                 return framed.value;
               }
             });
             console.log(
-              `[write] pages=${JSON.stringify(pages.map((p) => p.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`
+              `[write] pages=${JSON.stringify(pages.map((p2) => p2.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`
             );
             parsed.files = done.files;
           }
@@ -177443,11 +177898,11 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           if (editBoundary.enforced) {
             console.info(`[edit-boundary] ${editBoundary.describe()}`);
           }
-          const isProtectedPath = (p) => isScaffoldOwnedPath(p) || matchesUserProtectedGlob(p) || // Plan Mode v1 — when a plan was approved, ANY file outside its
+          const isProtectedPath = (p2) => isScaffoldOwnedPath(p2) || matchesUserProtectedGlob(p2) || // Plan Mode v1 — when a plan was approved, ANY file outside its
           // allow-list is treated as protected and dropped.
-          allowedPathSet !== null && !allowedPathSet.has(p) || // A file the request never pointed at, on a small edit.
-          !editBoundary.allows(p) || // Shared chrome / unrelated page outside the execution scope.
-          !isInitial && !isCrossCutting && executionScope.isProtected(p);
+          allowedPathSet !== null && !allowedPathSet.has(p2) || // A file the request never pointed at, on a small edit.
+          !editBoundary.allows(p2) || // Shared chrome / unrelated page outside the execution scope.
+          !isInitial && !isCrossCutting && executionScope.isProtected(p2);
           let opRepairRoundUsed = false;
           const requestOpRepair = async (args) => {
             if (opRepairRoundUsed || isInitial) return [];
@@ -177732,9 +178187,9 @@ Re-emit ONLY the refused work as a single patch_files tool call that respects th
                 const failed = partial.failed.find((f) => f.op === op);
                 const search = op.search;
                 if (!failed || !search) return op;
-                const hits = resolvedTargetPaths.filter((p) => {
-                  if (p === op.path) return false;
-                  const c = currentFiles.find((f) => f.path === p)?.content ?? "";
+                const hits = resolvedTargetPaths.filter((p2) => {
+                  if (p2 === op.path) return false;
+                  const c = currentFiles.find((f) => f.path === p2)?.content ?? "";
                   const i = c.indexOf(search);
                   return i >= 0 && c.indexOf(search, i + 1) < 0;
                 });
@@ -177903,11 +178358,11 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
             const nextByPath = new Map(patched.map((f) => [f.path, f.content]));
             const changedPaths = [];
-            for (const [p, c] of nextByPath) {
-              if (prevByPath.get(p) !== c) changedPaths.push(p);
+            for (const [p2, c] of nextByPath) {
+              if (prevByPath.get(p2) !== c) changedPaths.push(p2);
             }
-            for (const p of prevByPath.keys()) {
-              if (!nextByPath.has(p)) changedPaths.push(p);
+            for (const p2 of prevByPath.keys()) {
+              if (!nextByPath.has(p2)) changedPaths.push(p2);
             }
             if (changedPaths.length === 0) {
               const claimed = Array.from(new Set(safeOps.map((o) => o.path))).slice(0, 4).join(", ");
@@ -177967,8 +178422,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               }
             });
             const changedSet = new Set(changedPaths);
-            for (const p of new Set(safeOps.map((o) => o.path))) {
-              if (!changedSet.has(p)) unappliedPaths.push(p);
+            for (const p2 of new Set(safeOps.map((o) => o.path))) {
+              if (!changedSet.has(p2)) unappliedPaths.push(p2);
             }
             for (const v of violations) {
               if (!changedSet.has(v.path) && !unappliedPaths.includes(v.path)) {
@@ -177999,6 +178454,32 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         {
           const prevByPath = new Map(currentFiles.map((f) => [f.path, f.content]));
           const touched = collected.name === "write_project" && authoredPaths ? authoredPaths : nextFiles.filter((f) => prevByPath.get(f.path) !== f.content).map((f) => f.path);
+          if (touched.length > 0 && isInitial) {
+            try {
+              const { resolveMissingNodes: resolveMissingNodes2 } = await Promise.resolve().then(() => (init_missing_nodes(), missing_nodes_exports));
+              const { createMissingModule: createMissingModule2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
+              const nodes = await resolveMissingNodes2(nextFiles, touched, async (node, context) => {
+                if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
+                controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}\u2026` })));
+                return createMissingModule2(node, context, {
+                  turnId: logicalTurnId,
+                  projectId: body.projectId ?? null,
+                  userId,
+                  turnContext: turnContextFor(node.target)
+                });
+              });
+              if (nodes.created.length) {
+                console.log(`[missing-nodes] write-gate created ${JSON.stringify(nodes.created)}`);
+                nextFiles = nodes.files;
+                touched.push(...nodes.created);
+              }
+              if (nodes.blocked.length) console.warn(`[missing-nodes] blocked ${JSON.stringify(nodes.blocked)}`);
+            } catch (e) {
+              const { isInfrastructureFailure: isInfrastructureFailure2 } = await Promise.resolve().then(() => (init_failure_classification(), failure_classification_exports));
+              if (!isInfrastructureFailure2(e)) throw e;
+              infraFailure = e;
+            }
+          }
           if (touched.length > 0) {
             const gate2 = await runWriteGate({
               before: currentFiles,
@@ -178066,8 +178547,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               verdict: gate2.rejected.length ? "WARNING" : "PASS",
               detail: gate2.rejected.map((r) => r.path).join(", ") || void 0
             });
-            for (const p of gate2.repairedPaths ?? []) recovery.resolvePath(p, "fixed");
-            for (const p of gate2.repairFailedPaths ?? []) recovery.resolvePath(p, "kept_previous");
+            for (const p2 of gate2.repairedPaths ?? []) recovery.resolvePath(p2, "fixed");
+            for (const p2 of gate2.repairFailedPaths ?? []) recovery.resolvePath(p2, "kept_previous");
             if (gate2.repairedPaths?.length || gate2.repairFailedPaths?.length) {
               console.info(
                 `[write-gate] ai-repair repaired=${JSON.stringify(gate2.repairedPaths ?? [])} failed=${JSON.stringify(gate2.repairFailedPaths ?? [])}`
@@ -178108,7 +178589,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           return;
         }
         {
-          const cleanupPaths = turnBaselineFiles.length > 0 ? diffChangedPaths(turnBaselineFiles, nextFiles).filter((p) => !kitSyncedPaths.has(p)) : (authoredPaths ?? []).filter((p) => !isVerifierExempt(p));
+          const cleanupPaths = turnBaselineFiles.length > 0 ? diffChangedPaths(turnBaselineFiles, nextFiles).filter((p2) => !kitSyncedPaths.has(p2)) : (authoredPaths ?? []).filter((p2) => !isVerifierExempt(p2));
           const scopeLock = { touchedPaths: cleanupPaths };
           const cleanupT0 = Date.now();
           const repaired = runAllRepairs(nextFiles, {
@@ -178226,9 +178707,10 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         const budgetChangedPaths = nextFiles.filter((f) => priorByPathBudget.get(f.path) !== f.content).map((f) => f.path);
         const budgetVerdict = checkFileBudgets(nextFiles, budgetChangedPaths);
         const contentByPathBudget = new Map(nextFiles.map((f) => [f.path, f.content]));
-        const budgetRejections = budgetVerdict.rejections.filter(
-          (r) => looksIncomplete(contentByPathBudget.get(r.path) ?? "")
-        );
+        void contentByPathBudget;
+        void looksIncomplete;
+        void enforceFileBudgets;
+        const budgetRejections = [];
         const budgetDowngraded = budgetVerdict.rejections.filter(
           (r) => !budgetRejections.includes(r)
         );
@@ -178299,7 +178781,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         });
         if (define_import_meta_env_default.DEV && body.testFault === "syntax" && !isInitial) {
           const changedNow = new Set(diffChangedPaths(turnBaselineFiles, nextFiles));
-          const victim = resolvedTargetPaths.find((p) => changedNow.has(p) && /\.tsx$/.test(p));
+          const victim = resolvedTargetPaths.find((p2) => changedNow.has(p2) && /\.tsx$/.test(p2));
           if (victim) {
             nextFiles = nextFiles.map((f) => {
               if (f.path !== victim) return f;
@@ -178509,7 +178991,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           const imageTargetPaths = isInitial ? void 0 : diffChangedPaths(turnBaselineFiles, nextFiles).filter(
             // Kimble's own building-block refresh is housekeeping, not
             // this request: never make pictures for files nobody edited.
-            (p) => !kitSyncedPaths.has(p)
+            (p2) => !kitSyncedPaths.has(p2)
           );
           const imageTargetSet = imageTargetPaths ? new Set(imageTargetPaths) : null;
           const hasPlaceholders = nextFiles.some(
@@ -178643,7 +179125,27 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             }
             return out;
           },
-          () => infraFailure
+          () => infraFailure,
+          // Missing-node recovery: a missing shared module is created ONCE,
+          // before any dependent page is repaired individually.
+          async (node, context) => {
+            if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
+            controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}\u2026` })));
+            const { createMissingModule: createMissingModule2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
+            try {
+              return await createMissingModule2(node, context, {
+                turnId: logicalTurnId,
+                projectId: body.projectId ?? null,
+                userId,
+                turnContext: turnContextFor(node.target)
+              });
+            } catch (e) {
+              const { isInfrastructureFailure: isInfrastructureFailure2 } = await Promise.resolve().then(() => (init_failure_classification(), failure_classification_exports));
+              if (!isInfrastructureFailure2(e)) throw e;
+              infraFailure = e;
+              return null;
+            }
+          }
         );
         if (!guardOut.ok && guardOut.origin === "infrastructure") {
           const { guidanceFor: guidanceFor2 } = await Promise.resolve().then(() => (init_failure_classification(), failure_classification_exports));
@@ -178825,8 +179327,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           baseline: turnBaselineFiles,
           proposed: nextFiles,
           ledger: turnLedger,
-          isSystemPath: (p) => isScaffoldOwnedPath(p) || kitSyncedPaths.has(p) || authoredPaths !== void 0 && !authoredPaths.includes(p),
-          protectionReason: (p) => isInitial || isCrossCutting ? null : executionScope.protectionReason(p),
+          isSystemPath: (p2) => isScaffoldOwnedPath(p2) || kitSyncedPaths.has(p2) || authoredPaths !== void 0 && !authoredPaths.includes(p2),
+          protectionReason: (p2) => isInitial || isCrossCutting ? null : executionScope.protectionReason(p2),
           checks: turnChecks,
           cancelled: () => abortSignal.aborted,
           // AUTHORITATIVE source verification of the proposed tree. esbuild
@@ -178902,9 +179404,9 @@ ${summary}` })));
           if (!(body.projectId && txCommitted && nextFiles.length > 0)) return;
           const byPath = /* @__PURE__ */ new Map();
           for (const f of nextFiles) {
-            const p = f.path.trim();
-            if (!p) continue;
-            byPath.set(p, { path: p, content: f.content ?? "" });
+            const p2 = f.path.trim();
+            if (!p2) continue;
+            byPath.set(p2, { path: p2, content: f.content ?? "" });
           }
           try {
             const saved = await agentIO().replaceFiles(body.projectId, Array.from(byPath.values()), { turnId: logicalTurnId ?? turnId ?? null });
@@ -179156,7 +179658,7 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
                     operation: executionScope.operation,
                     mode: turnClassification.mode,
                     protectedAreas: executionScope.protectedAreas.slice(0, 20),
-                    protectedTouched: turnChanged.filter((p) => executionScope.isProtected(p)),
+                    protectedTouched: turnChanged.filter((p2) => executionScope.isProtected(p2)),
                     verification: sourceVerification,
                     filesRead: contextFiles.map((f) => f.path).slice(0, 40),
                     filesChanged: turnChanged.slice(0, 40),
@@ -179172,7 +179674,7 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
           emitTurnOutcome(controller, encoder, txBlocked ? {
             outcome: "failed",
             changedPaths: [],
-            blockedPaths: txResult.rejections.map((r) => r.path).filter((p) => Boolean(p)),
+            blockedPaths: txResult.rejections.map((r) => r.path).filter((p2) => Boolean(p2)),
             reason: persistError ? "commit_rejected" : sourceVerification.status === "FAILED" ? "verification_failed" : sourceVerification.status === "UNVERIFIED" && txResult.rejections.some((r) => r.reason === "unverified") ? "verification_unavailable" : "commit_rejected"
           } : scopeMissing.length > 0 ? { outcome: "failed", changedPaths: turnChanged, reason: "requested_scope_missing", ...providersExhaustedForTurn2() ? { cause: "providers_exhausted" } : {} } : {
             outcome: turnChanged.length > 0 ? "applied" : "answered",
@@ -179196,7 +179698,7 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
                 changedPaths: turnChangedPaths,
                 blockedPaths: Array.from(/* @__PURE__ */ new Set([
                   ...unappliedPaths,
-                  ...txResult.rejections.map((r) => r.path).filter((p) => Boolean(p))
+                  ...txResult.rejections.map((r) => r.path).filter((p2) => Boolean(p2))
                 ]))
               }
             });
@@ -179519,11 +180021,11 @@ async function handleGenerateRequest(request) {
       const recordEvent2 = makeSseTap((type, payload) => {
         if (type === "plan_proposed") planProposed = true;
         if (type === "result") {
-          const p = payload;
+          const p2 = payload;
           lastResult = {
-            summary: typeof p.summary === "string" ? p.summary : void 0,
-            plan: typeof p.plan === "string" ? p.plan : void 0,
-            recap: typeof p.recap === "string" ? p.recap : void 0
+            summary: typeof p2.summary === "string" ? p2.summary : void 0,
+            plan: typeof p2.plan === "string" ? p2.plan : void 0,
+            recap: typeof p2.recap === "string" ? p2.recap : void 0
           };
         }
         recorder?.record(type, payload);
@@ -179687,6 +180189,39 @@ async function handleGenerateRequest(request) {
           silentRecovery = false;
         }
         emit({ type: "done", status: terminalStatus });
+        let failureReplyWritten = false;
+        if (recorder && turnUserId && terminalStatus !== "succeeded" && terminalStatus !== "awaiting_credits") {
+          const { classifyFailureOrigin: classifyFailureOrigin2 } = await Promise.resolve().then(() => (init_failure_classification(), failure_classification_exports));
+          await agentIO().recordEconomics({
+            turnId: recorder.turnId,
+            userId: turnUserId,
+            projectId: turnProjectId ?? null,
+            feature: "generate",
+            creditsCharged: 0,
+            result: terminalStatus,
+            finalizeOnly: true,
+            metadata: {
+              terminal_status: terminalStatus,
+              failure_reason: terminalError?.slice(0, 300) ?? null,
+              failure_origin: terminalError ? classifyFailureOrigin2(new Error(terminalError)) : null,
+              customer_charge: 0
+            }
+          }).catch(() => void 0);
+          if (turnProjectId && !silentRecovery && !planProposed) {
+            await new Promise((r) => setTimeout(r, 2500));
+            const done = lastResult;
+            failureReplyWritten = await persistAbandonedTurnReply({
+              projectId: turnProjectId,
+              turnId: recorder.turnId,
+              status: terminalStatus,
+              summary: done?.summary ?? null,
+              plan: done?.plan ?? null,
+              recap: done?.recap ?? null,
+              errorMessage: terminalError,
+              committedRevision: done?.committedRevision ?? null
+            }).catch(() => false);
+          }
+        }
         await finishTurnOnce(terminalStatus, terminalError);
         if (turnProjectId && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
           await markStage(
@@ -179697,7 +180232,7 @@ async function handleGenerateRequest(request) {
             }
           );
         }
-        if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
+        if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits" && !failureReplyWritten && terminalStatus === "succeeded") {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult;
           const wroteReply = await persistAbandonedTurnReply({
