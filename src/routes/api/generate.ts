@@ -3208,6 +3208,27 @@ async function handleGenerateRequestCore(
   // Lifecycle phase in the agent context (existing prompt assembly).
   const { initialDepth } = await import("@/server/execution");
   const turnInitialDepth = initialDepth(turnClassification, lastUserContent || "");
+  // Execution complexity (internal): drives decomposition and is the
+  // expected-cost baseline recorded with this turn's economics.
+  const { assessExecution } = await import("@/server/execution/complexity");
+  const turnRequirementCount = Math.max(
+    turnChangeSet.items.length,
+    (resolvedPrd as { prd?: { requirements?: unknown[] } } | null)?.prd?.requirements?.length ?? 0,
+  );
+  const turnComplexityBase = {
+    isInitial,
+    operation: (turnClassification as { operation?: string }).operation ?? null,
+    request: lastUserContent || "",
+    requirementCount: turnRequirementCount,
+    plannedPages: 0,
+    existingFiles: currentFiles.length,
+    crossCutting: Boolean(turnClassification.crossCutting),
+    backendInvolved: Boolean(backend),
+    integrations: 0,
+  };
+  const turnEscalations: string[] = [];
+  const turnStrategy: Record<string, unknown> = { decomposedPages: [] as string[] };
+  console.info(`[complexity] ${JSON.stringify(assessExecution(turnComplexityBase))}`);
   const lifecycleBlock = await (async () => {
     try {
       const { renderLifecycleContext } = await import("@/server/context/lifecycle");
@@ -7037,7 +7058,22 @@ async function handleGenerateRequestCore(
         // what the customer paid next to what the turn cost Kimble, with the
         // cost explicitly marked actual / estimated / unknown. Best-effort —
         // never allowed to affect the build or the charge.
-        void recordTurnEconomics({
+        const turnComplexity = assessExecution({
+          ...turnComplexityBase,
+          plannedPages: firstBuildPlan?.pages.length ?? 0,
+          escalations: turnEscalations,
+        });
+        void agentIO().recordEconomics({
+          execution: {
+            class: turnComplexity.class,
+            expectedCostUsd: turnComplexity.expectedCostUsd,
+            signals: turnComplexity.signals,
+            strategy: turnStrategy,
+            committed: txCommitted,
+            outcome: txCommitted ? "applied" : failedEditTurn ? "answered" : "failed",
+            failureOrigin: txCommitted ? null : infraFailure ? "infrastructure" : "code",
+            elapsedMs: Date.now() - setupStartedAt,
+          },
           turnId: logicalTurnId,
           userId,
           projectId: body.projectId ?? null,
