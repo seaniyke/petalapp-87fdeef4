@@ -141,13 +141,13 @@ describe("App.tsx partial completion stays open", () => {
 
 describe("planning is not suppressed by repair words", () => {
   it("localized bug → targeted repair", () => {
-    const c = classifyRequest({ prompt: "The sign-in button on the Auth page throws an error", isFirstBuild: false });
+    const c = classifyRequest("The sign-in button on the Auth page throws an error", { isInitial: false });
     expect(c.operation).toBe("repair");
     expect(c.planRequired).toBe(false);
   });
 
   it("broad product request → planning retained", () => {
-    const c = classifyRequest({ prompt: "Rework the whole app: add accounts, bookings, an admin dashboard and payments across every page", isFirstBuild: false });
+    const c = classifyRequest("Rework the whole app: add accounts, bookings, an admin dashboard and payments across every page", { isInitial: false });
     expect(c.planRequired).toBe(true);
   });
 
@@ -156,13 +156,13 @@ describe("planning is not suppressed by repair words", () => {
       "Everything is broken — restructure the whole app's navigation and data flow across all pages",
       "Fix the problem across the entire app: rebuild routing and shared layout for every page",
     ]) {
-      const c = classifyRequest({ prompt: p, isFirstBuild: false });
+      const c = classifyRequest(p, { isInitial: false });
       expect(c.planRequired, p).toBe(true);
     }
   });
 
   it("repair context never becomes first_build", () => {
-    const c = classifyRequest({ prompt: "Fix this runtime error: ReferenceError: mode is not defined in src/pages/Auth.tsx", isFirstBuild: false });
+    const c = classifyRequest("Fix this runtime error: ReferenceError: mode is not defined in src/pages/Auth.tsx", { isInitial: false });
     expect(c.operation).not.toBe("first_build");
   });
 });
