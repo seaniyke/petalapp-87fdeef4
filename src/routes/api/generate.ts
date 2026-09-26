@@ -1304,10 +1304,10 @@ async function rawPageCompletion(args: {
   providerStalled?: boolean;
   meta: Parameters<typeof structuredRetryCompletion>[0]["meta"];
 }): Promise<Response> {
-  const { RAW_FILE_FORMAT } = await import("@/server/engine/raw-file");
+  const { RAW_FILE_FORMAT, RAW_FILES_FORMAT } = await import("@/server/engine/raw-file");
   const msgs = args.messages.slice();
   const last = msgs[msgs.length - 1];
-  msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}\n\n${RAW_FILE_FORMAT}` };
+  msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}\n\n${String(last?.content ?? "").startsWith("DECOMPOSED PAGE") ? RAW_FILES_FORMAT : RAW_FILE_FORMAT}` };
   return aiChatCompletions({
     feature: "generate",
     body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
