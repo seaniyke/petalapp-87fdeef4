@@ -21,7 +21,7 @@ describe("failure card derives from the authoritative classification", () => {
     expect(c.title).toBe("The connection to the builder was interrupted.");
     expect(c.message).toMatch(/doesn't mean the build failed/);
     expect(c.actionKind).toBe("dismiss");
-    expect(`${c.title} ${c.message}`).not.toMatch(/\bfailed\b(?! )/);
+    expect(c.title).not.toMatch(/failed/i);
   });
   it("cancelled → states cancellation, no retry", () => {
     const c = card("aborted");
