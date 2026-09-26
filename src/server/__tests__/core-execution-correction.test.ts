@@ -155,3 +155,13 @@ describe("usedAsValue", () => {
     expect(usedAsValue(`const b = Foo;`, "Foo")).toBe(true);
   });
 });
+
+import { extractRequestedPages as erp } from "@/server/requested-scope";
+describe("layout words are not page names", () => {
+  it("one-page landing page names no page", () => {
+    expect(erp("Make a one-page landing page for Lumen Yoga studio with a class schedule and a contact form.")).toEqual([]);
+  });
+  it("still finds real pages", () => {
+    expect(erp("A site with pages: Menu, About and Contact").length).toBe(3);
+  });
+});

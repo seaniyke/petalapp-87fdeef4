@@ -26,3 +26,5 @@
 - Unwritten pages the user did not name and the intent contract does not require are removed from the router; requested/core pages are never dropped — why: one missing optional Settings page discarded a 20-file hospital build.
 - Type-only exports imported as values fail verification only when the importer uses the name at runtime (`usedAsValue`) — why: type-position imports are erased by the bundler, and the false positive discarded the bakery build.
 - Missing-node recovery also runs just before the final check over all changed paths — why: helpers imported by late-written pages were never created, and quarantine cascaded through every importer.
+- The undefined-identifier gate ignores names that appear only in type positions (`inTypePosition`) — why: erased types cannot throw a ReferenceError; `TaskCardProps` discarded a working task app.
+- Layout words ("one-page", "landing", "website") are never extracted as requested page names — why: "a one-page landing page" demanded a /one-page route and failed the build.
