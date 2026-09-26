@@ -84,3 +84,14 @@ describe("foundation contract", () => {
     expect(projectContract(f)).toMatch(/@\/lib\/data: patients, usePatients/);
   });
 });
+
+describe("template drift", () => {
+  it("drops clinic-booking template pages for a hospital system but keeps account pages", () => {
+    const c = deriveIntentContract(HOSPITAL);
+    expect(divergentPages(c, ["/", "/services", "/confirmation", "/book", "/patients", "/auth", "/dashboard"], HOSPITAL).sort()).toEqual(["/book", "/confirmation", "/services"]);
+  });
+  it("keeps a page the user named", () => {
+    const brief = "Build a hospital management system with a pharmacy page";
+    expect(divergentPages(deriveIntentContract(brief), ["/pharmacy"], brief)).toEqual([]);
+  });
+});
