@@ -6920,7 +6920,6 @@ async function handleGenerateRequestCore(
               ? `${formatTerminalResult(verdict)}\n\n${breaker.userMessage()}`
               : formatTerminalResult(verdict);
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: `\n\n${summary}` })));
-            controller.enqueue(encoder.encode(sse({ type: "terminal_result", result: verdict })));
           }
           if (breaker.tripped) {
             console.warn(`[circuit-breaker] tripped at commit ${JSON.stringify(breaker.snapshot())}`);

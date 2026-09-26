@@ -59,7 +59,7 @@ describe("failed-turn persistence on the background builder", () => {
       ids,
     );
     expect("error" in q).toBe(false);
-    expect((q as { values: { project_id: string } }).values.project_id).toBe("p1");
+    expect((q as unknown as { values: { project_id: string } }).values.project_id).toBe("p1");
   });
   it("refuses cross-project reads and message deletes", () => {
     expect(scopeDbQuery({ op: "db.query", table: "messages", action: "select", filters: [{ col: "project_id", op: "eq", value: "other" }] }, ids)).toEqual({ error: "scope_violation" });
