@@ -81,6 +81,7 @@ export async function healMaterializedProject(root: string): Promise<string[]> {
     })),
   );
   reportSyntax(files, `root=${root}`);
+  const notes: string[] = [];
 
   // index.html: an external `<script src="/__petal_guard.js?v=N">` left behind
   // by an older turn is a Rollup build input, and Rollup cannot resolve it
@@ -94,11 +95,11 @@ export async function healMaterializedProject(root: string): Promise<string[]> {
       .replace(/<script\b[^>]*__petal_guard\.js[^>]*\/>\s*/gi, "");
     if (cleaned !== indexHtml) {
       await writeFile(indexPath, cleaned, "utf8");
-      healed.notes.push("index.html: removed stale external preview-guard script tag");
+      notes.push("index.html: removed stale external preview-guard script tag");
     }
   }
 
-  return healed.notes;
+  return notes;
 }
 
 
