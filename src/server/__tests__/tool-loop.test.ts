@@ -227,11 +227,14 @@ describe("one readiness authority", () => {
     const m = scripted([
       reply(call("create_file", { path: "src/pages/Home.tsx", content: page("Home") })),
       reply(call("finish", {})),
-      reply(call("create_file", { path: "src/pages/Contact.tsx", content: page("Contact") }), call("finish", {})),
+      reply(
+        call("create_file", { path: "src/pages/Contact.tsx", content: page("Contact") }),
+        call("create_file", { path: "src/App.tsx", content: `import { Routes, Route } from "react-router-dom";\nimport Home from "./pages/Home";\nimport Contact from "./pages/Contact";\nexport default function App(){return <div><header><nav>n</nav></header><Routes><Route path="/" element={<Home/>}/><Route path="/contact" element={<Contact/>}/></Routes><footer>f</footer></div>;}\n` }),
+        call("finish", {}),
+      ),
     ]);
     const cm = async (msgs: LoopMessage[]) => { if (m.seen.length === 1) routes.push("/contact"); return m.callModel(msgs); };
     const r = await runToolLoop({ ...base, readiness: authority(() => routes), files: [], callModel: cm });
-    console.log("DBG", tool(m));
     expect(tool(m)).toContain("missing requested");
     expect(r.outcome).toBe("finished");
   });
