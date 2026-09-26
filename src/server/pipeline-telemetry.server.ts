@@ -20,8 +20,6 @@
 
 export type TierName =
   | "file_budget"
-  | "missing_nodes"
-  | "intent_check"
   | "apply_ops"
   | "stream_autofix"
   | "local_verify"
