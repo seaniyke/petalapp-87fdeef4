@@ -2427,8 +2427,21 @@ function Builder() {
         releaseTurnLock();
         return;
       }
+      // First prompt on a brand-new project: creating the project row is a
+      // network round trip. Show the user's message and the working state
+      // now instead of leaving the composer frozen until the row exists.
+      const earlyEcho = !project && !internalRetry && !opts.suppressEcho;
+      if (earlyEcho) {
+        setMessages((prev) => [...prev, { role: "user", content: text }]);
+        setInput("");
+        setBusy(true);
+      }
       const proj = await ensureProject();
       if (!proj) {
+        if (earlyEcho) {
+          setMessages((prev) => prev.slice(0, -1));
+          setBusy(false);
+        }
         // The project row could not be created (permissions, network, a
         // database rule). Never swallow this: an auto-sent prompt from the
         // landing page would otherwise vanish with an empty thread. Say what
@@ -2541,7 +2554,9 @@ function Builder() {
           setMessages((prev) => [...prev, note]);
         } else {
           // Visible thread always shows the user's real text, never the folded prompt.
-          setMessages((prev) => [...prev, userMsg]);
+          // After an early echo, upgrade that same bubble (adds attachments)
+          // rather than appending a second copy.
+          setMessages((prev) => (earlyEcho ? [...prev.slice(0, -1), userMsg] : [...prev, userMsg]));
         }
       }
       // Don't overwrite lastUserPrompt during an auto-fix / auto-continue —
@@ -2579,6 +2594,9 @@ function Builder() {
         // A plan proposed for an earlier prompt is irrelevant once a new turn
         // starts — otherwise it sits under the composer beside live progress.
         setProposedPlan(null);
+        // The last turn's stage ("ready") made the bridge say "Working", then
+        // "Thinking", then "Working" again. Start the new turn from idle.
+        dispatchTurn({ type: "reset" });
       }
       setBusy(true);
       // The source may still be arriving in the background (the screen no
