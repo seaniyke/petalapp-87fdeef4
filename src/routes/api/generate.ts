@@ -3306,7 +3306,18 @@ async function handleGenerateRequestCore(
       return "";
     }
   })();
-  const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}`;
+  // Conditional read-only parallel exploration (skipped for LIGHT / first build).
+  const explorationBlock = await (async () => {
+    try {
+      const { exploreProject } = await import("@/server/context/explore");
+      const r = await exploreProject({ files: currentFiles, cls: assessExecution(turnComplexityBase).class, isInitial, request: lastUserContent || "" });
+      turnStrategy.exploration = r.ran ? r.roles : `skipped:${r.skippedReason}`;
+      return r.block;
+    } catch {
+      return "";
+    }
+  })();
+  const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}${explorationBlock}`;
   // One TurnLedger per turn: enforces TURN_LIMITS on repairs, writes and
   // deletes; the TurnTransaction at the commit point is accounted by it.
   const { TurnLedger, commitTurn } = await import("@/server/execution");
