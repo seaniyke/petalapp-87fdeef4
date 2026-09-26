@@ -3572,9 +3572,20 @@ async function handleGenerateRequestCore(
         // below replaces it rather than competing with it.
         if (intentContract.archetype) archetypeBlock = "";
       }
-      if (plannedRoutes.filter((r) => r !== "/").length === 0 && intentContract.pages.length) {
-        for (const pg of intentContract.pages) if (!plannedRoutes.includes(pg.route)) plannedRoutes.push(pg.route);
-        console.log(`[intent] archetype=${intentContract.archetype} plan=${JSON.stringify(plannedRoutes)}`);
+      // Plan validation: the plan must actually cover the requested product's
+      // core modules. Under half covered → replan onto the contract's modules
+      // BEFORE any page is generated (no generation/repair cycles wasted).
+      if (intentContract.pages.length) {
+        const core = intentContract.pages.map((pg) => pg.route);
+        const covered = core.filter((r) => plannedRoutes.includes(r)).length;
+        if (covered * 2 < core.length) {
+          const added = core.filter((r) => !plannedRoutes.includes(r));
+          plannedRoutes.push(...added);
+          turnStrategy.planCorrection = { archetype: intentContract.archetype, removed: bad, added };
+          console.log(`[intent] plan corrected archetype=${intentContract.archetype} plan=${JSON.stringify(plannedRoutes)}`);
+        } else if (bad.length) {
+          turnStrategy.planCorrection = { archetype: intentContract.archetype, removed: bad, added: [] };
+        }
       }
       archetypeBlock += renderIntentBlock(intentContract);
     } catch (e) {
