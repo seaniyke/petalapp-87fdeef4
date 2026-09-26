@@ -4598,8 +4598,21 @@ async function handleGenerateRequestCore(
             // Stop boundary: no page writer starts after the user pressed Stop.
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             let pagesWritten = 0;
+            // Pages whose answer hit the output limit — re-planned as
+            // decomposed pages on the retry (strategy change, not a repeat).
+            const cutOffPages = new Set<string>();
+            const { assessPageComplexity } = await import("@/server/execution/complexity");
             const done = await writePlannedPages({
               pages,
+              decide: (p, truncatedBefore) =>
+                assessPageComplexity({
+                  route: p.route,
+                  file: p.file,
+                  request: lastUserContent || "",
+                  requirementCount: turnRequirementCount,
+                  pageCount: pages.length,
+                  truncatedBefore: truncatedBefore || cutOffPages.has(p.file),
+                }),
               files: parsed.files,
               budget: recovery,
               // Structural completeness check: a candidate cut off mid-file is
@@ -4642,6 +4655,12 @@ async function handleGenerateRequestCore(
                 // provider failure: never fail the provider for it and never
                 // resend here — the WRITE stage re-requests the file once.
                 const truncatedOutput = isTruncatedFinishReason(c.finishReason);
+                const decomposedAsk = instruction.startsWith(DECOMPOSED_MARKER);
+                if (truncatedOutput && wantPath && !decomposedAsk) {
+                  cutOffPages.add(wantPath);
+                  if (!turnEscalations.includes("output_limit")) turnEscalations.push("output_limit");
+                  controller.enqueue(encoder.encode(sse({ type: "status", message: "That page is large — splitting it into sections…" })));
+                }
                 const underDelivered = !truncatedOutput && !c.stall && c.finishReason !== "error" && !c.text.includes("```");
                 if (underDelivered) markUpstreamFailed(c.upstream);
                 if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
@@ -4673,7 +4692,23 @@ async function handleGenerateRequestCore(
                 try {
                   // Plain-text page: the file is the single fenced block. An
                   // unclosed block is a cut-off file — discarded, never patched.
-                  const { parseRawFile } = await import("@/server/engine/raw-file");
+                  const { parseRawFile, parseRawFiles } = await import("@/server/engine/raw-file");
+                  if (decomposedAsk) {
+                    // Every closed block is kept; the writer filters to scope
+                    // and continues any section cut off by the limit.
+                    const many = parseRawFiles(c.text);
+                    for (const f of many) {
+                      controller.enqueue(encoder.encode(sse({ type: "file_complete", path: f.path, bytes: f.content.length, index: 1, content: f.content })));
+                    }
+                    if (wantPath && many.some((f) => f.path === wantPath)) {
+                      pagesWritten += 1;
+                      (turnStrategy.decomposedPages as string[]).push(wantPath);
+                      const pageName = wantPath.split("/").pop()!.replace(/\.[jt]sx?$/, "");
+                      controller.enqueue(encoder.encode(sse({ type: "narration", path: wantPath, text: `Finished the ${pageName} page (${many.length - 1} sections).` })));
+                    }
+                    console.log(`[write] decomposed want=${wantPath ?? "?"} parsed=${many.map((f) => f.path).join(",")}`);
+                    return many.length ? many : null;
+                  }
                   const content = wantPath ? parseRawFile(c.text) : null;
                   const got = wantPath && content ? [{ path: wantPath, content }] : null;
                   if (got) {
@@ -4693,7 +4728,7 @@ async function handleGenerateRequestCore(
                 });
                 // Only the file this call was asked for is kept, so that is
                 // what it is credited with.
-                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => !wantOf(instruction) || p === wantOf(instruction));
+                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => instruction.startsWith(DECOMPOSED_MARKER) || !wantOf(instruction) || p === wantOf(instruction));
                 void attachFiles(framed.callIds, kept);
                 return framed.value;
               },
