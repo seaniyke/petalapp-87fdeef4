@@ -35,10 +35,6 @@ describe("work units", () => {
   });
 });
 
-describe("writer feedback loop", () => {
-  const frame = { path: "src/App.tsx", content: 'import Home from "@/pages/Home";\n<Routes><Route/></Routes> nav footer' };
-});
-
 describe("provider retry", () => {
   it("retries transient failures with backoff and stops on success", async () => {
     const statuses = [503, 429, 200];

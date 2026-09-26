@@ -19,9 +19,6 @@ describe("plan drives write", () => {
   });
 });
 
-describe("write stage", () => {
-});
-
 describe("single provider authority", () => {
   it("non-code tool calls skip NextBit and still exclude failed upstreams", () => {
     expect(resolveProviderRouting({ codeWriting: false, avoid: ["Azure"], hasTools: true })).toEqual({
