@@ -4700,215 +4700,98 @@ async function handleGenerateRequestCore(
             const pages = planned;
             // Stop boundary: no page writer starts after the user pressed Stop.
             await agentIO().assertActive(turnId, abortSignal, "page writing");
-            let pagesWritten = 0;
-            // Pages whose answer hit the output limit — re-planned as
-            // decomposed pages on the retry (strategy change, not a repeat).
-            const cutOffPages = new Set<string>();
-            const { assessPageComplexity } = await import("@/server/execution/complexity");
-            const pageProviderFailures: Array<{ path: string; status: number }> = [];
+            // ONE persistent tool-calling conversation finishes the build. The
+            // first response's files are validated at the same boundary as
+            // every later write; finish is refused while the workspace is
+            // incomplete. No per-page calls, no second scheduler.
+            const { runToolLoop } = await import("@/server/engine/tool-loop");
+            const { makeCallModel } = await import("@/server/engine/tool-loop-model");
+            const { validateUnitImports, undefinedNames } = await import("@/server/engine/work-unit");
+            const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await import("@/server/verification/identifiers.server");
-            const done = await runExecutionLoop({
+            const { withProviderRetry } = await import("@/server/engine/provider-retry");
+            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files;
+            const pendingWrites: Array<{ path: string; content: string }> = [];
+            const loopTraces: unknown[] = [];
+            const callModel = makeCallModel(
+              (reqBody, signal) =>
+                withProviderRetry(
+                  () =>
+                    aiChatCompletions({
+                      feature: "generate",
+                      body: { ...reqBody, reasoning: { enabled: false }, model: MODEL_STRUCTURED_RETRY },
+                      timeoutTier: "stream_first_build",
+                      lockCallerModel: true,
+                      codeOutput: true,
+                      signal: signal ?? abortSignal,
+                      meta: {
+                        phase: phaseTag.phase,
+                        promptChars: lastUserContent.length,
+                        hadAttachments: hasVisionTurn,
+                        chosenBy: "tool_loop",
+                        projectId: body.projectId ?? null,
+                        userId,
+                        turnId: logicalTurnId,
+                      },
+                    }),
+                  { signal: signal ?? abortSignal },
+                ),
+              (u) => { if (u) pageWriteUsages.push(u); },
+            );
+            const done = await runToolLoop({
               goal: lastUserText,
-              pages,
-              decide: (p, truncatedBefore) =>
-                assessPageComplexity({
-                  route: p.route,
-                  file: p.file,
-                  request: lastUserContent || "",
-                  requirementCount: turnRequirementCount,
-                  pageCount: pages.length,
-                  truncatedBefore: truncatedBefore || cutOffPages.has(p.file),
-                }),
-              // Resume: saved pages are re-staged; the writer skips every page
-              // that is already real, so no finished page is written twice.
-              files: resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files,
-              budget: recovery,
-              // Durable progress: each validated work unit is saved the moment
-              // it finishes, only by the turn that owns the checkpoint. The
-              // result is surfaced — a failed save is never reported as saved.
-              onFilesDone: checkpointTurnId
-                ? async (got) => {
-                    const ok = await checkpointApi.checkpointFiles(checkpointTurnId, got);
-                    const cs = (turnStrategy.checkpoint ??= { saved: 0, failed: 0 }) as { saved: number; failed: number };
-                    if (ok) cs.saved += got.length; else cs.failed += got.length;
-                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
-                    return ok;
-                  }
-                : undefined,
-              // Foundation layer first: missing shared modules the frame
-              // imports are created (in parallel) before any page is written,
-              // so pages consume real export signatures, never guesses.
-              createFoundation: async (staged, changed) => {
-                const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
-                const { createMissingModule } = await import("@/server/engine/repair");
-                const scope = changed ?? staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
-                const r = await resolveMissingNodes(staged, scope, async (node, context) => {
-                  if (!turnLedger.use("repair", "foundation module", node.target).ok) return null;
-                  controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating shared ${node.target}…` })));
-                  return createMissingModule(node, context, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext: turnContextFor(node.target) });
-                }, { concurrency: 4 });
-                return { files: r.files, created: r.created };
+              system: String(finalMessages[0]?.content ?? ""),
+              brief:
+                `${lastUserText}\n\nThe first draft of the app is already in the workspace (${seedFiles.length} files). ` +
+                `Finish the build with tools: create every page the router needs, fix any failing file, then call finish. ` +
+                `Several tool calls per response are encouraged. Planned pages: ${planned.map((p: { route: string; file: string }) => `${p.route} → ${p.file}`).join(", ")}.\n\n` +
+                `Files: ${seedFiles.map((f) => f.path).join(", ")}`,
+              files: seedFiles,
+              seedPaths: seedFiles.map((f) => f.path),
+              requirements: planned.map((p: { route: string; file: string }) => ({ id: `page:${p.route}`, file: p.file, route: p.route })),
+              callModel,
+              validate: async (file, tree) => {
+                if (!/\.(tsx?|jsx?)$/.test(file.path)) return [];
+                const v = await verifyFilesEsbuild([file], [file.path]);
+                if (v.status === "unavailable") throw new Error(v.unavailableDetail ?? v.unavailableReason ?? "esbuild unavailable");
+                const out = v.issues.map((i) => i.message);
+                if (out.length) return out;
+                return [
+                  ...validateUnitImports(file, tree).map((d) => d.message),
+                  ...undefinedNames(file, tree, (t, c) => checkIdsForUnits(t, c)).map((d) => d.message),
+                ];
               },
-              // Per-unit record: observable progress + economics evidence.
-              checkIdentifiers: (tree, changed) => checkIdsForUnits(tree, changed),
-          onUnit: (u) => {
-                ((turnStrategy.workUnits ??= []) as unknown[]).push(u);
-                if (u.outcome === "skipped_done") return;
-                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "work_unit", outcome: u.outcome === "failed" ? "failed" : "ok", message: `${u.kind} ${u.target}: ${u.outcome}${u.feedbackRounds ? ` after ${u.feedbackRounds} correction` : ""}${u.continued ? " (continued, not regenerated)" : ""}`, ts: Date.now() })));
+              typecheck: (tree, paths) => {
+                const r = checkIdsForUnits(tree, paths);
+                return r.status === "failed" ? r.issues.map((i) => `${i.path}:${i.line} ${i.message}`) : [];
               },
-              // Structural completeness check: a candidate cut off mid-file is
-              // discarded (never patched) so the page is re-requested once.
-              isTruncated: async (file) => {
-                const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
-                const { isTruncationDetail } = await import("@/server/engine/build-state");
-                const verdict = await verifyFilesEsbuild([file], [file.path]);
-                if (verdict.status === "unavailable") {
-                  throw new Error(`Authoritative code validation unavailable: ${verdict.unavailableDetail ?? verdict.unavailableReason ?? "unknown error"}`);
+              onWrite: async (f) => {
+                pendingWrites.push(f);
+                controller.enqueue(encoder.encode(sse({ type: "file_complete", path: f.path, bytes: f.content.length, index: 1, content: f.content })));
+                if (checkpointTurnId) {
+                  const ok = await checkpointApi.checkpointFiles(checkpointTurnId, [f]);
+                  const cs = (turnStrategy.checkpoint ??= { saved: 0, failed: 0 }) as { saved: number; failed: number };
+                  if (ok) cs.saved += 1; else cs.failed += 1;
                 }
-                return verdict.issues.some((i) => isTruncationDetail(i.message));
+                return true;
               },
-              request: async (instruction: string) => {
-                const { withCallFrame, attachFiles } = await import("@/server/engine/call-accounting");
-                const framed = await withCallFrame(async () => {
-                controller.enqueue(
-                  encoder.encode(sse({ type: "status", message: "Writing the remaining pages…" })),
-                );
-                const res = await rawPageCompletion({
-                  messages: [...finalMessages, { role: "user", content: instruction }],
-                  isInitial,
-                  maxTokens: 12_000,
-                  signal: abortSignal,
-                  meta: {
-                    phase: phaseTag.phase,
-                    promptChars: lastUserContent.length,
-                    hadAttachments: hasVisionTurn,
-                    chosenBy: "missing_pages",
-                    projectId: body.projectId ?? null,
-                    userId,
-                    turnId: logicalTurnId,
-                    recoveryReason: "missing_page",
-                  },
-                });
-                const wantPath = wantOf(instruction);
-                if (!res.ok || !res.body) {
-                  // Durable evidence: a page that failed at the provider is an
-                  // infrastructure failure, never silently "missing".
-                  pageProviderFailures.push({ path: wantPath ?? "?", status: res.status });
-                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} (HTTP ${res.status})`, ts: Date.now() })));
-                  return null;
-                }
-                let c = await relayAndCollect(res, controller, encoder);
-                // A truncated response is a model-output problem, not a
-                // provider failure: never fail the provider for it and never
-                // resend here — the WRITE stage re-requests the file once.
-                const truncatedOutput = isTruncatedFinishReason(c.finishReason);
-                const decomposedAsk = instruction.startsWith(DECOMPOSED_MARKER);
-                if (truncatedOutput && wantPath && !decomposedAsk) {
-                  cutOffPages.add(wantPath);
-                  if (!turnEscalations.includes("output_limit")) turnEscalations.push("output_limit");
-                  controller.enqueue(encoder.encode(sse({ type: "status", message: "That page is large — splitting it into sections…" })));
-                }
-                const underDelivered = !truncatedOutput && !c.stall && c.finishReason !== "error" && !c.text.includes("```");
-                if (underDelivered) markUpstreamFailed(c.upstream);
-                if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
-                  // Provider failed mid-page: one resend (failed upstream is excluded).
-                  const again = await rawPageCompletion({
-                    messages: [...finalMessages, { role: "user", content: instruction }],
-                    isInitial,
-                    maxTokens: 12_000,
-                      signal: abortSignal,
-                    providerStalled: true,
-                    meta: {
-                      phase: phaseTag.phase,
-                      promptChars: lastUserContent.length,
-                      hadAttachments: hasVisionTurn,
-                      chosenBy: "missing_pages_provider_retry",
-                      projectId: body.projectId ?? null,
-                      userId,
-                      turnId: logicalTurnId,
-                      fallbackNumber: 1,
-                      fallbackFromUpstream: c.upstream ?? null,
-                      recoveryReason: "provider_error",
-                    },
-                  });
-                  if (!again.ok || !again.body) {
-                    pageProviderFailures.push({ path: wantPath ?? "?", status: again.status });
-                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} again (HTTP ${again.status})`, ts: Date.now() })));
-                    return null;
-                  }
-                  c = await relayAndCollect(again, controller, encoder);
-                }
-                // Page writing is billable work: count this page's tokens.
-                if (c.usage) pageWriteUsages.push(c.usage);
-                try {
-                  // Plain-text page: the file is the single fenced block. An
-                  // unclosed block is a cut-off file — discarded, never patched.
-                  const { parseRawFile, parseRawFiles } = await import("@/server/engine/raw-file");
-                  if (decomposedAsk) {
-                    // Every closed block is kept; the writer filters to scope
-                    // and continues any section cut off by the limit.
-                    const many = parseRawFiles(c.text);
-                    for (const f of many) {
-                      controller.enqueue(encoder.encode(sse({ type: "file_complete", path: f.path, bytes: f.content.length, index: 1, content: f.content })));
-                    }
-                    if (wantPath && many.some((f) => f.path === wantPath)) {
-                      pagesWritten += 1;
-                      (turnStrategy.decomposedPages as string[]).push(wantPath);
-                      const pageName = wantPath.split("/").pop()!.replace(/\.[jt]sx?$/, "");
-                      controller.enqueue(encoder.encode(sse({ type: "narration", path: wantPath, text: `Finished the ${pageName} page (${many.length - 1} sections).` })));
-                    }
-                    console.log(`[write] decomposed want=${wantPath ?? "?"} parsed=${many.map((f) => f.path).join(",")}`);
-                    return many.length ? many : null;
-                  }
-                  const content = wantPath ? parseRawFile(c.text) : null;
-                  const got = wantPath && content ? [{ path: wantPath, content }] : null;
-                  if (got) {
-                    controller.enqueue(encoder.encode(sse({ type: "file_complete", path: wantPath!, bytes: content!.length, index: 1, content: content! })));
-                    // Move the progress card onto the page that just finished so it
-                    // doesn't sit on the last scaffold file for minutes.
-                    pagesWritten += 1;
-                    const pageName = wantPath!.split("/").pop()!.replace(/\.[jt]sx?$/, "");
-                    controller.enqueue(encoder.encode(sse({ type: "file_progress", written: (parsed.files?.length ?? 0) + pagesWritten, latestPath: wantPath! })));
-                    controller.enqueue(encoder.encode(sse({ type: "narration", path: wantPath!, text: `Finished the ${pageName} page.` })));
-                  }
-                  console.log(`[write] want=${wantPath ?? "?"} upstream=${c.upstream ?? "?"} textChars=${c.text.length} parsed=${(got ?? []).map((f) => f.path).join(",")}`);
-                  return got;
-                } catch {
-                  return null;
-                }
-                });
-                // Only the file this call was asked for is kept, so that is
-                // what it is credited with.
-                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => instruction.startsWith(DECOMPOSED_MARKER) || !wantOf(instruction) || p === wantOf(instruction));
-                void attachFiles(framed.callIds, kept);
-                return framed.value;
+              isProtected: (p) => executionScope.isProtected(p),
+              signal: abortSignal,
+              onTrace: (t) => {
+                loopTraces.push(t);
+                console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} tools=${t.toolCalls.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "ai_call", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
+              },
+              onEvent: (e) => {
+                if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               },
             });
-            console.log(
-              `[write] pages=${JSON.stringify(pages.map((p) => p.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`,
-            );
+            turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
+            console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
-            // A page the router links but the writer never produced, which the
-            // user did not ask for and the product contract does not require,
-            // is dropped from the router — the verified rest still ships.
-            // Requested/core pages are never dropped (that fails honestly).
-            if (done.missing.length) {
-              const { stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
-              const core = new Set((intentContract?.pages ?? []).map((pg) => pg.route));
-              const named = new Set(requestedRoutesFor(lastUserText, []));
-              const optional = pages.filter((pg) => done.missing.includes(pg.file) || done.missing.includes(pg.route))
-                .filter((pg) => pg.route !== "/" && !core.has(pg.route) && !named.has(pg.route));
-              const app = parsed.files.find((f) => f.path === "src/App.tsx");
-              const cleaned = app && optional.length ? stripRoutesFromRouter(app.content, optional.map((pg) => pg.file)) : null;
-              if (app && cleaned !== null) {
-                app.content = cleaned;
-                turnStrategy.droppedOptionalPages = optional.map((pg) => pg.route);
-                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "fixed", message: `Left out unfinished optional pages: ${optional.map((pg) => pg.route).join(", ")}`, ts: Date.now() })));
-              }
-            }
-            if (done.missing.length) {
-              turnStrategy.missingPages = { missing: done.missing, providerFailures: pageProviderFailures };
-              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Pages not written: ${done.missing.join(", ")}${pageProviderFailures.length ? ` (provider failures: ${pageProviderFailures.map((f) => `${f.path} HTTP ${f.status}`).join(", ")})` : ""}`, ts: Date.now() })));
+            if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
+            if (done.incomplete.length) {
+              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Still incomplete: ${done.incomplete.slice(0, 5).join("; ")}`, ts: Date.now() })));
             }
           }
 
