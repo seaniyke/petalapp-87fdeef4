@@ -4577,7 +4577,7 @@ async function handleGenerateRequestCore(
           // WRITE stage (first builds): the shell call above wrote the shared
           // shell; every planned page is now written by its own call.
           if (isInitial && parsed.files?.length) {
-            const { writePlannedPages, pagesReferencedByRouter, targetOf: wantOf } = await import("@/server/engine/write");
+            const { writePlannedPages, pagesReferencedByRouter, targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
             const { pageFileFor } = await import("@/server/engine/plan");
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             // The plan is authoritative; requested routes only fill in if
