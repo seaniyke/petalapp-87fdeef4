@@ -719,6 +719,7 @@ export type StreamEvent =
         | "rls_sanity"
         | "file_budget"
         | "missing_nodes"
+        | "page_write"
         | "intent_check"
         | "post_stream_autofix"
         | "image_resolve"
