@@ -15,6 +15,15 @@ import { assessCompleteness, isPlaceholderFile } from "@/server/engine/build-sta
 import type { RecoveryBudget } from "@/server/engine/recovery-policy";
 import type { PlannedPage } from "@/server/engine/plan";
 import type { PageDecision } from "@/server/execution/complexity";
+import {
+  continuationInstruction,
+  feedbackInstruction,
+  signatureContext,
+  stitchContinuation,
+  validateUnitImports,
+  type UnitKind,
+  type UnitRecord,
+} from "@/server/engine/work-unit";
 
 /** Marker the request callback uses to parse a multi-file page answer. */
 export const DECOMPOSED_MARKER = "DECOMPOSED PAGE";
@@ -30,6 +39,8 @@ export interface WriteResult {
   truncated: string[];
   /** Pages written as page shell + section components, with why. */
   decomposed: Array<{ file: string; reasons: string[]; sections: string[] }>;
+  /** Every work unit executed (or skipped as already done), in order. */
+  units: UnitRecord[];
 }
 
 /** The project's real technical substrate, handed to every writer so it
@@ -198,24 +209,35 @@ export async function writePlannedPages(args: {
   budget: RecoveryBudget;
   /** One model call; returns the files it wrote, or null on failure. */
   request: (instruction: string) => Promise<ProjectFile[] | null>;
-  /** Structural check: true when a candidate was cut off mid-file. A
-   *  truncated candidate is discarded (never patched), which leaves the page
-   *  missing so step 2 re-requests that same file exactly once. */
+  /** Structural check: true when a candidate was cut off mid-file. A cut-off
+   *  candidate is first CONTINUED from its completed portion; only if that
+   *  fails is it discarded and the page re-planned (decomposed). */
   isTruncated?: (file: ProjectFile) => Promise<boolean>;
   /** Complexity decision per page. A page whose previous candidate was cut
    *  off is re-asked with `truncatedBefore` — the strategy change that turns
    *  an output-limit failure into decomposition instead of a repeat. */
   decide?: (page: PlannedPage, truncatedBefore: boolean) => PageDecision;
-  /** Called with each call's whole (non-truncated) files as soon as that
-   *  call finishes — the durable checkpoint hook. Never affects the result. */
+  /** Called with each unit's validated whole files as soon as it finishes —
+   *  the durable checkpoint hook. Never affects the result. */
   onFilesDone?: (files: ProjectFile[]) => void;
+  /** Layer 0: create the missing foundation modules the frame imports, BEFORE
+   *  any page runs, so pages consume their real export signatures. */
+  createFoundation?: (files: ProjectFile[]) => Promise<{ files: ProjectFile[]; created: string[] }>;
+  /** Per-unit execution record (observability + economics). */
+  onUnit?: (record: UnitRecord) => void;
 }): Promise<WriteResult> {
   let files = args.files;
   const written: string[] = [];
   const truncated: string[] = [];
   const decomposed: WriteResult["decomposed"] = [];
   const decisions = new Map<string, PageDecision>();
+  const units: UnitRecord[] = [];
   let calls = 0;
+  let layer = 0;
+  const record = (r: UnitRecord) => {
+    units.push(r);
+    try { args.onUnit?.(r); } catch { /* observability only */ }
+  };
   const inScope = (instruction: string, path: string): boolean => {
     const want = targetOf(instruction);
     if (path === want) return true;
@@ -223,26 +245,68 @@ export async function writePlannedPages(args: {
     const dir = /plus its section components in (src\/components\/[^\s/]+)\//.exec(instruction)?.[1];
     return Boolean(dir && path.startsWith(dir + "/") && /^[\w/-]+\.tsx$/.test(path) && !path.slice(dir.length + 1).includes("/"));
   };
-  const call = async (instruction: string): Promise<ProjectFile[]> => {
+  const ask = async (instruction: string): Promise<ProjectFile[]> => {
     calls++;
     try {
-      const got = ((await args.request(instruction)) ?? []).filter((f) => inScope(instruction, f.path));
-      if (!args.isTruncated) {
-        if (got.length) try { args.onFilesDone?.(got); } catch { /* checkpoint is best-effort */ }
-        return got;
-      }
-      const whole: ProjectFile[] = [];
-      for (const f of got) {
-        let cut = false;
-        try { cut = await args.isTruncated(f); } catch { cut = false; }
-        if (cut) truncated.push(f.path);
-        else whole.push(f);
-      }
-      if (whole.length) try { args.onFilesDone?.(whole); } catch { /* checkpoint is best-effort */ }
-      return whole;
+      return ((await args.request(instruction)) ?? []).filter((f) => inScope(instruction, f.path));
     } catch {
       return [];
     }
+  };
+  const cutOff = async (f: ProjectFile): Promise<boolean> => {
+    if (!args.isTruncated) return false;
+    try { return await args.isTruncated(f); } catch { return false; }
+  };
+  /**
+   * One work unit: execute → immediately validate (truncation, imports, real
+   * export signatures) → same-writer correction once → record. The validated
+   * result is what dependent units and the checkpoint see.
+   */
+  const call = async (instruction: string, kind: UnitKind = "page"): Promise<ProjectFile[]> => {
+    const started = Date.now();
+    const target = targetOf(instruction) ?? "?";
+    const rec: UnitRecord = { id: `${kind}:${target}`, kind, target, layer, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "ok" };
+    const before = calls;
+    const single = !instruction.startsWith(DECOMPOSED_MARKER);
+    const got = await ask(instruction);
+    const whole: ProjectFile[] = [];
+    for (let f of got) {
+      if (await cutOff(f)) {
+        // Continue from the completed portion instead of regenerating.
+        if (single && f.path === target) {
+          const cont = (await ask(continuationInstruction(f.path, f.content))).find((x) => x.path === f.path);
+          if (cont) {
+            const stitched = { path: f.path, content: stitchContinuation(f.content, cont.content) };
+            if (!(await cutOff(stitched))) {
+              rec.continued = true;
+              f = stitched;
+            }
+          }
+        }
+        if (!rec.continued) { truncated.push(f.path); continue; }
+      }
+      whole.push(f);
+    }
+    // Immediate import/export validation against the staged tree.
+    if (single) {
+      for (let i = 0; i < whole.length; i++) {
+        const diags = validateUnitImports(whole[i]!, files);
+        if (!diags.length) continue;
+        rec.diagnostics.push(...diags.map((d) => d.message));
+        rec.feedbackRounds++;
+        const fixed = (await ask(feedbackInstruction(instruction, whole[i]!, diags))).find((x) => x.path === whole[i]!.path);
+        if (fixed && !(await cutOff(fixed)) && validateUnitImports(fixed, files).length < diags.length) {
+          whole[i] = fixed;
+          rec.outcome = "corrected";
+        }
+      }
+    }
+    if (whole.length) try { args.onFilesDone?.(whole); } catch { /* checkpoint is best-effort; its own result is surfaced by the caller */ }
+    rec.calls = calls - before;
+    rec.ms = Date.now() - started;
+    if (!whole.length) rec.outcome = "failed";
+    record(rec);
+    return whole;
   };
   const put = (got: ProjectFile[]) => {
     for (const f of got) {
@@ -254,7 +318,7 @@ export async function writePlannedPages(args: {
   };
   const writePages = async (pages: PlannedPage[]) => {
     const paths = files.map((f) => f.path);
-    const contract = projectContract(files);
+    const contract = [projectContract(files), signatureContext(files)].filter(Boolean).join("\n");
     const shared = sharedFiles(files, args.pages);
     // Bounded fan-out. Gilded Shingle evidence (ai_call_log, same provider,
     // same 40,704-token prefix): the first 4 simultaneous page calls hit the
@@ -265,14 +329,35 @@ export async function writePlannedPages(args: {
       const d = args.decide?.(p, truncated.includes(p.file));
       if (d?.decompose) {
         decisions.set(p.file, d);
-        return call(decomposedPageInstruction(p, d, paths, contract, shared));
+        return call(decomposedPageInstruction(p, d, paths, contract, shared), "page");
       }
-      return call(pageInstruction(p, paths, contract, shared));
+      return call(pageInstruction(p, paths, contract, shared), "page");
     });
     results.forEach(put);
   };
 
-  // 1) Every planned page not yet written — one call each, in parallel.
+  // Already-done units (resume): recorded, never re-executed.
+  for (const p of args.pages) if (hasRealPage(files, p.file)) record({ id: `page:${p.file}`, kind: "page", target: p.file, layer: 1, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "skipped_done" });
+
+  // 0) Foundation layer: independent modules first (parallel inside the
+  // creator); pages wait for their real signatures.
+  if (args.createFoundation) {
+    const started = Date.now();
+    try {
+      const f = await args.createFoundation(files);
+      files = f.files;
+      for (const t of f.created) record({ id: `foundation:${t}`, kind: "foundation", target: t, layer: 0, calls: 1, feedbackRounds: 0, continued: false, diagnostics: [], ms: Date.now() - started, outcome: "ok" });
+      if (f.created.length) try { args.onFilesDone?.(files.filter((x) => f.created.includes(x.path))); } catch { /* best-effort */ }
+      calls += f.created.length;
+    } catch (e) {
+      // Provider failure while creating foundation propagates as infrastructure.
+      throw e;
+    }
+  }
+
+  // 1) Every planned page not yet written — one unit each, in parallel,
+  // after the foundation layer.
+  layer = 1;
   await writePages(args.pages.filter((p) => !hasRealPage(files, p.file)));
 
   // 2) One more attempt for pages still missing (the recovery table's limit).
@@ -291,7 +376,7 @@ export async function writePlannedPages(args: {
     if (todo.length) {
       const contract = projectContract(files);
       const src = files.find((f) => f.path === pageFile)!.content;
-      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src, contract)));
+      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src, contract), "section"));
       got.forEach(put);
     }
     decomposed.push({
@@ -309,11 +394,12 @@ export async function writePlannedPages(args: {
   // the shell call didn't deliver a real layout (colours alone aren't one).
   const needFrame = !frameIsComplete(files, args.pages.length) || (routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete);
   if (needFrame && args.budget.take("missing_page", "app shell")) {
-    put(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
+    layer = 2;
+    put(await call(routerInstruction(args.pages, files.map((f) => f.path), [projectContract(files), signatureContext(files)].filter(Boolean).join("\n")), "router"));
   }
 
   const missing = args.pages.filter((p) => !hasRealPage(files, p.file)).map((p) => p.route);
-  return { files, written, missing, calls, truncated, decomposed };
+  return { files, written, missing, calls, truncated, decomposed, units };
 }
 
 /** Max simultaneous page-writing calls (see writePages). */

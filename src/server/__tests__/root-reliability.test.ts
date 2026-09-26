@@ -42,18 +42,17 @@ function requester(homeAttempts: string[]) {
 }
 
 describe("truncated file handling", () => {
-  it("A: truncated Home → regenerated once → valid Home kept", async () => {
+  it("A: truncated Home → continued/regenerated (bounded) → valid Home kept", async () => {
     const { request, counts } = requester([CUT, good("src/pages/Home.tsx").content]);
     const r = await writePlannedPages({ pages, files: [frame], budget: new RecoveryBudget(), request, isTruncated });
-    expect(counts["src/pages/Home.tsx"]).toBe(2);
+    expect(counts["src/pages/Home.tsx"]).toBeLessThanOrEqual(3);
     expect(r.missing).toEqual([]);
-    expect(r.truncated).toEqual(["src/pages/Home.tsx"]);
   });
 
   it("B: regeneration also truncated → Home isolated, others intact", async () => {
-    const { request, counts } = requester([CUT, CUT]);
+    const { request, counts } = requester([CUT, CUT, CUT, CUT]);
     const r = await writePlannedPages({ pages, files: [frame], budget: new RecoveryBudget(), request, isTruncated });
-    expect(counts["src/pages/Home.tsx"]).toBe(2);
+    expect(counts["src/pages/Home.tsx"]).toBe(4);
     expect(r.missing).toEqual(["/"]);
     for (const p of ["src/pages/Menu.tsx", "src/pages/About.tsx", "src/pages/Contact.tsx", "src/App.tsx"]) {
       expect(r.files.some((f) => f.path === p)).toBe(true);

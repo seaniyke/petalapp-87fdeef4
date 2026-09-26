@@ -1311,15 +1311,27 @@ async function rawPageCompletion(args: {
   const msgs = args.messages.slice();
   const last = msgs[msgs.length - 1];
   msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}\n\n${String(last?.content ?? "").startsWith("DECOMPOSED PAGE") ? RAW_FILES_FORMAT : RAW_FILE_FORMAT}` };
-  return aiChatCompletions({
-    feature: "generate",
-    body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
-    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
-    lockCallerModel: true,
-    codeOutput: true,
-    signal: args.signal,
-    meta: args.meta,
-  });
+  // Transient provider failures (429/5xx/connection) get bounded backoff
+  // retries on the same model; deterministic errors are never retried.
+  const { withProviderRetry } = await import("@/server/engine/provider-retry");
+  return withProviderRetry(
+    () =>
+      aiChatCompletions({
+        feature: "generate",
+        body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
+        timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+        lockCallerModel: true,
+        codeOutput: true,
+        signal: args.signal,
+        meta: args.meta,
+      }),
+    {
+      signal: args.signal,
+      onAttempt: (a) => {
+        if (a.failureClass !== "ok") console.warn(`[provider-retry] model=${MODEL_STRUCTURED_RETRY} attempt=${a.attempt} status=${a.status ?? "conn"} class=${a.failureClass} delay=${a.delayMs}ms`);
+      },
+    },
+  );
 }
 
 async function recoverMissingToolOutput(args: {
@@ -4705,7 +4717,7 @@ async function handleGenerateRequestCore(
               ? resumed.checkpoint.planned
               : firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
             if (!resumed && checkpointTurnId && body.projectId) {
-              await checkpointApi.saveShellCheckpoint({
+              const shellSaved = await checkpointApi.saveShellCheckpoint({
                 projectId: body.projectId,
                 userId,
                 turnId: checkpointTurnId,
@@ -4713,6 +4725,8 @@ async function handleGenerateRequestCore(
                 shell: shellSnapshot,
                 planned,
               });
+              turnStrategy.checkpoint = { saved: shellSaved.ok ? 1 : 0, failed: shellSaved.ok ? 0 : 1, shellError: shellSaved.ok ? null : shellSaved.error };
+              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: shellSaved.ok ? "ok" : "failed", message: shellSaved.ok ? "Saved the shared layout" : "Could not save progress (the build continues, but can't resume if interrupted)", ts: Date.now() })));
             }
             // Output-limit continuation: pages the shell's own router already
             // imports but that were never written (the shell call ran out of
@@ -4768,11 +4782,38 @@ async function handleGenerateRequestCore(
               // that is already real, so no finished page is written twice.
               files: resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files,
               budget: recovery,
-              // Durable progress: each whole (non-truncated) file is saved the
-              // moment it finishes, only by the turn that owns the checkpoint.
+              // Durable progress: each validated work unit is saved the moment
+              // it finishes, only by the turn that owns the checkpoint. The
+              // result is surfaced — a failed save is never reported as saved.
               onFilesDone: checkpointTurnId
-                ? (got) => { void checkpointApi.checkpointFiles(checkpointTurnId, got); }
+                ? (got) => {
+                    void checkpointApi.checkpointFiles(checkpointTurnId, got).then((ok) => {
+                      const cs = (turnStrategy.checkpoint ??= { saved: 0, failed: 0 }) as { saved: number; failed: number };
+                      if (ok) cs.saved += got.length; else cs.failed += got.length;
+                      controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
+                    });
+                  }
                 : undefined,
+              // Foundation layer first: missing shared modules the frame
+              // imports are created (in parallel) before any page is written,
+              // so pages consume real export signatures, never guesses.
+              createFoundation: async (staged) => {
+                const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
+                const { createMissingModule } = await import("@/server/engine/repair");
+                const scope = staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
+                const r = await resolveMissingNodes(staged, scope, async (node, context) => {
+                  if (!turnLedger.use("repair", "foundation module", node.target).ok) return null;
+                  controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating shared ${node.target}…` })));
+                  return createMissingModule(node, context, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext: turnContextFor(node.target) });
+                }, { concurrency: 4 });
+                return { files: r.files, created: r.created };
+              },
+              // Per-unit record: observable progress + economics evidence.
+              onUnit: (u) => {
+                ((turnStrategy.workUnits ??= []) as unknown[]).push(u);
+                if (u.outcome === "skipped_done") return;
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "work_unit", outcome: u.outcome === "failed" ? "failed" : "ok", message: `${u.kind} ${u.target}: ${u.outcome}${u.feedbackRounds ? ` after ${u.feedbackRounds} correction` : ""}${u.continued ? " (continued, not regenerated)" : ""}`, ts: Date.now() })));
+              },
               // Structural completeness check: a candidate cut off mid-file is
               // discarded (never patched) so the page is re-requested once.
               isTruncated: async (file) => {
@@ -5455,9 +5496,14 @@ async function handleGenerateRequestCore(
               userId,
               signal: abortSignal,
               prd: resolvedPrd?.prd ?? null,
-              // Ordinary edits get the deterministic rules only; the model
-              // review is reserved for initial builds.
-              deterministicOnly: !isInitial,
+              // Ordinary edits get the deterministic rules only. On initial
+              // builds the model review runs only when there is evidence it
+              // adds value: a work unit failed or needed correction.
+              deterministicOnly:
+                !isInitial ||
+                (Array.isArray(turnStrategy.workUnits) &&
+                  (turnStrategy.workUnits as Array<{ outcome: string }>).length > 0 &&
+                  (turnStrategy.workUnits as Array<{ outcome: string }>).every((u) => u.outcome === "ok" || u.outcome === "skipped_done")),
             });
             if (verdict.rejections.length > 0) {
               criticRejections.push(...verdict.rejections);

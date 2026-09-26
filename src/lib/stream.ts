@@ -63,6 +63,8 @@ type Handlers = {
   onTimeline?: (entry: {
     step:
       | "stream_autofix"
+      | "checkpoint"
+      | "work_unit"
       | "local_verifier"
       | "npm_preflight"
       | "continuation"

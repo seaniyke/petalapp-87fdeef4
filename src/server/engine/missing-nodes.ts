@@ -148,32 +148,39 @@ export async function resolveMissingNodes(
   files: ProjectFile[],
   scopePaths: string[],
   create: CreateModule,
+  opts: { concurrency?: number } = {},
 ): Promise<MissingNodeResult> {
   const nodes = findMissingNodes(files, scopePaths);
   const created: string[] = [];
   const blocked: MissingNodeResult["blocked"] = [];
   let out = files;
-  for (const node of nodes) {
-    const importers = node.importers.map((i) => i.path);
-    let content: string | null = null;
-    try {
-      content = await create(node, usageContext(out, node));
-    } catch (e) {
-      // Provider/infrastructure failures propagate: they are not evidence
-      // about the module and must follow the infrastructure path.
-      throw e;
+  // Missing modules are independent of each other: create them concurrently
+  // (bounded), then stage in a fixed order. Provider/infrastructure failures
+  // propagate — they are not evidence about the module.
+  const limit = Math.max(1, opts.concurrency ?? 1);
+  const contents: Array<string | null> = new Array(nodes.length).fill(null);
+  let next = 0;
+  const worker = async () => {
+    while (next < nodes.length) {
+      const i = next++;
+      contents[i] = await create(nodes[i]!, usageContext(files, nodes[i]!));
     }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, Math.max(1, nodes.length)) }, worker));
+  nodes.forEach((node, i) => {
+    const importers = node.importers.map((x) => x.path);
+    const content = contents[i];
     if (!content || !content.trim()) {
       blocked.push({ target: node.target, reason: "no module was produced", importers });
-      continue;
+      return;
     }
     const missing = exportsSatisfy(content, node);
     if (missing.length) {
       blocked.push({ target: node.target, reason: `created module is missing exports: ${missing.join(", ")}`, importers });
-      continue;
+      return;
     }
     out = [...out.filter((f) => f.path !== node.target), { path: node.target, content }];
     created.push(node.target);
-  }
+  });
   return { files: out, created, blocked };
 }

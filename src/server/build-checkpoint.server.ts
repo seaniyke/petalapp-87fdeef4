@@ -65,7 +65,7 @@ export async function saveShellCheckpoint(args: {
   request: string;
   shell: ShellSnapshot;
   planned: Array<{ route: string; file: string }>;
-}): Promise<void> {
+}): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const { data: existing } = await db()
       .from("build_checkpoints")
@@ -75,10 +75,10 @@ export async function saveShellCheckpoint(args: {
       .maybeSingle();
     if (existing) {
       // A resumed turn keeps its checkpoint; any other live one is stale.
-      if ((existing as { turn_id: string }).turn_id === args.turnId) return;
+      if ((existing as { turn_id: string }).turn_id === args.turnId) return { ok: true };
       await db().from("build_checkpoints").update({ status: "discarded", updated_at: new Date().toISOString() }).eq("id", (existing as { id: string }).id);
     }
-    await db().from("build_checkpoints").insert({
+    const { error } = await db().from("build_checkpoints").insert({
       project_id: args.projectId,
       user_id: args.userId,
       origin_turn_id: args.turnId,
@@ -90,8 +90,14 @@ export async function saveShellCheckpoint(args: {
       planned: args.planned,
       remaining: args.planned.map((p) => p.file),
     });
+    if (error) {
+      console.error("[checkpoint] shell save failed", error.message);
+      return { ok: false, error: String(error.message).slice(0, 300) };
+    }
+    return { ok: true };
   } catch (e) {
-    console.warn("[checkpoint] shell save failed", (e as Error).message);
+    console.error("[checkpoint] shell save failed", (e as Error).message);
+    return { ok: false, error: (e as Error).message.slice(0, 300) };
   }
 }
 
@@ -107,8 +113,10 @@ export async function checkpointFiles(turnId: string, files: ProjectFile[], rema
       _remaining: remaining ?? null,
       _stage: null,
     });
+    if (error) console.error("[checkpoint] merge failed", error.message);
     return !error && data === true;
-  } catch {
+  } catch (e) {
+    console.error("[checkpoint] merge failed", (e as Error).message);
     return false;
   }
 }

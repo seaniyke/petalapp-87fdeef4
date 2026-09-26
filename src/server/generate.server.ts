@@ -711,6 +711,8 @@ export type StreamEvent =
       /** Stable id of the step. Used for icon + grouping on the client. */
       step:
         | "stream_autofix"
+        | "checkpoint"
+        | "work_unit"
         | "local_verifier"
         | "npm_preflight"
         | "continuation"
