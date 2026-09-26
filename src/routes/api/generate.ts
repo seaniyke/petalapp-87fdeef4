@@ -4764,8 +4764,15 @@ async function handleGenerateRequestCore(
                   pageCount: pages.length,
                   truncatedBefore: truncatedBefore || cutOffPages.has(p.file),
                 }),
-              files: parsed.files,
+              // Resume: saved pages are re-staged; the writer skips every page
+              // that is already real, so no finished page is written twice.
+              files: resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files,
               budget: recovery,
+              // Durable progress: each whole (non-truncated) file is saved the
+              // moment it finishes, only by the turn that owns the checkpoint.
+              onFilesDone: checkpointTurnId
+                ? (got) => { void checkpointApi.checkpointFiles(checkpointTurnId, got); }
+                : undefined,
               // Structural completeness check: a candidate cut off mid-file is
               // discarded (never patched) so the page is re-requested once.
               isTruncated: async (file) => {

@@ -206,6 +206,9 @@ export async function writePlannedPages(args: {
    *  off is re-asked with `truncatedBefore` — the strategy change that turns
    *  an output-limit failure into decomposition instead of a repeat. */
   decide?: (page: PlannedPage, truncatedBefore: boolean) => PageDecision;
+  /** Called with each call's whole (non-truncated) files as soon as that
+   *  call finishes — the durable checkpoint hook. Never affects the result. */
+  onFilesDone?: (files: ProjectFile[]) => void;
 }): Promise<WriteResult> {
   let files = args.files;
   const written: string[] = [];
