@@ -62774,7 +62774,6 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
-    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -140076,7 +140075,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -144770,7 +144768,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -177956,7 +177953,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const { verifyFilesEsbuild: verifyFilesEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_verifier_server(), esbuild_verifier_server_exports));
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await Promise.resolve().then(() => (init_identifiers_server(), identifiers_server_exports));
             const { withProviderRetry: withProviderRetry2 } = await Promise.resolve().then(() => (init_provider_retry(), provider_retry_exports));
-            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files;
+            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files ?? []) : parsed.files ?? [];
             const pendingWrites = [];
             const loopTraces = [];
             const callModel = makeCallModel2(

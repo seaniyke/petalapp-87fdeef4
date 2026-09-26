@@ -4681,7 +4681,7 @@ async function handleGenerateRequestCore(
             const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await import("@/server/verification/identifiers.server");
             const { withProviderRetry } = await import("@/server/engine/provider-retry");
-            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files;
+            const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files ?? []) : (parsed.files ?? []);
             const pendingWrites: Array<{ path: string; content: string }> = [];
             const loopTraces: unknown[] = [];
             const callModel = makeCallModel(
