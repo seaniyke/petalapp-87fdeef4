@@ -4,5 +4,5 @@
 - [x] Stage 4: inspector AI call + module deleted; critic model review deleted (deterministic rules kept)
 - [x] Stage 5: product-usefulness check merged into prd-acceptance (one acceptance authority); backend table check and feature flags stay — different jobs, not duplicates
 - [x] Stage 6: reviewed — context already has one entry point (context/index); design-intel (what the project is) and design-knowledge (craft rules) are intentionally separate inputs, no merge
-- [ ] Stage 7: legacy sweep (callback shim, chunk-recovery rewrite, builder syntax-heal → report-only)
+- [x] Stage 7: build-server syntax fixer is report-only (never rewrites verified source); callback shim and chunk-recovery rewrite already gone
 - [ ] Stage 8: live benchmarks (small edit, 4-page site, medium app, hospital) — blocked on user publishing
