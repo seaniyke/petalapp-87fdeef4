@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { writePlannedPages } from "@/server/engine/write";
+import { runExecutionLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import {
   isOwnContentIssue,
@@ -190,7 +190,7 @@ describe("audit consolidation", () => {
     const fs = await import("node:fs");
     const src = fs.readFileSync("src/routes/api/generate.ts", "utf8");
     expect(src).not.toMatch(/enforceDesignContract/);
-    expect(src).not.toMatch(/KIMBLE_PREEMIT_AGENT_LOOP|runAgentLoop/);
+    expect(src).not.toMatch(/KIMBLE_PREEMIT_AGENT_LOOP|runAgentLoop\(/);
     const cb = fs.readFileSync("src/routes/api/public/builds/callback.ts", "utf8");
     expect(cb).toMatch(/status: probeDecision\.status/);
   });

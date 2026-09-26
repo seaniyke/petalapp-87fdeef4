@@ -4704,7 +4704,8 @@ async function handleGenerateRequestCore(
           // WRITE stage (first builds): the shell call above wrote the shared
           // shell; every planned page is now written by its own call.
           if (isInitial && parsed.files?.length) {
-            const { writePlannedPages, pagesReferencedByRouter, targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
+            const { targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
+            const { runExecutionLoop } = await import("@/server/engine/agent-loop");
             const { pageFileFor } = await import("@/server/engine/plan");
             const checkpointApi = await import("@/server/build-checkpoint.server");
             // Snapshot of the shell answer exactly as parsed, taken before any
@@ -4732,33 +4733,30 @@ async function handleGenerateRequestCore(
             // imports but that were never written (the shell call ran out of
             // room, or planning under-counted) are the remaining work — write
             // them here, under the same bounded WRITE-stage budget.
-            let fromRouter = pagesReferencedByRouter(parsed.files, planned);
-            // Router pages are validated against the intent contract — never
-            // harvested blindly. Divergent pages are removed from the router.
-            if (intentContract && fromRouter.length) {
-              const { divergentPages, stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
-              const bad = new Set(divergentPages(intentContract, fromRouter.map((p) => p.route), lastUserText));
-              if (bad.size) {
-                const badFiles = fromRouter.filter((p) => bad.has(p.route)).map((p) => p.file);
-                const app = parsed.files.find((f) => f.path === "src/App.tsx");
-                const cleaned = app ? stripRoutesFromRouter(app.content, badFiles) : null;
-                if (app && cleaned !== null) {
-                  app.content = cleaned;
-                  fromRouter = fromRouter.filter((p) => !bad.has(p.route));
-                  console.warn(`[intent] dropped divergent router pages ${JSON.stringify([...bad])}`);
-                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "intent_check", outcome: "ok", message: `Removed pages that don't belong in this product: ${[...bad].join(", ")}`, ts: Date.now() })));
-                } else {
-                  console.warn(`[intent] divergent router pages kept (router not safely cleanable): ${JSON.stringify([...bad])}`);
+            // The agent loop reconciles planned goals with the router's actual
+            // pages under canonical identity (no second scheduler). Router pages
+            // that diverge from the intent contract are removed first.
+            if (intentContract) {
+              const { routerPages } = await import("@/server/engine/agent-loop");
+              const { pageKey } = await import("@/server/engine/agent-loop");
+              const plannedKeys = new Set(planned.map((p: { route: string }) => pageKey(p.route)));
+              const extra = routerPages(parsed.files).filter((p) => !plannedKeys.has(pageKey(p.route)));
+              if (extra.length) {
+                const { divergentPages, stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
+                const bad = new Set(divergentPages(intentContract, extra.map((p) => p.route), lastUserText));
+                if (bad.size) {
+                  const badFiles = extra.filter((p) => bad.has(p.route)).map((p) => p.file);
+                  const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                  const cleaned = app ? stripRoutesFromRouter(app.content, badFiles) : null;
+                  if (app && cleaned !== null) {
+                    app.content = cleaned;
+                    console.warn(`[intent] dropped divergent router pages ${JSON.stringify([...bad])}`);
+                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "intent_check", outcome: "ok", message: `Removed pages that don't belong in this product: ${[...bad].join(", ")}`, ts: Date.now() })));
+                  }
                 }
               }
             }
-            const pages = [...planned, ...fromRouter];
-            for (const p of fromRouter) if (!plannedRoutes.includes(p.route)) plannedRoutes.push(p.route);
-            if (isTruncatedFinishReason(collected.finishReason) || fromRouter.length) {
-              console.warn(
-                `[output-limit] first-build shell finish=${collected.finishReason ?? "?"} — continuing: ${JSON.stringify(pages.map((p) => p.route))} (router-referenced extra: ${JSON.stringify(fromRouter.map((p) => p.route))})`,
-              );
-            }
+            const pages = planned;
             // Stop boundary: no page writer starts after the user pressed Stop.
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             let pagesWritten = 0;
@@ -4768,7 +4766,8 @@ async function handleGenerateRequestCore(
             const { assessPageComplexity } = await import("@/server/execution/complexity");
             const pageProviderFailures: Array<{ path: string; status: number }> = [];
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await import("@/server/verification/identifiers.server");
-            const done = await writePlannedPages({
+            const done = await runExecutionLoop({
+              goal: lastUserText,
               pages,
               decide: (p, truncatedBefore) =>
                 assessPageComplexity({
@@ -4787,12 +4786,12 @@ async function handleGenerateRequestCore(
               // it finishes, only by the turn that owns the checkpoint. The
               // result is surfaced — a failed save is never reported as saved.
               onFilesDone: checkpointTurnId
-                ? (got) => {
-                    void checkpointApi.checkpointFiles(checkpointTurnId, got).then((ok) => {
-                      const cs = (turnStrategy.checkpoint ??= { saved: 0, failed: 0 }) as { saved: number; failed: number };
-                      if (ok) cs.saved += got.length; else cs.failed += got.length;
-                      controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
-                    });
+                ? async (got) => {
+                    const ok = await checkpointApi.checkpointFiles(checkpointTurnId, got);
+                    const cs = (turnStrategy.checkpoint ??= { saved: 0, failed: 0 }) as { saved: number; failed: number };
+                    if (ok) cs.saved += got.length; else cs.failed += got.length;
+                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
+                    return ok;
                   }
                 : undefined,
               // Foundation layer first: missing shared modules the frame

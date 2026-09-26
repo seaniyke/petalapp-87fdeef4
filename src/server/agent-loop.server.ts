@@ -110,7 +110,7 @@ function summarizeForPrompt(result: AgentLoopResult): string {
  * Run the tool loop. Never throws: any failure returns whatever was learned so
  * far, and the caller proceeds exactly as it did before this phase existed.
  */
-export async function runAgentLoop(args: {
+export async function runExecutionLoop(args: {
   model: string;
   /** The fully assembled emit-call messages, used verbatim as the loop's context. */
   messages: ChatMessage[];

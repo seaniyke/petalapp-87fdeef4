@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 
 vi.mock("@/integrations/supabase/client.server", () => ({ supabaseAdmin: {} }));
 
-import { writePlannedPages } from "@/server/engine/write";
+import { runExecutionLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { checkpointSeedFiles, checkpointUsable } from "@/server/build-checkpoint.server";
 

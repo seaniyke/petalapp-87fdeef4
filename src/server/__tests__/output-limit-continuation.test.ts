@@ -10,7 +10,8 @@
 import { describe, expect, it } from "vitest";
 import { extractRequestedPages, pageNameToRoute } from "@/server/requested-scope";
 import { planFirstBuild, type PlannedPage } from "@/server/engine/plan";
-import { pagesReferencedByRouter, targetOf, writePlannedPages } from "@/server/engine/write";
+import { targetOf } from "@/server/engine/write";
+import { runExecutionLoop as writePlannedPages, reconcileRequirements } from "@/server/engine/agent-loop";
 import { assessCompleteness } from "@/server/engine/build-state";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { AgentCircuitBreaker } from "@/server/execution/circuit-breaker";
@@ -93,11 +94,9 @@ describe("output-limit continuation (first build WRITE stage)", () => {
   it("a planner that under-counted is corrected from the shell's own router imports", () => {
     const homeOnly: PlannedPage[] = [{ route: "/", file: "src/pages/Home.tsx" }];
     const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
-    const extra = pagesReferencedByRouter(files, homeOnly);
-    expect(extra.map((p) => p.file).sort()).toEqual(plan.filter((p) => p.route !== "/").map((p) => p.file).sort());
-    expect(extra.map((p) => p.route).sort()).toEqual(ROUTES.filter((r) => r !== "/").sort());
-    // Never invents pages the router doesn't reference, never repeats a written one.
-    expect(pagesReferencedByRouter([...files, ...extra.map((p) => ({ path: p.file, content: page("X") }))], homeOnly)).toEqual([]);
+    const reqs = reconcileRequirements(homeOnly, files);
+    expect(reqs.map((p) => p.file).sort()).toEqual(plan.map((p) => p.file).sort());
+    expect(reqs.map((p) => p.route).sort()).toEqual([...ROUTES].sort());
   });
 
   it("a continuation that is itself cut off is re-requested exactly once, then completes", async () => {
