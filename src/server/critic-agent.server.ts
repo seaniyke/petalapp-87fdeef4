@@ -20,7 +20,6 @@
  * not be able to block a good build.
  */
 import type { FileOp, ProjectFile } from "@/server/generate.server";
-import { aiChatCompletions } from "@/server/ai-provider.server";
 import type { Prd } from "@/server/prd/prd-types";
 import { excludedSurfaceForPath } from "@/server/prd/prd-reconcile";
 
@@ -48,7 +47,6 @@ export interface CriticVerdict {
   modelReviewed: boolean;
 }
 
-const MODEL = "deepseek/deepseek-v4-flash";
 
 /** Files whose deletion is almost never what the user meant. */
 const ENTRY_FILES = new Set([
@@ -194,85 +192,6 @@ export function findDeterministicDefects(
   return out;
 }
 
-function diffDigest(ops: FileOp[], files: ProjectFile[]): string {
-  const byPath = new Map(files.map((f) => [f.path, f.content]));
-  return ops
-    .map((op, i) => {
-      const prev = byPath.get(op.path);
-      const head = `### ${i}. ${op.op} ${op.path}${prev === undefined ? " (new file)" : ` (${prev.split("\n").length} lines today)`}`;
-      if (op.op === "delete") return head;
-      if (op.op === "ast-patch") {
-        return `${head}\n${JSON.stringify(op.patches).slice(0, 1200)}`;
-      }
-      if (op.op === "replace") {
-        return [
-          head,
-          "SEARCH:",
-          "```",
-          op.search.slice(0, 1200),
-          "```",
-          "REPLACE:",
-          "```",
-          op.replace.slice(0, 1600),
-          "```",
-        ].join("\n");
-      }
-      return [head, "```", op.content.slice(0, 2400), "```"].join("\n");
-    })
-    .join("\n\n")
-    .slice(0, 24_000);
-}
-
-const SYSTEM_PROMPT = `You are Kimble's Critic: the last review before a proposed code change is written to a user's live app.
-
-You are shown the user's request and the exact ops about to be applied. Your only job is to catch changes that are CLEARLY WRONG — the ones a careful engineer would refuse at review.
-
-Reject an op ONLY when you can name a concrete, specific defect:
-- it writes a placeholder, a stub, a comment-only body, or elided code where real code must be
-- it deletes or blanks out working functionality the user never asked to remove
-- it is obviously syntactically broken or truncated mid-expression
-- it edits a completely unrelated file that has nothing to do with the request
-- it contradicts the request outright (user asked to add X, the op removes X)
-
-Do NOT reject for taste, style, naming, missing tests, incompleteness of a larger plan, or "could be better". Partial progress is fine. When in doubt, APPROVE.
-
-Reply with JSON only, no prose, no code fence:
-{"rejections":[{"index":<op index>,"reason":"<one concrete sentence>"}]}
-
-Return {"rejections":[]} when everything should be applied.`;
-
-interface ModelRejection {
-  index: number;
-  reason: string;
-}
-
-function parseRejections(text: string, opCount: number): ModelRejection[] {
-  const raw = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start === -1 || end <= start) return [];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw.slice(start, end + 1));
-  } catch {
-    return [];
-  }
-  const list = (parsed as { rejections?: unknown })?.rejections;
-  if (!Array.isArray(list)) return [];
-  const seen = new Set<number>();
-  const out: ModelRejection[] = [];
-  for (const item of list) {
-    const idx = Number((item as { index?: unknown })?.index);
-    const reason = String((item as { reason?: unknown })?.reason ?? "").trim();
-    if (!Number.isInteger(idx) || idx < 0 || idx >= opCount) continue;
-    if (!reason) continue;
-    if (seen.has(idx)) continue;
-    seen.add(idx);
-    out.push({ index: idx, reason: reason.slice(0, 240) });
-  }
-  return out;
-}
-
 /**
  * Review a proposed diff. Never throws; on any failure the ops pass through
  * untouched apart from deterministic rejections already found.
@@ -284,8 +203,6 @@ export async function runCritic(args: {
   projectId: string;
   userId?: string | null;
   signal?: AbortSignal;
-  /** Skip the model layer (deterministic rules still run). */
-  deterministicOnly?: boolean;
   /** The product contract for this turn, when one exists. */
   prd?: Prd | null;
 }): Promise<CriticVerdict> {
@@ -299,86 +216,15 @@ export async function runCritic(args: {
     rejections.push(r);
   }
 
-  let surviving = args.ops.filter(
+  const surviving = args.ops.filter(
     (op) => !rejections.some((r) => r.path === op.path && r.op === op.op),
   );
-
-  let modelReviewed = false;
-
-  if (!args.deterministicOnly && surviving.length > 0) {
-    try {
-      const res = await aiChatCompletions({
-        feature: "generate",
-        timeoutTier: "default",
-        signal: args.signal,
-        meta: { projectId: args.projectId, userId: args.userId ?? null, phase: "critic" },
-        body: {
-          model: MODEL,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            {
-              role: "user",
-              content: [
-                ...(args.prd
-                  ? [
-                      "## Product contract (authoritative)",
-                      `${args.prd.productName} — ${args.prd.purpose}`,
-                      `Product type: ${args.prd.productType}`,
-                      `Required surfaces: ${args.prd.requiredSurfaces.join(", ")}`,
-                      args.prd.excludedSurfaces.length
-                        ? `Surfaces that must NOT exist: ${args.prd.excludedSurfaces.join(", ")}`
-                        : "",
-                      "Reject any op that contradicts this contract.",
-                      "",
-                    ]
-                  : []),
-                "## The user asked for",
-                args.userPrompt.slice(0, 4000) || "(no message)",
-                "",
-                "## Proposed ops",
-                diffDigest(surviving, args.files),
-              ].join("\n"),
-            },
-          ],
-          max_tokens: 700,
-          stream: false,
-        },
-      });
-
-      if (res.ok) {
-        const json = (await res.json()) as {
-          choices?: Array<{ message?: { content?: string | null } }>;
-        };
-        const text = json.choices?.[0]?.message?.content ?? "";
-        const modelRejections = parseRejections(text, surviving.length);
-        modelReviewed = true;
-
-        // Safety valve: a model that rejects everything is far more likely to
-        // be malfunctioning than to be right. Ignore a full sweep.
-        if (modelRejections.length > 0 && modelRejections.length < surviving.length) {
-          const rejectedIdx = new Set(modelRejections.map((r) => r.index));
-          for (const r of modelRejections) {
-            const op = surviving[r.index];
-            rejections.push({
-              path: op.path,
-              op: op.op,
-              reason: r.reason,
-              deterministic: false,
-            });
-          }
-          surviving = surviving.filter((_, i) => !rejectedIdx.has(i));
-        }
-      }
-    } catch (err) {
-      console.warn("[critic] review failed:", err instanceof Error ? err.message : err);
-    }
-  }
 
   return {
     ops: surviving,
     rejections,
     blockedEverything: surviving.length === 0 && args.ops.length > 0,
-    modelReviewed,
+    modelReviewed: false,
   };
 }
 

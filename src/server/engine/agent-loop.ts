@@ -194,7 +194,10 @@ export interface LoopArgs {
   decide?: (page: PlannedPage, truncatedBefore: boolean) => PageDecision;
   /** Durable checkpoint. Awaited before dependent work continues. */
   onFilesDone?: (files: ProjectFile[]) => unknown;
-  createFoundation?: (files: ProjectFile[]) => Promise<{ files: ProjectFile[]; created: string[] }>;
+  /** Create missing shared modules the given paths import (all non-page
+   *  code when `changed` is omitted). Re-run by the loop whenever newly
+   *  written files introduce a dependency nobody has created yet. */
+  createFoundation?: (files: ProjectFile[], changed?: string[]) => Promise<{ files: ProjectFile[]; created: string[] }>;
   onUnit?: (record: UnitRecord) => void;
   checkIdentifiers?: (tree: ProjectFile[], changed: string[]) => { status: string; issues: Array<{ path: string; line: number; message: string }> };
   reactIsDependency?: boolean;
@@ -211,6 +214,9 @@ export async function runExecutionLoop(args: LoopArgs): Promise<LoopResult> {
   const units: UnitRecord[] = [];
   let frameTried = false;
   let foundationDone = !args.createFoundation;
+  /** Files written since the last dependency check. */
+  let unresolved: string[] = [];
+  let depRound = 0;
   let stopped = false;
 
   const record = (r: UnitRecord) => {
@@ -327,6 +333,12 @@ export async function runExecutionLoop(args: LoopArgs): Promise<LoopResult> {
     if (!foundationDone) {
       return { layer: 0, ops: [upsert("foundation", { key: "foundation", kind: "foundation", target: "shared modules", dependsOn: [] })] };
     }
+    // Dependencies discovered in just-written files are resolved before
+    // any further page work (each missing module is created once).
+    if (args.createFoundation && unresolved.length) {
+      const key = `deps:${++depRound}`;
+      return { layer: 0, ops: [upsert(key, { key, kind: "foundation", target: "shared modules", dependsOn: [] })] };
+    }
 
     const pageOps: Operation[] = [];
     for (const p of state.requirements) {
@@ -385,7 +397,9 @@ export async function runExecutionLoop(args: LoopArgs): Promise<LoopResult> {
     if (next.layer === 0) {
       const started = Date.now();
       const op = next.ops[0]!;
-      const f = await args.createFoundation!(state.files); // provider failure propagates as infrastructure
+      const scope = foundationDone ? unresolved : undefined;
+      unresolved = [];
+      const f = await args.createFoundation!(state.files, scope); // provider failure propagates as infrastructure
       state.files = f.files;
       for (const t of f.created) record({ id: `foundation:${t}`, kind: "foundation", target: t, layer: 0, calls: 1, feedbackRounds: 0, continued: false, diagnostics: [], ms: Date.now() - started, outcome: "ok" });
       state.calls += f.created.length;
@@ -405,6 +419,7 @@ export async function runExecutionLoop(args: LoopArgs): Promise<LoopResult> {
       const got = await run(op);
       const before = new Set(written);
       apply(got);
+      for (const f of got) if (written.includes(f.path) && !before.has(f.path) && /\.(tsx?|jsx?)$/.test(f.path)) unresolved.push(f.path);
       await checkpoint(got.filter((f) => (written.includes(f.path) && !before.has(f.path)) || f.path === "src/App.tsx"));
     });
     for (const op of next.ops) {

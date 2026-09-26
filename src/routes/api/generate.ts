@@ -32,11 +32,6 @@ import { resolveEditIntent } from "@/server/edit-intent.server";
 import { buildSectionExpansionPatch } from "@/server/section-expansion.server";
 
 import {
-  runInspector,
-  inspectorBriefingBlock,
-  type InspectorReport,
-} from "@/server/inspector-agent.server";
-import {
   runCritic,
   criticDisclosure,
   type CriticRejection,
@@ -3135,35 +3130,9 @@ async function handleGenerateRequestCore(
     }
   }
 
-  // When the deterministic resolver comes up empty on a follow-up edit, send
-  // the read-only Inspector subagent in: it greps and reads the real bytes on
-  // the budget tier and reports back which files and lines actually matter.
-  // Costs a few cheap round trips; saves a wrong whole-file rewrite.
-  let inspectorReport: InspectorReport | null = null;
-  const shouldInspect =
-    !isInitial &&
-    !isCrossCutting &&
-    editTargetPaths.length === 0 &&
-    lastUserContent.trim().length > 12 &&
-    editablePromptFiles.length > 0;
-  if (shouldInspect) {
-    inspectorReport = await runInspector({
-      userRequest: lastUserContent,
-      files: editablePromptFiles,
-      projectId: body.projectId ?? "unknown",
-      userId,
-    });
-    if (inspectorReport.ok) {
-      console.info(
-        `[inspector] ${inspectorReport.steps.length} step(s), targets: ${inspectorReport.targetPaths.join(", ") || "none"}`,
-      );
-    }
-  }
-  const inspectorTargets = (inspectorReport?.targetPaths ?? []).filter((p: string) =>
-    editablePromptFiles.some((f) => f.path === p),
-  );
-  let resolvedTargetPaths =
-    editTargetPaths.length > 0 ? editTargetPaths : inspectorTargets;
+  // Targets come only from deterministic location (edit intent, manifest
+  // selection, classifier hints) — no separate AI inspector call.
+  let resolvedTargetPaths = editTargetPaths;
 
   // Understanding assist: the semantic classifier names the surfaces the user
   // is talking about ("footer", "pricing", "checkout") even when they never
@@ -3401,12 +3370,6 @@ async function handleGenerateRequestCore(
   console.info(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`,
   );
-  const inspectorAddendum = inspectorReport
-    ? (() => {
-        const block = inspectorBriefingBlock(inspectorReport);
-        return block ? `\n\n${block}` : "";
-      })()
-    : "";
   const crossCuttingAddendum = isCrossCutting
     ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.\n\nCompleteness contract for this turn — a partial answer counts as a failure:\n1. If the ask mentions the design/look/theme/palette: rewrite the design tokens in \`src/styles.css\` (colours, fonts, radii, surfaces) AND restyle EVERY page and app-level component listed above so nothing is left on the old look. Touching one or two files is not a redesign.\n2. Handle EVERY separate clause in the user's message (they are often joined by "and"). If they also asked for a new element such as a footer, header, nav or section, create that component and render it on every page it belongs on in the SAME turn.\n3. In your recap, list one bullet per file you changed so the user can see the full sweep.`
 
@@ -3421,10 +3384,7 @@ async function handleGenerateRequestCore(
               dimensions: editClassification?.dimensions ?? [],
               targetPaths: resolvedTargetPaths,
             });
-        const base =
-          editTargetPaths.length > 0
-            ? editIntent!.briefing + inspectorAddendum
-            : inspectorAddendum;
+        const base = editTargetPaths.length > 0 ? editIntent!.briefing : "";
         return `${base}${scopeBlock}`;
       })();
 
@@ -4184,25 +4144,6 @@ async function handleGenerateRequestCore(
         }
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
-        // Replay the Inspector's investigation into the timeline so the user
-        // sees the same trace Kimble worked from (searched → read → concluded).
-        for (const step of inspectorReport?.steps ?? []) {
-          controller.enqueue(
-            encoder.encode(
-              sse({ type: "tool_step", tool: step.tool, label: step.label, isError: !!step.isError }),
-            ),
-          );
-        }
-        if (inspectorReport?.ok && inspectorReport.targetPaths.length > 0) {
-          controller.enqueue(
-            encoder.encode(
-              sse({
-                type: "status",
-                message: `Located the change in ${inspectorReport.targetPaths.join(", ")}.`,
-              }),
-            ),
-          );
-        }
         if (designDirection) {
           controller.enqueue(
             encoder.encode(
@@ -4797,10 +4738,10 @@ async function handleGenerateRequestCore(
               // Foundation layer first: missing shared modules the frame
               // imports are created (in parallel) before any page is written,
               // so pages consume real export signatures, never guesses.
-              createFoundation: async (staged) => {
+              createFoundation: async (staged, changed) => {
                 const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
                 const { createMissingModule } = await import("@/server/engine/repair");
-                const scope = staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
+                const scope = changed ?? staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
                 const r = await resolveMissingNodes(staged, scope, async (node, context) => {
                   if (!turnLedger.use("repair", "foundation module", node.target).ok) return null;
                   controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating shared ${node.target}…` })));
@@ -5497,14 +5438,6 @@ async function handleGenerateRequestCore(
               userId,
               signal: abortSignal,
               prd: resolvedPrd?.prd ?? null,
-              // Ordinary edits get the deterministic rules only. On initial
-              // builds the model review runs only when there is evidence it
-              // adds value: a work unit failed or needed correction.
-              deterministicOnly:
-                !isInitial ||
-                (Array.isArray(turnStrategy.workUnits) &&
-                  (turnStrategy.workUnits as Array<{ outcome: string }>).length > 0 &&
-                  (turnStrategy.workUnits as Array<{ outcome: string }>).every((u) => u.outcome === "ok" || u.outcome === "skipped_done")),
             });
             if (verdict.rejections.length > 0) {
               criticRejections.push(...verdict.rejections);
@@ -5551,7 +5484,6 @@ async function handleGenerateRequestCore(
                   projectId: body.projectId ?? "unknown",
                   userId,
                   signal: abortSignal,
-                  deterministicOnly: !isInitial,
                 });
                 if (second.ops.length > 0) {
                   console.info(`[op-repair] critic accepted ${second.ops.length} reworked op(s)`);
@@ -5999,34 +5931,6 @@ async function handleGenerateRequestCore(
             : nextFiles
                 .filter((f) => prevByPath.get(f.path) !== f.content)
                 .map((f) => f.path);
-          if (touched.length > 0 && isInitial) {
-            // Missing-node recovery before per-file repair: create each
-            // missing shared module once instead of repairing every importer.
-            try {
-              const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
-              const { createMissingModule } = await import("@/server/engine/repair");
-              const nodes = await resolveMissingNodes(nextFiles, touched, async (node, context) => {
-                if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
-                controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
-                return createMissingModule(node, context, {
-                  turnId: logicalTurnId,
-                  projectId: body.projectId ?? null,
-                  userId,
-                  turnContext: turnContextFor(node.target),
-                });
-              });
-              if (nodes.created.length) {
-                console.log(`[missing-nodes] write-gate created ${JSON.stringify(nodes.created)}`);
-                nextFiles = nodes.files;
-                touched.push(...nodes.created);
-              }
-              if (nodes.blocked.length) console.warn(`[missing-nodes] blocked ${JSON.stringify(nodes.blocked)}`);
-            } catch (e) {
-              const { isInfrastructureFailure } = await import("@/lib/failure-classification");
-              if (!isInfrastructureFailure(e)) throw e;
-              infraFailure = e;
-            }
-          }
           if (touched.length > 0) {
             const gate = await runWriteGate({
               before: currentFiles,
@@ -6792,36 +6696,8 @@ async function handleGenerateRequestCore(
           );
         }
 
-        // Late missing-node pass: files written after the write gate (page
-        // writers, repairs) may import a shared module nobody created. Create
-        // it once here — otherwise the final check quarantines every importer
-        // and the cascade discards the whole build.
-        if (!infraFailure && earlyChangedPaths.length > 0) {
-          try {
-            const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
-            const { createMissingModule } = await import("@/server/engine/repair");
-            const late = await resolveMissingNodes(nextFiles, earlyChangedPaths, async (node, context) => {
-              if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
-              controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
-              return createMissingModule(node, context, {
-                turnId: logicalTurnId,
-                projectId: body.projectId ?? null,
-                userId,
-                turnContext: turnContextFor(node.target),
-              });
-            });
-            if (late.created.length) {
-              console.log(`[missing-nodes] late pass created ${JSON.stringify(late.created)}`);
-              nextFiles = late.files;
-              earlyChangedPaths.push(...late.created.filter((p) => !earlyChangedPaths.includes(p)));
-            }
-          } catch (e) {
-            const { isInfrastructureFailure } = await import("@/lib/failure-classification");
-            if (!isInfrastructureFailure(e)) throw e;
-            infraFailure = e;
-          }
-        }
-
+        // Missing shared modules: created inside the execution loop (first
+        // builds) and by the final check's root-cause step — no separate pass.
         const guardOut = await runFinalParseGuard(
           nextFiles,
           earlyChangedPaths,
