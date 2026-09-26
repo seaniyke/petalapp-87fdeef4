@@ -8082,7 +8082,6 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
  */
 const BUILD_LOCK_TTL_MS = 5 * 60 * 1000;
 /** A turn that hasn't finished in this long is dead, not running. */
-const TURN_STALE_MS = 10 * 60 * 1000;
 const buildLocks = new Map<string, number>();
 
 function buildLockKey(userId: string, projectId: string | null | undefined): string {
