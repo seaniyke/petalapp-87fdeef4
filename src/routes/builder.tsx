@@ -2450,15 +2450,17 @@ function Builder() {
       // failure must never block the build.
       provisionalTitleRef.current = null;
       if (!internalRetry && proj.title === "Untitled project") {
-        try {
-          const provisional = await provisionProjectTitle(proj, text);
-          if (provisional) {
+        // Not awaited: naming used to hold back the user's own message (and
+        // every visible response to Send) for a network round trip.
+        void provisionProjectTitle(proj, text)
+          .then((provisional) => {
+            if (!provisional) return;
             provisionalTitleRef.current = provisional;
             setProject((p) => (p && p.id === proj.id ? { ...p, title: provisional } : p));
-          }
-        } catch {
-          // ignore — the end-of-build auto-title remains the fallback
-        }
+          })
+          .catch(() => {
+            // ignore — the end-of-build auto-title remains the fallback
+          });
       }
 
       supersedeBuildId(proj.latest_build_id);
@@ -2554,6 +2556,30 @@ function Builder() {
       // Deep-think is one-shot per send so users don't accidentally pay for
       // the strongest model on every subsequent turn. They can re-toggle.
       if (deepThink && !opts.isAutoFix) setDeepThink(false);
+      // Reset the previous turn's surface in the SAME render as the echo and
+      // busy flag. Doing it after the awaits below (files settle, prompt
+      // persist) left the last turn's finished card on screen as "active"
+      // for a network round trip, then hid it, then showed the new one — the
+      // double flash users saw on every prompt after the first.
+      // Fresh activity feed for this run — but DO NOT remount/reset it during
+      // an internal retry. Keeping the same card mounted avoids the visible
+      // flash users saw when Kimble auto-recovered from no-file/cut-off streams.
+      if (!opts.isRetry) setPhases(defaultPhases());
+      setDesignCaption("");
+      setLatestCycleProgress(undefined);
+      setFinalFileLines({});
+      setFileChanges({});
+      setStreamingAssistant("");
+      setStreamingPlan("");
+      setStreamingRecap("");
+      setStreamingPreamble("");
+      if (!opts.isRetry) {
+        setIntentBuild(false);
+        setActivityVisible(false);
+        // A plan proposed for an earlier prompt is irrelevant once a new turn
+        // starts — otherwise it sits under the composer beside live progress.
+        setProposedPlan(null);
+      }
       setBusy(true);
       // The source may still be arriving in the background (the screen no
       // longer waits for it). A turn must never run against a half-loaded
@@ -2586,26 +2612,6 @@ function Builder() {
           // Non-fatal: the message still lives in local state for this session.
           console.warn("Could not persist user message early:", persistErr);
         }
-      }
-
-      // Fresh activity feed for this run — but DO NOT remount/reset it during
-      // an internal retry. Keeping the same card mounted avoids the visible
-      // flash users saw when Kimble auto-recovered from no-file/cut-off streams.
-      if (!opts.isRetry) setPhases(defaultPhases());
-      setDesignCaption("");
-      setLatestCycleProgress(undefined);
-      setFinalFileLines({});
-      setFileChanges({});
-      setStreamingAssistant("");
-      setStreamingPlan("");
-      setStreamingRecap("");
-      setStreamingPreamble("");
-      if (!opts.isRetry) {
-        setIntentBuild(false);
-        setActivityVisible(false);
-        // A plan proposed for an earlier prompt is irrelevant once a new turn
-        // starts — otherwise it sits under the composer beside live progress.
-        setProposedPlan(null);
       }
 
       let resultFiles: ProjectFile[] | null = null;
@@ -4934,7 +4940,7 @@ function Builder() {
               // status updates, not part of the conversation.
               if (m.role === "system" || m.system) {
                 return (
-                  <div key={m.id ?? `${m.role}:${m.content}`} className="my-1 flex justify-center">
+                  <div key={`${m.role}:${i}`} className="my-1 flex justify-center">
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-muted/50 px-3 py-1 text-[11px] font-medium text-muted-foreground">
                       {m.content}
                     </div>
@@ -4948,7 +4954,10 @@ function Builder() {
               const canRevert = hasReply && !petalIsWorking;
               return (
                 <div
-                  key={m.id ?? `${m.role}:${m.content}:${m.plan ?? ""}:${m.recap ?? ""}`}
+                  // Position-based key: an optimistic message (no id) and the
+                  // same message re-read from the database (with id) must be
+                  // the same element, or the whole thread remounts on hydrate.
+                  key={`${m.role}:${i}`}
                   className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}
                 >
                   <div

@@ -10,6 +10,7 @@ export default defineConfig({
     // Vitest run only files that use an actual test-runner API instead of
     // importing scripts that call process.exit at module scope.
     include: [
+      "src/components/__tests__/prompt-transition.test.ts",
       "src/server/__tests__/generation-slot-race.test.ts",
       "src/server/__tests__/hospital-incident.test.ts",
       "src/lib/__tests__/failure-card.test.ts",
