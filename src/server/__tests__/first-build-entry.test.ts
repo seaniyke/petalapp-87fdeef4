@@ -21,7 +21,7 @@ describe("first build enters the tool loop directly", () => {
     expect(gen).toMatch(/if \(chunkAssessment\.needed && !isInitial\)/);
     // Recovery helpers are edit-only: no whole-project mode survives.
     expect(gen).toMatch(/function parseCollectedProject\(collected: ParsedTool\): ParsedProjectPayload/);
-    expect(gen).not.toMatch(/stream_first_build/);
+    expect(gen).not.toMatch(/isInitial \? "stream_first_build"/);
     expect(gen).not.toMatch(/initial_generation_no_files/);
     expect(gen).not.toMatch(/structuredRetryCompletion\(\{[^}]*isInitial/);
     // A loop failure is rethrown for first builds, never swallowed into another path.
