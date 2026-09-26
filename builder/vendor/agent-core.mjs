@@ -62774,6 +62774,7 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
+    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -70466,6 +70467,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -143849,7 +143851,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144769,7 +144770,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145780,6 +145780,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -177931,13 +177932,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               const { routerPages: routerPages2 } = await Promise.resolve().then(() => (init_router_facts(), router_facts_exports));
               const { pageKey: pageKey2 } = await Promise.resolve().then(() => (init_router_facts(), router_facts_exports));
               const plannedKeys = new Set(planned.map((p2) => pageKey2(p2.route)));
-              const extra = routerPages2(parsed.files).filter((p2) => !plannedKeys.has(pageKey2(p2.route)));
+              const extra = routerPages2(parsed.files ?? []).filter((p2) => !plannedKeys.has(pageKey2(p2.route)));
               if (extra.length) {
                 const { divergentPages: divergentPages2, stripRoutesFromRouter: stripRoutesFromRouter2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
                 const bad = new Set(divergentPages2(intentContract, extra.map((p2) => p2.route), lastUserText));
                 if (bad.size) {
                   const badFiles = extra.filter((p2) => bad.has(p2.route)).map((p2) => p2.file);
-                  const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                  const app = parsed.files?.find((f) => f.path === "src/App.tsx");
                   const cleaned = app ? stripRoutesFromRouter2(app.content, badFiles) : null;
                   if (app && cleaned !== null) {
                     app.content = cleaned;

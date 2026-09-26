@@ -4652,13 +4652,13 @@ async function handleGenerateRequestCore(
               const { routerPages } = await import("@/server/engine/router-facts");
               const { pageKey } = await import("@/server/engine/router-facts");
               const plannedKeys = new Set(planned.map((p: { route: string }) => pageKey(p.route)));
-              const extra = routerPages(parsed.files).filter((p) => !plannedKeys.has(pageKey(p.route)));
+              const extra = routerPages(parsed.files ?? []).filter((p) => !plannedKeys.has(pageKey(p.route)));
               if (extra.length) {
                 const { divergentPages, stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
                 const bad = new Set(divergentPages(intentContract, extra.map((p) => p.route), lastUserText));
                 if (bad.size) {
                   const badFiles = extra.filter((p) => bad.has(p.route)).map((p) => p.file);
-                  const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                  const app = parsed.files?.find((f) => f.path === "src/App.tsx");
                   const cleaned = app ? stripRoutesFromRouter(app.content, badFiles) : null;
                   if (app && cleaned !== null) {
                     app.content = cleaned;
