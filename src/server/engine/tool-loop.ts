@@ -7,7 +7,13 @@
  *   → read-only tools run concurrently, writes run one at a time
  *   → every write is validated immediately; the result IS the tool output
  *   → broader type check every N writes, fed back into the same conversation
- *   → `finish` is refused until workspace state is actually complete
+ *   → `finish` asks the ONE readiness authority (the same verdict commit
+ *     uses) about the current workspace; NOT READY evidence returns to the
+ *     same conversation. The loop keeps no list of its own of what
+ *     "complete" means.
+ *   → valid foundations with dependents are STABLE: never wholesale
+ *     replaced; targeted edits allowed, rolled back if they regress
+ *     readiness.
  *
  * Pure orchestration: the model call, write validation, type check and the
  * staged-write sink (TurnTransaction + checkpoint) are injected, so the loop
@@ -15,6 +21,8 @@
  * Final verification and the revision-guarded commit stay authoritative.
  */
 import type { ProjectFile } from "@/server/generate.server";
+import type { Readiness, ReadinessFinding } from "@/server/verification/readiness";
+import { findingKey } from "@/server/verification/readiness";
 import { AgentCircuitBreaker, BREAKER_THRESHOLDS, type BreakerThresholds } from "@/server/execution/circuit-breaker";
 
 /* ------------------------------------------------------------------ */
@@ -94,13 +102,6 @@ export const LIGHT_CONFIG: LoopConfig = { ...FULL_CONFIG, maxIterations: 6, fina
 
 export type OpStatus = "pending" | "done" | "blocked" | "skipped";
 
-export interface Requirement {
-  /** Deterministic id, e.g. `page:/patients` or `file:src/lib/api.ts`. */
-  id: string;
-  file: string;
-  route?: string;
-}
-
 export interface Task {
   id: string;
   title: string;
@@ -110,14 +111,17 @@ export interface Task {
 
 export interface ToolLoopState {
   goal: string;
-  requirements: Requirement[];
   tasks: Map<string, Task>;
-  /** Operation ids applied this turn (`create:path`, `edit:path:<hash>`). */
+  /** Operation ids COMPLETED this turn (written AND validated clean). */
   completedOps: Set<string>;
   /** Paths the model has read (read-before-edit/overwrite). */
   read: Set<string>;
   /** Current validation errors per path (empty = clean). */
   validation: Map<string, string[]>;
+  /** Content hash each validation result was computed for (staleness). */
+  validatedHash: Map<string, string>;
+  /** Last authoritative readiness verdict for the workspace. */
+  readiness: Readiness | null;
   written: string[];
   writesSinceTypecheck: number;
   iteration: number;
@@ -153,10 +157,15 @@ export interface ToolLoopArgs {
   files: ProjectFile[];
   /** Paths already written this turn; validated at loop start like any write. */
   seedPaths?: string[];
-  requirements?: Requirement[];
   callModel: CallModel;
   /** Per-write validation (syntax, TSX, undefined names, imports, truncation). */
   validate: (file: ProjectFile, tree: ProjectFile[]) => Promise<string[]> | string[];
+  /**
+   * THE readiness authority: the same source verification commit runs, over
+   * the proposed workspace built from `tree`. `changed` = paths this turn
+   * wrote. Required — the loop has no correctness rules of its own.
+   */
+  readiness: (tree: ProjectFile[], changed: string[]) => Promise<Readiness> | Readiness;
   /** Broader type check over the given paths. */
   typecheck?: (tree: ProjectFile[], paths: string[]) => Promise<string[]> | string[];
   /** Staged write sink (TurnTransaction.stage + checkpoint). false = refused. */
@@ -262,33 +271,73 @@ function countOccurrences(hay: string, needle: string): number[] {
   return at;
 }
 
-/** Route → file references in a router file (`import X from "@/pages/X"` + `<Route element={<X/>}>`). */
-export function routerReferences(files: Map<string, string>): string[] {
-  const app = files.get("src/App.tsx");
-  if (!app) return [];
-  const out: string[] = [];
-  const rx = /import\s+[\w$]+\s+from\s+["']@\/(pages\/[\w/.-]+)["']|lazy\(\s*\(\)\s*=>\s*import\(\s*["']@\/(pages\/[\w/.-]+)["']/g;
-  let m: RegExpExecArray | null;
-  while ((m = rx.exec(app))) {
-    const rel = (m[1] ?? m[2])!.replace(/\.(tsx?|jsx?)$/, "");
-    out.push(`src/${rel}`);
+/* ------------------------------------------------------------------ */
+/* Workspace evidence: dependency graph + stability                    */
+/* ------------------------------------------------------------------ */
+
+const IMPORT_RX = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
+const EXTS = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.js"];
+
+function resolveImport(from: string, spec: string, files: Map<string, string>): string | null {
+  let base: string;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith(".")) {
+    const dir = from.split("/").slice(0, -1);
+    for (const part of spec.split("/")) {
+      if (part === "." || part === "") continue;
+      if (part === "..") dir.pop();
+      else dir.push(part);
+    }
+    base = dir.join("/");
+  } else return null;
+  for (const e of EXTS) if (files.has(base + e)) return base + e;
+  return null;
+}
+
+/** path → files that import it (actual imports in the current workspace). */
+export function dependentsOf(files: Map<string, string>): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  for (const [p, c] of files) {
+    if (!/\.(t|j)sx?$/.test(p)) continue;
+    IMPORT_RX.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = IMPORT_RX.exec(c))) {
+      const target = resolveImport(p, (m[1] ?? m[2])!, files);
+      if (!target || target === p) continue;
+      (out.get(target) ?? out.set(target, new Set()).get(target)!).add(p);
+    }
   }
-  return [...new Set(out)];
+  return out;
 }
 
-function resolves(files: Map<string, string>, base: string): boolean {
-  return [".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"].some((ext) => (files.get(base + ext) ?? "").trim().length > 0);
+/**
+ * STABLE = exists, its current content validated clean, and at least one
+ * other validated-clean file depends on it. Derived from the workspace each
+ * time (never from the model's memory), so it survives compaction and
+ * updates when files change. No filename is special.
+ */
+export function stableFoundations(state: ToolLoopState, files: Map<string, string>): Map<string, string[]> {
+  const deps = dependentsOf(files);
+  const clean = (p: string) => {
+    const c = files.get(p);
+    return c !== undefined && c.trim().length > 0 && state.validatedHash.get(p) === hash(c) && (state.validation.get(p) ?? []).length === 0;
+  };
+  const out = new Map<string, string[]>();
+  for (const [p, users] of deps) {
+    if (!clean(p)) continue;
+    const cleanUsers = [...users].filter(clean);
+    if (cleanUsers.length) out.set(p, cleanUsers.sort());
+  }
+  return out;
 }
 
-/** Why the workspace is not complete. Empty = finish allowed. */
+/**
+ * Loop-local blockers only: the agent's own unfinished tasks and failing
+ * operation evidence. Workspace correctness comes from the readiness
+ * authority, never from here.
+ */
 export function completionGaps(state: ToolLoopState, files: Map<string, string>): string[] {
   const gaps: string[] = [];
-  for (const r of state.requirements) {
-    if (!(files.get(r.file) ?? "").trim()) gaps.push(`required file missing: ${r.file}${r.route ? ` (route ${r.route})` : ""}`);
-  }
-  for (const base of routerReferences(files)) {
-    if (!resolves(files, base)) gaps.push(`router imports a file that does not exist: ${base}`);
-  }
   for (const [path, errs] of state.validation) {
     if (errs.length && files.has(path)) gaps.push(`${path} still fails validation: ${errs[0]}`);
   }
@@ -296,6 +345,24 @@ export function completionGaps(state: ToolLoopState, files: Map<string, string>)
     if (t.status === "pending" || t.status === "blocked") gaps.push(`task not done: ${t.id}${t.title ? ` — ${t.title}` : ""}`);
   }
   return gaps;
+}
+
+/** Structured NOT READY evidence for the conversation. */
+export function formatNotReady(gaps: string[], findings: ReadinessFinding[]): string {
+  const lines = ["NOT READY — the workspace does not pass verification (the same check that decides commit)."];
+  if (findings.length) {
+    lines.push("", "Verification findings:");
+    for (const f of findings.slice(0, 15)) {
+      lines.push(`- [${f.gate}] ${f.reason}`);
+      lines.push(`  Required next operation: ${f.paths.length ? `targeted edit of ${f.paths.slice(0, 3).join(", ")}` : "create or fix the file(s) named above"}`);
+    }
+  }
+  if (gaps.length) {
+    lines.push("", "Unfinished work:");
+    for (const g of gaps.slice(0, 15)) lines.push(`- ${g}`);
+  }
+  lines.push("", "Fix these with tools, then call finish again.");
+  return lines.join("\n");
 }
 
 function estimateTokens(messages: LoopMessage[]): number {
