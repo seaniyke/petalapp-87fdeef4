@@ -1311,15 +1311,27 @@ async function rawPageCompletion(args: {
   const msgs = args.messages.slice();
   const last = msgs[msgs.length - 1];
   msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}\n\n${String(last?.content ?? "").startsWith("DECOMPOSED PAGE") ? RAW_FILES_FORMAT : RAW_FILE_FORMAT}` };
-  return aiChatCompletions({
-    feature: "generate",
-    body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
-    timeoutTier: args.isInitial ? "stream_first_build" : "stream",
-    lockCallerModel: true,
-    codeOutput: true,
-    signal: args.signal,
-    meta: args.meta,
-  });
+  // Transient provider failures (429/5xx/connection) get bounded backoff
+  // retries on the same model; deterministic errors are never retried.
+  const { withProviderRetry } = await import("@/server/engine/provider-retry");
+  return withProviderRetry(
+    () =>
+      aiChatCompletions({
+        feature: "generate",
+        body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
+        timeoutTier: args.isInitial ? "stream_first_build" : "stream",
+        lockCallerModel: true,
+        codeOutput: true,
+        signal: args.signal,
+        meta: args.meta,
+      }),
+    {
+      signal: args.signal,
+      onAttempt: (a) => {
+        if (a.failureClass !== "ok") console.warn(`[provider-retry] model=${MODEL_STRUCTURED_RETRY} attempt=${a.attempt} status=${a.status ?? "conn"} class=${a.failureClass} delay=${a.delayMs}ms`);
+      },
+    },
+  );
 }
 
 async function recoverMissingToolOutput(args: {
@@ -4705,7 +4717,7 @@ async function handleGenerateRequestCore(
               ? resumed.checkpoint.planned
               : firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
             if (!resumed && checkpointTurnId && body.projectId) {
-              await checkpointApi.saveShellCheckpoint({
+              const shellSaved = await checkpointApi.saveShellCheckpoint({
                 projectId: body.projectId,
                 userId,
                 turnId: checkpointTurnId,
@@ -4713,6 +4725,8 @@ async function handleGenerateRequestCore(
                 shell: shellSnapshot,
                 planned,
               });
+              turnStrategy.checkpoint = { saved: shellSaved.ok ? 1 : 0, failed: shellSaved.ok ? 0 : 1, shellError: shellSaved.ok ? null : shellSaved.error };
+              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: shellSaved.ok ? "ok" : "failed", message: shellSaved.ok ? "Saved the shared layout" : "Could not save progress (the build continues, but can't resume if interrupted)", ts: Date.now() })));
             }
             // Output-limit continuation: pages the shell's own router already
             // imports but that were never written (the shell call ran out of
