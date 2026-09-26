@@ -4612,9 +4612,10 @@ async function handleGenerateRequestCore(
             }
           }
 
-          // WRITE stage (first builds): the shell call above wrote the shared
-          // shell; every planned page is now written by its own call.
-          if (isInitial && parsed.files?.length) {
+          // WRITE stage (first builds): the tool loop is the ONLY executor.
+          // It starts from the empty (or resumed) workspace; there is no
+          // earlier generation call.
+          if (isInitial) {
             const { targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
             const { pageFileFor } = await import("@/server/engine/plan");
             const checkpointApi = await import("@/server/build-checkpoint.server");
@@ -4709,12 +4710,12 @@ async function handleGenerateRequestCore(
             );
             const done = await runToolLoop({
               goal: lastUserText,
-              system: String(finalMessages[0]?.content ?? ""),
-              brief:
-                `${lastUserText}\n\nThe first draft of the app is already in the workspace (${seedFiles.length} files). ` +
-                `Finish the build with tools: create every page the router needs, fix any failing file, then call finish. ` +
-                `Several tool calls per response are encouraged. Planned pages: ${planned.map((p: { route: string; file: string }) => `${p.route} → ${p.file}`).join(", ")}.\n\n` +
-                `Files: ${seedFiles.map((f) => f.path).join(", ")}`,
+              system: String(finalMessages[0]?.content ?? "") + FIRST_BUILD_TOOL_NOTE,
+              brief: firstBuildBrief(
+                lastUserText,
+                planned as Array<{ route: string; file: string }>,
+                seedFiles.map((f) => f.path),
+              ),
               files: seedFiles,
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
