@@ -7166,6 +7166,12 @@ async function handleGenerateRequestCore(
           },
         });
         const txCommitted = txResult.outcome.status === "committed";
+        // A committed turn has delivered its checkpoint's work: retire it so
+        // it can never be resumed (no duplicate of committed work).
+        if (txCommitted && checkpointTurnId) {
+          const { markCheckpointConsumed } = await import("@/server/build-checkpoint.server");
+          await markCheckpointConsumed(checkpointTurnId);
+        }
         // FINAL execution depth: classifier's initial depth, raised (never
         // lowered) by deterministic impact analysis of what actually changed.
         if (txResult.outcome.status === "committed") {
@@ -8147,6 +8153,11 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
           userRequest: turnUserRequest,
         }).catch(() => false);
         if (!queued) return false;
+        // Saved pages of this turn go with it to the resume worker.
+        if (recorder?.turnId) {
+          const { markCheckpointResumable } = await import("@/server/build-checkpoint.server");
+          await markCheckpointResumable(recorder.turnId).catch(() => false);
+        }
         silentRecovery = true;
         emit({ type: "recovering" });
         emit({ type: "status", message: "Still working — Kimble is finishing this off." });
