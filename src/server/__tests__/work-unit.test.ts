@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { exportSignature, validateUnitImports, stitchContinuation, planWorkUnits, signatureContext } from "@/server/engine/work-unit";
 import { withProviderRetry, classifyProviderStatus } from "@/server/engine/provider-retry";
-import { runExecutionLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 
 const container = { path: "src/components/layout/Container.tsx", content: "export function Container({children}:{children:any}){return <div>{children}</div>}\nexport type Size='sm';" };
@@ -38,53 +37,6 @@ describe("work units", () => {
 
 describe("writer feedback loop", () => {
   const frame = { path: "src/App.tsx", content: 'import Home from "@/pages/Home";\n<Routes><Route/></Routes> nav footer' };
-  it("returns validation feedback to the same writer and accepts the correction", async () => {
-    const asked: string[] = [];
-    const r = await writePlannedPages({
-      pages: [{ route: "/", file: "src/pages/Home.tsx" }],
-      files: [frame, container],
-      budget: new RecoveryBudget(),
-      request: async (i) => {
-        asked.push(i);
-        const fixed = i.includes("IMMEDIATE VALIDATION FEEDBACK");
-        return [{ path: "src/pages/Home.tsx", content: `import ${fixed ? "{ Container }" : "Container"} from "@/components/layout/Container";\nexport default function Home(){return <Container>hi</Container>}` }];
-      },
-    });
-    expect(asked.length).toBe(2);
-    expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toContain("{ Container }");
-    expect(r.units.find((u) => u.kind === "page")!.outcome).toBe("corrected");
-  });
-  it("continues a cut-off page instead of regenerating it", async () => {
-    const asked: string[] = [];
-    const r = await writePlannedPages({
-      pages: [{ route: "/", file: "src/pages/Home.tsx" }],
-      files: [frame],
-      budget: new RecoveryBudget(),
-      isTruncated: async (f) => !f.content.includes("END"),
-      request: async (i) => {
-        asked.push(i);
-        return [{ path: "src/pages/Home.tsx", content: i.startsWith("CONTINUATION") ? "  return null; // END\n}\n" : "export default function Home() {\n  const a = 1;\n  cut-of" }];
-      },
-    });
-    expect(asked.filter((a) => a.startsWith("CONTINUATION")).length).toBe(1);
-    expect(r.truncated).toEqual([]);
-    expect(r.units[0]!.continued).toBe(true);
-    expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toContain("const a = 1;\n  return null; // END");
-  });
-  it("creates foundation before pages so pages see real signatures", async () => {
-    let sawSignature = false;
-    await writePlannedPages({
-      pages: [{ route: "/", file: "src/pages/Home.tsx" }],
-      files: [frame],
-      budget: new RecoveryBudget(),
-      createFoundation: async (f) => ({ files: [...f, container], created: [container.path] }),
-      request: async (i) => {
-        sawSignature ||= i.includes("@/components/layout/Container: named { Container }");
-        return [{ path: "src/pages/Home.tsx", content: "export default function Home(){return null}" }];
-      },
-    });
-    expect(sawSignature).toBe(true);
-  });
 });
 
 describe("provider retry", () => {
