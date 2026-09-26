@@ -7068,7 +7068,7 @@ async function handleGenerateRequestCore(
         // sub-caption back to the success line instead of leaving the last
         // verifier message on screen.
         controller.enqueue(
-          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: txCommitted ? "clean" : "failed" })),
+          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: txCommitted ? "clean" : "hard-stop" })),
         );
 
         // v3 Phase F — write-gate disclosure. A refused write is the one
