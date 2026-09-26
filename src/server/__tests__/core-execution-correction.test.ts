@@ -95,3 +95,24 @@ describe("template drift", () => {
     expect(divergentPages(deriveIntentContract(brief), ["/pharmacy"], brief)).toEqual([]);
   });
 });
+
+import { exploreProject, explorersFor } from "@/server/context/explore";
+describe("read-only exploration", () => {
+  const files = [
+    { path: "src/App.tsx", content: `<Route path="/" /><Route path="/patients" />` },
+    { path: "src/pages/Patients.tsx", content: `import { usePatients } from "@/lib/data";\nexport default function P(){return null}` },
+    { path: "src/types.ts", content: "export interface Patient { id: string }" },
+  ];
+  it("skips LIGHT tasks and first builds", async () => {
+    expect(explorersFor({ cls: "LIGHT", isInitial: false, request: "change headline", fileCount: 9 })).toEqual([]);
+    expect((await exploreProject({ files, cls: "STANDARD", isInitial: true, request: "x" })).ran).toBe(false);
+  });
+  it("runs bounded explorers and never mutates the project", async () => {
+    const before = JSON.stringify(files);
+    const r = await exploreProject({ files, cls: "HEAVY", isInitial: false, request: "add a billing module" });
+    expect(r.roles).toEqual(["structure", "dependency", "data", "design"]);
+    expect(r.block).toMatch(/MISSING shared module src\/lib\/data\.ts/);
+    expect(r.block).toMatch(/entities: Patient/);
+    expect(JSON.stringify(files)).toBe(before);
+  });
+});

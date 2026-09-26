@@ -3329,19 +3329,19 @@ var require_FunctionsClient = __commonJS({
               throw new types_1.FunctionsHttpError(response);
             }
             let responseType = ((_a = response.headers.get("Content-Type")) !== null && _a !== void 0 ? _a : "text/plain").split(";")[0].trim();
-            let data;
+            let data2;
             if (responseType === "application/json") {
-              data = yield response.json();
+              data2 = yield response.json();
             } else if (responseType === "application/octet-stream" || responseType === "application/pdf") {
-              data = yield response.blob();
+              data2 = yield response.blob();
             } else if (responseType === "text/event-stream") {
-              data = response;
+              data2 = response;
             } else if (responseType === "multipart/form-data") {
-              data = yield response.formData();
+              data2 = yield response.formData();
             } else {
-              data = yield response.text();
+              data2 = yield response.text();
             }
-            return { data, error: null, response };
+            return { data: data2, error: null, response };
           } catch (error) {
             return {
               data: null,
@@ -3752,7 +3752,7 @@ ${cause.stack}`;
       async processResponse(res) {
         var _this2 = this;
         let error = null;
-        let data = null;
+        let data2 = null;
         let count = null;
         let status = res.status;
         let statusText = res.statusText;
@@ -3762,32 +3762,32 @@ ${cause.stack}`;
             var _this$headers$get;
             const body = await res.text();
             if (body === "") {
-            } else if (_this2.headers.get("Accept") === "text/csv") data = body;
-            else if (_this2.headers.get("Accept") && ((_this$headers$get = _this2.headers.get("Accept")) === null || _this$headers$get === void 0 ? void 0 : _this$headers$get.includes("application/vnd.pgrst.plan+text"))) data = body;
-            else data = JSON.parse(body);
+            } else if (_this2.headers.get("Accept") === "text/csv") data2 = body;
+            else if (_this2.headers.get("Accept") && ((_this$headers$get = _this2.headers.get("Accept")) === null || _this$headers$get === void 0 ? void 0 : _this$headers$get.includes("application/vnd.pgrst.plan+text"))) data2 = body;
+            else data2 = JSON.parse(body);
           }
           const countHeader = (_this$headers$get2 = _this2.headers.get("Prefer")) === null || _this$headers$get2 === void 0 ? void 0 : _this$headers$get2.match(/count=(exact|planned|estimated)/);
           const contentRange = (_res$headers$get2 = res.headers.get("content-range")) === null || _res$headers$get2 === void 0 ? void 0 : _res$headers$get2.split("/");
           if (countHeader && contentRange && contentRange.length > 1) count = parseInt(contentRange[1]);
-          if (_this2.isMaybeSingle && Array.isArray(data)) if (data.length > 1) {
+          if (_this2.isMaybeSingle && Array.isArray(data2)) if (data2.length > 1) {
             error = {
               code: "PGRST116",
-              details: `Results contain ${data.length} rows, application/vnd.pgrst.object+json requires 1 row`,
+              details: `Results contain ${data2.length} rows, application/vnd.pgrst.object+json requires 1 row`,
               hint: null,
               message: "JSON object requested, multiple (or no) rows returned"
             };
-            data = null;
+            data2 = null;
             count = null;
             status = 406;
             statusText = "Not Acceptable";
-          } else if (data.length === 1) data = data[0];
-          else data = null;
+          } else if (data2.length === 1) data2 = data2[0];
+          else data2 = null;
         } else {
           const body = await res.text();
           try {
             error = JSON.parse(body);
             if (Array.isArray(error) && res.status === 404) {
-              data = [];
+              data2 = [];
               error = null;
               status = 200;
               statusText = "OK";
@@ -3803,7 +3803,7 @@ ${cause.stack}`;
         return {
           success: error === null,
           error,
-          data,
+          data: data2,
           count,
           status,
           statusText
@@ -8596,15 +8596,15 @@ var require_serializer = __commonJS({
         offset = offset + metadataSize;
         const payload = buffer.slice(offset, buffer.byteLength);
         const parsedPayload = payloadEncoding === this.JSON_ENCODING ? JSON.parse(decoder.decode(payload)) : payload;
-        const data = {
+        const data2 = {
           type: this.BROADCAST_EVENT,
           event: userEvent,
           payload: parsedPayload
         };
         if (metadataSize > 0) {
-          data["meta"] = JSON.parse(metadata);
+          data2["meta"] = JSON.parse(metadata);
         }
-        return { join_ref: null, ref: null, topic, event: this.BROADCAST_EVENT, payload: data };
+        return { join_ref: null, ref: null, topic, event: this.BROADCAST_EVENT, payload: data2 };
       }
       _isArrayBuffer(buffer) {
         var _a;
@@ -9377,7 +9377,7 @@ var require_phoenix_cjs = __commonJS({
           const _timeoutId = setTimeout(() => controller.abort(), timeout);
           options.signal = controller.signal;
         }
-        global2.fetch(endPoint, options).then((response) => response.text()).then((data) => this.parseJSON(data)).then((data) => callback && callback(data)).catch((err) => {
+        global2.fetch(endPoint, options).then((response) => response.text()).then((data2) => this.parseJSON(data2)).then((data2) => callback && callback(data2)).catch((err) => {
           if (err.name === "AbortError" && ontimeout) {
             ontimeout();
           } else {
@@ -9899,8 +9899,8 @@ var require_phoenix_cjs = __commonJS({
         offset = offset + topicSize;
         let event = decoder.decode(buffer.slice(offset, offset + eventSize));
         offset = offset + eventSize;
-        let data = buffer.slice(offset, buffer.byteLength);
-        return { join_ref: joinRef, ref: null, topic, event, payload: data };
+        let data2 = buffer.slice(offset, buffer.byteLength);
+        return { join_ref: joinRef, ref: null, topic, event, payload: data2 };
       },
       /** @private */
       decodeReply(buffer, view, decoder) {
@@ -9917,8 +9917,8 @@ var require_phoenix_cjs = __commonJS({
         offset = offset + topicSize;
         let event = decoder.decode(buffer.slice(offset, offset + eventSize));
         offset = offset + eventSize;
-        let data = buffer.slice(offset, buffer.byteLength);
-        let payload = { status: event, response: data };
+        let data2 = buffer.slice(offset, buffer.byteLength);
+        let payload = { status: event, response: data2 };
         return { join_ref: joinRef, ref, topic, event: CHANNEL_EVENTS.reply, payload };
       },
       /** @private */
@@ -9930,8 +9930,8 @@ var require_phoenix_cjs = __commonJS({
         offset = offset + topicSize;
         let event = decoder.decode(buffer.slice(offset, offset + eventSize));
         offset = offset + eventSize;
-        let data = buffer.slice(offset, buffer.byteLength);
-        return { join_ref: null, ref: null, topic, event, payload: data };
+        let data2 = buffer.slice(offset, buffer.byteLength);
+        return { join_ref: null, ref: null, topic, event, payload: data2 };
       }
     };
     var Socket = class {
@@ -10020,8 +10020,8 @@ var require_phoenix_cjs = __commonJS({
         };
         this.logger = opts.logger || null;
         if (!this.logger && opts.debug) {
-          this.logger = (kind, msg, data) => {
-            console.log(`${kind}: ${msg}`, data);
+          this.logger = (kind, msg, data2) => {
+            console.log(`${kind}: ${msg}`, data2);
           };
         }
         this.longpollerTimeout = opts.longpollerTimeout || 2e4;
@@ -10140,8 +10140,8 @@ var require_phoenix_cjs = __commonJS({
        * @param {string} msg
        * @param {Object} data
        */
-      log(kind, msg, data) {
-        this.logger && this.logger(kind, msg, data);
+      log(kind, msg, data2) {
+        this.logger && this.logger(kind, msg, data2);
       }
       /**
        * Returns true if a logger has been set on this socket.
@@ -10489,15 +10489,15 @@ var require_phoenix_cjs = __commonJS({
       /**
        * @param {Message<Record<string, any>>} data
        */
-      push(data) {
+      push(data2) {
         if (this.hasLogger()) {
-          let { topic, event, payload, ref, join_ref } = data;
+          let { topic, event, payload, ref, join_ref } = data2;
           this.log("push", `${topic} ${event} (${join_ref}, ${ref})`, payload);
         }
         if (this.isConnected()) {
-          this.encode(data, (result) => this.conn.send(result));
+          this.encode(data2, (result) => this.conn.send(result));
         } else {
-          this.sendBuffer.push(() => this.encode(data, (result) => this.conn.send(result)));
+          this.sendBuffer.push(() => this.encode(data2, (result) => this.conn.send(result)));
         }
       }
       /**
@@ -11614,11 +11614,11 @@ var require_socketAdapter = __commonJS({
           }, code, reason);
         });
       }
-      push(data) {
-        this.socket.push(data);
+      push(data2) {
+        this.socket.push(data2);
       }
-      log(kind, msg, data) {
-        this.socket.log(kind, msg, data);
+      log(kind, msg, data2) {
+        this.socket.log(kind, msg, data2);
       }
       makeRef() {
         return this.socket.makeRef();
@@ -11921,8 +11921,8 @@ Option 2: Install and provide the "ws" package:
        *
        * @category Realtime
        */
-      log(kind, msg, data) {
-        this.socketAdapter.log(kind, msg, data);
+      log(kind, msg, data2) {
+        this.socketAdapter.log(kind, msg, data2);
       }
       /**
        * Returns the current state of the socket.
@@ -11983,8 +11983,8 @@ Option 2: Install and provide the "ws" package:
        *
        * @category Realtime
        */
-      push(data) {
-        this.socketAdapter.push(data);
+      push(data2) {
+        this.socketAdapter.push(data2);
       }
       /**
        * Sets the JWT access token used for channel subscription authorization and Realtime RLS.
@@ -12353,9 +12353,9 @@ function createFetchClient(options) {
       });
       const text = await res.text();
       const isJson = (res.headers.get("content-type") || "").includes("application/json");
-      const data = isJson && text ? JSON.parse(text) : text;
+      const data2 = isJson && text ? JSON.parse(text) : text;
       if (!res.ok) {
-        const errBody = isJson ? data : void 0;
+        const errBody = isJson ? data2 : void 0;
         const errorDetail = errBody?.error;
         throw new IcebergError(
           errorDetail?.message ?? `Request failed with status ${res.status}`,
@@ -12367,7 +12367,7 @@ function createFetchClient(options) {
           }
         );
       }
-      return { status: res.status, headers: res.headers, data };
+      return { status: res.status, headers: res.headers, data: data2 };
     }
   };
 }
@@ -12920,7 +12920,7 @@ async function _handleRequest(fetcher, method, url, options, parameters, body, n
         if (!contentType || !contentType.includes("application/json")) return {};
       }
       return result.json();
-    }).then((data) => resolve2(data)).catch((error) => handleError(error, reject, options, namespace));
+    }).then((data2) => resolve2(data2)).catch((error) => handleError(error, reject, options, namespace));
   });
 }
 function createFetchApi(namespace = "storage") {
@@ -13243,11 +13243,11 @@ var init_dist3 = __esm({
           if (fileOptions === null || fileOptions === void 0 ? void 0 : fileOptions.headers) for (const [key, value] of Object.entries(fileOptions.headers)) headers = setHeader(headers, key, value);
           const cleanPath2 = _this._removeEmptyFolders(path);
           const _path = _this._getFinalPath(cleanPath2);
-          const data = await (method == "PUT" ? put : post)(_this.fetch, `${_this.url}/object/${_path}`, body, _objectSpread22({ headers }, (options === null || options === void 0 ? void 0 : options.duplex) ? { duplex: options.duplex } : {}));
+          const data2 = await (method == "PUT" ? put : post)(_this.fetch, `${_this.url}/object/${_path}`, body, _objectSpread22({ headers }, (options === null || options === void 0 ? void 0 : options.duplex) ? { duplex: options.duplex } : {}));
           return {
             path: cleanPath2,
-            id: data.Id,
-            fullPath: data.Key
+            id: data2.Id,
+            fullPath: data2.Key
           };
         });
       }
@@ -13412,8 +13412,8 @@ var init_dist3 = __esm({
           let _path = _this4._getFinalPath(path);
           const headers = _objectSpread22({}, _this4.headers);
           if (options === null || options === void 0 ? void 0 : options.upsert) headers["x-upsert"] = "true";
-          const data = await post(_this4.fetch, `${_this4.url}/object/upload/sign/${_path}`, {}, { headers });
-          const url = new URL(_this4.url + data.url);
+          const data2 = await post(_this4.fetch, `${_this4.url}/object/upload/sign/${_path}`, {}, { headers });
+          const url = new URL(_this4.url + data2.url);
           const token2 = url.searchParams.get("token");
           if (!token2) throw new StorageError("No token returned by API");
           return {
@@ -13628,12 +13628,12 @@ var init_dist3 = __esm({
         return _this8.handleOperation(async () => {
           let _path = _this8._getFinalPath(path);
           const hasTransform = typeof (options === null || options === void 0 ? void 0 : options.transform) === "object" && options.transform !== null && Object.keys(options.transform).length > 0;
-          let data = await post(_this8.fetch, `${_this8.url}/object/sign/${_path}`, _objectSpread22({ expiresIn }, hasTransform ? { transform: options.transform } : {}), { headers: _this8.headers });
+          let data2 = await post(_this8.fetch, `${_this8.url}/object/sign/${_path}`, _objectSpread22({ expiresIn }, hasTransform ? { transform: options.transform } : {}), { headers: _this8.headers });
           const query = new URLSearchParams();
           if (options === null || options === void 0 ? void 0 : options.download) query.set("download", options.download === true ? "" : options.download);
           if ((options === null || options === void 0 ? void 0 : options.cacheNonce) != null) query.set("cacheNonce", String(options.cacheNonce));
           const queryString = query.toString();
-          return { signedUrl: encodeURI(`${_this8.url}${data.signedURL}${queryString ? `&${queryString}` : ""}`) };
+          return { signedUrl: encodeURI(`${_this8.url}${data2.signedURL}${queryString ? `&${queryString}` : ""}`) };
         });
       }
       /**
@@ -13684,7 +13684,7 @@ var init_dist3 = __esm({
       async createSignedUrls(paths, expiresIn, options) {
         var _this9 = this;
         return _this9.handleOperation(async () => {
-          const data = await post(_this9.fetch, `${_this9.url}/object/sign/${_this9.bucketId}`, {
+          const data2 = await post(_this9.fetch, `${_this9.url}/object/sign/${_this9.bucketId}`, {
             expiresIn,
             paths
           }, { headers: _this9.headers });
@@ -13692,7 +13692,7 @@ var init_dist3 = __esm({
           if (options === null || options === void 0 ? void 0 : options.download) query.set("download", options.download === true ? "" : options.download);
           if ((options === null || options === void 0 ? void 0 : options.cacheNonce) != null) query.set("cacheNonce", String(options.cacheNonce));
           const queryString = query.toString();
-          return data.map((datum) => _objectSpread22(_objectSpread22({}, datum), {}, { signedUrl: datum.signedURL ? encodeURI(`${_this9.url}${datum.signedURL}${queryString ? `&${queryString}` : ""}`) : null }));
+          return data2.map((datum) => _objectSpread22(_objectSpread22({}, datum), {}, { signedUrl: datum.signedURL ? encodeURI(`${_this9.url}${datum.signedURL}${queryString ? `&${queryString}` : ""}`) : null }));
         });
       }
       /**
@@ -14099,9 +14099,9 @@ var init_dist3 = __esm({
       encodeMetadata(metadata) {
         return JSON.stringify(metadata);
       }
-      toBase64(data) {
-        if (typeof Buffer !== "undefined") return Buffer.from(data).toString("base64");
-        return btoa(data);
+      toBase64(data2) {
+        if (typeof Buffer !== "undefined") return Buffer.from(data2).toString("base64");
+        return btoa(data2);
       }
       _getFinalPath(path) {
         return `${this.bucketId}/${path.replace(/^\/+/, "")}`;
@@ -15917,8 +15917,8 @@ var require_helpers = __commonJS({
       return typeof maybeResponse === "object" && maybeResponse !== null && "status" in maybeResponse && "ok" in maybeResponse && "json" in maybeResponse && typeof maybeResponse.json === "function";
     };
     exports.looksLikeFetchResponse = looksLikeFetchResponse;
-    var setItemAsync = async (storage2, key, data) => {
-      await storage2.setItem(key, JSON.stringify(data));
+    var setItemAsync = async (storage2, key, data2) => {
+      await storage2.setItem(key, JSON.stringify(data2));
     };
     exports.setItemAsync = setItemAsync;
     var getItemAsync = async (storage2, key) => {
@@ -15959,7 +15959,7 @@ var require_helpers = __commonJS({
           throw new errors_1.AuthInvalidJwtError("JWT not in base64url format");
         }
       }
-      const data = {
+      const data2 = {
         // using base64url lib
         header: JSON.parse((0, base64url_1.stringFromBase64URL)(parts[0])),
         payload: JSON.parse((0, base64url_1.stringFromBase64URL)(parts[1])),
@@ -15969,7 +15969,7 @@ var require_helpers = __commonJS({
           payload: parts[1]
         }
       };
-      return data;
+      return data2;
     }
     async function sleep3(time) {
       return await new Promise((accept) => {
@@ -16168,29 +16168,29 @@ var require_fetch = __commonJS({
       if (NETWORK_ERROR_CODES.includes(error.status)) {
         throw new errors_1.AuthRetryableFetchError(_getErrorMessage2(error), error.status);
       }
-      let data;
+      let data2;
       try {
-        data = await error.json();
+        data2 = await error.json();
       } catch (e) {
         throw new errors_1.AuthUnknownError(_getErrorMessage2(e), e);
       }
       let errorCode = void 0;
       const responseAPIVersion = (0, helpers_1.parseResponseAPIVersion)(error);
-      if (responseAPIVersion && responseAPIVersion.getTime() >= constants_1.API_VERSIONS["2024-01-01"].timestamp && typeof data === "object" && data && typeof data.code === "string") {
-        errorCode = data.code;
-      } else if (typeof data === "object" && data && typeof data.error_code === "string") {
-        errorCode = data.error_code;
+      if (responseAPIVersion && responseAPIVersion.getTime() >= constants_1.API_VERSIONS["2024-01-01"].timestamp && typeof data2 === "object" && data2 && typeof data2.code === "string") {
+        errorCode = data2.code;
+      } else if (typeof data2 === "object" && data2 && typeof data2.error_code === "string") {
+        errorCode = data2.error_code;
       }
       if (!errorCode) {
-        if (typeof data === "object" && data && typeof data.weak_password === "object" && data.weak_password && Array.isArray(data.weak_password.reasons) && data.weak_password.reasons.length && data.weak_password.reasons.reduce((a2, i) => a2 && typeof i === "string", true)) {
-          throw new errors_1.AuthWeakPasswordError(_getErrorMessage2(data), error.status, data.weak_password.reasons);
+        if (typeof data2 === "object" && data2 && typeof data2.weak_password === "object" && data2.weak_password && Array.isArray(data2.weak_password.reasons) && data2.weak_password.reasons.length && data2.weak_password.reasons.reduce((a2, i) => a2 && typeof i === "string", true)) {
+          throw new errors_1.AuthWeakPasswordError(_getErrorMessage2(data2), error.status, data2.weak_password.reasons);
         }
       } else if (errorCode === "weak_password") {
-        throw new errors_1.AuthWeakPasswordError(_getErrorMessage2(data), error.status, ((_a = data.weak_password) === null || _a === void 0 ? void 0 : _a.reasons) || []);
+        throw new errors_1.AuthWeakPasswordError(_getErrorMessage2(data2), error.status, ((_a = data2.weak_password) === null || _a === void 0 ? void 0 : _a.reasons) || []);
       } else if (errorCode === "session_not_found") {
         throw new errors_1.AuthSessionMissingError();
       }
-      throw new errors_1.AuthApiError(_getErrorMessage2(data), error.status || 500, errorCode);
+      throw new errors_1.AuthApiError(_getErrorMessage2(data2), error.status || 500, errorCode);
     }
     var _getRequestParams2 = (method, options, parameters, body) => {
       const params = { method, headers: (options === null || options === void 0 ? void 0 : options.headers) || {} };
@@ -16215,11 +16215,11 @@ var require_fetch = __commonJS({
         qs["redirect_to"] = options.redirectTo;
       }
       const queryString = Object.keys(qs).length ? "?" + new URLSearchParams(qs).toString() : "";
-      const data = await _handleRequest2(fetcher, method, url + queryString, {
+      const data2 = await _handleRequest2(fetcher, method, url + queryString, {
         headers,
         noResolveJson: options === null || options === void 0 ? void 0 : options.noResolveJson
       }, {}, options === null || options === void 0 ? void 0 : options.body);
-      return (options === null || options === void 0 ? void 0 : options.xform) ? options === null || options === void 0 ? void 0 : options.xform(data) : { data: Object.assign({}, data), error: null };
+      return (options === null || options === void 0 ? void 0 : options.xform) ? options === null || options === void 0 ? void 0 : options.xform(data2) : { data: Object.assign({}, data2), error: null };
     }
     async function _handleRequest2(fetcher, method, url, options, parameters, body) {
       const requestParams = _getRequestParams2(method, options, parameters, body);
@@ -16242,35 +16242,35 @@ var require_fetch = __commonJS({
         await handleError2(e);
       }
     }
-    function _sessionResponse(data) {
+    function _sessionResponse(data2) {
       var _a;
       let session = null;
-      if (hasSession(data)) {
-        session = Object.assign({}, data);
-        if (!data.expires_at) {
-          session.expires_at = (0, helpers_1.expiresAt)(data.expires_in);
+      if (hasSession(data2)) {
+        session = Object.assign({}, data2);
+        if (!data2.expires_at) {
+          session.expires_at = (0, helpers_1.expiresAt)(data2.expires_in);
         }
       }
-      const user = (_a = data.user) !== null && _a !== void 0 ? _a : data;
+      const user = (_a = data2.user) !== null && _a !== void 0 ? _a : data2;
       return { data: { session, user }, error: null };
     }
-    function _sessionResponsePassword(data) {
-      const response = _sessionResponse(data);
-      if (!response.error && data.weak_password && typeof data.weak_password === "object" && Array.isArray(data.weak_password.reasons) && data.weak_password.reasons.length && data.weak_password.message && typeof data.weak_password.message === "string" && data.weak_password.reasons.reduce((a2, i) => a2 && typeof i === "string", true)) {
-        response.data.weak_password = data.weak_password;
+    function _sessionResponsePassword(data2) {
+      const response = _sessionResponse(data2);
+      if (!response.error && data2.weak_password && typeof data2.weak_password === "object" && Array.isArray(data2.weak_password.reasons) && data2.weak_password.reasons.length && data2.weak_password.message && typeof data2.weak_password.message === "string" && data2.weak_password.reasons.reduce((a2, i) => a2 && typeof i === "string", true)) {
+        response.data.weak_password = data2.weak_password;
       }
       return response;
     }
-    function _userResponse(data) {
+    function _userResponse(data2) {
       var _a;
-      const user = (_a = data.user) !== null && _a !== void 0 ? _a : data;
+      const user = (_a = data2.user) !== null && _a !== void 0 ? _a : data2;
       return { data: { user }, error: null };
     }
-    function _ssoResponse(data) {
-      return { data, error: null };
+    function _ssoResponse(data2) {
+      return { data: data2, error: null };
     }
-    function _generateLinkResponse(data) {
-      const { action_link, email_otp, hashed_token, redirect_to, verification_type } = data, rest = tslib_1.__rest(data, ["action_link", "email_otp", "hashed_token", "redirect_to", "verification_type"]);
+    function _generateLinkResponse(data2) {
+      const { action_link, email_otp, hashed_token, redirect_to, verification_type } = data2, rest = tslib_1.__rest(data2, ["action_link", "email_otp", "hashed_token", "redirect_to", "verification_type"]);
       const properties = {
         action_link,
         email_otp,
@@ -16287,11 +16287,11 @@ var require_fetch = __commonJS({
         error: null
       };
     }
-    function _noResolveJsonResponse(data) {
-      return data;
+    function _noResolveJsonResponse(data2) {
+      return data2;
     }
-    function hasSession(data) {
-      return data.access_token && data.refresh_token && data.expires_in;
+    function hasSession(data2) {
+      return data2.access_token && data2.refresh_token && data2.expires_in;
     }
   }
 });
@@ -17046,13 +17046,13 @@ var require_GoTrueAdminApi = __commonJS({
       async _listFactors(params) {
         (0, helpers_1.validateUUID)(params.userId);
         try {
-          const { data, error } = await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/admin/users/${params.userId}/factors`, {
+          const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/admin/users/${params.userId}/factors`, {
             headers: this.headers,
             xform: (factors) => {
               return { data: { factors }, error: null };
             }
           });
-          return { data, error };
+          return { data: data2, error };
         } catch (error) {
           if ((0, errors_1.isAuthError)(error)) {
             return { data: null, error };
@@ -17064,10 +17064,10 @@ var require_GoTrueAdminApi = __commonJS({
         (0, helpers_1.validateUUID)(params.userId);
         (0, helpers_1.validateUUID)(params.id);
         try {
-          const data = await (0, fetch_1._request)(this.fetch, "DELETE", `${this.url}/admin/users/${params.userId}/factors/${params.id}`, {
+          const data2 = await (0, fetch_1._request)(this.fetch, "DELETE", `${this.url}/admin/users/${params.userId}/factors/${params.id}`, {
             headers: this.headers
           });
-          return { data, error: null };
+          return { data: data2, error: null };
         } catch (error) {
           if ((0, errors_1.isAuthError)(error)) {
             return { data: null, error };
@@ -17235,9 +17235,9 @@ var require_GoTrueAdminApi = __commonJS({
           return await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/admin/custom-providers`, {
             headers: this.headers,
             query,
-            xform: (data) => {
+            xform: (data2) => {
               var _a;
-              return { data: { providers: (_a = data === null || data === void 0 ? void 0 : data.providers) !== null && _a !== void 0 ? _a : [] }, error: null };
+              return { data: { providers: (_a = data2 === null || data2 === void 0 ? void 0 : data2.providers) !== null && _a !== void 0 ? _a : [] }, error: null };
             }
           });
         } catch (error) {
@@ -18196,18 +18196,18 @@ var require_webauthn = __commonJS({
           switch (challengeResponse.webauthn.type) {
             case "create": {
               const options = mergeCredentialCreationOptions(challengeResponse.webauthn.credential_options.publicKey, overrides === null || overrides === void 0 ? void 0 : overrides.create);
-              const { data, error } = await createCredential({
+              const { data: data2, error } = await createCredential({
                 publicKey: options,
                 signal: abortSignal
               });
-              if (data) {
+              if (data2) {
                 return {
                   data: {
                     factorId,
                     challengeId: challengeResponse.id,
                     webauthn: {
                       type: challengeResponse.webauthn.type,
-                      credential_response: data
+                      credential_response: data2
                     }
                   },
                   error: null
@@ -18217,15 +18217,15 @@ var require_webauthn = __commonJS({
             }
             case "request": {
               const options = mergeCredentialRequestOptions(challengeResponse.webauthn.credential_options.publicKey, overrides === null || overrides === void 0 ? void 0 : overrides.request);
-              const { data, error } = await getCredential(Object.assign(Object.assign({}, challengeResponse.webauthn.credential_options), { publicKey: options, signal: abortSignal }));
-              if (data) {
+              const { data: data2, error } = await getCredential(Object.assign(Object.assign({}, challengeResponse.webauthn.credential_options), { publicKey: options, signal: abortSignal }));
+              if (data2) {
                 return {
                   data: {
                     factorId,
                     challengeId: challengeResponse.id,
                     webauthn: {
                       type: challengeResponse.webauthn.type,
-                      credential_response: data
+                      credential_response: data2
                     }
                   },
                   error: null
@@ -18655,7 +18655,7 @@ var require_GoTrueClient = __commonJS({
             }
           }
           if ((0, helpers_1.isBrowser)() && this.detectSessionInUrl && callbackUrlType !== "none") {
-            const { data, error } = await this._getSessionFromURL(params, callbackUrlType);
+            const { data: data2, error } = await this._getSessionFromURL(params, callbackUrlType);
             if (error) {
               this._debug("#_initialize()", "error detecting session from URL", error);
               if ((0, errors_1.isAuthImplicitGrantRedirectError)(error)) {
@@ -18666,7 +18666,7 @@ var require_GoTrueClient = __commonJS({
               }
               return { error };
             }
-            const { session, redirectType } = data;
+            const { session, redirectType } = data2;
             this._debug("#_initialize()", "detected session in URL", session, "redirect type", redirectType);
             await this._saveSession(session);
             setTimeout(async () => {
@@ -18776,14 +18776,14 @@ var require_GoTrueClient = __commonJS({
             },
             xform: fetch_1._sessionResponse
           });
-          const { data, error } = res;
-          if (error || !data) {
+          const { data: data2, error } = res;
+          if (error || !data2) {
             return this._returnResult({ data: { user: null, session: null }, error });
           }
-          const session = data.session;
-          const user = data.user;
-          if (data.session) {
-            await this._saveSession(data.session);
+          const session = data2.session;
+          const user = data2.user;
+          if (data2.session) {
+            await this._saveSession(data2.session);
             await this._notifyAllSubscribers("SIGNED_IN", session);
           }
           return this._returnResult({ data: { user, session }, error: null });
@@ -19012,15 +19012,15 @@ var require_GoTrueClient = __commonJS({
           } else {
             throw new errors_1.AuthInvalidCredentialsError("You must provide either an email or phone number and a password");
           }
-          const { data, error } = res;
-          if (error || !data) {
+          const { data: data2, error } = res;
+          if (error || !data2) {
             await (0, helpers_1.removeItemAsync)(this.storage, `${this.storageKey}-code-verifier`);
             return this._returnResult({ data: { user: null, session: null }, error });
           }
-          const session = data.session;
-          const user = data.user;
-          if (data.session) {
-            await this._saveSession(data.session);
+          const session = data2.session;
+          const user = data2.user;
+          if (data2.session) {
+            await this._saveSession(data2.session);
             await this._notifyAllSubscribers("SIGNED_IN", session);
           }
           return this._returnResult({ data: { user, session }, error: null });
@@ -19177,19 +19177,19 @@ var require_GoTrueClient = __commonJS({
           } else {
             throw new errors_1.AuthInvalidCredentialsError("You must provide either an email or phone number and a password");
           }
-          const { data, error } = res;
+          const { data: data2, error } = res;
           if (error) {
             return this._returnResult({ data: { user: null, session: null }, error });
-          } else if (!data || !data.session || !data.user) {
+          } else if (!data2 || !data2.session || !data2.user) {
             const invalidTokenError = new errors_1.AuthInvalidTokenResponseError();
             return this._returnResult({ data: { user: null, session: null }, error: invalidTokenError });
           }
-          if (data.session) {
-            await this._saveSession(data.session);
-            await this._notifyAllSubscribers("SIGNED_IN", data.session);
+          if (data2.session) {
+            await this._saveSession(data2.session);
+            await this._notifyAllSubscribers("SIGNED_IN", data2.session);
           }
           return this._returnResult({
-            data: Object.assign({ user: data.user, session: data.session }, data.weak_password ? { weakPassword: data.weak_password } : null),
+            data: Object.assign({ user: data2.user, session: data2.session }, data2.weak_password ? { weakPassword: data2.weak_password } : null),
             error
           });
         } catch (error) {
@@ -19625,7 +19625,7 @@ var require_GoTrueClient = __commonJS({
           });
         }
         try {
-          const { data, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/token?grant_type=web3`, {
+          const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/token?grant_type=web3`, {
             headers: this.headers,
             body: Object.assign({
               chain: "ethereum",
@@ -19637,15 +19637,15 @@ var require_GoTrueClient = __commonJS({
           if (error) {
             throw error;
           }
-          if (!data || !data.session || !data.user) {
+          if (!data2 || !data2.session || !data2.user) {
             const invalidTokenError = new errors_1.AuthInvalidTokenResponseError();
             return this._returnResult({ data: { user: null, session: null }, error: invalidTokenError });
           }
-          if (data.session) {
-            await this._saveSession(data.session);
-            await this._notifyAllSubscribers("SIGNED_IN", data.session);
+          if (data2.session) {
+            await this._saveSession(data2.session);
+            await this._notifyAllSubscribers("SIGNED_IN", data2.session);
           }
-          return this._returnResult({ data: Object.assign({}, data), error });
+          return this._returnResult({ data: Object.assign({}, data2), error });
         } catch (error) {
           if ((0, errors_1.isAuthError)(error)) {
             return this._returnResult({ data: { user: null, session: null }, error });
@@ -19729,7 +19729,7 @@ var require_GoTrueClient = __commonJS({
           }
         }
         try {
-          const { data, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/token?grant_type=web3`, {
+          const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/token?grant_type=web3`, {
             headers: this.headers,
             body: Object.assign({ chain: "solana", message, signature: (0, base64url_1.bytesToBase64URL)(signature) }, ((_l = credentials.options) === null || _l === void 0 ? void 0 : _l.captchaToken) ? { gotrue_meta_security: { captcha_token: (_m = credentials.options) === null || _m === void 0 ? void 0 : _m.captchaToken } } : null),
             xform: fetch_1._sessionResponse
@@ -19737,15 +19737,15 @@ var require_GoTrueClient = __commonJS({
           if (error) {
             throw error;
           }
-          if (!data || !data.session || !data.user) {
+          if (!data2 || !data2.session || !data2.user) {
             const invalidTokenError = new errors_1.AuthInvalidTokenResponseError();
             return this._returnResult({ data: { user: null, session: null }, error: invalidTokenError });
           }
-          if (data.session) {
-            await this._saveSession(data.session);
-            await this._notifyAllSubscribers("SIGNED_IN", data.session);
+          if (data2.session) {
+            await this._saveSession(data2.session);
+            await this._notifyAllSubscribers("SIGNED_IN", data2.session);
           }
-          return this._returnResult({ data: Object.assign({}, data), error });
+          return this._returnResult({ data: Object.assign({}, data2), error });
         } catch (error) {
           if ((0, errors_1.isAuthError)(error)) {
             return this._returnResult({ data: { user: null, session: null }, error });
@@ -19760,7 +19760,7 @@ var require_GoTrueClient = __commonJS({
           if (!codeVerifier && this.flowType === "pkce") {
             throw new errors_1.AuthPKCECodeVerifierMissingError();
           }
-          const { data, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/token?grant_type=pkce`, {
+          const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/token?grant_type=pkce`, {
             headers: this.headers,
             body: {
               auth_code: authCode,
@@ -19772,18 +19772,18 @@ var require_GoTrueClient = __commonJS({
           if (error) {
             throw error;
           }
-          if (!data || !data.session || !data.user) {
+          if (!data2 || !data2.session || !data2.user) {
             const invalidTokenError = new errors_1.AuthInvalidTokenResponseError();
             return this._returnResult({
               data: { user: null, session: null, redirectType: null },
               error: invalidTokenError
             });
           }
-          if (data.session) {
-            await this._saveSession(data.session);
-            await this._notifyAllSubscribers(redirectType === "recovery" ? "PASSWORD_RECOVERY" : "SIGNED_IN", data.session);
+          if (data2.session) {
+            await this._saveSession(data2.session);
+            await this._notifyAllSubscribers(redirectType === "recovery" ? "PASSWORD_RECOVERY" : "SIGNED_IN", data2.session);
           }
-          return this._returnResult({ data: Object.assign(Object.assign({}, data), { redirectType: redirectType !== null && redirectType !== void 0 ? redirectType : null }), error });
+          return this._returnResult({ data: Object.assign(Object.assign({}, data2), { redirectType: redirectType !== null && redirectType !== void 0 ? redirectType : null }), error });
         } catch (error) {
           await (0, helpers_1.removeItemAsync)(this.storage, `${this.storageKey}-code-verifier`);
           if ((0, errors_1.isAuthError)(error)) {
@@ -19884,18 +19884,18 @@ var require_GoTrueClient = __commonJS({
             },
             xform: fetch_1._sessionResponse
           });
-          const { data, error } = res;
+          const { data: data2, error } = res;
           if (error) {
             return this._returnResult({ data: { user: null, session: null }, error });
-          } else if (!data || !data.session || !data.user) {
+          } else if (!data2 || !data2.session || !data2.user) {
             const invalidTokenError = new errors_1.AuthInvalidTokenResponseError();
             return this._returnResult({ data: { user: null, session: null }, error: invalidTokenError });
           }
-          if (data.session) {
-            await this._saveSession(data.session);
-            await this._notifyAllSubscribers("SIGNED_IN", data.session);
+          if (data2.session) {
+            await this._saveSession(data2.session);
+            await this._notifyAllSubscribers("SIGNED_IN", data2.session);
           }
-          return this._returnResult({ data, error });
+          return this._returnResult({ data: data2, error });
         } catch (error) {
           if ((0, errors_1.isAuthError)(error)) {
             return this._returnResult({ data: { user: null, session: null }, error });
@@ -20007,7 +20007,7 @@ var require_GoTrueClient = __commonJS({
           }
           if ("phone" in credentials) {
             const { phone, options } = credentials;
-            const { data, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/otp`, {
+            const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/otp`, {
               headers: this.headers,
               body: {
                 phone,
@@ -20018,7 +20018,7 @@ var require_GoTrueClient = __commonJS({
               }
             });
             return this._returnResult({
-              data: { user: null, session: null, messageId: data === null || data === void 0 ? void 0 : data.message_id },
+              data: { user: null, session: null, messageId: data2 === null || data2 === void 0 ? void 0 : data2.message_id },
               error
             });
           }
@@ -20177,7 +20177,7 @@ var require_GoTrueClient = __commonJS({
             redirectTo = (_a = params.options) === null || _a === void 0 ? void 0 : _a.redirectTo;
             captchaToken = (_b = params.options) === null || _b === void 0 ? void 0 : _b.captchaToken;
           }
-          const { data, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/verify`, {
+          const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/verify`, {
             headers: this.headers,
             body: Object.assign(Object.assign({}, params), { gotrue_meta_security: { captcha_token: captchaToken } }),
             redirectTo,
@@ -20186,12 +20186,12 @@ var require_GoTrueClient = __commonJS({
           if (error) {
             throw error;
           }
-          if (!data) {
+          if (!data2) {
             const tokenVerificationError = new Error("An error occurred on token verification.");
             throw tokenVerificationError;
           }
-          const session = data.session;
-          const user = data.user;
+          const session = data2.session;
+          const user = data2.user;
           if (session === null || session === void 0 ? void 0 : session.access_token) {
             await this._saveSession(session);
             await this._notifyAllSubscribers(params.type == "recovery" ? "PASSWORD_RECOVERY" : "SIGNED_IN", session);
@@ -20407,7 +20407,7 @@ var require_GoTrueClient = __commonJS({
             return this._returnResult({ data: { user: null, session: null }, error });
           } else if ("phone" in credentials) {
             const { phone, type, options } = credentials;
-            const { data, error } = await (0, fetch_1._request)(this.fetch, "POST", endpoint, {
+            const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "POST", endpoint, {
               headers: this.headers,
               body: {
                 phone,
@@ -20416,7 +20416,7 @@ var require_GoTrueClient = __commonJS({
               }
             });
             return this._returnResult({
-              data: { user: null, session: null, messageId: data === null || data === void 0 ? void 0 : data.message_id },
+              data: { user: null, session: null, messageId: data2 === null || data2 === void 0 ? void 0 : data2.message_id },
               error
             });
           }
@@ -20738,16 +20738,16 @@ var require_GoTrueClient = __commonJS({
           }
           return await this._useSession(async (result) => {
             var _a, _b, _c;
-            const { data, error } = result;
+            const { data: data2, error } = result;
             if (error) {
               throw error;
             }
-            if (!((_a = data.session) === null || _a === void 0 ? void 0 : _a.access_token) && !this.hasCustomAuthorizationHeader) {
+            if (!((_a = data2.session) === null || _a === void 0 ? void 0 : _a.access_token) && !this.hasCustomAuthorizationHeader) {
               return { data: { user: null }, error: new errors_1.AuthSessionMissingError() };
             }
             return await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/user`, {
               headers: this.headers,
-              jwt: (_c = (_b = data.session) === null || _b === void 0 ? void 0 : _b.access_token) !== null && _c !== void 0 ? _c : void 0,
+              jwt: (_c = (_b = data2.session) === null || _b === void 0 ? void 0 : _b.access_token) !== null && _c !== void 0 ? _c : void 0,
               xform: fetch_1._userResponse
             });
           });
@@ -20899,7 +20899,7 @@ var require_GoTrueClient = __commonJS({
               ;
               [codeChallenge, codeChallengeMethod] = await (0, helpers_1.getCodeChallengeAndMethod)(this.storage, this.storageKey);
             }
-            const { data, error: userError } = await (0, fetch_1._request)(this.fetch, "PUT", `${this.url}/user`, {
+            const { data: data2, error: userError } = await (0, fetch_1._request)(this.fetch, "PUT", `${this.url}/user`, {
               headers: this.headers,
               redirectTo: options === null || options === void 0 ? void 0 : options.emailRedirectTo,
               body: Object.assign(Object.assign({}, attributes), { code_challenge: codeChallenge, code_challenge_method: codeChallengeMethod }),
@@ -20909,7 +20909,7 @@ var require_GoTrueClient = __commonJS({
             if (userError) {
               throw userError;
             }
-            session.user = data.user;
+            session.user = data2.user;
             await this._saveSession(session);
             await this._notifyAllSubscribers("USER_UPDATED", session);
             return this._returnResult({ data: { user: session.user }, error: null });
@@ -21076,14 +21076,14 @@ var require_GoTrueClient = __commonJS({
             }
             session = refreshedSession;
           } else {
-            const { data, error } = await this._getUser(currentSession.access_token);
+            const { data: data2, error } = await this._getUser(currentSession.access_token);
             if (error) {
               return this._returnResult({ data: { user: null, session: null }, error });
             }
             session = {
               access_token: currentSession.access_token,
               refresh_token: currentSession.refresh_token,
-              user: data.user,
+              user: data2.user,
               token_type: "bearer",
               expires_in: expiresAt - timeNow,
               expires_at: expiresAt
@@ -21235,11 +21235,11 @@ var require_GoTrueClient = __commonJS({
           return await this._useSession(async (result) => {
             var _a;
             if (!currentSession) {
-              const { data, error: error2 } = result;
+              const { data: data2, error: error2 } = result;
               if (error2) {
                 throw error2;
               }
-              currentSession = (_a = data.session) !== null && _a !== void 0 ? _a : void 0;
+              currentSession = (_a = data2.session) !== null && _a !== void 0 ? _a : void 0;
             }
             if (!(currentSession === null || currentSession === void 0 ? void 0 : currentSession.refresh_token)) {
               throw new errors_1.AuthSessionMissingError();
@@ -21291,14 +21291,14 @@ var require_GoTrueClient = __commonJS({
             this._debug("#_initialize()", "begin", "is PKCE flow", true);
             if (!params.code)
               throw new errors_1.AuthPKCEGrantCodeExchangeError("No code detected.");
-            const { data: data2, error: error2 } = await this._exchangeCodeForSession(params.code);
+            const { data: data3, error: error2 } = await this._exchangeCodeForSession(params.code);
             if (error2)
               throw error2;
             const url = new URL(window.location.href);
             url.searchParams.delete("code");
             window.history.replaceState(window.history.state, "", url.toString());
             return {
-              data: { session: data2.session, redirectType: (_a = data2.redirectType) !== null && _a !== void 0 ? _a : null },
+              data: { session: data3.session, redirectType: (_a = data3.redirectType) !== null && _a !== void 0 ? _a : null },
               error: null
             };
           }
@@ -21322,7 +21322,7 @@ var require_GoTrueClient = __commonJS({
           } else if (timeNow - issuedAt < 0) {
             console.warn("@supabase/gotrue-js: Session as retrieved from URL was issued in the future? Check the device clock for skew", issuedAt, expiresAt, timeNow);
           }
-          const { data, error } = await this._getUser(access_token);
+          const { data: data2, error } = await this._getUser(access_token);
           if (error)
             throw error;
           const session = {
@@ -21333,7 +21333,7 @@ var require_GoTrueClient = __commonJS({
             expires_at: expiresAt,
             refresh_token,
             token_type,
-            user: data.user
+            user: data2.user
           };
           window.location.hash = "";
           this._debug("#_getSessionFromURL()", "clearing window.location.hash");
@@ -21404,11 +21404,11 @@ var require_GoTrueClient = __commonJS({
       async _signOut({ scope } = { scope: "global" }) {
         return await this._useSession(async (result) => {
           var _a;
-          const { data, error: sessionError } = result;
+          const { data: data2, error: sessionError } = result;
           if (sessionError && !(0, errors_1.isAuthSessionMissingError)(sessionError)) {
             return this._returnResult({ error: sessionError });
           }
-          const accessToken = (_a = data.session) === null || _a === void 0 ? void 0 : _a.access_token;
+          const accessToken = (_a = data2.session) === null || _a === void 0 ? void 0 : _a.access_token;
           if (accessToken) {
             const { error } = await this.admin.signOut(accessToken, scope);
             if (error) {
@@ -21792,10 +21792,10 @@ var require_GoTrueClient = __commonJS({
       async getUserIdentities() {
         var _a;
         try {
-          const { data, error } = await this.getUser();
+          const { data: data2, error } = await this.getUser();
           if (error)
             throw error;
-          return this._returnResult({ data: { identities: (_a = data.user.identities) !== null && _a !== void 0 ? _a : [] }, error: null });
+          return this._returnResult({ data: { identities: (_a = data2.user.identities) !== null && _a !== void 0 ? _a : [] }, error: null });
         } catch (error) {
           if ((0, errors_1.isAuthError)(error)) {
             return this._returnResult({ data: null, error });
@@ -21839,9 +21839,9 @@ var require_GoTrueClient = __commonJS({
       async linkIdentityOAuth(credentials) {
         var _a;
         try {
-          const { data, error } = await this._useSession(async (result) => {
+          const { data: data2, error } = await this._useSession(async (result) => {
             var _a2, _b, _c, _d, _e;
-            const { data: data2, error: error2 } = result;
+            const { data: data3, error: error2 } = result;
             if (error2)
               throw error2;
             const url = await this._getUrlForProvider(`${this.url}/user/identities/authorize`, credentials.provider, {
@@ -21852,16 +21852,16 @@ var require_GoTrueClient = __commonJS({
             });
             return await (0, fetch_1._request)(this.fetch, "GET", url, {
               headers: this.headers,
-              jwt: (_e = (_d = data2.session) === null || _d === void 0 ? void 0 : _d.access_token) !== null && _e !== void 0 ? _e : void 0
+              jwt: (_e = (_d = data3.session) === null || _d === void 0 ? void 0 : _d.access_token) !== null && _e !== void 0 ? _e : void 0
             });
           });
           if (error)
             throw error;
           if ((0, helpers_1.isBrowser)() && !((_a = credentials.options) === null || _a === void 0 ? void 0 : _a.skipBrowserRedirect)) {
-            window.location.assign(data === null || data === void 0 ? void 0 : data.url);
+            window.location.assign(data2 === null || data2 === void 0 ? void 0 : data2.url);
           }
           return this._returnResult({
-            data: { provider: credentials.provider, url: data === null || data === void 0 ? void 0 : data.url },
+            data: { provider: credentials.provider, url: data2 === null || data2 === void 0 ? void 0 : data2.url },
             error: null
           });
         } catch (error) {
@@ -21892,20 +21892,20 @@ var require_GoTrueClient = __commonJS({
               },
               xform: fetch_1._sessionResponse
             });
-            const { data, error } = res;
+            const { data: data2, error } = res;
             if (error) {
               return this._returnResult({ data: { user: null, session: null }, error });
-            } else if (!data || !data.session || !data.user) {
+            } else if (!data2 || !data2.session || !data2.user) {
               return this._returnResult({
                 data: { user: null, session: null },
                 error: new errors_1.AuthInvalidTokenResponseError()
               });
             }
-            if (data.session) {
-              await this._saveSession(data.session);
-              await this._notifyAllSubscribers("USER_UPDATED", data.session);
+            if (data2.session) {
+              await this._saveSession(data2.session);
+              await this._notifyAllSubscribers("USER_UPDATED", data2.session);
             }
-            return this._returnResult({ data, error });
+            return this._returnResult({ data: data2, error });
           } catch (error) {
             await (0, helpers_1.removeItemAsync)(this.storage, `${this.storageKey}-code-verifier`);
             if ((0, errors_1.isAuthError)(error)) {
@@ -21944,13 +21944,13 @@ var require_GoTrueClient = __commonJS({
         try {
           return await this._useSession(async (result) => {
             var _a, _b;
-            const { data, error } = result;
+            const { data: data2, error } = result;
             if (error) {
               throw error;
             }
             return await (0, fetch_1._request)(this.fetch, "DELETE", `${this.url}/user/identities/${identity.identity_id}`, {
               headers: this.headers,
-              jwt: (_b = (_a = data.session) === null || _a === void 0 ? void 0 : _a.access_token) !== null && _b !== void 0 ? _b : void 0
+              jwt: (_b = (_a = data2.session) === null || _a === void 0 ? void 0 : _a.access_token) !== null && _b !== void 0 ? _b : void 0
             });
           });
         } catch (error) {
@@ -22062,9 +22062,9 @@ var require_GoTrueClient = __commonJS({
             }
           } else if (currentSession.user && currentSession.user.__isUserNotAvailableProxy === true) {
             try {
-              const { data, error: userError } = await this._getUser(currentSession.access_token);
-              if (!userError && (data === null || data === void 0 ? void 0 : data.user)) {
-                currentSession.user = data.user;
+              const { data: data2, error: userError } = await this._getUser(currentSession.access_token);
+              if (!userError && (data2 === null || data2 === void 0 ? void 0 : data2.user)) {
+                currentSession.user = data2.user;
                 await this._saveSession(currentSession);
                 await this._notifyAllSubscribers("SIGNED_IN", currentSession);
               } else {
@@ -22097,14 +22097,14 @@ var require_GoTrueClient = __commonJS({
         this._debug(debugName, "begin");
         try {
           this.refreshingDeferred = new helpers_1.Deferred();
-          const { data, error } = await this._refreshAccessToken(refreshToken);
+          const { data: data2, error } = await this._refreshAccessToken(refreshToken);
           if (error)
             throw error;
-          if (!data.session)
+          if (!data2.session)
             throw new errors_1.AuthSessionMissingError();
-          await this._saveSession(data.session);
-          await this._notifyAllSubscribers("TOKEN_REFRESHED", data.session);
-          const result = { data: data.session, error: null };
+          await this._saveSession(data2.session);
+          await this._notifyAllSubscribers("TOKEN_REFRESHED", data2.session);
+          const result = { data: data2.session, error: null };
           this.refreshingDeferred.resolve(result);
           return result;
         } catch (error) {
@@ -22479,7 +22479,7 @@ var require_GoTrueClient = __commonJS({
               return this._returnResult({ data: null, error: sessionError });
             }
             const body = Object.assign({ friendly_name: params.friendlyName, factor_type: params.factorType }, params.factorType === "phone" ? { phone: params.phone } : params.factorType === "totp" ? { issuer: params.issuer } : {});
-            const { data, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/factors`, {
+            const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/factors`, {
               body,
               headers: this.headers,
               jwt: (_a = sessionData === null || sessionData === void 0 ? void 0 : sessionData.session) === null || _a === void 0 ? void 0 : _a.access_token
@@ -22487,10 +22487,10 @@ var require_GoTrueClient = __commonJS({
             if (error) {
               return this._returnResult({ data: null, error });
             }
-            if (params.factorType === "totp" && data.type === "totp" && ((_b = data === null || data === void 0 ? void 0 : data.totp) === null || _b === void 0 ? void 0 : _b.qr_code)) {
-              data.totp.qr_code = `data:image/svg+xml;utf-8,${data.totp.qr_code}`;
+            if (params.factorType === "totp" && data2.type === "totp" && ((_b = data2 === null || data2 === void 0 ? void 0 : data2.totp) === null || _b === void 0 ? void 0 : _b.qr_code)) {
+              data2.totp.qr_code = `data:image/svg+xml;utf-8,${data2.totp.qr_code}`;
             }
-            return this._returnResult({ data, error: null });
+            return this._returnResult({ data: data2, error: null });
           });
         } catch (error) {
           if ((0, errors_1.isAuthError)(error)) {
@@ -22511,7 +22511,7 @@ var require_GoTrueClient = __commonJS({
               const body = Object.assign({ challenge_id: params.challengeId }, "webauthn" in params ? {
                 webauthn: Object.assign(Object.assign({}, params.webauthn), { credential_response: params.webauthn.type === "create" ? (0, webauthn_1.serializeCredentialCreationResponse)(params.webauthn.credential_response) : (0, webauthn_1.serializeCredentialRequestResponse)(params.webauthn.credential_response) })
               } : { code: params.code });
-              const { data, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/factors/${params.factorId}/verify`, {
+              const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "POST", `${this.url}/factors/${params.factorId}/verify`, {
                 body,
                 headers: this.headers,
                 jwt: (_a = sessionData === null || sessionData === void 0 ? void 0 : sessionData.session) === null || _a === void 0 ? void 0 : _a.access_token
@@ -22519,9 +22519,9 @@ var require_GoTrueClient = __commonJS({
               if (error) {
                 return this._returnResult({ data: null, error });
               }
-              await this._saveSession(Object.assign({ expires_at: Math.round(Date.now() / 1e3) + data.expires_in }, data));
-              await this._notifyAllSubscribers("MFA_CHALLENGE_VERIFIED", data);
-              return this._returnResult({ data, error });
+              await this._saveSession(Object.assign({ expires_at: Math.round(Date.now() / 1e3) + data2.expires_in }, data2));
+              await this._notifyAllSubscribers("MFA_CHALLENGE_VERIFIED", data2);
+              return this._returnResult({ data: data2, error });
             });
           } catch (error) {
             if ((0, errors_1.isAuthError)(error)) {
@@ -22548,19 +22548,19 @@ var require_GoTrueClient = __commonJS({
               if (response.error) {
                 return response;
               }
-              const { data } = response;
-              if (data.type !== "webauthn") {
-                return { data, error: null };
+              const { data: data2 } = response;
+              if (data2.type !== "webauthn") {
+                return { data: data2, error: null };
               }
-              switch (data.webauthn.type) {
+              switch (data2.webauthn.type) {
                 case "create":
                   return {
-                    data: Object.assign(Object.assign({}, data), { webauthn: Object.assign(Object.assign({}, data.webauthn), { credential_options: Object.assign(Object.assign({}, data.webauthn.credential_options), { publicKey: (0, webauthn_1.deserializeCredentialCreationOptions)(data.webauthn.credential_options.publicKey) }) }) }),
+                    data: Object.assign(Object.assign({}, data2), { webauthn: Object.assign(Object.assign({}, data2.webauthn), { credential_options: Object.assign(Object.assign({}, data2.webauthn.credential_options), { publicKey: (0, webauthn_1.deserializeCredentialCreationOptions)(data2.webauthn.credential_options.publicKey) }) }) }),
                     error: null
                   };
                 case "request":
                   return {
-                    data: Object.assign(Object.assign({}, data), { webauthn: Object.assign(Object.assign({}, data.webauthn), { credential_options: Object.assign(Object.assign({}, data.webauthn.credential_options), { publicKey: (0, webauthn_1.deserializeCredentialRequestOptions)(data.webauthn.credential_options.publicKey) }) }) }),
+                    data: Object.assign(Object.assign({}, data2), { webauthn: Object.assign(Object.assign({}, data2.webauthn), { credential_options: Object.assign(Object.assign({}, data2.webauthn.credential_options), { publicKey: (0, webauthn_1.deserializeCredentialRequestOptions)(data2.webauthn.credential_options.publicKey) }) }) }),
                     error: null
                   };
               }
@@ -22598,21 +22598,21 @@ var require_GoTrueClient = __commonJS({
         if (userError) {
           return { data: null, error: userError };
         }
-        const data = {
+        const data2 = {
           all: [],
           phone: [],
           totp: [],
           webauthn: []
         };
         for (const factor of (_a = user === null || user === void 0 ? void 0 : user.factors) !== null && _a !== void 0 ? _a : []) {
-          data.all.push(factor);
+          data2.all.push(factor);
           if (factor.status === "verified") {
             ;
-            data[factor.factor_type].push(factor);
+            data2[factor.factor_type].push(factor);
           }
         }
         return {
-          data,
+          data: data2,
           error: null
         };
       }
@@ -22690,7 +22690,7 @@ var require_GoTrueClient = __commonJS({
             return await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/oauth/authorizations/${authorizationId}`, {
               headers: this.headers,
               jwt: session.access_token,
-              xform: (data) => ({ data, error: null })
+              xform: (data2) => ({ data: data2, error: null })
             });
           });
         } catch (error) {
@@ -22718,7 +22718,7 @@ var require_GoTrueClient = __commonJS({
               headers: this.headers,
               jwt: session.access_token,
               body: { action: "approve" },
-              xform: (data) => ({ data, error: null })
+              xform: (data2) => ({ data: data2, error: null })
             });
             if (response.data && response.data.redirect_url) {
               if ((0, helpers_1.isBrowser)() && !(options === null || options === void 0 ? void 0 : options.skipBrowserRedirect)) {
@@ -22752,7 +22752,7 @@ var require_GoTrueClient = __commonJS({
               headers: this.headers,
               jwt: session.access_token,
               body: { action: "deny" },
-              xform: (data) => ({ data, error: null })
+              xform: (data2) => ({ data: data2, error: null })
             });
             if (response.data && response.data.redirect_url) {
               if ((0, helpers_1.isBrowser)() && !(options === null || options === void 0 ? void 0 : options.skipBrowserRedirect)) {
@@ -22785,7 +22785,7 @@ var require_GoTrueClient = __commonJS({
             return await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/user/oauth/grants`, {
               headers: this.headers,
               jwt: session.access_token,
-              xform: (data) => ({ data, error: null })
+              xform: (data2) => ({ data: data2, error: null })
             });
           });
         } catch (error) {
@@ -22834,18 +22834,18 @@ var require_GoTrueClient = __commonJS({
         if (jwk && this.jwks_cached_at + constants_1.JWKS_TTL > now) {
           return jwk;
         }
-        const { data, error } = await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/.well-known/jwks.json`, {
+        const { data: data2, error } = await (0, fetch_1._request)(this.fetch, "GET", `${this.url}/.well-known/jwks.json`, {
           headers: this.headers
         });
         if (error) {
           throw error;
         }
-        if (!data.keys || data.keys.length === 0) {
+        if (!data2.keys || data2.keys.length === 0) {
           return null;
         }
-        this.jwks = data;
+        this.jwks = data2;
         this.jwks_cached_at = now;
-        jwk = data.keys.find((key) => key.kid === kid);
+        jwk = data2.keys.find((key) => key.kid === kid);
         if (!jwk) {
           return null;
         }
@@ -22920,11 +22920,11 @@ var require_GoTrueClient = __commonJS({
         try {
           let token2 = jwt;
           if (!token2) {
-            const { data, error } = await this.getSession();
-            if (error || !data.session) {
+            const { data: data2, error } = await this.getSession();
+            if (error || !data2.session) {
               return this._returnResult({ data: null, error });
             }
-            token2 = data.session.access_token;
+            token2 = data2.session.access_token;
           }
           const { header, payload, signature, raw: { header: rawHeader, payload: rawPayload } } = (0, helpers_1.decodeJWT)(token2);
           if (!(options === null || options === void 0 ? void 0 : options.allowExpired)) {
@@ -23542,8 +23542,8 @@ var init_dist4 = __esm({
         var _this = this;
         var _data$session$access_, _data$session;
         if (_this.accessToken) return await _this.accessToken();
-        const { data } = await _this.auth.getSession();
-        return (_data$session$access_ = (_data$session = data.session) === null || _data$session === void 0 ? void 0 : _data$session.access_token) !== null && _data$session$access_ !== void 0 ? _data$session$access_ : _this.supabaseKey;
+        const { data: data2 } = await _this.auth.getSession();
+        return (_data$session$access_ = (_data$session = data2.session) === null || _data$session === void 0 ? void 0 : _data$session.access_token) !== null && _data$session$access_ !== void 0 ? _data$session$access_ : _this.supabaseKey;
       }
       _initSupabaseAuthClient({ autoRefreshToken, persistSession, detectSessionInUrl, storage: storage2, userStorage, storageKey, flowType, lock, debug, throwOnError }, headers, fetch$1) {
         const authHeaders = {
@@ -38154,8 +38154,8 @@ function addImport(source, specifier, from, isDefault) {
   const stmts = program?.body ?? [];
   for (const stmt of stmts) {
     if (stmt.type !== "ImportDeclaration") continue;
-    const src = stmt.source?.value;
-    if (src !== from) continue;
+    const src2 = stmt.source?.value;
+    if (src2 !== from) continue;
     if (stmt.importKind === "type") continue;
     const specs = stmt.specifiers ?? [];
     const already = specs.some((s) => {
@@ -38200,8 +38200,8 @@ function removeImport(source, from) {
   const stmts = program?.body ?? [];
   for (const stmt of stmts) {
     if (stmt.type !== "ImportDeclaration") continue;
-    const src = stmt.source?.value;
-    if (src !== from) continue;
+    const src2 = stmt.source?.value;
+    if (src2 !== from) continue;
     const start = stmt.start ?? -1;
     let end = stmt.end ?? -1;
     if (start < 0 || end < 0) break;
@@ -40300,8 +40300,8 @@ function turnAllowsResume(status) {
 async function turnStatusOf(turnId, client = admin()) {
   if (!client) return null;
   try {
-    const { data } = await client.from("turns").select("status").eq("id", turnId).maybeSingle();
-    return data?.status ?? null;
+    const { data: data2 } = await client.from("turns").select("status").eq("id", turnId).maybeSingle();
+    return data2?.status ?? null;
   } catch {
     return null;
   }
@@ -40309,8 +40309,8 @@ async function turnStatusOf(turnId, client = admin()) {
 async function isTurnCancelled(turnId, client = admin()) {
   if (!client) return false;
   try {
-    const { data } = await client.from("turns").select("status").eq("id", turnId).maybeSingle();
-    return data?.status === "aborted";
+    const { data: data2 } = await client.from("turns").select("status").eq("id", turnId).maybeSingle();
+    return data2?.status === "aborted";
   } catch {
     return false;
   }
@@ -40344,7 +40344,7 @@ __export(credits_server_exports, {
 });
 async function spendCredit(opts) {
   try {
-    const { data, error } = await supabaseAdmin.rpc("spend_credit", {
+    const { data: data2, error } = await supabaseAdmin.rpc("spend_credit", {
       _user_id: opts.userId,
       _amount: opts.amount,
       _reason: opts.reason,
@@ -40355,10 +40355,10 @@ async function spendCredit(opts) {
       console.error("[credits] spend_credit RPC error", error);
       return { ok: false, reason: "internal_error", message: error.message };
     }
-    if (!data) {
+    if (!data2) {
       return { ok: false, reason: "insufficient_credits" };
     }
-    return { ok: true, ledgerId: data };
+    return { ok: true, ledgerId: data2 };
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown error";
     console.error("[credits] spend_credit threw", e);
@@ -40405,7 +40405,7 @@ async function refundCredit(opts) {
 }
 async function checkCreditBalance(opts) {
   try {
-    const { data, error } = await supabaseAdmin.rpc("check_credit_balance", {
+    const { data: data2, error } = await supabaseAdmin.rpc("check_credit_balance", {
       _user_id: opts.userId,
       _amount: opts.amount
     });
@@ -40413,7 +40413,7 @@ async function checkCreditBalance(opts) {
       console.error("[credits] check_credit_balance RPC error", error);
       return { ok: false, reason: "internal_error", message: error.message };
     }
-    if (data === true) return { ok: true };
+    if (data2 === true) return { ok: true };
     return { ok: false, reason: "insufficient_credits" };
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown error";
@@ -40440,8 +40440,8 @@ async function load() {
   if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.values;
   const values = { ...ECONOMICS_DEFAULTS };
   try {
-    const { data } = await supabaseAdmin.from("economics_config").select("key, value");
-    for (const row of data ?? []) {
+    const { data: data2 } = await supabaseAdmin.from("economics_config").select("key, value");
+    for (const row of data2 ?? []) {
       const n = Number(row.value);
       if (Number.isFinite(n)) values[row.key] = n;
     }
@@ -40655,10 +40655,10 @@ async function rollUpAiCalls(turnId) {
     breakdown: breakdownCalls([])
   };
   try {
-    const { data } = await supabaseAdmin.from("ai_call_log").select(
+    const { data: data2 } = await supabaseAdmin.from("ai_call_log").select(
       "model, provider, prompt_tokens, completion_tokens, cached_prompt_tokens, cost_usd_micro, cost_basis, purpose, stream_outcome, finish_reason, recovery_reason"
     ).eq("turn_id", turnId);
-    if (!data?.length) return empty;
+    if (!data2?.length) return empty;
     const models = /* @__PURE__ */ new Set();
     const providers = /* @__PURE__ */ new Set();
     let prompt = 0;
@@ -40668,7 +40668,7 @@ async function rollUpAiCalls(turnId) {
     let sawActual = false;
     let sawEstimated = false;
     let sawUnknown = false;
-    for (const row of data) {
+    for (const row of data2) {
       if (row.model) models.add(row.model);
       if (row.provider) providers.add(row.provider);
       prompt += Number(row.prompt_tokens ?? 0);
@@ -40685,7 +40685,7 @@ async function rollUpAiCalls(turnId) {
     }
     const basis = sawUnknown ? "unknown" : sawActual && !sawEstimated ? "actual" : "estimated";
     return {
-      calls: data.length,
+      calls: data2.length,
       promptTokens: prompt,
       completionTokens: completion,
       cachedPromptTokens: cached7,
@@ -40693,7 +40693,7 @@ async function rollUpAiCalls(turnId) {
       providers: [...providers],
       costUsdMicro: sawUnknown ? null : Math.round(cost),
       basis,
-      breakdown: breakdownCalls(data)
+      breakdown: breakdownCalls(data2)
     };
   } catch (err) {
     console.warn("[turn-economics] ai rollup failed", err);
@@ -40879,9 +40879,9 @@ async function attachBuildEconomics(args) {
 }
 async function recordTurnRefund(turnId, credits) {
   try {
-    const { data } = await supabaseAdmin.from("turn_economics").select("credits_refunded").eq("turn_id", turnId).maybeSingle();
-    if (!data) return;
-    await supabaseAdmin.from("turn_economics").update({ credits_refunded: Number(data.credits_refunded ?? 0) + credits }).eq("turn_id", turnId);
+    const { data: data2 } = await supabaseAdmin.from("turn_economics").select("credits_refunded").eq("turn_id", turnId).maybeSingle();
+    if (!data2) return;
+    await supabaseAdmin.from("turn_economics").update({ credits_refunded: Number(data2.credits_refunded ?? 0) + credits }).eq("turn_id", turnId);
   } catch (err) {
     console.warn("[turn-economics] refund record failed", err);
   }
@@ -40917,7 +40917,7 @@ function createDirectAgentIO() {
     },
     async settleCharge(a2) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-      const { data, error } = await supabaseAdmin2.rpc("settle_build_charge", {
+      const { data: data2, error } = await supabaseAdmin2.rpc("settle_build_charge", {
         _user_id: a2.userId,
         _amount: a2.amount,
         _reason: "ai_build_charge",
@@ -40926,18 +40926,18 @@ function createDirectAgentIO() {
         _metadata: a2.metadata
       });
       if (error) throw new Error(error.message);
-      const row = Array.isArray(data) ? data[0] : data;
+      const row = Array.isArray(data2) ? data2[0] : data2;
       return { charged: Number(row?.charged ?? 0), shortfall: Number(row?.shortfall ?? 0), idempotent: !!row?.idempotent };
     },
     async replaceFiles(projectId, files, opts) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
       const turnId = opts?.turnId && /^[0-9a-f-]{36}$/i.test(opts.turnId) ? opts.turnId : void 0;
-      const { data, error } = await supabaseAdmin2.rpc("replace_project_files", {
+      const { data: data2, error } = await supabaseAdmin2.rpc("replace_project_files", {
         _project_id: projectId,
         _files: files,
         ...turnId ? { _turn_id: turnId } : {}
       });
-      return error ? { error: error.message, revision: null } : { error: null, revision: data == null ? null : Number(data) };
+      return error ? { error: error.message, revision: null } : { error: null, revision: data2 == null ? null : Number(data2) };
     },
     async appendEvents(turnId, events) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
@@ -40956,14 +40956,14 @@ function createDirectAgentIO() {
     },
     async heartbeat(turnId, lease) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-      const { data, error } = await supabaseAdmin2.rpc("claim_turn_heartbeat", { _turn_id: turnId, _lease: lease });
+      const { data: data2, error } = await supabaseAdmin2.rpc("claim_turn_heartbeat", { _turn_id: turnId, _lease: lease });
       if (error) return "ok";
-      return data ?? "ok";
+      return data2 ?? "ok";
     },
     async logAiCall(row) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-      const { data } = await supabaseAdmin2.from("ai_call_log").insert(row).select("id").single();
-      return data?.id ?? null;
+      const { data: data2 } = await supabaseAdmin2.from("ai_call_log").insert(row).select("id").single();
+      return data2?.id ?? null;
     },
     async recordEconomics(args) {
       const { recordTurnEconomics: recordTurnEconomics2 } = await Promise.resolve().then(() => (init_turn_economics_server(), turn_economics_server_exports));
@@ -40975,8 +40975,8 @@ function createDirectAgentIO() {
     },
     async readBlueprint(projectId) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-      const { data } = await supabaseAdmin2.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
-      return data?.blueprint ?? null;
+      const { data: data2 } = await supabaseAdmin2.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
+      return data2?.blueprint ?? null;
     },
     async saveBlueprint(projectId, columns, blueprint) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
@@ -41068,10 +41068,10 @@ function isUnknownModelId(model) {
 }
 async function computeHealth() {
   const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-  const { data, error } = await supabaseAdmin2.from("ai_call_log").select("model, status, error_message, created_at").order("created_at", { ascending: false }).limit(WINDOW_CALLS * 24);
-  if (error || !data) return [];
+  const { data: data2, error } = await supabaseAdmin2.from("ai_call_log").select("model, status, error_message, created_at").order("created_at", { ascending: false }).limit(WINDOW_CALLS * 24);
+  if (error || !data2) return [];
   const buckets3 = /* @__PURE__ */ new Map();
-  for (const row of data) {
+  for (const row of data2) {
     const model = row.model;
     if (!model) continue;
     const b = buckets3.get(model) ?? { calls: 0, errors: 0, lastErrorMessage: null };
@@ -41138,10 +41138,10 @@ function isModelUnhealthySync(model) {
 }
 async function auditConfiguredModels() {
   const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-  const { data } = await supabaseAdmin2.from("ai_provider_settings").select("feature, model, fallback_model");
+  const { data: data2 } = await supabaseAdmin2.from("ai_provider_settings").select("feature, model, fallback_model");
   const health = await getModelHealth();
   const unhealthy = new Set(health.filter((h) => h.unhealthy).map((h) => h.model));
-  return (data ?? []).map((row) => {
+  return (data2 ?? []).map((row) => {
     const r = row;
     const issues = [];
     for (const [label2, id] of [
@@ -41249,9 +41249,9 @@ async function loadDbSettings() {
   inflight2 = (async () => {
     try {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-      const { data } = await supabaseAdmin2.from("ai_provider_settings").select("feature, provider, model, fallback_model, budget_enabled, budget_models, shadow_pct");
+      const { data: data2 } = await supabaseAdmin2.from("ai_provider_settings").select("feature, provider, model, fallback_model, budget_enabled, budget_models, shadow_pct");
       const map = /* @__PURE__ */ new Map();
-      for (const row of data ?? []) {
+      for (const row of data2 ?? []) {
         map.set(row.feature, {
           // Legacy rows may say "lovable"; OpenRouter is the only gateway now.
           provider: row.provider === "openrouter" ? "openrouter" : null,
@@ -41290,9 +41290,9 @@ async function getProviderForFeature(feature) {
 async function getUserEconomyMode(userId) {
   try {
     const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
-    const { data, error } = await supabaseAdmin2.from("profiles").select("economy_mode").eq("id", userId).single();
-    if (error || !data) return false;
-    return data.economy_mode ?? false;
+    const { data: data2, error } = await supabaseAdmin2.from("profiles").select("economy_mode").eq("id", userId).single();
+    if (error || !data2) return false;
+    return data2.economy_mode ?? false;
   } catch (err) {
     console.warn("[economy] failed to load user economy mode:", err);
     return false;
@@ -42099,11 +42099,11 @@ var init_scaffold_ownership_server = __esm({
 });
 
 // src/server/source-escape-fixer.server.ts
-function unescapeCodePositions(src) {
+function unescapeCodePositions(src2) {
   let out = "";
   let count = 0;
   let i = 0;
-  const n = src.length;
+  const n = src2.length;
   let state = "code";
   const tplStack = [];
   let braceDepth = 0;
@@ -42113,8 +42113,8 @@ function unescapeCodePositions(src) {
     return !/[A-Za-z0-9_$)\]}'"`]/.test(lastSignificant);
   }
   while (i < n) {
-    const ch = src[i];
-    const next = src[i + 1];
+    const ch = src2[i];
+    const next = src2[i + 1];
     if (state === "code") {
       if (ch === "\\" && (next === "n" || next === "r" || next === "t")) {
         out += next === "t" ? "  " : "\n";
@@ -42178,9 +42178,9 @@ function unescapeCodePositions(src) {
         lastSignificant = "/";
         out += ch;
         i++;
-        while (i < n && /[a-z]/.test(src[i])) {
-          out += src[i];
-          lastSignificant = src[i];
+        while (i < n && /[a-z]/.test(src2[i])) {
+          out += src2[i];
+          lastSignificant = src2[i];
           i++;
         }
         continue;
@@ -42254,6 +42254,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -42297,6 +42298,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -42312,33 +42314,33 @@ var init_import_syntax_fixer_server = __esm({
 });
 
 // src/server/jsx-attr-literal-fixer.server.ts
-function matchBracket(src, open) {
+function matchBracket(src2, open) {
   const pairs = { "[": "]", "{": "}", "(": ")" };
-  const stack = [pairs[src[open]]];
+  const stack = [pairs[src2[open]]];
   let i = open + 1;
-  while (i < src.length && stack.length > 0) {
-    const c = src[i];
+  while (i < src2.length && stack.length > 0) {
+    const c = src2[i];
     if (c === '"' || c === "'" || c === "`") {
       const quote = c;
       i++;
-      while (i < src.length) {
-        if (src[i] === "\\") {
+      while (i < src2.length) {
+        if (src2[i] === "\\") {
           i += 2;
           continue;
         }
-        if (src[i] === quote) break;
+        if (src2[i] === quote) break;
         i++;
       }
       i++;
       continue;
     }
-    if (c === "/" && src[i + 1] === "/") {
-      while (i < src.length && src[i] !== "\n") i++;
+    if (c === "/" && src2[i + 1] === "/") {
+      while (i < src2.length && src2[i] !== "\n") i++;
       continue;
     }
-    if (c === "/" && src[i + 1] === "*") {
-      const end = src.indexOf("*/", i + 2);
-      i = end === -1 ? src.length : end + 2;
+    if (c === "/" && src2[i + 1] === "*") {
+      const end = src2.indexOf("*/", i + 2);
+      i = end === -1 ? src2.length : end + 2;
       continue;
     }
     if (pairs[c]) {
@@ -42351,15 +42353,15 @@ function matchBracket(src, open) {
   }
   return -1;
 }
-function hasTopLevelTagClose(src) {
+function hasTopLevelTagClose(src2) {
   let quote = null;
   let escaped = false;
   let braces = 0;
   let lineComment = false;
   let blockComment = false;
-  for (let i = 0; i < src.length; i++) {
-    const c = src[i];
-    const next = src[i + 1];
+  for (let i = 0; i < src2.length; i++) {
+    const c = src2[i];
+    const next = src2[i + 1];
     if (lineComment) {
       if (c === "\n") lineComment = false;
       continue;
@@ -42390,8 +42392,8 @@ function hasTopLevelTagClose(src) {
   }
   return false;
 }
-function fixOne(src) {
-  let out = src;
+function fixOne(src2) {
+  let out = src2;
   let count = 0;
   const attrArray = /(<[A-Za-z][^<>]*?\s)([A-Za-z_$][\w$]*)\s*=\s*\[/;
   const loose = /(^|[\s{(,])([A-Za-z_$][\w$]*)\s*=\s*\[/gm;
@@ -42451,6 +42453,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -42641,6 +42644,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -85190,6 +85194,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -85841,10 +85846,10 @@ function hasSurface(files, surface) {
 }
 function checkPrdStatically(prd, files, changedPaths) {
   const findings = [];
-  const src = files.filter((f) => f.path.startsWith("src/"));
+  const src2 = files.filter((f) => f.path.startsWith("src/"));
   const changed = changedPaths ? new Set(changedPaths) : null;
   for (const surface of prd.requiredSurfaces) {
-    if (!hasSurface(src, surface)) {
+    if (!hasSurface(src2, surface)) {
       findings.push({
         criterionId: `surface-${surface}`,
         severity: CORE_SURFACES.has(surface) ? "blocking" : "warning",
@@ -85854,7 +85859,7 @@ function checkPrdStatically(prd, files, changedPaths) {
     }
   }
   for (const surface of prd.excludedSurfaces) {
-    const routeHit = src.find(
+    const routeHit = src2.find(
       (f) => isRouteFile(f.path) && (!changed || changed.has(f.path)) && (SURFACE_EVIDENCE[surface] ?? []).some((p2) => p2.test(f.path))
     );
     if (routeHit) {
@@ -85867,7 +85872,7 @@ function checkPrdStatically(prd, files, changedPaths) {
       });
     }
   }
-  const sidebarHit = src.find((f) => (!changed || changed.has(f.path)) && SIDEBAR_SHELL.test(f.content));
+  const sidebarHit = src2.find((f) => (!changed || changed.has(f.path)) && SIDEBAR_SHELL.test(f.content));
   if ((prd.productType === "utility" || prd.productType === "content-site" || prd.productType === "game") && sidebarHit) {
     findings.push({
       criterionId: "primary-action-visible",
@@ -85878,8 +85883,8 @@ function checkPrdStatically(prd, files, changedPaths) {
     });
   }
   if (prd.formulas.length) {
-    const allSrc = src.map((f) => f.content).join("\n");
-    const hasLogicModule = src.some(
+    const allSrc = src2.map((f) => f.content).join("\n");
+    const hasLogicModule = src2.some(
       (f) => /^src\/lib\//.test(f.path) && /export\s+(function|const)\s+\w+/.test(f.content) && /(Math\.|getTime\(|Date\(|\*|\/|\+)/.test(f.content)
     );
     if (!hasLogicModule) {
@@ -85900,11 +85905,11 @@ function checkPrdStatically(prd, files, changedPaths) {
     }
   }
   try {
-    findings.push(...checkProductUsefulness(prd, src));
+    findings.push(...checkProductUsefulness(prd, src2));
   } catch {
   }
   if (prd.dataModel.length) {
-    const allSrc = src.map((f) => f.content).join("\n");
+    const allSrc = src2.map((f) => f.content).join("\n");
     for (const [state, evidence] of Object.entries(STATE_EVIDENCE)) {
       if (!evidence.test(allSrc)) {
         findings.push({
@@ -86225,15 +86230,15 @@ var init_util = __esm({
       "map",
       "set"
     ]);
-    getParsedType = (data) => {
-      const t = typeof data;
+    getParsedType = (data2) => {
+      const t = typeof data2;
       switch (t) {
         case "undefined":
           return ZodParsedType.undefined;
         case "string":
           return ZodParsedType.string;
         case "number":
-          return Number.isNaN(data) ? ZodParsedType.nan : ZodParsedType.number;
+          return Number.isNaN(data2) ? ZodParsedType.nan : ZodParsedType.number;
         case "boolean":
           return ZodParsedType.boolean;
         case "function":
@@ -86243,22 +86248,22 @@ var init_util = __esm({
         case "symbol":
           return ZodParsedType.symbol;
         case "object":
-          if (Array.isArray(data)) {
+          if (Array.isArray(data2)) {
             return ZodParsedType.array;
           }
-          if (data === null) {
+          if (data2 === null) {
             return ZodParsedType.null;
           }
-          if (data.then && typeof data.then === "function" && data.catch && typeof data.catch === "function") {
+          if (data2.then && typeof data2.then === "function" && data2.catch && typeof data2.catch === "function") {
             return ZodParsedType.promise;
           }
-          if (typeof Map !== "undefined" && data instanceof Map) {
+          if (typeof Map !== "undefined" && data2 instanceof Map) {
             return ZodParsedType.map;
           }
-          if (typeof Set !== "undefined" && data instanceof Set) {
+          if (typeof Set !== "undefined" && data2 instanceof Set) {
             return ZodParsedType.set;
           }
-          if (typeof Date !== "undefined" && data instanceof Date) {
+          if (typeof Date !== "undefined" && data2 instanceof Date) {
             return ZodParsedType.date;
           }
           return ZodParsedType.object;
@@ -86548,7 +86553,7 @@ var init_parseUtil = __esm({
     init_errors();
     init_en();
     makeIssue = (params) => {
-      const { data, path, errorMaps, issueData } = params;
+      const { data: data2, path, errorMaps, issueData } = params;
       const fullPath = [...path, ...issueData.path || []];
       const fullIssue = {
         ...issueData,
@@ -86564,7 +86569,7 @@ var init_parseUtil = __esm({
       let errorMessage = "";
       const maps = errorMaps.filter((m) => !!m).slice().reverse();
       for (const map of maps) {
-        errorMessage = map(fullIssue, { data, defaultError: errorMessage }).message;
+        errorMessage = map(fullIssue, { data: data2, defaultError: errorMessage }).message;
       }
       return {
         ...issueData,
@@ -86823,26 +86828,26 @@ function createZodEnum(values, params) {
     ...processCreateParams(params)
   });
 }
-function cleanParams(params, data) {
-  const p2 = typeof params === "function" ? params(data) : typeof params === "string" ? { message: params } : params;
+function cleanParams(params, data2) {
+  const p2 = typeof params === "function" ? params(data2) : typeof params === "string" ? { message: params } : params;
   const p22 = typeof p2 === "string" ? { message: p2 } : p2;
   return p22;
 }
 function custom(check, _params = {}, fatal) {
   if (check)
-    return ZodAny.create().superRefine((data, ctx) => {
-      const r = check(data);
+    return ZodAny.create().superRefine((data2, ctx) => {
+      const r = check(data2);
       if (r instanceof Promise) {
         return r.then((r2) => {
           if (!r2) {
-            const params = cleanParams(_params, data);
+            const params = cleanParams(_params, data2);
             const _fatal = params.fatal ?? fatal ?? true;
             ctx.addIssue({ code: "custom", ...params, fatal: _fatal });
           }
         });
       }
       if (!r) {
-        const params = cleanParams(_params, data);
+        const params = cleanParams(_params, data2);
         const _fatal = params.fatal ?? fatal ?? true;
         ctx.addIssue({ code: "custom", ...params, fatal: _fatal });
       }
@@ -86938,13 +86943,13 @@ var init_types = __esm({
         const result = this._parse(input);
         return Promise.resolve(result);
       }
-      parse(data, params) {
-        const result = this.safeParse(data, params);
+      parse(data2, params) {
+        const result = this.safeParse(data2, params);
         if (result.success)
           return result.data;
         throw result.error;
       }
-      safeParse(data, params) {
+      safeParse(data2, params) {
         const ctx = {
           common: {
             issues: [],
@@ -86954,13 +86959,13 @@ var init_types = __esm({
           path: params?.path || [],
           schemaErrorMap: this._def.errorMap,
           parent: null,
-          data,
-          parsedType: getParsedType(data)
+          data: data2,
+          parsedType: getParsedType(data2)
         };
-        const result = this._parseSync({ data, path: ctx.path, parent: ctx });
+        const result = this._parseSync({ data: data2, path: ctx.path, parent: ctx });
         return handleResult(ctx, result);
       }
-      "~validate"(data) {
+      "~validate"(data2) {
         const ctx = {
           common: {
             issues: [],
@@ -86969,12 +86974,12 @@ var init_types = __esm({
           path: [],
           schemaErrorMap: this._def.errorMap,
           parent: null,
-          data,
-          parsedType: getParsedType(data)
+          data: data2,
+          parsedType: getParsedType(data2)
         };
         if (!this["~standard"].async) {
           try {
-            const result = this._parseSync({ data, path: [], parent: ctx });
+            const result = this._parseSync({ data: data2, path: [], parent: ctx });
             return isValid(result) ? {
               value: result.value
             } : {
@@ -86990,19 +86995,19 @@ var init_types = __esm({
             };
           }
         }
-        return this._parseAsync({ data, path: [], parent: ctx }).then((result) => isValid(result) ? {
+        return this._parseAsync({ data: data2, path: [], parent: ctx }).then((result) => isValid(result) ? {
           value: result.value
         } : {
           issues: ctx.common.issues
         });
       }
-      async parseAsync(data, params) {
-        const result = await this.safeParseAsync(data, params);
+      async parseAsync(data2, params) {
+        const result = await this.safeParseAsync(data2, params);
         if (result.success)
           return result.data;
         throw result.error;
       }
-      async safeParseAsync(data, params) {
+      async safeParseAsync(data2, params) {
         const ctx = {
           common: {
             issues: [],
@@ -87012,10 +87017,10 @@ var init_types = __esm({
           path: params?.path || [],
           schemaErrorMap: this._def.errorMap,
           parent: null,
-          data,
-          parsedType: getParsedType(data)
+          data: data2,
+          parsedType: getParsedType(data2)
         };
-        const maybeAsyncResult = this._parse({ data, path: ctx.path, parent: ctx });
+        const maybeAsyncResult = this._parse({ data: data2, path: ctx.path, parent: ctx });
         const result = await (isAsync(maybeAsyncResult) ? maybeAsyncResult : Promise.resolve(maybeAsyncResult));
         return handleResult(ctx, result);
       }
@@ -87036,8 +87041,8 @@ var init_types = __esm({
             ...getIssueProperties(val)
           });
           if (typeof Promise !== "undefined" && result instanceof Promise) {
-            return result.then((data) => {
-              if (!data) {
+            return result.then((data2) => {
+              if (!data2) {
                 setError();
                 return false;
               } else {
@@ -87103,7 +87108,7 @@ var init_types = __esm({
         this["~standard"] = {
           version: 1,
           vendor: "zod",
-          validate: (data) => this["~validate"](data)
+          validate: (data2) => this["~validate"](data2)
         };
       }
       optional() {
@@ -87500,7 +87505,7 @@ var init_types = __esm({
         return { status: status.value, value: input.data };
       }
       _regex(regex, validation, message) {
-        return this.refinement((data) => regex.test(data), {
+        return this.refinement((data2) => regex.test(data2), {
           validation,
           code: ZodIssueCode.invalid_string,
           ...errorUtil.errToObj(message)
@@ -89637,8 +89642,8 @@ var init_types = __esm({
           return INVALID;
         }
         const promisified = ctx.parsedType === ZodParsedType.promise ? ctx.data : Promise.resolve(ctx.data);
-        return OK(promisified.then((data) => {
-          return this._def.type.parseAsync(data, {
+        return OK(promisified.then((data2) => {
+          return this._def.type.parseAsync(data2, {
             path: ctx.path,
             errorMap: ctx.common.contextualErrorMap
           });
@@ -89832,12 +89837,12 @@ var init_types = __esm({
     ZodDefault = class extends ZodType {
       _parse(input) {
         const { ctx } = this._processInputParams(input);
-        let data = ctx.data;
+        let data2 = ctx.data;
         if (ctx.parsedType === ZodParsedType.undefined) {
-          data = this._def.defaultValue();
+          data2 = this._def.defaultValue();
         }
         return this._def.innerType._parse({
-          data,
+          data: data2,
           path: ctx.path,
           parent: ctx
         });
@@ -89932,9 +89937,9 @@ var init_types = __esm({
     ZodBranded = class extends ZodType {
       _parse(input) {
         const { ctx } = this._processInputParams(input);
-        const data = ctx.data;
+        const data2 = ctx.data;
         return this._def.type._parse({
-          data,
+          data: data2,
           path: ctx.path,
           parent: ctx
         });
@@ -90001,13 +90006,13 @@ var init_types = __esm({
     ZodReadonly = class extends ZodType {
       _parse(input) {
         const result = this._def.innerType._parse(input);
-        const freeze = (data) => {
-          if (isValid(data)) {
-            data.value = Object.freeze(data.value);
+        const freeze = (data2) => {
+          if (isValid(data2)) {
+            data2.value = Object.freeze(data2.value);
           }
-          return data;
+          return data2;
         };
-        return isAsync(result) ? result.then((data) => freeze(data)) : freeze(result);
+        return isAsync(result) ? result.then((data2) => freeze(data2)) : freeze(result);
       }
       unwrap() {
         return this._def.innerType;
@@ -90063,7 +90068,7 @@ var init_types = __esm({
     })(ZodFirstPartyTypeKind || (ZodFirstPartyTypeKind = {}));
     instanceOfType = (cls, params = {
       message: `Input not instance of ${cls.name}`
-    }) => custom((data) => data instanceof cls, params);
+    }) => custom((data2) => data2 instanceof cls, params);
     stringType = ZodString.create;
     numberType = ZodNumber.create;
     nanType = ZodNaN.create;
@@ -90411,12 +90416,12 @@ function renderTokenBlock(pkg, accent) {
     TOKENS_END
   ].filter(Boolean).join("\n");
 }
-function replaceRegion(src, start, end, body) {
-  const s = src.indexOf(start);
-  const e = src.indexOf(end);
+function replaceRegion(src2, start, end, body) {
+  const s = src2.indexOf(start);
+  const e = src2.indexOf(end);
   if (s < 0 && e < 0) return null;
   if (s < 0 || e < s) return null;
-  return src.slice(0, s) + body + src.slice(e + end.length);
+  return src2.slice(0, s) + body + src2.slice(e + end.length);
 }
 function applyTokens(css, pkg, accent) {
   const body = renderTokenBlock(pkg, accent);
@@ -111230,20 +111235,20 @@ var init_renderable_shell_server = __esm({
 });
 
 // src/server/local-verifier.ts
-function stripNoise4(src) {
+function stripNoise4(src2) {
   let out = "";
   let i = 0;
-  const n = src.length;
+  const n = src2.length;
   while (i < n) {
-    const c = src[i];
-    const c2 = src[i + 1];
+    const c = src2[i];
+    const c2 = src2[i + 1];
     if (c === "/" && c2 === "/") {
-      while (i < n && src[i] !== "\n") i++;
+      while (i < n && src2[i] !== "\n") i++;
       continue;
     }
     if (c === "/" && c2 === "*") {
       i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++;
+      while (i < n && !(src2[i] === "*" && src2[i + 1] === "/")) i++;
       i += 2;
       continue;
     }
@@ -111251,16 +111256,16 @@ function stripNoise4(src) {
       const quote = c;
       out += " ";
       i++;
-      while (i < n && src[i] !== quote) {
-        if (src[i] === "\\") i += 2;
-        else if (quote === "`" && src[i] === "$" && src[i + 1] === "{") {
+      while (i < n && src2[i] !== quote) {
+        if (src2[i] === "\\") i += 2;
+        else if (quote === "`" && src2[i] === "$" && src2[i + 1] === "{") {
           let depth = 1;
           out += " ${";
           i += 2;
           while (i < n && depth > 0) {
-            if (src[i] === "{") depth++;
-            else if (src[i] === "}") depth--;
-            out += src[i];
+            if (src2[i] === "{") depth++;
+            else if (src2[i] === "}") depth--;
+            out += src2[i];
             i++;
           }
           continue;
@@ -111275,7 +111280,7 @@ function stripNoise4(src) {
   }
   return out;
 }
-function maskJsxText(src) {
+function maskJsxText(src2) {
   let out = "";
   let inText = false;
   let inTag = false;
@@ -111284,22 +111289,22 @@ function maskJsxText(src) {
   let tagClosing = false;
   let jsxDepth = 0;
   let i = 0;
-  while (i < src.length) {
-    const ch = src[i];
+  while (i < src2.length) {
+    const ch = src2[i];
     if (!inText) {
       out += ch;
       if (!inTag && ch === "<") {
         let p2 = i - 1;
-        while (p2 >= 0 && /\s/.test(src[p2])) p2--;
-        const prev = p2 >= 0 ? src[p2] : "";
-        const next = src[i + 1] ?? "";
+        while (p2 >= 0 && /\s/.test(src2[p2])) p2--;
+        const prev = p2 >= 0 ? src2[p2] : "";
+        const next = src2[i + 1] ?? "";
         inTag = (next === "/" || /[A-Za-z]/.test(next)) && !/[\w$\])]/.test(prev);
         tagClosing = inTag && next === "/";
       } else if (inTag) {
         if (tagQuote) {
-          if (ch === "\\" && i + 1 < src.length) {
+          if (ch === "\\" && i + 1 < src2.length) {
             i++;
-            out += src[i];
+            out += src2[i];
           } else if (ch === tagQuote) {
             tagQuote = null;
           }
@@ -111310,7 +111315,7 @@ function maskJsxText(src) {
         } else if (ch === "}") {
           tagBraceDepth = Math.max(0, tagBraceDepth - 1);
         } else if (ch === ">" && tagBraceDepth === 0) {
-          const selfClosing = src[i - 1] === "/";
+          const selfClosing = src2[i - 1] === "/";
           if (tagClosing) jsxDepth = Math.max(0, jsxDepth - 1);
           else if (!selfClosing) jsxDepth++;
           inTag = false;
@@ -111325,7 +111330,7 @@ function maskJsxText(src) {
       inTag = true;
       tagBraceDepth = 0;
       tagQuote = null;
-      tagClosing = src[i + 1] === "/";
+      tagClosing = src2[i + 1] === "/";
       out += ch;
       i++;
       continue;
@@ -111333,13 +111338,13 @@ function maskJsxText(src) {
     if (ch === "{") {
       let depth = 0;
       let quote = null;
-      while (i < src.length) {
-        const codeCh = src[i];
+      while (i < src2.length) {
+        const codeCh = src2[i];
         out += codeCh;
         if (quote) {
-          if (codeCh === "\\" && i + 1 < src.length) {
+          if (codeCh === "\\" && i + 1 < src2.length) {
             i++;
-            out += src[i];
+            out += src2[i];
           } else if (codeCh === quote) {
             quote = null;
           }
@@ -111363,25 +111368,25 @@ function maskJsxText(src) {
   }
   return out;
 }
-function jsxTagBalance(src) {
+function jsxTagBalance(src2) {
   const open = /* @__PURE__ */ new Map();
   const close = /* @__PURE__ */ new Map();
   const isGenericPrev = (ch) => !!ch && /[A-Za-z0-9_$\])]/.test(ch);
   const isIdentChar = (ch) => !!ch && /[A-Za-z0-9_$]/.test(ch);
-  const n = src.length;
+  const n = src2.length;
   let i = 0;
   while (i < n) {
-    if (src[i] !== "<") {
+    if (src2[i] !== "<") {
       i++;
       continue;
     }
-    if (src[i + 1] === "/") {
+    if (src2[i + 1] === "/") {
       const start2 = i + 2;
       let j2 = start2;
-      while (j2 < n && /[A-Za-z0-9_]/.test(src[j2])) j2++;
-      const name2 = src.slice(start2, j2);
-      while (j2 < n && /\s/.test(src[j2])) j2++;
-      if (name2 && /^[A-Z]/.test(name2) && src[j2] === ">") {
+      while (j2 < n && /[A-Za-z0-9_]/.test(src2[j2])) j2++;
+      const name2 = src2.slice(start2, j2);
+      while (j2 < n && /\s/.test(src2[j2])) j2++;
+      if (name2 && /^[A-Z]/.test(name2) && src2[j2] === ">") {
         close.set(name2, (close.get(name2) ?? 0) + 1);
       }
       i = j2 + 1;
@@ -111389,15 +111394,15 @@ function jsxTagBalance(src) {
     }
     const start = i + 1;
     let j = start;
-    while (j < n && /[A-Za-z0-9_]/.test(src[j])) j++;
-    const name = src.slice(start, j);
+    while (j < n && /[A-Za-z0-9_]/.test(src2[j])) j++;
+    const name = src2.slice(start, j);
     if (!name || !/^[A-Z]/.test(name)) {
       i++;
       continue;
     }
     let p2 = i - 1;
-    while (p2 >= 0 && /\s/.test(src[p2])) p2--;
-    const prev = p2 >= 0 ? src[p2] : void 0;
+    while (p2 >= 0 && /\s/.test(src2[p2])) p2--;
+    const prev = p2 >= 0 ? src2[p2] : void 0;
     if (isGenericPrev(prev)) {
       i = j;
       continue;
@@ -111407,11 +111412,11 @@ function jsxTagBalance(src) {
     let selfClose = false;
     let closed = false;
     while (k < n) {
-      const ch = src[k];
+      const ch = src2[k];
       if (ch === "{") depth++;
       else if (ch === "}") depth = Math.max(0, depth - 1);
       else if (depth === 0) {
-        if (ch === "/" && src[k + 1] === ">") {
+        if (ch === "/" && src2[k + 1] === ">") {
           selfClose = true;
           closed = true;
           k += 2;
@@ -111440,8 +111445,8 @@ function jsxTagBalance(src) {
   }
   return { open, close };
 }
-function looksTruncated(src) {
-  const trimmed = src.trimEnd();
+function looksTruncated(src2) {
+  const trimmed = src2.trimEnd();
   if (trimmed.length === 0) return false;
   const last = trimmed[trimmed.length - 1];
   if ([")", "}", "]", ";"].includes(last)) return false;
@@ -111459,11 +111464,11 @@ function looksTruncated(src) {
   }
   return true;
 }
-function braceBalance(src) {
+function braceBalance(src2) {
   let braces = 0;
   let parens = 0;
   let brackets = 0;
-  for (const c of src) {
+  for (const c of src2) {
     if (c === "{") braces++;
     else if (c === "}") braces--;
     else if (c === "(") parens++;
@@ -111473,26 +111478,26 @@ function braceBalance(src) {
   }
   return { braces, parens, brackets };
 }
-function findUnterminatedString(src) {
+function findUnterminatedString(src2) {
   let i = 0;
-  const n = src.length;
+  const n = src2.length;
   let line = 1;
   while (i < n) {
-    const c = src[i];
-    const c2 = src[i + 1];
+    const c = src2[i];
+    const c2 = src2[i + 1];
     if (c === "\n") {
       line++;
       i++;
       continue;
     }
     if (c === "/" && c2 === "/") {
-      while (i < n && src[i] !== "\n") i++;
+      while (i < n && src2[i] !== "\n") i++;
       continue;
     }
     if (c === "/" && c2 === "*") {
       i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) {
-        if (src[i] === "\n") line++;
+      while (i < n && !(src2[i] === "*" && src2[i + 1] === "/")) {
+        if (src2[i] === "\n") line++;
         i++;
       }
       if (i >= n) return `unterminated /* \u2026 */ block comment starting near line ${line}`;
@@ -111503,13 +111508,13 @@ function findUnterminatedString(src) {
       const quote = c;
       const startLine = line;
       i++;
-      while (i < n && src[i] !== quote) {
-        if (src[i] === "\\" && i + 1 < n) {
-          if (src[i + 1] === "\n") return `unterminated string starting at line ${startLine}`;
+      while (i < n && src2[i] !== quote) {
+        if (src2[i] === "\\" && i + 1 < n) {
+          if (src2[i + 1] === "\n") return `unterminated string starting at line ${startLine}`;
           i += 2;
           continue;
         }
-        if (src[i] === "\n") {
+        if (src2[i] === "\n") {
           return `unterminated string starting at line ${startLine}`;
         }
         i++;
@@ -111521,23 +111526,23 @@ function findUnterminatedString(src) {
     if (c === "`") {
       const startLine = line;
       i++;
-      while (i < n && src[i] !== "`") {
-        if (src[i] === "\\" && i + 1 < n) {
+      while (i < n && src2[i] !== "`") {
+        if (src2[i] === "\\" && i + 1 < n) {
           i += 2;
           continue;
         }
-        if (src[i] === "$" && src[i + 1] === "{") {
+        if (src2[i] === "$" && src2[i + 1] === "{") {
           let depth = 1;
           i += 2;
           while (i < n && depth > 0) {
-            if (src[i] === "{") depth++;
-            else if (src[i] === "}") depth--;
-            else if (src[i] === "\n") line++;
+            if (src2[i] === "{") depth++;
+            else if (src2[i] === "}") depth--;
+            else if (src2[i] === "\n") line++;
             i++;
           }
           continue;
         }
-        if (src[i] === "\n") line++;
+        if (src2[i] === "\n") line++;
         i++;
       }
       if (i >= n) return `unterminated template literal starting at line ${startLine}`;
@@ -111548,7 +111553,7 @@ function findUnterminatedString(src) {
   }
   return null;
 }
-function findUndefinedComponents(src, clean) {
+function findUndefinedComponents(src2, clean) {
   const tags = /* @__PURE__ */ new Set();
   const n = clean.length;
   for (let i = 0; i < n; i++) {
@@ -111569,7 +111574,7 @@ function findUndefinedComponents(src, clean) {
   const declared = /* @__PURE__ */ new Set();
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,?\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
   let m;
-  while (m = importRe.exec(src)) {
+  while (m = importRe.exec(src2)) {
     if (m[1]) declared.add(m[1]);
     if (m[3]) declared.add(m[3]);
     if (m[2]) {
@@ -111580,11 +111585,11 @@ function findUndefinedComponents(src, clean) {
     }
   }
   const declRe = /(?:^|\n)\s*(?:export\s+)?(?:default\s+)?(?:const|let|var|function|class)\s+([A-Z][A-Za-z0-9_]*)/g;
-  while (m = declRe.exec(src)) declared.add(m[1]);
+  while (m = declRe.exec(src2)) declared.add(m[1]);
   const aliasRe = /(?:[:,{(]|\.\.\.)\s*([A-Z][A-Za-z0-9_]*)\s*(?=[,}\]=)])/g;
-  while (m = aliasRe.exec(src)) declared.add(m[1]);
+  while (m = aliasRe.exec(src2)) declared.add(m[1]);
   const assignRe = /(?:^|[\s,({[])([A-Z][A-Za-z0-9_]*)\s*=[^=>]/g;
-  while (m = assignRe.exec(src)) declared.add(m[1]);
+  while (m = assignRe.exec(src2)) declared.add(m[1]);
   const builtins = /* @__PURE__ */ new Set(["Fragment", "StrictMode", "Suspense", "Profiler", "Children"]);
   const missing = [];
   for (const tag of tags) {
@@ -111594,18 +111599,18 @@ function findUndefinedComponents(src, clean) {
   }
   return missing;
 }
-function findObviousScopeLeaks(src) {
+function findObviousScopeLeaks(src2) {
   const declared = new Set(BUILTIN_GLOBALS);
   let m;
   const declRe = /\b(?:const|let|var|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g;
-  while (m = declRe.exec(src)) declared.add(m[1]);
+  while (m = declRe.exec(src2)) declared.add(m[1]);
   const destructuredDeclRe = /\b(?:const|let|var)\s+([\[{])([\s\S]{1,500}?)[\]}]\s*=/g;
-  while (m = destructuredDeclRe.exec(src)) {
+  while (m = destructuredDeclRe.exec(src2)) {
     const binding = m[2].replace(/\b[A-Za-z_$][\w$]*\s*:/g, " ").replace(/=[^,}\]]+/g, " ");
     for (const name of binding.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
   }
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
-  while (m = importRe.exec(src)) {
+  while (m = importRe.exec(src2)) {
     if (m[1]) declared.add(m[1]);
     if (m[3]) declared.add(m[3]);
     if (m[2]) for (const part of m[2].split(",")) {
@@ -111615,13 +111620,13 @@ function findObviousScopeLeaks(src) {
     }
   }
   const paramRe = /\(([^)]{1,240})\)\s*(?::\s*[^=]+)?=>|function\s*[A-Za-z_$]*\s*\(([^)]{0,240})\)/g;
-  while (m = paramRe.exec(src)) {
+  while (m = paramRe.exec(src2)) {
     const params = (m[1] || m[2] || "").replace(/:[^,=}]+/g, "");
     for (const name of params.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
   }
   const singleArrowParamRe = /(?:^|[,(]\s*)([A-Za-z_$][\w$]*)\s*=>/g;
-  while (m = singleArrowParamRe.exec(src)) declared.add(m[1]);
-  const clean = stripNoise4(maskJsxText(src)).replace(/\.[A-Za-z_$][\w$]*/g, " ");
+  while (m = singleArrowParamRe.exec(src2)) declared.add(m[1]);
+  const clean = stripNoise4(maskJsxText(src2)).replace(/\.[A-Za-z_$][\w$]*/g, " ");
   const missing = [];
   const seen = /* @__PURE__ */ new Set();
   const add = (name) => {
@@ -111967,19 +111972,19 @@ function isNodeBuiltin(spec) {
   if (spec.startsWith("node:")) return true;
   return NODE_BUILTINS2.has(spec);
 }
-function collectExports(src) {
+function collectExports(src2) {
   const named = /* @__PURE__ */ new Set();
   const typeOnly = /* @__PURE__ */ new Set();
   let hasDefault = false;
   const starReexports = [];
-  if (/(^|\n)\s*export\s+default\b/.test(src)) hasDefault = true;
+  if (/(^|\n)\s*export\s+default\b/.test(src2)) hasDefault = true;
   const valueDeclRe = /(^|\n)\s*export\s+(?:async\s+)?(?:const|let|var|function|class|enum)\s+([A-Za-z_$][\w$]*)/g;
   let m;
-  while (m = valueDeclRe.exec(src)) named.add(m[2]);
+  while (m = valueDeclRe.exec(src2)) named.add(m[2]);
   const typeDeclRe = /(^|\n)\s*export\s+(?:type|interface)\s+([A-Za-z_$][\w$]*)/g;
-  while (m = typeDeclRe.exec(src)) typeOnly.add(m[2]);
+  while (m = typeDeclRe.exec(src2)) typeOnly.add(m[2]);
   const groupRe = /(^|[^A-Za-z_$])export\s*\{([^}]+)\}/g;
-  while (m = groupRe.exec(src)) {
+  while (m = groupRe.exec(src2)) {
     for (const part of m[2].split(",")) {
       const piece = part.trim();
       if (!piece) continue;
@@ -111988,7 +111993,7 @@ function collectExports(src) {
     }
   }
   const typeGroupRe = /export\s+type\s*\{([^}]+)\}/g;
-  while (m = typeGroupRe.exec(src)) {
+  while (m = typeGroupRe.exec(src2)) {
     for (const part of m[1].split(",")) {
       const piece = part.trim();
       if (!piece) continue;
@@ -112000,7 +112005,7 @@ function collectExports(src) {
     }
   }
   const starRe = /export\s*\*\s*from\s*["']([^"']+)["']/g;
-  while (m = starRe.exec(src)) starReexports.push(m[1]);
+  while (m = starRe.exec(src2)) starReexports.push(m[1]);
   return { named, typeOnly, hasDefault, starReexports };
 }
 function findMissingNamedExports(files, changedPaths) {
@@ -112094,18 +112099,18 @@ function findServerFnContractIssues(files, changed) {
   for (const f of files) {
     if (!changed.has(f.path)) continue;
     if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
-    const src = f.content;
+    const src2 = f.content;
     const isFunctionsFile = /\.functions\.tsx?$/.test(f.path);
     const isServerFile = /\.server\.tsx?$/.test(f.path);
-    if (!isServerFile && !isFunctionsFile && /from\s+["']@\/integrations\/supabase\/client\.server["']/.test(src)) {
+    if (!isServerFile && !isFunctionsFile && /from\s+["']@\/integrations\/supabase\/client\.server["']/.test(src2)) {
       issues.push({
         path: f.path,
         kind: "server-fn-contract",
         detail: "Imports @/integrations/supabase/client.server from a non-server file \u2014 this leaks the service-role client into the client bundle. Move the code into a *.functions.ts createServerFn handler and import that instead."
       });
     }
-    if (!/createServerFn\s*\(/.test(src)) continue;
-    const chains = src.split(/createServerFn\s*\(/);
+    if (!/createServerFn\s*\(/.test(src2)) continue;
+    const chains = src2.split(/createServerFn\s*\(/);
     for (let i = 1; i < chains.length; i++) {
       const tail = chains[i].slice(0, 800);
       if (!/\.handler\s*\(/.test(tail)) continue;
@@ -112122,7 +112127,7 @@ function findServerFnContractIssues(files, changed) {
           detail: `createServerFn({ method: "${method}" }) is missing .inputValidator() \u2014 POST/PUT/PATCH/DELETE handlers MUST validate input (use Zod) before .handler() to avoid trusting client-supplied data.`
         });
       }
-      if (needsValidator && !/from\s+["']zod["']/.test(src)) {
+      if (needsValidator && !/from\s+["']zod["']/.test(src2)) {
         issues.push({
           path: f.path,
           kind: "server-fn-contract",
@@ -112131,7 +112136,7 @@ function findServerFnContractIssues(files, changed) {
       }
     }
     if (isFunctionsFile) {
-      const stripped = src.replace(/\.handler\s*\(\s*async[^{]*\{[\s\S]*?\n\}\s*\)/g, ".handler()");
+      const stripped = src2.replace(/\.handler\s*\(\s*async[^{]*\{[\s\S]*?\n\}\s*\)/g, ".handler()");
       if (/(^|\n)\s*(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*=\s*[^;]*process\.env\./.test(stripped)) {
         issues.push({
           path: f.path,
@@ -113318,23 +113323,23 @@ async function copySharedDataToDedicated(projectId, target) {
   if (!target.dedicated) throw new Error("copy target is not a dedicated store");
   let users = 0;
   for (let offset = 0; ; offset += COPY_BATCH) {
-    const { data, error } = await supabaseAdmin.from("shared_app_users").select("id, project_id, email, password_hash, display_name, created_at").eq("project_id", projectId).order("created_at", { ascending: true }).range(offset, offset + COPY_BATCH - 1);
+    const { data: data2, error } = await supabaseAdmin.from("shared_app_users").select("id, project_id, email, password_hash, display_name, created_at").eq("project_id", projectId).order("created_at", { ascending: true }).range(offset, offset + COPY_BATCH - 1);
     if (error) throw new Error(`read shared users: ${error.message}`);
-    if (!data || data.length === 0) break;
-    const { error: writeErr } = await target.client.from(target.users).upsert(data, { onConflict: "id" });
+    if (!data2 || data2.length === 0) break;
+    const { error: writeErr } = await target.client.from(target.users).upsert(data2, { onConflict: "id" });
     if (writeErr) throw new Error(`write users: ${writeErr.message}`);
-    users += data.length;
-    if (data.length < COPY_BATCH) break;
+    users += data2.length;
+    if (data2.length < COPY_BATCH) break;
   }
   let rows = 0;
   for (let offset = 0; ; offset += COPY_BATCH) {
-    const { data, error } = await supabaseAdmin.from("shared_app_records").select("id, project_id, collection, owner_key, data, created_at, updated_at").eq("project_id", projectId).order("created_at", { ascending: true }).range(offset, offset + COPY_BATCH - 1);
+    const { data: data2, error } = await supabaseAdmin.from("shared_app_records").select("id, project_id, collection, owner_key, data, created_at, updated_at").eq("project_id", projectId).order("created_at", { ascending: true }).range(offset, offset + COPY_BATCH - 1);
     if (error) throw new Error(`read shared records: ${error.message}`);
-    if (!data || data.length === 0) break;
-    const { error: writeErr } = await target.client.from(target.records).upsert(data, { onConflict: "id" });
+    if (!data2 || data2.length === 0) break;
+    const { error: writeErr } = await target.client.from(target.records).upsert(data2, { onConflict: "id" });
     if (writeErr) throw new Error(`write records: ${writeErr.message}`);
-    rows += data.length;
-    if (data.length < COPY_BATCH) break;
+    rows += data2.length;
+    if (data2.length < COPY_BATCH) break;
   }
   return { rows, users };
 }
@@ -113506,28 +113511,28 @@ async function enableSharedBackend(projectId) {
   const existing = await getSharedBackend(projectId);
   if (existing) return existing;
   const apiKey = generateApiKey();
-  const { data, error } = await supabaseAdmin.from("shared_backends").insert({ project_id: projectId, api_key: apiKey }).select("project_id, api_key, enabled_at, row_count").single();
+  const { data: data2, error } = await supabaseAdmin.from("shared_backends").insert({ project_id: projectId, api_key: apiKey }).select("project_id, api_key, enabled_at, row_count").single();
   if (error) throw new Error(error.message);
   await supabaseAdmin.from("projects").update({ backend_type: "shared" }).eq("id", projectId);
   return {
-    projectId: data.project_id,
-    apiKey: data.api_key,
-    enabledAt: data.enabled_at,
-    rowCount: Number(data.row_count ?? 0)
+    projectId: data2.project_id,
+    apiKey: data2.api_key,
+    enabledAt: data2.enabled_at,
+    rowCount: Number(data2.row_count ?? 0)
   };
 }
 async function disableSharedBackend(projectId) {
   await supabaseAdmin.from("shared_backends").delete().eq("project_id", projectId);
 }
 async function getSharedBackend(projectId) {
-  const { data, error } = await supabaseAdmin.from("shared_backends").select("project_id, api_key, enabled_at, row_count").eq("project_id", projectId).maybeSingle();
+  const { data: data2, error } = await supabaseAdmin.from("shared_backends").select("project_id, api_key, enabled_at, row_count").eq("project_id", projectId).maybeSingle();
   if (error) throw new Error(`shared backend lookup failed: ${error.message}`);
-  if (!data) return null;
+  if (!data2) return null;
   return {
-    projectId: data.project_id,
-    apiKey: data.api_key,
-    enabledAt: data.enabled_at,
-    rowCount: Number(data.row_count ?? 0)
+    projectId: data2.project_id,
+    apiKey: data2.api_key,
+    enabledAt: data2.enabled_at,
+    rowCount: Number(data2.row_count ?? 0)
   };
 }
 async function resolveProjectAccess(projectId, apiKey) {
@@ -113561,9 +113566,9 @@ async function listRecords(opts) {
   } else if (scope === "shared") {
     q = opts.ownerKey ? q.or(`owner_key.is.null,owner_key.eq.${opts.ownerKey}`) : q.is("owner_key", null);
   }
-  const { data, error } = await q;
+  const { data: data2, error } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []).map(shape);
+  return (data2 ?? []).map(shape);
 }
 async function createRecord(opts) {
   const store2 = await storeFor(opts.projectId);
@@ -113578,14 +113583,14 @@ async function createRecord(opts) {
       );
     }
   }
-  const { data, error } = await store2.client.from(store2.records).insert({
+  const { data: data2, error } = await store2.client.from(store2.records).insert({
     project_id: opts.projectId,
     collection: opts.collection,
     owner_key: opts.ownerKey,
     data: opts.data
   }).select("id, collection, owner_key, data, created_at, updated_at").single();
   if (error) throw new Error(error.message);
-  return shape(data);
+  return shape(data2);
 }
 async function updateRecord(opts) {
   const store2 = await storeFor(opts.projectId);
@@ -113596,22 +113601,22 @@ async function updateRecord(opts) {
   };
   let q = store2.client.from(store2.records).update({ data: merged, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("project_id", opts.projectId).eq("id", opts.id);
   q = opts.ownerKey ? q.eq("owner_key", opts.ownerKey) : q.is("owner_key", null);
-  const { data, error } = await q.select("id, collection, owner_key, data, created_at, updated_at").maybeSingle();
+  const { data: data2, error } = await q.select("id, collection, owner_key, data, created_at, updated_at").maybeSingle();
   if (error) throw new Error(error.message);
-  return data ? shape(data) : null;
+  return data2 ? shape(data2) : null;
 }
 async function deleteRecord(opts) {
   const store2 = await storeFor(opts.projectId);
   let q = store2.client.from(store2.records).delete().eq("project_id", opts.projectId).eq("id", opts.id);
   q = opts.ownerKey ? q.eq("owner_key", opts.ownerKey) : q.is("owner_key", null);
-  const { data, error } = await q.select("id").maybeSingle();
+  const { data: data2, error } = await q.select("id").maybeSingle();
   if (error) throw new Error(error.message);
-  return Boolean(data);
+  return Boolean(data2);
 }
 async function signUpUser(opts) {
   const store2 = await storeFor(opts.projectId);
   const password_hash = await hashPassword(opts.password);
-  const { data, error } = await store2.client.from(store2.users).insert({
+  const { data: data2, error } = await store2.client.from(store2.users).insert({
     project_id: opts.projectId,
     email: opts.email.toLowerCase(),
     password_hash,
@@ -113622,31 +113627,31 @@ async function signUpUser(opts) {
     throw new Error(error.message);
   }
   return {
-    id: data.id,
-    email: data.email,
-    displayName: data.display_name ?? null
+    id: data2.id,
+    email: data2.email,
+    displayName: data2.display_name ?? null
   };
 }
 async function signInUser(opts) {
   const store2 = await storeFor(opts.projectId);
-  const { data } = await store2.client.from(store2.users).select("id, email, display_name, password_hash").eq("project_id", opts.projectId).eq("email", opts.email.toLowerCase()).maybeSingle();
-  if (!data) return null;
-  const ok = await verifyPassword(opts.password, data.password_hash);
+  const { data: data2 } = await store2.client.from(store2.users).select("id, email, display_name, password_hash").eq("project_id", opts.projectId).eq("email", opts.email.toLowerCase()).maybeSingle();
+  if (!data2) return null;
+  const ok = await verifyPassword(opts.password, data2.password_hash);
   if (!ok) return null;
   return {
-    id: data.id,
-    email: data.email,
-    displayName: data.display_name ?? null
+    id: data2.id,
+    email: data2.email,
+    displayName: data2.display_name ?? null
   };
 }
 async function getUserById(projectId, userId) {
   const store2 = await storeFor(projectId);
-  const { data } = await store2.client.from(store2.users).select("id, email, display_name").eq("project_id", projectId).eq("id", userId).maybeSingle();
-  if (!data) return null;
+  const { data: data2 } = await store2.client.from(store2.users).select("id, email, display_name").eq("project_id", projectId).eq("id", userId).maybeSingle();
+  if (!data2) return null;
   return {
-    id: data.id,
-    email: data.email,
-    displayName: data.display_name ?? null
+    id: data2.id,
+    email: data2.email,
+    displayName: data2.display_name ?? null
   };
 }
 async function sharedUsage(projectId) {
@@ -113916,8 +113921,8 @@ async function resolveCloudTier(projectId) {
 async function recordTierIntent(projectId, text) {
   const signal = detectTierFromIntent(text);
   try {
-    const { data } = await supabaseAdmin.from("projects").select("cloud_tier_intent").eq("id", projectId).maybeSingle();
-    const prevRaw = data?.cloud_tier_intent;
+    const { data: data2 } = await supabaseAdmin.from("projects").select("cloud_tier_intent").eq("id", projectId).maybeSingle();
+    const prevRaw = data2?.cloud_tier_intent;
     const prev = ORDER.includes(prevRaw ?? "") ? prevRaw : "kimble";
     const next = highestTier(prev, signal.tier);
     if (next !== prev) {
@@ -113963,9 +113968,9 @@ var init_cloud_tier_server = __esm({
 
 // src/server/entitlements.server.ts
 async function getAccessState(userId) {
-  const { data } = await supabaseAdmin.from("user_wallets").select("plan_code, topup_credits_remaining").eq("user_id", userId).maybeSingle();
-  const planCode = String(data?.plan_code ?? "free");
-  const topupCredits = Number(data?.topup_credits_remaining ?? 0);
+  const { data: data2 } = await supabaseAdmin.from("user_wallets").select("plan_code, topup_credits_remaining").eq("user_id", userId).maybeSingle();
+  const planCode = String(data2?.plan_code ?? "free");
+  const topupCredits = Number(data2?.topup_credits_remaining ?? 0);
   const subscribed = planCode !== "free";
   const payAsYouGo = !subscribed && topupCredits > 0;
   return {
@@ -114006,7 +114011,7 @@ async function railwayGraphql(token2, query, variables) {
   return json.data;
 }
 async function createService(cfg, name, source) {
-  const data = await railwayGraphql(cfg.token, CREATE_SERVICE, {
+  const data2 = await railwayGraphql(cfg.token, CREATE_SERVICE, {
     input: {
       projectId: cfg.projectId,
       environmentId: cfg.environmentId,
@@ -114014,7 +114019,7 @@ async function createService(cfg, name, source) {
       source
     }
   });
-  return data.serviceCreate;
+  return data2.serviceCreate;
 }
 async function setServiceVariables(cfg, serviceId, variables) {
   if (!Object.keys(variables).length) return;
@@ -114038,12 +114043,12 @@ async function deleteService(cfg, serviceId) {
 }
 async function createServiceDomain(cfg, serviceId) {
   try {
-    const data = await railwayGraphql(
+    const data2 = await railwayGraphql(
       cfg.token,
       DOMAIN_CREATE,
       { input: { serviceId, environmentId: cfg.environmentId } }
     );
-    const domain = data.serviceDomainCreate?.domain;
+    const domain = data2.serviceDomainCreate?.domain;
     return domain ? `https://${domain}` : null;
   } catch (err) {
     console.warn("[railway] domain create failed", err);
@@ -114051,8 +114056,8 @@ async function createServiceDomain(cfg, serviceId) {
   }
 }
 async function latestDeployment(cfg, serviceId) {
-  const data = await railwayGraphql(cfg.token, SERVICE_STATUS, { serviceId, environmentId: cfg.environmentId });
-  const node = data.deployments?.edges?.[0]?.node;
+  const data2 = await railwayGraphql(cfg.token, SERVICE_STATUS, { serviceId, environmentId: cfg.environmentId });
+  const node = data2.deployments?.edges?.[0]?.node;
   if (!node) return null;
   return {
     id: node.id,
@@ -114129,8 +114134,8 @@ function toRecord(row) {
   };
 }
 async function getCompute(projectId) {
-  const { data } = await supabaseAdmin.from("project_compute").select("*").eq("project_id", projectId).maybeSingle();
-  return data ? toRecord(data) : null;
+  const { data: data2 } = await supabaseAdmin.from("project_compute").select("*").eq("project_id", projectId).maybeSingle();
+  return data2 ? toRecord(data2) : null;
 }
 async function provisionCompute(opts) {
   const existing = await getCompute(opts.projectId);
@@ -114181,7 +114186,7 @@ async function provisionCompute(opts) {
     }
     const url = await createServiceDomain(cfg, service.id);
     const now = (/* @__PURE__ */ new Date()).toISOString();
-    const { data } = await supabaseAdmin.from("project_compute").update({
+    const { data: data2 } = await supabaseAdmin.from("project_compute").update({
       status: "ready",
       service_id: service.id,
       environment_id: cfg.environmentId,
@@ -114191,7 +114196,7 @@ async function provisionCompute(opts) {
       billed_through: now,
       error_message: null
     }).eq("project_id", opts.projectId).select("*").maybeSingle();
-    return { ok: true, compute: toRecord(data ?? {}) };
+    return { ok: true, compute: toRecord(data2 ?? {}) };
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
     console.error("[compute] provision failed", opts.projectId, err);
@@ -114248,8 +114253,8 @@ async function computeHealth2(projectId) {
   }
 }
 async function listBillableCompute() {
-  const { data } = await supabaseAdmin.from("project_compute").select("project_id, owner_id, awake_since, billed_through, last_active_at").eq("status", "ready");
-  return (data ?? []).map((r) => ({
+  const { data: data2 } = await supabaseAdmin.from("project_compute").select("project_id, owner_id, awake_since, billed_through, last_active_at").eq("status", "ready");
+  return (data2 ?? []).map((r) => ({
     projectId: String(r.project_id),
     ownerId: String(r.owner_id),
     awakeSince: r.awake_since,
@@ -114544,11 +114549,11 @@ var init_backend_autoscale_server = __esm({
 async function loadPictureLibrary(force = false) {
   if (!force && cache4 && Date.now() - cache4.at < CACHE_MS2) return cache4.rows;
   try {
-    const { data, error } = await supabaseAdmin.from("design_pictures").select(
+    const { data: data2, error } = await supabaseAdmin.from("design_pictures").select(
       "id,url,subject,industry,mood,tone,colors,orientation,aspect_ratio,has_people,style,location,tags,source,license"
     ).eq("active", true).limit(2e3);
     if (error) throw error;
-    const rows = data ?? [];
+    const rows = data2 ?? [];
     cache4 = { at: Date.now(), rows };
     return rows;
   } catch {
@@ -115068,14 +115073,14 @@ function visualsFromPackage(pkg, accent) {
     package: { systemId: pkg.meta.slug, accent }
   };
 }
-function withPackageVisuals(design2, pkg, accent) {
+function withPackageVisuals(design3, pkg, accent) {
   const v = visualsFromPackage(pkg, accent);
-  const { migration: _m, ...rest } = design2;
+  const { migration: _m, ...rest } = design3;
   return { ...rest, typography: v.typography, colors: v.colors, radius: v.radius, package: v.package, source: "package" };
 }
-function applyPackageToTree(files, design2) {
-  const sel = resolveSelection(design2?.package);
-  if (!sel) return { applied: false, files, reason: design2?.package ? "selected package not installed" : "no package selected" };
+function applyPackageToTree(files, design3) {
+  const sel = resolveSelection(design3?.package);
+  if (!sel) return { applied: false, files, reason: design3?.package ? "selected package not installed" : "no package selected" };
   const r = applyDesignSystem(files, sel.pkg, sel.accent);
   if (!r.ok) return { applied: false, files, reason: r.error };
   return { applied: true, files: r.files, changedPaths: r.changedPaths };
@@ -142128,20 +142133,20 @@ var init_project_archetype = __esm({
 });
 
 // src/server/render-risk-linter.ts
-function stripStringsAndComments(src) {
+function stripStringsAndComments(src2) {
   let out = "";
   let i = 0;
-  const n = src.length;
+  const n = src2.length;
   while (i < n) {
-    const c = src[i];
-    const c2 = src[i + 1];
+    const c = src2[i];
+    const c2 = src2[i + 1];
     if (c === "/" && c2 === "/") {
-      while (i < n && src[i] !== "\n") i++;
+      while (i < n && src2[i] !== "\n") i++;
       continue;
     }
     if (c === "/" && c2 === "*") {
       i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++;
+      while (i < n && !(src2[i] === "*" && src2[i + 1] === "/")) i++;
       i += 2;
       continue;
     }
@@ -142149,19 +142154,19 @@ function stripStringsAndComments(src) {
       const q = c;
       out += " ";
       i++;
-      while (i < n && src[i] !== q) {
-        if (src[i] === "\\") {
+      while (i < n && src2[i] !== q) {
+        if (src2[i] === "\\") {
           i += 2;
           continue;
         }
-        if (q === "`" && src[i] === "$" && src[i + 1] === "{") {
+        if (q === "`" && src2[i] === "$" && src2[i + 1] === "{") {
           let depth = 1;
           out += " ${";
           i += 2;
           while (i < n && depth > 0) {
-            if (src[i] === "{") depth++;
-            else if (src[i] === "}") depth--;
-            out += src[i];
+            if (src2[i] === "{") depth++;
+            else if (src2[i] === "}") depth--;
+            out += src2[i];
             i++;
           }
           continue;
@@ -142262,24 +142267,24 @@ function findOptionalDestructuredProps(clean) {
   }
   return { props, bodyByOwner };
 }
-function findMatchingParen(src, openIndex) {
+function findMatchingParen(src2, openIndex) {
   let depth = 1;
-  for (let i = openIndex + 1; i < src.length; i++) {
-    if (src[i] === "(") depth++;
-    else if (src[i] === ")") {
+  for (let i = openIndex + 1; i < src2.length; i++) {
+    if (src2[i] === "(") depth++;
+    else if (src2[i] === ")") {
       depth--;
       if (depth === 0) return i;
     }
   }
   return -1;
 }
-function extractFirstBraceBlock(src) {
+function extractFirstBraceBlock(src2) {
   let i = 0;
-  while (i < src.length && /\s/.test(src[i])) i++;
-  if (src[i] !== "{") return null;
-  const end = findMatchingBrace(src, i);
+  while (i < src2.length && /\s/.test(src2[i])) i++;
+  if (src2[i] !== "{") return null;
+  const end = findMatchingBrace(src2, i);
   if (end < 0) return null;
-  return { content: src.slice(i + 1, end), end };
+  return { content: src2.slice(i + 1, end), end };
 }
 function splitTypeFields(block2) {
   const out = [];
@@ -142313,11 +142318,11 @@ function splitDestructure(block2) {
   if (start < block2.length) out.push(block2.slice(start));
   return out;
 }
-function findMatchingBrace(src, openIndex) {
+function findMatchingBrace(src2, openIndex) {
   let depth = 1;
-  for (let i = openIndex + 1; i < src.length; i++) {
-    if (src[i] === "{") depth++;
-    else if (src[i] === "}") {
+  for (let i = openIndex + 1; i < src2.length; i++) {
+    if (src2[i] === "{") depth++;
+    else if (src2[i] === "}") {
       depth--;
       if (depth === 0) return i;
     }
@@ -142378,7 +142383,7 @@ function findConditionalHooks(clean) {
   }
   return issues;
 }
-function findUndeclaredJsxIdentifiers(src, clean) {
+function findUndeclaredJsxIdentifiers(src2, clean) {
   const tokenCount = /* @__PURE__ */ new Map();
   const tokenRe = /\b([A-Za-z_$][\w$]*)\b/g;
   let m;
@@ -142386,7 +142391,7 @@ function findUndeclaredJsxIdentifiers(src, clean) {
     tokenCount.set(m[1], (tokenCount.get(m[1]) ?? 0) + 1);
   }
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
-  while (m = importRe.exec(src)) {
+  while (m = importRe.exec(src2)) {
     const bump = (n) => tokenCount.set(n, (tokenCount.get(n) ?? 0) + 2);
     if (m[1]) bump(m[1]);
     if (m[3]) bump(m[3]);
@@ -142441,12 +142446,12 @@ function findUndeclaredJsxIdentifiers(src, clean) {
   }
   return [...missing];
 }
-function findKitListPropOmissions(src) {
+function findKitListPropOmissions(src2) {
   const issues = [];
   for (const [component, groups] of Object.entries(KIT_LIST_PROP_CONTRACTS)) {
     const tagRe = new RegExp(`<${component}\\b([^>]*)>`, "g");
     let m;
-    while (m = tagRe.exec(src)) {
+    while (m = tagRe.exec(src2)) {
       const attrs = m[1] ?? "";
       if (/\{\s*\.\.\./.test(attrs)) continue;
       const present = /* @__PURE__ */ new Set();
@@ -142461,12 +142466,12 @@ function findKitListPropOmissions(src) {
   }
   return issues;
 }
-function findForwardRefIconRenders(src, clean) {
+function findForwardRefIconRenders(src2, clean) {
   const issues = [];
   const iconNames = /* @__PURE__ */ new Set();
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*from\s*["']([^"']+)["']/g;
   let im;
-  while (im = importRe.exec(src)) {
+  while (im = importRe.exec(src2)) {
     const source = im[3];
     const matched = FORWARD_REF_ICON_PACKAGES.some(
       (p2) => source === p2 || source.startsWith(`${p2}/`)
@@ -142515,11 +142520,11 @@ function findForwardRefIconRenders(src, clean) {
   }
   return issues;
 }
-function findBareGridCols(src) {
+function findBareGridCols(src2) {
   const issues = [];
   const classAttrRe = /className\s*=\s*(?:"([^"]+)"|'([^']+)'|\{`([^`]+)`\})/g;
   let m;
-  while (m = classAttrRe.exec(src)) {
+  while (m = classAttrRe.exec(src2)) {
     const cls = (m[1] ?? m[2] ?? m[3] ?? "").trim();
     if (!cls) continue;
     const bare2 = /(?:^|\s)grid-cols-([2-9]|1[0-2])(?:\s|$)/.test(cls);
@@ -142531,40 +142536,40 @@ function findBareGridCols(src) {
   }
   return issues;
 }
-function fileMissingTableEmptyState(src, clean) {
-  if (!/from\s+["']@\/components\/ui\/table["']/.test(src)) return false;
+function fileMissingTableEmptyState(src2, clean) {
+  if (!/from\s+["']@\/components\/ui\/table["']/.test(src2)) return false;
   if (!/<Table[\s>]/.test(clean)) return false;
   if (!/\.map\s*\(/.test(clean)) return false;
   if (/\.length\s*(===?\s*0|>\s*0|\?\s*)/.test(clean)) return false;
   if (/TableEmpty|EmptyState|Empty\s+\w+/i.test(clean)) return false;
   return true;
 }
-function findObjectChildBindings(src) {
+function findObjectChildBindings(src2) {
   const out = /* @__PURE__ */ new Set();
   const litRe = /(?:^|\s)(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=\n]+)?\s*=\s*\{/g;
   let m;
-  while (m = litRe.exec(src)) {
+  while (m = litRe.exec(src2)) {
     out.add(m[1]);
   }
   const hookRe = /(?:^|\s)(?:const|let)\s+\[\s*([A-Za-z_$][\w$]*)\s*,\s*[A-Za-z_$][\w$]*\s*\]\s*=\s*(useState|useReducer)\s*(?:<\s*\{)?/g;
-  while (m = hookRe.exec(src)) {
-    const after = src.slice(m.index + m[0].length, m.index + m[0].length + 200);
+  while (m = hookRe.exec(src2)) {
+    const after = src2.slice(m.index + m[0].length, m.index + m[0].length + 200);
     if (/^\s*\(\s*\(?\s*\{|^\s*\{|>\s*\(/.test(after) || m[0].includes("<")) {
       out.add(m[1]);
     }
   }
   const refMemoRe = /(?:^|\s)(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*(useRef|useMemo)\s*\(/g;
-  while (m = refMemoRe.exec(src)) {
-    const after = src.slice(m.index + m[0].length, m.index + m[0].length + 200);
+  while (m = refMemoRe.exec(src2)) {
+    const after = src2.slice(m.index + m[0].length, m.index + m[0].length + 200);
     if (/^\s*\{|^\s*\(\s*\)\s*=>\s*\(\s*\{/.test(after)) {
       out.add(m[1]);
     }
   }
   return out;
 }
-function findObjectAsJsxChild(src, clean) {
+function findObjectAsJsxChild(src2, clean) {
   const issues = [];
-  const bindings = findObjectChildBindings(src);
+  const bindings = findObjectChildBindings(src2);
   if (bindings.size === 0) return issues;
   for (const ident of bindings) {
     const re = new RegExp(
@@ -142583,13 +142588,13 @@ function findObjectAsJsxChild(src, clean) {
   }
   return issues;
 }
-function findUnsafeMappedNestedAccess(src) {
+function findUnsafeMappedNestedAccess(src2) {
   const issues = [];
   const mapRe = /\.map\s*\(\s*\(?\s*([A-Za-z_$][\w$]*)[^=)]*\)?\s*=>\s*/g;
   let match;
-  while (match = mapRe.exec(src)) {
+  while (match = mapRe.exec(src2)) {
     const item = match[1];
-    const body = src.slice(match.index + match[0].length, match.index + match[0].length + 1600);
+    const body = src2.slice(match.index + match[0].length, match.index + match[0].length + 1600);
     const chainRe = new RegExp(`\\b${escapeRe2(item)}\\.([A-Za-z_$][\\w$]*)\\.([A-Za-z_$][\\w$]*)`, "g");
     const chain = chainRe.exec(body);
     if (!chain) continue;
@@ -143514,8 +143519,8 @@ function usageContext(files, node) {
   const { named } = requiredExports(node);
   const lines = [];
   for (const imp of node.importers) {
-    const src = byPath.get(imp.path) ?? "";
-    const uses = src.split("\n").filter((l) => named.some((n) => new RegExp(`\\b${n}\\b`).test(l)) && !/^\s*import\b/.test(l)).slice(0, 12).map((l) => l.trim().slice(0, 200));
+    const src2 = byPath.get(imp.path) ?? "";
+    const uses = src2.split("\n").filter((l) => named.some((n) => new RegExp(`\\b${n}\\b`).test(l)) && !/^\s*import\b/.test(l)).slice(0, 12).map((l) => l.trim().slice(0, 200));
     lines.push(`// ${imp.path}
 ${imp.statement}
 ${uses.join("\n")}`);
@@ -144765,8 +144770,8 @@ function upgradePrd(prd) {
 async function loadProjectPrd(projectId) {
   if (!projectId) return null;
   try {
-    const { data } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
-    const prd = data?.blueprint?.prd;
+    const { data: data2 } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
+    const prd = data2?.blueprint?.prd;
     if (!prd || typeof prd !== "object" || !prd.prd) return null;
     const versioned = prd;
     return { ...versioned, prd: upgradePrd(versioned.prd) };
@@ -144784,8 +144789,8 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
   };
   if (!projectId) return versioned;
   try {
-    const { data } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
-    const blueprint = { ...data?.blueprint ?? {}, prd: versioned };
+    const { data: data2 } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
+    const blueprint = { ...data2?.blueprint ?? {}, prd: versioned };
     await supabaseAdmin.from("project_blueprints").upsert({ project_id: projectId, blueprint }, { onConflict: "project_id" });
   } catch (e) {
     console.warn("[prd] save skipped:", e instanceof Error ? e.message : String(e));
@@ -146854,13 +146859,13 @@ function upgrade(pic) {
 async function loadPic(projectId) {
   if (!projectId) return null;
   try {
-    const { data } = await supabaseAdmin.from("project_intelligence").select("context, revision, updated_at").eq("project_id", projectId).maybeSingle();
-    const ctx = data?.context;
+    const { data: data2 } = await supabaseAdmin.from("project_intelligence").select("context, revision, updated_at").eq("project_id", projectId).maybeSingle();
+    const ctx = data2?.context;
     if (!ctx || typeof ctx !== "object") return null;
     return {
       pic: upgrade(ctx),
-      revision: data.revision ?? 0,
-      updatedAt: data.updated_at ?? (/* @__PURE__ */ new Date()).toISOString()
+      revision: data2.revision ?? 0,
+      updatedAt: data2.updated_at ?? (/* @__PURE__ */ new Date()).toISOString()
     };
   } catch (e) {
     console.warn("[pic] load skipped:", e instanceof Error ? e.message : String(e));
@@ -146940,8 +146945,8 @@ function renderDesignSystemContext(pkg, accent) {
     pkg.designMd.trim()
   ].filter(Boolean).join("\n");
 }
-function designSystemBlockFor(design2) {
-  const sel = design2?.package;
+function designSystemBlockFor(design3) {
+  const sel = design3?.package;
   if (!sel) return "";
   const pkg = getDesignSystem(sel.systemId);
   if (!pkg || !pkg.accents[sel.accent]) return "";
@@ -147006,7 +147011,7 @@ async function assemblePic(args) {
     signal: args.signal,
     direction: args.designDirection
   }) : base.design;
-  const design2 = preserveDesignPackage(base.design, committed);
+  const design3 = preserveDesignPackage(base.design, committed);
   const prd = (await loadProjectPrd(projectId))?.prd ?? base.prd;
   const memoryLocks = (args.memoryEntries ?? []).filter((e) => LOCK_KEYS.has(e.key)).map((e) => `${e.key}: ${e.value}`);
   const features = Array.from(/* @__PURE__ */ new Set([...base.features, ...understanding.firstVersion])).slice(0, 24);
@@ -147017,7 +147022,7 @@ async function assemblePic(args) {
     productVision: understanding.summary || base.productVision,
     understanding,
     prd,
-    design: design2,
+    design: design3,
     features,
     acceptanceCriteria: acceptance,
     protectedDecisions: Array.from(/* @__PURE__ */ new Set([...base.protectedDecisions, ...memoryLocks])).slice(0, 24),
@@ -147081,11 +147086,11 @@ function renderPicBlock(pic, opts = {}) {
     const locked = pic.protectedDecisions.length ? `
 
 ${list2("## LOCKED DECISIONS (never change without an explicit request)", pic.protectedDecisions)}` : "";
-    const design2 = pic.design ? `
+    const design3 = pic.design ? `
 
 ## DESIGN SYSTEM (already committed)
 Direction: ${pic.design.direction}. Fonts: ${pic.design.typography.displayFont}/${pic.design.typography.bodyFont}. Nav: ${pic.design.navPattern}. Use the existing tokens in src/styles.css \u2014 do not introduce new colours.` : "";
-    return summary + design2 + locked;
+    return summary + design3 + locked;
   }
   const sections = [
     summary,
@@ -148707,7 +148712,7 @@ __export(edit_history_server_exports, {
 });
 async function recordEdit(input) {
   try {
-    const { data, error } = await supabaseAdmin.from("project_edit_history").insert({
+    const { data: data2, error } = await supabaseAdmin.from("project_edit_history").insert({
       project_id: input.projectId,
       turn_id: input.turnId ?? null,
       build_id: input.buildId ?? null,
@@ -148731,7 +148736,7 @@ async function recordEdit(input) {
       console.warn("[edit-history] insert failed:", error.message);
       return null;
     }
-    return data?.id ?? null;
+    return data2?.id ?? null;
   } catch (e) {
     console.warn("[edit-history] insert threw:", e instanceof Error ? e.message : String(e));
     return null;
@@ -148739,9 +148744,9 @@ async function recordEdit(input) {
 }
 async function loadEditFocus(projectId) {
   try {
-    const { data, error } = await supabaseAdmin.from("project_edit_history").select("focus").eq("project_id", projectId).not("focus", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (error || !data?.focus) return null;
-    const focus = data.focus;
+    const { data: data2, error } = await supabaseAdmin.from("project_edit_history").select("focus").eq("project_id", projectId).not("focus", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (error || !data2?.focus) return null;
+    const focus = data2.focus;
     if (!focus?.target || typeof focus.at !== "number") return null;
     return focus;
   } catch {
@@ -148750,9 +148755,9 @@ async function loadEditFocus(projectId) {
 }
 async function listEdits(projectId, limit = 20) {
   try {
-    const { data, error } = await supabaseAdmin.from("project_edit_history").select("id, created_at, user_request, change_set, changed_paths, audit, complete").eq("project_id", projectId).order("created_at", { ascending: false }).limit(limit);
+    const { data: data2, error } = await supabaseAdmin.from("project_edit_history").select("id, created_at, user_request, change_set, changed_paths, audit, complete").eq("project_id", projectId).order("created_at", { ascending: false }).limit(limit);
     if (error) return [];
-    return data ?? [];
+    return data2 ?? [];
   } catch {
     return [];
   }
@@ -148945,17 +148950,17 @@ function buildAppMap(files) {
   const layouts = code.map((f) => f.path).filter((p2) => /(Layout|Header|Footer|Nav(bar)?|Shell|SiteNav)\.(t|j)sx$/.test(p2)).sort();
   const navLinks = /* @__PURE__ */ new Set();
   for (const p2 of [...layouts, ...entry ? [entry] : []]) {
-    const src = byPath.get(p2) ?? "";
+    const src2 = byPath.get(p2) ?? "";
     const re = /\b(?:to|href)=\{?["'](\/[^"'#?]*)["']/g;
     let m;
-    while (m = re.exec(src)) navLinks.add(m[1]);
+    while (m = re.exec(src2)) navLinks.add(m[1]);
     const arr = /\b(?:to|href|path):\s*["'](\/[^"'#?]*)["']/g;
-    while (m = arr.exec(src)) navLinks.add(m[1]);
+    while (m = arr.exec(src2)) navLinks.add(m[1]);
   }
   const deps = {};
   for (const p2 of [...pages, ...layouts]) {
-    const src = byPath.get(p2) ?? "";
-    deps[p2] = localImports(src).map((i) => resolveSpec3(p2, i.spec, paths) ?? i.spec).slice(0, 12);
+    const src2 = byPath.get(p2) ?? "";
+    deps[p2] = localImports(src2).map((i) => resolveSpec3(p2, i.spec, paths) ?? i.spec).slice(0, 12);
   }
   const styles = [...paths].filter((p2) => /^(src\/(index|styles|globals|App)\.css|tailwind\.config\.(t|j)s)$/.test(p2)).sort();
   return {
@@ -149035,11 +149040,11 @@ function top(values, n) {
   for (const v of values) c.set(v, (c.get(v) ?? 0) + 1);
   return [...c.entries()].sort((a2, b) => b[1] - a2[1]).slice(0, n).map(([v]) => v);
 }
-function matchAll(src, re) {
+function matchAll(src2, re) {
   const out = [];
   let m;
   const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-  while (m = g.exec(src)) out.push(m[1] ?? m[0]);
+  while (m = g.exec(src2)) out.push(m[1] ?? m[0]);
   return out;
 }
 function extractDesignIntel(files) {
@@ -149695,8 +149700,8 @@ function expandPageSections(prompt, targets, files) {
   const out = new Set(targets);
   for (const t of targets) {
     if (!/^src\/(pages|routes)\//.test(t)) continue;
-    const src = byPath.get(t) ?? "";
-    for (const m of src.matchAll(/from\s+["']@\/(components\/sections\/[^"']+)["']/g)) {
+    const src2 = byPath.get(t) ?? "";
+    for (const m of src2.matchAll(/from\s+["']@\/(components\/sections\/[^"']+)["']/g)) {
       const base = `src/${m[1]}`;
       const path = [".tsx", ".ts", ".jsx"].map((e) => base + e).find((p2) => byPath.has(p2));
       if (!path) continue;
@@ -149807,6 +149812,343 @@ var init_lifecycle = __esm({
   "src/server/context/lifecycle.ts"() {
     init_define_import_meta_env();
     list3 = (xs, n = 12) => xs.length ? xs.slice(0, n).join(", ") + (xs.length > n ? ` (+${xs.length - n})` : "") : "none recorded";
+  }
+});
+
+// src/server/engine/write.ts
+var write_exports = {};
+__export(write_exports, {
+  DECOMPOSED_MARKER: () => DECOMPOSED_MARKER,
+  PAGE_CONCURRENCY: () => PAGE_CONCURRENCY,
+  decomposedPageInstruction: () => decomposedPageInstruction,
+  frameIsComplete: () => frameIsComplete,
+  mapBounded: () => mapBounded,
+  missingSections: () => missingSections,
+  pageInstruction: () => pageInstruction,
+  pagesReferencedByRouter: () => pagesReferencedByRouter,
+  projectContract: () => projectContract,
+  routerInstruction: () => routerInstruction,
+  sectionInstruction: () => sectionInstruction,
+  sharedFiles: () => sharedFiles,
+  sharedModules: () => sharedModules,
+  targetOf: () => targetOf,
+  writePlannedPages: () => writePlannedPages
+});
+function projectContract(files) {
+  let deps = [];
+  try {
+    const pkg = JSON.parse(files.find((f) => f.path === "package.json")?.content ?? "{}");
+    deps = Object.keys({ ...pkg.dependencies ?? {}, ...pkg.devDependencies ?? {} }).sort();
+  } catch {
+    deps = [];
+  }
+  const ui = files.map((f) => /^src\/components\/ui\/([^/]+)\.tsx$/.exec(f.path)?.[1]).filter((x) => !!x).sort();
+  const hasRouter = files.some((f) => f.path === "src/components/ui/router.tsx");
+  const shared = sharedModules(files);
+  return [
+    `Installed packages (import ONLY these, nothing else): ${deps.join(", ") || "none listed"}.`,
+    ui.length ? `UI primitives available at @/components/ui/<name>: ${ui.join(", ")}. Do not import any other @/components/ui path.` : "",
+    hasRouter ? `Routing: import Link/NavLink/Routes/Route/useLocation from "@/components/ui/router" \u2014 never from "react-router-dom".` : "",
+    "Icons: lucide-react only, and import every icon you use. Page titles/meta: set document.title in an effect \u2014 no helmet libraries.",
+    shared.length ? `Shared app modules (foundation) \u2014 import app data, auth, hooks and types ONLY from these, using exactly these export names:
+${shared.map((m) => `- @/${m.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "")}: ${m.exports.join(", ") || "(default)"}`).join("\n")}
+Do not import any other @/lib, @/hooks, @/contexts, @/data, @/integrations or @/services path. If you need something not listed, define it inside your own file.` : "No shared app modules exist yet: do not import from @/lib, @/hooks, @/contexts, @/data, @/integrations or @/services \u2014 define what you need inside your own file."
+  ].filter(Boolean).join("\n");
+}
+function sharedModules(files) {
+  const out = [];
+  for (const f of files) {
+    if (!/^src\/(lib|hooks|contexts|context|data|services|store|integrations|types)(\/|\.)/.test(f.path)) continue;
+    if (!/\.(tsx?|jsx?)$/.test(f.path) || f.path.startsWith("src/integrations/supabase/")) continue;
+    const names = /* @__PURE__ */ new Set();
+    for (const m of f.content.matchAll(/export\s+(?:declare\s+)?(?:async\s+)?(?:function\*?|const|let|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g)) names.add(m[1]);
+    for (const m of f.content.matchAll(/export\s*\{([^}]*)\}/g)) for (const n of m[1].split(",")) {
+      const k = n.trim().split(/\s+as\s+/).pop().trim();
+      if (k) names.add(k);
+    }
+    out.push({ path: f.path, exports: Array.from(names).slice(0, 40) });
+  }
+  return out.sort((a2, b) => a2.path.localeCompare(b.path));
+}
+function sharedFiles(files, pages) {
+  const pageFiles = new Set(pages.map((p2) => p2.file));
+  return files.map((f) => f.path).filter((p2) => !pageFiles.has(p2) && (p2 === "src/App.tsx" || p2 === "src/styles.css" || p2 === "index.html" || p2 === "package.json" || /^src\/components\/(sections|layout|brand)/.test(p2) || /brand-mark|nav|header|footer/i.test(p2)));
+}
+function pageInstruction(page, deliveredPaths, contract = "", shared = []) {
+  return [
+    `You are writing the "${page.route}" page ONLY.`,
+    `WRITE SCOPE: exactly one file \u2014 write the page as ${page.file} (default export). Nothing else.`,
+    `READ SCOPE: the existing project files listed below. The shared frame (layout, header, footer, colours, logo, router, package.json) already exists and is owned by the frame \u2014 do NOT recreate, restyle or modify it${shared.length ? ` (${shared.join(", ")})` : ""}. The page renders inside that frame, so do not add its own header or footer.`,
+    "Make it a complete, polished page with real content, using the existing design system and brand. Put every section of this page inline in this ONE file \u2014 do not create new component, style or config files.",
+    contract,
+    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
+    "No extra pages."
+  ].filter(Boolean).join("\n");
+}
+function decomposedPageInstruction(page, decision, deliveredPaths, contract = "", shared = []) {
+  return [
+    `${DECOMPOSED_MARKER}: You are writing the "${page.route}" page ONLY, split into coherent units.`,
+    `WRITE SCOPE: the page file ${page.file} (default export) plus its section components in ${decision.sectionDir}/ (one named-export component per file, PascalCase file names). Nothing else.`,
+    `The page file is a thin shell: it imports each section from "@/${decision.sectionDir.replace(/^src\//, "")}/<Name>" and composes them in order. Each section owns one responsibility (e.g. a stats strip, a data table, a form, a detail panel). Put a section's static data inside that section file.`,
+    "Only split along real responsibilities \u2014 3 to 6 sections is typical. Do not create one-use wrapper components, hooks, or config files, and do not move shared UI primitives.",
+    `READ SCOPE: the existing project files listed below. The shared frame (layout, header, footer, colours, logo, router, package.json) already exists \u2014 do NOT recreate or modify it${shared.length ? ` (${shared.join(", ")})` : ""}. The page renders inside that frame, so do not add its own header or footer.`,
+    "Make it a complete, polished page with real content, using the existing design system and brand.",
+    contract,
+    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
+    "No extra pages."
+  ].filter(Boolean).join("\n");
+}
+function sectionInstruction(page, sectionFile, pageSource, contract = "") {
+  const name = sectionFile.split("/").pop().replace(/\.tsx$/, "");
+  return [
+    `You are writing ONE section component for the "${page.route}" page.`,
+    `WRITE SCOPE: exactly one file \u2014 write it as ${sectionFile} exporting \`export function ${name}\`. Nothing else.`,
+    "The page shell below already imports and renders it; match how it is used (props, if any).",
+    contract,
+    `Page shell (${page.file}, do NOT rewrite):
+${pageSource.slice(0, 6e3)}`
+  ].filter(Boolean).join("\n");
+}
+function missingSections(files, pageFile, sectionDir) {
+  const src2 = files.find((f) => f.path === pageFile)?.content ?? "";
+  const alias = "@/" + sectionDir.replace(/^src\//, "");
+  const out = [];
+  for (const m of src2.matchAll(/from\s+["']([^"']+)["']/g)) {
+    const spec = m[1];
+    if (!spec.startsWith(alias + "/")) continue;
+    const file = `src/${spec.slice(2).replace(/\.tsx$/, "")}.tsx`;
+    if (!files.some((f) => f.path === file && f.content.trim()) && !out.includes(file)) out.push(file);
+  }
+  return out;
+}
+function routerInstruction(pages, deliveredPaths, contract = "") {
+  return [
+    "You own the SHARED FRAME. Write ONLY src/App.tsx. One file in this call \u2014 nothing else.",
+    `It must route exactly these pages: ${pages.map((p2) => `"${p2.route}" -> ${p2.file}`).join(", ")}.`,
+    "It must contain the shared layout every page renders inside: a header with the brand and navigation to every page, and a footer. Use existing header/nav/footer components from the list below if present; otherwise define them inside src/App.tsx.",
+    contract,
+    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
+    "No extra pages."
+  ].filter(Boolean).join("\n");
+}
+function frameIsComplete(files, pageCount = 2) {
+  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+  if (!app.trim() || isPlaceholderFile(app)) return false;
+  const routed = pageCount <= 1 || /<Routes\b|createBrowserRouter|<Route\b/.test(app);
+  return routed && /nav|header/i.test(app) && /footer/i.test(app);
+}
+function targetOf(instruction) {
+  return /as (src\/(?:pages|components)\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? /the page file (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
+}
+function hasRealPage(files, file) {
+  const f = files.find((x) => x.path === file);
+  return Boolean(f && f.content.trim().length > 0 && !isPlaceholderFile(f.content));
+}
+function pagesReferencedByRouter(files, known) {
+  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+  const knownFiles = new Set(known.map((p2) => p2.file));
+  const out = [];
+  for (const m of app.matchAll(/from\s+["']@\/pages\/([A-Za-z][\w-]*)(?:\.tsx)?["']/g)) {
+    const name = m[1];
+    const file = `src/pages/${name}.tsx`;
+    if (knownFiles.has(file) || hasRealPage(files, file)) continue;
+    knownFiles.add(file);
+    const slug4 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+    out.push({ route: /^(home|index|landing)$/.test(slug4) ? "/" : `/${slug4}`, file });
+  }
+  return out;
+}
+async function writePlannedPages(args) {
+  let files = args.files;
+  const written = [];
+  const truncated = [];
+  const decomposed = [];
+  const decisions = /* @__PURE__ */ new Map();
+  let calls = 0;
+  const inScope = (instruction, path) => {
+    const want = targetOf(instruction);
+    if (path === want) return true;
+    if (!instruction.startsWith(DECOMPOSED_MARKER)) return false;
+    const dir = /plus its section components in (src\/components\/[^\s/]+)\//.exec(instruction)?.[1];
+    return Boolean(dir && path.startsWith(dir + "/") && /^[\w/-]+\.tsx$/.test(path) && !path.slice(dir.length + 1).includes("/"));
+  };
+  const call = async (instruction) => {
+    calls++;
+    try {
+      const got = (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
+      if (!args.isTruncated) return got;
+      const whole = [];
+      for (const f of got) {
+        let cut = false;
+        try {
+          cut = await args.isTruncated(f);
+        } catch {
+          cut = false;
+        }
+        if (cut) truncated.push(f.path);
+        else whole.push(f);
+      }
+      return whole;
+    } catch {
+      return [];
+    }
+  };
+  const put2 = (got) => {
+    for (const f of got) {
+      if (f.path !== "src/App.tsx" && hasRealPage(files, f.path)) continue;
+      files = [...files.filter((x) => x.path !== f.path), f];
+      written.push(f.path);
+    }
+  };
+  const writePages = async (pages) => {
+    const paths = files.map((f) => f.path);
+    const contract = projectContract(files);
+    const shared = sharedFiles(files, args.pages);
+    const results = await mapBounded(pages, PAGE_CONCURRENCY, (p2) => {
+      const d = args.decide?.(p2, truncated.includes(p2.file));
+      if (d?.decompose) {
+        decisions.set(p2.file, d);
+        return call(decomposedPageInstruction(p2, d, paths, contract, shared));
+      }
+      return call(pageInstruction(p2, paths, contract, shared));
+    });
+    results.forEach(put2);
+  };
+  await writePages(args.pages.filter((p2) => !hasRealPage(files, p2.file)));
+  const retry = args.pages.filter((p2) => !hasRealPage(files, p2.file) && args.budget.take("missing_page", p2.route));
+  if (retry.length) await writePages(retry);
+  for (const [pageFile, d] of decisions) {
+    const page = args.pages.find((p2) => p2.file === pageFile);
+    if (!hasRealPage(files, pageFile)) continue;
+    const missingSecs = missingSections(files, pageFile, d.sectionDir);
+    const todo = missingSecs.filter((f) => args.budget.take("missing_page", f));
+    if (todo.length) {
+      const contract = projectContract(files);
+      const src2 = files.find((f) => f.path === pageFile).content;
+      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src2, contract)));
+      got.forEach(put2);
+    }
+    decomposed.push({
+      file: pageFile,
+      reasons: d.reasons,
+      sections: files.filter((f) => f.path.startsWith(d.sectionDir + "/")).map((f) => f.path)
+    });
+  }
+  const routes = args.pages.filter((p2) => hasRealPage(files, p2.file)).map((p2) => p2.route);
+  const needFrame = !frameIsComplete(files, args.pages.length) || routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete;
+  if (needFrame && args.budget.take("missing_page", "app shell")) {
+    put2(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
+  }
+  const missing = args.pages.filter((p2) => !hasRealPage(files, p2.file)).map((p2) => p2.route);
+  return { files, written, missing, calls, truncated, decomposed };
+}
+async function mapBounded(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
+  return out;
+}
+var DECOMPOSED_MARKER, PAGE_CONCURRENCY;
+var init_write = __esm({
+  "src/server/engine/write.ts"() {
+    init_define_import_meta_env();
+    init_build_state();
+    DECOMPOSED_MARKER = "DECOMPOSED PAGE";
+    PAGE_CONCURRENCY = 4;
+  }
+});
+
+// src/server/context/explore.ts
+var explore_exports = {};
+__export(explore_exports, {
+  exploreProject: () => exploreProject,
+  explorersFor: () => explorersFor
+});
+function explorersFor(args) {
+  if (args.isInitial || args.fileCount === 0) return [];
+  if (args.cls === "LIGHT") return [];
+  const roles = ["structure", "dependency"];
+  if (args.cls !== "STANDARD" || /data|record|table|list|crud|form|auth|login|user|api|backend/i.test(args.request)) roles.push("data");
+  if (args.cls !== "STANDARD" || /design|style|layout|look|theme|colou?r|font|page|section/i.test(args.request)) roles.push("design");
+  return roles;
+}
+function structure(files) {
+  const pages = src(files).filter((f) => /^src\/(pages|routes)\//.test(f.path)).map((f) => f.path);
+  const entry = files.find((f) => /^src\/(main|App)\.tsx$/.test(f.path))?.path;
+  const routes = Array.from((files.find((f) => f.path === "src/App.tsx")?.content ?? "").matchAll(/path=["']([^"']+)["']/g)).map((m) => m[1]);
+  return [
+    entry ? `entry: ${entry}` : "",
+    pages.length ? `pages (${pages.length}): ${pages.slice(0, 10).join(", ")}` : "",
+    routes.length ? `routes: ${routes.slice(0, 14).join(", ")}` : ""
+  ].filter(Boolean);
+}
+function dependency(files) {
+  const all = files;
+  const missing = findMissingNodes(all, all.map((f) => f.path));
+  const shared = sharedModules(all);
+  return [
+    ...missing.map((n) => `MISSING shared module ${n.target} (imported by ${n.importers.map((i) => i.path).join(", ")})`),
+    ...shared.slice(0, 8).map((m) => `shared ${m.path}: ${m.exports.slice(0, 8).join(", ")}`)
+  ];
+}
+function data(files) {
+  const out = [];
+  const types = files.find((f) => f.path === "src/types.ts" || f.path === "src/types/index.ts");
+  if (types) {
+    const names = Array.from(types.content.matchAll(/export\s+(?:interface|type)\s+([A-Z]\w*)/g)).map((m) => m[1]);
+    if (names.length) out.push(`entities: ${names.slice(0, 14).join(", ")}`);
+  }
+  if (files.some((f) => f.path.startsWith("src/integrations/supabase/"))) out.push("backend: connected database client present");
+  const auth = files.find((f) => /auth/i.test(f.path) && /\.(tsx?|jsx?)$/.test(f.path));
+  if (auth) out.push(`auth: ${auth.path}`);
+  return out;
+}
+function design2(files) {
+  const css = files.find((f) => f.path === "src/styles.css" || f.path === "src/index.css");
+  const tokens2 = css ? Array.from(css.content.matchAll(/--([a-z-]+):/g)).map((m) => m[1]).slice(0, 10) : [];
+  const ui = files.filter((f) => f.path.startsWith("src/components/ui/")).length;
+  return [tokens2.length ? `design tokens: ${tokens2.join(", ")}` : "", ui ? `ui kit components: ${ui}` : ""].filter(Boolean);
+}
+async function exploreProject(args) {
+  const roles = explorersFor({ cls: args.cls, isInitial: args.isInitial, request: args.request, fileCount: args.files.length });
+  if (!roles.length) {
+    return { ran: false, skippedReason: args.isInitial ? "first_build" : "light_task", roles, findings: [], block: "" };
+  }
+  const snapshot = Object.freeze(args.files.map((f) => Object.freeze({ ...f })));
+  const results = await Promise.all(roles.map(async (role2) => ({ role: role2, facts: RUN[role2](snapshot) })));
+  const seen = /* @__PURE__ */ new Set();
+  const findings = results.map((r) => ({
+    role: r.role,
+    facts: r.facts.filter((f) => seen.has(f) ? false : (seen.add(f), true)).slice(0, MAX_FACTS)
+  }));
+  const body = findings.filter((f) => f.facts.length).map((f) => `[${f.role}]
+- ${f.facts.join("\n- ")}`).join("\n");
+  return {
+    ran: true,
+    skippedReason: null,
+    roles,
+    findings,
+    block: body ? `
+
+### Project exploration (read-only findings \u2014 verify before relying)
+${body}` : ""
+  };
+}
+var MAX_FACTS, src, RUN;
+var init_explore = __esm({
+  "src/server/context/explore.ts"() {
+    init_define_import_meta_env();
+    init_missing_nodes();
+    init_write();
+    MAX_FACTS = 12;
+    src = (files) => files.filter((f) => /\.(tsx?|jsx?)$/.test(f.path));
+    RUN = { structure, dependency, data, design: design2 };
   }
 });
 
@@ -151605,255 +151947,6 @@ var init_skills = __esm({
   }
 });
 
-// src/server/engine/write.ts
-var write_exports = {};
-__export(write_exports, {
-  DECOMPOSED_MARKER: () => DECOMPOSED_MARKER,
-  PAGE_CONCURRENCY: () => PAGE_CONCURRENCY,
-  decomposedPageInstruction: () => decomposedPageInstruction,
-  frameIsComplete: () => frameIsComplete,
-  mapBounded: () => mapBounded,
-  missingSections: () => missingSections,
-  pageInstruction: () => pageInstruction,
-  pagesReferencedByRouter: () => pagesReferencedByRouter,
-  projectContract: () => projectContract,
-  routerInstruction: () => routerInstruction,
-  sectionInstruction: () => sectionInstruction,
-  sharedFiles: () => sharedFiles,
-  sharedModules: () => sharedModules,
-  targetOf: () => targetOf,
-  writePlannedPages: () => writePlannedPages
-});
-function projectContract(files) {
-  let deps = [];
-  try {
-    const pkg = JSON.parse(files.find((f) => f.path === "package.json")?.content ?? "{}");
-    deps = Object.keys({ ...pkg.dependencies ?? {}, ...pkg.devDependencies ?? {} }).sort();
-  } catch {
-    deps = [];
-  }
-  const ui = files.map((f) => /^src\/components\/ui\/([^/]+)\.tsx$/.exec(f.path)?.[1]).filter((x) => !!x).sort();
-  const hasRouter = files.some((f) => f.path === "src/components/ui/router.tsx");
-  const shared = sharedModules(files);
-  return [
-    `Installed packages (import ONLY these, nothing else): ${deps.join(", ") || "none listed"}.`,
-    ui.length ? `UI primitives available at @/components/ui/<name>: ${ui.join(", ")}. Do not import any other @/components/ui path.` : "",
-    hasRouter ? `Routing: import Link/NavLink/Routes/Route/useLocation from "@/components/ui/router" \u2014 never from "react-router-dom".` : "",
-    "Icons: lucide-react only, and import every icon you use. Page titles/meta: set document.title in an effect \u2014 no helmet libraries.",
-    shared.length ? `Shared app modules (foundation) \u2014 import app data, auth, hooks and types ONLY from these, using exactly these export names:
-${shared.map((m) => `- @/${m.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "")}: ${m.exports.join(", ") || "(default)"}`).join("\n")}
-Do not import any other @/lib, @/hooks, @/contexts, @/data, @/integrations or @/services path. If you need something not listed, define it inside your own file.` : "No shared app modules exist yet: do not import from @/lib, @/hooks, @/contexts, @/data, @/integrations or @/services \u2014 define what you need inside your own file."
-  ].filter(Boolean).join("\n");
-}
-function sharedModules(files) {
-  const out = [];
-  for (const f of files) {
-    if (!/^src\/(lib|hooks|contexts|context|data|services|store|integrations|types)(\/|\.)/.test(f.path)) continue;
-    if (!/\.(tsx?|jsx?)$/.test(f.path) || f.path.startsWith("src/integrations/supabase/")) continue;
-    const names = /* @__PURE__ */ new Set();
-    for (const m of f.content.matchAll(/export\s+(?:declare\s+)?(?:async\s+)?(?:function\*?|const|let|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g)) names.add(m[1]);
-    for (const m of f.content.matchAll(/export\s*\{([^}]*)\}/g)) for (const n of m[1].split(",")) {
-      const k = n.trim().split(/\s+as\s+/).pop().trim();
-      if (k) names.add(k);
-    }
-    out.push({ path: f.path, exports: Array.from(names).slice(0, 40) });
-  }
-  return out.sort((a2, b) => a2.path.localeCompare(b.path));
-}
-function sharedFiles(files, pages) {
-  const pageFiles = new Set(pages.map((p2) => p2.file));
-  return files.map((f) => f.path).filter((p2) => !pageFiles.has(p2) && (p2 === "src/App.tsx" || p2 === "src/styles.css" || p2 === "index.html" || p2 === "package.json" || /^src\/components\/(sections|layout|brand)/.test(p2) || /brand-mark|nav|header|footer/i.test(p2)));
-}
-function pageInstruction(page, deliveredPaths, contract = "", shared = []) {
-  return [
-    `You are writing the "${page.route}" page ONLY.`,
-    `WRITE SCOPE: exactly one file \u2014 write the page as ${page.file} (default export). Nothing else.`,
-    `READ SCOPE: the existing project files listed below. The shared frame (layout, header, footer, colours, logo, router, package.json) already exists and is owned by the frame \u2014 do NOT recreate, restyle or modify it${shared.length ? ` (${shared.join(", ")})` : ""}. The page renders inside that frame, so do not add its own header or footer.`,
-    "Make it a complete, polished page with real content, using the existing design system and brand. Put every section of this page inline in this ONE file \u2014 do not create new component, style or config files.",
-    contract,
-    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
-    "No extra pages."
-  ].filter(Boolean).join("\n");
-}
-function decomposedPageInstruction(page, decision, deliveredPaths, contract = "", shared = []) {
-  return [
-    `${DECOMPOSED_MARKER}: You are writing the "${page.route}" page ONLY, split into coherent units.`,
-    `WRITE SCOPE: the page file ${page.file} (default export) plus its section components in ${decision.sectionDir}/ (one named-export component per file, PascalCase file names). Nothing else.`,
-    `The page file is a thin shell: it imports each section from "@/${decision.sectionDir.replace(/^src\//, "")}/<Name>" and composes them in order. Each section owns one responsibility (e.g. a stats strip, a data table, a form, a detail panel). Put a section's static data inside that section file.`,
-    "Only split along real responsibilities \u2014 3 to 6 sections is typical. Do not create one-use wrapper components, hooks, or config files, and do not move shared UI primitives.",
-    `READ SCOPE: the existing project files listed below. The shared frame (layout, header, footer, colours, logo, router, package.json) already exists \u2014 do NOT recreate or modify it${shared.length ? ` (${shared.join(", ")})` : ""}. The page renders inside that frame, so do not add its own header or footer.`,
-    "Make it a complete, polished page with real content, using the existing design system and brand.",
-    contract,
-    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
-    "No extra pages."
-  ].filter(Boolean).join("\n");
-}
-function sectionInstruction(page, sectionFile, pageSource, contract = "") {
-  const name = sectionFile.split("/").pop().replace(/\.tsx$/, "");
-  return [
-    `You are writing ONE section component for the "${page.route}" page.`,
-    `WRITE SCOPE: exactly one file \u2014 write it as ${sectionFile} exporting \`export function ${name}\`. Nothing else.`,
-    "The page shell below already imports and renders it; match how it is used (props, if any).",
-    contract,
-    `Page shell (${page.file}, do NOT rewrite):
-${pageSource.slice(0, 6e3)}`
-  ].filter(Boolean).join("\n");
-}
-function missingSections(files, pageFile, sectionDir) {
-  const src = files.find((f) => f.path === pageFile)?.content ?? "";
-  const alias = "@/" + sectionDir.replace(/^src\//, "");
-  const out = [];
-  for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) {
-    const spec = m[1];
-    if (!spec.startsWith(alias + "/")) continue;
-    const file = `src/${spec.slice(2).replace(/\.tsx$/, "")}.tsx`;
-    if (!files.some((f) => f.path === file && f.content.trim()) && !out.includes(file)) out.push(file);
-  }
-  return out;
-}
-function routerInstruction(pages, deliveredPaths, contract = "") {
-  return [
-    "You own the SHARED FRAME. Write ONLY src/App.tsx. One file in this call \u2014 nothing else.",
-    `It must route exactly these pages: ${pages.map((p2) => `"${p2.route}" -> ${p2.file}`).join(", ")}.`,
-    "It must contain the shared layout every page renders inside: a header with the brand and navigation to every page, and a footer. Use existing header/nav/footer components from the list below if present; otherwise define them inside src/App.tsx.",
-    contract,
-    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
-    "No extra pages."
-  ].filter(Boolean).join("\n");
-}
-function frameIsComplete(files, pageCount = 2) {
-  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
-  if (!app.trim() || isPlaceholderFile(app)) return false;
-  const routed = pageCount <= 1 || /<Routes\b|createBrowserRouter|<Route\b/.test(app);
-  return routed && /nav|header/i.test(app) && /footer/i.test(app);
-}
-function targetOf(instruction) {
-  return /as (src\/(?:pages|components)\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? /the page file (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
-}
-function hasRealPage(files, file) {
-  const f = files.find((x) => x.path === file);
-  return Boolean(f && f.content.trim().length > 0 && !isPlaceholderFile(f.content));
-}
-function pagesReferencedByRouter(files, known) {
-  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
-  const knownFiles = new Set(known.map((p2) => p2.file));
-  const out = [];
-  for (const m of app.matchAll(/from\s+["']@\/pages\/([A-Za-z][\w-]*)(?:\.tsx)?["']/g)) {
-    const name = m[1];
-    const file = `src/pages/${name}.tsx`;
-    if (knownFiles.has(file) || hasRealPage(files, file)) continue;
-    knownFiles.add(file);
-    const slug4 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-    out.push({ route: /^(home|index|landing)$/.test(slug4) ? "/" : `/${slug4}`, file });
-  }
-  return out;
-}
-async function writePlannedPages(args) {
-  let files = args.files;
-  const written = [];
-  const truncated = [];
-  const decomposed = [];
-  const decisions = /* @__PURE__ */ new Map();
-  let calls = 0;
-  const inScope = (instruction, path) => {
-    const want = targetOf(instruction);
-    if (path === want) return true;
-    if (!instruction.startsWith(DECOMPOSED_MARKER)) return false;
-    const dir = /plus its section components in (src\/components\/[^\s/]+)\//.exec(instruction)?.[1];
-    return Boolean(dir && path.startsWith(dir + "/") && /^[\w/-]+\.tsx$/.test(path) && !path.slice(dir.length + 1).includes("/"));
-  };
-  const call = async (instruction) => {
-    calls++;
-    try {
-      const got = (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
-      if (!args.isTruncated) return got;
-      const whole = [];
-      for (const f of got) {
-        let cut = false;
-        try {
-          cut = await args.isTruncated(f);
-        } catch {
-          cut = false;
-        }
-        if (cut) truncated.push(f.path);
-        else whole.push(f);
-      }
-      return whole;
-    } catch {
-      return [];
-    }
-  };
-  const put2 = (got) => {
-    for (const f of got) {
-      if (f.path !== "src/App.tsx" && hasRealPage(files, f.path)) continue;
-      files = [...files.filter((x) => x.path !== f.path), f];
-      written.push(f.path);
-    }
-  };
-  const writePages = async (pages) => {
-    const paths = files.map((f) => f.path);
-    const contract = projectContract(files);
-    const shared = sharedFiles(files, args.pages);
-    const results = await mapBounded(pages, PAGE_CONCURRENCY, (p2) => {
-      const d = args.decide?.(p2, truncated.includes(p2.file));
-      if (d?.decompose) {
-        decisions.set(p2.file, d);
-        return call(decomposedPageInstruction(p2, d, paths, contract, shared));
-      }
-      return call(pageInstruction(p2, paths, contract, shared));
-    });
-    results.forEach(put2);
-  };
-  await writePages(args.pages.filter((p2) => !hasRealPage(files, p2.file)));
-  const retry = args.pages.filter((p2) => !hasRealPage(files, p2.file) && args.budget.take("missing_page", p2.route));
-  if (retry.length) await writePages(retry);
-  for (const [pageFile, d] of decisions) {
-    const page = args.pages.find((p2) => p2.file === pageFile);
-    if (!hasRealPage(files, pageFile)) continue;
-    const missingSecs = missingSections(files, pageFile, d.sectionDir);
-    const todo = missingSecs.filter((f) => args.budget.take("missing_page", f));
-    if (todo.length) {
-      const contract = projectContract(files);
-      const src = files.find((f) => f.path === pageFile).content;
-      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src, contract)));
-      got.forEach(put2);
-    }
-    decomposed.push({
-      file: pageFile,
-      reasons: d.reasons,
-      sections: files.filter((f) => f.path.startsWith(d.sectionDir + "/")).map((f) => f.path)
-    });
-  }
-  const routes = args.pages.filter((p2) => hasRealPage(files, p2.file)).map((p2) => p2.route);
-  const needFrame = !frameIsComplete(files, args.pages.length) || routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete;
-  if (needFrame && args.budget.take("missing_page", "app shell")) {
-    put2(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
-  }
-  const missing = args.pages.filter((p2) => !hasRealPage(files, p2.file)).map((p2) => p2.route);
-  return { files, written, missing, calls, truncated, decomposed };
-}
-async function mapBounded(items, limit, fn) {
-  const out = new Array(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i]);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
-  return out;
-}
-var DECOMPOSED_MARKER, PAGE_CONCURRENCY;
-var init_write = __esm({
-  "src/server/engine/write.ts"() {
-    init_define_import_meta_env();
-    init_build_state();
-    DECOMPOSED_MARKER = "DECOMPOSED PAGE";
-    PAGE_CONCURRENCY = 4;
-  }
-});
-
 // src/lib/failure-classification.ts
 var failure_classification_exports = {};
 __export(failure_classification_exports, {
@@ -152098,8 +152191,8 @@ async function callRepair(system, user, maxTokens, mode, meta) {
     }
     return null;
   }
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content ?? null;
+  const data2 = await resp.json();
+  return data2.choices?.[0]?.message?.content ?? null;
 }
 async function createMissingModule(node, context, meta) {
   const { requiredExports: requiredExports2 } = await Promise.resolve().then(() => (init_missing_nodes(), missing_nodes_exports));
@@ -152224,8 +152317,8 @@ function routesGate(files, requestedRoutes, opts = {}) {
   const byPath = new Map(files.map((f) => [f.path, f.content]));
   for (const r of map.routes) {
     if (!r.file) {
-      const src = map.routerFile ? byPath.get(map.routerFile) ?? "" : "";
-      const declaredInline = new RegExp(`(function|const)\\s+${r.component}\\b`).test(src);
+      const src2 = map.routerFile ? byPath.get(map.routerFile) ?? "" : "";
+      const declaredInline = new RegExp(`(function|const)\\s+${r.component}\\b`).test(src2);
       if (!declaredInline) {
         reasons.push(`route ${r.path} renders ${r.component}, which is not imported`);
         if (map.routerFile) bad.push(map.routerFile);
@@ -152383,8 +152476,8 @@ function missingReachableDeps(files, entry = "src/main.tsx") {
   const needed = /* @__PURE__ */ new Set();
   while (queue.length) {
     const path = queue.shift();
-    const src = byPath.get(path)?.content ?? "";
-    for (const m of src.matchAll(IMPORT_RE7)) {
+    const src2 = byPath.get(path)?.content ?? "";
+    for (const m of src2.matchAll(IMPORT_RE7)) {
       const spec = m[1] ?? m[2] ?? m[3];
       if (!spec || /\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
       if (spec.startsWith("@/") || spec.startsWith(".")) {
@@ -152642,17 +152735,17 @@ function isTokenUtility(match) {
   const parts = match.split("-");
   return parts.some((p2) => ALLOWED_TOKENS.has(p2));
 }
-function stripNoise5(src) {
-  return src.replace(/^import[\s\S]*?from\s+["'][^"']+["'];?$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\bd="[^"]*"/g, "");
+function stripNoise5(src2) {
+  return src2.replace(/^import[\s\S]*?from\s+["'][^"']+["'];?$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/\bd="[^"]*"/g, "");
 }
-function firstMatch(re, src) {
+function firstMatch(re, src2) {
   re.lastIndex = 0;
-  const m = re.exec(src);
+  const m = re.exec(src2);
   return m ? m[0] : void 0;
 }
-function lintDesignSystem(files, design2, opts = {}) {
+function lintDesignSystem(files, design3, opts = {}) {
   const findings = [];
-  if (!design2) return { findings, errorCount: 0, warningCount: 0, ok: true };
+  if (!design3) return { findings, errorCount: 0, warningCount: 0, ok: true };
   const skip = opts.skip ?? ((p2) => /(^|\/)(components\/ui|node_modules)\//.test(p2));
   const stylesFile = files.find((f) => /src\/(styles|index)\.css$/.test(f.path));
   if (stylesFile) {
@@ -152668,7 +152761,7 @@ function lintDesignSystem(files, design2, opts = {}) {
         message: `Design tokens missing from the stylesheet: ${missing.join(", ")}. Write the committed :root block.`
       });
     }
-    if (design2.package) {
+    if (design3.package) {
       const a2 = css.indexOf(TOKENS_START);
       const b = css.indexOf(TOKENS_END);
       if (a2 < 0 || b < a2) {
@@ -152676,11 +152769,11 @@ function lintDesignSystem(files, design2, opts = {}) {
           path: stylesFile.path,
           rule: "package/tokens-block",
           severity: "error",
-          message: `The ${design2.package.systemId} design-system token block is missing or broken. It is installed by Kimble \u2014 do not edit or remove it.`
+          message: `The ${design3.package.systemId} design-system token block is missing or broken. It is installed by Kimble \u2014 do not edit or remove it.`
         });
       }
     }
-    for (const font of [design2.typography.displayFont, design2.typography.bodyFont]) {
+    for (const font of [design3.typography.displayFont, design3.typography.bodyFont]) {
       if (font && !css.includes(font) && !files.some((f) => f.content.includes(font))) {
         findings.push({
           path: stylesFile.path,
@@ -152693,8 +152786,8 @@ function lintDesignSystem(files, design2, opts = {}) {
   }
   for (const file of files) {
     if (!CODE_EXT4.test(file.path) || skip(file.path)) continue;
-    const src = stripNoise5(file.content);
-    const rawColors = (src.match(RAW_COLOR_UTILITY) ?? []).filter((m) => !isTokenUtility(m));
+    const src2 = stripNoise5(file.content);
+    const rawColors = (src2.match(RAW_COLOR_UTILITY) ?? []).filter((m) => !isTokenUtility(m));
     if (rawColors.length) {
       findings.push({
         path: file.path,
@@ -152704,7 +152797,7 @@ function lintDesignSystem(files, design2, opts = {}) {
         sample: Array.from(new Set(rawColors)).slice(0, 6).join(", ")
       });
     }
-    const hexes = src.match(HEX_COLOR) ?? [];
+    const hexes = src2.match(HEX_COLOR) ?? [];
     if (hexes.length) {
       findings.push({
         path: file.path,
@@ -152714,7 +152807,7 @@ function lintDesignSystem(files, design2, opts = {}) {
         sample: Array.from(new Set(hexes)).slice(0, 6).join(", ")
       });
     }
-    if (INLINE_STYLE_COLOR.test(src)) {
+    if (INLINE_STYLE_COLOR.test(src2)) {
       findings.push({
         path: file.path,
         rule: "color/inline-style",
@@ -152722,7 +152815,7 @@ function lintDesignSystem(files, design2, opts = {}) {
         message: "Inline style colour found. Colours belong to the token layer."
       });
     }
-    const arbitraryFont = firstMatch(ARBITRARY_FONT, src);
+    const arbitraryFont = firstMatch(ARBITRARY_FONT, src2);
     if (arbitraryFont) {
       findings.push({
         path: file.path,
@@ -152731,7 +152824,7 @@ function lintDesignSystem(files, design2, opts = {}) {
         message: `Arbitrary font utility "${arbitraryFont}" bypasses the committed type system.`
       });
     }
-    if (/<button\b/.test(src) && !/focus-visible:/.test(src) && !/className=\{?\s*cn\(/.test(src)) {
+    if (/<button\b/.test(src2) && !/focus-visible:/.test(src2) && !/className=\{?\s*cn\(/.test(src2)) {
       findings.push({
         path: file.path,
         rule: "a11y/focus-visible",
@@ -152739,7 +152832,7 @@ function lintDesignSystem(files, design2, opts = {}) {
         message: "Bare <button> without a focus-visible style. Use the Button component or add a focus ring."
       });
     }
-    if (/<img\b(?![^>]*\balt=)/.test(src)) {
+    if (/<img\b(?![^>]*\balt=)/.test(src2)) {
       findings.push({
         path: file.path,
         rule: "a11y/img-alt",
@@ -154331,22 +154424,22 @@ init_circuit_breaker();
 
 // src/server/tool-args-salvage.server.ts
 init_define_import_meta_env();
-function collectArrayElements(src, openBracket) {
+function collectArrayElements(src2, openBracket) {
   const out = [];
   let i = openBracket + 1;
-  const n = src.length;
+  const n = src2.length;
   while (i < n) {
-    while (i < n && /[\s,]/.test(src[i])) i++;
+    while (i < n && /[\s,]/.test(src2[i])) i++;
     if (i >= n) break;
-    if (src[i] === "]") break;
-    if (src[i] !== "{") break;
+    if (src2[i] === "]") break;
+    if (src2[i] !== "{") break;
     const start = i;
     let depth = 0;
     let inString = false;
     let escaped = false;
     let closed = false;
     for (; i < n; i++) {
-      const ch = src[i];
+      const ch = src2[i];
       if (inString) {
         if (escaped) escaped = false;
         else if (ch === "\\") escaped = true;
@@ -154365,22 +154458,22 @@ function collectArrayElements(src, openBracket) {
       }
     }
     if (!closed) break;
-    out.push(src.slice(start, i));
+    out.push(src2.slice(start, i));
   }
   return out;
 }
-function extractStringField(src, key) {
+function extractStringField(src2, key) {
   const marker = `"${key}"`;
-  const at = src.indexOf(marker);
+  const at = src2.indexOf(marker);
   if (at === -1) return void 0;
   let i = at + marker.length;
-  while (i < src.length && /[\s:]/.test(src[i])) i++;
-  if (src[i] !== '"') return void 0;
+  while (i < src2.length && /[\s:]/.test(src2[i])) i++;
+  if (src2[i] !== '"') return void 0;
   const start = i;
   i++;
   let escaped = false;
-  for (; i < src.length; i++) {
-    const ch = src[i];
+  for (; i < src2.length; i++) {
+    const ch = src2[i];
     if (escaped) {
       escaped = false;
       continue;
@@ -154388,7 +154481,7 @@ function extractStringField(src, key) {
     if (ch === "\\") escaped = true;
     else if (ch === '"') {
       try {
-        return JSON.parse(src.slice(start, i + 1));
+        return JSON.parse(src2.slice(start, i + 1));
       } catch {
         return void 0;
       }
@@ -154972,12 +155065,6 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
 
-// src/server/builder.server.ts
-init_source_escape_fixer_server();
-init_import_syntax_fixer_server();
-init_jsx_attr_literal_fixer_server();
-init_markdown_fence_fixer_server();
-
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
 var BRAND_MARK_PATH = "src/components/brand-mark.tsx";
@@ -155188,7 +155275,7 @@ function ensureFavicon(html, initials, brand, primary, glyph) {
 function ensureBrandMarkWired(files) {
   const notes = [];
   const MODULE = "@/components/brand-mark";
-  const usesTag = (src) => /<BrandMark[\s/>]/.test(stripNoise(src));
+  const usesTag = (src2) => /<BrandMark[\s/>]/.test(stripNoise(src2));
   const referenced = files.some(
     (f) => /\.(tsx|jsx)$/.test(f.path) && f.path !== BRAND_MARK_PATH && (usesTag(f.content) || f.content.includes(MODULE))
   );
@@ -155217,11 +155304,11 @@ function ensureBrandMarkWired(files) {
   if (wired > 0) notes.push(`brand-identity: wired <BrandMark/> import into ${wired} file(s)`);
   return { files: next, notes };
 }
-function stripNoise(src) {
-  return src.replace(/\/\/[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/`(?:\\[\s\S]|\$\{[\s\S]*?\}|[^`\\])*`/g, " ").replace(/"(?:\\[\s\S]|[^"\\])*"/g, " ").replace(/'(?:\\[\s\S]|[^'\\])*'/g, " ");
+function stripNoise(src2) {
+  return src2.replace(/\/\/[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/`(?:\\[\s\S]|\$\{[\s\S]*?\}|[^`\\])*`/g, " ").replace(/"(?:\\[\s\S]|[^"\\])*"/g, " ").replace(/'(?:\\[\s\S]|[^'\\])*'/g, " ");
 }
-function isBrandMarkDeclared(src) {
-  const clean = stripNoise(src);
+function isBrandMarkDeclared(src2) {
+  const clean = stripNoise(src2);
   if (/(?:const|let|var|function|class)\s+BrandMark\b/.test(clean)) return true;
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]*)\})?[^;\n]*from/g;
   let m;
@@ -155236,27 +155323,27 @@ function isBrandMarkDeclared(src) {
   }
   return false;
 }
-function injectBrandMarkImport(src) {
+function injectBrandMarkImport(src2) {
   const line = `import { BrandMark } from "@/components/brand-mark";
 `;
   const importRe = /^import[^\n]*\n/gm;
   let lastEnd = 0;
   let m;
-  while (m = importRe.exec(src)) lastEnd = m.index + m[0].length;
-  if (lastEnd === 0) return line + src;
-  return src.slice(0, lastEnd) + line + src.slice(lastEnd);
+  while (m = importRe.exec(src2)) lastEnd = m.index + m[0].length;
+  if (lastEnd === 0) return line + src2;
+  return src2.slice(0, lastEnd) + line + src2.slice(lastEnd);
 }
-function injectNamedImport(src, name, module) {
-  if (new RegExp(`from\\s+["']${module.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`).test(src)) {
-    return src;
+function injectNamedImport(src2, name, module) {
+  if (new RegExp(`from\\s+["']${module.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`).test(src2)) {
+    return src2;
   }
   const line = `import { ${name} } from "${module}";
 `;
   const importRe = /^import[^\n]*\n/gm;
   let lastEnd = 0;
   let match;
-  while (match = importRe.exec(src)) lastEnd = match.index + match[0].length;
-  return src.slice(0, lastEnd) + line + src.slice(lastEnd);
+  while (match = importRe.exec(src2)) lastEnd = match.index + match[0].length;
+  return src2.slice(0, lastEnd) + line + src2.slice(lastEnd);
 }
 function ensureVisibleLogoPlacement(files) {
   const logoFile = files.find(
@@ -155548,14 +155635,14 @@ reg("toggle", ["Toggle"]);
 reg("toggle-group", ["ToggleGroup", "ToggleGroupItem"]);
 reg("tooltip", ["Tooltip", "TooltipTrigger", "TooltipContent", "TooltipProvider"]);
 var SCANNABLE = /\.(tsx?|jsx?)$/;
-function stripNoise2(src) {
-  return src.replace(/\/\/[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/`(?:\\[\s\S]|\$\{[\s\S]*?\}|[^`\\])*`/g, " ").replace(/"(?:\\[\s\S]|[^"\\])*"/g, " ").replace(/'(?:\\[\s\S]|[^'\\])*'/g, " ");
+function stripNoise2(src2) {
+  return src2.replace(/\/\/[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/`(?:\\[\s\S]|\$\{[\s\S]*?\}|[^`\\])*`/g, " ").replace(/"(?:\\[\s\S]|[^"\\])*"/g, " ").replace(/'(?:\\[\s\S]|[^'\\])*'/g, " ");
 }
-function collectDeclared(src) {
+function collectDeclared(src2) {
   const declared = /* @__PURE__ */ new Set(["Fragment", "StrictMode", "Suspense", "Profiler", "Children"]);
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]+)\})?\s*(?:,?\s*\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
   let m;
-  while (m = importRe.exec(src)) {
+  while (m = importRe.exec(src2)) {
     if (m[1]) declared.add(m[1]);
     if (m[3]) declared.add(m[3]);
     if (m[2]) for (const part of m[2].split(",")) {
@@ -155564,7 +155651,7 @@ function collectDeclared(src) {
     }
   }
   const declRe = /(?:^|\n)\s*(?:export\s+)?(?:default\s+)?(?:const|let|var|function|class)\s+([A-Z][A-Za-z0-9_]*)/g;
-  while (m = declRe.exec(src)) declared.add(m[1]);
+  while (m = declRe.exec(src2)) declared.add(m[1]);
   return declared;
 }
 function collectUsedJsxTags(clean) {
@@ -155586,28 +155673,28 @@ function collectUsedJsxTags(clean) {
   }
   return tags;
 }
-function injectImport(src, module, name) {
+function injectImport(src2, module, name) {
   const existing = new RegExp(
     `import\\s*\\{([^}]*)\\}\\s*from\\s*["']${module.replace(/[.*+?^${}()|[\\]/g, "\\$&")}["']\\s*;?`
   );
-  const match = src.match(existing);
+  const match = src2.match(existing);
   if (match) {
     const names = match[1].split(",").map((s) => s.trim()).filter(Boolean);
-    if (names.includes(name)) return src;
+    if (names.includes(name)) return src2;
     names.push(name);
     const replacement = `import { ${names.join(", ")} } from "${module}";`;
-    return src.replace(existing, replacement);
+    return src2.replace(existing, replacement);
   }
   const importRe = /^import[^\n]*\n/gm;
   let lastEnd = 0;
   let m;
-  while (m = importRe.exec(src)) {
+  while (m = importRe.exec(src2)) {
     lastEnd = m.index + m[0].length;
   }
   const line = `import { ${name} } from "${module}";
 `;
-  if (lastEnd === 0) return line + src;
-  return src.slice(0, lastEnd) + line + src.slice(lastEnd);
+  if (lastEnd === 0) return line + src2;
+  return src2.slice(0, lastEnd) + line + src2.slice(lastEnd);
 }
 function fixMissingShadcnImports(files) {
   const fixes = [];
@@ -155616,12 +155703,12 @@ function fixMissingShadcnImports(files) {
     if (file.path.startsWith("src/components/ui/") || file.path.startsWith("src/integrations/")) {
       return file;
     }
-    const src = file.content;
-    if (!src.includes("<")) return file;
-    const clean = stripNoise2(src);
+    const src2 = file.content;
+    if (!src2.includes("<")) return file;
+    const clean = stripNoise2(src2);
     const used = collectUsedJsxTags(clean);
     if (used.size === 0) return file;
-    const declared = collectDeclared(src);
+    const declared = collectDeclared(src2);
     const toAdd = [];
     for (const name of used) {
       if (declared.has(name)) continue;
@@ -155630,7 +155717,7 @@ function fixMissingShadcnImports(files) {
       toAdd.push({ name, module });
     }
     if (toAdd.length === 0) return file;
-    let content = src;
+    let content = src2;
     const added = [];
     for (const { name, module } of toAdd) {
       const next = injectImport(content, module, name);
@@ -155673,15 +155760,15 @@ var ARRAY_METHODS = [
   "concat",
   "length"
 ];
-function collectUnsafeIdents(src) {
+function collectUnsafeIdents(src2) {
   const idents = /* @__PURE__ */ new Set();
   const useStateRe = /const\s*\[\s*([A-Za-z_$][\w$]*)\s*,\s*set[A-Z]\w*\s*\]\s*=\s*useState\s*(?:<[^>]*>)?\s*\(\s*(undefined|null)?\s*\)/g;
   let m;
-  while (m = useStateRe.exec(src)) {
+  while (m = useStateRe.exec(src2)) {
     idents.add(m[1]);
   }
   const queryRe = /const\s*\{\s*([^}]+?)\s*\}\s*=\s*(?:useQuery|useSuspenseQuery|useInfiniteQuery|useLoaderData)\b/g;
-  while (m = queryRe.exec(src)) {
+  while (m = queryRe.exec(src2)) {
     for (const part of m[1].split(",")) {
       const t = part.trim();
       if (!t) continue;
@@ -155694,7 +155781,7 @@ function collectUnsafeIdents(src) {
     }
   }
   const supabaseRe = /const\s*\{\s*([^}]+?)\s*\}\s*=\s*await\s+supabase\b/g;
-  while (m = supabaseRe.exec(src)) {
+  while (m = supabaseRe.exec(src2)) {
     for (const part of m[1].split(",")) {
       const t = part.trim();
       const alias = /^data\s*:\s*([A-Za-z_$][\w$]*)/.exec(t);
@@ -155703,7 +155790,7 @@ function collectUnsafeIdents(src) {
     }
   }
   const propsRe = /(?:function\s+[A-Z]\w*\s*\(|const\s+[A-Z]\w*\s*[:=][^=]*?=\s*\(|\(\s*)\{\s*([^}]+?)\s*\}\s*(?::\s*[^)=]+)?\s*\)\s*(?:=>|\{)/g;
-  while (m = propsRe.exec(src)) {
+  while (m = propsRe.exec(src2)) {
     for (const raw of m[1].split(",")) {
       const part = raw.trim();
       if (!part || part.startsWith("...")) continue;
@@ -155717,9 +155804,9 @@ function collectUnsafeIdents(src) {
   }
   return idents;
 }
-function rewriteFile(src, idents) {
-  if (idents.size === 0) return { src, rewrites: 0 };
-  let out = src;
+function rewriteFile(src2, idents) {
+  if (idents.size === 0) return { src: src2, rewrites: 0 };
+  let out = src2;
   let rewrites = 0;
   const methodAlt = ARRAY_METHODS.join("|");
   for (const id of idents) {
@@ -155742,15 +155829,15 @@ function fixArraySafety(files) {
       return f;
     }
     const idents = collectUnsafeIdents(f.content);
-    let src = f.content;
+    let src2 = f.content;
     let rewrites = 0;
     if (idents.size > 0) {
-      const r = rewriteFile(src, idents);
-      src = r.src;
+      const r = rewriteFile(src2, idents);
+      src2 = r.src;
       rewrites += r.rewrites;
     }
     const jsxRe = /(\{|\{\s)([A-Za-z_$][\w$]*)\.(map|filter|forEach|reduce|some|every|find|flatMap|slice|sort)\(/g;
-    src = src.replace(jsxRe, (_m, lead, id, method) => {
+    src2 = src2.replace(jsxRe, (_m, lead, id, method) => {
       if (["Array", "Object", "JSON", "Math", "React", "console"].includes(id)) {
         return _m;
       }
@@ -155759,7 +155846,7 @@ function fixArraySafety(files) {
     });
     if (rewrites === 0) return f;
     fixes.push({ path: f.path, identifiers: [...idents], rewrites });
-    return { ...f, content: src };
+    return { ...f, content: src2 };
   });
   return { files: next, fixes };
 }
@@ -155874,10 +155961,10 @@ function repairUnresolvedImports(files) {
   const stubsCreated = [];
   for (const f of files) {
     if (!SCANNABLE3.test(f.path)) continue;
-    let src = byPath.get(f.path) ?? f.content;
+    let src2 = byPath.get(f.path) ?? f.content;
     let changed = false;
     const matches = [];
-    src.replace(IMPORT_RE, (full, _lead, spec) => {
+    src2.replace(IMPORT_RE, (full, _lead, spec) => {
       matches.push({ full, spec });
       return full;
     });
@@ -155893,7 +155980,7 @@ function repairUnresolvedImports(files) {
             new RegExp(`(["'])${spec.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\1`),
             `"${aliasForm}"`
           );
-          src = src.replace(full, newLine);
+          src2 = src2.replace(full, newLine);
           rewrites.push({ path: f.path, from: spec, to: aliasForm });
           changed = true;
         }
@@ -155906,7 +155993,7 @@ function repairUnresolvedImports(files) {
           new RegExp(`(["'])${spec.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\1`),
           `"${newSpec}"`
         );
-        src = src.replace(full, newLine);
+        src2 = src2.replace(full, newLine);
         rewrites.push({ path: f.path, from: spec, to: newSpec });
         changed = true;
         continue;
@@ -155922,7 +156009,7 @@ function repairUnresolvedImports(files) {
       byPath.set(stubPath, stub);
       stubsCreated.push(stubPath);
     }
-    if (changed) byPath.set(f.path, src);
+    if (changed) byPath.set(f.path, src2);
   }
   return {
     files: Array.from(byPath, ([path, content]) => ({ path, content })),
@@ -156099,9 +156186,9 @@ function repairBareImports(files) {
     if (!SCANNABLE4.test(file.path)) continue;
     if (isBuildConfig(file.path)) continue;
     if (isScaffoldOwnedPath(file.path)) continue;
-    let src = byPath.get(file.path) ?? file.content;
+    let src2 = byPath.get(file.path) ?? file.content;
     const hits = [];
-    src.replace(IMPORT_RE2, (full, _lead, _indent, importChunk, spec) => {
+    src2.replace(IMPORT_RE2, (full, _lead, _indent, importChunk, spec) => {
       hits.push({ full, importChunk, spec });
       return full;
     });
@@ -156111,9 +156198,9 @@ function repairBareImports(files) {
       const aliased = PACKAGE_ALIASES[spec];
       if (aliased) {
         const newLine = rewriteSpec(full, spec, aliased);
-        const at = src.indexOf(full, cursor);
+        const at = src2.indexOf(full, cursor);
         if (at >= 0) {
-          src = src.slice(0, at) + newLine + src.slice(at + full.length);
+          src2 = src2.slice(0, at) + newLine + src2.slice(at + full.length);
           cursor = at + newLine.length;
           result.rewrites.push({ path: file.path, from: spec, to: aliased });
         }
@@ -156123,15 +156210,15 @@ function repairBareImports(files) {
       const fromReactIcons = spec.startsWith("react-icons/");
       if (fromReactIcons && pkg === "lucide-react" && importChunk) {
         const names = parseNamedImports(importChunk);
-        const { content: nextSrc, replaced } = rewriteReactIconsUsage(src, names);
-        src = nextSrc;
+        const { content: nextSrc, replaced } = rewriteReactIconsUsage(src2, names);
+        src2 = nextSrc;
         const newNames = names.map((n) => replaced.get(n) ?? n);
         const dedupedNames = Array.from(new Set(newNames));
-        const importedLine = src.match(
+        const importedLine = src2.match(
           new RegExp(`import\\s+\\{[^}]+\\}\\s+from\\s+["']${pkg}["']\\s*;?`)
         );
         if (importedLine) {
-          src = src.replace(
+          src2 = src2.replace(
             importedLine[0],
             `import { ${dedupedNames.join(", ")} } from "${pkg}";`
           );
@@ -156142,8 +156229,8 @@ function repairBareImports(files) {
       }
       if (pkg === "lucide-react" && importChunk && !fromReactIcons) {
         const names = parseNamedImports(importChunk);
-        const { content: nextSrc, fixes } = repairLucideIcons(src, names);
-        src = nextSrc;
+        const { content: nextSrc, fixes } = repairLucideIcons(src2, names);
+        src2 = nextSrc;
         if (fixes.length) {
           for (const fix of fixes) {
             result.iconFixes.push({ path: file.path, from: fix.from, to: fix.to });
@@ -156153,11 +156240,11 @@ function repairBareImports(files) {
             return fix ? fix.to : n;
           });
           const dedupedCorrected = Array.from(new Set(corrected));
-          const importedLine = src.match(
+          const importedLine = src2.match(
             new RegExp(`import\\s+\\{[^}]+\\}\\s+from\\s+["']lucide-react["']\\s*;?`)
           );
           if (importedLine) {
-            src = src.replace(
+            src2 = src2.replace(
               importedLine[0],
               `import { ${dedupedCorrected.join(", ")} } from "lucide-react";`
             );
@@ -156185,14 +156272,14 @@ function repairBareImports(files) {
         }
         continue;
       }
-      const currentLine = src.includes(full) ? full : src.match(
+      const currentLine = src2.includes(full) ? full : src2.match(
         new RegExp(
           `\\n?[ \\t]*import[^\\n]*["']${effectiveSpec.replace(/[.*+?^${}()|[\\]]/g, "\\$&")}["'][^\\n]*\\n`
         )
       )?.[0];
       if (currentLine) {
-        src = shimImport(
-          src,
+        src2 = shimImport(
+          src2,
           currentLine,
           `package "${pkg}" is not in Kimble's allow-list`,
           pkg
@@ -156200,7 +156287,7 @@ function repairBareImports(files) {
         result.stripped.push({ path: file.path, spec });
       }
     }
-    byPath.set(file.path, src);
+    byPath.set(file.path, src2);
   }
   if (Object.keys(result.addedDeps).length > 0) {
     if (!pkgJson) pkgJson = { name: "petal-app", private: true, type: "module" };
@@ -156449,25 +156536,25 @@ init_impact_graph_server();
 
 // src/server/verify-plan.server.ts
 init_scaffold_ownership_server();
-function collectJsxRoutes(src) {
+function collectJsxRoutes(src2) {
   const out = [];
   const stack = [];
-  for (let i = 0; i < src.length; i++) {
-    if (src[i] !== "<") continue;
-    if (src.startsWith("</Route", i)) {
-      const gt = src.indexOf(">", i);
+  for (let i = 0; i < src2.length; i++) {
+    if (src2[i] !== "<") continue;
+    if (src2.startsWith("</Route", i)) {
+      const gt = src2.indexOf(">", i);
       if (gt === -1) break;
       stack.pop();
       i = gt;
       continue;
     }
-    if (!/^<Route\b/.test(src.slice(i, i + 7))) continue;
+    if (!/^<Route\b/.test(src2.slice(i, i + 7))) continue;
     let j = i + 6;
     let depth = 0;
     let quote = null;
     let end = -1;
-    for (; j < src.length; j++) {
-      const c = src[j];
+    for (; j < src2.length; j++) {
+      const c = src2[j];
       if (quote) {
         if (c === quote) quote = null;
         continue;
@@ -156481,7 +156568,7 @@ function collectJsxRoutes(src) {
       }
     }
     if (end === -1) break;
-    const attrs = src.slice(i + 6, end);
+    const attrs = src2.slice(i + 6, end);
     const selfClosing = attrs.trimEnd().endsWith("/");
     const pm = /\bpath\s*=\s*(?:["']([^"']*)["']|\{\s*["']([^"']*)["']\s*\})/.exec(attrs);
     const isIndex = /\bindex\b/.test(attrs) && !pm;
@@ -156805,18 +156892,18 @@ function kebab(name) {
 function titleize(name) {
   return name.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
 }
-function exportedComponent(src, fallback) {
-  const named = src.match(
+function exportedComponent(src2, fallback) {
+  const named = src2.match(
     /export\s+(?:default\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9_]*)/
   );
   if (named?.[1]) return named[1];
-  if (/export\s+default\s/.test(src)) return fallback;
+  if (/export\s+default\s/.test(src2)) return fallback;
   return null;
 }
-function isDefaultExport(src, component) {
-  if (new RegExp(`export\\s+default\\s+(function|class)\\s+${component}\\b`).test(src)) return true;
-  if (new RegExp(`export\\s+default\\s+${component}\\s*;`).test(src)) return true;
-  return /export\s+default\s/.test(src) && !new RegExp(`export\\s+(const|function|class)\\s+${component}\\b`).test(src);
+function isDefaultExport(src2, component) {
+  if (new RegExp(`export\\s+default\\s+(function|class)\\s+${component}\\b`).test(src2)) return true;
+  if (new RegExp(`export\\s+default\\s+${component}\\s*;`).test(src2)) return true;
+  return /export\s+default\s/.test(src2) && !new RegExp(`export\\s+(const|function|class)\\s+${component}\\b`).test(src2);
 }
 function wireOrphanPages(files) {
   const notes = [];
@@ -156906,8 +156993,8 @@ var PLACEHOLDER_TEXT2 = /\b(placeholder|coming soon|todo|lorem ipsum|under const
 function normalizedName(raw) {
   return raw.replace(/[_\s]+/g, "-").toLowerCase();
 }
-function looksEmpty(src) {
-  const body = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+function looksEmpty(src2) {
+  const body = src2.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
   const jsxTags = (body.match(/<[A-Za-z][^>]*>/g) ?? []).length;
   const visibleText = body.match(/>([^<>{}]{3,})</g)?.map((s) => s.slice(1, -1).trim()).filter(Boolean) ?? [];
   if (PLACEHOLDER_TEXT2.test(visibleText.join(" "))) return true;
@@ -156968,19 +157055,19 @@ function resolve(fromPath, spec, byPath) {
   }
   return null;
 }
-function hasDefaultExport(src) {
-  return /export\s+default\s/.test(src) || /export\s*\{[^}]*\bdefault\b[^}]*\}/.test(src);
+function hasDefaultExport(src2) {
+  return /export\s+default\s/.test(src2) || /export\s*\{[^}]*\bdefault\b[^}]*\}/.test(src2);
 }
-function hasStarReexport(src) {
-  return /export\s+\*\s+from/.test(src);
+function hasStarReexport(src2) {
+  return /export\s+\*\s+from/.test(src2);
 }
-function namedComponentExports(src) {
+function namedComponentExports(src2) {
   const out = /* @__PURE__ */ new Set();
   const rx = /export\s+(?:async\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9_]*)/g;
   let m;
-  while (m = rx.exec(src)) out.add(m[1]);
+  while (m = rx.exec(src2)) out.add(m[1]);
   const braced = /export\s*\{([^}]+)\}(?!\s*from)/g;
-  while (m = braced.exec(src)) {
+  while (m = braced.exec(src2)) {
     for (const piece of m[1].split(",")) {
       const name = piece.trim().split(/\s+as\s+/i).pop()?.trim();
       if (name && /^[A-Z][A-Za-z0-9_]*$/.test(name)) out.add(name);
@@ -156989,11 +157076,11 @@ function namedComponentExports(src) {
   return [...out];
 }
 var NAMED_IMPORT = /import\s+(?!type\s)\{([^}]+)\}\s*from\s*["']([^"']+)["']/g;
-function exportsName(src, name) {
-  if (new RegExp(`export\\s+(?:async\\s+)?(?:function|const|let|var|class|type|interface|enum)\\s+${name}\\b`).test(src)) return true;
+function exportsName(src2, name) {
+  if (new RegExp(`export\\s+(?:async\\s+)?(?:function|const|let|var|class|type|interface|enum)\\s+${name}\\b`).test(src2)) return true;
   const braced = /export\s*\{([^}]+)\}/g;
   let m;
-  while (m = braced.exec(src)) {
+  while (m = braced.exec(src2)) {
     for (const piece of m[1].split(",")) {
       const alias = piece.trim().split(/\s+as\s+/i).pop()?.trim();
       if (alias === name) return true;
@@ -157025,10 +157112,10 @@ function aliasDefaultExports(files, byPath) {
   }
   return aliases;
 }
-function defaultExportIdentifier(src) {
-  const fn = /export\s+default\s+(?:async\s+)?(?:function|class)\s+([A-Za-z_$][\w$]*)/.exec(src);
+function defaultExportIdentifier(src2) {
+  const fn = /export\s+default\s+(?:async\s+)?(?:function|class)\s+([A-Za-z_$][\w$]*)/.exec(src2);
   if (fn) return fn[1];
-  const ident = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;/.exec(src);
+  const ident = /export\s+default\s+([A-Za-z_$][\w$]*)\s*;/.exec(src2);
   if (ident) return ident[1];
   return null;
 }
@@ -157575,37 +157662,37 @@ init_define_import_meta_env();
 
 // src/server/jsx-tag-scan.server.ts
 init_define_import_meta_env();
-function scanOpeningTag(src, start) {
-  if (src[start] !== "<") return null;
-  const nameMatch = /^<([A-Za-z][\w.$:-]*)/.exec(src.slice(start, start + 120));
+function scanOpeningTag(src2, start) {
+  if (src2[start] !== "<") return null;
+  const nameMatch = /^<([A-Za-z][\w.$:-]*)/.exec(src2.slice(start, start + 120));
   if (!nameMatch) return null;
   const name = nameMatch[1];
   let i = start + nameMatch[0].length;
   const attrsStart = i;
   let depth = 0;
-  while (i < src.length) {
-    const c = src[i];
+  while (i < src2.length) {
+    const c = src2[i];
     if (c === '"' || c === "'" || c === "`") {
       const quote = c;
       i++;
-      while (i < src.length) {
-        if (src[i] === "\\") {
+      while (i < src2.length) {
+        if (src2[i] === "\\") {
           i += 2;
           continue;
         }
-        if (src[i] === quote) break;
+        if (src2[i] === quote) break;
         i++;
       }
       i++;
       continue;
     }
-    if (c === "/" && src[i + 1] === "/" && depth > 0) {
-      while (i < src.length && src[i] !== "\n") i++;
+    if (c === "/" && src2[i + 1] === "/" && depth > 0) {
+      while (i < src2.length && src2[i] !== "\n") i++;
       continue;
     }
-    if (c === "/" && src[i + 1] === "*") {
-      const end = src.indexOf("*/", i + 2);
-      i = end === -1 ? src.length : end + 2;
+    if (c === "/" && src2[i + 1] === "*") {
+      const end = src2.indexOf("*/", i + 2);
+      i = end === -1 ? src2.length : end + 2;
       continue;
     }
     if (c === "{") {
@@ -157619,12 +157706,12 @@ function scanOpeningTag(src, start) {
       continue;
     }
     if (depth === 0) {
-      if (c === "/" && src[i + 1] === ">") {
+      if (c === "/" && src2[i + 1] === ">") {
         return {
           start,
           end: i + 2,
           name,
-          attrs: src.slice(attrsStart, i),
+          attrs: src2.slice(attrsStart, i),
           selfClosing: true
         };
       }
@@ -157633,7 +157720,7 @@ function scanOpeningTag(src, start) {
           start,
           end: i + 1,
           name,
-          attrs: src.slice(attrsStart, i),
+          attrs: src2.slice(attrsStart, i),
           selfClosing: false
         };
       }
@@ -157642,41 +157729,41 @@ function scanOpeningTag(src, start) {
   }
   return null;
 }
-function rewriteOpeningTags(src, match, rewrite) {
+function rewriteOpeningTags(src2, match, rewrite) {
   let out = "";
   let cursor = 0;
   let fixes = 0;
   const re = /<([A-Za-z][\w.$:-]*)/g;
   let m;
-  while ((m = re.exec(src)) !== null) {
+  while ((m = re.exec(src2)) !== null) {
     if (m.index < cursor) continue;
     if (!match(m[1])) continue;
-    const tag = scanOpeningTag(src, m.index);
+    const tag = scanOpeningTag(src2, m.index);
     if (!tag) continue;
     const replacement = rewrite(tag);
     if (replacement === null) {
       continue;
     }
-    out += src.slice(cursor, tag.start) + replacement;
+    out += src2.slice(cursor, tag.start) + replacement;
     cursor = tag.end;
     fixes++;
     re.lastIndex = tag.end;
   }
-  if (fixes === 0) return { content: src, fixes: 0 };
-  out += src.slice(cursor);
+  if (fixes === 0) return { content: src2, fixes: 0 };
+  out += src2.slice(cursor);
   return { content: out, fixes };
 }
-function findClosingTag(src, name, from) {
+function findClosingTag(src2, name, from) {
   const re = new RegExp(`<(/?)${name.replace(/[.$]/g, "\\$&")}\\b`, "g");
   re.lastIndex = from;
   let depth = 1;
   let m;
-  while ((m = re.exec(src)) !== null) {
+  while ((m = re.exec(src2)) !== null) {
     if (m[1] === "/") {
       depth--;
       if (depth === 0) return m.index;
     } else {
-      const t = scanOpeningTag(src, m.index);
+      const t = scanOpeningTag(src2, m.index);
       if (t && !t.selfClosing) depth++;
       if (t) re.lastIndex = t.end;
     }
@@ -158069,12 +158156,12 @@ function humanizeIcon(name) {
 var CONTROL_TAGS = /* @__PURE__ */ new Set(["button", "Button", "a", "Link"]);
 function labelIconOnlyControls(content) {
   let fixes = 0;
-  let src = content;
+  let src2 = content;
   const re = /<(button|Button|a|Link)\b/g;
   let m;
   let guard = 0;
-  while ((m = re.exec(src)) !== null && guard++ < 2e3) {
-    const tag = scanOpeningTag(src, m.index);
+  while ((m = re.exec(src2)) !== null && guard++ < 2e3) {
+    const tag = scanOpeningTag(src2, m.index);
     if (!tag || tag.selfClosing) continue;
     if (!CONTROL_TAGS.has(tag.name)) continue;
     const attrs = tag.attrs;
@@ -158082,12 +158169,12 @@ function labelIconOnlyControls(content) {
       re.lastIndex = tag.end;
       continue;
     }
-    const closeAt = findClosingTag(src, tag.name, tag.end);
+    const closeAt = findClosingTag(src2, tag.name, tag.end);
     if (closeAt === -1) {
       re.lastIndex = tag.end;
       continue;
     }
-    const inner = src.slice(tag.end, closeAt);
+    const inner = src2.slice(tag.end, closeAt);
     const text = inner.replace(/<[^>]*>/g, " ").replace(/\{[^}]*\}/g, " ").replace(/\s+/g, " ").trim();
     if (text.length > 0) {
       re.lastIndex = tag.end;
@@ -158099,11 +158186,11 @@ function labelIconOnlyControls(content) {
       continue;
     }
     const opening = `<${tag.name}${attrs.replace(/\s+$/, "")} aria-label="${humanizeIcon(icon2[1])}">`;
-    src = src.slice(0, tag.start) + opening + src.slice(tag.end);
+    src2 = src2.slice(0, tag.start) + opening + src2.slice(tag.end);
     fixes++;
     re.lastIndex = tag.start + opening.length;
   }
-  return { content: src, fixes };
+  return { content: src2, fixes };
 }
 function altFromSrc(attrs) {
   const m = /src\s*=\s*["'`]([^"'`]+)["'`]/.exec(attrs);
@@ -158650,15 +158737,15 @@ function injectLinkIntoHtml(html, href) {
     <link rel="stylesheet" href="${href}" />`;
   return html.replace(/<head[^>]*>/i, (m) => m + tags);
 }
-function injectLinkIntoRootRoute(src, href) {
+function injectLinkIntoRootRoute(src2, href) {
   const linksRx = /links:\s*\[/;
   const entries = `
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "${href}" },`;
-  if (linksRx.test(src)) return src.replace(linksRx, (m) => m + entries);
+  if (linksRx.test(src2)) return src2.replace(linksRx, (m) => m + entries);
   const headRx = /head:\s*\(\s*\)\s*=>\s*\(\{/;
-  if (headRx.test(src)) return src.replace(headRx, (m) => `${m}
+  if (headRx.test(src2)) return src2.replace(headRx, (m) => `${m}
     links: [${entries}
     ],`);
   return null;
@@ -159002,16 +159089,16 @@ function homeFor(name, ctx) {
   if (COMMON_LUCIDE_ICONS.has(name)) return "lucide-react";
   return null;
 }
-function stripNoise3(src) {
-  return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1 ").replace(/`(?:\\.|[^`\\])*`/g, " ").replace(/"(?:\\.|[^"\\])*"/g, ' "" ').replace(/'(?:\\.|[^'\\])*'/g, " '' ");
+function stripNoise3(src2) {
+  return src2.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1 ").replace(/`(?:\\.|[^`\\])*`/g, " ").replace(/"(?:\\.|[^"\\])*"/g, ' "" ').replace(/'(?:\\.|[^'\\])*'/g, " '' ");
 }
-function collectDeclared2(src) {
+function collectDeclared2(src2) {
   const declared = /* @__PURE__ */ new Set();
   let m;
   const declRe = /\b(?:const|let|var|function|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g;
-  while (m = declRe.exec(src)) declared.add(m[1]);
+  while (m = declRe.exec(src2)) declared.add(m[1]);
   const destructureRe = /\b(?:const|let|var)\s*([[{])([^)]{0,400}?)[\]}]\s*=/g;
-  while (m = destructureRe.exec(src)) {
+  while (m = destructureRe.exec(src2)) {
     for (const piece of m[2].split(",")) {
       const name = piece.includes(":") ? piece.split(":").pop() : piece;
       const clean = name?.replace(/[^\w$]/g, "").trim();
@@ -159019,7 +159106,7 @@ function collectDeclared2(src) {
     }
   }
   const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]*)\})?\s*(?:,\s*)?(?:\*\s+as\s+([A-Za-z_$][\w$]*))?\s*from/g;
-  while (m = importRe.exec(src)) {
+  while (m = importRe.exec(src2)) {
     if (m[1]) declared.add(m[1]);
     if (m[3]) declared.add(m[3]);
     if (m[2]) {
@@ -159031,14 +159118,14 @@ function collectDeclared2(src) {
     }
   }
   const paramRe = /\(([^)]{0,400})\)\s*(?::[^=\n]{0,120})?=>|function\s*[A-Za-z_$]*\s*\(([^)]{0,400})\)/g;
-  while (m = paramRe.exec(src)) {
+  while (m = paramRe.exec(src2)) {
     const params = (m[1] || m[2] || "").replace(/:[^,=}]+/g, "");
     for (const name of params.matchAll(/\b[A-Za-z_$][\w$]*\b/g)) declared.add(name[0]);
   }
   return declared;
 }
-function collectUsed(src) {
-  const clean = stripNoise3(src);
+function collectUsed(src2) {
+  const clean = stripNoise3(src2);
   const used = /* @__PURE__ */ new Set();
   for (const m of clean.matchAll(/<\/?\s*([A-Z][\w$]*)/g)) used.add(m[1]);
   for (const m of clean.matchAll(/(^|[^\w$.])([A-Za-z_$][\w$]*)\s*(?=[(<),;\].}=&|?:\s])/g)) {
@@ -159065,10 +159152,10 @@ function depsOf(files) {
     return /* @__PURE__ */ new Set();
   }
 }
-function addImports(src, mod, names) {
+function addImports(src2, mod, names) {
   const escaped = mod.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const existing = new RegExp(`import\\s+([^;\\n]*?)\\s+from\\s+["']${escaped}["'];?`);
-  const m = existing.exec(src);
+  const m = existing.exec(src2);
   if (m) {
     const clause = m[1];
     const braceIdx = clause.indexOf("{");
@@ -159081,10 +159168,10 @@ function addImports(src, mod, names) {
     } else {
       next = `${clause.trim()}, { ${names.join(", ")} }`;
     }
-    return src.replace(m[0], `import ${next} from "${mod}";`);
+    return src2.replace(m[0], `import ${next} from "${mod}";`);
   }
   const line = `import { ${names.join(", ")} } from "${mod}";`;
-  const lines = src.split("\n");
+  const lines = src2.split("\n");
   let lastImport = -1;
   for (let i = 0; i < lines.length; i++) {
     if (/^\s*import\s/.test(lines[i])) lastImport = i;
@@ -159100,9 +159187,9 @@ function addImports(src, mod, names) {
   lines.splice(insertAt, 0, line);
   return lines.join("\n");
 }
-function promoteTypeOnlyValueImports(src) {
+function promoteTypeOnlyValueImports(src2) {
   const typeImportRe = /import\s+type\s*\{([^}]*)\}\s*from\s*["']([^"']+)["'];?/g;
-  return src.replace(typeImportRe, (stmt, inside, mod) => {
+  return src2.replace(typeImportRe, (stmt, inside, mod) => {
     const keep = [];
     const promote = [];
     for (const raw of inside.split(",")) {
@@ -159110,7 +159197,7 @@ function promoteTypeOnlyValueImports(src) {
       if (!piece) continue;
       const local = (piece.split(/\s+as\s+/i).pop() ?? piece).trim();
       const original = piece.split(/\s+as\s+/i)[0].trim();
-      const usedAsElement = new RegExp(`<${local}\\b`).test(src);
+      const usedAsElement = new RegExp(`<${local}\\b`).test(src2);
       const isIcon = mod === "lucide-react" && COMMON_LUCIDE_ICONS.has(original);
       if (usedAsElement || isIcon) promote.push(piece);
       else keep.push(piece);
@@ -159134,16 +159221,16 @@ function repairScopeLeaks(input) {
   let fixes = 0;
   const files = input.map((file) => {
     if (!SCANNABLE13.test(file.path)) return file;
-    let src = file.content;
-    if (!src || src.length > 4e5) return file;
-    const promoted = promoteTypeOnlyValueImports(src);
-    if (promoted !== src) {
-      src = promoted;
+    let src2 = file.content;
+    if (!src2 || src2.length > 4e5) return file;
+    const promoted = promoteTypeOnlyValueImports(src2);
+    if (promoted !== src2) {
+      src2 = promoted;
       fixes += 1;
       notes.push(`scope-repair: promoted type-only value import(s) in ${file.path}`);
     }
-    const declared = collectDeclared2(src);
-    const used = collectUsed(src);
+    const declared = collectDeclared2(src2);
+    const used = collectUsed(src2);
     const byModule = /* @__PURE__ */ new Map();
     for (const name of used) {
       if (declared.has(name)) continue;
@@ -159153,8 +159240,8 @@ function repairScopeLeaks(input) {
       if (!list4.includes(name)) list4.push(name);
       byModule.set(mod, list4);
     }
-    if (byModule.size === 0) return src === file.content ? file : { ...file, content: src };
-    let next = src;
+    if (byModule.size === 0) return src2 === file.content ? file : { ...file, content: src2 };
+    let next = src2;
     const added = [];
     for (const [mod, names] of byModule) {
       names.sort();
@@ -159866,11 +159953,11 @@ function findTopLevelColon(part) {
   }
   return -1;
 }
-function matchBrace(src, open) {
+function matchBrace(src2, open) {
   let depth = 0;
   let quote = null;
-  for (let i = open; i < src.length; i++) {
-    const ch = src[i];
+  for (let i = open; i < src2.length; i++) {
+    const ch = src2[i];
     if (quote) {
       if (ch === "\\") i++;
       else if (ch === quote) quote = null;
@@ -159885,8 +159972,8 @@ function matchBrace(src, open) {
   }
   return -1;
 }
-function flattenInFile(src) {
-  let out = src;
+function flattenInFile(src2) {
+  let out = src2;
   let changes = 0;
   for (const prop of GROUPED_PROPS) {
     const re = new RegExp(`\\b${prop}=\\{\\{`, "g");
@@ -160014,13 +160101,13 @@ function looksLikeComponentRef(expr, componentImports) {
   }
   return componentImports.has(expr);
 }
-function maskLiterals(src) {
-  const out = src.split("");
+function maskLiterals(src2) {
+  const out = src2.split("");
   let i = 0;
   let mode = "code";
-  while (i < src.length) {
-    const ch = src[i];
-    const next = src[i + 1];
+  while (i < src2.length) {
+    const ch = src2[i];
+    const next = src2[i + 1];
     if (mode === "code") {
       if (ch === "/" && next === "/") {
         mode = "line";
@@ -160074,7 +160161,7 @@ function maskLiterals(src) {
     }
     if (ch === "\\") {
       out[i] = " ";
-      if (i + 1 < src.length) out[i + 1] = " ";
+      if (i + 1 < src2.length) out[i + 1] = " ";
       i += 2;
       continue;
     }
@@ -161183,7 +161270,6 @@ ${guardTag}
 
 // src/server/pin-loose-deps.ts
 init_define_import_meta_env();
-init_known_packages();
 
 // src/server/builder.server.ts
 var MAX_AGE_SECONDS = 5 * 60;
@@ -162352,10 +162438,10 @@ init_web_subtype();
 init_define_import_meta_env();
 init_client_server_shim();
 async function lookupBackendForGenerate(projectId) {
-  const { data, error } = await supabaseAdmin.from("project_backends").select("status, supabase_url, anon_key").eq("project_id", projectId).maybeSingle();
-  if (error || !data) return null;
-  if (data.status !== "ready") return null;
-  return { url: data.supabase_url, anonKey: data.anon_key };
+  const { data: data2, error } = await supabaseAdmin.from("project_backends").select("status, supabase_url, anon_key").eq("project_id", projectId).maybeSingle();
+  if (error || !data2) return null;
+  if (data2.status !== "ready") return null;
+  return { url: data2.supabase_url, anonKey: data2.anon_key };
 }
 var STABLE_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app";
 function sharedApiOrigins() {
@@ -162366,11 +162452,11 @@ function sharedApiOrigins() {
   return { baseUrl: unique[0], fallbackUrls: unique.slice(1) };
 }
 async function lookupSharedBackendForGenerate(projectId) {
-  const { data, error } = await supabaseAdmin.from("shared_backends").select("api_key").eq("project_id", projectId).maybeSingle();
-  if (error || !data) return null;
+  const { data: data2, error } = await supabaseAdmin.from("shared_backends").select("api_key").eq("project_id", projectId).maybeSingle();
+  if (error || !data2) return null;
   return {
     projectId,
-    apiKey: data.api_key,
+    apiKey: data2.api_key,
     ...sharedApiOrigins()
   };
 }
@@ -165048,11 +165134,11 @@ function getIntegration(code) {
 
 // src/server/integrations/prompt-context.server.ts
 async function loadInstalledIntegrationsContext(projectId) {
-  const { data, error } = await supabaseAdmin.from("project_integrations").select("integration_code, options").eq("project_id", projectId);
-  if (error || !data || data.length === 0) return "";
+  const { data: data2, error } = await supabaseAdmin.from("project_integrations").select("integration_code, options").eq("project_id", projectId);
+  if (error || !data2 || data2.length === 0) return "";
   const backend2 = await lookupBackendForGenerate(projectId);
   const blocks = [];
-  for (const row of data) {
+  for (const row of data2) {
     const def = getIntegration(row.integration_code);
     if (!def || !def.aiGuidance) continue;
     const publicValues = row.options ?? {};
@@ -165084,8 +165170,8 @@ function suggestIntegrations(_args) {
   return [];
 }
 async function loadInstalledCodes(projectId) {
-  const { data } = await supabaseAdmin.from("project_integrations").select("integration_code").eq("project_id", projectId);
-  return new Set((data ?? []).map((r) => r.integration_code));
+  const { data: data2 } = await supabaseAdmin.from("project_integrations").select("integration_code").eq("project_id", projectId);
+  return new Set((data2 ?? []).map((r) => r.integration_code));
 }
 function renderSuggestionsBlock(suggestions) {
   if (suggestions.length === 0) return INLINE_TAGS_REFERENCE;
@@ -166238,21 +166324,21 @@ function slugifyService(name) {
   return name.toLowerCase().trim().replace(/^@/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 }
 async function readCache(slug4) {
-  const { data } = await supabaseAdmin.from("integration_docs_cache").select(
+  const { data: data2 } = await supabaseAdmin.from("integration_docs_cache").select(
     "service_slug, display_name, npm_package, docs_url, prompt_block, required_secrets, source, refreshed_at"
   ).eq("service_slug", slug4).maybeSingle();
-  if (!data) return null;
-  const ageMs = Date.now() - new Date(data.refreshed_at).getTime();
+  if (!data2) return null;
+  const ageMs = Date.now() - new Date(data2.refreshed_at).getTime();
   const maxMs = CACHE_MAX_AGE_DAYS * 24 * 60 * 60 * 1e3;
   if (ageMs > maxMs) return null;
-  void supabaseAdmin.from("integration_docs_cache").update({ hit_count: data.hit_count ?? 0 + 1 }).eq("service_slug", slug4);
+  void supabaseAdmin.from("integration_docs_cache").update({ hit_count: data2.hit_count ?? 0 + 1 }).eq("service_slug", slug4);
   return {
-    serviceSlug: data.service_slug,
-    displayName: data.display_name,
-    npmPackage: data.npm_package ?? null,
-    docsUrl: data.docs_url ?? null,
-    promptBlock: data.prompt_block,
-    requiredSecrets: data.required_secrets ?? [],
+    serviceSlug: data2.service_slug,
+    displayName: data2.display_name,
+    npmPackage: data2.npm_package ?? null,
+    docsUrl: data2.docs_url ?? null,
+    promptBlock: data2.prompt_block,
+    requiredSecrets: data2.required_secrets ?? [],
     source: "cache"
   };
 }
@@ -166294,21 +166380,21 @@ async function tryNpm(slug4, displayName) {
   for (const pkg of guesses) {
     const res = await fetchWithTimeout(`https://registry.npmjs.org/${encodeURIComponent(pkg)}`);
     if (!res || !res.ok) continue;
-    const data = await res.json().catch(() => null);
-    if (!data?.name) continue;
-    const latest = data["dist-tags"]?.latest;
-    const verData = latest && data.versions?.[latest] || null;
-    const description = verData?.description ?? data.description ?? "";
-    const homepage = verData?.homepage ?? data.homepage ?? null;
-    const readmeSnippet = (data.readme ?? "").slice(0, 1800).trim();
+    const data2 = await res.json().catch(() => null);
+    if (!data2?.name) continue;
+    const latest = data2["dist-tags"]?.latest;
+    const verData = latest && data2.versions?.[latest] || null;
+    const description = verData?.description ?? data2.description ?? "";
+    const homepage = verData?.homepage ?? data2.homepage ?? null;
+    const readmeSnippet = (data2.readme ?? "").slice(0, 1800).trim();
     const promptBlock = [
       `### Universal Integration: ${displayName}`,
-      `npm package: \`${data.name}\`${latest ? ` (latest: ${latest})` : ""}`,
+      `npm package: \`${data2.name}\`${latest ? ` (latest: ${latest})` : ""}`,
       description ? `Description: ${description}` : "",
       homepage ? `Homepage / docs: ${homepage}` : "",
       "",
       "When the user asks to use this service:",
-      `1. Install: run \`npm install ${data.name}\` (or include in package.json).`,
+      `1. Install: run \`npm install ${data2.name}\` (or include in package.json).`,
       "2. Read any required API keys from `process.env.<NAME>` inside server code only \u2014 NEVER hardcode them, NEVER call the third-party API from the browser.",
       '3. If a secret is missing, emit `<lov-add-secret name="..." instructions="Get this from <provider dashboard URL>" link="..." />` so the user can paste it securely.',
       "4. Wrap the SDK in a thin server function under `src/lib/<service>.functions.ts` exposed via `createServerFn`; call it from the UI with `useServerFn`.",
@@ -166321,7 +166407,7 @@ ${readmeSnippet}
     return {
       serviceSlug: slug4,
       displayName,
-      npmPackage: data.name,
+      npmPackage: data2.name,
       docsUrl: homepage,
       promptBlock,
       requiredSecrets: guessSecrets(displayName),
@@ -167113,8 +167199,8 @@ function detectIntegrationRequests(text, max = 3) {
 // src/server/validate-styles.server.ts
 init_define_import_meta_env();
 var TAILWIND_IMPORT = /^\s*@import\s+["']tailwindcss["']\s*;?/i;
-function stripBlockComments(src) {
-  return src.replace(/\/\*[\s\S]*?\*\//g, "");
+function stripBlockComments(src2) {
+  return src2.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 function validateStylesCss(raw) {
   if (typeof raw !== "string" || raw.trim().length === 0) {
@@ -167219,14 +167305,14 @@ function validateStylesCss(raw) {
   }
   return { ok: true };
 }
-function findUnknownAppliedClasses(src) {
+function findUnknownAppliedClasses(src2) {
   const defined = /* @__PURE__ */ new Set();
-  for (const m of src.matchAll(/\.([a-zA-Z_][\w-]*)\s*[{,:]/g)) defined.add(m[1]);
-  for (const m of src.matchAll(/@utility\s+([a-zA-Z_][\w-]*)/g)) defined.add(m[1]);
+  for (const m of src2.matchAll(/\.([a-zA-Z_][\w-]*)\s*[{,:]/g)) defined.add(m[1]);
+  for (const m of src2.matchAll(/@utility\s+([a-zA-Z_][\w-]*)/g)) defined.add(m[1]);
   const themeColors = /* @__PURE__ */ new Set();
-  for (const m of src.matchAll(/--color-([a-zA-Z_][\w-]*)\s*:/g)) themeColors.add(m[1]);
+  for (const m of src2.matchAll(/--color-([a-zA-Z_][\w-]*)\s*:/g)) themeColors.add(m[1]);
   const themeFonts = /* @__PURE__ */ new Set();
-  for (const m of src.matchAll(/--font-([a-zA-Z_][\w-]*)\s*:/g)) themeFonts.add(m[1]);
+  for (const m of src2.matchAll(/--font-([a-zA-Z_][\w-]*)\s*:/g)) themeFonts.add(m[1]);
   const COLOR_PREFIXES = [
     "bg",
     "text",
@@ -167281,7 +167367,7 @@ function findUnknownAppliedClasses(src) {
   ]);
   const NEVER_APPLYABLE = /* @__PURE__ */ new Set(["dark", "light", "group", "peer"]);
   const unknown = /* @__PURE__ */ new Set();
-  for (const m of src.matchAll(/@apply\s+([^;}{]+)[;}]/g)) {
+  for (const m of src2.matchAll(/@apply\s+([^;}{]+)[;}]/g)) {
     const tokens2 = m[1].trim().split(/\s+/);
     for (const tokRaw of tokens2) {
       const tok = tokRaw.replace(/^!/, "");
@@ -167563,9 +167649,9 @@ async function loadProjectPictures(projectId) {
   const hit = cache5.get(projectId);
   if (hit && Date.now() - hit.at < CACHE_MS3) return hit.rows;
   try {
-    const { data, error } = await supabaseAdmin.from("project_pictures").select("id,url,label,tags").eq("project_id", projectId).order("created_at", { ascending: false }).limit(MAX_PICTURES);
+    const { data: data2, error } = await supabaseAdmin.from("project_pictures").select("id,url,label,tags").eq("project_id", projectId).order("created_at", { ascending: false }).limit(MAX_PICTURES);
     if (error) throw error;
-    const rows = data ?? [];
+    const rows = data2 ?? [];
     cache5.set(projectId, { at: Date.now(), rows });
     return rows;
   } catch {
@@ -167632,8 +167718,8 @@ async function keepChatPhotos(projectId, attachments) {
       if (error) continue;
       const url = supabaseAdmin.storage.from("petal-images").getPublicUrl(path).data.publicUrl;
       const label2 = (a2.name ?? "").replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim().slice(0, 80);
-      const { data } = await supabaseAdmin.from("project_pictures").insert({ project_id: projectId, url, storage_path: path, label: label2, tags: [] }).select("id,url,label,tags").single();
-      if (data) kept.push(data);
+      const { data: data2 } = await supabaseAdmin.from("project_pictures").insert({ project_id: projectId, url, storage_path: path, label: label2, tags: [] }).select("id,url,label,tags").single();
+      if (data2) kept.push(data2);
     } catch {
     }
   }
@@ -167675,8 +167761,8 @@ function cacheKeyFor(prompt, ratio) {
   return createHash("sha256").update(`${prompt}::${ratio ?? "default"}`).digest("hex").slice(0, 24);
 }
 async function lookupCached(filename) {
-  const { data, error } = await supabaseAdmin.storage.from(BUCKET).list("", { search: filename, limit: 1 });
-  if (error || !data?.some((o) => o.name === filename)) return null;
+  const { data: data2, error } = await supabaseAdmin.storage.from(BUCKET).list("", { search: filename, limit: 1 });
+  if (error || !data2?.some((o) => o.name === filename)) return null;
   return supabaseAdmin.storage.from(BUCKET).getPublicUrl(filename).data.publicUrl;
 }
 function dataUrlToBytes(dataUrl) {
@@ -167982,7 +168068,7 @@ async function openTurnCompletion(args) {
       }
     }
     await supabaseAdmin.from("project_turn_completion").update({ stage: "superseded", terminal_reason: "a newer request took over" }).eq("project_id", args.projectId).neq("turn_id", args.turnId).not("stage", "in", `(${TERMINAL.join(",")})`);
-    const { data, error } = await supabaseAdmin.from("project_turn_completion").upsert(
+    const { data: data2, error } = await supabaseAdmin.from("project_turn_completion").upsert(
       {
         project_id: args.projectId,
         user_id: args.userId,
@@ -167996,7 +168082,7 @@ async function openTurnCompletion(args) {
       { onConflict: "turn_id" }
     ).select().maybeSingle();
     if (error) throw new Error(error.message);
-    return data ? asRecord(data) : null;
+    return data2 ? asRecord(data2) : null;
   } catch (e) {
     console.warn("[turn-completion] open failed", e.message);
     return null;
@@ -168004,8 +168090,8 @@ async function openTurnCompletion(args) {
 }
 async function loadOpenCompletion(projectId) {
   try {
-    const { data } = await supabaseAdmin.from("project_turn_completion").select("*").eq("project_id", projectId).not("stage", "in", `(${TERMINAL.join(",")})`).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    return data ? asRecord(data) : null;
+    const { data: data2 } = await supabaseAdmin.from("project_turn_completion").select("*").eq("project_id", projectId).not("stage", "in", `(${TERMINAL.join(",")})`).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    return data2 ? asRecord(data2) : null;
   } catch {
     return null;
   }
@@ -168048,7 +168134,7 @@ function projectFilesHash(files) {
 }
 async function saveCreditPause(input) {
   await supabaseAdmin.from("credit_paused_turns").update({ status: "superseded" }).eq("project_id", input.projectId).eq("user_id", input.userId).in("status", ["awaiting_credits", "parked"]);
-  const { data, error } = await supabaseAdmin.from("credit_paused_turns").insert({
+  const { data: data2, error } = await supabaseAdmin.from("credit_paused_turns").insert({
     turn_id: input.turnId,
     project_id: input.projectId,
     user_id: input.userId,
@@ -168058,8 +168144,8 @@ async function saveCreditPause(input) {
     result_payload: input.resultPayload,
     original_request: input.originalRequest
   }).select("id").single();
-  if (error || !data) throw new Error(error?.message ?? "Could not save the build checkpoint");
-  return data.id;
+  if (error || !data2) throw new Error(error?.message ?? "Could not save the build checkpoint");
+  return data2.id;
 }
 
 // src/server/rate-limit.server.ts
@@ -168256,12 +168342,12 @@ async function adminClient() {
 async function loadProjectMemory(jwt, projectId) {
   try {
     const supabase = userClient(jwt);
-    const { data, error } = await supabase.from("project_memory").select("key, value").eq("project_id", projectId).order("updated_at", { ascending: false }).limit(MAX_KEYS);
+    const { data: data2, error } = await supabase.from("project_memory").select("key, value").eq("project_id", projectId).order("updated_at", { ascending: false }).limit(MAX_KEYS);
     if (error) {
       console.warn("[project-memory] load failed:", error.message);
       return [];
     }
-    return (data ?? []).map((r) => ({ key: r.key, value: r.value }));
+    return (data2 ?? []).map((r) => ({ key: r.key, value: r.value }));
   } catch (e) {
     console.warn("[project-memory] load threw:", e);
     return [];
@@ -168374,11 +168460,11 @@ async function runMemoryWriter(supabase, args) {
   if (!process.env.OPENROUTER_API_KEY) return true;
   let existing = [];
   try {
-    const { data, error } = await supabase.from("project_memory").select("key, value").eq("project_id", projectId).order("updated_at", { ascending: false }).limit(MAX_KEYS);
+    const { data: data2, error } = await supabase.from("project_memory").select("key, value").eq("project_id", projectId).order("updated_at", { ascending: false }).limit(MAX_KEYS);
     if (error) {
       console.warn("[project-memory] load failed:", error.message);
     } else {
-      existing = (data ?? []).map((r) => ({ key: r.key, value: r.value }));
+      existing = (data2 ?? []).map((r) => ({ key: r.key, value: r.value }));
     }
   } catch {
   }
@@ -171020,10 +171106,10 @@ async function renderLearningBlock() {
   if (cached4 && cached4.expiresAt > Date.now()) return cached4.text;
   let text = "";
   try {
-    const { data } = await supabaseAdmin.from("petal_self_learning_digests").select("period_date, recommendations, top_failure_signatures").order("period_date", { ascending: false }).limit(1).maybeSingle();
-    if (data) {
-      const recs = Array.isArray(data.recommendations) ? data.recommendations.slice(0, 4) : [];
-      const sigs = Array.isArray(data.top_failure_signatures) ? data.top_failure_signatures.slice(0, 5) : [];
+    const { data: data2 } = await supabaseAdmin.from("petal_self_learning_digests").select("period_date, recommendations, top_failure_signatures").order("period_date", { ascending: false }).limit(1).maybeSingle();
+    if (data2) {
+      const recs = Array.isArray(data2.recommendations) ? data2.recommendations.slice(0, 4) : [];
+      const sigs = Array.isArray(data2.top_failure_signatures) ? data2.top_failure_signatures.slice(0, 5) : [];
       const lines = [];
       if (sigs.length > 0) {
         lines.push("Recent failure signatures (avoid repeating these):");
@@ -171042,7 +171128,7 @@ async function renderLearningBlock() {
       if (lines.length > 0) {
         text = `
 
-[Lessons learned \u2014 last digest ${data.period_date}]
+[Lessons learned \u2014 last digest ${data2.period_date}]
 These are real failure modes Kimble hit recently. Read them, and do NOT reproduce them this turn.
 ${lines.join("\n")}`;
       }
@@ -171208,8 +171294,8 @@ async function classifyPhase(prompt) {
     if (!resp.ok) {
       return heuristic ?? { phase: "implement", confidence: "low", source: "fallback" };
     }
-    const data = await resp.json();
-    const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    const data2 = await resp.json();
+    const args = data2.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
     if (!args) return heuristic ?? { phase: "implement", confidence: "low", source: "fallback" };
     const parsed = JSON.parse(args);
     return { phase: parsed.phase, confidence: parsed.confidence, source: "ai" };
@@ -171626,20 +171712,20 @@ function stripSqlNoise(sql) {
   }
   return out;
 }
-function stripJsNoise(src) {
+function stripJsNoise(src2) {
   let out = "";
   let i = 0;
-  const n = src.length;
+  const n = src2.length;
   while (i < n) {
-    const c = src[i];
-    const c2 = src[i + 1];
+    const c = src2[i];
+    const c2 = src2[i + 1];
     if (c === "/" && c2 === "/") {
-      while (i < n && src[i] !== "\n") i++;
+      while (i < n && src2[i] !== "\n") i++;
       continue;
     }
     if (c === "/" && c2 === "*") {
       i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++;
+      while (i < n && !(src2[i] === "*" && src2[i + 1] === "/")) i++;
       i += 2;
       continue;
     }
@@ -171914,9 +172000,9 @@ function lintBackendQuality(files) {
   }
   for (const file of files) {
     if (!CODE_PATH.test(file.path)) continue;
-    const src = file.content;
+    const src2 = file.content;
     if (!isServerOnly(file.path)) {
-      const secretHit = /SUPABASE_SERVICE_ROLE_KEY|service_role|sb_secret_|SECRET_KEY|PRIVATE_KEY|\bsk_live_|\bsk_test_/.exec(src);
+      const secretHit = /SUPABASE_SERVICE_ROLE_KEY|service_role|sb_secret_|SECRET_KEY|PRIVATE_KEY|\bsk_live_|\bsk_test_/.exec(src2);
       if (secretHit) {
         push(
           "B6",
@@ -171925,7 +172011,7 @@ function lintBackendQuality(files) {
           `Client-reachable module references \`${secretHit[0]}\`. Secrets and the service-role key must only be read inside a server function handler (\`*.server.ts\`, \`src/server/**\`, or an API route). Move this call server-side and expose a typed server function instead.`
         );
       }
-      if (/\bprocess\.env\.(?!NODE_ENV)/.test(src)) {
+      if (/\bprocess\.env\.(?!NODE_ENV)/.test(src2)) {
         push(
           "B6",
           file.path,
@@ -171936,8 +172022,8 @@ function lintBackendQuality(files) {
     }
     const fnRe = /createServerFn\s*\(\s*\{[^}]*method\s*:\s*['"](POST|PUT|PATCH|DELETE)['"]/gi;
     let f;
-    while (f = fnRe.exec(src)) {
-      const tail = src.slice(f.index, f.index + 1200);
+    while (f = fnRe.exec(src2)) {
+      const tail = src2.slice(f.index, f.index + 1200);
       if (!/\.inputValidator\s*\(/.test(tail)) {
         push(
           "B7",
@@ -172113,9 +172199,9 @@ function parseImportedIdents(importLine) {
   }
   return idents.filter(Boolean);
 }
-function neutraliseIdentifier(src, ident) {
-  if (!ident) return src;
-  let out = src.replace(
+function neutraliseIdentifier(src2, ident) {
+  if (!ident) return src2;
+  let out = src2.replace(
     new RegExp(`<${ident}\\b`, "g"),
     "<div data-petal-stub"
   );
@@ -172187,17 +172273,17 @@ function stripHallucinatedImports(files, hallucinated, changedPaths) {
 init_define_import_meta_env();
 var STUB_BLOCK_RE = /\/\/ Auto-injected runtime stub:[\s\S]*?\n\s*export const [A-Za-z_$][\w$]*: any = \((?:props: any|\.\.\._args: any\[\])\)[^\n]*\n?/g;
 function collectExports2(rawSrc) {
-  const src = rawSrc.replace(STUB_BLOCK_RE, "");
+  const src2 = rawSrc.replace(STUB_BLOCK_RE, "");
   const value = /* @__PURE__ */ new Set();
   const typeOnly = /* @__PURE__ */ new Set();
   let hasStar = false;
   let m;
   const valueDeclRe = /(^|\n)\s*export\s+(?:async\s+)?(?:const|let|var|function|class|enum)\s+([A-Za-z_$][\w$]*)/g;
-  while (m = valueDeclRe.exec(src)) value.add(m[2]);
+  while (m = valueDeclRe.exec(src2)) value.add(m[2]);
   const typeDeclRe = /(^|\n)\s*export\s+(?:type|interface)\s+([A-Za-z_$][\w$]*)/g;
-  while (m = typeDeclRe.exec(src)) typeOnly.add(m[2]);
+  while (m = typeDeclRe.exec(src2)) typeOnly.add(m[2]);
   const groupRe = /(^|[^A-Za-z_$])export\s*\{([^}]+)\}/g;
-  while (m = groupRe.exec(src)) {
+  while (m = groupRe.exec(src2)) {
     for (const part of m[2].split(",")) {
       const piece = part.trim();
       if (!piece) continue;
@@ -172206,7 +172292,7 @@ function collectExports2(rawSrc) {
     }
   }
   const typeGroupRe = /export\s+type\s*\{([^}]+)\}/g;
-  while (m = typeGroupRe.exec(src)) {
+  while (m = typeGroupRe.exec(src2)) {
     for (const part of m[1].split(",")) {
       const piece = part.trim();
       if (!piece) continue;
@@ -172217,7 +172303,7 @@ function collectExports2(rawSrc) {
       }
     }
   }
-  if (/export\s*\*\s*from\s*["']/.test(src)) hasStar = true;
+  if (/export\s*\*\s*from\s*["']/.test(src2)) hasStar = true;
   return { value, typeOnly, hasStar };
 }
 function resolveImportPath3(fromPath, spec, files) {
@@ -172484,9 +172570,9 @@ function componentFromPath(p2) {
   return m ? m[1] : void 0;
 }
 function deriveArchitectureDoc(files) {
-  const src = files.filter((f) => SOURCE_RE.test(f.path) || /\.(ts|js|json)$/.test(f.path));
+  const src2 = files.filter((f) => SOURCE_RE.test(f.path) || /\.(ts|js|json)$/.test(f.path));
   const appSrc = files.filter((f) => isAppSource2(f.path));
-  const all = src.map((f) => f.content).join("\n");
+  const all = src2.map((f) => f.content).join("\n");
   let router = "unknown";
   if (/from\s+["']react-router-dom["']/.test(all)) router = "react-router-dom";
   else if (/@tanstack\/react-router/.test(all)) router = "tanstack-router";
@@ -172549,7 +172635,7 @@ function deriveArchitectureDoc(files) {
     (p2) => /^(src\/(App|main)\.(tsx|jsx)|index\.html|src\/routes\/__root\.(tsx|jsx))$/.test(p2) || /\/(Layout|RootLayout|AppShell|NavBar|Navbar|Header|Footer)\.(tsx|jsx)$/.test(p2)
   ).slice(0, 10);
   const libs = /* @__PURE__ */ new Set();
-  for (const f of src) {
+  for (const f of src2) {
     const rx2 = new RegExp(IMPORT_RE5.source, "g");
     let m;
     while (m = rx2.exec(f.content)) {
@@ -172629,8 +172715,8 @@ function renderArchitectureBlock(versioned) {
 async function loadProjectArchitecture(projectId) {
   if (!projectId) return null;
   try {
-    const { data } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
-    const arch = data?.blueprint?.architecture;
+    const { data: data2 } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
+    const arch = data2?.blueprint?.architecture;
     if (!arch || typeof arch !== "object" || !arch.architecture) return null;
     return arch;
   } catch (e) {
@@ -172648,14 +172734,14 @@ async function saveProjectArchitecture(projectId, files) {
   }
   if (!projectId) return { architecture: architecture2, revision: 1, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
   try {
-    const { data } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
-    const previous = data?.blueprint?.architecture ?? null;
+    const { data: data2 } = await supabaseAdmin.from("project_blueprints").select("blueprint").eq("project_id", projectId).maybeSingle();
+    const previous = data2?.blueprint?.architecture ?? null;
     const versioned = {
       architecture: architecture2,
       revision: (previous?.revision ?? 0) + 1,
       updatedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    const blueprint = { ...data?.blueprint ?? {}, architecture: versioned };
+    const blueprint = { ...data2?.blueprint ?? {}, architecture: versioned };
     await supabaseAdmin.from("project_blueprints").upsert({ project_id: projectId, blueprint }, { onConflict: "project_id" });
     return versioned;
   } catch (e) {
@@ -172903,20 +172989,20 @@ init_define_import_meta_env();
 var ENABLED_RULES4 = /* @__PURE__ */ new Set(["P3", "P19", "P20"]);
 var UI_FILE = /\.(tsx|jsx)$/;
 var SKIP_PREFIXES3 = ["src/integrations/", "src/components/ui/", "supabase/"];
-function stripComments2(src) {
+function stripComments2(src2) {
   let out = "";
   let i = 0;
-  const n = src.length;
+  const n = src2.length;
   while (i < n) {
-    const c = src[i];
-    const c2 = src[i + 1];
+    const c = src2[i];
+    const c2 = src2[i + 1];
     if (c === "/" && c2 === "/") {
-      while (i < n && src[i] !== "\n") i++;
+      while (i < n && src2[i] !== "\n") i++;
       continue;
     }
     if (c === "/" && c2 === "*") {
       i += 2;
-      while (i < n && !(src[i] === "*" && src[i + 1] === "/")) i++;
+      while (i < n && !(src2[i] === "*" && src2[i + 1] === "/")) i++;
       i += 2;
       continue;
     }
@@ -172975,10 +173061,10 @@ function lintProductPrinciples(files) {
   for (const file of files) {
     if (!UI_FILE.test(file.path)) continue;
     if (SKIP_PREFIXES3.some((p2) => file.path.startsWith(p2))) continue;
-    const src = stripComments2(file.content);
+    const src2 = stripComments2(file.content);
     for (const r of RULES5) {
       if (!ENABLED_RULES4.has(r.rule)) continue;
-      if (!r.test.test(src)) continue;
+      if (!r.test.test(src2)) continue;
       const key = `${file.path}::${r.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -173222,13 +173308,13 @@ var RELIABILITY_FLOOR = {
 };
 async function loadConfig() {
   try {
-    const { data } = await supabaseAdmin.from("ai_router_config").select("enabled, exploration_pct, min_samples, window_hours").eq("id", 1).maybeSingle();
-    if (!data) return DEFAULT_CONFIG;
+    const { data: data2 } = await supabaseAdmin.from("ai_router_config").select("enabled, exploration_pct, min_samples, window_hours").eq("id", 1).maybeSingle();
+    if (!data2) return DEFAULT_CONFIG;
     return {
-      enabled: Boolean(data.enabled),
-      explorationPct: Math.min(data.exploration_pct ?? DEFAULT_CONFIG.explorationPct, 5),
-      minSamples: Math.max(3, data.min_samples ?? DEFAULT_CONFIG.minSamples),
-      windowHours: data.window_hours ?? DEFAULT_CONFIG.windowHours
+      enabled: Boolean(data2.enabled),
+      explorationPct: Math.min(data2.exploration_pct ?? DEFAULT_CONFIG.explorationPct, 5),
+      minSamples: Math.max(3, data2.min_samples ?? DEFAULT_CONFIG.minSamples),
+      windowHours: data2.window_hours ?? DEFAULT_CONFIG.windowHours
     };
   } catch (e) {
     console.warn("[smart-router] config load failed, using defaults:", e);
@@ -173333,12 +173419,12 @@ function buildSnapshot(rows, config, outcomesByModel) {
 async function loadOutcomes() {
   const out = /* @__PURE__ */ new Map();
   try {
-    const { data, error } = await supabaseAdmin.from("ai_model_quality").select("model, samples, verifier_pass_rate, build_success_rate, followup_fix_rate, avg_autofixes");
+    const { data: data2, error } = await supabaseAdmin.from("ai_model_quality").select("model, samples, verifier_pass_rate, build_success_rate, followup_fix_rate, avg_autofixes");
     if (error) {
       console.warn("[smart-router] outcomes read failed:", error.message);
       return out;
     }
-    for (const r of data ?? []) {
+    for (const r of data2 ?? []) {
       if (!r.model || !r.samples) continue;
       const prev = out.get(r.model);
       if (!prev) {
@@ -173471,10 +173557,10 @@ async function evaluateCostCeiling(userId) {
       return { degrade: false, monthCostUsd: 0, ceilingUsd: 0, reason: "paid" };
     }
     const ceilingUsd = await economicsValue("free_user_monthly_cost_ceiling_usd");
-    const { data, error } = await supabaseAdmin.from("turn_economics").select("variable_cost_usd_micro, cost_basis").eq("user_id", userId).gte("created_at", startOfMonthIso()).limit(2e3);
+    const { data: data2, error } = await supabaseAdmin.from("turn_economics").select("variable_cost_usd_micro, cost_basis").eq("user_id", userId).gte("created_at", startOfMonthIso()).limit(2e3);
     if (error) return OPEN;
     let total = 0;
-    for (const row of data ?? []) {
+    for (const row of data2 ?? []) {
       if (row.cost_basis === "unknown") continue;
       total += Number(row.variable_cost_usd_micro ?? 0) / 1e6;
     }
@@ -174014,13 +174100,13 @@ async function startTurn(opts) {
   if (!opts.attach) {
     let claim = null;
     try {
-      const { data, error } = await client.rpc("claim_generation_turn", {
+      const { data: data2, error } = await client.rpc("claim_generation_turn", {
         p_turn_id: turnId,
         p_project_id: opts.projectId,
         p_user_id: opts.userId
       });
       if (error) throw new Error(error.message);
-      claim = Array.isArray(data) ? data[0] : data;
+      claim = Array.isArray(data2) ? data2[0] : data2;
     } catch (e) {
       console.warn("[turn-recorder] claim_generation_turn failed:", e.message);
       return makeNoop(turnId);
@@ -174117,8 +174203,8 @@ async function turnBelongsToUser(turnId, userId) {
   const client = getAdminClient();
   if (!client) return false;
   try {
-    const { data } = await client.from("turns").select("id").eq("id", turnId).eq("user_id", userId).maybeSingle();
-    return !!data;
+    const { data: data2 } = await client.from("turns").select("id").eq("id", turnId).eq("user_id", userId).maybeSingle();
+    return !!data2;
   } catch {
     return false;
   }
@@ -174603,27 +174689,27 @@ async function proposeChangePlan(args) {
 }
 async function savePlan(opts) {
   const client = supabaseAdmin;
-  const { data, error } = await client.from("petal_plans").insert({
+  const { data: data2, error } = await client.from("petal_plans").insert({
     project_id: opts.projectId,
     user_id: opts.userId,
     payload: opts.payload,
     status: "proposed"
   }).select("id").single();
-  if (error || !data?.id) {
+  if (error || !data2?.id) {
     throw new Error(`plan_save_failed: ${error?.message ?? "unknown"}`);
   }
-  return data.id;
+  return data2.id;
 }
 async function loadAndConsumePlan(opts) {
   const client = supabaseAdmin;
-  const { data, error } = await client.from("petal_plans").select("id, user_id, payload, status, expires_at").eq("id", opts.planId).maybeSingle();
-  if (error || !data) throw new Error("plan_not_found");
-  if (data.user_id !== opts.userId) throw new Error("plan_wrong_user");
-  if (data.status !== "proposed") throw new Error(`plan_already_${data.status}`);
-  if (data.expires_at && new Date(data.expires_at).getTime() < Date.now()) {
+  const { data: data2, error } = await client.from("petal_plans").select("id, user_id, payload, status, expires_at").eq("id", opts.planId).maybeSingle();
+  if (error || !data2) throw new Error("plan_not_found");
+  if (data2.user_id !== opts.userId) throw new Error("plan_wrong_user");
+  if (data2.status !== "proposed") throw new Error(`plan_already_${data2.status}`);
+  if (data2.expires_at && new Date(data2.expires_at).getTime() < Date.now()) {
     throw new Error("plan_expired");
   }
-  const payload = data.payload;
+  const payload = data2.payload;
   void client.from("petal_plans").update({ status: "approved" }).eq("id", opts.planId);
   return {
     payload,
@@ -174928,20 +175014,20 @@ async function authorize(request) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
-  let { data, error } = await supabase.auth.getClaims(token2);
-  if (error || !data?.claims?.sub) {
+  let { data: data2, error } = await supabase.auth.getClaims(token2);
+  if (error || !data2?.claims?.sub) {
     await new Promise((r) => setTimeout(r, 400));
-    ({ data, error } = await supabase.auth.getClaims(token2));
+    ({ data: data2, error } = await supabase.auth.getClaims(token2));
   }
-  if (error || !data?.claims?.sub) {
+  if (error || !data2?.claims?.sub) {
     return new Response("Unauthorized", { status: 401 });
   }
-  return data.claims.sub;
+  return data2.claims.sub;
 }
 async function loadEconomyMode(userId) {
   try {
-    const { data } = await supabaseAdmin.from("profiles").select("economy_mode").eq("id", userId).maybeSingle();
-    return data?.economy_mode ?? false;
+    const { data: data2 } = await supabaseAdmin.from("profiles").select("economy_mode").eq("id", userId).maybeSingle();
+    return data2?.economy_mode ?? false;
   } catch (e) {
     console.warn("[generate] failed to load economy_mode", e);
     return false;
@@ -176618,7 +176704,17 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       return "";
     }
   })();
-  const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}`;
+  const explorationBlock = await (async () => {
+    try {
+      const { exploreProject: exploreProject2 } = await Promise.resolve().then(() => (init_explore(), explore_exports));
+      const r = await exploreProject2({ files: currentFiles, cls: assessExecution2(turnComplexityBase).class, isInitial, request: lastUserContent || "" });
+      turnStrategy.exploration = r.ran ? r.roles : `skipped:${r.skippedReason}`;
+      return r.block;
+    } catch {
+      return "";
+    }
+  })();
+  const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}${explorationBlock}`;
   const { TurnLedger: TurnLedger2, commitTurn: commitTurn2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
   const turnLedger = new TurnLedger2();
   const turnChecks = [];
@@ -176786,9 +176882,17 @@ The latest request contains multiple coordinated asks. Treat this as one complet
         for (const r of bad) plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
         if (intentContract.archetype) archetypeBlock = "";
       }
-      if (plannedRoutes.filter((r) => r !== "/").length === 0 && intentContract.pages.length) {
-        for (const pg of intentContract.pages) if (!plannedRoutes.includes(pg.route)) plannedRoutes.push(pg.route);
-        console.log(`[intent] archetype=${intentContract.archetype} plan=${JSON.stringify(plannedRoutes)}`);
+      if (intentContract.pages.length) {
+        const core = intentContract.pages.map((pg) => pg.route);
+        const covered = core.filter((r) => plannedRoutes.includes(r)).length;
+        if (covered * 2 < core.length) {
+          const added = core.filter((r) => !plannedRoutes.includes(r));
+          plannedRoutes.push(...added);
+          turnStrategy.planCorrection = { archetype: intentContract.archetype, removed: bad, added };
+          console.log(`[intent] plan corrected archetype=${intentContract.archetype} plan=${JSON.stringify(plannedRoutes)}`);
+        } else if (bad.length) {
+          turnStrategy.planCorrection = { archetype: intentContract.archetype, removed: bad, added: [] };
+        }
       }
       archetypeBlock += renderIntentBlock2(intentContract);
     } catch (e) {
@@ -179880,10 +179984,10 @@ ${truth}`.trim();
 }
 function errorPayloadOf(block2) {
   if (!block2.includes('"type":"error"')) return null;
-  const data = block2.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).join("");
-  if (!data) return null;
+  const data2 = block2.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).join("");
+  if (!data2) return null;
   try {
-    const parsed = JSON.parse(data);
+    const parsed = JSON.parse(data2);
     if (parsed.type !== "error") return null;
     return { message: parsed.message ?? "", raw: parsed.raw ?? "" };
   } catch {
@@ -179892,9 +179996,9 @@ function errorPayloadOf(block2) {
 }
 function creditPausePayloadOf(block2) {
   if (!block2.includes('"type":"credits_paused"')) return null;
-  const data = block2.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trim()).join("");
+  const data2 = block2.split("\n").filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trim()).join("");
   try {
-    const parsed = JSON.parse(data);
+    const parsed = JSON.parse(data2);
     return parsed.type === "credits_paused" && parsed.checkpointId ? { checkpointId: parsed.checkpointId } : null;
   } catch {
     return null;
@@ -180308,8 +180412,8 @@ async function hasLiveTurn(userId, projectId) {
   const client = supabaseAdmin;
   if (!client) return false;
   try {
-    const { data } = await client.from("turns").select("id").eq("user_id", userId).eq("project_id", projectId).eq("status", "running").limit(1);
-    return Boolean(data && data.length > 0);
+    const { data: data2 } = await client.from("turns").select("id").eq("user_id", userId).eq("project_id", projectId).eq("status", "running").limit(1);
+    return Boolean(data2 && data2.length > 0);
   } catch (e) {
     console.warn("[build-lock] liveness probe failed:", e.message);
     return false;
