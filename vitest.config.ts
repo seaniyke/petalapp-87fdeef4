@@ -103,6 +103,7 @@ export default defineConfig({
       "src/server/__tests__/execution-commit.test.ts",
       "src/server/__tests__/verification-authoritative.test.ts",
       "src/server/__tests__/repair-incident.test.ts",
+      "src/server/__tests__/identifiers-hardening.test.ts",
       "src/server/__tests__/consolidation.test.ts",
       "src/server/__tests__/project-revision.test.ts",
       "src/server/__tests__/stale-readiness-ui.test.ts",
