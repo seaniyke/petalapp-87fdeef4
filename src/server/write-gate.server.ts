@@ -241,7 +241,7 @@ export function writeGateDisclosure(rejections: WriteRejection[]): string {
       : `**${rejections.length} files had code errors that couldn't be repaired, so they aren't in your app yet — those parts are not complete:**`,
     ...lines,
     "",
-    "Everything else landed and your app is still in a working state. Say the word and I'll retry the rejected part.",
+    "The rest of this change was saved. Say the word and I'll retry the rejected part.",
   ].join("\n");
 }
 

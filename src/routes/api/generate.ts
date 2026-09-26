@@ -6882,13 +6882,25 @@ async function handleGenerateRequestCore(
           // Nothing lands: the project keeps its previous state.
           nextFiles = txResult.outcome.files;
           if (txResult.outcome.reason !== "no changes") {
-            const note = breaker.tripped
-              ? `\n\n${breaker.userMessage()}`
-              : `\n\nI couldn't save this change safely, so your app was left exactly as it was: ` +
-                txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} — ` : ""}${r.detail}`).join("; ") +
-                `. Send it again and I'll retry just that part.`;
-            summary = `${summary}${note}`;
-            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+            // ONE authoritative verdict: the model's narration ("it ships
+            // with…") described code that was never saved, so it is replaced
+            // outright — not appended to.
+            const { buildTerminalResult, formatTerminalResult } = await import("@/lib/terminal-result");
+            const verdict = buildTerminalResult({
+              turnId: logicalTurnId,
+              category: breaker.tripped
+                ? "circuit_breaker"
+                : txResult.rejections.some((r) => r.reason === "scope_violation")
+                  ? "scope_violation"
+                  : "verification_failed",
+              committedRevision: null,
+              rejections: txResult.rejections.slice(0, 3).map((r) => ({ path: r.path ?? null, detail: r.detail })),
+            });
+            summary = breaker.tripped
+              ? `${formatTerminalResult(verdict)}\n\n${breaker.userMessage()}`
+              : formatTerminalResult(verdict);
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: `\n\n${summary}` })));
+            controller.enqueue(encoder.encode(sse({ type: "terminal_result", result: verdict })));
           }
           if (breaker.tripped) {
             console.warn(`[circuit-breaker] tripped at commit ${JSON.stringify(breaker.snapshot())}`);
@@ -7056,20 +7068,20 @@ async function handleGenerateRequestCore(
         // sub-caption back to the success line instead of leaving the last
         // verifier message on screen.
         controller.enqueue(
-          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" })),
+          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: txCommitted ? "clean" : "hard-stop" })),
         );
 
         // v3 Phase F — write-gate disclosure. A refused write is the one
         // failure the user MUST hear about: their app is intact, but the part
         // they asked for isn't there. Silence here reads as a silent no-op.
-        if (writeGateRejections.length > 0) {
+        if (txCommitted && writeGateRejections.length > 0) {
           const note = writeGateDisclosure(writeGateRejections);
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
 
         // Critic gate disclosure: name every op that was refused before apply.
-        if (criticRejections.length > 0) {
+        if (txCommitted && criticRejections.length > 0) {
           const note = criticDisclosure(criticRejections);
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
@@ -7078,7 +7090,7 @@ async function handleGenerateRequestCore(
         // Honesty gate: if the model claimed edits to files that never
         // actually changed, say so instead of letting its "done!" summary
         // ship unchallenged.
-        if (unappliedPaths.length > 0) {
+        if (txCommitted && unappliedPaths.length > 0) {
           const list = unappliedPaths.slice(0, 5).join(", ");
           const more = unappliedPaths.length > 5 ? ` (+${unappliedPaths.length - 5} more)` : "";
           const note =
@@ -7090,7 +7102,7 @@ async function handleGenerateRequestCore(
           console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
         }
 
-        if (unlandedOps > 0 && unappliedPaths.length === 0) {
+        if (txCommitted && unlandedOps > 0 && unappliedPaths.length === 0) {
           const note =
             `\n\nHeads up — ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of what you asked didn't land on this pass. ` +
             `Send it again and I'll finish just that part.`;
@@ -7111,7 +7123,7 @@ async function handleGenerateRequestCore(
             editClassification?.scope,
           );
 
-          if (scope.flagged) {
+          if (txCommitted && scope.flagged) {
             const note = scopeDisclosure(scope);
             summary = `${summary}${note}`;
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
@@ -8005,7 +8017,7 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // bubble is exactly what we are removing.
         if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
           await new Promise((r) => setTimeout(r, 2500));
-          const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
+          const done = lastResult as { summary?: string; plan?: string; recap?: string; committedRevision?: number | null } | null;
           const wroteReply = await persistAbandonedTurnReply({
             projectId: turnProjectId,
             turnId: recorder.turnId,
@@ -8014,6 +8026,7 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
             plan: done?.plan ?? null,
             recap: done?.recap ?? null,
             errorMessage: terminalError,
+            committedRevision: done?.committedRevision ?? null,
           }).catch(() => false);
           // We had to write the reply ourselves, which means no client was
           // there to kick off the deploy either. Files are saved but the

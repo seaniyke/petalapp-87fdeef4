@@ -23,6 +23,9 @@ export const TABLE_RULES: Record<string, { pin: Pin; actions: Action[]; userCol?
   project_backends: { pin: { col: "project_id", from: "project" }, actions: ["select"] },
   project_turn_completion: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert", "upsert", "update"], userCol: true },
   projects: { pin: { col: "id", from: "project" }, actions: ["select"] },
+  // Terminal assistant reply for the turn (persistAbandonedTurnReply). Without
+  // this, a Railway-run failed turn's reply was refused and vanished on reload.
+  messages: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert"] },
   turns: { pin: { col: "id", from: "turn" }, actions: ["select"] },
   ai_call_log: { pin: { col: "turn_id", from: "turn" }, actions: ["select", "update"] },
   pipeline_failures: { pin: { col: "project_id", from: "project" }, actions: ["insert"], userCol: true },

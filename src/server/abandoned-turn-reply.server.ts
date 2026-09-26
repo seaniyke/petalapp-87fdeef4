@@ -23,6 +23,12 @@ import { currentTurnContext } from "@/server/turn-context.server";
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  buildTerminalResult,
+  containsOptimisticClaim,
+  formatTerminalResult,
+  type TerminalResult,
+} from "@/lib/terminal-result";
 
 const STRUCTURED_PREFIX = "@@petal/v1:";
 
@@ -50,9 +56,29 @@ export type AbandonedTurnReply = {
   plan?: string | null;
   recap?: string | null;
   errorMessage?: string | null;
+  baseRevision?: number | null;
+  committedRevision?: number | null;
 };
 
+function terminalFor(input: AbandonedTurnReply): TerminalResult | null {
+  if (input.status === "succeeded") return null;
+  return buildTerminalResult({
+    turnId: input.turnId,
+    outcome: input.status === "aborted" ? "aborted" : "failed",
+    reason: input.errorMessage ?? null,
+    baseRevision: input.baseRevision ?? null,
+    committedRevision: input.committedRevision ?? null,
+  });
+}
+
 function bodyFor(input: AbandonedTurnReply): string {
+  if (input.status !== "succeeded") {
+    // The pipeline's final summary is already the authoritative verdict when
+    // it rolled back (formatTerminalResult); otherwise format from facts.
+    const s = input.summary?.trim();
+    if (s && !containsOptimisticClaim(s)) return s;
+    return formatTerminalResult(terminalFor(input)!);
+  }
   if (input.status === "succeeded") {
     return (
       input.summary?.trim() ||
@@ -102,6 +128,7 @@ export async function persistAbandonedTurnReply(
         input.status === "succeeded"
           ? null
           : { kind: "build_failed", detail: (input.errorMessage ?? "").slice(0, 500) },
+      terminal: terminalFor(input),
       turnId: input.turnId,
     });
 
