@@ -11,3 +11,10 @@
 - [ ] Classification changes execution strategy (verify light fast path)
 - [x] Tests, typecheck, build; redeploy builder; verify fingerprint
 - [ ] Live hospital run; eight small benchmarks; final four questions answered
+
+## Final disciplined correction (brief 2)
+- [ ] Trace live path (report before/after)
+- [ ] Plan validation before generation: invalid plan → replan, recorded in execution state
+- [ ] Conditional read-only parallel exploration (single writer), skipped for LIGHT
+- [ ] Verify fast path for LIGHT
+- [ ] Benchmarks A–F with full metrics; final 24-point report + questions A–G
