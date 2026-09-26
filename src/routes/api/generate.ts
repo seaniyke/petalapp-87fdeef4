@@ -4694,10 +4694,26 @@ async function handleGenerateRequestCore(
           if (isInitial && parsed.files?.length) {
             const { writePlannedPages, pagesReferencedByRouter, targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
             const { pageFileFor } = await import("@/server/engine/plan");
+            const checkpointApi = await import("@/server/build-checkpoint.server");
+            // Snapshot of the shell answer exactly as parsed, taken before any
+            // deterministic cleanup (which re-runs identically on resume).
+            const shellSnapshot = { name: "write_project", args: JSON.stringify(parsed), text: "", finishReason: "stop" };
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             // The plan is authoritative; requested routes only fill in if
             // planning failed.
-            const planned = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            const planned = resumed?.checkpoint.planned?.length
+              ? resumed.checkpoint.planned
+              : firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            if (!resumed && checkpointTurnId && body.projectId) {
+              await checkpointApi.saveShellCheckpoint({
+                projectId: body.projectId,
+                userId,
+                turnId: checkpointTurnId,
+                request: lastUserText,
+                shell: shellSnapshot,
+                planned,
+              });
+            }
             // Output-limit continuation: pages the shell's own router already
             // imports but that were never written (the shell call ran out of
             // room, or planning under-counted) are the remaining work — write
