@@ -151,6 +151,8 @@ export interface ToolLoopArgs {
   /** First user message: request + selective project context. */
   brief: string;
   files: ProjectFile[];
+  /** Paths already written this turn; validated at loop start like any write. */
+  seedPaths?: string[];
   requirements?: Requirement[];
   callModel: CallModel;
   /** Per-write validation (syntax, TSX, undefined names, imports, truncation). */
@@ -378,6 +380,24 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       validationMs += Date.now() - t0;
     }
   };
+
+  // Files written earlier this turn (e.g. the first response) cross the SAME
+  // validation boundary as tool writes: failures enter state and the brief,
+  // so finish stays refused until they are fixed.
+  if (args.seedPaths?.length) {
+    const failing: string[] = [];
+    for (const p of args.seedPaths) {
+      const c = tree.get(p);
+      if (c === undefined) continue;
+      const errs = await validate(p, c);
+      state.validation.set(p, errs);
+      state.written.push(p);
+      if (errs.length) failing.push(`${p}:\n${errs.slice(0, 6).map((e) => `- ${e}`).join("\n")}`);
+    }
+    if (failing.length) {
+      messages[1] = { role: "user", content: `${args.brief}\n\nThese already-written files FAIL validation — read and fix them:\n${failing.join("\n")}` };
+    }
+  }
 
   const persist = async (path: string, content: string): Promise<boolean> => {
     if (args.onWrite) {

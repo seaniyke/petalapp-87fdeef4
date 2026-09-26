@@ -146,3 +146,13 @@ describe("tool loop", () => {
     expect(r.traces.length).toBe(0);
   });
 });
+
+describe("seeded first-response files", () => {
+  it("are validated at loop start and block finish until fixed (bakery shell-page regression)", async () => {
+    const m = scripted([reply(call("finish", {})), reply(call("read_file", { path: "src/pages/About.tsx" }), call("edit_file", { path: "src/pages/About.tsx", search: "BROKEN", replace: "ok" }), call("finish", {}))]);
+    const r = await runToolLoop({ ...base, files: [{ path: "src/pages/About.tsx", content: "BROKEN" }], seedPaths: ["src/pages/About.tsx"], callModel: m.callModel });
+    expect(String(m.seen[0]![1]!.content)).toContain("FAIL validation");
+    expect(r.outcome).toBe("finished");
+    expect(r.files[0]!.content).toBe("ok");
+  });
+});
