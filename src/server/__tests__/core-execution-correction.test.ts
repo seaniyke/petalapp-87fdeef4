@@ -116,3 +116,17 @@ describe("read-only exploration", () => {
     expect(JSON.stringify(files)).toBe(before);
   });
 });
+
+import { checkUndefinedIdentifiers, isPlatformGlobal } from "@/server/verification/identifiers.server";
+describe("identifier gate never flags platform globals", () => {
+  it("treats Date/Math/JSON/Intl/HTMLDialogElement as defined", () => {
+    for (const n of ["Date", "Math", "JSON", "Intl", "Array", "Promise", "HTMLDialogElement", "matchMedia"]) expect(isPlatformGlobal(n)).toBe(true);
+    expect(isPlatformGlobal("mode")).toBe(false);
+  });
+  it("passes real code using Date and still fails a truly undefined name", () => {
+    const ok = checkUndefinedIdentifiers({ files: [{ path: "src/a.tsx", content: "export const d = new Date(Date.now()).getTime() + Math.max(1, JSON.parse('2'));" }], changed: ["src/a.tsx"] } as never);
+    expect(ok.status).toBe("verified");
+    const bad = checkUndefinedIdentifiers({ files: [{ path: "src/b.tsx", content: "export const x = mode + 1;" }], changed: ["src/b.tsx"] } as never);
+    expect(bad.status).toBe("failed");
+  });
+});
