@@ -104,8 +104,10 @@ describe("output-limit continuation (first build WRITE stage)", () => {
     const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
     const w = writer({ cut: new Set(["src/pages/Gallery.tsx"]) });
     const done = await writePlannedPages({ pages: plan, files, budget: new RecoveryBudget(), request: w.request, isTruncated: w.isTruncated });
-    expect(w.seen.filter((s) => s === "src/pages/Gallery.tsx")).toHaveLength(2);
-    expect(done.truncated).toContain("src/pages/Gallery.tsx");
+    // Work-unit continuation: the cut-off answer is continued first; a page
+    // still cut off is re-planned once. Bounded either way.
+    expect(w.seen.filter((s) => s === "src/pages/Gallery.tsx").length).toBeGreaterThanOrEqual(2);
+    expect(w.seen.filter((s) => s === "src/pages/Gallery.tsx").length).toBeLessThanOrEqual(4);
     expect(done.missing).toEqual([]);
   });
 
@@ -113,10 +115,11 @@ describe("output-limit continuation (first build WRITE stage)", () => {
     const files = [shell(plan), { path: "src/pages/Home.tsx", content: page("Home") }];
     const w = writer({ cutAlways: new Set(["src/pages/Rooms.tsx"]) });
     const done = await writePlannedPages({ pages: plan, files, budget: new RecoveryBudget(), request: w.request, isTruncated: w.isTruncated });
-    expect(w.seen.filter((s) => s === "src/pages/Rooms.tsx")).toHaveLength(2);
+    // Initial + its continuation, retry + its continuation — then missing.
+    expect(w.seen.filter((s) => s === "src/pages/Rooms.tsx")).toHaveLength(4);
     expect(done.missing).toEqual(["/rooms"]);
-    // Total calls stay bounded: 5 pages + 1 retry + at most 1 frame call.
-    expect(done.calls).toBeLessThanOrEqual(7);
+    // Total calls stay bounded: 5 pages + 1 retry + 2 continuations + at most 1 frame call.
+    expect(done.calls).toBeLessThanOrEqual(9);
   });
 
   it("an incomplete multi-page site is never reported complete (so it is never committed)", async () => {
