@@ -4268,7 +4268,7 @@ async function handleGenerateRequestCore(
           // original request to a different upstream instead.
           if (firstStall) {
             controller.enqueue(
-              encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })),
+              encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet — continuing on another connection…" }))),
             );
             throw new Error(`provider stream stalled (${firstStall.upstream ?? "unknown upstream"}, ${firstStall.ms}ms without output)`);
           }
@@ -4352,7 +4352,7 @@ async function handleGenerateRequestCore(
               providerFailed = true;
               lastFailedUpstream = null;
               console.warn("[generate] resend stream failed:", streamErr instanceof Error ? streamErr.message : String(streamErr));
-              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })));
+              controller.enqueue(encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet — continuing on another connection…" }))));
               continue;
             }
             const retryStall =
@@ -4362,7 +4362,7 @@ async function handleGenerateRequestCore(
               lastErr = new Error(`provider stream stalled (${retryStall.upstream ?? "unknown upstream"})`);
               providerFailed = true;
               lastFailedUpstream = retryStall.upstream ?? null;
-              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })));
+              controller.enqueue(encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet — continuing on another connection…" }))));
               continue;
             }
             retryTrusted = true;
