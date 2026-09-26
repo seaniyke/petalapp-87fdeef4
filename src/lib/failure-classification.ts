@@ -98,8 +98,8 @@ export function guidanceFor(origin: FailureOrigin): FailureGuidance {
     case "transport":
       return {
         origin,
-        headline: "The connection dropped while Kimble was working.",
-        preserved: "Kimble checks the saved result instead of guessing — no work is repeated.",
+        headline: "The connection to the builder was interrupted.",
+        preserved: "Kimble checks the saved result instead of guessing — no work is repeated and nothing is charged twice.",
         action: null,
         actionLabel: null,
         userMustAct: false,
@@ -107,7 +107,7 @@ export function guidanceFor(origin: FailureOrigin): FailureGuidance {
     case "code":
       return {
         origin,
-        headline: "Kimble found a code error it couldn't safely fix in this pass.",
+        headline: "Kimble found a problem in the generated code.",
         preserved: "Your last working version is kept.",
         action: "fix",
         actionLabel: "Fix it",
@@ -126,7 +126,7 @@ export function guidanceFor(origin: FailureOrigin): FailureGuidance {
       return {
         origin,
         headline: "Generation cancelled.",
-        preserved: "Your previous working version is kept.",
+        preserved: "Your previous verified version is kept exactly as it was.",
         action: null,
         actionLabel: null,
         userMustAct: false,
@@ -149,4 +149,39 @@ export function originFromReason(reason: string | null | undefined): FailureOrig
   const prefix = reason.split(":")[0];
   if (["infrastructure", "transport", "code", "user_input", "cancelled"].includes(prefix)) return prefix as FailureOrigin;
   return classifyFailureOrigin(reason);
+}
+
+/**
+ * Server-classified pipeline kinds → origin. The kind is decided at the source
+ * (`classifyRawError`), so this is a lookup, not a second classifier.
+ */
+export function originFromErrorKind(kind: string | null | undefined): FailureOrigin | null {
+  switch (kind) {
+    case "rate_limit":
+    case "upstream_unavailable":
+    case "provider_credits_exhausted":
+      return "infrastructure";
+    case "upstream_timeout":
+      // Outcome unknown from the browser's side — persisted state decides.
+      return "transport";
+    case "aborted":
+      return "cancelled";
+    case "no_files_emitted":
+    case "no_edit_emitted":
+    case "credits_exhausted":
+    case "unauthorized":
+      return "user_input";
+    case "generation_incomplete":
+    case "truncated_response":
+      return "code";
+    default:
+      return null;
+  }
+}
+
+/** Whether a failure of this origin could have changed the user's project. Only code failures roll back a proposed change; nothing is committed on failure. */
+export function projectChangedBy(_origin: FailureOrigin): false {
+  // Every failure path rolls back through the turn transaction — a failed turn
+  // never commits. Kept as a function so the UI states it from one place.
+  return false;
 }

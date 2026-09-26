@@ -6926,9 +6926,14 @@ async function handleGenerateRequestCore(
         // and the project came out byte-identical still debited credits —
         // the user paid for nothing and (correctly) called it a loop.
         const turnChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
-        const failedEditTurn =
-          (turnChangedPaths.length === 0 && unappliedPaths.length > 0) ||
-          (!txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes");
+        const { isUnbillableTurn } = await import("@/lib/build-outcome");
+        const failedEditTurn = isUnbillableTurn({
+          changedPathCount: turnChangedPaths.length,
+          unappliedPathCount: unappliedPaths.length,
+          txCommitted,
+          outcomeStatus: txResult.outcome.status,
+          outcomeReason: (txResult.outcome as { reason?: string | null }).reason ?? null,
+        });
         if (failedEditTurn) {
           console.warn(
             `[credits] no-op edit turn not billed project=${body.projectId ?? "none"} unapplied=${unappliedPaths.length}`,
@@ -7618,6 +7623,19 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
             status: 409,
             headers: { "x-kimble-turn-id": clientTurnId },
           });
+        }
+        // One live turn per project, checked against the durable turns table
+        // (the in-memory build lock is per-worker only). A retry tapped while
+        // the previous turn is still running server-side — e.g. after a
+        // dropped phone connection — must attach, never start a second build.
+        if (!isInternalCaller && (await hasLiveTurn(peekAuth, peekBody.projectId))) {
+          return new Response(
+            JSON.stringify({
+              error:
+                "Kimble is still working on your last request. It will show up here when it's done.",
+            }),
+            { status: 429, headers: { "Content-Type": "application/json" } },
+          );
         }
         // Durable ingress: the browser must not be the caller of the run —
         // on the live host its disconnect would kill the work. Open the turn

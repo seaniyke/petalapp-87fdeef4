@@ -27,6 +27,12 @@
 
 import { reportPipelineFailure, type FailureReportContext } from "./report-failure";
 import type { ErrorKind } from "@/server/generate.server";
+import {
+  classifyFailureOrigin,
+  guidanceFor,
+  originFromErrorKind,
+  type FailureOrigin,
+} from "./failure-classification";
 
 export type FriendlyError = {
   /** Short headline shown next to the warning icon. */
@@ -45,6 +51,12 @@ export type FriendlyError = {
    * without the user tapping anything. Copy and behaviour must agree.
    */
   autoRetrying?: boolean;
+  /** Authoritative origin from failure-classification.ts. */
+  origin?: FailureOrigin;
+  /** What Kimble preserved, in plain words. */
+  preserved?: string;
+  /** A failed turn never commits; stated explicitly on the card. */
+  projectChanged?: boolean;
 };
 
 const FRIENDLY_ERROR_ACTIONS = new Set<NonNullable<FriendlyError["actionKind"]>>([
@@ -381,7 +393,9 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
 
   if (raw instanceof PipelineError) {
     const builder = KIND_TO_FRIENDLY[raw.kind];
-    if (builder && raw.kind !== "unknown") return guard(builder(rawText));
+    if (builder && raw.kind !== "unknown") {
+      return guard(classify(builder(rawText), originFromErrorKind(raw.kind) ?? "unknown"));
+    }
     // kind === "unknown" → fall through to regex/generic, and report so
     // we can add a new branch.
   }
@@ -390,7 +404,7 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   //    JSON 400 bodies). Never matches humanized SSE prose.
   for (const p of PATTERNS) {
     if (p.test.test(rawText)) {
-      return guard(p.build(rawText));
+      return guard(classify(p.build(rawText), classifyFailureOrigin(rawText), false));
     }
   }
 
@@ -399,7 +413,39 @@ export function toFriendlyError(raw: unknown, ctx?: FailureReportContext): Frien
   //    (un-humanized) when available so pipeline_failures reflects the
   //    actual exception, not LLM apology copy.
   reportPipelineFailure(rawText, ctx);
-  return { ...GENERIC, technicalDetail: text };
+  return classify({ ...GENERIC, technicalDetail: text }, classifyFailureOrigin(raw));
+}
+
+/**
+ * Apply the authoritative failure classification to a card. Origin decides
+ * headline/action for outage, transport and cancel — the kind-specific copy is
+ * kept for code and input failures because it explains what was found.
+ * `override=false` only annotates (regex cards keep their tuned copy).
+ */
+export function classify(card: FriendlyError, origin: FailureOrigin, override = true): FriendlyError {
+  const g = guidanceFor(origin);
+  const out: FriendlyError = { ...card, origin, preserved: g.preserved, projectChanged: false };
+  if (!override) return out;
+  if (origin === "infrastructure") {
+    return { ...out, title: g.headline, message: "This was on the AI provider's side, not your app.", actionLabel: "Continue", actionKind: "retry" };
+  }
+  if (origin === "transport") {
+    return {
+      ...out,
+      title: g.headline,
+      message: "This doesn't mean the build failed. Kimble reads the saved result when the connection returns.",
+      actionLabel: "OK",
+      actionKind: "dismiss",
+    };
+  }
+  if (origin === "cancelled") {
+    return { ...out, title: g.headline, message: "You stopped Kimble. Send another message when you're ready.", actionLabel: "Dismiss", actionKind: "dismiss" };
+  }
+  if (origin === "user_input") {
+    // The kind-specific message names the exact input needed; never auto-retry.
+    return { ...out, autoRetrying: false };
+  }
+  return out;
 }
 
 /**

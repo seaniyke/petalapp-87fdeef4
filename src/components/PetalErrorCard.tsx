@@ -161,6 +161,11 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
             <div className="mt-0.5 text-[13.5px] leading-snug text-muted-foreground">
               {error.message}
             </div>
+            {error.preserved && (
+              <div className="mt-1 text-[12.5px] leading-snug text-muted-foreground/80">
+                {error.preserved}
+              </div>
+            )}
 
             {/* Action row — iOS pill buttons */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
