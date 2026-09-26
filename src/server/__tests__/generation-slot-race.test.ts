@@ -44,7 +44,7 @@ beforeAll(async () => {
       credits_charged numeric default 0);
   `);
   await db.exec(migration);
-});
+}, 60_000); // embedded Postgres boot (WASM) under a loaded parallel suite
 
 describe("generation slot — database-enforced", () => {
   it("simultaneous claims: exactly one wins, the other gets the winner's id", async () => {
