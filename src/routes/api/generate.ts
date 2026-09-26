@@ -5496,9 +5496,14 @@ async function handleGenerateRequestCore(
               userId,
               signal: abortSignal,
               prd: resolvedPrd?.prd ?? null,
-              // Ordinary edits get the deterministic rules only; the model
-              // review is reserved for initial builds.
-              deterministicOnly: !isInitial,
+              // Ordinary edits get the deterministic rules only. On initial
+              // builds the model review runs only when there is evidence it
+              // adds value: a work unit failed or needed correction.
+              deterministicOnly:
+                !isInitial ||
+                (Array.isArray(turnStrategy.workUnits) &&
+                  (turnStrategy.workUnits as Array<{ outcome: string }>).length > 0 &&
+                  (turnStrategy.workUnits as Array<{ outcome: string }>).every((u) => u.outcome === "ok" || u.outcome === "skipped_done")),
             });
             if (verdict.rejections.length > 0) {
               criticRejections.push(...verdict.rejections);
