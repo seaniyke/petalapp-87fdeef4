@@ -79,18 +79,52 @@ export function applyFonts(rootSrc: string, pkg: DesignSystemPackage): string | 
   return `${rootSrc.slice(0, at)}\n      ${body}${rootSrc.slice(at)}`;
 }
 
+/** Raw `<link>` tags for a plain Vite `index.html`, inside HTML markers. */
+export function renderHtmlFontLinks(pkg: DesignSystemPackage): string {
+  const tags = pkg.fonts.map(
+    (f) => `    <link rel="${f.rel}" href="${f.href}"${f.crossOrigin ? " crossorigin" : ""}>`,
+  );
+  return [HTML_FONTS_START, ...tags, `    ${HTML_FONTS_END}`].join("\n    ").replace(/^ {4}/, "");
+}
+
+/**
+ * Install the font links into a Vite `index.html`. Replaces the marked region
+ * when present, otherwise inserts it immediately before `</head>`.
+ */
+export function applyHtmlFonts(html: string, pkg: DesignSystemPackage): string | null {
+  const body = renderHtmlFontLinks(pkg);
+  const replaced = replaceRegion(html, HTML_FONTS_START, HTML_FONTS_END, body);
+  if (replaced !== null) return replaced;
+  const at = html.search(/<\/head>/i);
+  if (at < 0) return null;
+  return `${html.slice(0, at)}${body}\n  ${html.slice(at)}`;
+}
+
 export function applyDesignSystem(files: ProjectFile[], pkg: DesignSystemPackage, accent: string): ApplyResult {
   if (!isValidAccent(pkg, accent)) return { ok: false, error: `accent "${accent}" does not belong to ${pkg.meta.slug}` };
   const styles = STYLE_PATHS.map((p) => files.find((f) => f.path === p)).find(Boolean);
   if (!styles) return { ok: false, error: "project has no stylesheet (src/styles.css)" };
-  const root = files.find((f) => f.path === ROOT_PATH);
-  if (!root) return { ok: false, error: `project has no ${ROOT_PATH}` };
-  const nextRoot = applyFonts(root.content, pkg);
-  if (nextRoot === null) return { ok: false, error: "could not find a head links array to install fonts into" };
 
+  // Fonts go wherever this project keeps its document head: the TanStack root
+  // route when there is one, otherwise the Vite index.html that generated SPAs
+  // actually ship. Requiring __root.tsx meant no generated app ever got fonts.
   const updates = new Map<string, string>();
+  const root = files.find((f) => f.path === ROOT_PATH);
+  const html = files.find((f) => f.path === HTML_PATH);
+  if (root) {
+    const nextRoot = applyFonts(root.content, pkg);
+    if (nextRoot === null) return { ok: false, error: "could not find a head links array to install fonts into" };
+    updates.set(root.path, nextRoot);
+  } else if (html) {
+    const nextHtml = applyHtmlFonts(html.content, pkg);
+    if (nextHtml === null) return { ok: false, error: "index.html has no </head> to install fonts into" };
+    updates.set(html.path, nextHtml);
+  } else {
+    return { ok: false, error: `project has neither ${ROOT_PATH} nor ${HTML_PATH}` };
+  }
+
   updates.set(styles.path, applyTokens(styles.content, pkg, accent));
-  updates.set(root.path, nextRoot);
+
   for (const [rel, content] of Object.entries(pkg.components)) {
     updates.set(`src/components/design-system/${pkg.meta.slug}/${rel}`, content);
   }
