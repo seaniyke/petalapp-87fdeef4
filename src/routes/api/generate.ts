@@ -5780,6 +5780,34 @@ async function handleGenerateRequestCore(
             : nextFiles
                 .filter((f) => prevByPath.get(f.path) !== f.content)
                 .map((f) => f.path);
+          if (touched.length > 0 && isInitial) {
+            // Missing-node recovery before per-file repair: create each
+            // missing shared module once instead of repairing every importer.
+            try {
+              const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
+              const { createMissingModule } = await import("@/server/engine/repair");
+              const nodes = await resolveMissingNodes(nextFiles, touched, async (node, context) => {
+                if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
+                controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
+                return createMissingModule(node, context, {
+                  turnId: logicalTurnId,
+                  projectId: body.projectId ?? null,
+                  userId,
+                  turnContext: turnContextFor(node.target),
+                });
+              });
+              if (nodes.created.length) {
+                console.log(`[missing-nodes] write-gate created ${JSON.stringify(nodes.created)}`);
+                nextFiles = nodes.files;
+                touched.push(...nodes.created);
+              }
+              if (nodes.blocked.length) console.warn(`[missing-nodes] blocked ${JSON.stringify(nodes.blocked)}`);
+            } catch (e) {
+              const { isInfrastructureFailure } = await import("@/lib/failure-classification");
+              if (!isInfrastructureFailure(e)) throw e;
+              infraFailure = e;
+            }
+          }
           if (touched.length > 0) {
             const gate = await runWriteGate({
               before: currentFiles,
