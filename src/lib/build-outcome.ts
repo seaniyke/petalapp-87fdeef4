@@ -100,3 +100,23 @@ export function decideBuildOutcome(i: OutcomeInput): OutcomeDecision {
     reason: delivered ? "delivered; verification/infra only" : "not delivered",
   };
 }
+
+/**
+ * The generation charge boundary. A turn is billable only when its change was
+ * committed or is genuinely a no-change turn; a rolled-back transaction or an
+ * edit whose ops all failed to apply is never billed. Settlement itself is
+ * idempotent on the turn id, so a reconnect/retry of the same turn can't
+ * charge twice.
+ */
+export function isUnbillableTurn(i: {
+  changedPathCount: number;
+  unappliedPathCount: number;
+  txCommitted: boolean;
+  outcomeStatus: string;
+  outcomeReason?: string | null;
+}): boolean {
+  return (
+    (i.changedPathCount === 0 && i.unappliedPathCount > 0) ||
+    (!i.txCommitted && i.outcomeStatus === "rolled_back" && i.outcomeReason !== "no changes")
+  );
+}

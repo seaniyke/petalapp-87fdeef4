@@ -6926,9 +6926,14 @@ async function handleGenerateRequestCore(
         // and the project came out byte-identical still debited credits —
         // the user paid for nothing and (correctly) called it a loop.
         const turnChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
-        const failedEditTurn =
-          (turnChangedPaths.length === 0 && unappliedPaths.length > 0) ||
-          (!txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes");
+        const { isUnbillableTurn } = await import("@/lib/build-outcome");
+        const failedEditTurn = isUnbillableTurn({
+          changedPathCount: turnChangedPaths.length,
+          unappliedPathCount: unappliedPaths.length,
+          txCommitted,
+          outcomeStatus: txResult.outcome.status,
+          outcomeReason: (txResult.outcome as { reason?: string | null }).reason ?? null,
+        });
         if (failedEditTurn) {
           console.warn(
             `[credits] no-op edit turn not billed project=${body.projectId ?? "none"} unapplied=${unappliedPaths.length}`,
