@@ -1889,6 +1889,8 @@ async function runFinalParseGuard(
   repair?: (file: ProjectFile, detail: string) => Promise<string | null>,
   /** Provider failure recorded by the repair step, if any. */
   infraFailure: () => Error | null = () => null,
+  /** Creates one missing shared module (root-cause repair). */
+  createMissing?: import("@/server/engine/missing-nodes").CreateModule,
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string; origin?: "infrastructure" | "code" }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
   const { blockedRemovals } = await import("@/server/engine/structural-deps");
@@ -1899,6 +1901,22 @@ async function runFinalParseGuard(
     console.log(`[deterministic-primitives] provided ${JSON.stringify(primitives.added)}`);
     files = primitives.files;
     changedPaths = [...changedPaths, ...primitives.added];
+  }
+  // Root cause first: a missing module is the broken node, not its importers.
+  if (createMissing) {
+    const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
+    const nodes = await resolveMissingNodes(files, changedPaths, createMissing);
+    if (nodes.created.length) {
+      console.log(`[missing-nodes] created ${JSON.stringify(nodes.created)}`);
+      controller.enqueue(encoder.encode(sse({ type: "timeline", step: "missing_nodes", outcome: "ok", count: nodes.created.length, message: `Created ${nodes.created.length} missing shared file(s): ${nodes.created.join(", ")}`, ts: Date.now() })));
+      files = nodes.files;
+      changedPaths = [...changedPaths, ...nodes.created];
+    }
+    if (nodes.blocked.length) {
+      console.warn(`[missing-nodes] blocked ${JSON.stringify(nodes.blocked)}`);
+      const inf = infraFailure();
+      if (inf) return { ok: false, detail: inf.message, origin: "infrastructure" };
+    }
   }
 
 
@@ -6587,6 +6605,26 @@ async function handleGenerateRequestCore(
             return out;
           },
           () => infraFailure,
+          // Missing-node recovery: a missing shared module is created ONCE,
+          // before any dependent page is repaired individually.
+          async (node, context) => {
+            if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
+            controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
+            const { createMissingModule } = await import("@/server/engine/repair");
+            try {
+              return await createMissingModule(node, context, {
+                turnId: logicalTurnId,
+                projectId: body.projectId ?? null,
+                userId,
+                turnContext: turnContextFor(node.target),
+              });
+            } catch (e) {
+              const { isInfrastructureFailure } = await import("@/lib/failure-classification");
+              if (!isInfrastructureFailure(e)) throw e;
+              infraFailure = e;
+              return null;
+            }
+          },
         );
 
         if (!guardOut.ok && guardOut.origin === "infrastructure") {
