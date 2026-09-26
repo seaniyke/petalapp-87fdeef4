@@ -1293,42 +1293,6 @@ async function structuredRetryCompletion(args: {
   return primary;
 }
 
-/** One page, returned as plain text in a fenced block (see engine/raw-file). */
-async function rawPageCompletion(args: {
-  messages: Array<{ role: string; content: unknown }>;
-  isInitial: boolean;
-  maxTokens: number;
-  signal: AbortSignal;
-  providerStalled?: boolean;
-  meta: Parameters<typeof structuredRetryCompletion>[0]["meta"];
-}): Promise<Response> {
-  const { RAW_FILE_FORMAT, RAW_FILES_FORMAT } = await import("@/server/engine/raw-file");
-  const msgs = args.messages.slice();
-  const last = msgs[msgs.length - 1];
-  msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}\n\n${String(last?.content ?? "").startsWith("DECOMPOSED PAGE") ? RAW_FILES_FORMAT : RAW_FILE_FORMAT}` };
-  // Transient provider failures (429/5xx/connection) get bounded backoff
-  // retries on the same model; deterministic errors are never retried.
-  const { withProviderRetry } = await import("@/server/engine/provider-retry");
-  return withProviderRetry(
-    () =>
-      aiChatCompletions({
-        feature: "generate",
-        body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
-        timeoutTier: args.isInitial ? "stream_first_build" : "stream",
-        lockCallerModel: true,
-        codeOutput: true,
-        signal: args.signal,
-        meta: args.meta,
-      }),
-    {
-      signal: args.signal,
-      onAttempt: (a) => {
-        if (a.failureClass !== "ok") console.warn(`[provider-retry] model=${MODEL_STRUCTURED_RETRY} attempt=${a.attempt} status=${a.status ?? "conn"} class=${a.failureClass} delay=${a.delayMs}ms`);
-      },
-    },
-  );
-}
-
 async function recoverMissingToolOutput(args: {
   chatMessages: Array<{ role: string; content: unknown }>;
   collected: ParsedTool;
@@ -4778,7 +4742,7 @@ async function handleGenerateRequestCore(
               onTrace: (t) => {
                 loopTraces.push(t);
                 console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} tools=${t.toolCalls.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
-                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "ai_call", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "agent_tool", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
               },
               onEvent: (e) => {
                 if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
