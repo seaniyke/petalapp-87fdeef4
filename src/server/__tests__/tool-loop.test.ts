@@ -156,3 +156,13 @@ describe("seeded first-response files", () => {
     expect(r.files[0]!.content).toBe("ok");
   });
 });
+
+describe("tool loop transport", () => {
+  it("never sends parallel_tool_calls (OpenRouter has no endpoint for it with require_parameters → 404)", async () => {
+    const { makeCallModel } = await import("@/server/engine/tool-loop-model");
+    let sent: Record<string, unknown> = {};
+    const cm = makeCallModel(async (b) => { sent = b; return new Response("data: [DONE]\n\n", { status: 200 }); });
+    await cm([{ role: "user", content: "x" }], []);
+    expect("parallel_tool_calls" in sent).toBe(false);
+  });
+});

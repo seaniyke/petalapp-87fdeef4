@@ -60443,6 +60443,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -62773,6 +62774,7 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
+    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -141527,7 +141529,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -153238,7 +153239,7 @@ async function parseToolStream(res, startedAt) {
 function makeCallModel(send, onUsage) {
   return async (messages, tools, signal) => {
     const startedAt = Date.now();
-    const res = await send({ messages, tools, tool_choice: "auto", parallel_tool_calls: true, stream: true, stream_options: { include_usage: true } }, signal);
+    const res = await send({ messages, tools, tool_choice: "auto", stream: true, stream_options: { include_usage: true } }, signal);
     if (!res.ok || !res.body) throw new InfrastructureFailure(`AI provider returned HTTP ${res.status}`, res.status);
     const reply = await parseToolStream(res, startedAt);
     onUsage?.(reply.rawUsage);
@@ -170265,6 +170266,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
