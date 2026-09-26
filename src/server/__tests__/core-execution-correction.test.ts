@@ -124,9 +124,9 @@ describe("identifier gate never flags platform globals", () => {
     expect(isPlatformGlobal("mode")).toBe(false);
   });
   it("passes real code using Date and still fails a truly undefined name", () => {
-    const ok = checkUndefinedIdentifiers({ files: [{ path: "src/a.tsx", content: "export const d = new Date(Date.now()).getTime() + Math.max(1, JSON.parse('2'));" }], changed: ["src/a.tsx"] } as never);
+    const ok = checkUndefinedIdentifiers([{ path: "src/a.tsx", content: "export const d = new Date(Date.now()).getTime() + Math.max(1, JSON.parse('2'));" }], ["src/a.tsx"]);
     expect(ok.status).toBe("verified");
-    const bad = checkUndefinedIdentifiers({ files: [{ path: "src/b.tsx", content: "export const x = mode + 1;" }], changed: ["src/b.tsx"] } as never);
+    const bad = checkUndefinedIdentifiers([{ path: "src/b.tsx", content: "export const x = mode + 1;" }], ["src/b.tsx"]);
     expect(bad.status).toBe("failed");
   });
 });
