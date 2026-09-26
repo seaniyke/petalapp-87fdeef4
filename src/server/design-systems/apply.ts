@@ -84,8 +84,9 @@ export function renderHtmlFontLinks(pkg: DesignSystemPackage): string {
   const tags = pkg.fonts.map(
     (f) => `    <link rel="${f.rel}" href="${f.href}"${f.crossOrigin ? " crossorigin" : ""}>`,
   );
-  return [HTML_FONTS_START, ...tags, `    ${HTML_FONTS_END}`].join("\n    ").replace(/^ {4}/, "");
+  return [`    ${HTML_FONTS_START}`, ...tags, `    ${HTML_FONTS_END}`].join("\n").trimStart();
 }
+
 
 /**
  * Install the font links into a Vite `index.html`. Replaces the marked region
