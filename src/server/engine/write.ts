@@ -15,6 +15,15 @@ import { assessCompleteness, isPlaceholderFile } from "@/server/engine/build-sta
 import type { RecoveryBudget } from "@/server/engine/recovery-policy";
 import type { PlannedPage } from "@/server/engine/plan";
 import type { PageDecision } from "@/server/execution/complexity";
+import {
+  continuationInstruction,
+  feedbackInstruction,
+  signatureContext,
+  stitchContinuation,
+  validateUnitImports,
+  type UnitKind,
+  type UnitRecord,
+} from "@/server/engine/work-unit";
 
 /** Marker the request callback uses to parse a multi-file page answer. */
 export const DECOMPOSED_MARKER = "DECOMPOSED PAGE";
@@ -30,6 +39,8 @@ export interface WriteResult {
   truncated: string[];
   /** Pages written as page shell + section components, with why. */
   decomposed: Array<{ file: string; reasons: string[]; sections: string[] }>;
+  /** Every work unit executed (or skipped as already done), in order. */
+  units: UnitRecord[];
 }
 
 /** The project's real technical substrate, handed to every writer so it
@@ -365,7 +376,7 @@ export async function writePlannedPages(args: {
     if (todo.length) {
       const contract = projectContract(files);
       const src = files.find((f) => f.path === pageFile)!.content;
-      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src, contract)));
+      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src, contract), "section"));
       got.forEach(put);
     }
     decomposed.push({
@@ -383,11 +394,12 @@ export async function writePlannedPages(args: {
   // the shell call didn't deliver a real layout (colours alone aren't one).
   const needFrame = !frameIsComplete(files, args.pages.length) || (routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete);
   if (needFrame && args.budget.take("missing_page", "app shell")) {
-    put(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
+    layer = 2;
+    put(await call(routerInstruction(args.pages, files.map((f) => f.path), [projectContract(files), signatureContext(files)].filter(Boolean).join("\n")), "router"));
   }
 
   const missing = args.pages.filter((p) => !hasRealPage(files, p.file)).map((p) => p.route);
-  return { files, written, missing, calls, truncated, decomposed };
+  return { files, written, missing, calls, truncated, decomposed, units };
 }
 
 /** Max simultaneous page-writing calls (see writePages). */
