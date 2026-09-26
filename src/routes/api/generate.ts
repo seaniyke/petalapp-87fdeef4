@@ -7619,6 +7619,19 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
             headers: { "x-kimble-turn-id": clientTurnId },
           });
         }
+        // One live turn per project, checked against the durable turns table
+        // (the in-memory build lock is per-worker only). A retry tapped while
+        // the previous turn is still running server-side — e.g. after a
+        // dropped phone connection — must attach, never start a second build.
+        if (!isInternalCaller && (await hasLiveTurn(peekAuth, peekBody.projectId))) {
+          return new Response(
+            JSON.stringify({
+              error:
+                "Kimble is still working on your last request. It will show up here when it's done.",
+            }),
+            { status: 429, headers: { "Content-Type": "application/json" } },
+          );
+        }
         // Durable ingress: the browser must not be the caller of the run —
         // on the live host its disconnect would kill the work. Open the turn
         // row, hand the job to the builder, and let the browser tail events.
