@@ -5280,6 +5280,7 @@ function Builder() {
               const errorCardVisible = !!tailErr && !shouldHideErrorCard(tailErr);
               return activityVisible && !errorCardVisible;
             })() && (
+              <div data-testid="build-activity" className="contents">
               <BuildActivityCard
                 projectId={project?.id ?? null}
                 turn={turnView}
@@ -5373,6 +5374,7 @@ function Builder() {
                   }
                 }}
               />
+              </div>
             )}
             {/* After a refresh the live activity card is gone; keep the last
                 finished result on screen so the user still sees it. */}
