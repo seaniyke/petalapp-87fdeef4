@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { writePlannedPages } from "@/server/engine/write";
+import { runAgentLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import {
   isOwnContentIssue,

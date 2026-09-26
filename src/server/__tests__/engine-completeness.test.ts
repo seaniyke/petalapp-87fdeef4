@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { writePlannedPages } from "@/server/engine/write";
+import { runAgentLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { planFirstBuild, pageFileFor } from "@/server/engine/plan";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { resolveProviderRouting } from "@/server/engine/provider-policy";

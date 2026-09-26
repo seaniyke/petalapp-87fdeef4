@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { undefinedNames, safeReactImportRepair } from "@/server/engine/work-unit";
 import { checkUndefinedIdentifiers } from "@/server/verification/identifiers.server";
-import { writePlannedPages } from "@/server/engine/write";
+import { runAgentLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { retirementFor, checkpointUsable, checkpointSeedFiles } from "@/server/build-checkpoint.server";
 
