@@ -24,3 +24,5 @@
 - The identifier gate never flags real platform globals (`isPlatformGlobal`: engine `globalThis` + ES/DOM names), not a hand-kept list — why: `Date` was reported undefined and failed a valid task app.
 - Every terminal turn closes its evidence in the database (`close_turn_evidence` trigger: economics result + assistant message), whichever path ended it — why: reaped turns left economics "running" and no message.
 - Unwritten pages the user did not name and the intent contract does not require are removed from the router; requested/core pages are never dropped — why: one missing optional Settings page discarded a 20-file hospital build.
+- Type-only exports imported as values fail verification only when the importer uses the name at runtime (`usedAsValue`) — why: type-position imports are erased by the bundler, and the false positive discarded the bakery build.
+- Missing-node recovery also runs just before the final check over all changed paths — why: helpers imported by late-written pages were never created, and quarantine cascaded through every importer.
