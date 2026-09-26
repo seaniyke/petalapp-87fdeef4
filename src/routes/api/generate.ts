@@ -1888,8 +1888,19 @@ async function runFinalParseGuard(
   /** The turn's ONE repair (shared budget). Broken generated files get it
    *  before anything is set aside. */
   repair?: (file: ProjectFile, detail: string) => Promise<string | null>,
-): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string }> {
+  /** Provider failure recorded by the repair step, if any. */
+  infraFailure: () => Error | null = () => null,
+): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string; origin?: "infrastructure" | "code" }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
+  const { blockedRemovals } = await import("@/server/engine/structural-deps");
+  const { recoverMissingPrimitives } = await import("@/server/engine/deterministic-primitives");
+  // Allowlisted generic primitives only; project-specific modules are never stubbed.
+  const primitives = recoverMissingPrimitives(files);
+  if (primitives.added.length) {
+    console.log(`[deterministic-primitives] provided ${JSON.stringify(primitives.added)}`);
+    files = primitives.files;
+    changedPaths = [...changedPaths, ...primitives.added];
+  }
 
 
   const { files: gated, report } = await runPreEmitGate(files, changedPaths, {
@@ -1972,6 +1983,13 @@ async function runFinalParseGuard(
           fixedPaths.push(p);
         }
       }
+      // Diagnosis before destruction: if the repair step failed because the
+      // AI provider failed, nothing here says the files are invalid enough to
+      // remove. Preserve everything and report the infrastructure failure.
+      const infra = infraFailure();
+      if (infra) {
+        return { ok: false, detail: infra.message, origin: "infrastructure" };
+      }
       if (fixedPaths.length) {
         const again = await runPreEmitGate(working, changedPaths, { maxRounds: 0, prd });
         console.log(`[preemit-gate] repair attempted=${JSON.stringify(fixedPaths)} ok=${again.report.ok}`);
@@ -1983,6 +2001,15 @@ async function runFinalParseGuard(
     }
     // First builds (no prior files) always keep the good files: a broken page
     // is set aside, never a reason to discard the pages that work.
+    const priorPaths = new Set(priorFiles.map((f) => f.path));
+    // Dependency-aware: a structurally critical file (entry, app shell,
+    // shared module) may be replaced by its prior verified content, never
+    // dropped. If one would have to be dropped, preserve the last valid state.
+    const blocked = blockedRemovals(gated, badPaths, (p) => priorPaths.has(p));
+    if (blocked.length) {
+      console.warn(`[preemit-gate] refusing to remove structurally critical file(s) ${JSON.stringify(blocked)}`);
+      return { ok: false, detail: `critical file failed verification: ${formatGateIssues(report.issues.filter((i) => blocked.includes(i.path)), 3)}`, origin: "code" };
+    }
     const salvageable = badPaths.length > 0 && badPaths.length < gated.length && (priorFiles.length === 0 || badPaths.length <= 4);
     if (salvageable) {
       try {
@@ -2026,6 +2053,11 @@ async function runFinalParseGuard(
       let bad = new Set(badPaths.length ? badPaths : report.issues.map((i) => i.path).filter(Boolean));
       const isolated: string[] = [];
       for (let round = 0; round < 3 && bad.size > 0; round++) {
+        const critical = blockedRemovals(kept, bad, () => false);
+        if (critical.length) {
+          console.warn(`[preemit-gate] first build: refusing to isolate critical file(s) ${JSON.stringify(critical)}`);
+          return { ok: false, detail: `critical file failed verification: ${critical.join(", ")}`, origin: "code" };
+        }
         isolated.push(...bad);
         kept = isolateBrokenFiles(kept, bad);
         const again = await runPreEmitGate(kept, changedPaths.filter((p) => !isolated.includes(p)), { maxRounds: 0, prd });
@@ -4205,6 +4237,10 @@ async function handleGenerateRequestCore(
         const breaker = new AgentCircuitBreaker();
         /** Guidance the breaker wants the next repair attempt to see. */
         let breakerGuidance: string | null = null;
+        // Set when an AI-backed recovery step failed because the PROVIDER
+        // failed (502/timeout/outage). That is never evidence about the code:
+        // no file may be isolated, reverted or deleted on its account.
+        let infraFailure: import("@/lib/failure-classification").InfrastructureFailure | null = null;
         const turnContextFor = (path: string | null): string =>
           [recovery.summarize(path), breakerGuidance, appMapRepairBlock].filter(Boolean).join("\n\n");
         try {
@@ -5708,12 +5744,21 @@ async function handleGenerateRequestCore(
                   action: "compile repair of this file only (write gate)",
                 });
                 const { repairBrokenFile } = await import("@/server/engine/repair");
-                const out = await repairBrokenFile(file, detail, {
-                  turnId: logicalTurnId,
-                  projectId: body.projectId ?? null,
-                  userId,
-                  turnContext,
-                });
+                let out: string | null;
+                try {
+                  out = await repairBrokenFile(file, detail, {
+                    turnId: logicalTurnId,
+                    projectId: body.projectId ?? null,
+                    userId,
+                    turnContext,
+                  });
+                } catch (e) {
+                  const { isInfrastructureFailure } = await import("@/lib/failure-classification");
+                  if (!isInfrastructureFailure(e)) throw e;
+                  infraFailure = e;
+                  recovery.resolve(n, "kept_previous");
+                  return null;
+                }
                 if (!out) recovery.resolve(n, "kept_previous");
                 else {
                   recovery.resolve(n, "pending", out);
@@ -5728,6 +5773,10 @@ async function handleGenerateRequestCore(
             if (gate.validationFailure) {
               throw new Error(`Authoritative code validation unavailable: ${gate.validationFailure}`);
             }
+            // Provider outage during a repair: stop before the write gate's
+            // rejections change anything. Nothing is committed; the last
+            // valid project state stands.
+            if (infraFailure) throw infraFailure;
             nextFiles = gate.files;
             // Rejected writes were reverted inside the proposed tree (existing
             // policy): the rest of the turn may land, so this is a WARNING.
@@ -6450,6 +6499,7 @@ async function handleGenerateRequestCore(
               console.warn(`[circuit-breaker] ${JSON.stringify(breaker.snapshot())}`);
               return null;
             }
+            if (infraFailure) return null;
             if (!recovery.take("broken_file", file.path)) return null;
             controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}…` })));
             // Build-server logs aren't retained — record the exact reason on
@@ -6464,7 +6514,16 @@ async function handleGenerateRequestCore(
               action: "compile repair of this file only (final check)",
             });
             const { repairBrokenFile } = await import("@/server/engine/repair");
-            const out = await repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext });
+            let out: string | null;
+            try {
+              out = await repairBrokenFile(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext });
+            } catch (e) {
+              const { isInfrastructureFailure } = await import("@/lib/failure-classification");
+              if (!isInfrastructureFailure(e)) throw e;
+              infraFailure = e;
+              recovery.resolve(n, "kept_previous");
+              return null;
+            }
             recovery.resolve(n, out ? "pending" : "kept_previous", out);
             if (out) {
               breaker.recordProgress("file_repaired", file.path);
@@ -6472,7 +6531,23 @@ async function handleGenerateRequestCore(
             }
             return out;
           },
+          () => infraFailure,
         );
+
+        if (!guardOut.ok && guardOut.origin === "infrastructure") {
+          const { guidanceFor } = await import("@/lib/failure-classification");
+          const g = guidanceFor("infrastructure");
+          console.warn(`[final-parse-guard] provider failure during repair — preserving files: ${guardOut.detail}`);
+          controller.enqueue(encoder.encode(sse({ type: "timeline", step: "esbuild_parse", outcome: "failed", message: `Infrastructure: ${guardOut.detail}`.slice(0, 500), ts: Date.now() })));
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary: `${g.headline} ${g.preserved} Send "continue" when you're ready and I'll pick up exactly where this stopped.`,
+            suggestions: ["Continue"],
+            outcome: "failed",
+            reason: "infrastructure:provider_unavailable",
+          });
+          return;
+        }
 
         if (!guardOut.ok) {
           // Final-parse-guard couldn't repair this turn's edits. Revert

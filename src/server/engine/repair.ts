@@ -7,6 +7,7 @@ import type { ProjectFile } from "@/server/generate.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { isTruncationDetail } from "@/server/engine/build-state";
 import { defaultTextModel } from "@/lib/ai-model-config";
+import { InfrastructureFailure, classifyHttpStatus, classifyFailureOrigin } from "@/lib/failure-classification";
 
 const SYSTEM =
   "You fix one source file that fails to compile. Return ONLY the complete corrected file contents — no markdown fences, no commentary. Keep the file's purpose, content, exports and imports; change only what is needed to fix the error.";
@@ -41,7 +42,12 @@ export async function repairBrokenFile(
   // A cut-off file is not repairable by patching half of it. The WRITE stage
   // re-requests truncated pages; anything still truncated here is isolated.
   if (isTruncationDetail(detail)) return null;
-  const resp = await aiChatCompletions({
+  // A provider failure is NOT evidence about this file. Throw a typed
+  // infrastructure failure so the caller preserves the file instead of
+  // treating "no repair" as "this file is invalid".
+  let resp: Response;
+  try {
+    resp = await aiChatCompletions({
     feature: "recovery",
     codeOutput: true,
     lockCallerModel: true,
@@ -65,7 +71,16 @@ export async function repairBrokenFile(
       ],
     },
   });
-  if (!resp.ok) return null;
+  } catch (e) {
+    if (classifyFailureOrigin(e) === "cancelled") throw e;
+    throw new InfrastructureFailure(e instanceof Error ? e.message : String(e));
+  }
+  if (!resp.ok) {
+    if (classifyHttpStatus(resp.status) === "infrastructure") {
+      throw new InfrastructureFailure(`repair provider returned HTTP ${resp.status}`, resp.status);
+    }
+    return null;
+  }
   const data = (await resp.json()) as { choices?: { message?: { content?: string } }[] };
   const out = stripFences(data.choices?.[0]?.message?.content ?? "");
   return out.trim() ? out : null;

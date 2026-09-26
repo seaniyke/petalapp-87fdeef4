@@ -7,6 +7,7 @@
  * "Preview" (jumps to the live app). Everything verbose lives in
  * <BuildDetailsSheet />.
  */
+import { deriveActivityState } from "@/lib/turn-execution/activity-state";
 import { useEffect, useMemo, useState } from "react";
 import {
   Sparkles,
@@ -210,11 +211,10 @@ export function BuildActivityCard({
   const timelineEvents = (turn ? turn.timeline : timelineEventsProp) as TimelineEntry[] | undefined;
   // Authoritative lifecycle wins. "AI finished" is never "ready": a failed
   // build, failed live check, failure or Stop can never show the success card.
+  // ONE interpretation: a terminal authoritative lifecycle ends the active
+  // state no matter which local flag is still set.
   const lc = turn?.lifecycle;
-  const blocksSuccess =
-    lc === "failed" || lc === "cancelled" || lc === "stopping" || lc === "build_failed" || lc === "verify_failed" || lc === "running" || lc === "generated" || lc === "building";
-  const isComplete = isCompleteProp && !blocksSuccess;
-  const isActive = (isActiveProp || lc === "stopping") && lc !== "cancelled";
+  const { active: isActive, complete: isComplete } = deriveActivityState(lc, { busy: isActiveProp }, isCompleteProp);
   const storyMode = !!turn && turn.lifecycle !== "idle" && turn.hasActivity && !isComplete;
 
   // Tick once a second while active so the elapsed counter updates in real
