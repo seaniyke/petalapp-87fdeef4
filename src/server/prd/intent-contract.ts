@@ -275,8 +275,8 @@ export function stripRoutesFromRouter(app: string, pageFiles: string[]): string 
   let out = app;
   for (const file of pageFiles) {
     const name = file.split("/").pop()!.replace(/\.(tsx?|jsx?)$/, "");
-    const importRe = new RegExp(`^\\s*import\\s+([A-Za-z_$][\\w$]*)\\s+from\\s*["']@/pages/${name}["'];?\\s*$\\n?`, "m");
-    const lazyRe = new RegExp(`^\\s*const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\([^\\n]*@/pages/${name}[^\\n]*$\\n?`, "m");
+    const importRe = new RegExp(`^\\s*import\\s+([A-Za-z_$][\\w$]*)\\s+from\\s*["'](?:@|\\.)/pages/${name}(?:\\.tsx?)?["'];?\\s*$\\n?`, "m");
+    const lazyRe = new RegExp(`^\\s*const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\([^\\n]*(?:@|\\.)/pages/${name}["'.][^\\n]*$\\n?`, "m");
     const m = importRe.exec(out) ?? lazyRe.exec(out);
     if (!m) continue;
     const ident = m[1]!;

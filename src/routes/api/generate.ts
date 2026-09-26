@@ -4848,6 +4848,24 @@ async function handleGenerateRequestCore(
               `[write] pages=${JSON.stringify(pages.map((p) => p.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`,
             );
             parsed.files = done.files;
+            // A page the router links but the writer never produced, which the
+            // user did not ask for and the product contract does not require,
+            // is dropped from the router — the verified rest still ships.
+            // Requested/core pages are never dropped (that fails honestly).
+            if (done.missing.length) {
+              const { stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
+              const core = new Set((intentContract?.pages ?? []).map((pg) => pg.route));
+              const named = new Set(requestedRoutesFor(lastUserText, []));
+              const optional = pages.filter((pg) => done.missing.includes(pg.file) || done.missing.includes(pg.route))
+                .filter((pg) => pg.route !== "/" && !core.has(pg.route) && !named.has(pg.route));
+              const app = parsed.files.find((f) => f.path === "src/App.tsx");
+              const cleaned = app && optional.length ? stripRoutesFromRouter(app.content, optional.map((pg) => pg.file)) : null;
+              if (app && cleaned !== null) {
+                app.content = cleaned;
+                turnStrategy.droppedOptionalPages = optional.map((pg) => pg.route);
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "fixed", message: `Left out unfinished optional pages: ${optional.map((pg) => pg.route).join(", ")}`, ts: Date.now() })));
+              }
+            }
             if (done.missing.length) {
               turnStrategy.missingPages = { missing: done.missing, providerFailures: pageProviderFailures };
               controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Pages not written: ${done.missing.join(", ")}${pageProviderFailures.length ? ` (provider failures: ${pageProviderFailures.map((f) => `${f.path} HTTP ${f.status}`).join(", ")})` : ""}`, ts: Date.now() })));
