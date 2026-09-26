@@ -4689,7 +4689,22 @@ async function handleGenerateRequestCore(
                 lastUserText,
                 planned as Array<{ route: string; file: string }>,
                 seedFiles.map((f) => f.path),
+                await (async () => {
+                  const sel = picContext?.design?.package;
+                  if (!sel) return null;
+                  const { getDesignSystem } = await import("@/server/design-systems/registry");
+                  const pkg = getDesignSystem(sel.systemId);
+                  if (!pkg) return null;
+                  return {
+                    name: pkg.meta.name,
+                    accent: sel.accent,
+                    displayFont: picContext?.design?.typography?.displayFont ?? pkg.meta.fonts[0] ?? "serif",
+                    bodyFont: picContext?.design?.typography?.bodyFont ?? pkg.meta.fonts[1] ?? "sans-serif",
+                    playbook: pkg.designMd,
+                  };
+                })(),
               ),
+
               files: seedFiles,
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
