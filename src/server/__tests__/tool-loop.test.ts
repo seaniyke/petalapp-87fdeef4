@@ -87,7 +87,7 @@ describe("tool loop", () => {
       reply(call("edit_file", { path: "src/a.ts", search: "a", replace: "b" }), call("finish", {})),
     ]);
     let writes = 0;
-    await runToolLoop({ ...base, files: [{ path: "src/a.ts", content: "a a" }], callModel: m.callModel, onWrite: () => { writes++; return true; } });
+    await runToolLoop({ ...base, files: [{ path: "src/a.ts", content: "a;" }], callModel: m.callModel, onWrite: () => { writes++; return true; } });
     expect(writes).toBe(1);
   });
 
