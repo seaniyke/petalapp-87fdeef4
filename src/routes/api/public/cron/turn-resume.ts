@@ -52,6 +52,14 @@ async function loadFiles(projectId: string) {
   return (data ?? []).map((f) => ({ path: f.path, content: f.content }));
 }
 
+async function requeueWithoutAttempt(recordId: string, attempts: number): Promise<void> {
+  await supabaseAdmin
+    .from("project_turn_completion")
+    .update({ stage: "needs_repair", attempts, resume_after: new Date(Date.now() + 2 * 60_000).toISOString() } as never)
+    .eq("id", recordId)
+    .eq("stage", "repairing");
+}
+
 export async function resumeOne(record: CompletionRecord, origin: string): Promise<string> {
   // A turn the user stopped is never restarted, however it was queued.
   const { turnAllowsResume, turnStatusOf } = await import("@/server/turn-cancel.server");
@@ -77,6 +85,11 @@ export async function resumeOne(record: CompletionRecord, origin: string): Promi
     return "blocked";
   }
 
+  // An interrupted first build with saved progress continues from its
+  // checkpoint (on the build server) instead of starting from zero.
+  const { loadResumableCheckpoint } = await import("@/server/build-checkpoint.server");
+  const checkpoint = interrupted && !files.length ? await loadResumableCheckpoint(record.project_id) : null;
+
   const secret = process.env.BUILDER_SHARED_SECRET!;
   const res = await fetch(new URL("/api/generate", origin).toString(), {
     method: "POST",
@@ -84,16 +97,25 @@ export async function resumeOne(record: CompletionRecord, origin: string): Promi
       "Content-Type": "application/json",
       "x-petal-internal-secret": secret,
       "x-petal-internal-user": record.user_id,
+      ...(checkpoint ? { "x-kimble-durable-dispatch": "1" } : {}),
     },
     body: JSON.stringify({
-      messages: [{ role: "user", content: brief }],
+      messages: [{ role: "user", content: checkpoint?.request || brief }],
       currentFiles: files,
       projectId: record.project_id,
       isAutoFix: true,
       autoPlan: false,
       autoResumeAttempts: record.attempts + 1,
+      ...(checkpoint ? { resumeCheckpointId: checkpoint.id, turnId: crypto.randomUUID() } : {}),
     }),
   });
+
+  // The build server isn't back yet: keep the saved progress and try again on
+  // a later tick, without spending an attempt.
+  if (checkpoint && (res.status === 503 || res.status === 502)) {
+    await requeueWithoutAttempt(record.id, record.attempts);
+    return "waiting_for_builder";
+  }
 
   if (!res.ok) {
     await markBlocked(
