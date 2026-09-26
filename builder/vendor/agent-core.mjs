@@ -70247,6 +70247,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS, ROOT_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -142012,6 +142013,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -143851,6 +143853,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144770,6 +144773,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145780,7 +145784,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -175656,7 +175659,6 @@ function isMissingToolOutputError(error) {
 async function structuredRetryCompletion(args) {
   const bodyBase = {
     messages: args.providerStalled ? args.messages : addStructuredRetryInstruction(args.messages, {
-      isInitial: args.isInitial,
       problem: args.problem,
       hasBackend: args.hasBackend,
       crossCuttingIntent: args.crossCuttingIntent
@@ -175668,11 +175670,10 @@ async function structuredRetryCompletion(args) {
     reasoning: { enabled: false },
     stream: true
   };
-  const timeoutTier = args.isInitial ? "stream_first_build" : "stream";
   const primary = await aiChatCompletions({
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
-    timeoutTier,
+    timeoutTier: "stream",
     // No providerOverride: follow the resolved provider (DB → env → OpenRouter
     // when its key is set). Pinning "lovable" here meant a funded OpenRouter
     // account was never used and every turn died on the Lovable gateway's 402.
@@ -175688,7 +175689,7 @@ async function recoverMissingToolOutput(args) {
   args.controller.enqueue(
     args.encoder.encode(sse({ type: "status", message: "Converting the draft into safe edits\u2026" }))
   );
-  const requiredTool = args.isInitial ? "write_project" : "patch_files";
+  const requiredTool = "patch_files";
   const recoveryMessages = [
     ...args.chatMessages,
     {
@@ -175702,11 +175703,10 @@ async function recoverMissingToolOutput(args) {
   ];
   const recovery = await structuredRetryCompletion({
     messages: recoveryMessages,
-    isInitial: args.isInitial,
     problem: "previous response contained prose instead of the required tool call",
     hasBackend: Boolean(args.backend),
     tool: args.tool,
-    maxTokens: args.isInitial ? 22e3 : 1e4,
+    maxTokens: 1e4,
     crossCuttingIntent: args.crossCuttingIntent,
     signal: args.signal,
     meta: {
@@ -175720,7 +175720,7 @@ async function recoverMissingToolOutput(args) {
   });
   if (!recovery.ok || !recovery.body) return null;
   const recoveredCollected = await relayAndCollect(recovery, args.controller, args.encoder);
-  const parsed = parseCollectedProject(recoveredCollected, args.isInitial);
+  const parsed = parseCollectedProject(recoveredCollected);
   return { ...parsed, collected: recoveredCollected, usedRecovery: true };
 }
 function emitTurnOutcome(controller, encoder, args) {
@@ -175814,17 +175814,12 @@ function validateTargetShape(files, targetId) {
   }
   return null;
 }
-function parseCollectedProject(collected, isInitial) {
+function parseCollectedProject(collected) {
   if (!collected.name || !collected.args) {
-    throw new Error(
-      isInitial ? "AI did not return a project. Try rephrasing." : "AI did not return usable edits for this request."
-    );
+    throw new Error("AI did not return usable edits for this request.");
   }
-  if (collected.name === "write_project" && !isInitial) {
+  if (collected.name === "write_project") {
     throw new Error("AI tried to rewrite the whole project. Edits must be incremental patches.");
-  }
-  if (collected.name === "patch_files" && isInitial) {
-    throw new Error("AI tried to patch an empty project. Initial generation must create files.");
   }
   let parsed;
   try {
@@ -175833,14 +175828,14 @@ function parseCollectedProject(collected, isInitial) {
     const salvaged = salvagePartialToolArgs(collected.args, collected.name);
     if (salvaged) {
       console.warn(
-        `[generate] salvaged ${salvaged.recovered} ${collected.name === "write_project" ? "file(s)" : "op(s)"} from a ${salvaged.truncated ? "truncated" : "malformed"} tool payload`
+        `[generate] salvaged ${salvaged.recovered} op(s) from a ${salvaged.truncated ? "truncated" : "malformed"} tool payload`
       );
       parsed = salvaged.parsed;
     } else {
       console.error("Failed to parse tool args", e, collected.args.slice(0, 500));
       const looksCutOff = collected.args.length > 0 && !collected.args.trimEnd().endsWith("}");
       throw new Error(
-        looksCutOff ? "AI response was cut off before the project JSON finished. Retrying with smaller files." : isInitial ? "AI returned invalid project data." : "AI returned invalid edit data."
+        looksCutOff ? "AI response was cut off before the project JSON finished. Retrying with smaller files." : "AI returned invalid edit data."
       );
     }
   }
@@ -175869,9 +175864,6 @@ function parseCollectedProject(collected, isInitial) {
       parsed.ops = ops;
     }
   }
-  if (collected.name === "write_project" && !parsed.files?.length) {
-    throw new Error("AI returned no files.");
-  }
   if (collected.name === "patch_files" && (!Array.isArray(parsed.ops) || parsed.ops.length === 0)) {
     throw new Error("AI returned no ops.");
   }
@@ -175892,13 +175884,13 @@ function parseCollectedProject(collected, isInitial) {
   };
 }
 function addStructuredRetryInstruction(messages, args) {
-  const requiredTool = args.isInitial ? "write_project" : "patch_files";
+  const requiredTool = "patch_files";
   const backendHint = args.hasBackend === false ? ` This project has no backend connected. Do not import from "@/integrations/backend/*" or "@supabase/supabase-js" and do not add real auth or persistence wiring. Still complete the requested frontend with realistic inline data. Marketing navigation labels such as "Log in" and "Sign up" are valid presentation UI and must not block the build. Do not mention backend setup unless the user's latest request explicitly asks for working accounts, authentication, or persistent data.` : "";
   const chunkHint = args.problem.startsWith("replace_too_large") ? " Split the change into MULTIPLE small `replace` ops, each with a `search` snippet under ~160 lines / 8 KB. Target one logical region per op." : args.problem.startsWith("destructive_shrink") ? " You returned a much shorter file than the original \u2014 that destroys the user's app. DO NOT resend the file as a stub. Use `replace` ops that change only the specific lines that need to change, and preserve everything else." : "";
   const scopeHint = args.crossCuttingIntent ? " This is a broad redesign/cross-page edit with enough scope already; DO NOT ask for a smaller target. Emit real file edits that satisfy the whole requested surface." : "";
   const retryBlock = `
 
-STRUCTURED RETRY \u2014 your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field.${scopeHint} For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components. If this is an initial app, build a focused MVP that works instead of a giant showcase: 4-8 app files max, no file over 140 lines, no long content blocks.${backendHint}`;
+STRUCTURED RETRY \u2014 your previous response could not be applied (${args.problem}). Retry now with a smaller, safer ${requiredTool} tool call. You MUST call ${requiredTool}; return complete JSON tool arguments only; include every required field.${scopeHint} For edit turns, prefer exact \`replace\` ops for small changes instead of resending whole files.${chunkHint} Keep files short and split large UI into components.${backendHint}`;
   return messages.map(
     (m, i) => i === 0 && typeof m.content === "string" ? { ...m, content: `${m.content}${retryBlock}` } : m
   );
@@ -177594,7 +177586,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 stream: true,
                 ...reasoningField
               },
-              timeoutTier: isInitial ? "stream_first_build" : "stream",
+              timeoutTier: "stream",
               signal: abortSignal,
               meta: {
                 phase: phaseTag.phase,
@@ -177609,7 +177601,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             if (!retryUpstream.ok || !retryUpstream.body) return null;
             return relayAndCollect(retryUpstream, controller, encoder);
           };
-          if (refusal.kind === "context_overflow" && !isInitial) {
+          if (refusal.kind === "context_overflow") {
             controller.enqueue(
               encoder.encode(sse({ type: "status", message: "Narrowing in on the files that matter\u2026" }))
             );
@@ -177680,7 +177672,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             );
             throw new Error(`provider stream stalled (${firstStall.upstream ?? "unknown upstream"}, ${firstStall.ms}ms without output)`);
           }
-          payload = isInitial ? { parsed: { files: firstBuildSeedFiles(collected.args) }, summary: "" } : parseCollectedProject(collected, isInitial);
+          payload = isInitial ? { parsed: { files: firstBuildSeedFiles(collected.args) }, summary: "" } : parseCollectedProject(collected);
         } catch (e) {
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Retrying the response safely\u2026" }))
@@ -177710,11 +177702,10 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             });
             const retry = await structuredRetryCompletion({
               messages: finalMessages,
-              isInitial,
               problem: lastErr instanceof Error ? lastErr.message : "invalid structured response",
               hasBackend: Boolean(backend2),
               tool,
-              maxTokens: isInitial ? Math.min(24e3, Math.max(18e3, Math.round(maxCompletionTokens * 1.35))) : firstWasTruncated ? Math.min(2e4, Math.max(16e3, Math.round(maxCompletionTokens * 1.6))) : Math.max(maxCompletionTokens, 8e3),
+              maxTokens: firstWasTruncated ? Math.min(2e4, Math.max(16e3, Math.round(maxCompletionTokens * 1.6))) : Math.max(maxCompletionTokens, 8e3),
               crossCuttingIntent: isCrossCutting,
               signal: abortSignal,
               providerStalled: providerFailed,
@@ -177757,13 +177748,12 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           if (attempts === 0) throw e;
           try {
             if (!retryTrusted) throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
-            payload = parseCollectedProject(collected, isInitial);
+            payload = parseCollectedProject(collected);
           } catch (retryErr) {
             const recoverySource = assistantTextFromCollected(collected) ? collected : firstStall ? null : firstCollected;
-            const recovered = !isInitial && isMissingToolOutputError(retryErr) && recoverySource ? await recoverMissingToolOutput({
+            const recovered = isMissingToolOutputError(retryErr) && recoverySource ? await recoverMissingToolOutput({
               chatMessages: finalMessages,
               collected: recoverySource,
-              isInitial,
               tool,
               model,
               phaseTag,
@@ -177788,7 +177778,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               collected = recovered.collected;
             } else {
               let smallChunk = null;
-              if (!isInitial && firstWasTruncated && recovery.take("truncated_output")) {
+              if (firstWasTruncated && recovery.take("truncated_output")) {
                 try {
                   controller.enqueue(
                     encoder.encode(
@@ -177806,14 +177796,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                         role: "user",
                         content: buildChunkInstruction({
                           round: 1,
-                          isInitial,
+                          isInitial: false,
                           deliveredPaths: [],
                           remainingSteps: parseStepsFromArgs(firstCollected.args),
                           reason: "truncated_output"
                         })
                       }
                     ],
-                    isInitial,
                     problem: "output_truncated_first_chunk",
                     hasBackend: Boolean(backend2),
                     tool,
@@ -177832,7 +177821,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   });
                   if (chunkRes.ok && chunkRes.body) {
                     const chunkCollected = await relayAndCollect(chunkRes, controller, encoder);
-                    smallChunk = parseCollectedProject(chunkCollected, isInitial);
+                    smallChunk = parseCollectedProject(chunkCollected);
                     collected = chunkCollected;
                   }
                 } catch (chunkErr) {
@@ -177846,7 +177835,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               if (smallChunk) {
                 payload = smallChunk;
               } else {
-                const deterministic = !isInitial ? deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent }) : null;
+                const deterministic = deterministicPatchFallback({ currentFiles, latestUserContent: lastUserContent });
                 if (deterministic) {
                   controller.enqueue(
                     encoder.encode(sse({ type: "status", message: "Applying a safe targeted edit path\u2026" }))
@@ -177866,9 +177855,9 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   );
                   emitConversationalFallback(controller, encoder, {
                     files: currentFiles,
-                    summary: isInitial ? "I couldn't complete the build because the app generator failed to return files after its recovery attempts. Your brief is clear \u2014 retry this build; you do not need to rewrite the prompt." : "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
-                    outcome: isInitial ? "blocked" : "answered",
-                    reason: isInitial ? "initial_generation_no_files" : "no_safe_edit"
+                    summary: "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
+                    outcome: "answered",
+                    reason: "no_safe_edit"
                   });
                   return;
                 }
@@ -178072,7 +178061,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               )
             );
             const chunked = await runChunkedGeneration({
-              isInitial,
+              isInitial: false,
               assessment: chunkAssessment,
               ops: parsed.ops ?? [],
               files: parsed.files ?? [],
@@ -178095,7 +178084,6 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                     { role: "assistant", content: assistantTextFromCollected(collected).slice(0, 4e3) },
                     { role: "user", content: req.instruction }
                   ],
-                  isInitial,
                   problem: "output_truncated_chunk",
                   hasBackend: Boolean(backend2),
                   tool,
@@ -178125,7 +178113,6 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                       { role: "assistant", content: assistantTextFromCollected(collected).slice(0, 4e3) },
                       { role: "user", content: req.instruction }
                     ],
-                    isInitial,
                     problem: "output_truncated_chunk",
                     hasBackend: Boolean(backend2),
                     tool,
@@ -178149,7 +178136,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   chunkCollected = await relayAndCollect(again, controller, encoder);
                 }
                 try {
-                  const chunkPayload = parseCollectedProject(chunkCollected, isInitial);
+                  const chunkPayload = parseCollectedProject(chunkCollected);
                   return {
                     ops: chunkPayload.parsed.ops,
                     files: chunkPayload.parsed.files,
@@ -178163,8 +178150,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               }
             });
             if (chunked.added > 0) {
-              if (isInitial) parsed.files = chunked.files;
-              else parsed.ops = chunked.ops;
+              parsed.ops = chunked.ops;
               console.log(
                 `[chunked-generation] rounds=${chunked.rounds} added=${chunked.added} \u2014 ${chunked.notes.join("; ")}`
               );
@@ -178290,7 +178276,6 @@ ${args.constraint}
 Re-emit ONLY the refused work as a single patch_files tool call that respects that constraint. Use \`update\` with the COMPLETE file contents rather than \`replace\` when you are unsure the search snippet matches exactly. Do not repeat edits that were already accepted. If the refused work genuinely cannot be done within the constraint, return an empty ops array \u2014 do not invent a workaround that breaks the app.`
                   }
                 ],
-                isInitial: false,
                 problem: `op_repair:${args.problem.slice(0, 80)}`,
                 hasBackend: Boolean(backend2),
                 tool: PATCH_FILES_TOOL,
@@ -178309,7 +178294,7 @@ Re-emit ONLY the refused work as a single patch_files tool call that respects th
               });
               if (!res.ok || !res.body) return [];
               const repairedCollected = await relayAndCollect(res, controller, encoder);
-              const payload2 = parseCollectedProject(repairedCollected, false);
+              const payload2 = parseCollectedProject(repairedCollected);
               return (payload2.parsed.ops ?? []).filter((op) => !isProtectedPath(op.path));
             } catch (err) {
               console.warn(
@@ -178608,7 +178593,6 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                 ];
                 const rewrite = await structuredRetryCompletion({
                   messages: rewriteMessages,
-                  isInitial: false,
                   problem: `single_file_rewrite:${failure.error.slice(0, 80)}`,
                   hasBackend: Boolean(backend2),
                   tool: PATCH_FILES_TOOL,
@@ -178631,7 +178615,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                 }
                 const rewriteCollected = await relayAndCollect(rewrite, controller, encoder);
                 try {
-                  const rewritePayload = parseCollectedProject(rewriteCollected, false);
+                  const rewritePayload = parseCollectedProject(rewriteCollected);
                   const ops = (rewritePayload.parsed.ops ?? []).filter(
                     (op) => op.path === path && !isProtectedPath(op.path)
                   );
