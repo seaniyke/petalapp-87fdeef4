@@ -6954,6 +6954,16 @@ async function handleGenerateRequestCore(
           },
         });
         const txCommitted = txResult.outcome.status === "committed";
+        // Agent said finished (readiness passed) but commit verification did
+        // not: an ARCHITECTURAL error (both read the same authority), never
+        // a normal failure. Recorded so it can't hide.
+        {
+          const loopOutcome = (turnStrategy.toolLoop as { outcome?: string } | undefined)?.outcome;
+          if (loopOutcome === "finished" && txResult.verification && txResult.verification.status !== "READY" && txResult.verification.status !== "IN_PROGRESS") {
+            turnStrategy.readinessDivergence = { status: txResult.verification.status, gate: txResult.verification.failedGate, reason: txResult.verification.reason };
+            console.error(`[readiness_divergence] loop finished but commit verification=${txResult.verification.status} gate=${txResult.verification.failedGate} reason=${txResult.verification.reason}`);
+          }
+        }
         // A committed turn has delivered its checkpoint's work: retire it so
         // it can never be resumed (no duplicate of committed work).
         if (txCommitted && checkpointTurnId) {
