@@ -4117,7 +4117,7 @@ async function handleGenerateRequestCore(
     },
   });
 
-  if (!directLogoEdit && (!upstream || !upstream.ok || !upstream.body)) {
+  if (!directLogoEdit && !resumeShell && (!upstream || !upstream.ok || !upstream.body)) {
     // Upstream rejected before doing any work — nothing was charged,
     // nothing to refund. Just surface a friendly error.
     const upstreamStatus = upstream?.status ?? 502;
@@ -4212,12 +4212,31 @@ async function handleGenerateRequestCore(
         }
         // Every page-writing call's tokens are billed with the main call.
         const pageWriteUsages: Array<GatewayUsage | null> = [];
+        if (resumed) {
+          const pv = resumed.preserved;
+          controller.enqueue(encoder.encode(sse({
+            type: "timeline",
+            step: "checkpoint_resume",
+            outcome: "ok",
+            message: `Resumed from saved progress: kept the layout and ${pv.pages} finished page${pv.pages === 1 ? "" : "s"} (${pv.aiCalls} AI calls, ~$${pv.costUsd.toFixed(3)}, ${Math.round(pv.elapsedMs / 60000)} min of work not repeated)`,
+            ts: Date.now(),
+          })));
+        }
         let collected: ParsedTool = directLogoEdit
           ? {
               name: "patch_files",
               args: JSON.stringify(directLogoEdit.parsed),
               text: "",
               finishReason: "stop",
+              usage: null,
+              providerError: null,
+            }
+          : resumeShell
+          ? {
+              name: resumeShell.name,
+              args: resumeShell.args,
+              text: resumeShell.text,
+              finishReason: resumeShell.finishReason ?? "stop",
               usage: null,
               providerError: null,
             }
