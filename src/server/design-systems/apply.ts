@@ -18,9 +18,13 @@ export const TOKENS_START = "/* kimble-design-system:start */";
 export const TOKENS_END = "/* kimble-design-system:end */";
 export const FONTS_START = "/* kimble-fonts:start */";
 export const FONTS_END = "/* kimble-fonts:end */";
+export const HTML_FONTS_START = "<!-- kimble-fonts:start -->";
+export const HTML_FONTS_END = "<!-- kimble-fonts:end -->";
 
 const STYLE_PATHS = ["src/styles.css", "src/index.css"];
 const ROOT_PATH = "src/routes/__root.tsx";
+const HTML_PATH = "index.html";
+
 
 export type ApplyResult =
   | { ok: true; files: ProjectFile[]; changedPaths: string[]; changed: boolean }
