@@ -70,6 +70,8 @@ type Handlers = {
       | "render_risk"
       | "rls_sanity"
       | "file_budget"
+      | "missing_nodes"
+      | "intent_check"
       | "post_stream_autofix"
       | "image_resolve"
       | "prd_contract"

@@ -1889,6 +1889,8 @@ async function runFinalParseGuard(
   repair?: (file: ProjectFile, detail: string) => Promise<string | null>,
   /** Provider failure recorded by the repair step, if any. */
   infraFailure: () => Error | null = () => null,
+  /** Creates one missing shared module (root-cause repair). */
+  createMissing?: import("@/server/engine/missing-nodes").CreateModule,
 ): Promise<{ ok: true; files: ProjectFile[] } | { ok: false; detail: string; origin?: "infrastructure" | "code" }> {
   const { runPreEmitGate, formatGateIssues } = await import("@/server/preemit-gate.server");
   const { blockedRemovals } = await import("@/server/engine/structural-deps");
@@ -1899,6 +1901,22 @@ async function runFinalParseGuard(
     console.log(`[deterministic-primitives] provided ${JSON.stringify(primitives.added)}`);
     files = primitives.files;
     changedPaths = [...changedPaths, ...primitives.added];
+  }
+  // Root cause first: a missing module is the broken node, not its importers.
+  if (createMissing) {
+    const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
+    const nodes = await resolveMissingNodes(files, changedPaths, createMissing);
+    if (nodes.created.length) {
+      console.log(`[missing-nodes] created ${JSON.stringify(nodes.created)}`);
+      controller.enqueue(encoder.encode(sse({ type: "timeline", step: "missing_nodes", outcome: "ok", count: nodes.created.length, message: `Created ${nodes.created.length} missing shared file(s): ${nodes.created.join(", ")}`, ts: Date.now() })));
+      files = nodes.files;
+      changedPaths = [...changedPaths, ...nodes.created];
+    }
+    if (nodes.blocked.length) {
+      console.warn(`[missing-nodes] blocked ${JSON.stringify(nodes.blocked)}`);
+      const inf = infraFailure();
+      if (inf) return { ok: false, detail: inf.message, origin: "infrastructure" };
+    }
   }
 
 
@@ -3228,6 +3246,21 @@ async function handleGenerateRequestCore(
   const turnEscalations: string[] = [];
   const turnStrategy: Record<string, unknown> = { decomposedPages: [] as string[] };
   console.info(`[complexity] ${JSON.stringify(assessExecution(turnComplexityBase))}`);
+  // Economic ledger opens BEFORE expensive execution: even a catastrophic
+  // failure leaves a measurable record (finalized at the terminal boundary).
+  {
+    const opened = assessExecution(turnComplexityBase);
+    void agentIO().recordEconomics({
+      turnId: logicalTurnId,
+      userId,
+      projectId: body.projectId ?? null,
+      feature: "generate",
+      creditsCharged: 0,
+      isAutoFix: Boolean(body.isAutoFix),
+      result: "running",
+      metadata: { opened_at: new Date().toISOString(), execution_class: opened.class, expected_cost_usd: opened.expectedCostUsd },
+    });
+  }
   const lifecycleBlock = await (async () => {
     try {
       const { renderLifecycleContext } = await import("@/server/context/lifecycle");
@@ -3510,6 +3543,29 @@ async function handleGenerateRequestCore(
     }
   } catch {
     // Never block a build on composer failure.
+  }
+
+  // Intent contract (PRD): validate the plan against the REQUEST before any
+  // expensive generation. No template match → the archetype's pages are the
+  // plan; divergent pages (e.g. a shop inside a hospital system) are removed.
+  let intentContract: import("@/server/prd/intent-contract").IntentContract | null = null;
+  if (isInitial) {
+    try {
+      const { deriveIntentContract, divergentPages, renderIntentBlock } = await import("@/server/prd/intent-contract");
+      intentContract = resolvedPrd?.prd.intent ?? deriveIntentContract(lastUserText, resolvedPrd?.prd ?? null);
+      const bad = divergentPages(intentContract, plannedRoutes, lastUserText);
+      if (bad.length) {
+        console.warn(`[intent] removed divergent planned routes ${JSON.stringify(bad)} (archetype=${intentContract.archetype})`);
+        for (const r of bad) plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
+      }
+      if (plannedRoutes.filter((r) => r !== "/").length === 0 && intentContract.pages.length) {
+        for (const pg of intentContract.pages) if (!plannedRoutes.includes(pg.route)) plannedRoutes.push(pg.route);
+        console.log(`[intent] archetype=${intentContract.archetype} plan=${JSON.stringify(plannedRoutes)}`);
+      }
+      archetypeBlock += renderIntentBlock(intentContract);
+    } catch (e) {
+      console.warn(`[intent] contract unavailable: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   // Bounded first-build generation units. Pages the user named are the plan
@@ -4587,7 +4643,26 @@ async function handleGenerateRequestCore(
             // imports but that were never written (the shell call ran out of
             // room, or planning under-counted) are the remaining work — write
             // them here, under the same bounded WRITE-stage budget.
-            const fromRouter = pagesReferencedByRouter(parsed.files, planned);
+            let fromRouter = pagesReferencedByRouter(parsed.files, planned);
+            // Router pages are validated against the intent contract — never
+            // harvested blindly. Divergent pages are removed from the router.
+            if (intentContract && fromRouter.length) {
+              const { divergentPages, stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
+              const bad = new Set(divergentPages(intentContract, fromRouter.map((p) => p.route), lastUserText));
+              if (bad.size) {
+                const badFiles = fromRouter.filter((p) => bad.has(p.route)).map((p) => p.file);
+                const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                const cleaned = app ? stripRoutesFromRouter(app.content, badFiles) : null;
+                if (app && cleaned !== null) {
+                  app.content = cleaned;
+                  fromRouter = fromRouter.filter((p) => !bad.has(p.route));
+                  console.warn(`[intent] dropped divergent router pages ${JSON.stringify([...bad])}`);
+                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "intent_check", outcome: "ok", message: `Removed pages that don't belong in this product: ${[...bad].join(", ")}`, ts: Date.now() })));
+                } else {
+                  console.warn(`[intent] divergent router pages kept (router not safely cleanable): ${JSON.stringify([...bad])}`);
+                }
+              }
+            }
             const pages = [...planned, ...fromRouter];
             for (const p of fromRouter) if (!plannedRoutes.includes(p.route)) plannedRoutes.push(p.route);
             if (isTruncatedFinishReason(collected.finishReason) || fromRouter.length) {
@@ -5762,6 +5837,34 @@ async function handleGenerateRequestCore(
             : nextFiles
                 .filter((f) => prevByPath.get(f.path) !== f.content)
                 .map((f) => f.path);
+          if (touched.length > 0 && isInitial) {
+            // Missing-node recovery before per-file repair: create each
+            // missing shared module once instead of repairing every importer.
+            try {
+              const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
+              const { createMissingModule } = await import("@/server/engine/repair");
+              const nodes = await resolveMissingNodes(nextFiles, touched, async (node, context) => {
+                if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
+                controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
+                return createMissingModule(node, context, {
+                  turnId: logicalTurnId,
+                  projectId: body.projectId ?? null,
+                  userId,
+                  turnContext: turnContextFor(node.target),
+                });
+              });
+              if (nodes.created.length) {
+                console.log(`[missing-nodes] write-gate created ${JSON.stringify(nodes.created)}`);
+                nextFiles = nodes.files;
+                touched.push(...nodes.created);
+              }
+              if (nodes.blocked.length) console.warn(`[missing-nodes] blocked ${JSON.stringify(nodes.blocked)}`);
+            } catch (e) {
+              const { isInfrastructureFailure } = await import("@/lib/failure-classification");
+              if (!isInfrastructureFailure(e)) throw e;
+              infraFailure = e;
+            }
+          }
           if (touched.length > 0) {
             const gate = await runWriteGate({
               before: currentFiles,
@@ -6075,9 +6178,13 @@ async function handleGenerateRequestCore(
         // Phase 1 — a long file is only thrown away when it's genuinely
         // unfinished. Complete work reaches the user, however large it is.
         const contentByPathBudget = new Map(nextFiles.map((f) => [f.path, f.content]));
-        const budgetRejections: FileBudgetIssue[] = budgetVerdict.rejections.filter((r) =>
-          looksIncomplete(contentByPathBudget.get(r.path) ?? ""),
-        );
+        // Size is NEVER a correctness rule. Whether a file is unfinished is
+        // decided by the parser/verifier at any size; size only signals that
+        // the next write of this page should be decomposed.
+        void contentByPathBudget;
+        void looksIncomplete;
+        void enforceFileBudgets;
+        const budgetRejections: FileBudgetIssue[] = [];
         const budgetDowngraded = budgetVerdict.rejections.filter(
           (r) => !budgetRejections.includes(r),
         );
@@ -6587,6 +6694,26 @@ async function handleGenerateRequestCore(
             return out;
           },
           () => infraFailure,
+          // Missing-node recovery: a missing shared module is created ONCE,
+          // before any dependent page is repaired individually.
+          async (node, context) => {
+            if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
+            controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
+            const { createMissingModule } = await import("@/server/engine/repair");
+            try {
+              return await createMissingModule(node, context, {
+                turnId: logicalTurnId,
+                projectId: body.projectId ?? null,
+                userId,
+                turnContext: turnContextFor(node.target),
+              });
+            } catch (e) {
+              const { isInfrastructureFailure } = await import("@/lib/failure-classification");
+              if (!isInfrastructureFailure(e)) throw e;
+              infraFailure = e;
+              return null;
+            }
+          },
         );
 
         if (!guardOut.ok && guardOut.origin === "infrastructure") {
@@ -8060,6 +8187,45 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // Persist the terminal state before the request ends. A fire-and-forget
         // write is dropped by serverless runtimes once the response closes,
         // leaving turns permanently "running" and inviting reconnect loops.
+        // NO FINAL OUTCOME WITHOUT A DURABLE RECORD. For every non-success
+        // exit, the cost record and the assistant's terminal reply are written
+        // while the turn is still running (the build service may only write
+        // for a running turn), THEN the terminal status is persisted.
+        let failureReplyWritten = false;
+        if (recorder && turnUserId && terminalStatus !== "succeeded" && terminalStatus !== "awaiting_credits") {
+          const { classifyFailureOrigin } = await import("@/lib/failure-classification");
+          await agentIO()
+            .recordEconomics({
+              turnId: recorder.turnId,
+              userId: turnUserId,
+              projectId: turnProjectId ?? null,
+              feature: "generate",
+              creditsCharged: 0,
+              result: terminalStatus,
+              finalizeOnly: true,
+              metadata: {
+                terminal_status: terminalStatus,
+                failure_reason: terminalError?.slice(0, 300) ?? null,
+                failure_origin: terminalError ? classifyFailureOrigin(new Error(terminalError)) : null,
+                customer_charge: 0,
+              },
+            })
+            .catch(() => undefined);
+          if (turnProjectId && !silentRecovery && !planProposed) {
+            await new Promise((r) => setTimeout(r, 2500));
+            const done = lastResult as { summary?: string; plan?: string; recap?: string; committedRevision?: number | null } | null;
+            failureReplyWritten = await persistAbandonedTurnReply({
+              projectId: turnProjectId,
+              turnId: recorder.turnId,
+              status: terminalStatus,
+              summary: done?.summary ?? null,
+              plan: done?.plan ?? null,
+              recap: done?.recap ?? null,
+              errorMessage: terminalError,
+              committedRevision: done?.committedRevision ?? null,
+            }).catch(() => false);
+          }
+        }
         await finishTurnOnce(terminalStatus, terminalError);
         // Make sure the thread always ends with an assistant reply. The client
         // normally writes it on `done`, but a dropped socket doesn't always
@@ -8084,7 +8250,7 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // A turn queued for silent completion must not write a reply at all:
         // the resumed run owns the conversation, and a "this didn't finish"
         // bubble is exactly what we are removing.
-        if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
+        if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits" && !failureReplyWritten && terminalStatus === "succeeded") {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string; committedRevision?: number | null } | null;
           const wroteReply = await persistAbandonedTurnReply({

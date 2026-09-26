@@ -22,6 +22,9 @@ import { aiRowToCostEvent, classifyTurnCalls, recordCostEvents } from "@/server/
 export type CostBasis = "actual" | "estimated" | "unknown";
 
 export type RecordTurnEconomicsArgs = {
+  /** Terminal safety net: write only when no record exists or the existing
+   *  one is still the "running" record opened at turn start. */
+  finalizeOnly?: boolean;
   turnId: string;
   userId?: string | null;
   projectId?: string | null;
@@ -227,6 +230,14 @@ export async function recordTurnEconomics(args: RecordTurnEconomicsArgs): Promis
         cost_breakdown_usd_micro: ai.breakdown,
         shadow_charge: decision,
       };
+    }
+    if (args.finalizeOnly) {
+      const { data: existing } = await supabaseAdmin
+        .from("turn_economics")
+        .select("result")
+        .eq("turn_id", args.turnId)
+        .maybeSingle();
+      if (existing && existing.result !== "running") return;
     }
     await supabaseAdmin.from("turn_economics").upsert(
       {

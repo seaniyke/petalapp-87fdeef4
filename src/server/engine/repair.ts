@@ -82,7 +82,7 @@ async function callRepair(
   system: string,
   user: string,
   maxTokens: number,
-  mode: "targeted_patch" | "whole_file",
+  mode: "targeted_patch" | "whole_file" | "create_module",
   meta?: { turnId?: string | null; projectId?: string | null; userId?: string | null },
 ): Promise<string | null> {
   // A provider failure is NOT evidence about this file. Throw a typed
@@ -97,8 +97,8 @@ async function callRepair(
     noFallback: true,
     timeoutTier: "default",
     meta: {
-      chosenBy: mode === "targeted_patch" ? "broken_file_repair_patch" : "broken_file_repair",
-      recoveryReason: "parse_error",
+      chosenBy: mode === "targeted_patch" ? "broken_file_repair_patch" : mode === "create_module" ? "missing_node_create" : "broken_file_repair",
+      recoveryReason: mode === "create_module" ? "missing_dependency" : "parse_error",
       turnId: meta?.turnId ?? null,
       projectId: meta?.projectId ?? null,
       userId: meta?.userId ?? null,
@@ -126,4 +126,33 @@ async function callRepair(
   }
   const data = (await resp.json()) as { choices?: { message?: { content?: string } }[] };
   return data.choices?.[0]?.message?.content ?? null;
+}
+
+const CREATE_SYSTEM =
+  "You create ONE missing shared source module that other files in a React + TypeScript app already import. " +
+  "Return ONLY the complete file contents — no markdown fences, no commentary. " +
+  "Export EVERY name listed, with signatures that fit how the importers use them. " +
+  "Only import from: react, packages already used by the importers, \"@/types\" and other files shown. " +
+  "If data is needed and no backend exists, keep realistic in-memory data in this module.";
+
+/**
+ * Missing-node creation: write the ONE missing module every importer needs.
+ * Provider failures throw InfrastructureFailure (same policy as repairs).
+ */
+export async function createMissingModule(
+  node: import("@/server/engine/missing-nodes").MissingNode,
+  context: string,
+  meta?: { turnId?: string | null; projectId?: string | null; userId?: string | null; turnContext?: string | null },
+): Promise<string | null> {
+  const { requiredExports } = await import("@/server/engine/missing-nodes");
+  const req = requiredExports(node);
+  const user =
+    (meta?.turnContext?.trim() ? `${meta.turnContext.trim()}\n\n` : "") +
+    `Create: ${node.target}\n` +
+    `Required named exports: ${req.named.join(", ") || "(none)"}\n` +
+    `Default export required: ${req.needsDefault ? "yes" : "no"}\n\n` +
+    `How the importers use it:\n${context}`;
+  const reply = await callRepair(CREATE_SYSTEM, user, 8_000, "create_module", meta);
+  const out = reply ? stripFences(reply) : "";
+  return out.trim() ? out : null;
 }

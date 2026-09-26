@@ -88,7 +88,10 @@ export async function resolvePrdForTurn(args: ResolvePrdArgs): Promise<ResolvedP
 
   if (!stored) {
     const authoredPrd = args.deterministicOnly ? deterministicPrd(brief) : await modelPrd(brief, args.userId ?? undefined);
-    prd = attachRequirements(authoredPrd, brief, null).prd;
+    // Deterministic intent contract: the request, not the model, decides the
+    // product archetype and what is out of scope.
+    const { applyIntentContract } = await import("./intent-contract");
+    prd = applyIntentContract(attachRequirements(authoredPrd, brief, null).prd, brief);
     versioned = await saveProjectPrd(args.projectId, prd, brief, null);
     authored = true;
   } else {
