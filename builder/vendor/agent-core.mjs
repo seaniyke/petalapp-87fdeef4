@@ -27887,11 +27887,11 @@ var require_lib = __commonJS({
       type: "export type",
       interface: "export interface"
     };
-    function partition(list3, test) {
+    function partition(list4, test) {
       const list1 = [];
       const list22 = [];
-      for (let i = 0; i < list3.length; i++) {
-        (test(list3[i], i, list3) ? list1 : list22).push(list3[i]);
+      for (let i = 0; i < list4.length; i++) {
+        (test(list4[i], i, list4) ? list1 : list22).push(list4[i]);
       }
       return [list1, list22];
     }
@@ -31821,8 +31821,8 @@ var require_lib = __commonJS({
         }
       }
       tsParseBindingListForSignature() {
-        const list3 = super.parseBindingList(11, 41, 2);
-        for (const pattern of list3) {
+        const list4 = super.parseBindingList(11, 41, 2);
+        for (const pattern of list4) {
           const {
             type
           } = pattern;
@@ -31832,7 +31832,7 @@ var require_lib = __commonJS({
             });
           }
         }
-        return list3;
+        return list4;
       }
       tsParseTypeMemberSemicolon() {
         if (!this.eat(12) && !this.isLineTerminator()) {
@@ -38596,9 +38596,9 @@ DO-NOT-ASSUME RULES (mandatory):
 - LEAN OUTPUT: the starter kit already ships the UI primitives (src/components/ui/*), router, styles and config. Never re-emit or rewrite those. Emit only the app's own pages/components that the request needs \u2014 typically 3-8 files. Put the design in a concise theme, reuse primitives instead of hand-rolling them, and do not write placeholder files, unused sections, or long repetitive mock data (keep sample arrays to 3-6 items).
 - NEVER comment out JSX with \`{/* <Foo /> */}\`. esbuild rejects empty JSX expression containers and inner braces in props (e.g. \`onClick={fn}\`) break the parse. If you want to disable a component, DELETE the JSX entirely (and remove now-unused imports/handlers). If you must leave a note, use a sibling \`{/* plain prose only, no tags */}\` with no \`<\` characters inside.
 
-MULTI-INTENT DETECTION (mandatory):
-- This is the FIRST build of a brand-new app. An app brief that names several pages/screens/sections of ONE product (e.g. "landing page, list view, calendar, tips page") is a SINGLE intent \u2014 build ALL of it in this turn, wire every page into the router and the nav, and never end the summary with "reply with the next number". Splitting a first build is a defect.
-- Only when the brief bundles 3+ genuinely SEPARATE products or systems (e.g. "an e-commerce store AND a CRM AND a blog engine") do you list the intents as a numbered list in \`plan\`, do the FIRST one, and end \`summary\` with: "I tackled #1 here \u2014 reply with the next number (or 'all') to keep going."
+REQUESTED SCOPE (mandatory):
+- This is the FIRST build of a brand-new app. The user's requested product scope is authoritative: understand and retain all of it. An app brief that names several pages/screens/features of ONE product is ONE product \u2014 every requested page goes into the router and the nav. Do not arbitrarily defer requested functionality merely because multiple features were requested, and never end the summary with "reply with the next number".
+- Large products are built in coherent stages using the "Product requirements and progress" block: implement THIS STAGE fully now; later-stage requirements are retained and built on following turns, never dropped. The summary names what remains.
 
 
 DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (by triage) \u2014 by the time you run, the user has committed to a build. If something is unclear, make the most reasonable assumption, state it briefly in \`summary\` ("Assumed a dark, minimal theme \u2014 tell me if you'd rather something else."), and proceed. Never end \`summary\` or \`plan\` with a question mark.`;
@@ -38749,8 +38749,8 @@ DO-NOT-ASSUME RULES (mandatory):
 - Do NOT add cookie banners, language switchers, accessibility menus, or onboarding tours unless the user asks.
 - Build only what the latest user message asks for.
 
-MULTI-INTENT DETECTION (mandatory):
-- If the LAST user message bundles 3+ clearly distinct features, do NOT silently change them all in one turn. List the intents in \`plan\` as a numbered list, do ONLY the first one this turn, and end \`summary\` with: "I tackled #1 here \u2014 reply with the next number (or 'all') to keep going."
+REQUESTED SCOPE (mandatory):
+- The user's requested product scope is authoritative. Understand and retain the complete scope. Do not arbitrarily defer requested functionality merely because multiple features were requested. When a "Product requirements and progress" block is present, implement the requirements it names for THIS turn inside the existing app and leave the others intact. Never lose or silently discard a requirement; if something genuinely cannot fit this turn, name it in \`summary\` as remaining.
 
 DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (by triage) \u2014 by the time you run, the user has committed to a build. If something is unclear, make the most reasonable assumption, state it briefly in \`summary\` ("Assumed X \u2014 tell me if you'd rather Y."), and proceed. Never end \`summary\` or \`plan\` with a question mark.`;
     WRITE_PROJECT_TOOL = {
@@ -39063,21 +39063,21 @@ function assessRouteCoverage(args) {
   for (const raw of args.expectedRoutes) {
     const route = String(raw ?? "").trim();
     if (!route) continue;
-    const slug2 = route.replace(/^\/+|\/+$/g, "").split("/")[0]?.toLowerCase() ?? "";
-    if (!slug2) {
+    const slug3 = route.replace(/^\/+|\/+$/g, "").split("/")[0]?.toLowerCase() ?? "";
+    if (!slug3) {
       if (!/\/(index|home|landing)\.(t|j)sx?$/im.test(haystack) && !/index/.test(haystack)) {
         missing.push("/");
       }
       continue;
     }
-    if (/[:$*]/.test(slug2)) continue;
-    if (!haystack.includes(slug2)) {
+    if (/[:$*]/.test(slug3)) continue;
+    if (!haystack.includes(slug3)) {
       missing.push(route);
       continue;
     }
     if (args.routerSource) {
       const registered = new RegExp(
-        `path\\s*[=:]\\s*["'\`][^"'\`]*${slug2.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        `path\\s*[=:]\\s*["'\`][^"'\`]*${slug3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
         "i"
       ).test(args.routerSource);
       if (!registered) missing.push(route);
@@ -39481,10 +39481,10 @@ This build couldn't be completed. ` + (parts.length ? `${parts.join("; ")}, but 
 }
 function legacyIncompleteMessage(missing) {
   const names = missing.map(label);
-  const list3 = names.length <= 1 ? names[0] ?? "part of it" : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  const list4 = names.length <= 1 ? names[0] ?? "part of it" : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   return `
 
-This build isn't finished: ${list3} ${missing.length === 1 ? "wasn't" : "weren't"} created, so I haven't built or published it. Everything else I made is saved \u2014 ask me to add ${missing.length === 1 ? "it" : "them"} and I'll write only what's missing.`;
+This build isn't finished: ${list4} ${missing.length === 1 ? "wasn't" : "weren't"} created, so I haven't built or published it. Everything else I made is saved \u2014 ask me to add ${missing.length === 1 ? "it" : "them"} and I'll write only what's missing.`;
 }
 function neutraliseSuccessClaims(text) {
   return text.replace(/\b(is|are)\s+(now\s+)?(live|published|up and running|ready to (use|go|share))\b/gi, "$1 written \u2014 building your preview now").replace(/\byour (site|website|app) is ready\b/gi, "your $1's pages are written \u2014 building your preview now");
@@ -39694,7 +39694,7 @@ var init_circuit_breaker = __esm({
        * failure at all.
        */
       recordFailure(input) {
-        const fingerprint2 = errorFingerprint(input);
+        const fingerprint3 = errorFingerprint(input);
         const tool = input.tool?.trim() || null;
         const path = input.path?.trim() || null;
         if (this.completed || this.state === "TRIPPED") {
@@ -39702,42 +39702,42 @@ var init_circuit_breaker = __esm({
             state: this.state,
             tripped: this.state === "TRIPPED",
             guidance: null,
-            fingerprint: fingerprint2,
-            repeatCount: this.byFingerprint.get(fingerprint2) ?? 0,
+            fingerprint: fingerprint3,
+            repeatCount: this.byFingerprint.get(fingerprint3) ?? 0,
             reason: this.tripReason
           };
         }
-        const repeatCount = (this.byFingerprint.get(fingerprint2) ?? 0) + 1;
-        this.byFingerprint.set(fingerprint2, repeatCount);
+        const repeatCount = (this.byFingerprint.get(fingerprint3) ?? 0) + 1;
+        this.byFingerprint.set(fingerprint3, repeatCount);
         if (input.category === "provider_failure") {
-          this.lastFingerprint = fingerprint2;
+          this.lastFingerprint = fingerprint3;
           return {
             state: this.state,
             tripped: false,
             guidance: null,
-            fingerprint: fingerprint2,
+            fingerprint: fingerprint3,
             repeatCount,
             reason: null
           };
         }
         this.totalFailures++;
-        if (this.lastFingerprint && this.lastFingerprint !== fingerprint2) {
+        if (this.lastFingerprint && this.lastFingerprint !== fingerprint3) {
           this.consecutiveFailures = 1;
           this.lastProgressAt = Date.now();
         } else {
           this.consecutiveFailures++;
         }
-        this.lastFingerprint = fingerprint2;
+        this.lastFingerprint = fingerprint3;
         if (path) this.byFile.set(path, (this.byFile.get(path) ?? 0) + 1);
         else if (tool) this.byTool.set(tool, (this.byTool.get(tool) ?? 0) + 1);
         const trip = (rule, detail) => {
           this.state = "TRIPPED";
-          this.tripReason = { rule, fingerprint: fingerprint2, category: input.category, tool, path, detail };
+          this.tripReason = { rule, fingerprint: fingerprint3, category: input.category, tool, path, detail };
           return {
             state: this.state,
             tripped: true,
             guidance: null,
-            fingerprint: fingerprint2,
+            fingerprint: fingerprint3,
             repeatCount,
             reason: this.tripReason
           };
@@ -39758,11 +39758,11 @@ var init_circuit_breaker = __esm({
           return trip("total_failures", `${this.totalFailures} failures in one request`);
         }
         let guidance = null;
-        if (repeatCount >= this.thresholds.guidanceAtIdentical && !this.guidanceIssued.has(fingerprint2)) {
-          this.guidanceIssued.add(fingerprint2);
+        if (repeatCount >= this.thresholds.guidanceAtIdentical && !this.guidanceIssued.has(fingerprint3)) {
+          this.guidanceIssued.add(fingerprint3);
           guidance = this.buildGuidance(input, repeatCount);
         }
-        return { state: this.state, tripped: false, guidance, fingerprint: fingerprint2, repeatCount, reason: null };
+        return { state: this.state, tripped: false, guidance, fingerprint: fingerprint3, repeatCount, reason: null };
       }
       /** Compact, targeted guidance. Never the transcript, never a generic retry. */
       buildGuidance(input, repeatCount) {
@@ -40428,6 +40428,469 @@ var init_credits_server = __esm({
   }
 });
 
+// src/server/economics-config.server.ts
+var economics_config_server_exports = {};
+__export(economics_config_server_exports, {
+  ECONOMICS_DEFAULTS: () => ECONOMICS_DEFAULTS,
+  economicsValue: () => economicsValue,
+  economicsValues: () => economicsValues,
+  invalidateEconomicsCache: () => invalidateEconomicsCache
+});
+async function load() {
+  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.values;
+  const values = { ...ECONOMICS_DEFAULTS };
+  try {
+    const { data } = await supabaseAdmin.from("economics_config").select("key, value");
+    for (const row of data ?? []) {
+      const n = Number(row.value);
+      if (Number.isFinite(n)) values[row.key] = n;
+    }
+  } catch (err) {
+    console.warn("[economics-config] read failed, using defaults", err);
+  }
+  cache = { at: Date.now(), values };
+  return values;
+}
+async function economicsValue(key) {
+  const values = await load();
+  return values[key] ?? ECONOMICS_DEFAULTS[key];
+}
+async function economicsValues() {
+  const values = await load();
+  return { ...ECONOMICS_DEFAULTS, ...values };
+}
+function invalidateEconomicsCache() {
+  cache = null;
+}
+var ECONOMICS_DEFAULTS, CACHE_TTL_MS, cache;
+var init_economics_config_server = __esm({
+  "src/server/economics-config.server.ts"() {
+    init_define_import_meta_env();
+    init_client_server_shim();
+    ECONOMICS_DEFAULTS = {
+      target_variable_cost_per_credit_usd: 0.05,
+      build_minute_usd: 0.02,
+      verification_minute_usd: 0.02,
+      deploy_event_usd: 2e-3,
+      image_generation_usd: 0.02,
+      min_purchase_usd_cents: 300,
+      target_gross_margin_pct: 60,
+      free_user_monthly_cost_ceiling_usd: 1.5,
+      max_active_dedicated_backends: 25,
+      dedicated_retention_days: 30,
+      auto_upgrade_row_pct: 80,
+      auto_upgrade_user_count: 50,
+      auto_upgrade_min_credits: 20,
+      // Kimble Compute: 8¢ per awake hour (~$58/mo full-time) against an
+      // underlying container cost of roughly 3¢/hr.
+      compute_hour_usd: 0.08,
+      max_active_compute: 25,
+      badge_removal_credits: 25,
+      // What one credit is worth in USD cents when we charge a real cash cost
+      // (domain registration). Conservative vs the cheapest pack (20 credits/$5).
+      credit_retail_usd_cents: 20
+    };
+    CACHE_TTL_MS = 5 * 60 * 1e3;
+    cache = null;
+  }
+});
+
+// src/server/cost-events.server.ts
+var cost_events_server_exports = {};
+__export(cost_events_server_exports, {
+  aiRowToCostEvent: () => aiRowToCostEvent,
+  classifyTurnCalls: () => classifyTurnCalls,
+  normaliseCost: () => normaliseCost,
+  recordCostEvents: () => recordCostEvents,
+  toRow: () => toRow
+});
+function normaliseCost(e) {
+  if (e.costUsd == null || !Number.isFinite(e.costUsd)) return { costUsd: null, basis: "UNKNOWN" };
+  if (e.basis === "UNKNOWN") return { costUsd: null, basis: "UNKNOWN" };
+  return { costUsd: e.costUsd, basis: e.basis };
+}
+function toRow(e) {
+  const n = normaliseCost(e);
+  return {
+    source_ref: e.sourceRef,
+    user_id: e.userId ?? null,
+    project_id: e.projectId ?? null,
+    turn_id: e.turnId ?? null,
+    revision: e.revision ?? null,
+    build_id: e.buildId ?? null,
+    stage: e.stage ?? null,
+    category: e.category,
+    provider: e.provider ?? null,
+    resource: e.resource ?? null,
+    quantity: e.quantity ?? null,
+    unit: e.unit ?? null,
+    cost_usd: n.costUsd,
+    cost_basis: n.basis,
+    failed_work: e.failedWork ?? false,
+    metadata: e.metadata ?? {}
+  };
+}
+async function recordCostEvents(events) {
+  if (!events.length) return;
+  try {
+    await supabaseAdmin.from("cost_events").upsert(events.map(toRow), { onConflict: "source_ref", ignoreDuplicates: true });
+  } catch (err) {
+    console.warn("[cost-events] write failed", err);
+  }
+}
+function aiRowToCostEvent(r) {
+  const cost = r.cost_usd_micro == null ? null : Number(r.cost_usd_micro) / 1e6;
+  const basis = cost == null ? "UNKNOWN" : r.cost_basis === "actual" ? "ACTUAL" : "ESTIMATED";
+  return {
+    sourceRef: `ai:${r.id}`,
+    userId: r.user_id,
+    projectId: r.project_id,
+    turnId: r.turn_id,
+    buildId: r.build_id ?? null,
+    revision: r.revision ?? null,
+    stage: r.stage,
+    category: r.stage === "verify" ? "AI_VERIFICATION" : "AI_INFERENCE",
+    provider: r.upstream_provider ?? r.provider,
+    resource: r.model,
+    quantity: Number(r.prompt_tokens ?? 0) + Number(r.completion_tokens ?? 0),
+    unit: "tokens",
+    costUsd: cost,
+    basis,
+    failedWork: r.status != null && r.status >= 400
+  };
+}
+function classifyTurnCalls(rows) {
+  const seen = /* @__PURE__ */ new Set();
+  return rows.map((r) => {
+    if (r.call_kind === "retry") return "RETRY";
+    if (r.call_kind === "repair") return "RECOVERY";
+    if (r.stage === "verify") return "VERIFICATION";
+    if (r.stage === "after") return "MEMORY";
+    if (r.stage === "write" && /one requested page/.test(r.purpose ?? "")) return "REQUIRED";
+    const key = `${r.stage}|${r.purpose}`;
+    if (r.stage === "request" && seen.has(key)) return "REDUNDANT";
+    seen.add(key);
+    return r.stage ? "REQUIRED" : "OTHER";
+  });
+}
+var init_cost_events_server = __esm({
+  "src/server/cost-events.server.ts"() {
+    init_define_import_meta_env();
+    init_client_server_shim();
+  }
+});
+
+// src/server/execution/charge-decision.ts
+var charge_decision_exports = {};
+__export(charge_decision_exports, {
+  decideCharge: () => decideCharge
+});
+function decideCharge(i) {
+  const base = { liveCharged: i.liveCharged, costRatio: i.actualCostUsd != null && i.expectedCostUsd > 0 ? round2(i.actualCostUsd / i.expectedCostUsd) : null };
+  if (i.isAutoFix) return { ...base, chargeable: false, reason: "kimble_auto_fix", wouldChargeCredits: 0 };
+  if (i.outcome === "aborted" || i.failureOrigin === "cancelled") return { ...base, chargeable: false, reason: "cancelled_before_commit", wouldChargeCredits: 0 };
+  if (!i.committed) {
+    const reason = i.failureOrigin === "infrastructure" ? "provider_or_infrastructure_failure" : i.failureOrigin === "kimble" ? "kimble_internal_failure" : i.outcome === "failed" || i.outcome === "blocked" ? "rolled_back_by_safety_checks" : "no_committed_change";
+    return { ...base, chargeable: false, reason, wouldChargeCredits: 0 };
+  }
+  if (i.actualCostUsd == null || !(i.costPerCreditUsd > 0)) {
+    return { ...base, chargeable: true, reason: "committed_cost_unknown_live_price_kept", wouldChargeCredits: i.liveCharged };
+  }
+  const billable = Math.max(0, i.actualCostUsd - (i.wastedCostUsd ?? 0));
+  return { ...base, chargeable: true, reason: "committed_measured_cost", wouldChargeCredits: round2(billable / i.costPerCreditUsd) };
+}
+var round2;
+var init_charge_decision = __esm({
+  "src/server/execution/charge-decision.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    round2 = (n) => Math.round(n * 100) / 100;
+  }
+});
+
+// src/server/turn-economics.server.ts
+var turn_economics_server_exports = {};
+__export(turn_economics_server_exports, {
+  attachBuildEconomics: () => attachBuildEconomics,
+  breakdownCalls: () => breakdownCalls,
+  recordTurnEconomics: () => recordTurnEconomics,
+  recordTurnRefund: () => recordTurnRefund,
+  syncTurnCosts: () => syncTurnCosts
+});
+function breakdownCalls(rows) {
+  const b = { generationMicro: 0, repairMicro: 0, wastedMicro: 0, planningMicro: 0, retryCalls: 0, recoveryCalls: 0, wastedCalls: 0 };
+  for (const r of rows) {
+    const c = Number(r.cost_usd_micro ?? 0);
+    const purpose = (r.purpose ?? "").toLowerCase();
+    const wasted = r.stream_outcome === "stalled" || r.finish_reason === "error" || r.finish_reason === "length";
+    if (/resend|retry/.test(purpose) || /provider_stall|provider_error/.test(r.recovery_reason ?? "")) b.retryCalls++;
+    if (wasted) {
+      b.wastedMicro += c;
+      b.wastedCalls++;
+      continue;
+    }
+    if (/repair|fix/.test(purpose)) {
+      b.repairMicro += c;
+      b.recoveryCalls++;
+      continue;
+    }
+    if (/triage|classify|plan|design direction|brief/.test(purpose)) {
+      b.planningMicro += c;
+      continue;
+    }
+    b.generationMicro += c;
+  }
+  return b;
+}
+async function rollUpAiCalls(turnId) {
+  const empty = {
+    calls: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    cachedPromptTokens: 0,
+    models: [],
+    providers: [],
+    costUsdMicro: null,
+    basis: "unknown",
+    breakdown: breakdownCalls([])
+  };
+  try {
+    const { data } = await supabaseAdmin.from("ai_call_log").select(
+      "model, provider, prompt_tokens, completion_tokens, cached_prompt_tokens, cost_usd_micro, cost_basis, purpose, stream_outcome, finish_reason, recovery_reason"
+    ).eq("turn_id", turnId);
+    if (!data?.length) return empty;
+    const models = /* @__PURE__ */ new Set();
+    const providers = /* @__PURE__ */ new Set();
+    let prompt = 0;
+    let completion = 0;
+    let cached7 = 0;
+    let cost = 0;
+    let sawActual = false;
+    let sawEstimated = false;
+    let sawUnknown = false;
+    for (const row of data) {
+      if (row.model) models.add(row.model);
+      if (row.provider) providers.add(row.provider);
+      prompt += Number(row.prompt_tokens ?? 0);
+      completion += Number(row.completion_tokens ?? 0);
+      cached7 += Number(row.cached_prompt_tokens ?? 0);
+      const c = row.cost_usd_micro == null ? null : Number(row.cost_usd_micro);
+      if (c == null) {
+        sawUnknown = true;
+        continue;
+      }
+      cost += c;
+      if (row.cost_basis === "actual") sawActual = true;
+      else sawEstimated = true;
+    }
+    const basis = sawUnknown ? "unknown" : sawActual && !sawEstimated ? "actual" : "estimated";
+    return {
+      calls: data.length,
+      promptTokens: prompt,
+      completionTokens: completion,
+      cachedPromptTokens: cached7,
+      models: [...models],
+      providers: [...providers],
+      costUsdMicro: sawUnknown ? null : Math.round(cost),
+      basis,
+      breakdown: breakdownCalls(data)
+    };
+  } catch (err) {
+    console.warn("[turn-economics] ai rollup failed", err);
+    return empty;
+  }
+}
+async function recordTurnEconomics(args) {
+  try {
+    const ai = await rollUpAiCalls(args.turnId);
+    const rates = await economicsValues();
+    const imageCostMicro = (args.imagesGenerated ?? 0) > 0 ? Math.round((args.imagesGenerated ?? 0) * rates.image_generation_usd * 1e6) : 0;
+    const otherCostMicro = imageCostMicro;
+    const variableCostMicro = ai.costUsdMicro == null ? null : ai.costUsdMicro + otherCostMicro;
+    let metadata = { ...args.metadata ?? {} };
+    if (args.execution) {
+      const { decideCharge: decideCharge2 } = await Promise.resolve().then(() => (init_charge_decision(), charge_decision_exports));
+      const actualUsd = ai.costUsdMicro == null ? null : (ai.costUsdMicro + otherCostMicro) / 1e6;
+      const decision = decideCharge2({
+        executionClass: args.execution.class,
+        committed: args.execution.committed,
+        outcome: args.execution.outcome,
+        failureOrigin: args.execution.failureOrigin,
+        isAutoFix: Boolean(args.isAutoFix),
+        actualCostUsd: actualUsd,
+        expectedCostUsd: args.execution.expectedCostUsd,
+        liveCharged: args.creditsCharged,
+        costPerCreditUsd: rates.target_variable_cost_per_credit_usd,
+        wastedCostUsd: ai.breakdown.wastedMicro / 1e6
+      });
+      metadata = {
+        ...metadata,
+        execution: {
+          class: args.execution.class,
+          signals: args.execution.signals ?? [],
+          strategy: args.execution.strategy ?? {},
+          outcome: args.execution.outcome,
+          committed: args.execution.committed,
+          failure_origin: args.execution.failureOrigin,
+          elapsed_ms: args.execution.elapsedMs ?? null
+        },
+        expected_cost_usd: args.execution.expectedCostUsd,
+        actual_cost_usd: actualUsd,
+        cost_breakdown_usd_micro: ai.breakdown,
+        shadow_charge: decision
+      };
+    }
+    await supabaseAdmin.from("turn_economics").upsert(
+      {
+        turn_id: args.turnId,
+        user_id: args.userId ?? null,
+        project_id: args.projectId ?? null,
+        build_id: args.buildId ?? null,
+        feature: args.feature ?? "generate",
+        credits_charged: args.creditsCharged,
+        ai_calls: ai.calls,
+        prompt_tokens: ai.promptTokens,
+        completion_tokens: ai.completionTokens,
+        cached_prompt_tokens: ai.cachedPromptTokens,
+        models: ai.models,
+        providers: ai.providers,
+        agent_rounds: args.agentRounds ?? 0,
+        images_generated: args.imagesGenerated ?? 0,
+        retry_count: args.retryCount ?? 0,
+        ai_cost_usd_micro: ai.costUsdMicro,
+        other_cost_usd_micro: otherCostMicro,
+        variable_cost_usd_micro: variableCostMicro,
+        cost_basis: ai.basis,
+        result: args.result ?? null,
+        is_auto_fix: args.isAutoFix ?? false,
+        metadata,
+        retry_calls: ai.breakdown.retryCalls,
+        recovery_calls: ai.breakdown.recoveryCalls,
+        redundant_calls: ai.breakdown.wastedCalls
+      },
+      { onConflict: "turn_id" }
+    );
+    await syncTurnCosts(args.turnId);
+  } catch (err) {
+    console.warn("[turn-economics] record failed", err);
+  }
+}
+async function syncTurnCosts(turnId) {
+  try {
+    const { data: rows } = await supabaseAdmin.from("ai_call_log").select("id, user_id, project_id, turn_id, stage, purpose, call_kind, model, upstream_provider, provider, prompt_tokens, completion_tokens, reasoning_tokens, cache_write_tokens, cost_usd_micro, cost_basis, status, created_at").eq("turn_id", turnId).order("created_at", { ascending: true });
+    const list4 = rows ?? [];
+    await recordCostEvents(list4.map((r) => aiRowToCostEvent(r)));
+    const classes = classifyTurnCalls(list4);
+    for (let i = 0; i < list4.length; i++) {
+      await supabaseAdmin.from("ai_call_log").update({ call_class: classes[i] }).eq("id", list4[i].id);
+    }
+    const count = (c) => classes.filter((x) => x === c).length;
+    const { data: te } = await supabaseAdmin.from("turn_economics").select("user_id, project_id, created_at").eq("turn_id", turnId).maybeSingle();
+    let free = 0;
+    let paid = 0;
+    if (te?.user_id && te.project_id) {
+      const { data: led } = await supabaseAdmin.from("credit_ledger").select("delta, reason, metadata, operation_id").eq("turn_id", turnId).eq("reason", "ai_build_charge").lt("delta", 0);
+      for (const row of led ?? []) {
+        const m = row.metadata ?? {};
+        for (const s of m.sources ?? []) {
+          if (s.bucket === "daily_free") free += Number(s.amount);
+          else paid += Number(s.amount);
+        }
+      }
+    }
+    await supabaseAdmin.from("turn_economics").update({
+      reasoning_tokens: list4.reduce((a2, r) => a2 + Number(r.reasoning_tokens ?? 0), 0),
+      cache_write_tokens: list4.reduce((a2, r) => a2 + Number(r.cache_write_tokens ?? 0), 0),
+      redundant_calls: count("REDUNDANT"),
+      retry_calls: count("RETRY"),
+      recovery_calls: count("RECOVERY"),
+      verification_calls: count("VERIFICATION"),
+      free_credits_charged: free,
+      paid_credits_charged: paid,
+      settlement_state: "settled"
+    }).eq("turn_id", turnId);
+  } catch (err) {
+    console.warn("[turn-economics] cost sync failed", err);
+  }
+}
+async function attachBuildEconomics(args) {
+  if (!args.turnId) return;
+  try {
+    const rates = await economicsValues();
+    const buildMinutes = (args.buildMs ?? 0) / 6e4;
+    const verifyMinutes = (args.verifyMs ?? 0) / 6e4;
+    const buildCostUsd = buildMinutes * rates.build_minute_usd + verifyMinutes * rates.verification_minute_usd + (args.deployMs != null ? rates.deploy_event_usd : 0);
+    const buildCostMicro = args.buildMs == null && args.verifyMs == null ? null : Math.round(buildCostUsd * 1e6);
+    const { data: existing } = await supabaseAdmin.from("turn_economics").select("ai_cost_usd_micro, other_cost_usd_micro").eq("turn_id", args.turnId).maybeSingle();
+    const aiCost = existing?.ai_cost_usd_micro == null ? null : Number(existing.ai_cost_usd_micro);
+    const otherCost = Number(existing?.other_cost_usd_micro ?? 0);
+    const variable = aiCost == null || buildCostMicro == null ? null : aiCost + otherCost + buildCostMicro;
+    await recordCostEvents([
+      {
+        sourceRef: `build:${args.buildId}`,
+        projectId: args.projectId ?? null,
+        turnId: args.turnId,
+        buildId: args.buildId,
+        stage: "build",
+        category: "BUILD_COMPUTE",
+        provider: "railway",
+        resource: "builder",
+        quantity: args.buildMs == null ? null : buildMinutes,
+        unit: "minutes",
+        costUsd: args.buildMs == null ? null : buildMinutes * rates.build_minute_usd,
+        basis: "ESTIMATED",
+        failedWork: args.result !== "ready",
+        metadata: { rate_usd_per_minute: rates.build_minute_usd }
+      },
+      {
+        sourceRef: `browser:${args.buildId}`,
+        projectId: args.projectId ?? null,
+        turnId: args.turnId,
+        buildId: args.buildId,
+        stage: "verify",
+        category: "BROWSER_COMPUTE",
+        provider: "railway",
+        resource: "playwright",
+        quantity: args.verifyMs == null ? null : verifyMinutes,
+        unit: "minutes",
+        costUsd: args.verifyMs == null ? null : verifyMinutes * rates.verification_minute_usd,
+        basis: "ESTIMATED",
+        failedWork: args.result !== "ready",
+        metadata: { rate_usd_per_minute: rates.verification_minute_usd }
+      }
+    ]);
+    await supabaseAdmin.from("project_builds").update({ turn_id: args.turnId }).eq("id", args.buildId).is("turn_id", null);
+    await supabaseAdmin.from("turn_economics").update({
+      build_id: args.buildId,
+      build_ms: args.buildMs ?? null,
+      verify_ms: args.verifyMs ?? null,
+      deploy_ms: args.deployMs ?? null,
+      build_cost_usd_micro: buildCostMicro,
+      variable_cost_usd_micro: variable,
+      result: args.result ?? null
+    }).eq("turn_id", args.turnId);
+  } catch (err) {
+    console.warn("[turn-economics] build attach failed", err);
+  }
+}
+async function recordTurnRefund(turnId, credits) {
+  try {
+    const { data } = await supabaseAdmin.from("turn_economics").select("credits_refunded").eq("turn_id", turnId).maybeSingle();
+    if (!data) return;
+    await supabaseAdmin.from("turn_economics").update({ credits_refunded: Number(data.credits_refunded ?? 0) + credits }).eq("turn_id", turnId);
+  } catch (err) {
+    console.warn("[turn-economics] refund record failed", err);
+  }
+}
+var init_turn_economics_server = __esm({
+  "src/server/turn-economics.server.ts"() {
+    init_define_import_meta_env();
+    init_client_server_shim();
+    init_economics_config_server();
+    init_cost_events_server();
+  }
+});
+
 // src/server/agent-io.server.ts
 var agent_io_server_exports = {};
 __export(agent_io_server_exports, {
@@ -40497,6 +40960,10 @@ function createDirectAgentIO() {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
       const { data } = await supabaseAdmin2.from("ai_call_log").insert(row).select("id").single();
       return data?.id ?? null;
+    },
+    async recordEconomics(args) {
+      const { recordTurnEconomics: recordTurnEconomics2 } = await Promise.resolve().then(() => (init_turn_economics_server(), turn_economics_server_exports));
+      await recordTurnEconomics2(args);
     },
     async updateAiCall(id, patch) {
       const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
@@ -40644,14 +41111,14 @@ async function computeHealth() {
   return rows;
 }
 async function getModelHealth(force = false) {
-  if (!force && cache && Date.now() - cache.at < CACHE_MS) return cache.rows;
+  if (!force && cache2 && Date.now() - cache2.at < CACHE_MS) return cache2.rows;
   if (inflight) return inflight;
   inflight = computeHealth().then((rows) => {
-    cache = { at: Date.now(), rows };
+    cache2 = { at: Date.now(), rows };
     return rows;
   }).catch((err) => {
     console.warn("[model-health] snapshot failed:", err);
-    return cache?.rows ?? [];
+    return cache2?.rows ?? [];
   }).finally(() => {
     inflight = null;
   });
@@ -40659,11 +41126,11 @@ async function getModelHealth(force = false) {
 }
 function isModelUnhealthySync(model) {
   if (!model) return false;
-  if (!cache || Date.now() - cache.at >= CACHE_MS) {
+  if (!cache2 || Date.now() - cache2.at >= CACHE_MS) {
     void getModelHealth();
-    if (!cache) return false;
+    if (!cache2) return false;
   }
-  return cache.rows.some((r) => r.model === model && r.unhealthy);
+  return cache2.rows.some((r) => r.model === model && r.unhealthy);
 }
 async function auditConfiguredModels() {
   const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
@@ -40684,7 +41151,7 @@ async function auditConfiguredModels() {
     return { feature: r.feature, model: r.model, fallback: r.fallback_model, issues };
   });
 }
-var WINDOW_CALLS, MIN_SAMPLE2, TRIP_RATE2, CACHE_MS, cache, inflight;
+var WINDOW_CALLS, MIN_SAMPLE2, TRIP_RATE2, CACHE_MS, cache2, inflight;
 var init_model_health_server = __esm({
   "src/server/model-health.server.ts"() {
     init_define_import_meta_env();
@@ -40693,7 +41160,7 @@ var init_model_health_server = __esm({
     MIN_SAMPLE2 = 8;
     TRIP_RATE2 = 0.9;
     CACHE_MS = 5 * 60 * 1e3;
-    cache = null;
+    cache2 = null;
     inflight = null;
   }
 });
@@ -40771,7 +41238,7 @@ function pickBudgetModelForFeature(feature, messages, allowed) {
 }
 async function loadDbSettings() {
   const now = Date.now();
-  if (cachedSettings && now - cacheLoadedAt < CACHE_TTL_MS) {
+  if (cachedSettings && now - cacheLoadedAt < CACHE_TTL_MS2) {
     return cachedSettings;
   }
   if (inflight2) return inflight2;
@@ -41488,7 +41955,7 @@ async function currentModelFor(feature) {
 function isProviderUnavailableStatus(status) {
   return status === 404 || status === 408 || status === 502 || status === 503 || status === 524;
 }
-var OPENROUTER_URL, BUDGET_MODELS, CACHE_TTL_MS, cachedSettings, cacheLoadedAt, inflight2, OPENROUTER_MODEL_MAP, DEAD_MODEL_IDS, KNOWN_MODEL_IDS, MODEL_PRICE_PER_M_TOKENS, num, DEFAULT_TIMEOUT_MS, PAYMENT_FAILURE_KEY, DEFAULT_STREAM_TIMEOUT_MS, FIRST_BUILD_STREAM_TIMEOUT_MS, ALL_AI_FEATURES;
+var OPENROUTER_URL, BUDGET_MODELS, CACHE_TTL_MS2, cachedSettings, cacheLoadedAt, inflight2, OPENROUTER_MODEL_MAP, DEAD_MODEL_IDS, KNOWN_MODEL_IDS, MODEL_PRICE_PER_M_TOKENS, num, DEFAULT_TIMEOUT_MS, PAYMENT_FAILURE_KEY, DEFAULT_STREAM_TIMEOUT_MS, FIRST_BUILD_STREAM_TIMEOUT_MS, ALL_AI_FEATURES;
 var init_ai_provider_server = __esm({
   "src/server/ai-provider.server.ts"() {
     init_define_import_meta_env();
@@ -41497,7 +41964,7 @@ var init_ai_provider_server = __esm({
     init_provider_policy();
     OPENROUTER_URL = OPENROUTER_CHAT_URL;
     BUDGET_MODELS = openrouter_budget_models_default;
-    CACHE_TTL_MS = 3e4;
+    CACHE_TTL_MS2 = 3e4;
     cachedSettings = null;
     cacheLoadedAt = 0;
     inflight2 = null;
@@ -41783,6 +42250,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -41826,6 +42294,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -41980,6 +42449,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -42170,6 +42640,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -85502,6 +85973,7 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -85622,9 +86094,9 @@ function computeImpact(files, seeds, opts = {}) {
   const reverse = /* @__PURE__ */ new Map();
   for (const [from, tos] of graph) {
     for (const to of tos) {
-      const list3 = reverse.get(to) ?? [];
-      list3.push(from);
-      reverse.set(to, list3);
+      const list4 = reverse.get(to) ?? [];
+      list4.push(from);
+      reverse.set(to, list4);
     }
   }
   const walk = (edges) => {
@@ -112800,7 +113272,7 @@ var init_supabase_mgmt_server = __esm({
 
 // src/server/project-store.server.ts
 function invalidateStore(projectId) {
-  cache2.delete(projectId);
+  cache3.delete(projectId);
 }
 async function dedicatedCreds(projectId) {
   const { data: backend2 } = await supabaseAdmin.from("project_backends").select("provider, status, supabase_url, supabase_project_ref").eq("project_id", projectId).maybeSingle();
@@ -112816,8 +113288,8 @@ async function dedicatedCreds(projectId) {
   };
 }
 async function storeFor(projectId) {
-  const hit = cache2.get(projectId);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS2) return hit.store;
+  const hit = cache3.get(projectId);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS3) return hit.store;
   let store2 = SHARED_STORE();
   try {
     const creds = await dedicatedCreds(projectId);
@@ -112835,7 +113307,7 @@ async function storeFor(projectId) {
     console.warn("[project-store] falling back to shared", projectId, err);
     store2 = SHARED_STORE();
   }
-  cache2.set(projectId, { at: Date.now(), store: store2 });
+  cache3.set(projectId, { at: Date.now(), store: store2 });
   return store2;
 }
 async function ensureDedicatedSchema(ref) {
@@ -112876,7 +113348,7 @@ async function clearSharedCopy(projectId) {
   await supabaseAdmin.from("shared_app_records").delete().eq("project_id", projectId);
   await supabaseAdmin.from("shared_app_users").delete().eq("project_id", projectId);
 }
-var SHARED_STORE, CACHE_TTL_MS2, cache2, MIRROR_SCHEMA, COPY_BATCH;
+var SHARED_STORE, CACHE_TTL_MS3, cache3, MIRROR_SCHEMA, COPY_BATCH;
 var init_project_store_server = __esm({
   "src/server/project-store.server.ts"() {
     init_define_import_meta_env();
@@ -112889,8 +113361,8 @@ var init_project_store_server = __esm({
       users: "shared_app_users",
       dedicated: false
     });
-    CACHE_TTL_MS2 = 6e4;
-    cache2 = /* @__PURE__ */ new Map();
+    CACHE_TTL_MS3 = 6e4;
+    cache3 = /* @__PURE__ */ new Map();
     MIRROR_SCHEMA = `
 CREATE TABLE IF NOT EXISTS public.app_users (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -113212,73 +113684,6 @@ var init_shared_backend_server = __esm({
       createdAt: r.created_at,
       updatedAt: r.updated_at
     });
-  }
-});
-
-// src/server/economics-config.server.ts
-var economics_config_server_exports = {};
-__export(economics_config_server_exports, {
-  ECONOMICS_DEFAULTS: () => ECONOMICS_DEFAULTS,
-  economicsValue: () => economicsValue,
-  economicsValues: () => economicsValues,
-  invalidateEconomicsCache: () => invalidateEconomicsCache
-});
-async function load() {
-  if (cache3 && Date.now() - cache3.at < CACHE_TTL_MS3) return cache3.values;
-  const values = { ...ECONOMICS_DEFAULTS };
-  try {
-    const { data } = await supabaseAdmin.from("economics_config").select("key, value");
-    for (const row of data ?? []) {
-      const n = Number(row.value);
-      if (Number.isFinite(n)) values[row.key] = n;
-    }
-  } catch (err) {
-    console.warn("[economics-config] read failed, using defaults", err);
-  }
-  cache3 = { at: Date.now(), values };
-  return values;
-}
-async function economicsValue(key) {
-  const values = await load();
-  return values[key] ?? ECONOMICS_DEFAULTS[key];
-}
-async function economicsValues() {
-  const values = await load();
-  return { ...ECONOMICS_DEFAULTS, ...values };
-}
-function invalidateEconomicsCache() {
-  cache3 = null;
-}
-var ECONOMICS_DEFAULTS, CACHE_TTL_MS3, cache3;
-var init_economics_config_server = __esm({
-  "src/server/economics-config.server.ts"() {
-    init_define_import_meta_env();
-    init_client_server_shim();
-    ECONOMICS_DEFAULTS = {
-      target_variable_cost_per_credit_usd: 0.05,
-      build_minute_usd: 0.02,
-      verification_minute_usd: 0.02,
-      deploy_event_usd: 2e-3,
-      image_generation_usd: 0.02,
-      min_purchase_usd_cents: 300,
-      target_gross_margin_pct: 60,
-      free_user_monthly_cost_ceiling_usd: 1.5,
-      max_active_dedicated_backends: 25,
-      dedicated_retention_days: 30,
-      auto_upgrade_row_pct: 80,
-      auto_upgrade_user_count: 50,
-      auto_upgrade_min_credits: 20,
-      // Kimble Compute: 8¢ per awake hour (~$58/mo full-time) against an
-      // underlying container cost of roughly 3¢/hr.
-      compute_hour_usd: 0.08,
-      max_active_compute: 25,
-      badge_removal_credits: 25,
-      // What one credit is worth in USD cents when we charge a real cash cost
-      // (domain registration). Conservative vs the cheapest pack (20 credits/$5).
-      credit_retail_usd_cents: 20
-    };
-    CACHE_TTL_MS3 = 5 * 60 * 1e3;
-    cache3 = null;
   }
 });
 
@@ -114364,8 +114769,8 @@ async function rankRememberedPictures(query, limit = 5) {
   const ownerId = query.scope?.ownerId ?? null;
   const rows = [];
   const seen = /* @__PURE__ */ new Set();
-  const add = (list3) => {
-    for (const r of list3 ?? []) {
+  const add = (list4) => {
+    for (const r of list4 ?? []) {
       if (seen.has(r.id)) continue;
       seen.add(r.id);
       rows.push(r);
@@ -114456,88 +114861,87 @@ var init_generated_pictures_server = __esm({
   }
 });
 
-// src/server/cost-events.server.ts
-var cost_events_server_exports = {};
-__export(cost_events_server_exports, {
-  aiRowToCostEvent: () => aiRowToCostEvent,
-  classifyTurnCalls: () => classifyTurnCalls,
-  normaliseCost: () => normaliseCost,
-  recordCostEvents: () => recordCostEvents,
-  toRow: () => toRow
+// src/lib/terminal-result.ts
+var terminal_result_exports = {};
+__export(terminal_result_exports, {
+  OPTIMISTIC_PHRASES: () => OPTIMISTIC_PHRASES,
+  buildTerminalResult: () => buildTerminalResult,
+  categoryFromReason: () => categoryFromReason,
+  containsOptimisticClaim: () => containsOptimisticClaim,
+  formatTerminalResult: () => formatTerminalResult
 });
-function normaliseCost(e) {
-  if (e.costUsd == null || !Number.isFinite(e.costUsd)) return { costUsd: null, basis: "UNKNOWN" };
-  if (e.basis === "UNKNOWN") return { costUsd: null, basis: "UNKNOWN" };
-  return { costUsd: e.costUsd, basis: e.basis };
+function categoryFromReason(reason) {
+  const r = (reason ?? "").toLowerCase();
+  if (!r) return "unknown";
+  if (r.includes("cancel") || r.includes("stopped by user") || r === "aborted") return "cancelled";
+  if (r.includes("scope_violation")) return "scope_violation";
+  if (r.includes("circuit")) return "circuit_breaker";
+  if (r.includes("verification") || r.includes("source_verification") || r.includes("does not exist")) return "verification_failed";
+  if (/\b(5\d\d|timeout|timed out|provider|upstream|network|stalled?)\b/.test(r)) return "infrastructure";
+  return "unknown";
 }
-function toRow(e) {
-  const n = normaliseCost(e);
-  return {
-    source_ref: e.sourceRef,
-    user_id: e.userId ?? null,
-    project_id: e.projectId ?? null,
-    turn_id: e.turnId ?? null,
-    revision: e.revision ?? null,
-    build_id: e.buildId ?? null,
-    stage: e.stage ?? null,
-    category: e.category,
-    provider: e.provider ?? null,
-    resource: e.resource ?? null,
-    quantity: e.quantity ?? null,
-    unit: e.unit ?? null,
-    cost_usd: n.costUsd,
-    cost_basis: n.basis,
-    failed_work: e.failedWork ?? false,
-    metadata: e.metadata ?? {}
-  };
-}
-async function recordCostEvents(events) {
-  if (!events.length) return;
-  try {
-    await supabaseAdmin.from("cost_events").upsert(events.map(toRow), { onConflict: "source_ref", ignoreDuplicates: true });
-  } catch (err) {
-    console.warn("[cost-events] write failed", err);
+function nextActionFor(category) {
+  switch (category) {
+    case "cancelled":
+      return "Send a new message whenever you're ready.";
+    case "infrastructure":
+      return "This was a problem on Kimble's side, not your request. Send it again and Kimble will pick up from your saved version.";
+    case "circuit_breaker":
+      return "Try asking for a smaller part of this change first.";
+    default:
+      return "Send it again and Kimble will retry just the part that failed.";
   }
 }
-function aiRowToCostEvent(r) {
-  const cost = r.cost_usd_micro == null ? null : Number(r.cost_usd_micro) / 1e6;
-  const basis = cost == null ? "UNKNOWN" : r.cost_basis === "actual" ? "ACTUAL" : "ESTIMATED";
+function buildTerminalResult(input) {
+  const category = input.category ?? (input.outcome === "aborted" ? "cancelled" : categoryFromReason(input.reason));
+  const committed = input.committedRevision ?? null;
+  const base = input.baseRevision ?? null;
+  const projectChanged = committed != null && committed !== base;
   return {
-    sourceRef: `ai:${r.id}`,
-    userId: r.user_id,
-    projectId: r.project_id,
-    turnId: r.turn_id,
-    buildId: r.build_id ?? null,
-    revision: r.revision ?? null,
-    stage: r.stage,
-    category: r.stage === "verify" ? "AI_VERIFICATION" : "AI_INFERENCE",
-    provider: r.upstream_provider ?? r.provider,
-    resource: r.model,
-    quantity: Number(r.prompt_tokens ?? 0) + Number(r.completion_tokens ?? 0),
-    unit: "tokens",
-    costUsd: cost,
-    basis,
-    failedWork: r.status != null && r.status >= 400
+    turnId: input.turnId,
+    outcome: input.outcome ?? (category === "cancelled" ? "aborted" : "failed"),
+    category,
+    projectChanged,
+    baseRevision: base,
+    committedRevision: committed,
+    preserved: projectChanged ? `Revision ${committed} was saved before the failure; later work in this request was not.` : PRESERVED_ROLLBACK,
+    rejections: (input.rejections ?? []).slice(0, 5).map((r) => ({ path: r.path ?? null, detail: r.detail.slice(0, 300) })),
+    nextAction: nextActionFor(category)
   };
 }
-function classifyTurnCalls(rows) {
-  const seen = /* @__PURE__ */ new Set();
-  return rows.map((r) => {
-    if (r.call_kind === "retry") return "RETRY";
-    if (r.call_kind === "repair") return "RECOVERY";
-    if (r.stage === "verify") return "VERIFICATION";
-    if (r.stage === "after") return "MEMORY";
-    if (r.stage === "write" && /one requested page/.test(r.purpose ?? "")) return "REQUIRED";
-    const key = `${r.stage}|${r.purpose}`;
-    if (r.stage === "request" && seen.has(key)) return "REDUNDANT";
-    seen.add(key);
-    return r.stage ? "REQUIRED" : "OTHER";
-  });
+function formatTerminalResult(r) {
+  const lines = [HEADLINES[r.category], "", r.preserved];
+  if (r.rejections.length > 0) {
+    lines.push("", "What failed:");
+    for (const x of r.rejections) lines.push(`- ${x.path ? `\`${x.path}\` \u2014 ` : ""}${x.detail}`);
+  }
+  lines.push("", r.nextAction);
+  return lines.join("\n");
 }
-var init_cost_events_server = __esm({
-  "src/server/cost-events.server.ts"() {
+function containsOptimisticClaim(text) {
+  return OPTIMISTIC_PHRASES.some((re) => re.test(text));
+}
+var PRESERVED_ROLLBACK, HEADLINES, OPTIMISTIC_PHRASES;
+var init_terminal_result = __esm({
+  "src/lib/terminal-result.ts"() {
     init_define_import_meta_env();
-    init_client_server_shim();
+    PRESERVED_ROLLBACK = "Your app was left exactly as it was before this request \u2014 no files were changed.";
+    HEADLINES = {
+      verification_failed: "Kimble couldn't finish this request \u2014 the new code didn't pass its safety checks, so nothing was saved.",
+      scope_violation: "Kimble stopped this request because it tried to change parts of your app you didn't ask about.",
+      infrastructure: "Kimble couldn't finish this request because its AI service stopped responding.",
+      cancelled: "You stopped this request.",
+      circuit_breaker: "Kimble stopped after repeated failed attempts instead of looping.",
+      unknown: "Kimble couldn't finish this request."
+    };
+    OPTIMISTIC_PHRASES = [
+      /everything else landed/i,
+      /is still in a working state/i,
+      /\bit'?s live\b/i,
+      /\bships? with\b/i,
+      /\bis ready\b/i,
+      /changes (are|were) saved/i
+    ];
   }
 });
 
@@ -114564,9 +114968,9 @@ function loadAllDesignSystems(raw = RAW) {
   if (raw === RAW) cache6 = result;
   return result;
 }
-function getDesignSystem(slug2) {
-  if (!slug2) return null;
-  const r = loadAllDesignSystems().get(slug2);
+function getDesignSystem(slug3) {
+  if (!slug3) return null;
+  const r = loadAllDesignSystems().get(slug3);
   return r && r.ok ? r.pkg : null;
 }
 function listDesignSystems(opts = {}) {
@@ -114750,6 +115154,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140065,8 +140470,8 @@ __export(industry_packs_exports, {
   getPack: () => getPack,
   packToPrompt: () => packToPrompt
 });
-function getPack(slug2) {
-  return INDUSTRY_PACKS.find((p) => p.slug === slug2);
+function getPack(slug3) {
+  return INDUSTRY_PACKS.find((p) => p.slug === slug3);
 }
 function packToPrompt(pack) {
   const cloudHints = pack.cloud.length > 0 ? `
@@ -140801,6 +141206,7 @@ var project_archetype_exports = {};
 __export(project_archetype_exports, {
   DEFAULT_LANDING_SECTIONS: () => DEFAULT_LANDING_SECTIONS,
   PROJECT_ARCHETYPES: () => PROJECT_ARCHETYPES,
+  REQUESTED_SCOPE_PRINCIPLE: () => REQUESTED_SCOPE_PRINCIPLE,
   archetypeBuildInstruction: () => archetypeBuildInstruction,
   archetypeRoadmapBlock: () => archetypeRoadmapBlock,
   detectArchetype: () => detectArchetype,
@@ -140831,36 +141237,39 @@ function getArchetype(id) {
 function archetypeBuildInstruction(archetype) {
   const lines = [
     `PROJECT ARCHETYPE DETECTED: ${archetype.id} (${archetype.productLabel}) \u2014 treat as a LIVE product launch.`,
-    `Build a polished, on-brand marketing LANDING PAGE first. Invent a memorable brand name + logo mark if the user did not provide one; use it consistently in nav, hero, footer, and <title>.`,
+    REQUESTED_SCOPE_PRINCIPLE,
+    `Invent a memorable brand name + logo mark if the user did not provide one; use it consistently in nav, hero, footer, and <title>.`,
     `Do NOT add a "Demo only", "Simulated data", "no real money", or any disclaimer banner anywhere in the user's app.`,
     `Do NOT add a light/dark mode toggle unless the user explicitly asks.`
   ];
   if (archetype.highStakes) {
     lines.push(
-      `HIGH-STAKES domain: do NOT import on-chain libraries (viem, ethers, web3.js), banking SDKs (Plaid, Increase, Unit), or KYC SDKs on this turn. Wire keys later when the user explicitly asks. Build the in-product dashboard only when the user asks for it in a follow-up.`
+      `HIGH-STAKES domain: never invent keys or pretend an on-chain, banking or KYC provider is live. Build the requested screens and data flow; the real provider account is connected by the user.`
     );
   } else {
     lines.push(
-      `Do not import vendor SDKs (Stripe, Twilio, Resend, etc.) on this turn \u2014 wire them later when the user asks. Build the in-product surfaces only when the user asks for them in a follow-up.`
+      `Vendor services (Stripe, Twilio, Resend, etc.): build the requested screens and integration code when the user asked for them, but never invent keys or claim the account is connected.`
     );
   }
   return lines.join(" ");
 }
 function archetypeRoadmapBlock(archetype) {
+  return roadmapBlock(archetype.productLabel, archetype.landingSections, archetype.futureFeatures, archetype.providersToWireLater);
+}
+function roadmapBlock(label2, sections, future, providers) {
   return [
-    `### Saved roadmap \u2014 ${archetype.productLabel}`,
-    `On THIS turn, ship a COMPLETE on-brand marketing landing page (real, live company feel \u2014 no "demo" banners, no disclaimers, no theme toggle). Include these sections in order:`,
-    ...archetype.landingSections.map((s, i) => `  ${i + 1}. ${s}`),
+    `### Product archetype \u2014 ${label2}`,
+    REQUESTED_SCOPE_PRINCIPLE,
+    ``,
+    `If this product has a marketing/home surface, these sections suit it (use judgement, never pad):`,
+    ...sections.map((s, i) => `  ${i + 1}. ${s}`),
     ``,
     `Pick (or invent) a short memorable brand name + logo mark and use it in the nav, hero, footer, and <title>.`,
     ``,
-    `DO NOT build the in-app product yet. These are saved for future turns; the user will pick which one to iterate on next:`,
-    ...archetype.futureFeatures.map((s, i) => `  ${i + 1}. ${s}`),
+    `Features users of this kind of product often want next (NOT requested \u2014 do not build unless the user asked; they are only ideas for later):`,
+    ...future.map((s, i) => `  ${i + 1}. ${s}`),
     ``,
-    `Providers the user can wire later when they ask (do NOT import these libraries today, do NOT mention them as "limitations"):`,
-    `  ${archetype.providersToWireLater.join(", ")}`,
-    ``,
-    `Preamble requirement: open your reply with ONE short, confident paragraph that (a) names the product by its brand name, (b) says you're shipping the landing page first and that next features (list 2-3 by name) are queued up, (c) invites the user to pick what to build next. Do NOT say "demo", "simulated", "limitation", or "cannot". Then build.`
+    `Providers that need the user's own account: ${providers.join(", ")}. Never invent keys; never describe them as "limitations".`
   ].join("\n");
 }
 async function generateFallbackArchetype(prompt, invokeChat) {
@@ -140902,23 +141311,9 @@ No prose, no markdown fences. Avoid "demo", "simulated", "limitation". Treat eve
   }
 }
 function fallbackRoadmapBlock(fa) {
-  return [
-    `### Saved roadmap \u2014 ${fa.productLabel}`,
-    `On THIS turn, ship a COMPLETE on-brand marketing landing page (real, live company feel \u2014 no "demo" banners, no disclaimers, no theme toggle). Include these sections in order:`,
-    ...fa.landingSections.map((s, i) => `  ${i + 1}. ${s}`),
-    ``,
-    `Pick (or invent) a short memorable brand name + logo mark and use it in the nav, hero, footer, and <title>.`,
-    ``,
-    `DO NOT build the in-app product yet. These are saved for future turns; the user will pick which one to iterate on next:`,
-    ...fa.futureFeatures.map((s, i) => `  ${i + 1}. ${s}`),
-    ``,
-    `Providers the user can wire later when they ask (do NOT import these libraries today, do NOT mention them as "limitations"):`,
-    `  ${fa.providersToWireLater.join(", ")}`,
-    ``,
-    `Preamble requirement: open your reply with ONE short, confident paragraph that (a) names the product by its brand name, (b) says you're shipping the landing page first and that next features (list 2-3 by name) are queued up, (c) invites the user to pick what to build next. Do NOT say "demo", "simulated", "limitation", or "cannot". Then build.`
-  ].join("\n");
+  return roadmapBlock(fa.productLabel, fa.landingSections, fa.futureFeatures, fa.providersToWireLater);
 }
-var PROJECT_ARCHETYPES, ARCHETYPE_BY_ID, DEFAULT_LANDING_SECTIONS;
+var PROJECT_ARCHETYPES, ARCHETYPE_BY_ID, REQUESTED_SCOPE_PRINCIPLE, DEFAULT_LANDING_SECTIONS;
 var init_project_archetype = __esm({
   "src/lib/project-archetype.ts"() {
     init_define_import_meta_env();
@@ -141714,6 +142109,7 @@ var init_project_archetype = __esm({
     ARCHETYPE_BY_ID = Object.fromEntries(
       PROJECT_ARCHETYPES.map((a2) => [a2.id, a2])
     );
+    REQUESTED_SCOPE_PRINCIPLE = "The user's requested product scope is authoritative. Understand and retain the complete scope. Do not arbitrarily defer requested functionality merely because multiple features were requested. For large requests, decompose the work into coherent implementation stages using the existing planning and execution system. Never lose or silently discard requirements.";
     DEFAULT_LANDING_SECTIONS = [
       "NavBar with brand + logo",
       "Hero with headline + primary CTA",
@@ -142722,7 +143118,7 @@ function writeGateDisclosure(rejections) {
     rejections.length === 1 ? "**One file had a code error that couldn't be repaired, so it isn't in your app yet \u2014 that part is not complete:**" : `**${rejections.length} files had code errors that couldn't be repaired, so they aren't in your app yet \u2014 those parts are not complete:**`,
     ...lines,
     "",
-    "Everything else landed and your app is still in a working state. Say the word and I'll retry the rejected part."
+    "The rest of this change was saved. Say the word and I'll retry the rejected part."
   ].join("\n");
 }
 async function revertCleanupBreakage(before, after, paths) {
@@ -142807,8 +143203,10 @@ var init_turn_lease = __esm({
 // src/server/engine/raw-file.ts
 var raw_file_exports = {};
 __export(raw_file_exports, {
+  RAW_FILES_FORMAT: () => RAW_FILES_FORMAT,
   RAW_FILE_FORMAT: () => RAW_FILE_FORMAT,
-  parseRawFile: () => parseRawFile
+  parseRawFile: () => parseRawFile,
+  parseRawFiles: () => parseRawFiles
 });
 function parseRawFile(text) {
   const open = /^[ \t]*```[^\n]*\n/m.exec(text);
@@ -142820,11 +143218,222 @@ function parseRawFile(text) {
   const body = rest.slice(0, close.index).replace(/\s+$/, "") + "\n";
   return body.trim() ? body : null;
 }
-var RAW_FILE_FORMAT;
+function parseRawFiles(text) {
+  const out = [];
+  const re = /^[ \t]*```[^\n]*\n([\s\S]*?)^[ \t]*```[ \t]*$/gm;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const body = m[1];
+    const head2 = /^\s*\/\/\s*file:\s*(\S+)\s*\n/.exec(body);
+    if (!head2) continue;
+    const content = body.slice(head2[0].length).replace(/\s+$/, "") + "\n";
+    if (content.trim()) out.push({ path: head2[1].replace(/^\.\//, ""), content });
+  }
+  return out;
+}
+var RAW_FILE_FORMAT, RAW_FILES_FORMAT;
 var init_raw_file = __esm({
   "src/server/engine/raw-file.ts"() {
     init_define_import_meta_env();
     RAW_FILE_FORMAT = "OUTPUT FORMAT (strict): reply with ONLY the complete file inside ONE fenced code block \u2014 a line ```tsx, then the full file, then a line ```. No tool call, no JSON, no prose before or after. Write the code exactly as it should be saved (no escaping).";
+    RAW_FILES_FORMAT = "OUTPUT FORMAT (strict): one fenced code block per file. Each block starts with a line ```tsx, then a first line `// file: <path>`, then the full file, then a line ```. Write the page file FIRST, then each section file it imports. No tool call, no JSON, no prose between blocks.";
+  }
+});
+
+// src/server/engine/structural-deps.ts
+var structural_deps_exports = {};
+__export(structural_deps_exports, {
+  blockedRemovals: () => blockedRemovals,
+  entryModules: () => entryModules,
+  importsOf: () => importsOf,
+  resolveSpecifier: () => resolveSpecifier2,
+  structurallyCriticalPaths: () => structurallyCriticalPaths
+});
+function norm2(p) {
+  const out = [];
+  for (const seg of p.split("/")) {
+    if (!seg || seg === ".") continue;
+    if (seg === "..") out.pop();
+    else out.push(seg);
+  }
+  return out.join("/");
+}
+function resolveSpecifier2(from, spec, paths) {
+  let base;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith(".")) base = norm2(`${from.split("/").slice(0, -1).join("/")}/${spec}`);
+  else if (spec.startsWith("/")) base = norm2(spec);
+  else return null;
+  for (const ext of EXTS3) if (paths.has(base + ext)) return base + ext;
+  return null;
+}
+function importsOf(file, paths) {
+  const out = [];
+  IMPORT_RE6.lastIndex = 0;
+  let m;
+  while (m = IMPORT_RE6.exec(file.content)) {
+    const spec = m[1] ?? m[2] ?? m[3];
+    if (!spec) continue;
+    const r = resolveSpecifier2(file.path, spec, paths);
+    if (r) out.push(r);
+  }
+  return out;
+}
+function entryModules(files) {
+  const paths = new Set(files.map((f) => f.path));
+  const entries = /* @__PURE__ */ new Set();
+  const html = files.find((f) => f.path === "index.html");
+  if (html) {
+    for (const m of html.content.matchAll(/<script[^>]*src=["']([^"']+)["']/g)) {
+      const r = resolveSpecifier2("index.html", m[1].startsWith("/") ? m[1] : `/${m[1]}`, paths);
+      if (r) entries.add(r);
+    }
+  }
+  for (const p of ["src/main.tsx", "src/main.ts", "src/main.jsx", "src/main.js"]) if (paths.has(p)) entries.add(p);
+  return [...entries];
+}
+function structurallyCriticalPaths(files, candidates) {
+  const paths = new Set(files.map((f) => f.path));
+  const byPath = new Map(files.map((f) => [f.path, f]));
+  const entries = entryModules(files);
+  const reachable = /* @__PURE__ */ new Set();
+  const importers = /* @__PURE__ */ new Map();
+  const queue = [...entries];
+  while (queue.length) {
+    const p = queue.shift();
+    if (reachable.has(p)) continue;
+    reachable.add(p);
+    const f = byPath.get(p);
+    if (!f) continue;
+    for (const dep of importsOf(f, paths)) {
+      if (!importers.has(dep)) importers.set(dep, /* @__PURE__ */ new Set());
+      importers.get(dep).add(p);
+      queue.push(dep);
+    }
+  }
+  const entrySet = new Set(entries);
+  const critical = /* @__PURE__ */ new Set();
+  for (const c of candidates) {
+    if (!reachable.has(c)) continue;
+    const from = importers.get(c) ?? /* @__PURE__ */ new Set();
+    const isEntry = entrySet.has(c);
+    const isShell = [...from].some((i) => entrySet.has(i));
+    const isShared = from.size >= 2;
+    if (isEntry || isShell || isShared) critical.add(c);
+  }
+  return critical;
+}
+function blockedRemovals(files, toRemove, hasValidatedReplacement) {
+  const critical = structurallyCriticalPaths(files, toRemove);
+  return [...critical].filter((p) => !hasValidatedReplacement(p));
+}
+var EXTS3, IMPORT_RE6;
+var init_structural_deps = __esm({
+  "src/server/engine/structural-deps.ts"() {
+    init_define_import_meta_env();
+    EXTS3 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"];
+    IMPORT_RE6 = /(?:import|export)\s[^'"]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s*["']([^"']+)["']/g;
+  }
+});
+
+// src/server/engine/deterministic-primitives.ts
+var deterministic_primitives_exports = {};
+__export(deterministic_primitives_exports, {
+  DETERMINISTIC_PRIMITIVES: () => DETERMINISTIC_PRIMITIVES,
+  recoverMissingPrimitives: () => recoverMissingPrimitives
+});
+function primitiveFor(target) {
+  const bare2 = target.replace(STRIP_EXT, "");
+  return DETERMINISTIC_PRIMITIVES.find((p) => p.path.replace(STRIP_EXT, "") === bare2) ?? null;
+}
+function targetFor(from, spec) {
+  if (spec.startsWith("@/")) return `src/${spec.slice(2)}`;
+  if (!spec.startsWith(".")) return null;
+  const parts = from.split("/").slice(0, -1);
+  for (const seg of spec.split("/")) {
+    if (seg === "." || !seg) continue;
+    if (seg === "..") parts.pop();
+    else parts.push(seg);
+  }
+  return parts.join("/");
+}
+function recoverMissingPrimitives(files) {
+  const paths = new Set(files.map((f) => f.path));
+  const wanted = /* @__PURE__ */ new Map();
+  const unresolved = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
+    NAMED_IMPORT2.lastIndex = 0;
+    let m;
+    while (m = NAMED_IMPORT2.exec(f.content)) {
+      const spec = m[2];
+      if (!(spec.startsWith("@/") || spec.startsWith("."))) continue;
+      if (resolveSpecifier2(f.path, spec, paths)) continue;
+      const target = targetFor(f.path, spec);
+      if (!target) continue;
+      const prim = primitiveFor(target);
+      if (!prim) {
+        unresolved.add(target);
+        continue;
+      }
+      const names = m[1].split(",").map((s) => s.replace(/^\s*type\s+/, "").split(/\s+as\s+/)[0].trim()).filter(Boolean);
+      if (!wanted.has(prim.path)) wanted.set(prim.path, /* @__PURE__ */ new Set());
+      for (const n of names) wanted.get(prim.path).add(n);
+    }
+  }
+  const added = [];
+  const out = [...files];
+  for (const [path, names] of wanted) {
+    const prim = DETERMINISTIC_PRIMITIVES.find((p) => p.path === path);
+    if ([...names].some((n) => !prim.exports.includes(n))) {
+      unresolved.add(path.replace(STRIP_EXT, ""));
+      continue;
+    }
+    out.push({ path: prim.path, content: prim.content });
+    added.push(prim.path);
+  }
+  return { files: out, added, unresolved: [...unresolved] };
+}
+var DETERMINISTIC_PRIMITIVES, STRIP_EXT, NAMED_IMPORT2;
+var init_deterministic_primitives = __esm({
+  "src/server/engine/deterministic-primitives.ts"() {
+    init_define_import_meta_env();
+    init_structural_deps();
+    DETERMINISTIC_PRIMITIVES = [
+      {
+        path: "src/lib/utils.ts",
+        exports: ["cn"],
+        content: `import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+`
+      },
+      {
+        path: "src/hooks/use-mobile.tsx",
+        exports: ["useIsMobile"],
+        content: `import * as React from "react";
+
+const MOBILE_BREAKPOINT = 768;
+
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);
+  React.useEffect(() => {
+    const mql = window.matchMedia(\`(max-width: \${MOBILE_BREAKPOINT - 1}px)\`);
+    const onChange = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    mql.addEventListener("change", onChange);
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return !!isMobile;
+}
+`
+      }
+    ];
+    STRIP_EXT = /\.(tsx?|jsx?)$/;
+    NAMED_IMPORT2 = /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
   }
 });
 
@@ -143140,6 +143749,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144059,6 +144669,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -144150,11 +144761,477 @@ var init_prd_render = __esm({
   }
 });
 
+// src/server/prd/prd-requirements.ts
+var prd_requirements_exports = {};
+__export(prd_requirements_exports, {
+  CONTINUE_RE: () => CONTINUE_RE,
+  continuationSuggestions: () => continuationSuggestions,
+  deriveRequirements: () => deriveRequirements,
+  evaluateRequirements: () => evaluateRequirements,
+  hashContent: () => hashContent,
+  mergeRequirements: () => mergeRequirements,
+  orderByDependencies: () => orderByDependencies,
+  productProgress: () => productProgress,
+  renderProgressSummary: () => renderProgressSummary,
+  renderRequirementsBlock: () => renderRequirementsBlock,
+  requirementsTargetedBy: () => requirementsTargetedBy,
+  selectNextStage: () => selectNextStage,
+  splitRequestedItems: () => splitRequestedItems,
+  stageForTurn: () => stageForTurn
+});
+function slug2(s) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+}
+function splitRequestedItems(brief) {
+  const text = brief.replace(/\s+/g, " ");
+  const m = text.match(/\b(?:with|including|includes|featuring|that has|needs?)\b(.+)$/i);
+  const tail = m ? m[1] : text;
+  return tail.split(/,|;|\band\b|\bplus\b|\+/i).map((s) => s.replace(/[.!?]+$/g, "").trim()).filter((s) => s.length >= 3 && s.split(" ").length <= 6);
+}
+function conceptFor(item) {
+  const order = ["management", "detail", "payments", "notifications", "responsive", "analytics", "admin", "auth", "cart", "booking", "catalog", "search", "blog", "about", "contact", "home"];
+  for (const id of order) {
+    const c = CONCEPT_BY_ID.get(id);
+    if (c.match.test(item)) return c;
+  }
+  return null;
+}
+function fromConcept(c, now) {
+  return {
+    id: c.id,
+    description: c.label,
+    category: c.category,
+    status: "NOT_STARTED",
+    dependsOn: [...c.dependsOn],
+    evidence: [],
+    lastVerifiedRevision: null,
+    updatedAt: now,
+    evidenceFingerprint: null,
+    integration: c.integration ?? null,
+    nextAction: c.nextAction
+  };
+}
+function deriveRequirements(brief, now = (/* @__PURE__ */ new Date()).toISOString()) {
+  const out = /* @__PURE__ */ new Map();
+  for (const item of splitRequestedItems(brief)) {
+    const c = conceptFor(item);
+    if (c) {
+      if (!out.has(c.id)) out.set(c.id, { ...fromConcept(c, now), description: titleCase(item) });
+      continue;
+    }
+    const id = `feature-${slug2(item)}`;
+    if (!id.endsWith("-") && !out.has(id)) {
+      const words2 = slug2(item).split("-").filter((w) => w.length > 2);
+      out.set(id, {
+        id,
+        description: titleCase(item),
+        category: "feature",
+        status: "NOT_STARTED",
+        dependsOn: [],
+        evidence: [],
+        lastVerifiedRevision: null,
+        updatedAt: now,
+        evidenceFingerprint: null,
+        integration: null,
+        nextAction: `Build ${item.toLowerCase()}`,
+        ...words2.length ? {} : {}
+      });
+    }
+  }
+  if (out.size > 0 && !out.has("home") && !/\b(api|cli|script)\b/i.test(brief)) {
+    out.set("home", fromConcept(CONCEPT_BY_ID.get("home"), now));
+  }
+  const reqs = [...out.values()];
+  const ids = new Set(reqs.map((r) => r.id));
+  for (const r of reqs) r.dependsOn = r.dependsOn.filter((d) => ids.has(d));
+  return orderByDependencies(reqs);
+}
+function titleCase(s) {
+  const t = s.trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function orderByDependencies(reqs) {
+  const byId = new Map(reqs.map((r) => [r.id, r]));
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  const visit = (r, stack) => {
+    if (seen.has(r.id) || stack.has(r.id)) return;
+    stack.add(r.id);
+    for (const d of r.dependsOn) {
+      const dep = byId.get(d);
+      if (dep) visit(dep, stack);
+    }
+    seen.add(r.id);
+    out.push(r);
+  };
+  const home = byId.get("home");
+  if (home) visit(home, /* @__PURE__ */ new Set());
+  for (const r of reqs) visit(r, /* @__PURE__ */ new Set());
+  return out;
+}
+function mergeRequirements(existing, brief, now = (/* @__PURE__ */ new Date()).toISOString()) {
+  const byId = new Map(existing.map((r) => [r.id, { ...r }]));
+  const added = [];
+  const rejected = [];
+  const removal = /\b(remove|delete|drop|get rid of|take out|don'?t want|no longer want)\b/i.test(brief);
+  const isAddRequest = /\b(add|build|create|include|need|want|wire|set up|integrate)\b/i.test(brief);
+  const explicitAdd = /^\s*(please\s+)?(add|build|create|include|integrate|set up|wire)\b/i.test(brief);
+  const fresh = isAddRequest || removal ? deriveRequirements(brief, now).filter(
+    (r) => r.id !== "home" && (CONCEPT_BY_ID.has(r.id) ? true : explicitAdd && !removal)
+  ) : [];
+  for (const r of fresh) {
+    const current2 = byId.get(r.id);
+    if (removal) {
+      if (current2 && current2.status !== "REJECTED") {
+        byId.set(r.id, { ...current2, status: "REJECTED", updatedAt: now });
+        rejected.push(r.id);
+      }
+      continue;
+    }
+    if (!current2) {
+      byId.set(r.id, r);
+      added.push(r.id);
+    } else if (current2.status === "REJECTED" || current2.status === "SUPERSEDED") {
+      byId.set(r.id, { ...current2, status: "NOT_STARTED", updatedAt: now });
+      added.push(r.id);
+    }
+  }
+  const all = [...byId.values()];
+  const ids = new Set(all.map((r) => r.id));
+  for (const r of all) {
+    const c = CONCEPT_BY_ID.get(r.id);
+    if (c) r.dependsOn = c.dependsOn.filter((d) => ids.has(d));
+  }
+  return { requirements: orderByDependencies(all), added, rejected };
+}
+function hashContent(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (h << 5) + h + s.charCodeAt(i) | 0;
+  return (h >>> 0).toString(36);
+}
+function matchEvidence(req, ev) {
+  const c = CONCEPT_BY_ID.get(req.id);
+  let test;
+  if (c) test = c.evidence;
+  else {
+    const words2 = req.id.replace(/^feature-/, "").split("-").filter((w) => w.length > 2);
+    if (!words2.length) return { files: [], routes: [] };
+    const re = new RegExp(words2.map((w) => `(?=.*${w.replace(/s$/, "")})`).join(""));
+    test = re;
+  }
+  const files = ev.files.map((f) => f.path).filter((p) => /^src\//.test(p) && !/\.(test|spec)\./.test(p) && !/components\/ui\//.test(p)).filter((p) => test.test(p.toLowerCase()));
+  const routes = ev.routes.filter((r) => test.test(r.toLowerCase()));
+  return { files, routes };
+}
+function fingerprint2(paths, ev) {
+  const byPath = new Map(ev.files.map((f) => [f.path, f.hash]));
+  return hashContent(
+    [...paths].sort().map((p) => `${p}:${byPath.get(p) ?? "missing"}`).join("|")
+  );
+}
+function evaluateRequirements(reqs, ev, now = (/* @__PURE__ */ new Date()).toISOString()) {
+  const buildCurrent = !!ev.build && ev.build.status === "ready" && ev.build.verified && ev.build.revision !== null && ev.build.revision === ev.projectRevision;
+  const targeted = ev.turn && ev.turn.blockedPaths.length ? new Set(requirementsTargetedBy(reqs, ev.turn.brief).map((r) => r.id)) : /* @__PURE__ */ new Set();
+  const next = reqs.map((r) => {
+    const out = withPending(r, evaluateOne(r));
+    return out.status === r.status && out.evidence.join("|") === r.evidence.join("|") && (out.evidenceFingerprint ?? null) === (r.evidenceFingerprint ?? null) && out.lastVerifiedRevision === r.lastVerifiedRevision && (out.pendingPaths ?? []).join("|") === (r.pendingPaths ?? []).join("|") ? r : out;
+  });
+  return next;
+  function withPending(orig, out) {
+    const changed = new Set(ev.turn?.changedPaths ?? []);
+    const pending = new Set((orig.pendingPaths ?? []).filter((p) => !changed.has(p)));
+    if (targeted.has(orig.id)) for (const p of ev.turn.blockedPaths) pending.add(p);
+    const list4 = [...pending].sort();
+    if (!list4.length) {
+      if (!orig.pendingPaths?.length) return out;
+      const { pendingPaths: _drop, ...rest } = out;
+      return rest;
+    }
+    if (out.status === "REJECTED" || out.status === "SUPERSEDED" || out.status === "BLOCKED") return { ...out, pendingPaths: list4 };
+    const owed = `Still owed: ${list4.join(", ")} (change was not applied)`;
+    const evidence = [...out.evidence.filter((e) => !e.startsWith("Still owed:")), owed];
+    return {
+      ...out,
+      status: out.status === "NOT_STARTED" ? "NOT_STARTED" : "IN_PROGRESS",
+      evidence,
+      pendingPaths: list4,
+      ...out.status === "COMPLETED" ? { lastVerifiedRevision: orig.lastVerifiedRevision, evidenceFingerprint: null } : {},
+      updatedAt: out === orig ? orig.updatedAt : now
+    };
+  }
+  function evaluateOne(r) {
+    if (r.status === "REJECTED" || r.status === "SUPERSEDED") return r;
+    if (r.category === "quality") {
+      if (buildCurrent && ev.build?.phoneChecked) {
+        return { ...r, status: "COMPLETED", evidence: [`Phone-width check passed at revision ${ev.projectRevision}`], lastVerifiedRevision: ev.projectRevision, updatedAt: now };
+      }
+      if (r.status === "COMPLETED") return r;
+      const hasPages = ev.routes.length > 0;
+      return hasPages && r.status === "NOT_STARTED" ? { ...r, status: "IN_PROGRESS", updatedAt: now } : r;
+    }
+    const m = matchEvidence(r, ev);
+    const found = m.files.length > 0 || m.routes.length > 0;
+    const proof = [...m.routes.map((x) => `route ${x}`), ...m.files.slice(0, 4)];
+    const fp = found ? fingerprint2(m.files, ev) : null;
+    if (!found) {
+      if (r.status === "COMPLETED" || r.status === "IN_PROGRESS") {
+        return { ...r, status: "NOT_STARTED", evidence: ["Implementation no longer found"], evidenceFingerprint: null, updatedAt: now };
+      }
+      return r;
+    }
+    if (r.integration && !ev.configuredIntegrations.includes(r.integration)) {
+      return { ...r, status: "BLOCKED", evidence: [...proof, `Needs a connected ${r.integration === "stripe" ? "Stripe" : "email"} account`], updatedAt: now };
+    }
+    if (buildCurrent) {
+      return { ...r, status: "COMPLETED", evidence: [...proof, `Verified build at revision ${ev.projectRevision}`], lastVerifiedRevision: ev.projectRevision, evidenceFingerprint: fp, updatedAt: now };
+    }
+    if (r.status === "COMPLETED" && r.evidenceFingerprint && r.evidenceFingerprint === fp) return r;
+    if (r.status === "IN_PROGRESS" && r.evidence.join("|") === proof.join("|")) return r;
+    return { ...r, status: "IN_PROGRESS", evidence: proof, updatedAt: now };
+  }
+}
+function selectNextStage(reqs, max = 5) {
+  const byId = new Map(reqs.map((r) => [r.id, r]));
+  const stage = [];
+  const inStage = /* @__PURE__ */ new Set();
+  for (const r of orderByDependencies(reqs)) {
+    if (stage.length >= max) break;
+    if (!OPEN3.includes(r.status)) continue;
+    if (r.category === "quality") continue;
+    const ready = r.dependsOn.every((d) => {
+      const dep = byId.get(d);
+      return !dep || dep.status === "COMPLETED" || dep.status === "REJECTED" || inStage.has(d);
+    });
+    if (!ready) continue;
+    stage.push(r);
+    inStage.add(r.id);
+  }
+  return stage;
+}
+function requirementsTargetedBy(reqs, brief) {
+  const hits = /* @__PURE__ */ new Set();
+  for (const item of [brief, ...splitRequestedItems(brief)]) {
+    const c = conceptFor(item);
+    if (c) hits.add(c.id);
+  }
+  return reqs.filter((r) => hits.has(r.id) && r.status !== "REJECTED");
+}
+function stageForTurn(reqs, brief, isFirstBuild) {
+  if (isFirstBuild) return { mode: "first_build", stage: selectNextStage(reqs) };
+  if (CONTINUE_RE.test(brief)) return { mode: "continue", stage: selectNextStage(reqs) };
+  const targeted = requirementsTargetedBy(reqs, brief);
+  if (targeted.length) return { mode: "targeted", stage: targeted };
+  return { mode: "scoped", stage: [] };
+}
+function productProgress(reqs) {
+  const live = reqs.filter((r) => r.status !== "REJECTED" && r.status !== "SUPERSEDED");
+  return {
+    completed: live.filter((r) => r.status === "COMPLETED").length,
+    total: live.length,
+    items: live.map((r) => ({ id: r.id, label: r.description, status: r.status }))
+  };
+}
+function continuationSuggestions(reqs) {
+  const out = [];
+  for (const r of selectNextStage(reqs, 3)) out.push(r.nextAction);
+  for (const r of reqs) {
+    if (r.status === "BLOCKED" && r.integration === "stripe") out.push("Connect my Stripe account");
+    if (r.status === "BLOCKED" && r.integration === "email") out.push("Set up sending emails");
+  }
+  const remaining = reqs.filter((r) => OPEN3.includes(r.status) && r.category !== "quality").length;
+  if (remaining > 1) out.splice(Math.min(2, out.length), 0, "Continue building the remaining platform");
+  return [...new Set(out)].slice(0, 4);
+}
+function renderProgressSummary(reqs, productName) {
+  const p = productProgress(reqs);
+  if (p.total === 0) return "";
+  const by = (s) => reqs.filter((r) => r.status === s).map((r) => r.description);
+  const done = by("COMPLETED");
+  const building = by("IN_PROGRESS");
+  const remaining = by("NOT_STARTED");
+  const blocked = by("BLOCKED");
+  const lines = [`${productName} \u2014 ${p.completed}/${p.total} requirements verified.`];
+  if (done.length) lines.push(`Verified: ${done.join(", ")}.`);
+  if (building.length) lines.push(`Built, waiting on checks: ${building.join(", ")}.`);
+  if (remaining.length) lines.push(`Remaining: ${remaining.join(", ")}.`);
+  if (blocked.length) lines.push(`Needs you: ${blocked.join(", ")} (an account has to be connected).`);
+  return lines.join("\n");
+}
+function renderRequirementsBlock(reqs, plan) {
+  if (!reqs.length) return "";
+  const mark = {
+    NOT_STARTED: "[ ]",
+    IN_PROGRESS: "[~]",
+    COMPLETED: "[x]",
+    BLOCKED: "[!]",
+    REJECTED: "[-]",
+    SUPERSEDED: "[-]"
+  };
+  const lines = [
+    "\n\n### Product requirements and progress (authoritative \u2014 retain all of them)",
+    "The user's requested product scope is authoritative. Understand and retain the complete scope. Do not arbitrarily defer requested functionality merely because multiple features were requested. Large products are built in coherent stages; never lose or silently discard a requirement."
+  ];
+  for (const r of reqs) {
+    const deps = r.dependsOn.length ? ` (after: ${r.dependsOn.join(", ")})` : "";
+    lines.push(`${mark[r.status]} ${r.id}: ${r.description}${deps}`);
+  }
+  if (plan.stage.length) {
+    lines.push("");
+    lines.push(
+      plan.mode === "targeted" ? "THIS TURN \u2014 implement these requirements inside the existing app, reusing what exists:" : "THIS STAGE \u2014 implement these requirements fully and properly now:"
+    );
+    for (const r of plan.stage) lines.push(`- ${r.description}`);
+    const later = reqs.filter((r) => OPEN3.includes(r.status) && !plan.stage.includes(r) && r.category !== "quality");
+    if (later.length) {
+      lines.push(`Later stages (keep in mind, do not build their deep functionality now, never remove them): ${later.map((r) => r.description).join(", ")}.`);
+    }
+  } else {
+    lines.push("");
+    lines.push("THIS TURN is scoped to the user's request. Do not rebuild or regenerate other requirements.");
+  }
+  lines.push(
+    "External accounts (payments, email): build the real integration code and screens; never invent keys or claim it is live \u2014 the account connection is the user's step.",
+    "Your summary must never call the product complete while requirements remain; name what remains."
+  );
+  return lines.join("\n");
+}
+var CONCEPTS, CONCEPT_BY_ID, OPEN3, CONTINUE_RE;
+var init_prd_requirements = __esm({
+  "src/server/prd/prd-requirements.ts"() {
+    init_define_import_meta_env();
+    CONCEPTS = [
+      { id: "home", label: "Home", category: "page", match: /\b(home ?page|home|landing)\b/i, evidence: /^\/$|(^|\/)(home|index|landing)\.tsx$/, dependsOn: [], nextAction: "Polish the home page" },
+      { id: "auth", label: "Customer accounts", category: "feature", match: /\b(customer accounts?|user accounts?|accounts?|log ?in|sign ?in|sign ?up|auth(entication)?)\b/i, evidence: /(^|\/)(auth|login|signin|sign-in|signup|sign-up|register|account)(\.tsx|$|\/)/, dependsOn: [], nextAction: "Add customer accounts" },
+      { id: "catalog", label: "Catalogue", category: "page", match: /\b(rooms|listings?|catalog(ue)?|products|menu|properties|courses|services|browse|inventory)\b/i, evidence: /(^|\/)(rooms|listings?|catalog(ue)?|products|menu|properties|courses|services|browse|shop|inventory)(\.tsx|$|\/)/, dependsOn: [], nextAction: "Build the catalogue" },
+      { id: "detail", label: "Detail pages", category: "page", match: /\b((room|product|listing|property|course|item|service)s? details?|details? pages?|detail view)\b/i, evidence: /(\$|:)[a-z]*id|(^|\/)[a-z-]*detail[a-z-]*(\.tsx|$|\/)|\/rooms\/|\/products\/|\/listings\//, dependsOn: ["catalog"], nextAction: "Build the detail pages" },
+      { id: "booking", label: "Booking", category: "feature", match: /\b(book(ing|ings)?|reservations?|appointments?|schedul(e|ing))\b(?!\s+management)/i, evidence: /(^|\/)(book|booking|reserve|reservation|appointment|schedule)[a-z-]*(\.tsx|$|\/)/, dependsOn: ["catalog"], nextAction: "Build the booking flow" },
+      { id: "cart", label: "Cart and checkout", category: "feature", match: /\b(cart|checkout)\b/i, evidence: /(^|\/)(cart|checkout)(\.tsx|$|\/)/, dependsOn: ["catalog"], nextAction: "Build cart and checkout" },
+      { id: "payments", label: "Payments", category: "integration", match: /\b(stripe|payments?|pay online|paystack|paddle)\b/i, evidence: /(^|\/)(checkout|payment|payments|pay|stripe|billing)[a-z-]*(\.tsx|\.ts|$|\/)/, dependsOn: ["booking", "cart"], integration: "stripe", nextAction: "Wire Stripe payments" },
+      { id: "admin", label: "Admin dashboard", category: "page", match: /\b(admin( dashboard| panel| area)?|dashboard|back ?office)\b/i, evidence: /(^|\/)(admin|dashboard)(\.tsx|$|\/)/, dependsOn: ["auth"], nextAction: "Build the admin dashboard" },
+      { id: "management", label: "Management", category: "feature", match: /\b(bookings? management|order management|manage (bookings|orders|reservations)|(booking|order|reservation)s? management)\b/i, evidence: /(^|\/)(admin\/[a-z-]*(bookings|orders|reservations)|manage[a-z-]*|(admin)?-?(bookings|orders|reservations))(\.tsx|$|\/)/, dependsOn: ["admin", "booking"], nextAction: "Build bookings management" },
+      { id: "notifications", label: "Email notifications", category: "integration", match: /\b(email notifications?|emails?|notifications?|confirmation emails?)\b/i, evidence: /(^|\/)(email|emails|notify|notification|notifications|mailer)[a-z-]*(\.tsx|\.ts|$|\/)/, dependsOn: ["booking"], integration: "email", nextAction: "Set up booking notifications" },
+      { id: "analytics", label: "Analytics", category: "feature", match: /\b(analytics|reports?|insights|metrics)\b/i, evidence: /(^|\/)(analytics|reports?|insights|metrics)(\.tsx|\.ts|$|\/)/, dependsOn: ["admin"], nextAction: "Add analytics" },
+      { id: "search", label: "Search", category: "feature", match: /\b(search|filters?)\b/i, evidence: /(^|\/)(search)(\.tsx|$|\/)/, dependsOn: ["catalog"], nextAction: "Add search" },
+      { id: "blog", label: "Blog", category: "page", match: /\b(blog|articles?|journal|news)\b/i, evidence: /(^|\/)(blog|articles?|journal|news)(\.tsx|$|\/)/, dependsOn: [], nextAction: "Build the blog" },
+      { id: "about", label: "About", category: "page", match: /\babout( us| page)?\b/i, evidence: /(^|\/)about(\.tsx|$|\/)/, dependsOn: [], nextAction: "Build the about page" },
+      { id: "contact", label: "Contact", category: "page", match: /\bcontact( us| page| form)?\b/i, evidence: /(^|\/)contact(\.tsx|$|\/)/, dependsOn: [], nextAction: "Build the contact page" },
+      { id: "responsive", label: "Responsive design", category: "quality", match: /\b(responsive|mobile[- ]friendly|works on (phones?|mobile)|mobile layout)\b/i, evidence: /$^/, dependsOn: [], nextAction: "Check the phone layout" }
+    ];
+    CONCEPT_BY_ID = new Map(CONCEPTS.map((c) => [c.id, c]));
+    OPEN3 = ["NOT_STARTED", "IN_PROGRESS"];
+    CONTINUE_RE = /^\s*(continue|keep going|keep building|next( stage| step)?|go on|carry on|proceed|finish (it|the rest)|build the rest|do the rest|all)\b/i;
+  }
+});
+
+// src/server/prd/prd-progress.server.ts
+var prd_progress_server_exports = {};
+__export(prd_progress_server_exports, {
+  buildEvidenceFromRow: () => buildEvidenceFromRow,
+  evidenceFromFiles: () => evidenceFromFiles,
+  integrationsFromSecretNames: () => integrationsFromSecretNames,
+  recordRequirementEvidence: () => recordRequirementEvidence,
+  routesFromFiles: () => routesFromFiles
+});
+function routesFromFiles(files) {
+  const out = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    if (!/^src\/(App|main|router|routes)/.test(f.path) && !/src\/routes\//.test(f.path)) continue;
+    for (const m of f.content.matchAll(/\bpath\s*[=:]\s*["'`]([^"'`]+)["'`]/g)) out.add(m[1]);
+    for (const m of f.content.matchAll(/createFileRoute\(\s*["'`]([^"'`]+)["'`]/g)) out.add(m[1]);
+  }
+  return [...out];
+}
+function integrationsFromSecretNames(names) {
+  const out = [];
+  if (names.some((n) => /STRIPE/i.test(n))) out.push("stripe");
+  if (names.some((n) => /(RESEND|SENDGRID|POSTMARK|MAILGUN|SMTP)/i.test(n))) out.push("email");
+  return out;
+}
+function buildEvidenceFromRow(row, projectRevision) {
+  if (!row) return null;
+  const revision = row.project_revision == null ? null : Number(row.project_revision);
+  const visual = Array.isArray(row.verification?.visual) ? row.verification.visual : [];
+  const status = row.status === "ready" ? revision === projectRevision ? "ready" : "stale" : row.status === "failed" ? "failed" : row.status === "cancelled" ? "cancelled" : "building";
+  return {
+    revision,
+    status,
+    verified: row.status === "ready" && !!row.verification,
+    phoneChecked: visual.some((v) => typeof v?.width === "number" && v.width <= 480) || row.verification?.phoneChecked === true
+  };
+}
+function evidenceFromFiles(files, projectRevision, build, configuredIntegrations) {
+  return {
+    projectRevision,
+    files: files.map((f) => ({ path: f.path, hash: hashContent(f.content) })),
+    routes: routesFromFiles(files),
+    build,
+    configuredIntegrations
+  };
+}
+async function recordRequirementEvidence(args) {
+  try {
+    const db = supabaseAdmin;
+    const { data: bp } = await db.from("project_blueprints").select("blueprint").eq("project_id", args.projectId).maybeSingle();
+    const versioned = bp?.blueprint?.prd;
+    const reqs = args.requirements ?? versioned?.prd?.requirements;
+    if (!reqs?.length) return null;
+    let revision = args.projectRevision;
+    let latestBuildId = null;
+    if (typeof revision !== "number" || args.build === "latest") {
+      const { data: p } = await db.from("projects").select("revision, latest_build_id").eq("id", args.projectId).maybeSingle();
+      if (typeof revision !== "number") revision = Number(p?.revision ?? 0);
+      latestBuildId = p?.latest_build_id ?? null;
+    }
+    let build = null;
+    if (args.build === "latest") {
+      if (latestBuildId) {
+        const { data: b } = await db.from("project_builds").select("status, project_revision, verification").eq("id", latestBuildId).maybeSingle();
+        build = buildEvidenceFromRow(b ?? null, revision);
+      }
+    } else build = args.build;
+    let files = args.files;
+    if (!files) {
+      const { data: rows } = await db.from("project_files").select("path, content").eq("project_id", args.projectId);
+      files = rows ?? [];
+    }
+    const { data: secrets } = await db.from("project_secrets").select("name").eq("project_id", args.projectId);
+    const configured = integrationsFromSecretNames((secrets ?? []).map((s) => s.name));
+    const next = evaluateRequirements(reqs, { ...evidenceFromFiles(files, revision, build, configured), ...args.turn ? { turn: args.turn } : {} });
+    if (!versioned?.prd) return next;
+    const unchanged = versioned.prd.requirements && next.every((r, i) => r === versioned.prd.requirements[i]) && next.length === versioned.prd.requirements.length;
+    if (unchanged) return next;
+    const blueprint = {
+      ...bp.blueprint,
+      prd: { ...versioned, prd: { ...versioned.prd, requirements: next } }
+    };
+    await db.from("project_blueprints").update({ blueprint }).eq("project_id", args.projectId);
+    return next;
+  } catch (e) {
+    console.warn("[prd-progress] skipped:", e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
+var init_prd_progress_server = __esm({
+  "src/server/prd/prd-progress.server.ts"() {
+    init_define_import_meta_env();
+    init_client_server_shim();
+    init_prd_requirements();
+  }
+});
+
 // src/server/prd/prd-engine.server.ts
 var prd_engine_server_exports = {};
 __export(prd_engine_server_exports, {
+  attachRequirements: () => attachRequirements,
   resolvePrdForTurn: () => resolvePrdForTurn
 });
+function attachRequirements(prd, brief, stored) {
+  if (!stored) return { prd: { ...prd, requirements: deriveRequirements(brief) }, changed: true };
+  const base = stored.prd.requirements ?? deriveRequirements(stored.sourcePrompt || "");
+  const merged = mergeRequirements(base, brief);
+  const changed = !stored.prd.requirements || merged.added.length > 0 || merged.rejected.length > 0;
+  return { prd: { ...prd, requirements: merged.requirements }, changed };
+}
 async function resolvePrdForTurn(args) {
   const brief = (args.brief || "").trim();
   const stored = await loadProjectPrd(args.projectId);
@@ -144164,19 +145241,35 @@ async function resolvePrdForTurn(args) {
   let amendment = "none";
   let note = "";
   if (!stored) {
-    prd = args.deterministicOnly ? deterministicPrd(brief) : await modelPrd(brief, args.userId ?? void 0);
+    const authoredPrd = args.deterministicOnly ? deterministicPrd(brief) : await modelPrd(brief, args.userId ?? void 0);
+    prd = attachRequirements(authoredPrd, brief, null).prd;
     versioned = await saveProjectPrd(args.projectId, prd, brief, null);
     authored = true;
   } else {
     const result = amendPrd(stored.prd, brief);
-    prd = result.prd;
     amendment = result.kind;
     note = result.note;
-    if (result.changed) {
+    const withReqs = attachRequirements(result.prd, brief, stored);
+    prd = withReqs.prd;
+    if (result.changed || withReqs.changed) {
       versioned = await saveProjectPrd(args.projectId, prd, brief, stored);
     }
   }
+  if (args.projectId && !authored && prd.requirements?.length) {
+    try {
+      const { recordRequirementEvidence: recordRequirementEvidence2 } = await Promise.resolve().then(() => (init_prd_progress_server(), prd_progress_server_exports));
+      const reconciled = await recordRequirementEvidence2({
+        projectId: args.projectId,
+        build: "latest",
+        requirements: prd.requirements
+      });
+      if (reconciled) prd = { ...prd, requirements: reconciled };
+    } catch {
+    }
+  }
   const subtype = subtypeFromPrd(prd);
+  const requirements = prd.requirements ?? [];
+  const plan = stageForTurn(requirements, brief, authored);
   return {
     prd,
     versioned,
@@ -144184,8 +145277,14 @@ async function resolvePrdForTurn(args) {
     amendment,
     note,
     subtype,
-    promptBlock: [renderPrdBlock(prd), renderSubtypeOverrideBlock(prd, subtype)].filter(Boolean).join("\n"),
-    scenarioBlock: renderPrdScenarioBlock(prd)
+    promptBlock: [
+      renderPrdBlock(prd),
+      renderSubtypeOverrideBlock(prd, subtype),
+      renderRequirementsBlock(requirements, plan)
+    ].filter(Boolean).join("\n"),
+    scenarioBlock: renderPrdScenarioBlock(prd),
+    stage: plan.stage,
+    stageMode: plan.mode
   };
 }
 var init_prd_engine_server = __esm({
@@ -144198,6 +145297,681 @@ var init_prd_engine_server = __esm({
     init_prd_render();
     init_prd_reconcile();
     init_prd_acceptance_server();
+    init_prd_requirements();
+  }
+});
+
+// src/server/execution/classify.ts
+function classifyEditFacet(prompt) {
+  const text = (prompt ?? "").trim();
+  const found = DIMENSION_RE.filter(([, re]) => re.test(text)).map(([d]) => d);
+  const dimensions = found.length ? found : ["visual"];
+  if (STRUCTURAL_RE.test(text)) return { scope: "structural", dimensions, hints: [], reason: "matched a cross-cutting phrase", source: "deterministic" };
+  if (MICRO_RE.test(text) && text.length <= 90) return { scope: "micro", dimensions, hints: [], reason: "short single-verb request", source: "deterministic" };
+  return { scope: "targeted", dimensions, hints: [], reason: "default", source: "deterministic" };
+}
+function classifyRequest(request, opts) {
+  const r = request || "";
+  if (opts.isInitial) {
+    return { operation: "first_build", planRequired: false, mode: "staged", reason: "no project yet", edit: null, crossCutting: false };
+  }
+  const edit = classifyEditFacet(r);
+  const crossCutting = detectCrossCuttingIntent(r) || edit.scope === "structural";
+  const base = baseOperation(r, opts);
+  if (crossCutting && base.operation !== "architectural_change") {
+    return { operation: "architectural_change", planRequired: true, mode: "staged", reason: `cross-cutting (${base.reason})`, edit, crossCutting };
+  }
+  return { ...base, edit, crossCutting };
+}
+function baseOperation(r, opts) {
+  const direct2 = (operation, reason) => ({ operation, planRequired: false, mode: "direct", reason });
+  if (opts.isRepairTurn || R.repair.test(r) && !R.newPage.test(r)) return direct2("repair", "defect reported");
+  if (R.arch.test(r)) return { operation: "architectural_change", planRequired: true, mode: "staged", reason: "reaches across the app" };
+  if (R.newPage.test(r)) return { operation: "page_creation", planRequired: false, mode: "staged", reason: "new page requested" };
+  if (R.dep.test(r)) return direct2("dependency_change", "dependency/config words");
+  if (R.asset.test(r)) return direct2("asset_change", "imagery words");
+  if (R.func.test(r)) return direct2("functionality_change", "behaviour words");
+  if (R.content.test(r)) return direct2("content_change", "copy words");
+  if (R.style.test(r)) return direct2("styling_change", "visual words");
+  const pageHit = PAGE_WORDS.test(r) || (opts.manifest?.pages.some((p) => r.toLowerCase().includes(p.type)) ?? false);
+  if (pageHit) return direct2("page_modification", "names a page");
+  return direct2("component_modification", "default targeted edit");
+}
+var STRUCTURAL_RE, MICRO_RE, DIMENSION_RE, R, PAGE_WORDS;
+var init_classify = __esm({
+  "src/server/execution/classify.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_intent_targets_server();
+    STRUCTURAL_RE = /\b(redesign|re-?design|rebuild|revamp|overhaul|from scratch|start over|entire (site|app|website|thing)|whole (site|app|website|thing)|every (page|screen)|all (the )?pages|site-?wide|new (page|screen|feature|section)|add (a |an )?(page|dashboard|auth|login|signup|payments?|checkout|blog)|make it (a )?real|looks? (bad|terrible|awful|plain|generic|unfinished)|doesn'?t look|nothing works)\b/i;
+    MICRO_RE = /^\s*(change|rename|fix|update|set|make)\b[^.!?]{0,80}$/i;
+    DIMENSION_RE = [
+      ["visual", /\b(design|theme|colou?rs?|palette|font|typography|spacing|layout|styling|style|look|hero|animation)\b/i],
+      ["content", /\b(copy|text|headline|wording|title|label|rename|typo|content)\b/i],
+      ["behaviour", /\b(click|button|form|submit|validate|route|link|navigate|filter|sort|search|state|toggle|modal|drawer)\b/i],
+      ["data", /\b(database|table|schema|auth|login|sign ?up|store|save|persist|api|backend)\b/i],
+      ["navigation", /\b(nav|navbar|navigation|menu|header|footer|sidebar|breadcrumb)\b/i],
+      ["responsive", /\b(mobile|phone|tablet|responsive|small screens?|breakpoints?)\b/i]
+    ];
+    R = {
+      repair: /\b(fix|broken|error|crash|not working|doesn'?t work|blank|bug|failed)\b/i,
+      newPage: /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(page|screen|route)s?\b/i,
+      arch: /\b(redesign|rebuild|restructure|refactor|entire|whole (site|app)|every page|all pages|across the (site|app)|migrate|convert to)\b/i,
+      dep: /\b(install|package|dependency|library|npm|upgrade|config(uration)?|env(ironment)?)\b/i,
+      asset: /\b(image|photo|picture|logo|icon|illustration|favicon|video|background image)\b/i,
+      style: /\b(colou?r|font|size|bigger|smaller|bold|spacing|padding|margin|rounded|shadow|style|dark|light|theme|align|layout|look)\b/i,
+      content: /\b(text|copy|headline|heading|title|wording|rename|say|typo|label|paragraph|description)\b|["“][^"”]{2,}["”]/i,
+      func: /\b(button (that|to)|click|submit|form|login|sign ?(in|up)|search|filter|sort|save|cart|checkout|toggle|modal|api|fetch|validate|works?)\b/i
+    };
+    PAGE_WORDS = /\b(home|landing|about|contact|pricing|menu|blog|login|sign ?in|sign ?up|dashboard|shop|store|product|services|faq|gallery|team|careers|checkout|cart|profile|settings)\s+(page|screen)\b/i;
+  }
+});
+
+// src/server/execution/scope.ts
+function constraintsFrom(request) {
+  const out = [];
+  for (const m of request.matchAll(/\b(?:don'?t|do not|never|keep|leave|without)\b[^.!?\n]{3,80}/gi)) out.push(m[0].trim());
+  return out.slice(0, 6);
+}
+function buildExecutionScope(args) {
+  const { request, classification, manifest } = args;
+  const targets = Array.from(new Set(args.targets));
+  const neighbours = (args.neighbours ?? []).filter((p) => !targets.includes(p));
+  const pagesSet = new Set(manifest?.pages.map((p) => p.path) ?? []);
+  const wide = classification.operation === "first_build" || classification.operation === "architectural_change" || classification.operation === "page_creation" || targets.length === 0;
+  const chromeNamed = CHROME_WORDS.test(request);
+  const reason = (p) => {
+    if (wide || targets.includes(p)) return null;
+    if (CHROME_RE.test(p) && !chromeNamed) return "shared navigation/layout was not part of this request";
+    if (pagesSet.has(p) && !neighbours.includes(p)) return "a different page than the one requested";
+    return null;
+  };
+  const protectedAreas = wide ? [] : [
+    ...chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l)),
+    ...[...pagesSet].filter((p) => !targets.includes(p) && !neighbours.includes(p))
+  ];
+  return {
+    operation: classification.operation,
+    outcome: request.trim().slice(0, 300),
+    affectedPages: targets.filter((t) => pagesSet.has(t)),
+    affectedComponents: targets.filter((t) => !pagesSet.has(t)),
+    affectedFiles: [...targets, ...neighbours],
+    constraints: constraintsFrom(request),
+    protectedAreas,
+    acceptance: [
+      "the requested outcome is visible in the changed files",
+      "every changed file compiles",
+      ...protectedAreas.length ? ["protected areas are byte-identical"] : []
+    ],
+    isProtected: (p) => reason(p) !== null,
+    protectionReason: reason
+  };
+}
+function renderScopeBlock(s) {
+  if (!s.protectedAreas.length && !s.constraints.length) return "";
+  const lines = ["\n\nEXECUTION SCOPE (enforced \u2014 writes outside it are rejected):", `- Operation: ${s.operation}`];
+  if (s.affectedFiles.length) lines.push(`- May change: ${s.affectedFiles.join(", ")}`);
+  if (s.protectedAreas.length) lines.push(`- Protected (do not touch): ${s.protectedAreas.slice(0, 12).join(", ")}`);
+  if (s.constraints.length) lines.push(`- User constraints: ${s.constraints.join(" | ")}`);
+  lines.push("- A new file is allowed only when a changed file imports it.");
+  return lines.join("\n");
+}
+var CHROME_RE, CHROME_WORDS;
+var init_scope = __esm({
+  "src/server/execution/scope.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    CHROME_RE = /(Layout|Header|Footer|Nav(bar)?|SiteNav|Shell|Sidebar)\.(t|j)sx$/;
+    CHROME_WORDS = /\b(nav|navbar|navigation|menu|header|footer|layout|sidebar|site-?wide|every page|all pages)\b/i;
+  }
+});
+
+// src/server/execution/verdict.ts
+function toVerdict(state) {
+  switch (state) {
+    case "passed":
+    case "ok":
+      return "PASS";
+    case "failed":
+    case "error":
+      return "FAIL";
+    case "unavailable":
+    case "timeout":
+      return "UNAVAILABLE";
+    case "warning":
+      return "WARNING";
+    default:
+      return "UNKNOWN";
+  }
+}
+function shouldRepair(v) {
+  return v === "FAIL";
+}
+function blocksCommit(v) {
+  return v === "FAIL";
+}
+var init_verdict = __esm({
+  "src/server/execution/verdict.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+  }
+});
+
+// src/server/execution/ledger.ts
+var TURN_LIMITS, TurnLedger;
+var init_ledger = __esm({
+  "src/server/execution/ledger.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    TURN_LIMITS = {
+      ai_call: 12,
+      read: 80,
+      write: 40,
+      delete: 10,
+      dependency: 6,
+      repair: 3,
+      build: 2,
+      browser: 1
+    };
+    TurnLedger = class {
+      constructor(limits = TURN_LIMITS) {
+        this.limits = limits;
+      }
+      limits;
+      counts = /* @__PURE__ */ new Map();
+      reads = /* @__PURE__ */ new Set();
+      /** Files whose current content was inspected in THIS operation. A ledger is
+       *  created per turn, so a previous operation's reads never carry over. */
+      inspected = /* @__PURE__ */ new Set();
+      events = [];
+      writer = null;
+      cancelled = false;
+      committed = false;
+      cancel() {
+        this.cancelled = true;
+      }
+      /** Claim the turn for one writer. A second writer is refused. */
+      claimWriter(id) {
+        if (this.writer && this.writer !== id) return false;
+        this.writer = id;
+        return true;
+      }
+      use(kind, purpose, target, writer) {
+        const refuse = (refusal) => {
+          this.events.push({ kind, target, purpose, ok: false, refusal });
+          return { ok: false, refusal };
+        };
+        if (this.cancelled) return refuse("cancelled");
+        if (this.committed && kind !== "read") return refuse("committed");
+        if ((kind === "write" || kind === "delete") && writer && !this.claimWriter(writer)) return refuse("foreign_writer");
+        if (kind === "read" && target) {
+          if (this.reads.has(target)) return refuse("duplicate_read");
+        }
+        const n = this.counts.get(kind) ?? 0;
+        if (n >= this.limits[kind]) return refuse("limit");
+        this.counts.set(kind, n + 1);
+        if (kind === "read" && target) this.reads.add(target);
+        this.events.push({ kind, target, purpose, ok: true });
+        return { ok: true };
+      }
+      /** Write discipline: refuse a write whose bytes equal the current file. */
+      /** Mark a file as inspected (its current content was placed in the model's
+       *  context, or read through a tool) during this operation. */
+      recordRead(path) {
+        this.inspected.add(path);
+      }
+      hasRead(path) {
+        return this.inspected.has(path) || this.reads.has(path);
+      }
+      /**
+       * Write boundary. READ-BEFORE-EDIT: overwriting an EXISTING file that was
+       * not inspected in this operation is refused — not warned. New files
+       * (current === undefined) are exempt. Kimble-managed system writes
+       * (scaffold kit, design-system installer, housekeeping) never reach this
+       * method: TurnTransaction.stage(..., { system: true }) bypasses the ledger,
+       * and those writers are validated by their own deterministic mechanisms.
+       */
+      write(path, next, current2, purpose, writer) {
+        if (current2 !== void 0 && !this.hasRead(path)) {
+          this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "unread_write" });
+          return { ok: false, refusal: "unread_write" };
+        }
+        if (current2 !== void 0 && current2 === next) {
+          this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "no_op_write" });
+          return { ok: false, refusal: "no_op_write" };
+        }
+        return this.use("write", purpose, path, writer);
+      }
+      count(kind) {
+        return this.counts.get(kind) ?? 0;
+      }
+      summary() {
+        return {
+          counts: Object.fromEntries(this.counts),
+          refusals: this.events.filter((e) => !e.ok).map((e) => `${e.kind}:${e.refusal}${e.target ? `:${e.target}` : ""}`).slice(0, 30),
+          filesRead: [...this.reads].slice(0, 40),
+          filesWritten: this.events.filter((e) => e.ok && e.kind === "write").map((e) => e.target).slice(0, 40),
+          cancelled: this.cancelled,
+          committed: this.committed
+        };
+      }
+    };
+  }
+});
+
+// src/server/execution/transaction.ts
+var TurnTransaction;
+var init_transaction = __esm({
+  "src/server/execution/transaction.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_verdict();
+    TurnTransaction = class {
+      constructor(baseline, ledger, writer = "primary") {
+        this.ledger = ledger;
+        this.writer = writer;
+        this.base = new Map(baseline.map((f) => [f.path, f.content]));
+      }
+      ledger;
+      writer;
+      base;
+      staged = /* @__PURE__ */ new Map();
+      verdicts = [];
+      done = false;
+      /**
+       * Stage one file. `system: true` marks Kimble-managed files (scaffold kit,
+       * housekeeping) — they are staged atomically with the turn but do not
+       * consume the model's write budget. No-op writes are refused either way.
+       */
+      stage(path, content, purpose = "requested change", opts) {
+        if (this.done) return false;
+        const current2 = this.staged.has(path) ? this.staged.get(path) ?? void 0 : this.base.get(path);
+        if (this.ledger && !opts?.system) {
+          const r = this.ledger.write(path, content, current2, purpose, this.writer);
+          if (!r.ok) return false;
+        } else if (current2 === content) return false;
+        this.staged.set(path, content);
+        return true;
+      }
+      /** The complete proposed project tree (baseline + staged), uncommitted. */
+      proposedTree() {
+        const next = new Map(this.base);
+        for (const [p, c] of this.staged) {
+          if (c === null) next.delete(p);
+          else next.set(p, c);
+        }
+        return [...next].map(([path, content]) => ({ path, content }));
+      }
+      remove(path, opts) {
+        if (this.done || !this.base.has(path)) return false;
+        if (this.ledger && !opts?.system && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
+        this.staged.set(path, null);
+        return true;
+      }
+      recordCheck(check, verdict, detail) {
+        this.verdicts.push({ check, verdict, detail });
+      }
+      checks() {
+        return [...this.verdicts];
+      }
+      baseline() {
+        return [...this.base].map(([path, content]) => ({ path, content }));
+      }
+      rollback(reason) {
+        this.done = true;
+        this.staged.clear();
+        return { status: "rolled_back", files: this.baseline(), reason };
+      }
+      commit() {
+        if (this.done) return { status: "rolled_back", files: this.baseline(), reason: "already finished" };
+        if (this.ledger?.cancelled) return this.rollback("cancelled");
+        const failed = this.verdicts.find((v) => blocksCommit(v.verdict));
+        if (failed) return this.rollback(`${failed.check} failed${failed.detail ? `: ${failed.detail}` : ""}`);
+        if (this.staged.size === 0) return this.rollback("no changes");
+        const next = new Map(this.base);
+        for (const [p, c] of this.staged) {
+          if (c === null) next.delete(p);
+          else next.set(p, c);
+        }
+        this.done = true;
+        if (this.ledger) this.ledger.committed = true;
+        return {
+          status: "committed",
+          files: [...next].map(([path, content]) => ({ path, content })),
+          changed: [...this.staged.keys()]
+        };
+      }
+    };
+  }
+});
+
+// src/server/execution/commit.ts
+async function commitTurn(args) {
+  const tx = new TurnTransaction(args.baseline, args.ledger);
+  const base = new Map(args.baseline.map((f) => [f.path, f.content]));
+  const next = /* @__PURE__ */ new Map();
+  for (const f of args.proposed) {
+    const p = f.path.trim();
+    if (p) next.set(p, f.content ?? "");
+  }
+  const rejections = [];
+  const noOps = [];
+  const refusalReason = () => {
+    const last = args.ledger.summary().refusals.at(-1) ?? "";
+    if (last.includes(":limit")) return "limit";
+    if (last.includes(":foreign_writer")) return "foreign_writer";
+    if (last.includes(":cancelled")) return "cancelled";
+    return "other";
+  };
+  for (const [path, content] of next) {
+    const system = args.isSystemPath(path);
+    if (base.get(path) === content) continue;
+    if (!system) {
+      const why = args.protectionReason(path);
+      if (why) {
+        rejections.push({
+          operation: "write",
+          path,
+          reason: "scope_violation",
+          detail: why,
+          recoverable: true,
+          next: "retry without changing this file, or name it explicitly in the request"
+        });
+        continue;
+      }
+    }
+    if (!tx.stage(path, content, "turn change", { system })) {
+      const reason = refusalReason();
+      rejections.push({
+        operation: "write",
+        path,
+        reason,
+        detail: `write refused (${reason})`,
+        recoverable: reason === "limit",
+        next: reason === "limit" ? "split the request into smaller steps" : "stop"
+      });
+    }
+  }
+  for (const path of base.keys()) {
+    if (next.has(path)) continue;
+    if (!args.isSystemPath(path) && args.protectionReason(path)) {
+      rejections.push({
+        operation: "delete",
+        path,
+        reason: "scope_violation",
+        detail: args.protectionReason(path),
+        recoverable: true,
+        next: "retry without removing this file"
+      });
+      continue;
+    }
+    if (!tx.remove(path, { system: args.isSystemPath(path) })) {
+      const reason = refusalReason();
+      rejections.push({ operation: "delete", path, reason, detail: `delete refused (${reason})`, recoverable: reason === "limit", next: "stop" });
+    }
+  }
+  for (const r of args.ledger.summary().refusals) {
+    if (r.startsWith("write:no_op_write:")) noOps.push(r.slice("write:no_op_write:".length));
+  }
+  for (const c of args.checks) tx.recordCheck(c.check, c.verdict, c.detail);
+  if (rejections.length) {
+    tx.recordCheck(
+      "execution_boundary",
+      "FAIL",
+      rejections.slice(0, 3).map((r) => `${r.operation} ${r.path ?? ""}: ${r.reason}`).join("; ")
+    );
+  }
+  let verification = null;
+  if (args.verifySource && rejections.length === 0 && !args.cancelled()) {
+    const tree = tx.proposedTree();
+    const changed = tree.filter((f) => base.get(f.path) !== f.content).map((f) => f.path);
+    if (changed.length > 0) {
+      try {
+        verification = await args.verifySource(tree, changed);
+      } catch (e) {
+        verification = {
+          status: "UNVERIFIED",
+          gates: [],
+          failedGate: null,
+          reason: `source verification could not run: ${e instanceof Error ? e.message : String(e)}`,
+          repairTargets: []
+        };
+      }
+      for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
+      if (verification.status === "FAILED") {
+        tx.recordCheck("source_verification", "FAIL", verification.reason ?? "source verification failed");
+        for (const p of verification.repairTargets.length ? verification.repairTargets : [void 0]) {
+          rejections.push({
+            operation: "commit",
+            path: p,
+            reason: "validation_failed",
+            stage: "source_verification",
+            gate: verification.failedGate ?? void 0,
+            detail: verification.reason ?? `${verification.failedGate} failed`,
+            recoverable: true,
+            next: "repair the named file(s) and retry"
+          });
+        }
+      } else if (verification.status === "UNVERIFIED") {
+        tx.recordCheck("source_verification", "FAIL", `unverified: ${verification.reason ?? "check could not complete"}`);
+        rejections.push({
+          operation: "commit",
+          reason: "unverified",
+          stage: "source_verification",
+          gate: verification.gates.find((g) => g.verdict !== "PASS" && g.verdict !== "WARNING")?.gate,
+          detail: verification.reason ?? "source verification could not complete",
+          recoverable: true,
+          next: "retry when the checker is available"
+        });
+      }
+    }
+  }
+  if (args.cancelled()) args.ledger.cancel();
+  const outcome = tx.commit();
+  if (outcome.status === "rolled_back" && rejections.length === 0) {
+    rejections.push({
+      operation: "commit",
+      reason: outcome.reason === "cancelled" ? "cancelled" : outcome.reason === "no changes" ? "no_changes" : "validation_failed",
+      detail: outcome.reason,
+      recoverable: outcome.reason !== "cancelled",
+      next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry"
+    });
+  }
+  return { outcome, rejections, noOps, verification };
+}
+var init_commit = __esm({
+  "src/server/execution/commit.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    init_transaction();
+  }
+});
+
+// src/server/execution/depth.ts
+function initialDepth(c, request) {
+  let d;
+  switch (c.operation) {
+    case "first_build":
+    case "architectural_change":
+    case "dependency_change":
+      d = "FULL_VERIFICATION";
+      break;
+    case "functionality_change":
+    case "page_creation":
+    case "repair":
+      d = "BUILD_PLUS_BROWSER";
+      break;
+    case "content_change":
+    case "styling_change":
+      d = c.edit?.scope === "micro" ? "SOURCE_VALIDATION_ONLY" : "BUILD";
+      break;
+    default:
+      d = "BUILD";
+  }
+  if (c.crossCutting) d = maxDepth(d, "FULL_VERIFICATION");
+  if (TEST_ASK.test(request)) d = maxDepth(d, "BUILD_PLUS_BROWSER");
+  return d;
+}
+function analyseImpact(changedPaths) {
+  const out = [];
+  for (const path of changedPaths) {
+    const hit = RULES6.find((r) => r.test.test(path));
+    if (hit) out.push({ path, reason: hit.reason, requires: hit.requires });
+  }
+  return out;
+}
+function finalDepth(initial, changedPaths, opts) {
+  let d = initial;
+  const escalatedBy = [];
+  for (const f of analyseImpact(changedPaths)) {
+    if (rank(f.requires) > rank(d)) escalatedBy.push(f);
+    d = maxDepth(d, f.requires);
+  }
+  if (opts.codeChanged) d = maxDepth(d, PLATFORM_FLOOR);
+  return { depth: d, escalatedBy };
+}
+var DEPTHS, rank, maxDepth, PLATFORM_FLOOR, TEST_ASK, RULES6, needsBrowser;
+var init_depth = __esm({
+  "src/server/execution/depth.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    DEPTHS = ["NO_BUILD", "SOURCE_VALIDATION_ONLY", "BUILD", "BUILD_PLUS_BROWSER", "FULL_VERIFICATION"];
+    rank = (d) => DEPTHS.indexOf(d);
+    maxDepth = (a2, b) => rank(a2) >= rank(b) ? a2 : b;
+    PLATFORM_FLOOR = "BUILD";
+    TEST_ASK = /\b(test|verify|check) (it|this|that|the (app|site|flow|page))\b|\bmake sure it works\b/i;
+    RULES6 = [
+      { test: /(^|\/)(package\.json|bun\.lockb?|package-lock\.json|vite\.config\.[jt]s|tsconfig[^/]*\.json|wrangler\.(toml|jsonc?)|[^/]*\.config\.[cm]?[jt]s)$/, reason: "dependency/configuration", requires: "FULL_VERIFICATION" },
+      { test: /(^|\/)(supabase\/|src\/integrations\/|src\/server\/|src\/routes\/api\/)|\.functions\.tsx?$|\.server\.tsx?$/, reason: "backend/integration", requires: "FULL_VERIFICATION" },
+      { test: /(auth|login|signin|sign-in|payment|checkout|stripe|paddle|billing)/i, reason: "auth/payment-sensitive", requires: "FULL_VERIFICATION" },
+      { test: /routeTree\.gen\.ts$|\.gen\.tsx?$/, reason: "generated code", requires: "FULL_VERIFICATION" },
+      { test: /(^|\/)src\/(routes\/|router\.tsx|App\.tsx)/, reason: "route", requires: "BUILD_PLUS_BROWSER" },
+      { test: /(^|\/)src\/(components\/|lib\/|hooks\/|utils\/)/, reason: "shared/imported module", requires: "BUILD" },
+      { test: /\.(tsx?|jsx?|mjs|cjs)$/, reason: "type/runtime-sensitive code", requires: "BUILD" }
+    ];
+    needsBrowser = (d) => rank(d) >= rank("BUILD_PLUS_BROWSER");
+  }
+});
+
+// src/server/execution/complexity.ts
+var complexity_exports = {};
+__export(complexity_exports, {
+  EXECUTION_CLASSES: () => EXECUTION_CLASSES,
+  EXPECTED_COST_USD: () => EXPECTED_COST_USD,
+  assessExecution: () => assessExecution,
+  assessPageComplexity: () => assessPageComplexity,
+  sectionDirFor: () => sectionDirFor
+});
+function assessExecution(input) {
+  const s = [];
+  const add = (name, weight) => {
+    if (weight) s.push({ name, weight });
+  };
+  add("first_build", input.isInitial ? 2 : 0);
+  add("requirements", Math.min(4, Math.max(0, input.requirementCount - 2)));
+  add("pages", Math.min(3, Math.max(0, input.plannedPages - 2)));
+  add("ui_heavy_domain", UI_HEAVY.test(input.request) ? 2 : 0);
+  add("architectural", ARCH.test(input.request) || input.operation === "architectural_change" ? 3 : 0);
+  add("dependency_change", input.operation === "dependency_change" ? 2 : 0);
+  add("cross_cutting", input.crossCutting ? 2 : 0);
+  add("backend", input.backendInvolved ? 2 : 0);
+  add("integrations", Math.min(3, input.integrations));
+  add("modifies_existing", !input.isInitial && input.existingFiles > 20 && (input.crossCutting || ARCH.test(input.request)) ? 1 : 0);
+  add("micro_edit", input.operation === "content_change" || input.operation === "styling_change" ? -2 : 0);
+  const score = s.reduce((a2, x) => a2 + x.weight, 0);
+  let cls = score <= 1 ? "LIGHT" : score <= 4 ? "STANDARD" : score <= 8 ? "HEAVY" : "COMPLEX";
+  if (input.escalations && input.escalations.length > 0) {
+    cls = "ESCALATED";
+    for (const e of input.escalations) s.push({ name: `escalated:${e}`, weight: 0 });
+  }
+  return {
+    class: cls,
+    score,
+    signals: s,
+    expectedCostUsd: EXPECTED_COST_USD[cls],
+    canDecompose: input.isInitial || input.plannedPages > 0
+  };
+}
+function sectionDirFor(file) {
+  const name = file.split("/").pop().replace(/\.[jt]sx?$/, "");
+  return `src/components/${name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()}`;
+}
+function assessPageComplexity(p) {
+  const reasons = [];
+  const sectionDir = sectionDirFor(p.file);
+  if (p.truncatedBefore) reasons.push("output_limit_hit");
+  if (SIMPLE_ROUTE.test(p.route)) return { decompose: reasons.length > 0, reasons, sectionDir };
+  const primary = p.route === "/" || /dashboard|home|overview|index/i.test(p.route);
+  const heavyDomain = UI_HEAVY.test(p.request) || UI_HEAVY.test(p.route);
+  const perPage = p.requirementCount / Math.max(1, p.pageCount);
+  if (primary && heavyDomain && p.requirementCount >= 4) reasons.push("primary_surface_of_multi_feature_product");
+  else if (heavyDomain && perPage >= 3) reasons.push("dense_feature_page");
+  return { decompose: reasons.length > 0, reasons, sectionDir };
+}
+var EXECUTION_CLASSES, EXPECTED_COST_USD, UI_HEAVY, ARCH, SIMPLE_ROUTE;
+var init_complexity = __esm({
+  "src/server/execution/complexity.ts"() {
+    init_define_import_meta_env();
+    EXECUTION_CLASSES = ["LIGHT", "STANDARD", "HEAVY", "COMPLEX", "ESCALATED"];
+    EXPECTED_COST_USD = {
+      LIGHT: 4e-3,
+      STANDARD: 0.012,
+      HEAVY: 0.035,
+      COMPLEX: 0.06,
+      ESCALATED: 0.09
+    };
+    UI_HEAVY = /\b(dashboard|management|admin|crm|erp|portal|workflow|scheduling|booking|inventory|analytics|kanban|calendar|editor|builder|marketplace)\b/i;
+    ARCH = /\b(refactor|migrate|restructure|rewrite|architecture|switch (to|from)|replace the)\b/i;
+    SIMPLE_ROUTE = /^\/(about|contact|privacy|terms|faq|pricing|login|signup|sign-in|sign-up|404|not-found|thank-you|success)\b/i;
+  }
+});
+
+// src/server/execution/index.ts
+var execution_exports = {};
+__export(execution_exports, {
+  AgentCircuitBreaker: () => AgentCircuitBreaker,
+  BREAKER_THRESHOLDS: () => BREAKER_THRESHOLDS,
+  DEPTHS: () => DEPTHS,
+  EXECUTION_CLASSES: () => EXECUTION_CLASSES,
+  EXPECTED_COST_USD: () => EXPECTED_COST_USD,
+  PLATFORM_FLOOR: () => PLATFORM_FLOOR,
+  TURN_LIMITS: () => TURN_LIMITS,
+  TurnLedger: () => TurnLedger,
+  TurnTransaction: () => TurnTransaction,
+  analyseImpact: () => analyseImpact,
+  assessExecution: () => assessExecution,
+  assessPageComplexity: () => assessPageComplexity,
+  blocksCommit: () => blocksCommit,
+  buildExecutionScope: () => buildExecutionScope,
+  classifyEditFacet: () => classifyEditFacet,
+  classifyFailure: () => classifyFailure,
+  classifyRequest: () => classifyRequest,
+  commitTurn: () => commitTurn,
+  decideCharge: () => decideCharge,
+  errorFingerprint: () => errorFingerprint,
+  finalDepth: () => finalDepth,
+  initialDepth: () => initialDepth,
+  maxDepth: () => maxDepth,
+  needsBrowser: () => needsBrowser,
+  normalizeErrorMessage: () => normalizeErrorMessage,
+  renderScopeBlock: () => renderScopeBlock,
+  sectionDirFor: () => sectionDirFor,
+  shouldRepair: () => shouldRepair,
+  toVerdict: () => toVerdict
+});
+var init_execution = __esm({
+  "src/server/execution/index.ts"() {
+    init_define_import_meta_env();
+    init_classify();
+    init_scope();
+    init_verdict();
+    init_ledger();
+    init_transaction();
+    init_commit();
+    init_circuit_breaker();
+    init_depth();
+    init_complexity();
+    init_charge_decision();
   }
 });
 
@@ -145050,14 +146824,14 @@ function renderDecisionBlock(ctx, max = 40) {
   if (ctx.decisions.length === 0) return "";
   const byKind = /* @__PURE__ */ new Map();
   for (const d of ctx.decisions.slice(0, max)) {
-    const list3 = byKind.get(d.kind) ?? [];
-    list3.push(d);
-    byKind.set(d.kind, list3);
+    const list4 = byKind.get(d.kind) ?? [];
+    list4.push(d);
+    byKind.set(d.kind, list4);
   }
   const lines = ["AGREED BUILD DECISIONS (binding \u2014 do not contradict):"];
-  for (const [kind, list3] of byKind) {
+  for (const [kind, list4] of byKind) {
     lines.push(`${kind.toUpperCase()}:`);
-    for (const d of list3) lines.push(`- ${d.claim}`);
+    for (const d of list4) lines.push(`- ${d.claim}`);
   }
   const blocking = ctx.objections.filter((o) => o.severity === "blocking");
   if (blocking.length > 0) {
@@ -145152,13 +146926,13 @@ var init_registry2 = __esm({
       optional: true,
       profiles: ["standard", "full"],
       run: (ctx) => {
-        const list3 = surfaces(ctx);
+        const list4 = surfaces(ctx);
         const decisions = [];
-        if (list3.length) {
+        if (list4.length) {
           decisions.push({
             kind: "ux",
-            claim: `Ship exactly these surfaces: ${list3.join(", ")} \u2014 invent no others.`,
-            data: { surfaces: list3 }
+            claim: `Ship exactly these surfaces: ${list4.join(", ")} \u2014 invent no others.`,
+            data: { surfaces: list4 }
           });
         }
         decisions.push({
@@ -145241,14 +147015,14 @@ var init_registry2 = __esm({
       optional: true,
       profiles: ["standard", "full"],
       run: (ctx) => {
-        const list3 = surfaces(ctx);
+        const list4 = surfaces(ctx);
         const decisions = [];
-        if (list3.length) {
+        if (list4.length) {
           decisions.push({
             kind: "architecture",
-            claim: `One route per surface, one owning file per route (${list3.length} routes). No duplicate page owning the same path.`,
+            claim: `One route per surface, one owning file per route (${list4.length} routes). No duplicate page owning the same path.`,
             refs: decisionsOfKind(ctx, "ux").map((d) => d.id),
-            data: { routes: list3 }
+            data: { routes: list4 }
           });
         }
         decisions.push({
@@ -145952,7 +147726,7 @@ async function executeAgents(ctx, agents) {
   }
   return { ok: failedRequired.length === 0, failedRequired };
 }
-function rank(agent) {
+function rank2(agent) {
   const i = PRECEDENCE.indexOf(agent);
   return i === -1 ? PRECEDENCE.length : i;
 }
@@ -145963,7 +147737,7 @@ function reconcile(ctx) {
   const seenAsks = /* @__PURE__ */ new Set();
   for (const o of blocking) {
     const target = ctx.decisions.find((d) => d.id === o.againstId);
-    if (target && rank(o.agent) < rank(target.agent)) superseded.add(target.id);
+    if (target && rank2(o.agent) < rank2(target.agent)) superseded.add(target.id);
     const key = o.ask.trim().toLowerCase();
     if (seenAsks.has(key)) continue;
     seenAsks.add(key);
@@ -146283,501 +148057,6 @@ Kit blocks (\`FeaturesGrid3\`, \`TestimonialsCards\`, \`FeaturesBento\`, \`Prici
 var init_brand_contract_server = __esm({
   "src/server/brand-contract.server.ts"() {
     init_define_import_meta_env();
-  }
-});
-
-// src/server/execution/classify.ts
-function classifyEditFacet(prompt) {
-  const text = (prompt ?? "").trim();
-  const found = DIMENSION_RE.filter(([, re]) => re.test(text)).map(([d]) => d);
-  const dimensions = found.length ? found : ["visual"];
-  if (STRUCTURAL_RE.test(text)) return { scope: "structural", dimensions, hints: [], reason: "matched a cross-cutting phrase", source: "deterministic" };
-  if (MICRO_RE.test(text) && text.length <= 90) return { scope: "micro", dimensions, hints: [], reason: "short single-verb request", source: "deterministic" };
-  return { scope: "targeted", dimensions, hints: [], reason: "default", source: "deterministic" };
-}
-function classifyRequest(request, opts) {
-  const r = request || "";
-  if (opts.isInitial) {
-    return { operation: "first_build", planRequired: false, mode: "staged", reason: "no project yet", edit: null, crossCutting: false };
-  }
-  const edit = classifyEditFacet(r);
-  const crossCutting = detectCrossCuttingIntent(r) || edit.scope === "structural";
-  const base = baseOperation(r, opts);
-  if (crossCutting && base.operation !== "architectural_change") {
-    return { operation: "architectural_change", planRequired: base.planRequired, mode: "staged", reason: `cross-cutting (${base.reason})`, edit, crossCutting };
-  }
-  return { ...base, edit, crossCutting };
-}
-function baseOperation(r, opts) {
-  const direct2 = (operation, reason) => ({ operation, planRequired: false, mode: "direct", reason });
-  if (opts.isRepairTurn || R.repair.test(r) && !R.newPage.test(r)) return direct2("repair", "defect reported");
-  if (R.arch.test(r)) return { operation: "architectural_change", planRequired: true, mode: "staged", reason: "reaches across the app" };
-  if (R.newPage.test(r)) return { operation: "page_creation", planRequired: false, mode: "staged", reason: "new page requested" };
-  if (R.dep.test(r)) return direct2("dependency_change", "dependency/config words");
-  if (R.asset.test(r)) return direct2("asset_change", "imagery words");
-  if (R.func.test(r)) return direct2("functionality_change", "behaviour words");
-  if (R.content.test(r)) return direct2("content_change", "copy words");
-  if (R.style.test(r)) return direct2("styling_change", "visual words");
-  const pageHit = PAGE_WORDS.test(r) || (opts.manifest?.pages.some((p) => r.toLowerCase().includes(p.type)) ?? false);
-  if (pageHit) return direct2("page_modification", "names a page");
-  return direct2("component_modification", "default targeted edit");
-}
-var STRUCTURAL_RE, MICRO_RE, DIMENSION_RE, R, PAGE_WORDS;
-var init_classify = __esm({
-  "src/server/execution/classify.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    init_intent_targets_server();
-    STRUCTURAL_RE = /\b(redesign|re-?design|rebuild|revamp|overhaul|from scratch|start over|entire (site|app|website|thing)|whole (site|app|website|thing)|every (page|screen)|all (the )?pages|site-?wide|new (page|screen|feature|section)|add (a |an )?(page|dashboard|auth|login|signup|payments?|checkout|blog)|make it (a )?real|looks? (bad|terrible|awful|plain|generic|unfinished)|doesn'?t look|nothing works)\b/i;
-    MICRO_RE = /^\s*(change|rename|fix|update|set|make)\b[^.!?]{0,80}$/i;
-    DIMENSION_RE = [
-      ["visual", /\b(design|theme|colou?rs?|palette|font|typography|spacing|layout|styling|style|look|hero|animation)\b/i],
-      ["content", /\b(copy|text|headline|wording|title|label|rename|typo|content)\b/i],
-      ["behaviour", /\b(click|button|form|submit|validate|route|link|navigate|filter|sort|search|state|toggle|modal|drawer)\b/i],
-      ["data", /\b(database|table|schema|auth|login|sign ?up|store|save|persist|api|backend)\b/i],
-      ["navigation", /\b(nav|navbar|navigation|menu|header|footer|sidebar|breadcrumb)\b/i],
-      ["responsive", /\b(mobile|phone|tablet|responsive|small screens?|breakpoints?)\b/i]
-    ];
-    R = {
-      repair: /\b(fix|broken|error|crash|not working|doesn'?t work|blank|bug|failed)\b/i,
-      newPage: /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(page|screen|route)s?\b/i,
-      arch: /\b(redesign|rebuild|restructure|refactor|entire|whole (site|app)|every page|all pages|across the (site|app)|migrate|convert to)\b/i,
-      dep: /\b(install|package|dependency|library|npm|upgrade|config(uration)?|env(ironment)?)\b/i,
-      asset: /\b(image|photo|picture|logo|icon|illustration|favicon|video|background image)\b/i,
-      style: /\b(colou?r|font|size|bigger|smaller|bold|spacing|padding|margin|rounded|shadow|style|dark|light|theme|align|layout|look)\b/i,
-      content: /\b(text|copy|headline|heading|title|wording|rename|say|typo|label|paragraph|description)\b|["“][^"”]{2,}["”]/i,
-      func: /\b(button (that|to)|click|submit|form|login|sign ?(in|up)|search|filter|sort|save|cart|checkout|toggle|modal|api|fetch|validate|works?)\b/i
-    };
-    PAGE_WORDS = /\b(home|landing|about|contact|pricing|menu|blog|login|sign ?in|sign ?up|dashboard|shop|store|product|services|faq|gallery|team|careers|checkout|cart|profile|settings)\s+(page|screen)\b/i;
-  }
-});
-
-// src/server/execution/scope.ts
-function constraintsFrom(request) {
-  const out = [];
-  for (const m of request.matchAll(/\b(?:don'?t|do not|never|keep|leave|without)\b[^.!?\n]{3,80}/gi)) out.push(m[0].trim());
-  return out.slice(0, 6);
-}
-function buildExecutionScope(args) {
-  const { request, classification, manifest } = args;
-  const targets = Array.from(new Set(args.targets));
-  const neighbours = (args.neighbours ?? []).filter((p) => !targets.includes(p));
-  const pagesSet = new Set(manifest?.pages.map((p) => p.path) ?? []);
-  const wide = classification.operation === "first_build" || classification.operation === "architectural_change" || classification.operation === "page_creation" || targets.length === 0;
-  const chromeNamed = CHROME_WORDS.test(request);
-  const reason = (p) => {
-    if (wide || targets.includes(p)) return null;
-    if (CHROME_RE.test(p) && !chromeNamed) return "shared navigation/layout was not part of this request";
-    if (pagesSet.has(p) && !neighbours.includes(p)) return "a different page than the one requested";
-    return null;
-  };
-  const protectedAreas = wide ? [] : [
-    ...chromeNamed ? [] : (manifest?.layouts ?? []).filter((l) => !targets.includes(l)),
-    ...[...pagesSet].filter((p) => !targets.includes(p) && !neighbours.includes(p))
-  ];
-  return {
-    operation: classification.operation,
-    outcome: request.trim().slice(0, 300),
-    affectedPages: targets.filter((t) => pagesSet.has(t)),
-    affectedComponents: targets.filter((t) => !pagesSet.has(t)),
-    affectedFiles: [...targets, ...neighbours],
-    constraints: constraintsFrom(request),
-    protectedAreas,
-    acceptance: [
-      "the requested outcome is visible in the changed files",
-      "every changed file compiles",
-      ...protectedAreas.length ? ["protected areas are byte-identical"] : []
-    ],
-    isProtected: (p) => reason(p) !== null,
-    protectionReason: reason
-  };
-}
-function renderScopeBlock(s) {
-  if (!s.protectedAreas.length && !s.constraints.length) return "";
-  const lines = ["\n\nEXECUTION SCOPE (enforced \u2014 writes outside it are rejected):", `- Operation: ${s.operation}`];
-  if (s.affectedFiles.length) lines.push(`- May change: ${s.affectedFiles.join(", ")}`);
-  if (s.protectedAreas.length) lines.push(`- Protected (do not touch): ${s.protectedAreas.slice(0, 12).join(", ")}`);
-  if (s.constraints.length) lines.push(`- User constraints: ${s.constraints.join(" | ")}`);
-  lines.push("- A new file is allowed only when a changed file imports it.");
-  return lines.join("\n");
-}
-var CHROME_RE, CHROME_WORDS;
-var init_scope = __esm({
-  "src/server/execution/scope.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    CHROME_RE = /(Layout|Header|Footer|Nav(bar)?|SiteNav|Shell|Sidebar)\.(t|j)sx$/;
-    CHROME_WORDS = /\b(nav|navbar|navigation|menu|header|footer|layout|sidebar|site-?wide|every page|all pages)\b/i;
-  }
-});
-
-// src/server/execution/verdict.ts
-function toVerdict(state) {
-  switch (state) {
-    case "passed":
-    case "ok":
-      return "PASS";
-    case "failed":
-    case "error":
-      return "FAIL";
-    case "unavailable":
-    case "timeout":
-      return "UNAVAILABLE";
-    case "warning":
-      return "WARNING";
-    default:
-      return "UNKNOWN";
-  }
-}
-function shouldRepair(v) {
-  return v === "FAIL";
-}
-function blocksCommit(v) {
-  return v === "FAIL";
-}
-var init_verdict = __esm({
-  "src/server/execution/verdict.ts"() {
-    init_define_import_meta_env();
-  }
-});
-
-// src/server/execution/ledger.ts
-var TURN_LIMITS, TurnLedger;
-var init_ledger = __esm({
-  "src/server/execution/ledger.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    TURN_LIMITS = {
-      ai_call: 12,
-      read: 80,
-      write: 40,
-      delete: 10,
-      dependency: 6,
-      repair: 3,
-      build: 2,
-      browser: 1
-    };
-    TurnLedger = class {
-      constructor(limits = TURN_LIMITS) {
-        this.limits = limits;
-      }
-      limits;
-      counts = /* @__PURE__ */ new Map();
-      reads = /* @__PURE__ */ new Set();
-      events = [];
-      writer = null;
-      cancelled = false;
-      committed = false;
-      cancel() {
-        this.cancelled = true;
-      }
-      /** Claim the turn for one writer. A second writer is refused. */
-      claimWriter(id) {
-        if (this.writer && this.writer !== id) return false;
-        this.writer = id;
-        return true;
-      }
-      use(kind, purpose, target, writer) {
-        const refuse = (refusal) => {
-          this.events.push({ kind, target, purpose, ok: false, refusal });
-          return { ok: false, refusal };
-        };
-        if (this.cancelled) return refuse("cancelled");
-        if (this.committed && kind !== "read") return refuse("committed");
-        if ((kind === "write" || kind === "delete") && writer && !this.claimWriter(writer)) return refuse("foreign_writer");
-        if (kind === "read" && target) {
-          if (this.reads.has(target)) return refuse("duplicate_read");
-        }
-        const n = this.counts.get(kind) ?? 0;
-        if (n >= this.limits[kind]) return refuse("limit");
-        this.counts.set(kind, n + 1);
-        if (kind === "read" && target) this.reads.add(target);
-        this.events.push({ kind, target, purpose, ok: true });
-        return { ok: true };
-      }
-      /** Write discipline: refuse a write whose bytes equal the current file. */
-      write(path, next, current2, purpose, writer) {
-        if (current2 !== void 0 && current2 === next) {
-          this.events.push({ kind: "write", target: path, purpose, ok: false, refusal: "no_op_write" });
-          return { ok: false, refusal: "no_op_write" };
-        }
-        return this.use("write", purpose, path, writer);
-      }
-      count(kind) {
-        return this.counts.get(kind) ?? 0;
-      }
-      summary() {
-        return {
-          counts: Object.fromEntries(this.counts),
-          refusals: this.events.filter((e) => !e.ok).map((e) => `${e.kind}:${e.refusal}${e.target ? `:${e.target}` : ""}`).slice(0, 30),
-          filesRead: [...this.reads].slice(0, 40),
-          filesWritten: this.events.filter((e) => e.ok && e.kind === "write").map((e) => e.target).slice(0, 40),
-          cancelled: this.cancelled,
-          committed: this.committed
-        };
-      }
-    };
-  }
-});
-
-// src/server/execution/transaction.ts
-var TurnTransaction;
-var init_transaction = __esm({
-  "src/server/execution/transaction.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    init_verdict();
-    TurnTransaction = class {
-      constructor(baseline, ledger, writer = "primary") {
-        this.ledger = ledger;
-        this.writer = writer;
-        this.base = new Map(baseline.map((f) => [f.path, f.content]));
-      }
-      ledger;
-      writer;
-      base;
-      staged = /* @__PURE__ */ new Map();
-      verdicts = [];
-      done = false;
-      /**
-       * Stage one file. `system: true` marks Kimble-managed files (scaffold kit,
-       * housekeeping) — they are staged atomically with the turn but do not
-       * consume the model's write budget. No-op writes are refused either way.
-       */
-      stage(path, content, purpose = "requested change", opts) {
-        if (this.done) return false;
-        const current2 = this.staged.has(path) ? this.staged.get(path) ?? void 0 : this.base.get(path);
-        if (this.ledger && !opts?.system) {
-          const r = this.ledger.write(path, content, current2, purpose, this.writer);
-          if (!r.ok) return false;
-        } else if (current2 === content) return false;
-        this.staged.set(path, content);
-        return true;
-      }
-      /** The complete proposed project tree (baseline + staged), uncommitted. */
-      proposedTree() {
-        const next = new Map(this.base);
-        for (const [p, c] of this.staged) {
-          if (c === null) next.delete(p);
-          else next.set(p, c);
-        }
-        return [...next].map(([path, content]) => ({ path, content }));
-      }
-      remove(path, opts) {
-        if (this.done || !this.base.has(path)) return false;
-        if (this.ledger && !opts?.system && !this.ledger.use("delete", "requested removal", path, this.writer).ok) return false;
-        this.staged.set(path, null);
-        return true;
-      }
-      recordCheck(check, verdict, detail) {
-        this.verdicts.push({ check, verdict, detail });
-      }
-      checks() {
-        return [...this.verdicts];
-      }
-      baseline() {
-        return [...this.base].map(([path, content]) => ({ path, content }));
-      }
-      rollback(reason) {
-        this.done = true;
-        this.staged.clear();
-        return { status: "rolled_back", files: this.baseline(), reason };
-      }
-      commit() {
-        if (this.done) return { status: "rolled_back", files: this.baseline(), reason: "already finished" };
-        if (this.ledger?.cancelled) return this.rollback("cancelled");
-        const failed = this.verdicts.find((v) => blocksCommit(v.verdict));
-        if (failed) return this.rollback(`${failed.check} failed${failed.detail ? `: ${failed.detail}` : ""}`);
-        if (this.staged.size === 0) return this.rollback("no changes");
-        const next = new Map(this.base);
-        for (const [p, c] of this.staged) {
-          if (c === null) next.delete(p);
-          else next.set(p, c);
-        }
-        this.done = true;
-        if (this.ledger) this.ledger.committed = true;
-        return {
-          status: "committed",
-          files: [...next].map(([path, content]) => ({ path, content })),
-          changed: [...this.staged.keys()]
-        };
-      }
-    };
-  }
-});
-
-// src/server/execution/commit.ts
-async function commitTurn(args) {
-  const tx = new TurnTransaction(args.baseline, args.ledger);
-  const base = new Map(args.baseline.map((f) => [f.path, f.content]));
-  const next = /* @__PURE__ */ new Map();
-  for (const f of args.proposed) {
-    const p = f.path.trim();
-    if (p) next.set(p, f.content ?? "");
-  }
-  const rejections = [];
-  const noOps = [];
-  const refusalReason = () => {
-    const last = args.ledger.summary().refusals.at(-1) ?? "";
-    if (last.includes(":limit")) return "limit";
-    if (last.includes(":foreign_writer")) return "foreign_writer";
-    if (last.includes(":cancelled")) return "cancelled";
-    return "other";
-  };
-  for (const [path, content] of next) {
-    const system = args.isSystemPath(path);
-    if (base.get(path) === content) continue;
-    if (!system) {
-      const why = args.protectionReason(path);
-      if (why) {
-        rejections.push({
-          operation: "write",
-          path,
-          reason: "scope_violation",
-          detail: why,
-          recoverable: true,
-          next: "retry without changing this file, or name it explicitly in the request"
-        });
-        continue;
-      }
-    }
-    if (!tx.stage(path, content, "turn change", { system })) {
-      const reason = refusalReason();
-      rejections.push({
-        operation: "write",
-        path,
-        reason,
-        detail: `write refused (${reason})`,
-        recoverable: reason === "limit",
-        next: reason === "limit" ? "split the request into smaller steps" : "stop"
-      });
-    }
-  }
-  for (const path of base.keys()) {
-    if (next.has(path)) continue;
-    if (!args.isSystemPath(path) && args.protectionReason(path)) {
-      rejections.push({
-        operation: "delete",
-        path,
-        reason: "scope_violation",
-        detail: args.protectionReason(path),
-        recoverable: true,
-        next: "retry without removing this file"
-      });
-      continue;
-    }
-    if (!tx.remove(path, { system: args.isSystemPath(path) })) {
-      const reason = refusalReason();
-      rejections.push({ operation: "delete", path, reason, detail: `delete refused (${reason})`, recoverable: reason === "limit", next: "stop" });
-    }
-  }
-  for (const r of args.ledger.summary().refusals) {
-    if (r.startsWith("write:no_op_write:")) noOps.push(r.slice("write:no_op_write:".length));
-  }
-  for (const c of args.checks) tx.recordCheck(c.check, c.verdict, c.detail);
-  if (rejections.length) {
-    tx.recordCheck(
-      "execution_boundary",
-      "FAIL",
-      rejections.slice(0, 3).map((r) => `${r.operation} ${r.path ?? ""}: ${r.reason}`).join("; ")
-    );
-  }
-  let verification = null;
-  if (args.verifySource && rejections.length === 0 && !args.cancelled()) {
-    const tree = tx.proposedTree();
-    const changed = tree.filter((f) => base.get(f.path) !== f.content).map((f) => f.path);
-    if (changed.length > 0) {
-      try {
-        verification = await args.verifySource(tree, changed);
-      } catch (e) {
-        verification = {
-          status: "UNVERIFIED",
-          gates: [],
-          failedGate: null,
-          reason: `source verification could not run: ${e instanceof Error ? e.message : String(e)}`,
-          repairTargets: []
-        };
-      }
-      for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
-      if (verification.status === "FAILED") {
-        tx.recordCheck("source_verification", "FAIL", verification.reason ?? "source verification failed");
-        for (const p of verification.repairTargets.length ? verification.repairTargets : [void 0]) {
-          rejections.push({
-            operation: "commit",
-            path: p,
-            reason: "validation_failed",
-            stage: "source_verification",
-            gate: verification.failedGate ?? void 0,
-            detail: verification.reason ?? `${verification.failedGate} failed`,
-            recoverable: true,
-            next: "repair the named file(s) and retry"
-          });
-        }
-      } else if (verification.status === "UNVERIFIED") {
-        tx.recordCheck("source_verification", "FAIL", `unverified: ${verification.reason ?? "check could not complete"}`);
-        rejections.push({
-          operation: "commit",
-          reason: "unverified",
-          stage: "source_verification",
-          gate: verification.gates.find((g) => g.verdict !== "PASS" && g.verdict !== "WARNING")?.gate,
-          detail: verification.reason ?? "source verification could not complete",
-          recoverable: true,
-          next: "retry when the checker is available"
-        });
-      }
-    }
-  }
-  if (args.cancelled()) args.ledger.cancel();
-  const outcome = tx.commit();
-  if (outcome.status === "rolled_back" && rejections.length === 0) {
-    rejections.push({
-      operation: "commit",
-      reason: outcome.reason === "cancelled" ? "cancelled" : outcome.reason === "no changes" ? "no_changes" : "validation_failed",
-      detail: outcome.reason,
-      recoverable: outcome.reason !== "cancelled",
-      next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry"
-    });
-  }
-  return { outcome, rejections, noOps, verification };
-}
-var init_commit = __esm({
-  "src/server/execution/commit.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    init_transaction();
-  }
-});
-
-// src/server/execution/index.ts
-var execution_exports = {};
-__export(execution_exports, {
-  AgentCircuitBreaker: () => AgentCircuitBreaker,
-  BREAKER_THRESHOLDS: () => BREAKER_THRESHOLDS,
-  TURN_LIMITS: () => TURN_LIMITS,
-  TurnLedger: () => TurnLedger,
-  TurnTransaction: () => TurnTransaction,
-  blocksCommit: () => blocksCommit,
-  buildExecutionScope: () => buildExecutionScope,
-  classifyEditFacet: () => classifyEditFacet,
-  classifyFailure: () => classifyFailure,
-  classifyRequest: () => classifyRequest,
-  commitTurn: () => commitTurn,
-  errorFingerprint: () => errorFingerprint,
-  normalizeErrorMessage: () => normalizeErrorMessage,
-  renderScopeBlock: () => renderScopeBlock,
-  shouldRepair: () => shouldRepair,
-  toVerdict: () => toVerdict
-});
-var init_execution = __esm({
-  "src/server/execution/index.ts"() {
-    init_define_import_meta_env();
-    init_classify();
-    init_scope();
-    init_verdict();
-    init_ledger();
-    init_transaction();
-    init_commit();
-    init_circuit_breaker();
   }
 });
 
@@ -147732,9 +149011,9 @@ function selectContext(request, manifest, opts = {}) {
   const max = opts.max ?? 8;
   const reasons = {};
   const primary = [];
-  const add = (p, why, list3) => {
-    if (!p || list3.includes(p) || primary.includes(p)) return;
-    list3.push(p);
+  const add = (p, why, list4) => {
+    if (!p || list4.includes(p) || primary.includes(p)) return;
+    list4.push(p);
     reasons[p] = why;
   };
   for (const t of opts.explicitTargets ?? []) add(t, "resolved target", primary);
@@ -148034,9 +149313,9 @@ function findScreenTargets(prompt, paths) {
   const wanted = /* @__PURE__ */ new Set();
   for (const m of text.matchAll(SCREEN_PHRASE)) {
     const words2 = m[1].split(/\s+/).filter((w) => !STOP4.has(w));
-    if (words2.length) wanted.add(norm2(words2.join("")));
+    if (words2.length) wanted.add(norm3(words2.join("")));
     const last = words2[words2.length - 1];
-    if (last) wanted.add(norm2(last));
+    if (last) wanted.add(norm3(last));
   }
   for (const w of SECTION_WORDS) if (new RegExp(`\\b${w}\\b`).test(text.replace(/-/g, ""))) wanted.add(w);
   if (wanted.size === 0) return [];
@@ -148045,7 +149324,7 @@ function findScreenTargets(prompt, paths) {
   const candidates = paths.filter(isAppOwned3);
   const hits = [];
   for (const p of candidates) {
-    const base = norm2(p.split("/").pop().replace(/\.(t|j)sx?$/, "").replace(/(page|section|screen)$/i, ""));
+    const base = norm3(p.split("/").pop().replace(/\.(t|j)sx?$/, "").replace(/(page|section|screen)$/i, ""));
     for (const k of keys) {
       if (base === k || base.startsWith(k)) {
         hits.push({ path: p, score: (base === k ? 2 : 1) + (p.startsWith("src/pages/") ? 1 : 0) });
@@ -148078,7 +149357,7 @@ function findAdjacentSection(prompt, files) {
   const m = (prompt ?? "").toLowerCase().match(/\b(?:section|part|block|area)\s+(below|after|under|beneath|following|above|before)\s+(?:the\s+)?([a-z-]+)/);
   if (!m) return [];
   const forward = !/above|before/.test(m[1]);
-  const anchor = norm2(m[2]);
+  const anchor = norm3(m[2]);
   for (const page of files) {
     if (!/^src\/(pages|routes)\//.test(page.path)) continue;
     const imports = /* @__PURE__ */ new Map();
@@ -148090,14 +149369,14 @@ function findAdjacentSection(prompt, files) {
     }
     if (imports.size < 2) continue;
     const order = [...page.content.matchAll(/<([A-Z]\w*)[\s/>]/g)].map((x) => x[1]).filter((n, i, a2) => imports.has(n) && a2.indexOf(n) === i);
-    const idx = order.findIndex((n) => norm2(n).startsWith(anchor));
+    const idx = order.findIndex((n) => norm3(n).startsWith(anchor));
     if (idx < 0) continue;
     const next = order[forward ? idx + 1 : idx - 1];
     if (next) return [imports.get(next)];
   }
   return [];
 }
-var SCREEN_PHRASE, SECTION_WORDS, STOP4, norm2, ALIASES2;
+var SCREEN_PHRASE, SECTION_WORDS, STOP4, norm3, ALIASES2;
 var init_screen_target_server = __esm({
   "src/server/screen-target.server.ts"() {
     init_define_import_meta_env();
@@ -148123,7 +149402,7 @@ var init_screen_target_server = __esm({
       "settings"
     ];
     STOP4 = /* @__PURE__ */ new Set(["the", "this", "that", "my", "our", "a", "an", "main", "whole", "same", "new", "on", "in", "below", "under", "above"]);
-    norm2 = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    norm3 = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
     ALIASES2 = {
       home: ["home", "index", "landing"],
       landing: ["landing", "home", "index"],
@@ -148134,6 +149413,47 @@ var init_screen_target_server = __esm({
       navbar: ["nav", "siteheader", "header"],
       header: ["siteheader", "header", "nav"]
     };
+  }
+});
+
+// src/server/context/lifecycle.ts
+var lifecycle_exports = {};
+__export(lifecycle_exports, {
+  renderLifecycleContext: () => renderLifecycleContext
+});
+function renderLifecycleContext(s) {
+  if (s.isInitial) {
+    return [
+      "## FIRST_BUILD_CONTEXT",
+      "This is the first build of a new project. Establish the foundation: routes, pages, shared layout and the selected design system.",
+      `Operation: ${s.operationType} \xB7 execution depth: ${s.executionDepth}`
+    ].join("\n");
+  }
+  const rev = (n) => n == null ? "unknown" : `revision ${n}`;
+  return [
+    "## ITERATION_CONTEXT",
+    "This is an EXISTING application. You are modifying it, not generating it from scratch.",
+    `Current code: ${rev(s.currentRevision)} (your change becomes the next revision) \xB7 last build: ${rev(s.buildRevision)}${s.buildStatus ? ` (${s.buildStatus})` : ""} \xB7 live/published: ${rev(s.publishedRevision)}`,
+    `Design system: ${s.designSystem ?? "legacy (no package)"}${s.accent ? ` \xB7 accent ${s.accent}` : ""}`,
+    `Routes: ${list3(s.routes)}`,
+    `Files relevant to this request (inspected for you): ${list3(s.relevantFiles)}`,
+    `Recent changes: ${list3(s.recentChanges, 5)}`,
+    `Known verification issues: ${list3(s.knownIssues, 5)}`,
+    `Operation: ${s.operationType} \xB7 execution depth: ${s.executionDepth}`,
+    "Rules for this iteration:",
+    "- Existing code is authoritative; preserve the architecture unless the user explicitly asks to change it.",
+    "- Preserve the selected design system (colours, fonts, tokens, accent) unless the user explicitly asks for a design-system change.",
+    "- Preserve existing working behaviour unless the user asks to change it.",
+    "- Scope the change to the request; do not regenerate unrelated files.",
+    "- Only overwrite files whose current content you were given; others are refused at the write boundary.",
+    "- Precedence: current request > project requirements > build state > memory > history > inference."
+  ].join("\n");
+}
+var list3;
+var init_lifecycle = __esm({
+  "src/server/context/lifecycle.ts"() {
+    init_define_import_meta_env();
+    list3 = (xs, n = 12) => xs.length ? xs.slice(0, n).join(", ") + (xs.length > n ? ` (+${xs.length - n})` : "") : "none recorded";
   }
 });
 
@@ -149265,8 +150585,12 @@ var plan_exports = {};
 __export(plan_exports, {
   pageFileFor: () => pageFileFor,
   planFirstBuild: () => planFirstBuild,
+  planProductStage: () => planProductStage,
   shellInstruction: () => shellInstruction
 });
+function planProductStage(requirements, brief, isFirstBuild) {
+  return stageForTurn(requirements, brief, isFirstBuild);
+}
 function pageFileFor(route) {
   const seg = route.replace(/^\//, "").split("/")[0] || "home";
   const name = seg.split(/[-_]/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join("");
@@ -149302,6 +150626,7 @@ var init_plan = __esm({
   "src/server/engine/plan.ts"() {
     init_define_import_meta_env();
     init_requested_scope();
+    init_prd_requirements();
   }
 });
 
@@ -149929,13 +151254,17 @@ var init_skills = __esm({
 // src/server/engine/write.ts
 var write_exports = {};
 __export(write_exports, {
+  DECOMPOSED_MARKER: () => DECOMPOSED_MARKER,
   PAGE_CONCURRENCY: () => PAGE_CONCURRENCY,
+  decomposedPageInstruction: () => decomposedPageInstruction,
   frameIsComplete: () => frameIsComplete,
   mapBounded: () => mapBounded,
+  missingSections: () => missingSections,
   pageInstruction: () => pageInstruction,
   pagesReferencedByRouter: () => pagesReferencedByRouter,
   projectContract: () => projectContract,
   routerInstruction: () => routerInstruction,
+  sectionInstruction: () => sectionInstruction,
   sharedFiles: () => sharedFiles,
   targetOf: () => targetOf,
   writePlannedPages: () => writePlannedPages
@@ -149972,6 +151301,42 @@ function pageInstruction(page, deliveredPaths, contract = "", shared = []) {
     "No extra pages."
   ].filter(Boolean).join("\n");
 }
+function decomposedPageInstruction(page, decision, deliveredPaths, contract = "", shared = []) {
+  return [
+    `${DECOMPOSED_MARKER}: You are writing the "${page.route}" page ONLY, split into coherent units.`,
+    `WRITE SCOPE: the page file ${page.file} (default export) plus its section components in ${decision.sectionDir}/ (one named-export component per file, PascalCase file names). Nothing else.`,
+    `The page file is a thin shell: it imports each section from "@/${decision.sectionDir.replace(/^src\//, "")}/<Name>" and composes them in order. Each section owns one responsibility (e.g. a stats strip, a data table, a form, a detail panel). Put a section's static data inside that section file.`,
+    "Only split along real responsibilities \u2014 3 to 6 sections is typical. Do not create one-use wrapper components, hooks, or config files, and do not move shared UI primitives.",
+    `READ SCOPE: the existing project files listed below. The shared frame (layout, header, footer, colours, logo, router, package.json) already exists \u2014 do NOT recreate or modify it${shared.length ? ` (${shared.join(", ")})` : ""}. The page renders inside that frame, so do not add its own header or footer.`,
+    "Make it a complete, polished page with real content, using the existing design system and brand.",
+    contract,
+    `Existing files you may import (do NOT rewrite them): ${deliveredPaths.join(", ") || "none"}.`,
+    "No extra pages."
+  ].filter(Boolean).join("\n");
+}
+function sectionInstruction(page, sectionFile, pageSource, contract = "") {
+  const name = sectionFile.split("/").pop().replace(/\.tsx$/, "");
+  return [
+    `You are writing ONE section component for the "${page.route}" page.`,
+    `WRITE SCOPE: exactly one file \u2014 write it as ${sectionFile} exporting \`export function ${name}\`. Nothing else.`,
+    "The page shell below already imports and renders it; match how it is used (props, if any).",
+    contract,
+    `Page shell (${page.file}, do NOT rewrite):
+${pageSource.slice(0, 6e3)}`
+  ].filter(Boolean).join("\n");
+}
+function missingSections(files, pageFile, sectionDir) {
+  const src = files.find((f) => f.path === pageFile)?.content ?? "";
+  const alias = "@/" + sectionDir.replace(/^src\//, "");
+  const out = [];
+  for (const m of src.matchAll(/from\s+["']([^"']+)["']/g)) {
+    const spec = m[1];
+    if (!spec.startsWith(alias + "/")) continue;
+    const file = `src/${spec.slice(2).replace(/\.tsx$/, "")}.tsx`;
+    if (!files.some((f) => f.path === file && f.content.trim()) && !out.includes(file)) out.push(file);
+  }
+  return out;
+}
 function routerInstruction(pages, deliveredPaths, contract = "") {
   return [
     "You own the SHARED FRAME. Write ONLY src/App.tsx. One file in this call \u2014 nothing else.",
@@ -149989,7 +151354,7 @@ function frameIsComplete(files, pageCount = 2) {
   return routed && /nav|header/i.test(app) && /footer/i.test(app);
 }
 function targetOf(instruction) {
-  return /as (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
+  return /as (src\/(?:pages|components)\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? /the page file (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
 }
 function hasRealPage(files, file) {
   const f = files.find((x) => x.path === file);
@@ -150004,8 +151369,8 @@ function pagesReferencedByRouter(files, known) {
     const file = `src/pages/${name}.tsx`;
     if (knownFiles.has(file) || hasRealPage(files, file)) continue;
     knownFiles.add(file);
-    const slug2 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-    out.push({ route: /^(home|index|landing)$/.test(slug2) ? "/" : `/${slug2}`, file });
+    const slug3 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+    out.push({ route: /^(home|index|landing)$/.test(slug3) ? "/" : `/${slug3}`, file });
   }
   return out;
 }
@@ -150013,12 +151378,20 @@ async function writePlannedPages(args) {
   let files = args.files;
   const written = [];
   const truncated = [];
+  const decomposed = [];
+  const decisions = /* @__PURE__ */ new Map();
   let calls = 0;
+  const inScope = (instruction, path) => {
+    const want = targetOf(instruction);
+    if (path === want) return true;
+    if (!instruction.startsWith(DECOMPOSED_MARKER)) return false;
+    const dir = /plus its section components in (src\/components\/[^\s/]+)\//.exec(instruction)?.[1];
+    return Boolean(dir && path.startsWith(dir + "/") && /^[\w/-]+\.tsx$/.test(path) && !path.slice(dir.length + 1).includes("/"));
+  };
   const call = async (instruction) => {
     calls++;
-    const want = targetOf(instruction);
     try {
-      const got = (await args.request(instruction) ?? []).filter((f) => f.path === want);
+      const got = (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
       if (!args.isTruncated) return got;
       const whole = [];
       for (const f of got) {
@@ -150047,23 +151420,43 @@ async function writePlannedPages(args) {
     const paths = files.map((f) => f.path);
     const contract = projectContract(files);
     const shared = sharedFiles(files, args.pages);
-    const results = await mapBounded(
-      pages,
-      PAGE_CONCURRENCY,
-      (p) => call(pageInstruction(p, paths, contract, shared))
-    );
+    const results = await mapBounded(pages, PAGE_CONCURRENCY, (p) => {
+      const d = args.decide?.(p, truncated.includes(p.file));
+      if (d?.decompose) {
+        decisions.set(p.file, d);
+        return call(decomposedPageInstruction(p, d, paths, contract, shared));
+      }
+      return call(pageInstruction(p, paths, contract, shared));
+    });
     results.forEach(put2);
   };
   await writePages(args.pages.filter((p) => !hasRealPage(files, p.file)));
   const retry = args.pages.filter((p) => !hasRealPage(files, p.file) && args.budget.take("missing_page", p.route));
   if (retry.length) await writePages(retry);
+  for (const [pageFile, d] of decisions) {
+    const page = args.pages.find((p) => p.file === pageFile);
+    if (!hasRealPage(files, pageFile)) continue;
+    const missingSecs = missingSections(files, pageFile, d.sectionDir);
+    const todo = missingSecs.filter((f) => args.budget.take("missing_page", f));
+    if (todo.length) {
+      const contract = projectContract(files);
+      const src = files.find((f) => f.path === pageFile).content;
+      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src, contract)));
+      got.forEach(put2);
+    }
+    decomposed.push({
+      file: pageFile,
+      reasons: d.reasons,
+      sections: files.filter((f) => f.path.startsWith(d.sectionDir + "/")).map((f) => f.path)
+    });
+  }
   const routes = args.pages.filter((p) => hasRealPage(files, p.file)).map((p) => p.route);
   const needFrame = !frameIsComplete(files, args.pages.length) || routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete;
   if (needFrame && args.budget.take("missing_page", "app shell")) {
     put2(await call(routerInstruction(args.pages, files.map((f) => f.path), projectContract(files))));
   }
   const missing = args.pages.filter((p) => !hasRealPage(files, p.file)).map((p) => p.route);
-  return { files, written, missing, calls, truncated };
+  return { files, written, missing, calls, truncated, decomposed };
 }
 async function mapBounded(items, limit, fn) {
   const out = new Array(items.length);
@@ -150077,22 +151470,198 @@ async function mapBounded(items, limit, fn) {
   await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
   return out;
 }
-var PAGE_CONCURRENCY;
+var DECOMPOSED_MARKER, PAGE_CONCURRENCY;
 var init_write = __esm({
   "src/server/engine/write.ts"() {
     init_define_import_meta_env();
     init_build_state();
+    DECOMPOSED_MARKER = "DECOMPOSED PAGE";
     PAGE_CONCURRENCY = 4;
+  }
+});
+
+// src/lib/failure-classification.ts
+var failure_classification_exports = {};
+__export(failure_classification_exports, {
+  InfrastructureFailure: () => InfrastructureFailure,
+  classifyFailureOrigin: () => classifyFailureOrigin,
+  classifyHttpStatus: () => classifyHttpStatus,
+  guidanceFor: () => guidanceFor,
+  isInfrastructureFailure: () => isInfrastructureFailure,
+  originFromErrorKind: () => originFromErrorKind,
+  originFromReason: () => originFromReason,
+  permitsDestructiveRecovery: () => permitsDestructiveRecovery,
+  projectChangedBy: () => projectChangedBy
+});
+function isInfrastructureFailure(e) {
+  return e instanceof InfrastructureFailure || typeof e === "object" && e !== null && e.origin === "infrastructure";
+}
+function classifyHttpStatus(status) {
+  if (status === 408 || status === 425 || status === 429 || status >= 500) return "infrastructure";
+  return "unknown";
+}
+function classifyFailureOrigin(input) {
+  if (isInfrastructureFailure(input)) return "infrastructure";
+  if (typeof input === "object" && input !== null && typeof input.status === "number") {
+    const byStatus = classifyHttpStatus(input.status);
+    if (byStatus !== "unknown") return byStatus;
+  }
+  const text = input instanceof Error ? `${input.name} ${input.message}` : typeof input === "string" ? input : "";
+  if (!text) return "unknown";
+  if (CANCEL.test(text)) return "cancelled";
+  if (USER.test(text)) return "user_input";
+  if (TRANSPORT.test(text)) return "transport";
+  if (INFRA.test(text)) return "infrastructure";
+  if (CODE2.test(text)) return "code";
+  return "unknown";
+}
+function permitsDestructiveRecovery(origin) {
+  return origin === "code";
+}
+function guidanceFor(origin) {
+  switch (origin) {
+    case "infrastructure":
+      return {
+        origin,
+        headline: "The AI service was temporarily unavailable.",
+        preserved: "Your project is exactly as it was \u2014 nothing was removed or charged.",
+        action: "continue",
+        actionLabel: "Continue",
+        userMustAct: false
+      };
+    case "transport":
+      return {
+        origin,
+        headline: "The connection to the builder was interrupted.",
+        preserved: "Kimble checks the saved result instead of guessing \u2014 no work is repeated and nothing is charged twice.",
+        action: null,
+        actionLabel: null,
+        userMustAct: false
+      };
+    case "code":
+      return {
+        origin,
+        headline: "Kimble found a problem in the generated code.",
+        preserved: "Your last working version is kept.",
+        action: "fix",
+        actionLabel: "Fix it",
+        userMustAct: false
+      };
+    case "user_input":
+      return {
+        origin,
+        headline: "Kimble needs one decision before continuing.",
+        preserved: "Everything so far is saved.",
+        action: "answer",
+        actionLabel: null,
+        userMustAct: true
+      };
+    case "in_progress":
+      return {
+        origin,
+        headline: "Kimble is still working on your last request.",
+        preserved: "Nothing new was started and nothing extra is charged.",
+        action: "follow",
+        actionLabel: "Keep watching",
+        userMustAct: false
+      };
+    case "cancelled":
+      return {
+        origin,
+        headline: "Generation cancelled.",
+        preserved: "Your previous verified version is kept exactly as it was.",
+        action: null,
+        actionLabel: null,
+        userMustAct: false
+      };
+    default:
+      return {
+        origin,
+        headline: "Kimble couldn't finish this one.",
+        preserved: "Your last working version is kept.",
+        action: "try_again",
+        actionLabel: "Try again",
+        userMustAct: false
+      };
+  }
+}
+function originFromReason(reason) {
+  if (!reason) return "unknown";
+  const prefix = reason.split(":")[0];
+  if (["infrastructure", "transport", "code", "user_input", "cancelled", "in_progress"].includes(prefix)) return prefix;
+  return classifyFailureOrigin(reason);
+}
+function originFromErrorKind(kind) {
+  switch (kind) {
+    case "rate_limit":
+    case "upstream_unavailable":
+    case "provider_credits_exhausted":
+      return "infrastructure";
+    case "upstream_timeout":
+      return "transport";
+    case "aborted":
+      return "cancelled";
+    case "generation_running":
+      return "in_progress";
+    case "no_files_emitted":
+    case "no_edit_emitted":
+    case "credits_exhausted":
+    case "unauthorized":
+      return "user_input";
+    case "generation_incomplete":
+    case "truncated_response":
+      return "code";
+    default:
+      return null;
+  }
+}
+function projectChangedBy(_origin) {
+  return false;
+}
+var InfrastructureFailure, INFRA, TRANSPORT, CANCEL, USER, CODE2;
+var init_failure_classification = __esm({
+  "src/lib/failure-classification.ts"() {
+    init_define_import_meta_env();
+    InfrastructureFailure = class extends Error {
+      constructor(message, status = null) {
+        super(message);
+        this.status = status;
+        this.name = "InfrastructureFailure";
+      }
+      status;
+      origin = "infrastructure";
+    };
+    INFRA = /\b(50[0-4]|429|bad gateway|service unavailable|gateway time-?out|upstream|provider (error|unavailable|outage)|rate.?limit|overloaded|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|fetch failed|timed? ?out|socket hang up|network error)\b/i;
+    TRANSPORT = /\b(stream closed|no result payload|connection (interrupted|lost|closed)|websocket|sse|eventsource|reverb|load failed|network connection was lost)\b/i;
+    CANCEL = /\b(abort(ed)?|cancell?ed|user stop|stopped by user)\b/i;
+    USER = /\b(needs? (your|a) (decision|answer)|missing (secret|credential|api key)|connect (your|an) account)\b/i;
+    CODE2 = /\b(TS\d{4}|SyntaxError|ReferenceError|TypeError|parse|unterminated|unexpected token|cannot find (module|name)|could not resolve|failed to resolve|missing import|not exported|build failed|compile|verification_failed|render)\b/i;
   }
 });
 
 // src/server/engine/repair.ts
 var repair_exports = {};
 __export(repair_exports, {
+  applyPatches: () => applyPatches,
   buildRepairUserMessage: () => buildRepairUserMessage,
   repairBrokenFile: () => repairBrokenFile,
   stripFences: () => stripFences2
 });
+function applyPatches(content, reply) {
+  const re = /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n?>>>>>>> REPLACE/g;
+  let out = content;
+  let n = 0;
+  let m;
+  while ((m = re.exec(reply)) !== null) {
+    const search = m[1];
+    if (!search.trim()) return null;
+    const first = out.indexOf(search);
+    if (first < 0 || out.indexOf(search, first + 1) >= 0) return null;
+    out = out.slice(0, first) + m[2] + out.slice(first + search.length);
+    n++;
+  }
+  return n > 0 && out !== content ? out : null;
+}
 function stripFences2(s) {
   return s.replace(/^\s*```[a-zA-Z]*\n?/, "").replace(/\n?```\s*$/, "");
 }
@@ -150109,43 +151678,64 @@ ${file.content}`;
 }
 async function repairBrokenFile(file, detail, meta) {
   if (isTruncationDetail(detail)) return null;
-  const resp = await aiChatCompletions({
-    feature: "recovery",
-    codeOutput: true,
-    lockCallerModel: true,
-    noFallback: true,
-    timeoutTier: "default",
-    meta: {
-      chosenBy: "broken_file_repair",
-      recoveryReason: "parse_error",
-      turnId: meta?.turnId ?? null,
-      projectId: meta?.projectId ?? null,
-      userId: meta?.userId ?? null
-    },
-    body: {
-      model: defaultTextModel(),
-      reasoning: { enabled: false },
-      max_tokens: Math.min(12e3, Math.max(3e3, Math.ceil(file.content.length / 2.5))),
-      temperature: 0.1,
-      messages: [
-        { role: "system", content: SYSTEM3 },
-        { role: "user", content: buildRepairUserMessage(file, detail, meta?.turnContext ?? null) }
-      ]
-    }
-  });
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  const out = stripFences2(data.choices?.[0]?.message?.content ?? "");
+  const user = buildRepairUserMessage(file, detail, meta?.turnContext ?? null);
+  const patchReply = await callRepair(PATCH_SYSTEM, user, 3e3, "targeted_patch", meta);
+  const patched = patchReply ? applyPatches(file.content, patchReply) : null;
+  if (patched) return patched;
+  const whole = await callRepair(SYSTEM3, user, Math.min(12e3, Math.max(3e3, Math.ceil(file.content.length / 2.5))), "whole_file", meta);
+  const out = whole ? stripFences2(whole) : "";
   return out.trim() ? out : null;
 }
-var SYSTEM3;
+async function callRepair(system, user, maxTokens, mode, meta) {
+  let resp;
+  try {
+    resp = await aiChatCompletions({
+      feature: "recovery",
+      codeOutput: true,
+      lockCallerModel: true,
+      noFallback: true,
+      timeoutTier: "default",
+      meta: {
+        chosenBy: mode === "targeted_patch" ? "broken_file_repair_patch" : "broken_file_repair",
+        recoveryReason: "parse_error",
+        turnId: meta?.turnId ?? null,
+        projectId: meta?.projectId ?? null,
+        userId: meta?.userId ?? null
+      },
+      body: {
+        model: defaultTextModel(),
+        reasoning: { enabled: false },
+        max_tokens: maxTokens,
+        temperature: 0.1,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user }
+        ]
+      }
+    });
+  } catch (e) {
+    if (classifyFailureOrigin(e) === "cancelled") throw e;
+    throw new InfrastructureFailure(e instanceof Error ? e.message : String(e));
+  }
+  if (!resp.ok) {
+    if (classifyHttpStatus(resp.status) === "infrastructure") {
+      throw new InfrastructureFailure(`repair provider returned HTTP ${resp.status}`, resp.status);
+    }
+    return null;
+  }
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content ?? null;
+}
+var SYSTEM3, PATCH_SYSTEM;
 var init_repair = __esm({
   "src/server/engine/repair.ts"() {
     init_define_import_meta_env();
     init_ai_provider_server();
     init_build_state();
     init_ai_model_config();
+    init_failure_classification();
     SYSTEM3 = "You fix one source file that fails to compile. Return ONLY the complete corrected file contents \u2014 no markdown fences, no commentary. Keep the file's purpose, content, exports and imports; change only what is needed to fix the error.";
+    PATCH_SYSTEM = "You fix one source file that fails to compile by returning ONLY search/replace edits, never the whole file. Format each edit exactly as:\n<<<<<<< SEARCH\n(exact lines copied from the file)\n=======\n(replacement lines)\n>>>>>>> REPLACE\nSEARCH text must match the file exactly and be unique. Change only what fixes the error; keep purpose, exports and imports.";
   }
 });
 
@@ -150384,7 +151974,7 @@ function resolveLocal3(spec, from, byPath) {
     }
     base = parts.join("/");
   } else return null;
-  for (const e of EXTS3) if (byPath.has(base + e)) return base + e;
+  for (const e of EXTS4) if (byPath.has(base + e)) return base + e;
   return null;
 }
 function missingReachableDeps(files, entry = "src/main.tsx") {
@@ -150403,7 +151993,7 @@ function missingReachableDeps(files, entry = "src/main.tsx") {
   while (queue.length) {
     const path = queue.shift();
     const src = byPath.get(path)?.content ?? "";
-    for (const m of src.matchAll(IMPORT_RE6)) {
+    for (const m of src.matchAll(IMPORT_RE7)) {
       const spec = m[1] ?? m[2] ?? m[3];
       if (!spec || /\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
       if (spec.startsWith("@/") || spec.startsWith(".")) {
@@ -150427,13 +152017,13 @@ function addMissingDeps(pkgContent, missing) {
   for (const p of missing) if (!deps[p]) deps[p] = KNOWN_PACKAGES[p] ?? "*";
   return JSON.stringify(pkg, null, 2) + "\n";
 }
-var IMPORT_RE6, EXTS3, BUILTINS;
+var IMPORT_RE7, EXTS4, BUILTINS;
 var init_deps = __esm({
   "src/server/engine/deps.ts"() {
     init_define_import_meta_env();
     init_known_packages();
-    IMPORT_RE6 = /(?:import|export)\s[^'"]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s+["']([^"']+)["']/g;
-    EXTS3 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"];
+    IMPORT_RE7 = /(?:import|export)\s[^'"]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s+["']([^"']+)["']/g;
+    EXTS4 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"];
     BUILTINS = /* @__PURE__ */ new Set(["react", "react-dom"]);
   }
 });
@@ -150550,19 +152140,19 @@ function auditChangeSet(args) {
 function unmetDisclosure(unmet, violations = []) {
   let out = "";
   if (unmet.length > 0) {
-    const list3 = unmet.map((i) => `- ${i.text}`).join("\n");
+    const list4 = unmet.map((i) => `- ${i.text}`).join("\n");
     out += `
 
 ${unmet.length === 1 ? "One part" : `${unmet.length} parts`} of your message didn't land yet:
-${list3}
+${list4}
 Say the word and I'll do just that part next.`;
   }
   if (violations.length > 0) {
-    const list3 = violations.map((v) => `- ${v.preserve.text} (${v.paths.slice(0, 3).join(", ")})`).join("\n");
+    const list4 = violations.map((v) => `- ${v.preserve.text} (${v.paths.slice(0, 3).join(", ")})`).join("\n");
     out += `
 
 Heads up \u2014 I touched something you asked me to leave alone:
-${list3}`;
+${list4}`;
   }
   return out;
 }
@@ -150808,6 +152398,218 @@ var init_design_system_lint_server = __esm({
   }
 });
 
+// src/server/verification/identifiers.server.ts
+import ts from "typescript";
+function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
+  const targets = changedPaths.filter((p) => PARSEABLE2.test(p));
+  if (targets.length === 0) return { status: "verified", issues: [] };
+  const now = opts.now ?? (() => Date.now());
+  const started = now();
+  const budget = opts.budgetMs ?? IDENTIFIER_CHECK_BUDGET_MS;
+  try {
+    const files = new Map(tree.map((f) => [`/${f.path}`, f.content]));
+    const options = {
+      noEmit: true,
+      noLib: true,
+      allowJs: true,
+      checkJs: false,
+      jsx: ts.JsxEmit.ReactJSX,
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      skipLibCheck: true,
+      types: []
+      // React 17+ JSX transform: tag names are not value identifiers, so
+      // untyped JSX never produces a TS2304 false positive.
+    };
+    const host = {
+      getSourceFile: (name, languageVersion) => {
+        const content = name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name);
+        if (content === void 0) return void 0;
+        return ts.createSourceFile(name, content, languageVersion, true);
+      },
+      getDefaultLibFileName: () => AMBIENT_PATH,
+      writeFile: () => {
+      },
+      getCurrentDirectory: () => "/",
+      getDirectories: () => [],
+      getCanonicalFileName: (f) => f,
+      useCaseSensitiveFileNames: () => true,
+      getNewLine: () => "\n",
+      fileExists: (name) => name === AMBIENT_PATH || files.has(name),
+      readFile: (name) => name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name)
+    };
+    const program = ts.createProgram([AMBIENT_PATH, ...files.keys()], options, host);
+    const wanted = new Set(targets.map((p) => `/${p}`));
+    const seen = /* @__PURE__ */ new Set();
+    const issues = [];
+    const diagnostics = [];
+    for (const path of wanted) {
+      const sf = program.getSourceFile(path);
+      if (!sf) return { status: "unavailable", issues: [], reason: `changed file ${path.slice(1)} missing from the proposed tree` };
+      diagnostics.push(...program.getSemanticDiagnostics(sf));
+      if (now() - started > budget) return { status: "unavailable", issues: [], reason: `semantic check exceeded ${budget}ms` };
+    }
+    for (const d of diagnostics) {
+      if (d.code !== CANNOT_FIND_NAME) continue;
+      const file = d.file?.fileName;
+      if (!file || !wanted.has(file)) continue;
+      const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
+      const key = `${file}::${message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const { line } = d.file.getLineAndCharacterOfPosition(d.start ?? 0);
+      issues.push({ path: file.slice(1), line: line + 1, message });
+    }
+    return { status: issues.length ? "failed" : "verified", issues };
+  } catch (e) {
+    const reason = `semantic checker could not run: ${e instanceof Error ? e.message : String(e)}`;
+    console.warn("[identifier-gate] unavailable:", reason);
+    return { status: "unavailable", issues: [], reason };
+  }
+}
+var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, AMBIENT_PATH;
+var init_identifiers_server = __esm({
+  "src/server/verification/identifiers.server.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    IDENTIFIER_CHECK_BUDGET_MS = 8e3;
+    CANNOT_FIND_NAME = 2304;
+    PARSEABLE2 = /\.(tsx?|jsx?)$/i;
+    AMBIENT_GLOBALS = `
+declare var console: any;
+declare var window: any;
+declare var document: any;
+declare var navigator: any;
+declare var location: any;
+declare var history: any;
+declare var localStorage: any;
+declare var sessionStorage: any;
+declare var fetch: any;
+declare var setTimeout: any;
+declare var setInterval: any;
+declare var clearTimeout: any;
+declare var clearInterval: any;
+declare var setImmediate: any;
+declare var clearImmediate: any;
+declare var requestAnimationFrame: any;
+declare var cancelAnimationFrame: any;
+declare var requestIdleCallback: any;
+declare var queueMicrotask: any;
+declare var structuredClone: any;
+declare var alert: any;
+declare var confirm: any;
+declare var prompt: any;
+declare var atob: any;
+declare var btoa: any;
+declare var crypto: any;
+declare var performance: any;
+declare var globalThis: any;
+declare var process: any;
+declare var Buffer: any;
+declare var module: any;
+declare var require: any;
+declare var exports: any;
+declare var __dirname: any;
+declare var __filename: any;
+declare var global: any;
+declare var undefined: undefined;
+declare var NaN: number;
+declare var Infinity: number;
+declare var parseInt: any;
+declare var parseFloat: any;
+declare var isNaN: any;
+declare var isFinite: any;
+declare var encodeURI: any;
+declare var decodeURI: any;
+declare var encodeURIComponent: any;
+declare var decodeURIComponent: any;
+declare type Console = any;
+declare type Window = any;
+declare type Document = any;
+declare type Navigator = any;
+declare type Storage = any;
+declare type Response = any;
+declare type Request = any;
+declare type Headers = any;
+declare type URL = any;
+declare type URLSearchParams = any;
+declare type FormData = any;
+declare type Blob = any;
+declare type File = any;
+declare type FileReader = any;
+declare type Event = any;
+declare type EventTarget = any;
+declare type CustomEvent = any;
+declare type KeyboardEvent = any;
+declare type MouseEvent = any;
+declare type PointerEvent = any;
+declare type TouchEvent = any;
+declare type DragEvent = any;
+declare type FocusEvent = any;
+declare type InputEvent = any;
+declare type SubmitEvent = any;
+declare type AnimationEvent = any;
+declare type TransitionEvent = any;
+declare type WheelEvent = any;
+declare type ClipboardEvent = any;
+declare type MediaQueryList = any;
+declare type HTMLElement = any;
+declare type HTMLInputElement = any;
+declare type HTMLTextAreaElement = any;
+declare type HTMLSelectElement = any;
+declare type HTMLFormElement = any;
+declare type HTMLAnchorElement = any;
+declare type HTMLButtonElement = any;
+declare type HTMLImageElement = any;
+declare type HTMLVideoElement = any;
+declare type HTMLCanvasElement = any;
+declare type HTMLDivElement = any;
+declare type HTMLSpanElement = any;
+declare type SVGElement = any;
+declare type SVGSVGElement = any;
+declare type Element = any;
+declare type Node = any;
+declare type NodeList = any;
+declare type NodeListOf<T> = any;
+declare type MutationObserver = any;
+declare type ResizeObserver = any;
+declare type ResizeObserverEntry = any;
+declare type IntersectionObserver = any;
+declare type IntersectionObserverEntry = any;
+declare type AbortController = any;
+declare type AbortSignal = any;
+declare type TextEncoder = any;
+declare type TextDecoder = any;
+declare type WebSocket = any;
+declare type Worker = any;
+declare type Image = any;
+declare type Audio = any;
+declare type Geolocation = any;
+declare type CanvasRenderingContext2D = any;
+declare type WebGLRenderingContext = any;
+declare type RequestInit = any;
+declare type ResponseInit = any;
+declare type HeadersInit = any;
+declare type BodyInit = any;
+declare type Timer = any;
+declare type Timeout = any;
+declare namespace NodeJS {
+  type Timeout = any;
+  type Timer = any;
+  type ProcessEnv = any;
+}
+declare namespace JSX {
+  interface IntrinsicElements { [elemName: string]: any }
+  interface Element {}
+  interface ElementChildrenAttribute { children: {} }
+}
+declare module "*";
+`;
+    AMBIENT_PATH = "/petal-ambient-globals.d.ts";
+  }
+});
+
 // src/server/verification/source.server.ts
 var source_server_exports = {};
 __export(source_server_exports, {
@@ -150816,14 +152618,104 @@ __export(source_server_exports, {
 async function verifyProposedSource(args) {
   const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
   const esbuild2 = await verifyFilesEsbuild(args.tree, parseable);
-  return finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: esbuild2, requireShell: args.requireShell }));
+  let merged = esbuild2;
+  let semantic = { status: "not_run" };
+  if (esbuild2 && (esbuild2.status === "passed" || esbuild2.status === "not_checked")) {
+    const check = checkUndefinedIdentifiers(args.tree, parseable);
+    const identifierIssues = check.issues;
+    semantic = { status: check.status, ...check.reason ? { reason: check.reason } : {} };
+    if (check.status === "failed") {
+      merged = {
+        ...esbuild2,
+        status: "failed",
+        ok: false,
+        issues: [
+          ...esbuild2.issues ?? [],
+          ...identifierIssues.map((i) => ({
+            path: i.path,
+            line: i.line,
+            column: 0,
+            kind: "semantic",
+            message: `${i.message} \u2014 declared nowhere in this file; the preview would crash with a ReferenceError`
+          }))
+        ]
+      };
+    }
+  }
+  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
+  return { ...record, semantic };
 }
 var init_source_server = __esm({
   "src/server/verification/source.server.ts"() {
     init_define_import_meta_env();
     init_esbuild_verifier_server();
     init_scaffold_ownership_server();
+    init_identifiers_server();
     init_gates();
+  }
+});
+
+// src/lib/build-outcome.ts
+var build_outcome_exports = {};
+__export(build_outcome_exports, {
+  classifyFailure: () => classifyFailure2,
+  decideBuildOutcome: () => decideBuildOutcome,
+  isUnbillableTurn: () => isUnbillableTurn
+});
+function classifyFailure2(input) {
+  const msg = input.errorMessage ?? "";
+  if (input.deployed) return INFRA_RX.test(msg) ? "infrastructure" : "verification";
+  if (INFRA_RX.test(msg)) return "infrastructure";
+  if (/deploy/i.test(msg)) return "deployment";
+  return "source";
+}
+function decideBuildOutcome(i) {
+  const stale = i.buildRevision != null && i.projectRevision != null && i.buildRevision < i.projectRevision;
+  if (i.existingStatus === "ready") {
+    return {
+      apply: false,
+      refundAllowed: false,
+      affectsReadiness: false,
+      failureClass: i.incoming === "failed" ? "stale" : null,
+      reason: i.incoming === "ready" ? "duplicate ready" : "late failure after ready"
+    };
+  }
+  if (i.existingStatus === "failed" && i.incoming === "failed") {
+    return { apply: false, refundAllowed: false, affectsReadiness: false, failureClass: null, reason: "duplicate failed" };
+  }
+  if (stale) {
+    return {
+      apply: true,
+      refundAllowed: false,
+      affectsReadiness: false,
+      failureClass: i.incoming === "failed" ? "stale" : null,
+      reason: "stale revision"
+    };
+  }
+  if (i.incoming === "ready") {
+    return { apply: true, refundAllowed: false, affectsReadiness: true, failureClass: null, reason: "ready" };
+  }
+  const failureClass = classifyFailure2(i);
+  if (i.siblingReadyForRevision) {
+    return { apply: true, refundAllowed: false, affectsReadiness: false, failureClass, reason: "revision already delivered" };
+  }
+  const delivered = failureClass === "verification" || failureClass === "infrastructure" && !!i.deployed;
+  return {
+    apply: true,
+    refundAllowed: !delivered,
+    affectsReadiness: true,
+    failureClass,
+    reason: delivered ? "delivered; verification/infra only" : "not delivered"
+  };
+}
+function isUnbillableTurn(i) {
+  return i.changedPathCount === 0 && i.unappliedPathCount > 0 || !i.txCommitted && i.outcomeStatus === "rolled_back" && i.outcomeReason !== "no changes";
+}
+var INFRA_RX;
+var init_build_outcome = __esm({
+  "src/lib/build-outcome.ts"() {
+    init_define_import_meta_env();
+    INFRA_RX = /\b(timed? ?out|timeout|ECONNRESET|ETIMEDOUT|socket hang up|callback (delivery )?failed|502|503|504|fetch failed)\b/i;
   }
 });
 
@@ -150879,6 +152771,14 @@ init_define_import_meta_env();
 
 // src/routes/api/generate.ts
 init_define_import_meta_env();
+
+// src/lib/operation-identity.ts
+init_define_import_meta_env();
+function toOperationType(classifierOp, opts) {
+  if (opts.isInitial || classifierOp === "first_build") return "FIRST_BUILD";
+  if (classifierOp === "repair") return "DEBUG_FIX";
+  return "ITERATION";
+}
 
 // node_modules/@tanstack/react-router/dist/esm/index.js
 init_define_import_meta_env();
@@ -152681,12 +154581,6 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
 
-// src/server/builder.server.ts
-init_source_escape_fixer_server();
-init_import_syntax_fixer_server();
-init_jsx_attr_literal_fixer_server();
-init_markdown_fence_fixer_server();
-
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
 var BRAND_MARK_PATH = "src/components/brand-mark.tsx";
@@ -153525,8 +155419,8 @@ function pickRemapTarget(spec, byPath) {
     if (basenameKey(p) === key) candidates.push(p);
   }
   if (candidates.length === 0) return null;
-  const rank2 = (p) => p.startsWith("src/sections/") ? 0 : p.startsWith("src/components/app/") ? 1 : p.startsWith("src/components/") ? 2 : 3;
-  candidates.sort((a2, b) => rank2(a2) - rank2(b));
+  const rank3 = (p) => p.startsWith("src/sections/") ? 0 : p.startsWith("src/components/app/") ? 1 : p.startsWith("src/components/") ? 2 : 3;
+  candidates.sort((a2, b) => rank3(a2) - rank3(b));
   return candidates[0];
 }
 function toAliasSpec(targetPath) {
@@ -154151,7 +156045,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -154552,16 +156445,16 @@ function wireOrphanPages(files) {
     const component = exportedComponent(page.content, base);
     if (!component) continue;
     if (new RegExp(`\\b${component}\\b`).test(content)) continue;
-    const slug2 = `/${kebab(base)}`;
-    if (declaredPaths.has(slug2)) continue;
-    declaredPaths.add(slug2);
+    const slug3 = `/${kebab(base)}`;
+    if (declaredPaths.has(slug3)) continue;
+    declaredPaths.add(slug3);
     const spec = `./${page.path.replace(/^src\//, "").replace(/\.(tsx|jsx)$/, "")}`;
     const importLine = isDefaultExport(page.content, component) ? `import ${component} from "${spec}";` : `import { ${component} } from "${spec}";`;
     additions.push({
       importLine,
-      route: `              <Route path="${slug2}" element={<${component} />} />`,
+      route: `              <Route path="${slug3}" element={<${component} />} />`,
       label: titleize(base),
-      path: slug2
+      path: slug3
     });
   }
   if (!additions.length) return { files, notes, wired };
@@ -155250,15 +157143,15 @@ function repairPaletteIntegrity(input) {
   for (const d of circularTokens(decls)) doomed.add(d);
   const byToken = /* @__PURE__ */ new Map();
   for (const d of decls) {
-    const list3 = byToken.get(d.token) ?? [];
-    list3.push(d);
-    byToken.set(d.token, list3);
+    const list4 = byToken.get(d.token) ?? [];
+    list4.push(d);
+    byToken.set(d.token, list4);
   }
   for (const tok of CORE_TOKENS) {
     if (tok === "foreground") continue;
-    const list3 = byToken.get(tok);
-    if (!list3 || list3.length < 2) continue;
-    const last = list3[list3.length - 1];
+    const list4 = byToken.get(tok);
+    if (!list4 || list4.length < 2) continue;
+    const last = list4[list4.length - 1];
     if (refOf(last.value) === "foreground" || refOf(last.value) === tok) doomed.add(last);
   }
   if (doomed.size === 0) return { files: input, notes: [], fixes: 0 };
@@ -156284,8 +158177,8 @@ function buildFontHref(display, body) {
 }
 function alreadyLoads(content, display, body) {
   if (!/fonts\.googleapis\.com|@fontsource/i.test(content)) return false;
-  const norm3 = content.replace(/\+/g, " ").toLowerCase();
-  return norm3.includes(display.toLowerCase()) && norm3.includes(body.toLowerCase());
+  const norm4 = content.replace(/\+/g, " ").toLowerCase();
+  return norm4.includes(display.toLowerCase()) && norm4.includes(body.toLowerCase());
 }
 function declaredAsSystem(rawCss, token2) {
   const css = stripCssComments(rawCss);
@@ -156859,9 +158752,9 @@ function repairScopeLeaks(input) {
       if (declared.has(name)) continue;
       const mod = homeFor(name, ctx);
       if (!mod) continue;
-      const list3 = byModule.get(mod) ?? [];
-      if (!list3.includes(name)) list3.push(name);
-      byModule.set(mod, list3);
+      const list4 = byModule.get(mod) ?? [];
+      if (!list4.includes(name)) list4.push(name);
+      byModule.set(mod, list4);
     }
     if (byModule.size === 0) return src === file.content ? file : { ...file, content: src };
     let next = src;
@@ -158487,14 +160380,14 @@ function capPetalImages(content, report) {
   const re = /petal-image:\/\/([a-zA-Z0-9_\-%]+)/g;
   const seen = /* @__PURE__ */ new Set();
   let stripped = 0;
-  const out = content.replace(re, (whole, slug2) => {
-    if (seen.has(slug2)) return whole;
+  const out = content.replace(re, (whole, slug3) => {
+    if (seen.has(slug3)) return whole;
     if (seen.size < 6) {
-      seen.add(slug2);
+      seen.add(slug3);
       return whole;
     }
     stripped++;
-    return `https://picsum.photos/seed/${slug2.slice(0, 16)}/800/600`;
+    return `https://picsum.photos/seed/${slug3.slice(0, 16)}/800/600`;
   });
   if (stripped > 0) {
     report.fixedCount += stripped;
@@ -159844,11 +161737,11 @@ function parseRejections(text, opCount) {
   } catch {
     return [];
   }
-  const list3 = parsed?.rejections;
-  if (!Array.isArray(list3)) return [];
+  const list4 = parsed?.rejections;
+  if (!Array.isArray(list4)) return [];
   const seen = /* @__PURE__ */ new Set();
   const out = [];
-  for (const item of list3) {
+  for (const item of list4) {
     const idx = Number(item?.index);
     const reason = String(item?.reason ?? "").trim();
     if (!Number.isInteger(idx) || idx < 0 || idx >= opCount) continue;
@@ -163926,11 +165819,11 @@ var GATEWAY_AWARE_SERVICES = {
   // Storage
   "aws-s3": { connectorId: "aws_s3", displayName: "AWS S3", reason: "Credentials proxied via the gateway." }
 };
-function gatewayHintFor(slug2) {
-  return GATEWAY_AWARE_SERVICES[slug2] ?? null;
+function gatewayHintFor(slug3) {
+  return GATEWAY_AWARE_SERVICES[slug3] ?? null;
 }
-function renderGatewayHint(slug2, displayName) {
-  const hint = gatewayHintFor(slug2);
+function renderGatewayHint(slug3, displayName) {
+  const hint = gatewayHintFor(slug3);
   if (!hint) return "";
   return [
     "",
@@ -163947,15 +165840,15 @@ var FETCH_TIMEOUT_MS = 6e3;
 function slugifyService(name) {
   return name.toLowerCase().trim().replace(/^@/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 }
-async function readCache(slug2) {
+async function readCache(slug3) {
   const { data } = await supabaseAdmin.from("integration_docs_cache").select(
     "service_slug, display_name, npm_package, docs_url, prompt_block, required_secrets, source, refreshed_at"
-  ).eq("service_slug", slug2).maybeSingle();
+  ).eq("service_slug", slug3).maybeSingle();
   if (!data) return null;
   const ageMs = Date.now() - new Date(data.refreshed_at).getTime();
   const maxMs = CACHE_MAX_AGE_DAYS * 24 * 60 * 60 * 1e3;
   if (ageMs > maxMs) return null;
-  void supabaseAdmin.from("integration_docs_cache").update({ hit_count: data.hit_count ?? 0 + 1 }).eq("service_slug", slug2);
+  void supabaseAdmin.from("integration_docs_cache").update({ hit_count: data.hit_count ?? 0 + 1 }).eq("service_slug", slug3);
   return {
     serviceSlug: data.service_slug,
     displayName: data.display_name,
@@ -163992,14 +165885,14 @@ async function fetchWithTimeout(url, ms = FETCH_TIMEOUT_MS) {
     clearTimeout(t);
   }
 }
-async function tryNpm(slug2, displayName) {
+async function tryNpm(slug3, displayName) {
   const guesses = [
-    slug2,
-    slug2.replace(/-/g, ""),
-    `@${slug2}/sdk`,
-    `${slug2}-sdk`,
-    `${slug2}-node`,
-    `node-${slug2}`
+    slug3,
+    slug3.replace(/-/g, ""),
+    `@${slug3}/sdk`,
+    `${slug3}-sdk`,
+    `${slug3}-node`,
+    `node-${slug3}`
   ];
   for (const pkg of guesses) {
     const res = await fetchWithTimeout(`https://registry.npmjs.org/${encodeURIComponent(pkg)}`);
@@ -164029,7 +165922,7 @@ ${readmeSnippet}
 """` : ""
     ].filter(Boolean).join("\n");
     return {
-      serviceSlug: slug2,
+      serviceSlug: slug3,
       displayName,
       npmPackage: data.name,
       docsUrl: homepage,
@@ -164045,7 +165938,7 @@ function guessSecrets(displayName) {
   if (!base) return [];
   return [`${base}_API_KEY`];
 }
-async function tryAiSynth(slug2, displayName) {
+async function tryAiSynth(slug3, displayName) {
   if (!process.env.OPENROUTER_API_KEY) return null;
   try {
     const { aiChatCompletions: aiChatCompletions2 } = await Promise.resolve().then(() => (init_ai_provider_server(), ai_provider_server_exports));
@@ -164075,7 +165968,7 @@ async function tryAiSynth(slug2, displayName) {
     const brief = String(parsed.brief ?? "").slice(0, 4e3);
     if (!brief) return null;
     return {
-      serviceSlug: slug2,
+      serviceSlug: slug3,
       displayName,
       npmPackage: typeof parsed.npm === "string" ? parsed.npm : null,
       docsUrl: typeof parsed.docs === "string" ? parsed.docs : null,
@@ -164099,30 +165992,30 @@ function safeJson(s) {
 async function resolveIntegration(rawName) {
   const displayName = rawName.trim();
   if (!displayName) return null;
-  const slug2 = slugifyService(displayName);
-  if (!slug2) return null;
-  const cached7 = await readCache(slug2);
+  const slug3 = slugifyService(displayName);
+  if (!slug3) return null;
+  const cached7 = await readCache(slug3);
   if (cached7) return cached7;
-  const curated = CURATED_INTEGRATIONS[slug2];
+  const curated = CURATED_INTEGRATIONS[slug3];
   if (curated) {
-    const r = { ...curated, serviceSlug: slug2, source: "curated" };
-    const hint = renderGatewayHint(slug2, r.displayName);
+    const r = { ...curated, serviceSlug: slug3, source: "curated" };
+    const hint = renderGatewayHint(slug3, r.displayName);
     if (hint) r.promptBlock = `${r.promptBlock}
 ${hint}`;
     void writeCache(r);
     return r;
   }
-  const npm = await tryNpm(slug2, displayName);
+  const npm = await tryNpm(slug3, displayName);
   if (npm) {
-    const hint = renderGatewayHint(slug2, npm.displayName);
+    const hint = renderGatewayHint(slug3, npm.displayName);
     if (hint) npm.promptBlock = `${npm.promptBlock}
 ${hint}`;
     void writeCache(npm);
     return npm;
   }
-  const ai = await tryAiSynth(slug2, displayName);
+  const ai = await tryAiSynth(slug3, displayName);
   if (ai) {
-    const hint = renderGatewayHint(slug2, ai.displayName);
+    const hint = renderGatewayHint(slug3, ai.displayName);
     if (hint) ai.promptBlock = `${ai.promptBlock}
 ${hint}`;
     void writeCache(ai);
@@ -165356,10 +167249,10 @@ init_turn_context_server();
 var BUCKET = "petal-images";
 var MAX_IMAGES_PER_GENERATION = 6;
 var PLACEHOLDER_RE = /petal-image:\/\/([^\s"'`<>\)]+)/g;
-function slugToPrompt(slug2) {
-  let decoded = slug2;
+function slugToPrompt(slug3) {
+  let decoded = slug3;
   try {
-    decoded = decodeURIComponent(slug2);
+    decoded = decodeURIComponent(slug3);
   } catch {
   }
   if (/\s/.test(decoded) || decoded.length > 40) return decoded;
@@ -165501,66 +167394,66 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
   let failed = 0;
   const queue = [...ordered];
   const liveUrls = [];
-  const fallbackUrl = (slug2) => {
-    const label2 = slug2.replace(/[-_]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim().slice(0, 48) || "Picture";
-    const hue = Math.abs([...slug2].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
+  const fallbackUrl = (slug3) => {
+    const label2 = slug3.replace(/[-_]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim().slice(0, 48) || "Picture";
+    const hue = Math.abs([...slug3].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue} 60% 88%)"/><stop offset="1" stop-color="hsl(${(hue + 55) % 360} 58% 72%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><circle cx="920" cy="170" r="240" fill="white" opacity=".2"/><path d="M0 700 330 390l210 190 170-150 490 370H0Z" fill="white" opacity=".35"/><text x="70" y="720" font-family="Arial,sans-serif" font-size="42" fill="#172033" opacity=".72">${label2}</text></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   };
-  const announce = (slug2, url) => {
+  const announce = (slug3, url) => {
     liveUrls.push(url);
     try {
-      onImage?.({ url, slug: slug2, index: liveUrls.length });
+      onImage?.({ url, slug: slug3, index: liveUrls.length });
     } catch {
     }
   };
   async function worker() {
     while (queue.length) {
-      const slug2 = queue.shift();
-      if (!slug2) return;
+      const slug3 = queue.shift();
+      if (!slug3) return;
       try {
-        const own = await findProjectPicture(projectId, slugToPrompt(slug2));
+        const own = await findProjectPicture(projectId, slugToPrompt(slug3));
         if (own) {
-          urlMap.set(slug2, own.url);
+          urlMap.set(slug3, own.url);
           resolved += 1;
-          announce(slug2, own.url);
+          announce(slug3, own.url);
           continue;
         }
       } catch {
       }
       try {
-        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug2) });
+        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug3) });
         if (fromLibrary) {
-          urlMap.set(slug2, fromLibrary.url);
+          urlMap.set(slug3, fromLibrary.url);
           resolved += 1;
-          announce(slug2, fromLibrary.url);
+          announce(slug3, fromLibrary.url);
           continue;
         }
       } catch {
       }
       try {
-        const r = await generatePetalImage({ prompt: slugToPrompt(slug2) });
-        urlMap.set(slug2, r.url);
+        const r = await generatePetalImage({ prompt: slugToPrompt(slug3) });
+        urlMap.set(slug3, r.url);
         resolved += 1;
-        announce(slug2, r.url);
+        announce(slug3, r.url);
       } catch (e) {
         failed += 1;
-        console.warn(`[petal-image] generation failed for "${slug2}":`, e);
-        const url = fallbackUrl(slug2);
-        urlMap.set(slug2, url);
-        announce(slug2, url);
+        console.warn(`[petal-image] generation failed for "${slug3}":`, e);
+        const url = fallbackUrl(slug3);
+        urlMap.set(slug3, url);
+        announce(slug3, url);
       }
     }
   }
   await Promise.all([worker(), worker()]);
-  for (const slug2 of skipped) {
-    urlMap.set(slug2, fallbackUrl(slug2));
+  for (const slug3 of skipped) {
+    urlMap.set(slug3, fallbackUrl(slug3));
   }
   const next = files.map((f) => {
     if (allowed && !allowed.has(f.path)) return f;
     if (!f.content.includes("petal-image://")) return f;
-    const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug2) => {
-      return urlMap.get(slug2) ?? fallbackUrl(slug2);
+    const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug3) => {
+      return urlMap.get(slug3) ?? fallbackUrl(slug3);
     });
     return updated === f.content ? f : { ...f, content: updated };
   });
@@ -165580,6 +167473,7 @@ import { createHash as createHash2 } from "node:crypto";
 init_define_import_meta_env();
 init_turn_context_server();
 init_dist4();
+init_terminal_result();
 var STRUCTURED_PREFIX = "@@petal/v1:";
 var cached3 = null;
 function admin2() {
@@ -165594,7 +167488,22 @@ function admin2() {
   });
   return cached3;
 }
+function terminalFor(input) {
+  if (input.status === "succeeded") return null;
+  return buildTerminalResult({
+    turnId: input.turnId,
+    outcome: input.status === "aborted" ? "aborted" : "failed",
+    reason: input.errorMessage ?? null,
+    baseRevision: input.baseRevision ?? null,
+    committedRevision: input.committedRevision ?? null
+  });
+}
 function bodyFor(input) {
+  if (input.status !== "succeeded") {
+    const s = input.summary?.trim();
+    if (s && !containsOptimisticClaim(s)) return s;
+    return formatTerminalResult(terminalFor(input));
+  }
   if (input.status === "succeeded") {
     return input.summary?.trim() || "Finished this build while you were away \u2014 your files are saved and the preview is up to date.";
   }
@@ -165616,6 +167525,7 @@ async function persistAbandonedTurnReply(input) {
       recap: input.recap ?? null,
       suggestions: null,
       error: input.status === "succeeded" ? null : { kind: "build_failed", detail: (input.errorMessage ?? "").slice(0, 500) },
+      terminal: terminalFor(input),
       turnId: input.turnId
     });
     const { error } = await client.from("messages").insert({
@@ -165846,7 +167756,7 @@ var PROMPT_RATE = 0.06;
 var COMPLETION_RATE = 0.28;
 var BUILD_CAP = 20;
 var MISSING_USAGE_FALLBACK = 1.5;
-function round2(n) {
+function round22(n) {
   return Math.round(n * 100) / 100;
 }
 function priceBuild(usage) {
@@ -165864,7 +167774,7 @@ function priceBuild(usage) {
   const raw = BUILD_BASE + promptTokens / 1e3 * PROMPT_RATE + completionTokens / 1e3 * COMPLETION_RATE;
   const floored = Math.max(BUILD_FLOOR, raw);
   const clamped = floored > BUILD_CAP;
-  const amount = round2(Math.min(BUILD_CAP, floored));
+  const amount = round22(Math.min(BUILD_CAP, floored));
   return {
     amount,
     usageMissing: false,
@@ -165893,148 +167803,10 @@ function priceTurnByCost(usages, costPerCreditUsd) {
   const floored = Math.max(BUILD_FLOOR, raw);
   return {
     ...tokenPriced,
-    amount: round2(Math.min(BUILD_CAP, floored)),
+    amount: round22(Math.min(BUILD_CAP, floored)),
     clamped: floored > BUILD_CAP,
     costUsd
   };
-}
-
-// src/server/turn-economics.server.ts
-init_define_import_meta_env();
-init_client_server_shim();
-init_economics_config_server();
-init_cost_events_server();
-async function rollUpAiCalls(turnId) {
-  const empty = {
-    calls: 0,
-    promptTokens: 0,
-    completionTokens: 0,
-    cachedPromptTokens: 0,
-    models: [],
-    providers: [],
-    costUsdMicro: null,
-    basis: "unknown"
-  };
-  try {
-    const { data } = await supabaseAdmin.from("ai_call_log").select(
-      "model, provider, prompt_tokens, completion_tokens, cached_prompt_tokens, cost_usd_micro, cost_basis"
-    ).eq("turn_id", turnId);
-    if (!data?.length) return empty;
-    const models = /* @__PURE__ */ new Set();
-    const providers = /* @__PURE__ */ new Set();
-    let prompt = 0;
-    let completion = 0;
-    let cached7 = 0;
-    let cost = 0;
-    let sawActual = false;
-    let sawEstimated = false;
-    let sawUnknown = false;
-    for (const row of data) {
-      if (row.model) models.add(row.model);
-      if (row.provider) providers.add(row.provider);
-      prompt += Number(row.prompt_tokens ?? 0);
-      completion += Number(row.completion_tokens ?? 0);
-      cached7 += Number(row.cached_prompt_tokens ?? 0);
-      const c = row.cost_usd_micro == null ? null : Number(row.cost_usd_micro);
-      if (c == null) {
-        sawUnknown = true;
-        continue;
-      }
-      cost += c;
-      if (row.cost_basis === "actual") sawActual = true;
-      else sawEstimated = true;
-    }
-    const basis = sawUnknown ? "unknown" : sawActual && !sawEstimated ? "actual" : "estimated";
-    return {
-      calls: data.length,
-      promptTokens: prompt,
-      completionTokens: completion,
-      cachedPromptTokens: cached7,
-      models: [...models],
-      providers: [...providers],
-      costUsdMicro: sawUnknown ? null : Math.round(cost),
-      basis
-    };
-  } catch (err) {
-    console.warn("[turn-economics] ai rollup failed", err);
-    return empty;
-  }
-}
-async function recordTurnEconomics(args) {
-  try {
-    const ai = await rollUpAiCalls(args.turnId);
-    const rates = await economicsValues();
-    const imageCostMicro = (args.imagesGenerated ?? 0) > 0 ? Math.round((args.imagesGenerated ?? 0) * rates.image_generation_usd * 1e6) : 0;
-    const otherCostMicro = imageCostMicro;
-    const variableCostMicro = ai.costUsdMicro == null ? null : ai.costUsdMicro + otherCostMicro;
-    await supabaseAdmin.from("turn_economics").upsert(
-      {
-        turn_id: args.turnId,
-        user_id: args.userId ?? null,
-        project_id: args.projectId ?? null,
-        build_id: args.buildId ?? null,
-        feature: args.feature ?? "generate",
-        credits_charged: args.creditsCharged,
-        ai_calls: ai.calls,
-        prompt_tokens: ai.promptTokens,
-        completion_tokens: ai.completionTokens,
-        cached_prompt_tokens: ai.cachedPromptTokens,
-        models: ai.models,
-        providers: ai.providers,
-        agent_rounds: args.agentRounds ?? 0,
-        images_generated: args.imagesGenerated ?? 0,
-        retry_count: args.retryCount ?? 0,
-        ai_cost_usd_micro: ai.costUsdMicro,
-        other_cost_usd_micro: otherCostMicro,
-        variable_cost_usd_micro: variableCostMicro,
-        cost_basis: ai.basis,
-        result: args.result ?? null,
-        is_auto_fix: args.isAutoFix ?? false,
-        metadata: args.metadata ?? {}
-      },
-      { onConflict: "turn_id" }
-    );
-    await syncTurnCosts(args.turnId);
-  } catch (err) {
-    console.warn("[turn-economics] record failed", err);
-  }
-}
-async function syncTurnCosts(turnId) {
-  try {
-    const { data: rows } = await supabaseAdmin.from("ai_call_log").select("id, user_id, project_id, turn_id, stage, purpose, call_kind, model, upstream_provider, provider, prompt_tokens, completion_tokens, reasoning_tokens, cache_write_tokens, cost_usd_micro, cost_basis, status, created_at").eq("turn_id", turnId).order("created_at", { ascending: true });
-    const list3 = rows ?? [];
-    await recordCostEvents(list3.map((r) => aiRowToCostEvent(r)));
-    const classes = classifyTurnCalls(list3);
-    for (let i = 0; i < list3.length; i++) {
-      await supabaseAdmin.from("ai_call_log").update({ call_class: classes[i] }).eq("id", list3[i].id);
-    }
-    const count = (c) => classes.filter((x) => x === c).length;
-    const { data: te } = await supabaseAdmin.from("turn_economics").select("user_id, project_id, created_at").eq("turn_id", turnId).maybeSingle();
-    let free = 0;
-    let paid = 0;
-    if (te?.user_id && te.project_id) {
-      const since = new Date(new Date(te.created_at).getTime() - 30 * 6e4).toISOString();
-      const { data: led } = await supabaseAdmin.from("credit_ledger").select("delta, reason, metadata").eq("user_id", te.user_id).eq("project_id", te.project_id).eq("reason", "ai_build_charge").lt("delta", 0).gte("created_at", since).order("created_at", { ascending: false }).limit(1);
-      const m = led?.[0]?.metadata ?? {};
-      for (const s of m.sources ?? []) {
-        if (s.bucket === "daily_free") free += Number(s.amount);
-        else paid += Number(s.amount);
-      }
-    }
-    await supabaseAdmin.from("turn_economics").update({
-      reasoning_tokens: list3.reduce((a2, r) => a2 + Number(r.reasoning_tokens ?? 0), 0),
-      cache_write_tokens: list3.reduce((a2, r) => a2 + Number(r.cache_write_tokens ?? 0), 0),
-      redundant_calls: count("REDUNDANT"),
-      retry_calls: count("RETRY"),
-      recovery_calls: count("RECOVERY"),
-      verification_calls: count("VERIFICATION"),
-      free_credits_charged: free,
-      paid_credits_charged: paid,
-      settlement_state: "settled"
-    }).eq("turn_id", turnId);
-  } catch (err) {
-    console.warn("[turn-economics] cost sync failed", err);
-  }
 }
 
 // src/server/project-memory.server.ts
@@ -170100,8 +171872,8 @@ function stripTypeOnlyValueImports(files) {
   for (const f of files) {
     if (!/\.(tsx?|jsx?)$/.test(f.path)) continue;
     for (const name of collectExports2(f.content).value) {
-      const list3 = valueExporters.get(name);
-      if (list3) list3.push(f.path);
+      const list4 = valueExporters.get(name);
+      if (list4) list4.push(f.path);
       else valueExporters.set(name, [f.path]);
     }
   }
@@ -170172,14 +171944,14 @@ function stripTypeOnlyValueImports(files) {
         }
         const bySpec = /* @__PURE__ */ new Map();
         for (const r of redirected) {
-          const list4 = bySpec.get(r.spec);
-          if (list4) list4.push(r.name);
+          const list5 = bySpec.get(r.spec);
+          if (list5) list5.push(r.name);
           else bySpec.set(r.spec, [r.name]);
         }
         for (const [s, names] of bySpec) parts.push(`import { ${names.join(", ")} } from "${s}";`);
-        const list3 = rewrites.get(f.path) ?? [];
-        list3.push({ from: statement, to: parts.join("\n") });
-        rewrites.set(f.path, list3);
+        const list4 = rewrites.get(f.path) ?? [];
+        list4.push({ from: statement, to: parts.join("\n") });
+        rewrites.set(f.path, list4);
       }
       if (needStub.length === 0) continue;
       let targetStubs = stubs.get(target);
@@ -170191,10 +171963,10 @@ function stripTypeOnlyValueImports(files) {
       stripped.push({ file: f.path, spec, names: needStub.map((s) => s.name) });
     }
   }
-  for (const [path, list3] of rewrites) {
+  for (const [path, list4] of rewrites) {
     const file = outByPath.get(path);
     if (!file) continue;
-    for (const r of list3) file.content = file.content.replace(r.from, r.to);
+    for (const r of list4) file.content = file.content.replace(r.from, r.to);
   }
   for (const [target, names] of stubs) {
     const file = outByPath.get(target);
@@ -171823,6 +173595,19 @@ function getAdminClient() {
   });
   return cached6;
 }
+var GenerationSlotTaken = class extends Error {
+  constructor(existingTurnId) {
+    super(`generation slot held by turn ${existingTurnId}`);
+    this.existingTurnId = existingTurnId;
+    this.name = "GenerationSlotTaken";
+  }
+  existingTurnId;
+};
+function interpretClaim(requestedTurnId, claim) {
+  if (!claim || claim.claimed) return { kind: "claimed" };
+  if (claim.turn_id && claim.turn_id !== requestedTurnId) return { kind: "taken", existingTurnId: claim.turn_id };
+  return { kind: "taken", existingTurnId: requestedTurnId };
+}
 async function startTurn(opts) {
   const client = getAdminClient();
   const turnId = opts.turnId ?? crypto.randomUUID();
@@ -171830,17 +173615,21 @@ async function startTurn(opts) {
     return makeNoop(turnId);
   }
   if (!opts.attach) {
+    let claim = null;
     try {
-      await client.from("turns").insert({
-        id: turnId,
-        project_id: opts.projectId,
-        user_id: opts.userId,
-        status: "running"
+      const { data, error } = await client.rpc("claim_generation_turn", {
+        p_turn_id: turnId,
+        p_project_id: opts.projectId,
+        p_user_id: opts.userId
       });
+      if (error) throw new Error(error.message);
+      claim = Array.isArray(data) ? data[0] : data;
     } catch (e) {
-      console.warn("[turn-recorder] startTurn insert failed:", e.message);
+      console.warn("[turn-recorder] claim_generation_turn failed:", e.message);
       return makeNoop(turnId);
     }
+    const outcome = interpretClaim(turnId, claim);
+    if (outcome.kind === "taken") throw new GenerationSlotTaken(outcome.existingTurnId);
   }
   let resolvedIO = opts.io ?? null;
   const io = () => {
@@ -172450,7 +174239,7 @@ function buildAllowedPathSet(planPaths, userAllowed) {
   return new Set(planPaths.filter((p) => userSet.has(p)));
 }
 function renderApprovedPlanBlock(plan) {
-  const list3 = plan.files.map((f) => `- [${f.intent}] ${f.path} \u2014 ${f.reason}`).join("\n");
+  const list4 = plan.files.map((f) => `- [${f.intent}] ${f.path} \u2014 ${f.reason}`).join("\n");
   return `
 
 ### Approved plan (locked scope)
@@ -172460,7 +174249,7 @@ Summary: ${plan.summary}
 Risk: ${plan.risk}
 
 Files:
-${list3}
+${list4}
 `;
 }
 function isExplicitPlanRequest(prompt) {
@@ -172575,7 +174364,7 @@ function trimFilesForPrompt(files, latestPrompt = "", pinnedPaths = [], fullPath
 ${file.content.slice(0, 24e3)}`.toLowerCase();
     return terms.some((term) => haystack.includes(term));
   };
-  const rank2 = (path) => {
+  const rank3 = (path) => {
     if (full.has(path)) return -2;
     if (pinned.has(path)) return -1;
     if (path === "src/App.tsx") return 0;
@@ -172590,7 +174379,7 @@ ${file.content.slice(0, 24e3)}`.toLowerCase();
   let usedTokens = 0;
   let ceilingHit = false;
   for (const file of [...files].sort(
-    (a2, b) => (isPromptRelevant(a2) ? 3 : rank2(a2.path)) - (isPromptRelevant(b) ? 3 : rank2(b.path)) || rank2(a2.path) - rank2(b.path) || a2.path.localeCompare(b.path)
+    (a2, b) => (isPromptRelevant(a2) ? 3 : rank3(a2.path)) - (isPromptRelevant(b) ? 3 : rank3(b.path)) || rank3(a2.path) - rank3(b.path) || a2.path.localeCompare(b.path)
   )) {
     if (picked.length >= fileLimit) break;
     if (usedTokens >= tokenCeiling) {
@@ -173124,12 +174913,12 @@ async function structuredRetryCompletion(args) {
   return primary;
 }
 async function rawPageCompletion(args) {
-  const { RAW_FILE_FORMAT: RAW_FILE_FORMAT2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
+  const { RAW_FILE_FORMAT: RAW_FILE_FORMAT2, RAW_FILES_FORMAT: RAW_FILES_FORMAT2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
   const msgs = args.messages.slice();
   const last = msgs[msgs.length - 1];
   msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}
 
-${RAW_FILE_FORMAT2}` };
+${String(last?.content ?? "").startsWith("DECOMPOSED PAGE") ? RAW_FILES_FORMAT2 : RAW_FILE_FORMAT2}` };
   return aiChatCompletions({
     feature: "generate",
     body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
@@ -173460,8 +175249,16 @@ function isDirectLogoPlacementRequest(prompt) {
   if (!/\b(?:add|create|include|put|place|show|use|make)\b/i.test(compact2)) return false;
   return !/\b(?:change|replace|redesign|restyle|colour|color|font|bigger|smaller|animate|upload|image)\b/i.test(compact2);
 }
-async function runFinalParseGuard(files, changedPaths, controller, encoder, prd, priorFiles = [], repair) {
+async function runFinalParseGuard(files, changedPaths, controller, encoder, prd, priorFiles = [], repair, infraFailure = () => null) {
   const { runPreEmitGate: runPreEmitGate2, formatGateIssues: formatGateIssues2 } = await Promise.resolve().then(() => (init_preemit_gate_server(), preemit_gate_server_exports));
+  const { blockedRemovals: blockedRemovals2 } = await Promise.resolve().then(() => (init_structural_deps(), structural_deps_exports));
+  const { recoverMissingPrimitives: recoverMissingPrimitives2 } = await Promise.resolve().then(() => (init_deterministic_primitives(), deterministic_primitives_exports));
+  const primitives = recoverMissingPrimitives2(files);
+  if (primitives.added.length) {
+    console.log(`[deterministic-primitives] provided ${JSON.stringify(primitives.added)}`);
+    files = primitives.files;
+    changedPaths = [...changedPaths, ...primitives.added];
+  }
   const { files: gated, report } = await runPreEmitGate2(files, changedPaths, {
     maxRounds: 2,
     prd,
@@ -173526,6 +175323,10 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
           fixedPaths.push(p);
         }
       }
+      const infra = infraFailure();
+      if (infra) {
+        return { ok: false, detail: infra.message, origin: "infrastructure" };
+      }
       if (fixedPaths.length) {
         const again = await runPreEmitGate2(working, changedPaths, { maxRounds: 0, prd });
         console.log(`[preemit-gate] repair attempted=${JSON.stringify(fixedPaths)} ok=${again.report.ok}`);
@@ -173534,6 +175335,12 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
         gated.splice(0, gated.length, ...again.files);
         badPaths = badPaths.filter((p) => still.has(p));
       }
+    }
+    const priorPaths = new Set(priorFiles.map((f) => f.path));
+    const blocked = blockedRemovals2(gated, badPaths, (p) => priorPaths.has(p));
+    if (blocked.length) {
+      console.warn(`[preemit-gate] refusing to remove structurally critical file(s) ${JSON.stringify(blocked)}`);
+      return { ok: false, detail: `critical file failed verification: ${formatGateIssues2(report.issues.filter((i) => blocked.includes(i.path)), 3)}`, origin: "code" };
     }
     const salvageable = badPaths.length > 0 && badPaths.length < gated.length && (priorFiles.length === 0 || badPaths.length <= 4);
     if (salvageable) {
@@ -173571,6 +175378,11 @@ async function runFinalParseGuard(files, changedPaths, controller, encoder, prd,
       let bad = new Set(badPaths.length ? badPaths : report.issues.map((i) => i.path).filter(Boolean));
       const isolated = [];
       for (let round = 0; round < 3 && bad.size > 0; round++) {
+        const critical = blockedRemovals2(kept, bad, () => false);
+        if (critical.length) {
+          console.warn(`[preemit-gate] first build: refusing to isolate critical file(s) ${JSON.stringify(critical)}`);
+          return { ok: false, detail: `critical file failed verification: ${critical.join(", ")}`, origin: "code" };
+        }
         isolated.push(...bad);
         kept = isolateBrokenFiles2(kept, bad);
         const again = await runPreEmitGate2(kept, changedPaths.filter((p) => !isolated.includes(p)), { maxRounds: 0, prd });
@@ -173998,8 +175810,15 @@ Shape:
 
 When in doubt use "replace" \u2014 ast-patch is a power tool, not a default. keep-existing-expander and replace/update remain the fallback.
 ` : "";
-  stage("pre_design", "Choosing a design direction\u2026", "designing");
-  const rawDesignDirection = userJwt ? await pickDesignDirection({
+  const { classifyRequest: classifyRequest2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
+  const turnClassification = classifyRequest2(lastUserContent || "", { isInitial });
+  const isRepairTurn = turnClassification.operation === "repair" || Boolean(body.isAutoFix) || Boolean(body.isInternalRepair);
+  stage(
+    "pre_design",
+    isRepairTurn ? "Reading the failing code\u2026" : "Choosing a design direction\u2026",
+    isRepairTurn ? void 0 : "designing"
+  );
+  const rawDesignDirection = userJwt ? isRepairTurn ? readDirectionFromMemory(memoryEntries) : await pickDesignDirection({
     jwt: userJwt,
     projectId: body.projectId,
     brief: lastUserContent,
@@ -174007,9 +175826,9 @@ When in doubt use "replace" \u2014 ast-patch is a power tool, not a default. kee
   }) : null;
   const statedIntent = readStatedDesignIntent(lastUserContent || "");
   const designDirection = applyStatedIntent(rawDesignDirection, statedIntent);
-  const isStructuralTurn = isInitial || /\b(redesign|re-?design|rebuild|new (page|screen|feature|section)|add (a )?(page|dashboard|auth|login|payment|checkout)|entire (site|website|app)|whole (site|app))\b/i.test(
+  const isStructuralTurn = !isRepairTurn && (isInitial || /\b(redesign|re-?design|rebuild|new (page|screen|feature|section)|add (a )?(page|dashboard|auth|login|payment|checkout)|entire (site|website|app)|whole (site|app))\b/i.test(
     lastUserContent || ""
-  );
+  ));
   const renderDirection = (packageOwnsVisuals) => designDirection ? renderDesignDirectionBlock(designDirection, {
     detail: isStructuralTurn ? "full" : "compact",
     packageOwnsVisuals
@@ -174029,7 +175848,10 @@ When in doubt use "replace" \u2014 ast-patch is a power tool, not a default. kee
       const { assemblePic: assemblePic2 } = await Promise.resolve().then(() => (init_pic_assemble_server(), pic_assemble_server_exports));
       const { renderPicBlock: renderPicBlock2 } = await Promise.resolve().then(() => (init_pic_render(), pic_render_exports));
       const isStructural = isStructuralTurn;
-      stage("pre_pic", "Mapping your pages and sections\u2026");
+      stage(
+        "pre_pic",
+        isRepairTurn ? "Reviewing the affected area\u2026" : "Mapping your pages and sections\u2026"
+      );
       const assembled = await assemblePic2({
         projectId: body.projectId,
         brief: lastUserContent || lastContent,
@@ -174107,8 +175929,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   } catch {
   }
   const editablePromptFiles = currentFiles.filter((f) => !isManagedScaffoldPath(f.path));
-  const { classifyRequest: classifyRequest2, buildExecutionScope: buildExecutionScope2, renderScopeBlock: renderScopeBlock2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
-  const turnClassification = classifyRequest2(lastUserContent || "", { isInitial });
+  const { buildExecutionScope: buildExecutionScope2, renderScopeBlock: renderScopeBlock2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
   const editClassification = turnClassification.edit;
   if (editClassification) {
     console.info(
@@ -174306,7 +176127,73 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     targets: resolvedTargetPaths,
     neighbours: impactNeighbourPaths
   });
-  const executionScopeBlock = isInitial ? "" : renderScopeBlock2(executionScope);
+  const executionScopeBlockBase = isInitial ? "" : renderScopeBlock2(executionScope);
+  const { initialDepth: initialDepth2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
+  const turnInitialDepth = initialDepth2(turnClassification, lastUserContent || "");
+  const { assessExecution: assessExecution2 } = await Promise.resolve().then(() => (init_complexity(), complexity_exports));
+  const turnRequirementCount = Math.max(
+    turnChangeSet.items.length,
+    resolvedPrd?.prd?.requirements?.length ?? 0
+  );
+  const turnComplexityBase = {
+    isInitial,
+    operation: turnClassification.operation ?? null,
+    request: lastUserContent || "",
+    requirementCount: turnRequirementCount,
+    plannedPages: 0,
+    existingFiles: currentFiles.length,
+    crossCutting: Boolean(turnClassification.crossCutting),
+    backendInvolved: Boolean(backend2),
+    integrations: 0
+  };
+  const turnEscalations = [];
+  const turnStrategy = { decomposedPages: [] };
+  console.info(`[complexity] ${JSON.stringify(assessExecution2(turnComplexityBase))}`);
+  const lifecycleBlock = await (async () => {
+    try {
+      const { renderLifecycleContext: renderLifecycleContext2 } = await Promise.resolve().then(() => (init_lifecycle(), lifecycle_exports));
+      let currentRevision = null;
+      let buildRevision = null;
+      let buildStatus = null;
+      let publishedRevision = null;
+      const knownIssues = [];
+      if (!isInitial && body.projectId) {
+        const { data: proj } = await supabaseAdmin.from("projects").select("revision, latest_build_id, published_build_id").eq("id", body.projectId).maybeSingle();
+        currentRevision = proj?.revision ?? null;
+        const ids = [proj?.latest_build_id, proj?.published_build_id].filter(Boolean);
+        if (ids.length) {
+          const { data: builds } = await supabaseAdmin.from("project_builds").select("id, status, project_revision, error_message").in("id", ids);
+          for (const b of builds ?? []) {
+            if (b.id === proj?.latest_build_id) {
+              buildRevision = b.project_revision ?? null;
+              buildStatus = b.status;
+              if (b.status === "failed" && b.error_message) knownIssues.push(String(b.error_message).slice(0, 160));
+            }
+            if (b.id === proj?.published_build_id) publishedRevision = b.project_revision ?? null;
+          }
+        }
+      }
+      return "\n\n" + renderLifecycleContext2({
+        isInitial,
+        operationType: toOperationType(turnClassification.operation, { isInitial }),
+        executionDepth: turnInitialDepth,
+        currentRevision,
+        buildRevision,
+        buildStatus,
+        publishedRevision,
+        designSystem: picContext?.design?.package?.systemId ?? null,
+        accent: picContext?.design?.package?.accent ?? null,
+        routes: (projectCtx.manifest?.pages ?? []).map((p) => String(p.route ?? p.path ?? "")).filter(Boolean),
+        relevantFiles: resolvedTargetPaths,
+        recentChanges: [],
+        knownIssues
+      });
+    } catch (e) {
+      console.warn("[lifecycle] context unavailable", e.message);
+      return "";
+    }
+  })();
+  const executionScopeBlock = `${executionScopeBlockBase}${lifecycleBlock}`;
   const { TurnLedger: TurnLedger2, commitTurn: commitTurn2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
   const turnLedger = new TurnLedger2();
   const turnChecks = [];
@@ -174343,6 +176230,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     resolvedTargetPaths,
     { tokenCeiling: fileBlockCeiling, anchors: promptAnchors }
   );
+  for (const f of promptBudget.files) turnLedger.recordRead(f.path);
   console.info(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`
   );
@@ -174981,11 +176869,12 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
         recovery.setTurn({ request: lastUserContent, targets: resolvedTargetPaths });
         const breaker = new AgentCircuitBreaker();
         let breakerGuidance = null;
+        let infraFailure = null;
         const turnContextFor = (path) => [recovery.summarize(path), breakerGuidance, appMapRepairBlock].filter(Boolean).join("\n\n");
         try {
           if (firstStall) {
             controller.enqueue(
-              encoder.encode(sse({ type: "status", message: "Switching to a faster connection\u2026" }))
+              encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet \u2014 continuing on another connection\u2026" })))
             );
             throw new Error(`provider stream stalled (${firstStall.upstream ?? "unknown upstream"}, ${firstStall.ms}ms without output)`);
           }
@@ -175049,7 +176938,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               providerFailed = true;
               lastFailedUpstream = null;
               console.warn("[generate] resend stream failed:", streamErr instanceof Error ? streamErr.message : String(streamErr));
-              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection\u2026" })));
+              controller.enqueue(encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet \u2014 continuing on another connection\u2026" }))));
               continue;
             }
             const retryStall = collected.stall ?? (collected.finishReason === "error" ? { upstream: collected.upstream ?? null, ms: 0 } : null);
@@ -175057,7 +176946,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               lastErr = new Error(`provider stream stalled (${retryStall.upstream ?? "unknown upstream"})`);
               providerFailed = true;
               lastFailedUpstream = retryStall.upstream ?? null;
-              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection\u2026" })));
+              controller.enqueue(encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet \u2014 continuing on another connection\u2026" }))));
               continue;
             }
             retryTrusted = true;
@@ -175219,7 +177108,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             }
           }
           if (isInitial && parsed.files?.length) {
-            const { writePlannedPages: writePlannedPages2, pagesReferencedByRouter: pagesReferencedByRouter2, targetOf: wantOf } = await Promise.resolve().then(() => (init_write(), write_exports));
+            const { writePlannedPages: writePlannedPages2, pagesReferencedByRouter: pagesReferencedByRouter2, targetOf: wantOf, DECOMPOSED_MARKER: DECOMPOSED_MARKER2 } = await Promise.resolve().then(() => (init_write(), write_exports));
             const { pageFileFor: pageFileFor2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             const planned = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor2(route) }));
@@ -175233,8 +177122,18 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             }
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             let pagesWritten = 0;
+            const cutOffPages = /* @__PURE__ */ new Set();
+            const { assessPageComplexity: assessPageComplexity2 } = await Promise.resolve().then(() => (init_complexity(), complexity_exports));
             const done = await writePlannedPages2({
               pages,
+              decide: (p, truncatedBefore) => assessPageComplexity2({
+                route: p.route,
+                file: p.file,
+                request: lastUserContent || "",
+                requirementCount: turnRequirementCount,
+                pageCount: pages.length,
+                truncatedBefore: truncatedBefore || cutOffPages.has(p.file)
+              }),
               files: parsed.files,
               budget: recovery,
               // Structural completeness check: a candidate cut off mid-file is
@@ -175274,6 +177173,12 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   let c = await relayAndCollect(res, controller, encoder);
                   const wantPath = wantOf(instruction);
                   const truncatedOutput = isTruncatedFinishReason(c.finishReason);
+                  const decomposedAsk = instruction.startsWith(DECOMPOSED_MARKER2);
+                  if (truncatedOutput && wantPath && !decomposedAsk) {
+                    cutOffPages.add(wantPath);
+                    if (!turnEscalations.includes("output_limit")) turnEscalations.push("output_limit");
+                    controller.enqueue(encoder.encode(sse({ type: "status", message: "That page is large \u2014 splitting it into sections\u2026" })));
+                  }
                   const underDelivered = !truncatedOutput && !c.stall && c.finishReason !== "error" && !c.text.includes("```");
                   if (underDelivered) markUpstreamFailed(c.upstream);
                   if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
@@ -175301,7 +177206,21 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   }
                   if (c.usage) pageWriteUsages.push(c.usage);
                   try {
-                    const { parseRawFile: parseRawFile2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
+                    const { parseRawFile: parseRawFile2, parseRawFiles: parseRawFiles2 } = await Promise.resolve().then(() => (init_raw_file(), raw_file_exports));
+                    if (decomposedAsk) {
+                      const many = parseRawFiles2(c.text);
+                      for (const f of many) {
+                        controller.enqueue(encoder.encode(sse({ type: "file_complete", path: f.path, bytes: f.content.length, index: 1, content: f.content })));
+                      }
+                      if (wantPath && many.some((f) => f.path === wantPath)) {
+                        pagesWritten += 1;
+                        turnStrategy.decomposedPages.push(wantPath);
+                        const pageName = wantPath.split("/").pop().replace(/\.[jt]sx?$/, "");
+                        controller.enqueue(encoder.encode(sse({ type: "narration", path: wantPath, text: `Finished the ${pageName} page (${many.length - 1} sections).` })));
+                      }
+                      console.log(`[write] decomposed want=${wantPath ?? "?"} parsed=${many.map((f) => f.path).join(",")}`);
+                      return many.length ? many : null;
+                    }
                     const content = wantPath ? parseRawFile2(c.text) : null;
                     const got = wantPath && content ? [{ path: wantPath, content }] : null;
                     if (got) {
@@ -175317,7 +177236,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                     return null;
                   }
                 });
-                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => !wantOf(instruction) || p === wantOf(instruction));
+                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => instruction.startsWith(DECOMPOSED_MARKER2) || !wantOf(instruction) || p === wantOf(instruction));
                 void attachFiles2(framed.callIds, kept);
                 return framed.value;
               }
@@ -176113,12 +178032,21 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                   action: "compile repair of this file only (write gate)"
                 });
                 const { repairBrokenFile: repairBrokenFile2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
-                const out = await repairBrokenFile2(file, detail, {
-                  turnId: logicalTurnId,
-                  projectId: body.projectId ?? null,
-                  userId,
-                  turnContext
-                });
+                let out;
+                try {
+                  out = await repairBrokenFile2(file, detail, {
+                    turnId: logicalTurnId,
+                    projectId: body.projectId ?? null,
+                    userId,
+                    turnContext
+                  });
+                } catch (e) {
+                  const { isInfrastructureFailure: isInfrastructureFailure2 } = await Promise.resolve().then(() => (init_failure_classification(), failure_classification_exports));
+                  if (!isInfrastructureFailure2(e)) throw e;
+                  infraFailure = e;
+                  recovery.resolve(n, "kept_previous");
+                  return null;
+                }
                 if (!out) recovery.resolve(n, "kept_previous");
                 else {
                   recovery.resolve(n, "pending", out);
@@ -176131,6 +178059,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             if (gate2.validationFailure) {
               throw new Error(`Authoritative code validation unavailable: ${gate2.validationFailure}`);
             }
+            if (infraFailure) throw infraFailure;
             nextFiles = gate2.files;
             turnChecks.push({
               check: "write_gate",
@@ -176684,6 +178613,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               console.warn(`[circuit-breaker] ${JSON.stringify(breaker.snapshot())}`);
               return null;
             }
+            if (infraFailure) return null;
             if (!recovery.take("broken_file", file.path)) return null;
             controller.enqueue(encoder.encode(sse({ type: "status", message: `Fixing a code error in ${file.path}\u2026` })));
             controller.enqueue(encoder.encode(sse({ type: "timeline", step: "esbuild_parse", outcome: "failed", message: `Final check on ${file.path}: ${detail}`.slice(0, 500), ts: Date.now() })));
@@ -176696,15 +178626,39 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               action: "compile repair of this file only (final check)"
             });
             const { repairBrokenFile: repairBrokenFile2 } = await Promise.resolve().then(() => (init_repair(), repair_exports));
-            const out = await repairBrokenFile2(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext });
+            let out;
+            try {
+              out = await repairBrokenFile2(file, detail, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext });
+            } catch (e) {
+              const { isInfrastructureFailure: isInfrastructureFailure2 } = await Promise.resolve().then(() => (init_failure_classification(), failure_classification_exports));
+              if (!isInfrastructureFailure2(e)) throw e;
+              infraFailure = e;
+              recovery.resolve(n, "kept_previous");
+              return null;
+            }
             recovery.resolve(n, out ? "pending" : "kept_previous", out);
             if (out) {
               breaker.recordProgress("file_repaired", file.path);
               breakerGuidance = null;
             }
             return out;
-          }
+          },
+          () => infraFailure
         );
+        if (!guardOut.ok && guardOut.origin === "infrastructure") {
+          const { guidanceFor: guidanceFor2 } = await Promise.resolve().then(() => (init_failure_classification(), failure_classification_exports));
+          const g = guidanceFor2("infrastructure");
+          console.warn(`[final-parse-guard] provider failure during repair \u2014 preserving files: ${guardOut.detail}`);
+          controller.enqueue(encoder.encode(sse({ type: "timeline", step: "esbuild_parse", outcome: "failed", message: `Infrastructure: ${guardOut.detail}`.slice(0, 500), ts: Date.now() })));
+          emitConversationalFallback(controller, encoder, {
+            files: currentFiles,
+            summary: `${g.headline} ${g.preserved} Send "continue" when you're ready and I'll pick up exactly where this stopped.`,
+            suggestions: ["Continue"],
+            outcome: "failed",
+            reason: "infrastructure:provider_unavailable"
+          });
+          return;
+        }
         if (!guardOut.ok) {
           console.warn(
             `[final-parse-guard] reverting turn \u2014 unrepairable: ${guardOut.detail}`
@@ -176866,6 +178820,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             if (lint.findings.length) console.info(`[design-lint] errors=${lint.errorCount} warnings=${lint.warningCount}: ${lint.findings.slice(0, 5).map((v) => `${v.rule}@${v.path}`).join(", ")}`);
           }
         }
+        if (isInitial) for (const f of turnBaselineFiles) turnLedger.recordRead(f.path);
         const txResult = await commitTurn2({
           baseline: turnBaselineFiles,
           proposed: nextFiles,
@@ -176888,6 +178843,21 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           }
         });
         const txCommitted = txResult.outcome.status === "committed";
+        if (txResult.outcome.status === "committed") {
+          const { finalDepth: finalDepth2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
+          const fd = finalDepth2(turnInitialDepth, txResult.outcome.changed, { codeChanged: true });
+          console.info(`[depth] initial=${turnInitialDepth} final=${fd.depth}${fd.escalatedBy.length ? ` escalated_by=${fd.escalatedBy.map((f) => `${f.path}:${f.reason}`).slice(0, 5).join(",")}` : ""}`);
+          if (turnId && /^[0-9a-f-]{36}$/i.test(turnId)) {
+            void (async () => {
+              const { data: op } = await supabaseAdmin.from("economic_operations").select("metadata").eq("turn_id", turnId).maybeSingle();
+              const meta = op?.metadata ?? {};
+              await supabaseAdmin.from("economic_operations").update({
+                metadata: { ...meta, initial_depth: turnInitialDepth, final_depth: fd.depth, escalated_by: fd.escalatedBy.slice(0, 10) }
+              }).eq("turn_id", turnId);
+            })().catch(() => {
+            });
+          }
+        }
         console.info(
           `[execution] tx=${txResult.outcome.status} changed=${txCommitted && txResult.outcome.status === "committed" ? txResult.outcome.changed.length : 0} rejections=${JSON.stringify(txResult.rejections.slice(0, 5))} ledger=${JSON.stringify(turnLedger.summary().counts)}`
         );
@@ -176907,13 +178877,19 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           }
           nextFiles = txResult.outcome.files;
           if (txResult.outcome.reason !== "no changes") {
-            const note = breaker.tripped ? `
+            const { buildTerminalResult: buildTerminalResult2, formatTerminalResult: formatTerminalResult2 } = await Promise.resolve().then(() => (init_terminal_result(), terminal_result_exports));
+            const verdict = buildTerminalResult2({
+              turnId: logicalTurnId,
+              category: breaker.tripped ? "circuit_breaker" : txResult.rejections.some((r) => r.reason === "scope_violation") ? "scope_violation" : "verification_failed",
+              committedRevision: null,
+              rejections: txResult.rejections.slice(0, 3).map((r) => ({ path: r.path ?? null, detail: r.detail }))
+            });
+            summary = breaker.tripped ? `${formatTerminalResult2(verdict)}
 
-${breaker.userMessage()}` : `
+${breaker.userMessage()}` : formatTerminalResult2(verdict);
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: `
 
-I couldn't save this change safely, so your app was left exactly as it was: ` + txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} \u2014 ` : ""}${r.detail}`).join("; ") + `. Send it again and I'll retry just that part.`;
-            summary = `${summary}${note}`;
-            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+${summary}` })));
           }
           if (breaker.tripped) {
             console.warn(`[circuit-breaker] tripped at commit ${JSON.stringify(breaker.snapshot())}`);
@@ -176942,7 +178918,14 @@ I couldn't save this change safely, so your app was left exactly as it was: ` + 
           );
         };
         const turnChangedPaths = diffChangedPaths(turnBaselineFiles, nextFiles);
-        const failedEditTurn = turnChangedPaths.length === 0 && unappliedPaths.length > 0 || !txCommitted && txResult.outcome.status === "rolled_back" && txResult.outcome.reason !== "no changes";
+        const { isUnbillableTurn: isUnbillableTurn2 } = await Promise.resolve().then(() => (init_build_outcome(), build_outcome_exports));
+        const failedEditTurn = isUnbillableTurn2({
+          changedPathCount: turnChangedPaths.length,
+          unappliedPathCount: unappliedPaths.length,
+          txCommitted,
+          outcomeStatus: txResult.outcome.status,
+          outcomeReason: txResult.outcome.reason ?? null
+        });
         if (failedEditTurn) {
           console.warn(
             `[credits] no-op edit turn not billed project=${body.projectId ?? "none"} unapplied=${unappliedPaths.length}`
@@ -176976,6 +178959,9 @@ I couldn't save this change safely, so your app was left exactly as it was: ` + 
               turnId: settleTurnId ?? null,
               metadata: {
                 route: "/api/generate",
+                // Server-side classifier result; the DB derives credit
+                // purpose from it (allow-list), never from the caller.
+                operation_type: toOperationType(turnClassification.operation, { isInitial }),
                 prompt_tokens: priced.promptTokens,
                 completion_tokens: priced.completionTokens,
                 usage_missing: priced.usageMissing,
@@ -177018,7 +179004,22 @@ I couldn't save this change, so your app was left exactly as it was. Send it aga
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
-        void recordTurnEconomics({
+        const turnComplexity = assessExecution2({
+          ...turnComplexityBase,
+          plannedPages: firstBuildPlan?.pages.length ?? 0,
+          escalations: turnEscalations
+        });
+        void agentIO().recordEconomics({
+          execution: {
+            class: turnComplexity.class,
+            expectedCostUsd: turnComplexity.expectedCostUsd,
+            signals: turnComplexity.signals,
+            strategy: turnStrategy,
+            committed: txCommitted,
+            outcome: txCommitted ? "applied" : failedEditTurn ? "answered" : "failed",
+            failureOrigin: txCommitted ? null : infraFailure ? "infrastructure" : "code",
+            elapsedMs: Date.now() - setupStartedAt
+          },
           turnId: logicalTurnId,
           userId,
           projectId: body.projectId ?? null,
@@ -177040,29 +179041,29 @@ I couldn't save this change, so your app was left exactly as it was. Send it aga
           }
         });
         controller.enqueue(
-          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: "clean" }))
+          encoder.encode(sse({ type: "cycle_end", cycle: 1, outcome: txCommitted ? "clean" : "hard-stop" }))
         );
-        if (writeGateRejections.length > 0) {
+        if (txCommitted && writeGateRejections.length > 0) {
           const note = writeGateDisclosure(writeGateRejections);
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
-        if (criticRejections.length > 0) {
+        if (txCommitted && criticRejections.length > 0) {
           const note = criticDisclosure(criticRejections);
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
         }
-        if (unappliedPaths.length > 0) {
-          const list3 = unappliedPaths.slice(0, 5).join(", ");
+        if (txCommitted && unappliedPaths.length > 0) {
+          const list4 = unappliedPaths.slice(0, 5).join(", ");
           const more = unappliedPaths.length > 5 ? ` (+${unappliedPaths.length - 5} more)` : "";
           const note = `
 
-Heads up \u2014 I could not actually change ${list3}${more} on this pass, even though I described those edits. Tell me exactly what should change there (the text or element, and what it should become) and I'll redo just that part.`;
+Heads up \u2014 I could not actually change ${list4}${more} on this pass, even though I described those edits. Tell me exactly what should change there (the text or element, and what it should become) and I'll redo just that part.`;
           summary = `${summary}${note}`;
           controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
           console.warn(`[generate] unapplied paths disclosed to user: ${unappliedPaths.join(", ")}`);
         }
-        if (unlandedOps > 0 && unappliedPaths.length === 0) {
+        if (txCommitted && unlandedOps > 0 && unappliedPaths.length === 0) {
           const note = `
 
 Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of what you asked didn't land on this pass. Send it again and I'll finish just that part.`;
@@ -177077,7 +179078,7 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
             lastUserContent,
             editClassification?.scope
           );
-          if (scope.flagged) {
+          if (txCommitted && scope.flagged) {
             const note = scopeDisclosure(scope);
             summary = `${summary}${note}`;
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
@@ -177179,6 +179180,40 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
             ...unappliedPaths.length > 0 ? { blockedPaths: unappliedPaths, reason: "unapplied_claims" } : {}
           });
         }
+        let productSuggestions = [];
+        let productProgressOut = null;
+        if (body.projectId && resolvedPrd && txSaved && typeof committedRevision === "number") {
+          try {
+            const { recordRequirementEvidence: recordRequirementEvidence2 } = await Promise.resolve().then(() => (init_prd_progress_server(), prd_progress_server_exports));
+            const { continuationSuggestions: continuationSuggestions2, productProgress: productProgress2, renderProgressSummary: renderProgressSummary2 } = await Promise.resolve().then(() => (init_prd_requirements(), prd_requirements_exports));
+            const reqs = await recordRequirementEvidence2({
+              projectId: body.projectId,
+              build: null,
+              files: nextFiles.map((f) => ({ path: f.path, content: f.content ?? "" })),
+              projectRevision: committedRevision,
+              turn: {
+                brief: lastUserContent ?? "",
+                changedPaths: turnChangedPaths,
+                blockedPaths: Array.from(/* @__PURE__ */ new Set([
+                  ...unappliedPaths,
+                  ...txResult.rejections.map((r) => r.path).filter((p) => Boolean(p))
+                ]))
+              }
+            });
+            if (reqs?.length) {
+              productSuggestions = continuationSuggestions2(reqs);
+              productProgressOut = productProgress2(reqs);
+              if (productProgressOut.completed < productProgressOut.total) {
+                const truth = renderProgressSummary2(reqs, resolvedPrd.prd.productName);
+                if (truth) summary = `${summary ?? ""}
+
+${truth}`.trim();
+              }
+            }
+          } catch (e) {
+            console.warn("[prd-progress] turn evaluation skipped:", e instanceof Error ? e.message : String(e));
+          }
+        }
         controller.enqueue(
           encoder.encode(
             sse({
@@ -177191,7 +179226,8 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
               persisted: Boolean(body.projectId && txSaved && nextFiles.length > 0),
               committedRevision,
               ...txSaved ? {} : { noFileChanges: true },
-              ...backendGate.gated && backendGate.suggestions.length > 0 ? { suggestions: backendGate.suggestions } : {}
+              ...productProgressOut ? { productProgress: productProgressOut } : {},
+              ...backendGate.gated && backendGate.suggestions.length > 0 ? { suggestions: backendGate.suggestions } : productSuggestions.length > 0 ? { suggestions: productSuggestions } : {}
             })
           )
         );
@@ -177401,7 +179437,14 @@ async function handleGenerateRequest(request) {
         }
         if (!isInternalCaller && durableAgentEnabled2()) {
           const turnId = clientTurnId ?? crypto.randomUUID();
-          const opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId, heartbeat: false });
+          let opened;
+          try {
+            opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId, heartbeat: false });
+          } catch (e) {
+            const taken = slotTakenResponse(e);
+            if (taken) return taken;
+            throw e;
+          }
           const job = buildAgentJobPayload2(
             request,
             opened.turnId,
@@ -177420,12 +179463,18 @@ async function handleGenerateRequest(request) {
           }
           return ingressAcceptedResponse2(opened.turnId);
         }
-        recorder = await startTurn({
-          projectId: peekBody.projectId,
-          userId: peekAuth,
-          turnId: clientTurnId,
-          attach: attachDurable
-        });
+        try {
+          recorder = await startTurn({
+            projectId: peekBody.projectId,
+            userId: peekAuth,
+            turnId: clientTurnId,
+            attach: attachDurable
+          });
+        } catch (e) {
+          const taken = slotTakenResponse(e);
+          if (taken) return taken;
+          throw e;
+        }
         if (recorder) {
           const resume = peekBody.autoResumeAttempts;
           await openTurnCompletion({
@@ -177658,7 +179707,8 @@ async function handleGenerateRequest(request) {
             summary: done?.summary ?? null,
             plan: done?.plan ?? null,
             recap: done?.recap ?? null,
-            errorMessage: terminalError
+            errorMessage: terminalError,
+            committedRevision: done?.committedRevision ?? null
           }).catch(() => false);
           if (wroteReply && terminalStatus === "succeeded") {
             const auth = request.headers.get("authorization");
@@ -177699,23 +179749,24 @@ async function handleGenerateRequest(request) {
   });
 }
 var BUILD_LOCK_TTL_MS = 5 * 60 * 1e3;
-var TURN_STALE_MS = 10 * 60 * 1e3;
 var buildLocks = /* @__PURE__ */ new Map();
 function buildLockKey(userId, projectId) {
   return `${userId}::${projectId ?? "new"}`;
+}
+function slotTakenResponse(e) {
+  const id = e;
+  if (id?.name !== "GenerationSlotTaken" || !id.existingTurnId) return null;
+  return new Response("Generation already running", {
+    status: 409,
+    headers: { "x-kimble-turn-id": id.existingTurnId, "x-kimble-slot": "running" }
+  });
 }
 async function hasLiveTurn(userId, projectId) {
   if (!projectId) return false;
   const client = supabaseAdmin;
   if (!client) return false;
-  const cutoff = new Date(Date.now() - TURN_STALE_MS).toISOString();
   try {
-    await client.from("turns").update({
-      status: "failed",
-      ended_at: (/* @__PURE__ */ new Date()).toISOString(),
-      error_message: "Turn ended without completing."
-    }).eq("user_id", userId).eq("status", "running").lt("created_at", cutoff);
-    const { data } = await client.from("turns").select("id").eq("user_id", userId).eq("project_id", projectId).eq("status", "running").gte("created_at", cutoff).limit(1);
+    const { data } = await client.from("turns").select("id").eq("user_id", userId).eq("project_id", projectId).eq("status", "running").limit(1);
     return Boolean(data && data.length > 0);
   } catch (e) {
     console.warn("[build-lock] liveness probe failed:", e.message);
@@ -177954,6 +180005,9 @@ function createGatewayAgentIO(send) {
     async logAiCall(row) {
       const r = await one(send, { op: "ai.log", row });
       return r.ok ? r.data?.id ?? null : null;
+    },
+    async recordEconomics(args) {
+      await one(send, { op: "economics.record", args: JSON.parse(JSON.stringify(args)) }).catch(() => void 0);
     },
     async updateAiCall(id, patch) {
       await one(send, { op: "ai.update", id, patch });
