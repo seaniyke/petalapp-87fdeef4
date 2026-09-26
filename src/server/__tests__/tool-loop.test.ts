@@ -231,6 +231,7 @@ describe("one readiness authority", () => {
     ]);
     const cm = async (msgs: LoopMessage[]) => { if (m.seen.length === 1) routes.push("/contact"); return m.callModel(msgs); };
     const r = await runToolLoop({ ...base, readiness: authority(() => routes), files: [], callModel: cm });
+    console.log("DBG", tool(m));
     expect(tool(m)).toContain("missing requested");
     expect(r.outcome).toBe("finished");
   });
