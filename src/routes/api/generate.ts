@@ -7190,6 +7190,14 @@ async function handleGenerateRequestCore(
               build: null,
               files: nextFiles.map((f) => ({ path: f.path, content: f.content ?? "" })),
               projectRevision: committedRevision,
+              turn: {
+                brief: lastUserContent ?? "",
+                changedPaths: turnChanged,
+                blockedPaths: Array.from(new Set([
+                  ...unappliedPaths,
+                  ...txResult.rejections.map((r) => r.path).filter((p): p is string => Boolean(p)),
+                ])),
+              },
             });
             if (reqs?.length) {
               productSuggestions = continuationSuggestions(reqs);
