@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { codegenProviderRouting, resolveProviderRouting } from "@/server/engine/provider-policy";
 import { describeIncomplete, incompleteBuildMessage, neutraliseSuccessClaims } from "@/server/engine/build-state";
-import { frameIsComplete, pageInstruction, projectContract, writePlannedPages } from "@/server/engine/write";
+import { frameIsComplete, pageInstruction, projectContract } from "@/server/engine/write";
+import { runAgentLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { pageFileFor } from "@/server/engine/plan";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { revertCleanupBreakage } from "@/server/write-gate.server";
