@@ -80,7 +80,6 @@ import {
   hadRecentProviderPaymentFailure,
 } from "@/server/ai-provider.server";
 import { priceTurn, priceTurnByCost, BUILD_FLOOR } from "@/server/credit-pricing.server";
-import { recordTurnEconomics } from "@/server/turn-economics.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
   clearPendingMemory,
@@ -1305,10 +1304,10 @@ async function rawPageCompletion(args: {
   providerStalled?: boolean;
   meta: Parameters<typeof structuredRetryCompletion>[0]["meta"];
 }): Promise<Response> {
-  const { RAW_FILE_FORMAT } = await import("@/server/engine/raw-file");
+  const { RAW_FILE_FORMAT, RAW_FILES_FORMAT } = await import("@/server/engine/raw-file");
   const msgs = args.messages.slice();
   const last = msgs[msgs.length - 1];
-  msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}\n\n${RAW_FILE_FORMAT}` };
+  msgs[msgs.length - 1] = { ...last, content: `${String(last?.content ?? "")}\n\n${String(last?.content ?? "").startsWith("DECOMPOSED PAGE") ? RAW_FILES_FORMAT : RAW_FILE_FORMAT}` };
   return aiChatCompletions({
     feature: "generate",
     body: { messages: msgs, max_tokens: args.maxTokens, reasoning: { enabled: false }, stream: true, model: MODEL_STRUCTURED_RETRY },
@@ -3208,6 +3207,27 @@ async function handleGenerateRequestCore(
   // Lifecycle phase in the agent context (existing prompt assembly).
   const { initialDepth } = await import("@/server/execution");
   const turnInitialDepth = initialDepth(turnClassification, lastUserContent || "");
+  // Execution complexity (internal): drives decomposition and is the
+  // expected-cost baseline recorded with this turn's economics.
+  const { assessExecution } = await import("@/server/execution/complexity");
+  const turnRequirementCount = Math.max(
+    turnChangeSet.items.length,
+    (resolvedPrd as { prd?: { requirements?: unknown[] } } | null)?.prd?.requirements?.length ?? 0,
+  );
+  const turnComplexityBase = {
+    isInitial,
+    operation: (turnClassification as { operation?: string }).operation ?? null,
+    request: lastUserContent || "",
+    requirementCount: turnRequirementCount,
+    plannedPages: 0,
+    existingFiles: currentFiles.length,
+    crossCutting: Boolean(turnClassification.crossCutting),
+    backendInvolved: Boolean(backend),
+    integrations: 0,
+  };
+  const turnEscalations: string[] = [];
+  const turnStrategy: Record<string, unknown> = { decomposedPages: [] as string[] };
+  console.info(`[complexity] ${JSON.stringify(assessExecution(turnComplexityBase))}`);
   const lifecycleBlock = await (async () => {
     try {
       const { renderLifecycleContext } = await import("@/server/context/lifecycle");
@@ -4248,7 +4268,7 @@ async function handleGenerateRequestCore(
           // original request to a different upstream instead.
           if (firstStall) {
             controller.enqueue(
-              encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })),
+              encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet — continuing on another connection…" }))),
             );
             throw new Error(`provider stream stalled (${firstStall.upstream ?? "unknown upstream"}, ${firstStall.ms}ms without output)`);
           }
@@ -4332,7 +4352,7 @@ async function handleGenerateRequestCore(
               providerFailed = true;
               lastFailedUpstream = null;
               console.warn("[generate] resend stream failed:", streamErr instanceof Error ? streamErr.message : String(streamErr));
-              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })));
+              controller.enqueue(encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet — continuing on another connection…" }))));
               continue;
             }
             const retryStall =
@@ -4342,7 +4362,7 @@ async function handleGenerateRequestCore(
               lastErr = new Error(`provider stream stalled (${retryStall.upstream ?? "unknown upstream"})`);
               providerFailed = true;
               lastFailedUpstream = retryStall.upstream ?? null;
-              controller.enqueue(encoder.encode(sse({ type: "status", message: "Switching to a faster connection…" })));
+              controller.enqueue(encoder.encode((turnEscalations.includes("provider_stall") || turnEscalations.push("provider_stall"), sse({ type: "status", message: "The AI service went quiet — continuing on another connection…" }))));
               continue;
             }
             retryTrusted = true;
@@ -4557,7 +4577,7 @@ async function handleGenerateRequestCore(
           // WRITE stage (first builds): the shell call above wrote the shared
           // shell; every planned page is now written by its own call.
           if (isInitial && parsed.files?.length) {
-            const { writePlannedPages, pagesReferencedByRouter, targetOf: wantOf } = await import("@/server/engine/write");
+            const { writePlannedPages, pagesReferencedByRouter, targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
             const { pageFileFor } = await import("@/server/engine/plan");
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             // The plan is authoritative; requested routes only fill in if
@@ -4578,8 +4598,21 @@ async function handleGenerateRequestCore(
             // Stop boundary: no page writer starts after the user pressed Stop.
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             let pagesWritten = 0;
+            // Pages whose answer hit the output limit — re-planned as
+            // decomposed pages on the retry (strategy change, not a repeat).
+            const cutOffPages = new Set<string>();
+            const { assessPageComplexity } = await import("@/server/execution/complexity");
             const done = await writePlannedPages({
               pages,
+              decide: (p, truncatedBefore) =>
+                assessPageComplexity({
+                  route: p.route,
+                  file: p.file,
+                  request: lastUserContent || "",
+                  requirementCount: turnRequirementCount,
+                  pageCount: pages.length,
+                  truncatedBefore: truncatedBefore || cutOffPages.has(p.file),
+                }),
               files: parsed.files,
               budget: recovery,
               // Structural completeness check: a candidate cut off mid-file is
@@ -4622,6 +4655,12 @@ async function handleGenerateRequestCore(
                 // provider failure: never fail the provider for it and never
                 // resend here — the WRITE stage re-requests the file once.
                 const truncatedOutput = isTruncatedFinishReason(c.finishReason);
+                const decomposedAsk = instruction.startsWith(DECOMPOSED_MARKER);
+                if (truncatedOutput && wantPath && !decomposedAsk) {
+                  cutOffPages.add(wantPath);
+                  if (!turnEscalations.includes("output_limit")) turnEscalations.push("output_limit");
+                  controller.enqueue(encoder.encode(sse({ type: "status", message: "That page is large — splitting it into sections…" })));
+                }
                 const underDelivered = !truncatedOutput && !c.stall && c.finishReason !== "error" && !c.text.includes("```");
                 if (underDelivered) markUpstreamFailed(c.upstream);
                 if ((c.stall || c.finishReason === "error" || underDelivered) && recovery.take("provider_failure", `missing_${wantPath ?? "pages"}`)) {
@@ -4653,7 +4692,23 @@ async function handleGenerateRequestCore(
                 try {
                   // Plain-text page: the file is the single fenced block. An
                   // unclosed block is a cut-off file — discarded, never patched.
-                  const { parseRawFile } = await import("@/server/engine/raw-file");
+                  const { parseRawFile, parseRawFiles } = await import("@/server/engine/raw-file");
+                  if (decomposedAsk) {
+                    // Every closed block is kept; the writer filters to scope
+                    // and continues any section cut off by the limit.
+                    const many = parseRawFiles(c.text);
+                    for (const f of many) {
+                      controller.enqueue(encoder.encode(sse({ type: "file_complete", path: f.path, bytes: f.content.length, index: 1, content: f.content })));
+                    }
+                    if (wantPath && many.some((f) => f.path === wantPath)) {
+                      pagesWritten += 1;
+                      (turnStrategy.decomposedPages as string[]).push(wantPath);
+                      const pageName = wantPath.split("/").pop()!.replace(/\.[jt]sx?$/, "");
+                      controller.enqueue(encoder.encode(sse({ type: "narration", path: wantPath, text: `Finished the ${pageName} page (${many.length - 1} sections).` })));
+                    }
+                    console.log(`[write] decomposed want=${wantPath ?? "?"} parsed=${many.map((f) => f.path).join(",")}`);
+                    return many.length ? many : null;
+                  }
                   const content = wantPath ? parseRawFile(c.text) : null;
                   const got = wantPath && content ? [{ path: wantPath, content }] : null;
                   if (got) {
@@ -4673,7 +4728,7 @@ async function handleGenerateRequestCore(
                 });
                 // Only the file this call was asked for is kept, so that is
                 // what it is credited with.
-                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => !wantOf(instruction) || p === wantOf(instruction));
+                const kept = (framed.value ?? []).map((f) => f.path).filter((p) => instruction.startsWith(DECOMPOSED_MARKER) || !wantOf(instruction) || p === wantOf(instruction));
                 void attachFiles(framed.callIds, kept);
                 return framed.value;
               },
@@ -6900,7 +6955,6 @@ async function handleGenerateRequestCore(
               ? `${formatTerminalResult(verdict)}\n\n${breaker.userMessage()}`
               : formatTerminalResult(verdict);
             controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: `\n\n${summary}` })));
-            controller.enqueue(encoder.encode(sse({ type: "terminal_result", result: verdict })));
           }
           if (breaker.tripped) {
             console.warn(`[circuit-breaker] tripped at commit ${JSON.stringify(breaker.snapshot())}`);
@@ -7037,7 +7091,22 @@ async function handleGenerateRequestCore(
         // what the customer paid next to what the turn cost Kimble, with the
         // cost explicitly marked actual / estimated / unknown. Best-effort —
         // never allowed to affect the build or the charge.
-        void recordTurnEconomics({
+        const turnComplexity = assessExecution({
+          ...turnComplexityBase,
+          plannedPages: firstBuildPlan?.pages.length ?? 0,
+          escalations: turnEscalations,
+        });
+        void agentIO().recordEconomics({
+          execution: {
+            class: turnComplexity.class,
+            expectedCostUsd: turnComplexity.expectedCostUsd,
+            signals: turnComplexity.signals,
+            strategy: turnStrategy,
+            committed: txCommitted,
+            outcome: txCommitted ? "applied" : failedEditTurn ? "answered" : "failed",
+            failureOrigin: txCommitted ? null : infraFailure ? "infrastructure" : "code",
+            elapsedMs: Date.now() - setupStartedAt,
+          },
           turnId: logicalTurnId,
           userId,
           projectId: body.projectId ?? null,

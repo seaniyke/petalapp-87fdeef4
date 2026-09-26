@@ -100,6 +100,10 @@ export function createGatewayAgentIO(send: SendOps): AgentIO {
       const r = await one(send, { op: "ai.log", row });
       return r.ok ? ((r.data as { id?: string } | undefined)?.id ?? null) : null;
     },
+    async recordEconomics(args) {
+      // The app pins turn/user/project and writes with its own access.
+      await one(send, { op: "economics.record", args: JSON.parse(JSON.stringify(args)) }).catch(() => undefined);
+    },
     async updateAiCall(id, patch) {
       await one(send, { op: "ai.update", id, patch });
     },

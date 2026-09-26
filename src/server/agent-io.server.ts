@@ -51,6 +51,8 @@ export interface AgentIO {
   ): Promise<void>;
   /** Insert one ai_call_log row; returns its id (null on failure). */
   logAiCall(row: Record<string, unknown>): Promise<string | null>;
+  /** Per-turn economics record (best-effort; never throws). */
+  recordEconomics(args: import("@/server/turn-economics.server").RecordTurnEconomicsArgs): Promise<void>;
   /** Patch a row this turn logged (usage, timings, outcome). */
   updateAiCall(id: string, patch: Record<string, unknown>): Promise<void>;
   /** The project's saved plan JSON (null when none). */
@@ -141,6 +143,10 @@ export function createDirectAgentIO(): AgentIO {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data } = await supabaseAdmin.from("ai_call_log").insert(row as never).select("id").single();
       return (data as { id?: string } | null)?.id ?? null;
+    },
+    async recordEconomics(args) {
+      const { recordTurnEconomics } = await import("@/server/turn-economics.server");
+      await recordTurnEconomics(args);
     },
     async updateAiCall(id, patch) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

@@ -116,6 +116,7 @@ export default defineConfig({
       "src/server/__tests__/stale-readiness-ui.test.ts",
       "src/server/__tests__/circuit-breaker.test.ts",
       "src/server/__tests__/economics-foundation.test.ts",
+      "src/server/__tests__/execution-escalation.test.ts",
       "src/server/__tests__/lifecycle-continuity.test.ts",
       "src/server/__tests__/product-requirements.test.ts",
       "src/server/__tests__/reconcile-and-ask.test.ts",

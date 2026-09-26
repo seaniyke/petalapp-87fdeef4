@@ -34,6 +34,17 @@ export type RecordTurnEconomicsArgs = {
   isAutoFix?: boolean;
   result?: string | null;
   metadata?: Record<string, unknown>;
+  /** Execution-complexity + outcome facts for the shadow charging decision. */
+  execution?: {
+    class: import("@/server/execution/complexity").ExecutionClass;
+    expectedCostUsd: number;
+    signals?: Array<{ name: string; weight: number }>;
+    strategy?: Record<string, unknown>;
+    committed: boolean;
+    outcome: "applied" | "answered" | "blocked" | "failed" | "aborted";
+    failureOrigin: import("@/server/execution/charge-decision").FailureOrigin;
+    elapsedMs?: number;
+  };
 };
 
 type AiRollup = {
@@ -45,7 +56,46 @@ type AiRollup = {
   providers: string[];
   costUsdMicro: number | null;
   basis: CostBasis;
+  breakdown: CostBreakdown;
 };
+
+/** Where the turn's AI money went (micro-USD). Derived per call from the
+ *  call-accounting purpose and stream outcome recorded in ai_call_log. */
+export type CostBreakdown = {
+  generationMicro: number;
+  repairMicro: number;
+  /** Calls whose output was discarded: dead/stalled streams and truncated
+   *  candidates — work Kimble paid for that produced nothing kept. */
+  wastedMicro: number;
+  planningMicro: number;
+  retryCalls: number;
+  recoveryCalls: number;
+  wastedCalls: number;
+};
+
+type CallRow = {
+  purpose?: string | null;
+  stream_outcome?: string | null;
+  finish_reason?: string | null;
+  recovery_reason?: string | null;
+  cost_usd_micro?: number | null;
+};
+
+/** Pure: classify each call's cost. Exported for tests. */
+export function breakdownCalls(rows: CallRow[]): CostBreakdown {
+  const b: CostBreakdown = { generationMicro: 0, repairMicro: 0, wastedMicro: 0, planningMicro: 0, retryCalls: 0, recoveryCalls: 0, wastedCalls: 0 };
+  for (const r of rows) {
+    const c = Number(r.cost_usd_micro ?? 0);
+    const purpose = (r.purpose ?? "").toLowerCase();
+    const wasted = r.stream_outcome === "stalled" || r.finish_reason === "error" || r.finish_reason === "length";
+    if (/resend|retry/.test(purpose) || /provider_stall|provider_error/.test(r.recovery_reason ?? "")) b.retryCalls++;
+    if (wasted) { b.wastedMicro += c; b.wastedCalls++; continue; }
+    if (/repair|fix/.test(purpose)) { b.repairMicro += c; b.recoveryCalls++; continue; }
+    if (/triage|classify|plan|design direction|brief/.test(purpose)) { b.planningMicro += c; continue; }
+    b.generationMicro += c;
+  }
+  return b;
+}
 
 /**
  * Roll up every AI call belonging to this turn. Calls are matched by
@@ -63,12 +113,13 @@ async function rollUpAiCalls(turnId: string): Promise<AiRollup> {
     providers: [],
     costUsdMicro: null,
     basis: "unknown",
+    breakdown: breakdownCalls([]),
   };
   try {
     const { data } = await supabaseAdmin
       .from("ai_call_log")
       .select(
-        "model, provider, prompt_tokens, completion_tokens, cached_prompt_tokens, cost_usd_micro, cost_basis",
+        "model, provider, prompt_tokens, completion_tokens, cached_prompt_tokens, cost_usd_micro, cost_basis, purpose, stream_outcome, finish_reason, recovery_reason",
       )
       .eq("turn_id", turnId);
     if (!data?.length) return empty;
@@ -115,6 +166,7 @@ async function rollUpAiCalls(turnId: string): Promise<AiRollup> {
       providers: [...providers],
       costUsdMicro: sawUnknown ? null : Math.round(cost),
       basis,
+      breakdown: breakdownCalls(data as CallRow[]),
     };
   } catch (err) {
     console.warn("[turn-economics] ai rollup failed", err);
@@ -143,6 +195,39 @@ export async function recordTurnEconomics(args: RecordTurnEconomicsArgs): Promis
     const variableCostMicro =
       ai.costUsdMicro == null ? null : ai.costUsdMicro + otherCostMicro;
 
+    let metadata: Record<string, unknown> = { ...(args.metadata ?? {}) };
+    if (args.execution) {
+      const { decideCharge } = await import("@/server/execution/charge-decision");
+      const actualUsd = ai.costUsdMicro == null ? null : (ai.costUsdMicro + otherCostMicro) / 1_000_000;
+      const decision = decideCharge({
+        executionClass: args.execution.class,
+        committed: args.execution.committed,
+        outcome: args.execution.outcome,
+        failureOrigin: args.execution.failureOrigin,
+        isAutoFix: Boolean(args.isAutoFix),
+        actualCostUsd: actualUsd,
+        expectedCostUsd: args.execution.expectedCostUsd,
+        liveCharged: args.creditsCharged,
+        costPerCreditUsd: rates.target_variable_cost_per_credit_usd,
+        wastedCostUsd: ai.breakdown.wastedMicro / 1_000_000,
+      });
+      metadata = {
+        ...metadata,
+        execution: {
+          class: args.execution.class,
+          signals: args.execution.signals ?? [],
+          strategy: args.execution.strategy ?? {},
+          outcome: args.execution.outcome,
+          committed: args.execution.committed,
+          failure_origin: args.execution.failureOrigin,
+          elapsed_ms: args.execution.elapsedMs ?? null,
+        },
+        expected_cost_usd: args.execution.expectedCostUsd,
+        actual_cost_usd: actualUsd,
+        cost_breakdown_usd_micro: ai.breakdown,
+        shadow_charge: decision,
+      };
+    }
     await supabaseAdmin.from("turn_economics").upsert(
       {
         turn_id: args.turnId,
@@ -166,7 +251,10 @@ export async function recordTurnEconomics(args: RecordTurnEconomicsArgs): Promis
         cost_basis: ai.basis,
         result: args.result ?? null,
         is_auto_fix: args.isAutoFix ?? false,
-        metadata: (args.metadata as never) ?? {},
+        metadata: metadata as never,
+        retry_calls: ai.breakdown.retryCalls,
+        recovery_calls: ai.breakdown.recoveryCalls,
+        redundant_calls: ai.breakdown.wastedCalls,
       },
       { onConflict: "turn_id" },
     );

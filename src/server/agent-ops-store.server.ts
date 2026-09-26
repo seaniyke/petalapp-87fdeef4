@@ -169,6 +169,10 @@ export function createAgentOpsStore(appOrigin?: string): AgentOpsStore {
       const { data } = await db.from("ai_call_log").insert(row as Any).select("id").single();
       return (data as { id?: string } | null)?.id ?? null;
     },
+    async recordEconomics(args) {
+      const { recordTurnEconomics } = await import("@/server/turn-economics.server");
+      await recordTurnEconomics(args as never);
+    },
     async updateAiCall(turnId, id, patch) {
       const { data } = await db.from("ai_call_log").update(patch as Any).eq("id", id).eq("turn_id", turnId).select("id");
       return !!data && data.length > 0;
