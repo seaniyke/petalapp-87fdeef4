@@ -7192,7 +7192,7 @@ async function handleGenerateRequestCore(
               projectRevision: committedRevision,
               turn: {
                 brief: lastUserContent ?? "",
-                changedPaths: turnChanged,
+                changedPaths: turnChangedPaths,
                 blockedPaths: Array.from(new Set([
                   ...unappliedPaths,
                   ...txResult.rejections.map((r) => r.path).filter((p): p is string => Boolean(p)),
