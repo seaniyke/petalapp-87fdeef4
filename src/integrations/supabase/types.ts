@@ -736,6 +736,74 @@ export type Database = {
           },
         ]
       }
+      build_checkpoints: {
+        Row: {
+          base_revision: number | null
+          created_at: string
+          id: string
+          origin_turn_id: string
+          pages: Json
+          planned: Json
+          preserved: Json
+          project_id: string
+          remaining: Json
+          request: string
+          resume_count: number
+          shell: Json | null
+          stage: string
+          status: string
+          turn_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_revision?: number | null
+          created_at?: string
+          id?: string
+          origin_turn_id: string
+          pages?: Json
+          planned?: Json
+          preserved?: Json
+          project_id: string
+          remaining?: Json
+          request?: string
+          resume_count?: number
+          shell?: Json | null
+          stage?: string
+          status?: string
+          turn_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_revision?: number | null
+          created_at?: string
+          id?: string
+          origin_turn_id?: string
+          pages?: Json
+          planned?: Json
+          preserved?: Json
+          project_id?: string
+          remaining?: Json
+          request?: string
+          resume_count?: number
+          shell?: Json | null
+          stage?: string
+          status?: string
+          turn_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "build_checkpoints_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coffee_tips: {
         Row: {
           amount_minor: number
@@ -5669,6 +5737,15 @@ export type Database = {
       }
       check_credit_balance: {
         Args: { _amount: number; _user_id: string }
+        Returns: boolean
+      }
+      checkpoint_merge_pages: {
+        Args: {
+          _pages: Json
+          _remaining: Json
+          _stage: string
+          _turn_id: string
+        }
         Returns: boolean
       }
       claim_credit_paused_turn: {

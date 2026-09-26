@@ -40048,9 +40048,9 @@ __export(client_server_shim_exports, {
   supabaseAdmin: () => supabaseAdmin
 });
 function current() {
-  const db = currentTurnContext().agentDb;
-  if (!db) throw new Error("agent-runtime: database used outside a turn");
-  return db;
+  const db2 = currentTurnContext().agentDb;
+  if (!db2) throw new Error("agent-runtime: database used outside a turn");
+  return db2;
 }
 function unsupported(what) {
   throw new Error(`agent-runtime: ${what} is not available on the build server`);
@@ -85196,7 +85196,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -112941,7 +112940,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -143896,6 +143894,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145519,11 +145518,11 @@ function integrationsFromSecretNames(names) {
   if (names.some((n) => /(RESEND|SENDGRID|POSTMARK|MAILGUN|SMTP)/i.test(n))) out.push("email");
   return out;
 }
-function buildEvidenceFromRow(row, projectRevision) {
+function buildEvidenceFromRow(row, projectRevision2) {
   if (!row) return null;
   const revision = row.project_revision == null ? null : Number(row.project_revision);
   const visual = Array.isArray(row.verification?.visual) ? row.verification.visual : [];
-  const status = row.status === "ready" ? revision === projectRevision ? "ready" : "stale" : row.status === "failed" ? "failed" : row.status === "cancelled" ? "cancelled" : "building";
+  const status = row.status === "ready" ? revision === projectRevision2 ? "ready" : "stale" : row.status === "failed" ? "failed" : row.status === "cancelled" ? "cancelled" : "building";
   return {
     revision,
     status,
@@ -145531,9 +145530,9 @@ function buildEvidenceFromRow(row, projectRevision) {
     phoneChecked: visual.some((v) => typeof v?.width === "number" && v.width <= 480) || row.verification?.phoneChecked === true
   };
 }
-function evidenceFromFiles(files, projectRevision, build, configuredIntegrations) {
+function evidenceFromFiles(files, projectRevision2, build, configuredIntegrations) {
   return {
-    projectRevision,
+    projectRevision: projectRevision2,
     files: files.map((f) => ({ path: f.path, hash: hashContent(f.content) })),
     routes: routesFromFiles(files),
     build,
@@ -145542,31 +145541,31 @@ function evidenceFromFiles(files, projectRevision, build, configuredIntegrations
 }
 async function recordRequirementEvidence(args) {
   try {
-    const db = supabaseAdmin;
-    const { data: bp } = await db.from("project_blueprints").select("blueprint").eq("project_id", args.projectId).maybeSingle();
+    const db2 = supabaseAdmin;
+    const { data: bp } = await db2.from("project_blueprints").select("blueprint").eq("project_id", args.projectId).maybeSingle();
     const versioned = bp?.blueprint?.prd;
     const reqs = args.requirements ?? versioned?.prd?.requirements;
     if (!reqs?.length) return null;
     let revision = args.projectRevision;
     let latestBuildId = null;
     if (typeof revision !== "number" || args.build === "latest") {
-      const { data: p2 } = await db.from("projects").select("revision, latest_build_id").eq("id", args.projectId).maybeSingle();
+      const { data: p2 } = await db2.from("projects").select("revision, latest_build_id").eq("id", args.projectId).maybeSingle();
       if (typeof revision !== "number") revision = Number(p2?.revision ?? 0);
       latestBuildId = p2?.latest_build_id ?? null;
     }
     let build = null;
     if (args.build === "latest") {
       if (latestBuildId) {
-        const { data: b } = await db.from("project_builds").select("status, project_revision, verification").eq("id", latestBuildId).maybeSingle();
+        const { data: b } = await db2.from("project_builds").select("status, project_revision, verification").eq("id", latestBuildId).maybeSingle();
         build = buildEvidenceFromRow(b ?? null, revision);
       }
     } else build = args.build;
     let files = args.files;
     if (!files) {
-      const { data: rows } = await db.from("project_files").select("path, content").eq("project_id", args.projectId);
+      const { data: rows } = await db2.from("project_files").select("path, content").eq("project_id", args.projectId);
       files = rows ?? [];
     }
-    const { data: secrets } = await db.from("project_secrets").select("name").eq("project_id", args.projectId);
+    const { data: secrets } = await db2.from("project_secrets").select("name").eq("project_id", args.projectId);
     const configured = integrationsFromSecretNames((secrets ?? []).map((s) => s.name));
     const next = evaluateRequirements(reqs, { ...evidenceFromFiles(files, revision, build, configured), ...args.turn ? { turn: args.turn } : {} });
     if (!versioned?.prd) return next;
@@ -145576,7 +145575,7 @@ async function recordRequirementEvidence(args) {
       ...bp.blueprint,
       prd: { ...versioned, prd: { ...versioned.prd, requirements: next } }
     };
-    await db.from("project_blueprints").update({ blueprint }).eq("project_id", args.projectId);
+    await db2.from("project_blueprints").update({ blueprint }).eq("project_id", args.projectId);
     return next;
   } catch (e) {
     console.warn("[prd-progress] skipped:", e instanceof Error ? e.message : String(e));
@@ -149991,7 +149990,13 @@ async function writePlannedPages(args) {
     calls++;
     try {
       const got = (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
-      if (!args.isTruncated) return got;
+      if (!args.isTruncated) {
+        if (got.length) try {
+          args.onFilesDone?.(got);
+        } catch {
+        }
+        return got;
+      }
       const whole = [];
       for (const f of got) {
         let cut = false;
@@ -150002,6 +150007,10 @@ async function writePlannedPages(args) {
         }
         if (cut) truncated.push(f.path);
         else whole.push(f);
+      }
+      if (whole.length) try {
+        args.onFilesDone?.(whole);
+      } catch {
       }
       return whole;
     } catch {
@@ -151962,6 +151971,147 @@ var init_skills = __esm({
   }
 });
 
+// src/server/build-checkpoint.server.ts
+var build_checkpoint_server_exports = {};
+__export(build_checkpoint_server_exports, {
+  checkpointFiles: () => checkpointFiles,
+  checkpointSeedFiles: () => checkpointSeedFiles,
+  checkpointUsable: () => checkpointUsable,
+  claimCheckpoint: () => claimCheckpoint,
+  loadResumableCheckpoint: () => loadResumableCheckpoint,
+  markCheckpointConsumed: () => markCheckpointConsumed,
+  markCheckpointResumable: () => markCheckpointResumable,
+  saveShellCheckpoint: () => saveShellCheckpoint
+});
+async function projectRevision(projectId) {
+  const { data: data2 } = await db().from("projects").select("revision").eq("id", projectId).maybeSingle();
+  const r = data2?.revision;
+  return r == null ? null : Number(r);
+}
+async function saveShellCheckpoint(args) {
+  try {
+    const { data: existing } = await db().from("build_checkpoints").select("id,turn_id,status").eq("project_id", args.projectId).in("status", ["active", "resumable", "resuming"]).maybeSingle();
+    if (existing) {
+      if (existing.turn_id === args.turnId) return;
+      await db().from("build_checkpoints").update({ status: "discarded", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", existing.id);
+    }
+    await db().from("build_checkpoints").insert({
+      project_id: args.projectId,
+      user_id: args.userId,
+      origin_turn_id: args.turnId,
+      turn_id: args.turnId,
+      base_revision: await projectRevision(args.projectId),
+      request: args.request.slice(0, 2e4),
+      stage: "pages",
+      shell: args.shell,
+      planned: args.planned,
+      remaining: args.planned.map((p2) => p2.file)
+    });
+  } catch (e) {
+    console.warn("[checkpoint] shell save failed", e.message);
+  }
+}
+async function checkpointFiles(turnId, files, remaining) {
+  if (!files.length) return false;
+  try {
+    const pages = {};
+    for (const f of files) pages[f.path] = f.content;
+    const { data: data2, error } = await db().rpc("checkpoint_merge_pages", {
+      _turn_id: turnId,
+      _pages: pages,
+      _remaining: remaining ?? null,
+      _stage: null
+    });
+    return !error && data2 === true;
+  } catch {
+    return false;
+  }
+}
+async function loadResumableCheckpoint(projectId) {
+  const { data: data2 } = await db().from("build_checkpoints").select("*").eq("project_id", projectId).eq("status", "resumable").maybeSingle();
+  return data2 ?? null;
+}
+function checkpointUsable(cp, currentRevision) {
+  if (!cp.shell || !cp.shell.args) return { ok: false, reason: "no shell saved" };
+  if (cp.base_revision != null && currentRevision != null && cp.base_revision !== currentRevision) {
+    return { ok: false, reason: "project changed since the checkpoint" };
+  }
+  return { ok: true };
+}
+async function claimCheckpoint(checkpointId, projectId, newTurnId) {
+  try {
+    const { data: row } = await db().from("build_checkpoints").select("*").eq("id", checkpointId).eq("project_id", projectId).maybeSingle();
+    const cp = row;
+    if (!cp || cp.status !== "resumable") return null;
+    const usable = checkpointUsable(cp, await projectRevision(projectId));
+    if (!usable.ok) {
+      await db().from("build_checkpoints").update({ status: "discarded", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", cp.id).eq("status", "resumable");
+      console.warn(`[checkpoint] discarded ${cp.id}: ${usable.reason}`);
+      return null;
+    }
+    const preserved = await measurePreserved(cp);
+    const { data: won } = await db().from("build_checkpoints").update({ status: "resuming", turn_id: newTurnId, resume_count: cp.resume_count + 1, preserved, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", cp.id).eq("status", "resumable").select("id").maybeSingle();
+    if (!won) return null;
+    return { checkpoint: { ...cp, turn_id: newTurnId, status: "resuming" }, preserved };
+  } catch (e) {
+    console.warn("[checkpoint] claim failed", e.message);
+    return null;
+  }
+}
+async function measurePreserved(cp) {
+  const pages = Object.keys(cp.pages ?? {});
+  const plannedFiles = new Set((cp.planned ?? []).map((p2) => p2.file));
+  let aiCalls = 0;
+  let costUsd = 0;
+  try {
+    const { data: data2 } = await db().from("ai_call_log").select("cost_usd_micro,created_at").eq("turn_id", cp.turn_id).lte("created_at", cp.updated_at);
+    for (const r of data2 ?? []) {
+      aiCalls += 1;
+      costUsd += Number(r.cost_usd_micro ?? 0) / 1e6;
+    }
+  } catch {
+  }
+  const prior = cp.preserved ?? {};
+  return {
+    pages: pages.filter((p2) => plannedFiles.has(p2)).length,
+    files: pages.length + 1,
+    aiCalls: aiCalls + (prior.aiCalls ?? 0),
+    costUsd: Math.round((costUsd + (prior.costUsd ?? 0)) * 1e6) / 1e6,
+    elapsedMs: new Date(cp.updated_at).getTime() - new Date(cp.created_at).getTime() + (prior.elapsedMs ?? 0)
+  };
+}
+function checkpointSeedFiles(cp, shellFiles) {
+  const pages = cp.pages ?? {};
+  const byPath = new Map(shellFiles.map((f) => [f.path, f]));
+  for (const [path, content] of Object.entries(pages)) {
+    if (path === "src/App.tsx" && byPath.has(path)) continue;
+    byPath.set(path, { path, content });
+  }
+  return [...byPath.values()];
+}
+async function markCheckpointConsumed(turnId) {
+  try {
+    await db().from("build_checkpoints").update({ status: "consumed", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("turn_id", turnId).in("status", ["active", "resuming"]);
+  } catch {
+  }
+}
+async function markCheckpointResumable(turnId) {
+  try {
+    const { data: data2 } = await db().from("build_checkpoints").update({ status: "resumable", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("turn_id", turnId).in("status", ["active", "resuming"]).not("shell", "is", null).select("id").maybeSingle();
+    return Boolean(data2);
+  } catch {
+    return false;
+  }
+}
+var db;
+var init_build_checkpoint_server = __esm({
+  "src/server/build-checkpoint.server.ts"() {
+    init_define_import_meta_env();
+    init_client_server_shim();
+    db = () => supabaseAdmin;
+  }
+});
+
 // src/lib/failure-classification.ts
 var failure_classification_exports = {};
 __export(failure_classification_exports, {
@@ -153363,14 +153513,14 @@ __export(build_revision_exports, {
   staleReasonText: () => staleReasonText
 });
 function buildRevisionStatus(build, project) {
-  const projectRevision = Number(project.revision);
+  const projectRevision2 = Number(project.revision);
   const raw = build.project_revision;
   if (raw === null || raw === void 0) {
-    return { current: false, reason: "legacy_unknown_revision", buildRevision: null, projectRevision };
+    return { current: false, reason: "legacy_unknown_revision", buildRevision: null, projectRevision: projectRevision2 };
   }
   const buildRevision = Number(raw);
-  if (buildRevision !== projectRevision) {
-    return { current: false, reason: "superseded", buildRevision, projectRevision };
+  if (buildRevision !== projectRevision2) {
+    return { current: false, reason: "superseded", buildRevision, projectRevision: projectRevision2 };
   }
   return { current: true };
 }
@@ -153380,10 +153530,10 @@ function staleReasonText(s) {
 function isRevisionConflict(message) {
   return !!message && /revision_conflict/i.test(message);
 }
-function revisionAwareBuildSnapshot(snap, projectRevision) {
+function revisionAwareBuildSnapshot(snap, projectRevision2) {
   if (!snap) return null;
-  if (projectRevision === null || projectRevision === void 0) return snap;
-  if (buildRevisionStatus({ project_revision: snap.projectRevision }, { revision: projectRevision }).current) return snap;
+  if (projectRevision2 === null || projectRevision2 === void 0) return snap;
+  if (buildRevisionStatus({ project_revision: snap.projectRevision }, { revision: projectRevision2 }).current) return snap;
   return { ...snap, status: "pending", verification: null, errorMessage: null, progressLabel: STALE_BUILD_LABEL };
 }
 function newerRevision(prev, next) {
@@ -161420,6 +161570,7 @@ ${guardTag}
 
 // src/server/pin-loose-deps.ts
 init_define_import_meta_env();
+init_known_packages();
 
 // src/server/builder.server.ts
 var MAX_AGE_SECONDS = 5 * 60;
@@ -177347,8 +177498,16 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
   }
   let finalMessages = budget.messages;
   const directLogoEdit = !isInitial && isDirectLogoPlacementRequest(lastUserContent) ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent }) : null;
-  stage("pre_write", "Starting to write your app\u2026");
-  const upstream = directLogoEdit ? null : await aiChatCompletions({
+  const checkpointTurnId = /^[0-9a-f-]{36}$/i.test(logicalTurnId) ? logicalTurnId : null;
+  let resumed = null;
+  if (isInitial && body.resumeCheckpointId && body.projectId && checkpointTurnId) {
+    const { claimCheckpoint: claimCheckpoint2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
+    resumed = await claimCheckpoint2(body.resumeCheckpointId, body.projectId, checkpointTurnId);
+    console.log(`[checkpoint] resume ${body.resumeCheckpointId} \u2192 ${resumed ? `claimed pages=${Object.keys(resumed.checkpoint.pages ?? {}).length} preserved=${JSON.stringify(resumed.preserved)}` : "not claimable, starting fresh"}`);
+  }
+  const resumeShell = resumed?.checkpoint.shell ?? null;
+  stage("pre_write", resumeShell ? "Picking up where the build left off\u2026" : "Starting to write your app\u2026");
+  const upstream = directLogoEdit || resumeShell ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
     body: {
@@ -177377,7 +177536,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
       turnId: logicalTurnId
     }
   });
-  if (!directLogoEdit && (!upstream || !upstream.ok || !upstream.body)) {
+  if (!directLogoEdit && !resumeShell && (!upstream || !upstream.ok || !upstream.body)) {
     const upstreamStatus = upstream?.status ?? 502;
     let msg = `AI gateway error (${upstreamStatus})`;
     if (upstreamStatus === 429) msg = "Rate limit reached. Please wait a moment.";
@@ -177461,11 +177620,28 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           );
         }
         const pageWriteUsages = [];
+        if (resumed) {
+          const pv = resumed.preserved;
+          controller.enqueue(encoder.encode(sse({
+            type: "timeline",
+            step: "continuation",
+            outcome: "ok",
+            message: `Resumed from saved progress: kept the layout and ${pv.pages} finished page${pv.pages === 1 ? "" : "s"} (${pv.aiCalls} AI calls, ~$${pv.costUsd.toFixed(3)}, ${Math.round(pv.elapsedMs / 6e4)} min of work not repeated)`,
+            ts: Date.now()
+          })));
+        }
         let collected = directLogoEdit ? {
           name: "patch_files",
           args: JSON.stringify(directLogoEdit.parsed),
           text: "",
           finishReason: "stop",
+          usage: null,
+          providerError: null
+        } : resumeShell ? {
+          name: resumeShell.name,
+          args: resumeShell.args,
+          text: resumeShell.text,
+          finishReason: resumeShell.finishReason ?? "stop",
           usage: null,
           providerError: null
         } : await relayAndCollect(
@@ -177809,8 +177985,20 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           if (isInitial && parsed.files?.length) {
             const { writePlannedPages: writePlannedPages2, pagesReferencedByRouter: pagesReferencedByRouter2, targetOf: wantOf, DECOMPOSED_MARKER: DECOMPOSED_MARKER2 } = await Promise.resolve().then(() => (init_write(), write_exports));
             const { pageFileFor: pageFileFor2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
+            const checkpointApi = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
+            const shellSnapshot = { name: "write_project", args: JSON.stringify(parsed), text: "", finishReason: "stop" };
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
-            const planned = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor2(route) }));
+            const planned = resumed?.checkpoint.planned?.length ? resumed.checkpoint.planned : firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor2(route) }));
+            if (!resumed && checkpointTurnId && body.projectId) {
+              await checkpointApi.saveShellCheckpoint({
+                projectId: body.projectId,
+                userId,
+                turnId: checkpointTurnId,
+                request: lastUserText,
+                shell: shellSnapshot,
+                planned
+              });
+            }
             let fromRouter = pagesReferencedByRouter2(parsed.files, planned);
             if (intentContract && fromRouter.length) {
               const { divergentPages: divergentPages2, stripRoutesFromRouter: stripRoutesFromRouter2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
@@ -177851,8 +178039,15 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 pageCount: pages.length,
                 truncatedBefore: truncatedBefore || cutOffPages.has(p2.file)
               }),
-              files: parsed.files,
+              // Resume: saved pages are re-staged; the writer skips every page
+              // that is already real, so no finished page is written twice.
+              files: resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files,
               budget: recovery,
+              // Durable progress: each whole (non-truncated) file is saved the
+              // moment it finishes, only by the turn that owns the checkpoint.
+              onFilesDone: checkpointTurnId ? (got) => {
+                void checkpointApi.checkpointFiles(checkpointTurnId, got);
+              } : void 0,
               // Structural completeness check: a candidate cut off mid-file is
               // discarded (never patched) so the page is re-requested once.
               isTruncated: async (file) => {
@@ -179657,6 +179852,10 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           }
         });
         const txCommitted = txResult.outcome.status === "committed";
+        if (txCommitted && checkpointTurnId) {
+          const { markCheckpointConsumed: markCheckpointConsumed2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
+          await markCheckpointConsumed2(checkpointTurnId);
+        }
         if (txResult.outcome.status === "committed") {
           const { finalDepth: finalDepth2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
           const fd = finalDepth2(turnInitialDepth, txResult.outcome.changed, { codeChanged: true });
@@ -180249,7 +180448,8 @@ async function handleGenerateRequest(request) {
             headers: { "x-kimble-turn-id": clientTurnId }
           });
         }
-        if (!isInternalCaller && durableAgentEnabled2()) {
+        const wantsDurable = !isInternalCaller || !attachDurable && request.headers.get("x-kimble-durable-dispatch") === "1";
+        if (wantsDurable && durableAgentEnabled2()) {
           const turnId = clientTurnId ?? crypto.randomUUID();
           let opened;
           try {
@@ -180368,6 +180568,10 @@ async function handleGenerateRequest(request) {
           userRequest: turnUserRequest
         }).catch(() => false);
         if (!queued) return false;
+        if (recorder?.turnId) {
+          const { markCheckpointResumable: markCheckpointResumable2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
+          await markCheckpointResumable2(recorder.turnId).catch(() => false);
+        }
         silentRecovery = true;
         emit({ type: "recovering" });
         emit({ type: "status", message: "Still working \u2014 Kimble is finishing this off." });

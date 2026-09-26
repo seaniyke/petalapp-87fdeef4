@@ -263,6 +263,9 @@ type Body = {
    *  has already spent, so the server-owned budget carries across turns
    *  instead of resetting every time a new turn row is opened. */
   autoResumeAttempts?: number;
+  /** Set by the resume worker: continue an interrupted first build from its
+   *  durable checkpoint instead of starting from zero. */
+  resumeCheckpointId?: string;
   /** What the user is looking at in the preview when they sent the message:
    *  the currently open route and, when picked, the selected element. Used to
    *  resolve "this page" / "this button" instead of guessing. */
@@ -4071,8 +4074,20 @@ async function handleGenerateRequestCore(
     ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent })
     : null;
 
-  stage("pre_write", "Starting to write your app…");
-  const upstream = directLogoEdit ? null : await aiChatCompletions({
+  // RESUME: an interrupted first build continues from its durable checkpoint.
+  // The saved shell answer replaces the first model call; saved pages are
+  // re-staged and skipped by the page writer. Every gate still runs.
+  const checkpointTurnId = /^[0-9a-f-]{36}$/i.test(logicalTurnId) ? logicalTurnId : null;
+  let resumed: Awaited<ReturnType<typeof import("@/server/build-checkpoint.server").claimCheckpoint>> = null;
+  if (isInitial && body.resumeCheckpointId && body.projectId && checkpointTurnId) {
+    const { claimCheckpoint } = await import("@/server/build-checkpoint.server");
+    resumed = await claimCheckpoint(body.resumeCheckpointId, body.projectId, checkpointTurnId);
+    console.log(`[checkpoint] resume ${body.resumeCheckpointId} → ${resumed ? `claimed pages=${Object.keys(resumed.checkpoint.pages ?? {}).length} preserved=${JSON.stringify(resumed.preserved)}` : "not claimable, starting fresh"}`);
+  }
+  const resumeShell = resumed?.checkpoint.shell ?? null;
+
+  stage("pre_write", resumeShell ? "Picking up where the build left off…" : "Starting to write your app…");
+  const upstream = directLogoEdit || resumeShell ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
     body: {
@@ -4102,7 +4117,7 @@ async function handleGenerateRequestCore(
     },
   });
 
-  if (!directLogoEdit && (!upstream || !upstream.ok || !upstream.body)) {
+  if (!directLogoEdit && !resumeShell && (!upstream || !upstream.ok || !upstream.body)) {
     // Upstream rejected before doing any work — nothing was charged,
     // nothing to refund. Just surface a friendly error.
     const upstreamStatus = upstream?.status ?? 502;
@@ -4197,12 +4212,31 @@ async function handleGenerateRequestCore(
         }
         // Every page-writing call's tokens are billed with the main call.
         const pageWriteUsages: Array<GatewayUsage | null> = [];
+        if (resumed) {
+          const pv = resumed.preserved;
+          controller.enqueue(encoder.encode(sse({
+            type: "timeline",
+            step: "continuation",
+            outcome: "ok",
+            message: `Resumed from saved progress: kept the layout and ${pv.pages} finished page${pv.pages === 1 ? "" : "s"} (${pv.aiCalls} AI calls, ~$${pv.costUsd.toFixed(3)}, ${Math.round(pv.elapsedMs / 60000)} min of work not repeated)`,
+            ts: Date.now(),
+          })));
+        }
         let collected: ParsedTool = directLogoEdit
           ? {
               name: "patch_files",
               args: JSON.stringify(directLogoEdit.parsed),
               text: "",
               finishReason: "stop",
+              usage: null,
+              providerError: null,
+            }
+          : resumeShell
+          ? {
+              name: resumeShell.name as ParsedTool["name"],
+              args: resumeShell.args,
+              text: resumeShell.text,
+              finishReason: resumeShell.finishReason ?? "stop",
               usage: null,
               providerError: null,
             }
@@ -4660,10 +4694,26 @@ async function handleGenerateRequestCore(
           if (isInitial && parsed.files?.length) {
             const { writePlannedPages, pagesReferencedByRouter, targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
             const { pageFileFor } = await import("@/server/engine/plan");
+            const checkpointApi = await import("@/server/build-checkpoint.server");
+            // Snapshot of the shell answer exactly as parsed, taken before any
+            // deterministic cleanup (which re-runs identically on resume).
+            const shellSnapshot = { name: "write_project", args: JSON.stringify(parsed), text: "", finishReason: "stop" };
             const requested = requestedRoutesFor(lastUserText, plannedRoutes);
             // The plan is authoritative; requested routes only fill in if
             // planning failed.
-            const planned = firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            const planned = resumed?.checkpoint.planned?.length
+              ? resumed.checkpoint.planned
+              : firstBuildPlan?.pages ?? requested.map((route) => ({ route, file: pageFileFor(route) }));
+            if (!resumed && checkpointTurnId && body.projectId) {
+              await checkpointApi.saveShellCheckpoint({
+                projectId: body.projectId,
+                userId,
+                turnId: checkpointTurnId,
+                request: lastUserText,
+                shell: shellSnapshot,
+                planned,
+              });
+            }
             // Output-limit continuation: pages the shell's own router already
             // imports but that were never written (the shell call ran out of
             // room, or planning under-counted) are the remaining work — write
@@ -4714,8 +4764,15 @@ async function handleGenerateRequestCore(
                   pageCount: pages.length,
                   truncatedBefore: truncatedBefore || cutOffPages.has(p.file),
                 }),
-              files: parsed.files,
+              // Resume: saved pages are re-staged; the writer skips every page
+              // that is already real, so no finished page is written twice.
+              files: resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files,
               budget: recovery,
+              // Durable progress: each whole (non-truncated) file is saved the
+              // moment it finishes, only by the turn that owns the checkpoint.
+              onFilesDone: checkpointTurnId
+                ? (got) => { void checkpointApi.checkpointFiles(checkpointTurnId, got); }
+                : undefined,
               // Structural completeness check: a candidate cut off mid-file is
               // discarded (never patched) so the page is re-requested once.
               isTruncated: async (file) => {
@@ -7109,6 +7166,12 @@ async function handleGenerateRequestCore(
           },
         });
         const txCommitted = txResult.outcome.status === "committed";
+        // A committed turn has delivered its checkpoint's work: retire it so
+        // it can never be resumed (no duplicate of committed work).
+        if (txCommitted && checkpointTurnId) {
+          const { markCheckpointConsumed } = await import("@/server/build-checkpoint.server");
+          await markCheckpointConsumed(checkpointTurnId);
+        }
         // FINAL execution depth: classifier's initial depth, raised (never
         // lowered) by deterministic impact analysis of what actually changed.
         if (txResult.outcome.status === "committed") {
@@ -7923,7 +7986,10 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // Durable ingress: the browser must not be the caller of the run —
         // on the live host its disconnect would kill the work. Open the turn
         // row, hand the job to the builder, and let the browser tail events.
-        if (!isInternalCaller && durableAgentEnabled()) {
+        // The resume worker also asks for durable dispatch: a resumed long
+        // build must run on the build server, not inside this request.
+        const wantsDurable = !isInternalCaller || (!attachDurable && request.headers.get("x-kimble-durable-dispatch") === "1");
+        if (wantsDurable && durableAgentEnabled()) {
           const turnId = clientTurnId ?? crypto.randomUUID();
           let opened: Awaited<ReturnType<typeof startTurn>>;
           try {
@@ -8090,6 +8156,11 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
           userRequest: turnUserRequest,
         }).catch(() => false);
         if (!queued) return false;
+        // Saved pages of this turn go with it to the resume worker.
+        if (recorder?.turnId) {
+          const { markCheckpointResumable } = await import("@/server/build-checkpoint.server");
+          await markCheckpointResumable(recorder.turnId).catch(() => false);
+        }
         silentRecovery = true;
         emit({ type: "recovering" });
         emit({ type: "status", message: "Still working — Kimble is finishing this off." });
