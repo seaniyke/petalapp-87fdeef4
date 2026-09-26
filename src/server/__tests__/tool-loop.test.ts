@@ -44,7 +44,7 @@ describe("tool loop", () => {
     ]);
     const r = await runToolLoop({ ...base, files: [], callModel: m.callModel });
     const refusal = m.seen[1]!.find((x) => x.role === "tool" && x.content.includes("finish refused"));
-    expect(refusal?.content).toContain("src/pages/About");
+    expect(refusal?.content).toContain("@/pages/About");
     expect(r.outcome).toBe("finished");
   });
 

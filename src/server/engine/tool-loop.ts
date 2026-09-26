@@ -474,9 +474,12 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
    * changed since it was validated, and every file that imports a changed
    * file, is re-validated. Catches external changes and broken dependents.
    */
+  const dirty = new Set<string>();
   const refreshEvidence = async () => {
     const deps = dependentsOf(tree);
     const todo = new Set<string>();
+    for (const p of dirty) for (const u of deps.get(p) ?? []) todo.add(u);
+    dirty.clear();
     for (const p of new Set(state.written)) {
       const c = tree.get(p);
       if (c === undefined) continue;
@@ -543,6 +546,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       if (!ok) return false;
     }
     tree.set(path, content);
+    dirty.add(path);
     state.written.push(path);
     state.writesSinceTypecheck++;
     return true;
