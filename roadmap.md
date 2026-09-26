@@ -6,7 +6,7 @@
 - [x] Recovery: missing import target → create missing node first, not repair dependents
 - [x] Remove "oversized file" rejection (size = decomposition signal only)
 - [x] Terminal boundary: durable terminal record + assistant message + economics on every failure path
-- [ ] Economics row opened at turn start, finalized at end
+- [x] Economics row opened at turn start, finalized at end
 - [x] Stuck "running": heartbeat-based dead-build detection
 - [ ] Classification changes execution strategy (verify light fast path)
 - [x] Tests, typecheck, build; redeploy builder; verify fingerprint
