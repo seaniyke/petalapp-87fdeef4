@@ -54,6 +54,10 @@ export function shellInstruction(pages: PlannedPage[]): string {
     `\n\nIn THIS call write ONLY the shared shell: src/App.tsx (router registering every planned route, ` +
     `each importing its page from the file above, wrapped in the shared layout), navigation, footer, ` +
     `styles, brand mark and shared components.\n` +
+    `FOUNDATION FIRST: also write, in this call, every shared module the pages will need — src/types.ts ` +
+    `(types for every core entity), src/lib/data.ts (realistic records plus accessor functions/hooks for every core entity), ` +
+    `and, if the product has roles or sign-in, src/lib/auth.tsx (AuthProvider + useAuth). Pages are written next and may import ` +
+    `ONLY shared modules that exist after this call, so do not reference any helper you do not write here.\n` +
     `Do NOT write any of the page files listed above — each page is written in its own dedicated call ` +
     `right after this one, and will use your shell and components.\n` +
     `Finish every file you start.\n`

@@ -45,12 +45,30 @@ export function projectContract(files: ProjectFile[]): string {
     .filter((x): x is string => !!x)
     .sort();
   const hasRouter = files.some((f) => f.path === "src/components/ui/router.tsx");
+  const shared = sharedModules(files);
   return [
     `Installed packages (import ONLY these, nothing else): ${deps.join(", ") || "none listed"}.`,
     ui.length ? `UI primitives available at @/components/ui/<name>: ${ui.join(", ")}. Do not import any other @/components/ui path.` : "",
     hasRouter ? `Routing: import Link/NavLink/Routes/Route/useLocation from "@/components/ui/router" — never from "react-router-dom".` : "",
     "Icons: lucide-react only, and import every icon you use. Page titles/meta: set document.title in an effect — no helmet libraries.",
+    shared.length
+      ? `Shared app modules (foundation) — import app data, auth, hooks and types ONLY from these, using exactly these export names:\n${shared.map((m) => `- @/${m.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "")}: ${m.exports.join(", ") || "(default)"}`).join("\n")}\nDo not import any other @/lib, @/hooks, @/contexts, @/data, @/integrations or @/services path. If you need something not listed, define it inside your own file.`
+      : "No shared app modules exist yet: do not import from @/lib, @/hooks, @/contexts, @/data, @/integrations or @/services — define what you need inside your own file.",
   ].filter(Boolean).join("\n");
+}
+
+/** Foundation modules (data, auth, hooks, types) and their real export names. Deterministic. */
+export function sharedModules(files: ProjectFile[]): Array<{ path: string; exports: string[] }> {
+  const out: Array<{ path: string; exports: string[] }> = [];
+  for (const f of files) {
+    if (!/^src\/(lib|hooks|contexts|context|data|services|store|integrations|types)(\/|\.)/.test(f.path)) continue;
+    if (!/\.(tsx?|jsx?)$/.test(f.path) || f.path.startsWith("src/integrations/supabase/")) continue;
+    const names = new Set<string>();
+    for (const m of f.content.matchAll(/export\s+(?:declare\s+)?(?:async\s+)?(?:function\*?|const|let|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g)) names.add(m[1]!);
+    for (const m of f.content.matchAll(/export\s*\{([^}]*)\}/g)) for (const n of m[1]!.split(",")) { const k = n.trim().split(/\s+as\s+/).pop()!.trim(); if (k) names.add(k); }
+    out.push({ path: f.path, exports: Array.from(names).slice(0, 40) });
+  }
+  return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
 /** Files owned by the shared frame — page calls never write these. */
