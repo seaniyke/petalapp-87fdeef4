@@ -263,6 +263,9 @@ type Body = {
    *  has already spent, so the server-owned budget carries across turns
    *  instead of resetting every time a new turn row is opened. */
   autoResumeAttempts?: number;
+  /** Set by the resume worker: continue an interrupted first build from its
+   *  durable checkpoint instead of starting from zero. */
+  resumeCheckpointId?: string;
   /** What the user is looking at in the preview when they sent the message:
    *  the currently open route and, when picked, the selected element. Used to
    *  resolve "this page" / "this button" instead of guessing. */
@@ -4071,8 +4074,20 @@ async function handleGenerateRequestCore(
     ? deterministicBrandMarkFallback({ currentFiles, latestUserContent: lastUserContent })
     : null;
 
-  stage("pre_write", "Starting to write your app…");
-  const upstream = directLogoEdit ? null : await aiChatCompletions({
+  // RESUME: an interrupted first build continues from its durable checkpoint.
+  // The saved shell answer replaces the first model call; saved pages are
+  // re-staged and skipped by the page writer. Every gate still runs.
+  const checkpointTurnId = /^[0-9a-f-]{36}$/i.test(logicalTurnId) ? logicalTurnId : null;
+  let resumed: Awaited<ReturnType<typeof import("@/server/build-checkpoint.server").claimCheckpoint>> = null;
+  if (isInitial && body.resumeCheckpointId && body.projectId && checkpointTurnId) {
+    const { claimCheckpoint } = await import("@/server/build-checkpoint.server");
+    resumed = await claimCheckpoint(body.resumeCheckpointId, body.projectId, checkpointTurnId);
+    console.log(`[checkpoint] resume ${body.resumeCheckpointId} → ${resumed ? `claimed pages=${Object.keys(resumed.checkpoint.pages ?? {}).length} preserved=${JSON.stringify(resumed.preserved)}` : "not claimable, starting fresh"}`);
+  }
+  const resumeShell = resumed?.checkpoint.shell ?? null;
+
+  stage("pre_write", resumeShell ? "Picking up where the build left off…" : "Starting to write your app…");
+  const upstream = directLogoEdit || resumeShell ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
     body: {
