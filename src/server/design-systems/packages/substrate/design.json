@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "substrate",
+  "name": "Substrate",
+  "description": "Warm-neutral premium house style: paper-toned surfaces, a serif display face against a clean grotesque, generous rhythm and restrained elevation.",
+  "when_to_use": "The default for almost everything — marketing sites, product sites, dashboards, storefronts, clinics, agencies. Choose a different system only when the brief asks for a stark dark editorial look.",
+  "version": "1.0.0",
+  "default_accent": "indigo",
+  "accents": ["indigo", "terracotta", "blue", "emerald", "ruby", "mono"],
+  "capabilities": ["light", "dark", "elevation", "motion", "serif-display"],
+  "token_categories": ["color", "typography", "radius", "shadow", "motion", "spacing"],
+  "fonts": ["Geist", "Newsreader"],
+  "has_components": false
+}

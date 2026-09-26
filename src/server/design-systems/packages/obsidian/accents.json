@@ -1,0 +1,50 @@
+{
+  "platinum": {
+    "light": {
+      "primary": "oklch(0.22 0.004 260)",
+      "primary-foreground": "oklch(0.98 0.002 260)",
+      "ring": "oklch(0.22 0.004 260)",
+      "accent": "oklch(0.93 0.004 260)",
+      "accent-foreground": "oklch(0.25 0.004 260)"
+    },
+    "dark": {
+      "primary": "oklch(0.95 0.003 260)",
+      "primary-foreground": "oklch(0.15 0.004 260)",
+      "ring": "oklch(0.95 0.003 260)",
+      "accent": "oklch(0.27 0.005 260)",
+      "accent-foreground": "oklch(0.95 0.003 260)"
+    }
+  },
+  "gold": {
+    "light": {
+      "primary": "oklch(0.62 0.1 85)",
+      "primary-foreground": "oklch(0.17 0.01 85)",
+      "ring": "oklch(0.62 0.1 85)",
+      "accent": "oklch(0.93 0.03 85)",
+      "accent-foreground": "oklch(0.32 0.06 85)"
+    },
+    "dark": {
+      "primary": "oklch(0.78 0.11 88)",
+      "primary-foreground": "oklch(0.16 0.015 85)",
+      "ring": "oklch(0.78 0.11 88)",
+      "accent": "oklch(0.29 0.04 85)",
+      "accent-foreground": "oklch(0.92 0.03 88)"
+    }
+  },
+  "crimson": {
+    "light": {
+      "primary": "oklch(0.46 0.17 20)",
+      "primary-foreground": "oklch(0.98 0.003 20)",
+      "ring": "oklch(0.46 0.17 20)",
+      "accent": "oklch(0.92 0.04 20)",
+      "accent-foreground": "oklch(0.3 0.1 20)"
+    },
+    "dark": {
+      "primary": "oklch(0.64 0.16 22)",
+      "primary-foreground": "oklch(0.97 0.003 20)",
+      "ring": "oklch(0.64 0.16 22)",
+      "accent": "oklch(0.29 0.06 20)",
+      "accent-foreground": "oklch(0.93 0.02 20)"
+    }
+  }
+}
