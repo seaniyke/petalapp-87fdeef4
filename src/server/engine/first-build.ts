@@ -3,7 +3,7 @@
  * write_project generation before the loop: the loop starts from the empty
  * workspace (or a resumed checkpoint) and writes everything with tools.
  */
-import type { ProjectFile } from "@/lib/project-types";
+import type { ProjectFile } from "@/server/generate.server";
 
 /** Files a first build starts from: saved checkpoint files, else none. */
 export function firstBuildSeedFiles(args: string | null | undefined): ProjectFile[] {
