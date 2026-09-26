@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { runToolLoop, completionGaps, createToolLoopState, compact, type ModelReply, type LoopMessage, type ToolCallMsg } from "@/server/engine/tool-loop";
+import { runToolLoop, completionGaps, createToolLoopState, compact, stableFoundations, type ModelReply, type LoopMessage, type ToolCallMsg } from "@/server/engine/tool-loop";
+import { finalizeVerification, runSourceGates } from "@/server/verification/gates";
+import { readinessOf } from "@/server/verification/readiness";
 
 let n = 0;
 const call = (name: string, args: Record<string, unknown>): ToolCallMsg => ({ id: `c${++n}`, type: "function", function: { name, arguments: JSON.stringify(args) } });
@@ -15,7 +17,11 @@ function scripted(steps: ModelReply[]) {
 const page = (n: string) => `export default function ${n}() { return <main>${n}</main>; }\n`;
 const app = `import Home from "@/pages/Home";\nimport About from "@/pages/About";\nexport default function App(){return <Home/>;}\n`;
 const validate = (f: { path: string; content: string }) => (f.content.includes("BROKEN") ? [`parse: unexpected token in ${f.path}`] : []);
-const base = { goal: "g", system: "sys", brief: "brief", validate };
+// The REAL authority (same gates commit uses), over the loop's workspace.
+const PKG = { path: "package.json", content: "{\"dependencies\":{}}" };
+const authority = (routes: () => string[] = () => []) => (tree: { path: string; content: string }[]) =>
+  readinessOf(finalizeVerification(runSourceGates({ files: [...tree.filter((f) => f.path !== "package.json"), PKG], requestedRoutes: routes(), esbuild: { status: "passed" } })));
+const base = { goal: "g", system: "sys", brief: "brief", validate, readiness: authority() };
 
 describe("tool loop", () => {
   it("several writes in one model response; one conversation drives the build", async () => {
@@ -91,10 +97,10 @@ describe("tool loop", () => {
     expect(writes).toBe(1);
   });
 
-  it("pending tasks and required files block finish", () => {
-    const s = createToolLoopState("g", [{ id: "page:/x", file: "src/pages/X.tsx", route: "/x" }]);
+  it("pending tasks block finish; the loop keeps no structural rules of its own", () => {
+    const s = createToolLoopState("g");
     s.tasks.set("t1", { id: "t1", title: "x", status: "pending", files: [] });
-    expect(completionGaps(s, new Map()).length).toBe(2);
+    expect(completionGaps(s, new Map([["src/App.tsx", app]])).length).toBe(1);
   });
 
   it("typecheck runs every N writes and its errors enter the conversation", async () => {
@@ -119,7 +125,7 @@ describe("tool loop", () => {
   it("light mode is capped and exposes only the edit tools", async () => {
     const m = scripted(Array.from({ length: 20 }, () => reply(call("search", { query: "zz" }))));
     let tools: string[] = [];
-    const r = await runToolLoop({ ...base, light: true, files: [{ path: "src/pages/X.tsx", content: "" }], requirements: [{ id: "f", file: "src/missing.ts" }], callModel: async (msgs, t) => { tools = t.map((x) => x.function.name); return m.callModel(msgs); } });
+    const r = await runToolLoop({ ...base, light: true, files: [{ path: "src/pages/X.tsx", content: "" }], readiness: () => ({ ready: false, findings: [{ gate: "routes", reason: "missing requested: /x", paths: [] }] }), callModel: async (msgs, t) => { tools = t.map((x) => x.function.name); return m.callModel(msgs); } });
     expect(tools).not.toContain("plan_tasks");
     expect(r.traces.length).toBe(8);
     expect(r.outcome).toBe("incomplete");
@@ -166,3 +172,118 @@ describe("tool loop transport", () => {
     expect("parallel_tool_calls" in sent).toBe(false);
   });
 });
+
+/* ------------------------------------------------------------------ */
+/* One readiness authority + stable foundations (architecture tests)   */
+/* ------------------------------------------------------------------ */
+
+const shell = `import Home from "./pages/Home";\nexport default function App(){return <div><header><nav>Home</nav></header><Home/><footer>f</footer></div>;}\n`;
+const tool = (m: { seen: LoopMessage[][] }) => m.seen.flatMap((s) => s.filter((x) => x.role === "tool" || x.role === "user").map((x) => String(x.content))).join("\n");
+
+describe("one readiness authority", () => {
+  it("1: agent says finish, authority says incomplete → refused with exact evidence in the same conversation", async () => {
+    const m = scripted([reply(call("finish", {})), reply(call("create_file", { path: "src/pages/Home.tsx", content: page("Home") }), call("finish", {}))]);
+    const r = await runToolLoop({ ...base, files: [{ path: "src/App.tsx", content: shell }], seedPaths: ["src/App.tsx"], callModel: m.callModel });
+    const out = tool(m);
+    expect(out).toContain("NOT READY");
+    expect(out).toContain("[dependencies]");
+    expect(out).toContain("./pages/Home");
+    expect(out).toContain("Required next operation");
+    expect(r.outcome).toBe("finished");
+    expect(m.seen.length).toBe(2);
+  });
+
+  it("2: a valid stable layout is not rewritten by later page work", async () => {
+    const files = [{ path: "src/App.tsx", content: shell }, { path: "src/pages/Home.tsx", content: page("Home") }, { path: "src/main.tsx", content: `import App from "./App";\nexport const x = App;\n` }];
+    const m = scripted([reply(call("read_file", { path: "src/App.tsx" }), call("create_file", { path: "src/App.tsx", content: "export default function App(){return null}\n" }), call("create_file", { path: "src/pages/Menu.tsx", content: page("Menu") }))]);
+    const r = await runToolLoop({ ...base, files, seedPaths: files.map((f) => f.path), callModel: m.callModel });
+    expect(tool(m)).toContain("STABLE foundation");
+    expect(String(m.seen[0]![1]!.content)).toContain("STABLE foundations");
+    expect(r.files.find((f) => f.path === "src/App.tsx")!.content).toBe(shell);
+    expect(r.files.some((f) => f.path === "src/pages/Menu.tsx")).toBe(true);
+  });
+
+  it("3: a feature that genuinely needs the layout gets a targeted edit; a regressing edit is rolled back", async () => {
+    const files = [{ path: "src/App.tsx", content: shell }, { path: "src/pages/Home.tsx", content: page("Home") }, { path: "src/main.tsx", content: `import App from "./App";\nexport const x = App;\n` }];
+    const m = scripted([
+      reply(
+        call("create_file", { path: "src/pages/Menu.tsx", content: page("Menu") }),
+        call("read_file", { path: "src/App.tsx" }),
+        call("edit_file", { path: "src/App.tsx", search: `import Home from "./pages/Home";`, replace: `import Home from "./pages/Home";\nimport Gone from "./pages/Gone";` }),
+        call("edit_file", { path: "src/App.tsx", search: `<nav>Home</nav>`, replace: `<nav>Home Menu</nav>` }),
+      ),
+      reply(call("finish", {})),
+    ]);
+    const r = await runToolLoop({ ...base, files, seedPaths: files.map((f) => f.path), callModel: m.callModel });
+    const app2 = r.files.find((f) => f.path === "src/App.tsx")!.content;
+    expect(tool(m)).toContain("breaks verification");
+    expect(app2).not.toContain("Gone");
+    expect(app2).toContain("<nav>Home Menu</nav>");
+    expect(r.outcome).toBe("finished");
+  });
+
+  it("4: a requirement added mid-run is enforced from the live requirements, not model memory", async () => {
+    const routes = ["/"];
+    const m = scripted([
+      reply(call("create_file", { path: "src/pages/Home.tsx", content: page("Home") })),
+      reply(call("finish", {})),
+      reply(call("create_file", { path: "src/pages/Contact.tsx", content: page("Contact") }), call("finish", {})),
+    ]);
+    const cm = async (msgs: LoopMessage[]) => { if (m.seen.length === 1) routes.push("/contact"); return m.callModel(msgs); };
+    const r = await runToolLoop({ ...base, readiness: authority(() => routes), files: [], callModel: cm });
+    expect(tool(m)).toContain("missing requested");
+    expect(r.outcome).toBe("finished");
+  });
+
+  it("5: after compaction, completion knowledge comes from the workspace", () => {
+    const s = createToolLoopState("g");
+    const files = new Map([["src/App.tsx", shell], ["src/pages/Home.tsx", page("Home")]]);
+    const r = runToolLoop; void r;
+    // Evidence is derived: record clean validation for both files.
+    for (const [p, c] of files) { s.validation.set(p, []); s.validatedHash.set(p, hashOf(c)); }
+    const msgs: LoopMessage[] = [{ role: "system", content: "sys" }, { role: "user", content: "brief" }];
+    for (let i = 0; i < 30; i++) { msgs.push({ role: "assistant", content: null, tool_calls: [call("read_file", { path: "a" })] }); msgs.push({ role: "tool", tool_call_id: `t${i}`, content: "x" }); }
+    const out = compact(msgs, s, 5, files);
+    expect(String(out[2]!.content)).toContain("src/pages/Home.tsx ← used by src/App.tsx");
+  });
+
+  it("6: a file that becomes invalid through a changed dependency is detected before finish", async () => {
+    const files = [{ path: "src/lib/api.ts", content: "export const load = () => 1;\n" }, { path: "src/pages/Home.tsx", content: `import { load } from "../lib/api";\nexport default function Home(){return <p>{load()}</p>;}\n` }];
+    // Validator reports a missing named export (like validateUnitImports).
+    const v = (f: { path: string; content: string }, tree: { path: string; content: string }[]) =>
+      f.path.endsWith("Home.tsx") && !tree.find((t) => t.path === "src/lib/api.ts")!.content.includes("load") ? ["src/lib/api.ts has no export load"] : [];
+    const m = scripted([
+      reply(call("read_file", { path: "src/lib/api.ts" }), call("edit_file", { path: "src/lib/api.ts", search: "load", replace: "fetchAll" }), call("finish", {})),
+      reply(call("edit_file", { path: "src/lib/api.ts", search: "fetchAll", replace: "load" }), call("finish", {})),
+    ]);
+    const r = await runToolLoop({ ...base, validate: v, files, seedPaths: files.map((f) => f.path), callModel: m.callModel });
+    expect(tool(m)).toContain("no export load");
+    expect(r.outcome).toBe("finished");
+  });
+
+  it("7: an unanticipated verifier finding enters the same execution state and the agent continues", async () => {
+    let flagged = true;
+    const readiness = () => (flagged ? { ready: false, findings: [{ gate: "routes", reason: "route /x is an unfinished placeholder page", paths: ["src/pages/X.tsx"] }] } : { ready: true, findings: [] });
+    const m = scripted([
+      reply(call("finish", {})),
+      reply(call("create_file", { path: "src/pages/X.tsx", content: page("X") }), call("finish", {})),
+    ]);
+    const r = await runToolLoop({ ...base, readiness, files: [], callModel: async (msgs) => { if (m.seen.length === 1) flagged = false; return m.callModel(msgs); } });
+    expect(tool(m)).toContain("targeted edit of src/pages/X.tsx");
+    expect(r.state.readiness?.ready).toBe(true);
+    expect(r.outcome).toBe("finished");
+  });
+
+  it("stability is derived from imports, not filenames", () => {
+    const s = createToolLoopState("g");
+    const files = new Map([["src/whatever/Shell.tsx", `import P from "./P";\nexport default P;\n`], ["src/whatever/P.tsx", page("P")]]);
+    for (const [p, c] of files) { s.validation.set(p, []); s.validatedHash.set(p, hashOf(c)); }
+    expect([...stableFoundations(s, files).keys()]).toEqual(["src/whatever/P.tsx"]);
+  });
+});
+
+function hashOf(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+  return h.toString(36);
+}
