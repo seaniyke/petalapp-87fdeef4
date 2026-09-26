@@ -4768,11 +4768,38 @@ async function handleGenerateRequestCore(
               // that is already real, so no finished page is written twice.
               files: resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files) : parsed.files,
               budget: recovery,
-              // Durable progress: each whole (non-truncated) file is saved the
-              // moment it finishes, only by the turn that owns the checkpoint.
+              // Durable progress: each validated work unit is saved the moment
+              // it finishes, only by the turn that owns the checkpoint. The
+              // result is surfaced — a failed save is never reported as saved.
               onFilesDone: checkpointTurnId
-                ? (got) => { void checkpointApi.checkpointFiles(checkpointTurnId, got); }
+                ? (got) => {
+                    void checkpointApi.checkpointFiles(checkpointTurnId, got).then((ok) => {
+                      const cs = (turnStrategy.checkpoint ??= { saved: 0, failed: 0 }) as { saved: number; failed: number };
+                      if (ok) cs.saved += got.length; else cs.failed += got.length;
+                      controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
+                    });
+                  }
                 : undefined,
+              // Foundation layer first: missing shared modules the frame
+              // imports are created (in parallel) before any page is written,
+              // so pages consume real export signatures, never guesses.
+              createFoundation: async (staged) => {
+                const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
+                const { createMissingModule } = await import("@/server/engine/repair");
+                const scope = staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
+                const r = await resolveMissingNodes(staged, scope, async (node, context) => {
+                  if (!turnLedger.use("repair", "foundation module", node.target).ok) return null;
+                  controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating shared ${node.target}…` })));
+                  return createMissingModule(node, context, { turnId: logicalTurnId, projectId: body.projectId ?? null, userId, turnContext: turnContextFor(node.target) });
+                }, { concurrency: 4 });
+                return { files: r.files, created: r.created };
+              },
+              // Per-unit record: observable progress + economics evidence.
+              onUnit: (u) => {
+                ((turnStrategy.workUnits ??= []) as unknown[]).push(u);
+                if (u.outcome === "skipped_done") return;
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "work_unit", outcome: u.outcome === "failed" ? "failed" : "ok", message: `${u.kind} ${u.target}: ${u.outcome}${u.feedbackRounds ? ` after ${u.feedbackRounds} correction` : ""}${u.continued ? " (continued, not regenerated)" : ""}`, ts: Date.now() })));
+              },
               // Structural completeness check: a candidate cut off mid-file is
               // discarded (never patched) so the page is re-requested once.
               isTruncated: async (file) => {
