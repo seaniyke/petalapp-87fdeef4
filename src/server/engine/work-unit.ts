@@ -304,3 +304,46 @@ export function planWorkUnits(pages: Array<{ route: string; file: string }>, fou
   };
   return [foundation, pageUnits, [router]].filter((l) => l.length);
 }
+
+// ---------------------------------------------------------------------------
+// Used-but-undefined check (real TypeScript checker, per unit)
+// ---------------------------------------------------------------------------
+
+export interface UndefinedDiagnostic { path: string; name: string; line: number; message: string }
+
+/**
+ * Names the page uses that resolve to no declaration (TS2304), against the
+ * staged tree. Same checker as the final gate; "unavailable" yields [] (the
+ * final gate stays authoritative).
+ */
+export function undefinedNames(
+  file: ProjectFile,
+  staged: ProjectFile[],
+  check: (tree: ProjectFile[], changed: string[]) => { status: string; issues: Array<{ path: string; line: number; message: string }> },
+): UndefinedDiagnostic[] {
+  if (!isSource(file.path)) return [];
+  const tree = [...staged.filter((f) => f.path !== file.path), file];
+  const r = check(tree, [file.path]);
+  if (r.status !== "failed") return [];
+  return r.issues
+    .filter((i) => i.path === file.path)
+    .map((i) => {
+      const name = /Cannot find name '([^']+)'/.exec(i.message)?.[1] ?? "?";
+      const hint = name === "React"
+        ? `\`React.\` is used but React is not imported. Add \`import React from "react"\` or import the specific hooks from "react".`
+        : `It is not imported, not declared in this file, and not a platform global. If it comes from another module, import it using the real signatures listed; otherwise declare it.`;
+      return { path: i.path, name, line: i.line, message: `${i.path}:${i.line}: \`${name}\` is used but declared nowhere. ${hint}` };
+    });
+}
+
+/**
+ * The ONE proven-safe mechanical repair: every undefined name is exactly
+ * `React`, used only as a namespace (`React.x`), and "react" is a project
+ * dependency. Adds a single default import. Anything else → writer feedback.
+ */
+export function safeReactImportRepair(file: ProjectFile, diags: UndefinedDiagnostic[], reactIsDependency: boolean): ProjectFile | null {
+  if (!reactIsDependency || !diags.length || diags.some((d) => d.name !== "React")) return null;
+  if (/\bReact\b(?!\s*\.)/.test(file.content.replace(/["'`][^"'`\n]*["'`]/g, ""))) return null;
+  if (/import\s+(\*\s+as\s+)?React\b/.test(file.content)) return null;
+  return { path: file.path, content: `import React from "react";\n${file.content}` };
+}

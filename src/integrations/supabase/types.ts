@@ -739,6 +739,7 @@ export type Database = {
       build_checkpoints: {
         Row: {
           base_revision: number | null
+          closed_at: string | null
           created_at: string
           id: string
           origin_turn_id: string
@@ -752,12 +753,14 @@ export type Database = {
           shell: Json | null
           stage: string
           status: string
+          terminal_outcome: string | null
           turn_id: string
           updated_at: string
           user_id: string
         }
         Insert: {
           base_revision?: number | null
+          closed_at?: string | null
           created_at?: string
           id?: string
           origin_turn_id: string
@@ -771,12 +774,14 @@ export type Database = {
           shell?: Json | null
           stage?: string
           status?: string
+          terminal_outcome?: string | null
           turn_id: string
           updated_at?: string
           user_id: string
         }
         Update: {
           base_revision?: number | null
+          closed_at?: string | null
           created_at?: string
           id?: string
           origin_turn_id?: string
@@ -790,6 +795,7 @@ export type Database = {
           shell?: Json | null
           stage?: string
           status?: string
+          terminal_outcome?: string | null
           turn_id?: string
           updated_at?: string
           user_id?: string

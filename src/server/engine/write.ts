@@ -21,6 +21,8 @@ import {
   signatureContext,
   stitchContinuation,
   validateUnitImports,
+  undefinedNames,
+  safeReactImportRepair,
   type UnitKind,
   type UnitRecord,
 } from "@/server/engine/work-unit";
@@ -225,6 +227,10 @@ export async function writePlannedPages(args: {
   createFoundation?: (files: ProjectFile[]) => Promise<{ files: ProjectFile[]; created: string[] }>;
   /** Per-unit execution record (observability + economics). */
   onUnit?: (record: UnitRecord) => void;
+  /** Real TS undefined-name checker (same as the final gate), per unit. */
+  checkIdentifiers?: (tree: ProjectFile[], changed: string[]) => { status: string; issues: Array<{ path: string; line: number; message: string }> };
+  /** "react" is a project dependency (enables the one safe mechanical repair). */
+  reactIsDependency?: boolean;
 }): Promise<WriteResult> {
   let files = args.files;
   const written: string[] = [];
@@ -287,18 +293,32 @@ export async function writePlannedPages(args: {
       }
       whole.push(f);
     }
-    // Immediate import/export validation against the staged tree.
+    // Immediate page-level validation against the staged tree: imports/exports
+    // + used-but-undefined names (real TS checker). Proven-safe React import
+    // is applied mechanically; everything else goes back to the SAME writer
+    // once, then re-validated. Final verification stays authoritative.
     if (single) {
+      const validate = (f: ProjectFile): string[] => [
+        ...validateUnitImports(f, files).map((d) => d.message),
+        ...(args.checkIdentifiers ? undefinedNames(f, files, args.checkIdentifiers).map((d) => d.message) : []),
+      ];
       for (let i = 0; i < whole.length; i++) {
-        const diags = validateUnitImports(whole[i]!, files);
-        if (!diags.length) continue;
-        rec.diagnostics.push(...diags.map((d) => d.message));
-        rec.feedbackRounds++;
-        const fixed = (await ask(feedbackInstruction(instruction, whole[i]!, diags))).find((x) => x.path === whole[i]!.path);
-        if (fixed && !(await cutOff(fixed)) && validateUnitImports(fixed, files).length < diags.length) {
-          whole[i] = fixed;
-          rec.outcome = "corrected";
+        if (args.checkIdentifiers) {
+          const und = undefinedNames(whole[i]!, files, args.checkIdentifiers);
+          const repaired = safeReactImportRepair(whole[i]!, und, args.reactIsDependency ?? true);
+          if (repaired) { whole[i] = repaired; rec.diagnostics.push(...und.map((d) => d.message + " [auto: added React import]")); rec.outcome = "corrected"; }
         }
+        const diags = validate(whole[i]!);
+        if (!diags.length) continue;
+        rec.diagnostics.push(...diags);
+        rec.feedbackRounds++;
+        const asDiag = diags.map((message) => ({ path: whole[i]!.path, spec: "", message }));
+        const fixed = (await ask(feedbackInstruction(instruction, whole[i]!, asDiag))).find((x) => x.path === whole[i]!.path);
+        if (fixed && !(await cutOff(fixed))) {
+          const left = validate(fixed);
+          if (left.length < diags.length) { whole[i] = fixed; rec.outcome = left.length ? "failed" : "corrected"; }
+          if (left.length) rec.diagnostics.push(...left.map((m) => `still failing after correction: ${m}`));
+        } else rec.outcome = "failed";
       }
     }
     if (whole.length) try { args.onFilesDone?.(whole); } catch { /* checkpoint is best-effort; its own result is surfaced by the caller */ }
