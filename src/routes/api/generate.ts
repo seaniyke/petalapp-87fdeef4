@@ -3246,6 +3246,21 @@ async function handleGenerateRequestCore(
   const turnEscalations: string[] = [];
   const turnStrategy: Record<string, unknown> = { decomposedPages: [] as string[] };
   console.info(`[complexity] ${JSON.stringify(assessExecution(turnComplexityBase))}`);
+  // Economic ledger opens BEFORE expensive execution: even a catastrophic
+  // failure leaves a measurable record (finalized at the terminal boundary).
+  {
+    const opened = assessExecution(turnComplexityBase);
+    void agentIO().recordEconomics({
+      turnId: logicalTurnId,
+      userId,
+      projectId: body.projectId ?? null,
+      feature: "generate",
+      creditsCharged: 0,
+      isAutoFix: Boolean(body.isAutoFix),
+      result: "running",
+      metadata: { opened_at: new Date().toISOString(), execution_class: opened.class, expected_cost_usd: opened.expectedCostUsd },
+    });
+  }
   const lifecycleBlock = await (async () => {
     try {
       const { renderLifecycleContext } = await import("@/server/context/lifecycle");
@@ -8168,6 +8183,46 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // Persist the terminal state before the request ends. A fire-and-forget
         // write is dropped by serverless runtimes once the response closes,
         // leaving turns permanently "running" and inviting reconnect loops.
+        // NO FINAL OUTCOME WITHOUT A DURABLE RECORD. For every non-success
+        // exit, the cost record and the assistant's terminal reply are written
+        // while the turn is still running (the build service may only write
+        // for a running turn), THEN the terminal status is persisted.
+        let failureReplyWritten = false;
+        if (recorder && terminalStatus !== "succeeded" && terminalStatus !== "awaiting_credits") {
+          const { classifyFailureOrigin } = await import("@/lib/failure-classification");
+          await agentIO()
+            .recordEconomics({
+              turnId: recorder.turnId,
+              userId,
+              projectId: turnProjectId ?? null,
+              feature: "generate",
+              creditsCharged: 0,
+              isAutoFix: Boolean(body.isAutoFix),
+              result: terminalStatus,
+              finalizeOnly: true,
+              metadata: {
+                terminal_status: terminalStatus,
+                failure_reason: terminalError?.slice(0, 300) ?? null,
+                failure_origin: terminalError ? classifyFailureOrigin(new Error(terminalError)) : null,
+                customer_charge: 0,
+              },
+            })
+            .catch(() => undefined);
+          if (turnProjectId && !silentRecovery && !planProposed) {
+            await new Promise((r) => setTimeout(r, 2500));
+            const done = lastResult as { summary?: string; plan?: string; recap?: string; committedRevision?: number | null } | null;
+            failureReplyWritten = await persistAbandonedTurnReply({
+              projectId: turnProjectId,
+              turnId: recorder.turnId,
+              status: terminalStatus,
+              summary: done?.summary ?? null,
+              plan: done?.plan ?? null,
+              recap: done?.recap ?? null,
+              errorMessage: terminalError,
+              committedRevision: done?.committedRevision ?? null,
+            }).catch(() => false);
+          }
+        }
         await finishTurnOnce(terminalStatus, terminalError);
         // Make sure the thread always ends with an assistant reply. The client
         // normally writes it on `done`, but a dropped socket doesn't always
@@ -8192,7 +8247,7 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // A turn queued for silent completion must not write a reply at all:
         // the resumed run owns the conversation, and a "this didn't finish"
         // bubble is exactly what we are removing.
-        if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
+        if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits" && !failureReplyWritten && terminalStatus === "succeeded") {
           await new Promise((r) => setTimeout(r, 2500));
           const done = lastResult as { summary?: string; plan?: string; recap?: string; committedRevision?: number | null } | null;
           const wroteReply = await persistAbandonedTurnReply({
