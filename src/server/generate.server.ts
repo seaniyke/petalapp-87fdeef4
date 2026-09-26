@@ -779,6 +779,8 @@ export type ErrorKind =
   | "upstream_timeout"
   | "unauthorized"
   | "aborted"
+  /** Another turn already owns this project's generation slot — follow it. */
+  | "generation_running"
   | "unknown";
 
 /**

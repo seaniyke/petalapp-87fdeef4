@@ -7624,25 +7624,19 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
             headers: { "x-kimble-turn-id": clientTurnId },
           });
         }
-        // One live turn per project, checked against the durable turns table
-        // (the in-memory build lock is per-worker only). A retry tapped while
-        // the previous turn is still running server-side — e.g. after a
-        // dropped phone connection — must attach, never start a second build.
-        if (!isInternalCaller && (await hasLiveTurn(peekAuth, peekBody.projectId))) {
-          return new Response(
-            JSON.stringify({
-              error:
-                "Kimble is still working on your last request. It will show up here when it's done.",
-            }),
-            { status: 429, headers: { "Content-Type": "application/json" } },
-          );
-        }
         // Durable ingress: the browser must not be the caller of the run —
         // on the live host its disconnect would kill the work. Open the turn
         // row, hand the job to the builder, and let the browser tail events.
         if (!isInternalCaller && durableAgentEnabled()) {
           const turnId = clientTurnId ?? crypto.randomUUID();
-          const opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId, heartbeat: false });
+          let opened: Awaited<ReturnType<typeof startTurn>>;
+          try {
+            opened = await startTurn({ projectId: peekBody.projectId, userId: peekAuth, turnId, heartbeat: false });
+          } catch (e) {
+            const taken = slotTakenResponse(e);
+            if (taken) return taken;
+            throw e;
+          }
           const job = buildAgentJobPayload(
             request,
             opened.turnId,
@@ -7662,12 +7656,18 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
           }
           return ingressAcceptedResponse(opened.turnId);
         }
-        recorder = await startTurn({
-          projectId: peekBody.projectId,
-          userId: peekAuth,
-          turnId: clientTurnId,
-          attach: attachDurable,
-        });
+        try {
+          recorder = await startTurn({
+            projectId: peekBody.projectId,
+            userId: peekAuth,
+            turnId: clientTurnId,
+            attach: attachDurable,
+          });
+        } catch (e) {
+          const taken = slotTakenResponse(e);
+          if (taken) return taken;
+          throw e;
+        }
         // Open the server-owned completion record for this request. From here
         // the loop's authority lives in the database, not in the tab: stage,
         // attempts and outstanding defects survive a closed browser.
@@ -8082,7 +8082,6 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
  */
 const BUILD_LOCK_TTL_MS = 5 * 60 * 1000;
 /** A turn that hasn't finished in this long is dead, not running. */
-const TURN_STALE_MS = 10 * 60 * 1000;
 const buildLocks = new Map<string, number>();
 
 function buildLockKey(userId: string, projectId: string | null | undefined): string {
@@ -8093,31 +8092,30 @@ function buildLockKey(userId: string, projectId: string | null | undefined): str
  * Is a turn for this exact project genuinely in flight right now?
  * Also retires stale `running` rows so history stops showing phantom builds.
  */
+/**
+ * Another turn owns this project's generation slot: answer 409 with its id so
+ * the client follows that execution (same contract as a retried send).
+ */
+function slotTakenResponse(e: unknown): Response | null {
+  const id = (e as { name?: string; existingTurnId?: string } | null);
+  if (id?.name !== "GenerationSlotTaken" || !id.existingTurnId) return null;
+  return new Response("Generation already running", {
+    status: 409,
+    headers: { "x-kimble-turn-id": id.existingTurnId, "x-kimble-slot": "running" },
+  });
+}
+
 async function hasLiveTurn(userId: string, projectId: string | null | undefined): Promise<boolean> {
   if (!projectId) return false;
   const client = supabaseAdmin;
   if (!client) return false;
-  const cutoff = new Date(Date.now() - TURN_STALE_MS).toISOString();
   try {
-    // Retire anything that can no longer be running.
-    await client
-      .from("turns")
-      .update({
-        status: "failed",
-        ended_at: new Date().toISOString(),
-        error_message: "Turn ended without completing.",
-      })
-      .eq("user_id", userId)
-      .eq("status", "running")
-      .lt("created_at", cutoff);
-
     const { data } = await client
       .from("turns")
       .select("id")
       .eq("user_id", userId)
       .eq("project_id", projectId)
       .eq("status", "running")
-      .gte("created_at", cutoff)
       .limit(1);
     return Boolean(data && data.length > 0);
   } catch (e) {
