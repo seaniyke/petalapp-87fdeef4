@@ -4022,7 +4022,10 @@ async function handleGenerateRequestCore(
   const resumeShell = resumed?.checkpoint.shell ?? null;
 
   stage("pre_write", resumeShell ? "Picking up where the build left off…" : "Starting to write your app…");
-  const upstream = directLogoEdit || resumeShell ? null : await aiChatCompletions({
+  // First builds never make a monolithic write_project call: the tool loop
+  // below IS the first-build executor, starting from the (possibly resumed)
+  // workspace. Only edits send the single structured patch request.
+  const upstream = isInitial || directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
     budgetAware: true,
     body: {
@@ -4052,7 +4055,7 @@ async function handleGenerateRequestCore(
     },
   });
 
-  if (!directLogoEdit && !resumeShell && (!upstream || !upstream.ok || !upstream.body)) {
+  if (!isInitial && !directLogoEdit && (!upstream || !upstream.ok || !upstream.body)) {
     // Upstream rejected before doing any work — nothing was charged,
     // nothing to refund. Just surface a friendly error.
     const upstreamStatus = upstream?.status ?? 502;
@@ -4138,21 +4141,23 @@ async function handleGenerateRequestCore(
             ts: Date.now(),
           })));
         }
-        let collected: ParsedTool = directLogoEdit
+        // First builds: no model call here. The workspace (empty, or the
+        // resumed checkpoint) is handed straight to the tool loop.
+        let collected: ParsedTool = isInitial
           ? {
-              name: "patch_files",
-              args: JSON.stringify(directLogoEdit.parsed),
+              name: "write_project",
+              args: JSON.stringify({ files: firstBuildSeedFiles(resumeShell?.args) }),
               text: "",
               finishReason: "stop",
               usage: null,
               providerError: null,
             }
-          : resumeShell
+          : directLogoEdit
           ? {
-              name: resumeShell.name as ParsedTool["name"],
-              args: resumeShell.args,
-              text: resumeShell.text,
-              finishReason: resumeShell.finishReason ?? "stop",
+              name: "patch_files",
+              args: JSON.stringify(directLogoEdit.parsed),
+              text: "",
+              finishReason: "stop",
               usage: null,
               providerError: null,
             }
@@ -4303,7 +4308,9 @@ async function handleGenerateRequestCore(
             );
             throw new Error(`provider stream stalled (${firstStall.upstream ?? "unknown upstream"}, ${firstStall.ms}ms without output)`);
           }
-          payload = parseCollectedProject(collected, isInitial);
+          payload = isInitial
+            ? { parsed: { files: firstBuildSeedFiles(collected.args) }, summary: "" }
+            : parseCollectedProject(collected, isInitial);
         } catch (e) {
           controller.enqueue(
             encoder.encode(sse({ type: "status", message: "Retrying the response safely…" })),
