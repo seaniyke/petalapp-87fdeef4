@@ -13,6 +13,7 @@ export type FailureOrigin =
   | "code" // syntax, types, missing import, build or runtime failure
   | "user_input" // a decision or credential only the user can supply
   | "cancelled" // explicit user stop
+  | "in_progress" // a generation for this project is still running — follow it
   | "unknown";
 
 /** Thrown by AI-backed recovery steps when the provider, not the code, failed. */
@@ -69,7 +70,7 @@ export function permitsDestructiveRecovery(origin: FailureOrigin): boolean {
   return origin === "code";
 }
 
-export type NextAction = "fix" | "continue" | "try_again" | "answer" | null;
+export type NextAction = "fix" | "continue" | "try_again" | "answer" | "follow" | null;
 
 export interface FailureGuidance {
   origin: FailureOrigin;
@@ -122,6 +123,15 @@ export function guidanceFor(origin: FailureOrigin): FailureGuidance {
         actionLabel: null,
         userMustAct: true,
       };
+    case "in_progress":
+      return {
+        origin,
+        headline: "Kimble is still working on your last request.",
+        preserved: "Nothing new was started and nothing extra is charged.",
+        action: "follow",
+        actionLabel: "Keep watching",
+        userMustAct: false,
+      };
     case "cancelled":
       return {
         origin,
@@ -147,7 +157,7 @@ export function guidanceFor(origin: FailureOrigin): FailureGuidance {
 export function originFromReason(reason: string | null | undefined): FailureOrigin {
   if (!reason) return "unknown";
   const prefix = reason.split(":")[0];
-  if (["infrastructure", "transport", "code", "user_input", "cancelled"].includes(prefix)) return prefix as FailureOrigin;
+  if (["infrastructure", "transport", "code", "user_input", "cancelled", "in_progress"].includes(prefix)) return prefix as FailureOrigin;
   return classifyFailureOrigin(reason);
 }
 
@@ -166,6 +176,8 @@ export function originFromErrorKind(kind: string | null | undefined): FailureOri
       return "transport";
     case "aborted":
       return "cancelled";
+    case "generation_running":
+      return "in_progress";
     case "no_files_emitted":
     case "no_edit_emitted":
     case "credits_exhausted":

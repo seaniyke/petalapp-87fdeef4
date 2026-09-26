@@ -224,6 +224,13 @@ const KIND_TO_FRIENDLY: Record<ErrorKind, (raw: string) => FriendlyError> = {
     actionKind: "dismiss",
     technicalDetail: raw,
   }),
+  generation_running: (raw) => ({
+    title: "Kimble is still working on your last request.",
+    message: "Your previous build is still running. Keep watching — it will show up here when it's done.",
+    actionLabel: "Keep watching",
+    actionKind: "dismiss",
+    technicalDetail: raw,
+  }),
   unknown: (raw) => ({ ...GENERIC, technicalDetail: raw }),
 };
 
@@ -437,6 +444,10 @@ export function classify(card: FriendlyError, origin: FailureOrigin, override = 
       actionLabel: "OK",
       actionKind: "dismiss",
     };
+  }
+  if (origin === "in_progress") {
+    // Never "Retry": that would mean starting another generation.
+    return { ...out, title: g.headline, message: "Your previous build is still running. Keep watching — it will show up here when it's done.", actionLabel: g.actionLabel ?? "Keep watching", actionKind: "dismiss" };
   }
   if (origin === "cancelled") {
     return { ...out, title: g.headline, message: "You stopped Kimble. Send another message when you're ready.", actionLabel: "Dismiss", actionKind: "dismiss" };

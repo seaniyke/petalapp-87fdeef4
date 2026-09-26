@@ -1,3 +1,4 @@
+import { PipelineError } from "@/lib/friendly-errors";
 import { getSupabaseAccessToken } from "@/lib/auth-token";
 import { throwIfCreditsExhausted } from "@/lib/friendly-errors";
 import type { ChatMessage, ProjectFile, StreamEvent } from "@/server/generate.server";
@@ -212,12 +213,15 @@ export async function streamGenerate(
     if (resp.status === 409) {
       const existingTurnId = resp.headers.get("x-kimble-turn-id");
       if (existingTurnId) {
+        // Follow the execution that owns the slot — this tab now tracks it.
+        handlers.onTurnId?.(existingTurnId);
         const completed = await streamResumeTurn(existingTurnId, 0, handlers, signal);
         if (completed) return;
         if (handlers.onReconnectDeferred) {
           handlers.onReconnectDeferred(existingTurnId);
           return;
         }
+        throw new PipelineError("Generation already running", "generation_running", `turn ${existingTurnId} owns the generation slot`);
       }
     }
     const text = await resp.text().catch(() => "");
