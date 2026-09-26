@@ -62774,7 +62774,6 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
-    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -70467,7 +70466,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140077,7 +140075,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141327,71 +141324,11 @@ var init_import_syntax_fixer_server = __esm({
   }
 });
 
-// src/server/prd/product-acceptance.server.ts
-function appFiles(files) {
-  return files.filter((f) => /^src\/.+\.(tsx|jsx)$/.test(f.path));
-}
-function checkProductUsefulness(prd, files) {
-  const findings = [];
-  const views = appFiles(files);
-  if (!views.length) return findings;
-  const joined = views.map((f) => f.content).join("\n");
-  const interactionIsTheProduct = prd.productType === "utility" || prd.productType === "game";
-  if (interactionIsTheProduct && !INTERACTIVE.test(joined)) {
-    findings.push({
-      criterionId: "primary-workflow-completes",
-      severity: "blocking",
-      message: `${prd.productName} is a ${prd.productType}: the whole product is the interaction, but nothing in the build accepts input or holds state.`,
-      repairHint: `Build the "${prd.primaryWorkflow.name}" workflow for real: labelled inputs bound to React state on the home page, and a result region that renders the computed outcome (${prd.primaryOutcome}).`
-    });
-  }
-  const deadHandlers = (joined.match(DEAD_HANDLER) ?? []).length;
-  const deadLinks = (joined.match(DEAD_LINK) ?? []).length;
-  if (deadHandlers + deadLinks >= 3) {
-    findings.push({
-      criterionId: "controls-do-something",
-      severity: "warning",
-      message: `${deadHandlers + deadLinks} controls are wired to nothing (empty handlers or href="#").`,
-      repairHint: "Give every control real behaviour: navigate with the router, mutate state, or submit the form. Remove any control that has no purpose."
-    });
-  }
-  if (PLACEHOLDER_COPY.test(joined)) {
-    findings.push({
-      criterionId: "real-content",
-      severity: "warning",
-      message: "The build contains placeholder copy where real product content belongs.",
-      repairHint: `Write specific copy for ${prd.productName} (${prd.purpose}). Never ship lorem ipsum, "coming soon", or TODO text.`
-    });
-  }
-  if (prd.formulas.length) {
-    const rendersResult = /(result|outcome|total|due|score|estimate|summary)/i.test(joined);
-    if (!rendersResult) {
-      findings.push({
-        criterionId: "result-rendered",
-        severity: "warning",
-        message: "No result region is rendered, so the calculation never reaches the user.",
-        repairHint: "Render the computed outcome in a clearly labelled result area next to the inputs."
-      });
-    }
-  }
-  return findings;
-}
-var INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
-var init_product_acceptance_server = __esm({
-  "src/server/prd/product-acceptance.server.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    INTERACTIVE = /(useState|useReducer|useForm|onSubmit=|onChange=|onClick=\{(?!\(\)\s*=>\s*\{\s*\}\))|<form\b|<input\b|<select\b|<textarea\b)/;
-    DEAD_HANDLER = /on[A-Z]\w+=\{\s*\(\s*\)\s*=>\s*(\{\s*\}|undefined|null|void 0)\s*\}/g;
-    DEAD_LINK = /href=["']#["']/g;
-    PLACEHOLDER_COPY = /(lorem ipsum|coming soon|todo:|tbd\b|placeholder text|your text here|replace this)/i;
-  }
-});
-
 // src/server/prd/prd-acceptance.server.ts
 var prd_acceptance_server_exports = {};
 __export(prd_acceptance_server_exports, {
   checkPrdStatically: () => checkPrdStatically,
+  checkProductUsefulness: () => checkProductUsefulness,
   prdBrowserScenarios: () => prdBrowserScenarios,
   renderPrdRepairInstruction: () => renderPrdRepairInstruction,
   renderPrdScenarioBlock: () => renderPrdScenarioBlock
@@ -141543,12 +141480,58 @@ function renderPrdRepairInstruction(prd, findings) {
     `Primary workflow: ${prd.primaryWorkflow.name}`
   ].join("\n");
 }
-var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE;
+function appFiles(files) {
+  return files.filter((f) => /^src\/.+\.(tsx|jsx)$/.test(f.path));
+}
+function checkProductUsefulness(prd, files) {
+  const findings = [];
+  const views = appFiles(files);
+  if (!views.length) return findings;
+  const joined = views.map((f) => f.content).join("\n");
+  const interactionIsTheProduct = prd.productType === "utility" || prd.productType === "game";
+  if (interactionIsTheProduct && !INTERACTIVE.test(joined)) {
+    findings.push({
+      criterionId: "primary-workflow-completes",
+      severity: "blocking",
+      message: `${prd.productName} is a ${prd.productType}: the whole product is the interaction, but nothing in the build accepts input or holds state.`,
+      repairHint: `Build the "${prd.primaryWorkflow.name}" workflow for real: labelled inputs bound to React state on the home page, and a result region that renders the computed outcome (${prd.primaryOutcome}).`
+    });
+  }
+  const deadHandlers = (joined.match(DEAD_HANDLER) ?? []).length;
+  const deadLinks = (joined.match(DEAD_LINK) ?? []).length;
+  if (deadHandlers + deadLinks >= 3) {
+    findings.push({
+      criterionId: "controls-do-something",
+      severity: "warning",
+      message: `${deadHandlers + deadLinks} controls are wired to nothing (empty handlers or href="#").`,
+      repairHint: "Give every control real behaviour: navigate with the router, mutate state, or submit the form. Remove any control that has no purpose."
+    });
+  }
+  if (PLACEHOLDER_COPY.test(joined)) {
+    findings.push({
+      criterionId: "real-content",
+      severity: "warning",
+      message: "The build contains placeholder copy where real product content belongs.",
+      repairHint: `Write specific copy for ${prd.productName} (${prd.purpose}). Never ship lorem ipsum, "coming soon", or TODO text.`
+    });
+  }
+  if (prd.formulas.length) {
+    const rendersResult = /(result|outcome|total|due|score|estimate|summary)/i.test(joined);
+    if (!rendersResult) {
+      findings.push({
+        criterionId: "result-rendered",
+        severity: "warning",
+        message: "No result region is rendered, so the calculation never reaches the user.",
+        repairHint: "Render the computed outcome in a clearly labelled result area next to the inputs."
+      });
+    }
+  }
+  return findings;
+}
+var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
-    init_product_acceptance_server();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
       // HomePage.tsx, index.tsx, Landing.tsx… anchoring on two exact filenames
@@ -141607,6 +141590,10 @@ var init_prd_acceptance_server = __esm({
       pending: /(disabled=\{[^}]*pending|isSubmitting|isPending|busy|Saving)/i,
       "delete-confirmation": /(AlertDialog|ConfirmDialog|confirm\(|Are you sure|delete confirmation)/i
     };
+    INTERACTIVE = /(useState|useReducer|useForm|onSubmit=|onChange=|onClick=\{(?!\(\)\s*=>\s*\{\s*\}\))|<form\b|<input\b|<select\b|<textarea\b)/;
+    DEAD_HANDLER = /on[A-Z]\w+=\{\s*\(\s*\)\s*=>\s*(\{\s*\}|undefined|null|void 0)\s*\}/g;
+    DEAD_LINK = /href=["']#["']/g;
+    PLACEHOLDER_COPY = /(lorem ipsum|coming soon|todo:|tbd\b|placeholder text|your text here|replace this)/i;
   }
 });
 
@@ -143962,7 +143949,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144882,7 +144868,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145893,7 +145878,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -169739,6 +169723,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

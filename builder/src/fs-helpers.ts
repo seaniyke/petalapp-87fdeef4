@@ -7,6 +7,12 @@ import { mkdir, readFile, readdir, writeFile, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { healSyntax } from "./syntax-heal.js";
 
+/** Report-only syntax diagnostics; never mutates the verified source. */
+function reportSyntax(files: { path: string; content: string }[], label: string): void {
+  const { notes } = healSyntax(files);
+  if (notes.length > 0) console.warn(`[syntax-report] ${label}: ${notes.join("; ")}`);
+}
+
 export type ProjectFile = { path: string; content: string };
 
 const BUILDS_ROOT = process.env.BUILDS_ROOT ?? "/app/builds";
@@ -31,14 +37,10 @@ export async function materializeProject(
 ): Promise<string> {
   const dir = join(BUILDS_ROOT, buildId);
   await mkdir(dir, { recursive: true });
-  // Pre-flight syntax heal on the exact bytes esbuild will parse. One
-  // malformed import kills the whole build, so this runs unconditionally
-  // regardless of what the app server already repaired.
-  const healed = healSyntax(files);
-  if (healed.notes.length > 0) {
-    console.warn(`[pre-flight-heal] build=${buildId}: ${healed.notes.join("; ")}`);
-  }
-  for (const f of healed.files) {
+  // Report-only: the app server's verified source is authoritative. The
+  // builder never rewrites it; it only reports what the healer WOULD change.
+  reportSyntax(files, `build=${buildId}`);
+  for (const f of files) {
     const full = safeJoin(dir, f.path);
     await mkdir(dirname(full), { recursive: true });
     await writeFile(full, f.content, "utf8");
@@ -78,14 +80,8 @@ export async function healMaterializedProject(root: string): Promise<string[]> {
       content: await readFile(full, "utf8"),
     })),
   );
-  const healed = healSyntax(files);
-
-  await Promise.all(
-    healed.files.map(async (file, index) => {
-      if (file.content === files[index]?.content) return;
-      await writeFile(safeJoin(root, file.path), file.content, "utf8");
-    }),
-  );
+  reportSyntax(files, `root=${root}`);
+  const notes: string[] = [];
 
   // index.html: an external `<script src="/__petal_guard.js?v=N">` left behind
   // by an older turn is a Rollup build input, and Rollup cannot resolve it
@@ -99,11 +95,11 @@ export async function healMaterializedProject(root: string): Promise<string[]> {
       .replace(/<script\b[^>]*__petal_guard\.js[^>]*\/>\s*/gi, "");
     if (cleaned !== indexHtml) {
       await writeFile(indexPath, cleaned, "utf8");
-      healed.notes.push("index.html: removed stale external preview-guard script tag");
+      notes.push("index.html: removed stale external preview-guard script tag");
     }
   }
 
-  return healed.notes;
+  return notes;
 }
 
 
@@ -219,10 +215,8 @@ export async function materializeWorkspace(
     warm = false;
   }
 
-  const healed = healSyntax(files);
-  if (healed.notes.length > 0) {
-    console.warn(`[pre-flight-heal] project=${projectId}: ${healed.notes.join("; ")}`);
-  }
+  reportSyntax(files, `project=${projectId}`);
+  const healed = { files };
 
   const incoming = new Set(healed.files.map((f) => f.path.replace(/^\/+/, "")));
 
