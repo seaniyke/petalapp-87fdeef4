@@ -90469,6 +90469,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS2, ROOT_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader2();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -112934,6 +112935,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
@@ -150037,6 +150039,24 @@ function stitchContinuation(partial, continuation) {
   }
   return done + rest;
 }
+function undefinedNames(file, staged, check) {
+  if (!isSource2(file.path)) return [];
+  const tree = [...staged.filter((f) => f.path !== file.path), file];
+  const r = check(tree, [file.path]);
+  if (r.status !== "failed") return [];
+  return r.issues.filter((i) => i.path === file.path).map((i) => {
+    const name = /Cannot find name '([^']+)'/.exec(i.message)?.[1] ?? "?";
+    const hint = name === "React" ? `\`React.\` is used but React is not imported. Add \`import React from "react"\` or import the specific hooks from "react".` : `It is not imported, not declared in this file, and not a platform global. If it comes from another module, import it using the real signatures listed; otherwise declare it.`;
+    return { path: i.path, name, line: i.line, message: `${i.path}:${i.line}: \`${name}\` is used but declared nowhere. ${hint}` };
+  });
+}
+function safeReactImportRepair(file, diags, reactIsDependency) {
+  if (!reactIsDependency || !diags.length || diags.some((d) => d.name !== "React")) return null;
+  if (/\bReact\b(?!\s*\.)/.test(file.content.replace(/["'`][^"'`\n]*["'`]/g, ""))) return null;
+  if (/import\s+(\*\s+as\s+)?React\b/.test(file.content)) return null;
+  return { path: file.path, content: `import React from "react";
+${file.content}` };
+}
 var DECL, isSource2, isPage, IMPORT;
 var init_work_unit = __esm({
   "src/server/engine/work-unit.ts"() {
@@ -150259,16 +150279,34 @@ async function writePlannedPages(args) {
       whole.push(f);
     }
     if (single) {
+      const validate = (f) => [
+        ...validateUnitImports(f, files).map((d) => d.message),
+        ...args.checkIdentifiers ? undefinedNames(f, files, args.checkIdentifiers).map((d) => d.message) : []
+      ];
       for (let i = 0; i < whole.length; i++) {
-        const diags = validateUnitImports(whole[i], files);
-        if (!diags.length) continue;
-        rec.diagnostics.push(...diags.map((d) => d.message));
-        rec.feedbackRounds++;
-        const fixed = (await ask(feedbackInstruction(instruction, whole[i], diags))).find((x) => x.path === whole[i].path);
-        if (fixed && !await cutOff(fixed) && validateUnitImports(fixed, files).length < diags.length) {
-          whole[i] = fixed;
-          rec.outcome = "corrected";
+        if (args.checkIdentifiers) {
+          const und = undefinedNames(whole[i], files, args.checkIdentifiers);
+          const repaired = safeReactImportRepair(whole[i], und, args.reactIsDependency ?? true);
+          if (repaired) {
+            whole[i] = repaired;
+            rec.diagnostics.push(...und.map((d) => d.message + " [auto: added React import]"));
+            rec.outcome = "corrected";
+          }
         }
+        const diags = validate(whole[i]);
+        if (!diags.length) continue;
+        rec.diagnostics.push(...diags);
+        rec.feedbackRounds++;
+        const asDiag = diags.map((message) => ({ path: whole[i].path, spec: "", message }));
+        const fixed = (await ask(feedbackInstruction(instruction, whole[i], asDiag))).find((x) => x.path === whole[i].path);
+        if (fixed && !await cutOff(fixed)) {
+          const left = validate(fixed);
+          if (left.length < diags.length) {
+            whole[i] = fixed;
+            rec.outcome = left.length ? "failed" : "corrected";
+          }
+          if (left.length) rec.diagnostics.push(...left.map((m) => `still failing after correction: ${m}`));
+        } else rec.outcome = "failed";
       }
     }
     if (whole.length) try {
@@ -152257,6 +152295,7 @@ var init_skills = __esm({
 // src/server/build-checkpoint.server.ts
 var build_checkpoint_server_exports = {};
 __export(build_checkpoint_server_exports, {
+  LIVE_CHECKPOINT_STATUSES: () => LIVE_CHECKPOINT_STATUSES,
   checkpointFiles: () => checkpointFiles,
   checkpointSeedFiles: () => checkpointSeedFiles,
   checkpointUsable: () => checkpointUsable,
@@ -152264,6 +152303,8 @@ __export(build_checkpoint_server_exports, {
   loadResumableCheckpoint: () => loadResumableCheckpoint,
   markCheckpointConsumed: () => markCheckpointConsumed,
   markCheckpointResumable: () => markCheckpointResumable,
+  retireCheckpoint: () => retireCheckpoint,
+  retirementFor: () => retirementFor,
   saveShellCheckpoint: () => saveShellCheckpoint
 });
 async function projectRevision(projectId) {
@@ -152336,7 +152377,7 @@ async function claimCheckpoint(checkpointId, projectId, newTurnId) {
     if (!cp || cp.status !== "resumable") return null;
     const usable = checkpointUsable(cp, await projectRevision(projectId));
     if (!usable.ok) {
-      await db().from("build_checkpoints").update({ status: "discarded", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", cp.id).eq("status", "resumable");
+      await db().from("build_checkpoints").update({ status: "discarded", terminal_outcome: usable.reason.includes("changed") ? "revision_mismatch" : "unusable", closed_at: (/* @__PURE__ */ new Date()).toISOString(), updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("id", cp.id).eq("status", "resumable");
       console.warn(`[checkpoint] discarded ${cp.id}: ${usable.reason}`);
       return null;
     }
@@ -152382,7 +152423,8 @@ function checkpointSeedFiles(cp, shellFiles) {
 }
 async function markCheckpointConsumed(turnId) {
   try {
-    await db().from("build_checkpoints").update({ status: "consumed", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("turn_id", turnId).in("status", ["active", "resuming"]);
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    await db().from("build_checkpoints").update({ status: "consumed", terminal_outcome: "committed", closed_at: now, updated_at: now }).eq("turn_id", turnId).in("status", ["active", "resuming"]);
   } catch {
   }
 }
@@ -152394,12 +152436,381 @@ async function markCheckpointResumable(turnId) {
     return false;
   }
 }
-var db;
+function retirementFor(outcome) {
+  if (outcome === "resumable" || outcome === "worker_lost") return null;
+  return { status: outcome === "committed" ? "consumed" : "discarded", terminal_outcome: outcome.slice(0, 80) };
+}
+async function retireCheckpoint(turnId, outcome) {
+  const r = retirementFor(outcome);
+  if (!r) return false;
+  try {
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    const { data: data2, error } = await db().from("build_checkpoints").update({ ...r, closed_at: now, updated_at: now }).eq("turn_id", turnId).in("status", [...LIVE_CHECKPOINT_STATUSES]).select("id");
+    if (error) console.error("[checkpoint] retire failed", error.message);
+    return Array.isArray(data2) && data2.length > 0;
+  } catch (e) {
+    console.error("[checkpoint] retire failed", e.message);
+    return false;
+  }
+}
+var db, LIVE_CHECKPOINT_STATUSES;
 var init_build_checkpoint_server = __esm({
   "src/server/build-checkpoint.server.ts"() {
     init_define_import_meta_env();
     init_client_server_shim();
     db = () => supabaseAdmin;
+    LIVE_CHECKPOINT_STATUSES = ["active", "resumable", "resuming"];
+  }
+});
+
+// src/server/verification/identifiers.server.ts
+var identifiers_server_exports = {};
+__export(identifiers_server_exports, {
+  IDENTIFIER_CHECK_BUDGET_MS: () => IDENTIFIER_CHECK_BUDGET_MS,
+  checkUndefinedIdentifiers: () => checkUndefinedIdentifiers,
+  isPlatformGlobal: () => isPlatformGlobal
+});
+import ts from "typescript";
+function isPlatformGlobal(name) {
+  return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
+}
+function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
+  const targets = changedPaths.filter((p2) => PARSEABLE2.test(p2));
+  if (targets.length === 0) return { status: "verified", issues: [] };
+  const now = opts.now ?? (() => Date.now());
+  const started = now();
+  const budget = opts.budgetMs ?? IDENTIFIER_CHECK_BUDGET_MS;
+  try {
+    const files = new Map(tree.map((f) => [`/${f.path}`, f.content]));
+    const options = {
+      noEmit: true,
+      noLib: true,
+      allowJs: true,
+      checkJs: false,
+      jsx: ts.JsxEmit.ReactJSX,
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      skipLibCheck: true,
+      types: []
+      // React 17+ JSX transform: tag names are not value identifiers, so
+      // untyped JSX never produces a TS2304 false positive.
+    };
+    const host = {
+      getSourceFile: (name, languageVersion) => {
+        const content = name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name);
+        if (content === void 0) return void 0;
+        return ts.createSourceFile(name, content, languageVersion, true);
+      },
+      getDefaultLibFileName: () => AMBIENT_PATH,
+      writeFile: () => {
+      },
+      getCurrentDirectory: () => "/",
+      getDirectories: () => [],
+      getCanonicalFileName: (f) => f,
+      useCaseSensitiveFileNames: () => true,
+      getNewLine: () => "\n",
+      fileExists: (name) => name === AMBIENT_PATH || files.has(name),
+      readFile: (name) => name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name)
+    };
+    const program = ts.createProgram([AMBIENT_PATH, ...files.keys()], options, host);
+    const wanted = new Set(targets.map((p2) => `/${p2}`));
+    const seen = /* @__PURE__ */ new Set();
+    const issues = [];
+    const diagnostics = [];
+    for (const path of wanted) {
+      const sf = program.getSourceFile(path);
+      if (!sf) return { status: "unavailable", issues: [], reason: `changed file ${path.slice(1)} missing from the proposed tree` };
+      diagnostics.push(...program.getSemanticDiagnostics(sf));
+      if (now() - started > budget) return { status: "unavailable", issues: [], reason: `semantic check exceeded ${budget}ms` };
+    }
+    for (const d of diagnostics) {
+      if (d.code !== CANNOT_FIND_NAME) continue;
+      const file = d.file?.fileName;
+      if (!file || !wanted.has(file)) continue;
+      const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
+      const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
+      if (name && isPlatformGlobal(name)) continue;
+      if (d.file && d.start !== void 0 && inTypePosition(ts, d.file, d.start)) continue;
+      const key = `${file}::${message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const { line } = d.file.getLineAndCharacterOfPosition(d.start ?? 0);
+      issues.push({ path: file.slice(1), line: line + 1, message });
+    }
+    return { status: issues.length ? "failed" : "verified", issues };
+  } catch (e) {
+    const reason = `semantic checker could not run: ${e instanceof Error ? e.message : String(e)}`;
+    console.warn("[identifier-gate] unavailable:", reason);
+    return { status: "unavailable", issues: [], reason };
+  }
+}
+function inTypePosition(ts2, sf, pos) {
+  let hit;
+  const visit = (n) => {
+    if (pos >= n.getStart(sf) && pos < n.getEnd()) {
+      hit = n;
+      ts2.forEachChild(n, visit);
+    }
+  };
+  ts2.forEachChild(sf, visit);
+  for (let n = hit; n; n = n.parent) {
+    if (ts2.isTypeNode(n) || ts2.isInterfaceDeclaration(n) || ts2.isTypeAliasDeclaration(n)) return true;
+    if (ts2.isExpressionWithTypeArguments(n) && n.parent && ts2.isHeritageClause(n.parent) && n.parent.token === ts2.SyntaxKind.ImplementsKeyword) return true;
+    if (ts2.isStatement(n) || ts2.isExpression(n) && !ts2.isIdentifier(n)) break;
+  }
+  return false;
+}
+var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, ES_AND_DOM_GLOBALS, DOM_NAME, AMBIENT_PATH;
+var init_identifiers_server = __esm({
+  "src/server/verification/identifiers.server.ts"() {
+    init_define_import_meta_env();
+    IDENTIFIER_CHECK_BUDGET_MS = 8e3;
+    CANNOT_FIND_NAME = 2304;
+    PARSEABLE2 = /\.(tsx?|jsx?)$/i;
+    AMBIENT_GLOBALS = `
+declare var console: any;
+declare var window: any;
+declare var document: any;
+declare var navigator: any;
+declare var location: any;
+declare var history: any;
+declare var localStorage: any;
+declare var sessionStorage: any;
+declare var fetch: any;
+declare var setTimeout: any;
+declare var setInterval: any;
+declare var clearTimeout: any;
+declare var clearInterval: any;
+declare var setImmediate: any;
+declare var clearImmediate: any;
+declare var requestAnimationFrame: any;
+declare var cancelAnimationFrame: any;
+declare var requestIdleCallback: any;
+declare var queueMicrotask: any;
+declare var structuredClone: any;
+declare var alert: any;
+declare var confirm: any;
+declare var prompt: any;
+declare var atob: any;
+declare var btoa: any;
+declare var crypto: any;
+declare var performance: any;
+declare var globalThis: any;
+declare var process: any;
+declare var Buffer: any;
+declare var module: any;
+declare var require: any;
+declare var exports: any;
+declare var __dirname: any;
+declare var __filename: any;
+declare var global: any;
+declare var undefined: undefined;
+declare var NaN: number;
+declare var Infinity: number;
+declare var parseInt: any;
+declare var parseFloat: any;
+declare var isNaN: any;
+declare var isFinite: any;
+declare var encodeURI: any;
+declare var decodeURI: any;
+declare var encodeURIComponent: any;
+declare var decodeURIComponent: any;
+declare type Console = any;
+declare type Window = any;
+declare type Document = any;
+declare type Navigator = any;
+declare type Storage = any;
+declare type Response = any;
+declare type Request = any;
+declare type Headers = any;
+declare type URL = any;
+declare type URLSearchParams = any;
+declare type FormData = any;
+declare type Blob = any;
+declare type File = any;
+declare type FileReader = any;
+declare type Event = any;
+declare type EventTarget = any;
+declare type CustomEvent = any;
+declare type KeyboardEvent = any;
+declare type MouseEvent = any;
+declare type PointerEvent = any;
+declare type TouchEvent = any;
+declare type DragEvent = any;
+declare type FocusEvent = any;
+declare type InputEvent = any;
+declare type SubmitEvent = any;
+declare type AnimationEvent = any;
+declare type TransitionEvent = any;
+declare type WheelEvent = any;
+declare type ClipboardEvent = any;
+declare type MediaQueryList = any;
+declare type HTMLElement = any;
+declare type HTMLInputElement = any;
+declare type HTMLTextAreaElement = any;
+declare type HTMLSelectElement = any;
+declare type HTMLFormElement = any;
+declare type HTMLAnchorElement = any;
+declare type HTMLButtonElement = any;
+declare type HTMLImageElement = any;
+declare type HTMLVideoElement = any;
+declare type HTMLCanvasElement = any;
+declare type HTMLDivElement = any;
+declare type HTMLSpanElement = any;
+declare type SVGElement = any;
+declare type SVGSVGElement = any;
+declare type Element = any;
+declare type Node = any;
+declare type NodeList = any;
+declare type NodeListOf<T> = any;
+declare type MutationObserver = any;
+declare type ResizeObserver = any;
+declare type ResizeObserverEntry = any;
+declare type IntersectionObserver = any;
+declare type IntersectionObserverEntry = any;
+declare type AbortController = any;
+declare type AbortSignal = any;
+declare type TextEncoder = any;
+declare type TextDecoder = any;
+declare type WebSocket = any;
+declare type Worker = any;
+declare type Image = any;
+declare type Audio = any;
+declare type Geolocation = any;
+declare type CanvasRenderingContext2D = any;
+declare type WebGLRenderingContext = any;
+declare type RequestInit = any;
+declare type ResponseInit = any;
+declare type HeadersInit = any;
+declare type BodyInit = any;
+declare type Timer = any;
+declare type Timeout = any;
+declare namespace NodeJS {
+  type Timeout = any;
+  type Timer = any;
+  type ProcessEnv = any;
+}
+declare namespace JSX {
+  interface IntrinsicElements { [elemName: string]: any }
+  interface Element {}
+  interface ElementChildrenAttribute { children: {} }
+}
+declare module "*";
+`;
+    ES_AND_DOM_GLOBALS = /* @__PURE__ */ new Set([
+      "Date",
+      "Math",
+      "JSON",
+      "Intl",
+      "Reflect",
+      "Proxy",
+      "Symbol",
+      "Object",
+      "Array",
+      "String",
+      "Number",
+      "Boolean",
+      "BigInt",
+      "Function",
+      "RegExp",
+      "Error",
+      "TypeError",
+      "RangeError",
+      "SyntaxError",
+      "ReferenceError",
+      "EvalError",
+      "URIError",
+      "AggregateError",
+      "Map",
+      "Set",
+      "WeakMap",
+      "WeakSet",
+      "WeakRef",
+      "FinalizationRegistry",
+      "Promise",
+      "ArrayBuffer",
+      "SharedArrayBuffer",
+      "DataView",
+      "Int8Array",
+      "Uint8Array",
+      "Uint8ClampedArray",
+      "Int16Array",
+      "Uint16Array",
+      "Int32Array",
+      "Uint32Array",
+      "Float32Array",
+      "Float64Array",
+      "BigInt64Array",
+      "BigUint64Array",
+      "Atomics",
+      "Iterator",
+      "Record",
+      "Partial",
+      "Required",
+      "Readonly",
+      "Pick",
+      "Omit",
+      "Exclude",
+      "Extract",
+      "NonNullable",
+      "ReturnType",
+      "Parameters",
+      "InstanceType",
+      "Awaited",
+      "PropertyKey",
+      "ArrayLike",
+      "PromiseLike",
+      "Iterable",
+      "AsyncIterable",
+      "screen",
+      "innerWidth",
+      "innerHeight",
+      "scrollX",
+      "scrollY",
+      "scrollTo",
+      "matchMedia",
+      "getComputedStyle",
+      "open",
+      "close",
+      "print",
+      "self",
+      "top",
+      "parent",
+      "frames",
+      "customElements",
+      "indexedDB",
+      "caches",
+      "origin",
+      "devicePixelRatio",
+      "speechSynthesis",
+      "Notification",
+      "DOMParser",
+      "XMLHttpRequest",
+      "Option",
+      "Range",
+      "Selection",
+      "ShadowRoot",
+      "DocumentFragment",
+      "DOMRect",
+      "Touch",
+      "EventSource",
+      "BroadcastChannel",
+      "MessageChannel",
+      "PerformanceObserver",
+      "CSS",
+      "CSSStyleDeclaration",
+      "ImageData",
+      "OffscreenCanvas",
+      "ReadableStream",
+      "WritableStream",
+      "TransformStream",
+      "Deno",
+      "Bun",
+      "NodeJS"
+    ]);
+    DOM_NAME = /^(HTML\w*Element|SVG\w*Element|\w+Event|\w+Observer(Entry)?|\w+Element|\w+List|DOM\w+|Media\w+|Speech\w+|RTC\w+|WebGL\w+|Web\w+|GPU\w+|Canvas\w+|Audio\w+|Video\w+|Clipboard\w*|Intl\w*)$/;
+    AMBIENT_PATH = "/petal-ambient-globals.d.ts";
   }
 });
 
@@ -153335,352 +153746,6 @@ var init_design_system_lint_server = __esm({
       "input",
       "ring"
     ]);
-  }
-});
-
-// src/server/verification/identifiers.server.ts
-import ts from "typescript";
-function isPlatformGlobal(name) {
-  return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
-}
-function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
-  const targets = changedPaths.filter((p2) => PARSEABLE2.test(p2));
-  if (targets.length === 0) return { status: "verified", issues: [] };
-  const now = opts.now ?? (() => Date.now());
-  const started = now();
-  const budget = opts.budgetMs ?? IDENTIFIER_CHECK_BUDGET_MS;
-  try {
-    const files = new Map(tree.map((f) => [`/${f.path}`, f.content]));
-    const options = {
-      noEmit: true,
-      noLib: true,
-      allowJs: true,
-      checkJs: false,
-      jsx: ts.JsxEmit.ReactJSX,
-      target: ts.ScriptTarget.ESNext,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      skipLibCheck: true,
-      types: []
-      // React 17+ JSX transform: tag names are not value identifiers, so
-      // untyped JSX never produces a TS2304 false positive.
-    };
-    const host = {
-      getSourceFile: (name, languageVersion) => {
-        const content = name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name);
-        if (content === void 0) return void 0;
-        return ts.createSourceFile(name, content, languageVersion, true);
-      },
-      getDefaultLibFileName: () => AMBIENT_PATH,
-      writeFile: () => {
-      },
-      getCurrentDirectory: () => "/",
-      getDirectories: () => [],
-      getCanonicalFileName: (f) => f,
-      useCaseSensitiveFileNames: () => true,
-      getNewLine: () => "\n",
-      fileExists: (name) => name === AMBIENT_PATH || files.has(name),
-      readFile: (name) => name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name)
-    };
-    const program = ts.createProgram([AMBIENT_PATH, ...files.keys()], options, host);
-    const wanted = new Set(targets.map((p2) => `/${p2}`));
-    const seen = /* @__PURE__ */ new Set();
-    const issues = [];
-    const diagnostics = [];
-    for (const path of wanted) {
-      const sf = program.getSourceFile(path);
-      if (!sf) return { status: "unavailable", issues: [], reason: `changed file ${path.slice(1)} missing from the proposed tree` };
-      diagnostics.push(...program.getSemanticDiagnostics(sf));
-      if (now() - started > budget) return { status: "unavailable", issues: [], reason: `semantic check exceeded ${budget}ms` };
-    }
-    for (const d of diagnostics) {
-      if (d.code !== CANNOT_FIND_NAME) continue;
-      const file = d.file?.fileName;
-      if (!file || !wanted.has(file)) continue;
-      const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
-      const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
-      if (name && isPlatformGlobal(name)) continue;
-      if (d.file && d.start !== void 0 && inTypePosition(ts, d.file, d.start)) continue;
-      const key = `${file}::${message}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const { line } = d.file.getLineAndCharacterOfPosition(d.start ?? 0);
-      issues.push({ path: file.slice(1), line: line + 1, message });
-    }
-    return { status: issues.length ? "failed" : "verified", issues };
-  } catch (e) {
-    const reason = `semantic checker could not run: ${e instanceof Error ? e.message : String(e)}`;
-    console.warn("[identifier-gate] unavailable:", reason);
-    return { status: "unavailable", issues: [], reason };
-  }
-}
-function inTypePosition(ts2, sf, pos) {
-  let hit;
-  const visit = (n) => {
-    if (pos >= n.getStart(sf) && pos < n.getEnd()) {
-      hit = n;
-      ts2.forEachChild(n, visit);
-    }
-  };
-  ts2.forEachChild(sf, visit);
-  for (let n = hit; n; n = n.parent) {
-    if (ts2.isTypeNode(n) || ts2.isInterfaceDeclaration(n) || ts2.isTypeAliasDeclaration(n)) return true;
-    if (ts2.isExpressionWithTypeArguments(n) && n.parent && ts2.isHeritageClause(n.parent) && n.parent.token === ts2.SyntaxKind.ImplementsKeyword) return true;
-    if (ts2.isStatement(n) || ts2.isExpression(n) && !ts2.isIdentifier(n)) break;
-  }
-  return false;
-}
-var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, ES_AND_DOM_GLOBALS, DOM_NAME, AMBIENT_PATH;
-var init_identifiers_server = __esm({
-  "src/server/verification/identifiers.server.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    IDENTIFIER_CHECK_BUDGET_MS = 8e3;
-    CANNOT_FIND_NAME = 2304;
-    PARSEABLE2 = /\.(tsx?|jsx?)$/i;
-    AMBIENT_GLOBALS = `
-declare var console: any;
-declare var window: any;
-declare var document: any;
-declare var navigator: any;
-declare var location: any;
-declare var history: any;
-declare var localStorage: any;
-declare var sessionStorage: any;
-declare var fetch: any;
-declare var setTimeout: any;
-declare var setInterval: any;
-declare var clearTimeout: any;
-declare var clearInterval: any;
-declare var setImmediate: any;
-declare var clearImmediate: any;
-declare var requestAnimationFrame: any;
-declare var cancelAnimationFrame: any;
-declare var requestIdleCallback: any;
-declare var queueMicrotask: any;
-declare var structuredClone: any;
-declare var alert: any;
-declare var confirm: any;
-declare var prompt: any;
-declare var atob: any;
-declare var btoa: any;
-declare var crypto: any;
-declare var performance: any;
-declare var globalThis: any;
-declare var process: any;
-declare var Buffer: any;
-declare var module: any;
-declare var require: any;
-declare var exports: any;
-declare var __dirname: any;
-declare var __filename: any;
-declare var global: any;
-declare var undefined: undefined;
-declare var NaN: number;
-declare var Infinity: number;
-declare var parseInt: any;
-declare var parseFloat: any;
-declare var isNaN: any;
-declare var isFinite: any;
-declare var encodeURI: any;
-declare var decodeURI: any;
-declare var encodeURIComponent: any;
-declare var decodeURIComponent: any;
-declare type Console = any;
-declare type Window = any;
-declare type Document = any;
-declare type Navigator = any;
-declare type Storage = any;
-declare type Response = any;
-declare type Request = any;
-declare type Headers = any;
-declare type URL = any;
-declare type URLSearchParams = any;
-declare type FormData = any;
-declare type Blob = any;
-declare type File = any;
-declare type FileReader = any;
-declare type Event = any;
-declare type EventTarget = any;
-declare type CustomEvent = any;
-declare type KeyboardEvent = any;
-declare type MouseEvent = any;
-declare type PointerEvent = any;
-declare type TouchEvent = any;
-declare type DragEvent = any;
-declare type FocusEvent = any;
-declare type InputEvent = any;
-declare type SubmitEvent = any;
-declare type AnimationEvent = any;
-declare type TransitionEvent = any;
-declare type WheelEvent = any;
-declare type ClipboardEvent = any;
-declare type MediaQueryList = any;
-declare type HTMLElement = any;
-declare type HTMLInputElement = any;
-declare type HTMLTextAreaElement = any;
-declare type HTMLSelectElement = any;
-declare type HTMLFormElement = any;
-declare type HTMLAnchorElement = any;
-declare type HTMLButtonElement = any;
-declare type HTMLImageElement = any;
-declare type HTMLVideoElement = any;
-declare type HTMLCanvasElement = any;
-declare type HTMLDivElement = any;
-declare type HTMLSpanElement = any;
-declare type SVGElement = any;
-declare type SVGSVGElement = any;
-declare type Element = any;
-declare type Node = any;
-declare type NodeList = any;
-declare type NodeListOf<T> = any;
-declare type MutationObserver = any;
-declare type ResizeObserver = any;
-declare type ResizeObserverEntry = any;
-declare type IntersectionObserver = any;
-declare type IntersectionObserverEntry = any;
-declare type AbortController = any;
-declare type AbortSignal = any;
-declare type TextEncoder = any;
-declare type TextDecoder = any;
-declare type WebSocket = any;
-declare type Worker = any;
-declare type Image = any;
-declare type Audio = any;
-declare type Geolocation = any;
-declare type CanvasRenderingContext2D = any;
-declare type WebGLRenderingContext = any;
-declare type RequestInit = any;
-declare type ResponseInit = any;
-declare type HeadersInit = any;
-declare type BodyInit = any;
-declare type Timer = any;
-declare type Timeout = any;
-declare namespace NodeJS {
-  type Timeout = any;
-  type Timer = any;
-  type ProcessEnv = any;
-}
-declare namespace JSX {
-  interface IntrinsicElements { [elemName: string]: any }
-  interface Element {}
-  interface ElementChildrenAttribute { children: {} }
-}
-declare module "*";
-`;
-    ES_AND_DOM_GLOBALS = /* @__PURE__ */ new Set([
-      "Date",
-      "Math",
-      "JSON",
-      "Intl",
-      "Reflect",
-      "Proxy",
-      "Symbol",
-      "Object",
-      "Array",
-      "String",
-      "Number",
-      "Boolean",
-      "BigInt",
-      "Function",
-      "RegExp",
-      "Error",
-      "TypeError",
-      "RangeError",
-      "SyntaxError",
-      "ReferenceError",
-      "EvalError",
-      "URIError",
-      "AggregateError",
-      "Map",
-      "Set",
-      "WeakMap",
-      "WeakSet",
-      "WeakRef",
-      "FinalizationRegistry",
-      "Promise",
-      "ArrayBuffer",
-      "SharedArrayBuffer",
-      "DataView",
-      "Int8Array",
-      "Uint8Array",
-      "Uint8ClampedArray",
-      "Int16Array",
-      "Uint16Array",
-      "Int32Array",
-      "Uint32Array",
-      "Float32Array",
-      "Float64Array",
-      "BigInt64Array",
-      "BigUint64Array",
-      "Atomics",
-      "Iterator",
-      "Record",
-      "Partial",
-      "Required",
-      "Readonly",
-      "Pick",
-      "Omit",
-      "Exclude",
-      "Extract",
-      "NonNullable",
-      "ReturnType",
-      "Parameters",
-      "InstanceType",
-      "Awaited",
-      "PropertyKey",
-      "ArrayLike",
-      "PromiseLike",
-      "Iterable",
-      "AsyncIterable",
-      "screen",
-      "innerWidth",
-      "innerHeight",
-      "scrollX",
-      "scrollY",
-      "scrollTo",
-      "matchMedia",
-      "getComputedStyle",
-      "open",
-      "close",
-      "print",
-      "self",
-      "top",
-      "parent",
-      "frames",
-      "customElements",
-      "indexedDB",
-      "caches",
-      "origin",
-      "devicePixelRatio",
-      "speechSynthesis",
-      "Notification",
-      "DOMParser",
-      "XMLHttpRequest",
-      "Option",
-      "Range",
-      "Selection",
-      "ShadowRoot",
-      "DocumentFragment",
-      "DOMRect",
-      "Touch",
-      "EventSource",
-      "BroadcastChannel",
-      "MessageChannel",
-      "PerformanceObserver",
-      "CSS",
-      "CSSStyleDeclaration",
-      "ImageData",
-      "OffscreenCanvas",
-      "ReadableStream",
-      "WritableStream",
-      "TransformStream",
-      "Deno",
-      "Bun",
-      "NodeJS"
-    ]);
-    DOM_NAME = /^(HTML\w*Element|SVG\w*Element|\w+Event|\w+Observer(Entry)?|\w+Element|\w+List|DOM\w+|Media\w+|Speech\w+|RTC\w+|WebGL\w+|Web\w+|GPU\w+|Canvas\w+|Audio\w+|Video\w+|Clipboard\w*|Intl\w*)$/;
-    AMBIENT_PATH = "/petal-ambient-globals.d.ts";
   }
 });
 
@@ -178337,6 +178402,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const cutOffPages = /* @__PURE__ */ new Set();
             const { assessPageComplexity: assessPageComplexity2 } = await Promise.resolve().then(() => (init_complexity(), complexity_exports));
             const pageProviderFailures = [];
+            const { checkUndefinedIdentifiers: checkIdsForUnits } = await Promise.resolve().then(() => (init_identifiers_server(), identifiers_server_exports));
             const done = await writePlannedPages2({
               pages,
               decide: (p2, truncatedBefore) => assessPageComplexity2({
@@ -178377,6 +178443,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 return { files: r.files, created: r.created };
               },
               // Per-unit record: observable progress + economics evidence.
+              checkIdentifiers: (tree, changed) => checkIdsForUnits(tree, changed),
               onUnit: (u) => {
                 (turnStrategy.workUnits ??= []).push(u);
                 if (u.outcome === "skipped_done") return;
@@ -180190,6 +180257,10 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         if (txCommitted && checkpointTurnId) {
           const { markCheckpointConsumed: markCheckpointConsumed2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
           await markCheckpointConsumed2(checkpointTurnId);
+        } else if (checkpointTurnId && txResult.outcome.status !== "committed") {
+          const { retireCheckpoint: retireCheckpoint2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
+          const oc = txResult.outcome;
+          await retireCheckpoint2(checkpointTurnId, oc.reason ?? oc.status);
         }
         if (txResult.outcome.status === "committed") {
           const { finalDepth: finalDepth2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));

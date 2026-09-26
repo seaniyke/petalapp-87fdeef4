@@ -151,7 +151,7 @@ export async function claimCheckpoint(checkpointId: string, projectId: string, n
     if (!cp || cp.status !== "resumable") return null;
     const usable = checkpointUsable(cp, await projectRevision(projectId));
     if (!usable.ok) {
-      await db().from("build_checkpoints").update({ status: "discarded", updated_at: new Date().toISOString() }).eq("id", cp.id).eq("status", "resumable");
+      await db().from("build_checkpoints").update({ status: "discarded", terminal_outcome: usable.reason.includes("changed") ? "revision_mismatch" : "unusable", closed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", cp.id).eq("status", "resumable");
       console.warn(`[checkpoint] discarded ${cp.id}: ${usable.reason}`);
       return null;
     }
@@ -216,7 +216,8 @@ export function checkpointSeedFiles(cp: Pick<Checkpoint, "pages">, shellFiles: P
 
 export async function markCheckpointConsumed(turnId: string): Promise<void> {
   try {
-    await db().from("build_checkpoints").update({ status: "consumed", updated_at: new Date().toISOString() }).eq("turn_id", turnId).in("status", ["active", "resuming"]);
+    const now = new Date().toISOString();
+    await db().from("build_checkpoints").update({ status: "consumed", terminal_outcome: "committed", closed_at: now, updated_at: now }).eq("turn_id", turnId).in("status", ["active", "resuming"]);
   } catch {
     /* best-effort */
   }
@@ -235,6 +236,41 @@ export async function markCheckpointResumable(turnId: string): Promise<boolean> 
       .maybeSingle();
     return Boolean(data);
   } catch {
+    return false;
+  }
+}
+
+/** Checkpoint statuses that are still live (may be resumed or written). */
+export const LIVE_CHECKPOINT_STATUSES = ["active", "resumable", "resuming"] as const;
+
+/** Pure: the terminal state a live checkpoint takes when its turn ends.
+ *  Committed → consumed; every other terminal outcome → discarded with the
+ *  reason kept. Transient infrastructure loss is NOT terminal (it goes to
+ *  resumable via markCheckpointResumable) and returns null here. */
+export function retirementFor(outcome: string): { status: "consumed" | "discarded"; terminal_outcome: string } | null {
+  if (outcome === "resumable" || outcome === "worker_lost") return null;
+  return { status: outcome === "committed" ? "consumed" : "discarded", terminal_outcome: outcome.slice(0, 80) };
+}
+
+/**
+ * Close this turn's live checkpoint with its terminal outcome. The row (and
+ * its saved pages) is kept as evidence; it just can never be resumed again.
+ */
+export async function retireCheckpoint(turnId: string, outcome: string): Promise<boolean> {
+  const r = retirementFor(outcome);
+  if (!r) return false;
+  try {
+    const now = new Date().toISOString();
+    const { data, error } = await db()
+      .from("build_checkpoints")
+      .update({ ...r, closed_at: now, updated_at: now })
+      .eq("turn_id", turnId)
+      .in("status", [...LIVE_CHECKPOINT_STATUSES])
+      .select("id");
+    if (error) console.error("[checkpoint] retire failed", error.message);
+    return Array.isArray(data) && data.length > 0;
+  } catch (e) {
+    console.error("[checkpoint] retire failed", (e as Error).message);
     return false;
   }
 }

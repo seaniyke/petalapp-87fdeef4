@@ -4767,6 +4767,7 @@ async function handleGenerateRequestCore(
             const cutOffPages = new Set<string>();
             const { assessPageComplexity } = await import("@/server/execution/complexity");
             const pageProviderFailures: Array<{ path: string; status: number }> = [];
+            const { checkUndefinedIdentifiers: checkIdsForUnits } = await import("@/server/verification/identifiers.server");
             const done = await writePlannedPages({
               pages,
               decide: (p, truncatedBefore) =>
@@ -4809,7 +4810,8 @@ async function handleGenerateRequestCore(
                 return { files: r.files, created: r.created };
               },
               // Per-unit record: observable progress + economics evidence.
-              onUnit: (u) => {
+              checkIdentifiers: (tree, changed) => checkIdsForUnits(tree, changed),
+          onUnit: (u) => {
                 ((turnStrategy.workUnits ??= []) as unknown[]).push(u);
                 if (u.outcome === "skipped_done") return;
                 controller.enqueue(encoder.encode(sse({ type: "timeline", step: "work_unit", outcome: u.outcome === "failed" ? "failed" : "ok", message: `${u.kind} ${u.target}: ${u.outcome}${u.feedbackRounds ? ` after ${u.feedbackRounds} correction` : ""}${u.continued ? " (continued, not regenerated)" : ""}`, ts: Date.now() })));
@@ -7217,6 +7219,12 @@ async function handleGenerateRequestCore(
         if (txCommitted && checkpointTurnId) {
           const { markCheckpointConsumed } = await import("@/server/build-checkpoint.server");
           await markCheckpointConsumed(checkpointTurnId);
+        } else if (checkpointTurnId && txResult.outcome.status !== "committed") {
+          // Final verification (or commit) refused this turn: close its saved
+          // progress with the outcome so it can never look resumable. Evidence kept.
+          const { retireCheckpoint } = await import("@/server/build-checkpoint.server");
+          const oc = txResult.outcome as { status: string; reason?: string };
+          await retireCheckpoint(checkpointTurnId, oc.reason ?? oc.status);
         }
         // FINAL execution depth: classifier's initial depth, raised (never
         // lowered) by deterministic impact analysis of what actually changed.

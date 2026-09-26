@@ -1,0 +1,1 @@
+ALTER TABLE public.build_checkpoints ADD COLUMN IF NOT EXISTS terminal_outcome text, ADD COLUMN IF NOT EXISTS closed_at timestamptz;
