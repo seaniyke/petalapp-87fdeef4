@@ -90469,7 +90469,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS2, ROOT_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader2();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -149889,186 +149888,6 @@ var init_lifecycle = __esm({
   }
 });
 
-// src/server/engine/work-unit.ts
-function exportSignature(path, content) {
-  const named = /* @__PURE__ */ new Set();
-  const types = /* @__PURE__ */ new Set();
-  const functions = /* @__PURE__ */ new Set();
-  for (const m of content.matchAll(DECL)) {
-    const kind = m[1];
-    const name = m[2];
-    if (kind === "type" || kind === "interface") types.add(name);
-    else {
-      named.add(name);
-      if (kind.startsWith("function")) functions.add(name);
-    }
-  }
-  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
-    for (const part of m[2].split(",")) {
-      const raw = part.trim();
-      if (!raw) continue;
-      const isType = Boolean(m[1]) || raw.startsWith("type ");
-      const exported = raw.replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
-      if (exported === "default") continue;
-      (isType ? types : named).add(exported);
-    }
-  }
-  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}\s*from/g)) {
-    for (const part of m[2].split(",")) {
-      const exported = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
-      if (exported && exported !== "default") (m[1] ? types : named).add(exported);
-    }
-  }
-  const hasDefault = /export\s+default\b/.test(content) || /export\s*\{[^}]*\bas\s+default\b[^}]*\}/.test(content);
-  const components = [...named].filter((n) => /^[A-Z][a-z0-9]/.test(n) && !/^[A-Z0-9_]+$/.test(n));
-  return {
-    path,
-    hasDefault,
-    named: [...named].sort(),
-    components: components.sort(),
-    functions: [...functions].sort(),
-    types: [...types].sort()
-  };
-}
-function describeSignature(sig) {
-  const alias = "@/" + sig.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "");
-  const parts = [];
-  if (sig.named.length) parts.push(`named { ${sig.named.slice(0, 30).join(", ")} }`);
-  if (sig.types.length) parts.push(`types { ${sig.types.slice(0, 15).join(", ")} }`);
-  parts.push(sig.hasDefault ? "HAS a default export" : "NO default export");
-  return `- ${alias}: ${parts.join("; ")}`;
-}
-function sharedSignatures(files) {
-  return files.filter(
-    (f) => isSource2(f.path) && f.path.startsWith("src/") && !isPage(f.path) && !f.path.startsWith("src/components/ui/") && !f.path.startsWith("src/integrations/supabase/") && !/^src\/(main|App)\.tsx$/.test(f.path) && !/\.d\.ts$/.test(f.path)
-  ).map((f) => exportSignature(f.path, f.content)).filter((s) => s.named.length || s.hasDefault || s.types.length).sort((a2, b) => a2.path.localeCompare(b.path));
-}
-function signatureContext(files) {
-  const sigs = sharedSignatures(files);
-  if (!sigs.length) return "";
-  return [
-    "REAL EXPORT SIGNATURES of the modules that already exist (import them exactly like this \u2014 a module with NO default export must be imported with braces):",
-    ...sigs.slice(0, 80).map(describeSignature)
-  ].join("\n");
-}
-function resolveStaged(from, spec, byPath) {
-  const hit = resolveSpecifier2(from, spec, new Set(byPath.keys()));
-  if (!hit) return null;
-  return typeof hit === "string" ? hit : null;
-}
-function validateUnitImports(file, staged) {
-  if (!isSource2(file.path)) return [];
-  const byPath = new Map(staged.map((f) => [f.path, f.content]));
-  byPath.set(file.path, file.content);
-  const out = [];
-  IMPORT.lastIndex = 0;
-  let m;
-  while (m = IMPORT.exec(file.content)) {
-    const typeOnly = Boolean(m[1]);
-    const def = m[2];
-    const spec = m[4];
-    if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
-    if (/\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
-    const target = resolveStaged(file.path, spec, byPath);
-    if (!target) {
-      out.push({
-        path: file.path,
-        spec,
-        message: `"${spec}" does not exist. Import only from the existing modules listed in the signatures, or define it inside ${file.path}.`
-      });
-      continue;
-    }
-    if (typeOnly || !isSource2(target)) continue;
-    const sig = exportSignature(target, byPath.get(target) ?? "");
-    const avail = sig.named.length ? `Available named exports: { ${sig.named.slice(0, 20).join(", ")} }.` : "";
-    if (def && !sig.hasDefault) {
-      out.push({
-        path: file.path,
-        spec,
-        message: `"${spec}" has NO default export, so \`import ${def} from "${spec}"\` is invalid. ${avail}${sig.named.includes(def) ? ` Use \`import { ${def} } from "${spec}"\`.` : ""}`
-      });
-    }
-    const names = (m[3] ?? "").replace(/[{}]/g, "").split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("type ")).map((s) => s.split(/\s+as\s+/)[0].trim());
-    const all = /* @__PURE__ */ new Set([...sig.named, ...sig.types]);
-    const missing = names.filter((n) => n !== "default" && !all.has(n));
-    if (missing.length) {
-      out.push({
-        path: file.path,
-        spec,
-        message: `"${spec}" does not export ${missing.map((n) => `\`${n}\``).join(", ")}. ${avail}${sig.hasDefault ? " It has a default export." : ""}`
-      });
-    }
-  }
-  return out;
-}
-function feedbackInstruction(original, file, diags) {
-  return [
-    original,
-    "",
-    "IMMEDIATE VALIDATION FEEDBACK \u2014 your previous answer for this file failed these exact checks against the real project:",
-    ...diags.map((d) => `- ${d.message}`),
-    "Rewrite the SAME file, complete, fixing only these problems. Keep everything else as it was.",
-    `Your previous version of ${file.path}:`,
-    "```tsx",
-    file.content,
-    "```"
-  ].join("\n");
-}
-function completedPortion(partial) {
-  const cut = partial.lastIndexOf("\n");
-  return cut === -1 ? "" : partial.slice(0, cut + 1);
-}
-function continuationInstruction(target, partial) {
-  const done = completedPortion(partial);
-  return [
-    `CONTINUATION: your answer for ${target} was cut off. The completed portion is below.`,
-    `WRITE SCOPE: exactly one file \u2014 write it as ${target}, but its content must be ONLY the remaining source that comes AFTER the last line shown, so that (completed portion + your answer) is the whole file.`,
-    "Do not repeat any line already written. Do not add imports that are already present. Finish every open JSX element, function and the default export.",
-    "Completed portion:",
-    "```tsx",
-    done,
-    "```"
-  ].join("\n");
-}
-function stitchContinuation(partial, continuation) {
-  const done = completedPortion(partial);
-  let rest = continuation.replace(/^\s*\n/, "");
-  const lastLine = done.trimEnd().split("\n").pop()?.trim();
-  if (lastLine && rest.trimStart().startsWith(lastLine) && lastLine.length > 8) {
-    rest = rest.trimStart().slice(lastLine.length).replace(/^\s*\n/, "");
-  }
-  return done + rest;
-}
-function undefinedNames(file, staged, check) {
-  if (!isSource2(file.path)) return [];
-  const tree = [...staged.filter((f) => f.path !== file.path), file];
-  const r = check(tree, [file.path]);
-  if (r.status !== "failed") return [];
-  return r.issues.filter((i) => i.path === file.path).map((i) => {
-    const name = /Cannot find name '([^']+)'/.exec(i.message)?.[1] ?? "?";
-    const hint = name === "React" ? `\`React.\` is used but React is not imported. Add \`import React from "react"\` or import the specific hooks from "react".` : `It is not imported, not declared in this file, and not a platform global. If it comes from another module, import it using the real signatures listed; otherwise declare it.`;
-    return { path: i.path, name, line: i.line, message: `${i.path}:${i.line}: \`${name}\` is used but declared nowhere. ${hint}` };
-  });
-}
-function safeReactImportRepair(file, diags, reactIsDependency) {
-  if (!reactIsDependency || !diags.length || diags.some((d) => d.name !== "React")) return null;
-  if (/\bReact\b(?!\s*\.)/.test(file.content.replace(/["'`][^"'`\n]*["'`]/g, ""))) return null;
-  if (/import\s+(\*\s+as\s+)?React\b/.test(file.content)) return null;
-  return { path: file.path, content: `import React from "react";
-${file.content}` };
-}
-var DECL, isSource2, isPage, IMPORT;
-var init_work_unit = __esm({
-  "src/server/engine/work-unit.ts"() {
-    init_define_import_meta_env();
-    init_structural_deps();
-    DECL = /export\s+(?:declare\s+)?(?:async\s+)?(function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
-    isSource2 = (p2) => /\.(tsx?|jsx?)$/.test(p2);
-    isPage = (p2) => p2.startsWith("src/pages/");
-    IMPORT = /import\s+(type\s+)?([\w$]+)?\s*,?\s*(\{[^}]*\})?\s*(?:\*\s+as\s+[\w$]+\s*)?from\s*["']([^"']+)["']/g;
-  }
-});
-
 // src/server/engine/write.ts
 var write_exports = {};
 __export(write_exports, {
@@ -150079,14 +149898,12 @@ __export(write_exports, {
   mapBounded: () => mapBounded,
   missingSections: () => missingSections,
   pageInstruction: () => pageInstruction,
-  pagesReferencedByRouter: () => pagesReferencedByRouter,
   projectContract: () => projectContract,
   routerInstruction: () => routerInstruction,
   sectionInstruction: () => sectionInstruction,
   sharedFiles: () => sharedFiles,
   sharedModules: () => sharedModules,
-  targetOf: () => targetOf,
-  writePlannedPages: () => writePlannedPages
+  targetOf: () => targetOf
 });
 function projectContract(files) {
   let deps = [];
@@ -150194,198 +150011,6 @@ function frameIsComplete(files, pageCount = 2) {
 function targetOf(instruction) {
   return /as (src\/(?:pages|components)\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? /the page file (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
 }
-function hasRealPage(files, file) {
-  const f = files.find((x) => x.path === file);
-  return Boolean(f && f.content.trim().length > 0 && !isPlaceholderFile(f.content));
-}
-function pagesReferencedByRouter(files, known) {
-  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
-  const knownFiles = new Set(known.map((p2) => p2.file));
-  const out = [];
-  for (const m of app.matchAll(/from\s+["']@\/pages\/([A-Za-z][\w-]*)(?:\.tsx)?["']/g)) {
-    const name = m[1];
-    const file = `src/pages/${name}.tsx`;
-    if (knownFiles.has(file) || hasRealPage(files, file)) continue;
-    knownFiles.add(file);
-    const slug4 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-    out.push({ route: /^(home|index|landing)$/.test(slug4) ? "/" : `/${slug4}`, file });
-  }
-  return out;
-}
-async function writePlannedPages(args) {
-  let files = args.files;
-  const written = [];
-  const truncated = [];
-  const decomposed = [];
-  const decisions = /* @__PURE__ */ new Map();
-  const units = [];
-  let calls = 0;
-  let layer = 0;
-  const record = (r) => {
-    units.push(r);
-    try {
-      args.onUnit?.(r);
-    } catch {
-    }
-  };
-  const inScope = (instruction, path) => {
-    const want = targetOf(instruction);
-    if (path === want) return true;
-    if (!instruction.startsWith(DECOMPOSED_MARKER)) return false;
-    const dir = /plus its section components in (src\/components\/[^\s/]+)\//.exec(instruction)?.[1];
-    return Boolean(dir && path.startsWith(dir + "/") && /^[\w/-]+\.tsx$/.test(path) && !path.slice(dir.length + 1).includes("/"));
-  };
-  const ask = async (instruction) => {
-    calls++;
-    try {
-      return (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
-    } catch {
-      return [];
-    }
-  };
-  const cutOff = async (f) => {
-    if (!args.isTruncated) return false;
-    try {
-      return await args.isTruncated(f);
-    } catch {
-      return false;
-    }
-  };
-  const call = async (instruction, kind = "page") => {
-    const started = Date.now();
-    const target = targetOf(instruction) ?? "?";
-    const rec = { id: `${kind}:${target}`, kind, target, layer, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "ok" };
-    const before = calls;
-    const single = !instruction.startsWith(DECOMPOSED_MARKER);
-    const got = await ask(instruction);
-    const whole = [];
-    for (let f of got) {
-      if (await cutOff(f)) {
-        if (single && f.path === target) {
-          const cont = (await ask(continuationInstruction(f.path, f.content))).find((x) => x.path === f.path);
-          if (cont) {
-            const stitched = { path: f.path, content: stitchContinuation(f.content, cont.content) };
-            if (!await cutOff(stitched)) {
-              rec.continued = true;
-              f = stitched;
-            }
-          }
-        }
-        if (!rec.continued) {
-          truncated.push(f.path);
-          continue;
-        }
-      }
-      whole.push(f);
-    }
-    if (single) {
-      const validate = (f) => [
-        ...validateUnitImports(f, files).map((d) => d.message),
-        ...args.checkIdentifiers ? undefinedNames(f, files, args.checkIdentifiers).map((d) => d.message) : []
-      ];
-      for (let i = 0; i < whole.length; i++) {
-        if (args.checkIdentifiers) {
-          const und = undefinedNames(whole[i], files, args.checkIdentifiers);
-          const repaired = safeReactImportRepair(whole[i], und, args.reactIsDependency ?? true);
-          if (repaired) {
-            whole[i] = repaired;
-            rec.diagnostics.push(...und.map((d) => d.message + " [auto: added React import]"));
-            rec.outcome = "corrected";
-          }
-        }
-        const diags = validate(whole[i]);
-        if (!diags.length) continue;
-        rec.diagnostics.push(...diags);
-        rec.feedbackRounds++;
-        const asDiag = diags.map((message) => ({ path: whole[i].path, spec: "", message }));
-        const fixed = (await ask(feedbackInstruction(instruction, whole[i], asDiag))).find((x) => x.path === whole[i].path);
-        if (fixed && !await cutOff(fixed)) {
-          const left = validate(fixed);
-          if (left.length < diags.length) {
-            whole[i] = fixed;
-            rec.outcome = left.length ? "failed" : "corrected";
-          }
-          if (left.length) rec.diagnostics.push(...left.map((m) => `still failing after correction: ${m}`));
-        } else rec.outcome = "failed";
-      }
-    }
-    if (whole.length) try {
-      args.onFilesDone?.(whole);
-    } catch {
-    }
-    rec.calls = calls - before;
-    rec.ms = Date.now() - started;
-    if (!whole.length) rec.outcome = "failed";
-    record(rec);
-    return whole;
-  };
-  const put2 = (got) => {
-    for (const f of got) {
-      if (f.path !== "src/App.tsx" && hasRealPage(files, f.path)) continue;
-      files = [...files.filter((x) => x.path !== f.path), f];
-      written.push(f.path);
-    }
-  };
-  const writePages = async (pages) => {
-    const paths = files.map((f) => f.path);
-    const contract = [projectContract(files), signatureContext(files)].filter(Boolean).join("\n");
-    const shared = sharedFiles(files, args.pages);
-    const results = await mapBounded(pages, PAGE_CONCURRENCY, (p2) => {
-      const d = args.decide?.(p2, truncated.includes(p2.file));
-      if (d?.decompose) {
-        decisions.set(p2.file, d);
-        return call(decomposedPageInstruction(p2, d, paths, contract, shared), "page");
-      }
-      return call(pageInstruction(p2, paths, contract, shared), "page");
-    });
-    results.forEach(put2);
-  };
-  for (const p2 of args.pages) if (hasRealPage(files, p2.file)) record({ id: `page:${p2.file}`, kind: "page", target: p2.file, layer: 1, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "skipped_done" });
-  if (args.createFoundation) {
-    const started = Date.now();
-    try {
-      const f = await args.createFoundation(files);
-      files = f.files;
-      for (const t of f.created) record({ id: `foundation:${t}`, kind: "foundation", target: t, layer: 0, calls: 1, feedbackRounds: 0, continued: false, diagnostics: [], ms: Date.now() - started, outcome: "ok" });
-      if (f.created.length) try {
-        args.onFilesDone?.(files.filter((x) => f.created.includes(x.path)));
-      } catch {
-      }
-      calls += f.created.length;
-    } catch (e) {
-      throw e;
-    }
-  }
-  layer = 1;
-  await writePages(args.pages.filter((p2) => !hasRealPage(files, p2.file)));
-  const retry = args.pages.filter((p2) => !hasRealPage(files, p2.file) && args.budget.take("missing_page", p2.route));
-  if (retry.length) await writePages(retry);
-  for (const [pageFile, d] of decisions) {
-    const page = args.pages.find((p2) => p2.file === pageFile);
-    if (!hasRealPage(files, pageFile)) continue;
-    const missingSecs = missingSections(files, pageFile, d.sectionDir);
-    const todo = missingSecs.filter((f) => args.budget.take("missing_page", f));
-    if (todo.length) {
-      const contract = projectContract(files);
-      const src2 = files.find((f) => f.path === pageFile).content;
-      const got = await mapBounded(todo, PAGE_CONCURRENCY, (f) => call(sectionInstruction(page, f, src2, contract), "section"));
-      got.forEach(put2);
-    }
-    decomposed.push({
-      file: pageFile,
-      reasons: d.reasons,
-      sections: files.filter((f) => f.path.startsWith(d.sectionDir + "/")).map((f) => f.path)
-    });
-  }
-  const routes = args.pages.filter((p2) => hasRealPage(files, p2.file)).map((p2) => p2.route);
-  const needFrame = !frameIsComplete(files, args.pages.length) || routes.length > 0 && !assessCompleteness({ requestedRoutes: routes, files }).complete;
-  if (needFrame && args.budget.take("missing_page", "app shell")) {
-    layer = 2;
-    put2(await call(routerInstruction(args.pages, files.map((f) => f.path), [projectContract(files), signatureContext(files)].filter(Boolean).join("\n")), "router"));
-  }
-  const missing = args.pages.filter((p2) => !hasRealPage(files, p2.file)).map((p2) => p2.route);
-  return { files, written, missing, calls, truncated, decomposed, units };
-}
 async function mapBounded(items, limit, fn) {
   const out = new Array(items.length);
   let next = 0;
@@ -150403,7 +150028,6 @@ var init_write = __esm({
   "src/server/engine/write.ts"() {
     init_define_import_meta_env();
     init_build_state();
-    init_work_unit();
     DECOMPOSED_MARKER = "DECOMPOSED PAGE";
     PAGE_CONCURRENCY = 4;
   }
@@ -152460,6 +152084,529 @@ var init_build_checkpoint_server = __esm({
     init_client_server_shim();
     db = () => supabaseAdmin;
     LIVE_CHECKPOINT_STATUSES = ["active", "resumable", "resuming"];
+  }
+});
+
+// src/server/engine/work-unit.ts
+function exportSignature(path, content) {
+  const named = /* @__PURE__ */ new Set();
+  const types = /* @__PURE__ */ new Set();
+  const functions = /* @__PURE__ */ new Set();
+  for (const m of content.matchAll(DECL)) {
+    const kind = m[1];
+    const name = m[2];
+    if (kind === "type" || kind === "interface") types.add(name);
+    else {
+      named.add(name);
+      if (kind.startsWith("function")) functions.add(name);
+    }
+  }
+  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
+    for (const part of m[2].split(",")) {
+      const raw = part.trim();
+      if (!raw) continue;
+      const isType = Boolean(m[1]) || raw.startsWith("type ");
+      const exported = raw.replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
+      if (exported === "default") continue;
+      (isType ? types : named).add(exported);
+    }
+  }
+  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}\s*from/g)) {
+    for (const part of m[2].split(",")) {
+      const exported = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
+      if (exported && exported !== "default") (m[1] ? types : named).add(exported);
+    }
+  }
+  const hasDefault = /export\s+default\b/.test(content) || /export\s*\{[^}]*\bas\s+default\b[^}]*\}/.test(content);
+  const components = [...named].filter((n) => /^[A-Z][a-z0-9]/.test(n) && !/^[A-Z0-9_]+$/.test(n));
+  return {
+    path,
+    hasDefault,
+    named: [...named].sort(),
+    components: components.sort(),
+    functions: [...functions].sort(),
+    types: [...types].sort()
+  };
+}
+function describeSignature(sig) {
+  const alias = "@/" + sig.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "");
+  const parts = [];
+  if (sig.named.length) parts.push(`named { ${sig.named.slice(0, 30).join(", ")} }`);
+  if (sig.types.length) parts.push(`types { ${sig.types.slice(0, 15).join(", ")} }`);
+  parts.push(sig.hasDefault ? "HAS a default export" : "NO default export");
+  return `- ${alias}: ${parts.join("; ")}`;
+}
+function sharedSignatures(files) {
+  return files.filter(
+    (f) => isSource2(f.path) && f.path.startsWith("src/") && !isPage(f.path) && !f.path.startsWith("src/components/ui/") && !f.path.startsWith("src/integrations/supabase/") && !/^src\/(main|App)\.tsx$/.test(f.path) && !/\.d\.ts$/.test(f.path)
+  ).map((f) => exportSignature(f.path, f.content)).filter((s) => s.named.length || s.hasDefault || s.types.length).sort((a2, b) => a2.path.localeCompare(b.path));
+}
+function signatureContext(files) {
+  const sigs = sharedSignatures(files);
+  if (!sigs.length) return "";
+  return [
+    "REAL EXPORT SIGNATURES of the modules that already exist (import them exactly like this \u2014 a module with NO default export must be imported with braces):",
+    ...sigs.slice(0, 80).map(describeSignature)
+  ].join("\n");
+}
+function resolveStaged(from, spec, byPath) {
+  const hit = resolveSpecifier2(from, spec, new Set(byPath.keys()));
+  if (!hit) return null;
+  return typeof hit === "string" ? hit : null;
+}
+function validateUnitImports(file, staged) {
+  if (!isSource2(file.path)) return [];
+  const byPath = new Map(staged.map((f) => [f.path, f.content]));
+  byPath.set(file.path, file.content);
+  const out = [];
+  IMPORT.lastIndex = 0;
+  let m;
+  while (m = IMPORT.exec(file.content)) {
+    const typeOnly = Boolean(m[1]);
+    const def = m[2];
+    const spec = m[4];
+    if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
+    if (/\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
+    const target = resolveStaged(file.path, spec, byPath);
+    if (!target) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" does not exist. Import only from the existing modules listed in the signatures, or define it inside ${file.path}.`
+      });
+      continue;
+    }
+    if (typeOnly || !isSource2(target)) continue;
+    const sig = exportSignature(target, byPath.get(target) ?? "");
+    const avail = sig.named.length ? `Available named exports: { ${sig.named.slice(0, 20).join(", ")} }.` : "";
+    if (def && !sig.hasDefault) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" has NO default export, so \`import ${def} from "${spec}"\` is invalid. ${avail}${sig.named.includes(def) ? ` Use \`import { ${def} } from "${spec}"\`.` : ""}`
+      });
+    }
+    const names = (m[3] ?? "").replace(/[{}]/g, "").split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("type ")).map((s) => s.split(/\s+as\s+/)[0].trim());
+    const all = /* @__PURE__ */ new Set([...sig.named, ...sig.types]);
+    const missing = names.filter((n) => n !== "default" && !all.has(n));
+    if (missing.length) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" does not export ${missing.map((n) => `\`${n}\``).join(", ")}. ${avail}${sig.hasDefault ? " It has a default export." : ""}`
+      });
+    }
+  }
+  return out;
+}
+function feedbackInstruction(original, file, diags) {
+  return [
+    original,
+    "",
+    "IMMEDIATE VALIDATION FEEDBACK \u2014 your previous answer for this file failed these exact checks against the real project:",
+    ...diags.map((d) => `- ${d.message}`),
+    "Rewrite the SAME file, complete, fixing only these problems. Keep everything else as it was.",
+    `Your previous version of ${file.path}:`,
+    "```tsx",
+    file.content,
+    "```"
+  ].join("\n");
+}
+function completedPortion(partial) {
+  const cut = partial.lastIndexOf("\n");
+  return cut === -1 ? "" : partial.slice(0, cut + 1);
+}
+function continuationInstruction(target, partial) {
+  const done = completedPortion(partial);
+  return [
+    `CONTINUATION: your answer for ${target} was cut off. The completed portion is below.`,
+    `WRITE SCOPE: exactly one file \u2014 write it as ${target}, but its content must be ONLY the remaining source that comes AFTER the last line shown, so that (completed portion + your answer) is the whole file.`,
+    "Do not repeat any line already written. Do not add imports that are already present. Finish every open JSX element, function and the default export.",
+    "Completed portion:",
+    "```tsx",
+    done,
+    "```"
+  ].join("\n");
+}
+function stitchContinuation(partial, continuation) {
+  const done = completedPortion(partial);
+  let rest = continuation.replace(/^\s*\n/, "");
+  const lastLine = done.trimEnd().split("\n").pop()?.trim();
+  if (lastLine && rest.trimStart().startsWith(lastLine) && lastLine.length > 8) {
+    rest = rest.trimStart().slice(lastLine.length).replace(/^\s*\n/, "");
+  }
+  return done + rest;
+}
+function undefinedNames(file, staged, check) {
+  if (!isSource2(file.path)) return [];
+  const tree = [...staged.filter((f) => f.path !== file.path), file];
+  const r = check(tree, [file.path]);
+  if (r.status !== "failed") return [];
+  return r.issues.filter((i) => i.path === file.path).map((i) => {
+    const name = /Cannot find name '([^']+)'/.exec(i.message)?.[1] ?? "?";
+    const hint = name === "React" ? `\`React.\` is used but React is not imported. Add \`import React from "react"\` or import the specific hooks from "react".` : `It is not imported, not declared in this file, and not a platform global. If it comes from another module, import it using the real signatures listed; otherwise declare it.`;
+    return { path: i.path, name, line: i.line, message: `${i.path}:${i.line}: \`${name}\` is used but declared nowhere. ${hint}` };
+  });
+}
+function safeReactImportRepair(file, diags, reactIsDependency) {
+  if (!reactIsDependency || !diags.length || diags.some((d) => d.name !== "React")) return null;
+  if (/\bReact\b(?!\s*\.)/.test(file.content.replace(/["'`][^"'`\n]*["'`]/g, ""))) return null;
+  if (/import\s+(\*\s+as\s+)?React\b/.test(file.content)) return null;
+  return { path: file.path, content: `import React from "react";
+${file.content}` };
+}
+var DECL, isSource2, isPage, IMPORT;
+var init_work_unit = __esm({
+  "src/server/engine/work-unit.ts"() {
+    init_define_import_meta_env();
+    init_structural_deps();
+    DECL = /export\s+(?:declare\s+)?(?:async\s+)?(function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
+    isSource2 = (p2) => /\.(tsx?|jsx?)$/.test(p2);
+    isPage = (p2) => p2.startsWith("src/pages/");
+    IMPORT = /import\s+(type\s+)?([\w$]+)?\s*,?\s*(\{[^}]*\})?\s*(?:\*\s+as\s+[\w$]+\s*)?from\s*["']([^"']+)["']/g;
+  }
+});
+
+// src/server/engine/agent-loop.ts
+var agent_loop_exports = {};
+__export(agent_loop_exports, {
+  createExecutionState: () => createExecutionState,
+  hasRealFile: () => hasRealFile,
+  pageKey: () => pageKey,
+  reconcileRequirements: () => reconcileRequirements,
+  routerPages: () => routerPages,
+  runExecutionLoop: () => runExecutionLoop
+});
+function pageKey(route) {
+  const r = route.replace(/\/+$/, "") || "/";
+  return `page:${r.toLowerCase()}`;
+}
+function routerPages(files) {
+  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+  const byIdent = /* @__PURE__ */ new Map();
+  for (const m of app.matchAll(/import\s+([A-Za-z_$][\w$]*)\s+from\s+["']@\/pages\/([A-Za-z][\w-]*)(?:\.tsx)?["']/g)) {
+    byIdent.set(m[1], `src/pages/${m[2]}.tsx`);
+  }
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const m of app.matchAll(/<Route\b[^>]*?path=["']([^"']+)["'][^>]*?element=\{\s*<\s*([A-Za-z_$][\w$]*)/g)) {
+    const file = byIdent.get(m[2]);
+    if (!file) continue;
+    const key = pageKey(m[1]);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ route: m[1], file });
+  }
+  const routed = new Set(out.map((p2) => p2.file));
+  for (const file of byIdent.values()) {
+    if (routed.has(file)) continue;
+    const name = file.split("/").pop().replace(/\.tsx$/, "");
+    const slug4 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+    const route = HOME_NAMES.test(name) && !seen.has(pageKey("/")) ? "/" : `/${slug4}`;
+    const key = pageKey(route);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ route, file });
+    routed.add(file);
+  }
+  return out;
+}
+function hasRealFile(files, file) {
+  const f = files.find((x) => x.path === file);
+  return Boolean(f && f.content.trim().length > 0 && !isPlaceholderFile(f.content));
+}
+function reconcileRequirements(seed, files) {
+  const byKey = /* @__PURE__ */ new Map();
+  for (const p2 of seed) if (!byKey.has(pageKey(p2.route))) byKey.set(pageKey(p2.route), { ...p2 });
+  for (const r of routerPages(files)) {
+    const k = pageKey(r.route);
+    const cur = byKey.get(k);
+    if (!cur) {
+      if ([...byKey.values()].some((p2) => p2.file === r.file)) continue;
+      byKey.set(k, r);
+    } else if (cur.file !== r.file && !hasRealFile(files, cur.file)) {
+      cur.file = r.file;
+    }
+  }
+  return [...byKey.values()];
+}
+function createExecutionState(goal, seed, files) {
+  return {
+    goal,
+    requirements: reconcileRequirements(seed, files),
+    files,
+    ops: /* @__PURE__ */ new Map(),
+    completed: [],
+    current: [],
+    iterations: 0,
+    calls: 0,
+    checkpoint: { saved: 0, failed: 0 }
+  };
+}
+async function runExecutionLoop(args) {
+  const state = createExecutionState(args.goal ?? "build", args.pages, args.files);
+  const written = [];
+  const truncated = [];
+  const decisions = /* @__PURE__ */ new Map();
+  const units = [];
+  let frameTried = false;
+  let foundationDone = !args.createFoundation;
+  let stopped = false;
+  const record = (r) => {
+    units.push(r);
+    try {
+      args.onUnit?.(r);
+    } catch {
+    }
+  };
+  const checkpoint = async (got) => {
+    if (!got.length || !args.onFilesDone) return;
+    try {
+      const ok = await args.onFilesDone(got);
+      if (ok === false) state.checkpoint.failed += got.length;
+      else state.checkpoint.saved += got.length;
+    } catch {
+      state.checkpoint.failed += got.length;
+    }
+  };
+  const inScope = (instruction, path) => {
+    const want = targetOf(instruction);
+    if (path === want) return true;
+    if (!instruction.startsWith(DECOMPOSED_MARKER)) return false;
+    const dir = /plus its section components in (src\/components\/[^\s/]+)\//.exec(instruction)?.[1];
+    return Boolean(dir && path.startsWith(dir + "/") && /^[\w/-]+\.tsx$/.test(path) && !path.slice(dir.length + 1).includes("/"));
+  };
+  const ask = async (instruction) => {
+    state.calls++;
+    try {
+      return (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
+    } catch (e) {
+      if (/stop|cancel|abort/i.test(String(e?.message ?? e))) stopped = true;
+      return [];
+    }
+  };
+  const cutOff = async (f) => {
+    if (!args.isTruncated) return false;
+    try {
+      return await args.isTruncated(f);
+    } catch {
+      return false;
+    }
+  };
+  const execute = async (op, instruction, layer) => {
+    const started = Date.now();
+    const kind = op.kind === "router" ? "router" : op.kind === "section" ? "section" : "page";
+    const target = targetOf(instruction) ?? op.target;
+    const rec = { id: op.key, kind, target, layer, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "ok" };
+    const before = state.calls;
+    const single = !instruction.startsWith(DECOMPOSED_MARKER);
+    const got = await ask(instruction);
+    const whole = [];
+    for (let f of got) {
+      if (await cutOff(f)) {
+        if (single && f.path === target) {
+          const cont = (await ask(continuationInstruction(f.path, f.content))).find((x) => x.path === f.path);
+          if (cont) {
+            const stitched = { path: f.path, content: stitchContinuation(f.content, cont.content) };
+            if (!await cutOff(stitched)) {
+              rec.continued = true;
+              f = stitched;
+            }
+          }
+        }
+        if (!rec.continued) {
+          truncated.push(f.path);
+          continue;
+        }
+      }
+      whole.push(f);
+    }
+    if (single) {
+      const validate = (f) => [
+        ...validateUnitImports(f, state.files).map((d) => d.message),
+        ...args.checkIdentifiers ? undefinedNames(f, state.files, args.checkIdentifiers).map((d) => d.message) : []
+      ];
+      for (let i = 0; i < whole.length; i++) {
+        if (args.checkIdentifiers) {
+          const und = undefinedNames(whole[i], state.files, args.checkIdentifiers);
+          const repaired = safeReactImportRepair(whole[i], und, args.reactIsDependency ?? true);
+          if (repaired) {
+            whole[i] = repaired;
+            rec.diagnostics.push(...und.map((d) => d.message + " [auto: added React import]"));
+            rec.outcome = "corrected";
+          }
+        }
+        const diags = validate(whole[i]);
+        if (!diags.length) continue;
+        rec.diagnostics.push(...diags);
+        op.errors.push(...diags);
+        rec.feedbackRounds++;
+        const asDiag = diags.map((message) => ({ path: whole[i].path, spec: "", message }));
+        const fixed = (await ask(feedbackInstruction(instruction, whole[i], asDiag))).find((x) => x.path === whole[i].path);
+        if (fixed && !await cutOff(fixed)) {
+          const left = validate(fixed);
+          if (left.length < diags.length) {
+            whole[i] = fixed;
+            rec.outcome = left.length ? "failed" : "corrected";
+          }
+          if (left.length) rec.diagnostics.push(...left.map((m) => `still failing after correction: ${m}`));
+        } else rec.outcome = "failed";
+      }
+    }
+    rec.calls = state.calls - before;
+    rec.ms = Date.now() - started;
+    if (!whole.length) rec.outcome = "failed";
+    record(rec);
+    return whole;
+  };
+  const apply = (got) => {
+    for (const f of got) {
+      if (f.path !== "src/App.tsx" && hasRealFile(state.files, f.path)) continue;
+      state.files = [...state.files.filter((x) => x.path !== f.path), f];
+      written.push(f.path);
+    }
+  };
+  const upsert = (key, init) => {
+    let op = state.ops.get(key);
+    if (!op) {
+      op = { ...init, status: "pending", attempts: 0, errors: [] };
+      state.ops.set(key, op);
+    }
+    return op;
+  };
+  const markDone = (op) => {
+    if (op.status !== "done") {
+      op.status = "done";
+      state.completed.push(op.key);
+    }
+  };
+  const inspect = () => {
+    state.requirements = reconcileRequirements(state.requirements, state.files);
+    if (!foundationDone) {
+      return { layer: 0, ops: [upsert("foundation", { key: "foundation", kind: "foundation", target: "shared modules", dependsOn: [] })] };
+    }
+    const pageOps = [];
+    for (const p2 of state.requirements) {
+      const key = pageKey(p2.route);
+      const op = upsert(key, { key, kind: "page", target: p2.file, route: p2.route, dependsOn: ["foundation"] });
+      op.target = p2.file;
+      if (hasRealFile(state.files, p2.file)) {
+        if (op.status !== "done" && op.attempts === 0) {
+          record({ id: key, kind: "page", target: p2.file, layer: 1, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "skipped_done" });
+        }
+        markDone(op);
+        continue;
+      }
+      if (op.status === "done" || op.status === "running") continue;
+      if (op.attempts >= MAX_PAGE_ATTEMPTS) {
+        op.status = "failed";
+        continue;
+      }
+      if (op.attempts >= 1 && !args.budget.take("missing_page", p2.route)) {
+        op.status = "failed";
+        continue;
+      }
+      pageOps.push(op);
+    }
+    if (pageOps.length) return { layer: 1, ops: pageOps };
+    const sectionOps = [];
+    for (const [pageFile, d] of decisions) {
+      if (!hasRealFile(state.files, pageFile)) continue;
+      for (const sf of missingSections(state.files, pageFile, d.sectionDir)) {
+        const key = `section:${sf}`;
+        const op = upsert(key, { key, kind: "section", target: sf, route: pageFile, dependsOn: [] });
+        if (op.status !== "pending") continue;
+        if (!args.budget.take("missing_page", sf)) {
+          op.status = "failed";
+          continue;
+        }
+        sectionOps.push(op);
+      }
+    }
+    if (sectionOps.length) return { layer: 1, ops: sectionOps };
+    if (!frameTried) {
+      const existing = state.requirements.filter((p2) => hasRealFile(state.files, p2.file)).map((p2) => p2.route);
+      const needFrame = !frameIsComplete(state.files, state.requirements.length) || existing.length > 0 && !assessCompleteness({ requestedRoutes: existing, files: state.files }).complete;
+      frameTried = true;
+      if (needFrame && args.budget.take("missing_page", "app shell")) {
+        return { layer: 2, ops: [upsert("router", { key: "router", kind: "router", target: "src/App.tsx", dependsOn: [] })] };
+      }
+    }
+    return { layer: -1, ops: [] };
+  };
+  for (; ; ) {
+    if (stopped) break;
+    const next = inspect();
+    if (!next.ops.length) break;
+    state.iterations++;
+    state.current = next.ops.map((o) => o.key);
+    for (const o of next.ops) {
+      o.status = "running";
+      o.attempts++;
+    }
+    if (next.layer === 0) {
+      const started = Date.now();
+      const op = next.ops[0];
+      const f = await args.createFoundation(state.files);
+      state.files = f.files;
+      for (const t of f.created) record({ id: `foundation:${t}`, kind: "foundation", target: t, layer: 0, calls: 1, feedbackRounds: 0, continued: false, diagnostics: [], ms: Date.now() - started, outcome: "ok" });
+      state.calls += f.created.length;
+      await checkpoint(state.files.filter((x) => f.created.includes(x.path)));
+      foundationDone = true;
+      markDone(op);
+      continue;
+    }
+    const paths = state.files.map((f) => f.path);
+    const contract = [projectContract(state.files), signatureContext(state.files)].filter(Boolean).join("\n");
+    const shared = sharedFiles(state.files, state.requirements);
+    await mapBounded(next.ops, PAGE_CONCURRENCY, async (op) => {
+      const got = await run(op);
+      const before = new Set(written);
+      apply(got);
+      await checkpoint(got.filter((f) => written.includes(f.path) && !before.has(f.path) || f.path === "src/App.tsx"));
+    });
+    for (const op of next.ops) {
+      const ok = op.kind === "router" ? frameIsComplete(state.files, state.requirements.length) : hasRealFile(state.files, op.target);
+      if (ok) markDone(op);
+      else op.status = op.kind === "page" ? "pending" : "failed";
+    }
+    state.current = [];
+    continue;
+    async function run(op) {
+      if (op.kind === "router") {
+        return execute(op, routerInstruction(state.requirements, paths, contract), 2);
+      }
+      if (op.kind === "section") {
+        const page2 = state.requirements.find((p2) => p2.file === op.route);
+        const src2 = state.files.find((f) => f.path === op.route)?.content ?? "";
+        return execute(op, sectionInstruction(page2, op.target, src2, projectContract(state.files)), 1);
+      }
+      const page = state.requirements.find((p2) => pageKey(p2.route) === op.key);
+      const d = args.decide?.(page, truncated.includes(page.file));
+      if (d?.decompose) {
+        decisions.set(page.file, d);
+        return execute(op, decomposedPageInstruction(page, d, paths, contract, shared), 1);
+      }
+      return execute(op, pageInstruction(page, paths, contract, shared), 1);
+    }
+  }
+  const decomposed = [];
+  for (const [pageFile, d] of decisions) {
+    if (!hasRealFile(state.files, pageFile)) continue;
+    decomposed.push({ file: pageFile, reasons: d.reasons, sections: state.files.filter((f) => f.path.startsWith(d.sectionDir + "/")).map((f) => f.path) });
+  }
+  const missing = state.requirements.filter((p2) => !hasRealFile(state.files, p2.file)).map((p2) => p2.route);
+  return { files: state.files, written, missing, calls: state.calls, truncated, decomposed, units, state };
+}
+var HOME_NAMES, MAX_PAGE_ATTEMPTS;
+var init_agent_loop = __esm({
+  "src/server/engine/agent-loop.ts"() {
+    init_define_import_meta_env();
+    init_build_state();
+    init_work_unit();
+    init_write();
+    HOME_NAMES = /^(home|index|landing|dashboard|overview|main)$/i;
+    MAX_PAGE_ATTEMPTS = 2;
   }
 });
 
@@ -178354,7 +178501,8 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             }
           }
           if (isInitial && parsed.files?.length) {
-            const { writePlannedPages: writePlannedPages2, pagesReferencedByRouter: pagesReferencedByRouter2, targetOf: wantOf, DECOMPOSED_MARKER: DECOMPOSED_MARKER2 } = await Promise.resolve().then(() => (init_write(), write_exports));
+            const { targetOf: wantOf, DECOMPOSED_MARKER: DECOMPOSED_MARKER2 } = await Promise.resolve().then(() => (init_write(), write_exports));
+            const { runExecutionLoop: runExecutionLoop2 } = await Promise.resolve().then(() => (init_agent_loop(), agent_loop_exports));
             const { pageFileFor: pageFileFor2 } = await Promise.resolve().then(() => (init_plan(), plan_exports));
             const checkpointApi = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
             const shellSnapshot = { name: "write_project", args: JSON.stringify(parsed), text: "", finishReason: "stop" };
@@ -178372,38 +178520,35 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               turnStrategy.checkpoint = { saved: shellSaved.ok ? 1 : 0, failed: shellSaved.ok ? 0 : 1, shellError: shellSaved.ok ? null : shellSaved.error };
               controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: shellSaved.ok ? "ok" : "failed", message: shellSaved.ok ? "Saved the shared layout" : "Could not save progress (the build continues, but can't resume if interrupted)", ts: Date.now() })));
             }
-            let fromRouter = pagesReferencedByRouter2(parsed.files, planned);
-            if (intentContract && fromRouter.length) {
-              const { divergentPages: divergentPages2, stripRoutesFromRouter: stripRoutesFromRouter2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
-              const bad = new Set(divergentPages2(intentContract, fromRouter.map((p2) => p2.route), lastUserText));
-              if (bad.size) {
-                const badFiles = fromRouter.filter((p2) => bad.has(p2.route)).map((p2) => p2.file);
-                const app = parsed.files.find((f) => f.path === "src/App.tsx");
-                const cleaned = app ? stripRoutesFromRouter2(app.content, badFiles) : null;
-                if (app && cleaned !== null) {
-                  app.content = cleaned;
-                  fromRouter = fromRouter.filter((p2) => !bad.has(p2.route));
-                  console.warn(`[intent] dropped divergent router pages ${JSON.stringify([...bad])}`);
-                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "intent_check", outcome: "ok", message: `Removed pages that don't belong in this product: ${[...bad].join(", ")}`, ts: Date.now() })));
-                } else {
-                  console.warn(`[intent] divergent router pages kept (router not safely cleanable): ${JSON.stringify([...bad])}`);
+            if (intentContract) {
+              const { routerPages: routerPages2 } = await Promise.resolve().then(() => (init_agent_loop(), agent_loop_exports));
+              const { pageKey: pageKey2 } = await Promise.resolve().then(() => (init_agent_loop(), agent_loop_exports));
+              const plannedKeys = new Set(planned.map((p2) => pageKey2(p2.route)));
+              const extra = routerPages2(parsed.files).filter((p2) => !plannedKeys.has(pageKey2(p2.route)));
+              if (extra.length) {
+                const { divergentPages: divergentPages2, stripRoutesFromRouter: stripRoutesFromRouter2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
+                const bad = new Set(divergentPages2(intentContract, extra.map((p2) => p2.route), lastUserText));
+                if (bad.size) {
+                  const badFiles = extra.filter((p2) => bad.has(p2.route)).map((p2) => p2.file);
+                  const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                  const cleaned = app ? stripRoutesFromRouter2(app.content, badFiles) : null;
+                  if (app && cleaned !== null) {
+                    app.content = cleaned;
+                    console.warn(`[intent] dropped divergent router pages ${JSON.stringify([...bad])}`);
+                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "intent_check", outcome: "ok", message: `Removed pages that don't belong in this product: ${[...bad].join(", ")}`, ts: Date.now() })));
+                  }
                 }
               }
             }
-            const pages = [...planned, ...fromRouter];
-            for (const p2 of fromRouter) if (!plannedRoutes.includes(p2.route)) plannedRoutes.push(p2.route);
-            if (isTruncatedFinishReason(collected.finishReason) || fromRouter.length) {
-              console.warn(
-                `[output-limit] first-build shell finish=${collected.finishReason ?? "?"} \u2014 continuing: ${JSON.stringify(pages.map((p2) => p2.route))} (router-referenced extra: ${JSON.stringify(fromRouter.map((p2) => p2.route))})`
-              );
-            }
+            const pages = planned;
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             let pagesWritten = 0;
             const cutOffPages = /* @__PURE__ */ new Set();
             const { assessPageComplexity: assessPageComplexity2 } = await Promise.resolve().then(() => (init_complexity(), complexity_exports));
             const pageProviderFailures = [];
             const { checkUndefinedIdentifiers: checkIdsForUnits } = await Promise.resolve().then(() => (init_identifiers_server(), identifiers_server_exports));
-            const done = await writePlannedPages2({
+            const done = await runExecutionLoop2({
+              goal: lastUserText,
               pages,
               decide: (p2, truncatedBefore) => assessPageComplexity2({
                 route: p2.route,
@@ -178420,13 +178565,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               // Durable progress: each validated work unit is saved the moment
               // it finishes, only by the turn that owns the checkpoint. The
               // result is surfaced — a failed save is never reported as saved.
-              onFilesDone: checkpointTurnId ? (got) => {
-                void checkpointApi.checkpointFiles(checkpointTurnId, got).then((ok) => {
-                  const cs = turnStrategy.checkpoint ??= { saved: 0, failed: 0 };
-                  if (ok) cs.saved += got.length;
-                  else cs.failed += got.length;
-                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
-                });
+              onFilesDone: checkpointTurnId ? async (got) => {
+                const ok = await checkpointApi.checkpointFiles(checkpointTurnId, got);
+                const cs = turnStrategy.checkpoint ??= { saved: 0, failed: 0 };
+                if (ok) cs.saved += got.length;
+                else cs.failed += got.length;
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: ok ? "ok" : "failed", message: ok ? `Saved progress: ${got.map((f) => f.path).join(", ")}` : `Could not save progress for ${got.map((f) => f.path).join(", ")}`, ts: Date.now() })));
+                return ok;
               } : void 0,
               // Foundation layer first: missing shared modules the frame
               // imports are created (in parallel) before any page is written,
