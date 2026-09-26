@@ -7986,7 +7986,10 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // Durable ingress: the browser must not be the caller of the run —
         // on the live host its disconnect would kill the work. Open the turn
         // row, hand the job to the builder, and let the browser tail events.
-        if (!isInternalCaller && durableAgentEnabled()) {
+        // The resume worker also asks for durable dispatch: a resumed long
+        // build must run on the build server, not inside this request.
+        const wantsDurable = !isInternalCaller || (!attachDurable && request.headers.get("x-kimble-durable-dispatch") === "1");
+        if (wantsDurable && durableAgentEnabled()) {
           const turnId = clientTurnId ?? crypto.randomUUID();
           let opened: Awaited<ReturnType<typeof startTurn>>;
           try {
