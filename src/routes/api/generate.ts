@@ -6882,13 +6882,25 @@ async function handleGenerateRequestCore(
           // Nothing lands: the project keeps its previous state.
           nextFiles = txResult.outcome.files;
           if (txResult.outcome.reason !== "no changes") {
-            const note = breaker.tripped
-              ? `\n\n${breaker.userMessage()}`
-              : `\n\nI couldn't save this change safely, so your app was left exactly as it was: ` +
-                txResult.rejections.slice(0, 3).map((r) => `${r.path ? `${r.path} — ` : ""}${r.detail}`).join("; ") +
-                `. Send it again and I'll retry just that part.`;
-            summary = `${summary}${note}`;
-            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: note })));
+            // ONE authoritative verdict: the model's narration ("it ships
+            // with…") described code that was never saved, so it is replaced
+            // outright — not appended to.
+            const { buildTerminalResult, formatTerminalResult } = await import("@/lib/terminal-result");
+            const verdict = buildTerminalResult({
+              turnId: logicalTurnId,
+              category: breaker.tripped
+                ? "circuit_breaker"
+                : txResult.rejections.some((r) => r.reason === "scope_violation")
+                  ? "scope_violation"
+                  : "verification_failed",
+              committedRevision: null,
+              rejections: txResult.rejections.slice(0, 3).map((r) => ({ path: r.path ?? null, detail: r.detail })),
+            });
+            summary = breaker.tripped
+              ? `${formatTerminalResult(verdict)}\n\n${breaker.userMessage()}`
+              : formatTerminalResult(verdict);
+            controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: `\n\n${summary}` })));
+            controller.enqueue(encoder.encode(sse({ type: "terminal_result", result: verdict })));
           }
           if (breaker.tripped) {
             console.warn(`[circuit-breaker] tripped at commit ${JSON.stringify(breaker.snapshot())}`);
