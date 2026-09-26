@@ -62774,7 +62774,6 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
-    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -143845,6 +143844,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145966,6 +145966,34 @@ var init_transaction = __esm({
   }
 });
 
+// src/server/verification/readiness.ts
+var readiness_exports = {};
+__export(readiness_exports, {
+  findingKey: () => findingKey,
+  readinessOf: () => readinessOf
+});
+function readinessOf(v) {
+  if (!v) return { ready: false, findings: [{ gate: "source", reason: "source verification did not run", paths: [] }] };
+  if (v.status === "READY" || v.status === "IN_PROGRESS") return { ready: true, findings: [] };
+  const findings = [];
+  for (const g of v.gates) {
+    if (g.verdict !== "FAIL") continue;
+    for (const r of g.reasons.length ? g.reasons : [`${g.gate} failed`]) findings.push({ gate: g.gate, reason: r, paths: g.paths });
+  }
+  if (!findings.length) {
+    findings.push({ gate: v.failedGate ?? "source", reason: v.reason ?? (v.status === "UNVERIFIED" ? "verification could not complete" : "verification failed"), paths: v.repairTargets });
+  }
+  return { ready: false, findings };
+}
+function findingKey(f) {
+  return `${f.gate}|${f.reason}`;
+}
+var init_readiness = __esm({
+  "src/server/verification/readiness.ts"() {
+    init_define_import_meta_env();
+  }
+});
+
 // src/server/execution/commit.ts
 async function commitTurn(args) {
   const tx = new TurnTransaction(args.baseline, args.ledger);
@@ -146059,7 +146087,8 @@ async function commitTurn(args) {
         };
       }
       for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
-      if (verification.status === "FAILED") {
+      const ready = readinessOf(verification);
+      if (!ready.ready && verification.status === "FAILED") {
         tx.recordCheck("source_verification", "FAIL", verification.reason ?? "source verification failed");
         for (const p2 of verification.repairTargets.length ? verification.repairTargets : [void 0]) {
           rejections.push({
@@ -146073,7 +146102,7 @@ async function commitTurn(args) {
             next: "repair the named file(s) and retry"
           });
         }
-      } else if (verification.status === "UNVERIFIED") {
+      } else if (!ready.ready) {
         tx.recordCheck("source_verification", "FAIL", `unverified: ${verification.reason ?? "check could not complete"}`);
         rejections.push({
           operation: "commit",
@@ -146105,6 +146134,7 @@ var init_commit = __esm({
     "use strict";
     init_define_import_meta_env();
     init_transaction();
+    init_readiness();
   }
 });
 
@@ -151977,240 +152007,11 @@ var init_build_checkpoint_server = __esm({
   }
 });
 
-// src/server/engine/work-unit.ts
-var work_unit_exports = {};
-__export(work_unit_exports, {
-  completedPortion: () => completedPortion,
-  continuationInstruction: () => continuationInstruction,
-  describeSignature: () => describeSignature,
-  exportSignature: () => exportSignature,
-  feedbackInstruction: () => feedbackInstruction,
-  planWorkUnits: () => planWorkUnits,
-  safeReactImportRepair: () => safeReactImportRepair,
-  sharedSignatures: () => sharedSignatures,
-  signatureContext: () => signatureContext,
-  stitchContinuation: () => stitchContinuation,
-  undefinedNames: () => undefinedNames,
-  validateUnitImports: () => validateUnitImports
-});
-function exportSignature(path, content) {
-  const named = /* @__PURE__ */ new Set();
-  const types = /* @__PURE__ */ new Set();
-  const functions = /* @__PURE__ */ new Set();
-  for (const m of content.matchAll(DECL)) {
-    const kind = m[1];
-    const name = m[2];
-    if (kind === "type" || kind === "interface") types.add(name);
-    else {
-      named.add(name);
-      if (kind.startsWith("function")) functions.add(name);
-    }
-  }
-  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
-    for (const part of m[2].split(",")) {
-      const raw = part.trim();
-      if (!raw) continue;
-      const isType = Boolean(m[1]) || raw.startsWith("type ");
-      const exported = raw.replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
-      if (exported === "default") continue;
-      (isType ? types : named).add(exported);
-    }
-  }
-  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}\s*from/g)) {
-    for (const part of m[2].split(",")) {
-      const exported = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
-      if (exported && exported !== "default") (m[1] ? types : named).add(exported);
-    }
-  }
-  const hasDefault = /export\s+default\b/.test(content) || /export\s*\{[^}]*\bas\s+default\b[^}]*\}/.test(content);
-  const components = [...named].filter((n) => /^[A-Z][a-z0-9]/.test(n) && !/^[A-Z0-9_]+$/.test(n));
-  return {
-    path,
-    hasDefault,
-    named: [...named].sort(),
-    components: components.sort(),
-    functions: [...functions].sort(),
-    types: [...types].sort()
-  };
-}
-function describeSignature(sig) {
-  const alias = "@/" + sig.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "");
-  const parts = [];
-  if (sig.named.length) parts.push(`named { ${sig.named.slice(0, 30).join(", ")} }`);
-  if (sig.types.length) parts.push(`types { ${sig.types.slice(0, 15).join(", ")} }`);
-  parts.push(sig.hasDefault ? "HAS a default export" : "NO default export");
-  return `- ${alias}: ${parts.join("; ")}`;
-}
-function sharedSignatures(files) {
-  return files.filter(
-    (f) => isSource2(f.path) && f.path.startsWith("src/") && !isPage(f.path) && !f.path.startsWith("src/components/ui/") && !f.path.startsWith("src/integrations/supabase/") && !/^src\/(main|App)\.tsx$/.test(f.path) && !/\.d\.ts$/.test(f.path)
-  ).map((f) => exportSignature(f.path, f.content)).filter((s) => s.named.length || s.hasDefault || s.types.length).sort((a2, b) => a2.path.localeCompare(b.path));
-}
-function signatureContext(files) {
-  const sigs = sharedSignatures(files);
-  if (!sigs.length) return "";
-  return [
-    "REAL EXPORT SIGNATURES of the modules that already exist (import them exactly like this \u2014 a module with NO default export must be imported with braces):",
-    ...sigs.slice(0, 80).map(describeSignature)
-  ].join("\n");
-}
-function resolveStaged(from, spec, byPath) {
-  const hit = resolveSpecifier2(from, spec, new Set(byPath.keys()));
-  if (!hit) return null;
-  return typeof hit === "string" ? hit : null;
-}
-function validateUnitImports(file, staged) {
-  if (!isSource2(file.path)) return [];
-  const byPath = new Map(staged.map((f) => [f.path, f.content]));
-  byPath.set(file.path, file.content);
-  const out = [];
-  IMPORT.lastIndex = 0;
-  let m;
-  while (m = IMPORT.exec(file.content)) {
-    const typeOnly = Boolean(m[1]);
-    const def = m[2];
-    const spec = m[4];
-    if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
-    if (/\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
-    const target = resolveStaged(file.path, spec, byPath);
-    if (!target) {
-      out.push({
-        path: file.path,
-        spec,
-        message: `"${spec}" does not exist. Import only from the existing modules listed in the signatures, or define it inside ${file.path}.`
-      });
-      continue;
-    }
-    if (typeOnly || !isSource2(target)) continue;
-    const sig = exportSignature(target, byPath.get(target) ?? "");
-    const avail = sig.named.length ? `Available named exports: { ${sig.named.slice(0, 20).join(", ")} }.` : "";
-    if (def && !sig.hasDefault) {
-      out.push({
-        path: file.path,
-        spec,
-        message: `"${spec}" has NO default export, so \`import ${def} from "${spec}"\` is invalid. ${avail}${sig.named.includes(def) ? ` Use \`import { ${def} } from "${spec}"\`.` : ""}`
-      });
-    }
-    const names = (m[3] ?? "").replace(/[{}]/g, "").split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("type ")).map((s) => s.split(/\s+as\s+/)[0].trim());
-    const all = /* @__PURE__ */ new Set([...sig.named, ...sig.types]);
-    const missing = names.filter((n) => n !== "default" && !all.has(n));
-    if (missing.length) {
-      out.push({
-        path: file.path,
-        spec,
-        message: `"${spec}" does not export ${missing.map((n) => `\`${n}\``).join(", ")}. ${avail}${sig.hasDefault ? " It has a default export." : ""}`
-      });
-    }
-  }
-  return out;
-}
-function feedbackInstruction(original, file, diags) {
-  return [
-    original,
-    "",
-    "IMMEDIATE VALIDATION FEEDBACK \u2014 your previous answer for this file failed these exact checks against the real project:",
-    ...diags.map((d) => `- ${d.message}`),
-    "Rewrite the SAME file, complete, fixing only these problems. Keep everything else as it was.",
-    `Your previous version of ${file.path}:`,
-    "```tsx",
-    file.content,
-    "```"
-  ].join("\n");
-}
-function completedPortion(partial) {
-  const cut = partial.lastIndexOf("\n");
-  return cut === -1 ? "" : partial.slice(0, cut + 1);
-}
-function continuationInstruction(target, partial) {
-  const done = completedPortion(partial);
-  return [
-    `CONTINUATION: your answer for ${target} was cut off. The completed portion is below.`,
-    `WRITE SCOPE: exactly one file \u2014 write it as ${target}, but its content must be ONLY the remaining source that comes AFTER the last line shown, so that (completed portion + your answer) is the whole file.`,
-    "Do not repeat any line already written. Do not add imports that are already present. Finish every open JSX element, function and the default export.",
-    "Completed portion:",
-    "```tsx",
-    done,
-    "```"
-  ].join("\n");
-}
-function stitchContinuation(partial, continuation) {
-  const done = completedPortion(partial);
-  let rest = continuation.replace(/^\s*\n/, "");
-  const lastLine = done.trimEnd().split("\n").pop()?.trim();
-  if (lastLine && rest.trimStart().startsWith(lastLine) && lastLine.length > 8) {
-    rest = rest.trimStart().slice(lastLine.length).replace(/^\s*\n/, "");
-  }
-  return done + rest;
-}
-function planWorkUnits(pages, foundationTargets) {
-  const foundation = foundationTargets.map((t) => ({
-    id: `foundation:${t}`,
-    kind: "foundation",
-    target: t,
-    reason: "shared module imported by the frame but not yet created",
-    dependsOn: [],
-    mayWrite: [t],
-    onFailure: "same_writer_then_recovery"
-  }));
-  const pageUnits = pages.map((p2) => ({
-    id: `page:${p2.file}`,
-    kind: "page",
-    target: p2.file,
-    reason: `planned route ${p2.route}`,
-    dependsOn: foundation.map((f) => f.id),
-    mayWrite: [p2.file],
-    onFailure: "same_writer_then_recovery"
-  }));
-  const router = {
-    id: "router:src/App.tsx",
-    kind: "router",
-    target: "src/App.tsx",
-    reason: "register every written page (only if the frame is incomplete)",
-    dependsOn: pageUnits.map((p2) => p2.id),
-    mayWrite: ["src/App.tsx"],
-    onFailure: "same_writer_then_recovery"
-  };
-  return [foundation, pageUnits, [router]].filter((l) => l.length);
-}
-function undefinedNames(file, staged, check) {
-  if (!isSource2(file.path)) return [];
-  const tree = [...staged.filter((f) => f.path !== file.path), file];
-  const r = check(tree, [file.path]);
-  if (r.status !== "failed") return [];
-  return r.issues.filter((i) => i.path === file.path).map((i) => {
-    const name = /Cannot find name '([^']+)'/.exec(i.message)?.[1] ?? "?";
-    const hint = name === "React" ? `\`React.\` is used but React is not imported. Add \`import React from "react"\` or import the specific hooks from "react".` : `It is not imported, not declared in this file, and not a platform global. If it comes from another module, import it using the real signatures listed; otherwise declare it.`;
-    return { path: i.path, name, line: i.line, message: `${i.path}:${i.line}: \`${name}\` is used but declared nowhere. ${hint}` };
-  });
-}
-function safeReactImportRepair(file, diags, reactIsDependency) {
-  if (!reactIsDependency || !diags.length || diags.some((d) => d.name !== "React")) return null;
-  if (/\bReact\b(?!\s*\.)/.test(file.content.replace(/["'`][^"'`\n]*["'`]/g, ""))) return null;
-  if (/import\s+(\*\s+as\s+)?React\b/.test(file.content)) return null;
-  return { path: file.path, content: `import React from "react";
-${file.content}` };
-}
-var DECL, isSource2, isPage, IMPORT;
-var init_work_unit = __esm({
-  "src/server/engine/work-unit.ts"() {
-    init_define_import_meta_env();
-    init_structural_deps();
-    DECL = /export\s+(?:declare\s+)?(?:async\s+)?(function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
-    isSource2 = (p2) => /\.(tsx?|jsx?)$/.test(p2);
-    isPage = (p2) => p2.startsWith("src/pages/");
-    IMPORT = /import\s+(type\s+)?([\w$]+)?\s*,?\s*(\{[^}]*\})?\s*(?:\*\s+as\s+[\w$]+\s*)?from\s*["']([^"']+)["']/g;
-  }
-});
-
-// src/server/engine/agent-loop.ts
-var agent_loop_exports = {};
-__export(agent_loop_exports, {
-  createExecutionState: () => createExecutionState,
-  hasRealFile: () => hasRealFile,
+// src/server/engine/router-facts.ts
+var router_facts_exports = {};
+__export(router_facts_exports, {
   pageKey: () => pageKey,
-  reconcileRequirements: () => reconcileRequirements,
-  routerPages: () => routerPages,
-  runExecutionLoop: () => runExecutionLoop
+  routerPages: () => routerPages
 });
 function pageKey(route) {
   const r = route.replace(/\/+$/, "") || "/";
@@ -152246,311 +152047,11 @@ function routerPages(files) {
   }
   return out;
 }
-function hasRealFile(files, file) {
-  const f = files.find((x) => x.path === file);
-  return Boolean(f && f.content.trim().length > 0 && !isPlaceholderFile(f.content));
-}
-function reconcileRequirements(seed, files) {
-  const byKey = /* @__PURE__ */ new Map();
-  for (const p2 of seed) if (!byKey.has(pageKey(p2.route))) byKey.set(pageKey(p2.route), { ...p2 });
-  for (const r of routerPages(files)) {
-    const k = pageKey(r.route);
-    const cur = byKey.get(k);
-    if (!cur) {
-      if ([...byKey.values()].some((p2) => p2.file === r.file)) continue;
-      byKey.set(k, r);
-    } else if (cur.file !== r.file && !hasRealFile(files, cur.file)) {
-      cur.file = r.file;
-    }
-  }
-  return [...byKey.values()];
-}
-function createExecutionState(goal, seed, files) {
-  return {
-    goal,
-    requirements: reconcileRequirements(seed, files),
-    files,
-    ops: /* @__PURE__ */ new Map(),
-    completed: [],
-    current: [],
-    iterations: 0,
-    calls: 0,
-    checkpoint: { saved: 0, failed: 0 }
-  };
-}
-async function runExecutionLoop(args) {
-  const state = createExecutionState(args.goal ?? "build", args.pages, args.files);
-  const written = [];
-  const truncated = [];
-  const decisions = /* @__PURE__ */ new Map();
-  const units = [];
-  let frameTried = false;
-  let foundationDone = !args.createFoundation;
-  let unresolved = [];
-  let depRound = 0;
-  let stopped = false;
-  const record = (r) => {
-    units.push(r);
-    try {
-      args.onUnit?.(r);
-    } catch {
-    }
-  };
-  const checkpoint = async (got) => {
-    if (!got.length || !args.onFilesDone) return;
-    try {
-      const ok = await args.onFilesDone(got);
-      if (ok === false) state.checkpoint.failed += got.length;
-      else state.checkpoint.saved += got.length;
-    } catch {
-      state.checkpoint.failed += got.length;
-    }
-  };
-  const inScope = (instruction, path) => {
-    const want = targetOf(instruction);
-    if (path === want) return true;
-    if (!instruction.startsWith(DECOMPOSED_MARKER)) return false;
-    const dir = /plus its section components in (src\/components\/[^\s/]+)\//.exec(instruction)?.[1];
-    return Boolean(dir && path.startsWith(dir + "/") && /^[\w/-]+\.tsx$/.test(path) && !path.slice(dir.length + 1).includes("/"));
-  };
-  const ask = async (instruction) => {
-    state.calls++;
-    try {
-      return (await args.request(instruction) ?? []).filter((f) => inScope(instruction, f.path));
-    } catch (e) {
-      if (/stop|cancel|abort/i.test(String(e?.message ?? e))) stopped = true;
-      return [];
-    }
-  };
-  const cutOff = async (f) => {
-    if (!args.isTruncated) return false;
-    try {
-      return await args.isTruncated(f);
-    } catch {
-      return false;
-    }
-  };
-  const execute = async (op, instruction, layer) => {
-    const started = Date.now();
-    const kind = op.kind === "router" ? "router" : op.kind === "section" ? "section" : "page";
-    const target = targetOf(instruction) ?? op.target;
-    const rec = { id: op.key, kind, target, layer, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "ok" };
-    const before = state.calls;
-    const single = !instruction.startsWith(DECOMPOSED_MARKER);
-    const got = await ask(instruction);
-    const whole = [];
-    for (let f of got) {
-      if (await cutOff(f)) {
-        if (single && f.path === target) {
-          const cont = (await ask(continuationInstruction(f.path, f.content))).find((x) => x.path === f.path);
-          if (cont) {
-            const stitched = { path: f.path, content: stitchContinuation(f.content, cont.content) };
-            if (!await cutOff(stitched)) {
-              rec.continued = true;
-              f = stitched;
-            }
-          }
-        }
-        if (!rec.continued) {
-          truncated.push(f.path);
-          continue;
-        }
-      }
-      whole.push(f);
-    }
-    if (single) {
-      const validate = (f) => [
-        ...validateUnitImports(f, state.files).map((d) => d.message),
-        ...args.checkIdentifiers ? undefinedNames(f, state.files, args.checkIdentifiers).map((d) => d.message) : []
-      ];
-      for (let i = 0; i < whole.length; i++) {
-        if (args.checkIdentifiers) {
-          const und = undefinedNames(whole[i], state.files, args.checkIdentifiers);
-          const repaired = safeReactImportRepair(whole[i], und, args.reactIsDependency ?? true);
-          if (repaired) {
-            whole[i] = repaired;
-            rec.diagnostics.push(...und.map((d) => d.message + " [auto: added React import]"));
-            rec.outcome = "corrected";
-          }
-        }
-        const diags = validate(whole[i]);
-        if (!diags.length) continue;
-        rec.diagnostics.push(...diags);
-        op.errors.push(...diags);
-        rec.feedbackRounds++;
-        const asDiag = diags.map((message) => ({ path: whole[i].path, spec: "", message }));
-        const fixed = (await ask(feedbackInstruction(instruction, whole[i], asDiag))).find((x) => x.path === whole[i].path);
-        if (fixed && !await cutOff(fixed)) {
-          const left = validate(fixed);
-          if (left.length < diags.length) {
-            whole[i] = fixed;
-            rec.outcome = left.length ? "failed" : "corrected";
-          }
-          if (left.length) rec.diagnostics.push(...left.map((m) => `still failing after correction: ${m}`));
-        } else rec.outcome = "failed";
-      }
-    }
-    rec.calls = state.calls - before;
-    rec.ms = Date.now() - started;
-    if (!whole.length) rec.outcome = "failed";
-    record(rec);
-    return whole;
-  };
-  const apply = (got) => {
-    for (const f of got) {
-      if (f.path !== "src/App.tsx" && hasRealFile(state.files, f.path)) continue;
-      state.files = [...state.files.filter((x) => x.path !== f.path), f];
-      written.push(f.path);
-    }
-  };
-  const upsert = (key, init) => {
-    let op = state.ops.get(key);
-    if (!op) {
-      op = { ...init, status: "pending", attempts: 0, errors: [] };
-      state.ops.set(key, op);
-    }
-    return op;
-  };
-  const markDone = (op) => {
-    if (op.status !== "done") {
-      op.status = "done";
-      state.completed.push(op.key);
-    }
-  };
-  const inspect = () => {
-    state.requirements = reconcileRequirements(state.requirements, state.files);
-    if (!foundationDone) {
-      return { layer: 0, ops: [upsert("foundation", { key: "foundation", kind: "foundation", target: "shared modules", dependsOn: [] })] };
-    }
-    if (args.createFoundation && unresolved.length) {
-      const key = `deps:${++depRound}`;
-      return { layer: 0, ops: [upsert(key, { key, kind: "foundation", target: "shared modules", dependsOn: [] })] };
-    }
-    const pageOps = [];
-    for (const p2 of state.requirements) {
-      const key = pageKey(p2.route);
-      const op = upsert(key, { key, kind: "page", target: p2.file, route: p2.route, dependsOn: ["foundation"] });
-      op.target = p2.file;
-      if (hasRealFile(state.files, p2.file)) {
-        if (op.status !== "done" && op.attempts === 0) {
-          record({ id: key, kind: "page", target: p2.file, layer: 1, calls: 0, feedbackRounds: 0, continued: false, diagnostics: [], ms: 0, outcome: "skipped_done" });
-        }
-        markDone(op);
-        continue;
-      }
-      if (op.status === "done" || op.status === "running") continue;
-      if (op.attempts >= MAX_PAGE_ATTEMPTS) {
-        op.status = "failed";
-        continue;
-      }
-      if (op.attempts >= 1 && !args.budget.take("missing_page", p2.route)) {
-        op.status = "failed";
-        continue;
-      }
-      pageOps.push(op);
-    }
-    if (pageOps.length) return { layer: 1, ops: pageOps };
-    const sectionOps = [];
-    for (const [pageFile, d] of decisions) {
-      if (!hasRealFile(state.files, pageFile)) continue;
-      for (const sf of missingSections(state.files, pageFile, d.sectionDir)) {
-        const key = `section:${sf}`;
-        const op = upsert(key, { key, kind: "section", target: sf, route: pageFile, dependsOn: [] });
-        if (op.status !== "pending") continue;
-        if (!args.budget.take("missing_page", sf)) {
-          op.status = "failed";
-          continue;
-        }
-        sectionOps.push(op);
-      }
-    }
-    if (sectionOps.length) return { layer: 1, ops: sectionOps };
-    if (!frameTried) {
-      const existing = state.requirements.filter((p2) => hasRealFile(state.files, p2.file)).map((p2) => p2.route);
-      const needFrame = !frameIsComplete(state.files, state.requirements.length) || existing.length > 0 && !assessCompleteness({ requestedRoutes: existing, files: state.files }).complete;
-      frameTried = true;
-      if (needFrame && args.budget.take("missing_page", "app shell")) {
-        return { layer: 2, ops: [upsert("router", { key: "router", kind: "router", target: "src/App.tsx", dependsOn: [] })] };
-      }
-    }
-    return { layer: -1, ops: [] };
-  };
-  for (; ; ) {
-    if (stopped) break;
-    const next = inspect();
-    if (!next.ops.length) break;
-    state.iterations++;
-    state.current = next.ops.map((o) => o.key);
-    for (const o of next.ops) {
-      o.status = "running";
-      o.attempts++;
-    }
-    if (next.layer === 0) {
-      const started = Date.now();
-      const op = next.ops[0];
-      const scope = foundationDone ? unresolved : void 0;
-      unresolved = [];
-      const f = await args.createFoundation(state.files, scope);
-      state.files = f.files;
-      for (const t of f.created) record({ id: `foundation:${t}`, kind: "foundation", target: t, layer: 0, calls: 1, feedbackRounds: 0, continued: false, diagnostics: [], ms: Date.now() - started, outcome: "ok" });
-      state.calls += f.created.length;
-      await checkpoint(state.files.filter((x) => f.created.includes(x.path)));
-      foundationDone = true;
-      markDone(op);
-      continue;
-    }
-    const paths = state.files.map((f) => f.path);
-    const contract = [projectContract(state.files), signatureContext(state.files)].filter(Boolean).join("\n");
-    const shared = sharedFiles(state.files, state.requirements);
-    await mapBounded(next.ops, PAGE_CONCURRENCY, async (op) => {
-      const got = await run(op);
-      const before = new Set(written);
-      apply(got);
-      for (const f of got) if (written.includes(f.path) && !before.has(f.path) && /\.(tsx?|jsx?)$/.test(f.path)) unresolved.push(f.path);
-      await checkpoint(got.filter((f) => written.includes(f.path) && !before.has(f.path) || f.path === "src/App.tsx"));
-    });
-    for (const op of next.ops) {
-      const ok = op.kind === "router" ? frameIsComplete(state.files, state.requirements.length) : hasRealFile(state.files, op.target);
-      if (ok) markDone(op);
-      else op.status = op.kind === "page" ? "pending" : "failed";
-    }
-    state.current = [];
-    continue;
-    async function run(op) {
-      if (op.kind === "router") {
-        return execute(op, routerInstruction(state.requirements, paths, contract), 2);
-      }
-      if (op.kind === "section") {
-        const page2 = state.requirements.find((p2) => p2.file === op.route);
-        const src2 = state.files.find((f) => f.path === op.route)?.content ?? "";
-        return execute(op, sectionInstruction(page2, op.target, src2, projectContract(state.files)), 1);
-      }
-      const page = state.requirements.find((p2) => pageKey(p2.route) === op.key);
-      const d = args.decide?.(page, truncated.includes(page.file));
-      if (d?.decompose) {
-        decisions.set(page.file, d);
-        return execute(op, decomposedPageInstruction(page, d, paths, contract, shared), 1);
-      }
-      return execute(op, pageInstruction(page, paths, contract, shared), 1);
-    }
-  }
-  const decomposed = [];
-  for (const [pageFile, d] of decisions) {
-    if (!hasRealFile(state.files, pageFile)) continue;
-    decomposed.push({ file: pageFile, reasons: d.reasons, sections: state.files.filter((f) => f.path.startsWith(d.sectionDir + "/")).map((f) => f.path) });
-  }
-  const missing = state.requirements.filter((p2) => !hasRealFile(state.files, p2.file)).map((p2) => p2.route);
-  return { files: state.files, written, missing, calls: state.calls, truncated, decomposed, units, state };
-}
-var HOME_NAMES, MAX_PAGE_ATTEMPTS;
-var init_agent_loop = __esm({
-  "src/server/engine/agent-loop.ts"() {
+var HOME_NAMES;
+var init_router_facts = __esm({
+  "src/server/engine/router-facts.ts"() {
     init_define_import_meta_env();
-    init_build_state();
-    init_work_unit();
-    init_write();
     HOME_NAMES = /^(home|index|landing|dashboard|overview|main)$/i;
-    MAX_PAGE_ATTEMPTS = 2;
   }
 });
 
@@ -152563,9 +152064,12 @@ __export(tool_loop_exports, {
   compact: () => compact2,
   completionGaps: () => completionGaps,
   createToolLoopState: () => createToolLoopState,
+  dependentsOf: () => dependentsOf,
+  evidenceSummary: () => evidenceSummary,
+  formatNotReady: () => formatNotReady,
   opId: () => opId,
-  routerReferences: () => routerReferences,
   runToolLoop: () => runToolLoop,
+  stableFoundations: () => stableFoundations,
   toolsFor: () => toolsFor
 });
 function toolsFor(light) {
@@ -152594,29 +152098,51 @@ function countOccurrences3(hay, needle) {
   }
   return at;
 }
-function routerReferences(files) {
-  const app = files.get("src/App.tsx");
-  if (!app) return [];
-  const out = [];
-  const rx = /import\s+[\w$]+\s+from\s+["']@\/(pages\/[\w/.-]+)["']|lazy\(\s*\(\)\s*=>\s*import\(\s*["']@\/(pages\/[\w/.-]+)["']/g;
-  let m;
-  while (m = rx.exec(app)) {
-    const rel = (m[1] ?? m[2]).replace(/\.(tsx?|jsx?)$/, "");
-    out.push(`src/${rel}`);
-  }
-  return [...new Set(out)];
+function resolveImport2(from, spec, files) {
+  let base;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith(".")) {
+    const dir = from.split("/").slice(0, -1);
+    for (const part of spec.split("/")) {
+      if (part === "." || part === "") continue;
+      if (part === "..") dir.pop();
+      else dir.push(part);
+    }
+    base = dir.join("/");
+  } else return null;
+  for (const e of EXTS4) if (files.has(base + e)) return base + e;
+  return null;
 }
-function resolves2(files, base) {
-  return [".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"].some((ext) => (files.get(base + ext) ?? "").trim().length > 0);
+function dependentsOf(files) {
+  const out = /* @__PURE__ */ new Map();
+  for (const [p2, c] of files) {
+    if (!/\.(t|j)sx?$/.test(p2)) continue;
+    IMPORT_RX.lastIndex = 0;
+    let m;
+    while (m = IMPORT_RX.exec(c)) {
+      const target = resolveImport2(p2, m[1] ?? m[2], files);
+      if (!target || target === p2) continue;
+      (out.get(target) ?? out.set(target, /* @__PURE__ */ new Set()).get(target)).add(p2);
+    }
+  }
+  return out;
+}
+function stableFoundations(state, files) {
+  const deps = dependentsOf(files);
+  const clean = (p2) => {
+    const c = files.get(p2);
+    return c !== void 0 && c.trim().length > 0 && state.validatedHash.get(p2) === hash(c) && (state.validation.get(p2) ?? []).length === 0;
+  };
+  const out = /* @__PURE__ */ new Map();
+  for (const [p2, users] of deps) {
+    if (!clean(p2)) continue;
+    const cleanUsers = [...users].filter(clean);
+    if (cleanUsers.length) out.set(p2, cleanUsers.sort());
+  }
+  return out;
 }
 function completionGaps(state, files) {
   const gaps = [];
-  for (const r of state.requirements) {
-    if (!(files.get(r.file) ?? "").trim()) gaps.push(`required file missing: ${r.file}${r.route ? ` (route ${r.route})` : ""}`);
-  }
-  for (const base of routerReferences(files)) {
-    if (!resolves2(files, base)) gaps.push(`router imports a file that does not exist: ${base}`);
-  }
   for (const [path, errs] of state.validation) {
     if (errs.length && files.has(path)) gaps.push(`${path} still fails validation: ${errs[0]}`);
   }
@@ -152624,6 +152150,22 @@ function completionGaps(state, files) {
     if (t.status === "pending" || t.status === "blocked") gaps.push(`task not done: ${t.id}${t.title ? ` \u2014 ${t.title}` : ""}`);
   }
   return gaps;
+}
+function formatNotReady(gaps, findings) {
+  const lines = ["NOT READY \u2014 the workspace does not pass verification (the same check that decides commit)."];
+  if (findings.length) {
+    lines.push("", "Verification findings:");
+    for (const f of findings.slice(0, 15)) {
+      lines.push(`- [${f.gate}] ${f.reason}`);
+      lines.push(`  Required next operation: ${f.paths.length ? `targeted edit of ${f.paths.slice(0, 3).join(", ")}` : "create or fix the file(s) named above"}`);
+    }
+  }
+  if (gaps.length) {
+    lines.push("", "Unfinished work:");
+    for (const g of gaps.slice(0, 15)) lines.push(`- ${g}`);
+  }
+  lines.push("", "Fix these with tools, then call finish again.");
+  return lines.join("\n");
 }
 function estimateTokens2(messages) {
   let chars = 0;
@@ -152633,7 +152175,20 @@ function estimateTokens2(messages) {
   }
   return Math.ceil(chars / 4);
 }
-function compact2(messages, state, keepRecent) {
+function evidenceSummary(state, files) {
+  const stable = stableFoundations(state, files);
+  const parts = [];
+  if (stable.size) {
+    parts.push(
+      "STABLE foundations (valid and used by other valid files \u2014 build on them; do not replace them; if your task truly needs a change, make a targeted edit_file):\n" + [...stable].slice(0, 40).map(([p2, users]) => `- ${p2} \u2190 used by ${users.slice(0, 4).join(", ")}${users.length > 4 ? ` +${users.length - 4}` : ""}`).join("\n")
+    );
+  }
+  if (state.readiness && !state.readiness.ready) {
+    parts.push("Open verification findings:\n" + state.readiness.findings.slice(0, 10).map((f) => `- [${f.gate}] ${f.reason}`).join("\n"));
+  }
+  return parts.join("\n\n");
+}
+function compact2(messages, state, keepRecent, files) {
   if (messages.length <= keepRecent + 3) return messages;
   let cut = messages.length - keepRecent;
   while (cut > 2 && messages[cut]?.role === "tool") cut--;
@@ -152648,18 +152203,20 @@ function compact2(messages, state, keepRecent) {
 ${tasks}` : "",
     failing ? `Files still failing validation:
 ${failing}` : "",
+    files ? evidenceSummary(state, files) : "",
     "Continue from here. Re-read a file before editing it if you need its current content."
   ].filter(Boolean).join("\n");
   return [messages[0], messages[1], { role: "user", content: summary }, ...messages.slice(cut)];
 }
-function createToolLoopState(goal, requirements = []) {
+function createToolLoopState(goal) {
   return {
     goal,
-    requirements,
     tasks: /* @__PURE__ */ new Map(),
     completedOps: /* @__PURE__ */ new Set(),
     read: /* @__PURE__ */ new Set(),
     validation: /* @__PURE__ */ new Map(),
+    validatedHash: /* @__PURE__ */ new Map(),
+    readiness: null,
     written: [],
     writesSinceTypecheck: 0,
     iteration: 0,
@@ -152672,7 +152229,7 @@ async function runToolLoop(args) {
   const tools = toolsFor(!!args.light);
   const allowed = new Set(tools.map((t) => t.function.name));
   const tree = new Map(args.files.map((f) => [f.path, f.content]));
-  const state = createToolLoopState(args.goal, args.requirements ?? []);
+  const state = createToolLoopState(args.goal);
   const breaker = new AgentCircuitBreaker(cfg.breaker);
   const traces = [];
   const emit = args.onEvent ?? (() => {
@@ -152683,6 +152240,51 @@ async function runToolLoop(args) {
     { role: "user", content: args.brief }
   ];
   let validationMs = 0;
+  const record = (path, content, errs) => {
+    state.validation.set(path, errs);
+    state.validatedHash.set(path, hash(content));
+  };
+  const checkReadiness = async (t) => {
+    const v0 = Date.now();
+    try {
+      const files = [...t].map(([path, content]) => ({ path, content }));
+      const changed = [...new Set(state.written)].filter((p2) => t.has(p2));
+      return await args.readiness(files, changed);
+    } catch (e) {
+      return { ready: false, findings: [{ gate: "source", reason: `verification could not run: ${e instanceof Error ? e.message : String(e)}`, paths: [] }] };
+    } finally {
+      validationMs += Date.now() - v0;
+    }
+  };
+  const dirty = /* @__PURE__ */ new Set();
+  const refreshEvidence = async () => {
+    const deps = dependentsOf(tree);
+    const todo = /* @__PURE__ */ new Set();
+    for (const p2 of dirty) for (const u of deps.get(p2) ?? []) todo.add(u);
+    dirty.clear();
+    for (const p2 of new Set(state.written)) {
+      const c = tree.get(p2);
+      if (c === void 0) continue;
+      if (state.validatedHash.get(p2) !== hash(c)) {
+        todo.add(p2);
+        for (const u of deps.get(p2) ?? []) todo.add(u);
+      }
+    }
+    for (const p2 of todo) {
+      const c = tree.get(p2);
+      if (c !== void 0) record(p2, c, await validate(p2, c));
+    }
+  };
+  const finishGate = async () => {
+    await refreshEvidence();
+    for (const t of state.tasks.values()) {
+      if (t.status === "done" && t.files.some((f) => !(tree.get(f) ?? "").trim() || (state.validation.get(f) ?? []).length)) t.status = "pending";
+    }
+    const gaps = completionGaps(state, tree);
+    state.readiness = await checkReadiness(tree);
+    if (!gaps.length && state.readiness.ready) return null;
+    return formatNotReady(gaps, state.readiness.findings);
+  };
   const validate = async (path, content) => {
     const t0 = Date.now();
     try {
@@ -152701,16 +152303,18 @@ async function runToolLoop(args) {
       const c = tree.get(p2);
       if (c === void 0) continue;
       const errs = await validate(p2, c);
-      state.validation.set(p2, errs);
+      record(p2, c, errs);
       state.written.push(p2);
       if (errs.length) failing.push(`${p2}:
 ${errs.slice(0, 6).map((e) => `- ${e}`).join("\n")}`);
     }
-    if (failing.length) {
-      messages[1] = { role: "user", content: `${args.brief}
-
-These already-written files FAIL validation \u2014 read and fix them:
-${failing.join("\n")}` };
+    const evidence = evidenceSummary(state, tree);
+    if (failing.length || evidence) {
+      messages[1] = {
+        role: "user",
+        content: [args.brief, failing.length ? `These already-written files FAIL validation \u2014 read and fix them:
+${failing.join("\n")}` : "", evidence].filter(Boolean).join("\n\n")
+      };
     }
   }
   const persist = async (path, content) => {
@@ -152719,6 +152323,7 @@ ${failing.join("\n")}` };
       if (!ok) return false;
     }
     tree.set(path, content);
+    dirty.add(path);
     state.written.push(path);
     state.writesSinceTypecheck++;
     return true;
@@ -152783,11 +152388,20 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true };
         if (existing !== void 0 && existing.trim() && !state.read.has(path) && !state.written.includes(path)) {
           return { output: fail(name, path, `Refused: ${path} exists. read_file it first, then use edit_file (or create_file to replace it fully).`), isError: true };
         }
+        if (existing !== void 0 && existing.trim()) {
+          const users = stableFoundations(state, tree).get(path);
+          if (users) {
+            return {
+              output: fail(name, path, `Refused: ${path} is a STABLE foundation (valid, used by ${users.slice(0, 5).join(", ")}). Do not replace it. If your current task genuinely needs it to change, make the smallest targeted edit_file.`, "scope_violation"),
+              isError: true
+            };
+          }
+        }
         const errs = await validate(path, content);
         if (!await persist(path, content)) return { output: fail(name, path, `Refused by the write gate: ${path}.`, "scope_violation"), isError: true };
         state.read.add(path);
-        state.completedOps.add(opId("create", path));
-        state.validation.set(path, errs);
+        record(path, content, errs);
+        if (!errs.length) state.completedOps.add(opId("create", path));
         emit({ kind: errs.length ? "write_failed_validation" : "write_ok", path, detail: errs[0] });
         if (errs.length) {
           breaker.recordFailure({ category: "syntax_error", tool: name, path, message: errs[0] });
@@ -152825,9 +152439,26 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true };
           return { output: fail(name, path, `Edit rolled back \u2014 it introduced errors in ${path}:
 ${introduced.slice(0, 6).map((e) => `- ${e}`).join("\n")}`, "syntax_error"), isError: true };
         }
+        const users = stableFoundations(state, tree).get(path);
+        if (users) {
+          const before2 = state.readiness ?? await checkReadiness(tree);
+          const trial = new Map(tree);
+          trial.set(path, next);
+          const after = await checkReadiness(trial);
+          const had = new Set(before2.findings.map(findingKey));
+          const regressions = after.findings.filter((f) => !had.has(findingKey(f)));
+          if (regressions.length) {
+            return {
+              output: fail(name, path, `Edit rolled back \u2014 ${path} is a stable foundation used by ${users.slice(0, 5).join(", ")}, and this change breaks verification:
+${regressions.slice(0, 6).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}`, "scope_violation"),
+              isError: true
+            };
+          }
+          state.readiness = after;
+        }
         if (!await persist(path, next)) return { output: fail(name, path, `Refused by the write gate: ${path}.`, "scope_violation"), isError: true };
-        state.completedOps.add(id);
-        state.validation.set(path, errs);
+        record(path, next, errs);
+        if (!errs.length) state.completedOps.add(id);
         breaker.recordProgress(errs.length < before.length ? "file_repaired" : "file_written", path);
         emit({ kind: "edit_ok", path });
         return { output: errs.length ? report(path, errs) : `OK: edited ${path} and validated.`, isError: false };
@@ -152851,23 +152482,24 @@ ${introduced.slice(0, 6).map((e) => `- ${e}`).join("\n")}`, "syntax_error"), isE
 ${lines.join("\n")}`, isError: false };
       }
       case "finish": {
-        for (const t of state.tasks.values()) {
-          if (t.status === "done" && t.files.some((f) => !(tree.get(f) ?? "").trim() || (state.validation.get(f) ?? []).length)) t.status = "pending";
-        }
-        const gaps = completionGaps(state, tree);
-        if (gaps.length) return { output: `finish refused \u2014 the workspace is not complete:
-${gaps.slice(0, 20).map((g) => `- ${g}`).join("\n")}`, isError: true };
+        const notReady = await finishGate();
+        if (notReady) return { output: `finish refused.
+${notReady}`, isError: true };
         state.finished = true;
         return { output: "Finished.", isError: false };
       }
     }
   }
+  const incompleteNow = () => [
+    ...completionGaps(state, tree),
+    ...state.readiness && !state.readiness.ready ? state.readiness.findings.map((f) => `[${f.gate}] ${f.reason}`) : []
+  ];
   const hardCeiling = cfg.maxIterations + cfg.finalizeIterations;
   let finalizing = false;
   while (state.iteration < hardCeiling) {
     if (args.signal?.aborted) {
       state.stopReason = "cancelled";
-      return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "cancelled" };
+      return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "cancelled" };
     }
     if (!finalizing && state.iteration >= cfg.maxIterations) {
       finalizing = true;
@@ -152875,7 +152507,7 @@ ${gaps.slice(0, 20).map((g) => `- ${g}`).join("\n")}`, isError: true };
     }
     let compacted = false;
     if (estimateTokens2(messages) > cfg.contextWindow * cfg.compactAt) {
-      messages = compact2(messages, state, cfg.keepRecent);
+      messages = compact2(messages, state, cfg.keepRecent, tree);
       compacted = true;
     }
     state.iteration++;
@@ -152887,11 +152519,10 @@ ${gaps.slice(0, 20).map((g) => `- ${g}`).join("\n")}`, isError: true };
     validationMs = 0;
     const writesBefore = state.written.length;
     if (reply.toolCalls.length === 0) {
-      const gaps = completionGaps(state, tree);
-      if (!gaps.length) state.finished = true;
-      else messages.push({ role: "user", content: `You stopped, but the workspace is not complete:
-${gaps.slice(0, 20).map((g) => `- ${g}`).join("\n")}
-Continue with tools.` });
+      const notReady = await finishGate();
+      if (!notReady) state.finished = true;
+      else messages.push({ role: "user", content: `You stopped, but:
+${notReady}` });
     } else {
       const results = [];
       let i = 0;
@@ -152945,16 +152576,17 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
     }
     if (breaker.tripped) {
       state.stopReason = breaker.reason()?.detail ?? "circuit breaker";
-      return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "breaker" };
+      return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "breaker" };
     }
   }
   state.stopReason = "iteration budget exhausted";
-  return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "incomplete" };
+  return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "incomplete" };
 }
-var FULL_CONFIG, LIGHT_CONFIG, fn, TOOLS, READ_ONLY, normPath;
+var FULL_CONFIG, LIGHT_CONFIG, fn, TOOLS, READ_ONLY, normPath, IMPORT_RX, EXTS4;
 var init_tool_loop = __esm({
   "src/server/engine/tool-loop.ts"() {
     init_define_import_meta_env();
+    init_readiness();
     init_circuit_breaker();
     FULL_CONFIG = {
       maxIterations: 100,
@@ -153008,6 +152640,8 @@ var init_tool_loop = __esm({
     };
     READ_ONLY = /* @__PURE__ */ new Set(["read_file", "list_files", "search"]);
     normPath = (p2) => String(p2 ?? "").trim().replace(/^\.?\/+/, "");
+    IMPORT_RX = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
+    EXTS4 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.js"];
   }
 });
 
@@ -153250,6 +152884,231 @@ var init_tool_loop_model = __esm({
   "src/server/engine/tool-loop-model.ts"() {
     init_define_import_meta_env();
     init_failure_classification();
+  }
+});
+
+// src/server/engine/work-unit.ts
+var work_unit_exports = {};
+__export(work_unit_exports, {
+  completedPortion: () => completedPortion,
+  continuationInstruction: () => continuationInstruction,
+  describeSignature: () => describeSignature,
+  exportSignature: () => exportSignature,
+  feedbackInstruction: () => feedbackInstruction,
+  planWorkUnits: () => planWorkUnits,
+  safeReactImportRepair: () => safeReactImportRepair,
+  sharedSignatures: () => sharedSignatures,
+  signatureContext: () => signatureContext,
+  stitchContinuation: () => stitchContinuation,
+  undefinedNames: () => undefinedNames,
+  validateUnitImports: () => validateUnitImports
+});
+function exportSignature(path, content) {
+  const named = /* @__PURE__ */ new Set();
+  const types = /* @__PURE__ */ new Set();
+  const functions = /* @__PURE__ */ new Set();
+  for (const m of content.matchAll(DECL)) {
+    const kind = m[1];
+    const name = m[2];
+    if (kind === "type" || kind === "interface") types.add(name);
+    else {
+      named.add(name);
+      if (kind.startsWith("function")) functions.add(name);
+    }
+  }
+  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
+    for (const part of m[2].split(",")) {
+      const raw = part.trim();
+      if (!raw) continue;
+      const isType = Boolean(m[1]) || raw.startsWith("type ");
+      const exported = raw.replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
+      if (exported === "default") continue;
+      (isType ? types : named).add(exported);
+    }
+  }
+  for (const m of content.matchAll(/export\s+(type\s+)?\{([^}]*)\}\s*from/g)) {
+    for (const part of m[2].split(",")) {
+      const exported = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
+      if (exported && exported !== "default") (m[1] ? types : named).add(exported);
+    }
+  }
+  const hasDefault = /export\s+default\b/.test(content) || /export\s*\{[^}]*\bas\s+default\b[^}]*\}/.test(content);
+  const components = [...named].filter((n) => /^[A-Z][a-z0-9]/.test(n) && !/^[A-Z0-9_]+$/.test(n));
+  return {
+    path,
+    hasDefault,
+    named: [...named].sort(),
+    components: components.sort(),
+    functions: [...functions].sort(),
+    types: [...types].sort()
+  };
+}
+function describeSignature(sig) {
+  const alias = "@/" + sig.path.replace(/^src\//, "").replace(/\.(tsx?|jsx?)$/, "");
+  const parts = [];
+  if (sig.named.length) parts.push(`named { ${sig.named.slice(0, 30).join(", ")} }`);
+  if (sig.types.length) parts.push(`types { ${sig.types.slice(0, 15).join(", ")} }`);
+  parts.push(sig.hasDefault ? "HAS a default export" : "NO default export");
+  return `- ${alias}: ${parts.join("; ")}`;
+}
+function sharedSignatures(files) {
+  return files.filter(
+    (f) => isSource2(f.path) && f.path.startsWith("src/") && !isPage(f.path) && !f.path.startsWith("src/components/ui/") && !f.path.startsWith("src/integrations/supabase/") && !/^src\/(main|App)\.tsx$/.test(f.path) && !/\.d\.ts$/.test(f.path)
+  ).map((f) => exportSignature(f.path, f.content)).filter((s) => s.named.length || s.hasDefault || s.types.length).sort((a2, b) => a2.path.localeCompare(b.path));
+}
+function signatureContext(files) {
+  const sigs = sharedSignatures(files);
+  if (!sigs.length) return "";
+  return [
+    "REAL EXPORT SIGNATURES of the modules that already exist (import them exactly like this \u2014 a module with NO default export must be imported with braces):",
+    ...sigs.slice(0, 80).map(describeSignature)
+  ].join("\n");
+}
+function resolveStaged(from, spec, byPath) {
+  const hit = resolveSpecifier2(from, spec, new Set(byPath.keys()));
+  if (!hit) return null;
+  return typeof hit === "string" ? hit : null;
+}
+function validateUnitImports(file, staged) {
+  if (!isSource2(file.path)) return [];
+  const byPath = new Map(staged.map((f) => [f.path, f.content]));
+  byPath.set(file.path, file.content);
+  const out = [];
+  IMPORT.lastIndex = 0;
+  let m;
+  while (m = IMPORT.exec(file.content)) {
+    const typeOnly = Boolean(m[1]);
+    const def = m[2];
+    const spec = m[4];
+    if (!spec.startsWith("@/") && !spec.startsWith(".")) continue;
+    if (/\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
+    const target = resolveStaged(file.path, spec, byPath);
+    if (!target) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" does not exist. Import only from the existing modules listed in the signatures, or define it inside ${file.path}.`
+      });
+      continue;
+    }
+    if (typeOnly || !isSource2(target)) continue;
+    const sig = exportSignature(target, byPath.get(target) ?? "");
+    const avail = sig.named.length ? `Available named exports: { ${sig.named.slice(0, 20).join(", ")} }.` : "";
+    if (def && !sig.hasDefault) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" has NO default export, so \`import ${def} from "${spec}"\` is invalid. ${avail}${sig.named.includes(def) ? ` Use \`import { ${def} } from "${spec}"\`.` : ""}`
+      });
+    }
+    const names = (m[3] ?? "").replace(/[{}]/g, "").split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("type ")).map((s) => s.split(/\s+as\s+/)[0].trim());
+    const all = /* @__PURE__ */ new Set([...sig.named, ...sig.types]);
+    const missing = names.filter((n) => n !== "default" && !all.has(n));
+    if (missing.length) {
+      out.push({
+        path: file.path,
+        spec,
+        message: `"${spec}" does not export ${missing.map((n) => `\`${n}\``).join(", ")}. ${avail}${sig.hasDefault ? " It has a default export." : ""}`
+      });
+    }
+  }
+  return out;
+}
+function feedbackInstruction(original, file, diags) {
+  return [
+    original,
+    "",
+    "IMMEDIATE VALIDATION FEEDBACK \u2014 your previous answer for this file failed these exact checks against the real project:",
+    ...diags.map((d) => `- ${d.message}`),
+    "Rewrite the SAME file, complete, fixing only these problems. Keep everything else as it was.",
+    `Your previous version of ${file.path}:`,
+    "```tsx",
+    file.content,
+    "```"
+  ].join("\n");
+}
+function completedPortion(partial) {
+  const cut = partial.lastIndexOf("\n");
+  return cut === -1 ? "" : partial.slice(0, cut + 1);
+}
+function continuationInstruction(target, partial) {
+  const done = completedPortion(partial);
+  return [
+    `CONTINUATION: your answer for ${target} was cut off. The completed portion is below.`,
+    `WRITE SCOPE: exactly one file \u2014 write it as ${target}, but its content must be ONLY the remaining source that comes AFTER the last line shown, so that (completed portion + your answer) is the whole file.`,
+    "Do not repeat any line already written. Do not add imports that are already present. Finish every open JSX element, function and the default export.",
+    "Completed portion:",
+    "```tsx",
+    done,
+    "```"
+  ].join("\n");
+}
+function stitchContinuation(partial, continuation) {
+  const done = completedPortion(partial);
+  let rest = continuation.replace(/^\s*\n/, "");
+  const lastLine = done.trimEnd().split("\n").pop()?.trim();
+  if (lastLine && rest.trimStart().startsWith(lastLine) && lastLine.length > 8) {
+    rest = rest.trimStart().slice(lastLine.length).replace(/^\s*\n/, "");
+  }
+  return done + rest;
+}
+function planWorkUnits(pages, foundationTargets) {
+  const foundation = foundationTargets.map((t) => ({
+    id: `foundation:${t}`,
+    kind: "foundation",
+    target: t,
+    reason: "shared module imported by the frame but not yet created",
+    dependsOn: [],
+    mayWrite: [t],
+    onFailure: "same_writer_then_recovery"
+  }));
+  const pageUnits = pages.map((p2) => ({
+    id: `page:${p2.file}`,
+    kind: "page",
+    target: p2.file,
+    reason: `planned route ${p2.route}`,
+    dependsOn: foundation.map((f) => f.id),
+    mayWrite: [p2.file],
+    onFailure: "same_writer_then_recovery"
+  }));
+  const router = {
+    id: "router:src/App.tsx",
+    kind: "router",
+    target: "src/App.tsx",
+    reason: "register every written page (only if the frame is incomplete)",
+    dependsOn: pageUnits.map((p2) => p2.id),
+    mayWrite: ["src/App.tsx"],
+    onFailure: "same_writer_then_recovery"
+  };
+  return [foundation, pageUnits, [router]].filter((l) => l.length);
+}
+function undefinedNames(file, staged, check) {
+  if (!isSource2(file.path)) return [];
+  const tree = [...staged.filter((f) => f.path !== file.path), file];
+  const r = check(tree, [file.path]);
+  if (r.status !== "failed") return [];
+  return r.issues.filter((i) => i.path === file.path).map((i) => {
+    const name = /Cannot find name '([^']+)'/.exec(i.message)?.[1] ?? "?";
+    const hint = name === "React" ? `\`React.\` is used but React is not imported. Add \`import React from "react"\` or import the specific hooks from "react".` : `It is not imported, not declared in this file, and not a platform global. If it comes from another module, import it using the real signatures listed; otherwise declare it.`;
+    return { path: i.path, name, line: i.line, message: `${i.path}:${i.line}: \`${name}\` is used but declared nowhere. ${hint}` };
+  });
+}
+function safeReactImportRepair(file, diags, reactIsDependency) {
+  if (!reactIsDependency || !diags.length || diags.some((d) => d.name !== "React")) return null;
+  if (/\bReact\b(?!\s*\.)/.test(file.content.replace(/["'`][^"'`\n]*["'`]/g, ""))) return null;
+  if (/import\s+(\*\s+as\s+)?React\b/.test(file.content)) return null;
+  return { path: file.path, content: `import React from "react";
+${file.content}` };
+}
+var DECL, isSource2, isPage, IMPORT;
+var init_work_unit = __esm({
+  "src/server/engine/work-unit.ts"() {
+    init_define_import_meta_env();
+    init_structural_deps();
+    DECL = /export\s+(?:declare\s+)?(?:async\s+)?(function\*?|const|let|var|class|type|interface|enum)\s+([A-Za-z_$][\w$]*)/g;
+    isSource2 = (p2) => /\.(tsx?|jsx?)$/.test(p2);
+    isPage = (p2) => p2.startsWith("src/pages/");
+    IMPORT = /import\s+(type\s+)?([\w$]+)?\s*,?\s*(\{[^}]*\})?\s*(?:\*\s+as\s+[\w$]+\s*)?from\s*["']([^"']+)["']/g;
   }
 });
 
@@ -153666,123 +153525,6 @@ var init_provider_retry = __esm({
   }
 });
 
-// src/server/engine/repair.ts
-var repair_exports = {};
-__export(repair_exports, {
-  applyPatches: () => applyPatches,
-  buildRepairUserMessage: () => buildRepairUserMessage,
-  createMissingModule: () => createMissingModule,
-  repairBrokenFile: () => repairBrokenFile,
-  stripFences: () => stripFences2
-});
-function applyPatches(content, reply) {
-  const re = /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n?>>>>>>> REPLACE/g;
-  let out = content;
-  let n = 0;
-  let m;
-  while ((m = re.exec(reply)) !== null) {
-    const search = m[1];
-    if (!search.trim()) return null;
-    const first = out.indexOf(search);
-    if (first < 0 || out.indexOf(search, first + 1) >= 0) return null;
-    out = out.slice(0, first) + m[2] + out.slice(first + search.length);
-    n++;
-  }
-  return n > 0 && out !== content ? out : null;
-}
-function stripFences2(s) {
-  return s.replace(/^\s*```[a-zA-Z]*\n?/, "").replace(/\n?```\s*$/, "");
-}
-function buildRepairUserMessage(file, detail, turnContext) {
-  const ctx = turnContext?.trim() ? `${turnContext.trim()}
-
-Rules: this file is the CURRENT authoritative version. Keep the approach already taken (same router, same imports, same structure) unless the error proves it wrong. Fix only the reported error; do not redesign, rename, or switch libraries.
-
-` : "";
-  return `${ctx}Path: ${file.path}
-Error: ${detail}
-
-${file.content}`;
-}
-async function repairBrokenFile(file, detail, meta) {
-  if (isTruncationDetail(detail)) return null;
-  const user = buildRepairUserMessage(file, detail, meta?.turnContext ?? null);
-  const patchReply = await callRepair(PATCH_SYSTEM, user, 3e3, "targeted_patch", meta);
-  const patched = patchReply ? applyPatches(file.content, patchReply) : null;
-  if (patched) return patched;
-  const whole = await callRepair(SYSTEM3, user, Math.min(12e3, Math.max(3e3, Math.ceil(file.content.length / 2.5))), "whole_file", meta);
-  const out = whole ? stripFences2(whole) : "";
-  return out.trim() ? out : null;
-}
-async function callRepair(system, user, maxTokens, mode, meta) {
-  let resp;
-  try {
-    resp = await aiChatCompletions({
-      feature: "recovery",
-      codeOutput: true,
-      lockCallerModel: true,
-      noFallback: true,
-      timeoutTier: "default",
-      meta: {
-        chosenBy: mode === "targeted_patch" ? "broken_file_repair_patch" : mode === "create_module" ? "missing_node_create" : "broken_file_repair",
-        recoveryReason: mode === "create_module" ? "missing_dependency" : "parse_error",
-        turnId: meta?.turnId ?? null,
-        projectId: meta?.projectId ?? null,
-        userId: meta?.userId ?? null
-      },
-      body: {
-        model: defaultTextModel(),
-        reasoning: { enabled: false },
-        max_tokens: maxTokens,
-        temperature: 0.1,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user }
-        ]
-      }
-    });
-  } catch (e) {
-    if (classifyFailureOrigin(e) === "cancelled") throw e;
-    throw new InfrastructureFailure(e instanceof Error ? e.message : String(e));
-  }
-  if (!resp.ok) {
-    if (classifyHttpStatus(resp.status) === "infrastructure") {
-      throw new InfrastructureFailure(`repair provider returned HTTP ${resp.status}`, resp.status);
-    }
-    return null;
-  }
-  const data2 = await resp.json();
-  return data2.choices?.[0]?.message?.content ?? null;
-}
-async function createMissingModule(node, context, meta) {
-  const { requiredExports: requiredExports2 } = await Promise.resolve().then(() => (init_missing_nodes(), missing_nodes_exports));
-  const req = requiredExports2(node);
-  const user = (meta?.turnContext?.trim() ? `${meta.turnContext.trim()}
-
-` : "") + `Create: ${node.target}
-Required named exports: ${req.named.join(", ") || "(none)"}
-Default export required: ${req.needsDefault ? "yes" : "no"}
-
-How the importers use it:
-${context}`;
-  const reply = await callRepair(CREATE_SYSTEM, user, 8e3, "create_module", meta);
-  const out = reply ? stripFences2(reply) : "";
-  return out.trim() ? out : null;
-}
-var SYSTEM3, PATCH_SYSTEM, CREATE_SYSTEM;
-var init_repair = __esm({
-  "src/server/engine/repair.ts"() {
-    init_define_import_meta_env();
-    init_ai_provider_server();
-    init_build_state();
-    init_ai_model_config();
-    init_failure_classification();
-    SYSTEM3 = "You fix one source file that fails to compile. Return ONLY the complete corrected file contents \u2014 no markdown fences, no commentary. Keep the file's purpose, content, exports and imports; change only what is needed to fix the error.";
-    PATCH_SYSTEM = "You fix one source file that fails to compile by returning ONLY search/replace edits, never the whole file. Format each edit exactly as:\n<<<<<<< SEARCH\n(exact lines copied from the file)\n=======\n(replacement lines)\n>>>>>>> REPLACE\nSEARCH text must match the file exactly and be unique. Change only what fixes the error; keep purpose, exports and imports.";
-    CREATE_SYSTEM = 'You create ONE missing shared source module that other files in a React + TypeScript app already import. Return ONLY the complete file contents \u2014 no markdown fences, no commentary. Export EVERY name listed, with signatures that fit how the importers use them. Only import from: react, packages already used by the importers, "@/types" and other files shown. If data is needed and no backend exists, keep realistic in-memory data in this module.';
-  }
-});
-
 // src/server/verification/gates.ts
 var gates_exports = {};
 __export(gates_exports, {
@@ -153998,6 +153740,168 @@ var init_gates = __esm({
   }
 });
 
+// src/server/verification/source.server.ts
+var source_server_exports = {};
+__export(source_server_exports, {
+  verifyProposedSource: () => verifyProposedSource
+});
+async function verifyProposedSource(args) {
+  const parseable = args.changedPaths.filter((p2) => /\.(tsx?|jsx?|mts|cts)$/i.test(p2) && !isVerifierExempt(p2));
+  const esbuild2 = await verifyFilesEsbuild(args.tree, parseable);
+  let merged = esbuild2;
+  let semantic = { status: "not_run" };
+  if (esbuild2 && (esbuild2.status === "passed" || esbuild2.status === "not_checked")) {
+    const check = checkUndefinedIdentifiers(args.tree, parseable);
+    const identifierIssues = check.issues;
+    semantic = { status: check.status, ...check.reason ? { reason: check.reason } : {} };
+    if (check.status === "failed") {
+      merged = {
+        ...esbuild2,
+        status: "failed",
+        ok: false,
+        issues: [
+          ...esbuild2.issues ?? [],
+          ...identifierIssues.map((i) => ({
+            path: i.path,
+            line: i.line,
+            column: 0,
+            kind: "semantic",
+            message: `${i.message} \u2014 declared nowhere in this file; the preview would crash with a ReferenceError`
+          }))
+        ]
+      };
+    }
+  }
+  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
+  return { ...record, semantic };
+}
+var init_source_server = __esm({
+  "src/server/verification/source.server.ts"() {
+    init_define_import_meta_env();
+    init_esbuild_verifier_server();
+    init_scaffold_ownership_server();
+    init_identifiers_server();
+    init_gates();
+  }
+});
+
+// src/server/engine/repair.ts
+var repair_exports = {};
+__export(repair_exports, {
+  applyPatches: () => applyPatches,
+  buildRepairUserMessage: () => buildRepairUserMessage,
+  createMissingModule: () => createMissingModule,
+  repairBrokenFile: () => repairBrokenFile,
+  stripFences: () => stripFences2
+});
+function applyPatches(content, reply) {
+  const re = /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n?>>>>>>> REPLACE/g;
+  let out = content;
+  let n = 0;
+  let m;
+  while ((m = re.exec(reply)) !== null) {
+    const search = m[1];
+    if (!search.trim()) return null;
+    const first = out.indexOf(search);
+    if (first < 0 || out.indexOf(search, first + 1) >= 0) return null;
+    out = out.slice(0, first) + m[2] + out.slice(first + search.length);
+    n++;
+  }
+  return n > 0 && out !== content ? out : null;
+}
+function stripFences2(s) {
+  return s.replace(/^\s*```[a-zA-Z]*\n?/, "").replace(/\n?```\s*$/, "");
+}
+function buildRepairUserMessage(file, detail, turnContext) {
+  const ctx = turnContext?.trim() ? `${turnContext.trim()}
+
+Rules: this file is the CURRENT authoritative version. Keep the approach already taken (same router, same imports, same structure) unless the error proves it wrong. Fix only the reported error; do not redesign, rename, or switch libraries.
+
+` : "";
+  return `${ctx}Path: ${file.path}
+Error: ${detail}
+
+${file.content}`;
+}
+async function repairBrokenFile(file, detail, meta) {
+  if (isTruncationDetail(detail)) return null;
+  const user = buildRepairUserMessage(file, detail, meta?.turnContext ?? null);
+  const patchReply = await callRepair(PATCH_SYSTEM, user, 3e3, "targeted_patch", meta);
+  const patched = patchReply ? applyPatches(file.content, patchReply) : null;
+  if (patched) return patched;
+  const whole = await callRepair(SYSTEM3, user, Math.min(12e3, Math.max(3e3, Math.ceil(file.content.length / 2.5))), "whole_file", meta);
+  const out = whole ? stripFences2(whole) : "";
+  return out.trim() ? out : null;
+}
+async function callRepair(system, user, maxTokens, mode, meta) {
+  let resp;
+  try {
+    resp = await aiChatCompletions({
+      feature: "recovery",
+      codeOutput: true,
+      lockCallerModel: true,
+      noFallback: true,
+      timeoutTier: "default",
+      meta: {
+        chosenBy: mode === "targeted_patch" ? "broken_file_repair_patch" : mode === "create_module" ? "missing_node_create" : "broken_file_repair",
+        recoveryReason: mode === "create_module" ? "missing_dependency" : "parse_error",
+        turnId: meta?.turnId ?? null,
+        projectId: meta?.projectId ?? null,
+        userId: meta?.userId ?? null
+      },
+      body: {
+        model: defaultTextModel(),
+        reasoning: { enabled: false },
+        max_tokens: maxTokens,
+        temperature: 0.1,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user }
+        ]
+      }
+    });
+  } catch (e) {
+    if (classifyFailureOrigin(e) === "cancelled") throw e;
+    throw new InfrastructureFailure(e instanceof Error ? e.message : String(e));
+  }
+  if (!resp.ok) {
+    if (classifyHttpStatus(resp.status) === "infrastructure") {
+      throw new InfrastructureFailure(`repair provider returned HTTP ${resp.status}`, resp.status);
+    }
+    return null;
+  }
+  const data2 = await resp.json();
+  return data2.choices?.[0]?.message?.content ?? null;
+}
+async function createMissingModule(node, context, meta) {
+  const { requiredExports: requiredExports2 } = await Promise.resolve().then(() => (init_missing_nodes(), missing_nodes_exports));
+  const req = requiredExports2(node);
+  const user = (meta?.turnContext?.trim() ? `${meta.turnContext.trim()}
+
+` : "") + `Create: ${node.target}
+Required named exports: ${req.named.join(", ") || "(none)"}
+Default export required: ${req.needsDefault ? "yes" : "no"}
+
+How the importers use it:
+${context}`;
+  const reply = await callRepair(CREATE_SYSTEM, user, 8e3, "create_module", meta);
+  const out = reply ? stripFences2(reply) : "";
+  return out.trim() ? out : null;
+}
+var SYSTEM3, PATCH_SYSTEM, CREATE_SYSTEM;
+var init_repair = __esm({
+  "src/server/engine/repair.ts"() {
+    init_define_import_meta_env();
+    init_ai_provider_server();
+    init_build_state();
+    init_ai_model_config();
+    init_failure_classification();
+    SYSTEM3 = "You fix one source file that fails to compile. Return ONLY the complete corrected file contents \u2014 no markdown fences, no commentary. Keep the file's purpose, content, exports and imports; change only what is needed to fix the error.";
+    PATCH_SYSTEM = "You fix one source file that fails to compile by returning ONLY search/replace edits, never the whole file. Format each edit exactly as:\n<<<<<<< SEARCH\n(exact lines copied from the file)\n=======\n(replacement lines)\n>>>>>>> REPLACE\nSEARCH text must match the file exactly and be unique. Change only what fixes the error; keep purpose, exports and imports.";
+    CREATE_SYSTEM = 'You create ONE missing shared source module that other files in a React + TypeScript app already import. Return ONLY the complete file contents \u2014 no markdown fences, no commentary. Export EVERY name listed, with signatures that fit how the importers use them. Only import from: react, packages already used by the importers, "@/types" and other files shown. If data is needed and no backend exists, keep realistic in-memory data in this module.';
+  }
+});
+
 // src/server/engine/deps.ts
 var deps_exports = {};
 __export(deps_exports, {
@@ -154018,7 +153922,7 @@ function resolveLocal3(spec, from, byPath) {
     }
     base = parts.join("/");
   } else return null;
-  for (const e of EXTS4) if (byPath.has(base + e)) return base + e;
+  for (const e of EXTS5) if (byPath.has(base + e)) return base + e;
   return null;
 }
 function missingReachableDeps(files, entry = "src/main.tsx") {
@@ -154061,13 +153965,13 @@ function addMissingDeps(pkgContent, missing) {
   for (const p2 of missing) if (!deps[p2]) deps[p2] = KNOWN_PACKAGES[p2] ?? "*";
   return JSON.stringify(pkg, null, 2) + "\n";
 }
-var IMPORT_RE7, EXTS4, BUILTINS;
+var IMPORT_RE7, EXTS5, BUILTINS;
 var init_deps = __esm({
   "src/server/engine/deps.ts"() {
     init_define_import_meta_env();
     init_known_packages();
     IMPORT_RE7 = /(?:import|export)\s[^'"]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s+["']([^"']+)["']/g;
-    EXTS4 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"];
+    EXTS5 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"];
     BUILTINS = /* @__PURE__ */ new Set(["react", "react-dom"]);
   }
 });
@@ -154439,51 +154343,6 @@ var init_design_system_lint_server = __esm({
       "input",
       "ring"
     ]);
-  }
-});
-
-// src/server/verification/source.server.ts
-var source_server_exports = {};
-__export(source_server_exports, {
-  verifyProposedSource: () => verifyProposedSource
-});
-async function verifyProposedSource(args) {
-  const parseable = args.changedPaths.filter((p2) => /\.(tsx?|jsx?|mts|cts)$/i.test(p2) && !isVerifierExempt(p2));
-  const esbuild2 = await verifyFilesEsbuild(args.tree, parseable);
-  let merged = esbuild2;
-  let semantic = { status: "not_run" };
-  if (esbuild2 && (esbuild2.status === "passed" || esbuild2.status === "not_checked")) {
-    const check = checkUndefinedIdentifiers(args.tree, parseable);
-    const identifierIssues = check.issues;
-    semantic = { status: check.status, ...check.reason ? { reason: check.reason } : {} };
-    if (check.status === "failed") {
-      merged = {
-        ...esbuild2,
-        status: "failed",
-        ok: false,
-        issues: [
-          ...esbuild2.issues ?? [],
-          ...identifierIssues.map((i) => ({
-            path: i.path,
-            line: i.line,
-            column: 0,
-            kind: "semantic",
-            message: `${i.message} \u2014 declared nowhere in this file; the preview would crash with a ReferenceError`
-          }))
-        ]
-      };
-    }
-  }
-  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
-  return { ...record, semantic };
-}
-var init_source_server = __esm({
-  "src/server/verification/source.server.ts"() {
-    init_define_import_meta_env();
-    init_esbuild_verifier_server();
-    init_scaffold_ownership_server();
-    init_identifiers_server();
-    init_gates();
   }
 });
 
@@ -178055,8 +177914,8 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               controller.enqueue(encoder.encode(sse({ type: "timeline", step: "checkpoint", outcome: shellSaved.ok ? "ok" : "failed", message: shellSaved.ok ? "Saved the shared layout" : "Could not save progress (the build continues, but can't resume if interrupted)", ts: Date.now() })));
             }
             if (intentContract) {
-              const { routerPages: routerPages2 } = await Promise.resolve().then(() => (init_agent_loop(), agent_loop_exports));
-              const { pageKey: pageKey2 } = await Promise.resolve().then(() => (init_agent_loop(), agent_loop_exports));
+              const { routerPages: routerPages2 } = await Promise.resolve().then(() => (init_router_facts(), router_facts_exports));
+              const { pageKey: pageKey2 } = await Promise.resolve().then(() => (init_router_facts(), router_facts_exports));
               const plannedKeys = new Set(planned.map((p2) => pageKey2(p2.route)));
               const extra = routerPages2(parsed.files).filter((p2) => !plannedKeys.has(pageKey2(p2.route)));
               if (extra.length) {
@@ -178120,8 +177979,26 @@ The first draft of the app is already in the workspace (${seedFiles.length} file
 Files: ${seedFiles.map((f) => f.path).join(", ")}`,
               files: seedFiles,
               seedPaths: seedFiles.map((f) => f.path),
-              requirements: planned.map((p2) => ({ id: `page:${p2.route}`, file: p2.file, route: p2.route })),
               callModel,
+              // THE readiness authority: the exact proposed-tree transform and
+              // source verification commitTurn runs (scaffold + shell, then
+              // verifyProposedSource with the same requested routes).
+              readiness: async (tree, changed) => {
+                const { verifyProposedSource: verifyProposedSource2 } = await Promise.resolve().then(() => (init_source_server(), source_server_exports));
+                const { readinessOf: readinessOf2 } = await Promise.resolve().then(() => (init_readiness(), readiness_exports));
+                const authored = tree.filter((file) => file.path === "package.json" || !isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path));
+                const proposed = ensureRenderableShell(
+                  applyScaffoldKit(authored, { backend: backend2 ?? void 0, sharedBackend: sharedBackend ?? void 0, target: buildTarget.id }),
+                  detectedWebSubtype
+                ).files;
+                const v = await verifyProposedSource2({
+                  tree: proposed,
+                  changedPaths: changed.filter((p2) => proposed.some((f) => f.path === p2)),
+                  requestedRoutes: requestedRoutesFor(lastUserText, plannedRoutes),
+                  requireShell: true
+                });
+                return readinessOf2(v);
+              },
               validate: async (file, tree) => {
                 if (!/\.(tsx?|jsx?)$/.test(file.path)) return [];
                 const v = await verifyFilesEsbuild2([file], [file.path]);
@@ -179782,6 +179659,13 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           }
         });
         const txCommitted = txResult.outcome.status === "committed";
+        {
+          const loopOutcome = turnStrategy.toolLoop?.outcome;
+          if (loopOutcome === "finished" && txResult.verification && txResult.verification.status !== "READY" && txResult.verification.status !== "IN_PROGRESS") {
+            turnStrategy.readinessDivergence = { status: txResult.verification.status, gate: txResult.verification.failedGate, reason: txResult.verification.reason };
+            console.error(`[readiness_divergence] loop finished but commit verification=${txResult.verification.status} gate=${txResult.verification.failedGate} reason=${txResult.verification.reason}`);
+          }
+        }
         if (txCommitted && checkpointTurnId) {
           const { markCheckpointConsumed: markCheckpointConsumed2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
           await markCheckpointConsumed2(checkpointTurnId);
@@ -180040,8 +179924,8 @@ Heads up \u2014 ${unlandedOps === 1 ? "one part" : `${unlandedOps} parts`} of wh
           const verdict = txCommitted ? { complete: true, missingRoutes: [] } : assessCompleteness({ requestedRoutes: requested, files: nextFiles });
           scopeMissing = verdict.missingRoutes;
           {
-            const { frameIsComplete: frameIsComplete2 } = await Promise.resolve().then(() => (init_write(), write_exports));
-            if (!txCommitted && !frameIsComplete2(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
+            const shellFinding = (txResult.verification?.gates ?? []).some((g) => g.gate === "routes" && g.verdict === "FAIL" && g.reasons.some((r) => r.startsWith("app shell")));
+            if (!txCommitted && shellFinding && !scopeMissing.includes("app shell")) {
               scopeMissing = ["app shell", ...scopeMissing];
               verdict.complete = false;
             }

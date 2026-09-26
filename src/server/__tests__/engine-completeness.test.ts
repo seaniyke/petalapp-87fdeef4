@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { runExecutionLoop as writePlannedPages } from "@/server/engine/agent-loop";
 import { planFirstBuild, pageFileFor } from "@/server/engine/plan";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 import { resolveProviderRouting } from "@/server/engine/provider-policy";
@@ -17,44 +16,6 @@ describe("plan drives write", () => {
     const p = planFirstBuild({ prompt: "Pages: Home, Menu, About, Contact only.", plannedRoutes: [], maxOutputTokens: 10000 });
     expect(p.pages.map((x) => x.file)).toEqual(["src/pages/Home.tsx", "src/pages/Menu.tsx", "src/pages/About.tsx", "src/pages/Contact.tsx"]);
     expect(p.instruction).toMatch(/Do NOT write any of the page files/);
-  });
-});
-
-describe("write stage", () => {
-  it("writes each planned page once, in its own call, never rewriting finished pages", async () => {
-    const instrs: string[] = [];
-    const r = await writePlannedPages({
-      pages,
-      files: [app(requested), page("Home")],
-      budget: new RecoveryBudget(),
-      request: async (i) => {
-        instrs.push(i);
-        const m = /as src\/pages\/(\w+)\.tsx/.exec(i);
-        return m ? [page(m[1]!), { path: "src/pages/Home.tsx", content: "REWRITTEN" }] : null;
-      },
-    });
-    expect(instrs.length).toBe(3);
-    expect(r.missing).toEqual([]);
-    expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).not.toBe("REWRITTEN");
-  });
-
-  it("a failed page gets exactly one more attempt, then is reported missing", async () => {
-    let calls = 0;
-    const r = await writePlannedPages({
-      pages, files: [app(requested)], budget: new RecoveryBudget(),
-      request: async (i) => { calls++; return i.includes("Menu") ? null : [page(/as src\/pages\/(\w+)/.exec(i)?.[1] ?? "X")]; },
-    });
-    expect(r.missing).toEqual(["/menu"]);
-    expect(calls).toBe(5); // 4 pages + 1 retry for Menu (router already fine)
-  });
-
-  it("a placeholder page is not a real page", async () => {
-    const stub = { path: "src/pages/Home.tsx", content: "// Auto-generated stub by Petal import-resolver.\nexport default ()=>null" };
-    const r = await writePlannedPages({
-      pages: [pages[0]!], files: [app(["/"]), stub], budget: new RecoveryBudget(),
-      request: async () => [page("Home")],
-    });
-    expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toContain("<main>Home");
   });
 });
 

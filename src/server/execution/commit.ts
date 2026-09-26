@@ -43,13 +43,9 @@ export interface CommitTurnArgs {
   verifySource?: (proposedTree: TxFile[], changedPaths: string[]) => Promise<SourceVerification>;
 }
 
-export interface SourceVerification {
-  status: "READY" | "FAILED" | "UNVERIFIED" | "IN_PROGRESS";
-  gates: Array<{ gate: string; verdict: Verdict; reasons: string[]; paths: string[] }>;
-  failedGate: string | null;
-  reason: string | null;
-  repairTargets: string[];
-}
+export type { SourceVerification } from "@/server/verification/readiness";
+import type { SourceVerification } from "@/server/verification/readiness";
+import { readinessOf } from "@/server/verification/readiness";
 
 export interface CommitTurnResult {
   outcome: TxOutcome;
@@ -157,7 +153,9 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
         };
       }
       for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
-      if (verification.status === "FAILED") {
+      // ONE readiness verdict (shared with the execution loop's finish).
+      const ready = readinessOf(verification);
+      if (!ready.ready && verification.status === "FAILED") {
         // Blocks commit on the status itself, not only via per-gate FAILs.
         tx.recordCheck("source_verification", "FAIL", verification.reason ?? "source verification failed");
         for (const p of verification.repairTargets.length ? verification.repairTargets : [undefined]) {
@@ -172,7 +170,7 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
             next: "repair the named file(s) and retry",
           });
         }
-      } else if (verification.status === "UNVERIFIED") {
+      } else if (!ready.ready) {
         tx.recordCheck("source_verification", "FAIL", `unverified: ${verification.reason ?? "check could not complete"}`);
         rejections.push({
           operation: "commit",
