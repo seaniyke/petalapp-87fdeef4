@@ -8192,16 +8192,15 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // while the turn is still running (the build service may only write
         // for a running turn), THEN the terminal status is persisted.
         let failureReplyWritten = false;
-        if (recorder && terminalStatus !== "succeeded" && terminalStatus !== "awaiting_credits") {
+        if (recorder && turnUserId && terminalStatus !== "succeeded" && terminalStatus !== "awaiting_credits") {
           const { classifyFailureOrigin } = await import("@/lib/failure-classification");
           await agentIO()
             .recordEconomics({
               turnId: recorder.turnId,
-              userId,
+              userId: turnUserId,
               projectId: turnProjectId ?? null,
               feature: "generate",
               creditsCharged: 0,
-              isAutoFix: Boolean(body.isAutoFix),
               result: terminalStatus,
               finalizeOnly: true,
               metadata: {
