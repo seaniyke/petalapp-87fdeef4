@@ -85973,6 +85973,7 @@ function renderPrdRepairInstruction(prd, findings) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL, STATE_EVIDENCE;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_product_acceptance_server();
     SURFACE_EVIDENCE = {
@@ -90468,6 +90469,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS2, ROOT_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader2();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -143872,6 +143874,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144791,6 +144794,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145298,6 +145302,7 @@ function divergentPages(contract, routes, brief) {
   for (const r of routes) {
     if (contractRoutes.has(r) || briefMentions(r)) continue;
     if (COMMERCE_PAGE.test(r)) out.push(r);
+    else if (contract.archetype && contract.pages.length && !ALWAYS_ALLOWED.test(r)) out.push(r);
     else if (COMMERCE_ORDERS.test(r) && routes.some((x) => COMMERCE_PAGE.test(x))) out.push(r);
   }
   return out;
@@ -145385,7 +145390,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, slug3;
+var p, FAMILIES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, slug3;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -145465,6 +145470,7 @@ var init_intent_contract = __esm({
     APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
     COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
     COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
+    ALWAYS_ALLOWED = /^\/($|auth|login|sign-?in|sign-?up|register|account|profile|dashboard|settings|404|not-found)/i;
     slug3 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   }
 });
@@ -145799,6 +145805,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -156435,7 +156442,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -176778,6 +176784,7 @@ The latest request contains multiple coordinated asks. Treat this as one complet
       if (bad.length) {
         console.warn(`[intent] removed divergent planned routes ${JSON.stringify(bad)} (archetype=${intentContract.archetype})`);
         for (const r of bad) plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
+        if (intentContract.archetype) archetypeBlock = "";
       }
       if (plannedRoutes.filter((r) => r !== "/").length === 0 && intentContract.pages.length) {
         for (const pg of intentContract.pages) if (!plannedRoutes.includes(pg.route)) plannedRoutes.push(pg.route);

@@ -168,6 +168,8 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
  * Validate planned/router pages against the contract. Returns the routes that
  * materially diverge from the request (e.g. shop pages in a hospital system).
  */
+const ALWAYS_ALLOWED = /^\/($|auth|login|sign-?in|sign-?up|register|account|profile|dashboard|settings|404|not-found)/i;
+
 export function divergentPages(contract: IntentContract, routes: string[], brief: string): string[] {
   if (contract.commerceRequested) return [];
   const contractRoutes = new Set(contract.pages.map((x) => x.route));
@@ -179,6 +181,11 @@ export function divergentPages(contract: IntentContract, routes: string[], brief
   for (const r of routes) {
     if (contractRoutes.has(r) || briefMentions(r)) continue;
     if (COMMERCE_PAGE.test(r)) out.push(r);
+    // A recognised archetype defines the product's pages: a template/router
+    // page outside it (e.g. a clinic-booking "/services" or "/confirmation"
+    // for a hospital system) is drift, unless the user named it. Account
+    // plumbing (/, auth, profile, dashboard) is always allowed.
+    else if (contract.archetype && contract.pages.length && !ALWAYS_ALLOWED.test(r)) out.push(r);
     else if (COMMERCE_ORDERS.test(r) && routes.some((x) => COMMERCE_PAGE.test(x))) out.push(r);
   }
   return out;

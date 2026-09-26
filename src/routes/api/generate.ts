@@ -3557,6 +3557,9 @@ async function handleGenerateRequestCore(
       if (bad.length) {
         console.warn(`[intent] removed divergent planned routes ${JSON.stringify(bad)} (archetype=${intentContract.archetype})`);
         for (const r of bad) plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
+        // The template's blueprint described the drifted pages; the contract
+        // below replaces it rather than competing with it.
+        if (intentContract.archetype) archetypeBlock = "";
       }
       if (plannedRoutes.filter((r) => r !== "/").length === 0 && intentContract.pages.length) {
         for (const pg of intentContract.pages) if (!plannedRoutes.includes(pg.route)) plannedRoutes.push(pg.route);
