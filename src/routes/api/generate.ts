@@ -4738,10 +4738,10 @@ async function handleGenerateRequestCore(
               // Foundation layer first: missing shared modules the frame
               // imports are created (in parallel) before any page is written,
               // so pages consume real export signatures, never guesses.
-              createFoundation: async (staged) => {
+              createFoundation: async (staged, changed) => {
                 const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
                 const { createMissingModule } = await import("@/server/engine/repair");
-                const scope = staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
+                const scope = changed ?? staged.filter((f) => /\.(tsx?|jsx?)$/.test(f.path) && !f.path.startsWith("src/pages/")).map((f) => f.path);
                 const r = await resolveMissingNodes(staged, scope, async (node, context) => {
                   if (!turnLedger.use("repair", "foundation module", node.target).ok) return null;
                   controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating shared ${node.target}…` })));
@@ -5931,34 +5931,6 @@ async function handleGenerateRequestCore(
             : nextFiles
                 .filter((f) => prevByPath.get(f.path) !== f.content)
                 .map((f) => f.path);
-          if (touched.length > 0 && isInitial) {
-            // Missing-node recovery before per-file repair: create each
-            // missing shared module once instead of repairing every importer.
-            try {
-              const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
-              const { createMissingModule } = await import("@/server/engine/repair");
-              const nodes = await resolveMissingNodes(nextFiles, touched, async (node, context) => {
-                if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
-                controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
-                return createMissingModule(node, context, {
-                  turnId: logicalTurnId,
-                  projectId: body.projectId ?? null,
-                  userId,
-                  turnContext: turnContextFor(node.target),
-                });
-              });
-              if (nodes.created.length) {
-                console.log(`[missing-nodes] write-gate created ${JSON.stringify(nodes.created)}`);
-                nextFiles = nodes.files;
-                touched.push(...nodes.created);
-              }
-              if (nodes.blocked.length) console.warn(`[missing-nodes] blocked ${JSON.stringify(nodes.blocked)}`);
-            } catch (e) {
-              const { isInfrastructureFailure } = await import("@/lib/failure-classification");
-              if (!isInfrastructureFailure(e)) throw e;
-              infraFailure = e;
-            }
-          }
           if (touched.length > 0) {
             const gate = await runWriteGate({
               before: currentFiles,
@@ -6724,36 +6696,8 @@ async function handleGenerateRequestCore(
           );
         }
 
-        // Late missing-node pass: files written after the write gate (page
-        // writers, repairs) may import a shared module nobody created. Create
-        // it once here — otherwise the final check quarantines every importer
-        // and the cascade discards the whole build.
-        if (!infraFailure && earlyChangedPaths.length > 0) {
-          try {
-            const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
-            const { createMissingModule } = await import("@/server/engine/repair");
-            const late = await resolveMissingNodes(nextFiles, earlyChangedPaths, async (node, context) => {
-              if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
-              controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
-              return createMissingModule(node, context, {
-                turnId: logicalTurnId,
-                projectId: body.projectId ?? null,
-                userId,
-                turnContext: turnContextFor(node.target),
-              });
-            });
-            if (late.created.length) {
-              console.log(`[missing-nodes] late pass created ${JSON.stringify(late.created)}`);
-              nextFiles = late.files;
-              earlyChangedPaths.push(...late.created.filter((p) => !earlyChangedPaths.includes(p)));
-            }
-          } catch (e) {
-            const { isInfrastructureFailure } = await import("@/lib/failure-classification");
-            if (!isInfrastructureFailure(e)) throw e;
-            infraFailure = e;
-          }
-        }
-
+        // Missing shared modules: created inside the execution loop (first
+        // builds) and by the final check's root-cause step — no separate pass.
         const guardOut = await runFinalParseGuard(
           nextFiles,
           earlyChangedPaths,
