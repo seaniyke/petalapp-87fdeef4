@@ -39234,7 +39234,9 @@ function extractRequestedPages(prompt) {
   const found = [];
   const push = (raw) => {
     for (const part of raw.split(/,|\/|\band\b|\+|;/i)) {
-      const n = cleanName(part);
+      const stripped = part.replace(/\b(one|single)[- ]?page(r)?\b|\b(landing|simple|small|web|website|single|one)\b/gi, " ").trim();
+      if (!stripped) continue;
+      const n = cleanName(stripped);
       if (n && !found.includes(n)) found.push(n);
     }
   };
@@ -40602,6 +40604,7 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
+    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -42253,6 +42256,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -42296,6 +42300,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX2, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -42450,6 +42455,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX3;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx|jsx)$/i;
   }
@@ -42640,6 +42646,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -85189,6 +85196,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -90467,6 +90475,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS2, ROOT_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader2();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -115168,6 +115177,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -145815,6 +145825,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -152948,6 +152959,7 @@ function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
       const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
       const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
       if (name && isPlatformGlobal(name)) continue;
+      if (d.file && d.start !== void 0 && inTypePosition(ts, d.file, d.start)) continue;
       const key = `${file}::${message}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -152960,6 +152972,22 @@ function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
     console.warn("[identifier-gate] unavailable:", reason);
     return { status: "unavailable", issues: [], reason };
   }
+}
+function inTypePosition(ts2, sf, pos) {
+  let hit;
+  const visit = (n) => {
+    if (pos >= n.getStart(sf) && pos < n.getEnd()) {
+      hit = n;
+      ts2.forEachChild(n, visit);
+    }
+  };
+  ts2.forEachChild(sf, visit);
+  for (let n = hit; n; n = n.parent) {
+    if (ts2.isTypeNode(n) || ts2.isInterfaceDeclaration(n) || ts2.isTypeAliasDeclaration(n)) return true;
+    if (ts2.isExpressionWithTypeArguments(n) && n.parent && ts2.isHeritageClause(n.parent) && n.parent.token === ts2.SyntaxKind.ImplementsKeyword) return true;
+    if (ts2.isStatement(n) || ts2.isExpression(n) && !ts2.isIdentifier(n)) break;
+  }
+  return false;
 }
 var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, ES_AND_DOM_GLOBALS, DOM_NAME, AMBIENT_PATH;
 var init_identifiers_server = __esm({
@@ -155185,12 +155213,6 @@ import { createHmac as createHmac2, timingSafeEqual } from "node:crypto";
 
 // src/server/petal-badge.server.ts
 init_define_import_meta_env();
-
-// src/server/builder.server.ts
-init_source_escape_fixer_server();
-init_import_syntax_fixer_server();
-init_jsx_attr_literal_fixer_server();
-init_markdown_fence_fixer_server();
 
 // src/server/brand-identity.server.ts
 init_define_import_meta_env();
@@ -161398,7 +161420,6 @@ ${guardTag}
 
 // src/server/pin-loose-deps.ts
 init_define_import_meta_env();
-init_known_packages();
 
 // src/server/builder.server.ts
 var MAX_AGE_SECONDS = 5 * 60;

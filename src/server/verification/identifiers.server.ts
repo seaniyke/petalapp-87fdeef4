@@ -284,6 +284,9 @@ export function checkUndefinedIdentifiers(
       const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
       const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
       if (name && isPlatformGlobal(name)) continue;
+      // A name used only as a type is erased by the bundler — it cannot
+      // throw a ReferenceError, so it is not this gate's failure.
+      if (d.file && d.start !== undefined && inTypePosition(ts, d.file, d.start)) continue;
       const key = `${file}::${message}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -296,4 +299,23 @@ export function checkUndefinedIdentifiers(
     console.warn("[identifier-gate] unavailable:", reason);
     return { status: "unavailable", issues: [], reason };
   }
+}
+
+
+/** True when the identifier at `pos` sits inside a type annotation/node. */
+function inTypePosition(ts: typeof import("typescript"), sf: import("typescript").SourceFile, pos: number): boolean {
+  let hit: import("typescript").Node | undefined;
+  const visit = (n: import("typescript").Node) => {
+    if (pos >= n.getStart(sf) && pos < n.getEnd()) {
+      hit = n;
+      ts.forEachChild(n, visit);
+    }
+  };
+  ts.forEachChild(sf, visit);
+  for (let n = hit; n; n = n.parent) {
+    if (ts.isTypeNode(n) || ts.isInterfaceDeclaration(n) || ts.isTypeAliasDeclaration(n)) return true;
+    if (ts.isExpressionWithTypeArguments(n) && n.parent && ts.isHeritageClause(n.parent) && n.parent.token === ts.SyntaxKind.ImplementsKeyword) return true;
+    if (ts.isStatement(n) || ts.isExpression(n) && !ts.isIdentifier(n)) break;
+  }
+  return false;
 }

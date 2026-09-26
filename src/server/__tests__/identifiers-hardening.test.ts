@@ -166,3 +166,16 @@ describe("planning is not suppressed by repair words", () => {
     expect(c.operation).not.toBe("first_build");
   });
 });
+
+describe("type-only undefined names", () => {
+  it("does not fail on a type used only in annotations", () => {
+    const r = checkUndefinedIdentifiers([pkg, file("src/c.tsx", "export function C({ a }: TaskCardProps) { return a as unknown; }\n")], ["src/c.tsx"]);
+    expect(r.status).toBe("verified");
+  });
+  it("still fails on a runtime name", () => {
+    const r = checkUndefinedIdentifiers([pkg, file("src/d.tsx", "export function D(p: Props) { return helper(p); }\n")], ["src/d.tsx"]);
+    expect(r.status).toBe("failed");
+    expect(r.issues.map((i) => i.message).join()).toMatch(/helper/);
+    expect(r.issues.map((i) => i.message).join()).not.toMatch(/Props/);
+  });
+});

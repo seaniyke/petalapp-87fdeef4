@@ -47,7 +47,11 @@ export function extractRequestedPages(prompt: string): string[] {
   const found: string[] = [];
   const push = (raw: string) => {
     for (const part of raw.split(/,|\/|\band\b|\+|;/i)) {
-      const n = cleanName(part);
+      // Layout words describe the site's shape, not a page ("a one-page
+      // landing page" names no page called /one-page).
+      const stripped = part.replace(/\b(one|single)[- ]?page(r)?\b|\b(landing|simple|small|web|website|single|one)\b/gi, " ").trim();
+      if (!stripped) continue;
+      const n = cleanName(stripped);
       if (n && !found.includes(n)) found.push(n);
     }
   };
