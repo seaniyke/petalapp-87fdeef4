@@ -12,10 +12,10 @@ const pages = requested.map((route) => ({ route, file: pageFileFor(route) }));
 const page = (n: string) => ({ path: `src/pages/${n}.tsx`, content: `export default function ${n}(){return <main>${n}</main>}` });
 
 describe("plan drives write", () => {
-  it("plan names every page and tells the shell call not to write pages", () => {
+  it("plan names every page (no shell-only instruction)", () => {
     const p = planFirstBuild({ prompt: "Pages: Home, Menu, About, Contact only.", plannedRoutes: [], maxOutputTokens: 10000 });
     expect(p.pages.map((x) => x.file)).toEqual(["src/pages/Home.tsx", "src/pages/Menu.tsx", "src/pages/About.tsx", "src/pages/Contact.tsx"]);
-    expect(p.instruction).toMatch(/Do NOT write any of the page files/);
+    expect("instruction" in p).toBe(false);
   });
 });
 
