@@ -109,6 +109,6 @@ describe("durable checkpoint: interrupted long build resumes, never restarts", (
     const src = readFileSync("src/routes/api/generate.ts", "utf8");
     expect(src).toMatch(/directLogoEdit \|\| resumeShell \? null : await aiChatCompletions/);
     expect(src).toMatch(/markCheckpointConsumed\(checkpointTurnId\)/);
-    expect(src).toMatch(/onFilesDone: checkpointTurnId/);
+    expect(src).toMatch(/checkpointApi\.checkpointFiles\(checkpointTurnId, \[f\]\)/);
   });
 });
