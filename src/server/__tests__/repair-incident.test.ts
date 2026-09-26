@@ -63,15 +63,17 @@ const commit = (proposed: typeof base, verifySource: (t: typeof base, c: string[
 
 describe("undefined-identifier gate (the real TypeScript checker)", () => {
   it("A: flags an identifier that is referenced but never declared", () => {
-    const issues = checkUndefinedIdentifiers(withAuth(AUTH_BROKEN), ["src/pages/Auth.tsx"]);
+    const r = checkUndefinedIdentifiers(withAuth(AUTH_BROKEN), ["src/pages/Auth.tsx"]);
+    expect(r.status).toBe("failed");
+    const issues = r.issues;
     expect(issues.length).toBeGreaterThan(0);
     expect(issues[0]!.path).toBe("src/pages/Auth.tsx");
     expect(issues[0]!.message).toContain("mode");
   });
 
   it("I: passes once the state is actually declared", () => {
-    const issues = checkUndefinedIdentifiers(withAuth(AUTH_FIXED), ["src/pages/Auth.tsx"]);
-    expect(issues).toEqual([]);
+    const r = checkUndefinedIdentifiers(withAuth(AUTH_FIXED), ["src/pages/Auth.tsx"]);
+    expect(r).toEqual({ status: "verified", issues: [] });
   });
 
   it("ignores DOM/platform globals and untyped JSX (no false positives)", () => {
@@ -87,7 +89,7 @@ export default function Home() {
   return <main><h1>Size {w}</h1><button onClick={() => fetch("/api").then((r) => r.json())}>Go</button></main>;
 }
 `;
-    const issues = checkUndefinedIdentifiers([...base.slice(0, 2), { path: "src/pages/Home.tsx", content: page }], ["src/pages/Home.tsx"]);
+    const issues = checkUndefinedIdentifiers([...base.slice(0, 2), { path: "src/pages/Home.tsx", content: page }], ["src/pages/Home.tsx"]).issues;
     expect(issues).toEqual([]);
   });
 
@@ -98,7 +100,7 @@ export default function Home() {
       { path: "src/pages/Home.tsx", content: "export default function Home() { return <main>{nope}</main>; }\n" },
       { path: "src/pages/Auth.tsx", content: AUTH_FIXED },
     ];
-    const issues = checkUndefinedIdentifiers(tree, ["src/pages/Auth.tsx"]);
+    const issues = checkUndefinedIdentifiers(tree, ["src/pages/Auth.tsx"]).issues;
     expect(issues).toEqual([]);
   });
 
