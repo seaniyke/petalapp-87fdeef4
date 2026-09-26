@@ -54,7 +54,7 @@ describe("agent loop", () => {
       request: async (i) => { order.push(targetOf(i)!); return [{ path: targetOf(i)!, content: page("Home") }]; },
       createFoundation: async (f) => { order.push("foundation"); return { files: f, created: [] }; },
     });
-    expect(order).toEqual(["foundation", "src/pages/Home.tsx"]);
+    expect(order).toEqual(["foundation", "src/pages/Home.tsx", "foundation"]);
   });
 
   it("completed files are never regenerated", async () => {
@@ -77,5 +77,18 @@ describe("agent loop", () => {
 
   it("routerPages reads explicit route → file mapping", () => {
     expect(routerPages([app([["/", "Dashboard"]])])).toEqual([{ route: "/", file: "src/pages/Dashboard.tsx" }]);
+  });
+});
+
+describe("agent loop: dynamic dependencies", () => {
+  it("a page importing a new shared module triggers one dependency op before finishing", async () => {
+    const calls: Array<string[] | undefined> = [];
+    const files = [app([["/", "Home"]])];
+    await runExecutionLoop({
+      pages: [{ route: "/", file: "src/pages/Home.tsx" }], files, budget: new RecoveryBudget(),
+      request: async (i) => [{ path: targetOf(i)!, content: page("Home") }],
+      createFoundation: async (f, changed) => { calls.push(changed); return { files: f, created: [] }; },
+    });
+    expect(calls).toEqual([undefined, ["src/pages/Home.tsx"]]);
   });
 });
