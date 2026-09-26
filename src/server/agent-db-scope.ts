@@ -31,12 +31,17 @@ export const TABLE_RULES: Record<string, { pin: Pin; actions: Action[]; userCol?
   pipeline_failures: { pin: { col: "project_id", from: "project" }, actions: ["insert"], userCol: true },
   profiles: { pin: { col: "id", from: "user" }, actions: ["select"] },
   turn_economics: { pin: { col: "user_id", from: "user" }, actions: ["select"] },
+  // Durable first-build checkpoints (saveShellCheckpoint / resume discard).
+  // Without this every save from the build server was refused.
+  build_checkpoints: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert", "update"], userCol: true },
   ai_provider_settings: { pin: null, actions: ["select"] },
   economics_config: { pin: null, actions: ["select"] },
 };
 
 /** Read-only database functions a build may call; user/project args pinned. */
-export const RPC_RULES: Record<string, { user?: string; project?: string }> = {
+export const RPC_RULES: Record<string, { user?: string; project?: string; turn?: string }> = {
+  // Merge finished pages into THIS turn's checkpoint only (_turn_id pinned).
+  checkpoint_merge_pages: { turn: "_turn_id" },
   is_paid_plan: { user: "_user_id" },
   check_credit_balance: { user: "_user_id" },
   runtime_cap_check: { user: "_user_id", project: "_project_id" },
@@ -80,6 +85,7 @@ export function scopeDbRpc(q: DbRpc, ids: ScopeIds): { fn: string; args: Record<
   const args = { ...q.args };
   if (rule.user) args[rule.user] = ids.userId;
   if (rule.project && args[rule.project] != null) args[rule.project] = ids.projectId;
+  if (rule.turn) args[rule.turn] = ids.turnId;
   return { fn: q.fn, args };
 }
 
