@@ -374,12 +374,28 @@ function estimateTokens(messages: LoopMessage[]): number {
   return Math.ceil(chars / 4);
 }
 
+/** Workspace evidence the model sees (derived, never remembered). */
+export function evidenceSummary(state: ToolLoopState, files: Map<string, string>): string {
+  const stable = stableFoundations(state, files);
+  const parts: string[] = [];
+  if (stable.size) {
+    parts.push(
+      "STABLE foundations (valid and used by other valid files — build on them; do not replace them; if your task truly needs a change, make a targeted edit_file):\n" +
+        [...stable].slice(0, 40).map(([p, users]) => `- ${p} ← used by ${users.slice(0, 4).join(", ")}${users.length > 4 ? ` +${users.length - 4}` : ""}`).join("\n"),
+    );
+  }
+  if (state.readiness && !state.readiness.ready) {
+    parts.push("Open verification findings:\n" + state.readiness.findings.slice(0, 10).map((f) => `- [${f.gate}] ${f.reason}`).join("\n"));
+  }
+  return parts.join("\n\n");
+}
+
 /**
  * Deterministic compaction: keep system + brief (cache-stable prefix), replace
  * the middle with a state summary, keep the last `keepRecent` messages,
  * never splitting an assistant tool-call group from its tool results.
  */
-export function compact(messages: LoopMessage[], state: ToolLoopState, keepRecent: number): LoopMessage[] {
+export function compact(messages: LoopMessage[], state: ToolLoopState, keepRecent: number, files?: Map<string, string>): LoopMessage[] {
   if (messages.length <= keepRecent + 3) return messages;
   let cut = messages.length - keepRecent;
   while (cut > 2 && messages[cut]?.role === "tool") cut--;
@@ -392,6 +408,7 @@ export function compact(messages: LoopMessage[], state: ToolLoopState, keepRecen
     `Files read: ${[...state.read].slice(-60).join(", ") || "none"}`,
     tasks ? `Tasks:\n${tasks}` : "",
     failing ? `Files still failing validation:\n${failing}` : "",
+    files ? evidenceSummary(state, files) : "",
     "Continue from here. Re-read a file before editing it if you need its current content.",
   ].filter(Boolean).join("\n");
   return [messages[0]!, messages[1]!, { role: "user", content: summary }, ...messages.slice(cut)];
@@ -401,14 +418,15 @@ export function compact(messages: LoopMessage[], state: ToolLoopState, keepRecen
 /* The loop                                                            */
 /* ------------------------------------------------------------------ */
 
-export function createToolLoopState(goal: string, requirements: Requirement[] = []): ToolLoopState {
+export function createToolLoopState(goal: string): ToolLoopState {
   return {
     goal,
-    requirements,
     tasks: new Map(),
     completedOps: new Set(),
     read: new Set(),
     validation: new Map(),
+    validatedHash: new Map(),
+    readiness: null,
     written: [],
     writesSinceTypecheck: 0,
     iteration: 0,
@@ -422,7 +440,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   const tools = toolsFor(!!args.light);
   const allowed = new Set(tools.map((t) => t.function.name));
   const tree = new Map(args.files.map((f) => [f.path, f.content]));
-  const state = createToolLoopState(args.goal, args.requirements ?? []);
+  const state = createToolLoopState(args.goal);
   const breaker = new AgentCircuitBreaker(cfg.breaker);
   const traces: CallTrace[] = [];
   const emit = args.onEvent ?? (() => {});
@@ -434,6 +452,56 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   ];
 
   let validationMs = 0;
+
+  const record = (path: string, content: string, errs: string[]) => {
+    state.validation.set(path, errs);
+    state.validatedHash.set(path, hash(content));
+  };
+  const changedPaths = () => [...new Set(state.written)].filter((p) => tree.has(p));
+  const checkReadiness = async (t: Map<string, string>): Promise<Readiness> => {
+    const v0 = Date.now();
+    try {
+      const files = [...t].map(([path, content]) => ({ path, content }));
+      const changed = [...new Set(state.written)].filter((p) => t.has(p));
+      return await args.readiness(files, changed);
+    } catch (e) {
+      return { ready: false, findings: [{ gate: "source", reason: `verification could not run: ${e instanceof Error ? e.message : String(e)}`, paths: [] }] };
+    } finally {
+      validationMs += Date.now() - v0;
+    }
+  };
+  /**
+   * Refresh operation evidence from the workspace: any file whose content
+   * changed since it was validated, and every file that imports a changed
+   * file, is re-validated. Catches external changes and broken dependents.
+   */
+  const refreshEvidence = async () => {
+    const deps = dependentsOf(tree);
+    const todo = new Set<string>();
+    for (const p of new Set(state.written)) {
+      const c = tree.get(p);
+      if (c === undefined) continue;
+      if (state.validatedHash.get(p) !== hash(c)) {
+        todo.add(p);
+        for (const u of deps.get(p) ?? []) todo.add(u);
+      }
+    }
+    for (const p of todo) {
+      const c = tree.get(p);
+      if (c !== undefined) record(p, c, await validate(p, c));
+    }
+  };
+  /** Finish gate: loop-local gaps + the ONE readiness authority. */
+  const finishGate = async (): Promise<string | null> => {
+    await refreshEvidence();
+    for (const t of state.tasks.values()) {
+      if (t.status === "done" && t.files.some((f) => !(tree.get(f) ?? "").trim() || (state.validation.get(f) ?? []).length)) t.status = "pending";
+    }
+    const gaps = completionGaps(state, tree);
+    state.readiness = await checkReadiness(tree);
+    if (!gaps.length && state.readiness.ready) return null;
+    return formatNotReady(gaps, state.readiness.findings);
+  };
 
   const validate = async (path: string, content: string): Promise<string[]> => {
     const t0 = Date.now();
@@ -457,12 +525,16 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       const c = tree.get(p);
       if (c === undefined) continue;
       const errs = await validate(p, c);
-      state.validation.set(p, errs);
+      record(p, c, errs);
       state.written.push(p);
       if (errs.length) failing.push(`${p}:\n${errs.slice(0, 6).map((e) => `- ${e}`).join("\n")}`);
     }
-    if (failing.length) {
-      messages[1] = { role: "user", content: `${args.brief}\n\nThese already-written files FAIL validation — read and fix them:\n${failing.join("\n")}` };
+    const evidence = evidenceSummary(state, tree);
+    if (failing.length || evidence) {
+      messages[1] = {
+        role: "user",
+        content: [args.brief, failing.length ? `These already-written files FAIL validation — read and fix them:\n${failing.join("\n")}` : "", evidence].filter(Boolean).join("\n\n"),
+      };
     }
   }
 
@@ -539,11 +611,20 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (existing !== undefined && existing.trim() && !state.read.has(path) && !state.written.includes(path)) {
           return { output: fail(name, path, `Refused: ${path} exists. read_file it first, then use edit_file (or create_file to replace it fully).`), isError: true };
         }
+        if (existing !== undefined && existing.trim()) {
+          const users = stableFoundations(state, tree).get(path);
+          if (users) {
+            return {
+              output: fail(name, path, `Refused: ${path} is a STABLE foundation (valid, used by ${users.slice(0, 5).join(", ")}). Do not replace it. If your current task genuinely needs it to change, make the smallest targeted edit_file.`, "scope_violation"),
+              isError: true,
+            };
+          }
+        }
         const errs = await validate(path, content);
         if (!(await persist(path, content))) return { output: fail(name, path, `Refused by the write gate: ${path}.`, "scope_violation"), isError: true };
         state.read.add(path);
-        state.completedOps.add(opId("create", path));
-        state.validation.set(path, errs);
+        record(path, content, errs);
+        if (!errs.length) state.completedOps.add(opId("create", path));
         emit({ kind: errs.length ? "write_failed_validation" : "write_ok", path, detail: errs[0] });
         if (errs.length) {
           breaker.recordFailure({ category: "syntax_error", tool: name, path, message: errs[0]! });
@@ -582,9 +663,27 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
           // Rollback: the staged tree keeps the previous content.
           return { output: fail(name, path, `Edit rolled back — it introduced errors in ${path}:\n${introduced.slice(0, 6).map((e) => `- ${e}`).join("\n")}`, "syntax_error"), isError: true };
         }
+        // Targeted change to a STABLE foundation: permitted, but it must not
+        // regress workspace readiness (same authority as finish/commit).
+        const users = stableFoundations(state, tree).get(path);
+        if (users) {
+          const before = state.readiness ?? (await checkReadiness(tree));
+          const trial = new Map(tree);
+          trial.set(path, next);
+          const after = await checkReadiness(trial);
+          const had = new Set(before.findings.map(findingKey));
+          const regressions = after.findings.filter((f) => !had.has(findingKey(f)));
+          if (regressions.length) {
+            return {
+              output: fail(name, path, `Edit rolled back — ${path} is a stable foundation used by ${users.slice(0, 5).join(", ")}, and this change breaks verification:\n${regressions.slice(0, 6).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}`, "scope_violation"),
+              isError: true,
+            };
+          }
+          state.readiness = after;
+        }
         if (!(await persist(path, next))) return { output: fail(name, path, `Refused by the write gate: ${path}.`, "scope_violation"), isError: true };
-        state.completedOps.add(id);
-        state.validation.set(path, errs);
+        record(path, next, errs);
+        if (!errs.length) state.completedOps.add(id);
         breaker.recordProgress(errs.length < before.length ? "file_repaired" : "file_written", path);
         emit({ kind: "edit_ok", path });
         return { output: errs.length ? report(path, errs) : `OK: edited ${path} and validated.`, isError: false };
@@ -607,17 +706,18 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         return { output: `Tasks (${state.tasks.size}):\n${lines.join("\n")}`, isError: false };
       }
       case "finish": {
-        // Task marked done while its files fail → demote to pending.
-        for (const t of state.tasks.values()) {
-          if (t.status === "done" && t.files.some((f) => !(tree.get(f) ?? "").trim() || (state.validation.get(f) ?? []).length)) t.status = "pending";
-        }
-        const gaps = completionGaps(state, tree);
-        if (gaps.length) return { output: `finish refused — the workspace is not complete:\n${gaps.slice(0, 20).map((g) => `- ${g}`).join("\n")}`, isError: true };
+        const notReady = await finishGate();
+        if (notReady) return { output: `finish refused.\n${notReady}`, isError: true };
         state.finished = true;
         return { output: "Finished.", isError: false };
       }
     }
   }
+
+  const incompleteNow = () => [
+    ...completionGaps(state, tree),
+    ...(state.readiness && !state.readiness.ready ? state.readiness.findings.map((f) => `[${f.gate}] ${f.reason}`) : []),
+  ];
 
   const hardCeiling = cfg.maxIterations + cfg.finalizeIterations;
   let finalizing = false;
@@ -625,7 +725,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   while (state.iteration < hardCeiling) {
     if (args.signal?.aborted) {
       state.stopReason = "cancelled";
-      return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "cancelled" };
+      return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "cancelled" };
     }
     if (!finalizing && state.iteration >= cfg.maxIterations) {
       finalizing = true;
@@ -634,7 +734,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
 
     let compacted = false;
     if (estimateTokens(messages) > cfg.contextWindow * cfg.compactAt) {
-      messages = compact(messages, state, cfg.keepRecent);
+      messages = compact(messages, state, cfg.keepRecent, tree);
       compacted = true;
     }
 
@@ -650,9 +750,9 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
 
     if (reply.toolCalls.length === 0) {
       // Implicit finish (Webby: no tool calls = done) still passes the gate.
-      const gaps = completionGaps(state, tree);
-      if (!gaps.length) state.finished = true;
-      else messages.push({ role: "user", content: `You stopped, but the workspace is not complete:\n${gaps.slice(0, 20).map((g) => `- ${g}`).join("\n")}\nContinue with tools.` });
+      const notReady = await finishGate();
+      if (!notReady) state.finished = true;
+      else messages.push({ role: "user", content: `You stopped, but:\n${notReady}` });
     } else {
       // Consecutive read-only calls run concurrently; writes one at a time, in order.
       const results: Array<{ id: string; output: string }> = [];
@@ -710,10 +810,10 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     }
     if (breaker.tripped) {
       state.stopReason = breaker.reason()?.detail ?? "circuit breaker";
-      return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "breaker" };
+      return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "breaker" };
     }
   }
 
   state.stopReason = "iteration budget exhausted";
-  return { files: treeFiles(), state, traces, incomplete: completionGaps(state, tree), outcome: "incomplete" };
+  return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "incomplete" };
 }
