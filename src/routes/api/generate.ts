@@ -80,7 +80,6 @@ import {
   hadRecentProviderPaymentFailure,
 } from "@/server/ai-provider.server";
 import { priceTurn, priceTurnByCost, BUILD_FLOOR } from "@/server/credit-pricing.server";
-import { recordTurnEconomics } from "@/server/turn-economics.server";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
   clearPendingMemory,
