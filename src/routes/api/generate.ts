@@ -4710,8 +4710,26 @@ async function handleGenerateRequestCore(
                 `Files: ${seedFiles.map((f) => f.path).join(", ")}`,
               files: seedFiles,
               seedPaths: seedFiles.map((f) => f.path),
-              requirements: planned.map((p: { route: string; file: string }) => ({ id: `page:${p.route}`, file: p.file, route: p.route })),
               callModel,
+              // THE readiness authority: the exact proposed-tree transform and
+              // source verification commitTurn runs (scaffold + shell, then
+              // verifyProposedSource with the same requested routes).
+              readiness: async (tree, changed) => {
+                const { verifyProposedSource } = await import("@/server/verification/source.server");
+                const { readinessOf } = await import("@/server/verification/readiness");
+                const authored = tree.filter((file) => file.path === "package.json" || (!isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path)));
+                const proposed = ensureRenderableShell(
+                  applyScaffoldKit(authored, { backend: backend ?? undefined, sharedBackend: sharedBackend ?? undefined, target: buildTarget.id }),
+                  detectedWebSubtype,
+                ).files;
+                const v = await verifyProposedSource({
+                  tree: proposed,
+                  changedPaths: changed.filter((p) => proposed.some((f) => f.path === p)),
+                  requestedRoutes: requestedRoutesFor(lastUserText, plannedRoutes),
+                  requireShell: true,
+                });
+                return readinessOf(v);
+              },
               validate: async (file, tree) => {
                 if (!/\.(tsx?|jsx?)$/.test(file.path)) return [];
                 const v = await verifyFilesEsbuild([file], [file.path]);
@@ -7274,9 +7292,10 @@ async function handleGenerateRequestCore(
             : assessCompleteness({ requestedRoutes: requested, files: nextFiles });
           scopeMissing = verdict.missingRoutes;
           {
-            // The shared frame is a required deliverable, not an optional one.
-            const { frameIsComplete } = await import("@/server/engine/write");
-            if (!txCommitted && !frameIsComplete(nextFiles, requested.length) && !scopeMissing.includes("app shell")) {
+            // Derived from the authoritative verification record — no second
+            // copy of the shell rule.
+            const shellFinding = (txResult.verification?.gates ?? []).some((g) => g.gate === "routes" && g.verdict === "FAIL" && g.reasons.some((r) => r.startsWith("app shell")));
+            if (!txCommitted && shellFinding && !scopeMissing.includes("app shell")) {
               scopeMissing = ["app shell", ...scopeMissing];
               verdict.complete = false;
             }

@@ -457,7 +457,6 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     state.validation.set(path, errs);
     state.validatedHash.set(path, hash(content));
   };
-  const changedPaths = () => [...new Set(state.written)].filter((p) => tree.has(p));
   const checkReadiness = async (t: Map<string, string>): Promise<Readiness> => {
     const v0 = Date.now();
     try {
