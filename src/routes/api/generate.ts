@@ -6688,6 +6688,36 @@ async function handleGenerateRequestCore(
           );
         }
 
+        // Late missing-node pass: files written after the write gate (page
+        // writers, repairs) may import a shared module nobody created. Create
+        // it once here — otherwise the final check quarantines every importer
+        // and the cascade discards the whole build.
+        if (!infraFailure && earlyChangedPaths.length > 0) {
+          try {
+            const { resolveMissingNodes } = await import("@/server/engine/missing-nodes");
+            const { createMissingModule } = await import("@/server/engine/repair");
+            const late = await resolveMissingNodes(nextFiles, earlyChangedPaths, async (node, context) => {
+              if (!turnLedger.use("repair", "missing shared module", node.target).ok) return null;
+              controller.enqueue(encoder.encode(sse({ type: "status", message: `Creating missing shared file ${node.target}…` })));
+              return createMissingModule(node, context, {
+                turnId: logicalTurnId,
+                projectId: body.projectId ?? null,
+                userId,
+                turnContext: turnContextFor(node.target),
+              });
+            });
+            if (late.created.length) {
+              console.log(`[missing-nodes] late pass created ${JSON.stringify(late.created)}`);
+              nextFiles = late.files;
+              earlyChangedPaths.push(...late.created.filter((p) => !earlyChangedPaths.includes(p)));
+            }
+          } catch (e) {
+            const { isInfrastructureFailure } = await import("@/lib/failure-classification");
+            if (!isInfrastructureFailure(e)) throw e;
+            infraFailure = e;
+          }
+        }
+
         const guardOut = await runFinalParseGuard(
           nextFiles,
           earlyChangedPaths,
