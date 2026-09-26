@@ -58,6 +58,25 @@ export type TurnRecorderHandle = {
  * Returns a no-op recorder if the service-role key isn't configured (so
  * dev/preview without secrets still works).
  */
+/** Thrown when another turn already owns the project's generation slot. */
+export class GenerationSlotTaken extends Error {
+  constructor(readonly existingTurnId: string) {
+    super(`generation slot held by turn ${existingTurnId}`);
+    this.name = "GenerationSlotTaken";
+  }
+}
+
+/** Pure: what a `claim_generation_turn` result means for this request. */
+export function interpretClaim(
+  requestedTurnId: string,
+  claim: { turn_id: string | null; claimed: boolean } | null,
+): { kind: "claimed" } | { kind: "taken"; existingTurnId: string } {
+  if (!claim || claim.claimed) return { kind: "claimed" };
+  if (claim.turn_id && claim.turn_id !== requestedTurnId) return { kind: "taken", existingTurnId: claim.turn_id };
+  // Same id already accepted (retried send) — that turn is the one to follow.
+  return { kind: "taken", existingTurnId: requestedTurnId };
+}
+
 export async function startTurn(opts: {
   projectId: string;
   userId: string;
@@ -82,17 +101,24 @@ export async function startTurn(opts: {
   }
 
   if (!opts.attach) {
+    // Atomic check-and-reserve of the project's single generation slot
+    // (`claim_generation_turn` + partial unique index). Losing the race is
+    // not an error: the caller follows the turn that owns the slot.
+    let claim: { turn_id: string | null; claimed: boolean } | null = null;
     try {
-      await client.from("turns").insert({
-        id: turnId,
-        project_id: opts.projectId,
-        user_id: opts.userId,
-        status: "running",
-      });
+      const { data, error } = await client.rpc("claim_generation_turn" as never, {
+        p_turn_id: turnId,
+        p_project_id: opts.projectId,
+        p_user_id: opts.userId,
+      } as never);
+      if (error) throw new Error(error.message);
+      claim = (Array.isArray(data) ? data[0] : data) as typeof claim;
     } catch (e) {
-      console.warn("[turn-recorder] startTurn insert failed:", (e as Error).message);
+      console.warn("[turn-recorder] claim_generation_turn failed:", (e as Error).message);
       return makeNoop(turnId);
     }
+    const outcome = interpretClaim(turnId, claim);
+    if (outcome.kind === "taken") throw new GenerationSlotTaken(outcome.existingTurnId);
   }
 
   let resolvedIO: import("@/server/agent-io.server").AgentIO | null = opts.io ?? null;
