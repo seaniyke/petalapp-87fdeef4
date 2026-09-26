@@ -1556,7 +1556,7 @@ function parseCollectedProject(collected: ParsedTool): ParsedProjectPayload {
     const salvaged = salvagePartialToolArgs(collected.args, collected.name);
     if (salvaged) {
       console.warn(
-        `[generate] salvaged ${salvaged.recovered} ${collected.name === "write_project" ? "file(s)" : "op(s)"} from a ${salvaged.truncated ? "truncated" : "malformed"} tool payload`,
+        `[generate] salvaged ${salvaged.recovered} op(s) from a ${salvaged.truncated ? "truncated" : "malformed"} tool payload`,
       );
       parsed = salvaged.parsed as ParsedProjectPayload["parsed"];
     } else {
@@ -1606,9 +1606,6 @@ function parseCollectedProject(collected: ParsedTool): ParsedProjectPayload {
     }
   }
 
-  if (collected.name === "write_project" && !parsed.files?.length) {
-    throw new Error("AI returned no files.");
-  }
   if (collected.name === "patch_files" && (!Array.isArray(parsed.ops) || parsed.ops.length === 0)) {
     throw new Error("AI returned no ops.");
   }
