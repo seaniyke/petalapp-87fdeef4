@@ -13,6 +13,7 @@ export default defineConfig({
       "src/components/__tests__/prompt-transition.test.ts",
       "src/server/__tests__/generation-slot-race.test.ts",
       "src/server/__tests__/hospital-incident.test.ts",
+      "src/server/__tests__/terminal-result.test.ts",
       "src/lib/__tests__/failure-card.test.ts",
       "src/lib/__tests__/disconnect-reconcile.test.ts",
       "src/lib/preview-state.test.ts",
