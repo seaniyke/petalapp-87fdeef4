@@ -140,3 +140,18 @@ describe("router cleanup handles relative page imports", () => {
     expect(out).toMatch(/Home/);
   });
 });
+
+import { usedAsValue } from "@/server/local-verifier";
+describe("usedAsValue", () => {
+  it("type-only uses are not values", () => {
+    const src = `import { BakeryInfo, TeamMember } from "@/types";\nexport const info: BakeryInfo = { name: "x" };\nexport const team: TeamMember[] = [];\nfunction f(a: Array<TeamMember>): BakeryInfo | null { return null }`;
+    expect(usedAsValue(src, "BakeryInfo")).toBe(false);
+    expect(usedAsValue(src, "TeamMember")).toBe(false);
+  });
+  it("value uses are values", () => {
+    expect(usedAsValue(`const a = new Foo();`, "Foo")).toBe(true);
+    expect(usedAsValue(`const a = Foo.x;`, "Foo")).toBe(true);
+    expect(usedAsValue(`return <Foo />`, "Foo")).toBe(true);
+    expect(usedAsValue(`const b = Foo;`, "Foo")).toBe(true);
+  });
+});

@@ -1282,6 +1282,12 @@ function findMissingNamedExports(
         if (seen.has(key)) continue;
         seen.add(key);
         const isTypeOnlyExport = exp.typeOnly.has(original);
+        // The bundler drops imports used only in type positions, so a
+        // type-only export is a build break only when used as a value.
+        if (isTypeOnlyExport) {
+          const local = (segs[1] ?? original).trim();
+          if (!usedAsValue(f.content, local)) continue;
+        }
         issues.push({
           path: f.path,
           kind: "missing-export",
@@ -1509,3 +1515,19 @@ export function verifyFilesLocal(
   return { ok: issues.length === 0, issues };
 }
 
+
+
+/** True when `name` appears in a runtime position (call, `new`, member
+ *  access, JSX tag, spread/argument), ignoring import lines and types. */
+export function usedAsValue(src: string, name: string): boolean {
+  const n = name.replace(/[$]/g, "\\$");
+  const body = src.replace(/^\s*import[^;]*;?$/gm, "");
+  const patterns = [
+    `\\bnew\\s+${n}\\b`,
+    `(?<![\\w$.])${n}\\s*\\(`,
+    `(?<![\\w$.])${n}\\s*\\.(?!\\.)`,
+    `(?<![\\w$])<${n}[\\s/>]`.replace("(?<![\\w$])", "(?:^|[\\s({>])"),
+    `(?:=|return|\\(|,|\\[|\\.\\.\\.)\\s*${n}\\s*(?:[,;)\\]}]|$)`,
+  ];
+  return patterns.some((p) => new RegExp(p, "m").test(body));
+}
