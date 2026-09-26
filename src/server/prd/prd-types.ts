@@ -149,6 +149,9 @@ export interface Prd {
    */
   requirements?: import("./prd-requirements").PrdRequirement[];
 
+  /** Deterministic request→archetype contract (see intent-contract.ts). */
+  intent?: import("./intent-contract").IntentContract;
+
   /** Provenance — how much of this came from rules vs the model. */
   source: "deterministic" | "model" | "hybrid";
   /** 0–1. Below 0.35 the caller may choose to ask a clarifying question. */

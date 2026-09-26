@@ -3530,6 +3530,29 @@ async function handleGenerateRequestCore(
     // Never block a build on composer failure.
   }
 
+  // Intent contract (PRD): validate the plan against the REQUEST before any
+  // expensive generation. No template match → the archetype's pages are the
+  // plan; divergent pages (e.g. a shop inside a hospital system) are removed.
+  let intentContract: import("@/server/prd/intent-contract").IntentContract | null = null;
+  if (isInitial) {
+    try {
+      const { deriveIntentContract, divergentPages, renderIntentBlock } = await import("@/server/prd/intent-contract");
+      intentContract = resolvedPrd?.prd.intent ?? deriveIntentContract(lastUserText, resolvedPrd?.prd ?? null);
+      const bad = divergentPages(intentContract, plannedRoutes, lastUserText);
+      if (bad.length) {
+        console.warn(`[intent] removed divergent planned routes ${JSON.stringify(bad)} (archetype=${intentContract.archetype})`);
+        for (const r of bad) plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
+      }
+      if (plannedRoutes.filter((r) => r !== "/").length === 0 && intentContract.pages.length) {
+        for (const pg of intentContract.pages) if (!plannedRoutes.includes(pg.route)) plannedRoutes.push(pg.route);
+        console.log(`[intent] archetype=${intentContract.archetype} plan=${JSON.stringify(plannedRoutes)}`);
+      }
+      archetypeBlock += renderIntentBlock(intentContract);
+    } catch (e) {
+      console.warn(`[intent] contract unavailable: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   // Bounded first-build generation units. Pages the user named are the plan
   // even without a template match. A build whose pages would overflow one
   // output budget writes the shared shell + the first pages now; the
@@ -4605,7 +4628,26 @@ async function handleGenerateRequestCore(
             // imports but that were never written (the shell call ran out of
             // room, or planning under-counted) are the remaining work — write
             // them here, under the same bounded WRITE-stage budget.
-            const fromRouter = pagesReferencedByRouter(parsed.files, planned);
+            let fromRouter = pagesReferencedByRouter(parsed.files, planned);
+            // Router pages are validated against the intent contract — never
+            // harvested blindly. Divergent pages are removed from the router.
+            if (intentContract && fromRouter.length) {
+              const { divergentPages, stripRoutesFromRouter } = await import("@/server/prd/intent-contract");
+              const bad = new Set(divergentPages(intentContract, fromRouter.map((p) => p.route), lastUserText));
+              if (bad.size) {
+                const badFiles = fromRouter.filter((p) => bad.has(p.route)).map((p) => p.file);
+                const app = parsed.files.find((f) => f.path === "src/App.tsx");
+                const cleaned = app ? stripRoutesFromRouter(app.content, badFiles) : null;
+                if (app && cleaned !== null) {
+                  app.content = cleaned;
+                  fromRouter = fromRouter.filter((p) => !bad.has(p.route));
+                  console.warn(`[intent] dropped divergent router pages ${JSON.stringify([...bad])}`);
+                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "intent_check", outcome: "ok", message: `Removed pages that don't belong in this product: ${[...bad].join(", ")}`, ts: Date.now() })));
+                } else {
+                  console.warn(`[intent] divergent router pages kept (router not safely cleanable): ${JSON.stringify([...bad])}`);
+                }
+              }
+            }
             const pages = [...planned, ...fromRouter];
             for (const p of fromRouter) if (!plannedRoutes.includes(p.route)) plannedRoutes.push(p.route);
             if (isTruncatedFinishReason(collected.finishReason) || fromRouter.length) {

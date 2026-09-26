@@ -132,7 +132,7 @@ const COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
 export function deriveIntentContract(brief: string, prd?: Prd | null): IntentContract {
   const text = brief || "";
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce")!;
-  const commerceRequested = commerceFamily.triggers.test(text) || prd?.productType === "storefront" && commerceFamily.triggers.test(text);
+  const commerceRequested = commerceFamily.triggers.test(text);
   // Domain families win over commerce words used incidentally ("hospital pharmacy store").
   const family = FAMILIES.find((f) => f.id !== "commerce" && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
   const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
