@@ -3588,7 +3588,6 @@ async function handleGenerateRequestCore(
       });
       const firstPlan = planFirstBuild({ prompt: lastUserText, plannedRoutes, maxOutputTokens: firstUnitMaxOutput });
       for (const r of firstPlan.routes) if (!plannedRoutes.includes(r)) plannedRoutes.push(r);
-      archetypeBlock += firstPlan.instruction;
       firstBuildPlan = firstPlan;
       console.log(firstPlan.log);
     } catch {
@@ -4646,7 +4645,6 @@ async function handleGenerateRequestCore(
           // shell; every planned page is now written by its own call.
           if (isInitial && parsed.files?.length) {
             const { targetOf: wantOf, DECOMPOSED_MARKER } = await import("@/server/engine/write");
-            const { runExecutionLoop } = await import("@/server/engine/agent-loop");
             const { pageFileFor } = await import("@/server/engine/plan");
             const checkpointApi = await import("@/server/build-checkpoint.server");
             // Snapshot of the shell answer exactly as parsed, taken before any
@@ -4917,6 +4915,8 @@ async function handleGenerateRequestCore(
             }
           }
         } catch (chunkErr) {
+          // First builds: the tool loop IS the build — never swallow its failure.
+          if (isInitial || abortSignal.aborted) throw chunkErr;
           console.warn(
             "[chunked-generation] skipped:",
             chunkErr instanceof Error ? chunkErr.message : String(chunkErr),
