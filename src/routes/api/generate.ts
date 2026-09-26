@@ -4216,7 +4216,7 @@ async function handleGenerateRequestCore(
           const pv = resumed.preserved;
           controller.enqueue(encoder.encode(sse({
             type: "timeline",
-            step: "checkpoint_resume",
+            step: "continuation",
             outcome: "ok",
             message: `Resumed from saved progress: kept the layout and ${pv.pages} finished page${pv.pages === 1 ? "" : "s"} (${pv.aiCalls} AI calls, ~$${pv.costUsd.toFixed(3)}, ${Math.round(pv.elapsedMs / 60000)} min of work not repeated)`,
             ts: Date.now(),
@@ -4233,7 +4233,7 @@ async function handleGenerateRequestCore(
             }
           : resumeShell
           ? {
-              name: resumeShell.name,
+              name: resumeShell.name as ParsedTool["name"],
               args: resumeShell.args,
               text: resumeShell.text,
               finishReason: resumeShell.finishReason ?? "stop",
