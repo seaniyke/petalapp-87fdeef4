@@ -4702,6 +4702,7 @@ async function handleGenerateRequestCore(
             // decomposed pages on the retry (strategy change, not a repeat).
             const cutOffPages = new Set<string>();
             const { assessPageComplexity } = await import("@/server/execution/complexity");
+            const pageProviderFailures: Array<{ path: string; status: number }> = [];
             const done = await writePlannedPages({
               pages,
               decide: (p, truncatedBefore) =>
@@ -4748,9 +4749,15 @@ async function handleGenerateRequestCore(
                     recoveryReason: "missing_page",
                   },
                 });
-                if (!res.ok || !res.body) return null;
-                let c = await relayAndCollect(res, controller, encoder);
                 const wantPath = wantOf(instruction);
+                if (!res.ok || !res.body) {
+                  // Durable evidence: a page that failed at the provider is an
+                  // infrastructure failure, never silently "missing".
+                  pageProviderFailures.push({ path: wantPath ?? "?", status: res.status });
+                  controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} (HTTP ${res.status})`, ts: Date.now() })));
+                  return null;
+                }
+                let c = await relayAndCollect(res, controller, encoder);
                 // A truncated response is a model-output problem, not a
                 // provider failure: never fail the provider for it and never
                 // resend here — the WRITE stage re-requests the file once.
@@ -4784,7 +4791,11 @@ async function handleGenerateRequestCore(
                       recoveryReason: "provider_error",
                     },
                   });
-                  if (!again.ok || !again.body) return null;
+                  if (!again.ok || !again.body) {
+                    pageProviderFailures.push({ path: wantPath ?? "?", status: again.status });
+                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} again (HTTP ${again.status})`, ts: Date.now() })));
+                    return null;
+                  }
                   c = await relayAndCollect(again, controller, encoder);
                 }
                 // Page writing is billable work: count this page's tokens.
@@ -4837,6 +4848,10 @@ async function handleGenerateRequestCore(
               `[write] pages=${JSON.stringify(pages.map((p) => p.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`,
             );
             parsed.files = done.files;
+            if (done.missing.length) {
+              turnStrategy.missingPages = { missing: done.missing, providerFailures: pageProviderFailures };
+              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Pages not written: ${done.missing.join(", ")}${pageProviderFailures.length ? ` (provider failures: ${pageProviderFailures.map((f) => `${f.path} HTTP ${f.status}`).join(", ")})` : ""}`, ts: Date.now() })));
+            }
           }
 
           if (chunkAssessment.needed && !isInitial) {
