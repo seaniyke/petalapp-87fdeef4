@@ -85194,7 +85194,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -90474,7 +90473,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS2, ROOT_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader2();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -145384,8 +145382,8 @@ function stripRoutesFromRouter(app, pageFiles) {
   let out = app;
   for (const file of pageFiles) {
     const name = file.split("/").pop().replace(/\.(tsx?|jsx?)$/, "");
-    const importRe = new RegExp(`^\\s*import\\s+([A-Za-z_$][\\w$]*)\\s+from\\s*["']@/pages/${name}["'];?\\s*$\\n?`, "m");
-    const lazyRe = new RegExp(`^\\s*const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\([^\\n]*@/pages/${name}[^\\n]*$\\n?`, "m");
+    const importRe = new RegExp(`^\\s*import\\s+([A-Za-z_$][\\w$]*)\\s+from\\s*["'](?:@|\\.)/pages/${name}(?:\\.tsx?)?["'];?\\s*$\\n?`, "m");
+    const lazyRe = new RegExp(`^\\s*const\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*lazy\\([^\\n]*(?:@|\\.)/pages/${name}["'.][^\\n]*$\\n?`, "m");
     const m = importRe.exec(out) ?? lazyRe.exec(out);
     if (!m) continue;
     const ident = m[1];
@@ -152884,6 +152882,9 @@ var init_design_system_lint_server = __esm({
 
 // src/server/verification/identifiers.server.ts
 import ts from "typescript";
+function isPlatformGlobal(name) {
+  return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
+}
 function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
   const targets = changedPaths.filter((p2) => PARSEABLE2.test(p2));
   if (targets.length === 0) return { status: "verified", issues: [] };
@@ -152939,6 +152940,8 @@ function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
       const file = d.file?.fileName;
       if (!file || !wanted.has(file)) continue;
       const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
+      const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
+      if (name && isPlatformGlobal(name)) continue;
       const key = `${file}::${message}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -152952,7 +152955,7 @@ function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
     return { status: "unavailable", issues: [], reason };
   }
 }
-var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, AMBIENT_PATH;
+var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, ES_AND_DOM_GLOBALS, DOM_NAME, AMBIENT_PATH;
 var init_identifiers_server = __esm({
   "src/server/verification/identifiers.server.ts"() {
     "use strict";
@@ -153090,6 +153093,118 @@ declare namespace JSX {
 }
 declare module "*";
 `;
+    ES_AND_DOM_GLOBALS = /* @__PURE__ */ new Set([
+      "Date",
+      "Math",
+      "JSON",
+      "Intl",
+      "Reflect",
+      "Proxy",
+      "Symbol",
+      "Object",
+      "Array",
+      "String",
+      "Number",
+      "Boolean",
+      "BigInt",
+      "Function",
+      "RegExp",
+      "Error",
+      "TypeError",
+      "RangeError",
+      "SyntaxError",
+      "ReferenceError",
+      "EvalError",
+      "URIError",
+      "AggregateError",
+      "Map",
+      "Set",
+      "WeakMap",
+      "WeakSet",
+      "WeakRef",
+      "FinalizationRegistry",
+      "Promise",
+      "ArrayBuffer",
+      "SharedArrayBuffer",
+      "DataView",
+      "Int8Array",
+      "Uint8Array",
+      "Uint8ClampedArray",
+      "Int16Array",
+      "Uint16Array",
+      "Int32Array",
+      "Uint32Array",
+      "Float32Array",
+      "Float64Array",
+      "BigInt64Array",
+      "BigUint64Array",
+      "Atomics",
+      "Iterator",
+      "Record",
+      "Partial",
+      "Required",
+      "Readonly",
+      "Pick",
+      "Omit",
+      "Exclude",
+      "Extract",
+      "NonNullable",
+      "ReturnType",
+      "Parameters",
+      "InstanceType",
+      "Awaited",
+      "PropertyKey",
+      "ArrayLike",
+      "PromiseLike",
+      "Iterable",
+      "AsyncIterable",
+      "screen",
+      "innerWidth",
+      "innerHeight",
+      "scrollX",
+      "scrollY",
+      "scrollTo",
+      "matchMedia",
+      "getComputedStyle",
+      "open",
+      "close",
+      "print",
+      "self",
+      "top",
+      "parent",
+      "frames",
+      "customElements",
+      "indexedDB",
+      "caches",
+      "origin",
+      "devicePixelRatio",
+      "speechSynthesis",
+      "Notification",
+      "DOMParser",
+      "XMLHttpRequest",
+      "Option",
+      "Range",
+      "Selection",
+      "ShadowRoot",
+      "DocumentFragment",
+      "DOMRect",
+      "Touch",
+      "EventSource",
+      "BroadcastChannel",
+      "MessageChannel",
+      "PerformanceObserver",
+      "CSS",
+      "CSSStyleDeclaration",
+      "ImageData",
+      "OffscreenCanvas",
+      "ReadableStream",
+      "WritableStream",
+      "TransformStream",
+      "Deno",
+      "Bun",
+      "NodeJS"
+    ]);
+    DOM_NAME = /^(HTML\w*Element|SVG\w*Element|\w+Event|\w+Observer(Entry)?|\w+Element|\w+List|DOM\w+|Media\w+|Speech\w+|RTC\w+|WebGL\w+|Web\w+|GPU\w+|Canvas\w+|Audio\w+|Video\w+|Clipboard\w*|Intl\w*)$/;
     AMBIENT_PATH = "/petal-ambient-globals.d.ts";
   }
 });
@@ -161270,6 +161385,7 @@ ${guardTag}
 
 // src/server/pin-loose-deps.ts
 init_define_import_meta_env();
+init_known_packages();
 
 // src/server/builder.server.ts
 var MAX_AGE_SECONDS = 5 * 60;
@@ -177690,6 +177806,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             let pagesWritten = 0;
             const cutOffPages = /* @__PURE__ */ new Set();
             const { assessPageComplexity: assessPageComplexity2 } = await Promise.resolve().then(() => (init_complexity(), complexity_exports));
+            const pageProviderFailures = [];
             const done = await writePlannedPages2({
               pages,
               decide: (p2, truncatedBefore) => assessPageComplexity2({
@@ -177735,9 +177852,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                       recoveryReason: "missing_page"
                     }
                   });
-                  if (!res.ok || !res.body) return null;
-                  let c = await relayAndCollect(res, controller, encoder);
                   const wantPath = wantOf(instruction);
+                  if (!res.ok || !res.body) {
+                    pageProviderFailures.push({ path: wantPath ?? "?", status: res.status });
+                    controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} (HTTP ${res.status})`, ts: Date.now() })));
+                    return null;
+                  }
+                  let c = await relayAndCollect(res, controller, encoder);
                   const truncatedOutput = isTruncatedFinishReason(c.finishReason);
                   const decomposedAsk = instruction.startsWith(DECOMPOSED_MARKER2);
                   if (truncatedOutput && wantPath && !decomposedAsk) {
@@ -177767,7 +177888,11 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                         recoveryReason: "provider_error"
                       }
                     });
-                    if (!again.ok || !again.body) return null;
+                    if (!again.ok || !again.body) {
+                      pageProviderFailures.push({ path: wantPath ?? "?", status: again.status });
+                      controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Provider failed writing ${wantPath ?? "a page"} again (HTTP ${again.status})`, ts: Date.now() })));
+                      return null;
+                    }
                     c = await relayAndCollect(again, controller, encoder);
                   }
                   if (c.usage) pageWriteUsages.push(c.usage);
@@ -177811,6 +177936,23 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               `[write] pages=${JSON.stringify(pages.map((p2) => p2.route))} calls=${done.calls} written=${JSON.stringify(done.written)} missing=${JSON.stringify(done.missing)}`
             );
             parsed.files = done.files;
+            if (done.missing.length) {
+              const { stripRoutesFromRouter: stripRoutesFromRouter2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
+              const core = new Set((intentContract?.pages ?? []).map((pg) => pg.route));
+              const named = new Set(requestedRoutesFor(lastUserText, []));
+              const optional = pages.filter((pg) => done.missing.includes(pg.file) || done.missing.includes(pg.route)).filter((pg) => pg.route !== "/" && !core.has(pg.route) && !named.has(pg.route));
+              const app = parsed.files.find((f) => f.path === "src/App.tsx");
+              const cleaned = app && optional.length ? stripRoutesFromRouter2(app.content, optional.map((pg) => pg.file)) : null;
+              if (app && cleaned !== null) {
+                app.content = cleaned;
+                turnStrategy.droppedOptionalPages = optional.map((pg) => pg.route);
+                controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "fixed", message: `Left out unfinished optional pages: ${optional.map((pg) => pg.route).join(", ")}`, ts: Date.now() })));
+              }
+            }
+            if (done.missing.length) {
+              turnStrategy.missingPages = { missing: done.missing, providerFailures: pageProviderFailures };
+              controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Pages not written: ${done.missing.join(", ")}${pageProviderFailures.length ? ` (provider failures: ${pageProviderFailures.map((f) => `${f.path} HTTP ${f.status}`).join(", ")})` : ""}`, ts: Date.now() })));
+            }
           }
           if (chunkAssessment.needed && !isInitial) {
             console.warn(
