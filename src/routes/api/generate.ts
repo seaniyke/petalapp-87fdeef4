@@ -8017,7 +8017,7 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
         // bubble is exactly what we are removing.
         if (turnProjectId && recorder && !silentRecovery && !planProposed && terminalStatus !== "awaiting_credits") {
           await new Promise((r) => setTimeout(r, 2500));
-          const done = lastResult as { summary?: string; plan?: string; recap?: string } | null;
+          const done = lastResult as { summary?: string; plan?: string; recap?: string; committedRevision?: number | null } | null;
           const wroteReply = await persistAbandonedTurnReply({
             projectId: turnProjectId,
             turnId: recorder.turnId,
@@ -8026,6 +8026,7 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
             plan: done?.plan ?? null,
             recap: done?.recap ?? null,
             errorMessage: terminalError,
+            committedRevision: done?.committedRevision ?? null,
           }).catch(() => false);
           // We had to write the reply ourselves, which means no client was
           // there to kick off the deploy either. Files are saved but the
