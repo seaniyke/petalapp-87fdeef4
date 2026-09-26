@@ -4640,8 +4640,8 @@ async function handleGenerateRequestCore(
             // pages under canonical identity (no second scheduler). Router pages
             // that diverge from the intent contract are removed first.
             if (intentContract) {
-              const { routerPages } = await import("@/server/engine/agent-loop");
-              const { pageKey } = await import("@/server/engine/agent-loop");
+              const { routerPages } = await import("@/server/engine/router-facts");
+              const { pageKey } = await import("@/server/engine/router-facts");
               const plannedKeys = new Set(planned.map((p: { route: string }) => pageKey(p.route)));
               const extra = routerPages(parsed.files).filter((p) => !plannedKeys.has(pageKey(p.route)));
               if (extra.length) {
