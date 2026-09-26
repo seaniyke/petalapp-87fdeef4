@@ -58,6 +58,8 @@ export interface AgentOpsStore {
   ledgerOwner(ledgerId: string): Promise<{ user_id: string; turn_id: string | null } | null>;
   refund(args: { userId: string; ledgerId: string; reason: string }): Promise<boolean>;
   logAiCall(row: Record<string, unknown>): Promise<string | null>;
+  /** Per-turn economics (recordTurnEconomics) with identity pinned by the app. */
+  recordEconomics?(args: Record<string, unknown> & { turnId: string; userId: string; projectId: string }): Promise<void>;
   /** Patch only if the row belongs to this turn. Returns whether it did. */
   updateAiCall(turnId: string, id: string, patch: Record<string, unknown>): Promise<boolean>;
   /** Start compile + publish for the project (idempotent per file revision). */
@@ -130,6 +132,7 @@ export const AgentOpSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("credits.refund"), ledgerId: z.string().uuid(), reason: z.string().min(1).max(100) }),
   z.object({ op: z.literal("ai.log"), row: z.record(z.unknown()) }),
   z.object({ op: z.literal("ai.update"), id: z.string().uuid(), patch: z.record(z.unknown()) }),
+  z.object({ op: z.literal("economics.record"), args: z.record(z.unknown()) }),
   z.object({
     op: z.literal("pictures.save"),
     url: z.string().url().max(2000),
@@ -311,6 +314,13 @@ async function runOne(store: AgentOpsStore, turn: TurnRow, op: AgentOp): Promise
         ok: true,
         data: { id: await store.logAiCall({ ...op.row, user_id: turn.user_id, project_id: turn.project_id, turn_id: turn.id }) },
       };
+    case "economics.record": {
+      if (!store.recordEconomics) return { ok: false, error: "unsupported" };
+      // Identity comes from the turn, never from the caller.
+      const { turnId: _t, userId: _u, projectId: _p, ...rest } = op.args;
+      await store.recordEconomics({ ...rest, turnId: turn.id, userId: turn.user_id, projectId: turn.project_id });
+      return { ok: true };
+    }
     case "ai.update": {
       const { user_id: _u, project_id: _p, turn_id: _t, id: _i, ...patch } = op.patch;
       return (await store.updateAiCall(turn.id, op.id, patch)) ? { ok: true } : { ok: false, error: "row_not_in_turn" };
