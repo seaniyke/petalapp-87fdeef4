@@ -131,7 +131,7 @@ export function renderStarterKitMap(): string {
   for (const area of MAP_AREAS) {
     const files = KIT_FILES.filter((f) => f.path.startsWith(area.dir) && /\.tsx?$/.test(f.path)).sort((a, b) => a.path.localeCompare(b.path));
     if (!files.length) continue;
-    lines.push(`${area.label} — ${area.dir.replace(/^src\//, "@/").replace(/\/$/, "")}/:`);
+    lines.push(`${area.label} — ${area.dir.replace(/^src\//, "@/").replace(/\/$/, "")}:`);
     if (area.purpose) {
       for (const f of files) {
         const name = f.path.slice(area.dir.length).replace(/\.tsx?$/, "");
