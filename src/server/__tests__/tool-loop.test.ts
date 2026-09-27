@@ -98,9 +98,10 @@ describe("tool loop", () => {
     expect(writes).toBe(1);
   });
 
-  it("pending tasks block finish; the loop keeps no structural rules of its own", () => {
+  it("no model-kept task list: loop-local gaps are only failing writes", () => {
     const s = createToolLoopState("g");
-    s.tasks.set("t1", { id: "t1", title: "x", status: "pending", files: [] });
+    expect(completionGaps(s, new Map([["src/App.tsx", app]])).length).toBe(0);
+    s.validation.set("src/App.tsx", ["parse error"]);
     expect(completionGaps(s, new Map([["src/App.tsx", app]])).length).toBe(1);
   });
 

@@ -120,6 +120,18 @@ function exportedNames(src: string): string[] {
   return [...out].slice(0, 4);
 }
 
+/** Own prop names of `XProps` (interface or type literal), from the kit source. */
+export function propNames(src: string, component: string): string[] {
+  const m = new RegExp(`(?:interface\\s+${component}Props[^{]*|type\\s+${component}Props\\s*=[^{]*)\\{([\\s\\S]*?)\\n\\}`).exec(src);
+  if (!m) return [];
+  const out: string[] = [];
+  for (const line of m[1]!.split("\n")) {
+    const k = /^\s{2}([A-Za-z_$][\w$]*)(\??):/.exec(line);
+    if (k) out.push(`${k[1]}${k[2]}`);
+  }
+  return out.slice(0, 8);
+}
+
 /**
  * Deterministic map of the starter kit, derived from the files actually
  * shipped: path, exported components, one-line purpose. Lets the model pick a
@@ -135,7 +147,10 @@ export function renderStarterKitMap(): string {
     if (area.purpose) {
       for (const f of files) {
         const name = f.path.slice(area.dir.length).replace(/\.tsx?$/, "");
-        const ex = exportedNames(f.content);
+        const ex = exportedNames(f.content).map((n) => {
+          const props = propNames(f.content, n);
+          return props.length ? `${n}(${props.join(", ")})` : n;
+        });
         const doc = firstDocSentence(f.content);
         lines.push(`- ${name}${ex.length ? ` {${ex.join(", ")}}` : ""}${doc ? ` — ${doc}` : ""}`);
       }
@@ -146,7 +161,8 @@ export function renderStarterKitMap(): string {
   if (!lines.length) return "";
   return (
     `\n### Starter-kit map (authoritative — do not list directories to discover it)\n` +
-    `Everything below already exists. Choose what the current work unit needs, then read only that exact file ` +
-    `if you need its props.\n${lines.join("\n")}\n`
+    `Everything below already exists. Import each component from its own path, exactly as listed ` +
+    `(e.g. {SlideUp} from @/components/motion/slide-up). Exports and their own props are listed — use them ` +
+    `directly; read a kit file only when you need implementation details the map does not give.\n${lines.join("\n")}\n`
   );
 }
