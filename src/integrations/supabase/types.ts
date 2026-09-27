@@ -4919,78 +4919,117 @@ export type Database = {
         Row: {
           brief_chars: number | null
           cached_tokens: number | null
+          call_class: string | null
           call_no: number
           compacted: boolean | null
+          completed_at: string | null
           completion_tokens: number | null
           created_at: string
           duration_ms: number | null
+          error: string | null
+          files_read: string[] | null
           files_written: string[] | null
           finish_reason: string | null
+          first_token_at: string | null
           history_chars: number | null
           id: string
+          knowledge_chars: number | null
           model: string | null
           output_tps: number | null
           progress: boolean | null
           project_id: string | null
           prompt_tokens: number | null
+          read_misses: number | null
+          recovery: string | null
+          request_started_at: string | null
           system_chars: number | null
           tool_calls: string[] | null
+          tool_errors: number | null
           tool_ms: number | null
           ttft_ms: number | null
           turn_id: string | null
+          uncached_tokens: number | null
           upstream_provider: string | null
+          user_id: string | null
+          validation_failures: number | null
           validation_ms: number | null
           work_unit: string | null
         }
         Insert: {
           brief_chars?: number | null
           cached_tokens?: number | null
+          call_class?: string | null
           call_no: number
           compacted?: boolean | null
+          completed_at?: string | null
           completion_tokens?: number | null
           created_at?: string
           duration_ms?: number | null
+          error?: string | null
+          files_read?: string[] | null
           files_written?: string[] | null
           finish_reason?: string | null
+          first_token_at?: string | null
           history_chars?: number | null
           id?: string
+          knowledge_chars?: number | null
           model?: string | null
           output_tps?: number | null
           progress?: boolean | null
           project_id?: string | null
           prompt_tokens?: number | null
+          read_misses?: number | null
+          recovery?: string | null
+          request_started_at?: string | null
           system_chars?: number | null
           tool_calls?: string[] | null
+          tool_errors?: number | null
           tool_ms?: number | null
           ttft_ms?: number | null
           turn_id?: string | null
+          uncached_tokens?: number | null
           upstream_provider?: string | null
+          user_id?: string | null
+          validation_failures?: number | null
           validation_ms?: number | null
           work_unit?: string | null
         }
         Update: {
           brief_chars?: number | null
           cached_tokens?: number | null
+          call_class?: string | null
           call_no?: number
           compacted?: boolean | null
+          completed_at?: string | null
           completion_tokens?: number | null
           created_at?: string
           duration_ms?: number | null
+          error?: string | null
+          files_read?: string[] | null
           files_written?: string[] | null
           finish_reason?: string | null
+          first_token_at?: string | null
           history_chars?: number | null
           id?: string
+          knowledge_chars?: number | null
           model?: string | null
           output_tps?: number | null
           progress?: boolean | null
           project_id?: string | null
           prompt_tokens?: number | null
+          read_misses?: number | null
+          recovery?: string | null
+          request_started_at?: string | null
           system_chars?: number | null
           tool_calls?: string[] | null
+          tool_errors?: number | null
           tool_ms?: number | null
           ttft_ms?: number | null
           turn_id?: string | null
+          uncached_tokens?: number | null
           upstream_provider?: string | null
+          user_id?: string | null
+          validation_failures?: number | null
           validation_ms?: number | null
           work_unit?: string | null
         }
