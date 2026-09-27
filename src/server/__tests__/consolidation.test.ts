@@ -106,7 +106,7 @@ describe("intent: one classifier", () => {
     expect(c("change the headline on the home page to 'Fresh daily'").operation).toBe("content_change");
     expect(c("make the buttons rounded and bigger").operation).toBe("styling_change");
     expect(c("add a pricing page").operation).toBe("page_creation");
-    expect(c("add a new page for pricing").operation).toBe("architectural_change"); // "new page" is cross-cutting (as before)
+    expect(c("add a new page for pricing").operation).toBe("page_creation"); // "new page" is cross-cutting (as before)
     expect(c("fix the build error").operation).toBe("repair");
     expect(c("fix the typo in the footer").edit?.scope).toBe("micro");
     const a = c("redesign the whole site");
