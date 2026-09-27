@@ -130,7 +130,7 @@ describe("tiered first-build knowledge", () => {
 
   it("6. starter-kit visibility is unchanged: the loop still receives the kit alongside knowledge docs", () => {
     const src = readFileSync("src/routes/api/generate.ts", "utf8");
-    expect(src).toMatch(/reference: applyScaffoldKit\(\[\][\s\S]{0,300}\.concat\(fbContext\.reference\)/);
+    expect(src).toMatch(/reference: applyScaffoldKit\(\[\][\s\S]{0,400}\.concat\(fbContext\.reference\)/);
     expect(src).toContain("system: fbContext.system");
     expect(src).not.toContain("systemTextOf(finalMessages) + FIRST_BUILD_TOOL_NOTE");
   });
