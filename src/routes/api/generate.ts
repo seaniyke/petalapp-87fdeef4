@@ -2747,12 +2747,13 @@ async function handleGenerateRequestCore(
   const rawDesignDirection = userJwt
     ? isRepairTurn
       ? readDirectionFromMemory(memoryEntries)
-      : await pickDesignDirection({
-          jwt: userJwt,
-          projectId: body.projectId,
-          brief: lastUserContent,
-          memoryEntries,
-        })
+      : await (earlyDesign ??
+          pickDesignDirection({
+            jwt: userJwt,
+            projectId: body.projectId,
+            brief: lastUserContent,
+            memoryEntries,
+          }))
     : null;
   // The person's own words outrank anything auto-picked, on every turn.
   const statedIntent = readStatedDesignIntent(lastUserContent || "");
@@ -2825,6 +2826,7 @@ async function handleGenerateRequestCore(
         turnId: turnId ?? undefined,
         signal: request.signal,
         designDirection,
+        understanding: isRepairTurn ? null : earlyUnderstanding,
       });
       picContext = assembled.pic;
       // The design system package owns colours/fonts: the director block
