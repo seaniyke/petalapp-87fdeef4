@@ -80,7 +80,8 @@ export function renderTemplateMetadataSection(): string {
     Object.values(examples)
       .map((e) => `- ${e}`)
       .join("\n") +
-    `\n`
+    `\n` +
+    renderStarterKitMap()
   );
 }
 
