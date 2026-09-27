@@ -128,6 +128,8 @@ export function routerInstruction(pages: PlannedPage[], deliveredPaths: string[]
 
 const NAV_TAG = /<(nav|header)\b/i;
 const FOOTER_TAG = /<footer\b/i;
+/** A sidebar application frame: complete without a site footer (apps are not marketing sites). */
+const APP_SIDEBAR_TAG = /<aside\b/i;
 
 /** Resolve a local import spec ("@/x" or relative) to a file in `byPath`. */
 function resolveLocal(from: string, spec: string, byPath: Map<string, string>): string | null {
@@ -175,7 +177,7 @@ export function frameIsComplete(files: ProjectFile[], pageCount = 2): boolean {
   const routed = pageCount <= 1 || /<Routes\b|createBrowserRouter|<Route\b/.test(app);
   if (!routed) return false;
   let nav = NAV_TAG.test(app);
-  let footer = FOOTER_TAG.test(app);
+  let footer = FOOTER_TAG.test(app) || APP_SIDEBAR_TAG.test(app);
   const appRoutesInline = /<Routes\b|<Route\b|createBrowserRouter/.test(app) || pageCount <= 1;
   const seen = new Set(["src/App.tsx"]);
   let frontier = [{ path: "src/App.tsx", src: app }];
@@ -194,12 +196,13 @@ export function frameIsComplete(files: ProjectFile[], pageCount = 2): boolean {
         // Header/Footer), or when it sits inside such a rendered component.
         const counts = wraps || depth > 0 || appRoutesInline;
         if (counts && NAV_TAG.test(c)) nav = true;
-        if (counts && FOOTER_TAG.test(c)) footer = true;
+        if (counts && (FOOTER_TAG.test(c) || APP_SIDEBAR_TAG.test(c))) footer = true;
         next.push({ path: t, src: c });
       }
     }
     frontier = next;
   }
+  // `footer` = the frame closes the page: a site footer, or a sidebar app frame.
   return nav && footer;
 }
 
