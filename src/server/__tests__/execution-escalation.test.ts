@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assessExecution, assessPageComplexity, decideCharge } from "@/server/execution";
+import { assessExecution, assessPageComplexity } from "@/server/execution";
 import { applyPatches } from "@/server/engine/repair";
 import { parseRawFiles } from "@/server/engine/raw-file";
 import { missingSections, decomposedPageInstruction, targetOf } from "@/server/engine/write";
@@ -7,8 +7,8 @@ import { missingSections, decomposedPageInstruction, targetOf } from "@/server/e
 const base = { isInitial: false, request: "", requirementCount: 1, plannedPages: 0, existingFiles: 10, crossCutting: false, backendInvolved: false, integrations: 0 };
 
 describe("execution complexity", () => {
-  it("micro edit is LIGHT, hospital first build is HEAVY+", () => {
-    expect(assessExecution({ ...base, operation: "content_change" }).class).toBe("LIGHT");
+  it("micro edit is SIMPLE, hospital first build is HEAVY+", () => {
+    expect(assessExecution({ ...base, operation: "content_change" }).class).toBe("SIMPLE");
     const h = assessExecution({ ...base, isInitial: true, request: "Build a compliant hospital management system with patient records dashboard", requirementCount: 8, plannedPages: 5, backendInvolved: true });
     expect(["HEAVY", "COMPLEX"]).toContain(h.class);
   });
@@ -50,12 +50,3 @@ describe("targeted repair", () => {
   });
 });
 
-describe("shadow charge", () => {
-  const b = { executionClass: "HEAVY" as const, expectedCostUsd: 0.035, liveCharged: 1, costPerCreditUsd: 0.05, isAutoFix: false };
-  it("infrastructure failures are never chargeable", () => {
-    expect(decideCharge({ ...b, committed: false, outcome: "failed", failureOrigin: "infrastructure", actualCostUsd: 0.04 }).chargeable).toBe(false);
-  });
-  it("committed work is chargeable", () => {
-    expect(decideCharge({ ...b, committed: true, outcome: "applied", failureOrigin: null, actualCostUsd: 0.04 }).chargeable).toBe(true);
-  });
-});

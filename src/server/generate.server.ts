@@ -540,6 +540,7 @@ export type StreamEvent =
    * settlement. Never emitted for auto-fix turns (those are on Kimble's tab).
    */
   | { type: "credits_estimate"; credits: number }
+  | { type: "credits_planned"; credits: number }
   | { type: "credits_paused"; checkpointId: string; requiredCredits: number }
   // One agent-tool invocation (inspector search/read, codemod script, check).
   | { type: "tool_step"; tool: string; label: string; isError?: boolean }

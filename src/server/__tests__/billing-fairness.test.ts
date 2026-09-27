@@ -6,48 +6,12 @@
  * charged for something Kimble promised was free.
  */
 import { describe, expect, it } from "vitest";
-import { priceBuild, priceTurn, BUILD_FLOOR, BUILD_CAP } from "@/server/credit-pricing.server";
 import {
   buildCostReasons,
   costFootnote,
   formatBuildCost,
   isBackendPath,
 } from "@/lib/build-cost-summary";
-
-describe("charging only for successful AI work", () => {
-  it("never charges below the floor for a real build", () => {
-    const p = priceBuild({ prompt_tokens: 10, completion_tokens: 5 });
-    expect(p.amount).toBeGreaterThanOrEqual(BUILD_FLOOR);
-  });
-
-  it("never charges above the cap, however large the turn", () => {
-    const p = priceBuild({ prompt_tokens: 5_000_000, completion_tokens: 5_000_000 });
-    expect(p.amount).toBeLessThanOrEqual(BUILD_CAP);
-    expect(p.clamped).toBe(true);
-  });
-
-  it("charges once per turn, not once per cycle", () => {
-    const single = priceBuild({ prompt_tokens: 2000, completion_tokens: 1000 });
-    const split = priceTurn([
-      { prompt_tokens: 1000, completion_tokens: 500 },
-      { prompt_tokens: 1000, completion_tokens: 500 },
-    ]);
-    expect(split.amount).toBe(single.amount);
-  });
-
-  it("a turn with no billable usage falls back to a small fixed amount, never zero-cap abuse", () => {
-    const p = priceBuild(null);
-    expect(p.usageMissing).toBe(true);
-    expect(p.amount).toBeGreaterThan(0);
-    expect(p.amount).toBeLessThanOrEqual(BUILD_CAP);
-  });
-
-  it("failed generation prices nothing because pricing is only reached on success", () => {
-    // Guard on the contract: a failed turn passes no usage array at all.
-    // priceTurn([]) must not exceed the free-fallback amount.
-    expect(priceTurn([]).amount).toBeLessThanOrEqual(BUILD_FLOOR + 0.5);
-  });
-});
 
 describe("build cost transparency", () => {
   it("explains the charge without exposing tokens or models", () => {
@@ -89,18 +53,3 @@ describe("build cost transparency", () => {
   });
 });
 
-import { priceTurnByCost } from "@/server/credit-pricing.server";
-describe("priceTurnByCost", () => {
-  it("prices from real OpenRouter cost", () => {
-    const p = priceTurnByCost([{ prompt_tokens: 1, completion_tokens: 1, cost: 0.1 }, { cost: 0.05, prompt_tokens: 1 }], 0.05);
-    expect(p.amount).toBe(3);
-    expect(p.costUsd).toBeCloseTo(0.15);
-  });
-  it("floors tiny builds", () => {
-    expect(priceTurnByCost([{ prompt_tokens: 5, cost: 0.001 }], 0.05).amount).toBe(1);
-  });
-  it("falls back to tokens when any cost is missing", () => {
-    const p = priceTurnByCost([{ prompt_tokens: 1000, cost: 0.1 }, { prompt_tokens: 1000 }], 0.05);
-    expect(p.costUsd).toBeNull();
-  });
-});

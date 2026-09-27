@@ -388,7 +388,7 @@ const MODEL_PRICE_PER_M_TOKENS: Array<{ match: RegExp; inUsd: number; outUsd: nu
   { match: /google\/gemma-3-12b-it/i, inUsd: 0.05, outUsd: 0.15 },
 ];
 
-function estimateCostUsdMicro(
+export function estimateCostUsdMicro(
   model: string | null | undefined,
   promptTokens: number | null | undefined,
   completionTokens: number | null | undefined,
@@ -592,9 +592,12 @@ async function recordTelemetry(
               : "live"
           : null,
         key_owner: "platform",
-        // Unknown until real usage arrives — never a fake 0.
-        cost_basis: "unknown",
-        cost_source: null,
+        // Unknown until real usage arrives — never a fake 0. A request the
+        // provider rejected outright (HTTP 4xx/5xx before any output) is not
+        // billed by OpenRouter: record it as a measured $0, not unknown.
+        ...(args.status >= 400 && args.status < 599
+          ? { cost_basis: "actual", cost_source: "provider_error_unbilled", cost_usd_micro: 0 }
+          : { cost_basis: "unknown", cost_source: null }),
         request_id: args.requestId ?? null,
         upstream_provider: args.upstream ?? null,
         ...(args.extra ?? {}),

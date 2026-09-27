@@ -17,6 +17,7 @@ export default defineConfig({
       "src/server/__tests__/hospital-incident.test.ts",
       "src/server/__tests__/terminal-result.test.ts",
       "src/lib/__tests__/failure-card.test.ts",
+      "src/lib/__tests__/build-pricing.test.ts",
       "src/lib/__tests__/disconnect-reconcile.test.ts",
       "src/lib/preview-state.test.ts",
       "src/lib/turn-execution/__tests__/turn-reducer.test.ts",

@@ -19,6 +19,8 @@ type Handlers = {
   onTool?: (name: "write_project" | "patch_files") => void;
   /** Running (not yet settled) credit estimate for this turn. */
   onCreditsEstimate?: (credits: number) => void;
+  /** Pre-build estimate (credits only; never tokens or prices). */
+  onCreditsPlanned?: (credits: number) => void;
   onCreditsPaused?: (pause: { checkpointId: string; requiredCredits: number }) => void;
   onPhase?: (phase: "thinking" | "designing" | "writing" | "polishing") => void;
   onDesignVibe?: (vibe: string, rationale: string) => void;
@@ -317,6 +319,9 @@ export async function streamGenerate(
           case "credits_estimate":
             handlers.onCreditsEstimate?.(evt.credits);
             break;
+          case "credits_planned":
+            handlers.onCreditsPlanned?.(evt.credits);
+            break;
           case "credits_paused":
             handlers.onCreditsPaused?.({
               checkpointId: evt.checkpointId,
@@ -572,6 +577,9 @@ export async function streamResumeTurn(
             break;
           case "credits_estimate":
             handlers.onCreditsEstimate?.((evt.credits as number) ?? 0);
+            break;
+          case "credits_planned":
+            handlers.onCreditsPlanned?.((evt.credits as number) ?? 0);
             break;
           case "credits_paused":
             handlers.onCreditsPaused?.({ checkpointId: (evt.checkpointId as string) ?? "", requiredCredits: (evt.requiredCredits as number) ?? 0 });
