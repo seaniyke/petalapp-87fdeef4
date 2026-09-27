@@ -62774,6 +62774,7 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
+    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -140137,6 +140138,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141162,6 +141164,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141326,6 +141329,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141369,6 +141373,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141590,6 +141595,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -145836,6 +145842,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -152114,11 +152121,35 @@ __export(tool_loop_exports, {
   dependentsOf: () => dependentsOf,
   evidenceSummary: () => evidenceSummary,
   formatNotReady: () => formatNotReady,
+  managedSurfaceRefusal: () => managedSurfaceRefusal,
   opId: () => opId,
   runToolLoop: () => runToolLoop,
   stableFoundations: () => stableFoundations,
   toolsFor: () => toolsFor
 });
+function isManagedConfigPath(path) {
+  const base = path.split("/").pop() ?? path;
+  for (const stem of MANAGED_CONFIG_STEMS) {
+    if (base === stem) return true;
+    if (base.startsWith(`${stem}.`) && !base.slice(stem.length + 1).includes(".")) return true;
+  }
+  return false;
+}
+function managedSurfaceRefusal(path, tree) {
+  if (isManagedConfigPath(path)) {
+    return `Refused: ${path} is build configuration managed by Kimble. Tailwind, PostCSS and Vite are already set up \u2014 never create or edit a config file. Style with the semantic classes the stylesheet already defines.`;
+  }
+  if (MANAGED_EXACT_FILES.has(path)) {
+    return `Refused: ${path} is managed by Kimble and cannot be written.`;
+  }
+  if (STYLESHEET_PATHS.includes(path)) {
+    const other = STYLESHEET_PATHS.find((p2) => p2 !== path && tree.has(p2));
+    if (other) {
+      return `Refused: ${other} is the project stylesheet and already defines the full palette, radius scale and font families. Do not create a second stylesheet \u2014 use the semantic classes (bg-background, bg-card, bg-muted, text-foreground, bg-primary, border-border) instead.`;
+    }
+  }
+  return null;
+}
 function toolsFor(light) {
   const names = light ? ["read_file", "search", "edit_file", "create_file", "finish"] : ["read_file", "list_files", "search", "create_file", "edit_file", "plan_tasks", "finish"];
   return names.map((n) => TOOLS[n]);
@@ -152427,6 +152458,8 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true };
       }
       case "create_file": {
         if (!path) return { output: fail(name, null, "create_file needs a path."), isError: true };
+        const managed = managedSurfaceRefusal(path, tree);
+        if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
         if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
         const content = String(a2.content ?? "");
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
@@ -152460,6 +152493,8 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true };
       case "edit_file": {
         const current2 = tree.get(path);
         if (current2 === void 0) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
+        const managedEdit = managedSurfaceRefusal(path, tree);
+        if (managedEdit) return { output: fail(name, path, managedEdit, "scope_violation"), isError: true };
         if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
         if (!state.read.has(path)) return { output: fail(name, path, `Read ${path} with read_file before editing it.`), isError: true };
         const search = String(a2.search ?? "");
@@ -152629,7 +152664,7 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
   state.stopReason = "iteration budget exhausted";
   return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "incomplete" };
 }
-var FULL_CONFIG, LIGHT_CONFIG, fn, TOOLS, READ_ONLY, normPath, IMPORT_RX, EXTS4;
+var FULL_CONFIG, LIGHT_CONFIG, MANAGED_CONFIG_STEMS, MANAGED_EXACT_FILES, STYLESHEET_PATHS, fn, TOOLS, READ_ONLY, normPath, IMPORT_RX, EXTS4;
 var init_tool_loop = __esm({
   "src/server/engine/tool-loop.ts"() {
     init_define_import_meta_env();
@@ -152646,6 +152681,17 @@ var init_tool_loop = __esm({
       breaker: BREAKER_THRESHOLDS
     };
     LIGHT_CONFIG = { ...FULL_CONFIG, maxIterations: 6, finalizeIterations: 2 };
+    MANAGED_CONFIG_STEMS = ["vite.config", "tailwind.config", "postcss.config", ".postcssrc"];
+    MANAGED_EXACT_FILES = /* @__PURE__ */ new Set([
+      "package.json",
+      "package-lock.json",
+      "bun.lockb",
+      "tsconfig.json",
+      "tsconfig.node.json",
+      "components.json",
+      "index.html"
+    ]);
+    STYLESHEET_PATHS = ["src/styles.css", "src/index.css"];
     fn = (name, description, properties, required) => ({
       type: "function",
       function: { name, description, parameters: { type: "object", properties, required, additionalProperties: false } }
@@ -166939,6 +166985,7 @@ function designSection(d) {
   return `
 ### Design system: ${d.name} (accent: ${d.accent})
 The stylesheet already defines the palette, the radius scale and the font families, and the font links are already installed. Use semantic Tailwind classes only \u2014 bg-background, bg-card, bg-muted, text-foreground, text-muted-foreground, bg-primary text-primary-foreground, border-border, rounded-lg. Never write a hex colour, never use text-white/bg-black, never use a numbered palette class like bg-blue-600. Headings use font-serif (${d.displayFont}); body, nav, buttons and data use font-sans (${d.bodyFont}).
+Styling is already fully set up: never create or edit a stylesheet, a Tailwind config, a PostCSS config, a Vite config, package.json or index.html. Those writes are refused.
 
 ${d.playbook.trim()}
 `;
@@ -166957,6 +167004,22 @@ Write src/App.tsx (router + shared layout with navigation and footer), every sha
 ### Copy
 ${COPY_RULES}
 `;
+}
+
+// src/server/engine/system-text.ts
+init_define_import_meta_env();
+function systemTextOf(messages) {
+  const parts = [];
+  for (const m of messages) {
+    if (m.role !== "system") continue;
+    if (typeof m.content === "string") parts.push(m.content);
+    else if (Array.isArray(m.content)) {
+      for (const p2 of m.content) {
+        if (typeof p2?.text === "string") parts.push(p2.text);
+      }
+    }
+  }
+  return parts.filter((t) => t.trim()).join("\n\n");
 }
 
 // src/server/pipeline/tier-esbuild.ts
@@ -170222,7 +170285,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -178054,7 +178116,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             );
             const done = await runToolLoop2({
               goal: lastUserText,
-              system: String(finalMessages[0]?.content ?? "") + FIRST_BUILD_TOOL_NOTE,
+              system: systemTextOf(finalMessages) + FIRST_BUILD_TOOL_NOTE,
               brief: firstBuildBrief(
                 lastUserText,
                 planned,
@@ -178097,6 +178159,16 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 return readinessOf2(v);
               },
               validate: async (file, tree) => {
+                if (/\.css$/.test(file.path)) {
+                  const css = [];
+                  if (/^\s*@tailwind\s+(base|components|utilities)\b/m.test(file.content)) {
+                    css.push(`${file.path}: @tailwind directives are Tailwind v3. This project is Tailwind v4 \u2014 the stylesheet already imports Tailwind and defines its tokens in @theme.`);
+                  }
+                  const open = (file.content.match(/\{/g) ?? []).length;
+                  const close = (file.content.match(/\}/g) ?? []).length;
+                  if (open !== close) css.push(`${file.path}: unbalanced braces (${open} '{' vs ${close} '}').`);
+                  return css;
+                }
                 if (!/\.(tsx?|jsx?)$/.test(file.path)) return [];
                 const v = await verifyFilesEsbuild2([file], [file.path]);
                 if (v.status === "unavailable") throw new Error(v.unavailableDetail ?? v.unavailableReason ?? "esbuild unavailable");
