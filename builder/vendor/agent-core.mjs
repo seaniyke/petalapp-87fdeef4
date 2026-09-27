@@ -60540,7 +60540,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -65999,10 +65998,24 @@ function buildTerminalResult(input) {
     committedRevision: committed,
     preserved: projectChanged ? `Revision ${committed} was saved before the failure; later work in this request was not.` : PRESERVED_ROLLBACK,
     rejections: (input.rejections ?? []).slice(0, 5).map((r) => ({ path: r.path ?? null, detail: r.detail.slice(0, 300) })),
-    nextAction: nextActionFor(category)
+    nextAction: input.partial?.kept.length ? 'Say "continue" and Kimble will pick up from the finished parts instead of starting again.' : nextActionFor(category),
+    ...input.partial?.kept.length ? { partial: { kept: input.partial.kept.slice(0, 20), remaining: input.partial.remaining.slice(0, 10) } } : {}
   };
 }
 function formatTerminalResult(r) {
+  if (r.partial && r.partial.kept.length) {
+    const lines2 = [
+      "Kimble built part of this request, then stopped before it was finished. It is not in your app yet.",
+      "",
+      `Finished and checked (kept for the next attempt): ${r.partial.kept.map((p2) => `\`${p2}\``).join(", ")}`
+    ];
+    if (r.partial.remaining.length) {
+      lines2.push("", "Still to do:");
+      for (const x of r.partial.remaining) lines2.push(`- ${x}`);
+    }
+    lines2.push("", r.nextAction);
+    return lines2.join("\n");
+  }
   const lines = [HEADLINES[r.category], "", r.preserved];
   if (r.rejections.length > 0) {
     lines.push("", "What failed:");
@@ -141539,7 +141552,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141704,7 +141716,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141748,7 +141759,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141970,6 +141980,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -152676,6 +152687,7 @@ __export(build_checkpoint_server_exports, {
   claimCheckpoint: () => claimCheckpoint,
   loadResumableCheckpoint: () => loadResumableCheckpoint,
   markCheckpointConsumed: () => markCheckpointConsumed,
+  markCheckpointPartial: () => markCheckpointPartial,
   markCheckpointResumable: () => markCheckpointResumable,
   retireCheckpoint: () => retireCheckpoint,
   retirementFor: () => retirementFor,
@@ -152802,6 +152814,14 @@ async function markCheckpointConsumed(turnId) {
   } catch {
   }
 }
+async function markCheckpointPartial(turnId) {
+  try {
+    const { data: data2 } = await db().from("build_checkpoints").update({ status: "resumable", terminal_outcome: "partial", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("turn_id", turnId).in("status", ["active", "resuming"]).not("shell", "is", null).select("id").maybeSingle();
+    return Boolean(data2);
+  } catch {
+    return false;
+  }
+}
 async function markCheckpointResumable(turnId) {
   try {
     const { data: data2 } = await db().from("build_checkpoints").update({ status: "resumable", updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("turn_id", turnId).in("status", ["active", "resuming"]).not("shell", "is", null).select("id").maybeSingle();
@@ -152834,6 +152854,43 @@ var init_build_checkpoint_server = __esm({
     init_client_server_shim();
     db = () => supabaseAdmin;
     LIVE_CHECKPOINT_STATUSES = ["active", "resumable", "resuming"];
+  }
+});
+
+// src/lib/partial-build.ts
+var partial_build_exports = {};
+__export(partial_build_exports, {
+  PARTIAL_OUTCOME: () => PARTIAL_OUTCOME,
+  effortTrees: () => effortTrees,
+  keepPartialWork: () => keepPartialWork,
+  validatedWrites: () => validatedWrites
+});
+function keepPartialWork(i) {
+  return i.isInitial && !i.committed && i.keptFiles > 0 && PARTIAL_OUTCOMES.has(String(i.loopOutcome ?? ""));
+}
+function validatedWrites(written, validation, files) {
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const out = [];
+  for (const p2 of new Set(written)) {
+    const c = byPath.get(p2);
+    if (c === void 0) continue;
+    if ((validation.get(p2) ?? []).length > 0) continue;
+    out.push({ path: p2, content: c });
+  }
+  return out;
+}
+function effortTrees(i) {
+  const from = i.resumedBilled ? { ...i.baseline, ...i.resumedBilled } : i.baseline;
+  if (i.committedTree) return { from, to: i.committedTree };
+  if (i.kept) return { from, to: { ...from, ...i.kept } };
+  return { from, to: from };
+}
+var PARTIAL_OUTCOMES, PARTIAL_OUTCOME;
+var init_partial_build = __esm({
+  "src/lib/partial-build.ts"() {
+    init_define_import_meta_env();
+    PARTIAL_OUTCOMES = /* @__PURE__ */ new Set(["no_progress", "incomplete", "breaker"]);
+    PARTIAL_OUTCOME = "partial";
   }
 });
 
@@ -152976,6 +153033,7 @@ __export(tool_loop_exports, {
   madeProgress: () => madeProgress,
   managedSurfaceRefusal: () => managedSurfaceRefusal,
   opId: () => opId,
+  rereadNotice: () => rereadNotice,
   runToolLoop: () => runToolLoop,
   snapshotEvidence: () => snapshotEvidence,
   stableFoundations: () => stableFoundations,
@@ -153031,7 +153089,7 @@ function detectExplorationDrift(explored, actions, idleStep) {
   for (const x of areas) explored.add(x);
   return idleStep >= 2 && (wasted || widened) ? EXPLORATION_DRIFT_SIGNAL : null;
 }
-function diagnoseTrajectory(recent) {
+function diagnoseTrajectory(recent, remaining = []) {
   const misses = [...new Set(recent.filter((a2) => a2.miss && a2.path).map((a2) => a2.path))];
   const counts = /* @__PURE__ */ new Map();
   for (const a2 of recent) {
@@ -153052,9 +153110,18 @@ function diagnoseTrajectory(recent) {
     parts.push(`Writes keep failing validation (latest: ${last.path ?? "?"} \u2014 ${last.firstLine}). Fix exactly the reported error.`);
   }
   if (finishRefused) parts.push("finish was refused; fix the listed gaps by writing files, not by calling finish again.");
-  if (parts.length === 1) parts.push("Write the next missing file now.");
-  parts.push("If the next steps also change nothing, this run stops.");
+  if (remaining.length) {
+    parts.push(`Remaining work (the only open items \u2014 everything else is already verified, do not re-read it):
+${remaining.slice(0, 10).map((r) => `- ${r}`).join("\n")}
+Write the first item now.`);
+  } else if (parts.length === 1) parts.push("Write the next missing file now.");
+  parts.push("This is your one chance to continue: if the next steps also change nothing, this run stops and keeps what is already done.");
   return parts.join(" ");
+}
+function rereadNotice(path, remaining) {
+  const next = remaining.length ? ` Remaining work:
+${remaining.slice(0, 6).map((r) => `- ${r}`).join("\n")}` : "";
+  return `Unchanged since you last read ${path} \u2014 use that earlier result; re-reading it adds nothing.${next}`;
 }
 function isManagedConfigPath(path) {
   const base = path.split("/").pop() ?? path;
@@ -153262,6 +153329,7 @@ Kimble corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is e
   ];
   let validationMs = 0;
   const listed = /* @__PURE__ */ new Map();
+  const readSeen = /* @__PURE__ */ new Map();
   const record = (path, content, errs) => {
     state.validation.set(path, errs);
     state.validatedHash.set(path, hash(content));
@@ -153387,6 +153455,12 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         const lines = c.split("\n");
         const s = Math.max(1, Number(a2.start_line) || 1);
         const e = Math.min(lines.length, Number(a2.end_line) || lines.length);
+        const seenKey = `${path}:${s}:${e}`;
+        const h = hash(c);
+        if (readSeen.get(seenKey) === h) {
+          return { output: rereadNotice(path, incompleteNow()), isError: false };
+        }
+        readSeen.set(seenKey, h);
         return { output: clip(lines.slice(s - 1, e).map((l, i) => `${s + i}: ${l}`).join("\n"), cfg.maxToolOutput), isError: false };
       }
       case "list_files": {
@@ -153538,6 +153612,7 @@ ${notReady}`, isError: true };
     let compacted = false;
     if (estimateTokens2(messages) > cfg.contextWindow * cfg.compactAt) {
       messages = compact2(messages, state, cfg.keepRecent, tree);
+      readSeen.clear();
       compacted = true;
     }
     if (ceiling != null && state.spentUsd + maxCallUsd > ceiling) {
@@ -153715,7 +153790,7 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
       } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {
         if (!corrected) {
           corrected = true;
-          const signal = diagnoseTrajectory(recent);
+          const signal = diagnoseTrajectory(recent, incompleteNow());
           emit({ kind: "no_progress", detail: signal });
           messages.push({ role: "user", content: signal });
         } else {
@@ -171742,7 +171817,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -179135,8 +179209,19 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
     const { claimCheckpoint: claimCheckpoint2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
     resumed = await claimCheckpoint2(body.resumeCheckpointId, body.projectId, checkpointTurnId);
     console.log(`[checkpoint] resume ${body.resumeCheckpointId} \u2192 ${resumed ? `claimed pages=${Object.keys(resumed.checkpoint.pages ?? {}).length} preserved=${JSON.stringify(resumed.preserved)}` : "not claimable, starting fresh"}`);
+  } else if (isInitial && body.projectId && checkpointTurnId) {
+    const { loadResumableCheckpoint: loadResumableCheckpoint2, claimCheckpoint: claimCheckpoint2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
+    const { PARTIAL_OUTCOME: PARTIAL_OUTCOME2 } = await Promise.resolve().then(() => (init_partial_build(), partial_build_exports));
+    const cp = await loadResumableCheckpoint2(body.projectId).catch(() => null);
+    if (cp && cp.terminal_outcome === PARTIAL_OUTCOME2) {
+      resumed = await claimCheckpoint2(cp.id, body.projectId, checkpointTurnId);
+      console.log(`[checkpoint] continue partial ${cp.id} \u2192 ${resumed ? `claimed pages=${Object.keys(resumed.checkpoint.pages ?? {}).length}` : "not claimable, starting fresh"}`);
+    }
   }
   const resumeShell = resumed?.checkpoint.shell ?? null;
+  const partialWork = /* @__PURE__ */ new Map();
+  let partialKept = false;
+  const resumedBilled = resumed && resumed.checkpoint.terminal_outcome === "partial" ? { ...resumed.checkpoint.pages ?? {} } : null;
   stage("pre_write", resumeShell ? "Picking up where the build left off\u2026" : "Starting to write your app\u2026");
   const upstream = isInitial || directLogoEdit ? null : await aiChatCompletions({
     feature: "generate",
@@ -179882,6 +179967,10 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
+            if (done.outcome !== "finished") {
+              const { validatedWrites: validatedWrites2 } = await Promise.resolve().then(() => (init_partial_build(), partial_build_exports));
+              for (const f of validatedWrites2(done.state.written, done.state.validation, done.files)) partialWork.set(f.path, f.content);
+            }
             if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
             if (done.incomplete.length) {
               controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Still incomplete: ${done.incomplete.slice(0, 5).join("; ")}`, ts: Date.now() })));
@@ -181506,9 +181595,18 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           const { markCheckpointConsumed: markCheckpointConsumed2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
           await markCheckpointConsumed2(checkpointTurnId);
         } else if (checkpointTurnId && txResult.outcome.status !== "committed") {
-          const { retireCheckpoint: retireCheckpoint2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
-          const oc = txResult.outcome;
-          await retireCheckpoint2(checkpointTurnId, oc.reason ?? oc.status);
+          const { keepPartialWork: keepPartialWork2 } = await Promise.resolve().then(() => (init_partial_build(), partial_build_exports));
+          const loopOutcomeNow = turnStrategy.toolLoop?.outcome;
+          if (keepPartialWork2({ isInitial, loopOutcome: loopOutcomeNow, committed: false, keptFiles: partialWork.size })) {
+            const { markCheckpointPartial: markCheckpointPartial2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
+            partialKept = await markCheckpointPartial2(checkpointTurnId);
+            turnStrategy.partialBuild = { kept: [...partialWork.keys()], saved: partialKept };
+          }
+          if (!partialKept) {
+            const { retireCheckpoint: retireCheckpoint2 } = await Promise.resolve().then(() => (init_build_checkpoint_server(), build_checkpoint_server_exports));
+            const oc = txResult.outcome;
+            await retireCheckpoint2(checkpointTurnId, oc.reason ?? oc.status);
+          }
         }
         if (txResult.outcome.status === "committed") {
           const { finalDepth: finalDepth2 } = await Promise.resolve().then(() => (init_execution(), execution_exports));
@@ -181549,7 +181647,11 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               turnId: logicalTurnId,
               category: breaker.tripped ? "circuit_breaker" : txResult.rejections.some((r) => r.reason === "scope_violation") ? "scope_violation" : "verification_failed",
               committedRevision: null,
-              rejections: txResult.rejections.slice(0, 3).map((r) => ({ path: r.path ?? null, detail: r.detail }))
+              rejections: txResult.rejections.slice(0, 3).map((r) => ({ path: r.path ?? null, detail: r.detail })),
+              partial: partialKept ? {
+                kept: [...partialWork.keys()],
+                remaining: (turnStrategy.toolLoop?.incomplete ?? []).length ? turnStrategy.toolLoop.incomplete : txResult.rejections.slice(0, 5).map((r) => `${r.path ? `${r.path}: ` : ""}${r.detail}`)
+              } : null
             });
             summary = breaker.tripped ? `${formatTerminalResult2(verdict)}
 
@@ -181623,7 +181725,10 @@ ${summary}` })));
           const cfg = ep.effortConfig(v);
           const cls = assessExecution2({ ...turnComplexityBase, plannedPages: firstBuildPlan?.pages.length ?? 0 }).class;
           const toMap = (fs) => Object.fromEntries(projectAuthoredFiles(fs).map((f) => [f.path, f.content ?? ""]));
-          const diff = ep.diffSignals(toMap(turnBaselineFiles), toMap(txCommitted ? nextFiles : turnBaselineFiles), (p2) => ep.PAGE_PATH.test(p2));
+          const { effortTrees: effortTrees2 } = await Promise.resolve().then(() => (init_partial_build(), partial_build_exports));
+          const keptMap = partialKept ? toMap([...partialWork].map(([path, content]) => ({ path, content }))) : null;
+          const trees = effortTrees2({ baseline: toMap(turnBaselineFiles), committedTree: txCommitted ? toMap(nextFiles) : null, kept: keptMap, resumedBilled: resumedBilled ? toMap(Object.entries(resumedBilled).map(([path, content]) => ({ path, content }))) : null });
+          const diff = ep.diffSignals(trees.from, trees.to, (p2) => ep.PAGE_PATH.test(p2));
           const rows = recordedRows ?? [];
           const verifyCalls = rows.filter((r) => r.stage === "verify").length;
           const signals = {
@@ -181644,7 +181749,7 @@ ${summary}` })));
           return null;
         });
         if (effortEval) priced = { ...priced, amount: effortEval.credits };
-        if (!body.isAutoFix && !failedEditTurn) {
+        if (!body.isAutoFix && (!failedEditTurn || partialKept)) {
           const finalBalance = buildReservation?.ok ? { ok: true } : await agentIO().checkBalance(userId, priced.amount);
           if (!finalBalance.ok && finalBalance.reason === "insufficient_credits" && body.projectId && logicalTurnId) {
             const checkpointId = await saveCreditPause({
