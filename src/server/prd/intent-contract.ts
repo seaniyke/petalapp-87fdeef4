@@ -55,6 +55,8 @@ interface Family {
   entities: string[];
   workflows: string[];
   pages: IntentPage[];
+  /** Only applies when the request clearly asks for an application (the domain word alone often means a website). */
+  appOnly?: boolean;
 }
 
 const p = (route: string, label: string): IntentPage => ({ route, label });
@@ -124,7 +126,8 @@ const FAMILIES: Family[] = [
   {
     id: "restaurant",
     label: "restaurant management",
-    triggers: /\b(restaurants?|bistro|eatery|diner|table (booking|reservations?)|reservations?|kitchen display|menu management|front of house)\b/i,
+    triggers: /\b(restaurants?|bistro|eatery|diner|table (booking|reservations?)|kitchen display|menu management|front of house)\b/i,
+    appOnly: true,
     productType: "workflow-app",
     roles: ["admin", "manager", "staff", "customer"],
     entities: ["MenuItem", "Order", "Reservation", "Table", "Staff"],
@@ -148,7 +151,7 @@ const PUBLIC_ROLES = new Set(["patient", "student", "parent", "customer"]);
 /** The request asks only for a website/marketing presence. */
 const PUBLIC_ONLY = /\b(marketing (site|website|page)|landing page|one-?page|(web)?site for|website|homepage|brochure|portfolio)\b/i;
 /** The request asks for an internal / staff-only tool. */
-const INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashboard)|(an?|the|my|our) [\w\s-]{0,30}dashboard|dashboard (for|to) (our|my) (staff|team))\b/i;
+const INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashboard)|(just|only) (an? |the )?dashboard|dashboard (for|to) (our|my) (staff|team|employees))\b/i;
 /** Products that sell themselves to the public by nature. */
 const SAAS = /\b(saas|software as a service|platform|marketplace)\b/i;
 /** The request asks for signed-in functionality. */
@@ -186,7 +189,8 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce")!;
   const commerceRequested = commerceFamily.triggers.test(text);
   // Domain families win over commerce words used incidentally ("hospital pharmacy store").
-  const family = FAMILIES.find((f) => f.id !== "commerce" && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
+  const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
+  const family = FAMILIES.find((f) => f.id !== "commerce" && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
   const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
   if (!family) {
     const surface = deriveProductSurface(text, prd?.roles ?? []);
