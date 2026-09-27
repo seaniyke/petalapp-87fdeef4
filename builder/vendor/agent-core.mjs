@@ -70479,6 +70479,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -144285,6 +144286,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145489,6 +145491,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -181430,7 +181433,8 @@ ${summary}` })));
           const v = await economicsValues2();
           const cfg = ep.effortConfig(v);
           const cls = assessExecution2({ ...turnComplexityBase, plannedPages: firstBuildPlan?.pages.length ?? 0 }).class;
-          const diff = ep.diffSignals(turnBaselineFiles, txCommitted ? nextFiles : turnBaselineFiles, (p2) => ep.PAGE_PATH.test(p2));
+          const toMap = (fs) => Object.fromEntries(fs.map((f) => [f.path, f.content ?? ""]));
+          const diff = ep.diffSignals(toMap(turnBaselineFiles), toMap(txCommitted ? nextFiles : turnBaselineFiles), (p2) => ep.PAGE_PATH.test(p2));
           const rows = recordedRows ?? [];
           const verifyCalls = rows.filter((r) => r.stage === "verify").length;
           const signals = {
