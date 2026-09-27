@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { KIT_FILES } from "@/server/scaffold-kit";
 import { isScaffoldOwnedPath, scaffoldOwnershipReason } from "@/server/scaffold-ownership.server";
-import { renderTemplateMetadataSection, templateContract } from "@/server/engine/template-contract";
+import { renderTemplateMetadataSection, templateContract, TEMPLATE_PRELOADED_RULE } from "@/server/engine/template-contract";
 import { CORRECTNESS_RULES, firstBuildBrief } from "@/server/engine/first-build";
 
 describe("template.json project contract", () => {
@@ -36,7 +36,9 @@ describe("template.json project contract", () => {
 describe("pre-loaded template metadata", () => {
   it("renders layout, kit and protected files without a read round trip", () => {
     const s = renderTemplateMetadataSection();
-    expect(s).toMatch(/do not read it/);
+    // The one authoritative grounding rule (see template-contract.ts).
+    expect(s).toContain(TEMPLATE_PRELOADED_RULE);
+    expect(s).toMatch(/you do not need to read template\.json/);
     expect(s).toMatch(/src\/App\.tsx/);
     expect(s).toMatch(/lucide-react/);
     expect(s).toMatch(/@\/components\/ui/);

@@ -128,8 +128,10 @@ describe("tool loop", () => {
     let tools: string[] = [];
     const r = await runToolLoop({ ...base, light: true, files: [{ path: "src/pages/X.tsx", content: "" }], readiness: () => ({ ready: false, findings: [{ gate: "routes", reason: "missing requested: /x", paths: [] }] }), callModel: async (msgs, t) => { tools = t.map((x) => x.function.name); return m.callModel(msgs); } });
     expect(tools).not.toContain("plan_tasks");
-    expect(r.traces.length).toBe(8);
-    expect(r.outcome).toBe("incomplete");
+    // No-progress protection: after 3 zero-write iterations plus 2 bounded
+    // recovery rounds, the light loop stops instead of burning its full cap.
+    expect(r.traces.length).toBe(5);
+    expect(r.outcome).toBe("no_progress");
   });
 
   it("compaction keeps system+brief prefix and never splits a tool group", () => {

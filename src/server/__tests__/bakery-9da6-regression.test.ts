@@ -210,7 +210,13 @@ describe("first build stays on the tool loop", () => {
   it("does not regress to the removed legacy writer", () => {
     expect(gen).toContain("runToolLoop({");
     expect(gen).not.toMatch(/writePlannedPages\s*\(/);
-    expect(gen).not.toMatch(/write_project/);
+  });
+  it("first builds enter the tool loop without a monolithic model stream", () => {
+    // First builds skip relayAndCollect entirely: the workspace (empty or a
+    // resumed checkpoint) is handed straight to the loop. Remaining
+    // "write_project" strings are edit-path code and the isInitial sentinel.
+    expect(gen).toMatch(/let collected: ParsedTool = isInitial/);
+    expect(gen).not.toMatch(/isInitial\s*\?\s*await relayAndCollect/);
   });
   it("no fallback to the old first-build engine", () => {
     expect(gen).not.toMatch(/legacyFirstBuild|fallbackToLegacy|runAgentLoop\s*\(/);
