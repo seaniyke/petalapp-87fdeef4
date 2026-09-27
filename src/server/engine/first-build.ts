@@ -74,7 +74,9 @@ function designSection(d: FirstBuildDesign): string {
     `already installed. Use semantic Tailwind classes only — bg-background, bg-card, bg-muted, text-foreground, ` +
     `text-muted-foreground, bg-primary text-primary-foreground, border-border, rounded-lg. ` +
     `Never write a hex colour, never use text-white/bg-black, never use a numbered palette class like bg-blue-600. ` +
-    `Headings use font-serif (${d.displayFont}); body, nav, buttons and data use font-sans (${d.bodyFont}).\n\n` +
+    `Headings use font-serif (${d.displayFont}); body, nav, buttons and data use font-sans (${d.bodyFont}).\n` +
+    `Styling is already fully set up: never create or edit a stylesheet, a Tailwind config, a PostCSS config, ` +
+    `a Vite config, package.json or index.html. Those writes are refused.\n\n` +
     `${d.playbook.trim()}\n`
   );
 }
