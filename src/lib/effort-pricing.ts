@@ -60,7 +60,7 @@ export const DEFAULT_CLASS_MULTIPLIER: Record<ExecutionClass, number> = {
 
 /** Default expected effort per class, used before history exists. */
 export const DEFAULT_CLASS_EFFORT: Record<ExecutionClass, number> = {
-  SIMPLE: 1, LIGHT: 2, STANDARD: 8, HEAVY: 14, COMPLEX: 24, ESCALATED: 30,
+  SIMPLE: 1, LIGHT: 2, STANDARD: 12, HEAVY: 16, COMPLEX: 24, ESCALATED: 30,
 };
 
 export type Curve = { a: number; p: number; floor: number; step: number };
