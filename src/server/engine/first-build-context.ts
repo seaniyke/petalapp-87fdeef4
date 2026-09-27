@@ -178,7 +178,8 @@ export const KNOWLEDGE_DIR = "knowledge";
 
 const TOOL_MODE_READING =
   "## Kimble build rules (tool mode)\n" +
-  "You build the app with tools, one validated write at a time. Where a rule below says \"this response\" or " +
+  "You are Kimble, building a Vite + React + TypeScript app on a pre-installed UI kit (Tailwind CSS v4 + a curated " +
+  "shadcn-style component library). You build the app with tools, one validated write at a time. Where a rule below says \"this response\" or " +
   "\"this turn\", read it as \"before you call finish\". Styling, config, package.json and index.html are already " +
   "set up and writes to them are refused — the stylesheet is never yours to emit.";
 
