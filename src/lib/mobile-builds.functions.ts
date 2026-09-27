@@ -1,3 +1,4 @@
+import { MOBILE_APPS_ENABLED } from "@/lib/site-flags";
 /**
  * Server functions for the Tier 2 native-mobile shell — Kimble-owned flow.
  *
@@ -88,6 +89,7 @@ export const getMobileAppStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => StatusSchema.parse(input))
   .handler(async ({ data, context }) => {
+    if (!MOBILE_APPS_ENABLED) throw new Error("Mobile apps are not available.");
     const { supabase } = context;
     const { data: app } = await supabase
       .from("mobile_apps")
@@ -122,6 +124,7 @@ export const getLatestMobileBuild = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => StatusSchema.parse(input))
   .handler(async ({ data, context }) => {
+    if (!MOBILE_APPS_ENABLED) throw new Error("Mobile apps are not available.");
     const { supabase } = context;
     const { data: row } = await supabase
       .from("mobile_builds")
@@ -363,6 +366,7 @@ export const startMobileBuild = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => StartBuildSchema.parse(input))
   .handler(async ({ data, context }): Promise<StartBuildOk | StartBuildFail> => {
+    if (!MOBILE_APPS_ENABLED) throw new Error("Mobile apps are not available.");
     const { supabase, userId } = context;
     const platform = data.platform as MobilePlatform;
     const kind = data.kind as MobileBuildKind;
@@ -510,6 +514,7 @@ export const upsertSigningProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => SigningSchema.parse(input))
   .handler(async ({ data, context }) => {
+    if (!MOBILE_APPS_ENABLED) throw new Error("Mobile apps are not available.");
     const { supabase, userId } = context;
 
     // Verify ownership via RLS-respecting client before we touch encrypted data.
