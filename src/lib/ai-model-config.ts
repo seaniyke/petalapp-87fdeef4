@@ -63,6 +63,22 @@ export const UTILITY_MAX_OUTPUT_TOKENS = 1024;
 // are bad for code are excluded here via `ignore`.
 export const CODEGEN_PROVIDER_IGNORE = ["digitalocean", "nextbit"] as const;
 
+/**
+ * Soft throughput preference for code-writing calls (OpenRouter
+ * `preferred_min_throughput`, tokens/sec at p50). A PREFERENCE, not a filter:
+ * OpenRouter deprioritises slower endpoints but still falls back to them, so
+ * no provider is hard-coded and availability is unchanged. Without it,
+ * default price-weighted balancing sent identical builds to ~20–35 tok/s
+ * endpoints instead of ~100+. Override with CODEGEN_PREFERRED_MIN_TPS
+ * (0 disables).
+ */
+export const CODEGEN_PREFERRED_MIN_TPS_DEFAULT = 50;
+export function codegenPreferredMinTps(): number {
+  const raw = typeof process !== "undefined" ? process.env?.CODEGEN_PREFERRED_MIN_TPS : undefined;
+  const n = raw == null || raw === "" ? CODEGEN_PREFERRED_MIN_TPS_DEFAULT : Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 /** Output budget for byte-level stream continuation (finishing a cut-off file). */
 export const CONTINUATION_MAX_OUTPUT_TOKENS = 6000;
 

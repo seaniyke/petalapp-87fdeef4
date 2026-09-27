@@ -20,6 +20,7 @@
  * never touches persistence, billing or the committed snapshot itself.
  * Final verification and the revision-guarded commit stay authoritative.
  */
+import { classifyWorkUnit } from "./first-build-context";
 import type { ProjectFile } from "@/server/generate.server";
 import type { Readiness, ReadinessFinding } from "@/server/verification/readiness";
 import { findingKey } from "@/server/verification/readiness";
@@ -54,6 +55,8 @@ export interface ModelReply {
   ttftMs?: number;
   finishReason?: string | null;
   model?: string;
+  /** Upstream provider that served the call (OpenRouter `provider`), when known. */
+  upstream?: string;
 }
 
 export type CallModel = (messages: LoopMessage[], tools: ToolSchema[], signal?: AbortSignal) => Promise<ModelReply>;
@@ -236,6 +239,18 @@ export interface CallTrace {
   writes: number;
   compacted: boolean;
   finishReason: string | null;
+  /** Upstream provider that served this call, when reported. */
+  upstream: string | null;
+  /** What this step worked on (page / router / layout / shared / read …). */
+  workUnit: string;
+  /** Paths written by this step. */
+  writtenPaths: string[];
+  /** Did the workspace measurably improve (the no-progress definition)? */
+  progress: boolean;
+  /** Characters sent, by component: stable system, first brief, the rest of the conversation. */
+  context: { system: number; brief: number; history: number };
+  /** completion tokens / generation time (after first token), when measurable. */
+  outputTokensPerSec: number | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -772,7 +787,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (!path) return { output: fail(name, null, "create_file needs a path."), isError: true };
         const managed = managedSurfaceRefusal(path, tree);
         if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
-        if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
         const content = String(a.content ?? "");
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
         const existing = tree.get(path);
@@ -807,7 +822,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (current === undefined) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
         const managedEdit = managedSurfaceRefusal(path, tree);
         if (managedEdit) return { output: fail(name, path, managedEdit, "scope_violation"), isError: true };
-        if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
         if (!state.read.has(path)) return { output: fail(name, path, `Read ${path} with read_file before editing it.`), isError: true };
         const search = String(a.search ?? "");
         const replace = String(a.replace ?? "");
@@ -917,6 +932,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
 
     state.iteration++;
     const startedAt = Date.now();
+    const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + ("tool_calls" in m && m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
     const reply = await args.callModel(messages, tools, args.signal);
     const durationMs = Date.now() - startedAt;
     messages.push({ role: "assistant", content: reply.content ?? null, ...(reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {}) });
@@ -981,7 +997,17 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       }
     }
 
+    const writtenPaths = [...new Set(state.written.slice(writesBefore))];
+    const progress = madeProgress(before, state, tree);
+    const outTokens = reply.usage?.completionTokens ?? 0;
+    const genMs = durationMs - (reply.ttftMs ?? 0);
     const trace: CallTrace = {
+      upstream: reply.upstream ?? null,
+      workUnit: classifyWorkUnit(reply.toolCalls.map((c) => c.function.name), writtenPaths),
+      writtenPaths,
+      progress,
+      context: { system: args.system.length, brief: args.brief.length, history: Math.max(0, sentChars - args.system.length - args.brief.length) },
+      outputTokensPerSec: outTokens > 0 && genMs > 0 ? Math.round((outTokens / genMs) * 10_000) / 10 : null,
       call: state.iteration,
       startedAt,
       durationMs,
@@ -1001,7 +1027,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     if (!state.finished) {
       recent.push(...actions);
       if (recent.length > 40) recent.splice(0, recent.length - 40);
-      if (madeProgress(before, state, tree)) {
+      if (progress) {
         idle = 0;
         corrected = false;
       } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {

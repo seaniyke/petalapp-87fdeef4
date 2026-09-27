@@ -4915,6 +4915,87 @@ export type Database = {
         }
         Relationships: []
       }
+      tool_loop_calls: {
+        Row: {
+          brief_chars: number | null
+          cached_tokens: number | null
+          call_no: number
+          compacted: boolean | null
+          completion_tokens: number | null
+          created_at: string
+          duration_ms: number | null
+          files_written: string[] | null
+          finish_reason: string | null
+          history_chars: number | null
+          id: string
+          model: string | null
+          output_tps: number | null
+          progress: boolean | null
+          project_id: string | null
+          prompt_tokens: number | null
+          system_chars: number | null
+          tool_calls: string[] | null
+          tool_ms: number | null
+          ttft_ms: number | null
+          turn_id: string | null
+          upstream_provider: string | null
+          validation_ms: number | null
+          work_unit: string | null
+        }
+        Insert: {
+          brief_chars?: number | null
+          cached_tokens?: number | null
+          call_no: number
+          compacted?: boolean | null
+          completion_tokens?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          files_written?: string[] | null
+          finish_reason?: string | null
+          history_chars?: number | null
+          id?: string
+          model?: string | null
+          output_tps?: number | null
+          progress?: boolean | null
+          project_id?: string | null
+          prompt_tokens?: number | null
+          system_chars?: number | null
+          tool_calls?: string[] | null
+          tool_ms?: number | null
+          ttft_ms?: number | null
+          turn_id?: string | null
+          upstream_provider?: string | null
+          validation_ms?: number | null
+          work_unit?: string | null
+        }
+        Update: {
+          brief_chars?: number | null
+          cached_tokens?: number | null
+          call_no?: number
+          compacted?: boolean | null
+          completion_tokens?: number | null
+          created_at?: string
+          duration_ms?: number | null
+          files_written?: string[] | null
+          finish_reason?: string | null
+          history_chars?: number | null
+          id?: string
+          model?: string | null
+          output_tps?: number | null
+          progress?: boolean | null
+          project_id?: string | null
+          prompt_tokens?: number | null
+          system_chars?: number | null
+          tool_calls?: string[] | null
+          tool_ms?: number | null
+          ttft_ms?: number | null
+          turn_id?: string | null
+          upstream_provider?: string | null
+          validation_ms?: number | null
+          work_unit?: string | null
+        }
+        Relationships: []
+      }
       topup_lots: {
         Row: {
           created_at: string

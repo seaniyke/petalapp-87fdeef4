@@ -62255,6 +62255,7 @@ var init_openrouter_budget_models = __esm({
 // src/lib/ai-model-config.ts
 var ai_model_config_exports = {};
 __export(ai_model_config_exports, {
+  CODEGEN_PREFERRED_MIN_TPS_DEFAULT: () => CODEGEN_PREFERRED_MIN_TPS_DEFAULT,
   CODEGEN_PROVIDER_IGNORE: () => CODEGEN_PROVIDER_IGNORE,
   CONTINUATION_MAX_OUTPUT_TOKENS: () => CONTINUATION_MAX_OUTPUT_TOKENS,
   DEFAULT_FALLBACK_MODEL: () => DEFAULT_FALLBACK_MODEL,
@@ -62268,6 +62269,7 @@ __export(ai_model_config_exports, {
   OPENROUTER_CHAT_URL: () => OPENROUTER_CHAT_URL,
   UTILITY_FEATURES: () => UTILITY_FEATURES,
   UTILITY_MAX_OUTPUT_TOKENS: () => UTILITY_MAX_OUTPUT_TOKENS,
+  codegenPreferredMinTps: () => codegenPreferredMinTps,
   coerceToConfiguredModel: () => coerceToConfiguredModel,
   defaultFallbackModel: () => defaultFallbackModel,
   defaultImageModel: () => defaultImageModel,
@@ -62277,6 +62279,11 @@ __export(ai_model_config_exports, {
   isDeepSeekModel: () => isDeepSeekModel,
   isUtilityFeature: () => isUtilityFeature
 });
+function codegenPreferredMinTps() {
+  const raw = typeof process !== "undefined" ? process.env?.CODEGEN_PREFERRED_MIN_TPS : void 0;
+  const n = raw == null || raw === "" ? CODEGEN_PREFERRED_MIN_TPS_DEFAULT : Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
 function env(name) {
   if (typeof process === "undefined" || !process.env) return void 0;
   const v = process.env[name];
@@ -62313,7 +62320,7 @@ function coerceToConfiguredModel(requested, opts) {
   if (opts?.utility === true) return defaultUtilityModel();
   return defaultTextModel();
 }
-var OPENROUTER_CHAT_URL, DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_UTILITY_MODEL, UTILITY_MAX_OUTPUT_TOKENS, CODEGEN_PROVIDER_IGNORE, CONTINUATION_MAX_OUTPUT_TOKENS, UTILITY_FEATURES, INFERENCE_EVAL_HEADER, INFERENCE_EVAL_USER_IDS, INFERENCE_EVAL_MODELS;
+var OPENROUTER_CHAT_URL, DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_UTILITY_MODEL, UTILITY_MAX_OUTPUT_TOKENS, CODEGEN_PROVIDER_IGNORE, CODEGEN_PREFERRED_MIN_TPS_DEFAULT, CONTINUATION_MAX_OUTPUT_TOKENS, UTILITY_FEATURES, INFERENCE_EVAL_HEADER, INFERENCE_EVAL_USER_IDS, INFERENCE_EVAL_MODELS;
 var init_ai_model_config = __esm({
   "src/lib/ai-model-config.ts"() {
     init_define_import_meta_env();
@@ -62325,6 +62332,7 @@ var init_ai_model_config = __esm({
     DEFAULT_UTILITY_MODEL = "deepseek/deepseek-v4-flash-0731";
     UTILITY_MAX_OUTPUT_TOKENS = 1024;
     CODEGEN_PROVIDER_IGNORE = ["digitalocean", "nextbit"];
+    CODEGEN_PREFERRED_MIN_TPS_DEFAULT = 50;
     CONTINUATION_MAX_OUTPUT_TOKENS = 6e3;
     UTILITY_FEATURES = /* @__PURE__ */ new Set([
       "triage",
@@ -62349,7 +62357,8 @@ function slug(upstream) {
 }
 function codegenProviderRouting(avoid = []) {
   const ignore = Array.from(/* @__PURE__ */ new Set([...CODEGEN_PROVIDER_IGNORE, ...avoid.map(slug)]));
-  return { allow_fallbacks: true, require_parameters: true, ignore };
+  const tps = codegenPreferredMinTps();
+  return { allow_fallbacks: true, require_parameters: true, ignore, ...tps ? { preferred_min_throughput: { p50: tps } } : {} };
 }
 function resolveProviderRouting(args) {
   const avoid = Array.from(new Set(args.avoid.map(slug)));
@@ -65703,9 +65712,9 @@ function orientationFor(aspectRatio) {
 }
 function describePrompt(prompt) {
   const p2 = String(prompt ?? "").toLowerCase();
-  const pick = (k) => VOCAB[k].find(([, re]) => re.test(p2))?.[0] ?? null;
+  const pick2 = (k) => VOCAB[k].find(([, re]) => re.test(p2))?.[0] ?? null;
   const traits = Array.from(new Set(p2.match(TRAITS) ?? [])).slice(0, 8);
-  return { style: pick("style"), mood: pick("mood"), industry: pick("industry"), category: pick("category"), visual_traits: traits };
+  return { style: pick2("style"), mood: pick2("mood"), industry: pick2("industry"), category: pick2("category"), visual_traits: traits };
 }
 function imageDimensions(bytes2) {
   try {
@@ -70438,7 +70447,7 @@ function visualsFromPackage(pkg, accent) {
   const root = pkg.tokens.root;
   const dark = pkg.tokens.dark;
   const a2 = pkg.accents[accent] ?? { light: {}, dark: void 0 };
-  const pick = (name, fallback) => {
+  const pick2 = (name, fallback) => {
     const light = a2.light[name] ?? root[name] ?? fallback;
     return { light, dark: a2.dark?.[name] ?? dark[name] ?? light };
   };
@@ -70464,19 +70473,19 @@ function visualsFromPackage(pkg, accent) {
       bodyWeight: Number(root["kimble-weight-body"]) || 400
     },
     colors: {
-      background: pick("background", "oklch(0.98 0 0)"),
-      foreground: pick("foreground", "oklch(0.2 0 0)"),
-      primary: pick("primary", "oklch(0.5 0.1 250)"),
-      primaryForeground: pick("primary-foreground", "oklch(0.99 0 0)"),
-      secondary: pick("secondary", "oklch(0.94 0 0)"),
-      accent: pick("accent", "oklch(0.94 0 0)"),
-      muted: pick("muted", "oklch(0.94 0 0)"),
-      mutedForeground: pick("muted-foreground", "oklch(0.5 0 0)"),
-      card: pick("card", "oklch(1 0 0)"),
-      border: pick("border", "oklch(0.9 0 0)"),
-      destructive: pick("destructive", "oklch(0.58 0.22 27)"),
-      success: pick("success", "oklch(0.62 0.16 150)"),
-      warning: pick("warning", "oklch(0.75 0.16 80)"),
+      background: pick2("background", "oklch(0.98 0 0)"),
+      foreground: pick2("foreground", "oklch(0.2 0 0)"),
+      primary: pick2("primary", "oklch(0.5 0.1 250)"),
+      primaryForeground: pick2("primary-foreground", "oklch(0.99 0 0)"),
+      secondary: pick2("secondary", "oklch(0.94 0 0)"),
+      accent: pick2("accent", "oklch(0.94 0 0)"),
+      muted: pick2("muted", "oklch(0.94 0 0)"),
+      mutedForeground: pick2("muted-foreground", "oklch(0.5 0 0)"),
+      card: pick2("card", "oklch(1 0 0)"),
+      border: pick2("border", "oklch(0.9 0 0)"),
+      destructive: pick2("destructive", "oklch(0.58 0.22 27)"),
+      success: pick2("success", "oklch(0.62 0.16 150)"),
+      warning: pick2("warning", "oklch(0.75 0.16 80)"),
       defaultMode: "light"
     },
     radius: {
@@ -96417,6 +96426,159 @@ Precedence: Kimble's runtime rules and output format above, then the user's CURR
       "redesign-safety": SKILL_default4,
       "section-architectures": SKILL_default5
     };
+  }
+});
+
+// src/server/engine/first-build-context.ts
+function slugify3(title) {
+  return title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "section";
+}
+function splitMarkdownSections(md) {
+  const out = [];
+  for (const chunk of md.split(/\n(?=## )/)) {
+    const first = chunk.split("\n")[0] ?? "";
+    if (!first.startsWith("## ")) continue;
+    const title = first.replace(/^##\s*/, "").replace(/[^\p{L}\p{N}\s:&().,'`\-—]/gu, "").trim();
+    out.push({ title, slug: slugify3(title), text: chunk.trim() });
+  }
+  return out;
+}
+function splitPromptBlocks(prompt) {
+  const out = [];
+  let cur = [];
+  let title = "intro";
+  const flush = () => {
+    const text = cur.join("\n").trim();
+    if (text) out.push({ title, slug: slugify3(title), text });
+  };
+  for (const line of prompt.split("\n")) {
+    if (PROMPT_HEADING.test(line)) {
+      flush();
+      cur = [line];
+      title = line.replace(/[:(].*$/, "").trim();
+      continue;
+    }
+    cur.push(line);
+  }
+  flush();
+  return out;
+}
+function pick(sections, prefixes) {
+  return sections.filter((s) => prefixes.some((p2) => norm(s.title).startsWith(norm(p2))));
+}
+function conditionalSkills(subtype) {
+  if (subtype === "marketing" || subtype === "fullstack") return ["page-composition"];
+  return [];
+}
+function assembleFirstBuildContext(args) {
+  const blocks = splitPromptBlocks(args.knowledge.basePrompt);
+  const manual = splitMarkdownSections(args.knowledge.manual);
+  const baseAlways = pick(blocks, [...BASE_ALWAYS, ...args.hasBackend ? BASE_WITH_BACKEND : BASE_WITHOUT_BACKEND]);
+  const manualAlways = pick(manual, MANUAL_ALWAYS);
+  const manualCond = pick(manual, MANUAL_FIRST_BUILD);
+  const skillIds = conditionalSkills(args.subtype).filter((id) => args.knowledge.skills[id]);
+  const preloaded = new Set([...manualAlways, ...manualCond].map((s) => s.slug));
+  const reference = [];
+  const index = [];
+  const addDoc = (slug4, title, text) => {
+    if (!text.trim()) return;
+    const path = `${KNOWLEDGE_DIR}/${slug4}.md`;
+    if (reference.some((r) => r.path === path)) return;
+    reference.push({ path, content: text.trim() + "\n" });
+    index.push(`- ${path} \u2014 ${title} (${Math.round(text.length / 4)} tokens)`);
+  };
+  for (const s of manual) if (!preloaded.has(s.slug)) addDoc(`manual-${s.slug}`, s.title, s.text);
+  for (const [id, text] of Object.entries(args.knowledge.skills)) {
+    if (!skillIds.includes(id)) addDoc(`skill-${id}`, `skill: ${id}`, text);
+  }
+  for (const b of pick(blocks, BASE_ON_DEMAND)) addDoc(`rules-${b.slug}`, b.title, b.text);
+  for (const [title, text] of Object.entries(args.knowledge.extras)) addDoc(slugify3(title), title, text);
+  const baseText = [TOOL_MODE_READING, ...baseAlways.map((b) => b.text)].join("\n\n");
+  const manualText = manualAlways.map((s) => s.text).join("\n\n");
+  const condText = [
+    ...manualCond.map((s) => s.text),
+    ...skillIds.map((id) => `## Skill: ${id}
+${args.knowledge.skills[id].trim()}`)
+  ].join("\n\n");
+  const contract = Object.values(args.productContract).filter((t) => t.trim()).join("\n\n");
+  const projectRef = Object.values(args.projectReference).filter((t) => t.trim()).join("\n\n");
+  const indexText = index.length ? `## On-demand knowledge (read-only, retrieve with read_file when the current work needs it)
+These are complete and authoritative; nothing in them is summarised away. Read one only when you are about to do the kind of work it covers (e.g. a form, motion, a redesign, icon choice) \u2014 not up front.
+${index.join("\n")}` : "";
+  const system = [baseText, manualText, condText, projectRef, contract, indexText, args.toolNote.trim()].filter((t) => t && t.trim()).join("\n\n");
+  return {
+    system,
+    reference,
+    parts: {
+      baseRules: baseText.length,
+      manualAlways: manualText.length,
+      conditional: condText.length,
+      projectReference: projectRef.length,
+      productContract: contract.length,
+      knowledgeIndex: indexText.length,
+      toolNote: args.toolNote.length,
+      system: system.length,
+      onDemandDocs: reference.reduce((n, r) => n + r.content.length, 0)
+    },
+    tiers: {
+      always: [...baseAlways.map((b) => `base:${b.title}`), ...manualAlways.map((s) => `manual:${s.title}`)],
+      conditional: [...manualCond.map((s) => `manual:${s.title}`), ...skillIds.map((id) => `skill:${id}`)],
+      onDemand: reference.map((r) => r.path)
+    }
+  };
+}
+function classifyWorkUnit(toolCalls, writtenPaths) {
+  const kinds = writtenPaths.map((p2) => {
+    if (p2 === "src/App.tsx") return "router";
+    if (/^src\/pages\//.test(p2)) return "page";
+    if (/layout|header|footer|nav/i.test(p2)) return "layout";
+    if (/\.css$/.test(p2)) return "style";
+    return "shared";
+  });
+  if (kinds.length) {
+    for (const k of ["page", "router", "layout", "shared", "style"]) if (kinds.includes(k)) return k;
+  }
+  if (toolCalls.includes("edit_file")) return "edit";
+  if (toolCalls.includes("finish")) return "finish";
+  if (toolCalls.includes("plan_tasks")) return "plan";
+  if (toolCalls.some((t) => t === "read_file" || t === "list_files" || t === "search")) return "read";
+  return "none";
+}
+var PROMPT_HEADING, norm, BASE_ALWAYS, BASE_WITH_BACKEND, BASE_WITHOUT_BACKEND, BASE_ON_DEMAND, MANUAL_ALWAYS, MANUAL_FIRST_BUILD, KNOWLEDGE_DIR, TOOL_MODE_READING;
+var init_first_build_context = __esm({
+  "src/server/engine/first-build-context.ts"() {
+    init_define_import_meta_env();
+    PROMPT_HEADING = /^(?:Hard rules:|Files YOU MUST emit|[A-Z][A-Z0-9.-]{3,}(?:[ \/&'-]+[A-Za-z0-9]+)*\s*(?:\(|:|$))/;
+    norm = (s) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+    BASE_ALWAYS = [
+      "BRAND IDENTITY",
+      "REUSE-FIRST PROTOCOL",
+      "ESSENTIAL substitutions",
+      "Hard rules",
+      "ANTI-PATTERNS",
+      "DECLARE-BEFORE-USE",
+      "IMAGES",
+      "MULTI-PAGE ROUTING",
+      "THEMING",
+      "DO-NOT-ASSUME RULES",
+      "REQUESTED SCOPE"
+    ];
+    BASE_WITH_BACKEND = ["BACKEND / AUTH RULES", "INSTALLED INTEGRATIONS RULE"];
+    BASE_WITHOUT_BACKEND = ["NO-BACKEND AUTH RULE"];
+    BASE_ON_DEMAND = ["PREREQUISITE GATING"];
+    MANUAL_ALWAYS = [
+      "user intent is the highest authority",
+      "mobile-first responsive design",
+      "accessibility requirements",
+      "code quality",
+      "component reuse"
+    ];
+    MANUAL_FIRST_BUILD = [
+      "home page is the primary canvas",
+      "design quality standards"
+    ];
+    KNOWLEDGE_DIR = "knowledge";
+    TOOL_MODE_READING = '## Kimble build rules (tool mode)\nYou are Kimble, building a Vite + React + TypeScript app on a pre-installed UI kit (Tailwind CSS v4 + a curated shadcn-style component library). You build the app with tools, one validated write at a time. Where a rule below says "this response" or "this turn", read it as "before you call finish". Styling, config, package.json and index.html are already set up and writes to them are refused \u2014 the stylesheet is never yours to emit.';
   }
 });
 
@@ -140196,7 +140358,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141226,7 +141387,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141391,7 +141551,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141435,7 +141594,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141657,7 +141815,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -142706,7 +142863,7 @@ __export(impact_graph_server_exports, {
   computeImpact: () => computeImpact,
   resolveSpecifier: () => resolveSpecifier
 });
-function norm(p2) {
+function norm2(p2) {
   return p2.replace(/^\.?\//, "");
 }
 function resolveSpecifier(from, spec, known) {
@@ -142714,7 +142871,7 @@ function resolveSpecifier(from, spec, known) {
   if (spec.startsWith("@/")) {
     base = `src/${spec.slice(2)}`;
   } else if (spec.startsWith("./") || spec.startsWith("../")) {
-    const dir = norm(from).split("/").slice(0, -1);
+    const dir = norm2(from).split("/").slice(0, -1);
     for (const part of spec.split("/")) {
       if (part === "." || part === "") continue;
       if (part === "..") dir.pop();
@@ -142725,16 +142882,16 @@ function resolveSpecifier(from, spec, known) {
     return null;
   }
   for (const ext of EXTS) {
-    const candidate = norm(base + ext);
+    const candidate = norm2(base + ext);
     if (known.has(candidate)) return candidate;
   }
   return null;
 }
 function buildImportGraph(files) {
-  const known = new Set(files.map((f) => norm(f.path)));
+  const known = new Set(files.map((f) => norm2(f.path)));
   const graph = /* @__PURE__ */ new Map();
   for (const file of files) {
-    const path = norm(file.path);
+    const path = norm2(file.path);
     if (!/\.(t|j)sx?$/.test(path)) continue;
     const out = /* @__PURE__ */ new Set();
     IMPORT_RE5.lastIndex = 0;
@@ -142751,7 +142908,7 @@ function computeImpact(files, seeds, opts = {}) {
   const radius = Math.max(1, opts.radius ?? 1);
   const max = Math.max(1, opts.max ?? 24);
   const graph = buildImportGraph(files);
-  const seedSet = new Set(seeds.map(norm).filter((p2) => graph.has(p2)));
+  const seedSet = new Set(seeds.map(norm2).filter((p2) => graph.has(p2)));
   if (seedSet.size === 0) return { paths: [], dependents: [], dependencies: [] };
   const reverse = /* @__PURE__ */ new Map();
   for (const [from, tos] of graph) {
@@ -143345,7 +143502,7 @@ __export(structural_deps_exports, {
   resolveSpecifier: () => resolveSpecifier2,
   structurallyCriticalPaths: () => structurallyCriticalPaths
 });
-function norm2(p2) {
+function norm3(p2) {
   const out = [];
   for (const seg of p2.split("/")) {
     if (!seg || seg === ".") continue;
@@ -143357,8 +143514,8 @@ function norm2(p2) {
 function resolveSpecifier2(from, spec, paths) {
   let base;
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
-  else if (spec.startsWith(".")) base = norm2(`${from.split("/").slice(0, -1).join("/")}/${spec}`);
-  else if (spec.startsWith("/")) base = norm2(spec);
+  else if (spec.startsWith(".")) base = norm3(`${from.split("/").slice(0, -1).join("/")}/${spec}`);
+  else if (spec.startsWith("/")) base = norm3(spec);
   else return null;
   for (const ext of EXTS3) if (paths.has(base + ext)) return base + ext;
   return null;
@@ -145905,7 +146062,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -149186,7 +149342,7 @@ function extractDesignIntel(files) {
   const body = fontVar("body") ?? fontVar("sans") ?? null;
   const cls = matchAll(code, /className=["'`{]([^"'`}]+)/);
   const tokens2 = cls.join(" ").split(/\s+/);
-  const pick = (re) => tokens2.filter((t) => re.test(t));
+  const pick2 = (re) => tokens2.filter((t) => re.test(t));
   const hasDark = /\.dark\s*\{/.test(css) || tokens2.some((t) => t.startsWith("dark:"));
   const buttonsSrc = /<(?:Button|button)\b[^>]*className=["'`]([^"'`]+)/.exec(code)?.[1] ?? null;
   const navSrc = /<(?:nav|header)\b[^>]*className=["'`]([^"'`]+)/.exec(code)?.[1] ?? null;
@@ -149200,11 +149356,11 @@ function extractDesignIntel(files) {
     fonts: { display, body },
     colors,
     radius: /--radius:\s*([^;]+);/.exec(css)?.[1]?.trim() ?? null,
-    typeScale: top(pick(/^(?:[a-z]+:)?text-(xs|sm|base|lg|[2-9]?xl)$/), 5),
-    spacing: top(pick(/^(?:[a-z]+:)?(py|px|gap|space-y)-\d+$/), 5),
-    containers: top(pick(/^max-w-/), 3),
-    shadows: top(pick(/^shadow(-|$)/), 3),
-    cornerStyle: top(pick(/^rounded(-|$)/), 3),
+    typeScale: top(pick2(/^(?:[a-z]+:)?text-(xs|sm|base|lg|[2-9]?xl)$/), 5),
+    spacing: top(pick2(/^(?:[a-z]+:)?(py|px|gap|space-y)-\d+$/), 5),
+    containers: top(pick2(/^max-w-/), 3),
+    shadows: top(pick2(/^shadow(-|$)/), 3),
+    cornerStyle: top(pick2(/^rounded(-|$)/), 3),
     buttons: buttonsSrc ? buttonsSrc.split(/\s+/).slice(0, 10).join(" ") : null,
     navigation: navSrc ? navSrc.split(/\s+/).slice(0, 10).join(" ") : null,
     hero: heroSrc ? heroSrc.split(/\s+/).slice(0, 10).join(" ") : null,
@@ -149796,9 +149952,9 @@ function findScreenTargets(prompt, paths) {
   const wanted = /* @__PURE__ */ new Set();
   for (const m of text.matchAll(SCREEN_PHRASE)) {
     const words2 = m[1].split(/\s+/).filter((w) => !STOP4.has(w));
-    if (words2.length) wanted.add(norm3(words2.join("")));
+    if (words2.length) wanted.add(norm4(words2.join("")));
     const last = words2[words2.length - 1];
-    if (last) wanted.add(norm3(last));
+    if (last) wanted.add(norm4(last));
   }
   for (const w of SECTION_WORDS) if (new RegExp(`\\b${w}\\b`).test(text.replace(/-/g, ""))) wanted.add(w);
   if (wanted.size === 0) return [];
@@ -149807,7 +149963,7 @@ function findScreenTargets(prompt, paths) {
   const candidates = paths.filter(isAppOwned3);
   const hits = [];
   for (const p2 of candidates) {
-    const base = norm3(p2.split("/").pop().replace(/\.(t|j)sx?$/, "").replace(/(page|section|screen)$/i, ""));
+    const base = norm4(p2.split("/").pop().replace(/\.(t|j)sx?$/, "").replace(/(page|section|screen)$/i, ""));
     for (const k of keys) {
       if (base === k || base.startsWith(k)) {
         hits.push({ path: p2, score: (base === k ? 2 : 1) + (p2.startsWith("src/pages/") ? 1 : 0) });
@@ -149840,7 +149996,7 @@ function findAdjacentSection(prompt, files) {
   const m = (prompt ?? "").toLowerCase().match(/\b(?:section|part|block|area)\s+(below|after|under|beneath|following|above|before)\s+(?:the\s+)?([a-z-]+)/);
   if (!m) return [];
   const forward = !/above|before/.test(m[1]);
-  const anchor = norm3(m[2]);
+  const anchor = norm4(m[2]);
   for (const page of files) {
     if (!/^src\/(pages|routes)\//.test(page.path)) continue;
     const imports = /* @__PURE__ */ new Map();
@@ -149852,14 +150008,14 @@ function findAdjacentSection(prompt, files) {
     }
     if (imports.size < 2) continue;
     const order = [...page.content.matchAll(/<([A-Z]\w*)[\s/>]/g)].map((x) => x[1]).filter((n, i, a2) => imports.has(n) && a2.indexOf(n) === i);
-    const idx = order.findIndex((n) => norm3(n).startsWith(anchor));
+    const idx = order.findIndex((n) => norm4(n).startsWith(anchor));
     if (idx < 0) continue;
     const next = order[forward ? idx + 1 : idx - 1];
     if (next) return [imports.get(next)];
   }
   return [];
 }
-var SCREEN_PHRASE, SECTION_WORDS, STOP4, norm3, ALIASES2;
+var SCREEN_PHRASE, SECTION_WORDS, STOP4, norm4, ALIASES2;
 var init_screen_target_server = __esm({
   "src/server/screen-target.server.ts"() {
     init_define_import_meta_env();
@@ -149885,7 +150041,7 @@ var init_screen_target_server = __esm({
       "settings"
     ];
     STOP4 = /* @__PURE__ */ new Set(["the", "this", "that", "my", "our", "a", "an", "main", "whole", "same", "new", "on", "in", "below", "under", "above"]);
-    norm3 = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    norm4 = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
     ALIASES2 = {
       home: ["home", "index", "landing"],
       landing: ["landing", "home", "index"],
@@ -152644,7 +152800,7 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         if (!path) return { output: fail(name, null, "create_file needs a path."), isError: true };
         const managed = managedSurfaceRefusal(path, tree);
         if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
-        if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || ref.has(path) && !tree.has(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
         const content = String(a2.content ?? "");
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
         const existing = tree.get(path);
@@ -152679,7 +152835,7 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         if (current2 === void 0) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
         const managedEdit = managedSurfaceRefusal(path, tree);
         if (managedEdit) return { output: fail(name, path, managedEdit, "scope_violation"), isError: true };
-        if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || ref.has(path) && !tree.has(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
         if (!state.read.has(path)) return { output: fail(name, path, `Read ${path} with read_file before editing it.`), isError: true };
         const search = String(a2.search ?? "");
         const replace = String(a2.replace ?? "");
@@ -152781,6 +152937,7 @@ ${notReady}`, isError: true };
     }
     state.iteration++;
     const startedAt = Date.now();
+    const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + ("tool_calls" in m && m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
     const reply = await args.callModel(messages, tools, args.signal);
     const durationMs = Date.now() - startedAt;
     messages.push({ role: "assistant", content: reply.content ?? null, ...reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {} });
@@ -152836,7 +152993,17 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
         }
       }
     }
+    const writtenPaths = [...new Set(state.written.slice(writesBefore))];
+    const progress = madeProgress(before, state, tree);
+    const outTokens = reply.usage?.completionTokens ?? 0;
+    const genMs = durationMs - (reply.ttftMs ?? 0);
     const trace = {
+      upstream: reply.upstream ?? null,
+      workUnit: classifyWorkUnit(reply.toolCalls.map((c) => c.function.name), writtenPaths),
+      writtenPaths,
+      progress,
+      context: { system: args.system.length, brief: args.brief.length, history: Math.max(0, sentChars - args.system.length - args.brief.length) },
+      outputTokensPerSec: outTokens > 0 && genMs > 0 ? Math.round(outTokens / genMs * 1e4) / 10 : null,
       call: state.iteration,
       startedAt,
       durationMs,
@@ -152855,7 +153022,7 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
     if (!state.finished) {
       recent.push(...actions);
       if (recent.length > 40) recent.splice(0, recent.length - 40);
-      if (madeProgress(before, state, tree)) {
+      if (progress) {
         idle = 0;
         corrected = false;
       } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {
@@ -152887,6 +153054,7 @@ var FULL_CONFIG, LIGHT_CONFIG, MANAGED_CONFIG_STEMS, MANAGED_EXACT_FILES, STYLES
 var init_tool_loop = __esm({
   "src/server/engine/tool-loop.ts"() {
     init_define_import_meta_env();
+    init_first_build_context();
     init_readiness();
     init_circuit_breaker();
     FULL_CONFIG = {
@@ -153131,6 +153299,7 @@ async function parseToolStream(res, startedAt) {
   let content = "";
   let finishReason = null;
   let model;
+  let upstream;
   let rawUsage = null;
   let ttftMs;
   const calls = /* @__PURE__ */ new Map();
@@ -153146,6 +153315,7 @@ async function parseToolStream(res, startedAt) {
     }
     if (j.error) throw new InfrastructureFailure(`provider stream error: ${j.error.message ?? JSON.stringify(j.error)}`, j.error.code ?? null);
     if (j.model) model = j.model;
+    if (typeof j.provider === "string" && j.provider) upstream = j.provider;
     if (j.usage) rawUsage = j.usage;
     const ch = j.choices?.[0];
     if (!ch) return;
@@ -153181,6 +153351,7 @@ async function parseToolStream(res, startedAt) {
     ttftMs,
     finishReason,
     model,
+    upstream,
     rawUsage
   };
 }
@@ -165224,15 +165395,15 @@ function packageTasteBody() {
 ` + TASTE_BODY.slice(b);
 }
 function renderDesignTasteBlock(brief, opts = {}) {
-  const pick = pickDesignForBrief(brief);
-  const [bgDeep, bgSurface, accent, accentSoft] = pick.palette.colors;
+  const pick2 = pickDesignForBrief(brief);
+  const [bgDeep, bgSurface, accent, accentSoft] = pick2.palette.colors;
   const lockedBlock = opts.packageOwnsVisuals ? `
 
 [COLOURS + TYPOGRAPHY] Owned by the SELECTED DESIGN SYSTEM above. Its tokens and font links are installed by Kimble \u2014 do not write a palette, :root colour values or font links of your own.
-Archetype tags for this project: ${pick.archetypeTags.join(", ")}` : `
+Archetype tags for this project: ${pick2.archetypeTags.join(", ")}` : `
 
 [LOCKED PALETTE + TYPOGRAPHY for this project \u2014 use verbatim]
-Palette: "${pick.palette.label}" \u2014 ${pick.palette.vibe}
+Palette: "${pick2.palette.label}" \u2014 ${pick2.palette.vibe}
   - Deep background:  ${bgDeep}
   - Surface / card:   ${bgSurface}
   - Primary accent:   ${accent}
@@ -165251,23 +165422,23 @@ Wire these into \`src/styles.css\` as semantic tokens (oklch preferred):
     --shadow-elegant: 0 10px 30px -10px color-mix(in oklab, var(--primary) 30%, transparent);
   }
 
-Typography pair: "${pick.fontPair.label}"
-  - Display heading font: "${pick.fontPair.display}"
-  - Body font: "${pick.fontPair.body}"
+Typography pair: "${pick2.fontPair.label}"
+  - Display heading font: "${pick2.fontPair.display}"
+  - Body font: "${pick2.fontPair.body}"
 
 MANDATORY \u2014 the fonts must be LOADED, not just declared. Add these three tags inside the <head> of \`index.html\` (that file is the app shell; there is NO \`src/routes/__root.tsx\` in this scaffold). Declaring the CSS variable without this <link> ships the app in system sans and is a build defect:
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(pick.fontPair.display).replace(/%20/g, "+")}:wght@400;500;600;700;800&family=${encodeURIComponent(pick.fontPair.body).replace(/%20/g, "+")}:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(pick2.fontPair.display).replace(/%20/g, "+")}:wght@400;500;600;700;800&family=${encodeURIComponent(pick2.fontPair.body).replace(/%20/g, "+")}:wght@400;500;600;700&display=swap"
   />
 
 
 In \`src/styles.css\`, expose them:
   :root {
-    --font-display: "${pick.fontPair.display}", ui-sans-serif, system-ui, sans-serif;
-    --font-body:    "${pick.fontPair.body}", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "${pick2.fontPair.display}", ui-sans-serif, system-ui, sans-serif;
+    --font-body:    "${pick2.fontPair.body}", ui-sans-serif, system-ui, sans-serif;
   }
 
 Add matching Tailwind v4 @theme entries so \`font-display\` and \`font-body\` utility classes work:
@@ -165278,14 +165449,14 @@ Add matching Tailwind v4 @theme entries so \`font-display\` and \`font-body\` ut
 
 Use \`font-display\` on every heading (h1-h3) and \`font-body\` on the <body>. Never mix in Inter/Poppins/system-ui as a "fallback headline" font.
 
-Archetype tags for this project: ${pick.archetypeTags.join(", ")}`;
-  const sectionBlock = renderSectionLibraryBlock(pick.archetypeTags);
-  const headerBlock = renderHeaderBlock(pick.archetypeTags, brief);
-  const iconBlock = renderIconBlock(pick.archetypeTags, brief);
-  const illustrationBlock = renderIllustrationBlock(pick.archetypeTags, brief);
+Archetype tags for this project: ${pick2.archetypeTags.join(", ")}`;
+  const sectionBlock = renderSectionLibraryBlock(pick2.archetypeTags);
+  const headerBlock = renderHeaderBlock(pick2.archetypeTags, brief);
+  const iconBlock = renderIconBlock(pick2.archetypeTags, brief);
+  const illustrationBlock = renderIllustrationBlock(pick2.archetypeTags, brief);
   return {
     text: (opts.packageOwnsVisuals ? packageTasteBody() : TASTE_BODY) + lockedBlock + sectionBlock + headerBlock + iconBlock + illustrationBlock,
-    pick
+    pick: pick2
   };
 }
 var LANDING_SECTION_KEYWORDS = {
@@ -165420,31 +165591,31 @@ Refused app clich\xE9s \u2014 DO NOT ship any of these:
    - A settings page with switches that do nothing.
 If your draft violates ANY of the above, REWRITE before emitting.`;
 function renderAppUiBlock(brief, opts = {}) {
-  const pick = pickDesignForBrief(brief);
-  const [bg, surface, accent, accentSoft] = pick.palette.colors;
+  const pick2 = pickDesignForBrief(brief);
+  const [bg, surface, accent, accentSoft] = pick2.palette.colors;
   const lockedBlock = opts.packageOwnsVisuals ? `
 
 [COLOURS + TYPOGRAPHY] Owned by the SELECTED DESIGN SYSTEM above (tokens and font links installed by Kimble). Use only semantic classes (\`bg-background\`, \`text-foreground\`, \`bg-card\`, \`border-border\`, \`text-primary\`); derive chart series from the primary token. Never write your own palette or font links.
-Archetype tags: ${pick.archetypeTags.join(", ")}` : `
+Archetype tags: ${pick2.archetypeTags.join(", ")}` : `
 
 [LOCKED design tokens for this project \u2014 use verbatim]
-Palette: ${pick.palette.label} \u2014 ${pick.palette.vibe}
+Palette: ${pick2.palette.label} \u2014 ${pick2.palette.vibe}
   app background / canvas : ${bg}
   panel / card surface    : ${surface}
   primary (actions, focus): ${accent}
   primary soft (hover, selected rows, chart fill): ${accentSoft}
 
-Type pair: ${pick.fontPair.label}
-  display / headings: "${pick.fontPair.display}"
-  body / UI         : "${pick.fontPair.body}"
+Type pair: ${pick2.fontPair.label}
+  display / headings: "${pick2.fontPair.display}"
+  body / UI         : "${pick2.fontPair.body}"
 
 Wire these once, in \`src/styles.css\`, as semantic tokens (\`--background\`, \`--card\`, \`--primary\`, \`--primary-glow\`, \`--font-display\`, \`--font-body\`) and derive \`--foreground\`, \`--muted\`, \`--muted-foreground\`, \`--border\`, \`--ring\` from them with proper contrast in BOTH light and dark. Load the fonts with a \`<link>\` tag in the root route head \u2014 never \`@import\` a URL in CSS. Then use ONLY semantic classes (\`bg-background\`, \`text-foreground\`, \`bg-card\`, \`border-border\`, \`text-primary\`) in components. No \`text-white\`, no \`bg-black\`, no \`bg-[#...]\`, no indigo-500 fallback.
 
 Chart palette: derive 4-6 series colours from ${accent} and ${accentSoft} (vary lightness/chroma, keep hue family). Never rainbow defaults.
 
-Archetype tags: ${pick.archetypeTags.join(", ")}`;
+Archetype tags: ${pick2.archetypeTags.join(", ")}`;
   const body = opts.packageOwnsVisuals ? APP_TASTE_BODY.replace("The locked palette below is the whole palette.", "The selected design system's palette is the whole palette.") : APP_TASTE_BODY;
-  return { text: body + lockedBlock + renderAppUiLibraryBlock(), pick };
+  return { text: body + lockedBlock + renderAppUiLibraryBlock(), pick: pick2 };
 }
 function renderAppScreenChecklistBlock() {
   return `
@@ -165574,6 +165745,7 @@ Do NOT ship a screen for an entity you did not model, and do NOT model an entity
 // src/routes/api/generate.ts
 init_prompt_limits();
 init_agent_knowledge();
+init_first_build_context();
 init_budget();
 
 // src/server/learning-injector.server.ts
@@ -167231,7 +167403,7 @@ function firstBuildSeedFiles(args) {
     return [];
   }
 }
-var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done. Emit several create_file calls in one response (shared modules, layout/router and pages together) \u2014 useful work per response is what matters.\n";
+var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
 var COMPOSITION_RULES = [
   "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, metric/stat bar, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
@@ -167277,22 +167449,6 @@ ${COPY_RULES}
 ### Correctness
 - ${CORRECTNESS_RULES}
 `;
-}
-
-// src/server/engine/system-text.ts
-init_define_import_meta_env();
-function systemTextOf(messages) {
-  const parts = [];
-  for (const m of messages) {
-    if (m.role !== "system") continue;
-    if (typeof m.content === "string") parts.push(m.content);
-    else if (Array.isArray(m.content)) {
-      for (const p2 of m.content) {
-        if (typeof p2?.text === "string") parts.push(p2.text);
-      }
-    }
-  }
-  return parts.filter((t) => t.trim()).join("\n\n");
 }
 
 // src/server/pipeline/tier-esbuild.ts
@@ -168046,8 +168202,8 @@ function stripTypeOnlyValueImports(files) {
     if (all.length === 0) return null;
     const dirOf = (p2) => p2.slice(0, p2.lastIndexOf("/"));
     const sameDir = all.filter((p2) => dirOf(p2) === dirOf(target));
-    const pick = sameDir.length === 1 ? sameDir[0] : all.length === 1 ? all[0] : null;
-    return pick ? aliasSpecifier(pick) : null;
+    const pick2 = sameDir.length === 1 ? sameDir[0] : all.length === 1 ? all[0] : null;
+    return pick2 ? aliasSpecifier(pick2) : null;
   };
   const stripped = [];
   const out = files.map((f) => ({ ...f }));
@@ -169620,11 +169776,11 @@ async function pickBestModel(args) {
       (m) => !known.get(m) || !known.get(m).enoughData
     );
     if (underSampled.length > 0) {
-      const pick = underSampled[Math.floor(Math.random() * underSampled.length)];
+      const pick2 = underSampled[Math.floor(Math.random() * underSampled.length)];
       return {
-        model: pick,
+        model: pick2,
         reason: "exploration",
-        stat: known.get(pick) ?? null
+        stat: known.get(pick2) ?? null
       };
     }
   }
@@ -170558,6 +170714,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -171164,19 +171321,19 @@ function fixExportShape(files) {
       const target = byPath.get(targetPath);
       if (hasDefaultExport(target.content) || hasStarReexport(target.content)) continue;
       const named = namedComponentExports(target.content);
-      const pick = named.includes(local) ? local : named.length === 1 ? named[0] : null;
-      if (!pick) continue;
-      additions.set(targetPath, pick);
+      const pick2 = named.includes(local) ? local : named.length === 1 ? named[0] : null;
+      if (!pick2) continue;
+      additions.set(targetPath, pick2);
     }
   }
   const aliases = aliasDefaultExports(files, byPath);
   if (additions.size === 0 && aliases.size === 0) return { files, notes: [], fixes: 0 };
   let next = files.map((f) => {
-    const pick = additions.get(f.path);
-    if (!pick) return f;
+    const pick2 = additions.get(f.path);
+    if (!pick2) return f;
     return { ...f, content: `${f.content.replace(/\s*$/, "")}
 
-export default ${pick};
+export default ${pick2};
 ` };
   });
   if (aliases.size > 0) {
@@ -171413,21 +171570,21 @@ function parseStyles(content) {
 }
 function deriveColorValue(name, knownRaw) {
   const n = name.toLowerCase();
-  const pick = (...candidates) => {
+  const pick2 = (...candidates) => {
     for (const c of candidates) if (knownRaw.has(c)) return `var(--${c})`;
     return "var(--foreground)";
   };
-  if (/(foreground|fg|content|on-)/.test(n)) return pick("foreground", "primary-foreground");
-  if (/(muted|subtle|soft|placeholder)/.test(n)) return pick("muted", "muted-foreground");
-  if (/(destructive|danger|error|warn)/.test(n)) return pick("destructive", "foreground");
-  if (/(border|ring|outline|divide|stroke)/.test(n)) return pick("border", "muted");
-  if (/(surface|panel|elevated|sheet|overlay)/.test(n)) return pick("card", "background");
-  if (/(card|popover|tooltip)/.test(n)) return pick("card", "background");
-  if (/(accent|brand|primary|cta|action|highlight|glow)/.test(n)) return pick("primary", "accent");
-  if (/(secondary)/.test(n)) return pick("secondary", "muted");
-  if (/(input|field)/.test(n)) return pick("input", "border");
-  if (/(background|bg|base)/.test(n)) return pick("background", "card");
-  return pick("foreground");
+  if (/(foreground|fg|content|on-)/.test(n)) return pick2("foreground", "primary-foreground");
+  if (/(muted|subtle|soft|placeholder)/.test(n)) return pick2("muted", "muted-foreground");
+  if (/(destructive|danger|error|warn)/.test(n)) return pick2("destructive", "foreground");
+  if (/(border|ring|outline|divide|stroke)/.test(n)) return pick2("border", "muted");
+  if (/(surface|panel|elevated|sheet|overlay)/.test(n)) return pick2("card", "background");
+  if (/(card|popover|tooltip)/.test(n)) return pick2("card", "background");
+  if (/(accent|brand|primary|cta|action|highlight|glow)/.test(n)) return pick2("primary", "accent");
+  if (/(secondary)/.test(n)) return pick2("secondary", "muted");
+  if (/(input|field)/.test(n)) return pick2("input", "border");
+  if (/(background|bg|base)/.test(n)) return pick2("background", "card");
+  return pick2("foreground");
 }
 function extractClassLiterals(source) {
   const out = [];
@@ -172304,8 +172461,8 @@ function mix(a2, b, amount) {
 function onColor(bg) {
   return luminance(bg) > 0.55 ? "#0d0d0f" : "#fbfbfd";
 }
-function buildPaletteBlocks(pick) {
-  const [c0, c1, primary, glow] = pick.palette.colors;
+function buildPaletteBlocks(pick2) {
+  const [c0, c1, primary, glow] = pick2.palette.colors;
   const lightBase = luminance(c0) > 0.5;
   const bg = lightBase ? c0 : "#ffffff";
   const card = lightBase ? mix(c1, "#ffffff", 0.35) : "#ffffff";
@@ -172379,10 +172536,10 @@ ${css.slice(i)}`;
   }
   return null;
 }
-function applyPaletteFloor(css, brief, pick) {
+function applyPaletteFloor(css, brief, pick2) {
   if (css.includes(TOKENS_START)) return { css, changed: false, label: null };
   if (!SCAFFOLD_PRIMARY.test(css)) return { css, changed: false, label: null };
-  const chosen = pick ?? pickDesignForBrief(brief);
+  const chosen = pick2 ?? pickDesignForBrief(brief);
   const blocks = buildPaletteBlocks(chosen);
   let out = replaceBlock(css, ":root", blocks.root);
   if (!out) return { css, changed: false, label: null };
@@ -172426,8 +172583,8 @@ function buildFontHref(display, body) {
 }
 function alreadyLoads(content, display, body) {
   if (!/fonts\.googleapis\.com|@fontsource/i.test(content)) return false;
-  const norm4 = content.replace(/\+/g, " ").toLowerCase();
-  return norm4.includes(display.toLowerCase()) && norm4.includes(body.toLowerCase());
+  const norm5 = content.replace(/\+/g, " ").toLowerCase();
+  return norm5.includes(display.toLowerCase()) && norm5.includes(body.toLowerCase());
 }
 function declaredAsSystem(rawCss, token2) {
   const css = stripCssComments(rawCss);
@@ -172603,14 +172760,14 @@ function deriveBrief(files) {
   }
   return parts.join(" ").slice(0, 600);
 }
-function enforceDesignFinish(input, pick) {
+function enforceDesignFinish(input, pick2) {
   const notes = [];
   let fixes = 0;
   let files = input;
   const styles = findStyles(files);
   if (!styles) return { files, notes, fixes };
   const brief = deriveBrief(files);
-  const resolvedPick = pick ?? (() => {
+  const resolvedPick = pick2 ?? (() => {
     try {
       return pickDesignForBrief(brief);
     } catch {
@@ -177786,24 +177943,24 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
       chosenBy = "phase_router:cheap_direct";
     } else {
       try {
-        const pick = await pickBestModel({
+        const pick2 = await pickBestModel({
           feature: "generate",
           phase: phaseTag.phase,
           candidates: [MODEL_FAST, MODEL_BEST, MODEL_REASONING, MODEL_CLAUDE],
           defaultModel: phaseDefault
         });
-        model = pick.model;
-        if (pick.reason === "best_score" || pick.reason === "exploration") {
-          chosenBy = `smart_router:${pick.reason}`;
-        } else if (pick.reason === "no_data") {
+        model = pick2.model;
+        if (pick2.reason === "best_score" || pick2.reason === "exploration") {
+          chosenBy = `smart_router:${pick2.reason}`;
+        } else if (pick2.reason === "no_data") {
           chosenBy = "phase_router:no_router_data";
         }
-        if (pick.stat) {
+        if (pick2.stat) {
           console.log(
-            `[smart-router] reason=${pick.reason} model=${pick.model} score=${pick.stat.score.toFixed(4)} succ=${(pick.stat.successRate * 100).toFixed(1)}% calls=${pick.stat.calls}`
+            `[smart-router] reason=${pick2.reason} model=${pick2.model} score=${pick2.stat.score.toFixed(4)} succ=${(pick2.stat.successRate * 100).toFixed(1)}% calls=${pick2.stat.calls}`
           );
         } else {
-          console.log(`[smart-router] reason=${pick.reason} model=${pick.model} (no stat)`);
+          console.log(`[smart-router] reason=${pick2.reason} model=${pick2.model} (no stat)`);
         }
       } catch (e) {
         console.warn("[smart-router] pick failed:", e);
@@ -178387,9 +178544,61 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 if (u) pageWriteUsages.push(u);
               }
             );
+            const fbContext = assembleFirstBuildContext({
+              knowledge: {
+                basePrompt: baseSystem,
+                manual: coreKnowledge.text,
+                skills: Object.fromEntries(
+                  ["copy-and-verify", "motion", "page-composition", "redesign-safety", "section-architectures"].map((id) => [id, loadSkillKnowledge(id)])
+                ),
+                extras: {
+                  "Design taste manual": designTasteBlock,
+                  "Kimble craft skills for this request": skillsBlock,
+                  "Colour guide": loadColorGuide(),
+                  "Request-specific reference snippets": dynamic.text,
+                  "Past learning": learningBlock
+                }
+              },
+              subtype: detectedWebSubtype ?? "",
+              hasBackend: !!(backend2 || sharedBackend),
+              productContract: {
+                intent: intentBrief ? `### Canonical turn intent (HARD CONTRACT)
+${intentBrief}
+Satisfy this exact outcome; do not substitute a different feature, page, or product.` : "",
+                resolved: resolvedBlock,
+                grounding: groundingBlock,
+                pic: picBlock,
+                prd: prdBlock + prdScenarioBlock,
+                orchestration: orchestrationBlock,
+                architecture: renderArchitectureBlock(persistedArchitecture),
+                memory: memoryBlock,
+                knowledge: knowledgeBlock,
+                design: designBlock,
+                appShape: appShapeBlock,
+                mobile: mobileBlock,
+                game: gameBlock,
+                archetype: archetypeBlock,
+                heroContract: heroContractBlock,
+                highStakes: highStakesBlock,
+                backendGate: backendGateBlock,
+                intentActions: intentActions.promptBlock
+              },
+              projectReference: {
+                buildTarget: buildTargetBlock,
+                capabilities: capabilitiesBlock,
+                backend: backendBlock,
+                sharedBackend: sharedBackendBlock,
+                schema: schemaBlock,
+                integrations: integrationsBlock,
+                blueprint: renderBuildBlueprintBlock(persistedBlueprint)
+              },
+              toolNote: FIRST_BUILD_TOOL_NOTE
+            });
+            console.log(`[first-build-context] ${Object.entries(fbContext.parts).map(([k, v]) => `${k}=${v}`).join(" ")} onDemand=${fbContext.reference.length}`);
+            turnStrategy.firstBuildContext = { parts: fbContext.parts, tiers: fbContext.tiers };
             const done = await runToolLoop2({
               goal: lastUserText,
-              system: systemTextOf(finalMessages) + FIRST_BUILD_TOOL_NOTE,
+              system: fbContext.system,
               brief: firstBuildBrief(
                 lastUserText,
                 planned,
@@ -178412,7 +178621,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               files: seedFiles,
               // The kit the commit applies, visible (read-only) to reads and
               // import validation so advertised modules actually resolve.
-              reference: applyScaffoldKit([], { backend: backend2 ?? void 0, sharedBackend: sharedBackend ?? void 0, target: buildTarget.id }).filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)),
+              reference: applyScaffoldKit([], { backend: backend2 ?? void 0, sharedBackend: sharedBackend ?? void 0, target: buildTarget.id }).filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)).concat(fbContext.reference),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
               // THE readiness authority: the exact proposed-tree transform and
@@ -178474,6 +178683,35 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               signal: abortSignal,
               onTrace: (t) => {
                 loopTraces.push(t);
+                void Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports)).then(
+                  ({ supabaseAdmin: supabaseAdmin2 }) => supabaseAdmin2.from("tool_loop_calls").insert({
+                    turn_id: logicalTurnId ?? null,
+                    project_id: body.projectId ?? null,
+                    call_no: t.call,
+                    work_unit: t.workUnit,
+                    model: t.model,
+                    upstream_provider: t.upstream,
+                    system_chars: t.context.system,
+                    brief_chars: t.context.brief,
+                    history_chars: t.context.history,
+                    prompt_tokens: t.usage?.promptTokens ?? null,
+                    cached_tokens: t.usage?.cachedTokens ?? null,
+                    completion_tokens: t.usage?.completionTokens ?? null,
+                    ttft_ms: t.ttftMs,
+                    duration_ms: t.durationMs,
+                    output_tps: t.outputTokensPerSec,
+                    tool_ms: t.toolMs,
+                    validation_ms: t.validationMs,
+                    tool_calls: t.toolCalls,
+                    files_written: t.writtenPaths,
+                    progress: t.progress,
+                    compacted: t.compacted,
+                    finish_reason: t.finishReason
+                  })
+                ).then((r) => {
+                  if (r?.error) console.warn("[tool-loop] telemetry insert failed:", r.error.message);
+                }).catch(() => {
+                });
                 console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} tools=${t.toolCalls.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
                 controller.enqueue(encoder.encode(sse({ type: "timeline", step: "agent_tool", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
               },

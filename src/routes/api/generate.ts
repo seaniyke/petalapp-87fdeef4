@@ -114,7 +114,8 @@ import { renderAppSpecBlock } from "@/server/app-spec.server";
 import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/lib/prompt-limits";
 
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
-import { loadCoreKnowledge } from "@/server/agent-knowledge";
+import { loadCoreKnowledge, loadSkillKnowledge, loadColorGuide } from "@/server/agent-knowledge";
+import { assembleFirstBuildContext } from "@/server/engine/first-build-context";
 import { selectHistoryForGeneration } from "@/server/context/budget";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
@@ -134,7 +135,6 @@ import {
   runChunkedGeneration,
 } from "@/server/chunked-generation.server";
 import { firstBuildSeedFiles, FIRST_BUILD_TOOL_NOTE, firstBuildBrief } from "@/server/engine/first-build";
-import { systemTextOf } from "@/server/engine/system-text";
 
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
@@ -4684,9 +4684,63 @@ async function handleGenerateRequestCore(
                 ),
               (u) => { if (u) pageWriteUsages.push(u); },
             );
+            // Minimum sufficient context: tiered knowledge (always-on /
+            // task-conditional in the stable prefix, the rest retrievable
+            // as read-only knowledge/*.md). One source per rule; the design
+            // playbook rides in the brief only.
+            const fbContext = assembleFirstBuildContext({
+              knowledge: {
+                basePrompt: baseSystem,
+                manual: coreKnowledge.text,
+                skills: Object.fromEntries(
+                  (["copy-and-verify", "motion", "page-composition", "redesign-safety", "section-architectures"] as const).map((id) => [id, loadSkillKnowledge(id)]),
+                ),
+                extras: {
+                  "Design taste manual": designTasteBlock,
+                  "Kimble craft skills for this request": skillsBlock,
+                  "Colour guide": loadColorGuide(),
+                  "Request-specific reference snippets": dynamic.text,
+                  "Past learning": learningBlock,
+                },
+              },
+              subtype: detectedWebSubtype ?? "",
+              hasBackend: !!(backend || sharedBackend),
+              productContract: {
+                intent: intentBrief ? `### Canonical turn intent (HARD CONTRACT)\n${intentBrief}\nSatisfy this exact outcome; do not substitute a different feature, page, or product.` : "",
+                resolved: resolvedBlock,
+                grounding: groundingBlock,
+                pic: picBlock,
+                prd: prdBlock + prdScenarioBlock,
+                orchestration: orchestrationBlock,
+                architecture: renderArchitectureBlock(persistedArchitecture),
+                memory: memoryBlock,
+                knowledge: knowledgeBlock,
+                design: designBlock,
+                appShape: appShapeBlock,
+                mobile: mobileBlock,
+                game: gameBlock,
+                archetype: archetypeBlock,
+                heroContract: heroContractBlock,
+                highStakes: highStakesBlock,
+                backendGate: backendGateBlock,
+                intentActions: intentActions.promptBlock,
+              },
+              projectReference: {
+                buildTarget: buildTargetBlock,
+                capabilities: capabilitiesBlock,
+                backend: backendBlock,
+                sharedBackend: sharedBackendBlock,
+                schema: schemaBlock,
+                integrations: integrationsBlock,
+                blueprint: renderBuildBlueprintBlock(persistedBlueprint),
+              },
+              toolNote: FIRST_BUILD_TOOL_NOTE,
+            });
+            console.log(`[first-build-context] ${Object.entries(fbContext.parts).map(([k, v]) => `${k}=${v}`).join(" ")} onDemand=${fbContext.reference.length}`);
+            turnStrategy.firstBuildContext = { parts: fbContext.parts, tiers: fbContext.tiers };
             const done = await runToolLoop({
               goal: lastUserText,
-              system: systemTextOf(finalMessages) + FIRST_BUILD_TOOL_NOTE,
+              system: fbContext.system,
               brief: firstBuildBrief(
                 lastUserText,
                 planned as Array<{ route: string; file: string }>,
@@ -4711,7 +4765,8 @@ async function handleGenerateRequestCore(
               // The kit the commit applies, visible (read-only) to reads and
               // import validation so advertised modules actually resolve.
               reference: applyScaffoldKit([], { backend: backend ?? undefined, sharedBackend: sharedBackend ?? undefined, target: buildTarget.id })
-                .filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)),
+                .filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path))
+                .concat(fbContext.reference),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
               // THE readiness authority: the exact proposed-tree transform and
@@ -4775,6 +4830,33 @@ async function handleGenerateRequestCore(
               signal: abortSignal,
               onTrace: (t) => {
                 loopTraces.push(t);
+                // Per-step execution telemetry (fire-and-forget, never blocks the loop).
+                void import("@/integrations/supabase/client.server").then(({ supabaseAdmin }) =>
+                  supabaseAdmin.from("tool_loop_calls" as never).insert({
+                    turn_id: logicalTurnId ?? null,
+                    project_id: body.projectId ?? null,
+                    call_no: t.call,
+                    work_unit: t.workUnit,
+                    model: t.model,
+                    upstream_provider: t.upstream,
+                    system_chars: t.context.system,
+                    brief_chars: t.context.brief,
+                    history_chars: t.context.history,
+                    prompt_tokens: t.usage?.promptTokens ?? null,
+                    cached_tokens: t.usage?.cachedTokens ?? null,
+                    completion_tokens: t.usage?.completionTokens ?? null,
+                    ttft_ms: t.ttftMs,
+                    duration_ms: t.durationMs,
+                    output_tps: t.outputTokensPerSec,
+                    tool_ms: t.toolMs,
+                    validation_ms: t.validationMs,
+                    tool_calls: t.toolCalls,
+                    files_written: t.writtenPaths,
+                    progress: t.progress,
+                    compacted: t.compacted,
+                    finish_reason: t.finishReason,
+                  } as never),
+                ).then((r) => { if (r?.error) console.warn("[tool-loop] telemetry insert failed:", r.error.message); }).catch(() => {});
                 console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} tools=${t.toolCalls.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
                 controller.enqueue(encoder.encode(sse({ type: "timeline", step: "agent_tool", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
               },
