@@ -62841,6 +62841,7 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
+    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -70336,6 +70337,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70594,6 +70596,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -141820,6 +141823,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144136,6 +144140,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145055,6 +145060,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146065,6 +146071,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -152383,6 +152390,78 @@ var init_router_facts = __esm({
   }
 });
 
+// src/server/engine/kit-import-repair.ts
+function moduleExports(src2) {
+  const out = /* @__PURE__ */ new Set();
+  for (const m of src2.matchAll(/export\s+(?:declare\s+)?(?:async\s+)?(?:function\*?|const|let|var|class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/g)) out.add(m[1]);
+  for (const m of src2.matchAll(/export\s+(?:type\s+)?\{([^}]+)\}/g)) {
+    for (const part of m[1].split(",")) {
+      const n = part.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop().trim();
+      if (n && n !== "default") out.add(n);
+    }
+  }
+  return out;
+}
+function specOf(path) {
+  return `@/${path.slice(4).replace(SOURCE_RX4, "").replace(/\/index$/, "")}`;
+}
+function buildKitExportIndex(kit, authored) {
+  const modules = /* @__PURE__ */ new Map();
+  const owners = /* @__PURE__ */ new Map();
+  for (const f of kit) {
+    if (!f.path.startsWith("src/") || !SOURCE_RX4.test(f.path)) continue;
+    if (authored?.(f.path)) continue;
+    const spec = specOf(f.path);
+    const names = moduleExports(f.content);
+    modules.set(spec, names);
+    if (/\/index\.(tsx?|jsx?)$/.test(f.path)) continue;
+    for (const n of names) (owners.get(n) ?? owners.set(n, []).get(n)).push(spec);
+  }
+  return { modules, owners };
+}
+function repairKitImports(content, index) {
+  const repairs = [];
+  const next = content.replace(IMPORT_STMT2, (stmt, typeKw, body, q, spec) => {
+    const exported = index.modules.get(spec);
+    if (!exported) return stmt;
+    const keep = [];
+    const moved = /* @__PURE__ */ new Map();
+    for (const raw of body.split(",")) {
+      const part = raw.trim();
+      if (!part) continue;
+      const imported = part.replace(/^type\s+/, "").split(/\s+as\s+/)[0].trim();
+      if (exported.has(imported)) {
+        keep.push(part);
+        continue;
+      }
+      const owners = index.owners.get(imported) ?? [];
+      if (owners.length !== 1) {
+        keep.push(part);
+        continue;
+      }
+      const to = owners[0];
+      (moved.get(to) ?? moved.set(to, []).get(to)).push(part);
+      repairs.push({ symbol: imported, from: spec, to });
+    }
+    if (!moved.size) return stmt;
+    const t = typeKw ? "type " : "";
+    const lines = [];
+    if (keep.length) lines.push(`import ${t}{ ${keep.join(", ")} } from ${q}${spec}${q};`);
+    for (const [to, parts] of moved) lines.push(`import ${t}{ ${parts.join(", ")} } from ${q}${to}${q};`);
+    return lines.join("\n");
+  });
+  return repairs.length ? { content: next, repairs } : null;
+}
+var SOURCE_RX4, IMPORT_STMT2;
+var init_kit_import_repair = __esm({
+  "src/server/engine/kit-import-repair.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    SOURCE_RX4 = /\.(tsx?|jsx?)$/;
+    IMPORT_STMT2 = /import\s+(type\s+)?\{([^}]*)\}\s+from\s+(["'])(@\/[^"']+)\3;?/g;
+  }
+});
+
 // src/server/engine/tool-loop.ts
 var tool_loop_exports = {};
 __export(tool_loop_exports, {
@@ -152506,7 +152585,7 @@ function managedSurfaceRefusal(path, tree) {
   return null;
 }
 function toolsFor(light) {
-  const names = light ? ["read_file", "search", "edit_file", "create_file", "finish"] : ["read_file", "list_files", "search", "create_file", "edit_file", "plan_tasks", "finish"];
+  const names = light ? ["read_file", "search", "edit_file", "create_file", "finish"] : ["read_file", "list_files", "search", "create_file", "edit_file", "finish"];
   return names.map((n) => TOOLS[n]);
 }
 function hash(s) {
@@ -152579,9 +152658,6 @@ function completionGaps(state, files) {
   for (const [path, errs] of state.validation) {
     if (errs.length && files.has(path)) gaps.push(`${path} still fails validation: ${errs[0]}`);
   }
-  for (const t of state.tasks.values()) {
-    if (t.status === "pending" || t.status === "blocked") gaps.push(`task not done: ${t.id}${t.title ? ` \u2014 ${t.title}` : ""}`);
-  }
   return gaps;
 }
 function formatNotReady(gaps, findings) {
@@ -152626,14 +152702,11 @@ function compact2(messages, state, keepRecent, files) {
   let cut = messages.length - keepRecent;
   while (cut > 2 && messages[cut]?.role === "tool") cut--;
   if (cut <= 2) return messages;
-  const tasks = [...state.tasks.values()].map((t) => `- [${t.status}] ${t.id}${t.title ? `: ${t.title}` : ""}`).join("\n");
   const failing = [...state.validation].filter(([, e]) => e.length).map(([p2, e]) => `- ${p2}: ${e[0]}`).join("\n");
   const summary = [
     "[Earlier work in this turn, compacted]",
     `Files written so far (${state.written.length}): ${[...new Set(state.written)].join(", ") || "none"}`,
     `Files read: ${[...state.read].slice(-60).join(", ") || "none"}`,
-    tasks ? `Tasks:
-${tasks}` : "",
     failing ? `Files still failing validation:
 ${failing}` : "",
     files ? evidenceSummary(state, files) : "",
@@ -152644,7 +152717,6 @@ ${failing}` : "",
 function createToolLoopState(goal) {
   return {
     goal,
-    tasks: /* @__PURE__ */ new Map(),
     completedOps: /* @__PURE__ */ new Set(),
     read: /* @__PURE__ */ new Set(),
     validation: /* @__PURE__ */ new Map(),
@@ -152671,6 +152743,23 @@ async function runToolLoop(args) {
   const ref = new Map((args.reference ?? []).map((f) => [f.path, f.content]));
   const lookup = (p2) => tree.get(p2) ?? ref.get(p2);
   const visiblePaths = () => [.../* @__PURE__ */ new Set([...ref.keys(), ...tree.keys()])];
+  let kitIndex = null;
+  let kitIndexSig = "";
+  let stepRepairs = 0;
+  const repairImports = (path, content) => {
+    if (!ref.size || !/\.(t|j)sx?$/.test(path)) return { content, note: "" };
+    const sig = [...ref.keys()].filter((p2) => tree.has(p2)).join("|");
+    if (!kitIndex || sig !== kitIndexSig) {
+      kitIndex = buildKitExportIndex([...ref].map(([p2, c]) => ({ path: p2, content: c })), (p2) => tree.has(p2));
+      kitIndexSig = sig;
+    }
+    const r = repairKitImports(content, kitIndex);
+    if (!r) return { content, note: "" };
+    stepRepairs += r.repairs.length;
+    for (const x of r.repairs) emit({ kind: "kit_import_repaired", path, detail: `${x.symbol}: ${x.from} \u2192 ${x.to}` });
+    return { content: r.content, note: `
+Kimble corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.` };
+  };
   let messages = [
     { role: "system", content: args.system },
     { role: "user", content: args.brief }
@@ -152714,9 +152803,6 @@ async function runToolLoop(args) {
   };
   const finishGate = async () => {
     await refreshEvidence();
-    for (const t of state.tasks.values()) {
-      if (t.status === "done" && t.files.some((f) => !(tree.get(f) ?? "").trim() || (state.validation.get(f) ?? []).length)) t.status = "pending";
-    }
     const gaps = completionGaps(state, tree);
     state.readiness = await checkReadiness(tree);
     if (!gaps.length && state.readiness.ready) return null;
@@ -152826,7 +152912,8 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         const managed = managedSurfaceRefusal(path, tree);
         if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
         if (args.isProtected?.(path) || ref.has(path) && !tree.has(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
-        const content = String(a2.content ?? "");
+        const fixed = repairImports(path, String(a2.content ?? ""));
+        const content = fixed.content;
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
         const existing = tree.get(path);
         if (existing !== void 0 && existing === content) return { output: `No change: ${path} already has this content.`, isError: false };
@@ -152850,10 +152937,10 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         emit({ kind: errs.length ? "write_failed_validation" : "write_ok", path, detail: errs[0] });
         if (errs.length) {
           breaker.recordFailure({ category: "syntax_error", tool: name, path, message: errs[0] });
-          return { output: report(path, errs), isError: true };
+          return { output: report(path, errs) + fixed.note, isError: true };
         }
         breaker.recordProgress("file_written", path);
-        return { output: report(path, errs), isError: false };
+        return { output: report(path, errs) + fixed.note, isError: false };
       }
       case "edit_file": {
         const current2 = tree.get(path);
@@ -152875,7 +152962,8 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
           return { output: fail(name, path, `search text matches ${at.length} places in ${path}. Add surrounding lines to make it unique, or pass occurrence (1-${at.length}).`), isError: true };
         }
         const pos = at[at.length > 1 ? occ - 1 : 0];
-        const next = current2.slice(0, pos) + replace + current2.slice(pos + search.length);
+        const edited = repairImports(path, current2.slice(0, pos) + replace + current2.slice(pos + search.length));
+        const next = edited.content;
         if (current2.length > 400 && next.trim().length < current2.trim().length * 0.5 && replace.length < search.length * 0.5) {
           return { output: fail(name, path, `Refused: this edit would remove more than half of ${path}. Use create_file to replace the file deliberately.`), isError: true };
         }
@@ -152908,25 +152996,7 @@ ${regressions.slice(0, 6).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}`, 
         if (!errs.length) state.completedOps.add(id);
         breaker.recordProgress(errs.length < before.length ? "file_repaired" : "file_written", path);
         emit({ kind: "edit_ok", path });
-        return { output: errs.length ? report(path, errs) : `OK: edited ${path} and validated.`, isError: false };
-      }
-      case "plan_tasks": {
-        const list4 = Array.isArray(a2.tasks) ? a2.tasks : [];
-        for (const t of list4) {
-          const id = String(t.id ?? "").trim();
-          if (!id) continue;
-          const prev = state.tasks.get(id);
-          const status = ["pending", "done", "skipped"].includes(String(t.status)) ? t.status : "pending";
-          state.tasks.set(id, {
-            id,
-            title: String(t.title ?? prev?.title ?? ""),
-            status,
-            files: Array.isArray(t.files) ? t.files.map(normPath) : prev?.files ?? []
-          });
-        }
-        const lines = [...state.tasks.values()].map((t) => `[${t.status}] ${t.id}`);
-        return { output: `Tasks (${state.tasks.size}):
-${lines.join("\n")}`, isError: false };
+        return { output: (errs.length ? report(path, errs) : `OK: edited ${path} and validated.`) + edited.note, isError: false };
       }
       case "finish": {
         const notReady = await finishGate();
@@ -153010,6 +153080,7 @@ ${notReady}`, isError: true };
     const writesBefore = state.written.length;
     const before = snapshotEvidence(state, tree);
     const actions = [];
+    stepRepairs = 0;
     if (reply.toolCalls.length === 0) {
       const notReady = await finishGate();
       if (!notReady) state.finished = true;
@@ -153087,7 +153158,8 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
       validationFailures: writtenPaths.filter((p2) => (state.validation.get(p2) ?? []).length > 0).length,
       toolErrors: actions.filter((a2) => a2.isError).length,
       recovery: writtenPaths.some((p2) => (before.errors.get(p2) ?? 0) > 0) ? "correction" : null,
-      error: null
+      error: null,
+      deterministicRepairs: stepRepairs
     };
     traces.push(trace);
     try {
@@ -153142,6 +153214,7 @@ var init_tool_loop = __esm({
     init_define_import_meta_env();
     init_first_build_context();
     init_readiness();
+    init_kit_import_repair();
     init_circuit_breaker();
     FULL_CONFIG = {
       maxIterations: 100,
@@ -153190,22 +153263,7 @@ var init_tool_loop = __esm({
         replace: { type: "string" },
         occurrence: { type: "integer", description: "1-based match to replace when search appears more than once" }
       }, ["path", "search", "replace"]),
-      plan_tasks: fn("plan_tasks", "Declare or update the task list for this request. Tasks with status pending block finish.", {
-        tasks: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              id: { type: "string" },
-              title: { type: "string" },
-              status: { type: "string", enum: ["pending", "done", "skipped"] },
-              files: { type: "array", items: { type: "string" } }
-            },
-            required: ["id", "status"]
-          }
-        }
-      }, ["tasks"]),
-      finish: fn("finish", "Declare the request complete. Refused while required files/routes are missing, files fail validation, or tasks are pending.", { summary: { type: "string" } }, [])
+      finish: fn("finish", "Declare the request complete. Runs the full deterministic verification (requested pages and routes, imports, sources) \u2014 the same check commit uses \u2014 so there is no need to search the workspace to verify first. Refused with exact findings while anything is missing or failing.", { summary: { type: "string" } }, [])
     };
     READ_ONLY = /* @__PURE__ */ new Set(["read_file", "list_files", "search"]);
     normPath = (p2) => String(p2 ?? "").trim().replace(/^\.?\/+/, "");
@@ -167719,6 +167777,16 @@ function exportedNames(src2) {
   }
   return [...out].slice(0, 4);
 }
+function propNames(src2, component) {
+  const m = new RegExp(`(?:interface\\s+${component}Props[^{]*|type\\s+${component}Props\\s*=[^{]*)\\{([\\s\\S]*?)\\n\\}`).exec(src2);
+  if (!m) return [];
+  const out = [];
+  for (const line of m[1].split("\n")) {
+    const k = /^\s{2}([A-Za-z_$][\w$]*)(\??):/.exec(line);
+    if (k) out.push(`${k[1]}${k[2]}`);
+  }
+  return out.slice(0, 8);
+}
 function renderStarterKitMap() {
   const lines = [];
   for (const area of MAP_AREAS) {
@@ -167728,7 +167796,10 @@ function renderStarterKitMap() {
     if (area.purpose) {
       for (const f of files) {
         const name = f.path.slice(area.dir.length).replace(/\.tsx?$/, "");
-        const ex = exportedNames(f.content);
+        const ex = exportedNames(f.content).map((n) => {
+          const props = propNames(f.content, n);
+          return props.length ? `${n}(${props.join(", ")})` : n;
+        });
         const doc = firstDocSentence(f.content);
         lines.push(`- ${name}${ex.length ? ` {${ex.join(", ")}}` : ""}${doc ? ` \u2014 ${doc}` : ""}`);
       }
@@ -167739,7 +167810,7 @@ function renderStarterKitMap() {
   if (!lines.length) return "";
   return `
 ### Starter-kit map (authoritative \u2014 do not list directories to discover it)
-Everything below already exists. Choose what the current work unit needs, then read only that exact file if you need its props.
+Everything below already exists. Import each component from its own path, exactly as listed (e.g. {SlideUp} from @/components/motion/slide-up). Exports and their own props are listed \u2014 use them directly; read a kit file only when you need implementation details the map does not give.
 ${lines.join("\n")}
 `;
 }
@@ -171068,7 +171139,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
