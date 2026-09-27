@@ -2396,15 +2396,56 @@ async function handleGenerateRequestCore(
   let prdNote = "";
   let resolvedPrd: Awaited<ReturnType<typeof import("@/server/prd/prd-engine.server").resolvePrdForTurn>> | null =
     null;
+
+  // Project Memory — durable facts learned across previous turns. Loaded
+  // with the user's JWT so RLS enforces ownership. Loaded here (not later)
+  // because the first-build setup fan-out below needs it.
+  const reqAuth = request.headers.get("authorization");
+  const userJwt = reqAuth?.startsWith("Bearer ") ? reqAuth.slice("Bearer ".length) : "";
+  const memoryEntries =
+    body.projectId && userJwt ? await loadProjectMemory(userJwt, body.projectId) : [];
+
+  // First-build setup fan-out. The PRD, the design direction and the PIC
+  // understanding pass each depend ONLY on the brief (+ memory), never on
+  // each other's output, so they run concurrently instead of back-to-back.
+  // Same calls, same inputs, same consumers — only the waiting is removed.
+  let earlyDesign: Promise<Awaited<ReturnType<typeof pickDesignDirection>>> | null = null;
+  let earlyUnderstanding: Promise<import("@/server/pic/pic-types").PicUnderstanding> | null = null;
+  const startSetupFanOut = async () => {
+    if (!isInitial || body.isAutoFix || body.isInternalRepair) return;
+    const setupBrief = earlyBriefExpansion
+      ? (await earlyBriefExpansion).brief
+      : latestUserMessage(messages);
+    const { classifyRequest } = await import("@/server/execution");
+    if (classifyRequest(setupBrief || "", { isInitial }).operation === "repair") return;
+    if (userJwt) {
+      earlyDesign = pickDesignDirection({ jwt: userJwt, projectId: body.projectId, brief: setupBrief, memoryEntries });
+      earlyDesign.catch(() => {});
+    }
+    if (process.env.PETAL_PIC_DISABLED !== "1") {
+      const { understandRequest } = await import("@/server/understanding.server");
+      earlyUnderstanding = understandRequest(setupBrief, {
+        userId,
+        projectId: body.projectId ?? null,
+        prior: null,
+        signal: request.signal,
+      });
+      earlyUnderstanding.catch(() => {});
+    }
+  };
+
   if (buildTarget.id === "web") {
     try {
       const { resolvePrdForTurn } = await import("@/server/prd/prd-engine.server");
       stage("pre_prd", "Working out what your app needs to do…");
-      resolvedPrd = await resolvePrdForTurn({
+      const prdPromise = resolvePrdForTurn({
         brief: lastContent,
         projectId: body.projectId,
         userId,
       });
+      prdPromise.catch(() => {});
+      await startSetupFanOut().catch((e) => console.warn("[setup] fan-out skipped:", e instanceof Error ? e.message : String(e)));
+      resolvedPrd = await prdPromise;
       prdBlock = resolvedPrd.promptBlock;
       prdScenarioBlock = resolvedPrd.scenarioBlock;
       prdNote = resolvedPrd.note;
@@ -2580,10 +2621,7 @@ async function handleGenerateRequestCore(
   // Project Memory — durable facts learned across previous turns. Loaded
   // with the user's JWT so RLS enforces ownership. Empty when there's
   // no memory yet, so new projects pay no prompt-size cost.
-  const reqAuth = request.headers.get("authorization");
-  const userJwt = reqAuth?.startsWith("Bearer ") ? reqAuth.slice("Bearer ".length) : "";
-  const memoryEntries =
-    body.projectId && userJwt ? await loadProjectMemory(userJwt, body.projectId) : [];
+  // (userJwt + memoryEntries are loaded before the PRD stage — see setup fan-out.)
   // Replaced below by the precedence-resolved memory once the project
   // manifest exists (source beats memory; the current request beats both).
   let memoryBlock = renderMemoryBlock(memoryEntries);
