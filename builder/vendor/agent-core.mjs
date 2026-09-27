@@ -146493,7 +146493,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -150207,9 +150206,187 @@ var init_screen_target_server = __esm({
   }
 });
 
+// src/lib/effort-pricing.ts
+var effort_pricing_exports = {};
+__export(effort_pricing_exports, {
+  DEFAULT_CLASS_EFFORT: () => DEFAULT_CLASS_EFFORT,
+  DEFAULT_CLASS_MULTIPLIER: () => DEFAULT_CLASS_MULTIPLIER,
+  DEFAULT_CURVE: () => DEFAULT_CURVE,
+  DEFAULT_EFFORT_WEIGHTS: () => DEFAULT_EFFORT_WEIGHTS,
+  PAGE_PATH: () => PAGE_PATH3,
+  applyFloor: () => applyFloor,
+  creditsForEffort: () => creditsForEffort,
+  diffSignals: () => diffSignals,
+  economicFlags: () => economicFlags,
+  effortConfig: () => effortConfig,
+  effortScore: () => effortScore,
+  estimateEffort: () => estimateEffort,
+  profitability: () => profitability,
+  wastedCostUsd: () => wastedCostUsd
+});
+function effortScore(s, w = DEFAULT_EFFORT_WEIGHTS, mult = DEFAULT_CLASS_MULTIPLIER) {
+  const lines = s.linesPerFile.reduce((a2, n) => a2 + Math.min(Math.max(0, n), w.lineCapPerFile), 0);
+  const parts = {
+    base: w.base,
+    created: Math.max(0, s.filesCreated) * w.fileCreated,
+    modified: Math.max(0, s.filesModified) * w.fileModified,
+    deleted: Math.max(0, s.filesDeleted) * w.fileDeleted,
+    lines: lines * w.perLine,
+    pages: Math.max(0, s.pages) * w.page,
+    capabilities: Math.max(0, s.capabilities) * w.capability,
+    validation: Math.min(Math.max(0, s.validationsPassed), w.validationCap) * w.validation,
+    time: Math.min(Math.max(0, s.durationMs) / 6e4, w.minuteCap / Math.max(w.perMinute, 1e-9)) * w.perMinute
+  };
+  const raw = Object.values(parts).reduce((a2, b) => a2 + b, 0);
+  const m = mult[s.cls] ?? 1;
+  return { score: round2(raw * m), parts };
+}
+function round2(n) {
+  return Math.round(n * 100) / 100;
+}
+function roundUp2(n, step) {
+  const s = step > 0 ? step : 0.01;
+  return Math.round(Math.ceil(n / s - 1e-9) * s * 100) / 100;
+}
+function applyFloor(credits, c = DEFAULT_CURVE) {
+  return Math.max(roundUp2(c.floor, c.step), roundUp2(Math.max(0, credits), c.step));
+}
+function creditsForEffort(score, c = DEFAULT_CURVE) {
+  return applyFloor(c.a * Math.pow(Math.max(0, score), c.p), c);
+}
+function estimateEffort(cls, history, minSamples = 20, defaults = DEFAULT_CLASS_EFFORT) {
+  if (history && history.samples >= minSamples && history.p75 > 0) return { effort: history.p75, basis: "history" };
+  return { effort: defaults[cls], basis: "default" };
+}
+function profitability(credits, revenuePerCreditUsd, costUsd, wastedCostUsd2 = 0) {
+  const revenue = Math.max(0, credits) * revenuePerCreditUsd;
+  const cost = Math.max(0, costUsd);
+  const wasted = Math.min(cost, Math.max(0, wastedCostUsd2));
+  return {
+    revenueUsd: revenue,
+    costUsd: cost,
+    productiveCostUsd: cost - wasted,
+    wastedCostUsd: wasted,
+    contributionUsd: revenue - cost,
+    marginPct: revenue > 0 ? (revenue - cost) / revenue * 100 : null,
+    costToRevenue: revenue > 0 ? cost / revenue : null,
+    markup: cost > 0 ? revenue / cost : null
+  };
+}
+function economicFlags(p2, est, actualEffort, opts = { marginFloorPct: 70, wasteShare: 0.3, estimateError: 0.5 }) {
+  const f = [];
+  const low = p2.marginPct != null && p2.marginPct < opts.marginFloorPct;
+  const wasteful = p2.costUsd > 0 && p2.wastedCostUsd / p2.costUsd >= opts.wasteShare;
+  if (low && wasteful) f.push("expensive_execution");
+  else if (low) f.push("underpriced");
+  if (est && est.effort > 0 && Math.abs(actualEffort - est.effort) / est.effort > opts.estimateError) f.push("bad_estimate");
+  return f;
+}
+function effortConfig(v) {
+  const weights = { ...DEFAULT_EFFORT_WEIGHTS };
+  for (const k of Object.keys(weights)) {
+    const n = v[`effort_w_${k}`];
+    if (Number.isFinite(n)) weights[k] = n;
+  }
+  const classEffort = { ...DEFAULT_CLASS_EFFORT };
+  for (const k of Object.keys(classEffort)) {
+    const n = v[`effort_class_${k.toLowerCase()}`];
+    if (Number.isFinite(n)) classEffort[k] = n;
+  }
+  const num2 = (k, d) => Number.isFinite(v[k]) ? v[k] : d;
+  return {
+    weights,
+    classEffort,
+    curve: { a: num2("effort_curve_a", DEFAULT_CURVE.a), p: num2("effort_curve_p", DEFAULT_CURVE.p), floor: num2("min_charge_credits", DEFAULT_CURVE.floor), step: num2("credit_rounding_step", DEFAULT_CURVE.step) },
+    marginFloorPct: num2("effort_margin_floor_pct", 70),
+    estimateError: num2("effort_estimate_error", 0.5)
+  };
+}
+function diffSignals(before, after, isPage2) {
+  let c = 0, m = 0, d = 0, pages = 0;
+  const lines = [];
+  for (const [p2, txt] of Object.entries(after)) {
+    const prev = before[p2];
+    if (prev === void 0) {
+      c++;
+      lines.push(txt.split("\n").length);
+      if (isPage2(p2)) pages++;
+    } else if (prev !== txt) {
+      m++;
+      lines.push(changedLines(prev, txt));
+      if (isPage2(p2)) pages++;
+    }
+  }
+  for (const p2 of Object.keys(before)) if (!(p2 in after)) d++;
+  return { filesCreated: c, filesModified: m, filesDeleted: d, linesPerFile: lines, pages };
+}
+function changedLines(a2, b) {
+  const A = a2.split("\n"), B = b.split("\n");
+  const count = /* @__PURE__ */ new Map();
+  for (const l of A) count.set(l, (count.get(l) ?? 0) + 1);
+  let common = 0;
+  for (const l of B) {
+    const n = count.get(l) ?? 0;
+    if (n > 0) {
+      common++;
+      count.set(l, n - 1);
+    }
+  }
+  return Math.max(A.length, B.length) - common;
+}
+function wastedCostUsd(rows) {
+  let w = 0;
+  for (const r of rows) {
+    if (r.stage === "after" || r.cost_usd_micro == null) continue;
+    if (r.call_kind === "retry" || r.call_kind === "repair" || r.status != null && r.status >= 400) w += Number(r.cost_usd_micro) / 1e6;
+  }
+  return w;
+}
+var DEFAULT_EFFORT_WEIGHTS, DEFAULT_CLASS_MULTIPLIER, DEFAULT_CLASS_EFFORT, DEFAULT_CURVE, PAGE_PATH3;
+var init_effort_pricing = __esm({
+  "src/lib/effort-pricing.ts"() {
+    init_define_import_meta_env();
+    DEFAULT_EFFORT_WEIGHTS = {
+      base: 0.5,
+      fileCreated: 1,
+      fileModified: 0.6,
+      fileDeleted: 0.2,
+      perLine: 4e-3,
+      lineCapPerFile: 300,
+      page: 1.5,
+      capability: 2,
+      validation: 0.2,
+      validationCap: 10,
+      perMinute: 0.1,
+      minuteCap: 1
+    };
+    DEFAULT_CLASS_MULTIPLIER = {
+      SIMPLE: 0.8,
+      LIGHT: 0.9,
+      STANDARD: 1,
+      HEAVY: 1.1,
+      COMPLEX: 1.2,
+      // Escalations are usually Kimble's constraint (truncation, failover), so
+      // they get only a modest uplift.
+      ESCALATED: 1.1
+    };
+    DEFAULT_CLASS_EFFORT = {
+      SIMPLE: 1,
+      LIGHT: 2,
+      STANDARD: 12,
+      HEAVY: 16,
+      COMPLEX: 24,
+      ESCALATED: 30
+    };
+    DEFAULT_CURVE = { a: 0.38, p: 0.9, floor: 0.3, step: 0.01 };
+    PAGE_PATH3 = /^src\/(pages|routes)\/(?!__root|api\/).+\.[jt]sx$/;
+  }
+});
+
 // src/server/build-reservation.server.ts
 var build_reservation_server_exports = {};
 __export(build_reservation_server_exports, {
+  estimateEffortCredits: () => estimateEffortCredits,
   estimateForClass: () => estimateForClass,
   releaseBuildReservation: () => releaseBuildReservation,
   reserveBuildCredits: () => reserveBuildCredits
@@ -150230,9 +150407,32 @@ async function estimateForClass(cls) {
   const pick2 = classCostUsd(p90, v[DEFAULT_KEY[cls]] ?? 0.03);
   return { ...pick2, economics };
 }
+async function estimateEffortCredits(cls) {
+  const ep = await Promise.resolve().then(() => (init_effort_pricing(), effort_pricing_exports));
+  const { economicsValues: economicsValues2 } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
+  const v = await economicsValues2();
+  const cfg = ep.effortConfig(v);
+  let history = null;
+  try {
+    const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+    const { data: data2 } = await supabaseAdmin2.rpc("billing_class_effort_p75", { _class: cls });
+    const row = Array.isArray(data2) ? data2[0] : data2;
+    if (row) history = { samples: Number(row.samples ?? 0), p75: Number(row.p75 ?? 0) };
+  } catch {
+  }
+  const e = ep.estimateEffort(cls, history, Math.max(1, Math.round(v.estimate_min_samples ?? 20)), cfg.classEffort);
+  return { effort: e.effort, credits: ep.creditsForEffort(e.effort, cfg.curve), basis: e.basis };
+}
 async function reserveBuildCredits(args) {
   const est = await estimateForClass(args.cls);
-  const estimated = estimateCredits(est.usd, est.economics);
+  let estimated = estimateCredits(est.usd, est.economics);
+  let estimatedEffort;
+  try {
+    const eff = await estimateEffortCredits(args.cls);
+    estimated = eff.credits;
+    estimatedEffort = eff.effort;
+  } catch {
+  }
   try {
     const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
     const { data: data2, error } = await supabaseAdmin2.rpc("reserve_build_credits", {
@@ -150248,13 +150448,14 @@ async function reserveBuildCredits(args) {
     return {
       ok: !!row?.ok,
       estimated,
+      estimatedEffort,
       reserved: Number(row?.reserved ?? 0),
       available: Number(row?.available ?? 0),
       estimateBasis: est.basis,
       classCostUsd: est.usd
     };
   } catch (e) {
-    return { ok: false, estimated, reserved: 0, available: 0, estimateBasis: est.basis, classCostUsd: est.usd, error: e.message };
+    return { ok: false, estimated, estimatedEffort, reserved: 0, available: 0, estimateBasis: est.basis, classCostUsd: est.usd, error: e.message };
   }
 }
 async function releaseBuildReservation(turnId, reason) {
@@ -179256,7 +179457,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             const { runToolLoop: runToolLoop2 } = await Promise.resolve().then(() => (init_tool_loop(), tool_loop_exports));
             const { buildEconomics: loopEconomics } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
-            const loopCeilingUsd = economicCeilingUsd(buildReservation?.reserved ?? null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics());
+            const loopCeilingUsd = economicCeilingUsd(null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics());
             const loopSpentBeforeUsd = collected.usage ? turnCallCost(collected.usage).costUsd ?? buildReservation?.classCostUsd ?? 0 : 0;
             const { makeCallModel: makeCallModel2 } = await Promise.resolve().then(() => (init_tool_loop_model(), tool_loop_model_exports));
             const { validateUnitImports: validateUnitImports2, undefinedNames: undefinedNames2 } = await Promise.resolve().then(() => (init_work_unit(), work_unit_exports));
@@ -181201,11 +181402,13 @@ ${summary}` })));
         }
         let settledFrom = "memory";
         let billableCalls = null;
+        let recordedRows = null;
         if (logicalTurnId) {
           const { flushCostWrites: flushCostWrites2, readTurnCallCosts: readTurnCallCosts2 } = await Promise.resolve().then(() => (init_ai_provider_server(), ai_provider_server_exports));
           const flushed = await flushCostWrites2();
           if (flushed.timedOut) console.warn(`[credits] cost writes still pending at settlement: ${flushed.pending}`);
           const rows = await readTurnCallCosts2(logicalTurnId);
+          recordedRows = rows;
           if (rows && rows.length) {
             const { priceRecordedCalls: priceRecordedCalls2 } = await Promise.resolve().then(() => (init_build_pricing(), build_pricing_exports));
             const rp = priceRecordedCalls2(rows, await buildEconomics2(), buildReservation?.classCostUsd ?? 0);
@@ -181214,6 +181417,35 @@ ${summary}` })));
             settledFrom = "recorded";
           }
         }
+        const internalCostUsd = priced.costUsd;
+        const effortEval = await (async () => {
+          const ep = await Promise.resolve().then(() => (init_effort_pricing(), effort_pricing_exports));
+          const { economicsValues: economicsValues2 } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
+          const v = await economicsValues2();
+          const cfg = ep.effortConfig(v);
+          const cls = assessExecution2({ ...turnComplexityBase, plannedPages: firstBuildPlan?.pages.length ?? 0 }).class;
+          const toMap = (fs) => Object.fromEntries(projectAuthoredFiles(fs).map((f) => [f.path, f.content ?? ""]));
+          const diff = ep.diffSignals(toMap(turnBaselineFiles), toMap(txCommitted ? nextFiles : turnBaselineFiles), (p2) => ep.PAGE_PATH.test(p2));
+          const rows = recordedRows ?? [];
+          const verifyCalls = rows.filter((r) => r.stage === "verify").length;
+          const signals = {
+            cls,
+            ...diff,
+            capabilities: (turnComplexityBase.backendInvolved ? 1 : 0) + (turnComplexityBase.integrations ?? 0),
+            validationsPassed: txCommitted ? 1 + verifyCalls : 0,
+            durationMs: Date.now() - setupStartedAt
+          };
+          const eff = ep.effortScore(signals, cfg.weights);
+          const credits = ep.creditsForEffort(eff.score, cfg.curve);
+          const wasted = ep.wastedCostUsd(rows);
+          const prof = ep.profitability(credits, v.revenue_per_credit_usd ?? 0.13, internalCostUsd, wasted);
+          const flags = ep.economicFlags(prof, buildReservation?.estimatedEffort != null ? { effort: buildReservation.estimatedEffort } : null, eff.score, { marginFloorPct: cfg.marginFloorPct, wasteShare: 0.3, estimateError: cfg.estimateError });
+          return { cls, signals: { ...signals, linesPerFile: void 0, linesChanged: diff.linesPerFile.reduce((a2, b) => a2 + b, 0) }, score: eff.score, parts: eff.parts, credits, prof, flags };
+        })().catch((e) => {
+          console.warn("[credits] effort pricing failed, using cost price", e.message);
+          return null;
+        });
+        if (effortEval) priced = { ...priced, amount: effortEval.credits };
         if (!body.isAutoFix && !failedEditTurn) {
           const finalBalance = buildReservation?.ok ? { ok: true } : await agentIO().checkBalance(userId, priced.amount);
           if (!finalBalance.ok && finalBalance.reason === "insufficient_credits" && body.projectId && logicalTurnId) {
@@ -181247,6 +181479,8 @@ ${summary}` })));
                 operation_type: toOperationType(turnClassification.operation, { isInitial }),
                 cost_basis: priced.basis,
                 cost_usd: priced.costUsd,
+                pricing: effortEval ? "effort" : "cost_fallback",
+                effort_score: effortEval?.score ?? null,
                 unknown_calls: priced.unknownCalls,
                 cost_source: settledFrom,
                 billable_calls: billableCalls,
@@ -181314,6 +181548,10 @@ I couldn't save this change, so your app was left exactly as it was. Send it aga
           result: failedEditTurn ? "no_op" : "generated",
           metadata: {
             priced_amount: priced.amount,
+            internal_cost_usd: internalCostUsd,
+            effort: effortEval ? { score: effortEval.score, class: effortEval.cls, parts: effortEval.parts, signals: effortEval.signals, estimated_effort: buildReservation?.estimatedEffort ?? null } : null,
+            profitability: effortEval?.prof ?? null,
+            economic_flags: effortEval?.flags ?? [],
             priced_cost_usd: priced.costUsd,
             priced_basis: priced.basis,
             unknown_calls: priced.unknownCalls,

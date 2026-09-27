@@ -43,10 +43,11 @@ function Table({ title, rows }: { title: string; rows?: Record<string, Row> }) {
 
 export function BuildBillingPanel() {
   const [s, setS] = useState<Summary | null>(null);
+  const [eff, setEff] = useState<Array<Record<string, unknown>>>([]);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
-    adminApi<{ summary: Summary }>({ action: "build_billing", since_days: 30 })
-      .then((r) => setS(r.summary))
+    adminApi<{ summary: Summary; effort?: Array<Record<string, unknown>> }>({ action: "build_billing", since_days: 30 })
+      .then((r) => { setS(r.summary); setEff(r.effort ?? []); })
       .catch((e) => setErr((e as Error).message));
   }, []);
   const k: Array<[string, string, number]> = [
@@ -84,6 +85,16 @@ export function BuildBillingPanel() {
             <Table title="By class" rows={s.by_class} />
             <Table title="By outcome" rows={s.by_outcome} />
             <Table title="By model" rows={s.by_model} />
+            {(["all", "class", "model"] as const).map((dim) => (
+              <Table
+                key={dim}
+                title={`Effort pricing & profitability · ${dim === "all" ? "overall" : `by ${dim}`}`}
+                rows={Object.fromEntries(eff.filter((r) => r.dim === dim).map((r) => {
+                  const { dim: _d, key, ...rest } = r as Record<string, unknown>;
+                  return [String(key), Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, v == null ? null : Number(v)]))];
+                })) as Record<string, Row>}
+              />
+            ))}
           </>
         )}
       </CardContent>

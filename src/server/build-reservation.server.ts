@@ -11,6 +11,8 @@ export type Reservation = {
   ok: boolean;
   estimated: number;
   reserved: number;
+  /** Estimated effort score behind `estimated` (effort pricing). */
+  estimatedEffort?: number;
   available: number;
   estimateBasis: "measured_p90" | "default";
   classCostUsd: number;
@@ -42,10 +44,33 @@ export async function estimateForClass(cls: ExecutionClass): Promise<{ usd: numb
   return { ...pick, economics };
 }
 
+/** Pre-build effort estimate → estimated customer credits (effort curve). */
+export async function estimateEffortCredits(cls: ExecutionClass): Promise<{ effort: number; credits: number; basis: "history" | "default" }> {
+  const ep = await import("@/lib/effort-pricing");
+  const { economicsValues } = await import("@/server/economics-config.server");
+  const v = (await economicsValues()) as Record<string, number>;
+  const cfg = ep.effortConfig(v);
+  let history: { samples: number; p75: number } | null = null;
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin.rpc("billing_class_effort_p75" as never, { _class: cls } as never);
+    const row = (Array.isArray(data) ? data[0] : data) as { samples?: number; p75?: number } | null;
+    if (row) history = { samples: Number(row.samples ?? 0), p75: Number(row.p75 ?? 0) };
+  } catch { /* defaults */ }
+  const e = ep.estimateEffort(cls, history, Math.max(1, Math.round(v.estimate_min_samples ?? 20)), cfg.classEffort);
+  return { effort: e.effort, credits: ep.creditsForEffort(e.effort, cfg.curve), basis: e.basis };
+}
+
 /** Reserve credits for one build turn. Never throws. */
 export async function reserveBuildCredits(args: { userId: string; turnId: string; cls: ExecutionClass }): Promise<Reservation> {
   const est = await estimateForClass(args.cls);
-  const estimated = estimateCredits(est.usd, est.economics);
+  let estimated = estimateCredits(est.usd, est.economics);
+  let estimatedEffort: number | undefined;
+  try {
+    const eff = await estimateEffortCredits(args.cls);
+    estimated = eff.credits;
+    estimatedEffort = eff.effort;
+  } catch { /* fall back to cost estimate */ }
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin.rpc("reserve_build_credits" as never, {
@@ -61,13 +86,14 @@ export async function reserveBuildCredits(args: { userId: string; turnId: string
     return {
       ok: !!row?.ok,
       estimated,
+      estimatedEffort,
       reserved: Number(row?.reserved ?? 0),
       available: Number(row?.available ?? 0),
       estimateBasis: est.basis,
       classCostUsd: est.usd,
     };
   } catch (e) {
-    return { ok: false, estimated, reserved: 0, available: 0, estimateBasis: est.basis, classCostUsd: est.usd, error: (e as Error).message };
+    return { ok: false, estimated, estimatedEffort, reserved: 0, available: 0, estimateBasis: est.basis, classCostUsd: est.usd, error: (e as Error).message };
   }
 }
 

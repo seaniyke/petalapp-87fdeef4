@@ -4730,7 +4730,7 @@ async function handleGenerateRequestCore(
             // incomplete. No per-page calls, no second scheduler.
             const { runToolLoop } = await import("@/server/engine/tool-loop");
             const { buildEconomics: loopEconomics } = await import("@/server/economics-config.server");
-            const loopCeilingUsd = economicCeilingUsd(buildReservation?.reserved ?? null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics());
+            const loopCeilingUsd = economicCeilingUsd(null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics()) /* internal cost limit: class cost × headroom, decoupled from the effort-priced hold */;
             const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
             const { makeCallModel } = await import("@/server/engine/tool-loop-model");
             const { validateUnitImports, undefinedNames } = await import("@/server/engine/work-unit");
@@ -7294,11 +7294,13 @@ async function handleGenerateRequestCore(
         // when the records cannot be read.
         let settledFrom: "recorded" | "memory" = "memory";
         let billableCalls: number | null = null;
+        let recordedRows: Awaited<ReturnType<typeof import("@/server/ai-provider.server").readTurnCallCosts>> = null;
         if (logicalTurnId) {
           const { flushCostWrites, readTurnCallCosts } = await import("@/server/ai-provider.server");
           const flushed = await flushCostWrites();
           if (flushed.timedOut) console.warn(`[credits] cost writes still pending at settlement: ${flushed.pending}`);
           const rows = await readTurnCallCosts(logicalTurnId);
+          recordedRows = rows;
           if (rows && rows.length) {
             const { priceRecordedCalls } = await import("@/lib/build-pricing");
             const rp = priceRecordedCalls(rows, await buildEconomics(), buildReservation?.classCostUsd ?? 0);
@@ -7307,6 +7309,35 @@ async function handleGenerateRequestCore(
             settledFrom = "recorded";
           }
         }
+        // CUSTOMER PRICE = effort curve over productive work (never AI cost).
+        // `priced` above stays the INTERNAL cost for margin and reporting.
+        const internalCostUsd = priced.costUsd;
+        const effortEval = await (async () => {
+          const ep = await import("@/lib/effort-pricing");
+          const { economicsValues } = await import("@/server/economics-config.server");
+          const v = (await economicsValues()) as Record<string, number>;
+          const cfg = ep.effortConfig(v);
+          const cls = assessExecution({ ...turnComplexityBase, plannedPages: firstBuildPlan?.pages.length ?? 0 }).class;
+          // Starter-kit files are Kimble's scaffold, not work done for this request.
+          const toMap = (fs: ProjectFile[]) => Object.fromEntries(projectAuthoredFiles(fs).map((f) => [f.path, f.content ?? ""]));
+          const diff = ep.diffSignals(toMap(turnBaselineFiles), toMap(txCommitted ? nextFiles : turnBaselineFiles), (p) => ep.PAGE_PATH.test(p));
+          const rows = recordedRows ?? [];
+          const verifyCalls = rows.filter((r) => r.stage === "verify").length;
+          const signals = {
+            cls,
+            ...diff,
+            capabilities: (turnComplexityBase.backendInvolved ? 1 : 0) + (turnComplexityBase.integrations ?? 0),
+            validationsPassed: txCommitted ? 1 + verifyCalls : 0,
+            durationMs: Date.now() - setupStartedAt,
+          };
+          const eff = ep.effortScore(signals, cfg.weights);
+          const credits = ep.creditsForEffort(eff.score, cfg.curve);
+          const wasted = ep.wastedCostUsd(rows as never);
+          const prof = ep.profitability(credits, v.revenue_per_credit_usd ?? 0.13, internalCostUsd, wasted);
+          const flags = ep.economicFlags(prof, buildReservation?.estimatedEffort != null ? { effort: buildReservation.estimatedEffort } : null, eff.score, { marginFloorPct: cfg.marginFloorPct, wasteShare: 0.3, estimateError: cfg.estimateError });
+          return { cls, signals: { ...signals, linesPerFile: undefined, linesChanged: diff.linesPerFile.reduce((a, b) => a + b, 0) }, score: eff.score, parts: eff.parts, credits, prof, flags };
+        })().catch((e) => { console.warn("[credits] effort pricing failed, using cost price", (e as Error).message); return null; });
+        if (effortEval) priced = { ...priced, amount: effortEval.credits };
         if (!body.isAutoFix && !failedEditTurn) {
           // A held reservation already guarantees the (capped) charge.
           const finalBalance = buildReservation?.ok
@@ -7348,6 +7379,8 @@ async function handleGenerateRequestCore(
                   operation_type: toOperationType(turnClassification.operation, { isInitial }),
                   cost_basis: priced.basis,
                   cost_usd: priced.costUsd,
+                  pricing: effortEval ? "effort" : "cost_fallback",
+                  effort_score: effortEval?.score ?? null,
                   unknown_calls: priced.unknownCalls,
                   cost_source: settledFrom,
                   billable_calls: billableCalls,
@@ -7424,6 +7457,10 @@ async function handleGenerateRequestCore(
           result: failedEditTurn ? "no_op" : "generated",
           metadata: {
             priced_amount: priced.amount,
+            internal_cost_usd: internalCostUsd,
+            effort: effortEval ? { score: effortEval.score, class: effortEval.cls, parts: effortEval.parts, signals: effortEval.signals, estimated_effort: buildReservation?.estimatedEffort ?? null } : null,
+            profitability: effortEval?.prof ?? null,
+            economic_flags: effortEval?.flags ?? [],
             priced_cost_usd: priced.costUsd,
             priced_basis: priced.basis,
             unknown_calls: priced.unknownCalls,
