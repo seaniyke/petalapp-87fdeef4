@@ -102,6 +102,6 @@ describe("edit instructions never open a Kimble screen", () => {
 describe("paused mobile surface", () => {
   it("never opens the mobile panel while mobile apps are off", async () => {
     const { detectSurfaceIntent } = await import("@/lib/kimble-surfaces");
-    expect(detectSurfaceIntent("can I download the android build?")?.id).not.toBe("mobile");
+    expect(detectSurfaceIntent("can I download the android build?")?.surface.id).not.toBe("mobile");
   });
 });
