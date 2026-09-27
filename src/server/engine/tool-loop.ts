@@ -47,6 +47,8 @@ export interface ModelUsage {
   promptTokens: number;
   cachedTokens: number;
   completionTokens: number;
+  /** Provider-reported USD cost for the call, when the provider sent it. */
+  costUsd?: number | null;
 }
 
 export interface ModelReply {
@@ -246,6 +248,8 @@ export interface ToolLoopState {
   iteration: number;
   finished: boolean;
   stopReason: string | null;
+  /** Variable cost attributed to this loop so far (USD, internal only). */
+  spentUsd: number;
 }
 
 export interface CallTrace {
@@ -332,6 +336,16 @@ export interface ToolLoopArgs {
   signal?: AbortSignal;
   onTrace?: (t: CallTrace) => void;
   onEvent?: (e: { kind: string; path?: string; detail?: string }) => void;
+  /**
+   * Economic ceiling (USD) for this turn — the reservation expressed as
+   * variable cost. The loop never starts a model call once spent + the
+   * largest call seen so far would exceed it. Omitted = no dollar bound.
+   */
+  costCeilingUsd?: number;
+  /** Cost already spent this turn before the loop started (USD). */
+  spentBeforeUsd?: number;
+  /** Cost of one reply (USD). Must never return 0 for an unmeasured call. */
+  costOf?: (reply: ModelReply) => number;
 }
 
 export interface ToolLoopResult {
@@ -624,6 +638,7 @@ export function createToolLoopState(goal: string): ToolLoopState {
     iteration: 0,
     finished: false,
     stopReason: null,
+    spentUsd: 0,
   };
 }
 
@@ -947,6 +962,10 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   ];
 
   const hardCeiling = cfg.maxIterations + cfg.finalizeIterations;
+  const ceiling = typeof args.costCeilingUsd === "number" && Number.isFinite(args.costCeilingUsd) ? Math.max(0, args.costCeilingUsd) : null;
+  state.spentUsd = Math.max(0, args.spentBeforeUsd ?? 0);
+  /** Largest single call cost seen — the next call's predicted cost. */
+  let maxCallUsd = 0;
   let finalizing = false;
   // No-progress protection: progress is a real workspace change — a file
   // that became (or was created) valid, or lost errors. Reads, plans,
@@ -974,6 +993,11 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       compacted = true;
     }
 
+    if (ceiling != null && state.spentUsd + maxCallUsd > ceiling) {
+      state.stopReason = `economic ceiling reached ($${state.spentUsd.toFixed(4)} of $${ceiling.toFixed(4)})`;
+      emit({ kind: "economic_ceiling", detail: state.stopReason });
+      return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "breaker" };
+    }
     state.iteration++;
     const startedAt = Date.now();
     const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + ("tool_calls" in m && m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
@@ -995,6 +1019,12 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       throw e;
     }
     const durationMs = Date.now() - startedAt;
+    {
+      const c = args.costOf ? args.costOf(reply) : (typeof reply.usage?.costUsd === "number" ? reply.usage.costUsd : 0);
+      const usd = Number.isFinite(c) && c > 0 ? c : 0;
+      state.spentUsd += usd;
+      if (usd > maxCallUsd) maxCallUsd = usd;
+    }
     messages.push({ role: "assistant", content: reply.content ?? null, ...(reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {}) });
 
     const t0 = Date.now();

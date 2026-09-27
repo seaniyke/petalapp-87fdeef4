@@ -65,7 +65,7 @@ export async function parseToolStream(res: Response, startedAt: number): Promise
   return {
     content: content || null,
     toolCalls: [...calls.entries()].sort((a, b) => a[0] - b[0]).map(([, c]) => c).filter((c) => c.function.name),
-    usage: u ? { promptTokens: u.prompt_tokens ?? 0, cachedTokens: u.prompt_tokens_details?.cached_tokens ?? 0, completionTokens: u.completion_tokens ?? 0 } : undefined,
+    usage: u ? { promptTokens: u.prompt_tokens ?? 0, cachedTokens: u.prompt_tokens_details?.cached_tokens ?? 0, completionTokens: u.completion_tokens ?? 0, costUsd: typeof u.cost === "number" ? u.cost : null } : undefined,
     ttftMs,
     finishReason,
     model,
