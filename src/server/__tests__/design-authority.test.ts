@@ -42,7 +42,7 @@ describe("registry", () => {
   it("has a real installed default package", () => {
     const def = resolveDefaultPackage();
     expect(def?.pkg.meta.slug).toBe(SLUG);
-    expect(def?.accent).toBe("terracotta");
+    expect(def?.accent).toBe("indigo");
   });
 });
 
