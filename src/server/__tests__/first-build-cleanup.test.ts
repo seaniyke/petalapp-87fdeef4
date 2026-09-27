@@ -17,7 +17,7 @@ function scripted(steps: ModelReply[]) {
 const kit = KIT_FILES.filter((f) => f.path.startsWith("src/components/motion/")).map((f) => ({ path: f.path, content: f.content }));
 const PKG = { path: "package.json", content: "{\"dependencies\":{}}" };
 const authority = (routes: string[] = []) => (tree: { path: string; content: string }[]) =>
-  readinessOf(finalizeVerification(runSourceGates({ files: [...tree.filter((f) => f.path !== "package.json"), PKG], requestedRoutes: routes, esbuild: { status: "passed" } })));
+  readinessOf(finalizeVerification(runSourceGates({ files: [...kit.filter((k) => !tree.some((t) => t.path === k.path)), ...tree.filter((f) => f.path !== "package.json"), PKG], requestedRoutes: routes, esbuild: { status: "passed" } })));
 // Import validation over the visible workspace (authored + kit), like the real gate.
 const validate = (f: { path: string; content: string }, tree: { path: string; content: string }[]) => {
   const errs: string[] = [];
