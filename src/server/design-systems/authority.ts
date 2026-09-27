@@ -38,12 +38,13 @@ export function resolveDefaultPackage(): { pkg: DesignSystemPackage; accent: str
  * most specific ("wine bar") to most general ("shop").
  */
 const ACCENT_RULES: Array<{ accent: string; re: RegExp }> = [
-  { accent: "terracotta", re: /\b(bakery|baker|bread|pastr|patisserie|cafe|caf\u00e9|coffee|restaurant|bistro|diner|kitchen|food|catering|deli|pizzeria|brunch|farm)\w*/i },
-  { accent: "emerald", re: /\b(eco|green|sustainab|organic|garden|plant|nature|recycl|solar|environment|outdoor|hiking|wellness|yoga|fitness)\w*/i },
-  { accent: "blue", re: /\b(clinic|hospital|health|medical|dental|doctor|patient|pharmacy|bank|finance|insurance|legal|law|accounting|logistics|school|university|government|enterprise)\w*/i },
-  { accent: "ruby", re: /\b(wine|whisky|whiskey|spirits|jewel|fashion|boutique|salon|spa|beauty|luxur|couture|perfume)\w*/i },
-  { accent: "mono", re: /\b(portfolio|architect|studio|gallery|photograph|minimal|editorial|magazine|journal|type)\w*/i },
-  { accent: "indigo", re: /\b(saas|dashboard|analytic|platform|api|developer|software|app|crm|admin|startup|ai|data|tool)\w*/i },
+  { accent: "terracotta", re: /\b(bakery|baker|bread|pastr|patisserie|cafe|caf\u00e9|coffee|restaurant|bistro|diner|kitchen|catering|deli|pizzeria|brunch|butcher|grocer)\w*/i },
+  { accent: "emerald", re: /\b(sustainab|organic|garden|recycl|solar|environment|outdoor|hiking|wellness|yoga|fitness|nursery|landscap)\w*/i },
+  { accent: "blue", re: /\b(clinic|hospital|health|medical|dental|doctor|patient|pharmac|bank|finance|insurance|legal|accounting|logistics|school|university|government|enterprise)\w*/i },
+  { accent: "ruby", re: /\b(wine|whisky|whiskey|spirits|jewel|fashion|boutique|salon|beauty|luxur|couture|perfume)\w*/i },
+  { accent: "mono", re: /\b(portfolio|architect|gallery|photograph|minimalist|editorial|magazine|journal)\w*/i },
+  { accent: "indigo", re: /\b(saas|dashboard|analytic|platform|developer|software|crm|startup|workspace|automation)\w*/i },
+
 ];
 
 const DARK_EDITORIAL = /\b(luxur|couture|fine dining|michelin|whisky|whiskey|spirits|cinematic|noir|dark mode only|dark[- ]first|high[- ]end|premium brand|gallery|architect|photograph)\w*/i;
