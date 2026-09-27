@@ -1,3 +1,4 @@
+import { isTargetEnabled } from "@/lib/site-flags";
 /**
  * Build-target inference from the prompt text.
  *
@@ -111,6 +112,15 @@ export function inferBuildTarget(prompt: string | null | undefined): TargetInfer
  * from the prompt. Otherwise `web`.
  */
 export function resolveBuildTarget(
+  headerTarget: string | null | undefined,
+  prompt: string | null | undefined,
+): { target: BuildTargetId; source: "header" | "inferred" | "default"; confidence: number } {
+  const r = resolveBuildTargetRaw(headerTarget, prompt);
+  // Paused build types never reach the engine: they build as web.
+  return isTargetEnabled(r.target) ? r : { target: "web", source: "default", confidence: 1 };
+}
+
+function resolveBuildTargetRaw(
   headerTarget: string | null | undefined,
   prompt: string | null | undefined,
 ): { target: BuildTargetId; source: "header" | "inferred" | "default"; confidence: number } {

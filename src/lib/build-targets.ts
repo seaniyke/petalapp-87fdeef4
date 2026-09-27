@@ -1,3 +1,4 @@
+import { isTargetEnabled } from "@/lib/site-flags";
 /**
  * Build-target registry — what the user is asking Kimble to build.
  *
@@ -41,7 +42,7 @@ export type BuildTarget = {
 };
 
 /** Ordered list shown in the picker. Mobile sits right after web. */
-export const BUILD_TARGETS: BuildTarget[] = [
+export const ALL_BUILD_TARGETS: BuildTarget[] = [
   {
     id: "web",
     label: "Web app",
@@ -132,11 +133,15 @@ export const BUILD_TARGETS: BuildTarget[] = [
   },
 ];
 
+/** Targets available right now (paused ones removed). */
+export const BUILD_TARGETS: BuildTarget[] = ALL_BUILD_TARGETS.filter((t) => isTargetEnabled(t.id));
+
 /**
  * Resolve an id (including legacy `ios` / `android`) to a BuildTarget.
  * Legacy mobile ids migrate transparently to the unified `mobile` entry.
  */
 export function getBuildTarget(id: string | null | undefined): BuildTarget {
+  if (!isTargetEnabled(id)) return BUILD_TARGETS[0];
   if (id === "ios" || id === "android") {
     return BUILD_TARGETS.find((t) => t.id === "mobile")!;
   }
@@ -147,6 +152,7 @@ export function getBuildTarget(id: string | null | undefined): BuildTarget {
 
 /** Treat any phone-shaped target (current or legacy) as "mobile". */
 export function isMobileTarget(id: string | null | undefined): boolean {
+  if (!isTargetEnabled(id)) return false;
   return id === "mobile" || id === "ios" || id === "android";
 }
 
