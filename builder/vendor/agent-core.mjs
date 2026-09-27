@@ -70740,6 +70740,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -96610,8 +96611,9 @@ function splitPromptBlocks(prompt) {
 function pick(sections, prefixes) {
   return sections.filter((s) => prefixes.some((p2) => norm(s.title).startsWith(norm(p2))));
 }
-function conditionalSkills(subtype) {
+function conditionalSkills(subtype, productSurface) {
   if (subtype === "marketing" || subtype === "fullstack") return ["page-composition"];
+  if (productSurface === "public" || productSurface === "public+app") return ["page-composition"];
   return [];
 }
 function assembleFirstBuildContext(args) {
@@ -96620,7 +96622,7 @@ function assembleFirstBuildContext(args) {
   const baseAlways = pick(blocks, [...BASE_ALWAYS, ...args.hasBackend ? BASE_WITH_BACKEND : BASE_WITHOUT_BACKEND]);
   const manualAlways = pick(manual, MANUAL_ALWAYS);
   const manualCond = pick(manual, MANUAL_FIRST_BUILD);
-  const skillIds = conditionalSkills(args.subtype).filter((id) => args.knowledge.skills[id]);
+  const skillIds = conditionalSkills(args.subtype, args.productSurface).filter((id) => args.knowledge.skills[id]);
   const preloaded = new Set([...manualAlways, ...manualCond].map((s) => s.slug));
   const reference = [];
   const index = [];
@@ -141966,6 +141968,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -145486,6 +145489,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145945,17 +145949,30 @@ __export(intent_contract_exports, {
   COMMERCE_PAGE: () => COMMERCE_PAGE,
   applyIntentContract: () => applyIntentContract,
   deriveIntentContract: () => deriveIntentContract,
+  deriveProductSurface: () => deriveProductSurface,
   divergentPages: () => divergentPages,
   renderIntentBlock: () => renderIntentBlock,
   stripRoutesFromRouter: () => stripRoutesFromRouter
 });
+function deriveProductSurface(brief, roles = []) {
+  const t = brief || "";
+  if (INTERNAL_ONLY.test(t)) return "app";
+  const wantsApp = APP_WORDS.test(t.replace(/\bweb ?app\b/gi, "app"));
+  if (PUBLIC_ONLY.test(t) && !wantsApp) return "public";
+  if (!wantsApp) return null;
+  if (SAAS.test(t)) return "public+app";
+  if (roles.some((r) => PUBLIC_ROLES.has(r))) return "public+app";
+  return "app";
+}
 function deriveIntentContract(brief, prd) {
   const text = brief || "";
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce");
   const commerceRequested = commerceFamily.triggers.test(text);
-  const family = FAMILIES.find((f) => f.id !== "commerce" && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
+  const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
+  const family = FAMILIES.find((f) => f.id !== "commerce" && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
   const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
   if (!family) {
+    const surface2 = deriveProductSurface(text, prd?.roles ?? []);
     return {
       archetype: null,
       label: prd?.domain || "",
@@ -145966,9 +145983,27 @@ function deriveIntentContract(brief, prd) {
       workflows: prd?.primaryWorkflow ? [prd.primaryWorkflow.name] : [],
       pages: [],
       exclusions,
-      commerceRequested
+      commerceRequested,
+      surface: surface2
     };
   }
+  const surface = family.productType === "workflow-app" ? deriveProductSurface(text, family.roles) : null;
+  if (surface === "public") {
+    return {
+      archetype: family.id,
+      label: family.label,
+      domain: prd?.domain || family.label,
+      productType: null,
+      roles: [],
+      entities: [],
+      workflows: [],
+      pages: [],
+      exclusions,
+      commerceRequested,
+      surface
+    };
+  }
+  const pages = surface === "public+app" ? [...PUBLIC_PAGES, ...family.pages.map((pg) => pg.route === "/" ? p("/dashboard", pg.label) : pg)] : family.pages;
   return {
     archetype: family.id,
     label: family.label,
@@ -145977,9 +146012,10 @@ function deriveIntentContract(brief, prd) {
     roles: family.roles,
     entities: family.entities,
     workflows: family.workflows,
-    pages: family.pages,
+    pages,
     exclusions,
-    commerceRequested
+    commerceRequested,
+    surface
   };
 }
 function divergentPages(contract, routes, brief) {
@@ -145999,11 +146035,12 @@ function divergentPages(contract, routes, brief) {
   return out;
 }
 function renderIntentBlock(c) {
-  if (!c.archetype && !c.exclusions.length) return "";
+  if (!c.archetype && !c.exclusions.length && !c.surface) return "";
   return [
     `
 
 ### Product contract (authoritative \u2014 do not drift)`,
+    c.surface ? SURFACE_LINE[c.surface] : "",
     c.archetype ? `Product: ${c.label}${c.domain && c.domain !== c.label ? ` (${c.domain})` : ""}.` : "",
     c.roles.length ? `Users/roles: ${c.roles.join(", ")}.` : "",
     c.entities.length ? `Core entities: ${c.entities.join(", ")}.` : "",
@@ -146015,6 +146052,9 @@ function renderIntentBlock(c) {
 function applyIntentContract(prd, brief, now = (/* @__PURE__ */ new Date()).toISOString()) {
   const c = deriveIntentContract(brief, prd);
   const next = { ...prd, intent: c };
+  if (c.surface === "public+app") {
+    next.requiredSurfaces = Array.from(/* @__PURE__ */ new Set([...next.requiredSurfaces ?? prd.requiredSurfaces, "landing", "auth"]));
+  }
   if (!c.archetype) {
     if (c.productType === "workflow-app" && prd.productType === "content-site") {
       next.productType = "workflow-app";
@@ -146026,7 +146066,7 @@ function applyIntentContract(prd, brief, now = (/* @__PURE__ */ new Date()).toIS
     next.productType = c.productType;
   }
   if (c.productType === "workflow-app") {
-    const keep = prd.requiredSurfaces.filter((s) => s !== "content" && s !== "catalog" && s !== "checkout");
+    const keep = (next.requiredSurfaces ?? prd.requiredSurfaces).filter((s) => s !== "content" && s !== "catalog" && s !== "checkout");
     next.requiredSurfaces = Array.from(/* @__PURE__ */ new Set([...keep, "dashboard", "settings"]));
     next.excludedSurfaces = Array.from(/* @__PURE__ */ new Set([...prd.excludedSurfaces.filter((s) => s !== "dashboard"), ...c.commerceRequested ? [] : ["checkout", "catalog"]]));
   }
@@ -146081,7 +146121,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, slug3;
+var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, SURFACE_LINE, slug3;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -146148,6 +146188,17 @@ var init_intent_contract = __esm({
         pages: [p("/", "Dashboard"), p("/projects", "Projects"), p("/tasks", "Tasks"), p("/team", "Team"), p("/settings", "Settings")]
       },
       {
+        id: "restaurant",
+        label: "restaurant management",
+        triggers: /\b(restaurants?|bistro|eatery|diner|table (booking|reservations?)|kitchen display|menu management|front of house)\b/i,
+        appOnly: true,
+        productType: "workflow-app",
+        roles: ["admin", "manager", "staff", "customer"],
+        entities: ["MenuItem", "Order", "Reservation", "Table", "Staff"],
+        workflows: ["Take an order", "Manage reservations", "Update the menu"],
+        pages: [p("/", "Dashboard"), p("/orders", "Orders"), p("/menu", "Menu"), p("/reservations", "Reservations"), p("/tables", "Tables"), p("/staff", "Staff"), p("/settings", "Settings")]
+      },
+      {
         id: "commerce",
         label: "online store",
         triggers: /\b(e-?commerce|online (store|shop)|storefront|shopping cart|\bcart\b|checkout|sell (products|goods|online)|webshop|\bshop\b|\bstore\b)\b/i,
@@ -146158,10 +146209,21 @@ var init_intent_contract = __esm({
         pages: [p("/", "Home"), p("/shop", "Shop"), p("/cart", "Cart"), p("/checkout", "Checkout")]
       }
     ];
+    PUBLIC_ROLES = /* @__PURE__ */ new Set(["patient", "student", "parent", "customer"]);
+    PUBLIC_ONLY = /\b(marketing (site|website|page)|landing page|one-?page|(web)?site for|website|homepage|brochure|portfolio)\b/i;
+    INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashboard)|(just|only) (an? |the )?dashboard|dashboard (for|to) (our|my) (staff|team|employees))\b/i;
+    SAAS = /\b(saas|software as a service|platform|marketplace)\b/i;
+    APP_WORDS = /\b(management system|management app|system|portal|dashboard|app|application|sign ?in|log ?in|accounts?|saas|platform|crm|erp)\b/i;
+    PUBLIC_PAGES = [p("/", "Home"), p("/login", "Sign in")];
     APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
     COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
     COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
     ALWAYS_ALLOWED = /^\/($|auth|login|sign-?in|sign-?up|register|account|profile|dashboard|settings|404|not-found)/i;
+    SURFACE_LINE = {
+      public: "Structure: a public website only \u2014 header navigation and a footer, no sign-in area or dashboard.",
+      app: "Structure: an application only \u2014 the app shell (sidebar or top bar) on every page, no marketing landing page.",
+      "public+app": "Structure: TWO surfaces. (1) Public website at / (and any public pages): header navigation, footer, what the product does, and a clear Sign in / Get started entry to /login. (2) Signed-in application from /dashboard onwards: its own app shell (sidebar navigation), no marketing footer. Keep the two layouts separate."
+    };
     slug3 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   }
 });
@@ -146496,6 +146558,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -154826,6 +154889,52 @@ var init_gates = __esm({
   }
 });
 
+// src/server/verification/responsive.ts
+function responsiveWarnings(files, changedPaths) {
+  const changed = new Set(changedPaths);
+  const out = [];
+  for (const f of files) {
+    if (!changed.has(f.path) || !/\.(tsx|jsx)$/.test(f.path)) continue;
+    const src2 = f.content;
+    const usesKitTable = /from\s+["'][^"']*components\/ui\/table["']/.test(src2);
+    if (!usesKitTable) {
+      const re = /<table\b/g;
+      let m;
+      while (m = re.exec(src2)) {
+        const before = src2.slice(Math.max(0, m.index - 800), m.index);
+        if (!SCROLL_WRAPPER.test(before)) {
+          out.push({ path: f.path, line: lineOf2(src2, m.index), rule: "table-no-scroll", message: "table has no overflow-x-auto wrapper; it can overflow a phone screen" });
+        }
+      }
+    }
+    const cls = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|\{`([^`]*)`\})/g;
+    let c;
+    while (c = cls.exec(src2)) {
+      const list4 = c[1] ?? c[2] ?? c[3] ?? "";
+      const tokens2 = list4.split(/\s+/);
+      for (const t of tokens2) {
+        const w = /^(min-)?w-\[(\d+)px\]$/.exec(t);
+        if (!w || Number(w[2]) <= MOBILE_LIMIT_PX) continue;
+        const escaped = tokens2.some((x) => /^max-w-/.test(x) || /^(sm|md|lg|xl|2xl):(min-)?w-/.test(x)) || /^(sm|md|lg|xl|2xl):/.test(t);
+        if (!escaped) {
+          out.push({ path: f.path, line: lineOf2(src2, c.index), rule: "fixed-width-over-mobile", message: `${t} is wider than a phone with no max-width or breakpoint alternative` });
+        }
+      }
+    }
+  }
+  return out;
+}
+var MOBILE_LIMIT_PX, SCROLL_WRAPPER, lineOf2;
+var init_responsive = __esm({
+  "src/server/verification/responsive.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    MOBILE_LIMIT_PX = 480;
+    SCROLL_WRAPPER = /overflow-(x-)?(auto|scroll)/;
+    lineOf2 = (src2, idx) => src2.slice(0, idx).split("\n").length;
+  }
+});
+
 // src/server/verification/source.server.ts
 var source_server_exports = {};
 __export(source_server_exports, {
@@ -154859,7 +154968,13 @@ async function verifyProposedSource(args) {
     }
   }
   const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
-  return { ...record, semantic };
+  let responsive2 = [];
+  try {
+    responsive2 = responsiveWarnings(args.tree, args.changedPaths);
+    if (responsive2.length) console.log(`[verify] responsive_advisory ${JSON.stringify(responsive2.slice(0, 10))}`);
+  } catch {
+  }
+  return { ...record, semantic, responsive: responsive2 };
 }
 var init_source_server = __esm({
   "src/server/verification/source.server.ts"() {
@@ -154868,6 +154983,7 @@ var init_source_server = __esm({
     init_scaffold_ownership_server();
     init_identifiers_server();
     init_gates();
+    init_responsive();
   }
 });
 
@@ -171601,7 +171717,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -179530,6 +179645,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 }
               },
               subtype: detectedWebSubtype ?? "",
+              productSurface: intentContract?.surface ?? null,
               hasBackend: !!(backend2 || sharedBackend),
               productContract: {
                 intent: intentBrief ? `### Canonical turn intent (HARD CONTRACT)

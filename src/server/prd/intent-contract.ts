@@ -33,7 +33,18 @@ export interface IntentContract {
   exclusions: string[];
   /** True when the request itself asks for selling goods online. */
   commerceRequested: boolean;
+  /**
+   * Product structure, decided before any page is written:
+   *  - "public": a marketing website only (no signed-in app),
+   *  - "app": an internal application only (dashboard behind sign-in),
+   *  - "public+app": a public website AND a signed-in application.
+   * null = no confident decision (existing behaviour applies). Optional so
+   * contracts stored before this field existed still read correctly.
+   */
+  surface?: ProductSurface | null;
 }
+
+export type ProductSurface = "public" | "app" | "public+app";
 
 interface Family {
   id: string;
@@ -44,6 +55,8 @@ interface Family {
   entities: string[];
   workflows: string[];
   pages: IntentPage[];
+  /** Only applies when the request clearly asks for an application (the domain word alone often means a website). */
+  appOnly?: boolean;
 }
 
 const p = (route: string, label: string): IntentPage => ({ route, label });
@@ -111,6 +124,17 @@ const FAMILIES: Family[] = [
     pages: [p("/", "Dashboard"), p("/projects", "Projects"), p("/tasks", "Tasks"), p("/team", "Team"), p("/settings", "Settings")],
   },
   {
+    id: "restaurant",
+    label: "restaurant management",
+    triggers: /\b(restaurants?|bistro|eatery|diner|table (booking|reservations?)|kitchen display|menu management|front of house)\b/i,
+    appOnly: true,
+    productType: "workflow-app",
+    roles: ["admin", "manager", "staff", "customer"],
+    entities: ["MenuItem", "Order", "Reservation", "Table", "Staff"],
+    workflows: ["Take an order", "Manage reservations", "Update the menu"],
+    pages: [p("/", "Dashboard"), p("/orders", "Orders"), p("/menu", "Menu"), p("/reservations", "Reservations"), p("/tables", "Tables"), p("/staff", "Staff"), p("/settings", "Settings")],
+  },
+  {
     id: "commerce",
     label: "online store",
     triggers: /\b(e-?commerce|online (store|shop)|storefront|shopping cart|\bcart\b|checkout|sell (products|goods|online)|webshop|\bshop\b|\bstore\b)\b/i,
@@ -121,6 +145,37 @@ const FAMILIES: Family[] = [
     pages: [p("/", "Home"), p("/shop", "Shop"), p("/cart", "Cart"), p("/checkout", "Checkout")],
   },
 ];
+
+/** Roles that are members of the public (not staff): their presence means the product faces outsiders. */
+const PUBLIC_ROLES = new Set(["patient", "student", "parent", "customer"]);
+/** The request asks only for a website/marketing presence. */
+const PUBLIC_ONLY = /\b(marketing (site|website|page)|landing page|one-?page|(web)?site for|website|homepage|brochure|portfolio)\b/i;
+/** The request asks for an internal / staff-only tool. */
+const INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashboard)|(just|only) (an? |the )?dashboard|dashboard (for|to) (our|my) (staff|team|employees))\b/i;
+/** Products that sell themselves to the public by nature. */
+const SAAS = /\b(saas|software as a service|platform|marketplace)\b/i;
+/** The request asks for signed-in functionality. */
+const APP_WORDS = /\b(management system|management app|system|portal|dashboard|app|application|sign ?in|log ?in|accounts?|saas|platform|crm|erp)\b/i;
+
+/**
+ * Deterministic product structure. Explicit words win (internal → app,
+ * website-only → public); otherwise a system whose users include members of
+ * the public, or a SaaS/platform, gets both surfaces; staff-only domains (HR,
+ * inventory, CRM, projects) stay apps. Returns null when nothing is clear.
+ */
+export function deriveProductSurface(brief: string, roles: string[] = []): ProductSurface | null {
+  const t = brief || "";
+  if (INTERNAL_ONLY.test(t)) return "app";
+  const wantsApp = APP_WORDS.test(t.replace(/\bweb ?app\b/gi, "app"));
+  if (PUBLIC_ONLY.test(t) && !wantsApp) return "public";
+  if (!wantsApp) return null;
+  if (SAAS.test(t)) return "public+app";
+  if (roles.some((r) => PUBLIC_ROLES.has(r))) return "public+app";
+  return "app";
+}
+
+/** Public pages added in front of the app for a public+app product. */
+const PUBLIC_PAGES: IntentPage[] = [p("/", "Home"), p("/login", "Sign in")];
 
 const APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
 
@@ -134,9 +189,11 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce")!;
   const commerceRequested = commerceFamily.triggers.test(text);
   // Domain families win over commerce words used incidentally ("hospital pharmacy store").
-  const family = FAMILIES.find((f) => f.id !== "commerce" && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
+  const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
+  const family = FAMILIES.find((f) => f.id !== "commerce" && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
   const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
   if (!family) {
+    const surface = deriveProductSurface(text, prd?.roles ?? []);
     return {
       archetype: null,
       label: prd?.domain || "",
@@ -148,8 +205,31 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
       pages: [],
       exclusions,
       commerceRequested,
+      surface,
     };
   }
+  const surface = family.productType === "workflow-app" ? deriveProductSurface(text, family.roles) : null;
+  if (surface === "public") {
+    // A marketing website ABOUT the domain (e.g. "a website for a hospital"):
+    // keep the domain, but not the internal app's pages or product type.
+    return {
+      archetype: family.id,
+      label: family.label,
+      domain: prd?.domain || family.label,
+      productType: null,
+      roles: [],
+      entities: [],
+      workflows: [],
+      pages: [],
+      exclusions,
+      commerceRequested,
+      surface,
+    };
+  }
+  // public+app: public pages at the front, the app's home moves to /dashboard.
+  const pages = surface === "public+app"
+    ? [...PUBLIC_PAGES, ...family.pages.map((pg) => (pg.route === "/" ? p("/dashboard", pg.label) : pg))]
+    : family.pages;
   return {
     archetype: family.id,
     label: family.label,
@@ -158,9 +238,10 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
     roles: family.roles,
     entities: family.entities,
     workflows: family.workflows,
-    pages: family.pages,
+    pages,
     exclusions,
     commerceRequested,
+    surface,
   };
 }
 
@@ -191,11 +272,20 @@ export function divergentPages(contract: IntentContract, routes: string[], brief
   return out;
 }
 
+const SURFACE_LINE: Record<ProductSurface, string> = {
+  public: "Structure: a public website only — header navigation and a footer, no sign-in area or dashboard.",
+  app: "Structure: an application only — the app shell (sidebar or top bar) on every page, no marketing landing page.",
+  "public+app":
+    "Structure: TWO surfaces. (1) Public website at / (and any public pages): header navigation, footer, what the product does, and a clear Sign in / Get started entry to /login. " +
+    "(2) Signed-in application from /dashboard onwards: its own app shell (sidebar navigation), no marketing footer. Keep the two layouts separate.",
+};
+
 /** Prompt block for the shell/page writers: what we are building and what is OUT. */
 export function renderIntentBlock(c: IntentContract): string {
-  if (!c.archetype && !c.exclusions.length) return "";
+  if (!c.archetype && !c.exclusions.length && !c.surface) return "";
   return [
     `\n\n### Product contract (authoritative — do not drift)`,
+    c.surface ? SURFACE_LINE[c.surface] : "",
     c.archetype ? `Product: ${c.label}${c.domain && c.domain !== c.label ? ` (${c.domain})` : ""}.` : "",
     c.roles.length ? `Users/roles: ${c.roles.join(", ")}.` : "",
     c.entities.length ? `Core entities: ${c.entities.join(", ")}.` : "",
@@ -214,6 +304,9 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(
 export function applyIntentContract(prd: Prd, brief: string, now = new Date().toISOString()): Prd {
   const c = deriveIntentContract(brief, prd);
   const next: Prd = { ...prd, intent: c };
+  if (c.surface === "public+app") {
+    next.requiredSurfaces = Array.from(new Set<PrdSurface>([...(next.requiredSurfaces ?? prd.requiredSurfaces), "landing", "auth"]));
+  }
   if (!c.archetype) {
     if (c.productType === "workflow-app" && prd.productType === "content-site") {
       next.productType = "workflow-app";
@@ -225,7 +318,7 @@ export function applyIntentContract(prd: Prd, brief: string, now = new Date().to
     next.productType = c.productType;
   }
   if (c.productType === "workflow-app") {
-    const keep = prd.requiredSurfaces.filter((s) => s !== "content" && s !== "catalog" && s !== "checkout");
+    const keep = (next.requiredSurfaces ?? prd.requiredSurfaces).filter((s) => s !== "content" && s !== "catalog" && s !== "checkout");
     next.requiredSurfaces = Array.from(new Set<PrdSurface>([...keep, "dashboard", "settings"]));
     next.excludedSurfaces = Array.from(new Set<PrdSurface>([...prd.excludedSurfaces.filter((s) => s !== "dashboard"), ...(c.commerceRequested ? [] : (["checkout", "catalog"] as PrdSurface[]))]));
   }

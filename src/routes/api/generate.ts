@@ -4807,6 +4807,7 @@ async function handleGenerateRequestCore(
                 },
               },
               subtype: detectedWebSubtype ?? "",
+              productSurface: intentContract?.surface ?? null,
               hasBackend: !!(backend || sharedBackend),
               productContract: {
                 intent: intentBrief ? `### Canonical turn intent (HARD CONTRACT)\n${intentBrief}\nSatisfy this exact outcome; do not substitute a different feature, page, or product.` : "",
