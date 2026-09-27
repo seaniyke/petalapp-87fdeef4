@@ -21,4 +21,7 @@
 - [x] tokens.css ships Tailwind v4 `@theme inline` so bg-background/text-muted-foreground/font-serif actually resolve in generated apps
 - [x] resolvePackageForIntent: deterministic package + accent from the brief (no AI call)
 - [x] first-build brief carries DESIGN.md + COMPOSITION_RULES (section shapes, anti-monotony, rhythm) + COPY_RULES (banned AI vocabulary)
+- [x] systemTextOf: every system message (incl. cache_control part arrays) reaches runToolLoop — first builds ran on "[object Object]" so no manual, skills or design contract was in live context
+- [x] managedSurfaceRefusal in tool-loop: config stems (vite/tailwind/postcss/.postcssrc, any extension), package.json/tsconfig/components.json/index.html, and a second stylesheet are refused deterministically
+- [x] write validation covers .css (v3 @tailwind directive, unbalanced braces), not just tsx/jsx
 - [ ] Live bakery re-run vs 2m08s / 11 calls / $0.0098 / 15 files baseline — blocked on user publishing
