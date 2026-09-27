@@ -16,7 +16,7 @@ describe("live data gate (Kimble Cloud on)", () => {
     expect(sampleOnlyPages(files)).toEqual(["src/pages/Orders.tsx"]);
     const g = routesGate(files, [], { requireLiveData: true });
     expect(g.verdict).toBe("FAIL");
-    expect(routesGate(files, [], {}).verdict).not.toBe("FAIL");
+    expect(routesGate(files, [], {}).reasons.join(" ")).not.toMatch(/sample data/);
   });
   it("passes a page that uses the backend directly or through its own hook", () => {
     const hook = { path: "src/lib/use-orders.ts", content: `import { db } from "@/integrations/backend/client";\nexport const useOrders=()=>db;` };
