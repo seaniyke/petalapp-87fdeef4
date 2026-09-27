@@ -842,7 +842,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         const seenKey = `${path}:${s}:${e}`;
         const h = hash(c);
         if (readSeen.get(seenKey) === h) {
-          return { output: rereadNotice(path, incompleteNow()), isError: false, reread: true };
+          return { output: rereadNotice(path, incompleteNow()), isError: false };
         }
         readSeen.set(seenKey, h);
         return { output: clip(lines.slice(s - 1, e).map((l, i) => `${s + i}: ${l}`).join("\n"), cfg.maxToolOutput), isError: false };
