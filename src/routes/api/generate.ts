@@ -2520,15 +2520,54 @@ async function handleGenerateRequestCore(
   // Intent → action. The inline "Enable X" cards were removed; Kimble now acts
   // on the same detection itself. Best-effort: any failure leaves the turn
   // exactly as it would have been.
+  // Product planner verdict, decided BEFORE any page is written: an
+  // application (internal or public+app) needs accounts and saved data; a
+  // public website does not. First builds only — edits keep what they have.
+  let productNeedsBackend: { reason: string } | null = null;
+  if (isInitial) {
+    try {
+      const { deriveIntentContract } = await import("@/server/prd/intent-contract");
+      const c = deriveIntentContract(latestUserMessage(messages), null);
+      if (c.surface === "app" || c.surface === "public+app") {
+        productNeedsBackend = {
+          reason: `Your ${c.label || "app"} needs user accounts and saved data.`,
+        };
+      }
+    } catch {
+      /* no verdict — keyword detection below still applies */
+    }
+  }
   const intentActions = await resolveIntentActions({
     projectId: body.projectId,
     prompt: latestUserMessage(messages),
+    productNeedsBackend,
 
     hasBackend: Boolean(backend),
     hasSharedBackend: Boolean(sharedBackend),
   });
   if (intentActions.enabledSharedBackend && body.projectId) {
     sharedBackend = await lookupSharedBackendForGenerate(body.projectId);
+  }
+  // Cloud economics — kept apart from AI/build economics. The shared tier
+  // runs inside Kimble's own database, so its per-project cost is not
+  // measured: recorded as a resource with an UNKNOWN cost, never invented.
+  if (intentActions.cloud.status === "enabled" && body.projectId) {
+    void import("@/server/cost-events.server").then(({ recordCostEvents }) =>
+      recordCostEvents([{
+        sourceRef: `cloud:provision:shared:${body.projectId}`,
+        userId,
+        projectId: body.projectId,
+        stage: "cloud_provision",
+        category: "DATABASE",
+        provider: "kimble_shared(supabase)",
+        resource: "shared_backend",
+        quantity: 1,
+        unit: "project",
+        costUsd: null,
+        basis: "UNKNOWN",
+        metadata: { domain: "cloud", tier: "kimble", event: "provisioned", includes: ["database", "auth", "rest_api"] },
+      }]),
+    ).catch(() => {});
   }
 
 
@@ -3572,6 +3611,15 @@ async function handleGenerateRequestCore(
       // BEFORE any page is generated (no generation/repair cycles wasted).
       if (intentContract.pages.length) {
         const core = intentContract.pages.map((pg) => pg.route);
+        // Template sub-pages (e.g. /dashboard/items) duplicate contract pages;
+        // keep only nested routes the contract lists or the user named.
+        const lowerAsk = lastUserText.toLowerCase();
+        for (const r of [...plannedRoutes]) {
+          const segs = r.split("/").filter(Boolean);
+          if (segs.length > 1 && segs[0] !== "auth" && !core.includes(r) && !lowerAsk.includes(segs[segs.length - 1]!.replace(/^\$/, ""))) {
+            plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
+          }
+        }
         const covered = core.filter((r) => plannedRoutes.includes(r)).length;
         if (covered * 2 < core.length) {
           const added = core.filter((r) => !plannedRoutes.includes(r));
@@ -4168,6 +4216,19 @@ async function handleGenerateRequestCore(
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
         if (buildReservation?.ok) {
           controller.enqueue(encoder.encode(sse({ type: "credits_planned", credits: buildReservation.estimated })));
+        }
+        {
+          // Real provisioning outcome (it already happened above) — never a guess.
+          const cd = intentActions.cloud;
+          const say = (message: string) => controller.enqueue(encoder.encode(sse({ type: "status", message })));
+          if (cd.status === "enabled") {
+            say(`${cd.reason} Kimble Cloud enabled a database and sign-in for it.`);
+            say("Connecting your app to Kimble Cloud…");
+          } else if (cd.status === "already_enabled" && isInitial) {
+            say("Kimble Cloud is already on for this project — connecting your app to it…");
+          } else if (cd.status === "failed" && cd.needed) {
+            say(`${cd.reason ?? "This app needs saved data."} Kimble Cloud couldn't be switched on, so accounts and saved data are not connected yet.`);
+          }
         }
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
         if (designDirection) {

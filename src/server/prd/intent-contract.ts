@@ -277,7 +277,8 @@ const SURFACE_LINE: Record<ProductSurface, string> = {
   app: "Structure: an application only — the app shell (sidebar or top bar) on every page, no marketing landing page.",
   "public+app":
     "Structure: TWO surfaces. (1) Public website at / (and any public pages): header navigation, footer, what the product does, and a clear Sign in / Get started entry to /login. " +
-    "(2) Signed-in application from /dashboard onwards: its own app shell (sidebar navigation), no marketing footer. Keep the two layouts separate.",
+    "(2) Signed-in application from /dashboard onwards: its own app shell (sidebar navigation), no marketing footer. Keep the two layouts separate. " +
+    "The app shell is a pathless layout route (no path prop) so / belongs only to the public Home.",
 };
 
 /** Prompt block for the shell/page writers: what we are building and what is OUT. */
@@ -290,7 +291,7 @@ export function renderIntentBlock(c: IntentContract): string {
     c.roles.length ? `Users/roles: ${c.roles.join(", ")}.` : "",
     c.entities.length ? `Core entities: ${c.entities.join(", ")}.` : "",
     c.workflows.length ? `Primary workflows: ${c.workflows.join("; ")}.` : "",
-    c.pages.length ? `Pages: ${c.pages.map((x) => `${x.label} (${x.route})`).join(", ")}.` : "",
+    c.pages.length ? `Pages: ${c.pages.map((x) => `${x.label} (${x.route})`).join(", ")}. One route per page — no duplicate routes and no extra navigation-only pages (e.g. a Menu page repeating the sidebar).` : "",
     c.exclusions.length ? `OUT OF SCOPE — never add: ${c.exclusions.join(", ")}.` : "",
   ].filter(Boolean).join("\n");
 }

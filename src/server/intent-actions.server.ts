@@ -65,7 +65,21 @@ export interface ResolveIntentActionsArgs {
   hasBackend: boolean;
   /** True when the free shared backend is already attached. */
   hasSharedBackend: boolean;
+  /**
+   * Product-level verdict from the intent contract (decided before any page
+   * is written): the product is an application with accounts and saved data.
+   * Null when the product is a public website or no verdict was made.
+   */
+  productNeedsBackend?: { reason: string } | null;
 }
+
+/** What happened to Kimble Cloud on this turn — real state, never assumed. */
+export type CloudDecision = {
+  needed: boolean;
+  reason: string | null;
+  status: "not_needed" | "already_enabled" | "enabled" | "failed";
+  error?: string;
+};
 
 export interface ResolvedIntentActions {
   /** Everything the turn implies. */
@@ -85,7 +99,10 @@ export interface ResolvedIntentActions {
    * building the app, which is the common case.
    */
   surface: SurfaceId | null;
+  cloud: CloudDecision;
 }
+
+const NO_CLOUD: CloudDecision = { needed: false, reason: null, status: "not_needed" };
 
 const EMPTY: ResolvedIntentActions = {
   intents: [],
@@ -93,6 +110,7 @@ const EMPTY: ResolvedIntentActions = {
   promptBlock: "",
   userNote: null,
   surface: null,
+  cloud: NO_CLOUD,
 };
 
 export async function resolveIntentActions(
@@ -118,12 +136,21 @@ export async function resolveIntentActions(
   try {
     intents = detectIntents(args.prompt, null);
   } catch {
-    return { ...EMPTY, surface, promptBlock: surfaceBlock };
+    intents = [];
   }
-  if (intents.length === 0) return { ...EMPTY, surface, promptBlock: surfaceBlock };
+  const product = args.productNeedsBackend ?? null;
+  if (intents.length === 0 && !product) return { ...EMPTY, surface, promptBlock: surfaceBlock };
 
-  const needsBackend = intents.some((i) => BACKEND_IMPLYING.includes(i));
+  const keywordNeed = intents.some((i) => BACKEND_IMPLYING.includes(i));
+  const needsBackend = keywordNeed || Boolean(product);
   let enabledSharedBackend = false;
+  let cloud: CloudDecision = NO_CLOUD;
+  if (needsBackend) {
+    const reason = product?.reason ?? "This request needs saved data or accounts.";
+    cloud = args.hasBackend || args.hasSharedBackend
+      ? { needed: true, reason, status: "already_enabled" }
+      : { needed: true, reason, status: "failed", error: "no project" };
+  }
 
   // Attach the free shared backend rather than asking. It costs nothing, has
   // no plan gate, and is exactly what the old "Enable backend" card did after
@@ -138,12 +165,12 @@ export async function resolveIntentActions(
       const { enableSharedBackend } = await import("@/server/shared-backend.server");
       await enableSharedBackend(args.projectId);
       enabledSharedBackend = true;
+      cloud = { ...cloud, status: "enabled", error: undefined };
       console.log(`[intent-actions] shared backend auto-enabled for ${args.projectId}`);
     } catch (e) {
-      console.warn(
-        "[intent-actions] shared backend auto-enable failed:",
-        e instanceof Error ? e.message : String(e),
-      );
+      const msg = e instanceof Error ? e.message : String(e);
+      cloud = { ...cloud, status: "failed", error: msg };
+      console.warn("[intent-actions] shared backend auto-enable failed:", msg);
     }
   }
 
@@ -169,6 +196,11 @@ export async function resolveIntentActions(
   const blocked = intents.filter((i) => NEEDS_THE_USER.includes(i));
 
   const lines: string[] = [];
+  if (cloud.status === "failed") {
+    lines.push(
+      "Kimble Cloud could NOT be switched on for this turn. Do not claim accounts or saved data work; build the screens and keep data local, and say plainly in one sentence that saved accounts are not connected yet.",
+    );
+  }
   if (briefs.length > 0 || enabledSharedBackend) {
     lines.push("## CAPABILITIES THIS REQUEST IMPLIES (implement them, do not suggest them)");
     if (enabledSharedBackend) {
@@ -207,5 +239,6 @@ export async function resolveIntentActions(
     // line would be said twice. The surface block already covers it.
     userNote: surface ? null : userNote,
     surface,
+    cloud,
   };
 }
