@@ -48,7 +48,7 @@ describe("telemetry persistence", () => {
       callModel: async () => replies.shift()!,
       validate: async () => [],
       readiness: async () => ({ ready: true, findings: [] }),
-      onTrace: (t) => sink.record(t),
+      onTrace: (t: CallTrace) => sink.record(t),
     } as never);
     await sink.flush();
     expect(r.outcome).toBe("finished");
