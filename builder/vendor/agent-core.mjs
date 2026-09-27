@@ -70479,6 +70479,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -150671,7 +150672,7 @@ function frameIsComplete(files, pageCount = 2) {
   const routed = pageCount <= 1 || /<Routes\b|createBrowserRouter|<Route\b/.test(app);
   if (!routed) return false;
   let nav = NAV_TAG.test(app);
-  let footer = FOOTER_TAG.test(app);
+  let footer = FOOTER_TAG.test(app) || APP_SIDEBAR_TAG.test(app);
   const appRoutesInline = /<Routes\b|<Route\b|createBrowserRouter/.test(app) || pageCount <= 1;
   const seen = /* @__PURE__ */ new Set(["src/App.tsx"]);
   let frontier = [{ path: "src/App.tsx", src: app }];
@@ -150686,7 +150687,7 @@ function frameIsComplete(files, pageCount = 2) {
         const wraps = /<Outlet\b|\{\s*(props\.)?children\s*\}/.test(c);
         const counts = wraps || depth > 0 || appRoutesInline;
         if (counts && NAV_TAG.test(c)) nav = true;
-        if (counts && FOOTER_TAG.test(c)) footer = true;
+        if (counts && (FOOTER_TAG.test(c) || APP_SIDEBAR_TAG.test(c))) footer = true;
         next.push({ path: t, src: c });
       }
     }
@@ -150709,7 +150710,7 @@ async function mapBounded(items, limit, fn2) {
   await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
   return out;
 }
-var DECOMPOSED_MARKER, NAV_TAG, FOOTER_TAG, PAGE_CONCURRENCY;
+var DECOMPOSED_MARKER, NAV_TAG, FOOTER_TAG, APP_SIDEBAR_TAG, PAGE_CONCURRENCY;
 var init_write = __esm({
   "src/server/engine/write.ts"() {
     init_define_import_meta_env();
@@ -150717,6 +150718,7 @@ var init_write = __esm({
     DECOMPOSED_MARKER = "DECOMPOSED PAGE";
     NAV_TAG = /<(nav|header)\b/i;
     FOOTER_TAG = /<footer\b/i;
+    APP_SIDEBAR_TAG = /<aside\b/i;
     PAGE_CONCURRENCY = 4;
   }
 });
@@ -154690,7 +154692,7 @@ function routesGate(files, requestedRoutes, opts = {}) {
   const reasons = [];
   const bad = [];
   if (opts.requireShell && !frameIsComplete(files, requestedRoutes.length)) {
-    reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation and footer)");
+    reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation, and a footer or sidebar frame)");
     bad.push("src/App.tsx");
   }
   const completeness = assessCompleteness({ requestedRoutes, files });
