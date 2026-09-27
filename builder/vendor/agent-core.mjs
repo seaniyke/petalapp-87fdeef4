@@ -62841,7 +62841,6 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
-    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -141815,6 +141814,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -152938,7 +152938,44 @@ ${notReady}`, isError: true };
     state.iteration++;
     const startedAt = Date.now();
     const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + ("tool_calls" in m && m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
-    const reply = await args.callModel(messages, tools, args.signal);
+    let reply;
+    try {
+      reply = await args.callModel(messages, tools, args.signal);
+    } catch (e) {
+      const failed = {
+        call: state.iteration,
+        startedAt,
+        durationMs: Date.now() - startedAt,
+        ttftMs: null,
+        usage: null,
+        model: null,
+        toolCalls: [],
+        toolMs: 0,
+        validationMs: 0,
+        writes: 0,
+        compacted,
+        finishReason: null,
+        upstream: null,
+        workUnit: "none",
+        writtenPaths: [],
+        progress: false,
+        context: { system: args.system.length, brief: args.brief.length, history: Math.max(0, sentChars - args.system.length - args.brief.length) },
+        outputTokensPerSec: null,
+        filesRead: [],
+        knowledgeChars: 0,
+        readMisses: 0,
+        validationFailures: 0,
+        toolErrors: 0,
+        recovery: null,
+        error: e instanceof Error ? e.message : String(e)
+      };
+      traces.push(failed);
+      try {
+        args.onTrace?.(failed);
+      } catch {
+      }
+      throw e;
+    }
     const durationMs = Date.now() - startedAt;
     messages.push({ role: "assistant", content: reply.content ?? null, ...reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {} });
     const t0 = Date.now();
@@ -152997,6 +153034,7 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
     const progress = madeProgress(before, state, tree);
     const outTokens = reply.usage?.completionTokens ?? 0;
     const genMs = durationMs - (reply.ttftMs ?? 0);
+    const filesRead = actions.filter((a2) => a2.tool === "read_file" && a2.path && !a2.miss).map((a2) => a2.path);
     const trace = {
       upstream: reply.upstream ?? null,
       workUnit: classifyWorkUnit(reply.toolCalls.map((c) => c.function.name), writtenPaths),
@@ -153015,10 +153053,20 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
       validationMs,
       writes: state.written.length - writesBefore,
       compacted,
-      finishReason: reply.finishReason ?? null
+      finishReason: reply.finishReason ?? null,
+      filesRead,
+      knowledgeChars: filesRead.filter((p2) => p2.startsWith("knowledge/")).reduce((n, p2) => n + (ref.get(p2)?.length ?? 0), 0),
+      readMisses: actions.filter((a2) => a2.miss).length,
+      validationFailures: writtenPaths.filter((p2) => (state.validation.get(p2) ?? []).length > 0).length,
+      toolErrors: actions.filter((a2) => a2.isError).length,
+      recovery: writtenPaths.some((p2) => (before.errors.get(p2) ?? 0) > 0) ? "correction" : null,
+      error: null
     };
     traces.push(trace);
-    args.onTrace?.(trace);
+    try {
+      args.onTrace?.(trace);
+    } catch {
+    }
     if (!state.finished) {
       recent.push(...actions);
       if (recent.length > 40) recent.splice(0, recent.length - 40);
@@ -165746,6 +165794,184 @@ Do NOT ship a screen for an entity you did not model, and do NOT model an entity
 init_prompt_limits();
 init_agent_knowledge();
 init_first_build_context();
+
+// src/server/engine/loop-telemetry.ts
+init_define_import_meta_env();
+init_first_build_context();
+function classifyCall(t) {
+  if (t.error) return "error";
+  const tools = t.toolCalls;
+  if (tools.includes("finish")) return "completion";
+  if (t.writtenPaths.length) {
+    if (t.recovery === "correction") return "correction";
+    return tools.every((n) => n === "edit_file") ? "edit" : "file_creation";
+  }
+  if (tools.length && tools.every((n) => n === "plan_tasks")) return "planning";
+  if (tools.length && tools.every((n) => n === "read_file" || n === "list_files" || n === "search")) {
+    return t.filesRead.length && t.filesRead.every((p2) => p2.startsWith(`${KNOWLEDGE_DIR}/`)) ? "knowledge" : "inspection";
+  }
+  if (t.toolErrors > 0 || t.validationFailures > 0) return "correction";
+  return "tool_only";
+}
+function traceRow(t, ids) {
+  const prompt = t.usage?.promptTokens ?? null;
+  const cached7 = t.usage?.cachedTokens ?? null;
+  const iso = (ms) => ms == null ? null : new Date(ms).toISOString();
+  return {
+    turn_id: ids.turnId,
+    project_id: ids.projectId,
+    call_no: t.call,
+    work_unit: t.workUnit,
+    call_class: classifyCall(t),
+    model: t.model,
+    upstream_provider: t.upstream,
+    request_started_at: iso(t.startedAt),
+    first_token_at: iso(t.ttftMs == null ? null : t.startedAt + t.ttftMs),
+    completed_at: iso(t.startedAt + t.durationMs),
+    system_chars: t.context.system,
+    brief_chars: t.context.brief,
+    history_chars: t.context.history,
+    knowledge_chars: t.knowledgeChars,
+    prompt_tokens: prompt,
+    cached_tokens: cached7,
+    uncached_tokens: prompt == null ? null : Math.max(0, prompt - (cached7 ?? 0)),
+    completion_tokens: t.usage?.completionTokens ?? null,
+    ttft_ms: t.ttftMs,
+    duration_ms: t.durationMs,
+    output_tps: t.outputTokensPerSec,
+    tool_ms: t.toolMs,
+    validation_ms: t.validationMs,
+    tool_calls: t.toolCalls,
+    files_read: t.filesRead,
+    files_written: t.writtenPaths,
+    read_misses: t.readMisses,
+    validation_failures: t.validationFailures,
+    tool_errors: t.toolErrors,
+    progress: t.progress,
+    recovery: t.recovery,
+    error: t.error,
+    compacted: t.compacted,
+    finish_reason: t.finishReason
+  };
+}
+function createTelemetrySink(ids, insert, log3 = (l) => console.error(l)) {
+  const pending = /* @__PURE__ */ new Set();
+  const failures = [];
+  let persisted = 0;
+  const fail = (call, error) => {
+    const message = error instanceof Error ? error.message : typeof error === "string" ? error : JSON.stringify(error);
+    failures.push({ call, error: message });
+    log3(JSON.stringify({ event: "telemetry_persist_failed", table: "tool_loop_calls", turnId: ids.turnId, projectId: ids.projectId, call, error: message }));
+  };
+  return {
+    record(t) {
+      let row;
+      try {
+        row = traceRow(t, ids);
+      } catch (e) {
+        fail(t.call, e);
+        return;
+      }
+      const p2 = (async () => {
+        try {
+          const ins = await insert();
+          const r = await ins(row);
+          if (r && r.error) fail(t.call, r.error.message);
+          else persisted++;
+        } catch (e) {
+          fail(t.call, e);
+        }
+      })();
+      pending.add(p2);
+      void p2.finally(() => pending.delete(p2));
+    },
+    async flush() {
+      await Promise.allSettled([...pending]);
+    },
+    get persisted() {
+      return persisted;
+    },
+    failures
+  };
+}
+var pct = (xs, p2) => {
+  if (xs.length < 3) return null;
+  const s = [...xs].sort((a2, b) => a2 - b);
+  return s[Math.min(s.length - 1, Math.ceil(p2 / 100 * s.length) - 1)];
+};
+var avg = (xs) => xs.length ? Math.round(xs.reduce((a2, b) => a2 + b, 0) / xs.length * 10) / 10 : null;
+function summarizeExecution(traces, opts = {}) {
+  const tally = (key) => {
+    const out = {};
+    for (const t of traces) {
+      const k = key(t) ?? "unknown";
+      out[k] = (out[k] ?? 0) + 1;
+    }
+    return out;
+  };
+  const sum = (f) => traces.reduce((n, t) => n + f(t), 0);
+  const first = traces[0];
+  const last = traces[traces.length - 1];
+  const wallMs = first && last ? last.startedAt + last.durationMs + last.toolMs - first.startedAt : 0;
+  const aiMs = sum((t) => t.durationMs);
+  const toolMs = sum((t) => t.toolMs);
+  const validationMs = sum((t) => t.validationMs);
+  const ttftMs = sum((t) => t.ttftMs ?? 0);
+  const prompt = sum((t) => t.usage?.promptTokens ?? 0);
+  const cached7 = sum((t) => t.usage?.cachedTokens ?? 0);
+  const classes = tally((t) => classifyCall(t));
+  const written = new Set(traces.flatMap((t) => t.writtenPaths)).size;
+  const progressCalls = traces.filter((t) => t.progress).length;
+  const ttfts = traces.map((t) => t.ttftMs).filter((x) => x != null);
+  const tps = traces.map((t) => t.outputTokensPerSec).filter((x) => x != null && x < 1e3);
+  const stages = opts.stages ?? [];
+  const end = opts.turnEndedAt ?? null;
+  const start = opts.turnStartedAt ?? stages[0]?.at ?? null;
+  const planning = traces.filter((t) => classifyCall(t) === "planning");
+  return {
+    totalMs: start != null && end != null ? end - start : null,
+    stages: stages.map((s, i) => ({ name: s.name, ms: (stages[i + 1]?.at ?? first?.startedAt ?? end ?? s.at) - s.at })),
+    loop: {
+      startMs: start != null && first ? first.startedAt - start : null,
+      wallMs,
+      aiCalls: traces.length,
+      aiMs,
+      ttftMs,
+      generationMs: aiMs - ttftMs,
+      toolMs,
+      validationMs,
+      orchestrationMs: Math.max(0, wallMs - aiMs - toolMs)
+    },
+    ttft: { avg: avg(ttfts), p50: pct(ttfts, 50), p90: pct(ttfts, 90) },
+    outputTps: { avg: avg(tps), p50: pct(tps, 50), p90: pct(tps, 90) },
+    tokens: {
+      prompt,
+      cached: cached7,
+      uncached: prompt - cached7,
+      completion: sum((t) => t.usage?.completionTokens ?? 0),
+      cacheHitRate: prompt ? Math.round(cached7 / prompt * 1e3) / 10 : null,
+      avgPromptPerCall: traces.length ? Math.round(prompt / traces.length) : null
+    },
+    context: {
+      systemChars: first?.context.system ?? null,
+      briefChars: first?.context.brief ?? null,
+      maxHistoryChars: Math.max(0, ...traces.map((t) => t.context.history)),
+      knowledgeChars: sum((t) => t.knowledgeChars)
+    },
+    filesWritten: written,
+    filesPerCall: traces.length ? Math.round(written / traces.length * 100) / 100 : null,
+    progressCalls,
+    progressPerCall: traces.length ? Math.round(progressCalls / traces.length * 100) / 100 : null,
+    classes,
+    noOpCalls: traces.filter((t) => !t.progress && !t.toolCalls.length && !t.error).length,
+    providers: tally((t) => t.upstream),
+    models: tally((t) => t.model),
+    planning: { calls: planning.length, ms: planning.reduce((n, t) => n + t.durationMs, 0) },
+    telemetry: opts.telemetry ?? { persisted: 0, failed: 0 }
+  };
+}
+
+// src/routes/api/generate.ts
 init_budget();
 
 // src/server/learning-injector.server.ts
@@ -167403,7 +167629,7 @@ function firstBuildSeedFiles(args) {
     return [];
   }
 }
-var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
+var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWhen you need to read several files or docs, request them ALL in one response \u2014 reads run in parallel; one read per response costs a full round trip each. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
 var COMPOSITION_RULES = [
   "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, metric/stat bar, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
@@ -170714,7 +170940,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -176734,10 +176959,12 @@ async function handleGenerateRequestCore(request, turnId, workSignal, onStage) {
   const abortSignal = workSignal ?? request.signal;
   const setupStartedAt = Date.now();
   let stageAt = setupStartedAt;
+  const stageMarks = [{ name: "open", at: setupStartedAt }];
   const stage = (name, message, phase) => {
     const now = Date.now();
     console.info(`[setup-timing] turn=${turnId ?? "n/a"} ${name} +${now - stageAt}ms total=${now - setupStartedAt}ms`);
     stageAt = now;
+    stageMarks.push({ name, at: now });
     if (message) {
       try {
         onStage?.({ message, phase });
@@ -178519,6 +178746,13 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files ?? []) : parsed.files ?? [];
             const pendingWrites = [];
             const loopTraces = [];
+            const telemetry = createTelemetrySink(
+              { turnId: logicalTurnId ?? null, projectId: body.projectId ?? null },
+              async () => {
+                const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+                return (row) => supabaseAdmin2.from("tool_loop_calls").insert(row);
+              }
+            );
             const callModel = makeCallModel2(
               (reqBody, signal) => withProviderRetry2(
                 () => aiChatCompletions({
@@ -178683,43 +178917,23 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
               signal: abortSignal,
               onTrace: (t) => {
                 loopTraces.push(t);
-                void Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports)).then(
-                  ({ supabaseAdmin: supabaseAdmin2 }) => supabaseAdmin2.from("tool_loop_calls").insert({
-                    turn_id: logicalTurnId ?? null,
-                    project_id: body.projectId ?? null,
-                    call_no: t.call,
-                    work_unit: t.workUnit,
-                    model: t.model,
-                    upstream_provider: t.upstream,
-                    system_chars: t.context.system,
-                    brief_chars: t.context.brief,
-                    history_chars: t.context.history,
-                    prompt_tokens: t.usage?.promptTokens ?? null,
-                    cached_tokens: t.usage?.cachedTokens ?? null,
-                    completion_tokens: t.usage?.completionTokens ?? null,
-                    ttft_ms: t.ttftMs,
-                    duration_ms: t.durationMs,
-                    output_tps: t.outputTokensPerSec,
-                    tool_ms: t.toolMs,
-                    validation_ms: t.validationMs,
-                    tool_calls: t.toolCalls,
-                    files_written: t.writtenPaths,
-                    progress: t.progress,
-                    compacted: t.compacted,
-                    finish_reason: t.finishReason
-                  })
-                ).then((r) => {
-                  if (r?.error) console.warn("[tool-loop] telemetry insert failed:", r.error.message);
-                }).catch(() => {
-                });
-                console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} tools=${t.toolCalls.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
+                telemetry.record(t);
+                console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} upstream=${t.upstream ?? "?"} tools=${t.toolCalls.join(",")} read=${t.filesRead.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
                 controller.enqueue(encoder.encode(sse({ type: "timeline", step: "agent_tool", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
               },
               onEvent: (e) => {
                 if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               }
             });
+            await telemetry.flush();
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
+            turnStrategy.executionSummary = summarizeExecution(loopTraces, {
+              turnStartedAt: setupStartedAt,
+              turnEndedAt: Date.now(),
+              stages: stageMarks,
+              telemetry: { persisted: telemetry.persisted, failed: telemetry.failures.length }
+            });
+            if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
             if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
