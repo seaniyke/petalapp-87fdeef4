@@ -5845,6 +5845,13 @@ export type Database = {
         Args: { _class: string; _min_samples?: number }
         Returns: number
       }
+      billing_class_effort_p75: {
+        Args: { _class: string }
+        Returns: {
+          p75: number
+          samples: number
+        }[]
+      }
       build_billing_summary: { Args: { _days?: number }; Returns: Json }
       can_enable_managed_backend: {
         Args: { _user_id: string }
@@ -5930,6 +5937,7 @@ export type Database = {
         Args: { _cohort_prefix?: string }
         Returns: Json
       }
+      effort_economics_summary: { Args: { _days?: number }; Returns: Json }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
