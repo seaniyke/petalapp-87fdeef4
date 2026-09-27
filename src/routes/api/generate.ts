@@ -4749,7 +4749,18 @@ async function handleGenerateRequestCore(
             });
             console.log(`[first-build-context] ${Object.entries(fbContext.parts).map(([k, v]) => `${k}=${v}`).join(" ")} onDemand=${fbContext.reference.length}`);
             turnStrategy.firstBuildContext = { parts: fbContext.parts, tiers: fbContext.tiers };
-            const done = await runToolLoop({
+            // One finalization path: the summary is built on every terminal state.
+            const done = await runWithExecutionSummary({
+              turnId: logicalTurnId ?? null,
+              traces: loopTraces,
+              turnStartedAt: setupStartedAt,
+              stages: stageMarks,
+              telemetry,
+              onSummary: (s) => {
+                turnStrategy.executionSummary = s;
+                if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
+              },
+            }, () => runToolLoop({
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
@@ -4849,16 +4860,8 @@ async function handleGenerateRequestCore(
               onEvent: (e) => {
                 if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               },
-            });
-            await telemetry.flush();
+            }));
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
-            turnStrategy.executionSummary = summarizeExecution(loopTraces, {
-              turnStartedAt: setupStartedAt,
-              turnEndedAt: Date.now(),
-              stages: stageMarks,
-              telemetry: { persisted: telemetry.persisted, failed: telemetry.failures.length },
-            });
-            if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
             if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
