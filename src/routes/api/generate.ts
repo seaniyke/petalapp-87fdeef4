@@ -75,7 +75,7 @@ import {
   estimateCostUsdMicro,
   hadRecentProviderPaymentFailure,
 } from "@/server/ai-provider.server";
-import { DEFAULT_BUILD_ECONOMICS, priceTurnCost, creditsForCost } from "@/lib/build-pricing";
+import { DEFAULT_BUILD_ECONOMICS, priceTurnCost, creditsForCost, economicCeilingUsd } from "@/lib/build-pricing";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
   clearPendingMemory,
@@ -4728,6 +4728,9 @@ async function handleGenerateRequestCore(
             // every later write; finish is refused while the workspace is
             // incomplete. No per-page calls, no second scheduler.
             const { runToolLoop } = await import("@/server/engine/tool-loop");
+            const { buildEconomics: loopEconomics } = await import("@/server/economics-config.server");
+            const loopCeilingUsd = economicCeilingUsd(buildReservation?.reserved ?? null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics());
+            const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
             const { makeCallModel } = await import("@/server/engine/tool-loop-model");
             const { validateUnitImports, undefinedNames } = await import("@/server/engine/work-unit");
             const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
@@ -4849,6 +4852,18 @@ async function handleGenerateRequestCore(
                 if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
               },
             }, async () => runToolLoop({
+              // Economic ceiling: the hold as variable cost. Unmeasured calls
+              // count at the class estimate so they can never run for free.
+              costCeilingUsd: loopCeilingUsd,
+              spentBeforeUsd: loopSpentBeforeUsd,
+              costOf: (r) => {
+                if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
+                if (r.usage) {
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens } as GatewayUsage).costUsd;
+                  if (c != null) return c;
+                }
+                return buildReservation?.classCostUsd ?? 0.03;
+              },
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
@@ -4949,6 +4964,10 @@ async function handleGenerateRequestCore(
                 if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               },
             }));
+            // Whatever the loop spent comes off the repair budget: the whole
+            // turn stays inside the one economic ceiling.
+            repairMeter.capAt(Math.max(0, loopCeilingUsd - done.state.spentUsd));
+            turnStrategy.economicCeiling = { ceilingUsd: loopCeilingUsd, loopSpentUsd: done.state.spentUsd, repairCeilingUsd: repairMeter.ceilingUsd, stopReason: done.state.stopReason };
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
