@@ -62841,6 +62841,7 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
+    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -141814,7 +141815,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144131,7 +144131,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145051,7 +145050,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146062,6 +146060,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -152383,6 +152382,7 @@ var init_router_facts = __esm({
 // src/server/engine/tool-loop.ts
 var tool_loop_exports = {};
 __export(tool_loop_exports, {
+  EXPLORATION_DRIFT_SIGNAL: () => EXPLORATION_DRIFT_SIGNAL,
   FULL_CONFIG: () => FULL_CONFIG,
   LIGHT_CONFIG: () => LIGHT_CONFIG,
   TOOLS: () => TOOLS,
@@ -152391,6 +152391,7 @@ __export(tool_loop_exports, {
   completionGaps: () => completionGaps,
   createToolLoopState: () => createToolLoopState,
   dependentsOf: () => dependentsOf,
+  detectExplorationDrift: () => detectExplorationDrift,
   diagnoseTrajectory: () => diagnoseTrajectory,
   evidenceSummary: () => evidenceSummary,
   formatNotReady: () => formatNotReady,
@@ -152437,6 +152438,20 @@ function madeProgress(before, state, tree) {
     if (errs < had) return true;
   }
   return false;
+}
+function areaOf(p2) {
+  if (p2.startsWith("knowledge/")) return p2;
+  const i = p2.lastIndexOf("/");
+  return i > 0 ? p2.slice(0, i) : "/";
+}
+function detectExplorationDrift(explored, actions, idleStep) {
+  const inspect = actions.filter((a2) => a2.tool === "read_file" || a2.tool === "list_files" || a2.tool === "search");
+  if (!inspect.length || actions.some((a2) => a2.tool === "create_file" || a2.tool === "edit_file")) return null;
+  const areas = inspect.map((a2) => a2.tool === "list_files" ? `list:${a2.path ?? ""}` : areaOf(a2.path ?? ""));
+  const wasted = inspect.some((a2) => a2.miss || a2.tool === "list_files" && a2.isError);
+  const widened = explored.size > 0 && areas.some((x) => !explored.has(x));
+  for (const x of areas) explored.add(x);
+  return idleStep >= 2 && (wasted || widened) ? EXPLORATION_DRIFT_SIGNAL : null;
 }
 function diagnoseTrajectory(recent) {
   const misses = [...new Set(recent.filter((a2) => a2.miss && a2.path).map((a2) => a2.path))];
@@ -152657,6 +152672,7 @@ async function runToolLoop(args) {
     { role: "user", content: args.brief }
   ];
   let validationMs = 0;
+  const listed = /* @__PURE__ */ new Map();
   const record = (path, content, errs) => {
     state.validation.set(path, errs);
     state.validatedHash.set(path, hash(content));
@@ -152780,6 +152796,11 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
       }
       case "list_files": {
         const prefix = normPath(a2.prefix);
+        const sig = `${tree.size}:${state.written.length}`;
+        if (listed.get(prefix) === sig) {
+          return { output: `Unchanged since you listed "${prefix || "/"}" earlier \u2014 nothing new. Use that listing and the starter-kit map; start the current work unit.`, isError: true };
+        }
+        listed.set(prefix, sig);
         const list4 = visiblePaths().filter((p2) => p2.startsWith(prefix)).sort();
         return { output: clip(list4.join("\n") || "(no files)", cfg.maxToolOutput), isError: false };
       }
@@ -152921,6 +152942,8 @@ ${notReady}`, isError: true };
   let idle = 0;
   let corrected = false;
   const recent = [];
+  const explored = /* @__PURE__ */ new Set();
+  let driftSignalled = false;
   while (state.iteration < hardCeiling) {
     if (args.signal?.aborted) {
       state.stopReason = "cancelled";
@@ -153073,6 +153096,17 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
       if (progress) {
         idle = 0;
         corrected = false;
+        explored.clear();
+        driftSignalled = false;
+      } else {
+        const drift = detectExplorationDrift(explored, actions, idle + 1);
+        if (drift && !driftSignalled) {
+          driftSignalled = true;
+          emit({ kind: "exploration_drift", detail: drift });
+          messages.push({ role: "user", content: drift });
+        }
+      }
+      if (progress) {
       } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {
         if (!corrected) {
           corrected = true;
@@ -153098,7 +153132,7 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
   state.stopReason = "iteration budget exhausted";
   return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "incomplete" };
 }
-var FULL_CONFIG, LIGHT_CONFIG, MANAGED_CONFIG_STEMS, MANAGED_EXACT_FILES, STYLESHEET_PATHS, fn, TOOLS, READ_ONLY, normPath, IMPORT_RX, EXTS4;
+var FULL_CONFIG, LIGHT_CONFIG, EXPLORATION_DRIFT_SIGNAL, MANAGED_CONFIG_STEMS, MANAGED_EXACT_FILES, STYLESHEET_PATHS, fn, TOOLS, READ_ONLY, normPath, IMPORT_RX, EXTS4;
 var init_tool_loop = __esm({
   "src/server/engine/tool-loop.ts"() {
     init_define_import_meta_env();
@@ -153118,6 +153152,7 @@ var init_tool_loop = __esm({
       noProgressRecovery: 3
     };
     LIGHT_CONFIG = { ...FULL_CONFIG, maxIterations: 6, finalizeIterations: 2, noProgressLimit: 3, noProgressRecovery: 2 };
+    EXPLORATION_DRIFT_SIGNAL = "You have enough context to begin the current work unit. Stop exploring unrelated files and directories \u2014 the starter-kit map already lists what exists. Create the next valid artifact now (the shared layout or the next page), then let it validate.";
     MANAGED_CONFIG_STEMS = ["vite.config", "tailwind.config", "postcss.config", ".postcssrc"];
     MANAGED_EXACT_FILES = /* @__PURE__ */ new Set([
       "package.json",
@@ -165970,6 +166005,44 @@ function summarizeExecution(traces, opts = {}) {
     telemetry: opts.telemetry ?? { persisted: 0, failed: 0 }
   };
 }
+var finalSummaries = /* @__PURE__ */ new Map();
+function takeExecutionSummary(turnId) {
+  if (!turnId) return null;
+  const s = finalSummaries.get(turnId) ?? null;
+  finalSummaries.delete(turnId);
+  return s;
+}
+async function runWithExecutionSummary(opts, run) {
+  let outcome = "error";
+  let error = null;
+  try {
+    const r = await run();
+    outcome = r.outcome;
+    return r;
+  } catch (e) {
+    const aborted = e instanceof Error && (e.name === "AbortError" || /abort|cancel/i.test(e.message));
+    outcome = aborted ? "cancelled" : "error";
+    error = e instanceof Error ? e.message : String(e);
+    throw e;
+  } finally {
+    await opts.telemetry.flush().catch(() => void 0);
+    const summary = {
+      ...summarizeExecution(opts.traces, {
+        turnStartedAt: opts.turnStartedAt,
+        turnEndedAt: Date.now(),
+        stages: opts.stages,
+        telemetry: { persisted: opts.telemetry.persisted, failed: opts.telemetry.failures.length }
+      }),
+      outcome,
+      error
+    };
+    if (opts.turnId) finalSummaries.set(opts.turnId, summary);
+    try {
+      opts.onSummary?.(summary);
+    } catch {
+    }
+  }
+}
 
 // src/routes/api/generate.ts
 init_budget();
@@ -167613,6 +167686,57 @@ Pre-installed UI kit at @/components/ui \u2014 import these, never write them: $
 ` + (refDirs.length ? `Also installed (import or copy from): ${refDirs.join(", ")}.
 ` : "") + `Read-only (writes are refused): ${protectedFiles.join(", ")}.
 ` + Object.values(examples).map((e) => `- ${e}`).join("\n") + `
+` + renderStarterKitMap();
+}
+var MAP_AREAS = [
+  { dir: "src/components/blocks/", label: "Page sections (blocks)", purpose: true },
+  { dir: "src/components/motion/", label: "Motion", purpose: true },
+  { dir: "src/components/fx/", label: "Visual effects", purpose: false },
+  { dir: "src/components/content/", label: "Content", purpose: false },
+  { dir: "src/components/image/", label: "Images", purpose: false },
+  { dir: "src/components/scroll/", label: "Scroll", purpose: false },
+  { dir: "src/components/examples/", label: "Full reference examples (copy patterns from, do not import)", purpose: false }
+];
+function firstDocSentence(src2) {
+  const m = src2.match(/\/\*\*([\s\S]*?)\*\//);
+  if (!m) return "";
+  const text = m[1].split("\n").map((l) => l.replace(/^\s*\*\s?/, "").trim()).filter((l) => l && !l.startsWith("@")).join(" ");
+  const s = text.split(/(?<=\.)\s/)[0] ?? text;
+  return s.length > 90 ? `${s.slice(0, 87)}\u2026` : s;
+}
+function exportedNames(src2) {
+  const out = /* @__PURE__ */ new Set();
+  for (const m of src2.matchAll(/export\s+(?:default\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9]*)/g)) out.add(m[1]);
+  for (const m of src2.matchAll(/export\s*\{([^}]+)\}/g)) {
+    for (const part of m[1].split(",")) {
+      const n = part.trim().split(/\s+as\s+/).pop().trim();
+      if (/^[A-Z]/.test(n)) out.add(n);
+    }
+  }
+  return [...out].slice(0, 4);
+}
+function renderStarterKitMap() {
+  const lines = [];
+  for (const area of MAP_AREAS) {
+    const files = KIT_FILES.filter((f) => f.path.startsWith(area.dir) && /\.tsx?$/.test(f.path)).sort((a2, b) => a2.path.localeCompare(b.path));
+    if (!files.length) continue;
+    lines.push(`${area.label} \u2014 ${area.dir.replace(/^src\//, "@/").replace(/\/$/, "")}:`);
+    if (area.purpose) {
+      for (const f of files) {
+        const name = f.path.slice(area.dir.length).replace(/\.tsx?$/, "");
+        const ex = exportedNames(f.content);
+        const doc = firstDocSentence(f.content);
+        lines.push(`- ${name}${ex.length ? ` {${ex.join(", ")}}` : ""}${doc ? ` \u2014 ${doc}` : ""}`);
+      }
+    } else {
+      lines.push(files.map((f) => f.path.slice(area.dir.length).replace(/\.tsx?$/, "")).join(", "));
+    }
+  }
+  if (!lines.length) return "";
+  return `
+### Starter-kit map (authoritative \u2014 do not list directories to discover it)
+Everything below already exists. Choose what the current work unit needs, then read only that exact file if you need its props.
+${lines.join("\n")}
 `;
 }
 
@@ -167629,7 +167753,7 @@ function firstBuildSeedFiles(args) {
     return [];
   }
 }
-var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWhen you need to read several files or docs, request them ALL in one response \u2014 reads run in parallel; one read per response costs a full round trip each. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
+var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWork in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, write it, let it validate, then move to the next. Inspect enough to start safely \u2014 you do not need to understand the whole starter kit before your first write. The starter-kit map above is authoritative: do not list directories to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go in one response. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
 var COMPOSITION_RULES = [
   "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, metric/stat bar, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
@@ -170940,6 +171064,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -178830,7 +178955,17 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
             });
             console.log(`[first-build-context] ${Object.entries(fbContext.parts).map(([k, v]) => `${k}=${v}`).join(" ")} onDemand=${fbContext.reference.length}`);
             turnStrategy.firstBuildContext = { parts: fbContext.parts, tiers: fbContext.tiers };
-            const done = await runToolLoop2({
+            const done = await runWithExecutionSummary({
+              turnId: logicalTurnId ?? null,
+              traces: loopTraces,
+              turnStartedAt: setupStartedAt,
+              stages: stageMarks,
+              telemetry,
+              onSummary: (s) => {
+                turnStrategy.executionSummary = s;
+                if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
+              }
+            }, async () => runToolLoop2({
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
@@ -178924,16 +179059,8 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
               onEvent: (e) => {
                 if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               }
-            });
-            await telemetry.flush();
+            }));
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
-            turnStrategy.executionSummary = summarizeExecution(loopTraces, {
-              turnStartedAt: setupStartedAt,
-              turnEndedAt: Date.now(),
-              stages: stageMarks,
-              telemetry: { persisted: telemetry.persisted, failed: telemetry.failures.length }
-            });
-            if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
             if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
@@ -180732,6 +180859,7 @@ I couldn't save this change, so your app was left exactly as it was. Send it aga
           plannedPages: firstBuildPlan?.pages.length ?? 0,
           escalations: turnEscalations
         });
+        if (turnStrategy.executionSummary) takeExecutionSummary(logicalTurnId);
         void agentIO().recordEconomics({
           execution: {
             class: turnComplexity.class,
@@ -181430,6 +181558,8 @@ async function handleGenerateRequest(request) {
               terminal_status: terminalStatus,
               failure_reason: terminalError?.slice(0, 300) ?? null,
               failure_origin: terminalError ? classifyFailureOrigin2(new Error(terminalError)) : null,
+              // Build-level summary of the partial execution (same builder as success).
+              execution_summary: takeExecutionSummary(recorder.turnId),
               customer_charge: 0
             }
           }).catch(() => void 0);
