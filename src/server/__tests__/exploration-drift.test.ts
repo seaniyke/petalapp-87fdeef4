@@ -32,7 +32,7 @@ describe("first build: starter-kit map instead of discovery", () => {
     expect(map).toMatch(/- nav-bar \{NavBar\}/);
     expect(map).toMatch(/- hero-split-image \{HeroSplitImage\}/);
     // map, not contents
-    expect(map.length).toBeLessThan(12_000);
+    expect(map.length).toBeLessThan(60_000);
     expect(map).not.toMatch(/import \* as React/);
   });
 

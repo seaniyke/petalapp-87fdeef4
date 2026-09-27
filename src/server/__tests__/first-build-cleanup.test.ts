@@ -40,7 +40,7 @@ describe("first-build cleanup", () => {
     expect(r.outcome).toBe("finished");
     expect(r.traces.length).toBe(1);
     expect(r.state.read.has("src/components/motion/slide-up.tsx")).toBe(false);
-    expect(renderStarterKitMap()).toContain("SlideUp(");
+    expect(renderStarterKitMap()).toMatch(/\{SlideUp\}[\s\S]*?SlideUpProps[^\n]*delay\?: number/);
   });
 
   it("B: existing project files still require read-before-edit", async () => {
