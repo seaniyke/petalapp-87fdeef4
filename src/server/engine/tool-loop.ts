@@ -673,6 +673,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   ];
 
   let validationMs = 0;
+  /** list_files prefix → workspace signature when it was last listed. */
+  const listed = new Map<string, string>();
 
   const record = (path: string, content: string, errs: string[]) => {
     state.validation.set(path, errs);
@@ -810,6 +812,13 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       }
       case "list_files": {
         const prefix = normPath(a.prefix);
+        // Re-listing the same directory with no workspace change in between
+        // tells the model nothing new; say so instead of repeating it.
+        const sig = `${tree.size}:${state.written.length}`;
+        if (listed.get(prefix) === sig) {
+          return { output: `Unchanged since you listed "${prefix || "/"}" earlier — nothing new. Use that listing and the starter-kit map; start the current work unit.`, isError: true };
+        }
+        listed.set(prefix, sig);
         const list = visiblePaths().filter((p) => p.startsWith(prefix)).sort();
         return { output: clip(list.join("\n") || "(no files)", cfg.maxToolOutput), isError: false };
       }
