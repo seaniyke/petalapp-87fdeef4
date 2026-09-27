@@ -30,7 +30,7 @@ export const Route = createFileRoute("/templates")({
       {
         name: "description",
         content:
-          "Production-ready starter prompts for SaaS, AI tools, local business sites, internal tools, mobile apps and more. Pick one and Kimble builds it.",
+          "Production-ready starter prompts for SaaS, AI tools, local business sites, internal tools and more. Pick one and Kimble builds it.",
       },
       { property: "og:title", content: "Kimble Templates — Browse 40+ starter apps" },
       {

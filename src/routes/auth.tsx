@@ -278,7 +278,7 @@ function AuthPage() {
                 From a whisper of an idea to <em>a shipped app</em> — in one chat.
               </h2>
               <p className="mt-6 max-w-md text-base leading-relaxed text-foreground/75">
-                Web, mobile, backends, extensions. Kimble listens, plans, builds, and
+                Websites and web apps. Kimble listens, plans, builds, and
                 deploys — while you watch it happen.
               </p>
             </div>
