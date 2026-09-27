@@ -38,6 +38,8 @@ export interface Checkpoint {
   planned: Array<{ route: string; file: string }>;
   pages: Record<string, string>;
   status: string;
+  /** "partial" = kept after a stopped build whose work was already billed. */
+  terminal_outcome?: string | null;
   resume_count: number;
   created_at: string;
   updated_at: string;
@@ -224,6 +226,23 @@ export async function markCheckpointConsumed(turnId: string): Promise<void> {
 }
 
 /** In-process infrastructure failure: hand the checkpoint to the resume worker. */
+/** Keep a stopped-but-valid first build's saved work for the next attempt. */
+export async function markCheckpointPartial(turnId: string): Promise<boolean> {
+  try {
+    const { data } = await db()
+      .from("build_checkpoints")
+      .update({ status: "resumable", terminal_outcome: "partial", updated_at: new Date().toISOString() })
+      .eq("turn_id", turnId)
+      .in("status", ["active", "resuming"])
+      .not("shell", "is", null)
+      .select("id")
+      .maybeSingle();
+    return Boolean(data);
+  } catch {
+    return false;
+  }
+}
+
 export async function markCheckpointResumable(turnId: string): Promise<boolean> {
   try {
     const { data } = await db()
