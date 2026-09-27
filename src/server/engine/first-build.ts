@@ -92,14 +92,16 @@ export function firstBuildBrief(
   const workspace = existing.length
     ? `The workspace already holds ${existing.length} saved files from an interrupted run: ${existing.join(", ")}. ` +
       `Do not rewrite them; write what is still missing.`
-    : `The workspace is empty — you already know everything in it, so do not list or read files before writing. ` +
-      `Start writing immediately.`;
+    : `No app code has been written yet. The scaffold below is already installed, so you know the workspace — ` +
+      `do not list or read files before writing. Start writing immediately.`;
   return (
     `${request}\n\n${workspace}\n` +
     `Write src/App.tsx (router + shared layout with navigation and footer), every shared module the pages import, ` +
     `and every planned page, then call finish. Planned pages: ${pages}.\n` +
+    renderTemplateMetadataSection() +
     (design ? designSection(design) : "") +
     `\n### Composition\n- ${COMPOSITION_RULES}\n` +
-    `\n### Copy\n${COPY_RULES}\n`
+    `\n### Copy\n${COPY_RULES}\n` +
+    `\n### Correctness\n- ${CORRECTNESS_RULES}\n`
   );
 }
