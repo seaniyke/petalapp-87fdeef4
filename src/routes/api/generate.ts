@@ -161,6 +161,7 @@ import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import {
   isScaffoldAbsorbedPath,
   isScaffoldOwnedPath,
+  projectAuthoredFiles,
   isVerifierExempt,
 } from "@/server/scaffold-ownership.server";
 import {
@@ -4797,7 +4798,7 @@ async function handleGenerateRequestCore(
               readiness: async (tree, changed) => {
                 const { verifyProposedSource } = await import("@/server/verification/source.server");
                 const { readinessOf } = await import("@/server/verification/readiness");
-                const authored = tree.filter((file) => file.path === "package.json" || (!isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path)));
+                const authored = projectAuthoredFiles(tree);
                 const proposed = ensureRenderableShell(
                   applyScaffoldKit(authored, { backend: backend ?? undefined, sharedBackend: sharedBackend ?? undefined, target: buildTarget.id }),
                   detectedWebSubtype,
@@ -5030,13 +5031,9 @@ async function handleGenerateRequestCore(
           // Inject the canonical scaffold (Tailwind v4 + shadcn-style UI kit)
           // so the AI never has to emit boilerplate it can't reliably reproduce.
           // Also inject the backend kit when a backend is attached.
-          const appFiles = parsed.files.filter(
-            (file) =>
-              // package.json is accepted only as dependency intent; the
-              // scaffold merger rewrites it into Kimble's canonical manifest.
-              file.path === "package.json" ||
-              (!isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path)),
-          );
+          // package.json is accepted only as dependency intent; the
+          // scaffold merger rewrites it into Kimble's canonical manifest.
+          const appFiles = projectAuthoredFiles(parsed.files);
           nextFiles = applyScaffoldKit(appFiles, {
             backend: backend ?? undefined,
             sharedBackend: sharedBackend ?? undefined,

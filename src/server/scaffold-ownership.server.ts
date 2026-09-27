@@ -162,3 +162,16 @@ export function scaffoldOwnershipReason(path: string): string {
   }
   return `${path} is owned by the Kimble scaffold`;
 }
+
+/**
+ * The project-authored subset of a tree: everything except scaffold-owned or
+ * absorbed files (package.json passes as dependency intent — the scaffold
+ * merger rewrites it). Ownership is per file, so a file the model authored
+ * inside a shared kit directory stays in the project graph and remains
+ * visible to readiness verification.
+ */
+export function projectAuthoredFiles<T extends { path: string }>(files: readonly T[]): T[] {
+  return files.filter(
+    (file) => file.path === "package.json" || (!isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path)),
+  );
+}
