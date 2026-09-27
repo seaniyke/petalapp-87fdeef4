@@ -117,3 +117,38 @@ describe("first-build cleanup", () => {
     expect(r.incomplete.join("\n")).toContain("@/pages/Home");
   });
 });
+
+describe("no rediscovery: Kimble states what it already knows", () => {
+  it("K: the kit API carries item/prop types and variants, so no read is needed to use a block", () => {
+    const map = renderStarterKitMap();
+    expect(map).toMatch(/- menu-section \{MenuSection\}[^\n]*\n\s+interface MenuItem \{ name: string;[^\n]*price: string/);
+    expect(map).toMatch(/- button \{Button, buttonVariants\}[^\n]*\n[^\n]*variant=default\|destructive/);
+    expect(map).toMatch(/- router \{[^}]*Routes, Route, Link, NavLink, Outlet/);
+    expect(map).not.toMatch(/className=\{cn\(/); // API only, no component bodies
+  });
+
+  it("L: after a write step the whole-workspace verdict is pushed; finish reuses it without re-verifying", async () => {
+    let checks = 0;
+    const counted = (tree: { path: string; content: string }[]) => { checks++; return authority()(tree); };
+    const m = scripted([
+      reply(call("create_file", { path: "src/pages/Home.tsx", content: home(`import { SlideUp } from "@/components/motion/slide-up";`) }), call("create_file", { path: "src/App.tsx", content: app })),
+      reply(call("finish", {})),
+    ]);
+    const r = await runToolLoop({ ...base, files: [], readiness: counted, callModel: m.callModel });
+    expect(r.outcome).toBe("finished");
+    const pushed = m.seen[1]!.filter((x) => x.role === "user").map((x) => String(x.content)).join("\n");
+    expect(pushed).toMatch(/passes for the whole workspace/);
+    expect(pushed).toMatch(/Do not re-read files/);
+    expect(checks).toBe(1); // same tree → finish reused the verdict
+  });
+
+  it("M: an open verdict lists exactly what remains", async () => {
+    const m = scripted([
+      reply(call("create_file", { path: "src/pages/Home.tsx", content: home(`import { SlideUp } from "@/components/motion/slide-up";`) }), call("create_file", { path: "src/App.tsx", content: app })),
+    ]);
+    await runToolLoop({ ...base, files: [], readiness: authority(["/menu"]), callModel: m.callModel, config: { maxIterations: 2, finalizeIterations: 0 } });
+    const pushed = m.seen[1]!.filter((x) => x.role === "user").map((x) => String(x.content)).join("\n");
+    expect(pushed).toMatch(/still open:/);
+    expect(pushed).toMatch(/menu/i);
+  });
+});
