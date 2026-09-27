@@ -44,6 +44,19 @@ export const LOADED_KNOWLEDGE_FILES = [
 /**
  * Headings (H2 or H3, matched by prefix after emoji/markers are stripped)
  * whose whole section refers to Webby-only tools, templates or chat voice.
+ *
+ * Parity note: a filtered heading never means the BEHAVIOUR is dropped. The
+ * sections below are filtered because their text names tools Kimble does not
+ * have (analyzeProject, verifyBuild, editFile ordering) or describes Webby's
+ * scaffold rather than Kimble's — e.g. "critical: never nest browserrouter"
+ * tells the model main.tsx already wraps the router, which is FALSE here:
+ * Kimble's src/main.tsx mounts <App /> and src/App.tsx owns <BrowserRouter>.
+ * Restating that text verbatim would produce routerless apps. The equivalent
+ * guarantees (single router, import/export correctness, import path rules,
+ * file order, one complete write per file) are stated against Kimble's own
+ * tools in CORRECTNESS_RULES in src/server/engine/first-build.ts, and are
+ * additionally enforced deterministically by the tool loop's per-write
+ * validation.
  */
 export const WEBBY_ONLY_HEADINGS: string[] = [
   "your role",

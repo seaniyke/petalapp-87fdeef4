@@ -33,7 +33,7 @@ describe("first build enters the tool loop directly", () => {
     expect("instruction" in p).toBe(false);
     const brief = firstBuildBrief("Build a bakery site", p.pages, []);
     expect(brief).not.toMatch(/first draft/i);
-    expect(brief).toMatch(/workspace is empty/);
+    expect(brief).toMatch(/No app code has been written yet/);
     expect(brief).toContain("src/pages/Contact.tsx");
     expect(FIRST_BUILD_TOOL_NOTE).toMatch(/NO write_project tool/);
   });
