@@ -551,6 +551,18 @@ export function stableFoundations(state: ToolLoopState, files: Map<string, strin
 }
 
 /**
+ * A file the authoritative readiness verdict currently blames is NOT stable,
+ * however clean its syntax is. Syntactically valid pages built on sample data
+ * were refused as STABLE foundations, so the agent could never rewrite them
+ * against the database and burned its remaining steps re-reading them.
+ * Regressions are still caught: a replacement that worsens readiness rolls back.
+ */
+export function blockedByReadiness(readiness: Readiness | null, path: string): boolean {
+  if (!readiness || readiness.ready) return false;
+  return readiness.findings.some((f) => f.paths.includes(path));
+}
+
+/**
  * Loop-local blockers only: files this turn wrote that still fail immediate
  * validation. Required work (pages, routes, imports) is decided by the
  * readiness authority from the build brief/intent — never by a model-kept
@@ -885,7 +897,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (existing !== undefined && existing.trim() && !state.read.has(path) && !state.written.includes(path)) {
           return { output: fail(name, path, `Refused: ${path} exists. read_file it first, then use edit_file (or create_file to replace it fully).`), isError: true };
         }
-        if (existing !== undefined && existing.trim()) {
+        if (existing !== undefined && existing.trim() && !blockedByReadiness(state.readiness, path)) {
           const users = stableFoundations(state, tree).get(path);
           if (users) {
             return {

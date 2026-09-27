@@ -185,7 +185,7 @@ const APP_ADDENDUM = [
   "MUST NOT include (unless the user asked for a landing page): giant hero section on `/`, marketing-style testimonials/pricing/FAQ blocks, scroll-driven landing animations. This is a tool, not a brochure.",
   "Build the requested initial scope completely; do not manufacture the whole imagined product in one response — later requests will expand it.",
   "",
-  "If the app needs accounts, wire the existing backend kit's auth (`useAuth`, `AuthProvider`) — never roll your own. If no backend is attached, mock data in a typed `src/lib/mock-data.ts` so the UI is fully populated on first render.",
+  "If the app needs accounts, wire the existing backend kit's auth (`useAuth`, `AuthProvider`) — never roll your own. When a backend IS attached, every page that lists or changes records must read and write it through `db` from `@/integrations/backend/client` — never a mock/sample data module. Only when NO backend is attached, mock data in a typed `src/lib/mock-data.ts` so the UI is fully populated on first render.",
 ].join("\n");
 
 const FULLSTACK_ADDENDUM = [

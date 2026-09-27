@@ -60421,7 +60421,7 @@ var init_web_subtype = __esm({
       "MUST NOT include (unless the user asked for a landing page): giant hero section on `/`, marketing-style testimonials/pricing/FAQ blocks, scroll-driven landing animations. This is a tool, not a brochure.",
       "Build the requested initial scope completely; do not manufacture the whole imagined product in one response \u2014 later requests will expand it.",
       "",
-      "If the app needs accounts, wire the existing backend kit's auth (`useAuth`, `AuthProvider`) \u2014 never roll your own. If no backend is attached, mock data in a typed `src/lib/mock-data.ts` so the UI is fully populated on first render."
+      "If the app needs accounts, wire the existing backend kit's auth (`useAuth`, `AuthProvider`) \u2014 never roll your own. When a backend IS attached, every page that lists or changes records must read and write it through `db` from `@/integrations/backend/client` \u2014 never a mock/sample data module. Only when NO backend is attached, mock data in a typed `src/lib/mock-data.ts` so the UI is fully populated on first render."
     ].join("\n");
     FULLSTACK_ADDENDUM = [
       APP_ADDENDUM,
@@ -70755,6 +70755,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140518,6 +140519,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141554,6 +141556,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141718,6 +141721,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141761,6 +141765,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -144299,7 +144304,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145504,7 +145508,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -153029,6 +153032,7 @@ __export(tool_loop_exports, {
   LIGHT_CONFIG: () => LIGHT_CONFIG,
   TOOLS: () => TOOLS,
   actionOf: () => actionOf,
+  blockedByReadiness: () => blockedByReadiness,
   compact: () => compact2,
   completionGaps: () => completionGaps,
   createToolLoopState: () => createToolLoopState,
@@ -153221,6 +153225,10 @@ function stableFoundations(state, files) {
     if (cleanUsers.length) out.set(p2, cleanUsers.sort());
   }
   return out;
+}
+function blockedByReadiness(readiness, path) {
+  if (!readiness || readiness.ready) return false;
+  return readiness.findings.some((f) => f.paths.includes(path));
 }
 function completionGaps(state, files) {
   const gaps = [];
@@ -153506,7 +153514,7 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         if (existing !== void 0 && existing.trim() && !state.read.has(path) && !state.written.includes(path)) {
           return { output: fail(name, path, `Refused: ${path} exists. read_file it first, then use edit_file (or create_file to replace it fully).`), isError: true };
         }
-        if (existing !== void 0 && existing.trim()) {
+        if (existing !== void 0 && existing.trim() && !blockedByReadiness(state.readiness, path)) {
           const users = stableFoundations(state, tree).get(path);
           if (users) {
             return {
