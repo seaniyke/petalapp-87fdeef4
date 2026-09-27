@@ -70222,17 +70222,40 @@ function applyFonts(rootSrc, pkg) {
   return `${rootSrc.slice(0, at)}
       ${body}${rootSrc.slice(at)}`;
 }
+function renderHtmlFontLinks(pkg) {
+  const tags = pkg.fonts.map(
+    (f) => `    <link rel="${f.rel}" href="${f.href}"${f.crossOrigin ? " crossorigin" : ""}>`
+  );
+  return [`    ${HTML_FONTS_START}`, ...tags, `    ${HTML_FONTS_END}`].join("\n").trimStart();
+}
+function applyHtmlFonts(html, pkg) {
+  const body = renderHtmlFontLinks(pkg);
+  const replaced = replaceRegion(html, HTML_FONTS_START, HTML_FONTS_END, body);
+  if (replaced !== null) return replaced;
+  const at = html.search(/<\/head>/i);
+  if (at < 0) return null;
+  return `${html.slice(0, at)}${body}
+  ${html.slice(at)}`;
+}
 function applyDesignSystem(files, pkg, accent) {
   if (!isValidAccent(pkg, accent)) return { ok: false, error: `accent "${accent}" does not belong to ${pkg.meta.slug}` };
   const styles = STYLE_PATHS.map((p2) => files.find((f) => f.path === p2)).find(Boolean);
   if (!styles) return { ok: false, error: "project has no stylesheet (src/styles.css)" };
-  const root = files.find((f) => f.path === ROOT_PATH);
-  if (!root) return { ok: false, error: `project has no ${ROOT_PATH}` };
-  const nextRoot = applyFonts(root.content, pkg);
-  if (nextRoot === null) return { ok: false, error: "could not find a head links array to install fonts into" };
   const updates = /* @__PURE__ */ new Map();
+  const root = files.find((f) => f.path === ROOT_PATH);
+  const html = files.find((f) => f.path === HTML_PATH);
+  if (root) {
+    const nextRoot = applyFonts(root.content, pkg);
+    if (nextRoot === null) return { ok: false, error: "could not find a head links array to install fonts into" };
+    updates.set(root.path, nextRoot);
+  } else if (html) {
+    const nextHtml = applyHtmlFonts(html.content, pkg);
+    if (nextHtml === null) return { ok: false, error: "index.html has no </head> to install fonts into" };
+    updates.set(html.path, nextHtml);
+  } else {
+    return { ok: false, error: `project has neither ${ROOT_PATH} nor ${HTML_PATH}` };
+  }
   updates.set(styles.path, applyTokens(styles.content, pkg, accent));
-  updates.set(root.path, nextRoot);
   for (const [rel, content] of Object.entries(pkg.components)) {
     updates.set(`src/components/design-system/${pkg.meta.slug}/${rel}`, content);
   }
@@ -70243,22 +70266,30 @@ function applyDesignSystem(files, pkg, accent) {
   for (const [p2, c] of updates) if (!byPath.has(p2)) out.push({ path: p2, content: c });
   return { ok: true, files: out, changedPaths: changedPaths.sort(), changed: changedPaths.length > 0 };
 }
-var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, STYLE_PATHS, ROOT_PATH;
+var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
     TOKENS_END = "/* kimble-design-system:end */";
     FONTS_START = "/* kimble-fonts:start */";
     FONTS_END = "/* kimble-fonts:end */";
+    HTML_FONTS_START = "<!-- kimble-fonts:start -->";
+    HTML_FONTS_END = "<!-- kimble-fonts:end -->";
     STYLE_PATHS = ["src/styles.css", "src/index.css"];
     ROOT_PATH = "src/routes/__root.tsx";
+    HTML_PATH = "index.html";
   }
 });
 
 // src/server/design-systems/registry.ts
+var registry_exports = {};
+__export(registry_exports, {
+  getDesignSystem: () => getDesignSystem,
+  listDesignSystems: () => listDesignSystems,
+  loadAllDesignSystems: () => loadAllDesignSystems
+});
 function groupByFolder(raw) {
   const out = /* @__PURE__ */ new Map();
   for (const [key, content] of Object.entries(raw)) {
@@ -70292,10 +70323,9 @@ function listDesignSystems(opts = {}) {
 var RAW, cache6;
 var init_registry = __esm({
   "src/server/design-systems/registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
-    RAW = { "./packages/kimble-test-system/DESIGN.md": "# Kimble Test System \u2014 design playbook\n\nSynthetic playbook for validating the package pipeline.\n\n## Personality\nCalm, cool and precise. Coastal neutrals with one clear accent.\n\n## Typography\n- Headings use `--font-display` (Sora) at `--kimble-weight-heading` with `--kimble-tracking-heading`.\n- Body copy uses `--font-body` (Manrope) at `--kimble-leading-body`.\n\n## Colour\n- Surfaces: `bg-background`, raised panels `bg-card`, quiet areas `bg-muted`.\n- The accent (`bg-primary`) marks one primary action per view. Never use it for large fills.\n- Never hard-code colours; always use the semantic classes.\n\n## Spacing and layout\n- Rhythm is multiples of `--kimble-space-unit`. Content width is `--kimble-container`.\n\n## Cards, buttons, forms\n- Cards: `rounded-lg`, `border`, `--kimble-shadow-sm` at rest.\n- Buttons: one primary, the rest outline or ghost. Focus uses `--kimble-focus-ring`.\n- Inputs: full-width, visible label above, border token only.\n\n## Motion\n- Transitions use `--kimble-duration` with `--kimble-ease`. No bouncing.\n\n## Don't\n- No gradients on text. No more than one accent colour per screen.\n", "./packages/kimble-test-system/accents.json": '{\n  "lagoon": {\n    "light": { "primary": "oklch(0.56 0.11 200)", "primary-foreground": "oklch(0.99 0.004 190)", "ring": "oklch(0.56 0.11 200)", "accent": "oklch(0.92 0.04 195)" },\n    "dark": { "primary": "oklch(0.72 0.1 195)", "primary-foreground": "oklch(0.18 0.02 210)", "ring": "oklch(0.72 0.1 195)", "accent": "oklch(0.32 0.04 200)" }\n  },\n  "ember": {\n    "light": { "primary": "oklch(0.6 0.15 45)", "primary-foreground": "oklch(0.99 0.005 60)", "ring": "oklch(0.6 0.15 45)", "accent": "oklch(0.93 0.04 55)" },\n    "dark": { "primary": "oklch(0.74 0.13 50)", "primary-foreground": "oklch(0.2 0.03 40)", "ring": "oklch(0.74 0.13 50)", "accent": "oklch(0.33 0.05 45)" }\n  }\n}\n', "./packages/kimble-test-system/components/Surface.tsx": 'import type { ReactNode } from "react";\n\n/** Raised panel that follows the Kimble Test System card rules. */\nexport function Surface({ children }: { children: ReactNode }) {\n  return (\n    <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">{children}</div>\n  );\n}\n', "./packages/kimble-test-system/design.json": '{\n  "schema_version": 1,\n  "slug": "kimble-test-system",\n  "name": "Kimble Coastal",\n  "description": "Calm coastal system: cool sea-glass neutrals, one confident accent, Sora headings over Manrope body, soft radii and quiet elevation.",\n  "when_to_use": "Default Kimble system for any product without its own brand system: clear, calm, legible, works for marketing sites and apps.",\n  "version": "1.0.0",\n  "internal": false,\n  "default_accent": "lagoon",\n  "accents": [\n    "lagoon",\n    "ember"\n  ],\n  "capabilities": [\n    "light",\n    "dark",\n    "elevation",\n    "motion"\n  ],\n  "token_categories": [\n    "color",\n    "surface",\n    "typography",\n    "spacing",\n    "radius",\n    "shadow",\n    "motion",\n    "focus"\n  ],\n  "fonts": [\n    "Sora",\n    "Manrope"\n  ],\n  "has_components": true\n}\n', "./packages/kimble-test-system/fonts.html": '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Sora:wght@500;600;700&display=swap">\n', "./packages/kimble-test-system/tokens.css": ':root {\n  --kimble-font-display: "Sora", ui-sans-serif, system-ui, sans-serif;\n  --kimble-font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;\n  --kimble-text-sm: 0.875rem;\n  --kimble-text-base: 1rem;\n  --kimble-text-lg: 1.1875rem;\n  --kimble-text-display: 3.25rem;\n  --kimble-weight-body: 420;\n  --kimble-weight-heading: 640;\n  --kimble-leading-body: 1.6;\n  --kimble-leading-heading: 1.12;\n  --kimble-tracking-heading: -0.018em;\n  --kimble-space-unit: 0.3rem;\n  --kimble-container: 72rem;\n  --kimble-radius-sm: 0.3rem;\n  --kimble-radius-md: 0.55rem;\n  --kimble-radius-lg: 0.9rem;\n  --kimble-shadow-sm: 0 1px 2px oklch(0.2 0.02 200 / 0.08);\n  --kimble-shadow-md: 0 6px 18px -6px oklch(0.2 0.02 200 / 0.18);\n  --kimble-ease: cubic-bezier(0.3, 0.7, 0.2, 1);\n  --kimble-duration: 180ms;\n  --kimble-focus-ring: 0 0 0 3px oklch(0.62 0.11 200 / 0.35);\n\n  --background: oklch(0.975 0.006 190);\n  --foreground: oklch(0.22 0.02 210);\n  --card: oklch(0.995 0.003 190);\n  --card-foreground: oklch(0.22 0.02 210);\n  --muted: oklch(0.93 0.01 195);\n  --muted-foreground: oklch(0.5 0.02 205);\n  --border: oklch(0.88 0.012 195);\n  --input: oklch(0.88 0.012 195);\n  --secondary: oklch(0.94 0.012 180);\n  --secondary-foreground: oklch(0.25 0.02 210);\n  --radius: 0.55rem;\n  --font-display: var(--kimble-font-display);\n  --font-body: var(--kimble-font-body);\n}\n\n.dark {\n  --background: oklch(0.19 0.015 215);\n  --foreground: oklch(0.95 0.008 190);\n  --card: oklch(0.23 0.016 215);\n  --card-foreground: oklch(0.95 0.008 190);\n  --muted: oklch(0.28 0.015 212);\n  --muted-foreground: oklch(0.72 0.015 200);\n  --border: oklch(0.32 0.015 212);\n  --input: oklch(0.32 0.015 212);\n  --secondary: oklch(0.27 0.02 200);\n  --secondary-foreground: oklch(0.94 0.01 190);\n}\n' };
+    RAW = { "./packages/kimble-test-system/DESIGN.md": "# Kimble Test System \u2014 design playbook\n\nSynthetic playbook for validating the package pipeline.\n\n## Personality\nCalm, cool and precise. Coastal neutrals with one clear accent.\n\n## Typography\n- Headings use `--font-display` (Sora) at `--kimble-weight-heading` with `--kimble-tracking-heading`.\n- Body copy uses `--font-body` (Manrope) at `--kimble-leading-body`.\n\n## Colour\n- Surfaces: `bg-background`, raised panels `bg-card`, quiet areas `bg-muted`.\n- The accent (`bg-primary`) marks one primary action per view. Never use it for large fills.\n- Never hard-code colours; always use the semantic classes.\n\n## Spacing and layout\n- Rhythm is multiples of `--kimble-space-unit`. Content width is `--kimble-container`.\n\n## Cards, buttons, forms\n- Cards: `rounded-lg`, `border`, `--kimble-shadow-sm` at rest.\n- Buttons: one primary, the rest outline or ghost. Focus uses `--kimble-focus-ring`.\n- Inputs: full-width, visible label above, border token only.\n\n## Motion\n- Transitions use `--kimble-duration` with `--kimble-ease`. No bouncing.\n\n## Don't\n- No gradients on text. No more than one accent colour per screen.\n", "./packages/kimble-test-system/accents.json": '{\n  "lagoon": {\n    "light": { "primary": "oklch(0.56 0.11 200)", "primary-foreground": "oklch(0.99 0.004 190)", "ring": "oklch(0.56 0.11 200)", "accent": "oklch(0.92 0.04 195)" },\n    "dark": { "primary": "oklch(0.72 0.1 195)", "primary-foreground": "oklch(0.18 0.02 210)", "ring": "oklch(0.72 0.1 195)", "accent": "oklch(0.32 0.04 200)" }\n  },\n  "ember": {\n    "light": { "primary": "oklch(0.6 0.15 45)", "primary-foreground": "oklch(0.99 0.005 60)", "ring": "oklch(0.6 0.15 45)", "accent": "oklch(0.93 0.04 55)" },\n    "dark": { "primary": "oklch(0.74 0.13 50)", "primary-foreground": "oklch(0.2 0.03 40)", "ring": "oklch(0.74 0.13 50)", "accent": "oklch(0.33 0.05 45)" }\n  }\n}\n', "./packages/kimble-test-system/components/Surface.tsx": 'import type { ReactNode } from "react";\n\n/** Raised panel that follows the Kimble Test System card rules. */\nexport function Surface({ children }: { children: ReactNode }) {\n  return (\n    <div className="rounded-lg border bg-card p-6 text-card-foreground shadow-sm">{children}</div>\n  );\n}\n', "./packages/kimble-test-system/design.json": '{\n  "schema_version": 1,\n  "slug": "kimble-test-system",\n  "name": "Kimble Coastal",\n  "description": "Calm coastal system: cool sea-glass neutrals, one confident accent, Sora headings over Manrope body, soft radii and quiet elevation.",\n  "when_to_use": "Default Kimble system for any product without its own brand system: clear, calm, legible, works for marketing sites and apps.",\n  "version": "1.0.0",\n  "internal": false,\n  "default_accent": "lagoon",\n  "accents": [\n    "lagoon",\n    "ember"\n  ],\n  "capabilities": [\n    "light",\n    "dark",\n    "elevation",\n    "motion"\n  ],\n  "token_categories": [\n    "color",\n    "surface",\n    "typography",\n    "spacing",\n    "radius",\n    "shadow",\n    "motion",\n    "focus"\n  ],\n  "fonts": [\n    "Sora",\n    "Manrope"\n  ],\n  "has_components": true\n}\n', "./packages/kimble-test-system/fonts.html": '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&family=Sora:wght@500;600;700&display=swap">\n', "./packages/kimble-test-system/tokens.css": ':root {\n  --kimble-font-display: "Sora", ui-sans-serif, system-ui, sans-serif;\n  --kimble-font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;\n  --kimble-text-sm: 0.875rem;\n  --kimble-text-base: 1rem;\n  --kimble-text-lg: 1.1875rem;\n  --kimble-text-display: 3.25rem;\n  --kimble-weight-body: 420;\n  --kimble-weight-heading: 640;\n  --kimble-leading-body: 1.6;\n  --kimble-leading-heading: 1.12;\n  --kimble-tracking-heading: -0.018em;\n  --kimble-space-unit: 0.3rem;\n  --kimble-container: 72rem;\n  --kimble-radius-sm: 0.3rem;\n  --kimble-radius-md: 0.55rem;\n  --kimble-radius-lg: 0.9rem;\n  --kimble-shadow-sm: 0 1px 2px oklch(0.2 0.02 200 / 0.08);\n  --kimble-shadow-md: 0 6px 18px -6px oklch(0.2 0.02 200 / 0.18);\n  --kimble-ease: cubic-bezier(0.3, 0.7, 0.2, 1);\n  --kimble-duration: 180ms;\n  --kimble-focus-ring: 0 0 0 3px oklch(0.62 0.11 200 / 0.35);\n\n  --background: oklch(0.975 0.006 190);\n  --foreground: oklch(0.22 0.02 210);\n  --card: oklch(0.995 0.003 190);\n  --card-foreground: oklch(0.22 0.02 210);\n  --muted: oklch(0.93 0.01 195);\n  --muted-foreground: oklch(0.5 0.02 205);\n  --border: oklch(0.88 0.012 195);\n  --input: oklch(0.88 0.012 195);\n  --secondary: oklch(0.94 0.012 180);\n  --secondary-foreground: oklch(0.25 0.02 210);\n  --radius: 0.55rem;\n  --font-display: var(--kimble-font-display);\n  --font-body: var(--kimble-font-body);\n}\n\n.dark {\n  --background: oklch(0.19 0.015 215);\n  --foreground: oklch(0.95 0.008 190);\n  --card: oklch(0.23 0.016 215);\n  --card-foreground: oklch(0.95 0.008 190);\n  --muted: oklch(0.28 0.015 212);\n  --muted-foreground: oklch(0.72 0.015 200);\n  --border: oklch(0.32 0.015 212);\n  --input: oklch(0.32 0.015 212);\n  --secondary: oklch(0.27 0.02 200);\n  --secondary-foreground: oklch(0.94 0.01 190);\n}\n', "./packages/obsidian/DESIGN.md": "# Obsidian \u2014 playbook\n\nDark-first editorial luxury. Near-black surfaces, a high-contrast serif display (Instrument Serif) against a geometric sans (Plus Jakarta Sans), hairline rules instead of shadows, almost no colour. Restraint is the entire look.\n\n## Non-negotiable\n\n- **Semantic tokens only.** `bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary text-primary-foreground`. Never a hex value, never `text-white`.\n- **Separation by hairline, not by shadow.** `border-t border-border` between sections and around cards. `shadow-md` only for overlays.\n- **Colour is an event.** At most one accent moment per screen \u2014 usually the single primary button. Everything else is neutral.\n\n## Type scale\n\n| Role | Classes |\n|---|---|\n| Hero headline | `font-serif text-5xl md:text-7xl leading-[1.02]` |\n| Section heading | `font-serif text-3xl md:text-5xl` |\n| Eyebrow / label | `text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground` |\n| Body | `text-base leading-relaxed text-muted-foreground max-w-2xl` |\n\nWide letter-spaced uppercase labels are the signature. Use them for section eyebrows, nav, and metric captions.\n\n## Rhythm\n\nSections breathe: `py-24 md:py-32` for feature sections, `py-16 md:py-20` for strips, `py-16` for the footer. Content width `max-w-6xl mx-auto px-6`. Asymmetry is welcome \u2014 a 5/7 split reads more designed than a 6/6.\n\n## Imagery\n\nFull-bleed, high-contrast, `object-cover` with an explicit aspect ratio. Text over an image always sits on a scrim (`bg-gradient-to-t from-background`). Grayscale on rest, colour on hover is a valid treatment; pick one and use it everywhere.\n\n## Motion \u2014 cinematic, locked\n\n500\u2013800ms `cubic-bezier(0.16,1,0.3,1)` for reveals; 200ms `ease-out` for hovers. Animate `transform`, `opacity`, `filter` only. Same translate distance for every scroll reveal. Respect `prefers-reduced-motion`.\n\n## Never\n\nRounded-full buttons. Bright saturated fills. Gradient text. Drop shadows on cards. Three equal icon-cards. More than one accent hue on a screen.\n", "./packages/obsidian/accents.json": '{\n  "platinum": {\n    "light": {\n      "primary": "oklch(0.22 0.004 260)",\n      "primary-foreground": "oklch(0.98 0.002 260)",\n      "ring": "oklch(0.22 0.004 260)",\n      "accent": "oklch(0.93 0.004 260)",\n      "accent-foreground": "oklch(0.25 0.004 260)"\n    },\n    "dark": {\n      "primary": "oklch(0.95 0.003 260)",\n      "primary-foreground": "oklch(0.15 0.004 260)",\n      "ring": "oklch(0.95 0.003 260)",\n      "accent": "oklch(0.27 0.005 260)",\n      "accent-foreground": "oklch(0.95 0.003 260)"\n    }\n  },\n  "gold": {\n    "light": {\n      "primary": "oklch(0.62 0.1 85)",\n      "primary-foreground": "oklch(0.17 0.01 85)",\n      "ring": "oklch(0.62 0.1 85)",\n      "accent": "oklch(0.93 0.03 85)",\n      "accent-foreground": "oklch(0.32 0.06 85)"\n    },\n    "dark": {\n      "primary": "oklch(0.78 0.11 88)",\n      "primary-foreground": "oklch(0.16 0.015 85)",\n      "ring": "oklch(0.78 0.11 88)",\n      "accent": "oklch(0.29 0.04 85)",\n      "accent-foreground": "oklch(0.92 0.03 88)"\n    }\n  },\n  "crimson": {\n    "light": {\n      "primary": "oklch(0.46 0.17 20)",\n      "primary-foreground": "oklch(0.98 0.003 20)",\n      "ring": "oklch(0.46 0.17 20)",\n      "accent": "oklch(0.92 0.04 20)",\n      "accent-foreground": "oklch(0.3 0.1 20)"\n    },\n    "dark": {\n      "primary": "oklch(0.64 0.16 22)",\n      "primary-foreground": "oklch(0.97 0.003 20)",\n      "ring": "oklch(0.64 0.16 22)",\n      "accent": "oklch(0.29 0.06 20)",\n      "accent-foreground": "oklch(0.93 0.02 20)"\n    }\n  }\n}\n', "./packages/obsidian/design.json": '{\n  "schema_version": 1,\n  "slug": "obsidian",\n  "name": "Obsidian",\n  "description": "Dark-first editorial luxury: near-black surfaces, a high-contrast serif display face, wide letter-spaced labels, hairline rules and almost no elevation.",\n  "when_to_use": "Only when the brief calls for luxury, fashion, fine dining, spirits, architecture, photography, a portfolio, or a deliberately dark developer/product brand.",\n  "version": "1.0.0",\n  "default_accent": "platinum",\n  "accents": ["platinum", "gold", "crimson"],\n  "capabilities": ["dark", "light", "motion", "serif-display", "editorial"],\n  "token_categories": ["color", "typography", "radius", "shadow", "motion", "spacing"],\n  "fonts": ["Instrument Serif", "Plus Jakarta Sans"],\n  "has_components": false\n}\n', "./packages/obsidian/fonts.html": '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">\n', "./packages/obsidian/tokens.css": ':root {\n  --kimble-font-display: "Instrument Serif", ui-serif, Georgia, serif;\n  --kimble-font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;\n  --kimble-text-sm: 0.8125rem;\n  --kimble-text-base: 1rem;\n  --kimble-text-display: 4rem;\n  --kimble-weight-body: 400;\n  --kimble-weight-heading: 400;\n  --kimble-leading-body: 1.7;\n  --kimble-leading-heading: 1.02;\n  --kimble-tracking-heading: -0.015em;\n  --kimble-space-unit: 0.25rem;\n  --kimble-container: 76rem;\n  --kimble-radius-sm: 0.125rem;\n  --kimble-radius-md: 0.25rem;\n  --kimble-radius-lg: 0.375rem;\n  --kimble-shadow-sm: 0 1px 0 oklch(1 0 0 / 0.04);\n  --kimble-shadow-md: 0 12px 40px -18px oklch(0 0 0 / 0.7);\n  --kimble-ease: cubic-bezier(0.16, 1, 0.3, 1);\n  --kimble-duration: 240ms;\n\n  --background: oklch(0.11 0.004 260);\n  --foreground: oklch(0.95 0.003 260);\n  --card: oklch(0.145 0.005 260);\n  --card-foreground: oklch(0.95 0.003 260);\n  --popover: oklch(0.145 0.005 260);\n  --popover-foreground: oklch(0.95 0.003 260);\n  --secondary: oklch(0.19 0.005 260);\n  --secondary-foreground: oklch(0.94 0.003 260);\n  --muted: oklch(0.17 0.005 260);\n  --muted-foreground: oklch(0.68 0.006 260);\n  --destructive: oklch(0.6 0.18 27);\n  --destructive-foreground: oklch(0.98 0.003 27);\n  --success: oklch(0.66 0.12 155);\n  --warning: oklch(0.78 0.13 80);\n  --border: oklch(0.24 0.005 260);\n  --input: oklch(0.24 0.005 260);\n  --radius: 0.25rem;\n  --font-sans: var(--kimble-font-body);\n  --font-serif: var(--kimble-font-display);\n  --font-display: var(--kimble-font-display);\n  --font-body: var(--kimble-font-body);\n}\n\n.dark {\n  --background: oklch(0.09 0.004 260);\n  --foreground: oklch(0.96 0.003 260);\n  --card: oklch(0.13 0.005 260);\n  --card-foreground: oklch(0.96 0.003 260);\n  --popover: oklch(0.13 0.005 260);\n  --popover-foreground: oklch(0.96 0.003 260);\n  --secondary: oklch(0.17 0.005 260);\n  --secondary-foreground: oklch(0.95 0.003 260);\n  --muted: oklch(0.155 0.005 260);\n  --muted-foreground: oklch(0.7 0.006 260);\n  --border: oklch(0.22 0.005 260);\n  --input: oklch(0.22 0.005 260);\n}\n\n@theme inline {\n  --color-background: var(--background);\n  --color-foreground: var(--foreground);\n  --color-card: var(--card);\n  --color-card-foreground: var(--card-foreground);\n  --color-popover: var(--popover);\n  --color-popover-foreground: var(--popover-foreground);\n  --color-primary: var(--primary);\n  --color-primary-foreground: var(--primary-foreground);\n  --color-secondary: var(--secondary);\n  --color-secondary-foreground: var(--secondary-foreground);\n  --color-muted: var(--muted);\n  --color-muted-foreground: var(--muted-foreground);\n  --color-accent: var(--accent);\n  --color-accent-foreground: var(--accent-foreground);\n  --color-destructive: var(--destructive);\n  --color-destructive-foreground: var(--destructive-foreground);\n  --color-success: var(--success);\n  --color-warning: var(--warning);\n  --color-border: var(--border);\n  --color-input: var(--input);\n  --color-ring: var(--ring);\n  --font-sans: var(--kimble-font-body);\n  --font-serif: var(--kimble-font-display);\n  --radius-sm: var(--kimble-radius-sm);\n  --radius-md: var(--kimble-radius-md);\n  --radius-lg: var(--kimble-radius-lg);\n}\n', "./packages/substrate/DESIGN.md": '# Substrate \u2014 playbook\n\nWarm-neutral paper surfaces, a serif display face (Newsreader) against a clean grotesque (Geist), generous vertical rhythm, restrained elevation. The look is "considered editorial", not "startup template".\n\n## Non-negotiable\n\n- **Semantic tokens only.** `bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `bg-primary text-primary-foreground`, `border-border`. Never a hex value, never `text-white`/`bg-black`, never `bg-blue-600`.\n- **Two faces, fixed roles.** `font-serif` (Newsreader) for the hero headline, section headings and any pull-quote or story passage. `font-sans` (Geist) for everything else \u2014 nav, body, buttons, labels, tables, prices. Never a third family.\n- **One primary action per view.** Everything else is `variant="outline"` or a plain link with an arrow.\n\n## Type scale\n\n| Role | Classes |\n|---|---|\n| Hero headline | `font-serif text-4xl md:text-6xl leading-[1.05] tracking-tight` |\n| Section heading | `font-serif text-3xl md:text-4xl tracking-tight` |\n| Sub-heading | `text-xl md:text-2xl` |\n| Body | `text-base leading-relaxed text-muted-foreground` |\n| Eyebrow / label | `text-xs uppercase tracking-[0.14em] text-muted-foreground` |\n\nSection headings must not all be the same size. Vary between `text-3xl` and `text-5xl` down the page.\n\n## Surface and elevation\n\n- Page is `bg-background`. Alternate to `bg-muted` every two or three sections so the page has bands, not one flat sheet.\n- Cards: `bg-card border border-border rounded-xl` with `shadow-sm`. Lift to `shadow-md` on hover only where the card is a link. Never nest a card inside a card.\n- Elevation ladder is `shadow-sm` \u2192 `shadow-md` \u2192 `shadow-xl`, and `shadow-xl` is for overlays only.\n\n## Rhythm\n\n| Section type | Padding |\n|---|---|\n| Content-heavy | `py-16 md:py-24` |\n| Final CTA | `py-16 md:py-20` |\n| Logo / metric strip | `py-10 md:py-14` |\n| Visual break | `py-8 md:py-12` |\n| Footer | `py-12 md:py-16` |\n\nContent width `max-w-6xl mx-auto px-6`; long-form prose narrows to `max-w-2xl`.\n\n## Motion \u2014 surgical, locked\n\n100\u2013250ms, `ease-out` or `cubic-bezier(0.2,0,0.1,1)`. Animate `transform`, `opacity` and `filter` only. Hover lift is one consistent `hover:-translate-y-0.5`. Every pressable element gets `active:scale-[0.99]`. Never write `transition: all` in hand-authored CSS. Respect `prefers-reduced-motion`.\n\n## Never\n\nGradient text. More than one accent hue on a screen. Three equal icon-cards as the answer to every section. Decorative blur blobs. Emoji as iconography. Centre-aligned body paragraphs longer than two lines.\n', "./packages/substrate/accents.json": '{\n  "indigo": {\n    "light": {\n      "primary": "oklch(0.47 0.16 275)",\n      "primary-foreground": "oklch(0.99 0.002 90)",\n      "ring": "oklch(0.47 0.16 275)",\n      "accent": "oklch(0.94 0.03 275)",\n      "accent-foreground": "oklch(0.3 0.09 275)"\n    },\n    "dark": {\n      "primary": "oklch(0.7 0.13 275)",\n      "primary-foreground": "oklch(0.18 0.03 275)",\n      "ring": "oklch(0.7 0.13 275)",\n      "accent": "oklch(0.3 0.05 275)",\n      "accent-foreground": "oklch(0.93 0.02 275)"\n    }\n  },\n  "terracotta": {\n    "light": {\n      "primary": "oklch(0.55 0.13 45)",\n      "primary-foreground": "oklch(0.99 0.004 70)",\n      "ring": "oklch(0.55 0.13 45)",\n      "accent": "oklch(0.93 0.035 55)",\n      "accent-foreground": "oklch(0.34 0.08 45)"\n    },\n    "dark": {\n      "primary": "oklch(0.71 0.12 48)",\n      "primary-foreground": "oklch(0.2 0.03 40)",\n      "ring": "oklch(0.71 0.12 48)",\n      "accent": "oklch(0.32 0.045 45)",\n      "accent-foreground": "oklch(0.93 0.02 50)"\n    }\n  },\n  "blue": {\n    "light": {\n      "primary": "oklch(0.5 0.13 245)",\n      "primary-foreground": "oklch(0.99 0.002 240)",\n      "ring": "oklch(0.5 0.13 245)",\n      "accent": "oklch(0.93 0.03 245)",\n      "accent-foreground": "oklch(0.31 0.08 245)"\n    },\n    "dark": {\n      "primary": "oklch(0.71 0.11 240)",\n      "primary-foreground": "oklch(0.18 0.03 245)",\n      "ring": "oklch(0.71 0.11 240)",\n      "accent": "oklch(0.3 0.045 245)",\n      "accent-foreground": "oklch(0.93 0.02 240)"\n    }\n  },\n  "emerald": {\n    "light": {\n      "primary": "oklch(0.49 0.11 160)",\n      "primary-foreground": "oklch(0.99 0.003 150)",\n      "ring": "oklch(0.49 0.11 160)",\n      "accent": "oklch(0.93 0.03 160)",\n      "accent-foreground": "oklch(0.3 0.07 160)"\n    },\n    "dark": {\n      "primary": "oklch(0.7 0.1 160)",\n      "primary-foreground": "oklch(0.18 0.03 160)",\n      "ring": "oklch(0.7 0.1 160)",\n      "accent": "oklch(0.3 0.04 160)",\n      "accent-foreground": "oklch(0.93 0.02 160)"\n    }\n  },\n  "ruby": {\n    "light": {\n      "primary": "oklch(0.5 0.16 15)",\n      "primary-foreground": "oklch(0.99 0.003 20)",\n      "ring": "oklch(0.5 0.16 15)",\n      "accent": "oklch(0.93 0.035 15)",\n      "accent-foreground": "oklch(0.32 0.1 15)"\n    },\n    "dark": {\n      "primary": "oklch(0.68 0.14 18)",\n      "primary-foreground": "oklch(0.18 0.03 15)",\n      "ring": "oklch(0.68 0.14 18)",\n      "accent": "oklch(0.31 0.05 15)",\n      "accent-foreground": "oklch(0.93 0.02 15)"\n    }\n  },\n  "mono": {\n    "light": {\n      "primary": "oklch(0.24 0.008 85)",\n      "primary-foreground": "oklch(0.99 0.002 85)",\n      "ring": "oklch(0.24 0.008 85)",\n      "accent": "oklch(0.93 0.005 85)",\n      "accent-foreground": "oklch(0.26 0.008 85)"\n    },\n    "dark": {\n      "primary": "oklch(0.94 0.004 85)",\n      "primary-foreground": "oklch(0.2 0.006 85)",\n      "ring": "oklch(0.94 0.004 85)",\n      "accent": "oklch(0.3 0.006 85)",\n      "accent-foreground": "oklch(0.95 0.004 85)"\n    }\n  }\n}\n', "./packages/substrate/design.json": '{\n  "schema_version": 1,\n  "slug": "substrate",\n  "name": "Substrate",\n  "description": "Warm-neutral premium house style: paper-toned surfaces, a serif display face against a clean grotesque, generous rhythm and restrained elevation.",\n  "when_to_use": "The default for almost everything \u2014 marketing sites, product sites, dashboards, storefronts, clinics, agencies. Choose a different system only when the brief asks for a stark dark editorial look.",\n  "version": "1.0.0",\n  "default_accent": "indigo",\n  "accents": ["indigo", "terracotta", "blue", "emerald", "ruby", "mono"],\n  "capabilities": ["light", "dark", "elevation", "motion", "serif-display"],\n  "token_categories": ["color", "typography", "radius", "shadow", "motion", "spacing"],\n  "fonts": ["Geist", "Newsreader"],\n  "has_components": false\n}\n', "./packages/substrate/fonts.html": '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap">\n', "./packages/substrate/tokens.css": ':root {\n  --kimble-font-display: "Newsreader", ui-serif, Georgia, serif;\n  --kimble-font-body: "Geist", ui-sans-serif, system-ui, sans-serif;\n  --kimble-text-sm: 0.875rem;\n  --kimble-text-base: 1rem;\n  --kimble-text-display: 3.5rem;\n  --kimble-weight-body: 400;\n  --kimble-weight-heading: 500;\n  --kimble-leading-body: 1.65;\n  --kimble-leading-heading: 1.08;\n  --kimble-tracking-heading: -0.022em;\n  --kimble-space-unit: 0.25rem;\n  --kimble-container: 72rem;\n  --kimble-radius-sm: 0.375rem;\n  --kimble-radius-md: 0.625rem;\n  --kimble-radius-lg: 1rem;\n  --kimble-shadow-sm: 0 1px 2px oklch(0.25 0.01 85 / 0.06);\n  --kimble-shadow-md: 0 8px 24px -10px oklch(0.25 0.01 85 / 0.16);\n  --kimble-ease: cubic-bezier(0.2, 0, 0.1, 1);\n  --kimble-duration: 180ms;\n\n  --background: oklch(0.985 0.004 85);\n  --foreground: oklch(0.22 0.008 85);\n  --card: oklch(1 0 0);\n  --card-foreground: oklch(0.22 0.008 85);\n  --popover: oklch(1 0 0);\n  --popover-foreground: oklch(0.22 0.008 85);\n  --secondary: oklch(0.945 0.006 85);\n  --secondary-foreground: oklch(0.26 0.008 85);\n  --muted: oklch(0.955 0.006 85);\n  --muted-foreground: oklch(0.52 0.01 85);\n  --destructive: oklch(0.58 0.2 27);\n  --destructive-foreground: oklch(0.99 0.003 27);\n  --success: oklch(0.6 0.13 155);\n  --warning: oklch(0.76 0.14 80);\n  --border: oklch(0.9 0.006 85);\n  --input: oklch(0.9 0.006 85);\n  --radius: 0.625rem;\n  --font-sans: var(--kimble-font-body);\n  --font-serif: var(--kimble-font-display);\n  --font-display: var(--kimble-font-display);\n  --font-body: var(--kimble-font-body);\n}\n\n.dark {\n  --background: oklch(0.18 0.006 85);\n  --foreground: oklch(0.95 0.004 85);\n  --card: oklch(0.22 0.006 85);\n  --card-foreground: oklch(0.95 0.004 85);\n  --popover: oklch(0.22 0.006 85);\n  --popover-foreground: oklch(0.95 0.004 85);\n  --secondary: oklch(0.27 0.006 85);\n  --secondary-foreground: oklch(0.94 0.004 85);\n  --muted: oklch(0.27 0.006 85);\n  --muted-foreground: oklch(0.72 0.008 85);\n  --destructive: oklch(0.62 0.19 27);\n  --destructive-foreground: oklch(0.99 0.003 27);\n  --border: oklch(0.31 0.006 85);\n  --input: oklch(0.31 0.006 85);\n}\n\n@theme inline {\n  --color-background: var(--background);\n  --color-foreground: var(--foreground);\n  --color-card: var(--card);\n  --color-card-foreground: var(--card-foreground);\n  --color-popover: var(--popover);\n  --color-popover-foreground: var(--popover-foreground);\n  --color-primary: var(--primary);\n  --color-primary-foreground: var(--primary-foreground);\n  --color-secondary: var(--secondary);\n  --color-secondary-foreground: var(--secondary-foreground);\n  --color-muted: var(--muted);\n  --color-muted-foreground: var(--muted-foreground);\n  --color-accent: var(--accent);\n  --color-accent-foreground: var(--accent-foreground);\n  --color-destructive: var(--destructive);\n  --color-destructive-foreground: var(--destructive-foreground);\n  --color-success: var(--success);\n  --color-warning: var(--warning);\n  --color-border: var(--border);\n  --color-input: var(--input);\n  --color-ring: var(--ring);\n  --font-sans: var(--kimble-font-body);\n  --font-serif: var(--kimble-font-display);\n  --radius-sm: var(--kimble-radius-sm);\n  --radius-md: var(--kimble-radius-md);\n  --radius-lg: var(--kimble-radius-lg);\n}\n' };
     cache6 = null;
   }
 });
@@ -70303,16 +70333,35 @@ var init_registry = __esm({
 // src/server/design-systems/authority.ts
 var authority_exports = {};
 __export(authority_exports, {
+  DEFAULT_PACKAGE_SLUG: () => DEFAULT_PACKAGE_SLUG,
   applyPackageToTree: () => applyPackageToTree,
   resolveDefaultPackage: () => resolveDefaultPackage,
+  resolvePackageForIntent: () => resolvePackageForIntent,
   resolveSelection: () => resolveSelection,
   visualsFromPackage: () => visualsFromPackage,
   withPackageVisuals: () => withPackageVisuals
 });
 function resolveDefaultPackage() {
   const all = listDesignSystems().sort((a2, b) => a2.meta.slug.localeCompare(b.meta.slug));
-  const pkg = all[0];
+  const pkg = all.find((p2) => p2.meta.slug === DEFAULT_PACKAGE_SLUG) ?? all[0];
   return pkg ? { pkg, accent: pkg.meta.default_accent } : null;
+}
+function resolvePackageForIntent(brief) {
+  const text = (brief ?? "").slice(0, 4e3);
+  const installed = listDesignSystems();
+  const byslug = (slug4) => installed.find((p2) => p2.meta.slug === slug4) ?? null;
+  if (text && DARK_EDITORIAL.test(text)) {
+    const obsidian = byslug("obsidian");
+    if (obsidian) {
+      const accent2 = /\b(gold|luxur|whisky|whiskey|spirits|fine dining|michelin)\b/i.test(text) ? "gold" : "platinum";
+      return { pkg: obsidian, accent: obsidian.accents[accent2] ? accent2 : obsidian.meta.default_accent };
+    }
+  }
+  const house = byslug(DEFAULT_PACKAGE_SLUG);
+  if (!house) return resolveDefaultPackage();
+  const hit = text ? ACCENT_RULES.find((r) => r.re.test(text)) : void 0;
+  const accent = hit && house.accents[hit.accent] ? hit.accent : house.meta.default_accent;
+  return { pkg: house, accent };
 }
 function resolveSelection(sel) {
   if (!sel) return null;
@@ -70392,11 +70441,22 @@ function applyPackageToTree(files, design3) {
   if (!r.ok) return { applied: false, files, reason: r.error };
   return { applied: true, files: r.files, changedPaths: r.changedPaths };
 }
+var DEFAULT_PACKAGE_SLUG, ACCENT_RULES, DARK_EDITORIAL;
 var init_authority = __esm({
   "src/server/design-systems/authority.ts"() {
     init_define_import_meta_env();
     init_apply();
     init_registry();
+    DEFAULT_PACKAGE_SLUG = "substrate";
+    ACCENT_RULES = [
+      { accent: "terracotta", re: /\b(bakery|baker|bread|pastr|patisserie|cafe|caf\u00e9|coffee|restaurant|bistro|diner|kitchen|catering|deli|pizzeria|brunch|butcher|grocer)\w*/i },
+      { accent: "emerald", re: /\b(sustainab|organic|garden|recycl|solar|environment|outdoor|hiking|wellness|yoga|fitness|nursery|landscap)\w*/i },
+      { accent: "blue", re: /\b(clinic|hospital|health|medical|dental|doctor|patient|pharmac|bank|finance|insurance|legal|accounting|logistics|school|university|government|enterprise)\w*/i },
+      { accent: "ruby", re: /\b(wine|whisky|whiskey|spirits|jewel|fashion|boutique|salon|beauty|luxur|couture|perfume)\w*/i },
+      { accent: "mono", re: /\b(portfolio|architect|gallery|photograph|minimalist|editorial|magazine|journal)\w*/i },
+      { accent: "indigo", re: /\b(saas|dashboard|analytic|platform|developer|software|crm|startup|workspace|automation)\w*/i }
+    ];
+    DARK_EDITORIAL = /\b(luxur|couture|fine dining|michelin|whisky|whiskey|spirits|cinematic|noir|dark mode only|dark[- ]first|high[- ]end|premium brand|gallery|architect|photograph)\w*/i;
   }
 });
 
@@ -70467,6 +70527,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -141529,7 +141590,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144766,7 +144826,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146681,7 +146740,7 @@ function deterministicDesignSystem(_brief, understanding, _opts = {}) {
     },
     source: "deterministic"
   };
-  const def = resolveDefaultPackage();
+  const def = resolvePackageForIntent(_brief) ?? resolveDefaultPackage();
   return def ? withPackageVisuals(base, def.pkg, def.accent) : base;
 }
 function designSystemFromDirection(brief, understanding, direction, seed) {
@@ -166865,13 +166924,39 @@ function firstBuildSeedFiles(args) {
   }
 }
 var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done. Emit several create_file calls in one response (shared modules, layout/router and pages together) \u2014 useful work per response is what matters.\n";
-function firstBuildBrief(request, planned, existing) {
+var COMPOSITION_RULES = [
+  "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, metric/stat bar, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
+  "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
+  "Alternate surface tone every two or three sections (bg-background then bg-muted) so the page reads as bands, not one flat sheet.",
+  "Vary heading scale down the page instead of giving every section the same size.",
+  "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6.",
+  "Two, at most three calls to action across an entire page. The final CTA is its own section; the footer is not a CTA.",
+  "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
+  'Every link points somewhere real \u2014 no href="#" placeholders. One <h1> per page.'
+].join("\n- ");
+var COPY_RULES = `Write copy as the business would: concrete and specific, never superlative. Banned words: elevate, seamless, unleash, next-gen, revolutionize, empower, supercharge, "transform your", "take it to the next level", "in today's fast-paced world". No lorem ipsum, no [placeholder], no invented statistics, testimonials, client names or contact details. A heading should say something specific to this business, not name a category ("Our Features").`;
+function designSection(d) {
+  return `
+### Design system: ${d.name} (accent: ${d.accent})
+The stylesheet already defines the palette, the radius scale and the font families, and the font links are already installed. Use semantic Tailwind classes only \u2014 bg-background, bg-card, bg-muted, text-foreground, text-muted-foreground, bg-primary text-primary-foreground, border-border, rounded-lg. Never write a hex colour, never use text-white/bg-black, never use a numbered palette class like bg-blue-600. Headings use font-serif (${d.displayFont}); body, nav, buttons and data use font-sans (${d.bodyFont}).
+
+${d.playbook.trim()}
+`;
+}
+function firstBuildBrief(request, planned, existing, design3) {
   const pages = planned.map((p2) => `${p2.route} \u2192 ${p2.file}`).join(", ");
   const workspace = existing.length ? `The workspace already holds ${existing.length} saved files from an interrupted run: ${existing.join(", ")}. Do not rewrite them; write what is still missing.` : `The workspace is empty \u2014 you already know everything in it, so do not list or read files before writing. Start writing immediately.`;
   return `${request}
 
 ${workspace}
-Write src/App.tsx (router + shared layout with navigation and footer), every shared module the pages import, and every planned page, then call finish. Planned pages: ${pages}.`;
+Write src/App.tsx (router + shared layout with navigation and footer), every shared module the pages import, and every planned page, then call finish. Planned pages: ${pages}.
+` + (design3 ? designSection(design3) : "") + `
+### Composition
+- ${COMPOSITION_RULES}
+
+### Copy
+${COPY_RULES}
+`;
 }
 
 // src/server/pipeline/tier-esbuild.ts
@@ -170137,6 +170222,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -177972,7 +178058,21 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               brief: firstBuildBrief(
                 lastUserText,
                 planned,
-                seedFiles.map((f) => f.path)
+                seedFiles.map((f) => f.path),
+                await (async () => {
+                  const sel = picContext?.design?.package;
+                  if (!sel) return null;
+                  const { getDesignSystem: getDesignSystem2 } = await Promise.resolve().then(() => (init_registry(), registry_exports));
+                  const pkg = getDesignSystem2(sel.systemId);
+                  if (!pkg) return null;
+                  return {
+                    name: pkg.meta.name,
+                    accent: sel.accent,
+                    displayFont: picContext?.design?.typography?.displayFont ?? pkg.meta.fonts[0] ?? "serif",
+                    bodyFont: picContext?.design?.typography?.bodyFont ?? pkg.meta.fonts[1] ?? "sans-serif",
+                    playbook: pkg.designMd
+                  };
+                })()
               ),
               files: seedFiles,
               seedPaths: seedFiles.map((f) => f.path),
