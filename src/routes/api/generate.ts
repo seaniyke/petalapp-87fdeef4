@@ -2078,10 +2078,12 @@ async function handleGenerateRequestCore(
   // Setup-stage timing: one log line per stage so slow starts are measurable.
   const setupStartedAt = Date.now();
   let stageAt = setupStartedAt;
+  const stageMarks: Array<{ name: string; at: number }> = [{ name: "open", at: setupStartedAt }];
   const stage = (name: string, message?: string, phase?: "thinking" | "designing") => {
     const now = Date.now();
     console.info(`[setup-timing] turn=${turnId ?? "n/a"} ${name} +${now - stageAt}ms total=${now - setupStartedAt}ms`);
     stageAt = now;
+    stageMarks.push({ name, at: now });
     if (message) {
       try {
         onStage?.({ message, phase });
@@ -4830,41 +4832,24 @@ async function handleGenerateRequestCore(
               signal: abortSignal,
               onTrace: (t) => {
                 loopTraces.push(t);
-                // Per-step execution telemetry (fire-and-forget, never blocks the loop).
-                void import("@/integrations/supabase/client.server").then(({ supabaseAdmin }) =>
-                  supabaseAdmin.from("tool_loop_calls" as never).insert({
-                    turn_id: logicalTurnId ?? null,
-                    project_id: body.projectId ?? null,
-                    call_no: t.call,
-                    work_unit: t.workUnit,
-                    model: t.model,
-                    upstream_provider: t.upstream,
-                    system_chars: t.context.system,
-                    brief_chars: t.context.brief,
-                    history_chars: t.context.history,
-                    prompt_tokens: t.usage?.promptTokens ?? null,
-                    cached_tokens: t.usage?.cachedTokens ?? null,
-                    completion_tokens: t.usage?.completionTokens ?? null,
-                    ttft_ms: t.ttftMs,
-                    duration_ms: t.durationMs,
-                    output_tps: t.outputTokensPerSec,
-                    tool_ms: t.toolMs,
-                    validation_ms: t.validationMs,
-                    tool_calls: t.toolCalls,
-                    files_written: t.writtenPaths,
-                    progress: t.progress,
-                    compacted: t.compacted,
-                    finish_reason: t.finishReason,
-                  } as never),
-                ).then((r) => { if (r?.error) console.warn("[tool-loop] telemetry insert failed:", r.error.message); }).catch(() => {});
-                console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} tools=${t.toolCalls.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
+                // Per-step execution telemetry: non-blocking; failures are logged + counted, never silent.
+                telemetry.record(t);
+                console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} upstream=${t.upstream ?? "?"} tools=${t.toolCalls.join(",")} read=${t.filesRead.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
                 controller.enqueue(encoder.encode(sse({ type: "timeline", step: "agent_tool", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
               },
               onEvent: (e) => {
                 if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               },
             });
+            await telemetry.flush();
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
+            turnStrategy.executionSummary = summarizeExecution(loopTraces, {
+              turnStartedAt: setupStartedAt,
+              turnEndedAt: Date.now(),
+              stages: stageMarks,
+              telemetry: { persisted: telemetry.persisted, failed: telemetry.failures.length },
+            });
+            if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
             if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
