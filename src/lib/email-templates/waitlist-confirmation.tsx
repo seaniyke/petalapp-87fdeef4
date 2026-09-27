@@ -30,8 +30,8 @@ function WaitlistConfirmation({ name, referralCode, statusToken }: Props) {
         {first ? `Hey ${first} —` : "Hey —"} thanks for joining the Kimble waitlist.
       </Text>
       <Text style={text}>
-        Kimble turns a sentence into a real app: web, mobile, backends and Chrome
-        extensions. We're letting people in gradually so every build stays fast.
+        Kimble turns a sentence into a real app: websites and web apps, with a real
+        backend when you need one. We're letting people in gradually so every build stays fast.
       </Text>
       <Text style={text}>
         Want in sooner? Every friend who joins with your link moves you up 15 spots —

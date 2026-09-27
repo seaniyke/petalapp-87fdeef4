@@ -60115,6 +60115,36 @@ export { Grid } from "./grid";
   }
 });
 
+// src/lib/site-flags.ts
+function isTargetEnabled(id) {
+  switch (id) {
+    case "mobile":
+    case "ios":
+    case "android":
+    case "web-mobile":
+      return MOBILE_APPS_ENABLED;
+    case "backend":
+      return API_BACKENDS_ENABLED;
+    case "extension":
+      return CHROME_EXTENSIONS_ENABLED;
+    default:
+      return true;
+  }
+}
+function isPausedKitPath(path) {
+  if (!MOBILE_APPS_ENABLED && (path.startsWith("src/components/mobile/") || path === "src/components/examples/mobile-app-shell.tsx")) return true;
+  return false;
+}
+var MOBILE_APPS_ENABLED, API_BACKENDS_ENABLED, CHROME_EXTENSIONS_ENABLED;
+var init_site_flags = __esm({
+  "src/lib/site-flags.ts"() {
+    init_define_import_meta_env();
+    MOBILE_APPS_ENABLED = false;
+    API_BACKENDS_ENABLED = false;
+    CHROME_EXTENSIONS_ENABLED = false;
+  }
+});
+
 // src/lib/target-inference.ts
 function inferBuildTarget(prompt) {
   const text = (prompt ?? "").trim();
@@ -60141,6 +60171,10 @@ function inferBuildTarget(prompt) {
   return { target: topTarget, confidence, signals };
 }
 function resolveBuildTarget(headerTarget, prompt) {
+  const r = resolveBuildTargetRaw(headerTarget, prompt);
+  return isTargetEnabled(r.target) ? r : { target: "web", source: "default", confidence: 1 };
+}
+function resolveBuildTargetRaw(headerTarget, prompt) {
   const header = (headerTarget ?? "").trim();
   if (header && header !== "web") {
     return { target: header, source: "header", confidence: 1 };
@@ -60155,6 +60189,7 @@ var RULES, BOTH_RE;
 var init_target_inference = __esm({
   "src/lib/target-inference.ts"() {
     init_define_import_meta_env();
+    init_site_flags();
     RULES = [
       // ---- Chrome / browser extension -------------------------------------
       { re: /\bchrome extension\b/i, target: "extension", weight: 6, label: "chrome extension" },
@@ -60473,6 +60508,7 @@ var init_client_server_shim = __esm({
 // src/lib/intent-registry.ts
 function detectIntent(id, text) {
   if (!text) return { detected: false };
+  if (id === "mobile" && !MOBILE_APPS_ENABLED) return { detected: false };
   const t = text.trim();
   const rule = RULES3[id];
   if (t.length < rule.minLength) return { detected: false };
@@ -60503,6 +60539,7 @@ var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
     "use strict";
     init_define_import_meta_env();
+    init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
     BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
     AI_PROVIDER_NAMES = /\b(?:OpenAI|GPT-?[345]|ChatGPT|Claude|Anthropic|Gemini|Google AI|Mistral|Llama|DeepSeek|Perplexity)\b/i;
@@ -70378,7 +70415,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70637,7 +70673,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -97420,7 +97455,7 @@ var init_project_archetype = __esm({
           "AI deal scoring",
           "Revenue forecasting",
           "Bulk CSV import",
-          "Chrome extension for lead capture"
+          "Embeddable lead-capture form"
         ],
         providersToWireLater: [
           "Gmail / Outlook API",
@@ -157186,7 +157221,8 @@ init_scaffold_kit();
 
 // src/lib/build-targets.ts
 init_define_import_meta_env();
-var BUILD_TARGETS = [
+init_site_flags();
+var ALL_BUILD_TARGETS = [
   {
     id: "web",
     label: "Web app",
@@ -157276,17 +157312,21 @@ var BUILD_TARGETS = [
     ].join("\n")
   }
 ];
+var BUILD_TARGETS = ALL_BUILD_TARGETS.filter((t) => isTargetEnabled(t.id));
 function getBuildTarget(id) {
+  if (!isTargetEnabled(id)) return BUILD_TARGETS[0];
   if (id === "ios" || id === "android") {
     return BUILD_TARGETS.find((t) => t.id === "mobile");
   }
   return BUILD_TARGETS.find((t) => t.id === id) ?? BUILD_TARGETS[0];
 }
 function isMobileTarget(id) {
+  if (!isTargetEnabled(id)) return false;
   return id === "mobile" || id === "ios" || id === "android";
 }
 
 // src/routes/api/generate.ts
+init_site_flags();
 init_target_inference();
 init_web_subtype();
 
@@ -157323,7 +157363,8 @@ init_intent_registry();
 
 // src/lib/kimble-surfaces.ts
 init_define_import_meta_env();
-var SURFACES = [
+init_site_flags();
+var ALL_SURFACES = [
   {
     id: "cloud.users",
     label: "your app's users",
@@ -157519,6 +157560,7 @@ var SURFACES = [
     ]
   }
 ];
+var SURFACES = ALL_SURFACES.filter((s) => MOBILE_APPS_ENABLED || s.id !== "mobile");
 var BY_ID = new Map(SURFACES.map((s) => [s.id, s]));
 var REQUEST_CUES = [
   /\bi\s+(?:want|need|would like|wanna)\b/i,
@@ -164138,6 +164180,7 @@ init_model_kill_switch_server();
 
 // src/server/dynamic-prompts.server.ts
 init_define_import_meta_env();
+init_site_flags();
 init_kit_manifest_server();
 var SNIPPETS = {
   // Always-on baseline. Replaced at injection time with the auto-derived
@@ -165039,6 +165082,7 @@ function pickDynamicSnippets(args) {
     if (key === "fullstackFeature" && !args.hasBackend) continue;
     if ((key === "fileUpload" || key === "webhook" || key === "cronJob" || key === "payments") && !args.hasBackend) continue;
     if (key === "mobileCraft" || key === "backendCraft" || key === "chromeExtensionCraft") continue;
+    if ((key === "mobileApp" || key === "mobileNative") && !MOBILE_APPS_ENABLED) continue;
     const def = SNIPPETS[key];
     if (def.triggers === "always" || def.triggers.test(haystack)) {
       matched.push(key);
@@ -167805,6 +167849,7 @@ init_define_import_meta_env();
 
 // src/server/engine/template-contract.ts
 init_define_import_meta_env();
+init_site_flags();
 init_scaffold_kit();
 var TEMPLATE_CONTRACT_PATH = "template.json";
 var REFERENCE_DIRS = ["@/components/blocks", "@/components/examples", "@/components/motion", "@/components/fx"];
@@ -167939,7 +167984,7 @@ function kitFileApi(src2) {
 function renderStarterKitMap() {
   const lines = [];
   for (const area of MAP_AREAS) {
-    const files = KIT_FILES.filter((f) => f.path.startsWith(area.dir) && /\.tsx?$/.test(f.path)).sort((a2, b) => a2.path.localeCompare(b.path));
+    const files = KIT_FILES.filter((f) => f.path.startsWith(area.dir) && !isPausedKitPath(f.path) && /\.tsx?$/.test(f.path)).sort((a2, b) => a2.path.localeCompare(b.path));
     if (!files.length) continue;
     lines.push(`${area.label} \u2014 ${area.dir.replace(/^src\//, "@/").replace(/\/$/, "")}:`);
     if (area.api) {
@@ -179298,7 +179343,7 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
               files: seedFiles,
               // The kit the commit applies, visible (read-only) to reads and
               // import validation so advertised modules actually resolve.
-              reference: applyScaffoldKit([], { backend: backend2 ?? void 0, sharedBackend: sharedBackend ?? void 0, target: buildTarget.id }).filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)).concat(fbContext.reference),
+              reference: applyScaffoldKit([], { backend: backend2 ?? void 0, sharedBackend: sharedBackend ?? void 0, target: buildTarget.id }).filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)).filter((f) => !isPausedKitPath(f.path)).concat(fbContext.reference),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
               // THE readiness authority: the exact proposed-tree transform and

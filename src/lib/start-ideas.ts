@@ -1,3 +1,4 @@
+import { MOBILE_APPS_ENABLED, CHROME_EXTENSIONS_ENABLED } from "@/lib/site-flags";
 /**
  * Shared catalog of starter prompts ("templates") consumed by both the
  * landing-page StartIdeasPanel and the dedicated /templates gallery.
@@ -81,7 +82,7 @@ export type IdeaCategory =
   | "Marketplace"
   | "Maps & geo"
   | "Audio & video"
-  | "Extensions"
+  | "Embeds"
   | "Messaging"
   | "Social";
 
@@ -95,7 +96,7 @@ export type StartIdea = {
   featured?: boolean;
 };
 
-export const CATEGORY_ORDER: IdeaCategory[] = [
+const ALL_CATEGORY_ORDER: IdeaCategory[] = [
   "SaaS",
   "AI tools",
   "Local business",
@@ -111,13 +112,13 @@ export const CATEGORY_ORDER: IdeaCategory[] = [
   "Marketplace",
   "Maps & geo",
   "Audio & video",
-  "Extensions",
+  "Embeds",
   "Messaging",
   "Social",
   "Games & toys",
 ];
 
-export const START_IDEAS: StartIdea[] = [
+const ALL_START_IDEAS: StartIdea[] = [
   // ── SaaS ────────────────────────────────────────────────────────────────
   {
     title: "Full SaaS product (auth + billing)",
@@ -735,7 +736,7 @@ export const START_IDEAS: StartIdea[] = [
       "A customer-support chat widget that any site can embed with a single <script> tag. Floating bubble bottom-right, opens to chat panel, messages routed to my admin inbox in this project. Realtime.",
     Icon: MessageSquare,
     accent: "lilac",
-    category: "Extensions",
+    category: "Embeds",
     featured: true,
   },
   {
@@ -744,7 +745,7 @@ export const START_IDEAS: StartIdea[] = [
       "A Chrome extension scaffold (Manifest V3): popup UI, content script that adds a button to any webpage, background service worker, options page. Build it so I can load unpacked and iterate.",
     Icon: Puzzle,
     accent: "butter",
-    category: "Extensions",
+    category: "Embeds",
   },
   {
     title: "Embeddable testimonials widget",
@@ -752,7 +753,7 @@ export const START_IDEAS: StartIdea[] = [
       "A testimonials manager: I collect testimonials in an admin, then embed a beautiful rotating-quotes widget on any site via a <script> tag. Light/dark themes auto-detect.",
     Icon: Sparkles,
     accent: "pink",
-    category: "Extensions",
+    category: "Embeds",
   },
 
   // ── AI agents / workflow ────────────────────────────────────────────────
@@ -855,6 +856,15 @@ export const START_IDEAS: StartIdea[] = [
   },
 ];
 
+/** Ideas for paused build types (mobile apps, Chrome extensions) are hidden. */
+function isPausedIdea(i: StartIdea): boolean {
+  if (!MOBILE_APPS_ENABLED && i.category === "Mobile") return true;
+  if (!CHROME_EXTENSIONS_ENABLED && /chrome|browser extension/i.test(`${i.title} ${i.prompt}`)) return true;
+  return false;
+}
+
+export const START_IDEAS: StartIdea[] = ALL_START_IDEAS.filter((i) => !isPausedIdea(i));
+
 export const FEATURED_IDEAS = START_IDEAS.filter((i) => i.featured);
 
 // ── Messaging & Social (Layer H) ─────────────────────────────────────────
@@ -870,3 +880,5 @@ START_IDEAS.push(
   { title: "Creator dashboard (multi-platform stats)", prompt: "A creator analytics dashboard: connect YouTube, TikTok, Instagram, X via per-user OAuth; show follower growth, top posts, engagement rate per platform; daily snapshot stored in db for trend charts.", Icon: ChartBar, accent: "butter", category: "Social" },
   { title: "Newsletter cross-poster", prompt: "Write a newsletter once; auto-cross-post a teaser + link to X and LinkedIn on publish. Per-user OAuth, customisable per-platform copy, queue with retries, posting history.", Icon: Mail, accent: "pink", category: "Social" },
 );
+
+export const CATEGORY_ORDER: IdeaCategory[] = ALL_CATEGORY_ORDER.filter((c) => START_IDEAS.some((i) => i.category === c));

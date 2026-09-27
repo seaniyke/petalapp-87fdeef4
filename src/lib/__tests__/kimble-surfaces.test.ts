@@ -26,7 +26,6 @@ describe("detectSurfaceIntent", () => {
     ["can you connect Resend?", "integrations"],
     ["how many visitors do I have?", "analytics"],
     ["I want to change the social preview", "website-info"],
-    ["can I download the android build?", "mobile"],
     ["I want to revert to yesterday's version", "history"],
     ["show me the code", "code"],
     ["can you give me a share link?", "share"],
@@ -97,5 +96,12 @@ describe("edit instructions never open a Kimble screen", () => {
   });
   it("still opens the users screen for a real question", () => {
     expect(detectSurfaceIntent("how many users signed up?")?.surface.id).toBe("cloud.users");
+  });
+});
+
+describe("paused mobile surface", () => {
+  it("never opens the mobile panel while mobile apps are off", async () => {
+    const { detectSurfaceIntent } = await import("@/lib/kimble-surfaces");
+    expect(detectSurfaceIntent("can I download the android build?")?.surface.id).not.toBe("mobile");
   });
 });

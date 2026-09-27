@@ -39,6 +39,7 @@ import {
 
 import { applyScaffoldKit, applyScaffoldKitForPatch, markKitFileCustomized, STYLES_CSS } from "@/server/scaffold-kit";
 import { getBuildTarget, isMobileTarget } from "@/lib/build-targets";
+import { isPausedKitPath } from "@/lib/site-flags";
 import { resolveBuildTarget } from "@/lib/target-inference";
 import { getWebSubtypeAddendum } from "@/lib/web-subtype";
 
@@ -4891,6 +4892,7 @@ async function handleGenerateRequestCore(
               // import validation so advertised modules actually resolve.
               reference: applyScaffoldKit([], { backend: backend ?? undefined, sharedBackend: sharedBackend ?? undefined, target: buildTarget.id })
                 .filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path))
+                .filter((f) => !isPausedKitPath(f.path))
                 .concat(fbContext.reference),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,

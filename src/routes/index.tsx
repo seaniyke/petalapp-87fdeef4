@@ -64,7 +64,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Kimble is an app builder for web, mobile, backends, and extensions. Describe your idea, build it, and publish it.",
+          "Kimble is an app builder for the web. Describe your idea, build it, and publish it.",
       },
       { property: "og:title", content: "Kimble — Build it and ship it" },
       {
@@ -80,8 +80,6 @@ export const Route = createFileRoute("/")({
 
 const samplePrompts = [
   "A web app with sign-in and a dashboard",
-  "A mobile app for iOS and Android",
-  "A Chrome extension that summarises any page",
   "A landing page for my coffee shop",
 ];
 
@@ -335,7 +333,7 @@ function Landing() {
     if (isFocused || prompt.length > 0) return;
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setAnimatedPlaceholder(
-        mode === "discuss" ? "Ask Kimble anything…" : "Describe a web app, mobile app, API or extension…",
+        mode === "discuss" ? "Ask Kimble anything…" : "Describe the app or website you want…",
       );
       return;
     }
@@ -344,7 +342,7 @@ function Landing() {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const prefix = mode === "discuss" ? "Ask Kimble about " : "Ask Kimble to build ";
     const restingPlaceholder =
-      mode === "discuss" ? "Ask Kimble anything about your idea…" : "Describe a web app, mobile app, API or extension…";
+      mode === "discuss" ? "Ask Kimble anything about your idea…" : "Describe the app or website you want…";
     let promptIdx = 0;
     let charIdx = 0;
     let typingMode: "typing" | "pausing" | "deleting" | "done" = "typing";
@@ -563,7 +561,7 @@ function Landing() {
                     isFocused || prompt
                       ? mode === "discuss"
                         ? "Ask Kimble anything about your idea…"
-                        : "Describe a web app, mobile app, API or extension…"
+                        : "Describe the app or website you want…"
                       : animatedPlaceholder
                   }
                   className="block w-full resize-none bg-transparent px-2 pb-16 pt-1 text-lg leading-relaxed outline-none placeholder:text-muted-foreground/80 sm:text-xl"
@@ -819,7 +817,7 @@ function Landing() {
                   </div>
                   <h3 className="mt-5 font-display text-xl">Your workspace is empty</h3>
                   <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
-                    Describe a web app, mobile app, API or extension in the box above — Kimble scaffolds it in seconds.
+                    Describe the app or website you want in the box above — Kimble scaffolds it in seconds.
                   </p>
                 </div>
               ) : (
@@ -964,7 +962,7 @@ function Landing() {
                 {[
                   ["01", "Start with the outcome", "Describe who the app is for, what it should do, and how it should feel."],
                   ["02", "Shape it in conversation", "Watch the plan, pages, features, and checks come together. Ask for changes in plain language."],
-                  ["03", "Put it in people’s hands", "Publish it, connect your web address, export the code, or package the mobile app."],
+                  ["03", "Put it in people’s hands", "Publish it, connect your web address, or export the code."],
                 ].map(([number, title, body]) => (
                   <li key={number} className="border-t border-background/25 pt-5">
                     <span className="text-xs text-background/50">{number}</span>
@@ -996,7 +994,6 @@ function Landing() {
                   ["Do I need to add a card?", "No. Buy credits only when you choose, using any available payment method."],
                   ["Do credits expire?", "No. Your unused balance stays available."],
                   ["Do I own the code?", "Yes. Sync it to Git, edit it, and deploy it elsewhere."],
-                  ["Can Kimble build mobile apps?", "Yes. One mobile project can ship to iOS and Android."],
                 ].map(([question, answer]) => (
                   <div key={question} className="border-b border-border py-6 md:pr-10 md:odd:border-r md:even:pl-10">
                     <h3 className="font-landing-display text-base font-semibold">{question}</h3>
@@ -1029,7 +1026,7 @@ function Landing() {
                     <PetalBrand size="sm" />
                   </Link>
                   <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                    Turn sentences into shipped products. Web and mobile,
+                    Turn sentences into shipped products. Websites and web apps,
                     your code, credits that never expire.
                   </p>
                 </div>

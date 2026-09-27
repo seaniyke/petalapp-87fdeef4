@@ -1,3 +1,4 @@
+import { MOBILE_APPS_ENABLED, CHROME_EXTENSIONS_ENABLED } from "@/lib/site-flags";
 /**
  * Data for the /features/$slug pages.
  *
@@ -32,7 +33,7 @@ export type Feature = {
   codeSample: string;
 };
 
-export const FEATURES: Record<string, Feature> = {
+const ALL_FEATURES: Record<string, Feature> = {
   web: {
     slug: "web",
     eyebrow: "Web apps",
@@ -151,19 +152,19 @@ export default function Today() {
     eyebrow: "Live preview",
     title: "See it before you",
     accent: "ship it",
-    lede: "Web frame, phone frame, or API console — whichever fits.",
-    body: "Every edit streams into a live preview. Web apps run in a browser frame with device switching, mobile apps render on a real phone via Expo Go, backends get an API console.",
+    lede: "A real browser frame that updates as Kimble works.",
+    body: "Every edit streams into a live preview. Your app runs in a real browser frame, and you can flip between desktop, tablet and phone sizes.",
     image: previewImg,
     icon: Eye,
     bullets: [
       { title: "Instant, not simulated", body: "Real browser, real bundler, real network — not a mock." },
       { title: "Device switching", body: "Flip between desktop, tablet, and phone frames without a rebuild." },
-      { title: "QR to your phone", body: "Test a native build on your device before you leave the chat." },
+      { title: "Share a preview link", body: "Send a private preview link and collect feedback before you publish." },
     ],
     proof: [
       { stat: "Real", label: "Browser + bundler" },
       { stat: "3", label: "Device frames" },
-      { stat: "QR", label: "To your phone" },
+      { stat: "1 link", label: "To share" },
     ],
     samplePrompt: "Change the landing hero to a dark editorial layout with a rotating italic word — I want to see it live before I ship.",
     codeLang: "tsx",
@@ -178,27 +179,35 @@ export default function Today() {
     eyebrow: "One-click ship",
     title: "From chat to",
     accent: "public URL",
-    lede: "Preview URL, custom domain, or a signed mobile build.",
-    body: "Publish to a Kimble subdomain in one click, connect your own domain in two, or trigger a signed mobile build. Rollbacks, versioning and analytics come free.",
+    lede: "Preview URL or your own custom domain.",
+    body: "Publish to a Kimble subdomain in one click or connect your own domain in two. Rollbacks, versioning and analytics come free.",
     image: shipImg,
     icon: Rocket,
     bullets: [
       { title: "Instant public URL", body: "Every project gets a shareable Kimble subdomain out of the box." },
       { title: "Custom domain", body: "Bring your own domain or add a domain we register for you." },
-      { title: "Signed mobile builds", body: "iOS .ipa and Android .apk built on our cloud and delivered to you." },
+      { title: "Rollback anytime", body: "Every publish is a version — step back to any earlier one in a click." },
     ],
     proof: [
       { stat: "1 click", label: "To public URL" },
       { stat: "∞", label: "Rollback points" },
-      { stat: "iOS + Android", label: "Signed builds" },
+      { stat: "Free", label: "Analytics" },
     ],
-    samplePrompt: "Publish this to my own domain and give me a signed Android build I can hand to my beta testers today.",
+    samplePrompt: "Publish this to my own domain so my beta testers can try it today.",
     codeLang: "bash",
     codeSample: `$ kimble publish --domain yourbrand.com
 ✔ Built in 42s
-✔ Deployed to https://yourbrand.com
-✔ Android .apk ready → /downloads/app.apk`,
+✔ Deployed to https://yourbrand.com`,
   },
 };
 
-export const ORDER = ["web", "mobile", "backend", "extensions", "preview", "ship"] as const;
+const PAUSED = new Set<string>([
+  ...(MOBILE_APPS_ENABLED ? [] : ["mobile"]),
+  ...(CHROME_EXTENSIONS_ENABLED ? [] : ["extensions"]),
+]);
+
+export const FEATURES: Record<string, Feature> = Object.fromEntries(
+  Object.entries(ALL_FEATURES).filter(([k]) => !PAUSED.has(k)),
+);
+
+export const ORDER = (["web", "mobile", "backend", "extensions", "preview", "ship"] as const).filter((k) => !PAUSED.has(k));

@@ -1,3 +1,4 @@
+import { isPausedKitPath } from "@/lib/site-flags";
 /**
  * Webby parity: pre-loaded template metadata.
  *
@@ -225,7 +226,7 @@ export function kitFileApi(src: string): { exports: string[]; types: string[] } 
 export function renderStarterKitMap(): string {
   const lines: string[] = [];
   for (const area of MAP_AREAS) {
-    const files = KIT_FILES.filter((f) => f.path.startsWith(area.dir) && /\.tsx?$/.test(f.path)).sort((a, b) => a.path.localeCompare(b.path));
+    const files = KIT_FILES.filter((f) => f.path.startsWith(area.dir) && !isPausedKitPath(f.path) && /\.tsx?$/.test(f.path)).sort((a, b) => a.path.localeCompare(b.path));
     if (!files.length) continue;
     lines.push(`${area.label} — ${area.dir.replace(/^src\//, "@/").replace(/\/$/, "")}:`);
     if (area.api) {

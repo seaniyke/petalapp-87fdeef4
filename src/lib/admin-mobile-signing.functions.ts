@@ -1,3 +1,4 @@
+import { MOBILE_APPS_ENABLED } from "@/lib/site-flags";
 /**
  * Server functions for the admin mobile-signing dashboard.
  *
@@ -25,6 +26,7 @@ export type AdminMobileSigningRow = {
 export const listMobileSigningProfiles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    if (!MOBILE_APPS_ENABLED) throw new Error("Mobile apps are not available.");
     const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
       _user_id: context.userId,
       _role: "admin",

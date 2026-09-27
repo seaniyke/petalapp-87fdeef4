@@ -447,7 +447,7 @@ export const PROJECT_ARCHETYPES: readonly ProjectArchetype[] = [
       "AI deal scoring",
       "Revenue forecasting",
       "Bulk CSV import",
-      "Chrome extension for lead capture",
+      "Embeddable lead-capture form",
     ],
     providersToWireLater: [
       "Gmail / Outlook API",

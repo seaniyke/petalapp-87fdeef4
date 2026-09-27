@@ -16,10 +16,11 @@
  *   EXPO_ACCESS_TOKEN
  */
 import { createServerFn } from "@tanstack/react-start";
+import { MOBILE_APPS_ENABLED } from "@/lib/site-flags";
 
 export const getMobileBuildReady = createServerFn({ method: "GET" }).handler(
   async () => {
-    const ready = Boolean(process.env.EXPO_ACCESS_TOKEN);
+    const ready = MOBILE_APPS_ENABLED && Boolean(process.env.EXPO_ACCESS_TOKEN);
     return {
       ready,
       // If true → Kimble can run EAS Build for the user with zero setup.

@@ -1,3 +1,4 @@
+import { MOBILE_APPS_ENABLED } from "@/lib/site-flags";
 /**
  * Dynamic system-prompt snippets (Tier 2 reliability).
  *
@@ -990,6 +991,8 @@ export function pickDynamicSnippets(args: {
     // Target-specific craft snippets are already forced above; skip keyword
     // matching for them so they don't double-count toward the cap.
     if (key === "mobileCraft" || key === "backendCraft" || key === "chromeExtensionCraft") continue;
+    // Paused build type: mobile instructions never reach the engine.
+    if ((key === "mobileApp" || key === "mobileNative") && !MOBILE_APPS_ENABLED) continue;
     const def = SNIPPETS[key];
     // "always" snippets are baseline reinforcements (e.g. verifyBeforeDone)
     // and ALWAYS go in. Topical snippets only fire on a keyword match.
