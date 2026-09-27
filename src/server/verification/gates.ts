@@ -67,6 +67,10 @@ export function syntaxGate(esbuild: { status: string; issues?: Array<{ path: str
 const KIT_PROVIDED = /^(react|react-dom|react\/jsx-runtime|lucide-react|clsx|tailwind-merge|class-variance-authority)$/;
 
 function resolveLocal(from: string, spec: string, paths: Set<string>): boolean {
+  return resolveLocalPath(from, spec, paths) !== null;
+}
+
+function resolveLocalPath(from: string, spec: string, paths: Set<string>): string | null {
   let base: string;
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
   else {
@@ -78,7 +82,8 @@ function resolveLocal(from: string, spec: string, paths: Set<string>): boolean {
     }
     base = dir.join("/");
   }
-  return ["", ".tsx", ".ts", ".jsx", ".js", ".css", "/index.tsx", "/index.ts", "/index.js"].some((e) => paths.has(base + e));
+  const e = ["", ".tsx", ".ts", ".jsx", ".js", ".css", "/index.tsx", "/index.ts", "/index.js"].find((x) => paths.has(base + x));
+  return e === undefined ? null : base + e;
 }
 
 function pkgName(spec: string): string {
@@ -185,7 +190,7 @@ function localImports(from: string, content: string, paths: Set<string>): string
   let m: RegExpExecArray | null;
   LOCAL_IMPORT.lastIndex = 0;
   while ((m = LOCAL_IMPORT.exec(content))) {
-    const r = resolveLocal(from, m[1]!, paths);
+    const r = resolveLocalPath(from, m[1]!, paths);
     if (r) out.push(r);
   }
   return out;
