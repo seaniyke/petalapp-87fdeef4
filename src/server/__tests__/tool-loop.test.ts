@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { runToolLoop, completionGaps, createToolLoopState, compact, stableFoundations, type ModelReply, type LoopMessage, type ToolCallMsg } from "@/server/engine/tool-loop";
 import { finalizeVerification, runSourceGates } from "@/server/verification/gates";
+import { systemTextOf } from "@/server/engine/system-text";
 import { readinessOf } from "@/server/verification/readiness";
 
 let n = 0;
@@ -323,5 +324,22 @@ describe("managed build surface", () => {
     const m = scripted([reply(call("create_file", { path: "src/lib/vite.config.helper.tsx", content: page("H") })), reply(call("finish", {}))]);
     const r = await runToolLoop({ ...surfaceBase, callModel: m.callModel });
     expect(r.files.some((f) => f.path === "src/lib/vite.config.helper.tsx")).toBe(true);
+  });
+});
+
+describe("system prompt reaches the model", () => {
+  it("flattens cache_control part arrays and every system message", () => {
+    const text = systemTextOf([
+      { role: "system", content: [{ type: "text", text: "AGENT MANUAL", cache_control: { type: "ephemeral" } }] },
+      { role: "system", content: "SKILLS AND DESIGN CONTRACT" },
+      { role: "user", content: "build a bakery site" },
+    ]);
+    expect(text).toContain("AGENT MANUAL");
+    expect(text).toContain("SKILLS AND DESIGN CONTRACT");
+    expect(text).not.toContain("[object Object]");
+  });
+
+  it("never yields [object Object] for the shape the prompt builder emits", () => {
+    expect(systemTextOf([{ role: "system", content: [{ type: "text", text: "x" }] }])).toBe("x");
   });
 });
