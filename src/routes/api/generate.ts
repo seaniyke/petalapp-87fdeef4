@@ -7268,6 +7268,8 @@ async function handleGenerateRequestCore(
           plannedPages: firstBuildPlan?.pages.length ?? 0,
           escalations: turnEscalations,
         });
+        // The summary already rides on turnStrategy here; release the hand-off entry.
+        if (turnStrategy.executionSummary) takeExecutionSummary(logicalTurnId);
         void agentIO().recordEconomics({
           execution: {
             class: turnComplexity.class,
