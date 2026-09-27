@@ -140359,6 +140359,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141395,6 +141396,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141559,6 +141561,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141602,6 +141605,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -142301,6 +142305,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -144520,6 +144525,291 @@ var init_prd_deterministic = __esm({
   }
 });
 
+// src/server/understanding.server.ts
+var understanding_server_exports = {};
+__export(understanding_server_exports, {
+  deterministicUnderstanding: () => deterministicUnderstanding,
+  renderUnderstandingBlock: () => renderUnderstandingBlock,
+  understandRequest: () => understandRequest
+});
+function deterministicUnderstanding(brief) {
+  const text = (brief ?? "").trim();
+  const prd = deterministicPrd(text);
+  const target = resolveBuildTarget(null, text);
+  const needsPayments = PAYMENT_RE.test(text);
+  const needsRealtime = REALTIME_RE.test(text);
+  const needsStorage = STORAGE_RE.test(text);
+  const needsAuth = prd.needsAuth || needsPayments;
+  const needsDatabase = prd.needsPersistence || needsAuth || needsPayments;
+  const application = APP_RE.test(text) || needsAuth || prd.productType === "workflow-app";
+  const marketing = MARKETING_RE.test(text) || !application && prd.productType !== "utility";
+  return {
+    summary: prd.purpose,
+    productType: prd.productType,
+    domain: prd.domain,
+    targetUsers: prd.targetUser ? [prd.targetUser] : [],
+    userProblem: prd.primaryOutcome,
+    platforms: [target.target],
+    surfaces: {
+      marketing: marketing || !application && !marketing,
+      application,
+      admin: ADMIN_RE.test(text)
+    },
+    needsBackend: needsDatabase || needsAuth,
+    needsAuth,
+    needsDatabase,
+    needsPayments,
+    needsRealtime,
+    needsStorage,
+    needsScheduledJobs: CRON_RE.test(text),
+    needsExternalApis: API_RE.test(text),
+    roles: prd.roles ?? [],
+    firstVersion: prd.requiredSurfaces.map(String),
+    outOfScope: prd.outOfScope ?? [],
+    confidence: {
+      platform: target.source === "inferred" ? "inferred" : "confident",
+      backend: "inferred",
+      auth: "inferred",
+      payments: needsPayments ? "inferred" : "confident",
+      surfaces: "inferred"
+    },
+    needsClarification: false,
+    source: "deterministic"
+  };
+}
+function conf(v, fallback) {
+  return v === "confident" || v === "inferred" || v === "uncertain" ? v : fallback;
+}
+function strings(v, cap = 12) {
+  if (!Array.isArray(v)) return [];
+  return v.filter((x) => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, cap);
+}
+async function understandRequest(brief, opts = {}) {
+  const fallback = deterministicUnderstanding(brief);
+  if (!process.env.OPENROUTER_API_KEY) return fallback;
+  if ((brief ?? "").trim().length < 4) return fallback;
+  try {
+    const priorBlock = opts.prior ? `
+
+What Kimble already understood about this project (refine it, do not discard it):
+${JSON.stringify(
+      {
+        summary: opts.prior.summary,
+        productType: opts.prior.productType,
+        domain: opts.prior.domain,
+        platforms: opts.prior.platforms,
+        surfaces: opts.prior.surfaces,
+        needsAuth: opts.prior.needsAuth,
+        needsPayments: opts.prior.needsPayments,
+        roles: opts.prior.roles
+      },
+      null,
+      1
+    )}` : "";
+    const res = await aiChatCompletions({
+      feature: "preflight",
+      lockCallerModel: true,
+      signal: opts.signal,
+      meta: { userId: opts.userId, projectId: opts.projectId ?? null },
+      body: {
+        model: MODEL,
+        messages: [
+          { role: "system", content: SYSTEM },
+          {
+            role: "user",
+            content: `Build request:
+"""${(brief ?? "").slice(0, MAX_USER_PROMPT_CHARS)}"""
+
+Rules-based draft to correct:
+${JSON.stringify(
+              {
+                productType: fallback.productType,
+                domain: fallback.domain,
+                platforms: fallback.platforms,
+                surfaces: fallback.surfaces,
+                needsAuth: fallback.needsAuth,
+                needsDatabase: fallback.needsDatabase,
+                needsPayments: fallback.needsPayments
+              },
+              null,
+              1
+            )}${priorBlock}`
+          }
+        ],
+        tools: [TOOL2],
+        tool_choice: { type: "function", function: { name: "record_understanding" } },
+        stream: false
+      }
+    });
+    if (!res.ok) return fallback;
+    const json = await res.json();
+    const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    if (!args) return fallback;
+    const raw = JSON.parse(args);
+    const platforms = strings(raw.platforms, 3).filter(
+      (p2) => PLATFORMS.includes(p2)
+    );
+    const needsAuth = raw.needsAuth === true;
+    const needsPayments = raw.needsPayments === true;
+    const needsDatabase = raw.needsDatabase === true || needsAuth || needsPayments;
+    return {
+      summary: typeof raw.summary === "string" && raw.summary.trim() ? raw.summary.trim() : fallback.summary,
+      productType: typeof raw.productType === "string" && raw.productType.trim() ? raw.productType.trim() : fallback.productType,
+      domain: typeof raw.domain === "string" && raw.domain.trim() ? raw.domain.trim() : fallback.domain,
+      targetUsers: strings(raw.targetUsers, 6).length ? strings(raw.targetUsers, 6) : fallback.targetUsers,
+      userProblem: typeof raw.userProblem === "string" && raw.userProblem.trim() ? raw.userProblem.trim() : fallback.userProblem,
+      platforms: platforms.length ? platforms : fallback.platforms,
+      surfaces: {
+        marketing: raw.marketingSurface === true,
+        application: raw.applicationSurface === true,
+        admin: raw.adminSurface === true
+      },
+      needsBackend: raw.needsBackend === true || needsDatabase,
+      needsAuth,
+      needsDatabase,
+      needsPayments,
+      needsRealtime: raw.needsRealtime === true,
+      needsStorage: raw.needsStorage === true,
+      needsScheduledJobs: raw.needsScheduledJobs === true,
+      needsExternalApis: raw.needsExternalApis === true,
+      roles: strings(raw.roles, 8),
+      firstVersion: strings(raw.firstVersion, 8).length ? strings(raw.firstVersion, 8) : fallback.firstVersion,
+      outOfScope: strings(raw.outOfScope, 8),
+      confidence: {
+        platform: conf(raw.platformConfidence, "inferred"),
+        backend: conf(raw.backendConfidence, "inferred"),
+        auth: conf(raw.authConfidence, "inferred"),
+        payments: conf(raw.paymentsConfidence, "inferred"),
+        surfaces: conf(raw.surfacesConfidence, "inferred")
+      },
+      needsClarification: raw.needsClarification === true && typeof raw.clarifyingQuestion === "string",
+      clarifyingQuestion: typeof raw.clarifyingQuestion === "string" ? raw.clarifyingQuestion.trim() : void 0,
+      source: "model"
+    };
+  } catch (e) {
+    console.warn("[understanding] falling back to rules:", e instanceof Error ? e.message : String(e));
+    return fallback;
+  }
+}
+function renderUnderstandingBlock(u) {
+  const needs = [
+    u.needsAuth && "auth",
+    u.needsDatabase && "database",
+    u.needsPayments && "payments",
+    u.needsRealtime && "realtime",
+    u.needsStorage && "file storage",
+    u.needsScheduledJobs && "scheduled jobs",
+    u.needsExternalApis && "external APIs"
+  ].filter(Boolean);
+  const surfaces2 = [
+    u.surfaces.marketing && "marketing site",
+    u.surfaces.application && "application",
+    u.surfaces.admin && "admin"
+  ].filter(Boolean);
+  return [
+    "## WHAT YOU ARE BUILDING (understood, not guessed)",
+    `Product: ${u.summary}`,
+    `Type: ${u.productType} \xB7 Domain: ${u.domain}`,
+    u.targetUsers.length ? `Users: ${u.targetUsers.join(", ")}` : "",
+    `Problem: ${u.userProblem}`,
+    `Platforms: ${u.platforms.join(", ")}`,
+    `Surfaces required: ${surfaces2.length ? surfaces2.join(" + ") : "single page"}`,
+    `Backend needs: ${needs.length ? needs.join(", ") : "none \u2014 keep it frontend-only"}`,
+    u.roles.length ? `Roles: ${u.roles.join(", ")}` : "",
+    u.firstVersion.length ? `First version must include:
+${u.firstVersion.map((f) => `- ${f}`).join("\n")}` : "",
+    u.outOfScope.length ? `Out of scope: ${u.outOfScope.join("; ")}` : ""
+  ].filter(Boolean).join("\n");
+}
+var MODEL, PLATFORMS, SYSTEM, CONFIDENCE_ENUM, TOOL2, PAYMENT_RE, REALTIME_RE, STORAGE_RE, CRON_RE, API_RE, MARKETING_RE, APP_RE, ADMIN_RE;
+var init_understanding_server = __esm({
+  "src/server/understanding.server.ts"() {
+    init_define_import_meta_env();
+    init_ai_provider_server();
+    init_prd_deterministic();
+    init_target_inference();
+    init_prompt_limits();
+    MODEL = "deepseek/deepseek-v4-flash";
+    PLATFORMS = ["web", "mobile", "web-mobile", "backend", "extension"];
+    SYSTEM = `You are Kimble's product engineer. You read a build request and decide what is ACTUALLY being asked for, the way a senior engineer would before writing a line of code.
+
+Rules:
+- Read intent, not keywords. "Parents pay fees and see results" means auth, roles, payments and a database even though none of those words appear.
+- Build the SMALLEST COMPLETE product that delivers the outcome. Never add auth, dashboards, admin or checkout the request does not require.
+- A product that has customers AND operators needs both a marketing surface and an application surface. A single-purpose tool needs neither \u2014 it is one public page.
+- Mark confidence honestly. "inferred" is the normal case; use "uncertain" only when a wrong guess would change the architecture.
+- Only set needsClarification when a wrong guess would change the architecture AND the question is answerable in one line.
+- firstVersion is what must exist for the product to be usable at all. Keep it under 8 items.
+
+Reply only by calling record_understanding.`;
+    CONFIDENCE_ENUM = ["confident", "inferred", "uncertain"];
+    TOOL2 = {
+      type: "function",
+      function: {
+        name: "record_understanding",
+        description: "Record the semantic reading of the build request.",
+        parameters: {
+          type: "object",
+          properties: {
+            summary: { type: "string", description: "One sentence: what is being built." },
+            productType: {
+              type: "string",
+              description: "e.g. saas, marketplace, fintech, landing-page, utility, content-site, social, game, api, internal-tool"
+            },
+            domain: { type: "string", description: "Human domain, e.g. 'school administration'." },
+            targetUsers: { type: "array", items: { type: "string" } },
+            userProblem: { type: "string" },
+            platforms: { type: "array", items: { type: "string", enum: PLATFORMS } },
+            marketingSurface: { type: "boolean" },
+            applicationSurface: { type: "boolean" },
+            adminSurface: { type: "boolean" },
+            needsBackend: { type: "boolean" },
+            needsAuth: { type: "boolean" },
+            needsDatabase: { type: "boolean" },
+            needsPayments: { type: "boolean" },
+            needsRealtime: { type: "boolean" },
+            needsStorage: { type: "boolean" },
+            needsScheduledJobs: { type: "boolean" },
+            needsExternalApis: { type: "boolean" },
+            roles: { type: "array", items: { type: "string" } },
+            firstVersion: { type: "array", items: { type: "string" } },
+            outOfScope: { type: "array", items: { type: "string" } },
+            platformConfidence: { type: "string", enum: CONFIDENCE_ENUM },
+            backendConfidence: { type: "string", enum: CONFIDENCE_ENUM },
+            authConfidence: { type: "string", enum: CONFIDENCE_ENUM },
+            paymentsConfidence: { type: "string", enum: CONFIDENCE_ENUM },
+            surfacesConfidence: { type: "string", enum: CONFIDENCE_ENUM },
+            needsClarification: { type: "boolean" },
+            clarifyingQuestion: { type: "string" }
+          },
+          required: [
+            "summary",
+            "productType",
+            "domain",
+            "userProblem",
+            "platforms",
+            "marketingSurface",
+            "applicationSurface",
+            "needsBackend",
+            "needsAuth",
+            "needsDatabase",
+            "firstVersion"
+          ],
+          additionalProperties: false
+        }
+      }
+    };
+    PAYMENT_RE = /\b(pay|payment|checkout|subscription|billing|invoice|stripe|paystack|paddle|pricing tier|fees?|donat)/i;
+    REALTIME_RE = /\b(real[- ]?time|live (chat|feed|updates?)|chat|messaging|presence|collaborat)/i;
+    STORAGE_RE = /\b(upload|file|photo|image gallery|document|attachment|avatar|pdf)/i;
+    CRON_RE = /\b(cron|scheduled?|daily digest|reminder|recurring|nightly|weekly report)/i;
+    API_RE = /\b(api|webhook|integrat|third[- ]party|sync with|import from)/i;
+    MARKETING_RE = /\b(landing|marketing|website|homepage|waitlist|portfolio|blog|brochure)/i;
+    APP_RE = /\b(dashboard|portal|app|admin|manage|track|crm|workspace|account|inventory|booking|order)/i;
+    ADMIN_RE = /\b(admin|moderat|back[- ]?office|staff|operator|approve|review queue)/i;
+  }
+});
+
 // src/server/prd/prd-model.server.ts
 function coerceSurfaces(input, fallback) {
   if (!Array.isArray(input)) return fallback;
@@ -144610,9 +144900,9 @@ async function modelPrd(brief, userId) {
       lockCallerModel: true,
       meta: userId ? { userId } : void 0,
       body: {
-        model: MODEL,
+        model: MODEL2,
         messages: [
-          { role: "system", content: SYSTEM },
+          { role: "system", content: SYSTEM2 },
           {
             role: "user",
             content: `User request:
@@ -144641,7 +144931,7 @@ ${JSON.stringify(
             )}`
           }
         ],
-        tools: [TOOL2],
+        tools: [TOOL3],
         tool_choice: { type: "function", function: { name: "write_prd" } },
         stream: false
       }
@@ -144655,7 +144945,7 @@ ${JSON.stringify(
     return prior;
   }
 }
-var MODEL, SYSTEM, TOOL2, VALID_SURFACES, VALID_TYPES;
+var MODEL2, SYSTEM2, TOOL3, VALID_SURFACES, VALID_TYPES;
 var init_prd_model_server = __esm({
   "src/server/prd/prd-model.server.ts"() {
     "use strict";
@@ -144663,8 +144953,8 @@ var init_prd_model_server = __esm({
     init_ai_provider_server();
     init_prd_deterministic();
     init_prompt_limits();
-    MODEL = "deepseek/deepseek-v4-flash";
-    SYSTEM = `You are Kimble's product architect. You turn a user's one-line app request into a precise internal PRD that an engineering pipeline will build and then verify against.
+    MODEL2 = "deepseek/deepseek-v4-flash";
+    SYSTEM2 = `You are Kimble's product architect. You turn a user's one-line app request into a precise internal PRD that an engineering pipeline will build and then verify against.
 
 You are given a deterministic draft produced by rules. Improve it. Keep what is right, fix what is wrong, fill what is blank.
 
@@ -144679,7 +144969,7 @@ Hard rules:
 - Content tone must fit the domain. Health topics are informative and never diagnostic.
 
 Reply only by calling the write_prd tool.`;
-    TOOL2 = {
+    TOOL3 = {
       type: "function",
       function: {
         name: "write_prd",
@@ -146624,285 +146914,6 @@ var init_execution = __esm({
   }
 });
 
-// src/server/understanding.server.ts
-function deterministicUnderstanding(brief) {
-  const text = (brief ?? "").trim();
-  const prd = deterministicPrd(text);
-  const target = resolveBuildTarget(null, text);
-  const needsPayments = PAYMENT_RE.test(text);
-  const needsRealtime = REALTIME_RE.test(text);
-  const needsStorage = STORAGE_RE.test(text);
-  const needsAuth = prd.needsAuth || needsPayments;
-  const needsDatabase = prd.needsPersistence || needsAuth || needsPayments;
-  const application = APP_RE.test(text) || needsAuth || prd.productType === "workflow-app";
-  const marketing = MARKETING_RE.test(text) || !application && prd.productType !== "utility";
-  return {
-    summary: prd.purpose,
-    productType: prd.productType,
-    domain: prd.domain,
-    targetUsers: prd.targetUser ? [prd.targetUser] : [],
-    userProblem: prd.primaryOutcome,
-    platforms: [target.target],
-    surfaces: {
-      marketing: marketing || !application && !marketing,
-      application,
-      admin: ADMIN_RE.test(text)
-    },
-    needsBackend: needsDatabase || needsAuth,
-    needsAuth,
-    needsDatabase,
-    needsPayments,
-    needsRealtime,
-    needsStorage,
-    needsScheduledJobs: CRON_RE.test(text),
-    needsExternalApis: API_RE.test(text),
-    roles: prd.roles ?? [],
-    firstVersion: prd.requiredSurfaces.map(String),
-    outOfScope: prd.outOfScope ?? [],
-    confidence: {
-      platform: target.source === "inferred" ? "inferred" : "confident",
-      backend: "inferred",
-      auth: "inferred",
-      payments: needsPayments ? "inferred" : "confident",
-      surfaces: "inferred"
-    },
-    needsClarification: false,
-    source: "deterministic"
-  };
-}
-function conf(v, fallback) {
-  return v === "confident" || v === "inferred" || v === "uncertain" ? v : fallback;
-}
-function strings(v, cap = 12) {
-  if (!Array.isArray(v)) return [];
-  return v.filter((x) => typeof x === "string" && x.trim().length > 0).map((x) => x.trim()).slice(0, cap);
-}
-async function understandRequest(brief, opts = {}) {
-  const fallback = deterministicUnderstanding(brief);
-  if (!process.env.OPENROUTER_API_KEY) return fallback;
-  if ((brief ?? "").trim().length < 4) return fallback;
-  try {
-    const priorBlock = opts.prior ? `
-
-What Kimble already understood about this project (refine it, do not discard it):
-${JSON.stringify(
-      {
-        summary: opts.prior.summary,
-        productType: opts.prior.productType,
-        domain: opts.prior.domain,
-        platforms: opts.prior.platforms,
-        surfaces: opts.prior.surfaces,
-        needsAuth: opts.prior.needsAuth,
-        needsPayments: opts.prior.needsPayments,
-        roles: opts.prior.roles
-      },
-      null,
-      1
-    )}` : "";
-    const res = await aiChatCompletions({
-      feature: "preflight",
-      lockCallerModel: true,
-      signal: opts.signal,
-      meta: { userId: opts.userId, projectId: opts.projectId ?? null },
-      body: {
-        model: MODEL2,
-        messages: [
-          { role: "system", content: SYSTEM2 },
-          {
-            role: "user",
-            content: `Build request:
-"""${(brief ?? "").slice(0, MAX_USER_PROMPT_CHARS)}"""
-
-Rules-based draft to correct:
-${JSON.stringify(
-              {
-                productType: fallback.productType,
-                domain: fallback.domain,
-                platforms: fallback.platforms,
-                surfaces: fallback.surfaces,
-                needsAuth: fallback.needsAuth,
-                needsDatabase: fallback.needsDatabase,
-                needsPayments: fallback.needsPayments
-              },
-              null,
-              1
-            )}${priorBlock}`
-          }
-        ],
-        tools: [TOOL3],
-        tool_choice: { type: "function", function: { name: "record_understanding" } },
-        stream: false
-      }
-    });
-    if (!res.ok) return fallback;
-    const json = await res.json();
-    const args = json.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!args) return fallback;
-    const raw = JSON.parse(args);
-    const platforms = strings(raw.platforms, 3).filter(
-      (p2) => PLATFORMS.includes(p2)
-    );
-    const needsAuth = raw.needsAuth === true;
-    const needsPayments = raw.needsPayments === true;
-    const needsDatabase = raw.needsDatabase === true || needsAuth || needsPayments;
-    return {
-      summary: typeof raw.summary === "string" && raw.summary.trim() ? raw.summary.trim() : fallback.summary,
-      productType: typeof raw.productType === "string" && raw.productType.trim() ? raw.productType.trim() : fallback.productType,
-      domain: typeof raw.domain === "string" && raw.domain.trim() ? raw.domain.trim() : fallback.domain,
-      targetUsers: strings(raw.targetUsers, 6).length ? strings(raw.targetUsers, 6) : fallback.targetUsers,
-      userProblem: typeof raw.userProblem === "string" && raw.userProblem.trim() ? raw.userProblem.trim() : fallback.userProblem,
-      platforms: platforms.length ? platforms : fallback.platforms,
-      surfaces: {
-        marketing: raw.marketingSurface === true,
-        application: raw.applicationSurface === true,
-        admin: raw.adminSurface === true
-      },
-      needsBackend: raw.needsBackend === true || needsDatabase,
-      needsAuth,
-      needsDatabase,
-      needsPayments,
-      needsRealtime: raw.needsRealtime === true,
-      needsStorage: raw.needsStorage === true,
-      needsScheduledJobs: raw.needsScheduledJobs === true,
-      needsExternalApis: raw.needsExternalApis === true,
-      roles: strings(raw.roles, 8),
-      firstVersion: strings(raw.firstVersion, 8).length ? strings(raw.firstVersion, 8) : fallback.firstVersion,
-      outOfScope: strings(raw.outOfScope, 8),
-      confidence: {
-        platform: conf(raw.platformConfidence, "inferred"),
-        backend: conf(raw.backendConfidence, "inferred"),
-        auth: conf(raw.authConfidence, "inferred"),
-        payments: conf(raw.paymentsConfidence, "inferred"),
-        surfaces: conf(raw.surfacesConfidence, "inferred")
-      },
-      needsClarification: raw.needsClarification === true && typeof raw.clarifyingQuestion === "string",
-      clarifyingQuestion: typeof raw.clarifyingQuestion === "string" ? raw.clarifyingQuestion.trim() : void 0,
-      source: "model"
-    };
-  } catch (e) {
-    console.warn("[understanding] falling back to rules:", e instanceof Error ? e.message : String(e));
-    return fallback;
-  }
-}
-function renderUnderstandingBlock(u) {
-  const needs = [
-    u.needsAuth && "auth",
-    u.needsDatabase && "database",
-    u.needsPayments && "payments",
-    u.needsRealtime && "realtime",
-    u.needsStorage && "file storage",
-    u.needsScheduledJobs && "scheduled jobs",
-    u.needsExternalApis && "external APIs"
-  ].filter(Boolean);
-  const surfaces2 = [
-    u.surfaces.marketing && "marketing site",
-    u.surfaces.application && "application",
-    u.surfaces.admin && "admin"
-  ].filter(Boolean);
-  return [
-    "## WHAT YOU ARE BUILDING (understood, not guessed)",
-    `Product: ${u.summary}`,
-    `Type: ${u.productType} \xB7 Domain: ${u.domain}`,
-    u.targetUsers.length ? `Users: ${u.targetUsers.join(", ")}` : "",
-    `Problem: ${u.userProblem}`,
-    `Platforms: ${u.platforms.join(", ")}`,
-    `Surfaces required: ${surfaces2.length ? surfaces2.join(" + ") : "single page"}`,
-    `Backend needs: ${needs.length ? needs.join(", ") : "none \u2014 keep it frontend-only"}`,
-    u.roles.length ? `Roles: ${u.roles.join(", ")}` : "",
-    u.firstVersion.length ? `First version must include:
-${u.firstVersion.map((f) => `- ${f}`).join("\n")}` : "",
-    u.outOfScope.length ? `Out of scope: ${u.outOfScope.join("; ")}` : ""
-  ].filter(Boolean).join("\n");
-}
-var MODEL2, PLATFORMS, SYSTEM2, CONFIDENCE_ENUM, TOOL3, PAYMENT_RE, REALTIME_RE, STORAGE_RE, CRON_RE, API_RE, MARKETING_RE, APP_RE, ADMIN_RE;
-var init_understanding_server = __esm({
-  "src/server/understanding.server.ts"() {
-    init_define_import_meta_env();
-    init_ai_provider_server();
-    init_prd_deterministic();
-    init_target_inference();
-    init_prompt_limits();
-    MODEL2 = "deepseek/deepseek-v4-flash";
-    PLATFORMS = ["web", "mobile", "web-mobile", "backend", "extension"];
-    SYSTEM2 = `You are Kimble's product engineer. You read a build request and decide what is ACTUALLY being asked for, the way a senior engineer would before writing a line of code.
-
-Rules:
-- Read intent, not keywords. "Parents pay fees and see results" means auth, roles, payments and a database even though none of those words appear.
-- Build the SMALLEST COMPLETE product that delivers the outcome. Never add auth, dashboards, admin or checkout the request does not require.
-- A product that has customers AND operators needs both a marketing surface and an application surface. A single-purpose tool needs neither \u2014 it is one public page.
-- Mark confidence honestly. "inferred" is the normal case; use "uncertain" only when a wrong guess would change the architecture.
-- Only set needsClarification when a wrong guess would change the architecture AND the question is answerable in one line.
-- firstVersion is what must exist for the product to be usable at all. Keep it under 8 items.
-
-Reply only by calling record_understanding.`;
-    CONFIDENCE_ENUM = ["confident", "inferred", "uncertain"];
-    TOOL3 = {
-      type: "function",
-      function: {
-        name: "record_understanding",
-        description: "Record the semantic reading of the build request.",
-        parameters: {
-          type: "object",
-          properties: {
-            summary: { type: "string", description: "One sentence: what is being built." },
-            productType: {
-              type: "string",
-              description: "e.g. saas, marketplace, fintech, landing-page, utility, content-site, social, game, api, internal-tool"
-            },
-            domain: { type: "string", description: "Human domain, e.g. 'school administration'." },
-            targetUsers: { type: "array", items: { type: "string" } },
-            userProblem: { type: "string" },
-            platforms: { type: "array", items: { type: "string", enum: PLATFORMS } },
-            marketingSurface: { type: "boolean" },
-            applicationSurface: { type: "boolean" },
-            adminSurface: { type: "boolean" },
-            needsBackend: { type: "boolean" },
-            needsAuth: { type: "boolean" },
-            needsDatabase: { type: "boolean" },
-            needsPayments: { type: "boolean" },
-            needsRealtime: { type: "boolean" },
-            needsStorage: { type: "boolean" },
-            needsScheduledJobs: { type: "boolean" },
-            needsExternalApis: { type: "boolean" },
-            roles: { type: "array", items: { type: "string" } },
-            firstVersion: { type: "array", items: { type: "string" } },
-            outOfScope: { type: "array", items: { type: "string" } },
-            platformConfidence: { type: "string", enum: CONFIDENCE_ENUM },
-            backendConfidence: { type: "string", enum: CONFIDENCE_ENUM },
-            authConfidence: { type: "string", enum: CONFIDENCE_ENUM },
-            paymentsConfidence: { type: "string", enum: CONFIDENCE_ENUM },
-            surfacesConfidence: { type: "string", enum: CONFIDENCE_ENUM },
-            needsClarification: { type: "boolean" },
-            clarifyingQuestion: { type: "string" }
-          },
-          required: [
-            "summary",
-            "productType",
-            "domain",
-            "userProblem",
-            "platforms",
-            "marketingSurface",
-            "applicationSurface",
-            "needsBackend",
-            "needsAuth",
-            "needsDatabase",
-            "firstVersion"
-          ],
-          additionalProperties: false
-        }
-      }
-    };
-    PAYMENT_RE = /\b(pay|payment|checkout|subscription|billing|invoice|stripe|paystack|paddle|pricing tier|fees?|donat)/i;
-    REALTIME_RE = /\b(real[- ]?time|live (chat|feed|updates?)|chat|messaging|presence|collaborat)/i;
-    STORAGE_RE = /\b(upload|file|photo|image gallery|document|attachment|avatar|pdf)/i;
-    CRON_RE = /\b(cron|scheduled?|daily digest|reminder|recurring|nightly|weekly report)/i;
-    API_RE = /\b(api|webhook|integrat|third[- ]party|sync with|import from)/i;
-    MARKETING_RE = /\b(landing|marketing|website|homepage|waitlist|portfolio|blog|brochure)/i;
-    APP_RE = /\b(dashboard|portal|app|admin|manage|track|crm|workspace|account|inventory|booking|order)/i;
-    ADMIN_RE = /\b(admin|moderat|back[- ]?office|staff|operator|approve|review queue)/i;
-  }
-});
-
 // src/server/design/design-system.server.ts
 function role(light, dark) {
   return { light, dark: dark ?? light };
@@ -147286,7 +147297,7 @@ async function assemblePic(args) {
   if (!needsUnderstanding && stored) {
     return { pic: stored.pic, refreshed: false };
   }
-  const understanding = await understandRequest(args.brief, {
+  const understanding = args.understanding && !stored?.pic.understanding ? await args.understanding : await understandRequest(args.brief, {
     userId: args.userId,
     projectId,
     prior: stored?.pic.understanding ?? null,
@@ -152801,12 +152812,21 @@ Kimble corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is e
       if (c !== void 0) record(p2, c, await validate(p2, c));
     }
   };
+  let readinessSig = "";
+  const treeSig = () => [...tree].map(([p2, c]) => `${p2}:${hash(c)}`).sort().join("|");
+  const readinessNow = async () => {
+    const sig = treeSig();
+    if (state.readiness && sig === readinessSig) return state.readiness;
+    state.readiness = await checkReadiness(tree);
+    readinessSig = sig;
+    return state.readiness;
+  };
   const finishGate = async () => {
     await refreshEvidence();
     const gaps = completionGaps(state, tree);
-    state.readiness = await checkReadiness(tree);
-    if (!gaps.length && state.readiness.ready) return null;
-    return formatNotReady(gaps, state.readiness.findings);
+    const r = await readinessNow();
+    if (!gaps.length && r.ready) return null;
+    return formatNotReady(gaps, r.findings);
   };
   const validate = async (path, content) => {
     const t0 = Date.now();
@@ -153115,6 +153135,16 @@ ${notReady}` });
         const healedNew = [...new Set(state.written.slice(writesBefore))].filter((p2) => !before.errors.has(p2) && (state.validation.get(p2) ?? []).length === 0);
         const nowValid = [.../* @__PURE__ */ new Set([...healed, ...healedNew])].filter((p2) => actions.some((a2) => a2.path === p2 && a2.isError));
         if (nowValid.length) messages.push({ role: "user", content: `Now valid after the rest of this response landed: ${nowValid.join(", ")}.` });
+      }
+      const stepWrote = state.written.length > writesBefore;
+      if (stepWrote && !reply.toolCalls.some((c) => c.function.name === "finish") && completionGaps(state, tree).length === 0) {
+        const r = await readinessNow();
+        messages.push({
+          role: "user",
+          content: r.ready ? "Kimble verification (the exact checks finish and the save run) passes for the whole workspace: every file, import, export and required route is verified. Do not re-read files to check them. Call finish now unless the brief still asks for something not yet built." : `Kimble verification of the whole workspace (the exact checks finish runs) \u2014 still open:
+${r.findings.slice(0, 8).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}
+Everything not listed is already verified; do not re-read files to check it. Continue with the open items.`
+        });
       }
       if (args.typecheck && state.writesSinceTypecheck >= cfg.typecheckEvery) {
         state.writesSinceTypecheck = 0;
@@ -167751,13 +167781,14 @@ Pre-installed UI kit at @/components/ui \u2014 import these, never write them: $
 ` + renderStarterKitMap();
 }
 var MAP_AREAS = [
-  { dir: "src/components/blocks/", label: "Page sections (blocks)", purpose: true },
-  { dir: "src/components/motion/", label: "Motion", purpose: true },
-  { dir: "src/components/fx/", label: "Visual effects", purpose: false },
-  { dir: "src/components/content/", label: "Content", purpose: false },
-  { dir: "src/components/image/", label: "Images", purpose: false },
-  { dir: "src/components/scroll/", label: "Scroll", purpose: false },
-  { dir: "src/components/examples/", label: "Full reference examples (copy patterns from, do not import)", purpose: false }
+  { dir: "src/components/ui/", label: "UI kit", api: true },
+  { dir: "src/components/blocks/", label: "Page sections (blocks)", api: true },
+  { dir: "src/components/motion/", label: "Motion", api: true },
+  { dir: "src/components/fx/", label: "Visual effects", api: false },
+  { dir: "src/components/content/", label: "Content", api: false },
+  { dir: "src/components/image/", label: "Images", api: false },
+  { dir: "src/components/scroll/", label: "Scroll", api: false },
+  { dir: "src/components/examples/", label: "Full example compositions (optional; not needed to build \u2014 compose from the blocks above)", api: false }
 ];
 function firstDocSentence(src2) {
   const m = src2.match(/\/\*\*([\s\S]*?)\*\//);
@@ -167766,26 +167797,83 @@ function firstDocSentence(src2) {
   const s = text.split(/(?<=\.)\s/)[0] ?? text;
   return s.length > 90 ? `${s.slice(0, 87)}\u2026` : s;
 }
+var squash = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "").replace(/\s+/g, " ").trim();
 function exportedNames(src2) {
   const out = /* @__PURE__ */ new Set();
-  for (const m of src2.matchAll(/export\s+(?:default\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9]*)/g)) out.add(m[1]);
+  for (const m of src2.matchAll(/export\s+(?:default\s+)?(?:async\s+)?(?:function|const|class|let)\s+([A-Za-z_$][\w$]*)/g)) out.add(m[1]);
   for (const m of src2.matchAll(/export\s*\{([^}]+)\}/g)) {
     for (const part of m[1].split(",")) {
-      const n = part.trim().split(/\s+as\s+/).pop().trim();
-      if (/^[A-Z]/.test(n)) out.add(n);
+      const raw = part.trim();
+      if (!raw || raw.startsWith("type ")) continue;
+      const n = raw.split(/\s+as\s+/).pop().trim();
+      if (n && n !== "default") out.add(n);
     }
   }
-  return [...out].slice(0, 4);
+  return [...out];
 }
-function propNames(src2, component) {
-  const m = new RegExp(`(?:interface\\s+${component}Props[^{]*|type\\s+${component}Props\\s*=[^{]*)\\{([\\s\\S]*?)\\n\\}`).exec(src2);
-  if (!m) return [];
-  const out = [];
-  for (const line of m[1].split("\n")) {
-    const k = /^\s{2}([A-Za-z_$][\w$]*)(\??):/.exec(line);
-    if (k) out.push(`${k[1]}${k[2]}`);
+function balanced(src2, start) {
+  const open = src2[start];
+  const close = open === "{" ? "}" : open === "(" ? ")" : open === "<" ? ">" : "";
+  if (!close) return "";
+  let depth = 0;
+  for (let i = start; i < src2.length; i++) {
+    const ch = src2[i];
+    if (ch === open) depth++;
+    else if (ch === close && --depth === 0) return src2.slice(start, i + 1);
   }
-  return out.slice(0, 8);
+  return "";
+}
+function typeDeclarations(src2) {
+  const out = [];
+  for (const m of src2.matchAll(/^(?:export\s+)?(interface|type)\s+([A-Z][\w$]*)([^\n{=]*)(=?)/gm)) {
+    const at = m.index + m[0].length;
+    if (m[1] === "interface") {
+      const brace = src2.indexOf("{", at - 1);
+      const body = brace >= 0 ? balanced(src2, brace) : "";
+      out.push(squash(`interface ${m[2]}${m[3]} ${body}`));
+    } else {
+      let i = at, depth = 0;
+      for (; i < src2.length; i++) {
+        const ch = src2[i];
+        if ("{(<[".includes(ch)) depth++;
+        else if ("})>]".includes(ch)) depth--;
+        else if (depth <= 0 && (ch === ";" || ch === "\n" && src2[i + 1] === "\n")) break;
+      }
+      out.push(squash(`type ${m[2]}${m[3]}= ${src2.slice(at, i)}`));
+    }
+  }
+  return out;
+}
+function variantKeys(src2) {
+  const at = src2.search(/\bvariants:\s*\{/);
+  if (at < 0) return "";
+  const body = balanced(src2, src2.indexOf("{", at));
+  const out = [];
+  for (const g of body.slice(1, -1).matchAll(/(\w+):\s*\{([^{}]*)\}/g)) {
+    const keys = [...g[2].matchAll(/^\s*["']?([\w-]+)["']?\s*:/gm)].map((x) => x[1]);
+    if (keys.length) out.push(`${g[1]}=${keys.join("|")}`);
+  }
+  return out.join("; ");
+}
+function inlineParams(src2, name) {
+  const m = new RegExp(`export\\s+(?:default\\s+)?function\\s+${name}\\s*(?:<[^>]*>)?\\(`).exec(src2);
+  if (!m) return "";
+  const params = balanced(src2, m.index + m[0].length - 1);
+  const colon = params.indexOf(":");
+  if (colon < 0 || /:\s*[A-Z][\w$]*Props\b/.test(params)) return "";
+  const s = squash(params.slice(colon + 1, -1));
+  return s.length > 260 ? "" : `${name}: ${s}`;
+}
+function kitFileApi(src2) {
+  const exports = exportedNames(src2);
+  const types = typeDeclarations(src2);
+  for (const n of exports) {
+    const p2 = /^[A-Z]/.test(n) ? inlineParams(src2, n) : "";
+    if (p2) types.push(p2);
+  }
+  const v = variantKeys(src2);
+  if (v) types.push(`variants: ${v}`);
+  return { exports, types };
 }
 function renderStarterKitMap() {
   const lines = [];
@@ -167793,15 +167881,13 @@ function renderStarterKitMap() {
     const files = KIT_FILES.filter((f) => f.path.startsWith(area.dir) && /\.tsx?$/.test(f.path)).sort((a2, b) => a2.path.localeCompare(b.path));
     if (!files.length) continue;
     lines.push(`${area.label} \u2014 ${area.dir.replace(/^src\//, "@/").replace(/\/$/, "")}:`);
-    if (area.purpose) {
+    if (area.api) {
       for (const f of files) {
         const name = f.path.slice(area.dir.length).replace(/\.tsx?$/, "");
-        const ex = exportedNames(f.content).map((n) => {
-          const props = propNames(f.content, n);
-          return props.length ? `${n}(${props.join(", ")})` : n;
-        });
+        const api = kitFileApi(f.content);
         const doc = firstDocSentence(f.content);
-        lines.push(`- ${name}${ex.length ? ` {${ex.join(", ")}}` : ""}${doc ? ` \u2014 ${doc}` : ""}`);
+        lines.push(`- ${name}${api.exports.length ? ` {${api.exports.join(", ")}}` : ""}${doc ? ` \u2014 ${doc}` : ""}`);
+        if (api.types.length) lines.push(`    ${api.types.join("; ")}`);
       }
     } else {
       lines.push(files.map((f) => f.path.slice(area.dir.length).replace(/\.tsx?$/, "")).join(", "));
@@ -167809,8 +167895,8 @@ function renderStarterKitMap() {
   }
   if (!lines.length) return "";
   return `
-### Starter-kit map (authoritative \u2014 do not list directories to discover it)
-Everything below already exists. Import each component from its own path, exactly as listed (e.g. {SlideUp} from @/components/motion/slide-up). Exports and their own props are listed \u2014 use them directly; read a kit file only when you need implementation details the map does not give.
+### Starter-kit API (authoritative \u2014 derived from the shipped files; do not list directories to discover it)
+Everything below already exists. Import each export from its own path exactly as listed (e.g. {SlideUp} from @/components/motion/slide-up). The exports, prop types and variants below are the complete public API \u2014 the same thing reading the file would tell you \u2014 so use them directly without read_file. Wrong-path kit imports are corrected automatically.
 ${lines.join("\n")}
 `;
 }
@@ -167828,7 +167914,7 @@ function firstBuildSeedFiles(args) {
     return [];
   }
 }
-var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWork in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, write it, let it validate, then move to the next. Inspect enough to start safely \u2014 you do not need to understand the whole starter kit before your first write. The starter-kit map above is authoritative: do not list directories to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go in one response. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
+var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWork in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, write it, let it validate, then move to the next. Inspect enough to start safely \u2014 you do not need to understand the whole starter kit before your first write. The starter-kit API above is authoritative and complete: do not list directories to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go in one response. After each write step Kimble reports the whole-workspace verification verdict; trust it instead of re-reading files. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
 var COMPOSITION_RULES = [
   "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, metric/stat bar, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
@@ -177370,15 +177456,44 @@ async function handleGenerateRequestCore(request, turnId, workSignal, onStage) {
   let prdScenarioBlock = "";
   let prdNote = "";
   let resolvedPrd = null;
+  const reqAuth = request.headers.get("authorization");
+  const userJwt = reqAuth?.startsWith("Bearer ") ? reqAuth.slice("Bearer ".length) : "";
+  const memoryEntries = body.projectId && userJwt ? await loadProjectMemory(userJwt, body.projectId) : [];
+  let earlyDesign = null;
+  let earlyUnderstanding = null;
+  const startSetupFanOut = async () => {
+    if (!isInitial || body.isAutoFix || body.isInternalRepair) return;
+    const setupBrief = earlyBriefExpansion ? (await earlyBriefExpansion).brief : latestUserMessage(messages);
+    if (userJwt) {
+      earlyDesign = pickDesignDirection({ jwt: userJwt, projectId: body.projectId, brief: setupBrief, memoryEntries });
+      earlyDesign.catch(() => {
+      });
+    }
+    if (process.env.PETAL_PIC_DISABLED !== "1") {
+      const { understandRequest: understandRequest2 } = await Promise.resolve().then(() => (init_understanding_server(), understanding_server_exports));
+      earlyUnderstanding = understandRequest2(setupBrief, {
+        userId,
+        projectId: body.projectId ?? null,
+        prior: null,
+        signal: request.signal
+      });
+      earlyUnderstanding.catch(() => {
+      });
+    }
+  };
   if (buildTarget.id === "web") {
     try {
       const { resolvePrdForTurn: resolvePrdForTurn2 } = await Promise.resolve().then(() => (init_prd_engine_server(), prd_engine_server_exports));
       stage("pre_prd", "Working out what your app needs to do\u2026");
-      resolvedPrd = await resolvePrdForTurn2({
+      const prdPromise = resolvePrdForTurn2({
         brief: lastContent,
         projectId: body.projectId,
         userId
       });
+      prdPromise.catch(() => {
+      });
+      await startSetupFanOut().catch((e) => console.warn("[setup] fan-out skipped:", e instanceof Error ? e.message : String(e)));
+      resolvedPrd = await prdPromise;
       prdBlock = resolvedPrd.promptBlock;
       prdScenarioBlock = resolvedPrd.scenarioBlock;
       prdNote = resolvedPrd.note;
@@ -177509,9 +177624,6 @@ Project Knowledge \u2014 the owner has asked you to always honor these instructi
 ${knowledge}
 """
 ` : "";
-  const reqAuth = request.headers.get("authorization");
-  const userJwt = reqAuth?.startsWith("Bearer ") ? reqAuth.slice("Bearer ".length) : "";
-  const memoryEntries = body.projectId && userJwt ? await loadProjectMemory(userJwt, body.projectId) : [];
   let memoryBlock = renderMemoryBlock(memoryEntries);
   const preservation = parsePreservationRules(currentFiles);
   const preservationBlock = renderPreservationBlock(preservation);
@@ -177575,12 +177687,12 @@ When in doubt use "replace" \u2014 ast-patch is a power tool, not a default. kee
     isRepairTurn ? "Reading the failing code\u2026" : "Choosing a design direction\u2026",
     isRepairTurn ? void 0 : "designing"
   );
-  const rawDesignDirection = userJwt ? isRepairTurn ? readDirectionFromMemory(memoryEntries) : await pickDesignDirection({
+  const rawDesignDirection = userJwt ? isRepairTurn ? readDirectionFromMemory(memoryEntries) : await (earlyDesign ?? pickDesignDirection({
     jwt: userJwt,
     projectId: body.projectId,
     brief: lastUserContent,
     memoryEntries
-  }) : null;
+  })) : null;
   const statedIntent = readStatedDesignIntent(lastUserContent || "");
   const designDirection = applyStatedIntent(rawDesignDirection, statedIntent);
   const isStructuralTurn = !isRepairTurn && (isInitial || /\b(redesign|re-?design|rebuild|new (page|screen|feature|section)|add (a )?(page|dashboard|auth|login|payment|checkout)|entire (site|website|app)|whole (site|app))\b/i.test(
@@ -177618,7 +177730,8 @@ When in doubt use "replace" \u2014 ast-patch is a power tool, not a default. kee
         userId,
         turnId: turnId ?? void 0,
         signal: request.signal,
-        designDirection
+        designDirection,
+        understanding: isRepairTurn ? null : earlyUnderstanding
       });
       picContext = assembled.pic;
       if (assembled.pic.design?.package && directionPart) {
