@@ -60,6 +60,8 @@ export function formatBuildCost(credits: number | null | undefined): string {
   if (typeof credits !== "number") return "—";
   if (credits <= 0) return "Free";
   if (credits === 1) return "1 credit";
+  // Small measured charges keep 2 decimals so 0.07 never reads as "0.1".
+  if (credits < 1) return `${credits.toFixed(2)} credits`;
   const rounded = Math.round(credits * 10) / 10;
   return `${Number.isInteger(rounded) ? rounded : rounded.toFixed(1)} credits`;
 }

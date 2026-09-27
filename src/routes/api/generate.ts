@@ -72,9 +72,10 @@ import {
   aiChatCompletions,
   markLastCallFailure,
   updateLastCallUsage,
+  estimateCostUsdMicro,
   hadRecentProviderPaymentFailure,
 } from "@/server/ai-provider.server";
-import { priceTurn, priceTurnByCost, BUILD_FLOOR } from "@/server/credit-pricing.server";
+import { DEFAULT_BUILD_ECONOMICS, priceTurnCost, creditsForCost } from "@/lib/build-pricing";
 import type { GatewayUsage } from "@/server/credit-pricing.server";
 import {
   clearPendingMemory,
@@ -321,6 +322,13 @@ const MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
  *  telemetry, which meant the retry never actually ran and `no_edit_emitted`
  *  leaked to users. */
 const MODEL_STRUCTURED_RETRY = "deepseek/deepseek-v4-flash";
+
+/** One billable call's cost: provider-reported (ACTUAL) or token-estimated. */
+function turnCallCost(u: GatewayUsage): import("@/lib/build-pricing").CallCost {
+  if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
+  const micro = estimateCostUsdMicro(MODEL_STRUCTURED_RETRY, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
+  return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
+}
 /** Vision-capable model used whenever the latest turn carries image attachments. */
 const MODEL_VISION = "deepseek/deepseek-v4-flash";
 
@@ -2185,7 +2193,7 @@ async function handleGenerateRequestCore(
   // Every user-initiated AI turn must have at least the build floor available,
   // including Plan-first proposals. Keep this before every early-return path
   // so an empty wallet cannot still consume planning or generation tokens.
-  const balance = await checkCreditBalance({ userId, amount: BUILD_FLOOR });
+  const balance = await checkCreditBalance({ userId, amount: DEFAULT_BUILD_ECONOMICS.minChargeCredits });
   if (!balance.ok) {
     if (balance.reason === "insufficient_credits") {
       return new Response(
@@ -3239,6 +3247,23 @@ async function handleGenerateRequestCore(
       metadata: { opened_at: new Date().toISOString(), execution_class: opened.class, expected_cost_usd: opened.expectedCostUsd },
     });
   }
+  // Billing: estimate from the class, then HOLD credits before any expensive
+  // work. The hold is the turn's runaway ceiling; settlement charges measured
+  // cost capped by it, and every terminal turn releases what is left.
+  let buildReservation: import("@/server/build-reservation.server").Reservation | null = null;
+  if (!body.isAutoFix && turnId) {
+    const { reserveBuildCredits } = await import("@/server/build-reservation.server");
+    buildReservation = await reserveBuildCredits({ userId, turnId: logicalTurnId, cls: assessExecution(turnComplexityBase).class });
+    console.info(`[credits] reserve ${JSON.stringify(buildReservation)}`);
+    if (!buildReservation.ok && !buildReservation.error) {
+      return new Response(
+        JSON.stringify({
+          error: `This request needs about ${buildReservation.estimated.toFixed(2)} credits and you have ${buildReservation.available.toFixed(2)} available. Add credits in Settings → Credits to continue.`,
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  }
   const lifecycleBlock = await (async () => {
     try {
       const { renderLifecycleContext } = await import("@/server/context/lifecycle");
@@ -4140,6 +4165,9 @@ async function handleGenerateRequestCore(
           })));
         }
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
+        if (buildReservation?.ok) {
+          controller.enqueue(encoder.encode(sse({ type: "credits_planned", credits: buildReservation.estimated })));
+        }
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
         if (designDirection) {
           controller.enqueue(
@@ -4294,7 +4322,12 @@ async function handleGenerateRequestCore(
               encoder.encode(
                 sse({
                   type: "credits_estimate",
-                  credits: priceTurn([collected.usage ?? null]).amount,
+                  credits: creditsForCost(
+                    [collected.usage ?? null, ...pageWriteUsages]
+                      .filter((u): u is GatewayUsage => !!u)
+                      .reduce((a, u) => a + (turnCallCost(u).costUsd ?? 0), 0),
+                    DEFAULT_BUILD_ECONOMICS,
+                  ),
                 }),
               ),
             );
@@ -4733,7 +4766,22 @@ async function handleGenerateRequestCore(
                     }),
                   { signal: signal ?? abortSignal },
                 ),
-              (u) => { if (u) pageWriteUsages.push(u); },
+              (u) => {
+                if (!u) return;
+                pageWriteUsages.push(u);
+                // Cost capture: every loop call's ai_call_log row gets its
+                // tokens and cost (ACTUAL from the provider, else ESTIMATED).
+                void updateLastCallUsage({
+                  feature: "generate",
+                  model: MODEL_STRUCTURED_RETRY,
+                  promptTokens: u.prompt_tokens ?? null,
+                  completionTokens: u.completion_tokens ?? null,
+                  totalTokens: u.total_tokens ?? null,
+                  cachedPromptTokens: u.prompt_tokens_details?.cached_tokens ?? null,
+                  actualCostUsd: typeof u.cost === "number" ? u.cost : null,
+                  turnId: logicalTurnId,
+                });
+              },
             );
             // Minimum sufficient context: tiered knowledge (always-on /
             // task-conditional in the stable prefix, the rest retrievable
@@ -6981,10 +7029,16 @@ async function handleGenerateRequestCore(
           ...pageWriteUsages,
           ...agentLoopUsages,
         ];
-        // Charge from OpenRouter's real cost when every call reported one;
-        // otherwise the token formula (same floor and cap either way).
-        const { economicsValue } = await import("@/server/economics-config.server");
-        const priced = priceTurnByCost(turnUsages, await economicsValue("target_variable_cost_per_credit_usd"));
+        // ONE pricer (src/lib/build-pricing): measured cost → credits. Each
+        // call is ACTUAL (provider cost) or ESTIMATED (tokens × price table);
+        // a call with no usage at all is never free — the class estimate
+        // stands in. The reservation caps the result (DB-enforced).
+        const { buildEconomics } = await import("@/server/economics-config.server");
+        const priced = priceTurnCost(
+          turnUsages.filter((u): u is GatewayUsage => !!u).map(turnCallCost),
+          await buildEconomics(),
+          buildReservation?.classCostUsd ?? 0,
+        );
 
         // Backfill the usage tokens onto the ai_call_log row that
         // `aiChatCompletions` inserted before the stream body was read.
@@ -7214,7 +7268,10 @@ async function handleGenerateRequestCore(
           );
         }
         if (!body.isAutoFix && !failedEditTurn) {
-          const finalBalance = await agentIO().checkBalance(userId, priced.amount);
+          // A held reservation already guarantees the (capped) charge.
+          const finalBalance = buildReservation?.ok
+            ? ({ ok: true } as const)
+            : await agentIO().checkBalance(userId, priced.amount);
           if (!finalBalance.ok && finalBalance.reason === "insufficient_credits" && body.projectId && logicalTurnId) {
             const checkpointId = await saveCreditPause({
               turnId: logicalTurnId,
@@ -7249,10 +7306,11 @@ async function handleGenerateRequestCore(
                   // Server-side classifier result; the DB derives credit
                   // purpose from it (allow-list), never from the caller.
                   operation_type: toOperationType(turnClassification.operation, { isInitial }),
-                  prompt_tokens: priced.promptTokens,
-                  completion_tokens: priced.completionTokens,
-                  usage_missing: priced.usageMissing,
-                  clamped: priced.clamped,
+                  cost_basis: priced.basis,
+                  cost_usd: priced.costUsd,
+                  unknown_calls: priced.unknownCalls,
+                  estimated_credits: buildReservation?.estimated ?? null,
+                  reserved_credits: buildReservation?.reserved ?? null,
                   model,
                   is_auto_fix: false,
                 },
@@ -7262,12 +7320,9 @@ async function handleGenerateRequestCore(
             if (row?.idempotent) {
               console.info(`[credits] settlement already recorded for turn ${settleTurnId}`);
             } else if (shortfall > 0) {
-              // Not a failure any more — the balance was drained and the
-              // remainder is owed. Recorded so it can be reconciled.
-              console.warn(`[credits] partial settlement: charged=${finalCharged} debt=${shortfall}`);
-              await recordUnpaidBuild(userId, body.projectId ?? null, shortfall, {
-                reason: "shortfall_booked_as_debt",
-              });
+              // Builds never create customer debt: the uncollected part is
+              // Kimble's cost, recorded internally for reconciliation.
+              console.warn(`[credits] settlement capped: charged=${finalCharged} uncollected=${shortfall}`);
             }
           } catch (e) {
             console.warn("[credits] post-build settlement threw", (e as Error).message);
@@ -7327,10 +7382,12 @@ async function handleGenerateRequestCore(
           result: failedEditTurn ? "no_op" : "generated",
           metadata: {
             priced_amount: priced.amount,
-            priced_from: priced.costUsd == null ? "tokens" : "openrouter_cost",
-            openrouter_cost_usd: priced.costUsd,
-            usage_missing: priced.usageMissing,
-            clamped: priced.clamped,
+            priced_cost_usd: priced.costUsd,
+            priced_basis: priced.basis,
+            unknown_calls: priced.unknownCalls,
+            estimated_credits: buildReservation?.estimated ?? null,
+            reserved_credits: buildReservation?.reserved ?? null,
+            estimate_basis: buildReservation?.estimateBasis ?? null,
             model,
             // Reliability record for this turn. Counters only — never user
             // content, prompts or secrets.

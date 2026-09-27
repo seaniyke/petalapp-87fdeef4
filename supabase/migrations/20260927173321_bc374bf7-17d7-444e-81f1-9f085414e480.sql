@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.turns_release_reservation() FROM PUBLIC, anon, authenticated;

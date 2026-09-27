@@ -48,6 +48,11 @@ export const RPC_RULES: Record<string, { user?: string; project?: string; turn?:
   is_paid_plan: { user: "_user_id" },
   check_credit_balance: { user: "_user_id" },
   runtime_cap_check: { user: "_user_id", project: "_project_id" },
+  // Build billing: hold/release credits for THIS turn's user only.
+  reserve_build_credits: { user: "_user_id", turn: "_turn_id" },
+  release_build_reservation: { turn: "_turn_id" },
+  // Read-only aggregate (no identity involved).
+  billing_class_cost_p90: {},
 };
 
 const Filter = z.object({

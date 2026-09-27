@@ -25,3 +25,16 @@
 - [x] managedSurfaceRefusal in tool-loop: config stems (vite/tailwind/postcss/.postcssrc, any extension), package.json/tsconfig/components.json/index.html, and a second stylesheet are refused deterministically
 - [x] write validation covers .css (v3 @tailwind directive, unbalanced braces), not just tsx/jsx
 - [ ] Live bakery re-run vs 2m08s / 11 calls / $0.0098 / 15 files baseline — blocked on user publishing
+
+## Billing MVP (approved 2026-09-27; spec = .lovable/plan.md)
+- [x] 1 Cost capture: every AI call ACTUAL or ESTIMATED cost basis
+- [x] 2 One pricer + one billing-eligibility authority
+- [x] 3 SIMPLE complexity class
+- [x] 4 Configurable economics (revenue/credit, margin, min charge, rounding)
+- [x] 5 Reservation / release (DB)
+- [x] 6 Reservation feeds runaway-cost ceiling
+- [x] 7 Actual-cost settlement, no build debt, idempotent
+- [x] 8 Customer credit meter (estimate / using / used)
+- [x] 9 Minimal admin economics
+- [x] 10 Billing regression tests, suite, typecheck, build
+- [ ] 11 Live bakery benchmark billing report — needs user publish

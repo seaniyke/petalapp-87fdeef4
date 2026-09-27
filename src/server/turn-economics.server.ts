@@ -45,7 +45,7 @@ export type RecordTurnEconomicsArgs = {
     strategy?: Record<string, unknown>;
     committed: boolean;
     outcome: "applied" | "answered" | "blocked" | "failed" | "aborted";
-    failureOrigin: import("@/server/execution/charge-decision").FailureOrigin;
+    failureOrigin: "code" | "infrastructure" | "user" | null;
     elapsedMs?: number;
   };
 };
@@ -200,20 +200,7 @@ export async function recordTurnEconomics(args: RecordTurnEconomicsArgs): Promis
 
     let metadata: Record<string, unknown> = { ...(args.metadata ?? {}) };
     if (args.execution) {
-      const { decideCharge } = await import("@/server/execution/charge-decision");
       const actualUsd = ai.costUsdMicro == null ? null : (ai.costUsdMicro + otherCostMicro) / 1_000_000;
-      const decision = decideCharge({
-        executionClass: args.execution.class,
-        committed: args.execution.committed,
-        outcome: args.execution.outcome,
-        failureOrigin: args.execution.failureOrigin,
-        isAutoFix: Boolean(args.isAutoFix),
-        actualCostUsd: actualUsd,
-        expectedCostUsd: args.execution.expectedCostUsd,
-        liveCharged: args.creditsCharged,
-        costPerCreditUsd: rates.target_variable_cost_per_credit_usd,
-        wastedCostUsd: ai.breakdown.wastedMicro / 1_000_000,
-      });
       metadata = {
         ...metadata,
         execution: {
@@ -228,7 +215,6 @@ export async function recordTurnEconomics(args: RecordTurnEconomicsArgs): Promis
         expected_cost_usd: args.execution.expectedCostUsd,
         actual_cost_usd: actualUsd,
         cost_breakdown_usd_micro: ai.breakdown,
-        shadow_charge: decision,
       };
     }
     if (args.finalizeOnly) {

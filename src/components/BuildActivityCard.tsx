@@ -123,6 +123,8 @@ type Props = {
   creditsCharged?: number | null;
   /** Running credit estimate streamed mid-turn, before settlement. */
   creditsEstimate?: number | null;
+  /** Estimated credits for this request, shown before usage is known. */
+  creditsPlanned?: number | null;
   onStop?: () => void;
   onRetry?: () => void;
   onAskFix?: () => void;
@@ -177,6 +179,7 @@ export function BuildActivityCard({
   timelineEvents: timelineEventsProp,
   creditsCharged,
   creditsEstimate,
+  creditsPlanned,
   onRetry,
   onAskFix,
   onDismissError,
@@ -325,7 +328,13 @@ export function BuildActivityCard({
         ? creditsEstimate
         : null;
   const liveCreditLabel =
-    creditsShown != null && creditsShown > 0 ? `${creditsShown.toFixed(2)} credits used` : null;
+    typeof creditsCharged === "number"
+      ? `${creditsCharged.toFixed(2)} credits used`
+      : creditsShown != null && creditsShown > 0
+        ? `${creditsShown.toFixed(2)} credits so far`
+        : typeof creditsPlanned === "number" && creditsPlanned > 0
+          ? `About ${creditsPlanned.toFixed(2)} credits estimated`
+          : null;
 
   const currentPhase: Phase =
     phases.find((p) => p.status === "active") ??

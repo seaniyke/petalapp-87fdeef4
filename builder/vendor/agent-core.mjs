@@ -61274,6 +61274,7 @@ var init_shared_backend_server = __esm({
 var economics_config_server_exports = {};
 __export(economics_config_server_exports, {
   ECONOMICS_DEFAULTS: () => ECONOMICS_DEFAULTS,
+  buildEconomics: () => buildEconomics,
   economicsValue: () => economicsValue,
   economicsValues: () => economicsValues,
   invalidateEconomicsCache: () => invalidateEconomicsCache
@@ -61304,19 +61305,29 @@ async function economicsValues() {
 function invalidateEconomicsCache() {
   cache2 = null;
 }
+async function buildEconomics() {
+  const v = await economicsValues();
+  return {
+    revenuePerCreditUsd: v.revenue_per_credit_usd,
+    targetMarginPct: v.target_gross_margin_pct,
+    minChargeCredits: v.min_charge_credits,
+    roundingStep: v.credit_rounding_step,
+    reservationHeadroom: v.reservation_headroom
+  };
+}
 var ECONOMICS_DEFAULTS, CACHE_TTL_MS2, cache2;
 var init_economics_config_server = __esm({
   "src/server/economics-config.server.ts"() {
     init_define_import_meta_env();
     init_client_server_shim();
     ECONOMICS_DEFAULTS = {
-      target_variable_cost_per_credit_usd: 0.05,
+      target_variable_cost_per_credit_usd: 0.026,
       build_minute_usd: 0.02,
       verification_minute_usd: 0.02,
       deploy_event_usd: 2e-3,
       image_generation_usd: 0.02,
       min_purchase_usd_cents: 300,
-      target_gross_margin_pct: 60,
+      target_gross_margin_pct: 80,
       free_user_monthly_cost_ceiling_usd: 1.5,
       max_active_dedicated_backends: 25,
       dedicated_retention_days: 30,
@@ -61330,7 +61341,20 @@ var init_economics_config_server = __esm({
       badge_removal_credits: 25,
       // What one credit is worth in USD cents when we charge a real cash cost
       // (domain registration). Conservative vs the cheapest pack (20 credits/$5).
-      credit_retail_usd_cents: 20
+      credit_retail_usd_cents: 20,
+      // Build billing (see src/lib/build-pricing.ts). Cost/credit is DERIVED:
+      // revenue_per_credit_usd × (1 − target_gross_margin_pct/100).
+      revenue_per_credit_usd: 0.13,
+      min_charge_credits: 0.05,
+      credit_rounding_step: 0.01,
+      reservation_headroom: 3,
+      estimate_min_samples: 20,
+      estimate_cost_simple_usd: 5e-3,
+      estimate_cost_light_usd: 0.01,
+      estimate_cost_standard_usd: 0.03,
+      estimate_cost_heavy_usd: 0.05,
+      estimate_cost_complex_usd: 0.1,
+      estimate_cost_escalated_usd: 0.15
     };
     CACHE_TTL_MS2 = 5 * 60 * 1e3;
     cache2 = null;
@@ -62819,34 +62843,6 @@ var init_cost_events_server = __esm({
   }
 });
 
-// src/server/execution/charge-decision.ts
-var charge_decision_exports = {};
-__export(charge_decision_exports, {
-  decideCharge: () => decideCharge
-});
-function decideCharge(i) {
-  const base = { liveCharged: i.liveCharged, costRatio: i.actualCostUsd != null && i.expectedCostUsd > 0 ? round2(i.actualCostUsd / i.expectedCostUsd) : null };
-  if (i.isAutoFix) return { ...base, chargeable: false, reason: "kimble_auto_fix", wouldChargeCredits: 0 };
-  if (i.outcome === "aborted" || i.failureOrigin === "cancelled") return { ...base, chargeable: false, reason: "cancelled_before_commit", wouldChargeCredits: 0 };
-  if (!i.committed) {
-    const reason = i.failureOrigin === "infrastructure" ? "provider_or_infrastructure_failure" : i.failureOrigin === "kimble" ? "kimble_internal_failure" : i.outcome === "failed" || i.outcome === "blocked" ? "rolled_back_by_safety_checks" : "no_committed_change";
-    return { ...base, chargeable: false, reason, wouldChargeCredits: 0 };
-  }
-  if (i.actualCostUsd == null || !(i.costPerCreditUsd > 0)) {
-    return { ...base, chargeable: true, reason: "committed_cost_unknown_live_price_kept", wouldChargeCredits: i.liveCharged };
-  }
-  const billable = Math.max(0, i.actualCostUsd - (i.wastedCostUsd ?? 0));
-  return { ...base, chargeable: true, reason: "committed_measured_cost", wouldChargeCredits: round2(billable / i.costPerCreditUsd) };
-}
-var round2;
-var init_charge_decision = __esm({
-  "src/server/execution/charge-decision.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    round2 = (n) => Math.round(n * 100) / 100;
-  }
-});
-
 // src/server/turn-economics.server.ts
 var turn_economics_server_exports = {};
 __export(turn_economics_server_exports, {
@@ -62948,20 +62944,7 @@ async function recordTurnEconomics(args) {
     const variableCostMicro = ai.costUsdMicro == null ? null : ai.costUsdMicro + otherCostMicro;
     let metadata = { ...args.metadata ?? {} };
     if (args.execution) {
-      const { decideCharge: decideCharge2 } = await Promise.resolve().then(() => (init_charge_decision(), charge_decision_exports));
       const actualUsd = ai.costUsdMicro == null ? null : (ai.costUsdMicro + otherCostMicro) / 1e6;
-      const decision = decideCharge2({
-        executionClass: args.execution.class,
-        committed: args.execution.committed,
-        outcome: args.execution.outcome,
-        failureOrigin: args.execution.failureOrigin,
-        isAutoFix: Boolean(args.isAutoFix),
-        actualCostUsd: actualUsd,
-        expectedCostUsd: args.execution.expectedCostUsd,
-        liveCharged: args.creditsCharged,
-        costPerCreditUsd: rates.target_variable_cost_per_credit_usd,
-        wastedCostUsd: ai.breakdown.wastedMicro / 1e6
-      });
       metadata = {
         ...metadata,
         execution: {
@@ -62975,8 +62958,7 @@ async function recordTurnEconomics(args) {
         },
         expected_cost_usd: args.execution.expectedCostUsd,
         actual_cost_usd: actualUsd,
-        cost_breakdown_usd_micro: ai.breakdown,
-        shadow_charge: decision
+        cost_breakdown_usd_micro: ai.breakdown
       };
     }
     if (args.finalizeOnly) {
@@ -63420,6 +63402,7 @@ __export(ai_provider_server_exports, {
   currentModelFor: () => currentModelFor,
   currentProviderFor: () => currentProviderFor,
   defaultBudgetModelForFeature: () => defaultBudgetModelForFeature,
+  estimateCostUsdMicro: () => estimateCostUsdMicro,
   fetchGenerationUsage: () => fetchGenerationUsage,
   getBudgetConfigForFeature: () => getBudgetConfigForFeature,
   getBudgetModelsForFeature: () => getBudgetModelsForFeature,
@@ -63704,9 +63687,10 @@ async function recordTelemetry(args) {
       // never be counted toward a live benchmark result.
       attempt_state: ambient.attemptId ? ambient.signal?.aborted ? "after_cancel" : ambient.ended ? "after_end" : "live" : null,
       key_owner: "platform",
-      // Unknown until real usage arrives — never a fake 0.
-      cost_basis: "unknown",
-      cost_source: null,
+      // Unknown until real usage arrives — never a fake 0. A request the
+      // provider rejected outright (HTTP 4xx/5xx before any output) is not
+      // billed by OpenRouter: record it as a measured $0, not unknown.
+      ...args.status >= 400 && args.status < 599 ? { cost_basis: "actual", cost_source: "provider_error_unbilled", cost_usd_micro: 0 } : { cost_basis: "unknown", cost_source: null },
       request_id: args.requestId ?? null,
       upstream_provider: args.upstream ?? null,
       ...args.extra ?? {},
@@ -65973,6 +65957,59 @@ var init_terminal_result = __esm({
       /\bis ready\b/i,
       /changes (are|were) saved/i
     ];
+  }
+});
+
+// src/lib/build-pricing.ts
+function costPerCreditUsd(e) {
+  const m = Math.min(99, Math.max(0, e.targetMarginPct));
+  return e.revenuePerCreditUsd * (1 - m / 100);
+}
+function roundUp(n, step) {
+  const s = step > 0 ? step : 0.01;
+  return Math.round(Math.ceil(n / s - 1e-9) * s * 100) / 100;
+}
+function creditsForCost(costUsd, e) {
+  const cpc = costPerCreditUsd(e);
+  if (!(cpc > 0)) throw new Error("invalid economics: cost per credit must be > 0");
+  const raw = Math.max(0, costUsd) / cpc;
+  return Math.max(roundUp(e.minChargeCredits, e.roundingStep), roundUp(raw, e.roundingStep));
+}
+function priceTurnCost(calls, e, fallbackEstimateUsd) {
+  let cost = 0;
+  let actual = 0;
+  let estimated = 0;
+  let unknown = 0;
+  for (const c of calls) {
+    if (c.costUsd == null || !Number.isFinite(c.costUsd)) {
+      unknown++;
+      continue;
+    }
+    cost += Math.max(0, c.costUsd);
+    if (c.basis === "actual") actual++;
+    else estimated++;
+  }
+  if (unknown > 0) cost = Math.max(cost, fallbackEstimateUsd);
+  const basis = unknown > 0 ? "unknown" : estimated > 0 || actual === 0 ? "estimated" : "actual";
+  return { amount: creditsForCost(cost, e), costUsd: cost, basis, unknownCalls: unknown };
+}
+function estimateCredits(classCostUsd2, e) {
+  return creditsForCost(classCostUsd2, e);
+}
+function classCostUsd(measuredP90, defaultUsd) {
+  return measuredP90 != null && measuredP90 > 0 ? { usd: measuredP90, basis: "measured_p90" } : { usd: defaultUsd, basis: "default" };
+}
+var DEFAULT_BUILD_ECONOMICS;
+var init_build_pricing = __esm({
+  "src/lib/build-pricing.ts"() {
+    init_define_import_meta_env();
+    DEFAULT_BUILD_ECONOMICS = {
+      revenuePerCreditUsd: 0.13,
+      targetMarginPct: 80,
+      minChargeCredits: 0.05,
+      roundingStep: 0.01,
+      reservationHeadroom: 3
+    };
   }
 });
 
@@ -70337,7 +70374,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70596,7 +70632,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140359,7 +140394,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141396,7 +141430,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141561,7 +141594,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141605,7 +141637,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141827,7 +141858,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -142305,7 +142335,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -144145,7 +144174,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145350,7 +145378,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146361,7 +146388,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -146818,7 +146844,7 @@ function assessExecution(input) {
   add("modifies_existing", !input.isInitial && input.existingFiles > 20 && (input.crossCutting || ARCH.test(input.request)) ? 1 : 0);
   add("micro_edit", input.operation === "content_change" || input.operation === "styling_change" ? -2 : 0);
   const score = s.reduce((a2, x) => a2 + x.weight, 0);
-  let cls = score <= 1 ? "LIGHT" : score <= 4 ? "STANDARD" : score <= 8 ? "HEAVY" : "COMPLEX";
+  let cls = score <= -1 ? "SIMPLE" : score <= 1 ? "LIGHT" : score <= 4 ? "STANDARD" : score <= 8 ? "HEAVY" : "COMPLEX";
   if (input.escalations && input.escalations.length > 0) {
     cls = "ESCALATED";
     for (const e of input.escalations) s.push({ name: `escalated:${e}`, weight: 0 });
@@ -146851,8 +146877,9 @@ var EXECUTION_CLASSES, EXPECTED_COST_USD, UI_HEAVY, ARCH, SIMPLE_ROUTE;
 var init_complexity = __esm({
   "src/server/execution/complexity.ts"() {
     init_define_import_meta_env();
-    EXECUTION_CLASSES = ["LIGHT", "STANDARD", "HEAVY", "COMPLEX", "ESCALATED"];
+    EXECUTION_CLASSES = ["SIMPLE", "LIGHT", "STANDARD", "HEAVY", "COMPLEX", "ESCALATED"];
     EXPECTED_COST_USD = {
+      SIMPLE: 2e-3,
       LIGHT: 4e-3,
       STANDARD: 0.012,
       HEAVY: 0.035,
@@ -146886,7 +146913,6 @@ __export(execution_exports, {
   classifyFailure: () => classifyFailure,
   classifyRequest: () => classifyRequest,
   commitTurn: () => commitTurn,
-  decideCharge: () => decideCharge,
   errorFingerprint: () => errorFingerprint,
   finalDepth: () => finalDepth,
   initialDepth: () => initialDepth,
@@ -146910,7 +146936,6 @@ var init_execution = __esm({
     init_circuit_breaker();
     init_depth();
     init_complexity();
-    init_charge_decision();
   }
 });
 
@@ -150076,6 +150101,81 @@ var init_screen_target_server = __esm({
   }
 });
 
+// src/server/build-reservation.server.ts
+var build_reservation_server_exports = {};
+__export(build_reservation_server_exports, {
+  estimateForClass: () => estimateForClass,
+  releaseBuildReservation: () => releaseBuildReservation,
+  reserveBuildCredits: () => reserveBuildCredits
+});
+async function estimateForClass(cls) {
+  const { economicsValues: economicsValues2, buildEconomics: buildEconomics2 } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
+  const [v, economics] = await Promise.all([economicsValues2(), buildEconomics2()]);
+  let p90 = null;
+  try {
+    const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+    const { data: data2 } = await supabaseAdmin2.rpc("billing_class_cost_p90", {
+      _class: cls,
+      _min_samples: Math.max(1, Math.round(v.estimate_min_samples))
+    });
+    p90 = data2 == null ? null : Number(data2);
+  } catch {
+  }
+  const pick2 = classCostUsd(p90, v[DEFAULT_KEY[cls]] ?? 0.03);
+  return { ...pick2, economics };
+}
+async function reserveBuildCredits(args) {
+  const est = await estimateForClass(args.cls);
+  const estimated = estimateCredits(est.usd, est.economics);
+  try {
+    const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+    const { data: data2, error } = await supabaseAdmin2.rpc("reserve_build_credits", {
+      _user_id: args.userId,
+      _turn_id: args.turnId,
+      _estimate: estimated,
+      _headroom: est.economics.reservationHeadroom,
+      _class: args.cls,
+      _estimate_basis: est.basis
+    });
+    if (error) throw new Error(error.message);
+    const row = Array.isArray(data2) ? data2[0] : data2;
+    return {
+      ok: !!row?.ok,
+      estimated,
+      reserved: Number(row?.reserved ?? 0),
+      available: Number(row?.available ?? 0),
+      estimateBasis: est.basis,
+      classCostUsd: est.usd
+    };
+  } catch (e) {
+    return { ok: false, estimated, reserved: 0, available: 0, estimateBasis: est.basis, classCostUsd: est.usd, error: e.message };
+  }
+}
+async function releaseBuildReservation(turnId, reason) {
+  try {
+    const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+    const { data: data2 } = await supabaseAdmin2.rpc("release_build_reservation", { _turn_id: turnId, _reason: reason });
+    return Number(data2 ?? 0);
+  } catch {
+    return 0;
+  }
+}
+var DEFAULT_KEY;
+var init_build_reservation_server = __esm({
+  "src/server/build-reservation.server.ts"() {
+    init_define_import_meta_env();
+    init_build_pricing();
+    DEFAULT_KEY = {
+      SIMPLE: "estimate_cost_simple_usd",
+      LIGHT: "estimate_cost_light_usd",
+      STANDARD: "estimate_cost_standard_usd",
+      HEAVY: "estimate_cost_heavy_usd",
+      COMPLEX: "estimate_cost_complex_usd",
+      ESCALATED: "estimate_cost_escalated_usd"
+    };
+  }
+});
+
 // src/server/context/lifecycle.ts
 var lifecycle_exports = {};
 __export(lifecycle_exports, {
@@ -150322,7 +150422,7 @@ __export(explore_exports, {
 });
 function explorersFor(args) {
   if (args.isInitial || args.fileCount === 0) return [];
-  if (args.cls === "LIGHT") return [];
+  if (args.cls === "LIGHT" || args.cls === "SIMPLE") return [];
   const roles = ["structure", "dependency"];
   if (args.cls !== "STANDARD" || /data|record|table|list|crud|form|auth|login|user|api|backend/i.test(args.request)) roles.push("data");
   if (args.cls !== "STANDARD" || /design|style|layout|look|theme|colou?r|font|page|section/i.test(args.request)) roles.push("design");
@@ -162965,67 +163065,7 @@ function secretsMatch(provided, expected) {
 // src/routes/api/generate.ts
 init_client_server_shim();
 init_ai_provider_server();
-
-// src/server/credit-pricing.server.ts
-init_define_import_meta_env();
-var BUILD_FLOOR = 1;
-var BUILD_BASE = 1;
-var PROMPT_RATE = 0.06;
-var COMPLETION_RATE = 0.28;
-var BUILD_CAP = 20;
-var MISSING_USAGE_FALLBACK = 1.5;
-function round22(n) {
-  return Math.round(n * 100) / 100;
-}
-function priceBuild(usage) {
-  const promptTokens = Math.max(0, Math.floor(usage?.prompt_tokens ?? 0));
-  const completionTokens = Math.max(0, Math.floor(usage?.completion_tokens ?? 0));
-  if (promptTokens === 0 && completionTokens === 0) {
-    return {
-      amount: MISSING_USAGE_FALLBACK,
-      usageMissing: true,
-      clamped: false,
-      promptTokens: 0,
-      completionTokens: 0
-    };
-  }
-  const raw = BUILD_BASE + promptTokens / 1e3 * PROMPT_RATE + completionTokens / 1e3 * COMPLETION_RATE;
-  const floored = Math.max(BUILD_FLOOR, raw);
-  const clamped = floored > BUILD_CAP;
-  const amount = round22(Math.min(BUILD_CAP, floored));
-  return {
-    amount,
-    usageMissing: false,
-    clamped,
-    promptTokens,
-    completionTokens
-  };
-}
-function priceTurn(usages) {
-  let prompt = 0;
-  let completion = 0;
-  for (const u of usages) {
-    if (!u) continue;
-    prompt += Math.max(0, Math.floor(u.prompt_tokens ?? 0));
-    completion += Math.max(0, Math.floor(u.completion_tokens ?? 0));
-  }
-  return priceBuild({ prompt_tokens: prompt, completion_tokens: completion });
-}
-function priceTurnByCost(usages, costPerCreditUsd) {
-  const real = usages.filter((u) => !!u);
-  const tokenPriced = priceTurn(real);
-  const allCosted = real.length > 0 && real.every((u) => typeof u.cost === "number" && Number.isFinite(u.cost));
-  if (!allCosted || !(costPerCreditUsd > 0)) return { ...tokenPriced, costUsd: null };
-  const costUsd = real.reduce((s, u) => s + u.cost, 0);
-  const raw = costUsd / costPerCreditUsd;
-  const floored = Math.max(BUILD_FLOOR, raw);
-  return {
-    ...tokenPriced,
-    amount: round22(Math.min(BUILD_CAP, floored)),
-    clamped: floored > BUILD_CAP,
-    costUsd
-  };
-}
+init_build_pricing();
 
 // src/server/project-memory.server.ts
 init_define_import_meta_env();
@@ -171225,6 +171265,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -176130,6 +176171,11 @@ var MODEL_BEST = "deepseek/deepseek-v4-flash";
 var MODEL_REASONING = "openai/gpt-5.4";
 var MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
 var MODEL_STRUCTURED_RETRY = "deepseek/deepseek-v4-flash";
+function turnCallCost(u) {
+  if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
+  const micro = estimateCostUsdMicro(MODEL_STRUCTURED_RETRY, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
+  return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
+}
 var MODEL_VISION = "deepseek/deepseek-v4-flash";
 function pickSmartModel(latestPrompt, fileCount) {
   const p2 = latestPrompt.toLowerCase();
@@ -177307,7 +177353,7 @@ async function handleGenerateRequestCore(request, turnId, workSignal, onStage) {
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
-  const balance = await checkCreditBalance({ userId, amount: BUILD_FLOOR });
+  const balance = await checkCreditBalance({ userId, amount: DEFAULT_BUILD_ECONOMICS.minChargeCredits });
   if (!balance.ok) {
     if (balance.reason === "insufficient_credits") {
       return new Response(
@@ -178014,6 +178060,20 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
       metadata: { opened_at: (/* @__PURE__ */ new Date()).toISOString(), execution_class: opened.class, expected_cost_usd: opened.expectedCostUsd }
     });
   }
+  let buildReservation = null;
+  if (!body.isAutoFix && turnId) {
+    const { reserveBuildCredits: reserveBuildCredits2 } = await Promise.resolve().then(() => (init_build_reservation_server(), build_reservation_server_exports));
+    buildReservation = await reserveBuildCredits2({ userId, turnId: logicalTurnId, cls: assessExecution2(turnComplexityBase).class });
+    console.info(`[credits] reserve ${JSON.stringify(buildReservation)}`);
+    if (!buildReservation.ok && !buildReservation.error) {
+      return new Response(
+        JSON.stringify({
+          error: `This request needs about ${buildReservation.estimated.toFixed(2)} credits and you have ${buildReservation.available.toFixed(2)} available. Add credits in Settings \u2192 Credits to continue.`
+        }),
+        { status: 402, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
   const lifecycleBlock = await (async () => {
     try {
       const { renderLifecycleContext: renderLifecycleContext2 } = await Promise.resolve().then(() => (init_lifecycle(), lifecycle_exports));
@@ -178628,6 +178688,9 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           })));
         }
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
+        if (buildReservation?.ok) {
+          controller.enqueue(encoder.encode(sse({ type: "credits_planned", credits: buildReservation.estimated })));
+        }
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path\u2026" })));
         if (designDirection) {
           controller.enqueue(
@@ -178755,7 +178818,10 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               encoder.encode(
                 sse({
                   type: "credits_estimate",
-                  credits: priceTurn([collected.usage ?? null]).amount
+                  credits: creditsForCost(
+                    [collected.usage ?? null, ...pageWriteUsages].filter((u) => !!u).reduce((a2, u) => a2 + (turnCallCost(u).costUsd ?? 0), 0),
+                    DEFAULT_BUILD_ECONOMICS
+                  )
                 })
               )
             );
@@ -179087,7 +179153,18 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 { signal: signal ?? abortSignal }
               ),
               (u) => {
-                if (u) pageWriteUsages.push(u);
+                if (!u) return;
+                pageWriteUsages.push(u);
+                void updateLastCallUsage({
+                  feature: "generate",
+                  model: MODEL_STRUCTURED_RETRY,
+                  promptTokens: u.prompt_tokens ?? null,
+                  completionTokens: u.completion_tokens ?? null,
+                  totalTokens: u.total_tokens ?? null,
+                  cachedPromptTokens: u.prompt_tokens_details?.cached_tokens ?? null,
+                  actualCostUsd: typeof u.cost === "number" ? u.cost : null,
+                  turnId: logicalTurnId
+                });
               }
             );
             const fbContext = assembleFirstBuildContext({
@@ -180796,8 +180873,12 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           ...pageWriteUsages,
           ...agentLoopUsages
         ];
-        const { economicsValue: economicsValue2 } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
-        const priced = priceTurnByCost(turnUsages, await economicsValue2("target_variable_cost_per_credit_usd"));
+        const { buildEconomics: buildEconomics2 } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
+        const priced = priceTurnCost(
+          turnUsages.filter((u) => !!u).map(turnCallCost),
+          await buildEconomics2(),
+          buildReservation?.classCostUsd ?? 0
+        );
         const cachedPromptTokens = collected.usage?.prompt_tokens_details?.cached_tokens ?? collected.usage?.cache_read_input_tokens ?? null;
         void updateLastCallUsage({
           feature: "generate",
@@ -180963,7 +181044,7 @@ ${summary}` })));
           );
         }
         if (!body.isAutoFix && !failedEditTurn) {
-          const finalBalance = await agentIO().checkBalance(userId, priced.amount);
+          const finalBalance = buildReservation?.ok ? { ok: true } : await agentIO().checkBalance(userId, priced.amount);
           if (!finalBalance.ok && finalBalance.reason === "insufficient_credits" && body.projectId && logicalTurnId) {
             const checkpointId = await saveCreditPause({
               turnId: logicalTurnId,
@@ -180993,10 +181074,11 @@ ${summary}` })));
                 // Server-side classifier result; the DB derives credit
                 // purpose from it (allow-list), never from the caller.
                 operation_type: toOperationType(turnClassification.operation, { isInitial }),
-                prompt_tokens: priced.promptTokens,
-                completion_tokens: priced.completionTokens,
-                usage_missing: priced.usageMissing,
-                clamped: priced.clamped,
+                cost_basis: priced.basis,
+                cost_usd: priced.costUsd,
+                unknown_calls: priced.unknownCalls,
+                estimated_credits: buildReservation?.estimated ?? null,
+                reserved_credits: buildReservation?.reserved ?? null,
                 model,
                 is_auto_fix: false
               }
@@ -181006,10 +181088,7 @@ ${summary}` })));
             if (row?.idempotent) {
               console.info(`[credits] settlement already recorded for turn ${settleTurnId}`);
             } else if (shortfall > 0) {
-              console.warn(`[credits] partial settlement: charged=${finalCharged} debt=${shortfall}`);
-              await recordUnpaidBuild(userId, body.projectId ?? null, shortfall, {
-                reason: "shortfall_booked_as_debt"
-              });
+              console.warn(`[credits] settlement capped: charged=${finalCharged} uncollected=${shortfall}`);
             }
           } catch (e) {
             console.warn("[credits] post-build settlement threw", e.message);
@@ -181062,10 +181141,12 @@ I couldn't save this change, so your app was left exactly as it was. Send it aga
           result: failedEditTurn ? "no_op" : "generated",
           metadata: {
             priced_amount: priced.amount,
-            priced_from: priced.costUsd == null ? "tokens" : "openrouter_cost",
-            openrouter_cost_usd: priced.costUsd,
-            usage_missing: priced.usageMissing,
-            clamped: priced.clamped,
+            priced_cost_usd: priced.costUsd,
+            priced_basis: priced.basis,
+            unknown_calls: priced.unknownCalls,
+            estimated_credits: buildReservation?.estimated ?? null,
+            reserved_credits: buildReservation?.reserved ?? null,
+            estimate_basis: buildReservation?.estimateBasis ?? null,
             model,
             // Reliability record for this turn. Counters only — never user
             // content, prompts or secrets.

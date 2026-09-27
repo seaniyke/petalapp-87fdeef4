@@ -5368,6 +5368,7 @@ export type Database = {
         Row: {
           created_at: string
           credit_debt: number
+          credits_reserved: number
           current_period_end: string | null
           daily_free_reset_at: string
           daily_free_used: number
@@ -5394,6 +5395,7 @@ export type Database = {
         Insert: {
           created_at?: string
           credit_debt?: number
+          credits_reserved?: number
           current_period_end?: string | null
           daily_free_reset_at?: string
           daily_free_used?: number
@@ -5420,6 +5422,7 @@ export type Database = {
         Update: {
           created_at?: string
           credit_debt?: number
+          credits_reserved?: number
           current_period_end?: string | null
           daily_free_reset_at?: string
           daily_free_used?: number
@@ -5838,6 +5841,11 @@ export type Database = {
         Returns: undefined
       }
       available_credits: { Args: { _user_id: string }; Returns: number }
+      billing_class_cost_p90: {
+        Args: { _class: string; _min_samples?: number }
+        Returns: number
+      }
+      build_billing_summary: { Args: { _days?: number }; Returns: Json }
       can_enable_managed_backend: {
         Args: { _user_id: string }
         Returns: boolean
@@ -6225,6 +6233,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      release_build_reservation: {
+        Args: { _reason?: string; _turn_id: string }
+        Returns: number
+      }
       replace_project_files: {
         Args: {
           _check_base?: boolean
@@ -6233,6 +6245,22 @@ export type Database = {
           _turn_id?: string
         }
         Returns: number
+      }
+      reserve_build_credits: {
+        Args: {
+          _class?: string
+          _estimate: number
+          _estimate_basis?: string
+          _headroom: number
+          _turn_id: string
+          _user_id: string
+        }
+        Returns: {
+          available: number
+          idempotent: boolean
+          ok: boolean
+          reserved: number
+        }[]
       }
       restore_free_build_credits: {
         Args: { _amount: number; _spent_at: string; _user_id: string }

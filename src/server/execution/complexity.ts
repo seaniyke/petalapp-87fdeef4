@@ -9,7 +9,7 @@
  * It never blocks work and never exposes labels to customers.
  */
 
-export const EXECUTION_CLASSES = ["LIGHT", "STANDARD", "HEAVY", "COMPLEX", "ESCALATED"] as const;
+export const EXECUTION_CLASSES = ["SIMPLE", "LIGHT", "STANDARD", "HEAVY", "COMPLEX", "ESCALATED"] as const;
 export type ExecutionClass = (typeof EXECUTION_CLASSES)[number];
 
 export interface ComplexityInput {
@@ -49,6 +49,7 @@ export interface ComplexityAssessment {
  * Recorded next to the actual cost so the bands can be re-fit from data.
  */
 export const EXPECTED_COST_USD: Record<ExecutionClass, number> = {
+  SIMPLE: 0.002,
   LIGHT: 0.004,
   STANDARD: 0.012,
   HEAVY: 0.035,
@@ -74,7 +75,7 @@ export function assessExecution(input: ComplexityInput): ComplexityAssessment {
   add("modifies_existing", !input.isInitial && input.existingFiles > 20 && (input.crossCutting || ARCH.test(input.request)) ? 1 : 0);
   add("micro_edit", input.operation === "content_change" || input.operation === "styling_change" ? -2 : 0);
   const score = s.reduce((a, x) => a + x.weight, 0);
-  let cls: ExecutionClass = score <= 1 ? "LIGHT" : score <= 4 ? "STANDARD" : score <= 8 ? "HEAVY" : "COMPLEX";
+  let cls: ExecutionClass = score <= -1 ? "SIMPLE" : score <= 1 ? "LIGHT" : score <= 4 ? "STANDARD" : score <= 8 ? "HEAVY" : "COMPLEX";
   if (input.escalations && input.escalations.length > 0) {
     cls = "ESCALATED";
     for (const e of input.escalations) s.push({ name: `escalated:${e}`, weight: 0 });

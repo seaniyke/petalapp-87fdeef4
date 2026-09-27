@@ -1732,6 +1732,14 @@ export const Route = createFileRoute("/api/admin/credits")({
           }
 
           // ---- Internal economics rates (admin-editable) -----------------
+          // ---- Build billing summary (internal economics) ----------------
+          if (body.action === "build_billing") {
+            const days = Math.min(365, Math.max(1, Number(body.since_days ?? 30)));
+            const { data, error } = await supabaseAdmin.rpc("build_billing_summary" as never, { _days: days } as never);
+            if (error) return Response.json({ error: error.message }, { status: 500 });
+            return Response.json({ summary: data });
+          }
+
           if (body.action === "economics_config") {
             const { data } = await supabaseAdmin
               .from("economics_config")

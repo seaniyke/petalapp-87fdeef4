@@ -35,7 +35,7 @@ const MAX_FACTS = 12;
 /** Which explorers the task justifies. Empty = skip exploration entirely. */
 export function explorersFor(args: { cls: ExecutionClass; isInitial: boolean; request: string; fileCount: number }): ExplorerRole[] {
   if (args.isInitial || args.fileCount === 0) return [];
-  if (args.cls === "LIGHT") return [];
+  if (args.cls === "LIGHT" || args.cls === "SIMPLE") return [];
   const roles: ExplorerRole[] = ["structure", "dependency"];
   if (args.cls !== "STANDARD" || /data|record|table|list|crud|form|auth|login|user|api|backend/i.test(args.request)) roles.push("data");
   if (args.cls !== "STANDARD" || /design|style|layout|look|theme|colou?r|font|page|section/i.test(args.request)) roles.push("design");
