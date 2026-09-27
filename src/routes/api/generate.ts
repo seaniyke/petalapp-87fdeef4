@@ -4994,6 +4994,7 @@ async function handleGenerateRequestCore(
                   changedPaths: changed.filter((p) => proposed.some((f) => f.path === p)),
                   requestedRoutes: requestedRoutesFor(lastUserText, plannedRoutes),
                   requireShell: true,
+                  requireLiveData: Boolean(sharedBackend),
                 });
                 return readinessOf(v);
               },
@@ -7237,6 +7238,7 @@ async function handleGenerateRequestCore(
               changedPaths: changed,
               requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
               requireShell: isInitial,
+              requireLiveData: isInitial && Boolean(sharedBackend),
             });
           },
         });
