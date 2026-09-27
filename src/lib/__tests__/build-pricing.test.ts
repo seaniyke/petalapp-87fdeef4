@@ -16,8 +16,8 @@ describe("build pricing authority", () => {
     expect(costPerCreditUsd({ ...E, targetMarginPct: 85 })).toBeCloseTo(0.0195, 6);
   });
   it("no 1-credit floor: tiny builds charge the configured minimum", () => {
-    expect(creditsForCost(0.0001, E)).toBe(0.05);
-    expect(creditsForCost(0, E)).toBe(0.05);
+    expect(creditsForCost(0.0001, E)).toBe(0.3);
+    expect(creditsForCost(0, E)).toBe(0.3);
   });
   it("rounds UP to the 0.01 step", () => {
     expect(creditsForCost(0.026, E)).toBe(1);

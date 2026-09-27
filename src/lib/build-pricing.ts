@@ -16,7 +16,7 @@ export type BuildEconomics = {
 export const DEFAULT_BUILD_ECONOMICS: BuildEconomics = {
   revenuePerCreditUsd: 0.13,
   targetMarginPct: 80,
-  minChargeCredits: 0.05,
+  minChargeCredits: 0.3,
   roundingStep: 0.01,
   reservationHeadroom: 3,
 };
@@ -42,7 +42,7 @@ function roundUp(n: number, step: number): number {
   return Math.round(Math.ceil(n / s - 1e-9) * s * 100) / 100;
 }
 
-/** Credits for a measured USD cost: ceil to step, at least the minimum. */
+/** Credits for a measured USD cost: ceil to step; the minimum is a floor, never a flat price. */
 export function creditsForCost(costUsd: number, e: BuildEconomics): number {
   const cpc = costPerCreditUsd(e);
   if (!(cpc > 0)) throw new Error("invalid economics: cost per credit must be > 0");
@@ -94,4 +94,39 @@ export function estimateCredits(classCostUsd: number, e: BuildEconomics): number
 /** Pick the class cost: measured p90 when enough samples, else the default. */
 export function classCostUsd(measuredP90: number | null | undefined, defaultUsd: number): { usd: number; basis: "measured_p90" | "default" } {
   return measuredP90 != null && measuredP90 > 0 ? { usd: measuredP90, basis: "measured_p90" } : { usd: defaultUsd, basis: "default" };
+}
+
+/** One AI call as durably recorded for a turn (ai_call_log). */
+export type RecordedCall = {
+  id?: string;
+  stage: string | null;
+  call_kind: string | null;
+  status: number | null;
+  cost_usd_micro: number | null;
+  cost_basis: string | null;
+};
+
+/**
+ * Post-turn background work (stage "after": memory/learning) runs after the
+ * customer's result is saved; it is Kimble overhead, never billed.
+ */
+export function isBillableRecordedCall(r: RecordedCall): boolean {
+  return r.stage !== "after";
+}
+
+/**
+ * THE final cost of a turn: every billable call durably recorded for it.
+ * Provider cost → actual; price-table cost → estimated; no cost → unknown
+ * (class estimate stands in, never free). Rejected requests are $0.
+ */
+export function priceRecordedCalls(rows: RecordedCall[], e: BuildEconomics, fallbackEstimateUsd: number): PricedTurn & { billableCalls: number; overheadCalls: number } {
+  const billable = rows.filter(isBillableRecordedCall);
+  const calls: CallCost[] = billable.map((r) => {
+    if (r.cost_usd_micro == null) {
+      if (r.status != null && r.status >= 400) return { costUsd: 0, basis: "actual" };
+      return { costUsd: null, basis: "unknown" };
+    }
+    return { costUsd: Number(r.cost_usd_micro) / 1_000_000, basis: r.cost_basis === "actual" ? "actual" : "estimated" };
+  });
+  return { ...priceTurnCost(calls, e, fallbackEstimateUsd), billableCalls: billable.length, overheadCalls: rows.length - billable.length };
 }
