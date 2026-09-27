@@ -14,3 +14,11 @@
 - [ ] Edits: move existing-app edits onto the tool loop (still on patch path)
 - [ ] Stage C: compaction at 70%, per-call tracing (TTFT, tokens, tool/validation time) into turn_events/turn_economics
 - [ ] Stage D: live benchmarks A-D, then hospital (E) only after A-D pass
+
+## Design quality (Webby comparison)
+- [x] apply.ts installs fonts into index.html for Vite SPAs (was __root.tsx-only → design system never applied to any generated app)
+- [x] Substrate (house style, Geist + Newsreader, 6 accents) and Obsidian (dark editorial, Instrument Serif + Plus Jakarta Sans, 3 accents) packages installed
+- [x] tokens.css ships Tailwind v4 `@theme inline` so bg-background/text-muted-foreground/font-serif actually resolve in generated apps
+- [x] resolvePackageForIntent: deterministic package + accent from the brief (no AI call)
+- [x] first-build brief carries DESIGN.md + COMPOSITION_RULES (section shapes, anti-monotony, rhythm) + COPY_RULES (banned AI vocabulary)
+- [ ] Live bakery re-run vs 2m08s / 11 calls / $0.0098 / 15 files baseline — blocked on user publishing
