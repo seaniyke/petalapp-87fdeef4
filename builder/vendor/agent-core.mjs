@@ -62841,7 +62841,6 @@ function decideCharge(i) {
 var round2;
 var init_charge_decision = __esm({
   "src/server/execution/charge-decision.ts"() {
-    "use strict";
     init_define_import_meta_env();
     round2 = (n) => Math.round(n * 100) / 100;
   }
@@ -70595,7 +70594,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -141142,13 +141140,24 @@ var init_render_risk_linter = __esm({
 });
 
 // src/server/scaffold-ownership.server.ts
+function scaffoldKitManifest() {
+  if (!kitManifest) {
+    kitManifest = /* @__PURE__ */ new Set([
+      ...KIT_FILES.filter((k) => k.overwrite).map((k) => k.path),
+      ...BACKEND_KIT_BLOCK_FILES_3.map((k) => k.path),
+      ...BACKEND_EXAMPLES_PACK.map((k) => k.path)
+    ]);
+  }
+  return kitManifest;
+}
 function ownershipVariants(path) {
   if (path.endsWith(".tsx")) return [path, `${path.slice(0, -4)}.ts`];
   if (path.endsWith(".ts")) return [path, `${path}x`];
   return [path];
 }
 function isScaffoldOwnedPath(path) {
-  if (ownershipVariants(path).some((p2) => SCAFFOLD_OWNED_PATHS.has(p2))) return true;
+  const kit = scaffoldKitManifest();
+  if (ownershipVariants(path).some((p2) => SCAFFOLD_OWNED_PATHS.has(p2) || kit.has(p2))) return true;
   return SCAFFOLD_OWNED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 function isScaffoldAbsorbedPath(path) {
@@ -141159,24 +141168,20 @@ function isVerifierExempt(path) {
   if (isScaffoldAbsorbedPath(path)) return true;
   return VERIFIER_EXEMPT_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
-var SCAFFOLD_OWNED_PREFIXES, SCAFFOLD_OWNED_PATHS, SCAFFOLD_ABSORBED_PATHS, VERIFIER_EXEMPT_PREFIXES;
+function projectAuthoredFiles(files) {
+  return files.filter(
+    (file) => file.path === "package.json" || !isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path)
+  );
+}
+var SCAFFOLD_OWNED_PREFIXES, kitManifest, SCAFFOLD_OWNED_PATHS, SCAFFOLD_ABSORBED_PATHS, VERIFIER_EXEMPT_PREFIXES;
 var init_scaffold_ownership_server = __esm({
   "src/server/scaffold-ownership.server.ts"() {
     init_define_import_meta_env();
-    SCAFFOLD_OWNED_PREFIXES = [
-      "src/components/ui/",
-      "src/components/examples/",
-      "src/components/content/",
-      "src/components/blocks/",
-      "src/components/mobile/",
-      "src/components/fx/",
-      "src/components/image/",
-      "src/components/motion/",
-      "src/components/providers/",
-      "src/components/scroll/",
-      "src/components/three/",
-      "src/integrations/backend/"
-    ];
+    init_scaffold_kit();
+    init_scaffold_kit_blocks_3();
+    init_examples_pack();
+    SCAFFOLD_OWNED_PREFIXES = ["src/integrations/backend/"];
+    kitManifest = null;
     SCAFFOLD_OWNED_PATHS = /* @__PURE__ */ new Set([
       "vite.config.ts",
       "tsconfig.json",
@@ -146060,7 +146065,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -178999,7 +179003,7 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
               readiness: async (tree, changed) => {
                 const { verifyProposedSource: verifyProposedSource2 } = await Promise.resolve().then(() => (init_source_server(), source_server_exports));
                 const { readinessOf: readinessOf2 } = await Promise.resolve().then(() => (init_readiness(), readiness_exports));
-                const authored = tree.filter((file) => file.path === "package.json" || !isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path));
+                const authored = projectAuthoredFiles(tree);
                 const proposed = ensureRenderableShell(
                   applyScaffoldKit(authored, { backend: backend2 ?? void 0, sharedBackend: sharedBackend ?? void 0, target: buildTarget.id }),
                   detectedWebSubtype
@@ -179193,13 +179197,7 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
         )) : void 0;
         if (collected.name === "write_project") {
           if (!parsed.files?.length) throw new Error("AI returned no files.");
-          const appFiles2 = parsed.files.filter(
-            (file) => (
-              // package.json is accepted only as dependency intent; the
-              // scaffold merger rewrites it into Kimble's canonical manifest.
-              file.path === "package.json" || !isScaffoldOwnedPath(file.path) && !isScaffoldAbsorbedPath(file.path)
-            )
-          );
+          const appFiles2 = projectAuthoredFiles(parsed.files);
           nextFiles = applyScaffoldKit(appFiles2, {
             backend: backend2 ?? void 0,
             sharedBackend: sharedBackend ?? void 0,

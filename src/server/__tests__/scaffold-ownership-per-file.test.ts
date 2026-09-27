@@ -40,7 +40,7 @@ const app = f(
 
 /** The exact readiness transform generate.ts hands the loop. */
 async function readiness(tree: ProjectFile[], changed: string[]) {
-  const proposed = ensureRenderableShell(applyScaffoldKit(projectAuthoredFiles(tree)), "landing").files;
+  const proposed = ensureRenderableShell(applyScaffoldKit(projectAuthoredFiles(tree))).files;
   const v = await verifyProposedSource({
     tree: proposed,
     changedPaths: changed.filter((p) => proposed.some((x) => x.path === p)),
