@@ -134,6 +134,7 @@ import {
   runChunkedGeneration,
 } from "@/server/chunked-generation.server";
 import { firstBuildSeedFiles, FIRST_BUILD_TOOL_NOTE, firstBuildBrief } from "@/server/engine/first-build";
+import { systemTextOf } from "@/server/engine/system-text";
 
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";
@@ -3983,6 +3984,7 @@ async function handleGenerateRequestCore(
   }
   let finalMessages = budget.messages as typeof chatMessages;
 
+
   // ---------------------------------------------------------------------
   // Pre-emit agent loop. For work that spans many files or is mechanical,
   // give the model real hands before it writes: grep, read, run a codemod on
@@ -4684,7 +4686,7 @@ async function handleGenerateRequestCore(
             );
             const done = await runToolLoop({
               goal: lastUserText,
-              system: String(finalMessages[0]?.content ?? "") + FIRST_BUILD_TOOL_NOTE,
+              system: systemTextOf(finalMessages) + FIRST_BUILD_TOOL_NOTE,
               brief: firstBuildBrief(
                 lastUserText,
                 planned as Array<{ route: string; file: string }>,
@@ -4728,6 +4730,19 @@ async function handleGenerateRequestCore(
                 return readinessOf(v);
               },
               validate: async (file, tree) => {
+                // Stylesheets are validated too: a v3-style @tailwind
+                // directive next to the v4 @theme tokens breaks the CSS
+                // build, which source verification alone cannot see.
+                if (/\.css$/.test(file.path)) {
+                  const css: string[] = [];
+                  if (/^\s*@tailwind\s+(base|components|utilities)\b/m.test(file.content)) {
+                    css.push(`${file.path}: @tailwind directives are Tailwind v3. This project is Tailwind v4 — the stylesheet already imports Tailwind and defines its tokens in @theme.`);
+                  }
+                  const open = (file.content.match(/\{/g) ?? []).length;
+                  const close = (file.content.match(/\}/g) ?? []).length;
+                  if (open !== close) css.push(`${file.path}: unbalanced braces (${open} '{' vs ${close} '}').`);
+                  return css;
+                }
                 if (!/\.(tsx?|jsx?)$/.test(file.path)) return [];
                 const v = await verifyFilesEsbuild([file], [file.path]);
                 if (v.status === "unavailable") throw new Error(v.unavailableDetail ?? v.unavailableReason ?? "esbuild unavailable");

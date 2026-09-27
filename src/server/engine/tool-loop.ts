@@ -189,8 +189,65 @@ export interface ToolLoopResult {
 }
 
 /* ------------------------------------------------------------------ */
+/* Managed build surface (deterministic, never prompt-dependent)       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Build/tool configuration owned by the platform scaffold. Matched by
+ * BASENAME anywhere in the tree with at most one extra extension, so
+ * tailwind.config.js cannot slip past a check written for .ts — the exact
+ * hole that let a generated app ship a second, competing Tailwind setup.
+ */
+const MANAGED_CONFIG_STEMS = ["vite.config", "tailwind.config", "postcss.config", ".postcssrc"];
+
+/** Exact paths the scaffold owns outright. */
+const MANAGED_EXACT_FILES = new Set([
+  "package.json",
+  "package-lock.json",
+  "bun.lockb",
+  "tsconfig.json",
+  "tsconfig.node.json",
+  "components.json",
+  "index.html",
+]);
+
+/** The two stylesheet names a Vite/Tailwind app may use; only one may exist. */
+const STYLESHEET_PATHS = ["src/styles.css", "src/index.css"];
+
+function isManagedConfigPath(path: string): boolean {
+  const base = path.split("/").pop() ?? path;
+  for (const stem of MANAGED_CONFIG_STEMS) {
+    if (base === stem) return true;
+    if (base.startsWith(`${stem}.`) && !base.slice(stem.length + 1).includes(".")) return true;
+  }
+  return false;
+}
+
+/**
+ * Why this write must be refused, or null when it is allowed. Deterministic:
+ * the design system installs tokens and fonts before the loop starts, so a
+ * model-authored config or second stylesheet can only ever conflict with it.
+ */
+export function managedSurfaceRefusal(path: string, tree: Map<string, string>): string | null {
+  if (isManagedConfigPath(path)) {
+    return `Refused: ${path} is build configuration managed by Kimble. Tailwind, PostCSS and Vite are already set up — never create or edit a config file. Style with the semantic classes the stylesheet already defines.`;
+  }
+  if (MANAGED_EXACT_FILES.has(path)) {
+    return `Refused: ${path} is managed by Kimble and cannot be written.`;
+  }
+  if (STYLESHEET_PATHS.includes(path)) {
+    const other = STYLESHEET_PATHS.find((p) => p !== path && tree.has(p));
+    if (other) {
+      return `Refused: ${other} is the project stylesheet and already defines the full palette, radius scale and font families. Do not create a second stylesheet — use the semantic classes (bg-background, bg-card, bg-muted, text-foreground, bg-primary, border-border) instead.`;
+    }
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
 /* Tools                                                               */
 /* ------------------------------------------------------------------ */
+
 
 const fn = (name: string, description: string, properties: Record<string, unknown>, required: string[]): ToolSchema => ({
   type: "function",
@@ -606,6 +663,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       }
       case "create_file": {
         if (!path) return { output: fail(name, null, "create_file needs a path."), isError: true };
+        const managed = managedSurfaceRefusal(path, tree);
+        if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
         if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
         const content = String(a.content ?? "");
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
@@ -639,6 +698,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       case "edit_file": {
         const current = tree.get(path);
         if (current === undefined) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
+        const managedEdit = managedSurfaceRefusal(path, tree);
+        if (managedEdit) return { output: fail(name, path, managedEdit, "scope_violation"), isError: true };
         if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
         if (!state.read.has(path)) return { output: fail(name, path, `Read ${path} with read_file before editing it.`), isError: true };
         const search = String(a.search ?? "");
