@@ -4730,7 +4730,7 @@ async function handleGenerateRequestCore(
             // incomplete. No per-page calls, no second scheduler.
             const { runToolLoop } = await import("@/server/engine/tool-loop");
             const { buildEconomics: loopEconomics } = await import("@/server/economics-config.server");
-            const loopCeilingUsd = economicCeilingUsd(buildReservation?.reserved ?? null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics());
+            const loopCeilingUsd = economicCeilingUsd(null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics()) /* internal cost limit: class cost × headroom, decoupled from the effort-priced hold */;
             const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
             const { makeCallModel } = await import("@/server/engine/tool-loop-model");
             const { validateUnitImports, undefinedNames } = await import("@/server/engine/work-unit");
@@ -7377,6 +7377,8 @@ async function handleGenerateRequestCore(
                   operation_type: toOperationType(turnClassification.operation, { isInitial }),
                   cost_basis: priced.basis,
                   cost_usd: priced.costUsd,
+                  pricing: effortEval ? "effort" : "cost_fallback",
+                  effort_score: effortEval?.score ?? null,
                   unknown_calls: priced.unknownCalls,
                   cost_source: settledFrom,
                   billable_calls: billableCalls,
@@ -7453,6 +7455,10 @@ async function handleGenerateRequestCore(
           result: failedEditTurn ? "no_op" : "generated",
           metadata: {
             priced_amount: priced.amount,
+            internal_cost_usd: internalCostUsd,
+            effort: effortEval ? { score: effortEval.score, class: effortEval.cls, parts: effortEval.parts, signals: effortEval.signals, estimated_effort: buildReservation?.estimatedEffort ?? null } : null,
+            profitability: effortEval?.prof ?? null,
+            economic_flags: effortEval?.flags ?? [],
             priced_cost_usd: priced.costUsd,
             priced_basis: priced.basis,
             unknown_calls: priced.unknownCalls,
