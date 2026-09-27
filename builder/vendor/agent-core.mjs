@@ -70482,6 +70482,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -141540,6 +141541,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141704,6 +141706,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141747,6 +141750,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -145489,7 +145493,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146045,7 +146048,7 @@ function renderIntentBlock(c) {
     c.roles.length ? `Users/roles: ${c.roles.join(", ")}.` : "",
     c.entities.length ? `Core entities: ${c.entities.join(", ")}.` : "",
     c.workflows.length ? `Primary workflows: ${c.workflows.join("; ")}.` : "",
-    c.pages.length ? `Pages: ${c.pages.map((x) => `${x.label} (${x.route})`).join(", ")}.` : "",
+    c.pages.length ? `Pages: ${c.pages.map((x) => `${x.label} (${x.route})`).join(", ")}. One route per page \u2014 no duplicate routes and no extra navigation-only pages (e.g. a Menu page repeating the sidebar).` : "",
     c.exclusions.length ? `OUT OF SCOPE \u2014 never add: ${c.exclusions.join(", ")}.` : ""
   ].filter(Boolean).join("\n");
 }
@@ -146222,7 +146225,7 @@ var init_intent_contract = __esm({
     SURFACE_LINE = {
       public: "Structure: a public website only \u2014 header navigation and a footer, no sign-in area or dashboard.",
       app: "Structure: an application only \u2014 the app shell (sidebar or top bar) on every page, no marketing landing page.",
-      "public+app": "Structure: TWO surfaces. (1) Public website at / (and any public pages): header navigation, footer, what the product does, and a clear Sign in / Get started entry to /login. (2) Signed-in application from /dashboard onwards: its own app shell (sidebar navigation), no marketing footer. Keep the two layouts separate."
+      "public+app": "Structure: TWO surfaces. (1) Public website at / (and any public pages): header navigation, footer, what the product does, and a clear Sign in / Get started entry to /login. (2) Signed-in application from /dashboard onwards: its own app shell (sidebar navigation), no marketing footer. Keep the two layouts separate. The app shell is a pathless layout route (no path prop) so / belongs only to the public Home."
     };
     slug3 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   }
@@ -146558,7 +146561,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -158040,12 +158042,14 @@ function flagEnabled() {
   if (!raw) return true;
   return !["0", "off", "false", "no", "disabled"].includes(raw);
 }
+var NO_CLOUD = { needed: false, reason: null, status: "not_needed" };
 var EMPTY2 = {
   intents: [],
   enabledSharedBackend: false,
   promptBlock: "",
   userNote: null,
-  surface: null
+  surface: null,
+  cloud: NO_CLOUD
 };
 async function resolveIntentActions(args) {
   if (!flagEnabled()) return EMPTY2;
@@ -158063,22 +158067,29 @@ async function resolveIntentActions(args) {
   try {
     intents = detectIntents(args.prompt, null);
   } catch {
-    return { ...EMPTY2, surface, promptBlock: surfaceBlock };
+    intents = [];
   }
-  if (intents.length === 0) return { ...EMPTY2, surface, promptBlock: surfaceBlock };
-  const needsBackend = intents.some((i) => BACKEND_IMPLYING.includes(i));
+  const product2 = args.productNeedsBackend ?? null;
+  if (intents.length === 0 && !product2) return { ...EMPTY2, surface, promptBlock: surfaceBlock };
+  const keywordNeed = intents.some((i) => BACKEND_IMPLYING.includes(i));
+  const needsBackend = keywordNeed || Boolean(product2);
   let enabledSharedBackend = false;
+  let cloud = NO_CLOUD;
+  if (needsBackend) {
+    const reason = product2?.reason ?? "This request needs saved data or accounts.";
+    cloud = args.hasBackend || args.hasSharedBackend ? { needed: true, reason, status: "already_enabled" } : { needed: true, reason, status: "failed", error: "no project" };
+  }
   if (needsBackend && args.projectId && !args.hasBackend && !args.hasSharedBackend) {
     try {
       const { enableSharedBackend: enableSharedBackend2 } = await Promise.resolve().then(() => (init_shared_backend_server(), shared_backend_server_exports));
       await enableSharedBackend2(args.projectId);
       enabledSharedBackend = true;
+      cloud = { ...cloud, status: "enabled", error: void 0 };
       console.log(`[intent-actions] shared backend auto-enabled for ${args.projectId}`);
     } catch (e) {
-      console.warn(
-        "[intent-actions] shared backend auto-enable failed:",
-        e instanceof Error ? e.message : String(e)
-      );
+      const msg = e instanceof Error ? e.message : String(e);
+      cloud = { ...cloud, status: "failed", error: msg };
+      console.warn("[intent-actions] shared backend auto-enable failed:", msg);
     }
   }
   if (args.projectId && intents.includes("storage")) {
@@ -158095,6 +158106,11 @@ async function resolveIntentActions(args) {
   const briefs = intents.map((i) => CAPABILITY_BRIEF[i]).filter((b) => Boolean(b));
   const blocked = intents.filter((i) => NEEDS_THE_USER.includes(i));
   const lines = [];
+  if (cloud.status === "failed") {
+    lines.push(
+      "Kimble Cloud could NOT be switched on for this turn. Do not claim accounts or saved data work; build the screens and keep data local, and say plainly in one sentence that saved accounts are not connected yet."
+    );
+  }
   if (briefs.length > 0 || enabledSharedBackend) {
     lines.push("## CAPABILITIES THIS REQUEST IMPLIES (implement them, do not suggest them)");
     if (enabledSharedBackend) {
@@ -158128,7 +158144,8 @@ ${lines.join("\n")}
     // The surface is opening on screen, so the "you have to do this yourself"
     // line would be said twice. The surface block already covers it.
     userNote: surface ? null : userNote,
-    surface
+    surface,
+    cloud
   };
 }
 
@@ -178045,14 +178062,47 @@ ${buildTarget.systemPromptAddendum}
 ${webSubtypeBlock}` : webSubtypeBlock;
   let backend2 = body.projectId ? await lookupBackendForGenerate(body.projectId) : null;
   let sharedBackend = !backend2 && body.projectId ? await lookupSharedBackendForGenerate(body.projectId) : null;
+  let productNeedsBackend = null;
+  if (isInitial) {
+    try {
+      const { deriveIntentContract: deriveIntentContract2 } = await Promise.resolve().then(() => (init_intent_contract(), intent_contract_exports));
+      const c = deriveIntentContract2(latestUserMessage(messages), null);
+      if (c.surface === "app" || c.surface === "public+app") {
+        productNeedsBackend = {
+          reason: `Your ${c.label || "app"} needs user accounts and saved data.`
+        };
+      }
+    } catch {
+    }
+  }
   const intentActions = await resolveIntentActions({
     projectId: body.projectId,
     prompt: latestUserMessage(messages),
+    productNeedsBackend,
     hasBackend: Boolean(backend2),
     hasSharedBackend: Boolean(sharedBackend)
   });
   if (intentActions.enabledSharedBackend && body.projectId) {
     sharedBackend = await lookupSharedBackendForGenerate(body.projectId);
+  }
+  if (intentActions.cloud.status === "enabled" && body.projectId) {
+    void Promise.resolve().then(() => (init_cost_events_server(), cost_events_server_exports)).then(
+      ({ recordCostEvents: recordCostEvents2 }) => recordCostEvents2([{
+        sourceRef: `cloud:provision:shared:${body.projectId}`,
+        userId,
+        projectId: body.projectId,
+        stage: "cloud_provision",
+        category: "DATABASE",
+        provider: "kimble_shared(supabase)",
+        resource: "shared_backend",
+        quantity: 1,
+        unit: "project",
+        costUsd: null,
+        basis: "UNKNOWN",
+        metadata: { domain: "cloud", tier: "kimble", event: "provisioned", includes: ["database", "auth", "rest_api"] }
+      }])
+    ).catch(() => {
+    });
   }
   const sharedBackendBlock = sharedBackend ? `
 
@@ -178751,6 +178801,13 @@ The latest request contains multiple coordinated asks. Treat this as one complet
       }
       if (intentContract.pages.length) {
         const core = intentContract.pages.map((pg) => pg.route);
+        const lowerAsk = lastUserText.toLowerCase();
+        for (const r of [...plannedRoutes]) {
+          const segs = r.split("/").filter(Boolean);
+          if (segs.length > 1 && segs[0] !== "auth" && !core.includes(r) && !lowerAsk.includes(segs[segs.length - 1].replace(/^\$/, ""))) {
+            plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
+          }
+        }
         const covered = core.filter((r) => plannedRoutes.includes(r)).length;
         if (covered * 2 < core.length) {
           const added = core.filter((r) => !plannedRoutes.includes(r));
@@ -179149,6 +179206,18 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
         controller.enqueue(encoder.encode(sse({ type: "phase", phase: "thinking" })));
         if (buildReservation?.ok) {
           controller.enqueue(encoder.encode(sse({ type: "credits_planned", credits: buildReservation.estimated })));
+        }
+        {
+          const cd = intentActions.cloud;
+          const say = (message) => controller.enqueue(encoder.encode(sse({ type: "status", message })));
+          if (cd.status === "enabled") {
+            say(`${cd.reason} Kimble Cloud enabled a database and sign-in for it.`);
+            say("Connecting your app to Kimble Cloud\u2026");
+          } else if (cd.status === "already_enabled" && isInitial) {
+            say("Kimble Cloud is already on for this project \u2014 connecting your app to it\u2026");
+          } else if (cd.status === "failed" && cd.needed) {
+            say(`${cd.reason ?? "This app needs saved data."} Kimble Cloud couldn't be switched on, so accounts and saved data are not connected yet.`);
+          }
         }
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path\u2026" })));
         if (designDirection) {
