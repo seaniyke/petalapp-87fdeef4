@@ -65,7 +65,21 @@ export interface ResolveIntentActionsArgs {
   hasBackend: boolean;
   /** True when the free shared backend is already attached. */
   hasSharedBackend: boolean;
+  /**
+   * Product-level verdict from the intent contract (decided before any page
+   * is written): the product is an application with accounts and saved data.
+   * Null when the product is a public website or no verdict was made.
+   */
+  productNeedsBackend?: { reason: string } | null;
 }
+
+/** What happened to Kimble Cloud on this turn — real state, never assumed. */
+export type CloudDecision = {
+  needed: boolean;
+  reason: string | null;
+  status: "not_needed" | "already_enabled" | "enabled" | "failed";
+  error?: string;
+};
 
 export interface ResolvedIntentActions {
   /** Everything the turn implies. */
@@ -85,7 +99,10 @@ export interface ResolvedIntentActions {
    * building the app, which is the common case.
    */
   surface: SurfaceId | null;
+  cloud: CloudDecision;
 }
+
+const NO_CLOUD: CloudDecision = { needed: false, reason: null, status: "not_needed" };
 
 const EMPTY: ResolvedIntentActions = {
   intents: [],
@@ -93,6 +110,7 @@ const EMPTY: ResolvedIntentActions = {
   promptBlock: "",
   userNote: null,
   surface: null,
+  cloud: NO_CLOUD,
 };
 
 export async function resolveIntentActions(
