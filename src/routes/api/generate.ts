@@ -116,6 +116,8 @@ import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { loadCoreKnowledge, loadSkillKnowledge, loadColorGuide } from "@/server/agent-knowledge";
 import { assembleFirstBuildContext } from "@/server/engine/first-build-context";
+import { createTelemetrySink, summarizeExecution } from "@/server/engine/loop-telemetry";
+import type { CallTrace } from "@/server/engine/tool-loop";
 import { selectHistoryForGeneration } from "@/server/context/budget";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
@@ -4660,7 +4662,14 @@ async function handleGenerateRequestCore(
             const { withProviderRetry } = await import("@/server/engine/provider-retry");
             const seedFiles = resumed ? checkpointApi.checkpointSeedFiles(resumed.checkpoint, parsed.files ?? []) : (parsed.files ?? []);
             const pendingWrites: Array<{ path: string; content: string }> = [];
-            const loopTraces: unknown[] = [];
+            const loopTraces: CallTrace[] = [];
+            const telemetry = createTelemetrySink(
+              { turnId: logicalTurnId ?? null, projectId: body.projectId ?? null },
+              async () => {
+                const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+                return (row) => supabaseAdmin.from("tool_loop_calls" as never).insert(row as never);
+              },
+            );
             const callModel = makeCallModel(
               (reqBody, signal) =>
                 withProviderRetry(
