@@ -42,3 +42,5 @@
 - [x] Economic ceiling tied to reservation
 - [x] Billing DB warnings fixed (5 functions server-only)
 - [ ] Publish billing build + live bakery reconciliation (waiting on publish)
+- [x] Pause mobile / API-backend / Chrome-extension pipelines for launch (flags off, hidden from site, never reach the engine)
+- [ ] Live bakery billing benchmark — waiting on publish
