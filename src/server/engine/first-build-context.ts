@@ -60,7 +60,7 @@ export function splitMarkdownSections(md: string): Section[] {
  * line whose first word is ALL CAPS (≥4 letters) followed by ':' / '(' / end,
  * or the mixed-case "Hard rules:" label. Block 0 is the intro.
  */
-const PROMPT_HEADING = /^(?:Hard rules:|[A-Z][A-Z0-9.-]{3,}(?:[ \/&'-]+[A-Za-z0-9]+)*\s*(?:\(|:|$))/;
+const PROMPT_HEADING = /^(?:Hard rules:|Files YOU MUST emit|[A-Z][A-Z0-9.-]{3,}(?:[ \/&'-]+[A-Za-z0-9]+)*\s*(?:\(|:|$))/;
 export function splitPromptBlocks(prompt: string): Section[] {
   const out: Section[] = [];
   let cur: string[] = [];
