@@ -196,6 +196,11 @@ export async function resolveIntentActions(
   const blocked = intents.filter((i) => NEEDS_THE_USER.includes(i));
 
   const lines: string[] = [];
+  if (cloud.status === "failed") {
+    lines.push(
+      "Kimble Cloud could NOT be switched on for this turn. Do not claim accounts or saved data work; build the screens and keep data local, and say plainly in one sentence that saved accounts are not connected yet.",
+    );
+  }
   if (briefs.length > 0 || enabledSharedBackend) {
     lines.push("## CAPABILITIES THIS REQUEST IMPLIES (implement them, do not suggest them)");
     if (enabledSharedBackend) {
@@ -234,5 +239,6 @@ export async function resolveIntentActions(
     // line would be said twice. The surface block already covers it.
     userNote: surface ? null : userNote,
     surface,
+    cloud,
   };
 }
