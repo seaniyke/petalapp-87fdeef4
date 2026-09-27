@@ -31,7 +31,7 @@ describe("paused build types (web-only launch)", () => {
   });
   it("no mobile / extension / API-backend instructions reach the engine", () => {
     for (const p of PROMPTS) {
-      const picked = pickDynamicSnippets({ prompt: p, targetId: resolveBuildTarget(null, p).target } as never);
+      const picked = pickDynamicSnippets({ messages: [{ role: "user", content: p }], hasBackend: true, buildTarget: { id: resolveBuildTarget(null, p).target } });
       const text = JSON.stringify(picked);
       expect(text).not.toMatch(/Mobile app craft|Mobile-native aesthetic|Chrome extension craft|mobileApp|mobileNative|chromeExtensionCraft|mobileCraft/);
     }
