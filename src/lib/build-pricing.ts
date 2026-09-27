@@ -27,6 +27,15 @@ export function costPerCreditUsd(e: BuildEconomics): number {
   return e.revenuePerCreditUsd * (1 - m / 100);
 }
 
+/**
+ * Kimble's maximum variable-cost exposure for one build: the held credits
+ * expressed as cost. With no hold (auto-fix), the class estimate × headroom.
+ */
+export function economicCeilingUsd(reservedCredits: number | null, fallbackClassCostUsd: number, e: BuildEconomics): number {
+  if (reservedCredits != null && reservedCredits > 0) return reservedCredits * costPerCreditUsd(e);
+  return Math.max(0, fallbackClassCostUsd) * Math.max(1, e.reservationHeadroom);
+}
+
 function roundUp(n: number, step: number): number {
   const s = step > 0 ? step : 0.01;
   // tolerate float noise (0.1/0.026 etc.) before ceiling

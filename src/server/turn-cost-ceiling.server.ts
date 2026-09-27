@@ -54,7 +54,7 @@ export interface CostChargeResult {
 
 export class TurnCostMeter {
   private spent = 0;
-  private readonly ceiling: number;
+  private ceiling: number;
   private readonly warn: number;
   /** Ordered log of what the repair phase spent money on, for telemetry. */
   readonly entries: Array<{ label: string; model: string; tokens: number; usd: number }> = [];
@@ -62,6 +62,16 @@ export class TurnCostMeter {
   constructor(opts?: { ceilingUsd?: number; warnUsd?: number }) {
     this.ceiling = opts?.ceilingUsd ?? TURN_REPAIR_COST_CEILING_USD;
     this.warn = opts?.warnUsd ?? TURN_REPAIR_COST_WARN_USD;
+  }
+
+  /** Lower the hard ceiling to the turn's remaining economic budget (never raises it). */
+  capAt(usd: number): void {
+    const c = Math.max(0, usd);
+    if (c < this.ceiling) this.ceiling = c;
+  }
+
+  get ceilingUsd(): number {
+    return this.ceiling;
   }
 
   get spentUsd(): number {
