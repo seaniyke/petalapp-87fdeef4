@@ -4268,6 +4268,96 @@ export const KIT_FILES: KitFile[] = [
   ...KIT_A11Y_FILES,
 ];
 
+/* ------------------------------------------------------------------ */
+/* Project contract (template.json)                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Webby parity: `template.json` at the workspace root.
+ *
+ * Webby's agent treats `template.json` as the AUTHORITATIVE description of
+ * the scaffold it is building into — directory layout, which UI primitives
+ * already exist, which icon set is installed, where routes are registered.
+ * Webby's own runner pre-loads that metadata into the prompt so the model can
+ * skip the `readFile("template.json")` round trip (see
+ * `buildTemplateMetadataSection`), but the FILE still exists on disk, because
+ * its executor reads it back for routing/integration checks and the model may
+ * read it at any later turn.
+ *
+ * Kimble now ships the same artefact. The content is DERIVED from the kit
+ * itself (never hand-maintained), so a primitive added to `KIT_FILES` is
+ * visible in the contract the moment it ships. The file is scaffold-owned:
+ * the model may read it and may not write it.
+ */
+function uiComponentNames(): string[] {
+  const names = new Set<string>();
+  for (const k of KIT_FILES) {
+    if (!k.path.startsWith("src/components/ui/")) continue;
+    const base = k.path.slice("src/components/ui/".length).replace(/\.tsx?$/, "");
+    if (!base || base.includes("/")) continue;
+    names.add(base);
+  }
+  return [...names].sort();
+}
+
+function buildTemplateContract(): string {
+  return `${JSON.stringify(
+    {
+      id: "kimble-react",
+      name: "Kimble React App",
+      description:
+        "Vite + React + TypeScript + Tailwind v4 scaffold. The UI kit, styling tokens, " +
+        "build config and entry point are pre-installed and owned by Kimble; app code " +
+        "(pages, sections, shared modules, the router in src/App.tsx) is yours to write.",
+      categories: ["website", "app"],
+      file_structure: {
+        pages_dir: "src/pages",
+        components_dir: "src/components",
+        routes_file: "src/App.tsx",
+        entry_file: "src/main.tsx",
+        stylesheet: "src/styles.css",
+      },
+      available_pages: [],
+      custom_components: ["src/components/blocks/*", "src/components/examples/*"],
+      shadcn_components: uiComponentNames(),
+      styling: {
+        framework: "tailwind",
+        tailwind_version: "4",
+        icon_set: "lucide-react",
+        tokens: "semantic CSS variables in src/styles.css",
+      },
+      routing_pattern: "react-router",
+      protected_files: [
+        "template.json",
+        "package.json",
+        "vite.config.ts",
+        "tsconfig.json",
+        "index.html",
+        "src/main.tsx",
+        "src/styles.css",
+        "src/components/ui/*",
+      ],
+      usage_examples: {
+        adding_page:
+          "Create src/pages/Menu.tsx exporting a default component, then import it in " +
+          "src/App.tsx and add <Route path=\"/menu\" element={<Menu />} /> inside the shared layout.",
+        adding_route:
+          "src/App.tsx owns <BrowserRouter>. Wrap <Routes> in the shared layout so navigation " +
+          "and footer render on every page.",
+        single_purpose_app:
+          "A single-purpose tool (calculator, converter, tracker) belongs on the home page " +
+          "src/pages/Home.tsx — do not hide it behind a sub-route.",
+        importing_ui:
+          'import { Button } from "@/components/ui/button"; import { Menu } from "lucide-react";',
+      },
+    },
+    null,
+    2,
+  )}\n`;
+}
+
+KIT_FILES.push({ path: "template.json", content: buildTemplateContract(), overwrite: true });
+
 /**
  * Walk every scaffold file and verify that every `@/...` import resolves
  * against another scaffold file. Catches the class of bug where an example
