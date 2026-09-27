@@ -27,8 +27,8 @@ function WaitlistInvite({ name, email, signInUrl }: Props) {
         opened. You can sign in and start building right now.
       </Text>
       <Text style={text}>
-        Describe what you want in a sentence and Kimble ships it: web apps, mobile
-        apps, backends and Chrome extensions.
+        Describe what you want in a sentence and Kimble ships it: websites and web
+        apps, with a real backend when you need one.
       </Text>
       <Text style={muted}>
         Use{email ? ` ${email}` : " this email address"} when you sign in — that's

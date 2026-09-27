@@ -108,12 +108,11 @@ const sections: Section[] = [
     id: "targets",
     title: "What you can build",
     icon: Layers,
-    blurb: "Web apps, mobile apps, backends, and Chrome extensions.",
+    blurb: "Websites and web apps, with a real backend when you need one.",
     body: (
       <>
         <p>
-          Kimble picks the right target from your prompt — say "mobile app" or "Chrome
-          extension" and the whole project is scaffolded for it.
+          Describe what you want and Kimble builds it as a web app that works on desktop and phones.
         </p>
         <ul>
           <li>
@@ -121,18 +120,8 @@ const sections: Section[] = [
             SEO-ready pages. Published on a free subdomain or your own domain.
           </li>
           <li>
-            <strong>Mobile apps</strong> — one React Native codebase for iOS and Android, with
-            a live phone preview you can open in Expo Go. Kimble builds the signed{" "}
-            <code>.ipa</code> and <code>.apk</code> for you; store submission still needs your
-            own Apple or Google developer account.
-          </li>
-          <li>
             <strong>Backends & APIs</strong> — typed server functions, Postgres with row-level
             security, scheduled jobs, and webhooks.
-          </li>
-          <li>
-            <strong>Chrome extensions</strong> — Manifest V3 with a background service worker,
-            popup UI, and packaged ZIP ready to upload.
           </li>
         </ul>
       </>
@@ -274,7 +263,7 @@ const sections: Section[] = [
           credits never expire. Charges reflect the work Kimble completes.
         </p>
         <p>
-          Credits power building, hosting, AI, domains, mobile builds, and badge removal.
+          Credits power building, hosting, AI, domains, and badge removal.
           Buying credits is optional, and you are never required to save a card.
         </p>
       </>
@@ -356,7 +345,6 @@ const sections: Section[] = [
         <p><strong>How do I copy a project?</strong> Open the project, click its name in the top left, go to Settings, and choose Remix.</p>
         <p><strong>What does a credit cover?</strong> Credits pay for completed work across building, hosting, AI, domains, and related services.</p>
         <p><strong>Do I need to know how to code?</strong> No. Kimble writes and wires the code; you describe the outcome. If you do code, you can export the project and keep going in your own editor.</p>
-        <p><strong>Can I build iOS and Android from one prompt?</strong> Yes — one mobile project ships to both.</p>
         <p><strong>Who owns what I build?</strong> You do — the code, the data, and the domain.</p>
         <p><strong>Where is my project ID?</strong> It's in the URL of the builder.</p>
       </>

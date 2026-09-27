@@ -15,7 +15,7 @@ export const Route = createFileRoute("/invest")({
       { property: "og:title", content: "Invest in Kimble" },
       {
         property: "og:description",
-        content: "Back the AI builder for web, mobile, backends and extensions.",
+        content: "Back the AI builder for the web.",
       },
     ],
   }),
@@ -74,8 +74,7 @@ function InvestPage() {
             </h1>
             <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
               Kimble is raising <strong className="text-foreground">$40,000 for 10% equity</strong>{" "}
-              to grow the AI builder for web, mobile, backends and Chrome
-              extensions. Join the investor waitlist and we'll follow up with
+              to grow the AI builder for the web. Join the investor waitlist and we'll follow up with
               the deck and paperwork.
             </p>
           </div>
@@ -91,7 +90,7 @@ function InvestPage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
-                  Four build targets: web apps, iOS + Android, backends, Chrome extensions.
+                  Websites and full web apps with a real backend.
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />

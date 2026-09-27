@@ -40,13 +40,6 @@ const ENTRIES: Entry[] = [
   },
   {
     date: "June 2026",
-    tag: "Shipped",
-    icon: Smartphone,
-    title: "Mobile apps without a Mac",
-    body: "Describe an app and Kimble scaffolds React Native, streams a live phone preview you can open in Expo Go, and builds a signed .ipa and .apk on our cloud. No Xcode, no Expo account.",
-  },
-  {
-    date: "June 2026",
     tag: "Improved",
     icon: Rocket,
     title: "Previews boot in seconds",
@@ -79,13 +72,6 @@ const ENTRIES: Entry[] = [
     icon: Shield,
     title: "Kimble Shield",
     body: "Spend caps, secret detection, dependency scanning and runtime error tracking are on by default for every project.",
-  },
-  {
-    date: "Next up",
-    tag: "Coming next",
-    icon: Sparkles,
-    title: "Chrome Web Store submission",
-    body: "One-click submit for Manifest V3 extensions — build, sign and ship without leaving the chat.",
   },
   {
     date: "Next up",
