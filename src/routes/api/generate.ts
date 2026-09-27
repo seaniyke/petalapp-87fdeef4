@@ -135,7 +135,6 @@ import {
   runChunkedGeneration,
 } from "@/server/chunked-generation.server";
 import { firstBuildSeedFiles, FIRST_BUILD_TOOL_NOTE, firstBuildBrief } from "@/server/engine/first-build";
-import { systemTextOf } from "@/server/engine/system-text";
 
 import { runEsbuildTier } from "@/server/pipeline/tier-esbuild";
 import { runRenderRiskTier } from "@/server/pipeline/tier-render-risk";

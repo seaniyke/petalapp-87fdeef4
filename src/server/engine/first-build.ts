@@ -26,8 +26,11 @@ export const FIRST_BUILD_TOOL_NOTE =
   "\n\n### Execution mode: tools\n" +
   "There is NO write_project tool in this conversation. Build the app with the provided tools: " +
   "create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need " +
-  "information you do not already have, finish when done. Emit several create_file calls in one response " +
-  "(shared modules, layout/router and pages together) — useful work per response is what matters.\n";
+  "information you do not already have, finish when done.\n" +
+  "Batch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, " +
+  "a page with a local component only it imports, the router together with pages that already exist) may go in one " +
+  "response. Independent large files (separate pages) are separate units — write a unit, read the validation result, " +
+  "then write the next. Never batch a file with something it imports that has not been written and validated yet.\n";
 
 export interface FirstBuildDesign {
   /** Design-system package name, e.g. "Substrate". */
