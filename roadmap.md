@@ -38,3 +38,7 @@
 - [x] 9 Minimal admin economics
 - [x] 10 Billing regression tests, suite, typecheck, build
 - [ ] 11 Live bakery benchmark billing report — needs user publish
+
+- [x] Economic ceiling tied to reservation
+- [x] Billing DB warnings fixed (5 functions server-only)
+- [ ] Publish billing build + live bakery reconciliation (waiting on publish)
