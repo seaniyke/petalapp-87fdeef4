@@ -578,10 +578,19 @@ async function runAuth(
     const toSignup = page
       .getByRole("button", { name: /sign ?up|create account|register|get started/i })
       .first();
+    // A non-submit "Register" link under a sign-in form is a mode toggle:
+    // without clicking it, sign-up is submitted as a sign-in and fails.
+    const signupToggle = page
+      .locator('button[type="button"], a')
+      .filter({ hasText: /^\s*(sign ?up|create (an )?account|register)\s*$/i })
+      .first();
     const signupTab = page.getByRole("tab", { name: /sign ?up|register|create/i }).first();
     if ((await signupTab.count().catch(() => 0)) > 0) {
       await signupTab.click({ timeout: STEP_TIMEOUT_MS }).catch(() => {});
       await page.waitForTimeout(400);
+    } else if ((await signupToggle.count().catch(() => 0)) > 0) {
+      await signupToggle.click({ timeout: STEP_TIMEOUT_MS }).catch(() => {});
+      await page.waitForTimeout(600);
     } else if (
       (await toSignup.count().catch(() => 0)) > 0 &&
       (await findField(page, "password")) === null
