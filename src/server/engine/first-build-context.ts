@@ -60,7 +60,7 @@ export function splitMarkdownSections(md: string): Section[] {
  * line whose first word is ALL CAPS (≥4 letters) followed by ':' / '(' / end,
  * or the mixed-case "Hard rules:" label. Block 0 is the intro.
  */
-const PROMPT_HEADING = /^(?:Hard rules:|[A-Z][A-Z0-9]{3,}(?:[ \/&'-]+[A-Za-z0-9]+)*\s*(?:\(|:|$))/;
+const PROMPT_HEADING = /^(?:Hard rules:|[A-Z][A-Z0-9-]{3,}(?:[ \/&'-]+[A-Za-z0-9]+)*\s*(?:\(|:|$))/;
 export function splitPromptBlocks(prompt: string): Section[] {
   const out: Section[] = [];
   let cur: string[] = [];
@@ -70,7 +70,7 @@ export function splitPromptBlocks(prompt: string): Section[] {
     if (text) out.push({ title, slug: slugify(title), text });
   };
   for (const line of prompt.split("\n")) {
-    if (PROMPT_HEADING.test(line) && !/^[A-Z]{1,3}\b/.test(line.replace(/^Hard rules:/, "HARD"))) {
+    if (PROMPT_HEADING.test(line)) {
       flush();
       cur = [line];
       title = line.replace(/[:(].*$/, "").trim();
