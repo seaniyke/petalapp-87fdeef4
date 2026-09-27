@@ -4748,6 +4748,19 @@ async function handleGenerateRequestCore(
                 return readinessOf(v);
               },
               validate: async (file, tree) => {
+                // Stylesheets are validated too: a v3-style @tailwind
+                // directive next to the v4 @theme tokens breaks the CSS
+                // build, which source verification alone cannot see.
+                if (/\.css$/.test(file.path)) {
+                  const css: string[] = [];
+                  if (/^\s*@tailwind\s+(base|components|utilities)\b/m.test(file.content)) {
+                    css.push(`${file.path}: @tailwind directives are Tailwind v3. This project is Tailwind v4 — the stylesheet already imports Tailwind and defines its tokens in @theme.`);
+                  }
+                  const open = (file.content.match(/\{/g) ?? []).length;
+                  const close = (file.content.match(/\}/g) ?? []).length;
+                  if (open !== close) css.push(`${file.path}: unbalanced braces (${open} '{' vs ${close} '}').`);
+                  return css;
+                }
                 if (!/\.(tsx?|jsx?)$/.test(file.path)) return [];
                 const v = await verifyFilesEsbuild([file], [file.path]);
                 if (v.status === "unavailable") throw new Error(v.unavailableDetail ?? v.unavailableReason ?? "esbuild unavailable");
