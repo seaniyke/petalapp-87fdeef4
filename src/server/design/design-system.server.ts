@@ -119,7 +119,7 @@ export function deterministicDesignSystem(
   // Colours, typography and radii always come from the design system package.
   // Which package + accent is a deterministic read of the brief, so a bakery
   // gets warm terracotta and a clinic gets clinical blue without an AI call.
-  const def = resolvePackageForIntent(brief) ?? resolveDefaultPackage();
+  const def = resolvePackageForIntent(_brief) ?? resolveDefaultPackage();
   return def ? withPackageVisuals(base, def.pkg, def.accent) : base;
 
 }
