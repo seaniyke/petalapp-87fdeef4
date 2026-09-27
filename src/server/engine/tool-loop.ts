@@ -94,7 +94,95 @@ export const FULL_CONFIG: LoopConfig = {
 };
 
 /** LIGHT fast path: locate → read → edit → validate → finish. */
-export const LIGHT_CONFIG: LoopConfig = { ...FULL_CONFIG, maxIterations: 6, finalizeIterations: 2 };
+export const LIGHT_CONFIG: LoopConfig = { ...FULL_CONFIG, maxIterations: 6, finalizeIterations: 2, noProgressLimit: 3, noProgressRecovery: 2 };
+
+/* ------------------------------------------------------------------ */
+/* No-progress detection (deterministic, no AI)                        */
+/* ------------------------------------------------------------------ */
+
+export interface ActionRecord {
+  tool: string;
+  path: string | null;
+  /** Stable identity of the exact call (tool + arguments). */
+  key: string;
+  isError: boolean;
+  /** read_file of a path that does not exist. */
+  miss: boolean;
+  firstLine: string;
+}
+
+export function actionOf(call: ToolCallMsg, o: { output: string; isError: boolean; miss?: boolean }): ActionRecord {
+  let path: string | null = null;
+  try {
+    const a = call.function.arguments ? (JSON.parse(call.function.arguments) as Record<string, unknown>) : {};
+    path = typeof a.path === "string" ? normPath(a.path) : null;
+  } catch {
+    /* invalid JSON is its own failure */
+  }
+  return {
+    tool: call.function.name,
+    path,
+    key: `${call.function.name}:${hash(call.function.arguments ?? "")}`,
+    isError: o.isError,
+    miss: !!o.miss,
+    firstLine: o.output.split("\n")[0]!.slice(0, 160),
+  };
+}
+
+export interface EvidenceSnapshot {
+  hashes: Map<string, string>;
+  errors: Map<string, number>;
+}
+
+export function snapshotEvidence(state: ToolLoopState, tree: Map<string, string>): EvidenceSnapshot {
+  const hashes = new Map<string, string>();
+  const errors = new Map<string, number>();
+  for (const [p, c] of tree) hashes.set(p, hash(c));
+  for (const [p, e] of state.validation) errors.set(p, e.length);
+  return { hashes, errors };
+}
+
+/** A file became valid or lost errors; a new file was created valid. */
+export function madeProgress(before: EvidenceSnapshot, state: ToolLoopState, tree: Map<string, string>): boolean {
+  for (const [p, c] of tree) {
+    const errs = (state.validation.get(p) ?? []).length;
+    const had = before.errors.get(p);
+    const changed = before.hashes.get(p) !== hash(c);
+    if (had === undefined) {
+      if (changed && errs === 0) return true;
+      continue;
+    }
+    if (errs < had) return true;
+  }
+  return false;
+}
+
+/** One concise corrective signal from the recent trajectory. */
+export function diagnoseTrajectory(recent: ActionRecord[]): string {
+  const misses = [...new Set(recent.filter((a) => a.miss && a.path).map((a) => a.path!))];
+  const counts = new Map<string, { n: number; a: ActionRecord }>();
+  for (const a of recent) {
+    const c = counts.get(a.key);
+    counts.set(a.key, { n: (c?.n ?? 0) + 1, a });
+  }
+  const repeated = [...counts.values()].filter((c) => c.n >= 2).sort((x, y) => y.n - x.n);
+  const writeFails = recent.filter((a) => (a.tool === "create_file" || a.tool === "edit_file") && a.isError);
+  const finishRefused = recent.filter((a) => a.tool === "finish" && a.isError).length;
+  const parts = ["No progress: your recent steps changed nothing in the workspace."];
+  if (misses.length) parts.push(`These files do not exist — stop reading them: ${misses.slice(0, 6).join(", ")}. Use list_files once, or create what you need.`);
+  if (repeated.length) {
+    const r = repeated[0]!;
+    parts.push(`You repeated the same ${r.a.tool}${r.a.path ? ` on ${r.a.path}` : ""} ${r.n} times with the same result (${r.a.firstLine}). Do something different.`);
+  }
+  if (writeFails.length) {
+    const last = writeFails[writeFails.length - 1]!;
+    parts.push(`Writes keep failing validation (latest: ${last.path ?? "?"} — ${last.firstLine}). Fix exactly the reported error.`);
+  }
+  if (finishRefused) parts.push("finish was refused; fix the listed gaps by writing files, not by calling finish again.");
+  if (parts.length === 1) parts.push("Write the next missing file now.");
+  parts.push("If the next steps also change nothing, this run stops.");
+  return parts.join(" ");
+}
 
 /* ------------------------------------------------------------------ */
 /* Execution state                                                     */
@@ -155,6 +243,14 @@ export interface ToolLoopArgs {
   /** First user message: request + selective project context. */
   brief: string;
   files: ProjectFile[];
+  /**
+   * Read-only files that exist in the generated workspace but are owned by
+   * the platform (the scaffold kit: UI primitives, blocks, router re-export).
+   * Visible to read_file/list_files/search and to import validation, never
+   * written, never returned in `files`. Without this the loop told the model
+   * that advertised kit modules "do not exist".
+   */
+  reference?: ProjectFile[];
   /** Paths already written this turn; validated at loop start like any write. */
   seedPaths?: string[];
   callModel: CallModel;
@@ -185,7 +281,7 @@ export interface ToolLoopResult {
   traces: CallTrace[];
   /** Why finish is (still) refused; empty when complete. */
   incomplete: string[];
-  outcome: "finished" | "incomplete" | "breaker" | "cancelled";
+  outcome: "finished" | "incomplete" | "breaker" | "cancelled" | "no_progress";
 }
 
 /* ------------------------------------------------------------------ */
@@ -502,6 +598,10 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   const traces: CallTrace[] = [];
   const emit = args.onEvent ?? (() => {});
   const treeFiles = (): ProjectFile[] => [...tree].map(([path, content]) => ({ path, content }));
+  const ref = new Map((args.reference ?? []).map((f) => [f.path, f.content]));
+  /** Workspace view for reads and validation: authored files over the kit. */
+  const lookup = (p: string): string | undefined => tree.get(p) ?? ref.get(p);
+  const visiblePaths = (): string[] => [...new Set([...ref.keys(), ...tree.keys()])];
 
   let messages: LoopMessage[] = [
     { role: "system", content: args.system },
@@ -565,7 +665,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   const validate = async (path: string, content: string): Promise<string[]> => {
     const t0 = Date.now();
     try {
-      const next = treeFiles().filter((f) => f.path !== path);
+      const next = [...[...ref].filter(([p]) => !tree.has(p)).map(([p, c]) => ({ path: p, content: c })), ...treeFiles().filter((f) => f.path !== path)];
       next.push({ path, content });
       return await args.validate({ path, content }, next);
     } catch (e) {
@@ -619,7 +719,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       ? `Written, but ${path} FAILS validation (fix it before finish):\n${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}`
       : `OK: ${path} written and validated.`;
 
-  async function exec(call: ToolCallMsg): Promise<{ output: string; isError: boolean }> {
+  async function exec(call: ToolCallMsg): Promise<{ output: string; isError: boolean; miss?: boolean }> {
     const name = call.function.name as ToolName;
     if (!allowed.has(name)) return { output: fail(name, null, `Unknown or unavailable tool: ${name}`), isError: true };
     let a: Record<string, unknown>;
@@ -632,11 +732,11 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
 
     switch (name) {
       case "read_file": {
-        const c = tree.get(path);
+        const c = lookup(path);
         if (c === undefined) {
           const base = path.split("/").pop() ?? "";
-          const near = [...tree.keys()].filter((p) => base && p.endsWith(base)).slice(0, 5);
-          return { output: `File not found: ${path}${near.length ? `\nDid you mean: ${near.join(", ")}` : ""}`, isError: true };
+          const near = visiblePaths().filter((p) => base && p.endsWith(base)).slice(0, 5);
+          return { output: `File not found: ${path}${near.length ? `\nDid you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         }
         state.read.add(path);
         const lines = c.split("\n");
@@ -646,7 +746,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       }
       case "list_files": {
         const prefix = normPath(a.prefix);
-        const list = [...tree.keys()].filter((p) => p.startsWith(prefix)).sort();
+        const list = visiblePaths().filter((p) => p.startsWith(prefix)).sort();
         return { output: clip(list.join("\n") || "(no files)", cfg.maxToolOutput), isError: false };
       }
       case "search": {
@@ -654,8 +754,9 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (!q) return { output: "Empty query.", isError: true };
         const prefix = normPath(a.prefix);
         const hits: string[] = [];
-        for (const [p, c] of tree) {
+        for (const p of visiblePaths()) {
           if (!p.startsWith(prefix)) continue;
+          const c = lookup(p)!;
           const lines = c.split("\n");
           for (let i = 0; i < lines.length && hits.length < 80; i++) if (lines[i]!.includes(q)) hits.push(`${p}:${i + 1}: ${lines[i]!.trim().slice(0, 160)}`);
         }
@@ -785,6 +886,12 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
 
   const hardCeiling = cfg.maxIterations + cfg.finalizeIterations;
   let finalizing = false;
+  // No-progress protection: progress is a real workspace change — a file
+  // that became (or was created) valid, or lost errors. Reads, plans,
+  // refused finishes and status events never count.
+  let idle = 0;
+  let corrected = false;
+  const recent: ActionRecord[] = [];
 
   while (state.iteration < hardCeiling) {
     if (args.signal?.aborted) {
@@ -811,6 +918,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     const t0 = Date.now();
     validationMs = 0;
     const writesBefore = state.written.length;
+    const before = snapshotEvidence(state, tree);
+    const actions: ActionRecord[] = [];
 
     if (reply.toolCalls.length === 0) {
       // Implicit finish (Webby: no tool calls = done) still passes the gate.
@@ -828,15 +937,30 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
           while (j < reply.toolCalls.length && READ_ONLY.has(reply.toolCalls[j]!.function.name as ToolName)) j++;
           const batch = reply.toolCalls.slice(i, j);
           const outs = await Promise.all(batch.map(exec));
-          outs.forEach((o, k) => results.push({ id: batch[k]!.id, output: o.output }));
+          outs.forEach((o, k) => {
+            results.push({ id: batch[k]!.id, output: o.output });
+            actions.push(actionOf(batch[k]!, o));
+          });
           i = j;
         } else {
           const o = await exec(c);
           results.push({ id: c.id, output: o.output });
+          actions.push(actionOf(c, o));
           i++;
         }
       }
       for (const r of results) messages.push({ role: "tool", tool_call_id: r.id, content: clip(r.output, cfg.maxToolOutput) });
+
+      // Files written in one response are validated in order, so an early
+      // file importing a later one fails at its own write. Re-check once the
+      // whole response has landed and say which are now valid.
+      if (dirty.size) {
+        await refreshEvidence();
+        const healed = [...before.errors].filter(([p, n]) => n > 0 && (state.validation.get(p) ?? []).length === 0 && tree.has(p)).map(([p]) => p);
+        const healedNew = results.length ? [...new Set(state.written.slice(writesBefore))].filter((p) => !before.errors.has(p) && (state.validation.get(p) ?? []).length === 0) : [];
+        const nowValid = [...new Set([...healed, ...healedNew])].filter((p) => actions.some((a) => a.path === p && a.isError));
+        if (nowValid.length) messages.push({ role: "user", content: `Now valid after the rest of this response landed: ${nowValid.join(", ")}.` });
+      }
 
       // Periodic broader type check, fed back into the same conversation.
       if (args.typecheck && state.writesSinceTypecheck >= cfg.typecheckEvery) {
@@ -867,6 +991,26 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     };
     traces.push(trace);
     args.onTrace?.(trace);
+
+    if (!state.finished) {
+      recent.push(...actions);
+      if (recent.length > 40) recent.splice(0, recent.length - 40);
+      if (madeProgress(before, state, tree)) {
+        idle = 0;
+        corrected = false;
+      } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {
+        if (!corrected) {
+          corrected = true;
+          const signal = diagnoseTrajectory(recent);
+          emit({ kind: "no_progress", detail: signal });
+          messages.push({ role: "user", content: signal });
+        } else {
+          state.stopReason = `no progress in ${idle} consecutive steps`;
+          emit({ kind: "no_progress_stop", detail: state.stopReason });
+          return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "no_progress" };
+        }
+      }
+    }
 
     if (state.finished) {
       breaker.complete();
