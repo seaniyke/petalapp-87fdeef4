@@ -7318,7 +7318,8 @@ async function handleGenerateRequestCore(
           const v = (await economicsValues()) as Record<string, number>;
           const cfg = ep.effortConfig(v);
           const cls = assessExecution({ ...turnComplexityBase, plannedPages: firstBuildPlan?.pages.length ?? 0 }).class;
-          const toMap = (fs: ProjectFile[]) => Object.fromEntries(fs.map((f) => [f.path, f.content ?? ""]));
+          // Starter-kit files are Kimble's scaffold, not work done for this request.
+          const toMap = (fs: ProjectFile[]) => Object.fromEntries(projectAuthoredFiles(fs).map((f) => [f.path, f.content ?? ""]));
           const diff = ep.diffSignals(toMap(turnBaselineFiles), toMap(txCommitted ? nextFiles : turnBaselineFiles), (p) => ep.PAGE_PATH.test(p));
           const rows = recordedRows ?? [];
           const verifyCalls = rows.filter((r) => r.stage === "verify").length;
