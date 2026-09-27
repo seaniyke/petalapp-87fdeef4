@@ -13,8 +13,9 @@ const manifest = {
 
 describe("structural edits on one page are not site-wide", () => {
   it("a structural single-page edit keeps page and layout protection", () => {
-    const req = "Restructure the patients page into two columns with a filter sidebar and a new table layout.";
+    const req = "The patients table looks plain, give it a proper toolbar and status badges.";
     const c = classifyRequest(req, { isInitial: false });
+    expect(c.edit?.scope).toBe("structural");
     expect(c.crossCutting).toBe(false);
     const s = buildExecutionScope({ request: req, classification: c, manifest, targets: ["src/pages/Patients.tsx"] });
     expect(s.isProtected("src/pages/Patients.tsx")).toBe(false);
