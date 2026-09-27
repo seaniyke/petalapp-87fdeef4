@@ -24,6 +24,7 @@ import { classifyWorkUnit } from "./first-build-context";
 import type { ProjectFile } from "@/server/generate.server";
 import type { Readiness, ReadinessFinding } from "@/server/verification/readiness";
 import { findingKey } from "@/server/verification/readiness";
+import { buildKitExportIndex, repairKitImports, type KitExportIndex } from "./kit-import-repair";
 import { AgentCircuitBreaker, BREAKER_THRESHOLDS, type BreakerThresholds } from "@/server/execution/circuit-breaker";
 
 /* ------------------------------------------------------------------ */
@@ -228,16 +229,8 @@ export function diagnoseTrajectory(recent: ActionRecord[]): string {
 
 export type OpStatus = "pending" | "done" | "blocked" | "skipped";
 
-export interface Task {
-  id: string;
-  title: string;
-  status: OpStatus;
-  files: string[];
-}
-
 export interface ToolLoopState {
   goal: string;
-  tasks: Map<string, Task>;
   /** Operation ids COMPLETED this turn (written AND validated clean). */
   completedOps: Set<string>;
   /** Paths the model has read (read-before-edit/overwrite). */
@@ -294,6 +287,8 @@ export interface CallTrace {
   recovery: "correction" | null;
   /** Model call error, when the step failed before a reply. */
   error: string | null;
+  /** Starter-kit imports corrected deterministically in this step (no model call). */
+  deterministicRepairs?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -432,22 +427,7 @@ export const TOOLS = {
     replace: { type: "string" },
     occurrence: { type: "integer", description: "1-based match to replace when search appears more than once" },
   }, ["path", "search", "replace"]),
-  plan_tasks: fn("plan_tasks", "Declare or update the task list for this request. Tasks with status pending block finish.", {
-    tasks: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          status: { type: "string", enum: ["pending", "done", "skipped"] },
-          files: { type: "array", items: { type: "string" } },
-        },
-        required: ["id", "status"],
-      },
-    },
-  }, ["tasks"]),
-  finish: fn("finish", "Declare the request complete. Refused while required files/routes are missing, files fail validation, or tasks are pending.", { summary: { type: "string" } }, []),
+  finish: fn("finish", "Declare the request complete. Runs the full deterministic verification (requested pages and routes, imports, sources) — the same check commit uses — so there is no need to search the workspace to verify first. Refused with exact findings while anything is missing or failing.", { summary: { type: "string" } }, []),
 } satisfies Record<string, ToolSchema>;
 
 export type ToolName = keyof typeof TOOLS;
@@ -456,7 +436,7 @@ const READ_ONLY = new Set<ToolName>(["read_file", "list_files", "search"]);
 export function toolsFor(light: boolean): ToolSchema[] {
   const names: ToolName[] = light
     ? ["read_file", "search", "edit_file", "create_file", "finish"]
-    : ["read_file", "list_files", "search", "create_file", "edit_file", "plan_tasks", "finish"];
+    : ["read_file", "list_files", "search", "create_file", "edit_file", "finish"];
   return names.map((n) => TOOLS[n]);
 }
 
@@ -549,17 +529,15 @@ export function stableFoundations(state: ToolLoopState, files: Map<string, strin
 }
 
 /**
- * Loop-local blockers only: the agent's own unfinished tasks and failing
- * operation evidence. Workspace correctness comes from the readiness
- * authority, never from here.
+ * Loop-local blockers only: files this turn wrote that still fail immediate
+ * validation. Required work (pages, routes, imports) is decided by the
+ * readiness authority from the build brief/intent — never by a model-kept
+ * task list, which only restated the request.
  */
 export function completionGaps(state: ToolLoopState, files: Map<string, string>): string[] {
   const gaps: string[] = [];
   for (const [path, errs] of state.validation) {
     if (errs.length && files.has(path)) gaps.push(`${path} still fails validation: ${errs[0]}`);
-  }
-  for (const t of state.tasks.values()) {
-    if (t.status === "pending" || t.status === "blocked") gaps.push(`task not done: ${t.id}${t.title ? ` — ${t.title}` : ""}`);
   }
   return gaps;
 }
@@ -617,13 +595,11 @@ export function compact(messages: LoopMessage[], state: ToolLoopState, keepRecen
   let cut = messages.length - keepRecent;
   while (cut > 2 && messages[cut]?.role === "tool") cut--;
   if (cut <= 2) return messages;
-  const tasks = [...state.tasks.values()].map((t) => `- [${t.status}] ${t.id}${t.title ? `: ${t.title}` : ""}`).join("\n");
   const failing = [...state.validation].filter(([, e]) => e.length).map(([p, e]) => `- ${p}: ${e[0]}`).join("\n");
   const summary = [
     "[Earlier work in this turn, compacted]",
     `Files written so far (${state.written.length}): ${[...new Set(state.written)].join(", ") || "none"}`,
     `Files read: ${[...state.read].slice(-60).join(", ") || "none"}`,
-    tasks ? `Tasks:\n${tasks}` : "",
     failing ? `Files still failing validation:\n${failing}` : "",
     files ? evidenceSummary(state, files) : "",
     "Continue from here. Re-read a file before editing it if you need its current content.",
@@ -638,7 +614,6 @@ export function compact(messages: LoopMessage[], state: ToolLoopState, keepRecen
 export function createToolLoopState(goal: string): ToolLoopState {
   return {
     goal,
-    tasks: new Map(),
     completedOps: new Set(),
     read: new Set(),
     validation: new Map(),
@@ -666,6 +641,23 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   /** Workspace view for reads and validation: authored files over the kit. */
   const lookup = (p: string): string | undefined => tree.get(p) ?? ref.get(p);
   const visiblePaths = (): string[] => [...new Set([...ref.keys(), ...tree.keys()])];
+  /** Authoritative kit export map (shipped reference files not shadowed by authored ones). */
+  let kitIndex: KitExportIndex | null = null;
+  let kitIndexSig = "";
+  let stepRepairs = 0;
+  const repairImports = (path: string, content: string): { content: string; note: string } => {
+    if (!ref.size || !/\.(t|j)sx?$/.test(path)) return { content, note: "" };
+    const sig = [...ref.keys()].filter((p) => tree.has(p)).join("|");
+    if (!kitIndex || sig !== kitIndexSig) {
+      kitIndex = buildKitExportIndex([...ref].map(([p, c]) => ({ path: p, content: c })), (p) => tree.has(p));
+      kitIndexSig = sig;
+    }
+    const r = repairKitImports(content, kitIndex);
+    if (!r) return { content, note: "" };
+    stepRepairs += r.repairs.length;
+    for (const x of r.repairs) emit({ kind: "kit_import_repaired", path, detail: `${x.symbol}: ${x.from} → ${x.to}` });
+    return { content: r.content, note: `\nKimble corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.` };
+  };
 
   let messages: LoopMessage[] = [
     { role: "system", content: args.system },
@@ -719,9 +711,6 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   /** Finish gate: loop-local gaps + the ONE readiness authority. */
   const finishGate = async (): Promise<string | null> => {
     await refreshEvidence();
-    for (const t of state.tasks.values()) {
-      if (t.status === "done" && t.files.some((f) => !(tree.get(f) ?? "").trim() || (state.validation.get(f) ?? []).length)) t.status = "pending";
-    }
     const gaps = completionGaps(state, tree);
     state.readiness = await checkReadiness(tree);
     if (!gaps.length && state.readiness.ready) return null;
@@ -840,7 +829,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         const managed = managedSurfaceRefusal(path, tree);
         if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
         if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
-        const content = String(a.content ?? "");
+        const fixed = repairImports(path, String(a.content ?? ""));
+        const content = fixed.content;
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
         const existing = tree.get(path);
         if (existing !== undefined && existing === content) return { output: `No change: ${path} already has this content.`, isError: false };
@@ -864,10 +854,10 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         emit({ kind: errs.length ? "write_failed_validation" : "write_ok", path, detail: errs[0] });
         if (errs.length) {
           breaker.recordFailure({ category: "syntax_error", tool: name, path, message: errs[0]! });
-          return { output: report(path, errs), isError: true };
+          return { output: report(path, errs) + fixed.note, isError: true };
         }
         breaker.recordProgress("file_written", path);
-        return { output: report(path, errs), isError: false };
+        return { output: report(path, errs) + fixed.note, isError: false };
       }
       case "edit_file": {
         const current = tree.get(path);
@@ -889,7 +879,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
           return { output: fail(name, path, `search text matches ${at.length} places in ${path}. Add surrounding lines to make it unique, or pass occurrence (1-${at.length}).`), isError: true };
         }
         const pos = at[at.length > 1 ? occ - 1 : 0]!;
-        const next = current.slice(0, pos) + replace + current.slice(pos + search.length);
+        const edited = repairImports(path, current.slice(0, pos) + replace + current.slice(pos + search.length));
+        const next = edited.content;
         // Deletion protection: an edit may not silently drop most of a file.
         if (current.length > 400 && next.trim().length < current.trim().length * 0.5 && replace.length < search.length * 0.5) {
           return { output: fail(name, path, `Refused: this edit would remove more than half of ${path}. Use create_file to replace the file deliberately.`), isError: true };
@@ -924,24 +915,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (!errs.length) state.completedOps.add(id);
         breaker.recordProgress(errs.length < before.length ? "file_repaired" : "file_written", path);
         emit({ kind: "edit_ok", path });
-        return { output: errs.length ? report(path, errs) : `OK: edited ${path} and validated.`, isError: false };
-      }
-      case "plan_tasks": {
-        const list = Array.isArray(a.tasks) ? (a.tasks as Array<Record<string, unknown>>) : [];
-        for (const t of list) {
-          const id = String(t.id ?? "").trim();
-          if (!id) continue;
-          const prev = state.tasks.get(id);
-          const status = (["pending", "done", "skipped"].includes(String(t.status)) ? t.status : "pending") as OpStatus;
-          state.tasks.set(id, {
-            id,
-            title: String(t.title ?? prev?.title ?? ""),
-            status,
-            files: Array.isArray(t.files) ? (t.files as unknown[]).map(normPath) : prev?.files ?? [],
-          });
-        }
-        const lines = [...state.tasks.values()].map((t) => `[${t.status}] ${t.id}`);
-        return { output: `Tasks (${state.tasks.size}):\n${lines.join("\n")}`, isError: false };
+        return { output: (errs.length ? report(path, errs) : `OK: edited ${path} and validated.`) + edited.note, isError: false };
       }
       case "finish": {
         const notReady = await finishGate();

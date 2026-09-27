@@ -8,7 +8,7 @@
  * be proven from the manifest the import is left untouched and the normal
  * validation error reaches the writer.
  */
-import type { ProjectFile } from "@/server/scaffold-kit";
+import type { ProjectFile } from "@/server/generate.server";
 
 export interface KitImportRepair {
   symbol: string;
