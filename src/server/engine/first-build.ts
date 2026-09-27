@@ -29,9 +29,9 @@ export const FIRST_BUILD_TOOL_NOTE =
   "information you do not already have, finish when done.\n" +
   "Work in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, " +
   "write it, let it validate, then move to the next. Inspect enough to start safely — you do not need to understand " +
-  "the whole starter kit before your first write. The starter-kit map above is authoritative: do not list directories " +
+  "the whole starter kit before your first write. The starter-kit API above is authoritative and complete: do not list directories " +
   "to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go " +
-  "in one response. You may call finish in the same response as your last writes.\n" +
+  "in one response. After each write step Kimble reports the whole-workspace verification verdict; trust it instead of re-reading files. You may call finish in the same response as your last writes.\n" +
   "Batch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, " +
   "a page with a local component only it imports, the router with its pages) belong in one response. Pages that each " +
   "stand alone on already-written shared modules may share a response too. Write shared modules before the files that " +

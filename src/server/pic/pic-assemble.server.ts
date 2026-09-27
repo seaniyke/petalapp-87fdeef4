@@ -59,6 +59,12 @@ export interface AssemblePicArgs {
   signal?: AbortSignal;
   /** Canonical visual decision authored before PIC assembly. */
   designDirection?: DesignDirection | null;
+  /**
+   * Understanding pass already started for this brief (first-build setup
+   * fan-out runs it concurrently with the PRD and design direction). Used
+   * only when there is no stored understanding to refine.
+   */
+  understanding?: Promise<PicUnderstanding> | null;
 }
 
 export interface AssembledPic {
@@ -82,12 +88,15 @@ export async function assemblePic(args: AssemblePicArgs): Promise<AssembledPic> 
     return { pic: stored.pic, refreshed: false };
   }
 
-  const understanding = await understandRequest(args.brief, {
-    userId: args.userId,
-    projectId,
-    prior: stored?.pic.understanding ?? null,
-    signal: args.signal,
-  });
+  const understanding =
+    args.understanding && !stored?.pic.understanding
+      ? await args.understanding
+      : await understandRequest(args.brief, {
+          userId: args.userId,
+          projectId,
+          prior: stored?.pic.understanding ?? null,
+          signal: args.signal,
+        });
 
   const base = stored?.pic ?? emptyContext(projectId, understanding);
 
