@@ -60,6 +60,22 @@ export const COMPOSITION_RULES = [
   "Every link points somewhere real — no href=\"#\" placeholders. One <h1> per page.",
 ].join("\n- ");
 
+/**
+ * The recurring mechanical failures, stated once. Webby carries the same
+ * material as knowledge sections ("common typescript error patterns", "import
+ * path rules", "file organization", "first-build optimization", "token
+ * efficiency"); that text names Webby's own tools and its own scaffold, so
+ * the behaviour is restated here against Kimble's tools and scaffold instead.
+ */
+export const CORRECTNESS_RULES = [
+  "Import every identifier you use, including every lucide-react icon and every React hook. An undefined name fails validation and the write is returned to you.",
+  "Match the export style: the UI kit exports named (import { Button }), pages export default. Never guess — a mismatch is a build error.",
+  "Absolute imports only, via the @/ alias. No relative ../.. chains, no file extensions, no imports of packages the scaffold does not already use.",
+  "src/App.tsx is the only place that owns <BrowserRouter>. Never nest a second router inside a page or layout.",
+  "Write each file once, complete, in a single create_file call. Do not emit partial files, TODO stubs or '...rest unchanged'. Use edit_file for a bounded change to a file that already exists.",
+  "Write the shared layout and any shared module before the pages that import them, then emit the pages together in one response.",
+].join("\n- ");
+
 /** Words that make copy read as machine-written. */
 export const COPY_RULES =
   "Write copy as the business would: concrete and specific, never superlative. " +
