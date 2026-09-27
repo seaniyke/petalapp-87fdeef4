@@ -71,7 +71,7 @@ export const CORRECTNESS_RULES = [
   "Import every identifier you use, including every lucide-react icon and every React hook. An undefined name fails validation and the write is returned to you.",
   "Match the export style: the UI kit exports named (import { Button }), pages export default. Never guess — a mismatch is a build error.",
   "Absolute imports only, via the @/ alias. No relative ../.. chains, no file extensions, no imports of packages the scaffold does not already use.",
-  "src/App.tsx is the only place that owns <BrowserRouter>. Never nest a second router inside a page or layout.",
+  "src/App.tsx is the only place that owns <BrowserRouter>. Never nest a second router inside a page or layout. Router names come from \"react-router-dom\" (or its kit re-export @/components/ui/router) — never invent another router module.",
   "Write each file once, complete, in a single create_file call. Do not emit partial files, TODO stubs or '...rest unchanged'. Use edit_file for a bounded change to a file that already exists.",
   "Write the shared layout and any shared module before the pages that import them, then emit the pages together in one response.",
 ].join("\n- ");
