@@ -199,7 +199,7 @@ export function detectExplorationDrift(explored: Set<string>, actions: ActionRec
   return idleStep >= 2 && (wasted || widened) ? EXPLORATION_DRIFT_SIGNAL : null;
 }
 
-export function diagnoseTrajectory(recent: ActionRecord[]): string {
+export function diagnoseTrajectory(recent: ActionRecord[], remaining: string[] = []): string {
   const misses = [...new Set(recent.filter((a) => a.miss && a.path).map((a) => a.path!))];
   const counts = new Map<string, { n: number; a: ActionRecord }>();
   for (const a of recent) {
@@ -220,9 +220,17 @@ export function diagnoseTrajectory(recent: ActionRecord[]): string {
     parts.push(`Writes keep failing validation (latest: ${last.path ?? "?"} — ${last.firstLine}). Fix exactly the reported error.`);
   }
   if (finishRefused) parts.push("finish was refused; fix the listed gaps by writing files, not by calling finish again.");
-  if (parts.length === 1) parts.push("Write the next missing file now.");
-  parts.push("If the next steps also change nothing, this run stops.");
+  if (remaining.length) {
+    parts.push(`Remaining work (the only open items — everything else is already verified, do not re-read it):\n${remaining.slice(0, 10).map((r) => `- ${r}`).join("\n")}\nWrite the first item now.`);
+  } else if (parts.length === 1) parts.push("Write the next missing file now.");
+  parts.push("This is your one chance to continue: if the next steps also change nothing, this run stops and keeps what is already done.");
   return parts.join(" ");
+}
+
+/** Answer to a re-read of an unchanged file whose earlier read is still in context. */
+export function rereadNotice(path: string, remaining: string[]): string {
+  const next = remaining.length ? ` Remaining work:\n${remaining.slice(0, 6).map((r) => `- ${r}`).join("\n")}` : "";
+  return `Unchanged since you last read ${path} — use that earlier result; re-reading it adds nothing.${next}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -682,6 +690,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   let validationMs = 0;
   /** list_files prefix → workspace signature when it was last listed. */
   const listed = new Map<string, string>();
+  /** path+range → content hash of the last read still visible in context (cleared on compaction). */
+  const readSeen = new Map<string, string>();
 
   const record = (path: string, content: string, errs: string[]) => {
     state.validation.set(path, errs);
@@ -827,6 +837,14 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         const lines = c.split("\n");
         const s = Math.max(1, Number(a.start_line) || 1);
         const e = Math.min(lines.length, Number(a.end_line) || lines.length);
+        // Re-reading a file that has not changed since it was read (and that
+        // read is still in context) rediscovers nothing: answer from state.
+        const seenKey = `${path}:${s}:${e}`;
+        const h = hash(c);
+        if (readSeen.get(seenKey) === h) {
+          return { output: rereadNotice(path, incompleteNow()), isError: false };
+        }
+        readSeen.set(seenKey, h);
         return { output: clip(lines.slice(s - 1, e).map((l, i) => `${s + i}: ${l}`).join("\n"), cfg.maxToolOutput), isError: false };
       }
       case "list_files": {
@@ -990,6 +1008,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     let compacted = false;
     if (estimateTokens(messages) > cfg.contextWindow * cfg.compactAt) {
       messages = compact(messages, state, cfg.keepRecent, tree);
+      readSeen.clear();
       compacted = true;
     }
 
@@ -1162,7 +1181,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {
         if (!corrected) {
           corrected = true;
-          const signal = diagnoseTrajectory(recent);
+          const signal = diagnoseTrajectory(recent, incompleteNow());
           emit({ kind: "no_progress", detail: signal });
           messages.push({ role: "user", content: signal });
         } else {

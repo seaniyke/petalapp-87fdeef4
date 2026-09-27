@@ -30,6 +30,8 @@ export type TerminalResult = {
   preserved: string;
   rejections: TerminalRejection[];
   nextAction: string;
+  /** Partial first build: validated work kept (resumable), what is still open. */
+  partial?: { kept: string[]; remaining: string[] } | null;
 };
 
 const PRESERVED_ROLLBACK = "Your app was left exactly as it was before this request — no files were changed.";
@@ -66,6 +68,7 @@ export function buildTerminalResult(input: {
   baseRevision?: number | null;
   committedRevision?: number | null;
   rejections?: TerminalRejection[];
+  partial?: { kept: string[]; remaining: string[] } | null;
 }): TerminalResult {
   const category = input.category ?? (input.outcome === "aborted" ? "cancelled" : categoryFromReason(input.reason));
   const committed = input.committedRevision ?? null;
@@ -82,7 +85,10 @@ export function buildTerminalResult(input: {
       ? `Revision ${committed} was saved before the failure; later work in this request was not.`
       : PRESERVED_ROLLBACK,
     rejections: (input.rejections ?? []).slice(0, 5).map((r) => ({ path: r.path ?? null, detail: r.detail.slice(0, 300) })),
-    nextAction: nextActionFor(category),
+    nextAction: input.partial?.kept.length
+      ? "Say \"continue\" and Kimble will pick up from the finished parts instead of starting again."
+      : nextActionFor(category),
+    ...(input.partial?.kept.length ? { partial: { kept: input.partial.kept.slice(0, 20), remaining: input.partial.remaining.slice(0, 10) } } : {}),
   };
 }
 
@@ -97,6 +103,19 @@ const HEADLINES: Record<TerminalCategory, string> = {
 
 /** The single final message text. Contains no success/landed language. */
 export function formatTerminalResult(r: TerminalResult): string {
+  if (r.partial && r.partial.kept.length) {
+    const lines = [
+      "Kimble built part of this request, then stopped before it was finished. It is not in your app yet.",
+      "",
+      `Finished and checked (kept for the next attempt): ${r.partial.kept.map((p) => `\`${p}\``).join(", ")}`,
+    ];
+    if (r.partial.remaining.length) {
+      lines.push("", "Still to do:");
+      for (const x of r.partial.remaining) lines.push(`- ${x}`);
+    }
+    lines.push("", r.nextAction);
+    return lines.join("\n");
+  }
   const lines = [HEADLINES[r.category], "", r.preserved];
   if (r.rejections.length > 0) {
     lines.push("", "What failed:");
