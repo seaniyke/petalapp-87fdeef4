@@ -291,3 +291,37 @@ function hashOf(s: string): string {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
   return h.toString(36);
 }
+
+describe("managed build surface", () => {
+  const surfaceBase = { ...base, files: [{ path: "src/styles.css", content: ":root{}\n" }] };
+
+  it("refuses a competing Tailwind config regardless of extension", async () => {
+    for (const p of ["tailwind.config.js", "tailwind.config.ts", "postcss.config.cjs", "vite.config.mjs", ".postcssrc.json"]) {
+      const m = scripted([reply(call("create_file", { path: p, content: "module.exports = {};\n" })), reply(call("finish", {}))]);
+      const r = await runToolLoop({ ...surfaceBase, callModel: m.callModel });
+      expect(tool(m)).toContain("managed by Kimble");
+      expect(r.files.some((f) => f.path === p)).toBe(false);
+    }
+  });
+
+  it("refuses a second stylesheet when the project stylesheet exists", async () => {
+    const m = scripted([reply(call("create_file", { path: "src/index.css", content: "@tailwind base;\n" })), reply(call("finish", {}))]);
+    const r = await runToolLoop({ ...surfaceBase, callModel: m.callModel });
+    expect(tool(m)).toContain("src/styles.css is the project stylesheet");
+    expect(r.files.some((f) => f.path === "src/index.css")).toBe(false);
+  });
+
+  it("refuses package.json and index.html writes", async () => {
+    for (const p of ["package.json", "index.html", "tsconfig.json", "components.json"]) {
+      const m = scripted([reply(call("create_file", { path: p, content: "x" })), reply(call("finish", {}))]);
+      await runToolLoop({ ...surfaceBase, callModel: m.callModel });
+      expect(tool(m)).toContain("managed by Kimble");
+    }
+  });
+
+  it("ordinary source files are untouched by the guard", async () => {
+    const m = scripted([reply(call("create_file", { path: "src/lib/vite.config.helper.tsx", content: page("H") })), reply(call("finish", {}))]);
+    const r = await runToolLoop({ ...surfaceBase, callModel: m.callModel });
+    expect(r.files.some((f) => f.path === "src/lib/vite.config.helper.tsx")).toBe(true);
+  });
+});
