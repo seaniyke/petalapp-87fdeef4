@@ -188,14 +188,16 @@ export function composeAppBlueprint(brief: string, opts?: { hasBackend?: boolean
 
 export function renderBlueprintBlock(b: AppBlueprint): string {
   const out: string[] = [];
-  out.push("\n\n### App Blueprint (committed for this build — execute it)");
+  out.push("\n\n### App Blueprint (reference patterns for this kind of product — advisory, not a page list to execute)");
   if (b.archetype) {
     out.push(`Archetype: ${b.archetype.label} [${b.archetype.id}] — ${b.archetype.vertical}`);
     if (b.archetype.domainNote) out.push(b.archetype.domainNote);
   }
   out.push(`Template: ${b.template.key} — ${b.template.description}`);
 
-  out.push(`\nScaffold these routes (use these exact paths) — build no other pages:`);
+  out.push(
+    `\nRoutes that often fit this kind of product (optional patterns, NOT a required list — build only the pages the user asked for, the intent contract lists, or the product structure needs; never add a page just because it appears here):`,
+  );
   for (const r of b.routes) out.push(`  - ${r}`);
 
   if (b.kitBlockPaths.length) {
