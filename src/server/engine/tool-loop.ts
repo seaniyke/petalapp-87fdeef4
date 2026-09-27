@@ -787,7 +787,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (!path) return { output: fail(name, null, "create_file needs a path."), isError: true };
         const managed = managedSurfaceRefusal(path, tree);
         if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
-        if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
         const content = String(a.content ?? "");
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
         const existing = tree.get(path);
@@ -822,7 +822,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (current === undefined) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
         const managedEdit = managedSurfaceRefusal(path, tree);
         if (managedEdit) return { output: fail(name, path, managedEdit, "scope_violation"), isError: true };
-        if (args.isProtected?.(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
         if (!state.read.has(path)) return { output: fail(name, path, `Read ${path} with read_file before editing it.`), isError: true };
         const search = String(a.search ?? "");
         const replace = String(a.replace ?? "");
