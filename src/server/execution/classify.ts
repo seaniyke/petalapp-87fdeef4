@@ -94,7 +94,9 @@ export function classifyRequest(
     return { operation: "first_build", planRequired: false, mode: "staged", reason: "no project yet", edit: null, crossCutting: false };
   }
   const edit = classifyEditFacet(r);
-  const crossCutting = detectCrossCuttingIntent(r) || edit.scope === "structural";
+  // Site-wide only when the request names site-wide things. A structural change
+  // on one page keeps dependency-aware selection and page/layout protection.
+  const crossCutting = detectCrossCuttingIntent(r);
   const base = baseOperation(r, opts);
   // A cross-cutting ask is an architectural change whatever keyword matched
   // first (previously an override applied separately in /api/generate).
