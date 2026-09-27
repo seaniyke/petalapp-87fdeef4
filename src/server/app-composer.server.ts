@@ -195,7 +195,9 @@ export function renderBlueprintBlock(b: AppBlueprint): string {
   }
   out.push(`Template: ${b.template.key} — ${b.template.description}`);
 
-  out.push(`\nScaffold these routes (use these exact paths) — build no other pages:`);
+  out.push(
+    `\nRoutes that often fit this kind of product (optional patterns, NOT a required list — build only the pages the user asked for, the intent contract lists, or the product structure needs; never add a page just because it appears here):`,
+  );
   for (const r of b.routes) out.push(`  - ${r}`);
 
   if (b.kitBlockPaths.length) {

@@ -3584,7 +3584,11 @@ async function handleGenerateRequestCore(
         }
       }
       archetypeBlock = narrowed ? renderBlueprintBlock(composed.blueprint) : composed.promptBlock;
-      for (const r of composed.blueprint.routes ?? []) if (r) plannedRoutes.push(r);
+      // Archetype/blueprint routes are ADVISORY patterns, never requirements.
+      // They are not added to plannedRoutes: required pages come only from
+      // pages the user named, the intent contract, and the product surface.
+      // (A template's route list used to fail builds as "missing requested
+      // pages" for products outside the known domains.)
     }
   } catch {
     // Never block a build on composer failure.
