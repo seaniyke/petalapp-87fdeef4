@@ -130,6 +130,7 @@ export default defineConfig({
       "src/server/__tests__/durable-turn.test.ts",
       "src/server/__tests__/pin-loose-deps.test.ts",
       "src/server/__tests__/bakery-9da6-regression.test.ts",
+      "src/server/__tests__/scaffold-ownership-per-file.test.ts",
       "src/server/__tests__/first-build-context.test.ts",
       "src/server/__tests__/loop-telemetry.test.ts",
       "src/server/__tests__/exploration-drift.test.ts",
