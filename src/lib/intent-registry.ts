@@ -1,3 +1,4 @@
+import { MOBILE_APPS_ENABLED } from "@/lib/site-flags";
 /**
  * Intent registry — single source of truth for the regex-based intent
  * detectors that drive Kimble's inline suggestion chips.
@@ -336,6 +337,8 @@ const RULES: Record<SimpleIntentId, Rule> = {
 /** Run a single intent rule against one piece of text. */
 export function detectIntent(id: SimpleIntentId, text: string | null | undefined): IntentResult {
   if (!text) return { detected: false };
+  // Paused build type: mobile asks never surface a mobile prompt or chip.
+  if (id === "mobile" && !MOBILE_APPS_ENABLED) return { detected: false };
   const t = text.trim();
   const rule = RULES[id];
   if (t.length < rule.minLength) return { detected: false };

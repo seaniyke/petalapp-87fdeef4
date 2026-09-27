@@ -1,3 +1,4 @@
+import { MOBILE_APPS_ENABLED } from "@/lib/site-flags";
 /**
  * Kimble's map of itself.
  *
@@ -63,7 +64,7 @@ export type Surface = {
  * Ordered most specific first: "app users" must win over the generic Cloud
  * entry, and "AI usage" over "credits".
  */
-export const SURFACES: Surface[] = [
+const ALL_SURFACES: Surface[] = [
   {
     id: "cloud.users",
     label: "your app's users",
@@ -259,6 +260,9 @@ export const SURFACES: Surface[] = [
     ],
   },
 ];
+
+/** Paused build types (mobile) have no surface. */
+export const SURFACES: Surface[] = ALL_SURFACES.filter((s) => MOBILE_APPS_ENABLED || s.id !== "mobile");
 
 const BY_ID = new Map<SurfaceId, Surface>(SURFACES.map((s) => [s.id, s]));
 
