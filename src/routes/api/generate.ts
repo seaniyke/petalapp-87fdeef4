@@ -3983,25 +3983,6 @@ async function handleGenerateRequestCore(
   }
   let finalMessages = budget.messages as typeof chatMessages;
 
-  // The tool loop takes ONE system string, while the prompt is assembled as
-  // several system messages whose content may be a cache_control part array.
-  // Flattening every system message keeps the agent manual, the selected
-  // skills and the design contract in the live model context — stringifying
-  // the first message alone yielded "[object Object]" and silently shipped
-  // first builds with no instructions at all.
-  const systemTextOf = (msgs: typeof chatMessages): string => {
-    const parts: string[] = [];
-    for (const m of msgs as Array<{ role: string; content: unknown }>) {
-      if (m.role !== "system") continue;
-      if (typeof m.content === "string") parts.push(m.content);
-      else if (Array.isArray(m.content)) {
-        for (const p of m.content as Array<{ type?: string; text?: string }>) {
-          if (typeof p?.text === "string") parts.push(p.text);
-        }
-      }
-    }
-    return parts.filter((t) => t.trim()).join("\n\n");
-  };
 
   // ---------------------------------------------------------------------
   // Pre-emit agent loop. For work that spans many files or is mechanical,
