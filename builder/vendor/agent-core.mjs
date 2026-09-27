@@ -55884,7 +55884,10 @@ function shouldOverwriteDuringPatch(path) {
   // that silently drops `eyebrow`/`image`, or a logo strip that renders
   // tiny squares) with no way to ever receive the fix. Blocks the model
   // touched this turn are excluded by the caller via `keepPaths`.
-  path.startsWith("src/components/blocks/") || path === "petal-source-plugin.mjs" || path === "tsconfig.json" || path === "src/lib/utils.ts" || path.startsWith("src/components/ui/") || path.startsWith("src/components/examples/") || path.startsWith("src/integrations/backend/");
+  path.startsWith("src/components/blocks/") || path === "petal-source-plugin.mjs" || path === "tsconfig.json" || path === "src/lib/utils.ts" || path.startsWith("src/components/ui/") || // Example files are read-only reference patterns: never overwritten on
+  // edit turns. Overwriting them re-opened resolved picture slots and
+  // produced phantom file writes the AI never made.
+  path.startsWith("src/integrations/backend/");
 }
 function applyScaffoldKitForPatch(files, opts) {
   const map = /* @__PURE__ */ new Map();
@@ -60111,7 +60114,7 @@ export { Grid } from "./grid";
       "src/components/fx/",
       "src/components/sections/"
     ];
-    IMAGE_REF_RE = /petal-image:\/\/[^\s"'`<>)]+|https?:\/\/[^\s"'`<>)]+/g;
+    IMAGE_REF_RE = /petal-image:\/\/[^\s"'`<>)]+|https?:\/\/[^\s"'`<>)]+|data:image\/[^\s"'`<>)]+/g;
   }
 });
 
@@ -60537,6 +60540,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -70478,7 +70482,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -141535,7 +141538,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141700,7 +141702,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141744,7 +141745,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
