@@ -303,6 +303,8 @@ function looksLikeCompletedEditClaim(text: string): boolean {
   return /\b(i['’]?ve|i have|done|updated|made|fixed|changed|added|created|implemented)\b/i.test(text);
 }
 
+import { isTargetEnabled, MOBILE_APPS_ENABLED } from "@/lib/site-flags";
+
 export const Route = createFileRoute("/builder")({
   validateSearch: (search: Record<string, unknown>): {
     prompt?: string;
@@ -482,7 +484,7 @@ function Builder() {
   // device-frame chrome around the preview.
   const [buildTarget, setBuildTarget] = useState<BuildTargetId>(() => {
     const fromUrl = (initialTarget as BuildTargetId | undefined);
-    if (fromUrl && ["web", "mobile", "android", "ios", "backend", "extension"].includes(fromUrl)) {
+    if (fromUrl && ["web", "mobile", "android", "ios", "backend", "extension"].includes(fromUrl) && isTargetEnabled(fromUrl)) {
       // Migrate legacy ios/android → mobile.
       return fromUrl === "ios" || fromUrl === "android" ? "mobile" : fromUrl;
     }
@@ -494,7 +496,7 @@ function Builder() {
     if (!project?.id) return;
     try {
       const stored = localStorage.getItem(buildTargetStorageKey(project.id));
-      if (stored && ["web", "mobile", "android", "ios", "backend", "extension"].includes(stored)) {
+      if (stored && ["web", "mobile", "android", "ios", "backend", "extension"].includes(stored) && isTargetEnabled(stored)) {
         const migrated = stored === "ios" || stored === "android" ? "mobile" : (stored as BuildTargetId);
         setBuildTarget(migrated);
       } else if (initialTarget) {
@@ -5833,7 +5835,7 @@ function Builder() {
                 the actions sheet. */}
 
             <Suspense fallback={null}>
-              {mobilePublishOpen && (
+              {MOBILE_APPS_ENABLED && mobilePublishOpen && (
                 <MobilePublishSheet
                   open={mobilePublishOpen}
                   onOpenChange={setMobilePublishOpen}
