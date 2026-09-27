@@ -176,6 +176,7 @@ export function frameIsComplete(files: ProjectFile[], pageCount = 2): boolean {
   if (!routed) return false;
   let nav = NAV_TAG.test(app);
   let footer = FOOTER_TAG.test(app);
+  const appRoutesInline = /<Routes\b|<Route\b|createBrowserRouter/.test(app) || pageCount <= 1;
   const seen = new Set(["src/App.tsx"]);
   let frontier = [{ path: "src/App.tsx", src: app }];
   for (let depth = 0; depth < 3 && !(nav && footer) && frontier.length; depth++) {
@@ -188,8 +189,12 @@ export function frameIsComplete(files: ProjectFile[], pageCount = 2): boolean {
         if (isPlaceholderFile(c)) continue;
         // A layout that wraps pages must render them.
         const wraps = /<Outlet\b|\{\s*(props\.)?children\s*\}/.test(c);
-        if (NAV_TAG.test(c) && (wraps || depth > 0 || FOOTER_TAG.test(app))) nav = true;
-        if (FOOTER_TAG.test(c) && (wraps || depth > 0 || NAV_TAG.test(app))) footer = true;
+        // Counted when page content flows through it (it wraps an Outlet or
+        // children), when App renders <Routes> itself beside it (separate
+        // Header/Footer), or when it sits inside such a rendered component.
+        const counts = wraps || depth > 0 || appRoutesInline;
+        if (counts && NAV_TAG.test(c)) nav = true;
+        if (counts && FOOTER_TAG.test(c)) footer = true;
         next.push({ path: t, src: c });
       }
     }
