@@ -25,21 +25,43 @@
  * them is impossible rather than repairable.
  */
 
-/** Directory prefixes Kimble owns outright. The model may not write into them. */
-export const SCAFFOLD_OWNED_PREFIXES = [
-  "src/components/ui/",
-  "src/components/examples/",
-  "src/components/content/",
-  "src/components/blocks/",
-  "src/components/mobile/",
-  "src/components/fx/",
-  "src/components/image/",
-  "src/components/motion/",
-  "src/components/providers/",
-  "src/components/scroll/",
-  "src/components/three/",
-  "src/integrations/backend/",
-] as const;
+import { KIT_FILES } from "./scaffold-kit";
+import { BACKEND_KIT_BLOCK_FILES_3 } from "./scaffold-kit-blocks-3";
+import { BACKEND_EXAMPLES_PACK } from "./examples-pack";
+
+/**
+ * Directory prefixes Kimble owns outright. ONLY directories whose entire
+ * contents are generated per project by Kimble belong here (the backend
+ * client is regenerated from the connected backend's URL/key, so its file
+ * set is not static).
+ *
+ * Shared component directories (`src/components/blocks/`, `ui/`, ...) are
+ * deliberately NOT prefixes: a directory is a location, not an owner. The
+ * starter-kit files inside them are owned via the kit manifest below; a new
+ * file the model authors next to them is project code and must stay visible
+ * to readiness verification. (A blanket `src/components/blocks/` prefix hid a
+ * freshly written `bakery-contact-band.tsx` from the verifier, which then
+ * reported its importers as broken.)
+ */
+export const SCAFFOLD_OWNED_PREFIXES = ["src/integrations/backend/"] as const;
+
+let kitManifest: Set<string> | null = null;
+/**
+ * The authoritative set of starter-kit file paths Kimble ships and
+ * overwrites: every `overwrite` entry of KIT_FILES plus the static
+ * backend-only kit packs. Built lazily from the same arrays applyScaffoldKit
+ * writes, so ownership can never drift from what is actually shipped.
+ */
+export function scaffoldKitManifest(): ReadonlySet<string> {
+  if (!kitManifest) {
+    kitManifest = new Set<string>([
+      ...KIT_FILES.filter((k) => k.overwrite).map((k) => k.path),
+      ...BACKEND_KIT_BLOCK_FILES_3.map((k) => k.path),
+      ...BACKEND_EXAMPLES_PACK.map((k) => k.path),
+    ]);
+  }
+  return kitManifest;
+}
 
 /**
  * Exact files Kimble owns.
@@ -97,7 +119,8 @@ function ownershipVariants(path: string): string[] {
 
 /** May the model write this path? `false` means the op is refused/reworked. */
 export function isScaffoldOwnedPath(path: string): boolean {
-  if (ownershipVariants(path).some((p) => SCAFFOLD_OWNED_PATHS.has(p))) return true;
+  const kit = scaffoldKitManifest();
+  if (ownershipVariants(path).some((p) => SCAFFOLD_OWNED_PATHS.has(p) || kit.has(p))) return true;
   return SCAFFOLD_OWNED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
