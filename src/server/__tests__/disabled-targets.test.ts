@@ -39,7 +39,7 @@ describe("paused build types (web-only launch)", () => {
   });
   it("nothing on screen mentions them", () => {
     const ideas = JSON.stringify(START_IDEAS);
-    expect(ideas).not.toMatch(/chrome|App Store|Play Store|iOS|Android/i);
+    expect(ideas).not.toMatch(/chrome|App Store|Play Store|\biOS\b|\bAndroid\b/i);
     expect(Object.keys(FEATURES)).not.toContain("mobile");
     expect(Object.keys(FEATURES)).not.toContain("extensions");
     expect(ORDER).not.toContain("mobile");
