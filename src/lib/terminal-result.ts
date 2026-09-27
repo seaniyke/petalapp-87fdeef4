@@ -88,7 +88,7 @@ export function buildTerminalResult(input: {
     nextAction: input.partial?.kept.length
       ? "Say \"continue\" and Kimble will pick up from the finished parts instead of starting again."
       : nextActionFor(category),
-    partial: input.partial?.kept.length ? { kept: input.partial.kept.slice(0, 20), remaining: input.partial.remaining.slice(0, 10) } : null,
+    ...(input.partial?.kept.length ? { partial: { kept: input.partial.kept.slice(0, 20), remaining: input.partial.remaining.slice(0, 10) } } : {}),
   };
 }
 
