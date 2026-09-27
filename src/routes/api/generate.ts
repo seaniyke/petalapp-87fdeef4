@@ -3572,6 +3572,15 @@ async function handleGenerateRequestCore(
       // BEFORE any page is generated (no generation/repair cycles wasted).
       if (intentContract.pages.length) {
         const core = intentContract.pages.map((pg) => pg.route);
+        // Template sub-pages (e.g. /dashboard/items) duplicate contract pages;
+        // keep only nested routes the contract lists or the user named.
+        const lowerAsk = lastUserText.toLowerCase();
+        for (const r of [...plannedRoutes]) {
+          const segs = r.split("/").filter(Boolean);
+          if (segs.length > 1 && segs[0] !== "auth" && !core.includes(r) && !lowerAsk.includes(segs[segs.length - 1]!.replace(/^\$/, ""))) {
+            plannedRoutes.splice(plannedRoutes.indexOf(r), 1);
+          }
+        }
         const covered = core.filter((r) => plannedRoutes.includes(r)).length;
         if (covered * 2 < core.length) {
           const added = core.filter((r) => !plannedRoutes.includes(r));
