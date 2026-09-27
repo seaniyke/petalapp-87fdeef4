@@ -116,7 +116,7 @@ import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { loadCoreKnowledge, loadSkillKnowledge, loadColorGuide } from "@/server/agent-knowledge";
 import { assembleFirstBuildContext } from "@/server/engine/first-build-context";
-import { createTelemetrySink, summarizeExecution } from "@/server/engine/loop-telemetry";
+import { createTelemetrySink, runWithExecutionSummary, takeExecutionSummary } from "@/server/engine/loop-telemetry";
 import type { CallTrace } from "@/server/engine/tool-loop";
 import { selectHistoryForGeneration } from "@/server/context/budget";
 import { renderLearningBlock } from "@/server/learning-injector.server";
@@ -4760,7 +4760,7 @@ async function handleGenerateRequestCore(
                 turnStrategy.executionSummary = s;
                 if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
               },
-            }, () => runToolLoop({
+            }, async () => runToolLoop({
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
