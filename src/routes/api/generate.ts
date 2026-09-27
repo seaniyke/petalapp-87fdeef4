@@ -2416,8 +2416,7 @@ async function handleGenerateRequestCore(
     const setupBrief = earlyBriefExpansion
       ? (await earlyBriefExpansion).brief
       : latestUserMessage(messages);
-    const { classifyRequest } = await import("@/server/execution");
-    if (classifyRequest(setupBrief || "", { isInitial }).operation === "repair") return;
+    // A repair classification later simply ignores these (see isRepairTurn uses).
     if (userJwt) {
       earlyDesign = pickDesignDirection({ jwt: userJwt, projectId: body.projectId, brief: setupBrief, memoryEntries });
       earlyDesign.catch(() => {});
