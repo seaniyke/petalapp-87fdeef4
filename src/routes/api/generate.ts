@@ -4830,6 +4830,33 @@ async function handleGenerateRequestCore(
               signal: abortSignal,
               onTrace: (t) => {
                 loopTraces.push(t);
+                // Per-step execution telemetry (fire-and-forget, never blocks the loop).
+                void import("@/integrations/supabase/client.server").then(({ supabaseAdmin }) =>
+                  supabaseAdmin.from("tool_loop_calls" as never).insert({
+                    turn_id: logicalTurnId ?? null,
+                    project_id: body.projectId ?? null,
+                    call_no: t.call,
+                    work_unit: t.workUnit,
+                    model: t.model,
+                    upstream_provider: t.upstream,
+                    system_chars: t.context.system,
+                    brief_chars: t.context.brief,
+                    history_chars: t.context.history,
+                    prompt_tokens: t.usage?.promptTokens ?? null,
+                    cached_tokens: t.usage?.cachedTokens ?? null,
+                    completion_tokens: t.usage?.completionTokens ?? null,
+                    ttft_ms: t.ttftMs,
+                    duration_ms: t.durationMs,
+                    output_tps: t.outputTokensPerSec,
+                    tool_ms: t.toolMs,
+                    validation_ms: t.validationMs,
+                    tool_calls: t.toolCalls,
+                    files_written: t.writtenPaths,
+                    progress: t.progress,
+                    compacted: t.compacted,
+                    finish_reason: t.finishReason,
+                  } as never),
+                ).then((r) => { if (r?.error) console.warn("[tool-loop] telemetry insert failed:", r.error.message); }).catch(() => {});
                 console.log(`[tool-loop] call=${t.call} ms=${t.durationMs} ttft=${t.ttftMs} in=${t.usage?.promptTokens ?? "?"} cached=${t.usage?.cachedTokens ?? "?"} out=${t.usage?.completionTokens ?? "?"} tools=${t.toolCalls.join(",")} writes=${t.writes} toolMs=${t.toolMs} validMs=${t.validationMs}`);
                 controller.enqueue(encoder.encode(sse({ type: "timeline", step: "agent_tool", outcome: "ok", message: `AI step ${t.call}: ${t.toolCalls.length} actions, ${t.writes} files`, ts: Date.now() })));
               },

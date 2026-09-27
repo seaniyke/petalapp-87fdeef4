@@ -13,7 +13,7 @@
  *    in this turn.
  *  - An empty allow-list is never sent: see `isEmptyAllowList`.
  */
-import { CODEGEN_PROVIDER_IGNORE } from "@/lib/ai-model-config";
+import { CODEGEN_PROVIDER_IGNORE, codegenPreferredMinTps } from "@/lib/ai-model-config";
 
 export function slug(upstream: string): string {
   return upstream.toLowerCase().replace(/\s+/g, "");
@@ -21,7 +21,8 @@ export function slug(upstream: string): string {
 
 export function codegenProviderRouting(avoid: string[] = []): Record<string, unknown> {
   const ignore = Array.from(new Set<string>([...CODEGEN_PROVIDER_IGNORE, ...avoid.map(slug)]));
-  return { allow_fallbacks: true, require_parameters: true, ignore };
+  const tps = codegenPreferredMinTps();
+  return { allow_fallbacks: true, require_parameters: true, ignore, ...(tps ? { preferred_min_throughput: { p50: tps } } : {}) };
 }
 
 /** Resolve the OpenRouter `provider` block for one call (or undefined).
