@@ -205,3 +205,13 @@ function changedLines(a: string, b: string): number {
 }
 
 export const PAGE_PATH = /^src\/(pages|routes)\/(?!__root|api\/).+\.[jt]sx$/;
+
+/** Measurable waste: provider retries, repairs and failed calls. Kimble's cost, never billed. */
+export function wastedCostUsd(rows: { call_kind: string | null; status: number | null; cost_usd_micro: number | null; stage: string | null }[]): number {
+  let w = 0;
+  for (const r of rows) {
+    if (r.stage === "after" || r.cost_usd_micro == null) continue;
+    if (r.call_kind === "retry" || r.call_kind === "repair" || (r.status != null && r.status >= 400)) w += Number(r.cost_usd_micro) / 1e6;
+  }
+  return w;
+}
