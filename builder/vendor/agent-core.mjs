@@ -70496,6 +70496,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70754,7 +70755,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -146581,6 +146581,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -154776,6 +154777,7 @@ __export(gates_exports, {
   requiredGates: () => requiredGates,
   routesGate: () => routesGate,
   runSourceGates: () => runSourceGates,
+  sampleOnlyPages: () => sampleOnlyPages,
   syntaxGate: () => syntaxGate
 });
 function syntaxGate(esbuild2) {
@@ -154789,6 +154791,9 @@ function syntaxGate(esbuild2) {
   return gate("syntax", v);
 }
 function resolveLocal3(from, spec, paths) {
+  return resolveLocalPath(from, spec, paths) !== null;
+}
+function resolveLocalPath(from, spec, paths) {
   let base;
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
   else {
@@ -154800,7 +154805,8 @@ function resolveLocal3(from, spec, paths) {
     }
     base = dir.join("/");
   }
-  return ["", ".tsx", ".ts", ".jsx", ".js", ".css", "/index.tsx", "/index.ts", "/index.js"].some((e) => paths.has(base + e));
+  const e = ["", ".tsx", ".ts", ".jsx", ".js", ".css", "/index.tsx", "/index.ts", "/index.js"].find((x) => paths.has(base + x));
+  return e === void 0 ? null : base + e;
 }
 function pkgName(spec) {
   return spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
@@ -154844,6 +154850,12 @@ function dependencyGate(files) {
 function routesGate(files, requestedRoutes, opts = {}) {
   const reasons = [];
   const bad = [];
+  if (opts.requireLiveData) {
+    for (const f of sampleOnlyPages(files)) {
+      reasons.push(`${f} shows only sample data \u2014 Kimble Cloud is on, so load and save its records with db from "@/integrations/backend/client" instead of the sample-data module`);
+      bad.push(f);
+    }
+  }
   if (opts.requireShell && !frameIsComplete(files, requestedRoutes.length)) {
     reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation, and a footer or sidebar frame)");
     bad.push("src/App.tsx");
@@ -154875,6 +154887,44 @@ function routesGate(files, requestedRoutes, opts = {}) {
   const deadLinks = map.navLinks.filter((l) => defined.size > 0 && !defined.has(l) && !/[:$*]/.test(l));
   if (deadLinks.length) return gate("routes", "WARNING", [`navigation links without a page: ${deadLinks.join(", ")}`]);
   return gate("routes", "PASS");
+}
+function localImports2(from, content, paths) {
+  const out = [];
+  let m;
+  LOCAL_IMPORT.lastIndex = 0;
+  while (m = LOCAL_IMPORT.exec(content)) {
+    const r = resolveLocalPath(from, m[1], paths);
+    if (r) out.push(r);
+  }
+  return out;
+}
+function sampleOnlyPages(files) {
+  const paths = new Set(files.map((f) => f.path));
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const stripExt = (p2) => p2.replace(/\.(t|j)sx?$/, "").replace(/\/index$/, "");
+  const reachesBackend = (start) => {
+    const seen = /* @__PURE__ */ new Set();
+    const stack = [start];
+    while (stack.length) {
+      const p2 = stack.pop();
+      if (seen.has(p2)) continue;
+      seen.add(p2);
+      if (BACKEND_MODULE.test(stripExt(p2))) return true;
+      const c = byPath.get(p2);
+      if (!c) continue;
+      if (/["']@\/integrations\/backend(\/client)?["']/.test(c)) return true;
+      for (const n of localImports2(p2, c, paths)) if (!SAMPLE_MODULE.test(stripExt(n))) stack.push(n);
+    }
+    return false;
+  };
+  const out = [];
+  for (const r of buildAppMap(files).routes) {
+    if (!r.file || out.includes(r.file)) continue;
+    const c = byPath.get(r.file) ?? "";
+    const usesSample = localImports2(r.file, c, paths).some((n) => SAMPLE_MODULE.test(stripExt(n).split("/").pop() ?? ""));
+    if (usesSample && !reachesBackend(r.file)) out.push(r.file);
+  }
+  return out;
 }
 function buildGate(state, error) {
   if (state === "succeeded") return gate("build", "PASS");
@@ -154927,7 +154977,7 @@ function runSourceGates(args) {
   return [
     syntaxGate(args.esbuild),
     dependencyGate(args.files),
-    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell })
+    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell, requireLiveData: args.requireLiveData })
   ];
 }
 function guardCleanup(before, after, allowed) {
@@ -154957,7 +155007,7 @@ function guardCleanup(before, after, allowed) {
 function uniq2(a2) {
   return Array.from(new Set(a2));
 }
-var GATE_ORDER, MAX_REPAIR_TARGETS, gate, KIT_PROVIDED;
+var GATE_ORDER, MAX_REPAIR_TARGETS, gate, KIT_PROVIDED, SAMPLE_MODULE, BACKEND_MODULE, LOCAL_IMPORT;
 var init_gates = __esm({
   "src/server/verification/gates.ts"() {
     init_define_import_meta_env();
@@ -154974,6 +155024,9 @@ var init_gates = __esm({
       paths
     });
     KIT_PROVIDED = /^(react|react-dom|react\/jsx-runtime|lucide-react|clsx|tailwind-merge|class-variance-authority)$/;
+    SAMPLE_MODULE = /(^|[/._-])(mock|sample|fake|dummy|seed)[-_]?(data|db|records)?$|(^|\/)fixtures?$/i;
+    BACKEND_MODULE = /integrations\/backend(\/client)?$/;
+    LOCAL_IMPORT = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']((?:\.|@\/)[^"']+)["']/g;
   }
 });
 
@@ -155055,7 +155108,7 @@ async function verifyProposedSource(args) {
       };
     }
   }
-  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
+  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell, requireLiveData: args.requireLiveData }));
   let responsive2 = [];
   try {
     responsive2 = responsiveWarnings(args.tree, args.changedPaths);
@@ -175582,11 +175635,11 @@ function runAllRepairs(input, opts) {
   const brandWire = ensureBrandMarkWired(files);
   files = brandWire.files;
   for (const n of brandWire.notes) notes.push(n);
-  const localImports2 = repairUnresolvedImports(files);
-  files = localImports2.files;
-  if (localImports2.rewrites.length || localImports2.stubsCreated.length) {
+  const localImports3 = repairUnresolvedImports(files);
+  files = localImports3.files;
+  if (localImports3.rewrites.length || localImports3.stubsCreated.length) {
     notes.push(
-      `import-resolver: remapped ${localImports2.rewrites.length} import(s); stubbed ${localImports2.stubsCreated.length} missing file(s)`
+      `import-resolver: remapped ${localImports3.rewrites.length} import(s); stubbed ${localImports3.stubsCreated.length} missing file(s)`
     );
   }
   const routerImports = fixRouterImports(files);
@@ -179913,7 +179966,8 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                   tree: proposed,
                   changedPaths: changed.filter((p2) => proposed.some((f) => f.path === p2)),
                   requestedRoutes: requestedRoutesFor(lastUserText, plannedRoutes),
-                  requireShell: true
+                  requireShell: true,
+                  requireLiveData: Boolean(sharedBackend)
                 });
                 return readinessOf2(v);
               },
@@ -181582,7 +181636,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               tree,
               changedPaths: changed,
               requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
-              requireShell: isInitial
+              requireShell: isInitial,
+              requireLiveData: isInitial && Boolean(sharedBackend)
             });
           }
         });

@@ -67,6 +67,10 @@ export function syntaxGate(esbuild: { status: string; issues?: Array<{ path: str
 const KIT_PROVIDED = /^(react|react-dom|react\/jsx-runtime|lucide-react|clsx|tailwind-merge|class-variance-authority)$/;
 
 function resolveLocal(from: string, spec: string, paths: Set<string>): boolean {
+  return resolveLocalPath(from, spec, paths) !== null;
+}
+
+function resolveLocalPath(from: string, spec: string, paths: Set<string>): string | null {
   let base: string;
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
   else {
@@ -78,7 +82,8 @@ function resolveLocal(from: string, spec: string, paths: Set<string>): boolean {
     }
     base = dir.join("/");
   }
-  return ["", ".tsx", ".ts", ".jsx", ".js", ".css", "/index.tsx", "/index.ts", "/index.js"].some((e) => paths.has(base + e));
+  const e = ["", ".tsx", ".ts", ".jsx", ".js", ".css", "/index.tsx", "/index.ts", "/index.js"].find((x) => paths.has(base + x));
+  return e === undefined ? null : base + e;
 }
 
 function pkgName(spec: string): string {
@@ -129,9 +134,15 @@ export function dependencyGate(files: ProjectFile[]): GateResult {
 
 /* ------------------------ routes / completeness ------------------------ */
 
-export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts: { requireShell?: boolean } = {}): GateResult {
+export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts: { requireShell?: boolean; requireLiveData?: boolean } = {}): GateResult {
   const reasons: string[] = [];
   const bad: string[] = [];
+  if (opts.requireLiveData) {
+    for (const f of sampleOnlyPages(files)) {
+      reasons.push(`${f} shows only sample data — Kimble Cloud is on, so load and save its records with db from "@/integrations/backend/client" instead of the sample-data module`);
+      bad.push(f);
+    }
+  }
   // First builds must ship the shared frame (routed App with nav + footer).
   // Previously a separate post-commit check in /api/generate; now one gate.
   if (opts.requireShell && !frameIsComplete(files, requestedRoutes.length)) {
@@ -166,6 +177,59 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
   const deadLinks = map.navLinks.filter((l) => defined.size > 0 && !defined.has(l) && !/[:$*]/.test(l));
   if (deadLinks.length) return gate("routes", "WARNING", [`navigation links without a page: ${deadLinks.join(", ")}`]);
   return gate("routes", "PASS");
+}
+
+/* --------------------------- live data --------------------------- */
+
+const SAMPLE_MODULE = /(^|[/._-])(mock|sample|fake|dummy|seed)[-_]?(data|db|records)?$|(^|\/)fixtures?$/i;
+const BACKEND_MODULE = /integrations\/backend(\/client)?$/;
+const LOCAL_IMPORT = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']((?:\.|@\/)[^"']+)["']/g;
+
+function localImports(from: string, content: string, paths: Set<string>): string[] {
+  const out: string[] = [];
+  let m: RegExpExecArray | null;
+  LOCAL_IMPORT.lastIndex = 0;
+  while ((m = LOCAL_IMPORT.exec(content))) {
+    const r = resolveLocalPath(from, m[1]!, paths);
+    if (r) out.push(r);
+  }
+  return out;
+}
+
+/**
+ * Routed pages that read a sample/mock data module and never reach the
+ * backend client (directly or through their own local modules). Deterministic;
+ * used only when Kimble Cloud is enabled for the build — a delivery app shipped
+ * every data page on `mock-data.ts` while its database stayed empty.
+ */
+export function sampleOnlyPages(files: ProjectFile[]): string[] {
+  const paths = new Set(files.map((f) => f.path));
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const stripExt = (p: string) => p.replace(/\.(t|j)sx?$/, "").replace(/\/index$/, "");
+  const reachesBackend = (start: string): boolean => {
+    const seen = new Set<string>();
+    const stack = [start];
+    while (stack.length) {
+      const p = stack.pop()!;
+      if (seen.has(p)) continue;
+      seen.add(p);
+      if (BACKEND_MODULE.test(stripExt(p))) return true;
+      const c = byPath.get(p);
+      if (!c) continue;
+      if (/["']@\/integrations\/backend(\/client)?["']/.test(c)) return true;
+      // Don't traverse into scaffold backend internals or the sample module itself.
+      for (const n of localImports(p, c, paths)) if (!SAMPLE_MODULE.test(stripExt(n))) stack.push(n);
+    }
+    return false;
+  };
+  const out: string[] = [];
+  for (const r of buildAppMap(files).routes) {
+    if (!r.file || out.includes(r.file)) continue;
+    const c = byPath.get(r.file) ?? "";
+    const usesSample = localImports(r.file, c, paths).some((n) => SAMPLE_MODULE.test(stripExt(n).split("/").pop() ?? ""));
+    if (usesSample && !reachesBackend(r.file)) out.push(r.file);
+  }
+  return out;
 }
 
 /* --------------------------- build / browser --------------------------- */
@@ -237,11 +301,13 @@ export function runSourceGates(args: {
   requestedRoutes: string[];
   esbuild: { status: string; issues?: Array<{ path: string; detail?: string; message?: string; line?: number }> } | null;
   requireShell?: boolean;
+  /** Kimble Cloud is enabled for this first build: data pages must use it. */
+  requireLiveData?: boolean;
 }): GateResult[] {
   return [
     syntaxGate(args.esbuild),
     dependencyGate(args.files),
-    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell }),
+    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell, requireLiveData: args.requireLiveData }),
   ];
 }
 
