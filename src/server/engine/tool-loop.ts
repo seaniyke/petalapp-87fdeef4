@@ -20,6 +20,7 @@
  * never touches persistence, billing or the committed snapshot itself.
  * Final verification and the revision-guarded commit stay authoritative.
  */
+import { classifyWorkUnit } from "./first-build-context";
 import type { ProjectFile } from "@/server/generate.server";
 import type { Readiness, ReadinessFinding } from "@/server/verification/readiness";
 import { findingKey } from "@/server/verification/readiness";
@@ -54,6 +55,8 @@ export interface ModelReply {
   ttftMs?: number;
   finishReason?: string | null;
   model?: string;
+  /** Upstream provider that served the call (OpenRouter `provider`), when known. */
+  upstream?: string;
 }
 
 export type CallModel = (messages: LoopMessage[], tools: ToolSchema[], signal?: AbortSignal) => Promise<ModelReply>;
@@ -236,6 +239,18 @@ export interface CallTrace {
   writes: number;
   compacted: boolean;
   finishReason: string | null;
+  /** Upstream provider that served this call, when reported. */
+  upstream: string | null;
+  /** What this step worked on (page / router / layout / shared / read …). */
+  workUnit: string;
+  /** Paths written by this step. */
+  writtenPaths: string[];
+  /** Did the workspace measurably improve (the no-progress definition)? */
+  progress: boolean;
+  /** Characters sent, by component: stable system, first brief, the rest of the conversation. */
+  context: { system: number; brief: number; history: number };
+  /** completion tokens / generation time (after first token), when measurable. */
+  outputTokensPerSec: number | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -917,6 +932,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
 
     state.iteration++;
     const startedAt = Date.now();
+    const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + (m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
     const reply = await args.callModel(messages, tools, args.signal);
     const durationMs = Date.now() - startedAt;
     messages.push({ role: "assistant", content: reply.content ?? null, ...(reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {}) });
@@ -981,7 +997,17 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       }
     }
 
+    const writtenPaths = [...new Set(state.written.slice(writesBefore))];
+    const progress = madeProgress(before, state, tree);
+    const outTokens = reply.usage?.completionTokens ?? 0;
+    const genMs = durationMs - (reply.ttftMs ?? 0);
     const trace: CallTrace = {
+      upstream: reply.upstream ?? null,
+      workUnit: classifyWorkUnit(reply.toolCalls.map((c) => c.function.name), writtenPaths),
+      writtenPaths,
+      progress,
+      context: { system: args.system.length, brief: args.brief.length, history: Math.max(0, sentChars - args.system.length - args.brief.length) },
+      outputTokensPerSec: outTokens > 0 && genMs > 0 ? Math.round((outTokens / genMs) * 10_000) / 10 : null,
       call: state.iteration,
       startedAt,
       durationMs,
@@ -1001,7 +1027,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     if (!state.finished) {
       recent.push(...actions);
       if (recent.length > 40) recent.splice(0, recent.length - 40);
-      if (madeProgress(before, state, tree)) {
+      if (progress) {
         idle = 0;
         corrected = false;
       } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {

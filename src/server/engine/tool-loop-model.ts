@@ -21,6 +21,7 @@ export async function parseToolStream(res: Response, startedAt: number): Promise
   let content = "";
   let finishReason: string | null = null;
   let model: string | undefined;
+  let upstream: string | undefined;
   let rawUsage: RawUsage | null = null;
   let ttftMs: number | undefined;
   const calls = new Map<number, ToolCallMsg>();
@@ -32,6 +33,7 @@ export async function parseToolStream(res: Response, startedAt: number): Promise
     try { j = JSON.parse(data); } catch { return; }
     if (j.error) throw new InfrastructureFailure(`provider stream error: ${j.error.message ?? JSON.stringify(j.error)}`, j.error.code ?? null);
     if (j.model) model = j.model;
+    if (typeof j.provider === "string" && j.provider) upstream = j.provider;
     if (j.usage) rawUsage = j.usage;
     const ch = j.choices?.[0];
     if (!ch) return;
@@ -67,6 +69,7 @@ export async function parseToolStream(res: Response, startedAt: number): Promise
     ttftMs,
     finishReason,
     model,
+    upstream,
     rawUsage,
   };
 }
