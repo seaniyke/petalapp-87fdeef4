@@ -131,8 +131,11 @@ export const MANUAL_FIRST_BUILD = [
 ] as const;
 
 /** Agent-knowledge skills preloaded for a given kind of site. */
-export function conditionalSkills(subtype: string): string[] {
+export function conditionalSkills(subtype: string, productSurface?: string | null): string[] {
   if (subtype === "marketing" || subtype === "fullstack") return ["page-composition"];
+  // An app-classified request whose product also has a public website still
+  // composes a real landing page, so it needs the same composition skill.
+  if (productSurface === "public" || productSurface === "public+app") return ["page-composition"];
   return [];
 }
 
@@ -155,6 +158,8 @@ export interface FirstBuildContextArgs {
   knowledge: KnowledgeInputs;
   /** Web subtype from classification ("marketing" | "app" | "fullstack" | …). */
   subtype: string;
+  /** Product structure from the intent contract ("public" | "app" | "public+app"). */
+  productSurface?: string | null;
   hasBackend: boolean;
   /** Request-specific product contract blocks (intent, PRD, PIC, archetype…). */
   productContract: Record<string, string>;
@@ -190,7 +195,7 @@ export function assembleFirstBuildContext(args: FirstBuildContextArgs): FirstBui
   const baseAlways = pick(blocks, [...BASE_ALWAYS, ...(args.hasBackend ? BASE_WITH_BACKEND : BASE_WITHOUT_BACKEND)]);
   const manualAlways = pick(manual, MANUAL_ALWAYS);
   const manualCond = pick(manual, MANUAL_FIRST_BUILD);
-  const skillIds = conditionalSkills(args.subtype).filter((id) => args.knowledge.skills[id]);
+  const skillIds = conditionalSkills(args.subtype, args.productSurface).filter((id) => args.knowledge.skills[id]);
 
   const preloaded = new Set([...manualAlways, ...manualCond].map((s) => s.slug));
   const reference: ProjectFile[] = [];
