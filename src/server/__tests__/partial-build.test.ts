@@ -4,7 +4,7 @@ import { keepPartialWork, validatedWrites, effortTrees } from "@/lib/partial-bui
 import { buildTerminalResult, formatTerminalResult, containsOptimisticClaim } from "@/lib/terminal-result";
 import { effortScore, diffSignals, creditsForEffort, PAGE_PATH, DEFAULT_CURVE } from "@/lib/effort-pricing";
 import { isUnbillableTurn } from "@/lib/build-outcome";
-import { detectCrossCuttingIntent } from "@/server/execution/classify";
+import { detectCrossCuttingIntent } from "@/server/intent-targets.server";
 
 let n = 0;
 const call = (name: string, args: Record<string, unknown>): ToolCallMsg => ({ id: `p${++n}`, type: "function", function: { name, arguments: JSON.stringify(args) } });
