@@ -43,4 +43,6 @@
 - [x] Billing DB warnings fixed (5 functions server-only)
 - [ ] Publish billing build + live bakery reconciliation (waiting on publish)
 - [x] Pause mobile / API-backend / Chrome-extension pipelines for launch (flags off, hidden from site, never reach the engine)
-- [ ] Live bakery billing benchmark — waiting on publish
+- [x] Effort pricing engine (price from work, cost for margin; admin breakdown; tests)
+- [ ] Six-build live benchmark suite on effort pricing — waiting on publish
+- [ ] Commercial decision + Kimble Cloud Readiness Report — after the benchmark suite
