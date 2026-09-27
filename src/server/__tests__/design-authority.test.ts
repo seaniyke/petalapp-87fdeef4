@@ -21,7 +21,7 @@ import { buildRevisionStatus } from "@/lib/build-revision";
 import type { PicDesignSystem, PicUnderstanding } from "@/server/pic/pic-types";
 import * as fs from "node:fs";
 
-const SLUG = "kimble-test-system";
+const SLUG = "substrate";
 const understanding = {
   summary: "", productType: "website", domain: "bakery", platforms: ["web"],
   surfaces: { marketing: true, application: false, admin: false }, firstVersion: [],
@@ -42,18 +42,18 @@ describe("registry", () => {
   it("has a real installed default package", () => {
     const def = resolveDefaultPackage();
     expect(def?.pkg.meta.slug).toBe(SLUG);
-    expect(def?.accent).toBe("lagoon");
+    expect(def?.accent).toBe("terracotta");
   });
 });
 
 describe("A. initial generation", () => {
   it("selects package + accent, derives visuals from it, installs tokens and fonts", async () => {
     const design = await newProjectDesign();
-    expect(design.package).toEqual({ systemId: SLUG, accent: "lagoon" });
+    expect(design.package).toEqual({ systemId: SLUG, accent: "terracotta" });
     expect(design.source).toBe("package");
     const pkg = getDesignSystem(SLUG)!;
-    expect(design.colors.primary.light).toBe(pkg.accents.lagoon.light.primary);
-    expect(design.typography.displayFont).toBe("Sora");
+    expect(design.colors.primary.light).toBe(pkg.accents.terracotta.light.primary);
+    expect(design.typography.displayFont).toBe("Newsreader");
 
     const r = applyPackageToTree(scaffold(), design);
     expect(r.applied).toBe(true);
@@ -66,10 +66,10 @@ describe("A. initial generation", () => {
     const design = await newProjectDesign();
     const pkg = getDesignSystem(SLUG)!;
     const block = designSystemBlockFor(design);
-    expect(block).toContain("SELECTED DESIGN SYSTEM: Kimble Coastal");
+    expect(block).toContain("SELECTED DESIGN SYSTEM: Substrate");
     expect(block).toContain(pkg.designMd.trim().slice(0, 40));
-    expect(block).toContain("Accent: lagoon");
-    expect(block).not.toContain("oklch(0.975 0.006 190)");
+    expect(block).toContain("Accent: terracotta");
+    expect(block).not.toContain("oklch(0.985 0.004 85)");
 
     // No competing palette / font instructions elsewhere.
     const contract = renderDesignSystemBlock(design);
@@ -121,12 +121,12 @@ function store(design: PicDesignSystem) {
 describe("C. re-theme", () => {
   it("deterministic, snapshotted, new revision, build bound to it, old build stale", async () => {
     const { state, deps } = store(await newProjectDesign());
-    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "ember" });
+    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "indigo" });
     expect(r).toMatchObject({ ok: true, changed: true, revision: 4, built: true, changedPaths: ["src/styles.css"] });
     expect(state.snapshots).toBe(1);
     expect(state.builds).toEqual([4]);
-    expect(state.design.package?.accent).toBe("ember");
-    expect(state.design.colors.primary.light).toBe(getDesignSystem(SLUG)!.accents.ember.light.primary);
+    expect(state.design.package?.accent).toBe("indigo");
+    expect(state.design.colors.primary.light).toBe(getDesignSystem(SLUG)!.accents.indigo.light.primary);
     expect(buildRevisionStatus({ project_revision: 3 }, { revision: state.revision }).current).toBe(false);
     expect(buildRevisionStatus({ project_revision: 4 }, { revision: state.revision }).current).toBe(true);
   });
@@ -137,11 +137,11 @@ describe("D. failed application", () => {
     const { state, deps } = store(await newProjectDesign());
     state.files = state.files.map((f) => (f.path === "src/routes/__root.tsx" ? { ...f, content: "export {}" } : f));
     const before = JSON.stringify(state.files);
-    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "ember" });
+    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "indigo" });
     expect(r).toMatchObject({ ok: false, stage: "apply" });
     expect(JSON.stringify(state.files)).toBe(before);
     expect(state.revision).toBe(3);
-    expect(state.design.package?.accent).toBe("lagoon");
+    expect(state.design.package?.accent).toBe("terracotta");
     expect(state.builds).toEqual([]);
     expect(state.snapshots).toBe(0);
     expect(state.charges).toBe(0);
@@ -151,7 +151,7 @@ describe("D. failed application", () => {
 describe("E. identical reapply", () => {
   it("changed=false, no revision, no build", async () => {
     const { state, deps } = store(await newProjectDesign());
-    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "lagoon" });
+    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "terracotta" });
     expect(r).toMatchObject({ ok: true, changed: false, revision: null, built: false });
     expect(state.revision).toBe(3);
     expect(state.builds).toEqual([]);
@@ -232,7 +232,7 @@ describe("no legacy authority remains", () => {
     expect(gen).toContain("packageOwnsVisuals");
   });
   it("visuals come only from the package", () => {
-    const v = visualsFromPackage(getDesignSystem(SLUG)!, "ember");
-    expect(v.package).toEqual({ systemId: SLUG, accent: "ember" });
+    const v = visualsFromPackage(getDesignSystem(SLUG)!, "indigo");
+    expect(v.package).toEqual({ systemId: SLUG, accent: "indigo" });
   });
 });
