@@ -70496,7 +70496,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -140519,7 +140518,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141556,7 +141554,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141721,7 +141718,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141765,7 +141761,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -146587,7 +146582,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -157881,7 +157875,7 @@ var STABLE_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovab
 function sharedApiOrigins() {
   const configured = (process.env.PETAL_PUBLIC_ORIGIN || "").trim();
   const extra = (process.env.PETAL_FALLBACK_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const all = [configured, "https://buildwithpetal.com", STABLE_ORIGIN, ...extra].filter(Boolean).map((u) => u.replace(/\/$/, ""));
+  const all = [configured, "https://kimble.cloud", STABLE_ORIGIN, ...extra].filter(Boolean).map((u) => u.replace(/\/$/, ""));
   const unique = Array.from(new Set(all));
   return { baseUrl: unique[0], fallbackUrls: unique.slice(1) };
 }
