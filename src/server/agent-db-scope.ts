@@ -13,7 +13,10 @@ type Action = "select" | "insert" | "upsert" | "update" | "delete";
 /** Which turn value is forced onto `col`. `null` = global read-only config. */
 type Pin = { col: string; from: "project" | "user" | "turn" } | null;
 
-export const TABLE_RULES: Record<string, { pin: Pin; actions: Action[]; userCol?: boolean }> = {
+export const TABLE_RULES: Record<string, { pin: Pin; actions: Action[]; userCol?: boolean; projectCol?: boolean }> = {
+  // Per-step execution telemetry. Without this every insert from the build
+  // server was refused (table_not_allowed) and the table stayed empty.
+  tool_loop_calls: { pin: { col: "turn_id", from: "turn" }, actions: ["insert"], userCol: true, projectCol: true },
   project_files: { pin: { col: "project_id", from: "project" }, actions: ["select"] },
   project_memory: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert", "upsert", "update", "delete"] },
   project_blueprints: { pin: { col: "project_id", from: "project" }, actions: ["select", "upsert", "update"] },
@@ -105,6 +108,7 @@ export function scopeDbQuery(q: DbQuery, ids: ScopeIds): ScopedQuery | { error: 
     const out: Record<string, unknown> = { ...row };
     if (pin) out[pin.col] = scopeValue;
     if (rule.userCol) out.user_id = ids.userId;
+    if (rule.projectCol) out.project_id = ids.projectId;
     return out;
   };
   let values = q.values;
