@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { KIT_FILES } from "@/server/scaffold-kit";
 import { isScaffoldOwnedPath, scaffoldOwnershipReason } from "@/server/scaffold-ownership.server";
-import { renderTemplateMetadataSection, templateContract } from "@/server/engine/template-contract";
+import { renderTemplateMetadataSection, templateContract, TEMPLATE_PRELOADED_RULE } from "@/server/engine/template-contract";
 import { CORRECTNESS_RULES, firstBuildBrief } from "@/server/engine/first-build";
 
 describe("template.json project contract", () => {
