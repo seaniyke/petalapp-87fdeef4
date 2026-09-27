@@ -126,15 +126,76 @@ export function routerInstruction(pages: PlannedPage[], deliveredPaths: string[]
   ].filter(Boolean).join("\n");
 }
 
-/** Deterministic frame check: the app file exists and carries a layout
- *  (navigation + footer), plus a router when there is more than one page.
- *  A one-page site has nothing to route between. Colours and package.json
- *  alone are not a frame. */
+const NAV_TAG = /<(nav|header)\b/i;
+const FOOTER_TAG = /<footer\b/i;
+
+/** Resolve a local import spec ("@/x" or relative) to a file in `byPath`. */
+function resolveLocal(from: string, spec: string, byPath: Map<string, string>): string | null {
+  let base: string;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith(".")) {
+    const parts = from.split("/").slice(0, -1);
+    for (const seg of spec.split("/")) {
+      if (seg === "..") parts.pop();
+      else if (seg !== ".") parts.push(seg);
+    }
+    base = parts.join("/");
+  } else return null;
+  for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
+    if (byPath.has(base + ext)) return base + ext;
+  }
+  return null;
+}
+
+/** Local modules whose imported component is actually RENDERED by `src`. */
+function renderedImports(path: string, src: string, byPath: Map<string, string>): string[] {
+  const out: string[] = [];
+  for (const m of src.matchAll(/import\s+(?!type\b)([^;]*?)\s+from\s+["']([^"']+)["']/g)) {
+    const target = resolveLocal(path, m[2]!, byPath);
+    if (!target) continue;
+    const names = m[1]!
+      .replace(/[{}]/g, ",")
+      .split(",")
+      .map((s) => s.trim().split(/\s+as\s+/).pop()!.trim())
+      .filter((s) => /^[A-Z]\w*$/.test(s));
+    if (names.some((n) => new RegExp(`<${n}\\b|\\bComponent:\\s*${n}\\b`).test(src))) out.push(target);
+  }
+  return out;
+}
+
+/** Deterministic frame check: the app file exists, routes when there is more
+ *  than one page, and RENDERS a layout carrying navigation + footer — either
+ *  inline in src/App.tsx or in a shared layout component App.tsx imports and
+ *  renders (which must in turn render the page content). An unused component
+ *  that happens to contain a nav/footer does not count. */
 export function frameIsComplete(files: ProjectFile[], pageCount = 2): boolean {
-  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const app = byPath.get("src/App.tsx") ?? "";
   if (!app.trim() || isPlaceholderFile(app)) return false;
   const routed = pageCount <= 1 || /<Routes\b|createBrowserRouter|<Route\b/.test(app);
-  return routed && /nav|header/i.test(app) && /footer/i.test(app);
+  if (!routed) return false;
+  let nav = NAV_TAG.test(app);
+  let footer = FOOTER_TAG.test(app);
+  const seen = new Set(["src/App.tsx"]);
+  let frontier = [{ path: "src/App.tsx", src: app }];
+  for (let depth = 0; depth < 3 && !(nav && footer) && frontier.length; depth++) {
+    const next: typeof frontier = [];
+    for (const { path, src } of frontier) {
+      for (const t of renderedImports(path, src, byPath)) {
+        if (seen.has(t)) continue;
+        seen.add(t);
+        const c = byPath.get(t) ?? "";
+        if (isPlaceholderFile(c)) continue;
+        // A layout that wraps pages must render them.
+        const wraps = /<Outlet\b|\{\s*(props\.)?children\s*\}/.test(c);
+        if (NAV_TAG.test(c) && (wraps || depth > 0 || FOOTER_TAG.test(app))) nav = true;
+        if (FOOTER_TAG.test(c) && (wraps || depth > 0 || NAV_TAG.test(app))) footer = true;
+        next.push({ path: t, src: c });
+      }
+    }
+    frontier = next;
+  }
+  return nav && footer;
 }
 
 /** The file a WRITE call is asked for (used to keep only that file). */
