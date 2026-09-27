@@ -131,6 +131,10 @@ export function filterWebbyOnly(md: string): string {
   return out
     .join("\n")
     .replace(/"\{\{PROJECT_NAME\}\}"/g, "this project")
+    // One template grounding rule: the contract is either preloaded into the
+    // brief or read by the model (see TEMPLATE_PRELOADED_RULE/READ_RULE).
+    // Imperatives that demand a tool read are adapted to "use the contract".
+    .replace(/\b(?:Read|Check) (`?)template\.json\1/gi, "Use the project contract ($1template.json$1)")
     .replace(/\{\{[^}]+\}\}/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();

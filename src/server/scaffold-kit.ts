@@ -4347,6 +4347,9 @@ function buildTemplateContract(): string {
         single_purpose_app:
           "A single-purpose tool (calculator, converter, tracker) belongs on the home page " +
           "src/pages/Home.tsx — do not hide it behind a sub-route.",
+        importing_router:
+          'import { BrowserRouter, Routes, Route, Link, NavLink, Outlet } from "react-router-dom"; ' +
+          "(@/components/ui/router re-exports the same names). There is no other router module.",
         importing_ui:
           'import { Button } from "@/components/ui/button"; import { Menu } from "lucide-react";',
       },

@@ -4708,6 +4708,10 @@ async function handleGenerateRequestCore(
               ),
 
               files: seedFiles,
+              // The kit the commit applies, visible (read-only) to reads and
+              // import validation so advertised modules actually resolve.
+              reference: applyScaffoldKit([], { backend: backend ?? undefined, sharedBackend: sharedBackend ?? undefined, target: buildTarget.id })
+                .filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
               // THE readiness authority: the exact proposed-tree transform and
