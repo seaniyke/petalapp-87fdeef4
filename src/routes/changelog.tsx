@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/SiteHeader";
-import { Sparkles, Rocket, Wand2, Smartphone, Layers, Shield, ArrowRight } from "lucide-react";
+import { Sparkles, Rocket, Wand2, Layers, Shield, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/changelog")({
   head: () => ({
