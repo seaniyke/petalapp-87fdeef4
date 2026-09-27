@@ -55710,6 +55710,63 @@ function setKitFile(map, path, content) {
   for (const v of variants) if (v !== path) map.delete(v);
   map.set(path, content);
 }
+function uiComponentNames() {
+  const names = /* @__PURE__ */ new Set();
+  for (const k of KIT_FILES) {
+    if (!k.path.startsWith("src/components/ui/")) continue;
+    const base = k.path.slice("src/components/ui/".length).replace(/\.tsx?$/, "");
+    if (!base || base.includes("/")) continue;
+    names.add(base);
+  }
+  return [...names].sort();
+}
+function buildTemplateContract() {
+  return `${JSON.stringify(
+    {
+      id: "kimble-react",
+      name: "Kimble React App",
+      description: "Vite + React + TypeScript + Tailwind v4 scaffold. The UI kit, styling tokens, build config and entry point are pre-installed and owned by Kimble; app code (pages, sections, shared modules, the router in src/App.tsx) is yours to write.",
+      categories: ["website", "app"],
+      file_structure: {
+        pages_dir: "src/pages",
+        components_dir: "src/components",
+        routes_file: "src/App.tsx",
+        entry_file: "src/main.tsx",
+        stylesheet: "src/styles.css"
+      },
+      available_pages: [],
+      custom_components: ["src/components/blocks/*", "src/components/examples/*"],
+      shadcn_components: uiComponentNames(),
+      styling: {
+        framework: "tailwind",
+        tailwind_version: "4",
+        icon_set: "lucide-react",
+        tokens: "semantic CSS variables in src/styles.css"
+      },
+      routing_pattern: "react-router",
+      protected_files: [
+        "template.json",
+        "package.json",
+        "vite.config.ts",
+        "tsconfig.json",
+        "index.html",
+        "src/main.tsx",
+        "src/styles.css",
+        "src/components/ui/*"
+      ],
+      usage_examples: {
+        adding_page: 'Create src/pages/Menu.tsx exporting a default component, then import it in src/App.tsx and add <Route path="/menu" element={<Menu />} /> inside the shared layout.',
+        adding_route: "src/App.tsx owns <BrowserRouter>. Wrap <Routes> in the shared layout so navigation and footer render on every page.",
+        single_purpose_app: "A single-purpose tool (calculator, converter, tracker) belongs on the home page src/pages/Home.tsx \u2014 do not hide it behind a sub-route.",
+        importing_router: 'import { BrowserRouter, Routes, Route, Link, NavLink, Outlet } from "react-router-dom"; (@/components/ui/router re-exports the same names). There is no other router module.',
+        importing_ui: 'import { Button } from "@/components/ui/button"; import { Menu } from "lucide-react";'
+      }
+    },
+    null,
+    2
+  )}
+`;
+}
 function verifyScaffoldIntegrity() {
   const paths = new Set(KIT_FILES.map((k) => k.path));
   const importRe = /from\s+["']@\/([^"']+)["']/g;
@@ -60010,6 +60067,7 @@ export { Grid } from "./grid";
       // All deps (thumbhash, react-aria, @axe-core/react) are on-demand only.
       ...KIT_A11Y_FILES
     ];
+    KIT_FILES.push({ path: "template.json", content: buildTemplateContract(), overwrite: true });
     verifyScaffoldIntegrity();
     REQUIRED_DEPS = {
       react: "^18.3.1",
@@ -96280,7 +96338,7 @@ function filterWebbyOnly(md) {
     if (/^\s*\{\{[^}]+\}\}\s*$/.test(raw)) continue;
     out.push(raw);
   }
-  return out.join("\n").replace(/"\{\{PROJECT_NAME\}\}"/g, "this project").replace(/\{\{[^}]+\}\}/g, "").replace(/\n{3,}/g, "\n\n").trim();
+  return out.join("\n").replace(/"\{\{PROJECT_NAME\}\}"/g, "this project").replace(/\b(?:Read|Check) (`?)template\.json\1/gi, "Use the project contract ($1template.json$1)").replace(/\{\{[^}]+\}\}/g, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 function loadCoreKnowledge(mode) {
   if (mode === "full") {
@@ -140972,7 +141030,11 @@ var init_scaffold_ownership_server = __esm({
       "src/hooks/use-horizontal-scroll.ts",
       "src/hooks/use-query-state.ts",
       "src/hooks/use-scroll-scene.ts",
-      "package.json"
+      "package.json",
+      // Webby parity: the project contract is read-only. The model reads it to
+      // learn the real directory layout, UI kit and icon set; rewriting it would
+      // let a hallucinated structure become "authoritative".
+      "template.json"
     ]);
     SCAFFOLD_ABSORBED_PATHS = /* @__PURE__ */ new Set(["index.html", "src/main.tsx"]);
     VERIFIER_EXEMPT_PREFIXES = ["src/integrations/"];
@@ -144832,6 +144894,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -149991,11 +150054,61 @@ function routerInstruction(pages, deliveredPaths, contract = "") {
     "No extra pages."
   ].filter(Boolean).join("\n");
 }
+function resolveLocal2(from, spec, byPath) {
+  let base;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith(".")) {
+    const parts = from.split("/").slice(0, -1);
+    for (const seg of spec.split("/")) {
+      if (seg === "..") parts.pop();
+      else if (seg !== ".") parts.push(seg);
+    }
+    base = parts.join("/");
+  } else return null;
+  for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) {
+    if (byPath.has(base + ext)) return base + ext;
+  }
+  return null;
+}
+function renderedImports(path, src2, byPath) {
+  const out = [];
+  for (const m of src2.matchAll(/import\s+(?!type\b)([^;]*?)\s+from\s+["']([^"']+)["']/g)) {
+    const target = resolveLocal2(path, m[2], byPath);
+    if (!target) continue;
+    const names = m[1].replace(/[{}]/g, ",").split(",").map((s) => s.trim().split(/\s+as\s+/).pop().trim()).filter((s) => /^[A-Z]\w*$/.test(s));
+    if (names.some((n) => new RegExp(`<${n}\\b|\\bComponent:\\s*${n}\\b`).test(src2))) out.push(target);
+  }
+  return out;
+}
 function frameIsComplete(files, pageCount = 2) {
-  const app = files.find((f) => f.path === "src/App.tsx")?.content ?? "";
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const app = byPath.get("src/App.tsx") ?? "";
   if (!app.trim() || isPlaceholderFile(app)) return false;
   const routed = pageCount <= 1 || /<Routes\b|createBrowserRouter|<Route\b/.test(app);
-  return routed && /nav|header/i.test(app) && /footer/i.test(app);
+  if (!routed) return false;
+  let nav = NAV_TAG.test(app);
+  let footer = FOOTER_TAG.test(app);
+  const appRoutesInline = /<Routes\b|<Route\b|createBrowserRouter/.test(app) || pageCount <= 1;
+  const seen = /* @__PURE__ */ new Set(["src/App.tsx"]);
+  let frontier = [{ path: "src/App.tsx", src: app }];
+  for (let depth = 0; depth < 3 && !(nav && footer) && frontier.length; depth++) {
+    const next = [];
+    for (const { path, src: src2 } of frontier) {
+      for (const t of renderedImports(path, src2, byPath)) {
+        if (seen.has(t)) continue;
+        seen.add(t);
+        const c = byPath.get(t) ?? "";
+        if (isPlaceholderFile(c)) continue;
+        const wraps = /<Outlet\b|\{\s*(props\.)?children\s*\}/.test(c);
+        const counts = wraps || depth > 0 || appRoutesInline;
+        if (counts && NAV_TAG.test(c)) nav = true;
+        if (counts && FOOTER_TAG.test(c)) footer = true;
+        next.push({ path: t, src: c });
+      }
+    }
+    frontier = next;
+  }
+  return nav && footer;
 }
 function targetOf(instruction) {
   return /as (src\/(?:pages|components)\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? /the page file (src\/pages\/[^\s]+\.tsx)/.exec(instruction)?.[1] ?? (/ONLY src\/App\.tsx/.test(instruction) ? "src/App.tsx" : null);
@@ -150012,12 +150125,14 @@ async function mapBounded(items, limit, fn2) {
   await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
   return out;
 }
-var DECOMPOSED_MARKER, PAGE_CONCURRENCY;
+var DECOMPOSED_MARKER, NAV_TAG, FOOTER_TAG, PAGE_CONCURRENCY;
 var init_write = __esm({
   "src/server/engine/write.ts"() {
     init_define_import_meta_env();
     init_build_state();
     DECOMPOSED_MARKER = "DECOMPOSED PAGE";
+    NAV_TAG = /<(nav|header)\b/i;
+    FOOTER_TAG = /<footer\b/i;
     PAGE_CONCURRENCY = 4;
   }
 });
@@ -152115,18 +152230,83 @@ __export(tool_loop_exports, {
   FULL_CONFIG: () => FULL_CONFIG,
   LIGHT_CONFIG: () => LIGHT_CONFIG,
   TOOLS: () => TOOLS,
+  actionOf: () => actionOf,
   compact: () => compact2,
   completionGaps: () => completionGaps,
   createToolLoopState: () => createToolLoopState,
   dependentsOf: () => dependentsOf,
+  diagnoseTrajectory: () => diagnoseTrajectory,
   evidenceSummary: () => evidenceSummary,
   formatNotReady: () => formatNotReady,
+  madeProgress: () => madeProgress,
   managedSurfaceRefusal: () => managedSurfaceRefusal,
   opId: () => opId,
   runToolLoop: () => runToolLoop,
+  snapshotEvidence: () => snapshotEvidence,
   stableFoundations: () => stableFoundations,
   toolsFor: () => toolsFor
 });
+function actionOf(call, o) {
+  let path = null;
+  try {
+    const a2 = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+    path = typeof a2.path === "string" ? normPath(a2.path) : null;
+  } catch {
+  }
+  return {
+    tool: call.function.name,
+    path,
+    key: `${call.function.name}:${hash(call.function.arguments ?? "")}`,
+    isError: o.isError,
+    miss: !!o.miss,
+    firstLine: o.output.split("\n")[0].slice(0, 160)
+  };
+}
+function snapshotEvidence(state, tree) {
+  const hashes = /* @__PURE__ */ new Map();
+  const errors = /* @__PURE__ */ new Map();
+  for (const [p2, c] of tree) hashes.set(p2, hash(c));
+  for (const [p2, e] of state.validation) errors.set(p2, e.length);
+  return { hashes, errors };
+}
+function madeProgress(before, state, tree) {
+  for (const [p2, c] of tree) {
+    const errs = (state.validation.get(p2) ?? []).length;
+    const had = before.errors.get(p2);
+    const changed = before.hashes.get(p2) !== hash(c);
+    if (had === void 0) {
+      if (changed && errs === 0) return true;
+      continue;
+    }
+    if (errs < had) return true;
+  }
+  return false;
+}
+function diagnoseTrajectory(recent) {
+  const misses = [...new Set(recent.filter((a2) => a2.miss && a2.path).map((a2) => a2.path))];
+  const counts = /* @__PURE__ */ new Map();
+  for (const a2 of recent) {
+    const c = counts.get(a2.key);
+    counts.set(a2.key, { n: (c?.n ?? 0) + 1, a: a2 });
+  }
+  const repeated = [...counts.values()].filter((c) => c.n >= 2).sort((x, y) => y.n - x.n);
+  const writeFails = recent.filter((a2) => (a2.tool === "create_file" || a2.tool === "edit_file") && a2.isError);
+  const finishRefused = recent.filter((a2) => a2.tool === "finish" && a2.isError).length;
+  const parts = ["No progress: your recent steps changed nothing in the workspace."];
+  if (misses.length) parts.push(`These files do not exist \u2014 stop reading them: ${misses.slice(0, 6).join(", ")}. Use list_files once, or create what you need.`);
+  if (repeated.length) {
+    const r = repeated[0];
+    parts.push(`You repeated the same ${r.a.tool}${r.a.path ? ` on ${r.a.path}` : ""} ${r.n} times with the same result (${r.a.firstLine}). Do something different.`);
+  }
+  if (writeFails.length) {
+    const last = writeFails[writeFails.length - 1];
+    parts.push(`Writes keep failing validation (latest: ${last.path ?? "?"} \u2014 ${last.firstLine}). Fix exactly the reported error.`);
+  }
+  if (finishRefused) parts.push("finish was refused; fix the listed gaps by writing files, not by calling finish again.");
+  if (parts.length === 1) parts.push("Write the next missing file now.");
+  parts.push("If the next steps also change nothing, this run stops.");
+  return parts.join(" ");
+}
 function isManagedConfigPath(path) {
   const base = path.split("/").pop() ?? path;
   for (const stem of MANAGED_CONFIG_STEMS) {
@@ -152313,6 +152493,9 @@ async function runToolLoop(args) {
   const emit = args.onEvent ?? (() => {
   });
   const treeFiles = () => [...tree].map(([path, content]) => ({ path, content }));
+  const ref = new Map((args.reference ?? []).map((f) => [f.path, f.content]));
+  const lookup = (p2) => tree.get(p2) ?? ref.get(p2);
+  const visiblePaths = () => [.../* @__PURE__ */ new Set([...ref.keys(), ...tree.keys()])];
   let messages = [
     { role: "system", content: args.system },
     { role: "user", content: args.brief }
@@ -152366,7 +152549,7 @@ async function runToolLoop(args) {
   const validate = async (path, content) => {
     const t0 = Date.now();
     try {
-      const next = treeFiles().filter((f) => f.path !== path);
+      const next = [...[...ref].filter(([p2]) => !tree.has(p2)).map(([p2, c]) => ({ path: p2, content: c })), ...treeFiles().filter((f) => f.path !== path)];
       next.push({ path, content });
       return await args.validate({ path, content }, next);
     } catch (e) {
@@ -152426,12 +152609,12 @@ ${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}` : `OK: ${path} written and 
     const path = normPath(a2.path);
     switch (name) {
       case "read_file": {
-        const c = tree.get(path);
+        const c = lookup(path);
         if (c === void 0) {
           const base = path.split("/").pop() ?? "";
-          const near = [...tree.keys()].filter((p2) => base && p2.endsWith(base)).slice(0, 5);
+          const near = visiblePaths().filter((p2) => base && p2.endsWith(base)).slice(0, 5);
           return { output: `File not found: ${path}${near.length ? `
-Did you mean: ${near.join(", ")}` : ""}`, isError: true };
+Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         }
         state.read.add(path);
         const lines = c.split("\n");
@@ -152441,7 +152624,7 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true };
       }
       case "list_files": {
         const prefix = normPath(a2.prefix);
-        const list4 = [...tree.keys()].filter((p2) => p2.startsWith(prefix)).sort();
+        const list4 = visiblePaths().filter((p2) => p2.startsWith(prefix)).sort();
         return { output: clip(list4.join("\n") || "(no files)", cfg.maxToolOutput), isError: false };
       }
       case "search": {
@@ -152449,8 +152632,9 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true };
         if (!q) return { output: "Empty query.", isError: true };
         const prefix = normPath(a2.prefix);
         const hits = [];
-        for (const [p2, c] of tree) {
+        for (const p2 of visiblePaths()) {
           if (!p2.startsWith(prefix)) continue;
+          const c = lookup(p2);
           const lines = c.split("\n");
           for (let i = 0; i < lines.length && hits.length < 80; i++) if (lines[i].includes(q)) hits.push(`${p2}:${i + 1}: ${lines[i].trim().slice(0, 160)}`);
         }
@@ -152578,6 +152762,9 @@ ${notReady}`, isError: true };
   ];
   const hardCeiling = cfg.maxIterations + cfg.finalizeIterations;
   let finalizing = false;
+  let idle = 0;
+  let corrected = false;
+  const recent = [];
   while (state.iteration < hardCeiling) {
     if (args.signal?.aborted) {
       state.stopReason = "cancelled";
@@ -152600,6 +152787,8 @@ ${notReady}`, isError: true };
     const t0 = Date.now();
     validationMs = 0;
     const writesBefore = state.written.length;
+    const before = snapshotEvidence(state, tree);
+    const actions = [];
     if (reply.toolCalls.length === 0) {
       const notReady = await finishGate();
       if (!notReady) state.finished = true;
@@ -152615,15 +152804,26 @@ ${notReady}` });
           while (j < reply.toolCalls.length && READ_ONLY.has(reply.toolCalls[j].function.name)) j++;
           const batch = reply.toolCalls.slice(i, j);
           const outs = await Promise.all(batch.map(exec));
-          outs.forEach((o, k) => results.push({ id: batch[k].id, output: o.output }));
+          outs.forEach((o, k) => {
+            results.push({ id: batch[k].id, output: o.output });
+            actions.push(actionOf(batch[k], o));
+          });
           i = j;
         } else {
           const o = await exec(c);
           results.push({ id: c.id, output: o.output });
+          actions.push(actionOf(c, o));
           i++;
         }
       }
       for (const r of results) messages.push({ role: "tool", tool_call_id: r.id, content: clip(r.output, cfg.maxToolOutput) });
+      if (dirty.size) {
+        await refreshEvidence();
+        const healed = [...before.errors].filter(([p2, n]) => n > 0 && (state.validation.get(p2) ?? []).length === 0 && tree.has(p2)).map(([p2]) => p2);
+        const healedNew = [...new Set(state.written.slice(writesBefore))].filter((p2) => !before.errors.has(p2) && (state.validation.get(p2) ?? []).length === 0);
+        const nowValid = [.../* @__PURE__ */ new Set([...healed, ...healedNew])].filter((p2) => actions.some((a2) => a2.path === p2 && a2.isError));
+        if (nowValid.length) messages.push({ role: "user", content: `Now valid after the rest of this response landed: ${nowValid.join(", ")}.` });
+      }
       if (args.typecheck && state.writesSinceTypecheck >= cfg.typecheckEvery) {
         state.writesSinceTypecheck = 0;
         const v0 = Date.now();
@@ -152652,6 +152852,25 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
     };
     traces.push(trace);
     args.onTrace?.(trace);
+    if (!state.finished) {
+      recent.push(...actions);
+      if (recent.length > 40) recent.splice(0, recent.length - 40);
+      if (madeProgress(before, state, tree)) {
+        idle = 0;
+        corrected = false;
+      } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {
+        if (!corrected) {
+          corrected = true;
+          const signal = diagnoseTrajectory(recent);
+          emit({ kind: "no_progress", detail: signal });
+          messages.push({ role: "user", content: signal });
+        } else {
+          state.stopReason = `no progress in ${idle} consecutive steps`;
+          emit({ kind: "no_progress_stop", detail: state.stopReason });
+          return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "no_progress" };
+        }
+      }
+    }
     if (state.finished) {
       breaker.complete();
       return { files: treeFiles(), state, traces, incomplete: [], outcome: "finished" };
@@ -152678,9 +152897,11 @@ var init_tool_loop = __esm({
       compactAt: 0.7,
       keepRecent: 12,
       maxToolOutput: 12e3,
-      breaker: BREAKER_THRESHOLDS
+      breaker: BREAKER_THRESHOLDS,
+      noProgressLimit: 5,
+      noProgressRecovery: 3
     };
-    LIGHT_CONFIG = { ...FULL_CONFIG, maxIterations: 6, finalizeIterations: 2 };
+    LIGHT_CONFIG = { ...FULL_CONFIG, maxIterations: 6, finalizeIterations: 2, noProgressLimit: 3, noProgressRecovery: 2 };
     MANAGED_CONFIG_STEMS = ["vite.config", "tailwind.config", "postcss.config", ".postcssrc"];
     MANAGED_EXACT_FILES = /* @__PURE__ */ new Set([
       "package.json",
@@ -153644,7 +153865,7 @@ function syntaxGate(esbuild2) {
   if (v === "UNAVAILABLE") return gate("syntax", "UNAVAILABLE", ["syntax checker unavailable \u2014 code kept as written"]);
   return gate("syntax", v);
 }
-function resolveLocal2(from, spec, paths) {
+function resolveLocal3(from, spec, paths) {
   let base;
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
   else {
@@ -153683,7 +153904,7 @@ function dependencyGate(files) {
     while (m = re.exec(f.content)) {
       const spec = m[1];
       if (spec.startsWith(".") || spec.startsWith("@/")) {
-        if (!resolveLocal2(f.path, spec, paths)) {
+        if (!resolveLocal3(f.path, spec, paths)) {
           broken.push(`${f.path} imports "${spec}", which does not exist`);
           brokenPaths.push(f.path);
         }
@@ -154004,7 +154225,7 @@ __export(deps_exports, {
 function rootOf(spec) {
   return spec.startsWith("@") ? spec.split("/").slice(0, 2).join("/") : spec.split("/")[0];
 }
-function resolveLocal3(spec, from, byPath) {
+function resolveLocal4(spec, from, byPath) {
   let base;
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
   else if (spec.startsWith(".")) {
@@ -154038,7 +154259,7 @@ function missingReachableDeps(files, entry = "src/main.tsx") {
       const spec = m[1] ?? m[2] ?? m[3];
       if (!spec || /\.(css|svg|png|jpe?g|webp|gif|json)$/.test(spec)) continue;
       if (spec.startsWith("@/") || spec.startsWith(".")) {
-        const next = resolveLocal3(spec, path, byPath);
+        const next = resolveLocal4(spec, path, byPath);
         if (next && !seen.has(next)) {
           seen.add(next);
           queue.push(next);
@@ -166957,6 +167178,47 @@ init_chunked_generation_server();
 
 // src/server/engine/first-build.ts
 init_define_import_meta_env();
+
+// src/server/engine/template-contract.ts
+init_define_import_meta_env();
+init_scaffold_kit();
+var TEMPLATE_CONTRACT_PATH = "template.json";
+var REFERENCE_DIRS = ["@/components/blocks", "@/components/examples", "@/components/motion", "@/components/fx"];
+var TEMPLATE_PRELOADED_RULE = "This is the complete, authoritative contract; you do not need to read template.json.";
+function templateContractContent() {
+  return KIT_FILES.find((f) => f.path === TEMPLATE_CONTRACT_PATH)?.content ?? "";
+}
+function templateContract() {
+  const raw = templateContractContent();
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+function renderTemplateMetadataSection() {
+  const c = templateContract();
+  if (!c) return "";
+  const fs = c["file_structure"] ?? {};
+  const styling = c["styling"] ?? {};
+  const shadcn = Array.isArray(c["shadcn_components"]) ? c["shadcn_components"] : [];
+  const examples = c["usage_examples"] ?? {};
+  const protectedFiles = Array.isArray(c["protected_files"]) ? c["protected_files"] : [];
+  const refDirs = REFERENCE_DIRS.filter((d) => KIT_FILES.some((f) => f.path.startsWith(`src/${d.slice(2)}/`)));
+  return `
+### Project contract (template.json)
+${TEMPLATE_PRELOADED_RULE}
+Pages: ${fs["pages_dir"]}/  \xB7  Components: ${fs["components_dir"]}/  \xB7  Router: ${fs["routes_file"]}  \xB7  Entry: ${fs["entry_file"]}  \xB7  Stylesheet: ${fs["stylesheet"]}
+Routing: ${c["routing_pattern"]}  \xB7  Styling: ${styling["framework"]} v${styling["tailwind_version"]} (${styling["tokens"]})  \xB7  Icons: ${styling["icon_set"]}
+Pre-installed UI kit at @/components/ui \u2014 import these, never write them: ${shadcn.join(", ")}.
+` + (refDirs.length ? `Also installed (import or copy from): ${refDirs.join(", ")}.
+` : "") + `Read-only (writes are refused): ${protectedFiles.join(", ")}.
+` + Object.values(examples).map((e) => `- ${e}`).join("\n") + `
+`;
+}
+
+// src/server/engine/first-build.ts
 function firstBuildSeedFiles(args) {
   if (!args) return [];
   try {
@@ -166980,6 +167242,14 @@ var COMPOSITION_RULES = [
   "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
   'Every link points somewhere real \u2014 no href="#" placeholders. One <h1> per page.'
 ].join("\n- ");
+var CORRECTNESS_RULES = [
+  "Import every identifier you use, including every lucide-react icon and every React hook. An undefined name fails validation and the write is returned to you.",
+  "Match the export style: the UI kit exports named (import { Button }), pages export default. Never guess \u2014 a mismatch is a build error.",
+  "Absolute imports only, via the @/ alias. No relative ../.. chains, no file extensions, no imports of packages the scaffold does not already use.",
+  'src/App.tsx is the only place that owns <BrowserRouter>. Never nest a second router inside a page or layout. Router names come from "react-router-dom" (or its kit re-export @/components/ui/router) \u2014 never invent another router module.',
+  "Write each file once, complete, in a single create_file call. Do not emit partial files, TODO stubs or '...rest unchanged'. Use edit_file for a bounded change to a file that already exists.",
+  "Write the shared layout and any shared module before the pages that import them, then emit the pages together in one response."
+].join("\n- ");
 var COPY_RULES = `Write copy as the business would: concrete and specific, never superlative. Banned words: elevate, seamless, unleash, next-gen, revolutionize, empower, supercharge, "transform your", "take it to the next level", "in today's fast-paced world". No lorem ipsum, no [placeholder], no invented statistics, testimonials, client names or contact details. A heading should say something specific to this business, not name a category ("Our Features").`;
 function designSection(d) {
   return `
@@ -166992,17 +167262,20 @@ ${d.playbook.trim()}
 }
 function firstBuildBrief(request, planned, existing, design3) {
   const pages = planned.map((p2) => `${p2.route} \u2192 ${p2.file}`).join(", ");
-  const workspace = existing.length ? `The workspace already holds ${existing.length} saved files from an interrupted run: ${existing.join(", ")}. Do not rewrite them; write what is still missing.` : `The workspace is empty \u2014 you already know everything in it, so do not list or read files before writing. Start writing immediately.`;
+  const workspace = existing.length ? `The workspace already holds ${existing.length} saved files from an interrupted run: ${existing.join(", ")}. Do not rewrite them; write what is still missing.` : `No app code has been written yet. The scaffold below is already installed, so you know the workspace \u2014 do not list or read files before writing. Start writing immediately.`;
   return `${request}
 
 ${workspace}
 Write src/App.tsx (router + shared layout with navigation and footer), every shared module the pages import, and every planned page, then call finish. Planned pages: ${pages}.
-` + (design3 ? designSection(design3) : "") + `
+` + renderTemplateMetadataSection() + (design3 ? designSection(design3) : "") + `
 ### Composition
 - ${COMPOSITION_RULES}
 
 ### Copy
 ${COPY_RULES}
+
+### Correctness
+- ${CORRECTNESS_RULES}
 `;
 }
 
@@ -178137,6 +178410,9 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 })()
               ),
               files: seedFiles,
+              // The kit the commit applies, visible (read-only) to reads and
+              // import validation so advertised modules actually resolve.
+              reference: applyScaffoldKit([], { backend: backend2 ?? void 0, sharedBackend: sharedBackend ?? void 0, target: buildTarget.id }).filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
               // THE readiness authority: the exact proposed-tree transform and
