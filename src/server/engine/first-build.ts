@@ -4,6 +4,7 @@
  * workspace (or a resumed checkpoint) and writes everything with tools.
  */
 import type { ProjectFile } from "@/server/generate.server";
+import { renderTemplateMetadataSection } from "@/server/engine/template-contract";
 
 /** Files a first build starts from: saved checkpoint files, else none. */
 export function firstBuildSeedFiles(args: string | null | undefined): ProjectFile[] {
