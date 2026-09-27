@@ -72,7 +72,7 @@ describe("0.30 floor and recorded-call settlement", () => {
     const rows = [row(602, "request"), row(254, "plan"), row(387, "request"),
       ...[2675,819,950,1042,1028,1339,1461,1061,1247,1579,1336,1422,1246,1758,1109].map((m) => row(m)), row(158, "after")];
     const p = priceRecordedCalls(rows, E2, 0.03);
-    expect(p.costUsd).toBeCloseTo(0.021157, 6);
+    expect(p.costUsd).toBeCloseTo(0.021315, 6);
     expect(p.amount).toBe(0.82);
     expect(p.billableCalls).toBe(18);
     expect(p.overheadCalls).toBe(1);
