@@ -39,7 +39,9 @@ export function sharedApiOrigins(): { baseUrl: string; fallbackUrls: string[] } 
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const all = [configured, "https://buildwithpetal.com", STABLE_ORIGIN, ...extra]
+  // buildwithpetal.com is NOT listed: it serves an older deployment that
+  // rejects valid project keys (401), which broke sign-in on generated apps.
+  const all = [configured, "https://kimble.cloud", STABLE_ORIGIN, ...extra]
     .filter(Boolean)
     .map((u) => u.replace(/\/$/, ""));
   const unique = Array.from(new Set(all));
