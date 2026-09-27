@@ -136,12 +136,21 @@ export async function resolveIntentActions(
   try {
     intents = detectIntents(args.prompt, null);
   } catch {
-    return { ...EMPTY, surface, promptBlock: surfaceBlock };
+    intents = [];
   }
-  if (intents.length === 0) return { ...EMPTY, surface, promptBlock: surfaceBlock };
+  const product = args.productNeedsBackend ?? null;
+  if (intents.length === 0 && !product) return { ...EMPTY, surface, promptBlock: surfaceBlock };
 
-  const needsBackend = intents.some((i) => BACKEND_IMPLYING.includes(i));
+  const keywordNeed = intents.some((i) => BACKEND_IMPLYING.includes(i));
+  const needsBackend = keywordNeed || Boolean(product);
   let enabledSharedBackend = false;
+  let cloud: CloudDecision = NO_CLOUD;
+  if (needsBackend) {
+    const reason = product?.reason ?? "This request needs saved data or accounts.";
+    cloud = args.hasBackend || args.hasSharedBackend
+      ? { needed: true, reason, status: "already_enabled" }
+      : { needed: true, reason, status: "failed", error: "no project" };
+  }
 
   // Attach the free shared backend rather than asking. It costs nothing, has
   // no plan gate, and is exactly what the old "Enable backend" card did after
@@ -156,12 +165,12 @@ export async function resolveIntentActions(
       const { enableSharedBackend } = await import("@/server/shared-backend.server");
       await enableSharedBackend(args.projectId);
       enabledSharedBackend = true;
+      cloud = { ...cloud, status: "enabled", error: undefined };
       console.log(`[intent-actions] shared backend auto-enabled for ${args.projectId}`);
     } catch (e) {
-      console.warn(
-        "[intent-actions] shared backend auto-enable failed:",
-        e instanceof Error ? e.message : String(e),
-      );
+      const msg = e instanceof Error ? e.message : String(e);
+      cloud = { ...cloud, status: "failed", error: msg };
+      console.warn("[intent-actions] shared backend auto-enable failed:", msg);
     }
   }
 
