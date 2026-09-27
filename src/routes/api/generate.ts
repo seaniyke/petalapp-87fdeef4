@@ -7294,11 +7294,13 @@ async function handleGenerateRequestCore(
         // when the records cannot be read.
         let settledFrom: "recorded" | "memory" = "memory";
         let billableCalls: number | null = null;
+        let recordedRows: Awaited<ReturnType<typeof import("@/server/ai-provider.server").readTurnCallCosts>> = null;
         if (logicalTurnId) {
           const { flushCostWrites, readTurnCallCosts } = await import("@/server/ai-provider.server");
           const flushed = await flushCostWrites();
           if (flushed.timedOut) console.warn(`[credits] cost writes still pending at settlement: ${flushed.pending}`);
           const rows = await readTurnCallCosts(logicalTurnId);
+          recordedRows = rows;
           if (rows && rows.length) {
             const { priceRecordedCalls } = await import("@/lib/build-pricing");
             const rp = priceRecordedCalls(rows, await buildEconomics(), buildReservation?.classCostUsd ?? 0);
@@ -7307,6 +7309,33 @@ async function handleGenerateRequestCore(
             settledFrom = "recorded";
           }
         }
+        // CUSTOMER PRICE = effort curve over productive work (never AI cost).
+        // `priced` above stays the INTERNAL cost for margin and reporting.
+        const internalCostUsd = priced.costUsd;
+        const effortEval = await (async () => {
+          const ep = await import("@/lib/effort-pricing");
+          const { economicsValues } = await import("@/server/economics-config.server");
+          const v = (await economicsValues()) as Record<string, number>;
+          const cfg = ep.effortConfig(v);
+          const cls = assessExecution({ ...turnComplexityBase, plannedPages: firstBuildPlan?.pages.length ?? 0 }).class;
+          const diff = ep.diffSignals(turnBaselineFiles, txCommitted ? nextFiles : turnBaselineFiles, (p) => ep.PAGE_PATH.test(p));
+          const rows = recordedRows ?? [];
+          const verifyCalls = rows.filter((r) => r.stage === "verify").length;
+          const signals = {
+            cls,
+            ...diff,
+            capabilities: (turnComplexityBase.backendInvolved ? 1 : 0) + (turnComplexityBase.integrations ?? 0),
+            validationsPassed: txCommitted ? 1 + verifyCalls : 0,
+            durationMs: Date.now() - setupStartedAt,
+          };
+          const eff = ep.effortScore(signals, cfg.weights);
+          const credits = ep.creditsForEffort(eff.score, cfg.curve);
+          const wasted = ep.wastedCostUsd(rows as never);
+          const prof = ep.profitability(credits, v.revenue_per_credit_usd ?? 0.13, internalCostUsd, wasted);
+          const flags = ep.economicFlags(prof, buildReservation?.estimatedEffort != null ? { effort: buildReservation.estimatedEffort } : null, eff.score, { marginFloorPct: cfg.marginFloorPct, wasteShare: 0.3, estimateError: cfg.estimateError });
+          return { cls, signals: { ...signals, linesPerFile: undefined, linesChanged: diff.linesPerFile.reduce((a, b) => a + b, 0) }, score: eff.score, parts: eff.parts, credits, prof, flags };
+        })().catch((e) => { console.warn("[credits] effort pricing failed, using cost price", (e as Error).message); return null; });
+        if (effortEval) priced = { ...priced, amount: effortEval.credits };
         if (!body.isAutoFix && !failedEditTurn) {
           // A held reservation already guarantees the (capped) charge.
           const finalBalance = buildReservation?.ok
