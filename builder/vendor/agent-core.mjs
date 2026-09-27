@@ -65965,6 +65965,10 @@ function costPerCreditUsd(e) {
   const m = Math.min(99, Math.max(0, e.targetMarginPct));
   return e.revenuePerCreditUsd * (1 - m / 100);
 }
+function economicCeilingUsd(reservedCredits, fallbackClassCostUsd, e) {
+  if (reservedCredits != null && reservedCredits > 0) return reservedCredits * costPerCreditUsd(e);
+  return Math.max(0, fallbackClassCostUsd) * Math.max(1, e.reservationHeadroom);
+}
 function roundUp(n, step) {
   const s = step > 0 ? step : 0.01;
   return Math.round(Math.ceil(n / s - 1e-9) * s * 100) / 100;
@@ -70374,6 +70378,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70632,6 +70637,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -152837,7 +152843,8 @@ function createToolLoopState(goal) {
     writesSinceTypecheck: 0,
     iteration: 0,
     finished: false,
-    stopReason: null
+    stopReason: null,
+    spentUsd: 0
   };
 }
 async function runToolLoop(args) {
@@ -153132,6 +153139,9 @@ ${notReady}`, isError: true };
     ...state.readiness && !state.readiness.ready ? state.readiness.findings.map((f) => `[${f.gate}] ${f.reason}`) : []
   ];
   const hardCeiling = cfg.maxIterations + cfg.finalizeIterations;
+  const ceiling = typeof args.costCeilingUsd === "number" && Number.isFinite(args.costCeilingUsd) ? Math.max(0, args.costCeilingUsd) : null;
+  state.spentUsd = Math.max(0, args.spentBeforeUsd ?? 0);
+  let maxCallUsd = 0;
   let finalizing = false;
   let idle = 0;
   let corrected = false;
@@ -153151,6 +153161,11 @@ ${notReady}`, isError: true };
     if (estimateTokens2(messages) > cfg.contextWindow * cfg.compactAt) {
       messages = compact2(messages, state, cfg.keepRecent, tree);
       compacted = true;
+    }
+    if (ceiling != null && state.spentUsd + maxCallUsd > ceiling) {
+      state.stopReason = `economic ceiling reached ($${state.spentUsd.toFixed(4)} of $${ceiling.toFixed(4)})`;
+      emit({ kind: "economic_ceiling", detail: state.stopReason });
+      return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "breaker" };
     }
     state.iteration++;
     const startedAt = Date.now();
@@ -153194,6 +153209,12 @@ ${notReady}`, isError: true };
       throw e;
     }
     const durationMs = Date.now() - startedAt;
+    {
+      const c = args.costOf ? args.costOf(reply) : typeof reply.usage?.costUsd === "number" ? reply.usage.costUsd : 0;
+      const usd = Number.isFinite(c) && c > 0 ? c : 0;
+      state.spentUsd += usd;
+      if (usd > maxCallUsd) maxCallUsd = usd;
+    }
     messages.push({ role: "assistant", content: reply.content ?? null, ...reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {} });
     const t0 = Date.now();
     validationMs = 0;
@@ -153622,7 +153643,7 @@ async function parseToolStream(res, startedAt) {
   return {
     content: content || null,
     toolCalls: [...calls.entries()].sort((a2, b) => a2[0] - b[0]).map(([, c]) => c).filter((c) => c.function.name),
-    usage: u ? { promptTokens: u.prompt_tokens ?? 0, cachedTokens: u.prompt_tokens_details?.cached_tokens ?? 0, completionTokens: u.completion_tokens ?? 0 } : void 0,
+    usage: u ? { promptTokens: u.prompt_tokens ?? 0, cachedTokens: u.prompt_tokens_details?.cached_tokens ?? 0, completionTokens: u.completion_tokens ?? 0, costUsd: typeof u.cost === "number" ? u.cost : null } : void 0,
     ttftMs,
     finishReason,
     model,
@@ -175206,6 +175227,14 @@ var TurnCostMeter = class {
     this.ceiling = opts?.ceilingUsd ?? TURN_REPAIR_COST_CEILING_USD;
     this.warn = opts?.warnUsd ?? TURN_REPAIR_COST_WARN_USD;
   }
+  /** Lower the hard ceiling to the turn's remaining economic budget (never raises it). */
+  capAt(usd) {
+    const c = Math.max(0, usd);
+    if (c < this.ceiling) this.ceiling = c;
+  }
+  get ceilingUsd() {
+    return this.ceiling;
+  }
   get spentUsd() {
     return this.spent;
   }
@@ -179116,6 +179145,9 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const pages = planned;
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             const { runToolLoop: runToolLoop2 } = await Promise.resolve().then(() => (init_tool_loop(), tool_loop_exports));
+            const { buildEconomics: loopEconomics } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
+            const loopCeilingUsd = economicCeilingUsd(buildReservation?.reserved ?? null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics());
+            const loopSpentBeforeUsd = collected.usage ? turnCallCost(collected.usage).costUsd ?? buildReservation?.classCostUsd ?? 0 : 0;
             const { makeCallModel: makeCallModel2 } = await Promise.resolve().then(() => (init_tool_loop_model(), tool_loop_model_exports));
             const { validateUnitImports: validateUnitImports2, undefinedNames: undefinedNames2 } = await Promise.resolve().then(() => (init_work_unit(), work_unit_exports));
             const { verifyFilesEsbuild: verifyFilesEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_verifier_server(), esbuild_verifier_server_exports));
@@ -179230,6 +179262,18 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                 if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
               }
             }, async () => runToolLoop2({
+              // Economic ceiling: the hold as variable cost. Unmeasured calls
+              // count at the class estimate so they can never run for free.
+              costCeilingUsd: loopCeilingUsd,
+              spentBeforeUsd: loopSpentBeforeUsd,
+              costOf: (r) => {
+                if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
+                if (r.usage) {
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens }).costUsd;
+                  if (c != null) return c;
+                }
+                return buildReservation?.classCostUsd ?? 0.03;
+              },
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
@@ -179324,6 +179368,8 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                 if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               }
             }));
+            repairMeter.capAt(Math.max(0, loopCeilingUsd - done.state.spentUsd));
+            turnStrategy.economicCeiling = { ceilingUsd: loopCeilingUsd, loopSpentUsd: done.state.spentUsd, repairCeilingUsd: repairMeter.ceilingUsd, stopReason: done.state.stopReason };
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
