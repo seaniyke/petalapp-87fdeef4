@@ -80,6 +80,10 @@ export interface LoopConfig {
   keepRecent: number;
   maxToolOutput: number;
   breaker: BreakerThresholds;
+  /** Consecutive steps without workspace progress before one corrective signal. */
+  noProgressLimit: number;
+  /** Further idle steps allowed after the signal before the turn stops. */
+  noProgressRecovery: number;
 }
 
 export const FULL_CONFIG: LoopConfig = {
@@ -91,6 +95,8 @@ export const FULL_CONFIG: LoopConfig = {
   keepRecent: 12,
   maxToolOutput: 12_000,
   breaker: BREAKER_THRESHOLDS,
+  noProgressLimit: 5,
+  noProgressRecovery: 3,
 };
 
 /** LIGHT fast path: locate → read → edit → validate → finish. */
@@ -957,7 +963,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       if (dirty.size) {
         await refreshEvidence();
         const healed = [...before.errors].filter(([p, n]) => n > 0 && (state.validation.get(p) ?? []).length === 0 && tree.has(p)).map(([p]) => p);
-        const healedNew = results.length ? [...new Set(state.written.slice(writesBefore))].filter((p) => !before.errors.has(p) && (state.validation.get(p) ?? []).length === 0) : [];
+        const healedNew = [...new Set(state.written.slice(writesBefore))].filter((p) => !before.errors.has(p) && (state.validation.get(p) ?? []).length === 0);
         const nowValid = [...new Set([...healed, ...healedNew])].filter((p) => actions.some((a) => a.path === p && a.isError));
         if (nowValid.length) messages.push({ role: "user", content: `Now valid after the rest of this response landed: ${nowValid.join(", ")}.` });
       }
