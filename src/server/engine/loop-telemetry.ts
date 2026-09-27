@@ -262,3 +262,69 @@ export function summarizeExecution(
     telemetry: opts.telemetry ?? { persisted: 0, failed: 0 },
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* One finalization path for every terminal state                      */
+/* ------------------------------------------------------------------ */
+
+export type LoopTerminal = "finished" | "incomplete" | "breaker" | "cancelled" | "no_progress" | "error";
+
+export interface FinalSummary extends ExecutionSummary {
+  outcome: LoopTerminal;
+  error: string | null;
+}
+
+/**
+ * Per-process hand-off from the generation core (which owns the loop) to the
+ * request's terminal path (which writes the failed turn's economics record).
+ * Both run in the same process; entries are taken exactly once.
+ */
+const finalSummaries = new Map<string, FinalSummary>();
+
+export function takeExecutionSummary(turnId: string | null | undefined): FinalSummary | null {
+  if (!turnId) return null;
+  const s = finalSummaries.get(turnId) ?? null;
+  finalSummaries.delete(turnId);
+  return s;
+}
+
+/**
+ * Runs the loop and ALWAYS produces the build summary — success, failure,
+ * no-progress stop, cancellation, or a thrown provider/tool error — from the
+ * traces available at termination. The only place a summary is built.
+ */
+export async function runWithExecutionSummary<T extends { outcome: string }>(
+  opts: { turnId: string | null; traces: CallTrace[]; turnStartedAt: number; stages: StageMark[]; telemetry: TelemetrySink; onSummary?: (s: FinalSummary) => void },
+  run: () => Promise<T>,
+): Promise<T> {
+  let outcome: LoopTerminal = "error";
+  let error: string | null = null;
+  try {
+    const r = await run();
+    outcome = r.outcome as LoopTerminal;
+    return r;
+  } catch (e) {
+    const aborted = e instanceof Error && (e.name === "AbortError" || /abort|cancel/i.test(e.message));
+    outcome = aborted ? "cancelled" : "error";
+    error = e instanceof Error ? e.message : String(e);
+    throw e;
+  } finally {
+    await opts.telemetry.flush().catch(() => undefined);
+    const summary: FinalSummary = {
+      ...summarizeExecution(opts.traces, {
+        turnStartedAt: opts.turnStartedAt,
+        turnEndedAt: Date.now(),
+        stages: opts.stages,
+        telemetry: { persisted: opts.telemetry.persisted, failed: opts.telemetry.failures.length },
+      }),
+      outcome,
+      error,
+    };
+    if (opts.turnId) finalSummaries.set(opts.turnId, summary);
+    try {
+      opts.onSummary?.(summary);
+    } catch {
+      /* reporting never changes the build outcome */
+    }
+  }
+}
