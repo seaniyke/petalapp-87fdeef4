@@ -68,7 +68,7 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   // Build billing (see src/lib/build-pricing.ts). Cost/credit is DERIVED:
   // revenue_per_credit_usd × (1 − target_gross_margin_pct/100).
   revenue_per_credit_usd: 0.13,
-  min_charge_credits: 0.05,
+  min_charge_credits: 0.3,
   credit_rounding_step: 0.01,
   reservation_headroom: 3,
   estimate_min_samples: 20,

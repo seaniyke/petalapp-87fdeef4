@@ -7055,7 +7055,7 @@ async function handleGenerateRequestCore(
         // a call with no usage at all is never free — the class estimate
         // stands in. The reservation caps the result (DB-enforced).
         const { buildEconomics } = await import("@/server/economics-config.server");
-        const priced = priceTurnCost(
+        let priced: import("@/lib/build-pricing").PricedTurn = priceTurnCost(
           turnUsages.filter((u): u is GatewayUsage => !!u).map(turnCallCost),
           await buildEconomics(),
           buildReservation?.classCostUsd ?? 0,
@@ -7288,6 +7288,25 @@ async function handleGenerateRequestCore(
             `[credits] no-op edit turn not billed project=${body.projectId ?? "none"} unapplied=${unappliedPaths.length}`,
           );
         }
+        // ONE authoritative final cost: flush every in-flight cost write
+        // (the last loop step's usage backfill included), then price from
+        // the durable per-call records. In-memory usage is only the fallback
+        // when the records cannot be read.
+        let settledFrom: "recorded" | "memory" = "memory";
+        let billableCalls: number | null = null;
+        if (logicalTurnId) {
+          const { flushCostWrites, readTurnCallCosts } = await import("@/server/ai-provider.server");
+          const flushed = await flushCostWrites();
+          if (flushed.timedOut) console.warn(`[credits] cost writes still pending at settlement: ${flushed.pending}`);
+          const rows = await readTurnCallCosts(logicalTurnId);
+          if (rows && rows.length) {
+            const { priceRecordedCalls } = await import("@/lib/build-pricing");
+            const rp = priceRecordedCalls(rows, await buildEconomics(), buildReservation?.classCostUsd ?? 0);
+            priced = rp;
+            billableCalls = rp.billableCalls;
+            settledFrom = "recorded";
+          }
+        }
         if (!body.isAutoFix && !failedEditTurn) {
           // A held reservation already guarantees the (capped) charge.
           const finalBalance = buildReservation?.ok
@@ -7330,6 +7349,8 @@ async function handleGenerateRequestCore(
                   cost_basis: priced.basis,
                   cost_usd: priced.costUsd,
                   unknown_calls: priced.unknownCalls,
+                  cost_source: settledFrom,
+                  billable_calls: billableCalls,
                   estimated_credits: buildReservation?.estimated ?? null,
                   reserved_credits: buildReservation?.reserved ?? null,
                   model,

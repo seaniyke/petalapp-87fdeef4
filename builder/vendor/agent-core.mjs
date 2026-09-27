@@ -61382,7 +61382,7 @@ var init_economics_config_server = __esm({
       // Build billing (see src/lib/build-pricing.ts). Cost/credit is DERIVED:
       // revenue_per_credit_usd × (1 − target_gross_margin_pct/100).
       revenue_per_credit_usd: 0.13,
-      min_charge_credits: 0.05,
+      min_charge_credits: 0.3,
       credit_rounding_step: 0.01,
       reservation_headroom: 3,
       estimate_min_samples: 20,
@@ -62833,7 +62833,8 @@ function toRow(e) {
 async function recordCostEvents(events) {
   if (!events.length) return;
   try {
-    await supabaseAdmin.from("cost_events").upsert(events.map(toRow), { onConflict: "source_ref", ignoreDuplicates: true });
+    const { error } = await supabaseAdmin.from("cost_events").upsert(events.map(toRow), { onConflict: "source_ref", ignoreDuplicates: true });
+    if (error) console.warn("[cost-events] write failed", error.message);
   } catch (err) {
     console.warn("[cost-events] write failed", err);
   }
@@ -63441,6 +63442,7 @@ __export(ai_provider_server_exports, {
   defaultBudgetModelForFeature: () => defaultBudgetModelForFeature,
   estimateCostUsdMicro: () => estimateCostUsdMicro,
   fetchGenerationUsage: () => fetchGenerationUsage,
+  flushCostWrites: () => flushCostWrites,
   getBudgetConfigForFeature: () => getBudgetConfigForFeature,
   getBudgetModelsForFeature: () => getBudgetModelsForFeature,
   getProviderForFeature: () => getProviderForFeature,
@@ -63453,9 +63455,11 @@ __export(ai_provider_server_exports, {
   markProviderPaymentFailure: () => markProviderPaymentFailure,
   parseUsageObject: () => parseUsageObject,
   providersExhaustedResponse: () => providersExhaustedResponse,
+  readTurnCallCosts: () => readTurnCallCosts,
   resolveBudgetModel: () => resolveBudgetModel,
   shouldShadowBudget: () => shouldShadowBudget,
   streamDeltaHasOutput: () => streamDeltaHasOutput,
+  trackCostWrite: () => trackCostWrite,
   updateLastCallUsage: () => updateLastCallUsage
 });
 function requestHasImageParts(body) {
@@ -63686,7 +63690,37 @@ function usageColumns(u, model) {
   }
   return cols;
 }
-async function recordTelemetry(args) {
+function trackCostWrite(p2) {
+  pendingCostWrites.add(p2);
+  p2.then(() => pendingCostWrites.delete(p2), () => pendingCostWrites.delete(p2));
+  return p2;
+}
+async function flushCostWrites(timeoutMs = 2e4) {
+  const deadline = Date.now() + timeoutMs;
+  while (pendingCostWrites.size > 0) {
+    const left = deadline - Date.now();
+    if (left <= 0) return { timedOut: true, pending: pendingCostWrites.size };
+    await Promise.race([
+      Promise.allSettled([...pendingCostWrites]),
+      new Promise((r) => setTimeout(r, left))
+    ]);
+  }
+  return { timedOut: false, pending: 0 };
+}
+async function readTurnCallCosts(turnId) {
+  try {
+    const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+    const { data: data2, error } = await supabaseAdmin2.from("ai_call_log").select("id, stage, call_kind, status, cost_usd_micro, cost_basis").eq("turn_id", turnId).order("created_at", { ascending: true });
+    if (error) return null;
+    return data2 ?? [];
+  } catch {
+    return null;
+  }
+}
+function recordTelemetry(...a2) {
+  return trackCostWrite(recordTelemetryInner(...a2));
+}
+async function recordTelemetryInner(args) {
   try {
     const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
     const { currentTurnContext: currentTurnContext2 } = await Promise.resolve().then(() => (init_turn_context_server(), turn_context_server_exports));
@@ -63863,7 +63897,7 @@ function meterStream(resp, rowId, model, startedAt = Date.now()) {
         const { value, done } = await reader.read();
         if (done) {
           ctrl.close();
-          void finish("completed", null);
+          void trackCostWrite(finish("completed", null));
           return;
         }
         ctrl.enqueue(value);
@@ -63872,13 +63906,13 @@ function meterStream(resp, rowId, model, startedAt = Date.now()) {
         buf = lines.pop() ?? "";
         for (const l of lines) scan2(l);
       } catch (err) {
-        void finish("errored", null);
+        void trackCostWrite(finish("errored", null));
         ctrl.error(err);
       }
     },
     async cancel(reason) {
       const m = /^stall:(\d+)/.exec(String(reason ?? ""));
-      void finish(m ? "stalled" : "cancelled", m ? Number(m[1]) : null);
+      void trackCostWrite(finish(m ? "stalled" : "cancelled", m ? Number(m[1]) : null));
       try {
         await reader.cancel(reason);
       } catch {
@@ -63903,7 +63937,10 @@ function streamDeltaHasOutput(delta) {
   }
   return false;
 }
-async function updateLastCallUsage(args) {
+function updateLastCallUsage(args) {
+  return trackCostWrite(updateLastCallUsageInner(args));
+}
+async function updateLastCallUsageInner(args) {
   if (!args.promptTokens && !args.completionTokens) return;
   try {
     const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
@@ -64219,7 +64256,7 @@ async function currentModelFor(feature) {
 function isProviderUnavailableStatus(status) {
   return status === 404 || status === 408 || status === 502 || status === 503 || status === 524;
 }
-var OPENROUTER_URL, BUDGET_MODELS, CACHE_TTL_MS3, cachedSettings, cacheLoadedAt, inflight2, OPENROUTER_MODEL_MAP, DEAD_MODEL_IDS, KNOWN_MODEL_IDS, MODEL_PRICE_PER_M_TOKENS, num, DEFAULT_TIMEOUT_MS, PAYMENT_FAILURE_KEY, DEFAULT_STREAM_TIMEOUT_MS, FIRST_BUILD_STREAM_TIMEOUT_MS, ALL_AI_FEATURES;
+var OPENROUTER_URL, BUDGET_MODELS, CACHE_TTL_MS3, cachedSettings, cacheLoadedAt, inflight2, OPENROUTER_MODEL_MAP, DEAD_MODEL_IDS, KNOWN_MODEL_IDS, MODEL_PRICE_PER_M_TOKENS, num, pendingCostWrites, DEFAULT_TIMEOUT_MS, PAYMENT_FAILURE_KEY, DEFAULT_STREAM_TIMEOUT_MS, FIRST_BUILD_STREAM_TIMEOUT_MS, ALL_AI_FEATURES;
 var init_ai_provider_server = __esm({
   "src/server/ai-provider.server.ts"() {
     init_define_import_meta_env();
@@ -64283,6 +64320,7 @@ var init_ai_provider_server = __esm({
       { match: /google\/gemma-3-12b-it/i, inUsd: 0.05, outUsd: 0.15 }
     ];
     num = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
+    pendingCostWrites = /* @__PURE__ */ new Set();
     DEFAULT_TIMEOUT_MS = 3e5;
     PAYMENT_FAILURE_KEY = "__petalLastProviderPaymentFailureAt";
     DEFAULT_STREAM_TIMEOUT_MS = 9e5;
@@ -65998,6 +66036,18 @@ var init_terminal_result = __esm({
 });
 
 // src/lib/build-pricing.ts
+var build_pricing_exports = {};
+__export(build_pricing_exports, {
+  DEFAULT_BUILD_ECONOMICS: () => DEFAULT_BUILD_ECONOMICS,
+  classCostUsd: () => classCostUsd,
+  costPerCreditUsd: () => costPerCreditUsd,
+  creditsForCost: () => creditsForCost,
+  economicCeilingUsd: () => economicCeilingUsd,
+  estimateCredits: () => estimateCredits,
+  isBillableRecordedCall: () => isBillableRecordedCall,
+  priceRecordedCalls: () => priceRecordedCalls,
+  priceTurnCost: () => priceTurnCost
+});
 function costPerCreditUsd(e) {
   const m = Math.min(99, Math.max(0, e.targetMarginPct));
   return e.revenuePerCreditUsd * (1 - m / 100);
@@ -66040,6 +66090,20 @@ function estimateCredits(classCostUsd2, e) {
 function classCostUsd(measuredP90, defaultUsd) {
   return measuredP90 != null && measuredP90 > 0 ? { usd: measuredP90, basis: "measured_p90" } : { usd: defaultUsd, basis: "default" };
 }
+function isBillableRecordedCall(r) {
+  return r.stage !== "after";
+}
+function priceRecordedCalls(rows, e, fallbackEstimateUsd) {
+  const billable = rows.filter(isBillableRecordedCall);
+  const calls = billable.map((r) => {
+    if (r.cost_usd_micro == null) {
+      if (r.status != null && r.status >= 400) return { costUsd: 0, basis: "actual" };
+      return { costUsd: null, basis: "unknown" };
+    }
+    return { costUsd: Number(r.cost_usd_micro) / 1e6, basis: r.cost_basis === "actual" ? "actual" : "estimated" };
+  });
+  return { ...priceTurnCost(calls, e, fallbackEstimateUsd), billableCalls: billable.length, overheadCalls: rows.length - billable.length };
+}
 var DEFAULT_BUILD_ECONOMICS;
 var init_build_pricing = __esm({
   "src/lib/build-pricing.ts"() {
@@ -66047,7 +66111,7 @@ var init_build_pricing = __esm({
     DEFAULT_BUILD_ECONOMICS = {
       revenuePerCreditUsd: 0.13,
       targetMarginPct: 80,
-      minChargeCredits: 0.05,
+      minChargeCredits: 0.3,
       roundingStep: 0.01,
       reservationHeadroom: 3
     };
@@ -146429,6 +146493,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -180965,7 +181030,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           ...agentLoopUsages
         ];
         const { buildEconomics: buildEconomics2 } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
-        const priced = priceTurnCost(
+        let priced = priceTurnCost(
           turnUsages.filter((u) => !!u).map(turnCallCost),
           await buildEconomics2(),
           buildReservation?.classCostUsd ?? 0
@@ -181134,6 +181199,21 @@ ${summary}` })));
             `[credits] no-op edit turn not billed project=${body.projectId ?? "none"} unapplied=${unappliedPaths.length}`
           );
         }
+        let settledFrom = "memory";
+        let billableCalls = null;
+        if (logicalTurnId) {
+          const { flushCostWrites: flushCostWrites2, readTurnCallCosts: readTurnCallCosts2 } = await Promise.resolve().then(() => (init_ai_provider_server(), ai_provider_server_exports));
+          const flushed = await flushCostWrites2();
+          if (flushed.timedOut) console.warn(`[credits] cost writes still pending at settlement: ${flushed.pending}`);
+          const rows = await readTurnCallCosts2(logicalTurnId);
+          if (rows && rows.length) {
+            const { priceRecordedCalls: priceRecordedCalls2 } = await Promise.resolve().then(() => (init_build_pricing(), build_pricing_exports));
+            const rp = priceRecordedCalls2(rows, await buildEconomics2(), buildReservation?.classCostUsd ?? 0);
+            priced = rp;
+            billableCalls = rp.billableCalls;
+            settledFrom = "recorded";
+          }
+        }
         if (!body.isAutoFix && !failedEditTurn) {
           const finalBalance = buildReservation?.ok ? { ok: true } : await agentIO().checkBalance(userId, priced.amount);
           if (!finalBalance.ok && finalBalance.reason === "insufficient_credits" && body.projectId && logicalTurnId) {
@@ -181168,6 +181248,8 @@ ${summary}` })));
                 cost_basis: priced.basis,
                 cost_usd: priced.costUsd,
                 unknown_calls: priced.unknownCalls,
+                cost_source: settledFrom,
+                billable_calls: billableCalls,
                 estimated_credits: buildReservation?.estimated ?? null,
                 reserved_credits: buildReservation?.reserved ?? null,
                 model,

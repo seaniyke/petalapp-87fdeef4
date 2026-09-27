@@ -537,7 +537,51 @@ function usageColumns(u: ParsedUsage, model: string | null): Record<string, unkn
   return cols;
 }
 
-async function recordTelemetry(
+/**
+ * Durable cost writes still in flight (row inserts, stream usage, backfills).
+ * Settlement flushes these first so the final AI step is always on record
+ * before the charge is priced from the database.
+ */
+const pendingCostWrites = new Set<Promise<unknown>>();
+export function trackCostWrite<T>(p: Promise<T>): Promise<T> {
+  pendingCostWrites.add(p);
+  p.then(() => pendingCostWrites.delete(p), () => pendingCostWrites.delete(p));
+  return p;
+}
+/** Wait until every in-flight cost write has landed (new ones included). */
+export async function flushCostWrites(timeoutMs = 20_000): Promise<{ timedOut: boolean; pending: number }> {
+  const deadline = Date.now() + timeoutMs;
+  while (pendingCostWrites.size > 0) {
+    const left = deadline - Date.now();
+    if (left <= 0) return { timedOut: true, pending: pendingCostWrites.size };
+    await Promise.race([
+      Promise.allSettled([...pendingCostWrites]),
+      new Promise((r) => setTimeout(r, left)),
+    ]);
+  }
+  return { timedOut: false, pending: 0 };
+}
+/** Every AI call durably recorded for a turn (the settlement's cost source). */
+export async function readTurnCallCosts(turnId: string): Promise<import("@/lib/build-pricing").RecordedCall[] | null> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("ai_call_log")
+      .select("id, stage, call_kind, status, cost_usd_micro, cost_basis")
+      .eq("turn_id", turnId)
+      .order("created_at", { ascending: true });
+    if (error) return null;
+    return (data ?? []) as never;
+  } catch {
+    return null;
+  }
+}
+
+function recordTelemetry(...a: Parameters<typeof recordTelemetryInner>): Promise<string | null> {
+  return trackCostWrite(recordTelemetryInner(...a));
+}
+
+async function recordTelemetryInner(
   args: TelemetryArgs & {
     usage?: ParsedUsage | null;
     requestId?: string | null;
@@ -778,7 +822,7 @@ function meterStream(
         const { value, done } = await reader.read();
         if (done) {
           ctrl.close();
-          void finish("completed", null);
+          void trackCostWrite(finish("completed", null));
           return;
         }
         ctrl.enqueue(value);
@@ -787,7 +831,7 @@ function meterStream(
         buf = lines.pop() ?? "";
         for (const l of lines) scan(l);
       } catch (err) {
-        void finish("errored", null);
+        void trackCostWrite(finish("errored", null));
         ctrl.error(err);
       }
     },
@@ -795,7 +839,7 @@ function meterStream(
       // relayAndCollect cancels with "stall:<ms>" when the provider stops
       // making progress; record that so a dead-provider wait is visible.
       const m = /^stall:(\d+)/.exec(String(reason ?? ""));
-      void finish(m ? "stalled" : "cancelled", m ? Number(m[1]) : null);
+      void trackCostWrite(finish(m ? "stalled" : "cancelled", m ? Number(m[1]) : null));
       try { await reader.cancel(reason); } catch { /* ignore */ }
     },
   });
@@ -832,7 +876,11 @@ export function streamDeltaHasOutput(delta: Record<string, unknown>): boolean {
  * `ai_call_log`, which makes it impossible to tell whether the model
  * actually generated content or returned a one-line refusal.
  */
-export async function updateLastCallUsage(args: {
+export function updateLastCallUsage(args: Parameters<typeof updateLastCallUsageInner>[0]): Promise<void> {
+  return trackCostWrite(updateLastCallUsageInner(args));
+}
+
+async function updateLastCallUsageInner(args: {
   feature: AiFeature;
   model: string | null;
   promptTokens: number | null;

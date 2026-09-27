@@ -65,9 +65,11 @@ export function toRow(e: CostEvent) {
 export async function recordCostEvents(events: CostEvent[]): Promise<void> {
   if (!events.length) return;
   try {
-    await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("cost_events" as never)
       .upsert(events.map(toRow) as never, { onConflict: "source_ref", ignoreDuplicates: true });
+    // supabase-js returns errors instead of throwing: never lose them silently.
+    if (error) console.warn("[cost-events] write failed", error.message);
   } catch (err) {
     console.warn("[cost-events] write failed", err);
   }
