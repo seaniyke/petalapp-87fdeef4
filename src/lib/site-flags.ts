@@ -31,3 +31,9 @@ export function isTargetEnabled(id: string | null | undefined): boolean {
       return true;
   }
 }
+
+/** Starter-kit files that belong to a paused build type (hidden from the engine). */
+export function isPausedKitPath(path: string): boolean {
+  if (!MOBILE_APPS_ENABLED && (path.startsWith("src/components/mobile/") || path === "src/components/examples/mobile-app-shell.tsx")) return true;
+  return false;
+}
