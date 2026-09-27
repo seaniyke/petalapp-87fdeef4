@@ -28,9 +28,10 @@ export const FIRST_BUILD_TOOL_NOTE =
   "create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need " +
   "information you do not already have, finish when done.\n" +
   "Batch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, " +
-  "a page with a local component only it imports, the router together with pages that already exist) may go in one " +
-  "response. Independent large files (separate pages) are separate units — write a unit, read the validation result, " +
-  "then write the next. Never batch a file with something it imports that has not been written and validated yet.\n";
+  "a page with a local component only it imports, the router with its pages) belong in one response. Pages that each " +
+  "stand alone on already-written shared modules may share a response too. Write shared modules before the files that " +
+  "import them; if a write fails validation, fix it before starting new work. Batch when it is coherent — neither " +
+  "one file per response nor everything at once is a goal in itself.\n";
 
 export interface FirstBuildDesign {
   /** Design-system package name, e.g. "Substrate". */
