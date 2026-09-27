@@ -114,7 +114,8 @@ import { renderAppSpecBlock } from "@/server/app-spec.server";
 import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/lib/prompt-limits";
 
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
-import { loadCoreKnowledge } from "@/server/agent-knowledge";
+import { loadCoreKnowledge, loadSkillKnowledge, loadColorGuide } from "@/server/agent-knowledge";
+import { assembleFirstBuildContext } from "@/server/engine/first-build-context";
 import { selectHistoryForGeneration } from "@/server/context/budget";
 import { renderLearningBlock } from "@/server/learning-injector.server";
 import { detectHighStakesIntent } from "@/lib/high-stakes-intent";
@@ -4684,9 +4685,63 @@ async function handleGenerateRequestCore(
                 ),
               (u) => { if (u) pageWriteUsages.push(u); },
             );
+            // Minimum sufficient context: tiered knowledge (always-on /
+            // task-conditional in the stable prefix, the rest retrievable
+            // as read-only knowledge/*.md). One source per rule; the design
+            // playbook rides in the brief only.
+            const fbContext = assembleFirstBuildContext({
+              knowledge: {
+                basePrompt: baseSystem,
+                manual: coreKnowledge.text,
+                skills: Object.fromEntries(
+                  (["copy-and-verify", "motion", "page-composition", "redesign-safety", "section-architectures"] as const).map((id) => [id, loadSkillKnowledge(id)]),
+                ),
+                extras: {
+                  "Design taste manual": designTasteBlock,
+                  "Kimble craft skills for this request": skillsBlock,
+                  "Colour guide": loadColorGuide(),
+                  "Request-specific reference snippets": dynamic.text,
+                  "Past learning": learningBlock,
+                },
+              },
+              subtype: detectedWebSubtype,
+              hasBackend: !!(backend || sharedBackend),
+              productContract: {
+                intent: intentBrief ? `### Canonical turn intent (HARD CONTRACT)\n${intentBrief}\nSatisfy this exact outcome; do not substitute a different feature, page, or product.` : "",
+                resolved: resolvedBlock,
+                grounding: groundingBlock,
+                pic: picBlock,
+                prd: prdBlock + prdScenarioBlock,
+                orchestration: orchestrationBlock,
+                architecture: renderArchitectureBlock(persistedArchitecture),
+                memory: memoryBlock,
+                knowledge: knowledgeBlock,
+                design: designBlock,
+                appShape: appShapeBlock,
+                mobile: mobileBlock,
+                game: gameBlock,
+                archetype: archetypeBlock,
+                heroContract: heroContractBlock,
+                highStakes: highStakesBlock,
+                backendGate: backendGateBlock,
+                intentActions: intentActions.promptBlock,
+              },
+              projectReference: {
+                buildTarget: buildTargetBlock,
+                capabilities: capabilitiesBlock,
+                backend: backendBlock,
+                sharedBackend: sharedBackendBlock,
+                schema: schemaBlock,
+                integrations: integrationsBlock,
+                blueprint: renderBuildBlueprintBlock(persistedBlueprint),
+              },
+              toolNote: FIRST_BUILD_TOOL_NOTE,
+            });
+            console.log(`[first-build-context] ${Object.entries(fbContext.parts).map(([k, v]) => `${k}=${v}`).join(" ")} onDemand=${fbContext.reference.length}`);
+            turnStrategy.firstBuildContext = { parts: fbContext.parts, tiers: fbContext.tiers };
             const done = await runToolLoop({
               goal: lastUserText,
-              system: systemTextOf(finalMessages) + FIRST_BUILD_TOOL_NOTE,
+              system: fbContext.system,
               brief: firstBuildBrief(
                 lastUserText,
                 planned as Array<{ route: string; file: string }>,
@@ -4711,7 +4766,8 @@ async function handleGenerateRequestCore(
               // The kit the commit applies, visible (read-only) to reads and
               // import validation so advertised modules actually resolve.
               reference: applyScaffoldKit([], { backend: backend ?? undefined, sharedBackend: sharedBackend ?? undefined, target: buildTarget.id })
-                .filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path)),
+                .filter((f) => f.path !== "src/App.tsx" && !f.path.startsWith("src/pages/") && !seedFiles.some((s) => s.path === f.path))
+                .concat(fbContext.reference),
               seedPaths: seedFiles.map((f) => f.path),
               callModel,
               // THE readiness authority: the exact proposed-tree transform and
