@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { KIT_FILES } from "@/server/scaffold-kit";
-import { isScaffoldOwned, scaffoldOwnershipReason } from "@/server/scaffold-ownership.server";
+import { isScaffoldOwnedPath, scaffoldOwnershipReason } from "@/server/scaffold-ownership.server";
 import { renderTemplateMetadataSection, templateContract } from "@/server/engine/template-contract";
 import { CORRECTNESS_RULES, firstBuildBrief } from "@/server/engine/first-build";
 
@@ -12,7 +12,7 @@ describe("template.json project contract", () => {
   });
 
   it("is scaffold-owned so the model cannot rewrite it", () => {
-    expect(isScaffoldOwned("template.json")).toBe(true);
+    expect(isScaffoldOwnedPath("template.json")).toBe(true);
     expect(scaffoldOwnershipReason("template.json")).toMatch(/never write it/);
   });
 
