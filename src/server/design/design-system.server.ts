@@ -15,7 +15,7 @@
  * whose colours and fonts come from the design system package.
  */
 
-import { resolveDefaultPackage, withPackageVisuals } from "@/server/design-systems/authority";
+import { resolveDefaultPackage, resolvePackageForIntent, withPackageVisuals } from "@/server/design-systems/authority";
 import type {
   PicDesignSystem,
   PicUnderstanding,
@@ -117,8 +117,11 @@ export function deterministicDesignSystem(
     source: "deterministic",
   };
   // Colours, typography and radii always come from the design system package.
-  const def = resolveDefaultPackage();
+  // Which package + accent is a deterministic read of the brief, so a bakery
+  // gets warm terracotta and a clinic gets clinical blue without an AI call.
+  const def = resolvePackageForIntent(_brief) ?? resolveDefaultPackage();
   return def ? withPackageVisuals(base, def.pkg, def.accent) : base;
+
 }
 
 /**

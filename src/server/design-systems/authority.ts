@@ -19,12 +19,56 @@ export interface PackageSelection {
   accent: string;
 }
 
+/** The house style. Every project starts here unless the brief says otherwise. */
+export const DEFAULT_PACKAGE_SLUG = "substrate";
+
 /** The installed package every new project starts on. Deterministic. */
 export function resolveDefaultPackage(): { pkg: DesignSystemPackage; accent: string } | null {
   const all = listDesignSystems().sort((a, b) => a.meta.slug.localeCompare(b.meta.slug));
-  const pkg = all[0];
+  const pkg = all.find((p) => p.meta.slug === DEFAULT_PACKAGE_SLUG) ?? all[0];
   return pkg ? { pkg, accent: pkg.meta.default_accent } : null;
 }
+
+/**
+ * Deterministic package + accent for a brief. No AI: a keyword match against
+ * the request decides the house style's accent, and only an explicitly dark /
+ * luxury / editorial brief moves off the house style altogether.
+ *
+ * Order matters — the first matching rule wins, so the list is ordered from
+ * most specific ("wine bar") to most general ("shop").
+ */
+const ACCENT_RULES: Array<{ accent: string; re: RegExp }> = [
+  { accent: "terracotta", re: /\b(bakery|baker|bread|pastr|patisserie|cafe|caf\u00e9|coffee|restaurant|bistro|diner|kitchen|catering|deli|pizzeria|brunch|butcher|grocer)\w*/i },
+  { accent: "emerald", re: /\b(sustainab|organic|garden|recycl|solar|environment|outdoor|hiking|wellness|yoga|fitness|nursery|landscap)\w*/i },
+  { accent: "blue", re: /\b(clinic|hospital|health|medical|dental|doctor|patient|pharmac|bank|finance|insurance|legal|accounting|logistics|school|university|government|enterprise)\w*/i },
+  { accent: "ruby", re: /\b(wine|whisky|whiskey|spirits|jewel|fashion|boutique|salon|beauty|luxur|couture|perfume)\w*/i },
+  { accent: "mono", re: /\b(portfolio|architect|gallery|photograph|minimalist|editorial|magazine|journal)\w*/i },
+  { accent: "indigo", re: /\b(saas|dashboard|analytic|platform|developer|software|crm|startup|workspace|automation)\w*/i },
+
+];
+
+const DARK_EDITORIAL = /\b(luxur|couture|fine dining|michelin|whisky|whiskey|spirits|cinematic|noir|dark mode only|dark[- ]first|high[- ]end|premium brand|gallery|architect|photograph)\w*/i;
+
+export function resolvePackageForIntent(brief: string | null | undefined): { pkg: DesignSystemPackage; accent: string } | null {
+  const text = (brief ?? "").slice(0, 4000);
+  const installed = listDesignSystems();
+  const byslug = (slug: string) => installed.find((p) => p.meta.slug === slug) ?? null;
+
+  if (text && DARK_EDITORIAL.test(text)) {
+    const obsidian = byslug("obsidian");
+    if (obsidian) {
+      const accent = /\b(gold|luxur|whisky|whiskey|spirits|fine dining|michelin)\b/i.test(text) ? "gold" : "platinum";
+      return { pkg: obsidian, accent: obsidian.accents[accent] ? accent : obsidian.meta.default_accent };
+    }
+  }
+
+  const house = byslug(DEFAULT_PACKAGE_SLUG);
+  if (!house) return resolveDefaultPackage();
+  const hit = text ? ACCENT_RULES.find((r) => r.re.test(text)) : undefined;
+  const accent = hit && house.accents[hit.accent] ? hit.accent : house.meta.default_accent;
+  return { pkg: house, accent };
+}
+
 
 /** A selection is usable only when the package is installed and the accent belongs to it. */
 export function resolveSelection(sel: PackageSelection | null | undefined): { pkg: DesignSystemPackage; accent: string } | null {

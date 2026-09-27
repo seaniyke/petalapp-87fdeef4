@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "obsidian",
+  "name": "Obsidian",
+  "description": "Dark-first editorial luxury: near-black surfaces, a high-contrast serif display face, wide letter-spaced labels, hairline rules and almost no elevation.",
+  "when_to_use": "Only when the brief calls for luxury, fashion, fine dining, spirits, architecture, photography, a portfolio, or a deliberately dark developer/product brand.",
+  "version": "1.0.0",
+  "default_accent": "platinum",
+  "accents": ["platinum", "gold", "crimson"],
+  "capabilities": ["dark", "light", "motion", "serif-display", "editorial"],
+  "token_categories": ["color", "typography", "radius", "shadow", "motion", "spacing"],
+  "fonts": ["Instrument Serif", "Plus Jakarta Sans"],
+  "has_components": false
+}

@@ -5,8 +5,9 @@
  */
 import { describe, expect, it } from "vitest";
 import { getDesignSystem } from "@/server/design-systems/registry";
-import { TOKENS_START, FONTS_START } from "@/server/design-systems/apply";
-import { resolveDefaultPackage, applyPackageToTree, visualsFromPackage } from "@/server/design-systems/authority";
+import { TOKENS_START, FONTS_START, HTML_FONTS_START, HTML_FONTS_END } from "@/server/design-systems/apply";
+import { resolveDefaultPackage, resolvePackageForIntent, applyPackageToTree, visualsFromPackage } from "@/server/design-systems/authority";
+import { firstBuildBrief } from "@/server/engine/first-build";
 import { preserveDesignPackage, designSystemBlockFor } from "@/server/design-systems/context";
 import { rethemeProject, type RethemeDeps } from "@/server/design-systems/retheme";
 import { commitDesignSystem, renderDesignSystemBlock } from "@/server/design/design-system.server";
@@ -21,7 +22,7 @@ import { buildRevisionStatus } from "@/lib/build-revision";
 import type { PicDesignSystem, PicUnderstanding } from "@/server/pic/pic-types";
 import * as fs from "node:fs";
 
-const SLUG = "kimble-test-system";
+const SLUG = "substrate";
 const understanding = {
   summary: "", productType: "website", domain: "bakery", platforms: ["web"],
   surfaces: { marketing: true, application: false, admin: false }, firstVersion: [],
@@ -42,18 +43,18 @@ describe("registry", () => {
   it("has a real installed default package", () => {
     const def = resolveDefaultPackage();
     expect(def?.pkg.meta.slug).toBe(SLUG);
-    expect(def?.accent).toBe("lagoon");
+    expect(def?.accent).toBe("indigo");
   });
 });
 
 describe("A. initial generation", () => {
   it("selects package + accent, derives visuals from it, installs tokens and fonts", async () => {
     const design = await newProjectDesign();
-    expect(design.package).toEqual({ systemId: SLUG, accent: "lagoon" });
+    expect(design.package).toEqual({ systemId: SLUG, accent: "terracotta" });
     expect(design.source).toBe("package");
     const pkg = getDesignSystem(SLUG)!;
-    expect(design.colors.primary.light).toBe(pkg.accents.lagoon.light.primary);
-    expect(design.typography.displayFont).toBe("Sora");
+    expect(design.colors.primary.light).toBe(pkg.accents.terracotta.light.primary);
+    expect(design.typography.displayFont).toBe("Newsreader");
 
     const r = applyPackageToTree(scaffold(), design);
     expect(r.applied).toBe(true);
@@ -66,10 +67,10 @@ describe("A. initial generation", () => {
     const design = await newProjectDesign();
     const pkg = getDesignSystem(SLUG)!;
     const block = designSystemBlockFor(design);
-    expect(block).toContain("SELECTED DESIGN SYSTEM: Kimble Coastal");
+    expect(block).toContain("SELECTED DESIGN SYSTEM: Substrate");
     expect(block).toContain(pkg.designMd.trim().slice(0, 40));
-    expect(block).toContain("Accent: lagoon");
-    expect(block).not.toContain("oklch(0.975 0.006 190)");
+    expect(block).toContain("Accent: terracotta");
+    expect(block).not.toContain("oklch(0.985 0.004 85)");
 
     // No competing palette / font instructions elsewhere.
     const contract = renderDesignSystemBlock(design);
@@ -121,12 +122,12 @@ function store(design: PicDesignSystem) {
 describe("C. re-theme", () => {
   it("deterministic, snapshotted, new revision, build bound to it, old build stale", async () => {
     const { state, deps } = store(await newProjectDesign());
-    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "ember" });
+    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "indigo" });
     expect(r).toMatchObject({ ok: true, changed: true, revision: 4, built: true, changedPaths: ["src/styles.css"] });
     expect(state.snapshots).toBe(1);
     expect(state.builds).toEqual([4]);
-    expect(state.design.package?.accent).toBe("ember");
-    expect(state.design.colors.primary.light).toBe(getDesignSystem(SLUG)!.accents.ember.light.primary);
+    expect(state.design.package?.accent).toBe("indigo");
+    expect(state.design.colors.primary.light).toBe(getDesignSystem(SLUG)!.accents.indigo.light.primary);
     expect(buildRevisionStatus({ project_revision: 3 }, { revision: state.revision }).current).toBe(false);
     expect(buildRevisionStatus({ project_revision: 4 }, { revision: state.revision }).current).toBe(true);
   });
@@ -137,11 +138,11 @@ describe("D. failed application", () => {
     const { state, deps } = store(await newProjectDesign());
     state.files = state.files.map((f) => (f.path === "src/routes/__root.tsx" ? { ...f, content: "export {}" } : f));
     const before = JSON.stringify(state.files);
-    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "ember" });
+    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "indigo" });
     expect(r).toMatchObject({ ok: false, stage: "apply" });
     expect(JSON.stringify(state.files)).toBe(before);
     expect(state.revision).toBe(3);
-    expect(state.design.package?.accent).toBe("lagoon");
+    expect(state.design.package?.accent).toBe("terracotta");
     expect(state.builds).toEqual([]);
     expect(state.snapshots).toBe(0);
     expect(state.charges).toBe(0);
@@ -151,7 +152,7 @@ describe("D. failed application", () => {
 describe("E. identical reapply", () => {
   it("changed=false, no revision, no build", async () => {
     const { state, deps } = store(await newProjectDesign());
-    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "lagoon" });
+    const r = await rethemeProject(deps, { projectId: "p", systemId: SLUG, accent: "terracotta" });
     expect(r).toMatchObject({ ok: true, changed: false, revision: null, built: false });
     expect(state.revision).toBe(3);
     expect(state.builds).toEqual([]);
@@ -232,7 +233,85 @@ describe("no legacy authority remains", () => {
     expect(gen).toContain("packageOwnsVisuals");
   });
   it("visuals come only from the package", () => {
-    const v = visualsFromPackage(getDesignSystem(SLUG)!, "ember");
-    expect(v.package).toEqual({ systemId: SLUG, accent: "ember" });
+    const v = visualsFromPackage(getDesignSystem(SLUG)!, "indigo");
+    expect(v.package).toEqual({ systemId: SLUG, accent: "indigo" });
+  });
+});
+
+describe("Vite SPA projects (no __root.tsx)", () => {
+  const spa = () => [
+    { path: "index.html", content: '<!doctype html>\n<html>\n  <head><title>App</title></head>\n  <body><div id="root"></div></body>\n</html>\n' },
+    { path: "src/styles.css", content: '@import "tailwindcss";\n\n:root { --background: white; }\n' },
+  ];
+
+  it("installs fonts into index.html and tokens into the stylesheet", async () => {
+    const design = await newProjectDesign();
+    const r = applyPackageToTree(spa(), design);
+    expect(r.applied).toBe(true);
+    const html = r.files.find((f) => f.path === "index.html")!.content;
+    expect(html).toContain(HTML_FONTS_START);
+    expect(html).toContain(HTML_FONTS_END);
+    expect(html).toContain("fonts.googleapis.com");
+    expect(html.indexOf(HTML_FONTS_START)).toBeLessThan(html.indexOf("</head>"));
+    expect(r.files.find((f) => f.path === "src/styles.css")!.content).toContain(TOKENS_START);
+  });
+
+  it("is idempotent — a second apply changes nothing", async () => {
+    const design = await newProjectDesign();
+    const once = applyPackageToTree(spa(), design);
+    const twice = applyPackageToTree(once.files, design);
+    expect(twice.applied).toBe(true);
+    if (twice.applied) expect(twice.changedPaths).toEqual([]);
+    expect(JSON.stringify(twice.files)).toBe(JSON.stringify(once.files));
+  });
+});
+
+describe("package selection follows the brief", () => {
+  const cases: Array<[string, string, string]> = [
+    ["Build a 4-page website for a bakery called Crumb & Co", "substrate", "terracotta"],
+    ["A patient and appointment system for a hospital", "substrate", "blue"],
+    ["A SaaS analytics dashboard for developers", "substrate", "indigo"],
+    ["An organic vegetable box subscription", "substrate", "emerald"],
+    ["A photography portfolio with a dark editorial feel", "obsidian", "platinum"],
+    ["A fine dining restaurant with a luxury whisky list", "obsidian", "gold"],
+  ];
+  for (const [brief, slug, accent] of cases) {
+    it(`${slug}/${accent} for "${brief.slice(0, 32)}…"`, () => {
+      const sel = resolvePackageForIntent(brief);
+      expect(sel?.pkg.meta.slug).toBe(slug);
+      expect(sel?.accent).toBe(accent);
+    });
+  }
+
+  it("falls back to the house style when nothing matches", () => {
+    const sel = resolvePackageForIntent("something entirely unremarkable");
+    expect(sel?.pkg.meta.slug).toBe("substrate");
+    expect(sel?.accent).toBe("indigo");
+  });
+});
+
+describe("first-build brief carries the design contract", () => {
+  it("names the system, bans raw colours and states composition rules", async () => {
+    const pkg = getDesignSystem("substrate")!;
+    const brief = firstBuildBrief("a bakery site", [{ route: "/", file: "src/pages/Home.tsx" }], [], {
+      name: pkg.meta.name,
+      accent: "terracotta",
+      displayFont: "Newsreader",
+      bodyFont: "Geist",
+      playbook: pkg.designMd,
+    });
+    expect(brief).toContain("Substrate");
+    expect(brief).toContain("terracotta");
+    expect(brief).toContain("bg-primary text-primary-foreground");
+    expect(brief).toMatch(/never write a hex colour/i);
+    expect(brief).toContain("Never place three grid-shaped sections in a row");
+    expect(brief).toContain("py-16 md:py-24");
+    expect(brief).toContain("supercharge");
+  });
+
+  it("stays usable with no package selected", () => {
+    const brief = firstBuildBrief("x", [{ route: "/", file: "src/pages/Home.tsx" }], [], null);
+    expect(brief).toContain("Composition");
+    expect(brief).not.toContain("Design system:");
   });
 });

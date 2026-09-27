@@ -64,7 +64,7 @@ describe("design system contract", () => {
   it("renders an enforceable prompt block", () => {
     const block = renderDesignSystemBlock(ds);
     // Package projects: structure-only contract; colours/fonts live in the package block.
-    expect(ds.package?.systemId).toBe("kimble-test-system");
+    expect(ds.package?.systemId).toBe("substrate");
     expect(block).toContain("DESIGN CONTRACT — STRUCTURE");
     expect(block).not.toMatch(/oklch/);
     expect(block).toContain("Empty states:");
@@ -76,7 +76,7 @@ describe("design system contract", () => {
     expect(committed.direction).toBe(direction.vibe);
     // The director owns composition; fonts/colours come from the package.
     expect(committed.source).toBe("package");
-    expect(committed.typography.displayFont).toBe("Sora");
+    expect(committed.typography.displayFont).toBe("Newsreader");
     expect(committed.imagery).toContain(direction.design_moves[0]);
   });
 
