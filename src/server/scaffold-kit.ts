@@ -4587,7 +4587,7 @@ export function markKitFileCustomized(path: string, content: string): string {
   return `// ${PETAL_CUSTOMIZED_MARKER} — customized for this project; kit refreshes will not overwrite it.\n${content}`;
 }
 
-const IMAGE_REF_RE = /petal-image:\/\/[^\s"'`<>)]+|https?:\/\/[^\s"'`<>)]+/g;
+const IMAGE_REF_RE = /petal-image:\/\/[^\s"'`<>)]+|https?:\/\/[^\s"'`<>)]+|data:image\/[^\s"'`<>)]+/g;
 /** True when two kit copies differ only by picture placeholders vs filled pictures. */
 export function sameKitModuloResolvedImages(kitContent: string, existing: string): boolean {
   if (kitContent === existing) return false;
@@ -4609,7 +4609,9 @@ function shouldOverwriteDuringPatch(path: string): boolean {
     path === "tsconfig.json" ||
     path === "src/lib/utils.ts" ||
     path.startsWith("src/components/ui/") ||
-    path.startsWith("src/components/examples/") ||
+    // Example files are read-only reference patterns: never overwritten on
+    // edit turns. Overwriting them re-opened resolved picture slots and
+    // produced phantom file writes the AI never made.
     path.startsWith("src/integrations/backend/")
   );
 }
