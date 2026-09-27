@@ -708,13 +708,28 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       if (c !== undefined) record(p, c, await validate(p, c));
     }
   };
+  /**
+   * Readiness of the CURRENT workspace, computed once per distinct tree. The
+   * verdict is pushed to the model after every write step, so it never has
+   * to re-read files to check what Kimble has already verified; finish reuses
+   * the same verdict when nothing changed since.
+   */
+  let readinessSig = "";
+  const treeSig = () => [...tree].map(([p, c]) => `${p}:${hash(c)}`).sort().join("|");
+  const readinessNow = async (): Promise<Readiness> => {
+    const sig = treeSig();
+    if (state.readiness && sig === readinessSig) return state.readiness;
+    state.readiness = await checkReadiness(tree);
+    readinessSig = sig;
+    return state.readiness;
+  };
   /** Finish gate: loop-local gaps + the ONE readiness authority. */
   const finishGate = async (): Promise<string | null> => {
     await refreshEvidence();
     const gaps = completionGaps(state, tree);
-    state.readiness = await checkReadiness(tree);
-    if (!gaps.length && state.readiness.ready) return null;
-    return formatNotReady(gaps, state.readiness.findings);
+    const r = await readinessNow();
+    if (!gaps.length && r.ready) return null;
+    return formatNotReady(gaps, r.findings);
   };
 
   const validate = async (path: string, content: string): Promise<string[]> => {
@@ -1028,6 +1043,20 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         const healedNew = [...new Set(state.written.slice(writesBefore))].filter((p) => !before.errors.has(p) && (state.validation.get(p) ?? []).length === 0);
         const nowValid = [...new Set([...healed, ...healedNew])].filter((p) => actions.some((a) => a.path === p && a.isError));
         if (nowValid.length) messages.push({ role: "user", content: `Now valid after the rest of this response landed: ${nowValid.join(", ")}.` });
+      }
+
+      // Workspace verdict after every write step: the same readiness authority
+      // finish and commit use. Everything it does not list is verified, so the
+      // model never spends a turn re-reading files to check its own work.
+      const stepWrote = state.written.length > writesBefore;
+      if (stepWrote && !reply.toolCalls.some((c) => c.function.name === "finish") && completionGaps(state, tree).length === 0) {
+        const r = await readinessNow();
+        messages.push({
+          role: "user",
+          content: r.ready
+            ? "Kimble verification (the exact checks finish and the save run) passes for the whole workspace: every file, import, export and required route is verified. Do not re-read files to check them. Call finish now unless the brief still asks for something not yet built."
+            : `Kimble verification of the whole workspace (the exact checks finish runs) — still open:\n${r.findings.slice(0, 8).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}\nEverything not listed is already verified; do not re-read files to check it. Continue with the open items.`,
+        });
       }
 
       // Periodic broader type check, fed back into the same conversation.

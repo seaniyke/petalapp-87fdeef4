@@ -232,7 +232,7 @@ export function renderStarterKitMap(): string {
       for (const f of files) {
         const name = f.path.slice(area.dir.length).replace(/\.tsx?$/, "");
         const api = kitFileApi(f.content);
-        const doc = area.dir.endsWith("/ui/") ? "" : firstDocSentence(f.content);
+        const doc = firstDocSentence(f.content);
         lines.push(`- ${name}${api.exports.length ? ` {${api.exports.join(", ")}}` : ""}${doc ? ` — ${doc}` : ""}`);
         if (api.types.length) lines.push(`    ${api.types.join("; ")}`);
       }
