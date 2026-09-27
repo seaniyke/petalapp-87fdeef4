@@ -64,6 +64,10 @@ export const SCAFFOLD_OWNED_PATHS = new Set([
   "src/hooks/use-query-state.ts",
   "src/hooks/use-scroll-scene.ts",
   "package.json",
+  // Webby parity: the project contract is read-only. The model reads it to
+  // learn the real directory layout, UI kit and icon set; rewriting it would
+  // let a hallucinated structure become "authoritative".
+  "template.json",
 ]);
 
 /**
@@ -120,6 +124,9 @@ export function scaffoldOwnershipReason(path: string): string {
   }
   if (path === "vite.config.ts" || path === "tsconfig.json") {
     return `${path} is build configuration owned by the Kimble scaffold`;
+  }
+  if (path === "template.json") {
+    return "template.json describes the scaffold you are building into — read it, never write it";
   }
   if (path === "src/lib/utils.ts") {
     return "src/lib/utils.ts is part of the UI kit contract";
