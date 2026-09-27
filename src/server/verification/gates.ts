@@ -135,7 +135,7 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
   // First builds must ship the shared frame (routed App with nav + footer).
   // Previously a separate post-commit check in /api/generate; now one gate.
   if (opts.requireShell && !frameIsComplete(files, requestedRoutes.length)) {
-    reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation and footer)");
+    reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation, and a footer or sidebar frame)");
     bad.push("src/App.tsx");
   }
   const completeness = assessCompleteness({ requestedRoutes, files });
