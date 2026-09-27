@@ -116,7 +116,7 @@ import { MAX_USER_PROMPT_HARD_CEILING_CHARS, promptExceedsHardCeiling } from "@/
 import { findAntiSamenessIssues } from "@/server/anti-sameness.server";
 import { loadCoreKnowledge, loadSkillKnowledge, loadColorGuide } from "@/server/agent-knowledge";
 import { assembleFirstBuildContext } from "@/server/engine/first-build-context";
-import { createTelemetrySink, summarizeExecution } from "@/server/engine/loop-telemetry";
+import { createTelemetrySink, runWithExecutionSummary, takeExecutionSummary } from "@/server/engine/loop-telemetry";
 import type { CallTrace } from "@/server/engine/tool-loop";
 import { selectHistoryForGeneration } from "@/server/context/budget";
 import { renderLearningBlock } from "@/server/learning-injector.server";
@@ -4749,7 +4749,18 @@ async function handleGenerateRequestCore(
             });
             console.log(`[first-build-context] ${Object.entries(fbContext.parts).map(([k, v]) => `${k}=${v}`).join(" ")} onDemand=${fbContext.reference.length}`);
             turnStrategy.firstBuildContext = { parts: fbContext.parts, tiers: fbContext.tiers };
-            const done = await runToolLoop({
+            // One finalization path: the summary is built on every terminal state.
+            const done = await runWithExecutionSummary({
+              turnId: logicalTurnId ?? null,
+              traces: loopTraces,
+              turnStartedAt: setupStartedAt,
+              stages: stageMarks,
+              telemetry,
+              onSummary: (s) => {
+                turnStrategy.executionSummary = s;
+                if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
+              },
+            }, async () => runToolLoop({
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
@@ -4849,16 +4860,8 @@ async function handleGenerateRequestCore(
               onEvent: (e) => {
                 if (e.kind === "status") controller.enqueue(encoder.encode(sse({ type: "status", message: e.detail ?? "" })));
               },
-            });
-            await telemetry.flush();
+            }));
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
-            turnStrategy.executionSummary = summarizeExecution(loopTraces, {
-              turnStartedAt: setupStartedAt,
-              turnEndedAt: Date.now(),
-              stages: stageMarks,
-              telemetry: { persisted: telemetry.persisted, failed: telemetry.failures.length },
-            });
-            if (telemetry.failures.length) turnStrategy.telemetryFailures = telemetry.failures.slice(0, 20);
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
             if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
@@ -7265,6 +7268,8 @@ async function handleGenerateRequestCore(
           plannedPages: firstBuildPlan?.pages.length ?? 0,
           escalations: turnEscalations,
         });
+        // The summary already rides on turnStrategy here; release the hand-off entry.
+        if (turnStrategy.executionSummary) takeExecutionSummary(logicalTurnId);
         void agentIO().recordEconomics({
           execution: {
             class: turnComplexity.class,
@@ -8258,6 +8263,8 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
                 terminal_status: terminalStatus,
                 failure_reason: terminalError?.slice(0, 300) ?? null,
                 failure_origin: terminalError ? classifyFailureOrigin(new Error(terminalError)) : null,
+                // Build-level summary of the partial execution (same builder as success).
+                execution_summary: takeExecutionSummary(recorder.turnId),
                 customer_charge: 0,
               },
             })

@@ -167,6 +167,35 @@ export function madeProgress(before: EvidenceSnapshot, state: ToolLoopState, tre
 }
 
 /** One concise corrective signal from the recent trajectory. */
+export const EXPLORATION_DRIFT_SIGNAL =
+  "You have enough context to begin the current work unit. Stop exploring unrelated files and directories — the " +
+  "starter-kit map already lists what exists. Create the next valid artifact now (the shared layout or the next page), " +
+  "then let it validate.";
+
+/** Area of a path for relevance: its directory (knowledge docs are one area each). */
+function areaOf(p: string): string {
+  if (p.startsWith("knowledge/")) return p;
+  const i = p.lastIndexOf("/");
+  return i > 0 ? p.slice(0, i) : "/";
+}
+
+/**
+ * Deterministic drift test for one idle step. `explored` accumulates the areas
+ * seen during the current idle streak. Drift = on a second-or-later idle step,
+ * the agent re-lists / reads missing paths, or widens into areas it had not
+ * touched earlier in the streak (not narrowing toward one work unit). Returns
+ * the corrective signal, or null. No read-count threshold.
+ */
+export function detectExplorationDrift(explored: Set<string>, actions: ActionRecord[], idleStep: number): string | null {
+  const inspect = actions.filter((a) => a.tool === "read_file" || a.tool === "list_files" || a.tool === "search");
+  if (!inspect.length || actions.some((a) => a.tool === "create_file" || a.tool === "edit_file")) return null;
+  const areas = inspect.map((a) => (a.tool === "list_files" ? `list:${a.path ?? ""}` : areaOf(a.path ?? "")));
+  const wasted = inspect.some((a) => a.miss || (a.tool === "list_files" && a.isError));
+  const widened = explored.size > 0 && areas.some((x) => !explored.has(x));
+  for (const x of areas) explored.add(x);
+  return idleStep >= 2 && (wasted || widened) ? EXPLORATION_DRIFT_SIGNAL : null;
+}
+
 export function diagnoseTrajectory(recent: ActionRecord[]): string {
   const misses = [...new Set(recent.filter((a) => a.miss && a.path).map((a) => a.path!))];
   const counts = new Map<string, { n: number; a: ActionRecord }>();
@@ -644,6 +673,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   ];
 
   let validationMs = 0;
+  /** list_files prefix → workspace signature when it was last listed. */
+  const listed = new Map<string, string>();
 
   const record = (path: string, content: string, errs: string[]) => {
     state.validation.set(path, errs);
@@ -781,6 +812,13 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       }
       case "list_files": {
         const prefix = normPath(a.prefix);
+        // Re-listing the same directory with no workspace change in between
+        // tells the model nothing new; say so instead of repeating it.
+        const sig = `${tree.size}:${state.written.length}`;
+        if (listed.get(prefix) === sig) {
+          return { output: `Unchanged since you listed "${prefix || "/"}" earlier — nothing new. Use that listing and the starter-kit map; start the current work unit.`, isError: true };
+        }
+        listed.set(prefix, sig);
         const list = visiblePaths().filter((p) => p.startsWith(prefix)).sort();
         return { output: clip(list.join("\n") || "(no files)", cfg.maxToolOutput), isError: false };
       }
@@ -927,6 +965,9 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   let idle = 0;
   let corrected = false;
   const recent: ActionRecord[] = [];
+  /** Areas (directories) inspected during the current idle streak. */
+  const explored = new Set<string>();
+  let driftSignalled = false;
 
   while (state.iteration < hardCeiling) {
     if (args.signal?.aborted) {
@@ -1068,6 +1109,21 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       if (progress) {
         idle = 0;
         corrected = false;
+        explored.clear();
+        driftSignalled = false;
+      } else {
+        // Exploratory drift: an idle streak that keeps widening into new
+        // areas (or re-lists / misses) instead of narrowing to a work unit.
+        // Separate from — and earlier than — the no-progress stop, which is unchanged.
+        const drift = detectExplorationDrift(explored, actions, idle + 1);
+        if (drift && !driftSignalled) {
+          driftSignalled = true;
+          emit({ kind: "exploration_drift", detail: drift });
+          messages.push({ role: "user", content: drift });
+        }
+      }
+      if (progress) {
+        /* reset above */
       } else if (++idle >= cfg.noProgressLimit + (corrected ? cfg.noProgressRecovery : 0)) {
         if (!corrected) {
           corrected = true;

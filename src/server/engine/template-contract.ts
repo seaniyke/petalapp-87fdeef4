@@ -80,6 +80,73 @@ export function renderTemplateMetadataSection(): string {
     Object.values(examples)
       .map((e) => `- ${e}`)
       .join("\n") +
-    `\n`
+    `\n` +
+    renderStarterKitMap()
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Compact starter-kit map (what exists, where, what for)              */
+/* ------------------------------------------------------------------ */
+
+/** Kit areas worth mapping for web builds, in the order a page is assembled. */
+const MAP_AREAS: Array<{ dir: string; label: string; purpose: boolean }> = [
+  { dir: "src/components/blocks/", label: "Page sections (blocks)", purpose: true },
+  { dir: "src/components/motion/", label: "Motion", purpose: true },
+  { dir: "src/components/fx/", label: "Visual effects", purpose: false },
+  { dir: "src/components/content/", label: "Content", purpose: false },
+  { dir: "src/components/image/", label: "Images", purpose: false },
+  { dir: "src/components/scroll/", label: "Scroll", purpose: false },
+  { dir: "src/components/examples/", label: "Full reference examples (copy patterns from, do not import)", purpose: false },
+];
+
+function firstDocSentence(src: string): string {
+  const m = src.match(/\/\*\*([\s\S]*?)\*\//);
+  if (!m) return "";
+  const text = m[1]!.split("\n").map((l) => l.replace(/^\s*\*\s?/, "").trim()).filter((l) => l && !l.startsWith("@")).join(" ");
+  const s = text.split(/(?<=\.)\s/)[0] ?? text;
+  return s.length > 90 ? `${s.slice(0, 87)}…` : s;
+}
+
+function exportedNames(src: string): string[] {
+  const out = new Set<string>();
+  for (const m of src.matchAll(/export\s+(?:default\s+)?(?:function|const|class)\s+([A-Z][A-Za-z0-9]*)/g)) out.add(m[1]!);
+  for (const m of src.matchAll(/export\s*\{([^}]+)\}/g)) {
+    for (const part of m[1]!.split(",")) {
+      const n = part.trim().split(/\s+as\s+/).pop()!.trim();
+      if (/^[A-Z]/.test(n)) out.add(n);
+    }
+  }
+  return [...out].slice(0, 4);
+}
+
+/**
+ * Deterministic map of the starter kit, derived from the files actually
+ * shipped: path, exported components, one-line purpose. Lets the model pick a
+ * primitive and read exactly that file — instead of discovering the kit with
+ * repeated listings. No file contents are included.
+ */
+export function renderStarterKitMap(): string {
+  const lines: string[] = [];
+  for (const area of MAP_AREAS) {
+    const files = KIT_FILES.filter((f) => f.path.startsWith(area.dir) && /\.tsx?$/.test(f.path)).sort((a, b) => a.path.localeCompare(b.path));
+    if (!files.length) continue;
+    lines.push(`${area.label} — ${area.dir.replace(/^src\//, "@/").replace(/\/$/, "")}:`);
+    if (area.purpose) {
+      for (const f of files) {
+        const name = f.path.slice(area.dir.length).replace(/\.tsx?$/, "");
+        const ex = exportedNames(f.content);
+        const doc = firstDocSentence(f.content);
+        lines.push(`- ${name}${ex.length ? ` {${ex.join(", ")}}` : ""}${doc ? ` — ${doc}` : ""}`);
+      }
+    } else {
+      lines.push(files.map((f) => f.path.slice(area.dir.length).replace(/\.tsx?$/, "")).join(", "));
+    }
+  }
+  if (!lines.length) return "";
+  return (
+    `\n### Starter-kit map (authoritative — do not list directories to discover it)\n` +
+    `Everything below already exists. Choose what the current work unit needs, then read only that exact file ` +
+    `if you need its props.\n${lines.join("\n")}\n`
   );
 }

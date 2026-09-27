@@ -27,8 +27,11 @@ export const FIRST_BUILD_TOOL_NOTE =
   "There is NO write_project tool in this conversation. Build the app with the provided tools: " +
   "create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need " +
   "information you do not already have, finish when done.\n" +
-  "When you need to read several files or docs, request them ALL in one response — reads run in parallel; " +
-  "one read per response costs a full round trip each. You may call finish in the same response as your last writes.\n" +
+  "Work in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, " +
+  "write it, let it validate, then move to the next. Inspect enough to start safely — you do not need to understand " +
+  "the whole starter kit before your first write. The starter-kit map above is authoritative: do not list directories " +
+  "to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go " +
+  "in one response. You may call finish in the same response as your last writes.\n" +
   "Batch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, " +
   "a page with a local component only it imports, the router with its pages) belong in one response. Pages that each " +
   "stand alone on already-written shared modules may share a response too. Write shared modules before the files that " +
