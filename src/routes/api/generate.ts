@@ -4123,8 +4123,24 @@ async function handleGenerateRequestCore(
     const { claimCheckpoint } = await import("@/server/build-checkpoint.server");
     resumed = await claimCheckpoint(body.resumeCheckpointId, body.projectId, checkpointTurnId);
     console.log(`[checkpoint] resume ${body.resumeCheckpointId} → ${resumed ? `claimed pages=${Object.keys(resumed.checkpoint.pages ?? {}).length} preserved=${JSON.stringify(resumed.preserved)}` : "not claimable, starting fresh"}`);
+  } else if (isInitial && body.projectId && checkpointTurnId) {
+    // A previous attempt stopped part-way and KEPT its validated work
+    // (partial checkpoint): the next first-build request continues from it
+    // instead of discarding it and paying for the same pages again.
+    const { loadResumableCheckpoint, claimCheckpoint } = await import("@/server/build-checkpoint.server");
+    const { PARTIAL_OUTCOME } = await import("@/lib/partial-build");
+    const cp = await loadResumableCheckpoint(body.projectId).catch(() => null);
+    if (cp && cp.terminal_outcome === PARTIAL_OUTCOME) {
+      resumed = await claimCheckpoint(cp.id, body.projectId, checkpointTurnId);
+      console.log(`[checkpoint] continue partial ${cp.id} → ${resumed ? `claimed pages=${Object.keys(resumed.checkpoint.pages ?? {}).length}` : "not claimable, starting fresh"}`);
+    }
   }
   const resumeShell = resumed?.checkpoint.shell ?? null;
+  /** Validated files this turn wrote (kept if the build stops part-way). */
+  const partialWork = new Map<string, string>();
+  let partialKept = false;
+  const resumedBilled: Record<string, string> | null =
+    resumed && resumed.checkpoint.terminal_outcome === "partial" ? { ...(resumed.checkpoint.pages ?? {}) } : null;
 
   stage("pre_write", resumeShell ? "Picking up where the build left off…" : "Starting to write your app…");
   // First builds never make a monolithic write_project call: the tool loop
@@ -5035,6 +5051,10 @@ async function handleGenerateRequestCore(
             turnStrategy.toolLoop = { outcome: done.outcome, calls: done.traces.length, incomplete: done.incomplete, traces: loopTraces };
             console.log(`[tool-loop] outcome=${done.outcome} calls=${done.traces.length} written=${done.state.written.length} incomplete=${JSON.stringify(done.incomplete)}`);
             parsed.files = done.files;
+            if (done.outcome !== "finished") {
+              const { validatedWrites } = await import("@/lib/partial-build");
+              for (const f of validatedWrites(done.state.written, done.state.validation, done.files)) partialWork.set(f.path, f.content);
+            }
             if (done.outcome === "cancelled") await agentIO().assertActive(turnId, abortSignal, "tool loop");
             if (done.incomplete.length) {
               controller.enqueue(encoder.encode(sse({ type: "timeline", step: "page_write", outcome: "failed", message: `Still incomplete: ${done.incomplete.slice(0, 5).join("; ")}`, ts: Date.now() })));
@@ -7233,11 +7253,22 @@ async function handleGenerateRequestCore(
           const { markCheckpointConsumed } = await import("@/server/build-checkpoint.server");
           await markCheckpointConsumed(checkpointTurnId);
         } else if (checkpointTurnId && txResult.outcome.status !== "committed") {
-          // Final verification (or commit) refused this turn: close its saved
-          // progress with the outcome so it can never look resumable. Evidence kept.
-          const { retireCheckpoint } = await import("@/server/build-checkpoint.server");
-          const oc = txResult.outcome as { status: string; reason?: string };
-          await retireCheckpoint(checkpointTurnId, oc.reason ?? oc.status);
+          const { keepPartialWork } = await import("@/lib/partial-build");
+          const loopOutcomeNow = (turnStrategy.toolLoop as { outcome?: string } | undefined)?.outcome;
+          if (keepPartialWork({ isInitial, loopOutcome: loopOutcomeNow, committed: false, keptFiles: partialWork.size })) {
+            // The build stopped part-way (not wrong code): keep its validated
+            // work for the next attempt instead of throwing it away.
+            const { markCheckpointPartial } = await import("@/server/build-checkpoint.server");
+            partialKept = await markCheckpointPartial(checkpointTurnId);
+            turnStrategy.partialBuild = { kept: [...partialWork.keys()], saved: partialKept };
+          }
+          if (!partialKept) {
+            // Final verification (or commit) refused this turn: close its saved
+            // progress with the outcome so it can never look resumable. Evidence kept.
+            const { retireCheckpoint } = await import("@/server/build-checkpoint.server");
+            const oc = txResult.outcome as { status: string; reason?: string };
+            await retireCheckpoint(checkpointTurnId, oc.reason ?? oc.status);
+          }
         }
         // FINAL execution depth: classifier's initial depth, raised (never
         // lowered) by deterministic impact analysis of what actually changed.
@@ -7295,6 +7326,14 @@ async function handleGenerateRequestCore(
                   : "verification_failed",
               committedRevision: null,
               rejections: txResult.rejections.slice(0, 3).map((r) => ({ path: r.path ?? null, detail: r.detail })),
+              partial: partialKept
+                ? {
+                    kept: [...partialWork.keys()],
+                    remaining: ((turnStrategy.toolLoop as { incomplete?: string[] } | undefined)?.incomplete ?? []).length
+                      ? (turnStrategy.toolLoop as { incomplete: string[] }).incomplete
+                      : txResult.rejections.slice(0, 5).map((r) => `${r.path ? `${r.path}: ` : ""}${r.detail}`),
+                  }
+                : null,
             });
             summary = breaker.tripped
               ? `${formatTerminalResult(verdict)}\n\n${breaker.userMessage()}`
@@ -7382,7 +7421,12 @@ async function handleGenerateRequestCore(
           const cls = assessExecution({ ...turnComplexityBase, plannedPages: firstBuildPlan?.pages.length ?? 0 }).class;
           // Starter-kit files are Kimble's scaffold, not work done for this request.
           const toMap = (fs: ProjectFile[]) => Object.fromEntries(projectAuthoredFiles(fs).map((f) => [f.path, f.content ?? ""]));
-          const diff = ep.diffSignals(toMap(turnBaselineFiles), toMap(txCommitted ? nextFiles : turnBaselineFiles), (p) => ep.PAGE_PATH.test(p));
+          // Kept partial work is priced once: here if this turn kept it, never
+          // again when a later turn resumes from that already-billed checkpoint.
+          const { effortTrees } = await import("@/lib/partial-build");
+          const keptMap = partialKept ? toMap([...partialWork].map(([path, content]) => ({ path, content }) as ProjectFile)) : null;
+          const trees = effortTrees({ baseline: toMap(turnBaselineFiles), committedTree: txCommitted ? toMap(nextFiles) : null, kept: keptMap, resumedBilled: resumedBilled ? toMap(Object.entries(resumedBilled).map(([path, content]) => ({ path, content }) as ProjectFile)) : null });
+          const diff = ep.diffSignals(trees.from, trees.to, (p) => ep.PAGE_PATH.test(p));
           const rows = recordedRows ?? [];
           const verifyCalls = rows.filter((r) => r.stage === "verify").length;
           const signals = {
@@ -7400,7 +7444,9 @@ async function handleGenerateRequestCore(
           return { cls, signals: { ...signals, linesPerFile: undefined, linesChanged: diff.linesPerFile.reduce((a, b) => a + b, 0) }, score: eff.score, parts: eff.parts, credits, prof, flags };
         })().catch((e) => { console.warn("[credits] effort pricing failed, using cost price", (e as Error).message); return null; });
         if (effortEval) priced = { ...priced, amount: effortEval.credits };
-        if (!body.isAutoFix && !failedEditTurn) {
+        // A partial build that kept validated work is billable for that work
+        // only (effort over the kept files); anything else rolled back is not.
+        if (!body.isAutoFix && (!failedEditTurn || partialKept)) {
           // A held reservation already guarantees the (capped) charge.
           const finalBalance = buildReservation?.ok
             ? ({ ok: true } as const)
