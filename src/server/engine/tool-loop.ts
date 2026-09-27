@@ -251,6 +251,20 @@ export interface CallTrace {
   context: { system: number; brief: number; history: number };
   /** completion tokens / generation time (after first token), when measurable. */
   outputTokensPerSec: number | null;
+  /** Paths read (read_file) by this step, including knowledge docs. */
+  filesRead: string[];
+  /** Characters of on-demand knowledge docs retrieved by this step. */
+  knowledgeChars: number;
+  /** read_file calls for paths that do not exist. */
+  readMisses: number;
+  /** Writes in this step whose file failed immediate validation. */
+  validationFailures: number;
+  /** Tool calls that returned an error (refusals, bad args, misses). */
+  toolErrors: number;
+  /** "correction" when this step rewrote a file that was failing validation. */
+  recovery: "correction" | null;
+  /** Model call error, when the step failed before a reply. */
+  error: string | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -933,7 +947,23 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     state.iteration++;
     const startedAt = Date.now();
     const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + ("tool_calls" in m && m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
-    const reply = await args.callModel(messages, tools, args.signal);
+    let reply: ModelReply;
+    try {
+      reply = await args.callModel(messages, tools, args.signal);
+    } catch (e) {
+      // A failed model call is still an observable step.
+      const failed: CallTrace = {
+        call: state.iteration, startedAt, durationMs: Date.now() - startedAt, ttftMs: null, usage: null, model: null,
+        toolCalls: [], toolMs: 0, validationMs: 0, writes: 0, compacted, finishReason: null, upstream: null,
+        workUnit: "none", writtenPaths: [], progress: false,
+        context: { system: args.system.length, brief: args.brief.length, history: Math.max(0, sentChars - args.system.length - args.brief.length) },
+        outputTokensPerSec: null, filesRead: [], knowledgeChars: 0, readMisses: 0, validationFailures: 0, toolErrors: 0,
+        recovery: null, error: e instanceof Error ? e.message : String(e),
+      };
+      traces.push(failed);
+      try { args.onTrace?.(failed); } catch { /* telemetry never breaks the loop */ }
+      throw e;
+    }
     const durationMs = Date.now() - startedAt;
     messages.push({ role: "assistant", content: reply.content ?? null, ...(reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {}) });
 
@@ -1001,6 +1031,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     const progress = madeProgress(before, state, tree);
     const outTokens = reply.usage?.completionTokens ?? 0;
     const genMs = durationMs - (reply.ttftMs ?? 0);
+    const filesRead = actions.filter((a) => a.tool === "read_file" && a.path && !a.miss).map((a) => a.path!);
     const trace: CallTrace = {
       upstream: reply.upstream ?? null,
       workUnit: classifyWorkUnit(reply.toolCalls.map((c) => c.function.name), writtenPaths),
@@ -1020,9 +1051,16 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       writes: state.written.length - writesBefore,
       compacted,
       finishReason: reply.finishReason ?? null,
+      filesRead,
+      knowledgeChars: filesRead.filter((p) => p.startsWith("knowledge/")).reduce((n, p) => n + (ref.get(p)?.length ?? 0), 0),
+      readMisses: actions.filter((a) => a.miss).length,
+      validationFailures: writtenPaths.filter((p) => (state.validation.get(p) ?? []).length > 0).length,
+      toolErrors: actions.filter((a) => a.isError).length,
+      recovery: writtenPaths.some((p) => (before.errors.get(p) ?? 0) > 0) ? "correction" : null,
+      error: null,
     };
     traces.push(trace);
-    args.onTrace?.(trace);
+    try { args.onTrace?.(trace); } catch { /* telemetry never breaks the loop */ }
 
     if (!state.finished) {
       recent.push(...actions);
