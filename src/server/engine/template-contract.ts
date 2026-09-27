@@ -18,6 +18,24 @@ import { KIT_FILES } from "@/server/scaffold-kit";
 
 export const TEMPLATE_CONTRACT_PATH = "template.json";
 
+/** Kit directories the metadata may advertise, kept only when shipped. */
+export const REFERENCE_DIRS = ["@/components/blocks", "@/components/examples", "@/components/motion", "@/components/fx"] as const;
+
+/**
+ * THE template grounding rule — exactly one of these reaches the model.
+ * Preloaded: the section below is the authoritative contract; reading the
+ * file is optional. Not preloaded: read it before implementing.
+ */
+export const TEMPLATE_PRELOADED_RULE =
+  "This is the complete, authoritative contract; you do not need to read template.json.";
+export const TEMPLATE_READ_RULE =
+  "Read template.json before writing code: it is the authoritative project contract.";
+
+/** The grounding rule for a context that does or does not already carry the contract. */
+export function templateGroundingRule(context: string): string {
+  return context.includes(TEMPLATE_PRELOADED_RULE) ? "" : TEMPLATE_READ_RULE;
+}
+
 /** The contract file's content, as shipped by the scaffold kit. */
 export function templateContractContent(): string {
   return KIT_FILES.find((f) => f.path === TEMPLATE_CONTRACT_PATH)?.content ?? "";
@@ -48,15 +66,16 @@ export function renderTemplateMetadataSection(): string {
   const examples = (c["usage_examples"] ?? {}) as Record<string, string>;
   const protectedFiles = Array.isArray(c["protected_files"]) ? (c["protected_files"] as string[]) : [];
 
+  // Only directories the kit actually ships — the section describes reality.
+  const refDirs = REFERENCE_DIRS.filter((d) => KIT_FILES.some((f) => f.path.startsWith(`src/${d.slice(2)}/`)));
   return (
-    `\n### Project contract (template.json — already in the workspace, do not read it)\n` +
+    `\n### Project contract (template.json)\n${TEMPLATE_PRELOADED_RULE}\n` +
     `Pages: ${fs["pages_dir"]}/  ·  Components: ${fs["components_dir"]}/  ·  ` +
     `Router: ${fs["routes_file"]}  ·  Entry: ${fs["entry_file"]}  ·  Stylesheet: ${fs["stylesheet"]}\n` +
     `Routing: ${c["routing_pattern"]}  ·  Styling: ${styling["framework"]} v${styling["tailwind_version"]} ` +
     `(${styling["tokens"]})  ·  Icons: ${styling["icon_set"]}\n` +
     `Pre-installed UI kit at @/components/ui — import these, never write them: ${shadcn.join(", ")}.\n` +
-    `Reference blocks you may copy from: @/components/blocks/*, @/components/examples/*, ` +
-    `@/components/motion, @/components/fx.\n` +
+    (refDirs.length ? `Also installed (import or copy from): ${refDirs.join(", ")}.\n` : "") +
     `Read-only (writes are refused): ${protectedFiles.join(", ")}.\n` +
     Object.values(examples)
       .map((e) => `- ${e}`)
