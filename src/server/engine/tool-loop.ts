@@ -987,6 +987,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     const writesBefore = state.written.length;
     const before = snapshotEvidence(state, tree);
     const actions: ActionRecord[] = [];
+    stepRepairs = 0;
 
     if (reply.toolCalls.length === 0) {
       // Implicit finish (Webby: no tool calls = done) still passes the gate.
@@ -1073,6 +1074,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       toolErrors: actions.filter((a) => a.isError).length,
       recovery: writtenPaths.some((p) => (before.errors.get(p) ?? 0) > 0) ? "correction" : null,
       error: null,
+      deterministicRepairs: stepRepairs,
     };
     traces.push(trace);
     try { args.onTrace?.(trace); } catch { /* telemetry never breaks the loop */ }
