@@ -39,6 +39,12 @@ export const TABLE_RULES: Record<string, { pin: Pin; actions: Action[]; userCol?
   build_checkpoints: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert", "update"], userCol: true },
   ai_provider_settings: { pin: null, actions: ["select"] },
   economics_config: { pin: null, actions: ["select"] },
+  // Kimble Cloud shared tier: switching it on (enableSharedBackend) and reading
+  // it back. Without this every switch-on from the build server was refused,
+  // so apps that needed accounts were built on local mock data.
+  shared_backends: { pin: { col: "project_id", from: "project" }, actions: ["select", "insert"] },
+  // Cloud provisioning cost record (stage cloud_provision) for THIS turn.
+  cost_events: { pin: { col: "turn_id", from: "turn" }, actions: ["upsert", "insert"], userCol: true, projectCol: true },
 };
 
 /** Read-only database functions a build may call; user/project args pinned. */

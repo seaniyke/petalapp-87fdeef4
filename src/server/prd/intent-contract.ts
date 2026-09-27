@@ -124,6 +124,17 @@ const FAMILIES: Family[] = [
     pages: [p("/", "Dashboard"), p("/projects", "Projects"), p("/tasks", "Tasks"), p("/team", "Team"), p("/settings", "Settings")],
   },
   {
+    id: "delivery",
+    label: "delivery / logistics management",
+    triggers: /\b(deliver(y|ies)|couriers?|drivers?|dispatch(ing|er)?|logistics|parcels?|shipments?|last[- ]mile)\b/i,
+    appOnly: true,
+    productType: "workflow-app",
+    roles: ["admin", "driver", "customer"],
+    entities: ["Customer", "Order", "Driver", "Delivery", "DeliveryStatus"],
+    workflows: ["Customer places an order", "Admin assigns a driver", "Driver updates the delivery status", "Admin manages users and orders"],
+    pages: [p("/", "Dashboard"), p("/orders", "Orders"), p("/deliveries", "Deliveries"), p("/drivers", "Drivers"), p("/users", "Users"), p("/settings", "Settings")],
+  },
+  {
     id: "restaurant",
     label: "restaurant management",
     triggers: /\b(restaurants?|bistro|eatery|diner|table (booking|reservations?)|kitchen display|menu management|front of house)\b/i,
