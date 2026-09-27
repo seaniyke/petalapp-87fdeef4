@@ -8,6 +8,7 @@ import { verifyFilesEsbuild } from "@/server/esbuild-verifier.server";
 import { isVerifierExempt } from "@/server/scaffold-ownership.server";
 import { checkUndefinedIdentifiers, type IdentifierCheckStatus } from "./identifiers.server";
 import { finalizeVerification, runSourceGates, type VerificationRecord } from "./gates";
+import { responsiveWarnings, type ResponsiveWarning } from "./responsive";
 
 export async function verifyProposedSource(args: {
   tree: Array<{ path: string; content: string }>;
@@ -15,7 +16,7 @@ export async function verifyProposedSource(args: {
   requestedRoutes: string[];
   /** First builds: the shared app frame is a required deliverable. */
   requireShell?: boolean;
-}): Promise<VerificationRecord & { semantic: { status: IdentifierCheckStatus | "not_run"; reason?: string } }> {
+}): Promise<VerificationRecord & { semantic: { status: IdentifierCheckStatus | "not_run"; reason?: string }; responsive: ResponsiveWarning[] }> {
   const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
   const esbuild = await verifyFilesEsbuild(args.tree, parseable);
   // Semantic gate: esbuild proves the bytes PARSE; the real TypeScript
@@ -52,5 +53,11 @@ export async function verifyProposedSource(args: {
     }
   }
   const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell }));
-  return { ...record, semantic };
+  // Advisory only: never changes the verdict above.
+  let responsive: ResponsiveWarning[] = [];
+  try {
+    responsive = responsiveWarnings(args.tree, args.changedPaths);
+    if (responsive.length) console.log(`[verify] responsive_advisory ${JSON.stringify(responsive.slice(0, 10))}`);
+  } catch { /* advisory must never break verification */ }
+  return { ...record, semantic, responsive };
 }
