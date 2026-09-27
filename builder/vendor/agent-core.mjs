@@ -60540,6 +60540,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -70753,6 +70754,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -141980,7 +141982,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -151910,14 +151911,16 @@ function composeAppBlueprint(brief, opts) {
 }
 function renderBlueprintBlock(b) {
   const out = [];
-  out.push("\n\n### App Blueprint (committed for this build \u2014 execute it)");
+  out.push("\n\n### App Blueprint (reference patterns for this kind of product \u2014 advisory, not a page list to execute)");
   if (b.archetype) {
     out.push(`Archetype: ${b.archetype.label} [${b.archetype.id}] \u2014 ${b.archetype.vertical}`);
     if (b.archetype.domainNote) out.push(b.archetype.domainNote);
   }
   out.push(`Template: ${b.template.key} \u2014 ${b.template.description}`);
-  out.push(`
-Scaffold these routes (use these exact paths) \u2014 build no other pages:`);
+  out.push(
+    `
+Routes that often fit this kind of product (optional patterns, NOT a required list \u2014 build only the pages the user asked for, the intent contract lists, or the product structure needs; never add a page just because it appears here):`
+  );
   for (const r of b.routes) out.push(`  - ${r}`);
   if (b.kitBlockPaths.length) {
     out.push(`
@@ -171817,6 +171820,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -178867,7 +178871,6 @@ The latest request contains multiple coordinated asks. Treat this as one complet
         }
       }
       archetypeBlock = narrowed ? renderBlueprintBlock2(composed.blueprint) : composed.promptBlock;
-      for (const r of composed.blueprint.routes ?? []) if (r) plannedRoutes.push(r);
     }
   } catch {
   }
