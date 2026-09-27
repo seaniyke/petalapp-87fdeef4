@@ -4703,7 +4703,7 @@ async function handleGenerateRequestCore(
                   "Past learning": learningBlock,
                 },
               },
-              subtype: detectedWebSubtype,
+              subtype: detectedWebSubtype ?? "",
               hasBackend: !!(backend || sharedBackend),
               productContract: {
                 intent: intentBrief ? `### Canonical turn intent (HARD CONTRACT)\n${intentBrief}\nSatisfy this exact outcome; do not substitute a different feature, page, or product.` : "",

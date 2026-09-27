@@ -932,7 +932,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
 
     state.iteration++;
     const startedAt = Date.now();
-    const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + (m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
+    const sentChars = messages.reduce((n, m) => n + (typeof m.content === "string" ? m.content.length : 0) + ("tool_calls" in m && m.tool_calls ? JSON.stringify(m.tool_calls).length : 0), 0);
     const reply = await args.callModel(messages, tools, args.signal);
     const durationMs = Date.now() - startedAt;
     messages.push({ role: "assistant", content: reply.content ?? null, ...(reply.toolCalls.length ? { tool_calls: reply.toolCalls } : {}) });
