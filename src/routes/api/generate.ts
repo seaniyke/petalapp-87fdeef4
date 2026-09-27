@@ -8261,6 +8261,8 @@ export async function handleGenerateRequest(request: Request): Promise<Response>
                 terminal_status: terminalStatus,
                 failure_reason: terminalError?.slice(0, 300) ?? null,
                 failure_origin: terminalError ? classifyFailureOrigin(new Error(terminalError)) : null,
+                // Build-level summary of the partial execution (same builder as success).
+                execution_summary: takeExecutionSummary(recorder.turnId),
                 customer_charge: 0,
               },
             })
