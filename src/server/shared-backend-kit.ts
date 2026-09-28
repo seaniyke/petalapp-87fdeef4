@@ -323,6 +323,7 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 ## Rules
 
 - Rows created while signed in are owned by that user; pass \`{ mine: true }\` to list only theirs.
+- Every "Sign out" control must be a button that calls \`await signOut()\` and then navigates to \`/login\`. Never a plain link to \`/login\` — that leaves the user signed in.
 - Limits: 5,000 rows and 25 collections per project. Upgrade for a dedicated database with no caps.
 - Password reset, email codes and Google sign-in are NOT available on this tier — they return \`{ error }\`. Use email + password.
 - Do NOT install \`@supabase/supabase-js\`, call \`createClient\`, or write SQL — there is no SQL layer on this tier.

@@ -40562,6 +40562,7 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 ## Rules
 
 - Rows created while signed in are owned by that user; pass \`{ mine: true }\` to list only theirs.
+- Every "Sign out" control must be a button that calls \`await signOut()\` and then navigates to \`/login\`. Never a plain link to \`/login\` \u2014 that leaves the user signed in.
 - Limits: 5,000 rows and 25 collections per project. Upgrade for a dedicated database with no caps.
 - Password reset, email codes and Google sign-in are NOT available on this tier \u2014 they return \`{ error }\`. Use email + password.
 - Do NOT install \`@supabase/supabase-js\`, call \`createClient\`, or write SQL \u2014 there is no SQL layer on this tier.
@@ -62134,7 +62135,7 @@ If you'd rather stay on the starter database, open the app's settings and turn o
       payload: {
         message_id: `backend-upgrade-${projectId}`,
         to: email,
-        from: "Kimble AI <noreply@buildwithpetal.com>",
+        from: "Kimble AI <noreply@kimble.cloud>",
         sender_domain: "notify.buildwithpetal.com",
         subject: `${title} moved onto its own database`,
         html: `<p>${body.replace(/\n\n/g, "</p><p>")}</p>`,
@@ -70496,6 +70497,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -141982,7 +141984,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -171878,6 +171879,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
