@@ -40,7 +40,17 @@ export type EconomicsKey =
   | "estimate_cost_standard_usd"
   | "estimate_cost_heavy_usd"
   | "estimate_cost_complex_usd"
-  | "estimate_cost_escalated_usd";
+  | "estimate_cost_escalated_usd"
+  | "cloud_external_margin_pct"
+  | "cloud_shared_discount_pct"
+  | "supabase_micro_hour_usd"
+  | "supabase_disk_gb_month_usd"
+  | "supabase_included_disk_gb"
+  | "railway_cpu_vcpu_min_usd"
+  | "railway_ram_gb_min_usd"
+  | "railway_disk_gb_min_usd"
+  | "railway_egress_gb_usd"
+  | "railway_fallback_hour_usd";
 
 
 export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
@@ -78,7 +88,18 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   estimate_cost_heavy_usd: 0.05,
   estimate_cost_complex_usd: 0.1,
   estimate_cost_escalated_usd: 0.15,
-
+  // Kimble Cloud (see src/lib/cloud-pricing.ts). Provider rates are the
+  // published Supabase / Railway rates; margin is GROSS margin.
+  cloud_external_margin_pct: 30,
+  cloud_shared_discount_pct: 50,
+  supabase_micro_hour_usd: 0.01344,
+  supabase_disk_gb_month_usd: 0.125,
+  supabase_included_disk_gb: 8,
+  railway_cpu_vcpu_min_usd: 0.000463,
+  railway_ram_gb_min_usd: 0.000231,
+  railway_disk_gb_min_usd: 0.15 / 43200,
+  railway_egress_gb_usd: 0.05,
+  railway_fallback_hour_usd: 0.03,
 };
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -126,5 +147,23 @@ export async function buildEconomics(): Promise<import("@/lib/build-pricing").Bu
     minChargeCredits: v.min_charge_credits,
     roundingStep: v.credit_rounding_step,
     reservationHeadroom: v.reservation_headroom,
+  };
+}
+
+/** Kimble Cloud rates for the cloud pricing authority. */
+export async function cloudRates(): Promise<import("@/lib/cloud-pricing").CloudRates> {
+  const v = await economicsValues();
+  return {
+    externalMarginPct: v.cloud_external_margin_pct,
+    sharedDiscountPct: v.cloud_shared_discount_pct,
+    revenuePerCreditUsd: v.revenue_per_credit_usd,
+    supabaseMicroHourUsd: v.supabase_micro_hour_usd,
+    supabaseDiskGbMonthUsd: v.supabase_disk_gb_month_usd,
+    supabaseIncludedDiskGb: v.supabase_included_disk_gb,
+    railwayCpuVcpuMinUsd: v.railway_cpu_vcpu_min_usd,
+    railwayRamGbMinUsd: v.railway_ram_gb_min_usd,
+    railwayDiskGbMinUsd: v.railway_disk_gb_min_usd,
+    railwayEgressGbUsd: v.railway_egress_gb_usd,
+    railwayFallbackHourUsd: v.railway_fallback_hour_usd,
   };
 }

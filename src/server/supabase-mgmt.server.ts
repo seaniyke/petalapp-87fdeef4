@@ -209,6 +209,26 @@ export async function runQuery(
 }
 
 /**
+ * The project's active compute size and its provider-stated hourly price, from
+ * GET /v1/projects/{ref}/billing/addons (docs: "List project addons"). Returns
+ * null when the size or price can't be read — the caller then uses the
+ * configured published rate.
+ */
+export async function getComputeRate(
+  ref: string,
+): Promise<{ variant: string; hourUsd: number } | null> {
+  type Price = { amount?: number; interval?: string };
+  type Addon = { type?: string; variant?: { id?: string; price?: Price } };
+  const body = await mgmt<{ selected_addons?: Addon[] }>("GET", `/projects/${ref}/billing/addons`);
+  const ci = (body?.selected_addons ?? []).find((a) => a.type === "compute_instance");
+  const price = ci?.variant?.price;
+  const amount = Number(price?.amount);
+  if (!ci?.variant?.id || !Number.isFinite(amount) || amount <= 0) return null;
+  const hourUsd = price?.interval === "hourly" ? amount : amount / 730;
+  return { variant: ci.variant.id, hourUsd };
+}
+
+/**
  * Query a managed project's Logflare-backed log endpoints via the Mgmt API's
  * analytics proxy. `sql` is BigQuery-flavoured SQL over the log sources
  * (`edge_logs`, `postgres_logs`, `auth_logs`, `function_edge_logs`, ...).

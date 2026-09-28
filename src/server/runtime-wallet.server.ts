@@ -15,6 +15,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export type RuntimeMeter =
   | "backend_hour"
   | "compute_hour"
+  | "cloud_shared"
   | "image_gen"
   | "app_ai"
   | "domain"
@@ -28,6 +29,9 @@ export type ChargeRuntimeOptions = {
   projectId?: string | null;
   meter: RuntimeMeter;
   cents: number;
+  /** Exact credits to charge (Kimble Cloud pricing). When omitted, cents are
+   *  converted at the central cost-per-credit rate as before. */
+  credits?: number;
   metadata?: Record<string, unknown>;
 };
 
@@ -91,7 +95,10 @@ export async function chargeRuntime(opts: ChargeRuntimeOptions): Promise<ChargeR
 
     const { centsToCredits } = await import("@/server/runtime-credit-fallback.server");
     const { spendCredit } = await import("@/server/credits.server");
-    const credits = await centsToCredits(cents);
+    const credits =
+      opts.credits != null && Number.isFinite(opts.credits) && opts.credits > 0
+        ? opts.credits
+        : await centsToCredits(cents);
     const spend = await spendCredit({
       userId: opts.userId,
       amount: credits,

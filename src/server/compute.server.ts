@@ -239,13 +239,14 @@ export type ComputeBillingRow = {
   awakeSince: string | null;
   billedThrough: string | null;
   lastActiveAt: string | null;
+  serviceId?: string | null;
 };
 
 /** Containers currently awake — the only ones that can be billed. */
 export async function listBillableCompute(): Promise<ComputeBillingRow[]> {
   const { data } = await supabaseAdmin
     .from("project_compute")
-    .select("project_id, owner_id, awake_since, billed_through, last_active_at")
+    .select("project_id, owner_id, awake_since, billed_through, last_active_at, service_id")
     .eq("status", "ready");
   return (data ?? []).map((r) => ({
     projectId: String(r.project_id),
@@ -253,6 +254,7 @@ export async function listBillableCompute(): Promise<ComputeBillingRow[]> {
     awakeSince: r.awake_since as string | null,
     billedThrough: r.billed_through as string | null,
     lastActiveAt: r.last_active_at as string | null,
+    serviceId: (r as { service_id?: string | null }).service_id ?? null,
   }));
 }
 
