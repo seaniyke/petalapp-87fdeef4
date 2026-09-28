@@ -15,13 +15,12 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { chargeRuntime } from "@/server/runtime-wallet.server";
+import { chargeCloud, cloudRates, dedicatedWindowCosts, priceExternal } from "@/server/cloud-metering.server";
 import { pauseForProject } from "@/server/managed-backend.server";
 import { secretsMatch } from "@/server/rate-limit.server";
 
-/** USD cents charged per active backend per hour. 4¢/hr ≈ $29/mo full-time;
- * underlying managed Supabase costs ~$10/mo so we keep ~65% margin. */
-const BACKEND_HOUR_CENTS = 4;
+/* Price per hour = the dedicated database's provider cost ÷ (1 − margin),
+ * via src/lib/cloud-pricing.ts. No flat fee. */
 
 function unauthorized() {
   return new Response("Unauthorized", { status: 401 });
@@ -36,7 +35,7 @@ async function runHourlyCharges(): Promise<{
   // Find every active managed backend with an owning project.
   const { data: backends, error } = await supabaseAdmin
     .from("project_backends")
-    .select("project_id, status, provider")
+    .select("project_id, status, provider, supabase_project_ref")
     .eq("provider", "managed_petal")
     .eq("status", "ready");
   if (error) throw new Error(`list backends: ${error.message}`);
@@ -45,6 +44,9 @@ async function runHourlyCharges(): Promise<{
   }
 
   const projectIds = backends.map((b) => b.project_id);
+  const refOf = new Map(backends.map((b) => [b.project_id, (b as { supabase_project_ref?: string | null }).supabase_project_ref ?? null]));
+  const rates = await cloudRates();
+  const hourStamp = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000).toISOString();
   const { data: projects } = await supabaseAdmin
     .from("projects")
     .select("id, owner_id, runtime_paused, runtime_grace_until")
@@ -65,11 +67,14 @@ async function runHourlyCharges(): Promise<{
       skipped++;
       continue;
     }
-    const result = await chargeRuntime({
+    const priced = priceExternal(await dedicatedWindowCosts(refOf.get(p.id) ?? null, 1, rates), rates);
+    const result = await chargeCloud({
       userId: p.owner_id,
       projectId: p.id,
       meter: "backend_hour",
-      cents: BACKEND_HOUR_CENTS,
+      provider: "supabase",
+      windowRef: `supabase:${p.id}:${hourStamp}`,
+      priced,
       metadata: { source: "cron/runtime-backend-hour" },
     });
     if (result.ok) {
