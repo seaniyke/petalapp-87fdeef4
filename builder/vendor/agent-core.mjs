@@ -70497,6 +70497,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -140518,7 +140519,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141555,7 +141555,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141720,7 +141719,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141764,7 +141762,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -146154,6 +146151,18 @@ var init_intent_contract = __esm({
         pages: [p("/", "Dashboard"), p("/patients", "Patients"), p("/doctors", "Doctors"), p("/appointments", "Appointments"), p("/records", "Medical Records"), p("/prescriptions", "Prescriptions"), p("/billing", "Billing"), p("/departments", "Departments"), p("/staff", "Staff"), p("/settings", "Settings")]
       },
       {
+        // Capability-based: any service business where customers book time/services.
+        id: "booking",
+        label: "booking / appointments",
+        triggers: /\b(salons?|barbers?(hop)?s?|spas?|beauty|nail (studio|bar|salon)|stylists?|hairdress(er|ers|ing)|massage|tutor(s|ing)?|lessons?|personal trainers?|appointment[- ]based|book(ing)? (an? )?(appointments?|sessions?|lessons?)|appointments? (booking|scheduling)|booking (system|app|platform))\b/i,
+        appOnly: true,
+        productType: "workflow-app",
+        roles: ["admin", "staff", "customer"],
+        entities: ["Service", "Booking", "Customer", "Staff"],
+        workflows: ["Customer browses services", "Customer books a time", "Customer views their bookings", "Staff manages bookings and services"],
+        pages: [p("/", "Dashboard"), p("/services", "Services"), p("/bookings", "Bookings"), p("/settings", "Settings")]
+      },
+      {
         id: "education",
         label: "school / learning management",
         triggers: /\b(school|students?|teachers?|classroom|lms|learning management|university|college|enrol(l)?ments?|gradebook|grades)\b/i,
@@ -146585,7 +146594,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
