@@ -82,6 +82,6 @@ describe("routes gate", () => {
     expect(first.reasons.join(" ")).toMatch(/RequireAuth/);
     const edit = routesGate(files(true, ""), [], {});
     expect(edit.reasons.join(" ")).not.toMatch(/links to/);
-    expect(routesGate(files(true, "/dashboard"), [], { requireShell: true, requireLiveData: true }).reasons.join(" ")).not.toMatch(/links to|RequireAuth/);
+    expect(routesGate(files(true, "/dashboard"), [], { requireShell: true, requireLiveData: true }).reasons.join(" ")).not.toMatch(/links to|signed-out visitors/);
   });
 });
