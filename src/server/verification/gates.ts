@@ -176,7 +176,7 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
   // Real addresses come from the <Route> nesting (a child "services" under
   // "dashboard" serves /dashboard/services). A catch-all never makes a link real.
   const routerSrc = map.routerFile && (map.router === "kit-router" || map.router === "react-router-dom") ? byPath.get(map.routerFile) ?? "" : "";
-  const dead = routerSrc ? deadInternalLinks(files, routerSrc) : [];
+  const dead = routerSrc ? deadInternalLinks(files, routerSrc, map.routerFile!) : [];
   const pages = routerSrc ? resolveRouteTree(routerSrc).filter((r) => !r.catchAll).map((r) => r.path) : [];
   // New apps must be internally consistent; older apps' existing links never block an edit.
   if (dead.length && opts.requireShell) {

@@ -130,11 +130,50 @@ export function internalLinks(files: ProjectFile[]): Array<{ file: string; link:
   return out;
 }
 
-/** Links in the app's code that reach no page. */
-export function deadInternalLinks(files: ProjectFile[], routerSrc: string): Array<{ file: string; link: string }> {
+function resolveImport(from: string, spec: string, paths: Set<string>): string | null {
+  let base: string;
+  if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
+  else if (spec.startsWith(".")) {
+    const dir = from.split("/").slice(0, -1);
+    for (const part of spec.split("/")) {
+      if (part === "." || part === "") continue;
+      if (part === "..") dir.pop();
+      else dir.push(part);
+    }
+    base = dir.join("/");
+  } else return null;
+  for (const ext of ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts"]) if (paths.has(base + ext)) return base + ext;
+  return null;
+}
+
+/** Files the running app actually renders: everything imported from the router file. */
+export function reachableFrom(entry: string, files: ProjectFile[]): Set<string> {
+  const paths = new Set(files.map((f) => f.path));
+  const byPath = new Map(files.map((f) => [f.path, f.content]));
+  const seen = new Set<string>();
+  const queue = [entry];
+  const re = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']([^"']+)["']/g;
+  while (queue.length) {
+    const p = queue.pop()!;
+    if (seen.has(p)) continue;
+    seen.add(p);
+    const src = byPath.get(p) ?? "";
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src))) {
+      const r = resolveImport(p, m[1]!, paths);
+      if (r && !seen.has(r)) queue.push(r);
+    }
+  }
+  return seen;
+}
+
+/** Links in the code the app renders that reach no page. Unused starter files never count. */
+export function deadInternalLinks(files: ProjectFile[], routerSrc: string, routerFile?: string): Array<{ file: string; link: string }> {
   const routes = resolveRouteTree(routerSrc);
   if (!routes.some((r) => !r.catchAll)) return [];
-  return internalLinks(files).filter((l) => !linkResolves(l.link, routes));
+  const live = routerFile ? reachableFrom(routerFile, files) : null;
+  return internalLinks(live ? files.filter((f) => live.has(f.path)) : files).filter((l) => !linkResolves(l.link, routes));
 }
 
 /**
