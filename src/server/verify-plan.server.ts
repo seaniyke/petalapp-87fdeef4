@@ -252,6 +252,12 @@ Rules:
   landed — usually the new item's text appearing on the page.
 - Use unique values so repeated runs never collide: suffix any text you type
   with "petal-verify".
+- The app's database starts EMPTY on every check. Never click or expect an item
+  that only exists once records exist (e.g. a "Book" button on a service card).
+  If the core action needs a parent record (book a service, order a product),
+  create that record first in the same flow through the app's own UI.
+- If a form lives inside a dialog or sheet, click the button that opens it
+  before filling any field.
 - Mark a flow requiresAuth: true if its route is only reachable when signed in.
 - Skip destructive actions: no delete, no payment, no account deletion, no
   sending real email or SMS.

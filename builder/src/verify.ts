@@ -331,6 +331,27 @@ function resetWatch(watch: PageWatch) {
   watch.failedRequests.length = 0;
 }
 
+/**
+ * Wait until the app has finished its first data loads: network idle, then
+ * loading placeholders (skeletons, pulse spinners, aria-busy) gone — bounded.
+ * Snapshots taken 1.2s after DOMContentLoaded caught apps mid-fetch (sign-in
+ * check + records from the cloud backend) and were judged "blank".
+ */
+async function waitForAppSettled(page: Page): Promise<void> {
+  await page.waitForLoadState("networkidle", { timeout: 8_000 }).catch(() => {});
+  await page
+    .waitForFunction(
+      () =>
+        !document.querySelector(
+          '[aria-busy="true"], .animate-pulse, [data-slot="skeleton"], [class*="skeleton" i]',
+        ),
+      undefined,
+      { timeout: 6_000 },
+    )
+    .catch(() => {});
+  await page.waitForTimeout(SETTLE_MS);
+}
+
 /** Visual QA caps — the callback body is signed and parsed whole. */
 const VISUAL_MAX_SHOTS = 12;
 const VISUAL_MAX_BYTES = 2_600_000;
@@ -385,7 +406,7 @@ async function captureVisual(
             waitUntil: "domcontentloaded",
             timeout: NAV_TIMEOUT_MS,
           });
-          await page.waitForTimeout(SETTLE_MS);
+          await waitForAppSettled(page);
           const buf = await page.screenshot({ type: "jpeg", quality: 45 });
           const image = `data:image/jpeg;base64,${buf.toString("base64")}`;
           if (bytes + image.length > VISUAL_MAX_BYTES) continue;
@@ -693,7 +714,7 @@ async function runFlow(
             waitUntil: "domcontentloaded",
             timeout: NAV_TIMEOUT_MS,
           });
-          await page.waitForTimeout(SETTLE_MS);
+          await waitForAppSettled(page);
           break;
         case "click":
           if (!step.selector) throw new Error("click step needs a selector");
