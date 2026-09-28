@@ -16,6 +16,7 @@ import { toVerdict } from "@/server/execution/verdict";
 import { buildAppMap } from "@/server/engine/app-map";
 import { assessCompleteness, isUnfinishedPage } from "@/server/engine/build-state";
 import { frameIsComplete } from "@/server/engine/write";
+import { deadInternalLinks, resolveRouteTree, unguardedAppRoutes } from "@/server/engine/route-paths";
 export { isUnfinishedPage };
 
 export type GateId = "syntax" | "dependencies" | "routes" | "build" | "browser";
@@ -172,10 +173,26 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
       bad.push(r.file);
     }
   }
+  // Real addresses come from the <Route> nesting (a child "services" under
+  // "dashboard" serves /dashboard/services). A catch-all never makes a link real.
+  const routerSrc = map.routerFile && (map.router === "kit-router" || map.router === "react-router-dom") ? byPath.get(map.routerFile) ?? "" : "";
+  const dead = routerSrc ? deadInternalLinks(files, routerSrc, map.routerFile!) : [];
+  const pages = routerSrc ? resolveRouteTree(routerSrc).filter((r) => !r.catchAll).map((r) => r.path) : [];
+  // New apps must be internally consistent; older apps' existing links never block an edit.
+  if (dead.length && opts.requireShell) {
+    for (const d of dead.slice(0, 8)) reasons.push(`${d.file} links to ${d.link}, but no page has that address (pages: ${pages.join(", ")})`);
+    bad.push(...dead.map((d) => d.file));
+  }
+  // With Kimble Cloud on, signed-in pages must send signed-out visitors to /login.
+  if (opts.requireLiveData && routerSrc) {
+    const open = unguardedAppRoutes(routerSrc, files);
+    if (open.length) {
+      reasons.push(`signed-out visitors can open ${open.join(", ")} — wrap the signed-in area's layout route in <RequireAuth> from "@/integrations/backend/auth"`);
+      bad.push(map.routerFile!);
+    }
+  }
   if (reasons.length) return gate("routes", "FAIL", reasons, uniq(bad));
-  const defined = new Set(map.routes.map((r) => r.path));
-  const deadLinks = map.navLinks.filter((l) => defined.size > 0 && !defined.has(l) && !/[:$*]/.test(l));
-  if (deadLinks.length) return gate("routes", "WARNING", [`navigation links without a page: ${deadLinks.join(", ")}`]);
+  if (dead.length) return gate("routes", "WARNING", [`links without a page: ${uniq(dead.map((d) => d.link)).join(", ")}`]);
   return gate("routes", "PASS");
 }
 

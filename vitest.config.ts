@@ -12,6 +12,7 @@ export default defineConfig({
     include: [
       "src/server/__tests__/structural-not-sitewide.test.ts",
       "src/server/__tests__/booking-family.test.ts",
+      "src/server/__tests__/route-integrity.test.ts",
       "src/server/__tests__/cloud-need.test.ts",
       "src/server/__tests__/product-surface.test.ts",
       "src/server/__tests__/advisory-archetype-routes.test.ts",
