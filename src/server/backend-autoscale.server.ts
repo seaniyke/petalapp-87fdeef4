@@ -302,7 +302,7 @@ export async function notifyOwner(
  * one? Runs alongside the database check and never blocks it — a compute
  * failure leaves the app exactly where it is.
  */
-async function considerCompute(projectId: string): Promise<boolean> {
+export async function considerCompute(projectId: string): Promise<boolean> {
   try {
     const { resolveCloudTier } = await import("@/server/cloud-tier.server");
     const tier = await resolveCloudTier(projectId);
@@ -392,6 +392,19 @@ export async function runGrowthWatcher(limit = 10): Promise<WatchSummary> {
     .order("created_at", { ascending: false })
     .limit(200);
   for (const r of requests ?? []) pending.add(r.project_id as string);
+
+  // Backstop: apps whose build said they need their own server but are not
+  // on the shared list (or whose build-time start failed) still get one.
+  const { data: computeWanted } = await supabaseAdmin
+    .from("projects")
+    .select("id")
+    .eq("cloud_tier_intent" as never, "kimble_compute" as never)
+    .eq("auto_upgrade_opt_out", false)
+    .limit(50);
+  const sharedIds = new Set((projects ?? []).map((p) => p.id));
+  for (const p of computeWanted ?? []) {
+    if (!sharedIds.has(p.id)) await considerCompute(p.id);
+  }
 
   for (const p of projects ?? []) {
     if (summary.upgraded >= limit) break;
