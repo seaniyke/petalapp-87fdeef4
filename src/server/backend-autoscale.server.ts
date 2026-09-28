@@ -273,7 +273,7 @@ export async function notifyOwner(
       payload: {
         message_id: `backend-upgrade-${projectId}`,
         to: email,
-        from: "Kimble AI <noreply@buildwithpetal.com>",
+        from: "Kimble AI <noreply@kimble.cloud>",
         sender_domain: "notify.buildwithpetal.com",
         subject: `${title} moved onto its own database`,
         html: `<p>${body.replace(/\n\n/g, "</p><p>")}</p>`,

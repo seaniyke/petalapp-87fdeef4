@@ -1,0 +1,2 @@
+UPDATE public.petal_email_subscriptions SET sender_email='noreply@kimble.cloud' WHERE sender_email='noreply@buildwithpetal.com';
+ALTER TABLE public.petal_email_subscriptions ALTER COLUMN sender_email SET DEFAULT 'noreply@kimble.cloud';

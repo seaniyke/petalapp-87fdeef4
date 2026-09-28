@@ -24,7 +24,7 @@ import {
 import { secretsMatch } from "@/server/rate-limit.server";
 
 const RESEND_API = "https://api.resend.com";
-const SENDER = "Kimble <noreply@buildwithpetal.com>";
+const SENDER = "Kimble <noreply@kimble.cloud>";
 
 function unauthorized() {
   return new Response("Unauthorized", { status: 401 });

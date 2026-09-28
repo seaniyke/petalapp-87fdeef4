@@ -2,7 +2,7 @@
  * Kimble Email — managed email service for generated apps.
  *
  * Pricing model:
- *   Free tier: 100/day, 3,000/month. Sender = noreply@buildwithpetal.com.
+ *   Free tier: 100/day, 3,000/month. Sender = noreply@kimble.cloud.
  *   Pro: $25/mo for 50,000 emails. Optional custom domain (auto-DNS via Cloudflare).
  *
  * Public surface lives in src/routes/api/public/email/send.ts. All sends are
@@ -17,7 +17,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import crypto from "crypto";
 
 const RESEND_API = "https://api.resend.com";
-const DEFAULT_SENDER = "noreply@buildwithpetal.com";
+const DEFAULT_SENDER = "noreply@kimble.cloud";
 
 export const FREE_PLAN = {
   monthly_cap: 3000,

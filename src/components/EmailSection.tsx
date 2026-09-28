@@ -1,6 +1,6 @@
 /**
  * EmailSection — Kimble Email management UI inside the project settings sheet.
- * - Free tier: 100/day, 3,000/month from noreply@buildwithpetal.com
+ * - Free tier: 100/day, 3,000/month from noreply@kimble.cloud
  * - Pro: $25/mo for 50,000 emails (custom domain optional)
  *
  * On enable, we issue a per-project bearer token shown ONCE. The user pastes
@@ -62,7 +62,7 @@ export function EmailSection({ projectId }: { projectId: string }) {
       setBusy(true);
       const r = await fnEnable({ data: { projectId } });
       const token = typeof r?.token === "string" ? r.token : "";
-      const sender = r?.sender ?? "noreply@buildwithpetal.com";
+      const sender = r?.sender ?? "noreply@kimble.cloud";
       // Only flip to enabled AFTER the server confirms — otherwise a 401 /
       // failure would still show a green "enabled" state and hide the CTA.
       setStatus({

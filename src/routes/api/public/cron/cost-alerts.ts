@@ -14,7 +14,7 @@ import { resolveAdminRecipients } from "@/server/self-learning-digest.server";
 import { secretsMatch } from "@/server/rate-limit.server";
 
 const RESEND_API = "https://api.resend.com";
-const SENDER = "Kimble <noreply@buildwithpetal.com>";
+const SENDER = "Kimble <noreply@kimble.cloud>";
 
 async function run(request: Request) {
   const provided = request.headers.get("x-petal-cron-secret") ?? "";
