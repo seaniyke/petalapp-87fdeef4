@@ -8,7 +8,7 @@ describe("booking / appointments family", () => {
     const c = deriveIntentContract("Build me a booking system for my hair salon. Customers should see services and prices, create an account, book an appointment with a stylist, and view their bookings. I need to see all bookings and manage services.");
     expect(c.archetype).toBe("booking");
     expect(c.surface).toBe("public+app");
-    expect(routes(c.label ? "Build me a booking system for my hair salon with customer accounts" : "")).toEqual(["/", "/login", "/dashboard", "/services", "/bookings", "/settings"]);
+    expect(c.pages.map((p) => p.route)).toEqual(["/", "/login", "/dashboard", "/services", "/bookings", "/settings"]);
     expect(c.pages.map((p) => p.route)).not.toContain("/menu");
   });
   it("barber → booking", () => {
