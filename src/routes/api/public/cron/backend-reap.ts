@@ -57,7 +57,7 @@ async function warn(projectId: string, daysLeft: number): Promise<boolean> {
       payload: {
         message_id: `backend-reap-${projectId}`,
         to: who.email,
-        from: "Kimble AI <noreply@buildwithpetal.com>",
+        from: "Kimble AI <noreply@kimble.cloud>",
         sender_domain: "notify.buildwithpetal.com",
         subject,
         html: `<p>${body.replace(/\n\n/g, "</p><p>")}</p>`,

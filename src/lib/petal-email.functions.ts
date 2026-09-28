@@ -90,7 +90,7 @@ export const enablePetalEmailForProject = createServerFn({ method: "POST" })
       userId,
     });
 
-    return { token, subscriptionId, sender: "noreply@buildwithpetal.com" };
+    return { token, subscriptionId, sender: "noreply@kimble.cloud" };
   });
 
 /** Rotate the API token. Returns the new token ONCE. */
