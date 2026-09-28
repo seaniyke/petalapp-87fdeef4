@@ -15,12 +15,17 @@
  * Schedule: once per hour.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { chargeRuntime } from "@/server/runtime-wallet.server";
+import {
+  chargeCloud,
+  cloudRates,
+  priceExternal,
+  railwayWindowCosts,
+  readRailwayUsage,
+} from "@/server/cloud-metering.server";
 import { secretsMatch } from "@/server/rate-limit.server";
 import {
   COMPUTE_IDLE_MS,
   COMPUTE_REAP_MS,
-  computeHourCents,
   destroyCompute,
   hoursOwed,
   listBillableCompute,
@@ -32,7 +37,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 type Summary = { charged: number; hours: number; slept: number; blocked: number; reaped: number };
 
 async function runComputeHour(): Promise<Summary> {
-  const centsPerHour = await computeHourCents();
+  const rates = await cloudRates();
   const rows = await listBillableCompute();
   const now = Date.now();
   const summary: Summary = { charged: 0, hours: 0, slept: 0, blocked: 0, reaped: 0 };
@@ -41,12 +46,19 @@ async function runComputeHour(): Promise<Summary> {
     const hours = hoursOwed(row, now);
     if (hours > 0) {
       const from = row.billedThrough ?? row.awakeSince;
-      const charge = await chargeRuntime({
+      // Measured Railway usage for exactly the window being settled; falls
+      // back to the configured hourly estimate (ESTIMATED) if unreadable.
+      const toIso = new Date(Date.parse(from!) + hours * 3_600_000).toISOString();
+      const usage = row.serviceId ? await readRailwayUsage(row.serviceId, from!, toIso) : null;
+      const priced = priceExternal(railwayWindowCosts(usage, hours, rates), rates);
+      const charge = await chargeCloud({
         userId: row.ownerId,
         projectId: row.projectId,
         meter: "compute_hour",
-        cents: centsPerHour * hours,
-        metadata: { hours, cents_per_hour: centsPerHour },
+        provider: "railway",
+        windowRef: `railway:${row.projectId}:${from}:${hours}`,
+        priced,
+        metadata: { hours, measured: usage != null },
       });
       if (charge.ok) {
         if (from) await markBilled(row.projectId, hours, from);
