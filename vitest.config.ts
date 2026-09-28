@@ -11,6 +11,7 @@ export default defineConfig({
     // importing scripts that call process.exit at module scope.
     include: [
       "src/server/__tests__/structural-not-sitewide.test.ts",
+      "src/server/__tests__/booking-family.test.ts",
       "src/server/__tests__/cloud-need.test.ts",
       "src/server/__tests__/product-surface.test.ts",
       "src/server/__tests__/advisory-archetype-routes.test.ts",

@@ -74,6 +74,18 @@ const FAMILIES: Family[] = [
     pages: [p("/", "Dashboard"), p("/patients", "Patients"), p("/doctors", "Doctors"), p("/appointments", "Appointments"), p("/records", "Medical Records"), p("/prescriptions", "Prescriptions"), p("/billing", "Billing"), p("/departments", "Departments"), p("/staff", "Staff"), p("/settings", "Settings")],
   },
   {
+    // Capability-based: any service business where customers book time/services.
+    id: "booking",
+    label: "booking / appointments",
+    triggers: /\b(salons?|barbers?(hop)?s?|spas?|beauty|nail (studio|bar|salon)|stylists?|hairdress(er|ers|ing)|massage|tutor(s|ing)?|lessons?|personal trainers?|appointment[- ]based|book(ing)? (an? )?(appointments?|sessions?|lessons?)|appointments? (booking|scheduling)|booking (system|app|platform))\b/i,
+    appOnly: true,
+    productType: "workflow-app",
+    roles: ["admin", "staff", "customer"],
+    entities: ["Service", "Booking", "Customer", "Staff"],
+    workflows: ["Customer browses services", "Customer books a time", "Customer views their bookings", "Staff manages bookings and services"],
+    pages: [p("/", "Dashboard"), p("/services", "Services"), p("/bookings", "Bookings"), p("/settings", "Settings")],
+  },
+  {
     id: "education",
     label: "school / learning management",
     triggers: /\b(school|students?|teachers?|classroom|lms|learning management|university|college|enrol(l)?ments?|gradebook|grades)\b/i,
