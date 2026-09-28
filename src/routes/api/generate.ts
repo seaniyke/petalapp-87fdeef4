@@ -7102,7 +7102,14 @@ async function handleGenerateRequestCore(
         if (body.projectId) {
           try {
             const { recordTierIntent } = await import("@/server/cloud-tier.server");
-            await recordTierIntent(body.projectId, lastUserContent ?? "");
+            const signal = await recordTierIntent(body.projectId, lastUserContent ?? "");
+            // Needing its own server means getting one now, not at the next
+            // daily sweep. considerCompute re-reads the tier, is idempotent,
+            // checks credits/capacity, records the outcome and never throws.
+            if (signal.tier === "kimble_compute") {
+              const { considerCompute } = await import("@/server/backend-autoscale.server");
+              await considerCompute(body.projectId);
+            }
           } catch (e) {
             console.warn("[cloud-tier] intent skipped:", e instanceof Error ? e.message : String(e));
           }
