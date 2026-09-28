@@ -158,5 +158,5 @@ export function unguardedAppRoutes(routerSrc: string, files: ProjectFile[]): str
     while ((m = n.exec(f.content))) byName.set(m[1]!, f.content);
   }
   const guardedBy = (c: string) => c === "RequireAuth" || /<RequireAuth\b/.test(byName.get(c) ?? "");
-  return routes.filter((r) => inApp(r.path) && !r.chain.some(guardedBy)).map((r) => r.path);
+  return [...new Set(routes.filter((r) => inApp(r.path) && !r.chain.some(guardedBy)).map((r) => r.path))];
 }

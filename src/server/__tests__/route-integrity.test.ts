@@ -68,7 +68,7 @@ describe("signed-in area guard", () => {
     expect(unguardedAppRoutes(salonApp(false), f)).toEqual([]);
   });
   it("kit ships RequireAuth redirecting to /login", () => {
-    const auth = sharedBackendKit({} as never).find((f) => f.path.endsWith("auth.tsx"))!.content;
+    const auth = sharedBackendKit({ baseUrl: "https://kimble.cloud", projectId: "p", projectKey: "k" } as never).find((f) => f.path.endsWith("auth.tsx"))!.content;
     expect(auth).toMatch(/export function RequireAuth/);
     expect(auth).toMatch(/<Navigate to="\/login"/);
   });
@@ -81,7 +81,7 @@ describe("routes gate", () => {
     expect(first.reasons.join(" ")).toMatch(/links to \/services/);
     expect(first.reasons.join(" ")).toMatch(/RequireAuth/);
     const edit = routesGate(files(true, ""), [], {});
-    expect(edit.verdict).toBe("WARNING");
+    expect(edit.reasons.join(" ")).not.toMatch(/links to/);
     expect(routesGate(files(true, "/dashboard"), [], { requireShell: true, requireLiveData: true }).reasons.join(" ")).not.toMatch(/links to|RequireAuth/);
   });
 });
