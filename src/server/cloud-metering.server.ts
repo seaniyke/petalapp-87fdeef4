@@ -169,6 +169,14 @@ export async function chargeCloud(opts: {
 }): Promise<ChargeRuntimeResult> {
   const { priced } = opts;
   if (priced.credits <= 0) return { ok: true, freeAfter: 0, topupAfter: 0, paidWithCredits: 0 };
+  // Idempotent per window: a re-run of the same cron never charges twice.
+  const firstRef = `cloud:${opts.windowRef}:${priced.costs[0]?.resource ?? "x"}`;
+  const { data: seen } = await supabaseAdmin
+    .from("cost_events" as never)
+    .select("id")
+    .eq("source_ref", firstRef)
+    .maybeSingle();
+  if (seen) return { ok: true, freeAfter: 0, topupAfter: 0, paidWithCredits: 0 };
   const charge = await chargeRuntime({
     userId: opts.userId,
     projectId: opts.projectId,
