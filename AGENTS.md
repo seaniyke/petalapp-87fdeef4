@@ -72,3 +72,4 @@
 - Chat uses AI Elements MessageResponse and PromptInput/PromptInputSubmit, with InputGroupTextarea instead of the Enter-intercepting PromptInputTextarea — why: keep Kimble's newline/send and existing attachment contracts unchanged.
 - Shared CSS enforces rectangular action geometry for legacy and design-system controls, excluding switch tracks — why: local radius overrides left oval actions behind.
 <!-- LOVABLE:END -->
+- One-click connectors use one flow in `src/server/connectors/oauth.server.ts` (HMAC-signed expiring state, AES-GCM tokens in `connector_accounts`, server-only access); a provider is shown connectable only when its developer-app secrets exist — why: one sign-in path for every provider, tokens never reach the browser.
