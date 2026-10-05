@@ -120,7 +120,7 @@ function ProjectsPage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-sm font-medium uppercase tracking-wider text-primary">Workspace</p>
-            <h1 className="mt-2 font-display text-4xl">My projects</h1>
+            <h1 className="mt-2 font-display text-3xl font-bold tracking-tight sm:text-4xl">My projects</h1>
             <p className="mt-2 text-muted-foreground">
               Pick up where you left off, or start something new.
             </p>
@@ -138,7 +138,7 @@ function ProjectsPage() {
           {loading ? (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-2">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-44 animate-pulse rounded-2xl border border-border bg-card" />
+                <div key={i} className="h-44 animate-pulse rounded-[1.25rem] border border-border/60 bg-card/85 backdrop-blur-xl" />
               ))}
             </div>
           ) : projects.length === 0 ? (
@@ -157,7 +157,7 @@ function ProjectsPage() {
                 pageSize={paged.pageSize}
                 onPage={paged.setPage}
                 noun="projects"
-                className="mt-6 rounded-2xl border border-border"
+                className="mt-6 rounded-[1.25rem] border border-border/60 bg-card/85 backdrop-blur-xl"
               />
             </>
           )}
@@ -204,7 +204,7 @@ function ProjectsPage() {
 
 function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () => void }) {
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
+    <div className="group relative flex flex-col overflow-hidden rounded-[1.25rem] border border-border/60 bg-card/85 backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)]">
       <Link
         to="/builder"
         search={{ id: project.id, prompt: undefined, mode: undefined, attachKey: undefined }}
@@ -250,7 +250,7 @@ function ProjectCard({ project, onDelete }: { project: ProjectRow; onDelete: () 
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card/60 p-12 text-center">
+    <div className="rounded-[1.25rem] border border-dashed border-border/70 bg-card/60 p-12 text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-butter">
         <Sparkles className="h-6 w-6 text-foreground/70" />
       </div>

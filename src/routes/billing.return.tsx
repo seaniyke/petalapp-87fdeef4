@@ -173,7 +173,7 @@ function BillingReturn() {
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
             <Sparkles className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-semibold">
+          <h1 className="font-display text-2xl font-bold tracking-tight">
             {state.purpose === "domain_purchase"
               ? "Domain registered"
               : state.purpose === "marketplace"
@@ -195,7 +195,7 @@ function BillingReturn() {
       {state.kind === "registering-domain" && (
         <>
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <h1 className="mt-4 text-xl font-semibold">Registering your domain…</h1>
+          <h1 className="mt-4 font-display text-2xl font-bold tracking-tight">Registering your domain…</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {state.hostname
               ? `We're finalising ${state.hostname}. This usually takes 10–60 seconds.`
@@ -207,7 +207,7 @@ function BillingReturn() {
       {state.kind === "pending" && (
         <>
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <h1 className="mt-4 text-xl font-semibold">Almost there</h1>
+          <h1 className="mt-4 font-display text-2xl font-bold tracking-tight">Almost there</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Your bank is still confirming. Credits usually appear in under a minute.
           </p>
@@ -219,7 +219,7 @@ function BillingReturn() {
           <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
             <XCircle className="h-7 w-7 text-destructive" />
           </div>
-          <h1 className="text-2xl font-semibold">Payment not completed</h1>
+          <h1 className="font-display text-2xl font-bold tracking-tight">Payment not completed</h1>
           <p className="mt-2 text-muted-foreground">{state.message}</p>
         </>
       )}
