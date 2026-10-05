@@ -1,6 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff, ArrowLeft, CheckCircle2, Github } from "lucide-react";
+
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81Z"
+      />
+    </svg>
+  );
+}
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -93,6 +104,9 @@ function AuthPage() {
   // Waitlist gate: null = still checking, true = show waitlist instead of auth.
   const [waitlist, setWaitlist] = useState<boolean | null>(null);
   const [bypassWaitlist, setBypassWaitlist] = useState(false);
+  const [lastMethod] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : window.localStorage.getItem("kimble-last-auth-method"),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +196,21 @@ function AuthPage() {
     setResetSent(email);
   }
 
+  async function handleOAuth(provider: "google" | "github") {
+    setBusy(true);
+    try {
+      window.localStorage.setItem("kimble-last-auth-method", provider);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: postAuthUrl },
+      });
+      if (error) throw error;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Something went wrong");
+      setBusy(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -211,15 +240,11 @@ function AuthPage() {
   const title =
     mode === "signup" ? "Create your account" :
     mode === "forgot" ? "Reset your password" :
-    "Welcome back";
-  const subtitle =
-    mode === "signup" ? "Save your projects and pick up right where you left off." :
-    mode === "forgot" ? "We'll email you a secure link to set a new password." :
-    "Sign in to continue building.";
+    "Log in";
   const submitLabel =
-    mode === "signup" ? "Create account" :
+    mode === "signup" ? "Continue" :
     mode === "forgot" ? "Send reset link" :
-    "Sign in";
+    "Continue";
 
   // Sign-in and password reset are always open — existing accounts must be
   // able to get back in. Only *new* accounts sit behind the waitlist.
@@ -245,12 +270,60 @@ function AuthPage() {
     <div className="landing-page relative min-h-screen overflow-hidden bg-background text-foreground">
       <SiteHeader />
       <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-aura)] opacity-90" aria-hidden />
-      <div className="relative mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center px-5 pb-16 pt-10 sm:px-6">
-            <div className="mb-6 text-center">
-              <h1 className="font-display text-[2.1rem] font-bold leading-[1.05] tracking-tight text-balance sm:text-5xl">{title}</h1>
-              <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{subtitle}</p>
-            </div>
-            <div className="rounded-[1.75rem] border border-border/70 bg-card/85 p-6 shadow-[var(--shadow-squircle)] backdrop-blur-2xl sm:p-8">
+      <div className="relative mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center px-6 pb-16 pt-10 sm:px-8">
+            <img src="/kimble-logo.png" alt="Kimble" className="h-12 w-12 dark:invert" />
+            <h1 className="mt-7 font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl">{title}</h1>
+
+            {mode !== "forgot" && (
+              <>
+                <div className="mt-9 space-y-3">
+                  <div className="relative">
+                    {lastMethod === "google" && (
+                      <span className="absolute -top-2.5 right-4 z-10 rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground">
+                        Last used
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleOAuth("google")}
+                      className={`inline-flex h-12 w-full items-center justify-center gap-3 rounded-md border bg-card/60 text-[15px] font-medium backdrop-blur transition hover:bg-card disabled:opacity-50 ${
+                        lastMethod === "google" ? "border-primary/60" : "border-border/70"
+                      }`}
+                    >
+                      <GoogleIcon className="h-5 w-5" />
+                      Continue with Google
+                    </button>
+                  </div>
+                  <div className="relative">
+                    {lastMethod === "github" && (
+                      <span className="absolute -top-2.5 right-4 z-10 rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground">
+                        Last used
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleOAuth("github")}
+                      className={`inline-flex h-12 w-full items-center justify-center gap-3 rounded-md border bg-card/60 text-[15px] font-medium backdrop-blur transition hover:bg-card disabled:opacity-50 ${
+                        lastMethod === "github" ? "border-primary/60" : "border-border/70"
+                      }`}
+                    >
+                      <Github className="h-5 w-5" />
+                      Continue with GitHub
+                    </button>
+                  </div>
+                </div>
+
+                <div className="my-7 flex items-center gap-4" aria-hidden>
+                  <div className="h-px flex-1 bg-border/70" />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">OR</span>
+                  <div className="h-px flex-1 bg-border/70" />
+                </div>
+              </>
+            )}
+
+            <div>
               {mode === "forgot" && (
                 <button
                   onClick={() => switchMode("signin")}
@@ -303,9 +376,9 @@ function AuthPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="mt-1 space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="mb-1.5 block text-sm font-medium text-foreground">
                     Email
                   </span>
                   <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3.5 transition focus-within:border-primary/50">
@@ -373,7 +446,7 @@ function AuthPage() {
                 <button
                   type="submit"
                   disabled={busy || (mode === "signup" && scorePassword(password).score < 1)}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-foreground text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-foreground text-[15px] font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
                 >
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                   {submitLabel}
@@ -396,9 +469,9 @@ function AuthPage() {
                   </>
                 ) : mode === "signin" ? (
                   <>
-                    New to Kimble?{" "}
+                    Don't have an account?{" "}
                     <button onClick={() => switchMode("signup")} className="font-semibold text-foreground underline-offset-2 hover:underline">
-                      Create an account
+                      Create your account
                     </button>
                   </>
                 ) : (
