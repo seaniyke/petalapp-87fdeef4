@@ -485,15 +485,18 @@ function Landing() {
         >
           {showAuthedHero ? (
             <>
-              <Link
-                to="/builder"
-                search={{ mode: "discuss" } as never}
-                className="mx-auto mb-10 inline-flex items-center gap-3 rounded-full border border-border bg-card/70 py-1.5 pl-1.5 pr-4 text-sm font-medium backdrop-blur-xl"
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("discuss");
+                  requestAnimationFrame(() => textareaRef.current?.focus());
+                }}
+                className="mx-auto mb-10 inline-flex items-center gap-3 rounded-full border border-border bg-card/70 py-1.5 pl-1.5 pr-4 text-sm font-medium backdrop-blur-xl transition hover:bg-card"
               >
                 <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">New</span>
                 Chat with Kimble for free
                 <ArrowRight className="h-4 w-4" />
-              </Link>
+              </button>
               <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-tight text-balance sm:text-5xl">
                 {firstName ? `Got an idea, ${firstName}?` : "Got an idea?"}
               </h1>
@@ -516,9 +519,9 @@ function Landing() {
               e.preventDefault();
               submit();
             }}
-            className="mx-auto mt-7 max-w-3xl sm:mt-10"
+            className="mx-auto mt-8 w-full max-w-3xl sm:mt-10"
           >
-            <div className="group relative rounded-2xl border border-foreground/15 bg-card p-3 text-left shadow-[var(--shadow-editorial)] transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-ring/20">
+            <div className="group relative rounded-[1.75rem] border border-border/70 bg-card/85 p-4 text-left shadow-[var(--shadow-squircle)] backdrop-blur-2xl transition focus-within:border-primary/50">
               {mode === "coach" ? (
                 <IdeaCoach
                   isAuthed={!!user}
