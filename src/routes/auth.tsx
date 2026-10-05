@@ -104,6 +104,9 @@ function AuthPage() {
   // Waitlist gate: null = still checking, true = show waitlist instead of auth.
   const [waitlist, setWaitlist] = useState<boolean | null>(null);
   const [bypassWaitlist, setBypassWaitlist] = useState(false);
+  const [lastMethod] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : window.localStorage.getItem("kimble-last-auth-method"),
+  );
 
   useEffect(() => {
     let cancelled = false;
