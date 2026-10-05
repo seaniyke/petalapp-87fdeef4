@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { clearLastAuthEmail, readLastAuthEmail, writeLastAuthEmail } from "@/lib/draft-storage";
 import { toast } from "@/lib/notify";
 import { WaitlistPanel } from "@/components/WaitlistPanel";
+import { SiteHeader } from "@/components/SiteHeader";
 
 /**
  * Only allow internal, same-origin redirect targets. Rejects:
@@ -203,10 +204,7 @@ function AuthPage() {
   // gets the form on the first frame instead of an empty gradient.
   if (user || (loading && likelyAuthed)) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-background">
-        <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
-        <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
-      </div>
+      <div className="landing-page min-h-screen bg-background" />
     );
   }
 
@@ -244,79 +242,15 @@ function AuthPage() {
 
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
-      <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-        {/* Editorial left panel */}
-        <aside className="relative hidden overflow-hidden lg:block">
-          <div className="absolute inset-0 bg-aurora opacity-90" aria-hidden />
-          <div className="absolute inset-0 bg-grain opacity-30" aria-hidden />
-          <img
-            src="https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=1200&q=80&auto=format&fit=crop"
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full object-cover opacity-25 mix-blend-multiply"
-            loading="lazy"
-          />
-          <div className="relative flex h-full flex-col justify-between p-12 xl:p-16">
-            <Link to="/" className="inline-flex items-center gap-2.5 group">
-              <img
-                src="/kimble-logo.png"
-                alt=""
-                aria-hidden
-                className="h-10 w-10 object-contain transition-transform group-hover:-rotate-6 dark:invert"
-              />
-              <span className="font-display text-3xl font-black tracking-[-0.035em] text-foreground">
-                Kimble
-              </span>
-            </Link>
-
-            <div className="max-w-lg">
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-foreground/70">
-                Build with a sentence
-              </p>
-              <h2 className="heading-editorial mt-5 text-5xl xl:text-6xl">
-                From a whisper of an idea to <em>a shipped app</em> — in one chat.
-              </h2>
-              <p className="mt-6 max-w-md text-base leading-relaxed text-foreground/75">
-                Websites and web apps. Kimble listens, plans, builds, and
-                deploys — while you watch it happen.
-              </p>
+    <div className="landing-page relative min-h-screen overflow-hidden bg-background text-foreground">
+      <SiteHeader />
+      <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-aura)] opacity-90" aria-hidden />
+      <div className="relative mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center px-5 pb-16 pt-10 sm:px-6">
+            <div className="mb-6 text-center">
+              <h1 className="font-display text-[2.1rem] font-bold leading-[1.05] tracking-tight text-balance sm:text-5xl">{title}</h1>
+              <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{subtitle}</p>
             </div>
-
-            <div className="grid grid-cols-3 gap-6 text-sm">
-              <div>
-                <p className="font-display text-3xl font-black tracking-tight text-foreground">18k+</p>
-                <p className="mt-1 text-xs text-muted-foreground">Apps built</p>
-              </div>
-              <div>
-                <p className="font-display text-3xl font-black tracking-tight text-foreground">4</p>
-                <p className="mt-1 text-xs text-muted-foreground">Targets in one chat</p>
-              </div>
-              <div>
-                <p className="font-display text-3xl font-black tracking-tight text-foreground">$5</p>
-                <p className="mt-1 text-xs text-muted-foreground">Free credit to start</p>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* Auth card side */}
-        <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-12 sm:px-8">
-          <div className="pointer-events-none absolute inset-0 bg-aurora opacity-60 lg:hidden" aria-hidden />
-          <div className="pointer-events-none absolute inset-0 bg-grain opacity-30 lg:hidden" aria-hidden />
-
-          <div className="relative w-full max-w-md">
-            <Link
-              to="/"
-              className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground lg:hidden"
-            >
-              <img src="/kimble-logo.png" alt="" aria-hidden className="h-8 w-8 object-contain dark:invert" />
-              <span className="font-display text-2xl font-black tracking-[-0.03em] text-foreground">
-                Kimble
-              </span>
-            </Link>
-
-            <div className="rounded-3xl border border-border/60 bg-card/70 p-7 shadow-[var(--shadow-editorial)] backdrop-blur-xl sm:p-9">
+            <div className="rounded-[1.75rem] border border-border/70 bg-card/85 p-6 shadow-[var(--shadow-squircle)] backdrop-blur-2xl sm:p-8">
               {mode === "forgot" && (
                 <button
                   onClick={() => switchMode("signin")}
@@ -326,11 +260,9 @@ function AuthPage() {
                 </button>
               )}
 
-              <h1 className="heading-editorial text-4xl sm:text-[2.75rem]">{title}</h1>
-              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
 
               {duplicateEmail && (
-                <div className="mt-5 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+                <div className="mt-5 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
                   <p className="font-medium text-foreground">
                     An account with <span className="font-mono">{duplicateEmail}</span> already exists.
                   </p>
@@ -357,7 +289,7 @@ function AuthPage() {
               )}
 
               {resetSent && (
-                <div className="mt-5 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm">
+                <div className="mt-5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm">
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
                     <div>
@@ -376,7 +308,7 @@ function AuthPage() {
                   <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Email
                   </span>
-                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3.5 transition focus-within:border-primary focus-within:shadow-[0_0_0_4px_oklch(0.78_0.13_25/0.12)]">
+                  <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3.5 transition focus-within:border-primary/50">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <input
                       type="email"
@@ -400,7 +332,7 @@ function AuthPage() {
                         Password
                       </label>
                     </div>
-                    <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3.5 transition focus-within:border-primary focus-within:shadow-[0_0_0_4px_oklch(0.78_0.13_25/0.12)]">
+                    <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3.5 transition focus-within:border-primary/50">
                       <Lock className="h-4 w-4 text-muted-foreground" />
                       <input
                         id="petal-password"
@@ -441,7 +373,7 @@ function AuthPage() {
                 <button
                   type="submit"
                   disabled={busy || (mode === "signup" && scorePassword(password).score < 1)}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-foreground text-sm font-semibold text-background shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-editorial)] disabled:opacity-50 disabled:hover:translate-y-0"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-foreground text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
                 >
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                   {submitLabel}
@@ -479,8 +411,6 @@ function AuthPage() {
                 )}
               </div>
             </div>
-          </div>
-        </div>
       </div>
     </div>
   );
