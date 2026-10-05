@@ -240,15 +240,11 @@ function AuthPage() {
   const title =
     mode === "signup" ? "Create your account" :
     mode === "forgot" ? "Reset your password" :
-    "Welcome back";
-  const subtitle =
-    mode === "signup" ? "Save your projects and pick up right where you left off." :
-    mode === "forgot" ? "We'll email you a secure link to set a new password." :
-    "Sign in to continue building.";
+    "Log in";
   const submitLabel =
-    mode === "signup" ? "Create account" :
+    mode === "signup" ? "Continue" :
     mode === "forgot" ? "Send reset link" :
-    "Sign in";
+    "Continue";
 
   // Sign-in and password reset are always open — existing accounts must be
   // able to get back in. Only *new* accounts sit behind the waitlist.
