@@ -91,7 +91,7 @@ export const getRouter = () => {
     context: {},
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
-    defaultErrorComponent: DefaultErrorComponent,
+    defaultErrorComponent: DefaultErrorComponent as never,
   });
 
   return router;
