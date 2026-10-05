@@ -43,7 +43,7 @@ export const Route = createFileRoute("/features/$slug")({
         <p className="mt-4 text-muted-foreground">That feature page doesn't exist.</p>
         <Link
           to="/"
-          className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background"
+          className="mt-8 inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-sm font-medium text-background"
         >
           Back to home
         </Link>
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/features/$slug")({
     <div className="min-h-screen bg-background p-12 text-foreground">
       <h1 className="font-display text-3xl font-black">Something went wrong</h1>
       <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
-      <button onClick={reset} className="mt-6 rounded-full bg-foreground px-4 py-2 text-sm text-background">
+      <button onClick={reset} className="mt-6 rounded-lg bg-foreground px-4 py-2 text-sm text-background">
         Try again
       </button>
     </div>
@@ -87,7 +87,7 @@ function FeaturePage() {
         <div className="relative mx-auto max-w-6xl px-4 py-28 sm:px-6 sm:py-40">
           <Link
             to="/"
-            className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur transition hover:text-foreground"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur transition hover:text-foreground"
           >
             ← Back to Kimble
           </Link>
@@ -107,13 +107,13 @@ function FeaturePage() {
               <Link
                 to="/auth"
                 search={{ mode: "signup", redirect: undefined }}
-                className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background shadow-[var(--shadow-editorial)] transition hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-medium text-background shadow-[var(--shadow-editorial)] transition hover:-translate-y-0.5"
               >
                 Start building <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/gallery"
-                className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-6 py-3 text-sm font-medium text-foreground backdrop-blur transition hover:bg-muted"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-background/60 px-6 py-3 text-sm font-medium text-foreground backdrop-blur transition hover:bg-muted"
               >
                 See examples
               </Link>
@@ -253,7 +253,7 @@ function TryItSection({ samplePrompt, eyebrow }: { samplePrompt: string; eyebrow
             </p>
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background shadow-[var(--shadow-editorial)] transition hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-medium text-background shadow-[var(--shadow-editorial)] transition hover:-translate-y-0.5"
             >
               Build it <ArrowRight className="h-4 w-4" />
             </button>

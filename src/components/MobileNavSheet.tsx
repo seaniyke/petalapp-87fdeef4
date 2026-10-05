@@ -145,7 +145,7 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, marketplaceE
                 to="/auth"
                 search={{ mode: "signin", redirect: undefined }}
                 onClick={close}
-                className="flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-background text-sm font-medium hover:bg-muted/50"
+                className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background text-sm font-medium hover:bg-muted/50"
               >
                 <LogIn className="h-4 w-4" /> Sign in
               </Link>
@@ -153,7 +153,7 @@ export function MobileNavSheet({ open, onOpenChange, onOpenBilling, marketplaceE
                 to="/auth"
                 search={{ mode: "signup", redirect: undefined }}
                 onClick={close}
-                className="mt-2 flex h-11 items-center justify-center gap-2 rounded-full bg-foreground text-sm font-medium text-background"
+                className="mt-2 flex h-11 items-center justify-center gap-2 rounded-lg bg-foreground text-sm font-medium text-background"
               >
                 Get started
               </Link>

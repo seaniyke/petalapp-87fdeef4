@@ -136,7 +136,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
             </p>
             <Link
               to="/"
-              className="mt-6 inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
+              className="mt-6 inline-flex h-11 items-center rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
             >
               Back to Kimble
             </Link>
@@ -181,7 +181,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-60"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-60"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {busy ? "Saving your spot…" : "Get early access"}
@@ -206,7 +206,7 @@ export function WaitlistPanel({ onHaveAccess, onSignIn }: Props) {
                   <button
                     type="submit"
                     disabled={accessBusy}
-                    className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
+                    className="inline-flex h-11 shrink-0 items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted disabled:opacity-60"
                   >
                     {accessBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     Continue

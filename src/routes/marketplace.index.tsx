@@ -176,7 +176,7 @@ function MarketplacePage() {
                     <Link
                       to="/marketplace/$slug"
                       params={{ slug: p.listing_slug }}
-                      className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted/60"
+                      className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted/60"
                     >
                       {p.listing_title}
                     </Link>

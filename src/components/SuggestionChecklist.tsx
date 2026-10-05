@@ -143,7 +143,7 @@ export function SuggestionChecklist({
             type="button"
             disabled
             aria-label="Previous question"
-            className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition hover:bg-muted/50 disabled:opacity-40"
+            className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted/50 disabled:opacity-40"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -151,7 +151,7 @@ export function SuggestionChecklist({
             type="button"
             disabled
             aria-label="Next question"
-            className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition hover:bg-muted/50 disabled:opacity-40"
+            className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground transition hover:bg-muted/50 disabled:opacity-40"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -169,7 +169,7 @@ export function SuggestionChecklist({
             type="button"
             onClick={submit}
             disabled={!canSend}
-            className="inline-flex h-7 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[12px] font-medium text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[12px] font-medium text-primary-foreground transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pending && <Loader2 className="h-3 w-3 animate-spin" />}
             {answered ? "Sent" : pending ? "Sending…" : isLast ? "Review" : "Next"}

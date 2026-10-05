@@ -160,7 +160,7 @@ export function WholeStackSection() {
           </p>
           <Link
             to="/docs"
-            className="rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90"
+            className="rounded-lg bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-90"
           >
             See how it works
           </Link>

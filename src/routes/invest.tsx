@@ -129,7 +129,7 @@ function InvestPage() {
                   </p>
                   <Link
                     to="/"
-                    className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
+                    className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
                   >
                     Back to Kimble <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -218,7 +218,7 @@ function InvestPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-60"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-60"
                   >
                     {submitting ? (
                       <>

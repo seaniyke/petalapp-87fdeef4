@@ -418,7 +418,7 @@ function DocsPage() {
           </p>
           <Link
             to="/"
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-foreground px-5 text-sm font-medium text-background"
+            className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-foreground px-5 text-sm font-medium text-background"
           >
             Start building
           </Link>

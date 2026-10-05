@@ -147,7 +147,7 @@ export function PublishSuccessCard({
               rel="noreferrer noopener"
               aria-label={t.label}
               title={t.label}
-              className="grid h-10 w-10 place-items-center rounded-full text-foreground/80 transition hover:bg-muted hover:text-foreground active:scale-95"
+              className="grid h-10 w-10 place-items-center rounded-lg text-foreground/80 transition hover:bg-muted hover:text-foreground active:scale-95"
             >
               <t.icon className="h-5 w-5" />
             </a>

@@ -254,7 +254,7 @@ export function IdeaCoach({
               type="submit"
               aria-label="Send answer"
               disabled={busy || !draft.trim()}
-              className="grid h-7 w-7 place-items-center rounded-full bg-foreground/85 text-background transition hover:bg-foreground disabled:opacity-40"
+              className="grid h-7 w-7 place-items-center rounded-lg bg-foreground/85 text-background transition hover:bg-foreground disabled:opacity-40"
             >
               {busy ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -294,7 +294,7 @@ export function IdeaCoach({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
             <RotateCw className="h-3 w-3" />
             Try a different idea
@@ -303,7 +303,7 @@ export function IdeaCoach({
             type="button"
             onClick={handleBuild}
             disabled={!state.assembledPrompt.trim()}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-50"
           >
             Build this
             <ArrowUp className="h-3 w-3" />
@@ -335,7 +335,7 @@ function FinalCard({
         <button
           type="button"
           onClick={onToggleEdit}
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10.5px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
         >
           <Pencil className="h-2.5 w-2.5" />
           {editing ? "Done" : "Tweak"}

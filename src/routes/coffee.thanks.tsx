@@ -99,14 +99,14 @@ function ThanksPage() {
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <Link
                   to="/"
-                  className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition hover:brightness-105"
+                  className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground transition hover:brightness-105"
                 >
                   Back to Kimble <ArrowRight className="h-4 w-4" />
                 </Link>
                 {INVEST_LINKS_ENABLED && (
                   <Link
                     to="/invest"
-                    className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium hover:bg-muted"
+                    className="inline-flex h-11 items-center rounded-lg border border-border px-6 text-sm font-medium hover:bg-muted"
                   >
                     Want to invest in Kimble?
                   </Link>
@@ -139,13 +139,13 @@ function ThanksPage() {
               <div className="mt-6 flex gap-3">
                 <Link
                   to="/coffee"
-                  className="inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
+                  className="inline-flex h-11 items-center rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
                 >
                   Try again
                 </Link>
                 <Link
                   to="/"
-                  className="inline-flex h-11 items-center rounded-full border border-border px-6 text-sm font-medium hover:bg-muted"
+                  className="inline-flex h-11 items-center rounded-lg border border-border px-6 text-sm font-medium hover:bg-muted"
                 >
                   Home
                 </Link>

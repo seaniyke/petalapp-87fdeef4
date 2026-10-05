@@ -132,7 +132,7 @@ export function CryptoTipPanel() {
           <button
             type="button"
             onClick={copy}
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-sm font-semibold transition hover:border-foreground/40"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-semibold transition hover:border-foreground/40"
           >
             {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
             {copied ? "Copied" : "Copy address"}
@@ -219,7 +219,7 @@ export function CryptoTipPanel() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-60"
+          className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-60"
         >
           {submitting ? (
             <>

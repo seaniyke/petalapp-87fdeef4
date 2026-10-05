@@ -123,7 +123,7 @@ function WaitlistStatusPage() {
             <Link
               to="/auth"
               search={{ mode: "signup", redirect: undefined }}
-              className="mt-6 inline-flex h-11 items-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
+              className="mt-6 inline-flex h-11 items-center rounded-lg bg-primary px-6 text-sm font-medium text-primary-foreground hover:brightness-105"
             >
               Join the waitlist
             </Link>
@@ -145,7 +145,7 @@ function WaitlistStatusPage() {
                   <Link
                     to="/auth"
                     search={{ mode: "signup", redirect: undefined }}
-                    className="mt-6 inline-flex h-12 items-center rounded-full bg-primary px-6 text-base font-medium text-primary-foreground hover:brightness-105"
+                    className="mt-6 inline-flex h-12 items-center rounded-lg bg-primary px-6 text-base font-medium text-primary-foreground hover:brightness-105"
                   >
                     Start building
                   </Link>
@@ -203,7 +203,7 @@ function WaitlistStatusPage() {
               <button
                 type="button"
                 onClick={share}
-                className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-medium text-primary-foreground transition hover:brightness-105"
+                className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-medium text-primary-foreground transition hover:brightness-105"
               >
                 <Share2 className="h-4 w-4" /> Share your link
               </button>

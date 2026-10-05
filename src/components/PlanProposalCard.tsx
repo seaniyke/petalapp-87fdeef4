@@ -124,7 +124,7 @@ export function PlanProposalCard({
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              className="rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
               aria-label="Cancel plan"
             >
               <X className="h-3.5 w-3.5" />
@@ -208,7 +208,7 @@ export function PlanProposalCard({
               <button
                 type="button"
                 onClick={onCancel}
-                className="rounded-full px-3 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="rounded-lg px-3 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
               >
                 Cancel
               </button>
@@ -216,7 +216,7 @@ export function PlanProposalCard({
                 <button
                   type="button"
                   onClick={onSkip}
-                  className="rounded-full px-3 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="rounded-lg px-3 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
                 >
                   Skip plan
                 </button>
@@ -227,7 +227,7 @@ export function PlanProposalCard({
               disabled={selected === 0}
               onClick={onApprove}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-1.5 text-[11px] font-semibold text-background shadow-[var(--shadow-soft)] transition",
+                "inline-flex items-center gap-1.5 rounded-lg bg-foreground px-3.5 py-1.5 text-[11px] font-semibold text-background shadow-[var(--shadow-soft)] transition",
                 "hover:scale-[1.02] active:scale-[0.98]",
                 "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100",
               )}

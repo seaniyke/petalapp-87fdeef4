@@ -5800,7 +5800,7 @@ function Builder() {
                     <button
                       type="button"
                       onClick={stopGeneration}
-                      className="grid size-11 place-items-center rounded-full bg-foreground text-background shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 sm:size-9"
+                      className="grid size-11 place-items-center rounded-lg bg-foreground text-background shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 sm:size-9"
                       title="Stop"
                       aria-label="Stop generation"
                     >
@@ -5810,7 +5810,7 @@ function Builder() {
                     <button
                       type="submit"
                       disabled={bootstrapping || !input.trim()}
-                      className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none sm:size-9"
+                      className="grid size-11 place-items-center rounded-lg bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none sm:size-9"
                       title={
                         discussBusy
                           ? "Add to queue"

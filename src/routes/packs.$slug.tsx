@@ -38,7 +38,7 @@ export const Route = createFileRoute("/packs/$slug")({
         </p>
         <Link
           to="/packs"
-          className="mt-6 inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background"
+          className="mt-6 inline-flex items-center gap-1.5 rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background"
         >
           <ArrowLeft className="h-4 w-4" /> Back to packs
         </Link>
@@ -109,7 +109,7 @@ function PackDetail() {
           <button
             type="button"
             onClick={build}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
           >
             Build this with Kimble
             <ArrowRight className="h-4 w-4" />
@@ -164,7 +164,7 @@ function PackDetail() {
           <button
             type="button"
             onClick={build}
-            className="mt-5 inline-flex items-center justify-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
+            className="mt-5 inline-flex items-center justify-center gap-1.5 rounded-lg bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
           >
             Build this with Kimble <ArrowRight className="h-4 w-4" />
           </button>

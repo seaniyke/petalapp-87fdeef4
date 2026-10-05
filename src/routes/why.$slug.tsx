@@ -50,7 +50,7 @@ function WhyNotFound() {
         <p className="mt-4 text-muted-foreground">That page doesn't exist.</p>
         <Link
           to="/"
-          className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background"
+          className="mt-8 inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-sm font-medium text-background"
         >
           Back to home
         </Link>
@@ -147,7 +147,7 @@ function WhyPage() {
         <div className="mt-14">
           <Link
             to={difference.cta.to}
-            className="inline-flex h-13 items-center gap-2 rounded-full bg-foreground px-7 py-3.5 text-sm font-semibold text-background transition hover:-translate-y-0.5"
+            className="inline-flex h-13 items-center gap-2 rounded-lg bg-foreground px-7 py-3.5 text-sm font-semibold text-background transition hover:-translate-y-0.5"
           >
             {difference.cta.label}
             <ArrowRight className="h-4 w-4" />

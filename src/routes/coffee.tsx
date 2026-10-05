@@ -288,7 +288,7 @@ function CoffeePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-primary text-base font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-60"
+              className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-base font-medium text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-60"
             >
               {submitting ? (
                 <>
