@@ -71,6 +71,58 @@ export function IntegrationsSection({ projectId }: { projectId: string }) {
   const [catalog, setCatalog] = useState<CatalogEntry[] | null>(null);
   const [installed, setInstalled] = useState<Installed[] | null>(null);
   const [installing, setInstalling] = useState<CatalogEntry | null>(null);
+  const [oauth, setOauth] = useState<{ connected: Set<string>; ready: Set<string> }>({
+    connected: new Set(),
+    ready: new Set(),
+  });
+
+  async function refreshOauth() {
+    const res = await authedFetch("/api/connectors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "list", projectId }),
+    });
+    if (!res.ok) return;
+    const j = (await res.json()) as { accounts: { connector_id: string }[]; ready: string[] };
+    setOauth({ connected: new Set(j.accounts.map((a) => a.connector_id)), ready: new Set(j.ready) });
+  }
+
+  useEffect(() => {
+    void refreshOauth();
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const d = e.data as { type?: string; ok?: boolean; message?: string };
+      if (d?.type !== "kimble:connector") return;
+      if (d.ok) toast.success("Connected");
+      else toast.error(d.message ?? "Connection failed");
+      void refreshOauth();
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
+
+  async function oauthAction(connectorId: string, action: "start" | "disconnect") {
+    const popup = action === "start" ? window.open("about:blank", "kimble-connect", "width=520,height=720") : null;
+    const res = await authedFetch("/api/connectors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, projectId, connectorId }),
+    });
+    if (!res.ok) {
+      popup?.close();
+      toast.error(await res.text());
+      return;
+    }
+    if (action === "start") {
+      const { url } = (await res.json()) as { url: string };
+      if (popup) popup.location.href = url;
+      else window.location.href = url;
+    } else {
+      toast.success("Disconnected");
+      void refreshOauth();
+    }
+  }
 
   async function refresh() {
     const [catRes, listRes] = await Promise.all([
@@ -149,6 +201,7 @@ export function IntegrationsSection({ projectId }: { projectId: string }) {
                   const status = connectorStatus(
                     c,
                     new Set(installed.map((i) => i.code)),
+                    oauth,
                   );
                   return (
                     <li
@@ -197,6 +250,23 @@ export function IntegrationsSection({ projectId }: { projectId: string }) {
                           <Button
                             size="sm"
                             onClick={() => setInstalling(entry)}
+                            className="h-7 gap-1 px-2 text-xs"
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Connect
+                          </Button>
+                        ) : status === "connected" && c.auth === "oauth" ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => oauthAction(c.id, "disconnect")}
+                            className="h-7 px-2 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : status === "available" && c.auth === "oauth" ? (
+                          <Button
+                            size="sm"
+                            onClick={() => oauthAction(c.id, "start")}
                             className="h-7 gap-1 px-2 text-xs"
                           >
                             <Plus className="h-3.5 w-3.5" /> Connect

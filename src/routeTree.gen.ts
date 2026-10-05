@@ -51,6 +51,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
+import { Route as ApiConnectorsRouteImport } from './routes/api/connectors'
 import { Route as ApiCreditPausesRouteImport } from './routes/api/credit-pauses'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
 import { Route as ApiDomainsRouteImport } from './routes/api/domains'
@@ -112,6 +113,7 @@ import { Route as ApiPublicBuildsHeartbeatRouteImport } from './routes/api/publi
 import { Route as ApiPublicCoffeeCryptoRouteImport } from './routes/api/public/coffee/crypto'
 import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
 import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
+import { Route as ApiPublicConnectorsCallbackRouteImport } from './routes/api/public/connectors/callback'
 import { Route as ApiPublicCronBackendAutoscaleRouteImport } from './routes/api/public/cron/backend-autoscale'
 import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
 import { Route as ApiPublicCronBackendReapRouteImport } from './routes/api/public/cron/backend-reap'
@@ -348,6 +350,11 @@ const ApiBackendRoute = ApiBackendRouteImport.update({
 const ApiCoachRoute = ApiCoachRouteImport.update({
   id: '/api/coach',
   path: '/api/coach',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiConnectorsRoute = ApiConnectorsRouteImport.update({
+  id: '/api/connectors',
+  path: '/api/connectors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCreditPausesRoute = ApiCreditPausesRouteImport.update({
@@ -663,6 +670,12 @@ const ApiPublicCoffeeVerifyRoute = ApiPublicCoffeeVerifyRouteImport.update({
   path: '/api/public/coffee/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicConnectorsCallbackRoute =
+  ApiPublicConnectorsCallbackRouteImport.update({
+    id: '/api/public/connectors/callback',
+    path: '/api/public/connectors/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronBackendAutoscaleRoute =
   ApiPublicCronBackendAutoscaleRouteImport.update({
     id: '/api/public/cron/backend-autoscale',
@@ -858,6 +871,7 @@ export interface FileRoutesByFullPath {
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
+  '/api/connectors': typeof ApiConnectorsRoute
   '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRouteWithChildren
@@ -920,6 +934,7 @@ export interface FileRoutesByFullPath {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
@@ -990,6 +1005,7 @@ export interface FileRoutesByTo {
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
+  '/api/connectors': typeof ApiConnectorsRoute
   '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRouteWithChildren
@@ -1052,6 +1068,7 @@ export interface FileRoutesByTo {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
@@ -1123,6 +1140,7 @@ export interface FileRoutesById {
   '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
   '/api/coach': typeof ApiCoachRoute
+  '/api/connectors': typeof ApiConnectorsRoute
   '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
   '/api/domains': typeof ApiDomainsRouteWithChildren
@@ -1185,6 +1203,7 @@ export interface FileRoutesById {
   '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
   '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
   '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
+  '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
   '/api/public/cron/backend-reap': typeof ApiPublicCronBackendReapRoute
@@ -1257,6 +1276,7 @@ export interface FileRouteTypes {
     | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
+    | '/api/connectors'
     | '/api/credit-pauses'
     | '/api/discuss'
     | '/api/domains'
@@ -1319,6 +1339,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
@@ -1389,6 +1410,7 @@ export interface FileRouteTypes {
     | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
+    | '/api/connectors'
     | '/api/credit-pauses'
     | '/api/discuss'
     | '/api/domains'
@@ -1451,6 +1473,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
@@ -1521,6 +1544,7 @@ export interface FileRouteTypes {
     | '/admin/waitlist'
     | '/api/backend'
     | '/api/coach'
+    | '/api/connectors'
     | '/api/credit-pauses'
     | '/api/discuss'
     | '/api/domains'
@@ -1583,6 +1607,7 @@ export interface FileRouteTypes {
     | '/api/public/coffee/crypto'
     | '/api/public/coffee/initialize'
     | '/api/public/coffee/verify'
+    | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
     | '/api/public/cron/backend-reap'
@@ -1654,6 +1679,7 @@ export interface RootRouteChildren {
   AdminWaitlistRoute: typeof AdminWaitlistRoute
   ApiBackendRoute: typeof ApiBackendRoute
   ApiCoachRoute: typeof ApiCoachRoute
+  ApiConnectorsRoute: typeof ApiConnectorsRoute
   ApiCreditPausesRoute: typeof ApiCreditPausesRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
   ApiDomainsRoute: typeof ApiDomainsRouteWithChildren
@@ -1712,6 +1738,7 @@ export interface RootRouteChildren {
   ApiPublicCoffeeCryptoRoute: typeof ApiPublicCoffeeCryptoRoute
   ApiPublicCoffeeInitializeRoute: typeof ApiPublicCoffeeInitializeRoute
   ApiPublicCoffeeVerifyRoute: typeof ApiPublicCoffeeVerifyRoute
+  ApiPublicConnectorsCallbackRoute: typeof ApiPublicConnectorsCallbackRoute
   ApiPublicCronBackendAutoscaleRoute: typeof ApiPublicCronBackendAutoscaleRoute
   ApiPublicCronBackendHibernateRoute: typeof ApiPublicCronBackendHibernateRoute
   ApiPublicCronBackendReapRoute: typeof ApiPublicCronBackendReapRoute
@@ -2035,6 +2062,13 @@ declare module '@tanstack/react-router' {
       path: '/api/coach'
       fullPath: '/api/coach'
       preLoaderRoute: typeof ApiCoachRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/connectors': {
+      id: '/api/connectors'
+      path: '/api/connectors'
+      fullPath: '/api/connectors'
+      preLoaderRoute: typeof ApiConnectorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/credit-pauses': {
@@ -2464,6 +2498,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCoffeeVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/connectors/callback': {
+      id: '/api/public/connectors/callback'
+      path: '/api/public/connectors/callback'
+      fullPath: '/api/public/connectors/callback'
+      preLoaderRoute: typeof ApiPublicConnectorsCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/backend-autoscale': {
       id: '/api/public/cron/backend-autoscale'
       path: '/api/public/cron/backend-autoscale'
@@ -2742,6 +2783,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminWaitlistRoute: AdminWaitlistRoute,
   ApiBackendRoute: ApiBackendRoute,
   ApiCoachRoute: ApiCoachRoute,
+  ApiConnectorsRoute: ApiConnectorsRoute,
   ApiCreditPausesRoute: ApiCreditPausesRoute,
   ApiDiscussRoute: ApiDiscussRoute,
   ApiDomainsRoute: ApiDomainsRouteWithChildren,
@@ -2800,6 +2842,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCoffeeCryptoRoute: ApiPublicCoffeeCryptoRoute,
   ApiPublicCoffeeInitializeRoute: ApiPublicCoffeeInitializeRoute,
   ApiPublicCoffeeVerifyRoute: ApiPublicCoffeeVerifyRoute,
+  ApiPublicConnectorsCallbackRoute: ApiPublicConnectorsCallbackRoute,
   ApiPublicCronBackendAutoscaleRoute: ApiPublicCronBackendAutoscaleRoute,
   ApiPublicCronBackendHibernateRoute: ApiPublicCronBackendHibernateRoute,
   ApiPublicCronBackendReapRoute: ApiPublicCronBackendReapRoute,
