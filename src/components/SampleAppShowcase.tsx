@@ -175,7 +175,7 @@ setInterval(tick, 1000);`,
         <div className="bg-gradient-to-br from-coral/30 via-butter to-mint/30 p-5">
           <div className="font-display text-2xl leading-tight">Bean & Leaf</div>
           <p className="mt-1 text-xs text-muted-foreground">Slow coffee. Quiet mornings.</p>
-          <button className="mt-3 rounded-full bg-foreground px-3 py-1.5 text-[11px] text-background">
+          <button className="mt-3 rounded-lg bg-foreground px-3 py-1.5 text-[11px] text-background">
             Reserve a table
           </button>
         </div>

@@ -205,7 +205,7 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
                 <button
                   type="button"
                   onClick={onBuyCredits}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97]"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97]"
                 >
                   <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
                   {error.actionLabel}
@@ -215,7 +215,7 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
                 <button
                   type="button"
                   onClick={onDismiss}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-foreground/12 bg-background/60 px-3.5 text-[13px] font-medium text-foreground transition active:scale-[0.97]"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-foreground/12 bg-background/60 px-3.5 text-[13px] font-medium text-foreground transition active:scale-[0.97]"
                 >
                   <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                   {error.actionLabel}

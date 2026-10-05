@@ -143,7 +143,7 @@ function PublicPreview() {
                   href={published.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
+                  className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-sm font-medium text-background transition hover:brightness-110"
                 >
                   <ExternalLink className="h-4 w-4" />
                   Open live site

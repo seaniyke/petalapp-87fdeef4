@@ -199,7 +199,7 @@ function MigrationHistory({ projectId }: { projectId: string }) {
             type="button"
             disabled={retrying}
             onClick={retry}
-            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-xs font-medium text-background transition active:scale-95 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-1 text-xs font-medium text-background transition active:scale-95 disabled:opacity-60"
           >
             {retrying ? (
               <Loader2 className="h-3 w-3 animate-spin" />

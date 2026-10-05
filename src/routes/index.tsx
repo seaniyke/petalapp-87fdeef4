@@ -485,10 +485,10 @@ function Landing() {
           aria-label="Quick navigation"
           className="fixed inset-x-0 bottom-5 z-40 mx-auto flex w-[min(19rem,calc(100%-6rem))] items-center justify-between rounded-full border border-border/60 bg-card/70 p-1.5 shadow-[var(--shadow-squircle)] backdrop-blur-2xl md:hidden"
         >
-          <Link to="/" className="grid h-12 flex-1 place-items-center rounded-full bg-foreground/10 text-foreground" aria-label="Home">
+          <Link to="/" className="grid h-12 flex-1 place-items-center rounded-lg bg-foreground/10 text-foreground" aria-label="Home">
             <Home className="h-6 w-6" strokeWidth={2} />
           </Link>
-          <Link to="/projects" className="grid h-12 flex-1 place-items-center rounded-full text-foreground/80" aria-label="Projects">
+          <Link to="/projects" className="grid h-12 flex-1 place-items-center rounded-lg text-foreground/80" aria-label="Projects">
             <LayoutGrid className="h-6 w-6" strokeWidth={1.75} />
           </Link>
           <button
@@ -763,7 +763,7 @@ function Landing() {
                   </div>
                   <Link
                     to="/projects"
-                    className="hidden h-8 items-center gap-1 rounded-full px-3 text-xs text-muted-foreground transition hover:text-foreground sm:inline-flex"
+                    className="hidden h-8 items-center gap-1 rounded-lg px-3 text-xs text-muted-foreground transition hover:text-foreground sm:inline-flex"
                   >
                     View all
                     <ArrowRight className="h-3 w-3" />

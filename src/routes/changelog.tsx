@@ -140,7 +140,7 @@ function ChangelogPage() {
           <p className="mt-3 text-muted-foreground">Tell Kimble — every reply here shapes the roadmap.</p>
           <Link
             to="/"
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition hover:-translate-y-0.5"
+            className="mt-8 inline-flex items-center gap-2 rounded-lg bg-foreground px-6 py-3 text-sm font-medium text-background transition hover:-translate-y-0.5"
           >
             Start building <ArrowRight className="h-4 w-4" />
           </Link>
