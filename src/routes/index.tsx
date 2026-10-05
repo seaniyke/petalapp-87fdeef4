@@ -634,7 +634,7 @@ function Landing() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="grid h-10 w-10 place-items-center rounded-full text-foreground/80 transition hover:bg-muted hover:text-foreground"
+                      className="grid h-9 w-9 place-items-center rounded-xl text-foreground/80 transition hover:bg-muted hover:text-foreground"
                       aria-label="Attach a photo or screenshot"
                       title="Attach a photo or screenshot"
                     >
@@ -660,7 +660,7 @@ function Landing() {
                           voice.start();
                         }
                       }}
-                      className={`grid h-10 w-10 place-items-center rounded-full transition ${
+                      className={`grid h-9 w-9 place-items-center rounded-xl transition ${
                         voice.listening
                           ? "bg-primary text-primary-foreground animate-pulse"
                           : "text-foreground/80 hover:bg-muted hover:text-foreground"
@@ -675,7 +675,7 @@ function Landing() {
                     <button
                       type="submit"
                       aria-label={mode === "discuss" ? "Ask Kimble" : "Build it"}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background transition hover:opacity-90"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-background transition hover:opacity-90"
                     >
                       <ArrowUp className="h-4 w-4" />
                     </button>
