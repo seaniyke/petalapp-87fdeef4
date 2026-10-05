@@ -39,6 +39,11 @@ import {
   Mic,
   MicOff,
   Square,
+  ThumbsUp,
+  ThumbsDown,
+  Plus,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -283,6 +288,65 @@ function isTransientFailureCardTitle(title: string | undefined): boolean {
 
 function shouldPersistFriendlyError(err: FriendlyError): boolean {
   return isRenderableFriendlyError(err) && !isTransientFailureCardTitle(err.title);
+}
+
+/** iOS-style action row under an assistant message: copy + quick feedback. */
+function MessageActions({ text }: { text: string }) {
+  const [vote, setVote] = useState<"up" | "down" | null>(null);
+  return (
+    <div className="mt-1 flex items-center gap-0.5">
+      <CopyMessageButton text={text} />
+      <button
+        type="button"
+        aria-label="Good response"
+        aria-pressed={vote === "up"}
+        onClick={() => setVote((v) => (v === "up" ? null : "up"))}
+        className={`grid h-8 w-8 place-items-center rounded-md transition hover:bg-muted ${
+          vote === "up" ? "text-foreground" : "text-muted-foreground opacity-70 hover:opacity-100"
+        }`}
+      >
+        <ThumbsUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        aria-label="Bad response"
+        aria-pressed={vote === "down"}
+        onClick={() => setVote((v) => (v === "down" ? null : "down"))}
+        className={`grid h-8 w-8 place-items-center rounded-md transition hover:bg-muted ${
+          vote === "down" ? "text-foreground" : "text-muted-foreground opacity-70 hover:opacity-100"
+        }`}
+      >
+        <ThumbsDown className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+/** Meta row under a user bubble: copy icon + "Today at h:MM AM". */
+function UserMessageMeta({ text, ts }: { text: string; ts?: number }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="mt-1 flex items-center justify-end gap-2 text-[11px] text-muted-foreground">
+      <button
+        type="button"
+        aria-label={copied ? "Message copied" : "Copy message"}
+        onClick={() => {
+          void navigator.clipboard?.writeText(text).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1600);
+          });
+        }}
+        className="grid h-6 w-6 place-items-center rounded-md transition hover:bg-muted hover:text-foreground"
+      >
+        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      </button>
+      {ts ? (
+        <span>
+          Today at {new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 function removeBuildFailureCards(messages: ChatMessage[]): ChatMessage[] {
@@ -2503,6 +2567,7 @@ function Builder() {
       const userMsg: ChatMessage = {
         role: "user",
         content: text,
+        ts: Date.now(),
         ...(attachments && attachments.length > 0
           ? {
               attachments: attachments.map((a) => ({
@@ -3552,6 +3617,7 @@ function Builder() {
       const userMsg: ChatMessage = {
         role: "user",
         content: text,
+        ts: Date.now(),
         ...(attachments && attachments.length > 0
           ? {
               attachments: attachments.map((a) => ({
@@ -4991,7 +5057,7 @@ function Builder() {
                   // same message re-read from the database (with id) must be
                   // the same element, or the whole thread remounts on hydrate.
                   key={`${m.role}:${i}`}
-                  className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}
+                  className={`group min-w-0 ${isUser ? "flex flex-col items-end" : ""}`}
                 >
                   <div
                     className={`relative min-w-0 wrap-anywhere ${
@@ -5000,24 +5066,6 @@ function Builder() {
                         : "text-[14.5px] leading-[1.65] text-foreground"
                     }`}
                   >
-                    {!isUser && messages[i - 1]?.role !== "assistant" && (
-                      <div className="mb-1.5 flex items-center gap-2">
-                        <img
-                          src={petalLogo}
-                          alt=""
-                          aria-hidden
-                          className="h-6 w-6 shrink-0 rounded-md object-contain dark:invert"
-                        />
-                        <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">
-                          Kimble
-                        </span>
-                        {m.role === "assistant" && i === lastDiscussIndex && (
-                          <span className="text-[11px] font-medium text-muted-foreground">
-                            · discussing
-                          </span>
-                        )}
-                      </div>
-                    )}
                     {m.role === "assistant" ? (
                       <div className="space-y-3">
                         {m.plan && (() => {
@@ -5040,7 +5088,7 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
-                        <CopyMessageButton text={sanitizeNarrative(m.content)} />
+                        <MessageActions text={sanitizeNarrative(m.content)} />
                         {/* Required clarifying-question answer card. Renders
                             whenever the latest assistant turn carries
                             `suggestions`, before AND after a build. The build
@@ -5162,6 +5210,7 @@ function Builder() {
                       </button>
                     )}
                   </div>
+                  {isUser && <UserMessageMeta text={m.content} ts={m.ts} />}
                   {m.role === "assistant" && i === lastDiscussIndex && !petalIsWorking && (
                     <div className="mr-3 mt-3 flex flex-col items-stretch gap-1.5 sm:mr-6">
                       <button
@@ -5638,6 +5687,33 @@ function Builder() {
                 }
               }}
             />
+            {/* Quick-reply suggestion chips — a horizontal, scrollable pill
+                row above the composer (iOS-style). Real clarifying questions
+                keep the SuggestionChecklist card in the thread; these chips
+                are the optional "next move" shortcuts. */}
+            {(() => {
+              if (busy || discussBusy || petalIsWorking) return null;
+              const lastWithChips = [...messages]
+                .reverse()
+                .find((mm) => mm.role === "assistant" && (mm.suggestions?.length ?? 0) > 0);
+              if (!lastWithChips?.suggestions?.length) return null;
+              const lastText = sanitizeNarrative(lastWithChips.content ?? "").trim();
+              if (/\?\s*$/.test(lastText)) return null;
+              return (
+                <div className="mb-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {lastWithChips.suggestions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => submitPrompt(s, { bypassQuestionGate: true })}
+                      className="shrink-0 rounded-full border border-border bg-card/60 px-4 py-2 text-[13px] font-medium text-foreground backdrop-blur transition hover:bg-card active:scale-[0.98]"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="mb-2 flex items-center justify-between gap-2 px-1 text-[11px] font-medium tracking-tight text-muted-foreground">
               <span className="min-w-0 flex-1 truncate">
                 {(() => {
@@ -5763,7 +5839,7 @@ function Builder() {
                     title="Attach a screenshot or photo"
                     aria-label="Attach an image"
                   >
-                    <ImageIcon className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                   </button>
                   <ComposerActionsMenu
                     mode={mode === "discuss" ? "discuss" : "build"}
