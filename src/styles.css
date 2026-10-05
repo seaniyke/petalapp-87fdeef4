@@ -489,3 +489,24 @@ button:not([role="switch"]), a[role="button"] {
 .kimble-chat [data-slot="input-group"]:focus-within {
   border-color: var(--ring);
 }
+
+/* Kimble crew — build activity robots */
+@keyframes crew-bob { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-3px) } }
+@keyframes crew-hammer { 0%,100% { transform: rotate(0) } 50% { transform: rotate(-35deg) } }
+@keyframes crew-blink { 0%,100% { opacity: 1 } 50% { opacity: .25 } }
+@keyframes crew-eyes { 0%,46%,54%,100% { transform: scaleY(1) } 50% { transform: scaleY(.1) } }
+@keyframes crew-spark { 0%,60%,100% { opacity: 0; transform: scale(.4) } 70% { opacity: 1; transform: scale(1.4) } }
+@keyframes crew-beam { 0%,100% { transform: skewX(-12deg); opacity: .5 } 50% { transform: skewX(12deg); opacity: 1 } }
+@keyframes crew-flame { 0%,100% { transform: scaleY(1) } 50% { transform: scaleY(1.5) } }
+@keyframes crew-shadow { 0%,100% { transform: scaleX(1) } 50% { transform: scaleX(.8) } }
+.kimble-crew .crew-body { animation: crew-bob 1.6s ease-in-out infinite; transform-box: fill-box; }
+.kimble-crew .crew-tool { transform-origin: 46px 44px; animation: crew-hammer .7s ease-in-out infinite; }
+.kimble-crew .crew-active .crew-tool:has(.crew-beam),
+.kimble-crew .crew-active .crew-tool:has(.crew-flame) { animation: none; }
+.kimble-crew .crew-blink { animation: crew-blink 1s steps(2) infinite; }
+.kimble-crew .crew-eyes { transform-box: fill-box; transform-origin: center; animation: crew-eyes 3.2s infinite; }
+.kimble-crew .crew-spark { transform-box: fill-box; transform-origin: center; animation: crew-spark .7s infinite; }
+.kimble-crew .crew-beam { transform-origin: 34px 22px; animation: crew-beam 1.8s ease-in-out infinite; }
+.kimble-crew .crew-flame { transform-box: fill-box; transform-origin: top; animation: crew-flame .25s ease-in-out infinite; }
+.kimble-crew .crew-shadow { transform-box: fill-box; transform-origin: center; animation: crew-shadow 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .kimble-crew * { animation: none !important; } }
