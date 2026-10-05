@@ -84,11 +84,11 @@ function ResetPasswordPage() {
 
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
         <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <img src={petalLogo} alt="Kimble" className="h-8 w-8 object-contain" />
+          <img src={petalLogo} alt="Kimble" className="h-8 w-8 object-contain dark:invert" />
           <span className="font-display text-xl font-semibold tracking-tight text-foreground">Kimble</span>
         </Link>
 
-        <div className="rounded-2xl border border-border bg-card/95 p-8 shadow-[var(--shadow-soft)] backdrop-blur">
+        <div className="rounded-3xl border border-border/60 bg-card/70 p-7 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-8">
           {phase === "checking" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Verifying your reset link…
@@ -104,7 +104,7 @@ function ResetPasswordPage() {
               <Link
                 to="/auth"
                 search={{ mode: "forgot", redirect: undefined }}
-                className="mt-5 inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:brightness-105"
+                className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:brightness-105"
               >
                 Request a new link
               </Link>
@@ -133,7 +133,7 @@ function ResetPasswordPage() {
               <form onSubmit={handleSubmit} className="mt-6 space-y-3">
                 <label className="block">
                   <span className="mb-1 block text-xs font-medium text-muted-foreground">New password</span>
-                  <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 focus-within:border-primary">
+                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3 focus-within:border-primary">
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     <input
                       type={show ? "text" : "password"}
@@ -142,13 +142,13 @@ function ResetPasswordPage() {
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-11 flex-1 bg-transparent text-sm outline-none"
+                      className="h-10 flex-1 bg-transparent text-sm outline-none"
                       placeholder="At least 8 characters"
                     />
                     <button
                       type="button"
                       onClick={() => setShow((v) => !v)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
                       aria-label={show ? "Hide password" : "Show password"}
                     >
                       {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -179,7 +179,7 @@ function ResetPasswordPage() {
 
                 <label className="block">
                   <span className="mb-1 block text-xs font-medium text-muted-foreground">Confirm password</span>
-                  <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 focus-within:border-primary">
+                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3 focus-within:border-primary">
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     <input
                       type={show ? "text" : "password"}
@@ -188,7 +188,7 @@ function ResetPasswordPage() {
                       autoComplete="new-password"
                       value={confirm}
                       onChange={(e) => setConfirm(e.target.value)}
-                      className="h-11 flex-1 bg-transparent text-sm outline-none"
+                      className="h-10 flex-1 bg-transparent text-sm outline-none"
                       placeholder="Repeat new password"
                     />
                   </div>
@@ -200,7 +200,7 @@ function ResetPasswordPage() {
                 <button
                   type="submit"
                   disabled={busy || strength.score < 1 || password !== confirm}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-50"
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-50"
                 >
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                   Update password
