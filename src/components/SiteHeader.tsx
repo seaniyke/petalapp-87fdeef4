@@ -85,7 +85,7 @@ export function SiteHeader() {
             </Link>
           ) : (
             <Link to="/" className="flex items-center">
-              <PetalBrand />
+              <PetalBrand size="sm" />
             </Link>
           )}
 
