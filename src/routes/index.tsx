@@ -532,11 +532,8 @@ function Landing() {
           ) : (
             <>
               <h1 className="font-display text-[2.1rem] font-bold leading-[1.05] tracking-tight text-balance sm:text-6xl">
-                Build something with Kimble
+                Build a business with Kimble
               </h1>
-              <p className="mx-auto mt-4 max-w-md text-balance text-base leading-relaxed text-muted-foreground sm:text-xl">
-                Bring a new product, internal tool, or entire company to life.
-              </p>
             </>
           )}
 
