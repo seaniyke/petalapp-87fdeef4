@@ -176,7 +176,7 @@ export function SiteHeader() {
                   <DropdownMenuTrigger asChild>
                     <button
                       aria-label="Account menu"
-                      className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-foreground text-sm font-medium text-background ring-1 ring-foreground/10 transition hover:brightness-110 hover:ring-foreground/20"
+                      className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-accent text-lg font-medium text-accent-foreground ring-1 ring-border transition hover:brightness-105"
                     >
                       {avatarUrl ? (
                         <img
@@ -227,14 +227,14 @@ export function SiteHeader() {
                 <Link
                   to="/auth"
                   search={{ mode: "signin", redirect: undefined }}
-                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground sm:px-4"
+                  className="inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-xl border border-border bg-card/60 px-3.5 text-sm font-medium transition-colors hover:bg-card sm:px-4"
                 >
-                  Sign in
+                  Log in
                 </Link>
                 <Link
                   to="/auth"
                   search={{ mode: "signup", redirect: undefined }}
-                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-foreground px-3.5 text-sm font-semibold text-background shadow-[var(--shadow-soft)] ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20 sm:px-5"
+                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-xl bg-foreground px-4 text-sm font-semibold text-background shadow-[var(--shadow-soft)] transition hover:opacity-90 sm:px-5" style={{ height: "2.5rem" }}
                 >
                   Get started
                 </Link>
@@ -247,7 +247,7 @@ export function SiteHeader() {
               type="button"
               aria-label="Open menu"
               onClick={() => setMobileNavOpen(true)}
-              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-foreground md:hidden"
+              className={`grid h-9 w-9 place-items-center rounded-full text-foreground transition hover:bg-muted/60 hover:text-foreground md:hidden ${user ? "hidden" : ""}`}
             >
               <Menu className="h-5 w-5" />
             </button>
