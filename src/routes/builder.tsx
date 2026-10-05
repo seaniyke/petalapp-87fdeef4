@@ -1,3 +1,5 @@
+import { PromptInput, PromptInputFooter, PromptInputSubmit } from "@/components/ai-elements/prompt-input";
+import { InputGroupTextarea } from "@/components/ui/input-group";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -326,6 +328,10 @@ export const Route = createFileRoute("/builder")({
     meta: [
       { title: "Builder · Kimble" },
       { name: "description", content: "Chat with Kimble to build a working web app." },
+      { property: "og:title", content: "Builder · Kimble" },
+      { property: "og:description", content: "Chat with Kimble to build a working web app." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Builder,
@@ -4500,7 +4506,7 @@ function Builder() {
             type="button"
             onClick={() => setProjectsDrawerOpen(true)}
             aria-label="Open projects menu"
-            className="grid size-11 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
+            className="grid size-8 shrink-0 place-items-center rounded-md text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -4509,7 +4515,7 @@ function Builder() {
             type="button"
             onClick={() => setProjectsDrawerOpen(true)}
             aria-label="Open projects menu"
-            className="hidden size-9 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid"
+            className="hidden size-9 shrink-0 place-items-center rounded-md text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -4520,7 +4526,7 @@ function Builder() {
             aria-label={chatCollapsed ? "Show chat" : "Hide chat"}
             title={`${chatCollapsed ? "Show" : "Hide"} chat (⌘B)`}
             aria-pressed={chatCollapsed}
-            className="hidden size-9 shrink-0 place-items-center rounded-xl text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid"
+            className="hidden size-9 shrink-0 place-items-center rounded-md text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:grid"
           >
             {chatCollapsed ? <PanelLeft className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </button>
@@ -4554,7 +4560,7 @@ function Builder() {
         <button
           type="button"
           onClick={() => setActionsOpen(true)}
-          className="mx-auto inline-flex max-w-[60vw] items-center gap-1 rounded-xl px-2 py-1 text-foreground transition hover:bg-muted md:hidden"
+          className="mx-auto inline-flex max-w-[60vw] items-center gap-1 rounded-md px-2 py-1 text-foreground transition hover:bg-muted md:hidden"
           aria-label="Project menu"
         >
           <span className="truncate font-display text-base font-semibold">
@@ -4591,7 +4597,7 @@ function Builder() {
                   ? "Open preview"
                   : "Back to chat"
             }
-            className="relative grid size-11 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground shadow-[var(--shadow-soft)] transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 md:hidden"
+            className="relative grid size-8 shrink-0 place-items-center rounded-md border border-border bg-background text-foreground shadow-[var(--shadow-soft)] transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 md:hidden"
           >
             {view === "code" ? (
               <Eye className="h-4 w-4" />
@@ -4601,14 +4607,14 @@ function Builder() {
               <MessageSquare className="h-4 w-4" />
             )}
             {mobileTab === "chat" && previewHasUpdate && (
-              <span aria-hidden className="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary ring-2 ring-card" />
+              <span aria-hidden className="absolute right-0 top-0 h-2 w-2 rounded-md bg-primary ring-2 ring-card" />
             )}
           </button>
           {/* Desktop: Preview / Code segmented toggle */}
           <div className="hidden items-center rounded-xl border border-border bg-background p-0.5 text-sm md:flex">
             <button
               onClick={() => setView("preview")}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 transition ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
                 view === "preview" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
@@ -4616,7 +4622,7 @@ function Builder() {
             </button>
             <button
               onClick={() => setView("code")}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 transition ${
+              className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 transition ${
                 view === "code" ? "bg-foreground text-background" : "text-muted-foreground"
               }`}
             >
@@ -4632,7 +4638,7 @@ function Builder() {
                 type="button"
                 onClick={action.run}
                 disabled={action.disabled}
-                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
                 title={action.title ?? action.label}
                 aria-label={action.title ?? action.label}
               >
@@ -4644,7 +4650,7 @@ function Builder() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
                   title="More"
                   aria-label="More actions"
                 >
@@ -4693,7 +4699,7 @@ function Builder() {
             <button
               type="button"
               onClick={() => setPublishOpen(true)}
-              className="hidden h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 md:inline-flex"
+              className="hidden h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 md:inline-flex"
               title="Publish"
             >
               <Globe className="h-3.5 w-3.5" />
@@ -4899,16 +4905,16 @@ function Builder() {
       >
         {/* Chat */}
         <aside
-          className={`min-h-0 flex-col border-b border-border/60 bg-sidebar md:border-b-0 md:border-r ${
+          className={`kimble-chat min-h-0 flex-col border-b border-border/60 bg-muted/40 md:border-b-0 md:border-r ${
             chatCollapsed ? "md:hidden" : "md:flex"
           } ${mobileTab === "chat" ? "flex" : "hidden"}`}
         >
-          <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-sidebar/80 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-sidebar/60">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-card/60 px-4 py-3 backdrop-blur-xl">
             <div className="flex items-center gap-2">
-              <span className="grid h-5 w-5 place-items-center rounded-xl bg-foreground text-background">
-                <MessageSquare className="h-3 w-3" />
+              <span className="grid h-6 w-6 place-items-center rounded-md bg-card text-foreground">
+                <img src={petalLogo} alt="" className="h-5 w-5 object-contain dark:invert" />
               </span>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/80">
+              <span className="text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
                 Conversation
               </span>
             </div>
@@ -4990,7 +4996,7 @@ function Builder() {
                   <div
                     className={`relative min-w-0 wrap-anywhere ${
                       isUser
-                        ? "max-w-[85%] overflow-hidden rounded-2xl rounded-br-xl bg-primary/12 px-3.5 py-2.5 text-[14px] font-medium leading-relaxed text-foreground ring-1 ring-primary/20"
+                        ? "max-w-[85%] rounded-2xl rounded-br-md bg-foreground px-4 py-3 text-[15px] font-medium leading-relaxed text-background shadow-[var(--shadow-soft)]"
                         : "text-[14.5px] leading-[1.65] text-foreground"
                     }`}
                   >
@@ -5000,7 +5006,7 @@ function Builder() {
                           src={petalLogo}
                           alt=""
                           aria-hidden
-                          className="h-5 w-5 shrink-0 rounded-full object-cover ring-1 ring-border"
+                          className="h-6 w-6 shrink-0 rounded-md object-contain dark:invert"
                         />
                         <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">
                           Kimble
@@ -5144,7 +5150,7 @@ function Builder() {
                       <button
                         onClick={() => void prepareRevertToMessage(i)}
                         disabled={revertingIndex !== null || revertPreparing !== null}
-                        className="absolute -top-2 right-2 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 shadow-[var(--shadow-soft)] transition group-hover:opacity-100 hover:text-foreground disabled:opacity-40"
+                        className="absolute -top-2 right-2 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground opacity-0 shadow-[var(--shadow-soft)] transition group-hover:opacity-100 hover:text-foreground disabled:opacity-40"
                         title="Preview & revert the project to right after Kimble's reply to this message"
                       >
                         {revertingIndex === i || revertPreparing === i ? (
@@ -5160,7 +5166,7 @@ function Builder() {
                     <div className="mr-3 mt-3 flex flex-col items-stretch gap-1.5 sm:mr-6">
                       <button
                         onClick={applyDiscussedPlan}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 active:scale-[0.99]"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 active:scale-[0.99]"
                       >
                         <Wand2 className="h-4 w-4" /> Apply this plan
                       </button>
@@ -5442,7 +5448,7 @@ function Builder() {
                 <button
                   type="button"
                   onClick={() => scrollChatToLatest()}
-                  className="pointer-events-auto inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground shadow-[var(--shadow-editorial)] transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="pointer-events-auto inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3.5 text-xs font-semibold text-foreground shadow-[var(--shadow-editorial)] transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <ChevronDown className="h-3.5 w-3.5" />
                   Jump to latest
@@ -5493,11 +5499,7 @@ function Builder() {
               }}
             />
           )}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              submitPrompt(input);
-            }}
+          <div
             className="safe-bottom safe-x shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
           >
             {/* Queued messages — shown when the user typed while Kimble was busy. */}
@@ -5602,7 +5604,7 @@ function Builder() {
                       onClick={() =>
                         setPendingAttachments((prev) => prev.filter((_, i) => i !== ai))
                       }
-                      className="grid h-4 w-4 place-items-center rounded-full hover:bg-muted"
+                      className="grid h-4 w-4 place-items-center rounded-md hover:bg-muted"
                       aria-label={`Remove ${a.name}`}
                     >
                       <X className="h-3 w-3" />
@@ -5654,7 +5656,7 @@ function Builder() {
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
-                  className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-semibold text-primary transition hover:brightness-110"
+                  className="inline-flex items-center gap-1 rounded-md bg-primary/12 px-2 py-0.5 text-[10px] font-semibold text-primary transition hover:brightness-110"
                   title="Project knowledge is active"
                 >
                   <BookOpen className="h-2.5 w-2.5" /> knowledge
@@ -5693,14 +5695,14 @@ function Builder() {
                       setRuntimeError({ ...err, fixed: true });
                       void send(lines.join("\n"), { isAutoFix: true });
                     }}
-                    className="rounded-xl bg-destructive px-2.5 py-1 text-[11px] font-semibold text-destructive-foreground hover:brightness-110"
+                    className="rounded-md bg-destructive px-2.5 py-1 text-[11px] font-semibold text-destructive-foreground hover:brightness-110"
                   >
                     Fix this
                   </button>
                   <button
                     type="button"
                     onClick={() => setRuntimeError(null)}
-                    className="grid h-6 w-6 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                     title="Dismiss"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -5709,12 +5711,13 @@ function Builder() {
               </div>
             )}
             {/* Composer: textarea on top, integrated toolbar (attach + mode toggle on left, send on right) below. Auto-expands as user types. */}
-            <div
-              className={`flex flex-col gap-1.5 rounded-[26px] border bg-background/90 p-2 shadow-[0_1px_2px_0_oklch(0.2_0.04_30/0.04),0_8px_24px_-12px_oklch(0.2_0.04_30/0.10)] backdrop-blur-xl transition focus-within:border-primary/60 focus-within:shadow-[0_2px_8px_0_oklch(0.2_0.04_30/0.06),0_12px_32px_-12px_oklch(0.2_0.04_30/0.16)] ${
-                mode === "discuss" ? "border-foreground/20" : "border-border/70"
-              }`}
+            <PromptInput
+              onSubmit={() => submitPrompt(input)}
+              className="w-full"
             >
-              <textarea
+              <InputGroupTextarea
+                name="message"
+                aria-label="Message Kimble"
                 ref={composerTextareaRef}
                 value={input}
                 onChange={(e) => {
@@ -5748,15 +5751,15 @@ function Builder() {
                 // Enter inserts a newline here, so the soft keyboard must not
                 // advertise "send" — it would lie about what the key does.
                 enterKeyHint="enter"
-                className="max-h-[200px] min-h-[44px] w-full resize-none overflow-y-auto bg-transparent px-2 py-1.5 text-sm font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground disabled:opacity-50"
+                className="max-h-[200px] min-h-[72px] w-full resize-none overflow-y-auto bg-transparent px-3 py-3 text-[16px] font-medium outline-none placeholder:font-normal placeholder:text-muted-foreground disabled:opacity-50"
                 disabled={bootstrapping}
               />
-              <div className="flex items-center justify-between gap-2">
+              <PromptInputFooter className="gap-2 px-2 pb-2">
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => composerFileInputRef.current?.click()}
-                    className="grid size-11 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-8"
+                    className="grid size-8 place-items-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-8"
                     title="Attach a screenshot or photo"
                     aria-label="Attach an image"
                   >
@@ -5781,7 +5784,7 @@ function Builder() {
                         voice.toggle();
                       }}
                       aria-pressed={voice.listening}
-                      className={`grid size-11 place-items-center rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-9 ${
+                      className={`grid size-8 place-items-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-9 ${
                         voice.listening
                           ? "animate-pulse bg-destructive/15 text-destructive ring-2 ring-destructive/40"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -5796,39 +5799,19 @@ function Builder() {
                       {voice.listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </button>
                   )}
-                  {busy ? (
-                    <button
-                      type="button"
-                      onClick={stopGeneration}
-                      className="grid size-11 place-items-center rounded-lg bg-foreground text-background shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 sm:size-9"
-                      title="Stop"
-                      aria-label="Stop generation"
-                    >
-                      <Square className="h-3 w-3 fill-current" />
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={bootstrapping || !input.trim()}
-                      className="grid size-11 place-items-center rounded-lg bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 disabled:bg-foreground/20 disabled:text-foreground/40 disabled:shadow-none sm:size-9"
-                      title={
-                        discussBusy
-                          ? "Add to queue"
-                          : mode === "discuss"
-                            ? "Send (chat only)"
-                            : "Send (build changes)"
-                      }
-                    >
-                      {mode === "discuss" ? (
-                        <MessageSquare className="h-4 w-4" />
-                      ) : (
-                        <Send className="h-3.5 w-3.5 -translate-x-[1px]" />
-                      )}
-                    </button>
-                  )}
+                  <PromptInputSubmit
+                    status={busy ? "streaming" : "ready"}
+                    onStop={stopGeneration}
+                    disabled={!busy && (bootstrapping || !input.trim())}
+                    aria-label={busy ? "Stop generation" : discussBusy ? "Add to queue" : "Send message"}
+                    title={busy ? "Stop generation" : discussBusy ? "Add to queue" : "Send message"}
+                    className="size-8 shrink-0 rounded-md bg-foreground p-0 text-background shadow-[var(--shadow-soft)] hover:bg-foreground/90 disabled:opacity-40"
+                  >
+                    {busy ? <Square className="h-3 w-3 fill-current" /> : <Send className="h-4 w-4" />}
+                  </PromptInputSubmit>
                 </div>
-              </div>
-            </div>
+              </PromptInputFooter>
+            </PromptInput>
 
             {/* Build-target chip rail removed per product decision —
                 target is inferred from the prompt; mobile publish lives in
@@ -5847,7 +5830,7 @@ function Builder() {
             {/* Status line removed — the in-chat shimmer label
                 ("Thinking" / "Working") now conveys this directly. */}
             {/* Errors are shown inside <BuildActivityCard /> with friendly copy. */}
-          </form>
+          </div>
         </aside>
 
         {/* Workspace */}
@@ -5878,7 +5861,7 @@ function Builder() {
                           key={opt.id}
                           type="button"
                           onClick={() => setPreviewDevice(opt.id)}
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 transition ${
+                          className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 transition ${
                             active
                               ? "bg-foreground text-background"
                               : "text-muted-foreground hover:text-foreground"
@@ -5903,7 +5886,7 @@ function Builder() {
                     <button
                       type="button"
                       onClick={() => setChatCollapsed(true)}
-                      className="rounded-full border border-border px-2 py-0.5 font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="rounded-md border border-border px-2 py-0.5 font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       Collapse chat
                     </button>
@@ -6136,7 +6119,7 @@ function Builder() {
               </div>
               <button
                 onClick={() => setPickedElement(null)}
-                className="grid h-7 w-7 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                 title="Close"
               >
                 <X className="h-4 w-4" />
@@ -6179,14 +6162,14 @@ function Builder() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setPickedElement(null)}
-                  className="rounded-xl px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   Cancel
                 </button>
                 <button
                   disabled={!pickInstruction.trim()}
                   onClick={() => void runPickerSubmit()}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:brightness-105 disabled:opacity-40"
                 >
                   <Wand2 className="h-3.5 w-3.5" /> Send to Kimble
                 </button>
