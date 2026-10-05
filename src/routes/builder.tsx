@@ -39,6 +39,11 @@ import {
   Mic,
   MicOff,
   Square,
+  ThumbsUp,
+  ThumbsDown,
+  Plus,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   encodeAttachments,
@@ -283,6 +288,65 @@ function isTransientFailureCardTitle(title: string | undefined): boolean {
 
 function shouldPersistFriendlyError(err: FriendlyError): boolean {
   return isRenderableFriendlyError(err) && !isTransientFailureCardTitle(err.title);
+}
+
+/** iOS-style action row under an assistant message: copy + quick feedback. */
+function MessageActions({ text }: { text: string }) {
+  const [vote, setVote] = useState<"up" | "down" | null>(null);
+  return (
+    <div className="mt-1 flex items-center gap-0.5">
+      <CopyMessageButton text={text} />
+      <button
+        type="button"
+        aria-label="Good response"
+        aria-pressed={vote === "up"}
+        onClick={() => setVote((v) => (v === "up" ? null : "up"))}
+        className={`grid h-8 w-8 place-items-center rounded-md transition hover:bg-muted ${
+          vote === "up" ? "text-foreground" : "text-muted-foreground opacity-70 hover:opacity-100"
+        }`}
+      >
+        <ThumbsUp className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        aria-label="Bad response"
+        aria-pressed={vote === "down"}
+        onClick={() => setVote((v) => (v === "down" ? null : "down"))}
+        className={`grid h-8 w-8 place-items-center rounded-md transition hover:bg-muted ${
+          vote === "down" ? "text-foreground" : "text-muted-foreground opacity-70 hover:opacity-100"
+        }`}
+      >
+        <ThumbsDown className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+/** Meta row under a user bubble: copy icon + "Today at h:MM AM". */
+function UserMessageMeta({ text, ts }: { text: string; ts?: number }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="mt-1 flex items-center justify-end gap-2 text-[11px] text-muted-foreground">
+      <button
+        type="button"
+        aria-label={copied ? "Message copied" : "Copy message"}
+        onClick={() => {
+          void navigator.clipboard?.writeText(text).then(() => {
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1600);
+          });
+        }}
+        className="grid h-6 w-6 place-items-center rounded-md transition hover:bg-muted hover:text-foreground"
+      >
+        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      </button>
+      {ts ? (
+        <span>
+          Today at {new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 function removeBuildFailureCards(messages: ChatMessage[]): ChatMessage[] {

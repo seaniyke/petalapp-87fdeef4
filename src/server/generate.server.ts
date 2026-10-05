@@ -467,6 +467,9 @@ export type ChatMessage = {
   id?: string;
   role: "user" | "assistant" | "system";
   content: string;
+  /** Client-side creation time (ms epoch) used for the "Today at …" meta
+   *  line under user bubbles. Optional — old persisted messages lack it. */
+  ts?: number;
   /** Optional structured narrative that powers the Plan / Recap segments
    *  in the chat bubble. Falls back gracefully to plain `content` if absent. */
   plan?: string;
