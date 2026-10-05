@@ -263,7 +263,7 @@ function AuthPage() {
                 src="/kimble-logo.png"
                 alt=""
                 aria-hidden
-                className="h-10 w-10 object-contain transition-transform group-hover:-rotate-6"
+                className="h-10 w-10 object-contain transition-transform group-hover:-rotate-6 dark:invert"
               />
               <span className="font-display text-3xl font-black tracking-[-0.035em] text-foreground">
                 Kimble
@@ -310,13 +310,13 @@ function AuthPage() {
               to="/"
               className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground lg:hidden"
             >
-              <img src="/kimble-logo.png" alt="" aria-hidden className="h-8 w-8 object-contain" />
+              <img src="/kimble-logo.png" alt="" aria-hidden className="h-8 w-8 object-contain dark:invert" />
               <span className="font-display text-2xl font-black tracking-[-0.03em] text-foreground">
                 Kimble
               </span>
             </Link>
 
-            <div className="rounded-[2rem] border border-border bg-card/95 p-8 shadow-[var(--shadow-editorial)] backdrop-blur sm:p-10">
+            <div className="rounded-3xl border border-border/60 bg-card/70 p-7 shadow-[var(--shadow-editorial)] backdrop-blur-xl sm:p-9">
               {mode === "forgot" && (
                 <button
                   onClick={() => switchMode("signin")}
@@ -341,14 +341,14 @@ function AuthPage() {
                     <button
                       type="button"
                       onClick={() => switchMode("signin")}
-                      className="inline-flex h-8 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground hover:brightness-105"
+                      className="inline-flex h-7 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:brightness-105"
                     >
                       Sign in
                     </button>
                     <button
                       type="button"
                       onClick={() => switchMode("forgot")}
-                      className="inline-flex h-8 items-center rounded-full border border-border px-3 text-xs font-medium hover:bg-muted"
+                      className="inline-flex h-7 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-muted"
                     >
                       Reset password
                     </button>
@@ -376,7 +376,7 @@ function AuthPage() {
                   <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Email
                   </span>
-                  <div className="flex items-center gap-2 rounded-2xl border border-border bg-background px-3.5 transition focus-within:border-primary focus-within:shadow-[0_0_0_4px_oklch(0.78_0.13_25/0.12)]">
+                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3.5 transition focus-within:border-primary focus-within:shadow-[0_0_0_4px_oklch(0.78_0.13_25/0.12)]">
                     <Mail className="h-4 w-4 text-muted-foreground" />
                     <input
                       type="email"
@@ -384,7 +384,7 @@ function AuthPage() {
                       autoComplete="email"
                       value={email}
                       onChange={(e) => { setEmail(e.target.value); setDuplicateEmail(null); }}
-                      className="h-12 flex-1 bg-transparent text-sm outline-none"
+                      className="h-11 flex-1 bg-transparent text-sm outline-none"
                       placeholder="you@example.com"
                     />
                   </div>
@@ -400,7 +400,7 @@ function AuthPage() {
                         Password
                       </label>
                     </div>
-                    <div className="flex items-center gap-2 rounded-2xl border border-border bg-background px-3.5 transition focus-within:border-primary focus-within:shadow-[0_0_0_4px_oklch(0.78_0.13_25/0.12)]">
+                    <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3.5 transition focus-within:border-primary focus-within:shadow-[0_0_0_4px_oklch(0.78_0.13_25/0.12)]">
                       <Lock className="h-4 w-4 text-muted-foreground" />
                       <input
                         id="petal-password"
@@ -410,13 +410,13 @@ function AuthPage() {
                         autoComplete={mode === "signup" ? "new-password" : "current-password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="h-12 flex-1 bg-transparent text-sm outline-none"
+                        className="h-11 flex-1 bg-transparent text-sm outline-none"
                         placeholder={mode === "signup" ? "At least 8 characters" : "Your password"}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPw((v) => !v)}
-                        className="-mr-1.5 inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                        className="-mr-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
                         aria-label={showPw ? "Hide password" : "Show password"}
                       >
                         {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -441,7 +441,7 @@ function AuthPage() {
                 <button
                   type="submit"
                   disabled={busy || (mode === "signup" && scorePassword(password).score < 1)}
-                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-foreground text-sm font-semibold text-background shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-editorial)] disabled:opacity-50 disabled:hover:translate-y-0"
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-foreground text-sm font-semibold text-background shadow-[var(--shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-editorial)] disabled:opacity-50 disabled:hover:translate-y-0"
                 >
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                   {submitLabel}
