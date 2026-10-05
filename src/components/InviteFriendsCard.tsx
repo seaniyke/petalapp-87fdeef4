@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { Copy, Check, Share2, Gift } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyReferral } from "@/lib/waitlist-referral.functions";
 import { REFERRER_CREDITS, REFERRED_CREDITS, shareText, shareUrl } from "@/lib/referral";

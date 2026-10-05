@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { adminApi } from "@/lib/admin-api";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { CohortPanel, OperationEconomicsPanel } from "@/components/admin/OperationEconomics";
 import { BuildBillingPanel } from "@/components/admin/BuildBillingPanel";
 

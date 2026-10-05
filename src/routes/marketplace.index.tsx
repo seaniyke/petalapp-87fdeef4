@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Search, Store, Tag } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { SiteHeader } from "@/components/SiteHeader";
 import { PetalLoader } from "@/components/PetalLoader";
 import { Pager, usePaged } from "@/components/Pager";

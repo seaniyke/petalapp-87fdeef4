@@ -17,7 +17,7 @@ import {
   rotatePetalEmailToken,
   listPetalEmailOutbound,
 } from "@/lib/petal-email.functions";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { emitServiceEnabled } from "@/lib/service-events";
 
 type Status = Awaited<ReturnType<typeof getPetalEmailStatus>>;

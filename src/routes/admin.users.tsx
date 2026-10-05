@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { adminApi, fmtUsd, fmtDate, fmtRelative } from "@/lib/admin-api";
 
 export const Route = createFileRoute("/admin/users")({

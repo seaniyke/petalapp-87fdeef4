@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Loader2, Copy, Check, Share2, Sparkles, Trophy } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import {
   AUTO_APPROVE_AT,
   REFERRAL_JUMP,

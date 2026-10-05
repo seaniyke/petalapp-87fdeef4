@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Plus, RefreshCw, Store, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { SiteHeader } from "@/components/SiteHeader";
 import { PetalLoader } from "@/components/PetalLoader";
 import { Button } from "@/components/ui/button";

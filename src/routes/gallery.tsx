@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { GitFork, Star, ArrowUpRight, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { PetalLoader } from "@/components/PetalLoader";

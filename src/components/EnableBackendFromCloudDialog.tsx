@@ -13,7 +13,7 @@
  */
 import { useEffect, useState } from "react";
 import { Loader2, Database, Sparkles, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import {
   Dialog,
   DialogContent,

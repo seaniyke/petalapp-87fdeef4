@@ -52,7 +52,7 @@ import { BillingSheet } from "@/components/BillingSheet";
 import { useWallet } from "@/hooks/use-wallet";
 import { Switch } from "@/components/ui/switch";
 import { builderDraftKeys, clearDraft, readDraft, writeDraft } from "@/lib/draft-storage";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 const MAX_LEN = 4000;
 

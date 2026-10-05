@@ -13,7 +13,7 @@ import {
 } from "@/lib/cloud-secrets.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { CloudEmptyState } from "./CloudEmptyState";
 
 export function CloudSecretsView({ projectId }: { projectId: string }) {

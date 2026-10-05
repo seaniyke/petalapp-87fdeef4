@@ -34,7 +34,7 @@ import {
   type CreditPack,
   type PriceOverride,
 } from "@/lib/billing";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { CryptoCheckoutPanel } from "@/components/CryptoCheckoutPanel";
 import { RecentPurchases } from "@/components/RecentPurchases";
 import { fetchCreditUsage, formatCredits, type CreditUsage } from "@/lib/credit-usage";

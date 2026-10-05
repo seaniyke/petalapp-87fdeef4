@@ -7,7 +7,7 @@ import { useState } from "react";
 import { AlertTriangle, Loader2, Unplug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { disconnectProjectBackend } from "@/lib/projects";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 type Props = {
   projectId: string;

@@ -11,7 +11,7 @@ import { AccountHubGrid } from "@/components/AccountHubGrid";
 import { InviteFriendsCard } from "@/components/InviteFriendsCard";
 import { BillingSheet } from "@/components/BillingSheet";
 import { CloudPanelSheet } from "@/components/cloud/CloudPanelSheet";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 export const Route = createFileRoute("/profile")({
   component: ProfilePage,

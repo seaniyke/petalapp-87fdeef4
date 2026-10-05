@@ -21,7 +21,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Loader2, Image as ImageIcon, Upload, RotateCcw, Sparkles } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { type ProjectRow } from "@/lib/projects";
 import { updateSiteInfo, uploadSiteImage } from "@/lib/site-info";
 import { describeAppFallback, iconPromptFor, isAssistantNarration } from "@/lib/site-info-copy";

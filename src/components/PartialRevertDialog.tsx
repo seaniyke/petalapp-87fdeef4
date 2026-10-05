@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import type { ProjectFile } from "@/server/generate.server";
 import type { VersionRow } from "@/lib/versions";
 
