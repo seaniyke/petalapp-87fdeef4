@@ -67,3 +67,8 @@
 - With Kimble Cloud on, the signed-in area (/dashboard…, or everything but auth pages when app-only) must be wrapped by the kit's `RequireAuth` (shipped in the generated `integrations/backend/auth.tsx`); the routes gate fails otherwise — why: signed-out visitors could open /dashboard.
 - Kimble Cloud charges go only through `src/lib/cloud-pricing.ts` (external price = provider cost ÷ (1 − `cloud_external_margin_pct`); Shared = equivalent dedicated price × (1 − `cloud_shared_discount_pct`); credits = price ÷ `revenue_per_credit_usd`) and `src/server/cloud-metering.server.ts` `chargeCloud` (one `cost_events` row per resource, idempotent per window, then `chargeRuntime` with exact credits); Railway is priced from its `usage` API (ESTIMATED fallback), Supabase from the project's compute add-on rate, Shared from the shared bill allocated by rows (UNKNOWN until entered) — why: flat hourly guesses hid Kimble's real cost and Shared Cloud earned nothing.
 - The Railway server move happens at build time when the app needs its own server (`considerCompute` after `recordTierIntent`); the daily watcher is only a backstop for compute-intent apps — why: the watcher ran once a day and only over shared apps, so heavy apps never moved.
+
+<!-- LOVABLE:BEGIN -->
+- Chat uses AI Elements MessageResponse and PromptInput/PromptInputSubmit, with InputGroupTextarea instead of the Enter-intercepting PromptInputTextarea — why: keep Kimble's newline/send and existing attachment contracts unchanged.
+- Shared CSS enforces rectangular action geometry for legacy and design-system controls, excluding switch tracks — why: local radius overrides left oval actions behind.
+<!-- LOVABLE:END -->
