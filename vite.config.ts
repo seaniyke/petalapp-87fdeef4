@@ -50,6 +50,16 @@ export default defineConfig({
           import.meta.dirname,
           "node_modules/entities/lib/encode.js",
         ),
+        // parse5 needs the newer `entities/decode` / `entities/escape` subpaths,
+        // which v4 lacks — point them at parse5's own nested copy.
+        "entities/decode": path.resolve(
+          import.meta.dirname,
+          "node_modules/parse5/node_modules/entities/decode.js",
+        ),
+        "entities/escape": path.resolve(
+          import.meta.dirname,
+          "node_modules/parse5/node_modules/entities/escape.js",
+        ),
         entities: path.resolve(import.meta.dirname, "node_modules/entities"),
       },
     },
