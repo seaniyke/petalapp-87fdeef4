@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
-import petalLogo from "@/assets/kimble-logo.png";
+import { SiteHeader } from "@/components/SiteHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/lib/notify";
 
@@ -78,17 +78,12 @@ function ResetPasswordPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
-      <div className="absolute inset-0 bg-aurora opacity-70" aria-hidden />
-      <div className="absolute inset-0 bg-grain opacity-40" aria-hidden />
+    <div className="landing-page relative min-h-screen overflow-hidden bg-background text-foreground">
+      <SiteHeader />
+      <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-aura)] opacity-90" aria-hidden />
 
-      <div className="relative mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-        <Link to="/" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <img src={petalLogo} alt="Kimble" className="h-8 w-8 object-contain dark:invert" />
-          <span className="font-display text-xl font-semibold tracking-tight text-foreground">Kimble</span>
-        </Link>
-
-        <div className="rounded-3xl border border-border/60 bg-card/70 p-7 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:p-8">
+      <div className="relative mx-auto flex min-h-[calc(100svh-3rem)] max-w-md flex-col justify-center px-5 py-12">
+        <div className="rounded-[1.75rem] border border-border/70 bg-card/85 p-6 shadow-[var(--shadow-squircle)] backdrop-blur-2xl sm:p-8">
           {phase === "checking" && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" /> Verifying your reset link…
@@ -97,7 +92,7 @@ function ResetPasswordPage() {
 
           {phase === "no-session" && (
             <>
-              <h1 className="font-display text-2xl">This reset link is no longer valid</h1>
+              <h1 className="font-display text-2xl font-bold tracking-tight">This reset link is no longer valid</h1>
               <p className="mt-2 text-sm text-muted-foreground">
                 Reset links expire after 1 hour and can only be used once. Request a new one to continue.
               </p>
@@ -115,7 +110,7 @@ function ResetPasswordPage() {
             <div className="flex items-start gap-3">
               <CheckCircle2 className="mt-1 h-5 w-5 text-emerald-600" />
               <div>
-                <h1 className="font-display text-2xl">Password updated</h1>
+                <h1 className="font-display text-2xl font-bold tracking-tight">Password updated</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   You're signed in. Taking you home…
                 </p>
@@ -133,7 +128,7 @@ function ResetPasswordPage() {
               <form onSubmit={handleSubmit} className="mt-6 space-y-3">
                 <label className="block">
                   <span className="mb-1 block text-xs font-medium text-muted-foreground">New password</span>
-                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3 focus-within:border-primary">
+                  <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3 focus-within:border-primary">
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     <input
                       type={show ? "text" : "password"}
@@ -179,7 +174,7 @@ function ResetPasswordPage() {
 
                 <label className="block">
                   <span className="mb-1 block text-xs font-medium text-muted-foreground">Confirm password</span>
-                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-3 focus-within:border-primary">
+                  <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3 focus-within:border-primary">
                     <Lock className="h-4 w-4 text-muted-foreground" />
                     <input
                       type={show ? "text" : "password"}
