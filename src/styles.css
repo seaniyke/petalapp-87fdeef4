@@ -472,3 +472,20 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
 @media (prefers-reduced-motion: reduce) {
   .animate-float, .animate-float-slow, .animate-marquee, .animate-blob { animation: none; }
 }
+
+/* Action geometry is shared by legacy controls and the design-system Button.
+   Toggle tracks are state indicators, not action buttons. */
+button:not([role="switch"]), a[role="button"] {
+  border-radius: 6px !important;
+}
+
+.kimble-chat { letter-spacing: 0; }
+.kimble-chat [data-slot="input-group"] {
+  border-radius: 16px;
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: var(--shadow-soft);
+}
+.kimble-chat [data-slot="input-group"]:focus-within {
+  border-color: var(--ring);
+}

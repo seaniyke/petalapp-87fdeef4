@@ -10,6 +10,7 @@
 import { Hammer, MessageSquare, BrainCircuit, ClipboardList, ChevronDown, Check } from "lucide-react";
 import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type ComposerBuildMode = "build" | "discuss";
@@ -42,13 +43,13 @@ export function ComposerActionsMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <Button variant="ghost"
           type="button"
           disabled={disabled}
           aria-haspopup="menu"
           aria-label={`Mode: ${baseLabel}${modifiers.length ? ` (${modifiers.join(", ")})` : ""}`}
           className={cn(
-            "inline-flex h-11 items-center gap-1.5 rounded-lg border px-3.5 text-xs font-semibold transition sm:h-8 sm:px-2.5 sm:text-[11px]",
+            "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[12px] font-medium transition",
             "hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
             disabled && "cursor-not-allowed opacity-60",
             accent
@@ -62,7 +63,7 @@ export function ComposerActionsMenu({
             <span className="text-[10px] font-medium opacity-80">· {modifiers.join(" · ")}</span>
           )}
           <ChevronDown className="h-3 w-3 opacity-70" aria-hidden />
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -135,7 +136,7 @@ function ModeRow({
 }) {
   return (
     <li>
-      <button
+      <Button variant="ghost"
         type="button"
         role="menuitemradio"
         aria-checked={active}
@@ -154,7 +155,7 @@ function ModeRow({
           <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{hint}</span>
         </span>
         {active && <Check className="mt-1.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />}
-      </button>
+      </Button>
     </li>
   );
 }
@@ -174,7 +175,7 @@ function ToggleRow({
 }) {
   return (
     <li>
-      <button
+      <Button variant="ghost"
         type="button"
         role="menuitemcheckbox"
         aria-checked={active}
@@ -211,7 +212,7 @@ function ToggleRow({
             )}
           />
         </span>
-      </button>
+      </Button>
     </li>
   );
 }

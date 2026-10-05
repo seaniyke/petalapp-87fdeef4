@@ -497,7 +497,7 @@ function Landing() {
               setMode("discuss");
               requestAnimationFrame(() => textareaRef.current?.focus());
             }}
-            className="grid h-12 flex-1 place-items-center rounded-full text-foreground/80"
+            className="grid h-12 flex-1 place-items-center rounded-md text-foreground/80"
             aria-label="Chat with Kimble"
           >
             <MessageSquareText className="h-6 w-6" strokeWidth={1.75} />
@@ -519,7 +519,7 @@ function Landing() {
                   setMode("discuss");
                   requestAnimationFrame(() => textareaRef.current?.focus());
                 }}
-                className="mx-auto mb-8 inline-flex items-center gap-2 rounded-xl border border-border bg-card/70 py-1 pl-1 pr-3 text-[13px] font-medium backdrop-blur-xl transition hover:bg-card"
+                className="mx-auto mb-8 inline-flex items-center gap-2 rounded-md border border-border bg-card/70 py-1 pl-1 pr-3 text-[13px] font-medium backdrop-blur-xl transition hover:bg-card"
               >
                 <span className="rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">New</span>
                 Chat with Kimble for free

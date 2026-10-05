@@ -1,4 +1,8 @@
 # Execution-engine replacement roadmap
+## Current frontend request
+- [x] Refine the existing iOS chat and fix oval action buttons without changing generation, billing, or Cloud.
+- [x] Check chat appearance and controls on phone and desktop (public/loading state; authenticated conversation not available).
+
 - [x] Stage 1–2: ExecutionState + execution loop replaces batch page writer and router harvest (deleted `writePlannedPages`, `pagesReferencedByRouter`, `[...planned, ...fromRouter]`)
 - [x] Stage 3: missing shared modules resolved inside the loop (re-run on newly written files); write-gate and late passes deleted
 - [x] Stage 4: inspector AI call + module deleted; critic model review deleted (deterministic rules kept)

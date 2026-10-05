@@ -9,6 +9,7 @@
  * SF-style icon glyph in a tinted circle, primary "filled" pill button
  * and secondary glass button — matches iOS 17 system alerts / banners.
  */
+import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { RefreshCcw, Wrench, X, ChevronDown, Sparkles } from "lucide-react";
 import { isRenderableFriendlyError, type FriendlyError } from "@/lib/friendly-errors";
@@ -135,7 +136,7 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
           {/* Tinted glyph bubble (SF-icon style) */}
           <div
             className={[
-              "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+              "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md",
               isAskFix
                 ? "bg-[color-mix(in_oklab,var(--primary)_14%,transparent)] text-primary"
                 : isBuyCredits
@@ -170,28 +171,28 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
             {/* Action row — iOS pill buttons */}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {autoRetrying && (
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-foreground/12 bg-background/60 px-3 text-[12.5px] font-medium text-muted-foreground">
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-md border border-foreground/12 bg-background/60 px-3 text-[12.5px] font-medium text-muted-foreground">
                   <RefreshCcw className="h-3.5 w-3.5 animate-spin [animation-duration:2.4s] motion-reduce:animate-none" />
                   Kimble is retrying automatically
                 </span>
               )}
               {isRetry && onRetry && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => runOnce(onRetry)}
                   disabled={actionPending}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-foreground px-3.5 text-[13px] font-semibold text-background transition active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-foreground px-3.5 text-[13px] font-semibold text-background transition active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
                 >
                   <RefreshCcw className={`h-3.5 w-3.5 ${actionPending ? "animate-spin motion-reduce:animate-none" : ""}`} strokeWidth={2.5} />
                   {actionPending ? "Starting…" : error.actionLabel}
-                </button>
+                </Button>
               )}
               {isAskFix && onAskFix && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => runOnce(onAskFix)}
                   disabled={actionPending}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97] disabled:cursor-wait disabled:opacity-60"
                 >
                   {actionPending ? (
                     <RefreshCcw className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2.5} />
@@ -199,41 +200,41 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
                     <Wrench className="h-3.5 w-3.5" strokeWidth={2.5} />
                   )}
                   {actionPending ? "Starting…" : error.actionLabel}
-                </button>
+                </Button>
               )}
               {isBuyCredits && onBuyCredits && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={onBuyCredits}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground transition active:scale-[0.97]"
                 >
                   <Sparkles className="h-3.5 w-3.5" strokeWidth={2.5} />
                   {error.actionLabel}
-                </button>
+                </Button>
               )}
               {isDismiss && onDismiss && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={onDismiss}
                   className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-foreground/12 bg-background/60 px-3.5 text-[13px] font-medium text-foreground transition active:scale-[0.97]"
                 >
                   <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                   {error.actionLabel}
-                </button>
+                </Button>
               )}
 
               {error.technicalDetail && (
-                <button
+                <Button variant="ghost"
                   type="button"
                   onClick={() => setShowDetails((s) => !s)}
-                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium text-muted-foreground transition hover:text-foreground"
+                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2.5 text-[12px] font-medium text-muted-foreground transition hover:text-foreground"
                   aria-expanded={showDetails}
                 >
                   {showDetails ? "Hide details" : "What went wrong"}
                   <ChevronDown
                     className={`h-3.5 w-3.5 transition-transform ${showDetails ? "rotate-180" : ""}`}
                   />
-                </button>
+                </Button>
               )}
             </div>
 
@@ -259,14 +260,14 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
                 )}
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
+                  <Button variant="ghost"
                     type="button"
                     onClick={() => setShowRaw((s) => !s)}
-                    className="inline-flex h-7 items-center rounded-full border border-foreground/12 px-2.5 text-[11.5px] font-medium text-muted-foreground transition hover:text-foreground"
+                    className="inline-flex h-7 items-center rounded-md border border-foreground/12 px-2.5 text-[11.5px] font-medium text-muted-foreground transition hover:text-foreground"
                   >
                     {showRaw ? "Hide technical log" : "Technical log"}
-                  </button>
-                  <button
+                  </Button>
+                  <Button variant="ghost"
                     type="button"
                     onClick={() => {
                       void navigator.clipboard
@@ -274,10 +275,10 @@ export function PetalErrorCard({ error, onRetry, onAskFix, onDismiss, onBuyCredi
                         .then(() => setCopied(true))
                         .then(() => window.setTimeout(() => setCopied(false), 1600));
                     }}
-                    className="inline-flex h-7 items-center rounded-full border border-foreground/12 px-2.5 text-[11.5px] font-medium text-muted-foreground transition hover:text-foreground"
+                    className="inline-flex h-7 items-center rounded-md border border-foreground/12 px-2.5 text-[11.5px] font-medium text-muted-foreground transition hover:text-foreground"
                   >
                     {copied ? "Copied" : "Copy log"}
-                  </button>
+                  </Button>
                 </div>
 
                 {showRaw && (
