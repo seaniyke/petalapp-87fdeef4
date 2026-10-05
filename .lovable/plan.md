@@ -1,66 +1,89 @@
-# Kimble Cloud: measured infrastructure costs, 30% margin and automatic infrastructure choice
+# Closing the gaps: where Kimble is still behind
 
-## What exists today (audit)
-- **Choosing infrastructure:** one place already decides (`resolveCloudTier`): shared by default; dedicated database when the app needs file uploads, SQL, realtime, advanced search or tenant isolation, or grows past 80% of the shared row limit or 50 users; its own server for video, websockets, background jobs, scraping and similar work. It never moves an app down a level. This stays the only decider. No second planner.
-- **Charging:** dedicated databases pay a flat 4¢/hour. The note next to it claims 65% margin, but nothing measures that. Railway servers pay a flat rate per awake hour. **Shared Cloud charges nothing.** No provider cost is recorded for any cloud resource. Only the one-off setup is recorded, as UNKNOWN.
-- **Credits:** every cloud charge already turns into Kimble Credits through `chargeRuntime`, using the central cost-per-credit rate. That stays the only currency.
+Four gaps came out of the comparison with Lovable, Bolt, Replit and v0. This plan covers all four in a set order. Each phase ships on its own and is tested live before the next one starts.
 
-## What gets built
+```text
+Phase 1  Connector Hub (one-click connections)  <- biggest gap, needed by every other phase
+Phase 2  Speed (first preview in seconds)
+Phase 3  Coverage of unusual requests (robustness at scale)
+Phase 4  Launch Kit (business suite: brand, social, marketing, launch, monitor)
+```
 
-### 1. One cloud pricing formula (a pure module, fully tested)
-- Customer price = provider cost / (1 − 0.30). So $10 of cost becomes $14.29, a 30% gross margin, not 30% markup.
-- Credits = customer price / the existing cost-per-credit rate. Rounding follows the build rules: round up to 0.01, with no customer debt.
-- The margin and all rates are stored as settings (`economics_config`), not written into the code.
+## What exists today (confirmed)
+- 9 integrations (Resend, Plausible, Stripe, Paystack, Flutterwave, PostHog, OpenAI, PWA, Stripe Identity). All of them ask the user to paste keys. None has a one-click sign-in flow.
+- Kimble Cloud, email, custom domains and Git sync work live.
+- Builds go through one tool loop. The preview appears only after the whole build passes its checks.
+- Still open on the roadmap: moving edits onto the tool loop, run-time tracing (Stage C) and live benchmarks.
 
-### 2. Cloud cost ledger (extends `cost_events`, no new money table)
-- Each cloud charge writes one row per resource: `cloud_shared`, `supabase_compute`, `supabase_disk`, `supabase_egress`, `railway_cpu`, `railway_ram`, `railway_storage`, `railway_egress`, and `cloud_other`.
-- Each row records the project, the measured amount and unit, Kimble's cost, the credits charged, and whether the cost is ACTUAL, ESTIMATED, ALLOCATED or UNKNOWN.
-- A read-only admin view answers: "for project X, what did it use and what did that cost Kimble?"
+---
 
-### 3. Railway: charge for measured use, not a flat hourly fee
-- Before coding, I read Railway's public API docs for per-service usage (CPU, memory, disk, network) and its published rates.
-- The hourly job reads actual usage since the last charge, prices it at Railway's rates (ACTUAL), then charges cost/(1 − 0.30).
-- The existing safeguards stay: servers sleep when idle, sleep when credits run out, and are removed after long disuse. If Railway's usage data can't be read, the charge falls back to today's flat rate and is marked ESTIMATED. It is never skipped silently.
+## Phase 1: Connector Hub
+**Goal:** "Connect Stripe" or "post to Instagram" becomes one click and one consent screen. No keys to paste, and Kimble asks for each connection at the moment the build needs it.
 
-### 4. Dedicated database (Supabase Pro): cost from real rates
-- Before coding, I read Supabase's docs for the project-size and usage APIs and the Pro pricing.
-- Compute cost comes from the project's real instance size times the published hourly rate (ESTIMATED from the provider rate). Disk and data transfer use API data where it exists; where it doesn't, they're marked UNKNOWN.
-- The flat 4¢/hour is replaced by cost/(1 − 0.30).
+1. **One connector model.** Each connector has a name, a category, a way to sign in (one-click sign-in, API key or webhook), the permissions it needs, a health status and the build instructions Kimble uses to wire it in. The existing 9 integrations move onto this model unchanged.
+2. **One-click sign-in flow.** A single connect / return / refresh flow, built on Kimble's own server. Tokens are encrypted at rest. Two kinds of owner:
+   - **Business-owner connections:** the customer's own Stripe, Instagram and so on, used by their app and their launch tools.
+   - **End-user connections:** a visitor of the generated app links their own Google account, for example. This ships in a second step.
+3. **First connectors, by business value:**
+   - Payments: Stripe Connect (Standard), Paystack
+   - Social: Meta (Facebook Pages and Instagram), X, LinkedIn, TikTok
+   - Google: Business Profile, Analytics, Search Console, Calendar
+   - Comms: WhatsApp Business, Resend (already done), Slack
+   - Dev: GitHub (move the existing Git sync over)
+4. **Connector Hub screen.** The current Connectors sheet becomes a hub with categories, a status for each connection (connected, needs attention, expired), reconnect and disconnect.
+5. **In-chat ask.** The planner spots when a connector is needed. Kimble asks once in chat with a connect card, and the build waits only on that one item. This follows the existing "ask inline, no banners" rule.
+6. **Health monitor.** A scheduled check finds expired or revoked tokens and shows "needs attention" in the hub.
 
-### 5. Shared Cloud: measured and very cheap, but not free
-- For each project, measure what we can: stored records and bytes, uploads, sign-ups and active users, and API requests (from the shared request log, if one exists; the audit will confirm).
-- Kimble's cost for each project = the shared infrastructure's monthly bill, split by the project's share of storage and requests. This is marked ALLOCATED, never ACTUAL. Anything we can't split fairly is marked UNKNOWN, without made-up precision.
-- Customer rate: a small charge per unit of use, set only after checking the credit value and the real shared bill. It will sit well below the price of a dedicated database. A daily job does the charging.
+**Done when:** a live build of "a salon that takes Stripe deposits and posts new services to Instagram" connects both services in one click each and works end to end.
 
-### 6. Moving apps up a level: detect first, never move blindly
-- Every time Kimble checks an app, it records what the app needs, with the reason and evidence.
-- **Automatic today:** the level chosen at first build: shared, or a Railway server when the app clearly needs one. Setting that up is already safe.
-- **Detected only, not automatic:** moving a live app from shared to its own database. Kimble records that the move is needed and runs the pre-move checks: data fits, records are intact, settings and keys are ready, the destination is healthy, and there's a way back. It doesn't move data until a safe migration path exists. No risky migration gets invented.
-- An app only moves up for a real requirement or an existing limit. Never "because we can".
+## Phase 2: Speed
+**Goal:** something visible within about 10 seconds, and a full first build in under half the current time, without weakening any check.
 
-### 7. What the customer sees
-- The billing screen shows one line: "Cloud usage", in credits. No provider names, no CPU or RAM, and no levels to choose from.
+1. **Run-time tracing first (roadmap Stage C).** Time each step: time to first token, model time, tool time, checking time. Changes then aim at the real slow parts, not guesses.
+2. **Live draft preview.** Pages appear in a draft preview as soon as each one passes its own check. The final verified version still decides "done", so nothing unchecked is ever published.
+3. **Instant starting shell.** A preset layout with the chosen design and navigation renders while the pages are being written.
+4. **Run more in parallel.** Independent pages are written at the same time; writes to shared files stay one at a time. Page checks are cached by content.
+5. **Faster model routes.** Use the existing preferred-speed setting with measured thresholds. Steps that need little thinking use a faster model.
+6. **Edits on the tool loop** (the open roadmap item), so small edits stay small and quick.
 
-## Live checks (on kimble.cloud)
-1. **Delivery app:** needs cloud, runs on shared, sign-up, records saved and still there after reload. Shared usage and its ALLOCATED cost are recorded, credits are charged, and no dedicated database or server is created.
-2. **An app with heavy server work** (for example, video processing): a Railway server is chosen, measured use is recorded as ACTUAL, and credits are charged at the 30% margin.
-3. **A simple app that only saves a few records:** stays on shared, with nothing expensive set up.
+**Done when:** 4-page site, medium app and small edit are benchmarked live, with before/after times and no drop in margin or pass rate.
 
-## Kept unchanged
-Build credits and AI pricing, the effort curve, one credit balance, how projects are set up, sign-in, publishing, domains, email, the edit rules, and the starter files.
+## Phase 3: Coverage of unusual requests
+**Goal:** reliable results beyond the known product types.
 
-## Change-control (freeze)
-- **What is broken:** Shared Cloud earns nothing, dedicated and server charges are flat guesses, and Kimble's real cost is never recorded.
-- **Evidence:** the flat 4¢ constant, the flat hourly server rate, and the setup-only cost row marked UNKNOWN.
-- **Why it blocks launch:** cloud margin can't be known or guaranteed.
-- **Smallest safe fix:** the items above, reusing the existing decider, charge path and ledger.
-- **What changes for users:** only how much each cloud charge costs, now tied to measured use.
+1. **Test suite of about 60 prompts** across many industries, odd requests and unusual libraries. It runs on a schedule against the live engine.
+2. **Failure library.** Every failed build is grouped by root cause. The top causes become checked rules, following the existing "fix the root cause" practice.
+3. **Approved package list.** Known-good versions of common libraries, plus a safe fallback when a request names an unknown one.
+4. **Generic intent families** for request types that are still missing (marketplace, community, internal tool, content/media), with tests.
+5. **Quality dashboard.** Pass rate, average time, cost and top failures over time, in admin.
+
+**Done when:** the suite passes at 90% or more on two scheduled runs in a row.
+
+## Phase 4: Launch Kit (the business suite)
+**Goal:** "Launch my business" delivers the app plus everything around it. This is the part no competitor offers.
+
+1. **Business brief.** Kimble asks a few focused questions (audience, offer, price, location, tone) and saves them to the product plan.
+2. **Brand kit.** Name, logo, colours, voice and taglines, reusing the design packages.
+3. **Launch assets.** A 30-day social content calendar with images, ad copy variants, launch email, Google Business listing text, search-engine basics.
+4. **Publishing.** Through the Phase 1 connectors: schedule posts, send the launch email, update the Google Business profile. Every post needs approval, and nothing goes out on its own without the owner saying yes.
+5. **Launch checklist.** Domain, email, payments, analytics and legal pages, each with a live status.
+6. **Business monitor.** One screen with visitors, sign-ups, orders and revenue, social reach, uptime, plus a weekly summary from Kimble with suggested next steps.
+7. **Pricing.** Launch Kit work is priced in credits on the existing effort curve. No new pricing model.
+
+**Done when:** one prompt for a real test business gives a live app, a brand, scheduled posts and a working monitor.
+
+---
+
+## Out of scope / unchanged
+Billing rules, the pricing curve, cloud tiers, the design-package authority, verification gates, edit scope rules. Mobile, API-backend and Chrome-extension builds stay paused.
 
 ## Technical details
-- New: `src/lib/cloud-pricing.ts` (pure), `src/server/cloud-metering.server.ts` (collects Railway, Supabase and shared usage), a cron route `api/public/cron/cloud-shared-day.ts`, and `cloud_transitions` (detected moves plus check results).
-- Changed: `compute-hour.ts` and `runtime-backend-hour.ts` (now measured) and `cloud-tier.server.ts` (records transitions).
-- Migration: `cost_events` gains the cloud resource fields if they're missing; `economics_config` gets `cloud_external_margin=0.30`, the shared rates and Pro compute rates; the admin view uses SECURITY DEFINER; every new table gets GRANTs and RLS.
-- Tests: the margin math ($10 → $14.29), turning cost into credits, the fallback to ESTIMATED, the shared split, and the tier decisions for delivery, video and a simple list app. Then rebuild the build-server package and update AGENTS.md.
+- New modules: `src/server/connectors/` (model, registry, sign-in flow, token store, health job) and `src/routes/api/public/connectors/callback.ts` (state check, PKCE). Tokens are encrypted with a new master key secret. Tables `connector_accounts` and `connector_events` have RLS, grants and service_role access.
+- Existing `IntegrationDefinition` entries move onto the connector model through a compatibility adapter. The installer stays the single place that writes code into the app.
+- Each provider needs its own developer app (Meta, X, LinkedIn, TikTok, Google, Stripe Connect). The user must register these, and some need review: Meta takes about 1–4 weeks, TikTok about 1–2. This is an external blocker for the social connectors. Stripe, Google and GitHub can ship first.
+- Speed work goes into `tool-loop.ts` and `loop-telemetry.ts`. The draft preview streams through the existing page checkpoint writes; commit stays protected by the revision check.
+- Any change under `src/server/` used by generation means rebuilding the agent bundle and bumping its version.
+- Every phase ends with tests, a typecheck and one live build before it is called done.
 
-## Needs your input when we get there
-- Kimble's current monthly bill for the shared infrastructure. The shared cost split depends on it. Until then, those rows are recorded as UNKNOWN, with the usage still measured.
+## Suggested start
+Phase 1, steps 1–4, with Stripe Connect, Google and GitHub first. These need no long provider review.
