@@ -3654,7 +3654,7 @@ function Builder() {
   // Kimble answers "great, here's the plan again…" and the user gets stuck.
   const APPLY_AFFIRMATIONS = useMemo(
     () =>
-      /^(go|go!|yes|yep|yeah|yes please|please|ok|okay|sure|do it|let'?s go|let'?s do it|ship it|build it|apply|apply it|apply this plan|approved|proceed|sounds good|👍|✅)\.!?$/i,
+      /^(go|go!|yes|yep|yeah|yes please|please|ok|okay|sure|do it|let'?s go|let'?s do it|ship it|build it|apply|apply it|apply this plan|approved|proceed|sounds good|👍|✅)\.?!?$/i,
     [],
   );
 
