@@ -376,9 +376,9 @@ function AuthPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="mt-1 space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="mb-1.5 block text-sm font-medium text-foreground">
                     Email
                   </span>
                   <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3.5 transition focus-within:border-primary/50">
@@ -446,7 +446,7 @@ function AuthPage() {
                 <button
                   type="submit"
                   disabled={busy || (mode === "signup" && scorePassword(password).score < 1)}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-foreground text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-foreground text-[15px] font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
                 >
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                   {submitLabel}
@@ -469,9 +469,9 @@ function AuthPage() {
                   </>
                 ) : mode === "signin" ? (
                   <>
-                    New to Kimble?{" "}
+                    Don't have an account?{" "}
                     <button onClick={() => switchMode("signup")} className="font-semibold text-foreground underline-offset-2 hover:underline">
-                      Create an account
+                      Create your account
                     </button>
                   </>
                 ) : (
