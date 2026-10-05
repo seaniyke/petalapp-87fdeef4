@@ -506,10 +506,10 @@ function Landing() {
       )}
 
       {/* Product-first hero */}
-      <section className="relative flex min-h-[calc(100svh-3.5rem)] flex-col overflow-hidden">
+      <section className="relative flex min-h-[calc(100svh-3rem)] flex-col overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-aura)]" aria-hidden />
         <div
-          className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-5 pb-36 pt-24 text-center sm:px-6 sm:pt-32"
+          className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col justify-start px-5 pb-28 pt-[38svh] text-center sm:px-6 sm:pb-32 sm:pt-[30svh]"
         >
           {showAuthedHero ? (
             <>
@@ -519,11 +519,11 @@ function Landing() {
                   setMode("discuss");
                   requestAnimationFrame(() => textareaRef.current?.focus());
                 }}
-                className="mx-auto mb-10 inline-flex items-center gap-3 rounded-full border border-border bg-card/70 py-1.5 pl-1.5 pr-4 text-sm font-medium backdrop-blur-xl transition hover:bg-card"
+                className="mx-auto mb-8 inline-flex items-center gap-2 rounded-xl border border-border bg-card/70 py-1 pl-1 pr-3 text-[13px] font-medium backdrop-blur-xl transition hover:bg-card"
               >
-                <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">New</span>
+                <span className="rounded-md bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">New</span>
                 Chat with Kimble for free
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               </button>
               <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-tight text-balance sm:text-5xl">
                 {firstName ? `Got an idea, ${firstName}?` : "Got an idea?"}
@@ -634,7 +634,7 @@ function Landing() {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="grid h-9 w-9 place-items-center rounded-xl text-foreground/80 transition hover:bg-muted hover:text-foreground"
+                      className="grid h-8 w-8 place-items-center rounded-lg text-foreground/80 transition hover:bg-muted hover:text-foreground"
                       aria-label="Attach a photo or screenshot"
                       title="Attach a photo or screenshot"
                     >
@@ -660,7 +660,7 @@ function Landing() {
                           voice.start();
                         }
                       }}
-                      className={`grid h-9 w-9 place-items-center rounded-xl transition ${
+                      className={`grid h-8 w-8 place-items-center rounded-lg transition ${
                         voice.listening
                           ? "bg-primary text-primary-foreground animate-pulse"
                           : "text-foreground/80 hover:bg-muted hover:text-foreground"
@@ -675,7 +675,7 @@ function Landing() {
                     <button
                       type="submit"
                       aria-label={mode === "discuss" ? "Ask Kimble" : "Build it"}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-foreground text-background transition hover:opacity-90"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background transition hover:opacity-90"
                     >
                       <ArrowUp className="h-4 w-4" />
                     </button>

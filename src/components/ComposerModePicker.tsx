@@ -71,7 +71,7 @@ export function ComposerModePicker({
           aria-haspopup="menu"
           aria-label={`Mode: ${active.label}`}
           className={cn(
-            "inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-foreground/85 transition",
+            "inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs text-foreground/85 transition",
             "hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
             disabled && "cursor-not-allowed opacity-60",
           )}
