@@ -32,6 +32,7 @@ import { LiveNarration } from "@/components/build/LiveNarration";
 import { ImageStrip } from "@/components/build/ImageStrip";
 import { FileStack } from "@/components/build/FileStack";
 import { ProgressArc } from "@/components/build/ProgressArc";
+import { RobotCrew } from "@/components/build/RobotCrew";
 import { BuildTimeline } from "@/components/BuildTimeline";
 
 import { pathToNarration } from "@/lib/path-narration";
@@ -552,6 +553,12 @@ export function BuildActivityCard({
             />
           </div>
         </div>
+
+        <RobotCrew
+          phaseId={currentPhase?.id}
+          active={isActive}
+          failed={phases.some((p) => p.status === "failed") || lc === "failed" || lc === "build_failed" || lc === "verify_failed"}
+        />
 
         {/* The two things worth watching: the pictures Kimble makes, and the
             pages landing one by one. Everything verbose stays behind
