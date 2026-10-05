@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   CreditCard,
   Store,
+  ChevronsUpDown,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -64,16 +65,29 @@ export function SiteHeader() {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 w-full bg-white transition-[background-color,border-color,box-shadow] duration-200 dark:bg-background ${
-          scrolled
-            ? "border-b border-border/60 shadow-[0_1px_0_0_hsl(var(--border)/0.4)]"
-            : "border-b border-border/30"
+        className={`sticky top-0 z-50 w-full transition-[background-color,border-color] duration-200 ${
+          scrolled ? "border-b border-border/50 bg-background/75 backdrop-blur-xl" : "border-b border-transparent bg-transparent"
         }`}
       >
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center">
-            <PetalBrand />
-          </Link>
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:h-[4.5rem] sm:gap-4 sm:px-6 lg:px-8">
+          {user ? (
+            <Link
+              to="/projects"
+              className="inline-flex h-11 max-w-[60vw] items-center gap-2.5 rounded-full border border-border/60 bg-card/70 py-1 pl-1 pr-3.5 backdrop-blur-xl"
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                {initial}
+              </span>
+              <span className="truncate text-[0.95rem] font-semibold">
+                {(user.email ?? "My").split("@")[0]}'s Kimble
+              </span>
+              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" />
+            </Link>
+          ) : (
+            <Link to="/" className="flex items-center">
+              <PetalBrand />
+            </Link>
+          )}
 
 
           {/* Desktop nav: marketing links when signed-out, product cluster when signed-in */}
