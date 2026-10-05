@@ -2567,6 +2567,7 @@ function Builder() {
       const userMsg: ChatMessage = {
         role: "user",
         content: text,
+        ts: Date.now(),
         ...(attachments && attachments.length > 0
           ? {
               attachments: attachments.map((a) => ({
@@ -3616,6 +3617,7 @@ function Builder() {
       const userMsg: ChatMessage = {
         role: "user",
         content: text,
+        ts: Date.now(),
         ...(attachments && attachments.length > 0
           ? {
               attachments: attachments.map((a) => ({
