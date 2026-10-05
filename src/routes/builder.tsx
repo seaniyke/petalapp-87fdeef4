@@ -188,7 +188,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 // Lazy: keep CodeMirror, cmdk, react-markdown, rehype-highlight out of the
 // initial /builder bundle. Most users see Preview first.

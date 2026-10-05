@@ -23,7 +23,7 @@ import {
   type PreviewComment,
 } from "@/lib/preview-share";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 export type CommentsInboxSheetProps = {
   open: boolean;

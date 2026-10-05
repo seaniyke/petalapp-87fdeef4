@@ -28,7 +28,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { getMobileBuildReady } from "@/lib/expo.functions";
 import { startMobileBuild, getLatestMobileBuild } from "@/lib/mobile-builds.functions";
 

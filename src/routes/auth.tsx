@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import { useAuth } from "@/lib/auth";
 import { clearLastAuthEmail, readLastAuthEmail, writeLastAuthEmail } from "@/lib/draft-storage";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { WaitlistPanel } from "@/components/WaitlistPanel";
 
 /**

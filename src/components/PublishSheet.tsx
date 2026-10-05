@@ -76,7 +76,7 @@ import {
   suggestSlugFromTitle,
   type CheckResult,
 } from "@/lib/petal-subdomain";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { friendlyBuildFailure } from "@/lib/friendly-errors";
 import { useBuildStatusLabel } from "@/hooks/use-build-status-label";
 

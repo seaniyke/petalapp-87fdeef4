@@ -7,7 +7,7 @@ import { Beaker, Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { LABS_FLAGS, useLabsFlags, type LabsFlagName } from "@/hooks/use-labs-flags";
 import { useIsAdmin } from "@/hooks/use-is-admin";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 export function LabsSection() {
   const { flags, loading, setFlag } = useLabsFlags();

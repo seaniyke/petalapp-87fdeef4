@@ -17,7 +17,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import {
   listProjectUsers,
   deleteProjectUser,

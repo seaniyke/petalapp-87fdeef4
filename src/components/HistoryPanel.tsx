@@ -17,7 +17,7 @@ import {
   type VersionRow,
 } from "@/lib/versions";
 import type { ProjectFile } from "@/server/generate.server";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { RevertPreviewDialog } from "@/components/RevertPreviewDialog";
 
 type Props = {

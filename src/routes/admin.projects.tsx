@@ -26,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { adminApi, fmtRelative } from "@/lib/admin-api";
 
 export const Route = createFileRoute("/admin/projects")({

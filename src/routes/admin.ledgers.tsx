@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { adminApi, fmtUsd, fmtDate, downloadCsv } from "@/lib/admin-api";
 
 export const Route = createFileRoute("/admin/ledgers")({

@@ -1,5 +1,5 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { Toaster } from "@/components/ui/sonner";
+import { NoticeSheet } from "@/components/NoticeSheet";
 import { AuthProvider } from "@/lib/auth";
 import { ConsentBanner } from "@/components/ConsentBanner";
 
@@ -128,7 +128,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       <body>
         <AuthProvider>
           {children}
-          <Toaster />
+          <NoticeSheet />
           <ConsentBanner />
         </AuthProvider>
         <Scripts />

@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { updateProject, type ProjectRow } from "@/lib/projects";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 type Props = {
   project: ProjectRow;

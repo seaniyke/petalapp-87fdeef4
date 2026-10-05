@@ -11,7 +11,7 @@ import {
   isProjectPublic,
   type ProjectRow,
 } from "@/lib/projects";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import {
   AlertDialog,
   AlertDialogAction,

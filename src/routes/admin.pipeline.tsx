@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { adminApi, fmtRelative } from "@/lib/admin-api";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 export const Route = createFileRoute("/admin/pipeline")({
   head: () => ({

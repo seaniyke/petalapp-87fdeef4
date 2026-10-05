@@ -21,7 +21,7 @@ import {
   listProjects,
   type ProjectRow,
 } from "@/lib/projects";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 interface ProjectsDrawerProps {
   open: boolean;

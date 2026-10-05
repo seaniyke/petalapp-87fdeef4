@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import petalLogo from "@/assets/kimble-logo.png";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({

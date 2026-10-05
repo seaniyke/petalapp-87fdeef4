@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { Brain, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import {
   listProjectMemory,
   forgetProjectMemoryEntry,

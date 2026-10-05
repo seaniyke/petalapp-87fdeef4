@@ -20,7 +20,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { useAdminGuard } from "@/hooks/use-admin-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { adminApi, fmtUsd, fmtRelative } from "@/lib/admin-api";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({

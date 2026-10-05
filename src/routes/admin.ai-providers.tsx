@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import {
   Loader2,
   ArrowLeft,

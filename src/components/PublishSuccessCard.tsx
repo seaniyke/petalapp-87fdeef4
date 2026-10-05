@@ -9,7 +9,7 @@
 import { Check, Copy, ExternalLink } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/notify";
 import { describeAppFallback, isAssistantNarration } from "@/lib/site-info-copy";
 import { useWallet } from "@/hooks/use-wallet";
 import { BillingSheet } from "@/components/BillingSheet";
