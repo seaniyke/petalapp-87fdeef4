@@ -59,7 +59,7 @@ export const CONNECTORS: ConnectorDef[] = [
   { id: "stripe_connect", name: "Stripe (one-click)", category: "payments", auth: "oauth", availability: "setup_required", blurb: "Connect your Stripe account with one click — no keys to copy." },
   { id: "paystack", name: "Paystack", category: "payments", auth: "api_key", integrationCode: "paystack", availability: "available", blurb: "Payments across Africa." },
   { id: "flutterwave", name: "Flutterwave", category: "payments", auth: "api_key", integrationCode: "flutterwave", availability: "available", blurb: "Cards, mobile money and bank transfers." },
-  { id: "stripe_identity", name: "Stripe Identity", category: "payments", auth: "api_key", integrationCode: "stripe-identity", availability: "available", blurb: "Verify customer identity documents." },
+  { id: "stripe_identity", name: "Stripe Identity", category: "payments", auth: "api_key", integrationCode: "stripe_identity", availability: "available", blurb: "Verify customer identity documents." },
   // Social
   { id: "meta", name: "Facebook & Instagram", category: "social", auth: "oauth", availability: "setup_required", blurb: "Post to your Page and Instagram account." },
   { id: "x", name: "X", category: "social", auth: "oauth", availability: "setup_required", blurb: "Schedule and publish posts." },
