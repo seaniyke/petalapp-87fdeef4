@@ -50,3 +50,10 @@
 - [x] Effort pricing engine (price from work, cost for margin; admin breakdown; tests)
 - [ ] Six-build live benchmark suite on effort pricing — waiting on publish
 - [ ] Commercial decision + Kimble Cloud Readiness Report — after the benchmark suite
+
+## Closing the gaps (approved 2026-10-05)
+- [x] P1.1 One connector model + catalog mapped over existing integrations
+- [x] P1.4 Connector Hub screen grouped by category with status
+- [ ] P1.2 One-click sign-in flow — blocked: needs provider developer apps (Stripe Connect, Google, GitHub first)
+- [ ] P1.3/5/6 First one-click connectors, in-chat connect card, health monitor — after P1.2
+- [ ] Phase 2 Speed, Phase 3 Coverage, Phase 4 Launch Kit
