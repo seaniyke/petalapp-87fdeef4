@@ -603,62 +603,59 @@ function Landing() {
               />
 
               {/* Bottom toolbar */}
-              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5">
+              <div className="absolute inset-x-4 bottom-3 flex items-center justify-between gap-2">
+                <div className="flex items-center">
                   {mode !== "coach" && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label="Attach a photo or screenshot"
-                        title="Attach a photo or screenshot"
-                      >
-                        <Camera className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!voice.supported) {
-                            window.location.href = "/builder?dictate=1";
-                            return;
-                          }
-                          if (voice.listening) {
-                            voice.stop();
-                          } else {
-                            dictationBaseRef.current = prompt.trim();
-                            voice.start();
-                          }
-                        }}
-                        className={`grid h-9 w-9 place-items-center rounded-full transition ${
-                          voice.listening
-                            ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)] animate-pulse"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                        aria-label={voice.listening ? "Stop dictation" : "Dictate with voice"}
-                        aria-pressed={voice.listening}
-                        title={voice.listening ? "Listening… click to stop" : "Dictate with voice"}
-                      >
-                        <Mic className="h-4 w-4" />
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="grid h-10 w-10 place-items-center rounded-full text-foreground/80 transition hover:bg-muted hover:text-foreground"
+                      aria-label="Attach a photo or screenshot"
+                      title="Attach a photo or screenshot"
+                    >
+                      <Plus className="h-5 w-5" strokeWidth={1.75} />
+                    </button>
                   )}
-
-                  <ComposerModePicker value={mode} onChange={setMode} />
-
-                  {/* Build-target picker hidden on landing — selection still flows via builder. */}
                 </div>
 
-                {mode !== "coach" && (
-                  <button
-                    type="submit"
-                    aria-label={mode === "discuss" ? "Ask Kimble" : "Build it"}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-50"
-                    disabled={!prompt.trim()}
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </button>
-                )}
+                <div className="flex items-center gap-1">
+                  <ComposerModePicker value={mode} onChange={setMode} />
+                  {mode !== "coach" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!voice.supported) {
+                          window.location.href = "/builder?dictate=1";
+                          return;
+                        }
+                        if (voice.listening) {
+                          voice.stop();
+                        } else {
+                          dictationBaseRef.current = prompt.trim();
+                          voice.start();
+                        }
+                      }}
+                      className={`grid h-10 w-10 place-items-center rounded-full transition ${
+                        voice.listening
+                          ? "bg-primary text-primary-foreground animate-pulse"
+                          : "text-foreground/80 hover:bg-muted hover:text-foreground"
+                      }`}
+                      aria-label={voice.listening ? "Stop dictation" : "Dictate with voice"}
+                      aria-pressed={voice.listening}
+                    >
+                      <Mic className="h-5 w-5" strokeWidth={1.75} />
+                    </button>
+                  )}
+                  {mode !== "coach" && prompt.trim() && (
+                    <button
+                      type="submit"
+                      aria-label={mode === "discuss" ? "Ask Kimble" : "Build it"}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background transition hover:opacity-90"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </form>
