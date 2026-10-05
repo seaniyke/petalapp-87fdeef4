@@ -9,18 +9,30 @@ export function PetalBrand({
   size = "md",
   className = "",
 }: {
-  /** "sm" for dense chrome, "md" for the standard site header. */
-  size?: "sm" | "md";
+  /** "xs" for the compact site header, "sm" for dense chrome, "md" for pages. */
+  size?: "xs" | "sm" | "md";
   className?: string;
 }) {
-  const mark = size === "sm" ? "h-7 w-7" : "h-8 w-8 sm:h-9 sm:w-9";
+  const mark =
+    size === "xs"
+      ? "h-5 w-5"
+      : size === "sm"
+        ? "h-7 w-7"
+        : "h-8 w-8 sm:h-9 sm:w-9";
   const word =
-    size === "sm"
-      ? "text-[1.15rem] leading-none sm:text-xl"
-      : "text-[1.35rem] leading-none sm:text-[1.55rem]";
+    size === "xs"
+      ? "text-[0.95rem] leading-none"
+      : size === "sm"
+        ? "text-[1.15rem] leading-none sm:text-xl"
+        : "text-[1.35rem] leading-none sm:text-[1.55rem]";
+  const tagline =
+    size === "xs"
+      ? "text-[0.38rem] tracking-[0.1em]"
+      : "text-[0.46rem] tracking-[0.12em] sm:text-[0.5rem]";
+  const gap = size === "xs" ? "gap-2" : "gap-2.5";
 
   return (
-    <span className={`group inline-flex items-center gap-2.5 ${className}`}>
+    <span className={`group inline-flex items-center ${gap} ${className}`}>
       <img
         src="/kimble-logo.png"
         alt=""
@@ -33,7 +45,9 @@ export function PetalBrand({
         >
           Kimble.
         </span>
-        <span className="mt-0.5 whitespace-nowrap font-brand text-[0.46rem] font-medium uppercase leading-none tracking-[0.12em] text-muted-foreground sm:text-[0.5rem]">
+        <span
+          className={`mt-0.5 whitespace-nowrap font-brand ${tagline} font-medium uppercase leading-none text-muted-foreground`}
+        >
           Build real apps with AI
         </span>
       </span>

@@ -69,23 +69,23 @@ export function SiteHeader() {
           scrolled ? "border-b border-border/50 bg-background/75 backdrop-blur-xl" : "border-b border-transparent bg-transparent"
         }`}
       >
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3.5 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-12 max-w-7xl items-center justify-between gap-2 px-3.5 sm:h-14 sm:gap-4 sm:px-6 lg:px-8">
           {user ? (
             <Link
               to="/projects"
-              className="inline-flex h-9 max-w-[60vw] items-center gap-2 rounded-xl border border-border/60 bg-card/70 py-1 pl-1 pr-2.5 backdrop-blur-xl"
+              className="inline-flex h-8 max-w-[60vw] items-center gap-1.5 rounded-lg border border-border/60 bg-card/70 py-1 pl-1 pr-2 backdrop-blur-xl"
             >
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary text-[13px] font-semibold text-primary-foreground">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-primary text-xs font-semibold text-primary-foreground">
                 {initial}
               </span>
-              <span className="truncate text-[13px] font-semibold">
+              <span className="truncate text-xs font-semibold">
                 {(user.email ?? "My").split("@")[0]}'s Kimble
               </span>
-              <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 opacity-60" />
+              <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-60" />
             </Link>
           ) : (
             <Link to="/" className="flex items-center">
-              <PetalBrand size="sm" />
+              <PetalBrand size="xs" />
             </Link>
           )}
 
@@ -168,7 +168,7 @@ export function SiteHeader() {
             {!isReady && likelyAuthed ? (
               <div
                 aria-hidden="true"
-                className="h-8 w-20 rounded-lg bg-muted/40 animate-pulse"
+                className="h-7 w-16 rounded-md bg-muted/40 animate-pulse"
               />
             ) : user ? (
               <>
@@ -176,7 +176,7 @@ export function SiteHeader() {
                   <DropdownMenuTrigger asChild>
                     <button
                       aria-label="Account menu"
-                      className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-accent text-sm font-medium text-accent-foreground ring-1 ring-border transition hover:brightness-105"
+                      className="grid h-8 w-8 place-items-center overflow-hidden rounded-lg bg-accent text-xs font-medium text-accent-foreground ring-1 ring-border transition hover:brightness-105"
                     >
                       {avatarUrl ? (
                         <img
@@ -227,14 +227,14 @@ export function SiteHeader() {
                 <Link
                   to="/auth"
                   search={{ mode: "signin", redirect: undefined }}
-                  className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-card/60 px-2.5 text-[13px] font-medium transition-colors hover:bg-card sm:px-3"
+                  className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-md border border-border bg-card/60 px-2.5 text-xs font-medium transition-colors hover:bg-card"
                 >
                   Log in
                 </Link>
                 <Link
                   to="/auth"
                   search={{ mode: "signup", redirect: undefined }}
-                  className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg bg-foreground px-3 text-[13px] font-semibold text-background shadow-[var(--shadow-soft)] transition hover:opacity-90 sm:px-3.5"
+                  className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-md bg-foreground px-2.5 text-xs font-semibold text-background shadow-[var(--shadow-soft)] transition hover:opacity-90"
                 >
                   Get started
                 </Link>
@@ -247,9 +247,9 @@ export function SiteHeader() {
               type="button"
               aria-label="Open menu"
               onClick={() => setMobileNavOpen(true)}
-              className={`grid h-8 w-8 place-items-center rounded-lg text-foreground transition hover:bg-muted/60 hover:text-foreground md:hidden ${user ? "hidden" : ""}`}
+              className={`grid h-7 w-7 place-items-center rounded-md text-foreground transition hover:bg-muted/60 hover:text-foreground md:hidden ${user ? "hidden" : ""}`}
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4" />
             </button>
           </div>
         </div>
