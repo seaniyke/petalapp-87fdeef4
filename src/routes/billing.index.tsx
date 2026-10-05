@@ -253,7 +253,7 @@ function BillingDashboard() {
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
+            <h1 className="font-display text-3xl font-bold tracking-tight">Billing</h1>
             <p className="mt-1 text-sm font-medium text-muted-foreground">
               Your credit balance and every receipt — card or crypto.
             </p>
@@ -265,7 +265,7 @@ function BillingDashboard() {
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="rounded-[1.25rem] border border-border/60 bg-card/85 backdrop-blur-xl p-4">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               <WalletIcon className="h-3.5 w-3.5" />
               Credits
@@ -279,7 +279,7 @@ function BillingDashboard() {
             </Button>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="rounded-[1.25rem] border border-border/60 bg-card/85 backdrop-blur-xl p-4">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-muted-foreground">
               <Bitcoin className="h-3.5 w-3.5" />
               Cloud + AI
@@ -300,7 +300,7 @@ function BillingDashboard() {
         </div>
 
         <h2 className="mt-10 text-lg font-bold">Payments & receipts</h2>
-        <div className="mt-3 overflow-hidden rounded-2xl border border-border">
+        <div className="mt-3 overflow-hidden rounded-[1.25rem] border border-border/60 bg-card/85 backdrop-blur-xl">
           {!data?.items.length ? (
             <div className="p-10 text-center text-sm font-medium text-muted-foreground">
               No payments yet. Your receipts will show up here.

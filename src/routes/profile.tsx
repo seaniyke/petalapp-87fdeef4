@@ -111,7 +111,7 @@ function ProfilePage() {
           <p className="mt-8 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             Account
           </p>
-          <h1 className="heading-editorial mt-3 text-5xl sm:text-6xl">
+          <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">
             Your <em>profile.</em>
           </h1>
           <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground">
@@ -122,7 +122,7 @@ function ProfilePage() {
 
       <div className="mx-auto max-w-2xl px-5 pb-20 sm:px-6">
         {/* Avatar preview card, overlapping the hero */}
-        <div className="-mt-14 flex items-end gap-4 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-editorial)] sm:p-6">
+        <div className="-mt-14 flex items-end gap-4 rounded-[1.25rem] border border-border/60 bg-card/85 backdrop-blur-xl p-5 shadow-[var(--shadow-editorial)] sm:p-6">
           <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-foreground text-2xl font-semibold text-background ring-4 ring-background">
             {avatarUrl ? (
               <img
@@ -146,7 +146,7 @@ function ProfilePage() {
 
         <form
           onSubmit={handleSave}
-          className="mt-6 space-y-6 rounded-2xl border border-border bg-card/70 p-6 shadow-[var(--shadow-soft)] backdrop-blur-sm sm:p-8"
+          className="mt-6 space-y-6 rounded-[1.25rem] border border-border/60 bg-card/85 p-6 shadow-[var(--shadow-soft)] backdrop-blur-sm sm:p-8"
         >
           <div className="space-y-2">
             <Label htmlFor="display_name">Display name</Label>
