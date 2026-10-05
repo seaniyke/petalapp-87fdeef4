@@ -91,32 +91,32 @@ export function SiteHeader() {
 
 
           {/* Desktop nav: marketing links when signed-out, product cluster when signed-in */}
-          <nav className="hidden flex-1 items-center justify-center gap-1 text-sm md:flex">
+          <nav className="hidden flex-1 items-center justify-center gap-1 text-[13px] md:flex">
             {!user ? (
               <>
                 <a
                   href="/#features"
-                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  className="rounded-lg px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 >
                   Features
                 </a>
                 <a
                   href="/#how"
-                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  className="rounded-lg px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 >
                   How it works
                 </a>
                 {/* Templates / Packs / Themes intentionally hidden — Kimble picks them automatically. */}
                 <Link
                   to="/gallery"
-                  className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  className="rounded-lg px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 >
                   Gallery
                 </Link>
                 {marketplaceEnabled && (
                   <Link
                     to="/marketplace"
-                    className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                    className="rounded-lg px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                   >
                     Marketplace
                   </Link>
@@ -126,7 +126,7 @@ export function SiteHeader() {
               <>
                 <Link
                   to="/projects"
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                   activeProps={{ className: "bg-muted/60 text-foreground" }}
                 >
                   <FolderOpen className="h-4 w-4" /> Projects
@@ -134,7 +134,7 @@ export function SiteHeader() {
                 {/* Templates / Packs / Themes intentionally hidden — Kimble picks them automatically. */}
                 <Link
                   to="/gallery"
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                   activeProps={{ className: "bg-muted/60 text-foreground" }}
                 >
                   <ImageIcon className="h-4 w-4" /> Gallery
@@ -142,7 +142,7 @@ export function SiteHeader() {
                 {marketplaceEnabled && (
                   <Link
                     to="/marketplace"
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                    className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                     activeProps={{ className: "bg-muted/60 text-foreground" }}
                   >
                     <Store className="h-4 w-4" /> Marketplace
