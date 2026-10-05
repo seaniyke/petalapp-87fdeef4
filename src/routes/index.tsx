@@ -30,6 +30,9 @@ import {
   ShieldCheck,
   Store,
   Sparkles,
+  Home,
+  LayoutGrid,
+  MessageSquareText,
 } from "lucide-react";
 import { toVisitorSummary } from "@/lib/visitor-summary";
 
@@ -476,6 +479,31 @@ function Landing() {
     // AuthProvider resolves the session, so the marketing hero never flashes.
     <div data-auth-hint-hide className="landing-page min-h-screen bg-background text-foreground">
       <SiteHeader />
+
+      {showAuthedHero && (
+        <nav
+          aria-label="Quick navigation"
+          className="fixed inset-x-0 bottom-5 z-40 mx-auto flex w-[min(19rem,calc(100%-6rem))] items-center justify-between rounded-full border border-border/60 bg-card/70 p-1.5 shadow-[var(--shadow-squircle)] backdrop-blur-2xl md:hidden"
+        >
+          <Link to="/" className="grid h-12 flex-1 place-items-center rounded-full bg-foreground/10 text-foreground" aria-label="Home">
+            <Home className="h-6 w-6" strokeWidth={2} />
+          </Link>
+          <Link to="/projects" className="grid h-12 flex-1 place-items-center rounded-full text-foreground/80" aria-label="Projects">
+            <LayoutGrid className="h-6 w-6" strokeWidth={1.75} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("discuss");
+              requestAnimationFrame(() => textareaRef.current?.focus());
+            }}
+            className="grid h-12 flex-1 place-items-center rounded-full text-foreground/80"
+            aria-label="Chat with Kimble"
+          >
+            <MessageSquareText className="h-6 w-6" strokeWidth={1.75} />
+          </button>
+        </nav>
+      )}
 
       {/* Product-first hero */}
       <section className="relative flex min-h-[calc(100svh-3.5rem)] flex-col overflow-hidden">
