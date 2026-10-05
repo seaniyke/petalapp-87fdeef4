@@ -54,6 +54,8 @@
 ## Closing the gaps (approved 2026-10-05)
 - [x] P1.1 One connector model + catalog mapped over existing integrations
 - [x] P1.4 Connector Hub screen grouped by category with status
-- [ ] P1.2 One-click sign-in flow — blocked: needs provider developer apps (Stripe Connect, Google, GitHub first)
+- [x] P1.2 One-click sign-in flow built (signed state, encrypted tokens, popup connect)
+- [ ] P1.2b Switch on Stripe Connect, Google, GitHub — blocked: needs user developer-app credentials
+- [ ] P1.2c Create the saved-connections table — blocked: database unreachable right now, retry next turn
 - [ ] P1.3/5/6 First one-click connectors, in-chat connect card, health monitor — after P1.2
 - [ ] Phase 2 Speed, Phase 3 Coverage, Phase 4 Launch Kit

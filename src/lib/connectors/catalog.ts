@@ -90,8 +90,13 @@ export type ConnectorStatus = "connected" | "available" | "setup_required";
 export function connectorStatus(
   c: ConnectorDef,
   installedCodes: ReadonlySet<string>,
+  oauth?: { connected: ReadonlySet<string>; ready: ReadonlySet<string> },
 ): ConnectorStatus {
   if (c.integrationCode && installedCodes.has(c.integrationCode)) return "connected";
+  if (c.auth === "oauth" && oauth) {
+    if (oauth.connected.has(c.id)) return "connected";
+    if (oauth.ready.has(c.id)) return "available";
+  }
   return c.availability === "available" ? "available" : "setup_required";
 }
 
