@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   CreditCard,
   Store,
+  ChevronsUpDown,
 } from "lucide-react";
 
 import { useAuth } from "@/lib/auth";
@@ -64,16 +65,29 @@ export function SiteHeader() {
   return (
     <>
       <header
-        className={`sticky top-0 z-50 w-full bg-white transition-[background-color,border-color,box-shadow] duration-200 dark:bg-background ${
-          scrolled
-            ? "border-b border-border/60 shadow-[0_1px_0_0_hsl(var(--border)/0.4)]"
-            : "border-b border-border/30"
+        className={`sticky top-0 z-50 w-full transition-[background-color,border-color] duration-200 ${
+          scrolled ? "border-b border-border/50 bg-background/75 backdrop-blur-xl" : "border-b border-transparent bg-transparent"
         }`}
       >
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center">
-            <PetalBrand />
-          </Link>
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:h-[4.5rem] sm:gap-4 sm:px-6 lg:px-8">
+          {user ? (
+            <Link
+              to="/projects"
+              className="inline-flex h-11 max-w-[60vw] items-center gap-2.5 rounded-full border border-border/60 bg-card/70 py-1 pl-1 pr-3.5 backdrop-blur-xl"
+            >
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                {initial}
+              </span>
+              <span className="truncate text-[0.95rem] font-semibold">
+                {(user.email ?? "My").split("@")[0]}'s Kimble
+              </span>
+              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" />
+            </Link>
+          ) : (
+            <Link to="/" className="flex items-center">
+              <PetalBrand />
+            </Link>
+          )}
 
 
           {/* Desktop nav: marketing links when signed-out, product cluster when signed-in */}
@@ -162,7 +176,7 @@ export function SiteHeader() {
                   <DropdownMenuTrigger asChild>
                     <button
                       aria-label="Account menu"
-                      className="grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-foreground text-sm font-medium text-background ring-1 ring-foreground/10 transition hover:brightness-110 hover:ring-foreground/20"
+                      className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-accent text-lg font-medium text-accent-foreground ring-1 ring-border transition hover:brightness-105"
                     >
                       {avatarUrl ? (
                         <img
@@ -213,14 +227,14 @@ export function SiteHeader() {
                 <Link
                   to="/auth"
                   search={{ mode: "signin", redirect: undefined }}
-                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full px-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-muted/60 hover:text-foreground sm:px-4"
+                  className="inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-xl border border-border bg-card/60 px-3.5 text-sm font-medium transition-colors hover:bg-card sm:px-4"
                 >
-                  Sign in
+                  Log in
                 </Link>
                 <Link
                   to="/auth"
                   search={{ mode: "signup", redirect: undefined }}
-                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-foreground px-3.5 text-sm font-semibold text-background shadow-[var(--shadow-soft)] ring-1 ring-foreground/10 transition hover:-translate-y-0.5 hover:ring-foreground/20 sm:px-5"
+                  className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-xl bg-foreground px-4 text-sm font-semibold text-background shadow-[var(--shadow-soft)] transition hover:opacity-90 sm:px-5" style={{ height: "2.5rem" }}
                 >
                   Get started
                 </Link>
@@ -233,7 +247,7 @@ export function SiteHeader() {
               type="button"
               aria-label="Open menu"
               onClick={() => setMobileNavOpen(true)}
-              className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-foreground md:hidden"
+              className={`grid h-9 w-9 place-items-center rounded-full text-foreground transition hover:bg-muted/60 hover:text-foreground md:hidden ${user ? "hidden" : ""}`}
             >
               <Menu className="h-5 w-5" />
             </button>

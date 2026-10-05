@@ -53,7 +53,7 @@ export const Route = createFileRoute("/features/$slug")({
   errorComponent: ({ error, reset }) => (
     <div className="min-h-screen bg-background p-12 text-foreground">
       <h1 className="font-display text-3xl font-black">Something went wrong</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
       <button onClick={reset} className="mt-6 rounded-full bg-foreground px-4 py-2 text-sm text-background">
         Try again
       </button>

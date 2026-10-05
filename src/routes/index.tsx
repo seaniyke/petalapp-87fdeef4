@@ -30,6 +30,9 @@ import {
   ShieldCheck,
   Store,
   Sparkles,
+  Home,
+  LayoutGrid,
+  MessageSquareText,
 } from "lucide-react";
 import { toVisitorSummary } from "@/lib/visitor-summary";
 
@@ -477,41 +480,66 @@ function Landing() {
     <div data-auth-hint-hide className="landing-page min-h-screen bg-background text-foreground">
       <SiteHeader />
 
+      {showAuthedHero && (
+        <nav
+          aria-label="Quick navigation"
+          className="fixed inset-x-0 bottom-5 z-40 mx-auto flex w-[min(19rem,calc(100%-6rem))] items-center justify-between rounded-full border border-border/60 bg-card/70 p-1.5 shadow-[var(--shadow-squircle)] backdrop-blur-2xl md:hidden"
+        >
+          <Link to="/" className="grid h-12 flex-1 place-items-center rounded-full bg-foreground/10 text-foreground" aria-label="Home">
+            <Home className="h-6 w-6" strokeWidth={2} />
+          </Link>
+          <Link to="/projects" className="grid h-12 flex-1 place-items-center rounded-full text-foreground/80" aria-label="Projects">
+            <LayoutGrid className="h-6 w-6" strokeWidth={1.75} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("discuss");
+              requestAnimationFrame(() => textareaRef.current?.focus());
+            }}
+            className="grid h-12 flex-1 place-items-center rounded-full text-foreground/80"
+            aria-label="Chat with Kimble"
+          >
+            <MessageSquareText className="h-6 w-6" strokeWidth={1.75} />
+          </button>
+        </nav>
+      )}
+
       {/* Product-first hero */}
-      <section className="relative overflow-hidden border-b border-border/70">
-        {!showAuthedHero && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-[var(--gradient-editorial)] opacity-70" aria-hidden />
-        )}
+      <section className="relative flex min-h-[calc(100svh-3.5rem)] flex-col overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-aura)]" aria-hidden />
         <div
-          className={`relative mx-auto max-w-6xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-32 sm:pb-20 sm:pt-40" : "pb-12 pt-16 sm:pb-24 sm:pt-32"}`}
+          className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-5 pb-36 pt-24 text-center sm:px-6 sm:pt-32"
         >
           {showAuthedHero ? (
-            <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
-              {firstName ? (
-                <>
-                  {heroGreeting}{" "}
-                  <span className="relative whitespace-nowrap">
-                    <span className="relative z-10 italic">{firstName}</span>
-                    <span className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50" aria-hidden />
-                  </span>
-                  .
-                </>
-              ) : (
-                // Without a first name the greeting's trailing comma would read
-                // "Ship it,." — drop it so the sentence closes cleanly.
-                `${heroGreeting.replace(/[,\s]+$/, "")}.`
-              )}
-            </h1>
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("discuss");
+                  requestAnimationFrame(() => textareaRef.current?.focus());
+                }}
+                className="mx-auto mb-10 inline-flex items-center gap-3 rounded-full border border-border bg-card/70 py-1.5 pl-1.5 pr-4 text-sm font-medium backdrop-blur-xl transition hover:bg-card"
+              >
+                <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">New</span>
+                Chat with Kimble for free
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-tight text-balance sm:text-5xl">
+                {firstName ? `Got an idea, ${firstName}?` : "Got an idea?"}
+              </h1>
+            </>
           ) : (
             <>
-              <h1 className="heading-editorial mx-auto max-w-5xl text-balance text-[2.7rem] sm:text-7xl md:text-[5.6rem]">
-                Build an app from<br />a conversation.
+              <h1 className="font-display text-[2.1rem] font-bold leading-[1.05] tracking-tight text-balance sm:text-6xl">
+                Build something with Kimble
               </h1>
-              <p className="mx-auto mt-5 max-w-2xl text-balance text-[0.94rem] leading-relaxed text-muted-foreground sm:mt-7 sm:text-xl">
-                Describe your app. Kimble plans, builds, tests, and publishes it.
+              <p className="mx-auto mt-4 max-w-md text-balance text-base leading-relaxed text-muted-foreground sm:text-xl">
+                Bring a new product, internal tool, or entire company to life.
               </p>
             </>
           )}
+
 
           {/* Prompt box — large chat-style composer */}
           <form
@@ -519,9 +547,9 @@ function Landing() {
               e.preventDefault();
               submit();
             }}
-            className="mx-auto mt-7 max-w-3xl sm:mt-10"
+            className="mx-auto mt-8 w-full max-w-3xl sm:mt-10"
           >
-            <div className="group relative rounded-2xl border border-foreground/15 bg-card p-3 text-left shadow-[var(--shadow-editorial)] transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-ring/20">
+            <div className="group relative rounded-[1.75rem] border border-border/70 bg-card/85 p-4 text-left shadow-[var(--shadow-squircle)] backdrop-blur-2xl transition focus-within:border-primary/50">
               {mode === "coach" ? (
                 <IdeaCoach
                   isAuthed={!!user}
@@ -603,62 +631,59 @@ function Landing() {
               />
 
               {/* Bottom toolbar */}
-              <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5">
+              <div className="absolute inset-x-4 bottom-3 flex items-center justify-between gap-2">
+                <div className="flex items-center">
                   {mode !== "coach" && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        aria-label="Attach a photo or screenshot"
-                        title="Attach a photo or screenshot"
-                      >
-                        <Camera className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!voice.supported) {
-                            window.location.href = "/builder?dictate=1";
-                            return;
-                          }
-                          if (voice.listening) {
-                            voice.stop();
-                          } else {
-                            dictationBaseRef.current = prompt.trim();
-                            voice.start();
-                          }
-                        }}
-                        className={`grid h-9 w-9 place-items-center rounded-full transition ${
-                          voice.listening
-                            ? "bg-primary text-primary-foreground shadow-[var(--shadow-soft)] animate-pulse"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                        aria-label={voice.listening ? "Stop dictation" : "Dictate with voice"}
-                        aria-pressed={voice.listening}
-                        title={voice.listening ? "Listening… click to stop" : "Dictate with voice"}
-                      >
-                        <Mic className="h-4 w-4" />
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="grid h-10 w-10 place-items-center rounded-full text-foreground/80 transition hover:bg-muted hover:text-foreground"
+                      aria-label="Attach a photo or screenshot"
+                      title="Attach a photo or screenshot"
+                    >
+                      <Plus className="h-5 w-5" strokeWidth={1.75} />
+                    </button>
                   )}
-
-                  <ComposerModePicker value={mode} onChange={setMode} />
-
-                  {/* Build-target picker hidden on landing — selection still flows via builder. */}
                 </div>
 
-                {mode !== "coach" && (
-                  <button
-                    type="submit"
-                    aria-label={mode === "discuss" ? "Ask Kimble" : "Build it"}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[var(--shadow-soft)] transition hover:brightness-105 disabled:opacity-50"
-                    disabled={!prompt.trim()}
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </button>
-                )}
+                <div className="flex items-center gap-1">
+                  <ComposerModePicker value={mode} onChange={setMode} />
+                  {mode !== "coach" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!voice.supported) {
+                          window.location.href = "/builder?dictate=1";
+                          return;
+                        }
+                        if (voice.listening) {
+                          voice.stop();
+                        } else {
+                          dictationBaseRef.current = prompt.trim();
+                          voice.start();
+                        }
+                      }}
+                      className={`grid h-10 w-10 place-items-center rounded-full transition ${
+                        voice.listening
+                          ? "bg-primary text-primary-foreground animate-pulse"
+                          : "text-foreground/80 hover:bg-muted hover:text-foreground"
+                      }`}
+                      aria-label={voice.listening ? "Stop dictation" : "Dictate with voice"}
+                      aria-pressed={voice.listening}
+                    >
+                      <Mic className="h-5 w-5" strokeWidth={1.75} />
+                    </button>
+                  )}
+                  {mode !== "coach" && prompt.trim() && (
+                    <button
+                      type="submit"
+                      aria-label={mode === "discuss" ? "Ask Kimble" : "Build it"}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-background transition hover:opacity-90"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </form>

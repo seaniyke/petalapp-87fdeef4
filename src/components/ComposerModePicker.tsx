@@ -71,16 +71,14 @@ export function ComposerModePicker({
           aria-haspopup="menu"
           aria-label={`Mode: ${active.label}`}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-full border border-border bg-background/60 py-1 pl-2 pr-2 text-xs transition",
-            "hover:bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+            "inline-flex h-10 items-center gap-2 rounded-full px-3 text-base text-foreground/85 transition",
+            "hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
             disabled && "cursor-not-allowed opacity-60",
-            value === "build" && "border-primary/30",
-            value === "coach" && "border-lilac/60 bg-lilac/15",
           )}
         >
-          <ActiveIcon className="h-3 w-3" />
-          <span className="font-medium">{active.label}</span>
-          <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
+          <ActiveIcon className="sr-only" aria-hidden />
+          <span>{active.label}</span>
+          <ChevronDown className="h-4 w-4 opacity-70" aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent

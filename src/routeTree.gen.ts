@@ -9,220 +9,140 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WaitlistRouteImport } from './routes/waitlist'
-import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
-import { Route as ThemesRouteImport } from './routes/themes'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as TemplatesRouteImport } from './routes/templates'
-import { Route as SellRouteImport } from './routes/sell'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ProjectsRouteImport } from './routes/projects'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as PacksRouteImport } from './routes/packs'
-import { Route as InvestRouteImport } from './routes/invest'
-import { Route as GalleryRouteImport } from './routes/gallery'
-import { Route as DocsRouteImport } from './routes/docs'
-import { Route as CoffeeRouteImport } from './routes/coffee'
-import { Route as ChangelogRouteImport } from './routes/changelog'
-import { Route as BuilderRouteImport } from './routes/builder'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as MarketplaceIndexRouteImport } from './routes/marketplace.index'
-import { Route as BillingIndexRouteImport } from './routes/billing.index'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BuilderRouteImport } from './routes/builder'
+import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as CoffeeRouteImport } from './routes/coffee'
+import { Route as DocsRouteImport } from './routes/docs'
+import { Route as GalleryRouteImport } from './routes/gallery'
+import { Route as InvestRouteImport } from './routes/invest'
+import { Route as PacksRouteImport } from './routes/packs'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SellRouteImport } from './routes/sell'
+import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as ThemesRouteImport } from './routes/themes'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as WhySlugRouteImport } from './routes/why.$slug'
-import { Route as ShareTokenRouteImport } from './routes/share.$token'
-import { Route as RCodeRouteImport } from './routes/r.$code'
-import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
-import { Route as PSlugRouteImport } from './routes/p.$slug'
-import { Route as MarketplaceSlugRouteImport } from './routes/marketplace.$slug'
-import { Route as FeaturesSlugRouteImport } from './routes/features.$slug'
-import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as CoffeeThanksRouteImport } from './routes/coffee.thanks'
-import { Route as BillingReturnRouteImport } from './routes/billing.return'
-import { Route as ApiVisitorsRouteImport } from './routes/api/visitors'
-import { Route as ApiTriageRouteImport } from './routes/api/triage'
-import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
-import { Route as ApiSubdomainRouteImport } from './routes/api/subdomain'
-import { Route as ApiSiteInfoRouteImport } from './routes/api/site-info'
-import { Route as ApiPublishRouteImport } from './routes/api/publish'
-import { Route as ApiLabsRouteImport } from './routes/api/labs'
-import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
-import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
-import { Route as ApiGenerateRouteImport } from './routes/api/generate'
-import { Route as ApiDomainsRouteImport } from './routes/api/domains'
-import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
-import { Route as ApiCreditPausesRouteImport } from './routes/api/credit-pauses'
-import { Route as ApiCoachRouteImport } from './routes/api/coach'
-import { Route as ApiBackendRouteImport } from './routes/api/backend'
-import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminTestLabRouteImport } from './routes/admin.test-lab'
-import { Route as AdminQaRouteImport } from './routes/admin.qa'
-import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
-import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
-import { Route as AdminPicturesRouteImport } from './routes/admin.pictures'
-import { Route as AdminMobileSigningRouteImport } from './routes/admin.mobile-signing'
-import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
-import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
-import { Route as AdminFeaturesRouteImport } from './routes/admin.features'
-import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
-import { Route as AdminEconomicsRouteImport } from './routes/admin.economics'
-import { Route as AdminDigestRouteImport } from './routes/admin.digest'
-import { Route as AdminCloudCostRouteImport } from './routes/admin.cloud-cost'
-import { Route as AdminBuilderRouteImport } from './routes/admin.builder'
-import { Route as AdminBillingRouteImport } from './routes/admin.billing'
-import { Route as AdminBenchmarkRouteImport } from './routes/admin.benchmark'
-import { Route as AdminAiSpendRouteImport } from './routes/admin.ai-spend'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
-import { Route as ApiRegistrarPurchaseCreditsRouteImport } from './routes/api/registrar/purchase-credits'
-import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
-import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/poll'
-import { Route as ApiPublicWaitlistRouteImport } from './routes/api/public/waitlist'
-import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
-import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
-import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
-import { Route as ApiPublicMarketplaceFeatureRouteImport } from './routes/api/public/marketplace-feature'
-import { Route as ApiPublicInvestRouteImport } from './routes/api/public/invest'
-import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
-import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
-import { Route as ApiInternalHealthRouteImport } from './routes/api/internal/health'
-import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
-import { Route as ApiBuildsWatchdogRouteImport } from './routes/api/builds/watchdog'
-import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
-import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
-import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
-import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
-import { Route as ApiBillingHistoryRouteImport } from './routes/api/billing/history'
-import { Route as ApiBillingCryptoRouteImport } from './routes/api/billing/crypto'
-import { Route as ApiAdminPaystackPlansRouteImport } from './routes/api/admin/paystack-plans'
-import { Route as ApiAdminDigestsRouteImport } from './routes/api/admin/digests'
-import { Route as ApiAdminCreditsRouteImport } from './routes/api/admin/credits'
+import { Route as AdminAiSpendRouteImport } from './routes/admin.ai-spend'
+import { Route as AdminBenchmarkRouteImport } from './routes/admin.benchmark'
+import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminBuilderRouteImport } from './routes/admin.builder'
+import { Route as AdminCloudCostRouteImport } from './routes/admin.cloud-cost'
+import { Route as AdminDigestRouteImport } from './routes/admin.digest'
+import { Route as AdminEconomicsRouteImport } from './routes/admin.economics'
+import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
+import { Route as AdminFeaturesRouteImport } from './routes/admin.features'
+import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
+import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
+import { Route as AdminMobileSigningRouteImport } from './routes/admin.mobile-signing'
+import { Route as AdminPicturesRouteImport } from './routes/admin.pictures'
+import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
+import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
+import { Route as AdminQaRouteImport } from './routes/admin.qa'
+import { Route as AdminTestLabRouteImport } from './routes/admin.test-lab'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
+import { Route as ApiBackendRouteImport } from './routes/api/backend'
+import { Route as ApiCoachRouteImport } from './routes/api/coach'
+import { Route as ApiCreditPausesRouteImport } from './routes/api/credit-pauses'
+import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
+import { Route as ApiDomainsRouteImport } from './routes/api/domains'
+import { Route as ApiGenerateRouteImport } from './routes/api/generate'
+import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
+import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
+import { Route as ApiLabsRouteImport } from './routes/api/labs'
+import { Route as ApiPublishRouteImport } from './routes/api/publish'
+import { Route as ApiSiteInfoRouteImport } from './routes/api/site-info'
+import { Route as ApiSubdomainRouteImport } from './routes/api/subdomain'
+import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
+import { Route as ApiTriageRouteImport } from './routes/api/triage'
+import { Route as ApiVisitorsRouteImport } from './routes/api/visitors'
+import { Route as BillingIndexRouteImport } from './routes/billing.index'
+import { Route as BillingReturnRouteImport } from './routes/billing.return'
+import { Route as CoffeeThanksRouteImport } from './routes/coffee.thanks'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as FeaturesSlugRouteImport } from './routes/features.$slug'
+import { Route as MarketplaceIndexRouteImport } from './routes/marketplace.index'
+import { Route as MarketplaceSlugRouteImport } from './routes/marketplace.$slug'
+import { Route as PSlugRouteImport } from './routes/p.$slug'
+import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
+import { Route as RCodeRouteImport } from './routes/r.$code'
+import { Route as ShareTokenRouteImport } from './routes/share.$token'
+import { Route as WhySlugRouteImport } from './routes/why.$slug'
 import { Route as ApiAdminAiProvidersRouteImport } from './routes/api/admin/ai-providers'
-import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
-import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
-import { Route as ApiTurnsIdEventsRouteImport } from './routes/api/turns.$id.events'
-import { Route as ApiTurnsIdCancelRouteImport } from './routes/api/turns.$id.cancel'
-import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
-import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
-import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
-import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
-import { Route as ApiPublicEmailResendWebhookRouteImport } from './routes/api/public/email/resend-webhook'
-import { Route as ApiPublicCronTurnResumeRouteImport } from './routes/api/public/cron/turn-resume'
-import { Route as ApiPublicCronThumbnailBackfillRouteImport } from './routes/api/public/cron/thumbnail-backfill'
-import { Route as ApiPublicCronSubscriptionRenewalReminderRouteImport } from './routes/api/public/cron/subscription-renewal-reminder'
-import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
-import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
-import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
-import { Route as ApiPublicCronCryptoVerifyRouteImport } from './routes/api/public/cron/crypto-verify'
-import { Route as ApiPublicCronCostAlertsRouteImport } from './routes/api/public/cron/cost-alerts'
-import { Route as ApiPublicCronComputeHourRouteImport } from './routes/api/public/cron/compute-hour'
-import { Route as ApiPublicCronCloudSharedDayRouteImport } from './routes/api/public/cron/cloud-shared-day'
-import { Route as ApiPublicCronBuildWatchdogRouteImport } from './routes/api/public/cron/build-watchdog'
-import { Route as ApiPublicCronBenchmarkRouteImport } from './routes/api/public/cron/benchmark'
-import { Route as ApiPublicCronBackendReapRouteImport } from './routes/api/public/cron/backend-reap'
-import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
-import { Route as ApiPublicCronBackendAutoscaleRouteImport } from './routes/api/public/cron/backend-autoscale'
-import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
-import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
-import { Route as ApiPublicCoffeeCryptoRouteImport } from './routes/api/public/coffee/crypto'
-import { Route as ApiPublicBuildsHeartbeatRouteImport } from './routes/api/public/builds/heartbeat'
-import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
-import { Route as ApiPublicAgentOpsRouteImport } from './routes/api/public/agent/ops'
-import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
-import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
-import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
+import { Route as ApiAdminCreditsRouteImport } from './routes/api/admin/credits'
+import { Route as ApiAdminDigestsRouteImport } from './routes/api/admin/digests'
+import { Route as ApiAdminPaystackPlansRouteImport } from './routes/api/admin/paystack-plans'
+import { Route as ApiBillingCryptoRouteImport } from './routes/api/billing/crypto'
+import { Route as ApiBillingHistoryRouteImport } from './routes/api/billing/history'
+import { Route as ApiBillingInitializeRouteImport } from './routes/api/billing/initialize'
+import { Route as ApiBillingVerifyRouteImport } from './routes/api/billing/verify'
+import { Route as ApiBuildsCallbackRouteImport } from './routes/api/builds/callback'
+import { Route as ApiBuildsTriggerRouteImport } from './routes/api/builds/trigger'
+import { Route as ApiBuildsWatchdogRouteImport } from './routes/api/builds/watchdog'
+import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns-check'
+import { Route as ApiInternalHealthRouteImport } from './routes/api/internal/health'
+import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
+import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
+import { Route as ApiPublicInvestRouteImport } from './routes/api/public/invest'
+import { Route as ApiPublicMarketplaceFeatureRouteImport } from './routes/api/public/marketplace-feature'
+import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
+import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
+import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
+import { Route as ApiPublicWaitlistRouteImport } from './routes/api/public/waitlist'
+import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/poll'
+import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
+import { Route as ApiRegistrarPurchaseCreditsRouteImport } from './routes/api/registrar/purchase-credits'
+import { Route as ApiRegistrarSearchRouteImport } from './routes/api/registrar/search'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiBillingCryptoCheckRouteImport } from './routes/api/billing/crypto.check'
+import { Route as ApiBillingSubscriptionCancelRouteImport } from './routes/api/billing/subscription/cancel'
+import { Route as ApiBillingSubscriptionManageLinkRouteImport } from './routes/api/billing/subscription/manage-link'
+import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/billing/subscription/status'
+import { Route as ApiPublicAgentOpsRouteImport } from './routes/api/public/agent/ops'
+import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
+import { Route as ApiPublicBuildsHeartbeatRouteImport } from './routes/api/public/builds/heartbeat'
+import { Route as ApiPublicCoffeeCryptoRouteImport } from './routes/api/public/coffee/crypto'
+import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
+import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
+import { Route as ApiPublicCronBackendAutoscaleRouteImport } from './routes/api/public/cron/backend-autoscale'
+import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
+import { Route as ApiPublicCronBackendReapRouteImport } from './routes/api/public/cron/backend-reap'
+import { Route as ApiPublicCronBenchmarkRouteImport } from './routes/api/public/cron/benchmark'
+import { Route as ApiPublicCronBuildWatchdogRouteImport } from './routes/api/public/cron/build-watchdog'
+import { Route as ApiPublicCronCloudSharedDayRouteImport } from './routes/api/public/cron/cloud-shared-day'
+import { Route as ApiPublicCronComputeHourRouteImport } from './routes/api/public/cron/compute-hour'
+import { Route as ApiPublicCronCostAlertsRouteImport } from './routes/api/public/cron/cost-alerts'
+import { Route as ApiPublicCronCryptoVerifyRouteImport } from './routes/api/public/cron/crypto-verify'
+import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
+import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
+import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
+import { Route as ApiPublicCronSubscriptionRenewalReminderRouteImport } from './routes/api/public/cron/subscription-renewal-reminder'
+import { Route as ApiPublicCronThumbnailBackfillRouteImport } from './routes/api/public/cron/thumbnail-backfill'
+import { Route as ApiPublicCronTurnResumeRouteImport } from './routes/api/public/cron/turn-resume'
+import { Route as ApiPublicEmailResendWebhookRouteImport } from './routes/api/public/email/resend-webhook'
+import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
+import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
+import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
+import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
+import { Route as ApiTurnsIdCancelRouteImport } from './routes/api/turns.$id.cancel'
+import { Route as ApiTurnsIdEventsRouteImport } from './routes/api/turns.$id.events'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 
-const WaitlistRoute = WaitlistRouteImport.update({
-  id: '/waitlist',
-  path: '/waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const UnsubscribeRoute = UnsubscribeRouteImport.update({
-  id: '/unsubscribe',
-  path: '/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ThemesRoute = ThemesRouteImport.update({
-  id: '/themes',
-  path: '/themes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TemplatesRoute = TemplatesRouteImport.update({
-  id: '/templates',
-  path: '/templates',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SellRoute = SellRouteImport.update({
-  id: '/sell',
-  path: '/sell',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectsRoute = ProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PacksRoute = PacksRouteImport.update({
-  id: '/packs',
-  path: '/packs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InvestRoute = InvestRouteImport.update({
-  id: '/invest',
-  path: '/invest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GalleryRoute = GalleryRouteImport.update({
-  id: '/gallery',
-  path: '/gallery',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsRoute = DocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CoffeeRoute = CoffeeRouteImport.update({
-  id: '/coffee',
-  path: '/coffee',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChangelogRoute = ChangelogRouteImport.update({
-  id: '/changelog',
-  path: '/changelog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BuilderRoute = BuilderRouteImport.update({
-  id: '/builder',
-  path: '/builder',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -230,19 +150,89 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BuilderRoute = BuilderRouteImport.update({
+  id: '/builder',
+  path: '/builder',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MarketplaceIndexRoute = MarketplaceIndexRouteImport.update({
-  id: '/marketplace/',
-  path: '/marketplace/',
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BillingIndexRoute = BillingIndexRouteImport.update({
-  id: '/billing/',
-  path: '/billing/',
+const CoffeeRoute = CoffeeRouteImport.update({
+  id: '/coffee',
+  path: '/coffee',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InvestRoute = InvestRouteImport.update({
+  id: '/invest',
+  path: '/invest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PacksRoute = PacksRouteImport.update({
+  id: '/packs',
+  path: '/packs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SellRoute = SellRouteImport.update({
+  id: '/sell',
+  path: '/sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThemesRoute = ThemesRouteImport.update({
+  id: '/themes',
+  path: '/themes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WaitlistRoute = WaitlistRouteImport.update({
+  id: '/waitlist',
+  path: '/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -250,219 +240,9 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WhySlugRoute = WhySlugRouteImport.update({
-  id: '/why/$slug',
-  path: '/why/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ShareTokenRoute = ShareTokenRouteImport.update({
-  id: '/share/$token',
-  path: '/share/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RCodeRoute = RCodeRouteImport.update({
-  id: '/r/$code',
-  path: '/r/$code',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PacksSlugRoute = PacksSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => PacksRoute,
-} as any)
-const PSlugRoute = PSlugRouteImport.update({
-  id: '/p/$slug',
-  path: '/p/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarketplaceSlugRoute = MarketplaceSlugRouteImport.update({
-  id: '/marketplace/$slug',
-  path: '/marketplace/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FeaturesSlugRoute = FeaturesSlugRouteImport.update({
-  id: '/features/$slug',
-  path: '/features/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CoffeeThanksRoute = CoffeeThanksRouteImport.update({
-  id: '/thanks',
-  path: '/thanks',
-  getParentRoute: () => CoffeeRoute,
-} as any)
-const BillingReturnRoute = BillingReturnRouteImport.update({
-  id: '/billing/return',
-  path: '/billing/return',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiVisitorsRoute = ApiVisitorsRouteImport.update({
-  id: '/api/visitors',
-  path: '/api/visitors',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTriageRoute = ApiTriageRouteImport.update({
-  id: '/api/triage',
-  path: '/api/triage',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
-  id: '/api/transcribe',
-  path: '/api/transcribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSubdomainRoute = ApiSubdomainRouteImport.update({
-  id: '/api/subdomain',
-  path: '/api/subdomain',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiSiteInfoRoute = ApiSiteInfoRouteImport.update({
-  id: '/api/site-info',
-  path: '/api/site-info',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublishRoute = ApiPublishRouteImport.update({
-  id: '/api/publish',
-  path: '/api/publish',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiLabsRoute = ApiLabsRouteImport.update({
-  id: '/api/labs',
-  path: '/api/labs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiIntegrationsRoute = ApiIntegrationsRouteImport.update({
-  id: '/api/integrations',
-  path: '/api/integrations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
-  id: '/api/generate-image',
-  path: '/api/generate-image',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGenerateRoute = ApiGenerateRouteImport.update({
-  id: '/api/generate',
-  path: '/api/generate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiDomainsRoute = ApiDomainsRouteImport.update({
-  id: '/api/domains',
-  path: '/api/domains',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiDiscussRoute = ApiDiscussRouteImport.update({
-  id: '/api/discuss',
-  path: '/api/discuss',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCreditPausesRoute = ApiCreditPausesRouteImport.update({
-  id: '/api/credit-pauses',
-  path: '/api/credit-pauses',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCoachRoute = ApiCoachRouteImport.update({
-  id: '/api/coach',
-  path: '/api/coach',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBackendRoute = ApiBackendRouteImport.update({
-  id: '/api/backend',
-  path: '/api/backend',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
-  id: '/admin/waitlist',
-  path: '/admin/waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/admin/users',
-  path: '/admin/users',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminTestLabRoute = AdminTestLabRouteImport.update({
-  id: '/admin/test-lab',
-  path: '/admin/test-lab',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminQaRoute = AdminQaRouteImport.update({
-  id: '/admin/qa',
-  path: '/admin/qa',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminProjectsRoute = AdminProjectsRouteImport.update({
-  id: '/admin/projects',
-  path: '/admin/projects',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminPipelineRoute = AdminPipelineRouteImport.update({
-  id: '/admin/pipeline',
-  path: '/admin/pipeline',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminPicturesRoute = AdminPicturesRouteImport.update({
-  id: '/admin/pictures',
-  path: '/admin/pictures',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminMobileSigningRoute = AdminMobileSigningRouteImport.update({
-  id: '/admin/mobile-signing',
-  path: '/admin/mobile-signing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminMarketplaceRoute = AdminMarketplaceRouteImport.update({
-  id: '/admin/marketplace',
-  path: '/admin/marketplace',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminLedgersRoute = AdminLedgersRouteImport.update({
-  id: '/admin/ledgers',
-  path: '/admin/ledgers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminFeaturesRoute = AdminFeaturesRouteImport.update({
-  id: '/admin/features',
-  path: '/admin/features',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminFailuresRoute = AdminFailuresRouteImport.update({
-  id: '/admin/failures',
-  path: '/admin/failures',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminEconomicsRoute = AdminEconomicsRouteImport.update({
-  id: '/admin/economics',
-  path: '/admin/economics',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminDigestRoute = AdminDigestRouteImport.update({
-  id: '/admin/digest',
-  path: '/admin/digest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminCloudCostRoute = AdminCloudCostRouteImport.update({
-  id: '/admin/cloud-cost',
-  path: '/admin/cloud-cost',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminBuilderRoute = AdminBuilderRouteImport.update({
-  id: '/admin/builder',
-  path: '/admin/builder',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminBillingRoute = AdminBillingRouteImport.update({
-  id: '/admin/billing',
-  path: '/admin/billing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminBenchmarkRoute = AdminBenchmarkRouteImport.update({
-  id: '/admin/benchmark',
-  path: '/admin/benchmark',
+const AdminAiProvidersRoute = AdminAiProvidersRouteImport.update({
+  id: '/admin/ai-providers',
+  path: '/admin/ai-providers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAiSpendRoute = AdminAiSpendRouteImport.update({
@@ -470,56 +250,309 @@ const AdminAiSpendRoute = AdminAiSpendRouteImport.update({
   path: '/admin/ai-spend',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminAiProvidersRoute = AdminAiProvidersRouteImport.update({
-  id: '/admin/ai-providers',
-  path: '/admin/ai-providers',
+const AdminBenchmarkRoute = AdminBenchmarkRouteImport.update({
+  id: '/admin/benchmark',
+  path: '/admin/benchmark',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
+const AdminBillingRoute = AdminBillingRouteImport.update({
+  id: '/admin/billing',
+  path: '/admin/billing',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRegistrarSearchRoute = ApiRegistrarSearchRouteImport.update({
-  id: '/api/registrar/search',
-  path: '/api/registrar/search',
+const AdminBuilderRoute = AdminBuilderRouteImport.update({
+  id: '/admin/builder',
+  path: '/admin/builder',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRegistrarPurchaseCreditsRoute =
-  ApiRegistrarPurchaseCreditsRouteImport.update({
-    id: '/api/registrar/purchase-credits',
-    path: '/api/registrar/purchase-credits',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiRegistrarPurchaseRoute = ApiRegistrarPurchaseRouteImport.update({
-  id: '/api/registrar/purchase',
-  path: '/api/registrar/purchase',
+const AdminCloudCostRoute = AdminCloudCostRouteImport.update({
+  id: '/admin/cloud-cost',
+  path: '/admin/cloud-cost',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRegistrarPollRoute = ApiRegistrarPollRouteImport.update({
-  id: '/api/registrar/poll',
-  path: '/api/registrar/poll',
+const AdminDigestRoute = AdminDigestRouteImport.update({
+  id: '/admin/digest',
+  path: '/admin/digest',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicWaitlistRoute = ApiPublicWaitlistRouteImport.update({
-  id: '/api/public/waitlist',
-  path: '/api/public/waitlist',
+const AdminEconomicsRoute = AdminEconomicsRouteImport.update({
+  id: '/admin/economics',
+  path: '/admin/economics',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicTrackRuntimeErrorRoute =
-  ApiPublicTrackRuntimeErrorRouteImport.update({
-    id: '/api/public/track-runtime-error',
-    path: '/api/public/track-runtime-error',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicTrackFailureRoute = ApiPublicTrackFailureRouteImport.update({
-  id: '/api/public/track-failure',
-  path: '/api/public/track-failure',
+const AdminFailuresRoute = AdminFailuresRouteImport.update({
+  id: '/admin/failures',
+  path: '/admin/failures',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
-  id: '/api/public/track',
-  path: '/api/public/track',
+const AdminFeaturesRoute = AdminFeaturesRouteImport.update({
+  id: '/admin/features',
+  path: '/admin/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLedgersRoute = AdminLedgersRouteImport.update({
+  id: '/admin/ledgers',
+  path: '/admin/ledgers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMarketplaceRoute = AdminMarketplaceRouteImport.update({
+  id: '/admin/marketplace',
+  path: '/admin/marketplace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMobileSigningRoute = AdminMobileSigningRouteImport.update({
+  id: '/admin/mobile-signing',
+  path: '/admin/mobile-signing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPicturesRoute = AdminPicturesRouteImport.update({
+  id: '/admin/pictures',
+  path: '/admin/pictures',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPipelineRoute = AdminPipelineRouteImport.update({
+  id: '/admin/pipeline',
+  path: '/admin/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminProjectsRoute = AdminProjectsRouteImport.update({
+  id: '/admin/projects',
+  path: '/admin/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminQaRoute = AdminQaRouteImport.update({
+  id: '/admin/qa',
+  path: '/admin/qa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTestLabRoute = AdminTestLabRouteImport.update({
+  id: '/admin/test-lab',
+  path: '/admin/test-lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
+  id: '/admin/waitlist',
+  path: '/admin/waitlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBackendRoute = ApiBackendRouteImport.update({
+  id: '/api/backend',
+  path: '/api/backend',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCoachRoute = ApiCoachRouteImport.update({
+  id: '/api/coach',
+  path: '/api/coach',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCreditPausesRoute = ApiCreditPausesRouteImport.update({
+  id: '/api/credit-pauses',
+  path: '/api/credit-pauses',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDiscussRoute = ApiDiscussRouteImport.update({
+  id: '/api/discuss',
+  path: '/api/discuss',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDomainsRoute = ApiDomainsRouteImport.update({
+  id: '/api/domains',
+  path: '/api/domains',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGenerateRoute = ApiGenerateRouteImport.update({
+  id: '/api/generate',
+  path: '/api/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGenerateImageRoute = ApiGenerateImageRouteImport.update({
+  id: '/api/generate-image',
+  path: '/api/generate-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIntegrationsRoute = ApiIntegrationsRouteImport.update({
+  id: '/api/integrations',
+  path: '/api/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLabsRoute = ApiLabsRouteImport.update({
+  id: '/api/labs',
+  path: '/api/labs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublishRoute = ApiPublishRouteImport.update({
+  id: '/api/publish',
+  path: '/api/publish',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSiteInfoRoute = ApiSiteInfoRouteImport.update({
+  id: '/api/site-info',
+  path: '/api/site-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSubdomainRoute = ApiSubdomainRouteImport.update({
+  id: '/api/subdomain',
+  path: '/api/subdomain',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTranscribeRoute = ApiTranscribeRouteImport.update({
+  id: '/api/transcribe',
+  path: '/api/transcribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTriageRoute = ApiTriageRouteImport.update({
+  id: '/api/triage',
+  path: '/api/triage',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVisitorsRoute = ApiVisitorsRouteImport.update({
+  id: '/api/visitors',
+  path: '/api/visitors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingIndexRoute = BillingIndexRouteImport.update({
+  id: '/billing/',
+  path: '/billing/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingReturnRoute = BillingReturnRouteImport.update({
+  id: '/billing/return',
+  path: '/billing/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoffeeThanksRoute = CoffeeThanksRouteImport.update({
+  id: '/thanks',
+  path: '/thanks',
+  getParentRoute: () => CoffeeRoute,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeaturesSlugRoute = FeaturesSlugRouteImport.update({
+  id: '/features/$slug',
+  path: '/features/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceIndexRoute = MarketplaceIndexRouteImport.update({
+  id: '/marketplace/',
+  path: '/marketplace/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarketplaceSlugRoute = MarketplaceSlugRouteImport.update({
+  id: '/marketplace/$slug',
+  path: '/marketplace/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PSlugRoute = PSlugRouteImport.update({
+  id: '/p/$slug',
+  path: '/p/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PacksSlugRoute = PacksSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => PacksRoute,
+} as any)
+const RCodeRoute = RCodeRouteImport.update({
+  id: '/r/$code',
+  path: '/r/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhySlugRoute = WhySlugRouteImport.update({
+  id: '/why/$slug',
+  path: '/why/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAiProvidersRoute = ApiAdminAiProvidersRouteImport.update({
+  id: '/api/admin/ai-providers',
+  path: '/api/admin/ai-providers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminCreditsRoute = ApiAdminCreditsRouteImport.update({
+  id: '/api/admin/credits',
+  path: '/api/admin/credits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminDigestsRoute = ApiAdminDigestsRouteImport.update({
+  id: '/api/admin/digests',
+  path: '/api/admin/digests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPaystackPlansRoute = ApiAdminPaystackPlansRouteImport.update({
+  id: '/api/admin/paystack-plans',
+  path: '/api/admin/paystack-plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingCryptoRoute = ApiBillingCryptoRouteImport.update({
+  id: '/api/billing/crypto',
+  path: '/api/billing/crypto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingHistoryRoute = ApiBillingHistoryRouteImport.update({
+  id: '/api/billing/history',
+  path: '/api/billing/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingInitializeRoute = ApiBillingInitializeRouteImport.update({
+  id: '/api/billing/initialize',
+  path: '/api/billing/initialize',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBillingVerifyRoute = ApiBillingVerifyRouteImport.update({
+  id: '/api/billing/verify',
+  path: '/api/billing/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBuildsCallbackRoute = ApiBuildsCallbackRouteImport.update({
+  id: '/api/builds/callback',
+  path: '/api/builds/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
+  id: '/api/builds/trigger',
+  path: '/api/builds/trigger',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBuildsWatchdogRoute = ApiBuildsWatchdogRouteImport.update({
+  id: '/api/builds/watchdog',
+  path: '/api/builds/watchdog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDomainsDnsCheckRoute = ApiDomainsDnsCheckRouteImport.update({
+  id: '/dns-check',
+  path: '/dns-check',
+  getParentRoute: () => ApiDomainsRoute,
+} as any)
+const ApiInternalHealthRoute = ApiInternalHealthRouteImport.update({
+  id: '/api/internal/health',
+  path: '/api/internal/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
+  id: '/api/preview/$projectId',
+  path: '/api/preview/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHostLookupRoute = ApiPublicHostLookupRouteImport.update({
+  id: '/api/public/host-lookup',
+  path: '/api/public/host-lookup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicInvestRoute = ApiPublicInvestRouteImport.update({
+  id: '/api/public/invest',
+  path: '/api/public/invest',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicMarketplaceFeatureRoute =
@@ -528,274 +561,62 @@ const ApiPublicMarketplaceFeatureRoute =
     path: '/api/public/marketplace-feature',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicInvestRoute = ApiPublicInvestRouteImport.update({
-  id: '/api/public/invest',
-  path: '/api/public/invest',
+const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
+  id: '/api/public/track',
+  path: '/api/public/track',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicHostLookupRoute = ApiPublicHostLookupRouteImport.update({
-  id: '/api/public/host-lookup',
-  path: '/api/public/host-lookup',
+const ApiPublicTrackFailureRoute = ApiPublicTrackFailureRouteImport.update({
+  id: '/api/public/track-failure',
+  path: '/api/public/track-failure',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPreviewProjectIdRoute = ApiPreviewProjectIdRouteImport.update({
-  id: '/api/preview/$projectId',
-  path: '/api/preview/$projectId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiInternalHealthRoute = ApiInternalHealthRouteImport.update({
-  id: '/api/internal/health',
-  path: '/api/internal/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiDomainsDnsCheckRoute = ApiDomainsDnsCheckRouteImport.update({
-  id: '/dns-check',
-  path: '/dns-check',
-  getParentRoute: () => ApiDomainsRoute,
-} as any)
-const ApiBuildsWatchdogRoute = ApiBuildsWatchdogRouteImport.update({
-  id: '/api/builds/watchdog',
-  path: '/api/builds/watchdog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBuildsTriggerRoute = ApiBuildsTriggerRouteImport.update({
-  id: '/api/builds/trigger',
-  path: '/api/builds/trigger',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBuildsCallbackRoute = ApiBuildsCallbackRouteImport.update({
-  id: '/api/builds/callback',
-  path: '/api/builds/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBillingVerifyRoute = ApiBillingVerifyRouteImport.update({
-  id: '/api/billing/verify',
-  path: '/api/billing/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBillingInitializeRoute = ApiBillingInitializeRouteImport.update({
-  id: '/api/billing/initialize',
-  path: '/api/billing/initialize',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBillingHistoryRoute = ApiBillingHistoryRouteImport.update({
-  id: '/api/billing/history',
-  path: '/api/billing/history',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBillingCryptoRoute = ApiBillingCryptoRouteImport.update({
-  id: '/api/billing/crypto',
-  path: '/api/billing/crypto',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAdminPaystackPlansRoute = ApiAdminPaystackPlansRouteImport.update({
-  id: '/api/admin/paystack-plans',
-  path: '/api/admin/paystack-plans',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAdminDigestsRoute = ApiAdminDigestsRouteImport.update({
-  id: '/api/admin/digests',
-  path: '/api/admin/digests',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAdminCreditsRoute = ApiAdminCreditsRouteImport.update({
-  id: '/api/admin/credits',
-  path: '/api/admin/credits',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAdminAiProvidersRoute = ApiAdminAiProvidersRouteImport.update({
-  id: '/api/admin/ai-providers',
-  path: '/api/admin/ai-providers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
+const ApiPublicTrackRuntimeErrorRoute =
+  ApiPublicTrackRuntimeErrorRouteImport.update({
+    id: '/api/public/track-runtime-error',
+    path: '/api/public/track-runtime-error',
     getParentRoute: () => rootRouteImport,
   } as any)
-const LovableEmailTransactionalPreviewRoute =
-  LovableEmailTransactionalPreviewRouteImport.update({
-    id: '/lovable/email/transactional/preview',
-    path: '/lovable/email/transactional/preview',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
-  id: '/lovable/email/auth/webhook',
-  path: '/lovable/email/auth/webhook',
+const ApiPublicWaitlistRoute = ApiPublicWaitlistRouteImport.update({
+  id: '/api/public/waitlist',
+  path: '/api/public/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
-  id: '/lovable/email/auth/preview',
-  path: '/lovable/email/auth/preview',
+const ApiRegistrarPollRoute = ApiRegistrarPollRouteImport.update({
+  id: '/api/registrar/poll',
+  path: '/api/registrar/poll',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTurnsIdEventsRoute = ApiTurnsIdEventsRouteImport.update({
-  id: '/api/turns/$id/events',
-  path: '/api/turns/$id/events',
+const ApiRegistrarPurchaseRoute = ApiRegistrarPurchaseRouteImport.update({
+  id: '/api/registrar/purchase',
+  path: '/api/registrar/purchase',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiTurnsIdCancelRoute = ApiTurnsIdCancelRouteImport.update({
-  id: '/api/turns/$id/cancel',
-  path: '/api/turns/$id/cancel',
+const ApiRegistrarPurchaseCreditsRoute =
+  ApiRegistrarPurchaseCreditsRouteImport.update({
+    id: '/api/registrar/purchase-credits',
+    path: '/api/registrar/purchase-credits',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiRegistrarSearchRoute = ApiRegistrarSearchRouteImport.update({
+  id: '/api/registrar/search',
+  path: '/api/registrar/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicSharedSplatRoute = ApiPublicSharedSplatRouteImport.update({
-  id: '/api/public/shared/$',
-  path: '/api/public/shared/$',
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicPaystackWebhookRoute =
-  ApiPublicPaystackWebhookRouteImport.update({
-    id: '/api/public/paystack/webhook',
-    path: '/api/public/paystack/webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicMobileCallbackRoute = ApiPublicMobileCallbackRouteImport.update({
-  id: '/api/public/mobile/callback',
-  path: '/api/public/mobile/callback',
-  getParentRoute: () => rootRouteImport,
+const ApiBillingCryptoCheckRoute = ApiBillingCryptoCheckRouteImport.update({
+  id: '/check',
+  path: '/check',
+  getParentRoute: () => ApiBillingCryptoRoute,
 } as any)
-const ApiPublicEmailSendRoute = ApiPublicEmailSendRouteImport.update({
-  id: '/api/public/email/send',
-  path: '/api/public/email/send',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicEmailResendWebhookRoute =
-  ApiPublicEmailResendWebhookRouteImport.update({
-    id: '/api/public/email/resend-webhook',
-    path: '/api/public/email/resend-webhook',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronTurnResumeRoute = ApiPublicCronTurnResumeRouteImport.update({
-  id: '/api/public/cron/turn-resume',
-  path: '/api/public/cron/turn-resume',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicCronThumbnailBackfillRoute =
-  ApiPublicCronThumbnailBackfillRouteImport.update({
-    id: '/api/public/cron/thumbnail-backfill',
-    path: '/api/public/cron/thumbnail-backfill',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronSubscriptionRenewalReminderRoute =
-  ApiPublicCronSubscriptionRenewalReminderRouteImport.update({
-    id: '/api/public/cron/subscription-renewal-reminder',
-    path: '/api/public/cron/subscription-renewal-reminder',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronSelfLearningDigestRoute =
-  ApiPublicCronSelfLearningDigestRouteImport.update({
-    id: '/api/public/cron/self-learning-digest',
-    path: '/api/public/cron/self-learning-digest',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronRuntimeBackendHourRoute =
-  ApiPublicCronRuntimeBackendHourRouteImport.update({
-    id: '/api/public/cron/runtime-backend-hour',
-    path: '/api/public/cron/runtime-backend-hour',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronMobileCertExpiryRoute =
-  ApiPublicCronMobileCertExpiryRouteImport.update({
-    id: '/api/public/cron/mobile-cert-expiry',
-    path: '/api/public/cron/mobile-cert-expiry',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronCryptoVerifyRoute =
-  ApiPublicCronCryptoVerifyRouteImport.update({
-    id: '/api/public/cron/crypto-verify',
-    path: '/api/public/cron/crypto-verify',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronCostAlertsRoute = ApiPublicCronCostAlertsRouteImport.update({
-  id: '/api/public/cron/cost-alerts',
-  path: '/api/public/cron/cost-alerts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicCronComputeHourRoute =
-  ApiPublicCronComputeHourRouteImport.update({
-    id: '/api/public/cron/compute-hour',
-    path: '/api/public/cron/compute-hour',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronCloudSharedDayRoute =
-  ApiPublicCronCloudSharedDayRouteImport.update({
-    id: '/api/public/cron/cloud-shared-day',
-    path: '/api/public/cron/cloud-shared-day',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronBuildWatchdogRoute =
-  ApiPublicCronBuildWatchdogRouteImport.update({
-    id: '/api/public/cron/build-watchdog',
-    path: '/api/public/cron/build-watchdog',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronBenchmarkRoute = ApiPublicCronBenchmarkRouteImport.update({
-  id: '/api/public/cron/benchmark',
-  path: '/api/public/cron/benchmark',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicCronBackendReapRoute =
-  ApiPublicCronBackendReapRouteImport.update({
-    id: '/api/public/cron/backend-reap',
-    path: '/api/public/cron/backend-reap',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronBackendHibernateRoute =
-  ApiPublicCronBackendHibernateRouteImport.update({
-    id: '/api/public/cron/backend-hibernate',
-    path: '/api/public/cron/backend-hibernate',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCronBackendAutoscaleRoute =
-  ApiPublicCronBackendAutoscaleRouteImport.update({
-    id: '/api/public/cron/backend-autoscale',
-    path: '/api/public/cron/backend-autoscale',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCoffeeVerifyRoute = ApiPublicCoffeeVerifyRouteImport.update({
-  id: '/api/public/coffee/verify',
-  path: '/api/public/coffee/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicCoffeeInitializeRoute =
-  ApiPublicCoffeeInitializeRouteImport.update({
-    id: '/api/public/coffee/initialize',
-    path: '/api/public/coffee/initialize',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCoffeeCryptoRoute = ApiPublicCoffeeCryptoRouteImport.update({
-  id: '/api/public/coffee/crypto',
-  path: '/api/public/coffee/crypto',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicBuildsHeartbeatRoute =
-  ApiPublicBuildsHeartbeatRouteImport.update({
-    id: '/api/public/builds/heartbeat',
-    path: '/api/public/builds/heartbeat',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
-  id: '/api/public/builds/callback',
-  path: '/api/public/builds/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicAgentOpsRoute = ApiPublicAgentOpsRouteImport.update({
-  id: '/api/public/agent/ops',
-  path: '/api/public/agent/ops',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiBillingSubscriptionStatusRoute =
-  ApiBillingSubscriptionStatusRouteImport.update({
-    id: '/api/billing/subscription/status',
-    path: '/api/billing/subscription/status',
+const ApiBillingSubscriptionCancelRoute =
+  ApiBillingSubscriptionCancelRouteImport.update({
+    id: '/api/billing/subscription/cancel',
+    path: '/api/billing/subscription/cancel',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiBillingSubscriptionManageLinkRoute =
@@ -804,17 +625,196 @@ const ApiBillingSubscriptionManageLinkRoute =
     path: '/api/billing/subscription/manage-link',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiBillingSubscriptionCancelRoute =
-  ApiBillingSubscriptionCancelRouteImport.update({
-    id: '/api/billing/subscription/cancel',
-    path: '/api/billing/subscription/cancel',
+const ApiBillingSubscriptionStatusRoute =
+  ApiBillingSubscriptionStatusRouteImport.update({
+    id: '/api/billing/subscription/status',
+    path: '/api/billing/subscription/status',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiBillingCryptoCheckRoute = ApiBillingCryptoCheckRouteImport.update({
-  id: '/check',
-  path: '/check',
-  getParentRoute: () => ApiBillingCryptoRoute,
+const ApiPublicAgentOpsRoute = ApiPublicAgentOpsRouteImport.update({
+  id: '/api/public/agent/ops',
+  path: '/api/public/agent/ops',
+  getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBuildsCallbackRoute = ApiPublicBuildsCallbackRouteImport.update({
+  id: '/api/public/builds/callback',
+  path: '/api/public/builds/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicBuildsHeartbeatRoute =
+  ApiPublicBuildsHeartbeatRouteImport.update({
+    id: '/api/public/builds/heartbeat',
+    path: '/api/public/builds/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCoffeeCryptoRoute = ApiPublicCoffeeCryptoRouteImport.update({
+  id: '/api/public/coffee/crypto',
+  path: '/api/public/coffee/crypto',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCoffeeInitializeRoute =
+  ApiPublicCoffeeInitializeRouteImport.update({
+    id: '/api/public/coffee/initialize',
+    path: '/api/public/coffee/initialize',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCoffeeVerifyRoute = ApiPublicCoffeeVerifyRouteImport.update({
+  id: '/api/public/coffee/verify',
+  path: '/api/public/coffee/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronBackendAutoscaleRoute =
+  ApiPublicCronBackendAutoscaleRouteImport.update({
+    id: '/api/public/cron/backend-autoscale',
+    path: '/api/public/cron/backend-autoscale',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronBackendHibernateRoute =
+  ApiPublicCronBackendHibernateRouteImport.update({
+    id: '/api/public/cron/backend-hibernate',
+    path: '/api/public/cron/backend-hibernate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronBackendReapRoute =
+  ApiPublicCronBackendReapRouteImport.update({
+    id: '/api/public/cron/backend-reap',
+    path: '/api/public/cron/backend-reap',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronBenchmarkRoute = ApiPublicCronBenchmarkRouteImport.update({
+  id: '/api/public/cron/benchmark',
+  path: '/api/public/cron/benchmark',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronBuildWatchdogRoute =
+  ApiPublicCronBuildWatchdogRouteImport.update({
+    id: '/api/public/cron/build-watchdog',
+    path: '/api/public/cron/build-watchdog',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronCloudSharedDayRoute =
+  ApiPublicCronCloudSharedDayRouteImport.update({
+    id: '/api/public/cron/cloud-shared-day',
+    path: '/api/public/cron/cloud-shared-day',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronComputeHourRoute =
+  ApiPublicCronComputeHourRouteImport.update({
+    id: '/api/public/cron/compute-hour',
+    path: '/api/public/cron/compute-hour',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronCostAlertsRoute = ApiPublicCronCostAlertsRouteImport.update({
+  id: '/api/public/cron/cost-alerts',
+  path: '/api/public/cron/cost-alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronCryptoVerifyRoute =
+  ApiPublicCronCryptoVerifyRouteImport.update({
+    id: '/api/public/cron/crypto-verify',
+    path: '/api/public/cron/crypto-verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronMobileCertExpiryRoute =
+  ApiPublicCronMobileCertExpiryRouteImport.update({
+    id: '/api/public/cron/mobile-cert-expiry',
+    path: '/api/public/cron/mobile-cert-expiry',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronRuntimeBackendHourRoute =
+  ApiPublicCronRuntimeBackendHourRouteImport.update({
+    id: '/api/public/cron/runtime-backend-hour',
+    path: '/api/public/cron/runtime-backend-hour',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronSelfLearningDigestRoute =
+  ApiPublicCronSelfLearningDigestRouteImport.update({
+    id: '/api/public/cron/self-learning-digest',
+    path: '/api/public/cron/self-learning-digest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronSubscriptionRenewalReminderRoute =
+  ApiPublicCronSubscriptionRenewalReminderRouteImport.update({
+    id: '/api/public/cron/subscription-renewal-reminder',
+    path: '/api/public/cron/subscription-renewal-reminder',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronThumbnailBackfillRoute =
+  ApiPublicCronThumbnailBackfillRouteImport.update({
+    id: '/api/public/cron/thumbnail-backfill',
+    path: '/api/public/cron/thumbnail-backfill',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCronTurnResumeRoute = ApiPublicCronTurnResumeRouteImport.update({
+  id: '/api/public/cron/turn-resume',
+  path: '/api/public/cron/turn-resume',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicEmailResendWebhookRoute =
+  ApiPublicEmailResendWebhookRouteImport.update({
+    id: '/api/public/email/resend-webhook',
+    path: '/api/public/email/resend-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicEmailSendRoute = ApiPublicEmailSendRouteImport.update({
+  id: '/api/public/email/send',
+  path: '/api/public/email/send',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMobileCallbackRoute = ApiPublicMobileCallbackRouteImport.update({
+  id: '/api/public/mobile/callback',
+  path: '/api/public/mobile/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicPaystackWebhookRoute =
+  ApiPublicPaystackWebhookRouteImport.update({
+    id: '/api/public/paystack/webhook',
+    path: '/api/public/paystack/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicSharedSplatRoute = ApiPublicSharedSplatRouteImport.update({
+  id: '/api/public/shared/$',
+  path: '/api/public/shared/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTurnsIdCancelRoute = ApiTurnsIdCancelRouteImport.update({
+  id: '/api/turns/$id/cancel',
+  path: '/api/turns/$id/cancel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTurnsIdEventsRoute = ApiTurnsIdEventsRouteImport.update({
+  id: '/api/turns/$id/events',
+  path: '/api/turns/$id/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -1743,123 +1743,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/waitlist': {
-      id: '/waitlist'
-      path: '/waitlist'
-      fullPath: '/waitlist'
-      preLoaderRoute: typeof WaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/unsubscribe': {
-      id: '/unsubscribe'
-      path: '/unsubscribe'
-      fullPath: '/unsubscribe'
-      preLoaderRoute: typeof UnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/themes': {
-      id: '/themes'
-      path: '/themes'
-      fullPath: '/themes'
-      preLoaderRoute: typeof ThemesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/templates': {
-      id: '/templates'
-      path: '/templates'
-      fullPath: '/templates'
-      preLoaderRoute: typeof TemplatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sell': {
-      id: '/sell'
-      path: '/sell'
-      fullPath: '/sell'
-      preLoaderRoute: typeof SellRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projects': {
-      id: '/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof ProjectsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/packs': {
-      id: '/packs'
-      path: '/packs'
-      fullPath: '/packs'
-      preLoaderRoute: typeof PacksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invest': {
-      id: '/invest'
-      path: '/invest'
-      fullPath: '/invest'
-      preLoaderRoute: typeof InvestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gallery': {
-      id: '/gallery'
-      path: '/gallery'
-      fullPath: '/gallery'
-      preLoaderRoute: typeof GalleryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs': {
-      id: '/docs'
-      path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coffee': {
-      id: '/coffee'
-      path: '/coffee'
-      fullPath: '/coffee'
-      preLoaderRoute: typeof CoffeeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/changelog': {
-      id: '/changelog'
-      path: '/changelog'
-      fullPath: '/changelog'
-      preLoaderRoute: typeof ChangelogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/builder': {
-      id: '/builder'
-      path: '/builder'
-      fullPath: '/builder'
-      preLoaderRoute: typeof BuilderRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -1869,25 +1757,123 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/builder': {
+      id: '/builder'
+      path: '/builder'
+      fullPath: '/builder'
+      preLoaderRoute: typeof BuilderRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/marketplace/': {
-      id: '/marketplace/'
-      path: '/marketplace'
-      fullPath: '/marketplace/'
-      preLoaderRoute: typeof MarketplaceIndexRouteImport
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/billing/': {
-      id: '/billing/'
-      path: '/billing'
-      fullPath: '/billing/'
-      preLoaderRoute: typeof BillingIndexRouteImport
+    '/coffee': {
+      id: '/coffee'
+      path: '/coffee'
+      fullPath: '/coffee'
+      preLoaderRoute: typeof CoffeeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invest': {
+      id: '/invest'
+      path: '/invest'
+      fullPath: '/invest'
+      preLoaderRoute: typeof InvestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/packs': {
+      id: '/packs'
+      path: '/packs'
+      fullPath: '/packs'
+      preLoaderRoute: typeof PacksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sell': {
+      id: '/sell'
+      path: '/sell'
+      fullPath: '/sell'
+      preLoaderRoute: typeof SellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/themes': {
+      id: '/themes'
+      path: '/themes'
+      fullPath: '/themes'
+      preLoaderRoute: typeof ThemesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/waitlist': {
+      id: '/waitlist'
+      path: '/waitlist'
+      fullPath: '/waitlist'
+      preLoaderRoute: typeof WaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -1897,305 +1883,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/why/$slug': {
-      id: '/why/$slug'
-      path: '/why/$slug'
-      fullPath: '/why/$slug'
-      preLoaderRoute: typeof WhySlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/share/$token': {
-      id: '/share/$token'
-      path: '/share/$token'
-      fullPath: '/share/$token'
-      preLoaderRoute: typeof ShareTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/r/$code': {
-      id: '/r/$code'
-      path: '/r/$code'
-      fullPath: '/r/$code'
-      preLoaderRoute: typeof RCodeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/packs/$slug': {
-      id: '/packs/$slug'
-      path: '/$slug'
-      fullPath: '/packs/$slug'
-      preLoaderRoute: typeof PacksSlugRouteImport
-      parentRoute: typeof PacksRoute
-    }
-    '/p/$slug': {
-      id: '/p/$slug'
-      path: '/p/$slug'
-      fullPath: '/p/$slug'
-      preLoaderRoute: typeof PSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marketplace/$slug': {
-      id: '/marketplace/$slug'
-      path: '/marketplace/$slug'
-      fullPath: '/marketplace/$slug'
-      preLoaderRoute: typeof MarketplaceSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/features/$slug': {
-      id: '/features/$slug'
-      path: '/features/$slug'
-      fullPath: '/features/$slug'
-      preLoaderRoute: typeof FeaturesSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coffee/thanks': {
-      id: '/coffee/thanks'
-      path: '/thanks'
-      fullPath: '/coffee/thanks'
-      preLoaderRoute: typeof CoffeeThanksRouteImport
-      parentRoute: typeof CoffeeRoute
-    }
-    '/billing/return': {
-      id: '/billing/return'
-      path: '/billing/return'
-      fullPath: '/billing/return'
-      preLoaderRoute: typeof BillingReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/visitors': {
-      id: '/api/visitors'
-      path: '/api/visitors'
-      fullPath: '/api/visitors'
-      preLoaderRoute: typeof ApiVisitorsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/triage': {
-      id: '/api/triage'
-      path: '/api/triage'
-      fullPath: '/api/triage'
-      preLoaderRoute: typeof ApiTriageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/transcribe': {
-      id: '/api/transcribe'
-      path: '/api/transcribe'
-      fullPath: '/api/transcribe'
-      preLoaderRoute: typeof ApiTranscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/subdomain': {
-      id: '/api/subdomain'
-      path: '/api/subdomain'
-      fullPath: '/api/subdomain'
-      preLoaderRoute: typeof ApiSubdomainRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/site-info': {
-      id: '/api/site-info'
-      path: '/api/site-info'
-      fullPath: '/api/site-info'
-      preLoaderRoute: typeof ApiSiteInfoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/publish': {
-      id: '/api/publish'
-      path: '/api/publish'
-      fullPath: '/api/publish'
-      preLoaderRoute: typeof ApiPublishRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/labs': {
-      id: '/api/labs'
-      path: '/api/labs'
-      fullPath: '/api/labs'
-      preLoaderRoute: typeof ApiLabsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/integrations': {
-      id: '/api/integrations'
-      path: '/api/integrations'
-      fullPath: '/api/integrations'
-      preLoaderRoute: typeof ApiIntegrationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/generate-image': {
-      id: '/api/generate-image'
-      path: '/api/generate-image'
-      fullPath: '/api/generate-image'
-      preLoaderRoute: typeof ApiGenerateImageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/generate': {
-      id: '/api/generate'
-      path: '/api/generate'
-      fullPath: '/api/generate'
-      preLoaderRoute: typeof ApiGenerateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/domains': {
-      id: '/api/domains'
-      path: '/api/domains'
-      fullPath: '/api/domains'
-      preLoaderRoute: typeof ApiDomainsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/discuss': {
-      id: '/api/discuss'
-      path: '/api/discuss'
-      fullPath: '/api/discuss'
-      preLoaderRoute: typeof ApiDiscussRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/credit-pauses': {
-      id: '/api/credit-pauses'
-      path: '/api/credit-pauses'
-      fullPath: '/api/credit-pauses'
-      preLoaderRoute: typeof ApiCreditPausesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/coach': {
-      id: '/api/coach'
-      path: '/api/coach'
-      fullPath: '/api/coach'
-      preLoaderRoute: typeof ApiCoachRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/backend': {
-      id: '/api/backend'
-      path: '/api/backend'
-      fullPath: '/api/backend'
-      preLoaderRoute: typeof ApiBackendRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/waitlist': {
-      id: '/admin/waitlist'
-      path: '/admin/waitlist'
-      fullPath: '/admin/waitlist'
-      preLoaderRoute: typeof AdminWaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/admin/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/test-lab': {
-      id: '/admin/test-lab'
-      path: '/admin/test-lab'
-      fullPath: '/admin/test-lab'
-      preLoaderRoute: typeof AdminTestLabRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/qa': {
-      id: '/admin/qa'
-      path: '/admin/qa'
-      fullPath: '/admin/qa'
-      preLoaderRoute: typeof AdminQaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/projects': {
-      id: '/admin/projects'
-      path: '/admin/projects'
-      fullPath: '/admin/projects'
-      preLoaderRoute: typeof AdminProjectsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/pipeline': {
-      id: '/admin/pipeline'
-      path: '/admin/pipeline'
-      fullPath: '/admin/pipeline'
-      preLoaderRoute: typeof AdminPipelineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/pictures': {
-      id: '/admin/pictures'
-      path: '/admin/pictures'
-      fullPath: '/admin/pictures'
-      preLoaderRoute: typeof AdminPicturesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/mobile-signing': {
-      id: '/admin/mobile-signing'
-      path: '/admin/mobile-signing'
-      fullPath: '/admin/mobile-signing'
-      preLoaderRoute: typeof AdminMobileSigningRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/marketplace': {
-      id: '/admin/marketplace'
-      path: '/admin/marketplace'
-      fullPath: '/admin/marketplace'
-      preLoaderRoute: typeof AdminMarketplaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/ledgers': {
-      id: '/admin/ledgers'
-      path: '/admin/ledgers'
-      fullPath: '/admin/ledgers'
-      preLoaderRoute: typeof AdminLedgersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/features': {
-      id: '/admin/features'
-      path: '/admin/features'
-      fullPath: '/admin/features'
-      preLoaderRoute: typeof AdminFeaturesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/failures': {
-      id: '/admin/failures'
-      path: '/admin/failures'
-      fullPath: '/admin/failures'
-      preLoaderRoute: typeof AdminFailuresRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/economics': {
-      id: '/admin/economics'
-      path: '/admin/economics'
-      fullPath: '/admin/economics'
-      preLoaderRoute: typeof AdminEconomicsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/digest': {
-      id: '/admin/digest'
-      path: '/admin/digest'
-      fullPath: '/admin/digest'
-      preLoaderRoute: typeof AdminDigestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/cloud-cost': {
-      id: '/admin/cloud-cost'
-      path: '/admin/cloud-cost'
-      fullPath: '/admin/cloud-cost'
-      preLoaderRoute: typeof AdminCloudCostRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/builder': {
-      id: '/admin/builder'
-      path: '/admin/builder'
-      fullPath: '/admin/builder'
-      preLoaderRoute: typeof AdminBuilderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/billing': {
-      id: '/admin/billing'
-      path: '/admin/billing'
-      fullPath: '/admin/billing'
-      preLoaderRoute: typeof AdminBillingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/benchmark': {
-      id: '/admin/benchmark'
-      path: '/admin/benchmark'
-      fullPath: '/admin/benchmark'
-      preLoaderRoute: typeof AdminBenchmarkRouteImport
+    '/admin/ai-providers': {
+      id: '/admin/ai-providers'
+      path: '/admin/ai-providers'
+      fullPath: '/admin/ai-providers'
+      preLoaderRoute: typeof AdminAiProvidersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/ai-spend': {
@@ -2205,186 +1897,319 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAiSpendRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/ai-providers': {
-      id: '/admin/ai-providers'
-      path: '/admin/ai-providers'
-      fullPath: '/admin/ai-providers'
-      preLoaderRoute: typeof AdminAiProvidersRouteImport
+    '/admin/benchmark': {
+      id: '/admin/benchmark'
+      path: '/admin/benchmark'
+      fullPath: '/admin/benchmark'
+      preLoaderRoute: typeof AdminBenchmarkRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+    '/admin/billing': {
+      id: '/admin/billing'
+      path: '/admin/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AdminBillingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/registrar/search': {
-      id: '/api/registrar/search'
-      path: '/api/registrar/search'
-      fullPath: '/api/registrar/search'
-      preLoaderRoute: typeof ApiRegistrarSearchRouteImport
+    '/admin/builder': {
+      id: '/admin/builder'
+      path: '/admin/builder'
+      fullPath: '/admin/builder'
+      preLoaderRoute: typeof AdminBuilderRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/registrar/purchase-credits': {
-      id: '/api/registrar/purchase-credits'
-      path: '/api/registrar/purchase-credits'
-      fullPath: '/api/registrar/purchase-credits'
-      preLoaderRoute: typeof ApiRegistrarPurchaseCreditsRouteImport
+    '/admin/cloud-cost': {
+      id: '/admin/cloud-cost'
+      path: '/admin/cloud-cost'
+      fullPath: '/admin/cloud-cost'
+      preLoaderRoute: typeof AdminCloudCostRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/registrar/purchase': {
-      id: '/api/registrar/purchase'
-      path: '/api/registrar/purchase'
-      fullPath: '/api/registrar/purchase'
-      preLoaderRoute: typeof ApiRegistrarPurchaseRouteImport
+    '/admin/digest': {
+      id: '/admin/digest'
+      path: '/admin/digest'
+      fullPath: '/admin/digest'
+      preLoaderRoute: typeof AdminDigestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/registrar/poll': {
-      id: '/api/registrar/poll'
-      path: '/api/registrar/poll'
-      fullPath: '/api/registrar/poll'
-      preLoaderRoute: typeof ApiRegistrarPollRouteImport
+    '/admin/economics': {
+      id: '/admin/economics'
+      path: '/admin/economics'
+      fullPath: '/admin/economics'
+      preLoaderRoute: typeof AdminEconomicsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/waitlist': {
-      id: '/api/public/waitlist'
-      path: '/api/public/waitlist'
-      fullPath: '/api/public/waitlist'
-      preLoaderRoute: typeof ApiPublicWaitlistRouteImport
+    '/admin/failures': {
+      id: '/admin/failures'
+      path: '/admin/failures'
+      fullPath: '/admin/failures'
+      preLoaderRoute: typeof AdminFailuresRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/track-runtime-error': {
-      id: '/api/public/track-runtime-error'
-      path: '/api/public/track-runtime-error'
-      fullPath: '/api/public/track-runtime-error'
-      preLoaderRoute: typeof ApiPublicTrackRuntimeErrorRouteImport
+    '/admin/features': {
+      id: '/admin/features'
+      path: '/admin/features'
+      fullPath: '/admin/features'
+      preLoaderRoute: typeof AdminFeaturesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/track-failure': {
-      id: '/api/public/track-failure'
-      path: '/api/public/track-failure'
-      fullPath: '/api/public/track-failure'
-      preLoaderRoute: typeof ApiPublicTrackFailureRouteImport
+    '/admin/ledgers': {
+      id: '/admin/ledgers'
+      path: '/admin/ledgers'
+      fullPath: '/admin/ledgers'
+      preLoaderRoute: typeof AdminLedgersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/track': {
-      id: '/api/public/track'
-      path: '/api/public/track'
-      fullPath: '/api/public/track'
-      preLoaderRoute: typeof ApiPublicTrackRouteImport
+    '/admin/marketplace': {
+      id: '/admin/marketplace'
+      path: '/admin/marketplace'
+      fullPath: '/admin/marketplace'
+      preLoaderRoute: typeof AdminMarketplaceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/marketplace-feature': {
-      id: '/api/public/marketplace-feature'
-      path: '/api/public/marketplace-feature'
-      fullPath: '/api/public/marketplace-feature'
-      preLoaderRoute: typeof ApiPublicMarketplaceFeatureRouteImport
+    '/admin/mobile-signing': {
+      id: '/admin/mobile-signing'
+      path: '/admin/mobile-signing'
+      fullPath: '/admin/mobile-signing'
+      preLoaderRoute: typeof AdminMobileSigningRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/invest': {
-      id: '/api/public/invest'
-      path: '/api/public/invest'
-      fullPath: '/api/public/invest'
-      preLoaderRoute: typeof ApiPublicInvestRouteImport
+    '/admin/pictures': {
+      id: '/admin/pictures'
+      path: '/admin/pictures'
+      fullPath: '/admin/pictures'
+      preLoaderRoute: typeof AdminPicturesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/host-lookup': {
-      id: '/api/public/host-lookup'
-      path: '/api/public/host-lookup'
-      fullPath: '/api/public/host-lookup'
-      preLoaderRoute: typeof ApiPublicHostLookupRouteImport
+    '/admin/pipeline': {
+      id: '/admin/pipeline'
+      path: '/admin/pipeline'
+      fullPath: '/admin/pipeline'
+      preLoaderRoute: typeof AdminPipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/preview/$projectId': {
-      id: '/api/preview/$projectId'
-      path: '/api/preview/$projectId'
-      fullPath: '/api/preview/$projectId'
-      preLoaderRoute: typeof ApiPreviewProjectIdRouteImport
+    '/admin/projects': {
+      id: '/admin/projects'
+      path: '/admin/projects'
+      fullPath: '/admin/projects'
+      preLoaderRoute: typeof AdminProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/internal/health': {
-      id: '/api/internal/health'
-      path: '/api/internal/health'
-      fullPath: '/api/internal/health'
-      preLoaderRoute: typeof ApiInternalHealthRouteImport
+    '/admin/qa': {
+      id: '/admin/qa'
+      path: '/admin/qa'
+      fullPath: '/admin/qa'
+      preLoaderRoute: typeof AdminQaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/domains/dns-check': {
-      id: '/api/domains/dns-check'
-      path: '/dns-check'
-      fullPath: '/api/domains/dns-check'
-      preLoaderRoute: typeof ApiDomainsDnsCheckRouteImport
-      parentRoute: typeof ApiDomainsRoute
-    }
-    '/api/builds/watchdog': {
-      id: '/api/builds/watchdog'
-      path: '/api/builds/watchdog'
-      fullPath: '/api/builds/watchdog'
-      preLoaderRoute: typeof ApiBuildsWatchdogRouteImport
+    '/admin/test-lab': {
+      id: '/admin/test-lab'
+      path: '/admin/test-lab'
+      fullPath: '/admin/test-lab'
+      preLoaderRoute: typeof AdminTestLabRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/builds/trigger': {
-      id: '/api/builds/trigger'
-      path: '/api/builds/trigger'
-      fullPath: '/api/builds/trigger'
-      preLoaderRoute: typeof ApiBuildsTriggerRouteImport
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/builds/callback': {
-      id: '/api/builds/callback'
-      path: '/api/builds/callback'
-      fullPath: '/api/builds/callback'
-      preLoaderRoute: typeof ApiBuildsCallbackRouteImport
+    '/admin/waitlist': {
+      id: '/admin/waitlist'
+      path: '/admin/waitlist'
+      fullPath: '/admin/waitlist'
+      preLoaderRoute: typeof AdminWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/verify': {
-      id: '/api/billing/verify'
-      path: '/api/billing/verify'
-      fullPath: '/api/billing/verify'
-      preLoaderRoute: typeof ApiBillingVerifyRouteImport
+    '/api/backend': {
+      id: '/api/backend'
+      path: '/api/backend'
+      fullPath: '/api/backend'
+      preLoaderRoute: typeof ApiBackendRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/initialize': {
-      id: '/api/billing/initialize'
-      path: '/api/billing/initialize'
-      fullPath: '/api/billing/initialize'
-      preLoaderRoute: typeof ApiBillingInitializeRouteImport
+    '/api/coach': {
+      id: '/api/coach'
+      path: '/api/coach'
+      fullPath: '/api/coach'
+      preLoaderRoute: typeof ApiCoachRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/history': {
-      id: '/api/billing/history'
-      path: '/api/billing/history'
-      fullPath: '/api/billing/history'
-      preLoaderRoute: typeof ApiBillingHistoryRouteImport
+    '/api/credit-pauses': {
+      id: '/api/credit-pauses'
+      path: '/api/credit-pauses'
+      fullPath: '/api/credit-pauses'
+      preLoaderRoute: typeof ApiCreditPausesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/crypto': {
-      id: '/api/billing/crypto'
-      path: '/api/billing/crypto'
-      fullPath: '/api/billing/crypto'
-      preLoaderRoute: typeof ApiBillingCryptoRouteImport
+    '/api/discuss': {
+      id: '/api/discuss'
+      path: '/api/discuss'
+      fullPath: '/api/discuss'
+      preLoaderRoute: typeof ApiDiscussRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/paystack-plans': {
-      id: '/api/admin/paystack-plans'
-      path: '/api/admin/paystack-plans'
-      fullPath: '/api/admin/paystack-plans'
-      preLoaderRoute: typeof ApiAdminPaystackPlansRouteImport
+    '/api/domains': {
+      id: '/api/domains'
+      path: '/api/domains'
+      fullPath: '/api/domains'
+      preLoaderRoute: typeof ApiDomainsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/digests': {
-      id: '/api/admin/digests'
-      path: '/api/admin/digests'
-      fullPath: '/api/admin/digests'
-      preLoaderRoute: typeof ApiAdminDigestsRouteImport
+    '/api/generate': {
+      id: '/api/generate'
+      path: '/api/generate'
+      fullPath: '/api/generate'
+      preLoaderRoute: typeof ApiGenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/credits': {
-      id: '/api/admin/credits'
-      path: '/api/admin/credits'
-      fullPath: '/api/admin/credits'
-      preLoaderRoute: typeof ApiAdminCreditsRouteImport
+    '/api/generate-image': {
+      id: '/api/generate-image'
+      path: '/api/generate-image'
+      fullPath: '/api/generate-image'
+      preLoaderRoute: typeof ApiGenerateImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations': {
+      id: '/api/integrations'
+      path: '/api/integrations'
+      fullPath: '/api/integrations'
+      preLoaderRoute: typeof ApiIntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/labs': {
+      id: '/api/labs'
+      path: '/api/labs'
+      fullPath: '/api/labs'
+      preLoaderRoute: typeof ApiLabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/publish': {
+      id: '/api/publish'
+      path: '/api/publish'
+      fullPath: '/api/publish'
+      preLoaderRoute: typeof ApiPublishRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/site-info': {
+      id: '/api/site-info'
+      path: '/api/site-info'
+      fullPath: '/api/site-info'
+      preLoaderRoute: typeof ApiSiteInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/subdomain': {
+      id: '/api/subdomain'
+      path: '/api/subdomain'
+      fullPath: '/api/subdomain'
+      preLoaderRoute: typeof ApiSubdomainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/transcribe': {
+      id: '/api/transcribe'
+      path: '/api/transcribe'
+      fullPath: '/api/transcribe'
+      preLoaderRoute: typeof ApiTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/triage': {
+      id: '/api/triage'
+      path: '/api/triage'
+      fullPath: '/api/triage'
+      preLoaderRoute: typeof ApiTriageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/visitors': {
+      id: '/api/visitors'
+      path: '/api/visitors'
+      fullPath: '/api/visitors'
+      preLoaderRoute: typeof ApiVisitorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing/': {
+      id: '/billing/'
+      path: '/billing'
+      fullPath: '/billing/'
+      preLoaderRoute: typeof BillingIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing/return': {
+      id: '/billing/return'
+      path: '/billing/return'
+      fullPath: '/billing/return'
+      preLoaderRoute: typeof BillingReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coffee/thanks': {
+      id: '/coffee/thanks'
+      path: '/thanks'
+      fullPath: '/coffee/thanks'
+      preLoaderRoute: typeof CoffeeThanksRouteImport
+      parentRoute: typeof CoffeeRoute
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/features/$slug': {
+      id: '/features/$slug'
+      path: '/features/$slug'
+      fullPath: '/features/$slug'
+      preLoaderRoute: typeof FeaturesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/': {
+      id: '/marketplace/'
+      path: '/marketplace'
+      fullPath: '/marketplace/'
+      preLoaderRoute: typeof MarketplaceIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marketplace/$slug': {
+      id: '/marketplace/$slug'
+      path: '/marketplace/$slug'
+      fullPath: '/marketplace/$slug'
+      preLoaderRoute: typeof MarketplaceSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$slug': {
+      id: '/p/$slug'
+      path: '/p/$slug'
+      fullPath: '/p/$slug'
+      preLoaderRoute: typeof PSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/packs/$slug': {
+      id: '/packs/$slug'
+      path: '/$slug'
+      fullPath: '/packs/$slug'
+      preLoaderRoute: typeof PacksSlugRouteImport
+      parentRoute: typeof PacksRoute
+    }
+    '/r/$code': {
+      id: '/r/$code'
+      path: '/r/$code'
+      fullPath: '/r/$code'
+      preLoaderRoute: typeof RCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/why/$slug': {
+      id: '/why/$slug'
+      path: '/why/$slug'
+      fullPath: '/why/$slug'
+      preLoaderRoute: typeof WhySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/ai-providers': {
@@ -2394,242 +2219,193 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAiProvidersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+    '/api/admin/credits': {
+      id: '/api/admin/credits'
+      path: '/api/admin/credits'
+      fullPath: '/api/admin/credits'
+      preLoaderRoute: typeof ApiAdminCreditsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+    '/api/admin/digests': {
+      id: '/api/admin/digests'
+      path: '/api/admin/digests'
+      fullPath: '/api/admin/digests'
+      preLoaderRoute: typeof ApiAdminDigestsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+    '/api/admin/paystack-plans': {
+      id: '/api/admin/paystack-plans'
+      path: '/api/admin/paystack-plans'
+      fullPath: '/api/admin/paystack-plans'
+      preLoaderRoute: typeof ApiAdminPaystackPlansRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/auth/webhook': {
-      id: '/lovable/email/auth/webhook'
-      path: '/lovable/email/auth/webhook'
-      fullPath: '/lovable/email/auth/webhook'
-      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+    '/api/billing/crypto': {
+      id: '/api/billing/crypto'
+      path: '/api/billing/crypto'
+      fullPath: '/api/billing/crypto'
+      preLoaderRoute: typeof ApiBillingCryptoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/auth/preview': {
-      id: '/lovable/email/auth/preview'
-      path: '/lovable/email/auth/preview'
-      fullPath: '/lovable/email/auth/preview'
-      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+    '/api/billing/history': {
+      id: '/api/billing/history'
+      path: '/api/billing/history'
+      fullPath: '/api/billing/history'
+      preLoaderRoute: typeof ApiBillingHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/turns/$id/events': {
-      id: '/api/turns/$id/events'
-      path: '/api/turns/$id/events'
-      fullPath: '/api/turns/$id/events'
-      preLoaderRoute: typeof ApiTurnsIdEventsRouteImport
+    '/api/billing/initialize': {
+      id: '/api/billing/initialize'
+      path: '/api/billing/initialize'
+      fullPath: '/api/billing/initialize'
+      preLoaderRoute: typeof ApiBillingInitializeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/turns/$id/cancel': {
-      id: '/api/turns/$id/cancel'
-      path: '/api/turns/$id/cancel'
-      fullPath: '/api/turns/$id/cancel'
-      preLoaderRoute: typeof ApiTurnsIdCancelRouteImport
+    '/api/billing/verify': {
+      id: '/api/billing/verify'
+      path: '/api/billing/verify'
+      fullPath: '/api/billing/verify'
+      preLoaderRoute: typeof ApiBillingVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/shared/$': {
-      id: '/api/public/shared/$'
-      path: '/api/public/shared/$'
-      fullPath: '/api/public/shared/$'
-      preLoaderRoute: typeof ApiPublicSharedSplatRouteImport
+    '/api/builds/callback': {
+      id: '/api/builds/callback'
+      path: '/api/builds/callback'
+      fullPath: '/api/builds/callback'
+      preLoaderRoute: typeof ApiBuildsCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/paystack/webhook': {
-      id: '/api/public/paystack/webhook'
-      path: '/api/public/paystack/webhook'
-      fullPath: '/api/public/paystack/webhook'
-      preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
+    '/api/builds/trigger': {
+      id: '/api/builds/trigger'
+      path: '/api/builds/trigger'
+      fullPath: '/api/builds/trigger'
+      preLoaderRoute: typeof ApiBuildsTriggerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/mobile/callback': {
-      id: '/api/public/mobile/callback'
-      path: '/api/public/mobile/callback'
-      fullPath: '/api/public/mobile/callback'
-      preLoaderRoute: typeof ApiPublicMobileCallbackRouteImport
+    '/api/builds/watchdog': {
+      id: '/api/builds/watchdog'
+      path: '/api/builds/watchdog'
+      fullPath: '/api/builds/watchdog'
+      preLoaderRoute: typeof ApiBuildsWatchdogRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/email/send': {
-      id: '/api/public/email/send'
-      path: '/api/public/email/send'
-      fullPath: '/api/public/email/send'
-      preLoaderRoute: typeof ApiPublicEmailSendRouteImport
+    '/api/domains/dns-check': {
+      id: '/api/domains/dns-check'
+      path: '/dns-check'
+      fullPath: '/api/domains/dns-check'
+      preLoaderRoute: typeof ApiDomainsDnsCheckRouteImport
+      parentRoute: typeof ApiDomainsRoute
+    }
+    '/api/internal/health': {
+      id: '/api/internal/health'
+      path: '/api/internal/health'
+      fullPath: '/api/internal/health'
+      preLoaderRoute: typeof ApiInternalHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/email/resend-webhook': {
-      id: '/api/public/email/resend-webhook'
-      path: '/api/public/email/resend-webhook'
-      fullPath: '/api/public/email/resend-webhook'
-      preLoaderRoute: typeof ApiPublicEmailResendWebhookRouteImport
+    '/api/preview/$projectId': {
+      id: '/api/preview/$projectId'
+      path: '/api/preview/$projectId'
+      fullPath: '/api/preview/$projectId'
+      preLoaderRoute: typeof ApiPreviewProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/turn-resume': {
-      id: '/api/public/cron/turn-resume'
-      path: '/api/public/cron/turn-resume'
-      fullPath: '/api/public/cron/turn-resume'
-      preLoaderRoute: typeof ApiPublicCronTurnResumeRouteImport
+    '/api/public/host-lookup': {
+      id: '/api/public/host-lookup'
+      path: '/api/public/host-lookup'
+      fullPath: '/api/public/host-lookup'
+      preLoaderRoute: typeof ApiPublicHostLookupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/thumbnail-backfill': {
-      id: '/api/public/cron/thumbnail-backfill'
-      path: '/api/public/cron/thumbnail-backfill'
-      fullPath: '/api/public/cron/thumbnail-backfill'
-      preLoaderRoute: typeof ApiPublicCronThumbnailBackfillRouteImport
+    '/api/public/invest': {
+      id: '/api/public/invest'
+      path: '/api/public/invest'
+      fullPath: '/api/public/invest'
+      preLoaderRoute: typeof ApiPublicInvestRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/subscription-renewal-reminder': {
-      id: '/api/public/cron/subscription-renewal-reminder'
-      path: '/api/public/cron/subscription-renewal-reminder'
-      fullPath: '/api/public/cron/subscription-renewal-reminder'
-      preLoaderRoute: typeof ApiPublicCronSubscriptionRenewalReminderRouteImport
+    '/api/public/marketplace-feature': {
+      id: '/api/public/marketplace-feature'
+      path: '/api/public/marketplace-feature'
+      fullPath: '/api/public/marketplace-feature'
+      preLoaderRoute: typeof ApiPublicMarketplaceFeatureRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/self-learning-digest': {
-      id: '/api/public/cron/self-learning-digest'
-      path: '/api/public/cron/self-learning-digest'
-      fullPath: '/api/public/cron/self-learning-digest'
-      preLoaderRoute: typeof ApiPublicCronSelfLearningDigestRouteImport
+    '/api/public/track': {
+      id: '/api/public/track'
+      path: '/api/public/track'
+      fullPath: '/api/public/track'
+      preLoaderRoute: typeof ApiPublicTrackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/runtime-backend-hour': {
-      id: '/api/public/cron/runtime-backend-hour'
-      path: '/api/public/cron/runtime-backend-hour'
-      fullPath: '/api/public/cron/runtime-backend-hour'
-      preLoaderRoute: typeof ApiPublicCronRuntimeBackendHourRouteImport
+    '/api/public/track-failure': {
+      id: '/api/public/track-failure'
+      path: '/api/public/track-failure'
+      fullPath: '/api/public/track-failure'
+      preLoaderRoute: typeof ApiPublicTrackFailureRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/mobile-cert-expiry': {
-      id: '/api/public/cron/mobile-cert-expiry'
-      path: '/api/public/cron/mobile-cert-expiry'
-      fullPath: '/api/public/cron/mobile-cert-expiry'
-      preLoaderRoute: typeof ApiPublicCronMobileCertExpiryRouteImport
+    '/api/public/track-runtime-error': {
+      id: '/api/public/track-runtime-error'
+      path: '/api/public/track-runtime-error'
+      fullPath: '/api/public/track-runtime-error'
+      preLoaderRoute: typeof ApiPublicTrackRuntimeErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/crypto-verify': {
-      id: '/api/public/cron/crypto-verify'
-      path: '/api/public/cron/crypto-verify'
-      fullPath: '/api/public/cron/crypto-verify'
-      preLoaderRoute: typeof ApiPublicCronCryptoVerifyRouteImport
+    '/api/public/waitlist': {
+      id: '/api/public/waitlist'
+      path: '/api/public/waitlist'
+      fullPath: '/api/public/waitlist'
+      preLoaderRoute: typeof ApiPublicWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/cost-alerts': {
-      id: '/api/public/cron/cost-alerts'
-      path: '/api/public/cron/cost-alerts'
-      fullPath: '/api/public/cron/cost-alerts'
-      preLoaderRoute: typeof ApiPublicCronCostAlertsRouteImport
+    '/api/registrar/poll': {
+      id: '/api/registrar/poll'
+      path: '/api/registrar/poll'
+      fullPath: '/api/registrar/poll'
+      preLoaderRoute: typeof ApiRegistrarPollRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/compute-hour': {
-      id: '/api/public/cron/compute-hour'
-      path: '/api/public/cron/compute-hour'
-      fullPath: '/api/public/cron/compute-hour'
-      preLoaderRoute: typeof ApiPublicCronComputeHourRouteImport
+    '/api/registrar/purchase': {
+      id: '/api/registrar/purchase'
+      path: '/api/registrar/purchase'
+      fullPath: '/api/registrar/purchase'
+      preLoaderRoute: typeof ApiRegistrarPurchaseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/cloud-shared-day': {
-      id: '/api/public/cron/cloud-shared-day'
-      path: '/api/public/cron/cloud-shared-day'
-      fullPath: '/api/public/cron/cloud-shared-day'
-      preLoaderRoute: typeof ApiPublicCronCloudSharedDayRouteImport
+    '/api/registrar/purchase-credits': {
+      id: '/api/registrar/purchase-credits'
+      path: '/api/registrar/purchase-credits'
+      fullPath: '/api/registrar/purchase-credits'
+      preLoaderRoute: typeof ApiRegistrarPurchaseCreditsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/build-watchdog': {
-      id: '/api/public/cron/build-watchdog'
-      path: '/api/public/cron/build-watchdog'
-      fullPath: '/api/public/cron/build-watchdog'
-      preLoaderRoute: typeof ApiPublicCronBuildWatchdogRouteImport
+    '/api/registrar/search': {
+      id: '/api/registrar/search'
+      path: '/api/registrar/search'
+      fullPath: '/api/registrar/search'
+      preLoaderRoute: typeof ApiRegistrarSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/benchmark': {
-      id: '/api/public/cron/benchmark'
-      path: '/api/public/cron/benchmark'
-      fullPath: '/api/public/cron/benchmark'
-      preLoaderRoute: typeof ApiPublicCronBenchmarkRouteImport
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/cron/backend-reap': {
-      id: '/api/public/cron/backend-reap'
-      path: '/api/public/cron/backend-reap'
-      fullPath: '/api/public/cron/backend-reap'
-      preLoaderRoute: typeof ApiPublicCronBackendReapRouteImport
-      parentRoute: typeof rootRouteImport
+    '/api/billing/crypto/check': {
+      id: '/api/billing/crypto/check'
+      path: '/check'
+      fullPath: '/api/billing/crypto/check'
+      preLoaderRoute: typeof ApiBillingCryptoCheckRouteImport
+      parentRoute: typeof ApiBillingCryptoRoute
     }
-    '/api/public/cron/backend-hibernate': {
-      id: '/api/public/cron/backend-hibernate'
-      path: '/api/public/cron/backend-hibernate'
-      fullPath: '/api/public/cron/backend-hibernate'
-      preLoaderRoute: typeof ApiPublicCronBackendHibernateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/cron/backend-autoscale': {
-      id: '/api/public/cron/backend-autoscale'
-      path: '/api/public/cron/backend-autoscale'
-      fullPath: '/api/public/cron/backend-autoscale'
-      preLoaderRoute: typeof ApiPublicCronBackendAutoscaleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/coffee/verify': {
-      id: '/api/public/coffee/verify'
-      path: '/api/public/coffee/verify'
-      fullPath: '/api/public/coffee/verify'
-      preLoaderRoute: typeof ApiPublicCoffeeVerifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/coffee/initialize': {
-      id: '/api/public/coffee/initialize'
-      path: '/api/public/coffee/initialize'
-      fullPath: '/api/public/coffee/initialize'
-      preLoaderRoute: typeof ApiPublicCoffeeInitializeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/coffee/crypto': {
-      id: '/api/public/coffee/crypto'
-      path: '/api/public/coffee/crypto'
-      fullPath: '/api/public/coffee/crypto'
-      preLoaderRoute: typeof ApiPublicCoffeeCryptoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/builds/heartbeat': {
-      id: '/api/public/builds/heartbeat'
-      path: '/api/public/builds/heartbeat'
-      fullPath: '/api/public/builds/heartbeat'
-      preLoaderRoute: typeof ApiPublicBuildsHeartbeatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/builds/callback': {
-      id: '/api/public/builds/callback'
-      path: '/api/public/builds/callback'
-      fullPath: '/api/public/builds/callback'
-      preLoaderRoute: typeof ApiPublicBuildsCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/agent/ops': {
-      id: '/api/public/agent/ops'
-      path: '/api/public/agent/ops'
-      fullPath: '/api/public/agent/ops'
-      preLoaderRoute: typeof ApiPublicAgentOpsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/billing/subscription/status': {
-      id: '/api/billing/subscription/status'
-      path: '/api/billing/subscription/status'
-      fullPath: '/api/billing/subscription/status'
-      preLoaderRoute: typeof ApiBillingSubscriptionStatusRouteImport
+    '/api/billing/subscription/cancel': {
+      id: '/api/billing/subscription/cancel'
+      path: '/api/billing/subscription/cancel'
+      fullPath: '/api/billing/subscription/cancel'
+      preLoaderRoute: typeof ApiBillingSubscriptionCancelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/billing/subscription/manage-link': {
@@ -2639,19 +2415,243 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBillingSubscriptionManageLinkRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/subscription/cancel': {
-      id: '/api/billing/subscription/cancel'
-      path: '/api/billing/subscription/cancel'
-      fullPath: '/api/billing/subscription/cancel'
-      preLoaderRoute: typeof ApiBillingSubscriptionCancelRouteImport
+    '/api/billing/subscription/status': {
+      id: '/api/billing/subscription/status'
+      path: '/api/billing/subscription/status'
+      fullPath: '/api/billing/subscription/status'
+      preLoaderRoute: typeof ApiBillingSubscriptionStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing/crypto/check': {
-      id: '/api/billing/crypto/check'
-      path: '/check'
-      fullPath: '/api/billing/crypto/check'
-      preLoaderRoute: typeof ApiBillingCryptoCheckRouteImport
-      parentRoute: typeof ApiBillingCryptoRoute
+    '/api/public/agent/ops': {
+      id: '/api/public/agent/ops'
+      path: '/api/public/agent/ops'
+      fullPath: '/api/public/agent/ops'
+      preLoaderRoute: typeof ApiPublicAgentOpsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/builds/callback': {
+      id: '/api/public/builds/callback'
+      path: '/api/public/builds/callback'
+      fullPath: '/api/public/builds/callback'
+      preLoaderRoute: typeof ApiPublicBuildsCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/builds/heartbeat': {
+      id: '/api/public/builds/heartbeat'
+      path: '/api/public/builds/heartbeat'
+      fullPath: '/api/public/builds/heartbeat'
+      preLoaderRoute: typeof ApiPublicBuildsHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/coffee/crypto': {
+      id: '/api/public/coffee/crypto'
+      path: '/api/public/coffee/crypto'
+      fullPath: '/api/public/coffee/crypto'
+      preLoaderRoute: typeof ApiPublicCoffeeCryptoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/coffee/initialize': {
+      id: '/api/public/coffee/initialize'
+      path: '/api/public/coffee/initialize'
+      fullPath: '/api/public/coffee/initialize'
+      preLoaderRoute: typeof ApiPublicCoffeeInitializeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/coffee/verify': {
+      id: '/api/public/coffee/verify'
+      path: '/api/public/coffee/verify'
+      fullPath: '/api/public/coffee/verify'
+      preLoaderRoute: typeof ApiPublicCoffeeVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/backend-autoscale': {
+      id: '/api/public/cron/backend-autoscale'
+      path: '/api/public/cron/backend-autoscale'
+      fullPath: '/api/public/cron/backend-autoscale'
+      preLoaderRoute: typeof ApiPublicCronBackendAutoscaleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/backend-hibernate': {
+      id: '/api/public/cron/backend-hibernate'
+      path: '/api/public/cron/backend-hibernate'
+      fullPath: '/api/public/cron/backend-hibernate'
+      preLoaderRoute: typeof ApiPublicCronBackendHibernateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/backend-reap': {
+      id: '/api/public/cron/backend-reap'
+      path: '/api/public/cron/backend-reap'
+      fullPath: '/api/public/cron/backend-reap'
+      preLoaderRoute: typeof ApiPublicCronBackendReapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/benchmark': {
+      id: '/api/public/cron/benchmark'
+      path: '/api/public/cron/benchmark'
+      fullPath: '/api/public/cron/benchmark'
+      preLoaderRoute: typeof ApiPublicCronBenchmarkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/build-watchdog': {
+      id: '/api/public/cron/build-watchdog'
+      path: '/api/public/cron/build-watchdog'
+      fullPath: '/api/public/cron/build-watchdog'
+      preLoaderRoute: typeof ApiPublicCronBuildWatchdogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/cloud-shared-day': {
+      id: '/api/public/cron/cloud-shared-day'
+      path: '/api/public/cron/cloud-shared-day'
+      fullPath: '/api/public/cron/cloud-shared-day'
+      preLoaderRoute: typeof ApiPublicCronCloudSharedDayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/compute-hour': {
+      id: '/api/public/cron/compute-hour'
+      path: '/api/public/cron/compute-hour'
+      fullPath: '/api/public/cron/compute-hour'
+      preLoaderRoute: typeof ApiPublicCronComputeHourRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/cost-alerts': {
+      id: '/api/public/cron/cost-alerts'
+      path: '/api/public/cron/cost-alerts'
+      fullPath: '/api/public/cron/cost-alerts'
+      preLoaderRoute: typeof ApiPublicCronCostAlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/crypto-verify': {
+      id: '/api/public/cron/crypto-verify'
+      path: '/api/public/cron/crypto-verify'
+      fullPath: '/api/public/cron/crypto-verify'
+      preLoaderRoute: typeof ApiPublicCronCryptoVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/mobile-cert-expiry': {
+      id: '/api/public/cron/mobile-cert-expiry'
+      path: '/api/public/cron/mobile-cert-expiry'
+      fullPath: '/api/public/cron/mobile-cert-expiry'
+      preLoaderRoute: typeof ApiPublicCronMobileCertExpiryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/runtime-backend-hour': {
+      id: '/api/public/cron/runtime-backend-hour'
+      path: '/api/public/cron/runtime-backend-hour'
+      fullPath: '/api/public/cron/runtime-backend-hour'
+      preLoaderRoute: typeof ApiPublicCronRuntimeBackendHourRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/self-learning-digest': {
+      id: '/api/public/cron/self-learning-digest'
+      path: '/api/public/cron/self-learning-digest'
+      fullPath: '/api/public/cron/self-learning-digest'
+      preLoaderRoute: typeof ApiPublicCronSelfLearningDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/subscription-renewal-reminder': {
+      id: '/api/public/cron/subscription-renewal-reminder'
+      path: '/api/public/cron/subscription-renewal-reminder'
+      fullPath: '/api/public/cron/subscription-renewal-reminder'
+      preLoaderRoute: typeof ApiPublicCronSubscriptionRenewalReminderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/thumbnail-backfill': {
+      id: '/api/public/cron/thumbnail-backfill'
+      path: '/api/public/cron/thumbnail-backfill'
+      fullPath: '/api/public/cron/thumbnail-backfill'
+      preLoaderRoute: typeof ApiPublicCronThumbnailBackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/turn-resume': {
+      id: '/api/public/cron/turn-resume'
+      path: '/api/public/cron/turn-resume'
+      fullPath: '/api/public/cron/turn-resume'
+      preLoaderRoute: typeof ApiPublicCronTurnResumeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/email/resend-webhook': {
+      id: '/api/public/email/resend-webhook'
+      path: '/api/public/email/resend-webhook'
+      fullPath: '/api/public/email/resend-webhook'
+      preLoaderRoute: typeof ApiPublicEmailResendWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/email/send': {
+      id: '/api/public/email/send'
+      path: '/api/public/email/send'
+      fullPath: '/api/public/email/send'
+      preLoaderRoute: typeof ApiPublicEmailSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/mobile/callback': {
+      id: '/api/public/mobile/callback'
+      path: '/api/public/mobile/callback'
+      fullPath: '/api/public/mobile/callback'
+      preLoaderRoute: typeof ApiPublicMobileCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/paystack/webhook': {
+      id: '/api/public/paystack/webhook'
+      path: '/api/public/paystack/webhook'
+      fullPath: '/api/public/paystack/webhook'
+      preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/shared/$': {
+      id: '/api/public/shared/$'
+      path: '/api/public/shared/$'
+      fullPath: '/api/public/shared/$'
+      preLoaderRoute: typeof ApiPublicSharedSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/turns/$id/cancel': {
+      id: '/api/turns/$id/cancel'
+      path: '/api/turns/$id/cancel'
+      fullPath: '/api/turns/$id/cancel'
+      preLoaderRoute: typeof ApiTurnsIdCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/turns/$id/events': {
+      id: '/api/turns/$id/events'
+      path: '/api/turns/$id/events'
+      fullPath: '/api/turns/$id/events'
+      preLoaderRoute: typeof ApiTurnsIdEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
