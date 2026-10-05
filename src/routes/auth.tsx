@@ -270,12 +270,60 @@ function AuthPage() {
     <div className="landing-page relative min-h-screen overflow-hidden bg-background text-foreground">
       <SiteHeader />
       <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-aura)] opacity-90" aria-hidden />
-      <div className="relative mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center px-5 pb-16 pt-10 sm:px-6">
-            <div className="mb-6 text-center">
-              <h1 className="font-display text-[2.1rem] font-bold leading-[1.05] tracking-tight text-balance sm:text-5xl">{title}</h1>
-              <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{subtitle}</p>
-            </div>
-            <div className="rounded-[1.75rem] border border-border/70 bg-card/85 p-6 shadow-[var(--shadow-squircle)] backdrop-blur-2xl sm:p-8">
+      <div className="relative mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-md flex-col justify-center px-6 pb-16 pt-10 sm:px-8">
+            <img src="/kimble-logo.png" alt="Kimble" className="h-12 w-12 dark:invert" />
+            <h1 className="mt-7 font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl">{title}</h1>
+
+            {mode !== "forgot" && (
+              <>
+                <div className="mt-9 space-y-3">
+                  <div className="relative">
+                    {lastMethod === "google" && (
+                      <span className="absolute -top-2.5 right-4 z-10 rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground">
+                        Last used
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleOAuth("google")}
+                      className={`inline-flex h-12 w-full items-center justify-center gap-3 rounded-md border bg-card/60 text-[15px] font-medium backdrop-blur transition hover:bg-card disabled:opacity-50 ${
+                        lastMethod === "google" ? "border-primary/60" : "border-border/70"
+                      }`}
+                    >
+                      <GoogleIcon className="h-5 w-5" />
+                      Continue with Google
+                    </button>
+                  </div>
+                  <div className="relative">
+                    {lastMethod === "github" && (
+                      <span className="absolute -top-2.5 right-4 z-10 rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground">
+                        Last used
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleOAuth("github")}
+                      className={`inline-flex h-12 w-full items-center justify-center gap-3 rounded-md border bg-card/60 text-[15px] font-medium backdrop-blur transition hover:bg-card disabled:opacity-50 ${
+                        lastMethod === "github" ? "border-primary/60" : "border-border/70"
+                      }`}
+                    >
+                      <Github className="h-5 w-5" />
+                      Continue with GitHub
+                    </button>
+                  </div>
+                </div>
+
+                <div className="my-7 flex items-center gap-4" aria-hidden>
+                  <div className="h-px flex-1 bg-border/70" />
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">OR</span>
+                  <div className="h-px flex-1 bg-border/70" />
+                </div>
+              </>
+            )}
+
+            <div>
               {mode === "forgot" && (
                 <button
                   onClick={() => switchMode("signin")}
