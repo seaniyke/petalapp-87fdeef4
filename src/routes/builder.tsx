@@ -5210,6 +5210,7 @@ function Builder() {
                       </button>
                     )}
                   </div>
+                  {isUser && <UserMessageMeta text={m.content} ts={m.ts} />}
                   {m.role === "assistant" && i === lastDiscussIndex && !petalIsWorking && (
                     <div className="mr-3 mt-3 flex flex-col items-stretch gap-1.5 sm:mr-6">
                       <button
@@ -5686,6 +5687,33 @@ function Builder() {
                 }
               }}
             />
+            {/* Quick-reply suggestion chips — a horizontal, scrollable pill
+                row above the composer (iOS-style). Real clarifying questions
+                keep the SuggestionChecklist card in the thread; these chips
+                are the optional "next move" shortcuts. */}
+            {(() => {
+              if (busy || discussBusy || petalIsWorking) return null;
+              const lastWithChips = [...messages]
+                .reverse()
+                .find((mm) => mm.role === "assistant" && (mm.suggestions?.length ?? 0) > 0);
+              if (!lastWithChips?.suggestions?.length) return null;
+              const lastText = sanitizeNarrative(lastWithChips.content ?? "").trim();
+              if (/\?\s*$/.test(lastText)) return null;
+              return (
+                <div className="mb-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {lastWithChips.suggestions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => submitPrompt(s, { bypassQuestionGate: true })}
+                      className="shrink-0 rounded-full border border-border bg-card/60 px-4 py-2 text-[13px] font-medium text-foreground backdrop-blur transition hover:bg-card active:scale-[0.98]"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="mb-2 flex items-center justify-between gap-2 px-1 text-[11px] font-medium tracking-tight text-muted-foreground">
               <span className="min-w-0 flex-1 truncate">
                 {(() => {
@@ -5811,7 +5839,7 @@ function Builder() {
                     title="Attach a screenshot or photo"
                     aria-label="Attach an image"
                   >
-                    <ImageIcon className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                   </button>
                   <ComposerActionsMenu
                     mode={mode === "discuss" ? "discuss" : "build"}
