@@ -478,40 +478,37 @@ function Landing() {
       <SiteHeader />
 
       {/* Product-first hero */}
-      <section className="relative overflow-hidden border-b border-border/70">
-        {!showAuthedHero && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-[var(--gradient-editorial)] opacity-70" aria-hidden />
-        )}
+      <section className="relative flex min-h-[calc(100svh-3.5rem)] flex-col overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[image:var(--gradient-aura)]" aria-hidden />
         <div
-          className={`relative mx-auto max-w-6xl px-5 text-center sm:px-6 ${showAuthedHero ? "pb-16 pt-32 sm:pb-20 sm:pt-40" : "pb-12 pt-16 sm:pb-24 sm:pt-32"}`}
+          className="relative mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-5 pb-36 pt-24 text-center sm:px-6 sm:pt-32"
         >
           {showAuthedHero ? (
-            <h1 className="font-display text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-5xl md:text-6xl">
-              {firstName ? (
-                <>
-                  {heroGreeting}{" "}
-                  <span className="relative whitespace-nowrap">
-                    <span className="relative z-10 italic">{firstName}</span>
-                    <span className="absolute -bottom-1 left-0 right-0 h-3 rounded-full bg-coral/50" aria-hidden />
-                  </span>
-                  .
-                </>
-              ) : (
-                // Without a first name the greeting's trailing comma would read
-                // "Ship it,." — drop it so the sentence closes cleanly.
-                `${heroGreeting.replace(/[,\s]+$/, "")}.`
-              )}
-            </h1>
+            <>
+              <Link
+                to="/builder"
+                search={{ mode: "discuss" } as never}
+                className="mx-auto mb-10 inline-flex items-center gap-3 rounded-full border border-border bg-card/70 py-1.5 pl-1.5 pr-4 text-sm font-medium backdrop-blur-xl"
+              >
+                <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">New</span>
+                Chat with Kimble for free
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-tight text-balance sm:text-5xl">
+                {firstName ? `Got an idea, ${firstName}?` : "Got an idea?"}
+              </h1>
+            </>
           ) : (
             <>
-              <h1 className="heading-editorial mx-auto max-w-5xl text-balance text-[2.7rem] sm:text-7xl md:text-[5.6rem]">
-                Build an app from<br />a conversation.
+              <h1 className="font-display text-[2.1rem] font-bold leading-[1.05] tracking-tight text-balance sm:text-6xl">
+                Build something with Kimble
               </h1>
-              <p className="mx-auto mt-5 max-w-2xl text-balance text-[0.94rem] leading-relaxed text-muted-foreground sm:mt-7 sm:text-xl">
-                Describe your app. Kimble plans, builds, tests, and publishes it.
+              <p className="mx-auto mt-4 max-w-md text-balance text-base leading-relaxed text-muted-foreground sm:text-xl">
+                Bring a new product, internal tool, or entire company to life.
               </p>
             </>
           )}
+
 
           {/* Prompt box — large chat-style composer */}
           <form
