@@ -5057,7 +5057,7 @@ function Builder() {
                   // same message re-read from the database (with id) must be
                   // the same element, or the whole thread remounts on hydrate.
                   key={`${m.role}:${i}`}
-                  className={`group min-w-0 ${isUser ? "flex justify-end" : ""}`}
+                  className={`group min-w-0 ${isUser ? "flex flex-col items-end" : ""}`}
                 >
                   <div
                     className={`relative min-w-0 wrap-anywhere ${
@@ -5066,24 +5066,6 @@ function Builder() {
                         : "text-[14.5px] leading-[1.65] text-foreground"
                     }`}
                   >
-                    {!isUser && messages[i - 1]?.role !== "assistant" && (
-                      <div className="mb-1.5 flex items-center gap-2">
-                        <img
-                          src={petalLogo}
-                          alt=""
-                          aria-hidden
-                          className="h-6 w-6 shrink-0 rounded-md object-contain dark:invert"
-                        />
-                        <span className="font-display text-[13px] font-semibold tracking-tight text-foreground">
-                          Kimble
-                        </span>
-                        {m.role === "assistant" && i === lastDiscussIndex && (
-                          <span className="text-[11px] font-medium text-muted-foreground">
-                            · discussing
-                          </span>
-                        )}
-                      </div>
-                    )}
                     {m.role === "assistant" ? (
                       <div className="space-y-3">
                         {m.plan && (() => {
@@ -5106,7 +5088,7 @@ function Builder() {
                         <Suspense fallback={<div className="whitespace-pre-wrap">{sanitizeNarrative(m.content)}</div>}>
                           <MarkdownMessage content={sanitizeNarrative(m.content)} projectId={project?.id ?? null} />
                         </Suspense>
-                        <CopyMessageButton text={sanitizeNarrative(m.content)} />
+                        <MessageActions text={sanitizeNarrative(m.content)} />
                         {/* Required clarifying-question answer card. Renders
                             whenever the latest assistant turn carries
                             `suggestions`, before AND after a build. The build
