@@ -3654,7 +3654,7 @@ function Builder() {
   // Kimble answers "great, here's the plan again…" and the user gets stuck.
   const APPLY_AFFIRMATIONS = useMemo(
     () =>
-      /^(go|go!|yes|yep|yeah|yes please|please|ok|okay|sure|do it|let'?s go|let'?s do it|ship it|build it|apply|apply it|apply this plan|approved|proceed|sounds good|👍|✅)\.?\!?$/i,
+      /^(go|go!|yes|yep|yeah|yes please|please|ok|okay|sure|do it|let'?s go|let'?s do it|ship it|build it|apply|apply it|apply this plan|approved|proceed|sounds good|👍|✅)\.!?$/i,
     [],
   );
 
@@ -5500,7 +5500,7 @@ function Builder() {
             />
           )}
           <div
-            className="safe-bottom safe-x shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
+            className="safe-bottom shrink-0 border-t border-border/50 bg-card/80 px-3 pb-3 pt-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-card/65"
           >
             {/* Queued messages — shown when the user typed while Kimble was busy. */}
             {pendingQueue.length > 0 && (
