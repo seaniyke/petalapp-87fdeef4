@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
-import petalLogo from "@/assets/kimble-logo.png";
+import { SiteHeader } from "@/components/SiteHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/lib/notify";
 
