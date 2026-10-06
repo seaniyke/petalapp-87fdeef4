@@ -89,7 +89,11 @@ export function RobotCrew({
       document.removeEventListener("visibilitychange", visibility);
     };
   }, []);
-  const fallback = <div className="robot-fallback text-sm text-muted-foreground">{unavailable ? "Robotics unavailable" : "Preparing workshop…"}</div>;
+  const fallback = (
+    <div className="robot-fallback text-sm text-muted-foreground">
+      {unavailable ? "Robotics unavailable" : "Preparing workshop…"}
+    </div>
+  );
   return (
     <div
       ref={container}
@@ -125,7 +129,13 @@ export function RobotCrew({
               {role}
             </span>
             <span className="block h-5 text-[10px] text-muted-foreground">
-              {selected === i ? (failed ? "Stopped" : working ? `${tasks[i]}…` : "At rest") : "Standby"}
+              {selected === i
+                ? failed
+                  ? "Stopped"
+                  : working
+                    ? `${tasks[i]}…`
+                    : "At rest"
+                : "Standby"}
             </span>
           </div>
         ))}
