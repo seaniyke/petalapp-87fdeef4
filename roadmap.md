@@ -1,5 +1,6 @@
 # Execution-engine replacement roadmap
 ## Current frontend request
+- [ ] Replace cartoon crew with realistic 3D robots, visible from initial thinking and driven only by real work; verify all states and provide demonstration captures.
 - [x] Refine the existing iOS chat and fix oval action buttons without changing generation, billing, or Cloud.
 - [x] Check chat appearance and controls on phone and desktop (public/loading state; authenticated conversation not available).
 
