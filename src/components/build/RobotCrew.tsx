@@ -22,7 +22,7 @@ function readPalette(element: HTMLElement): RobotPalette {
   // Convert semantic CSS tokens to sRGB for the Three renderer.
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 1;
-  const context = canvas.getContext("2d");
+  const context = canvas.getContext("2d", { willReadFrequently: true });
   function color(token: string) {
     if (!context) return style.getPropertyValue(token).trim();
     context.clearRect(0, 0, 1, 1);
@@ -89,25 +89,14 @@ export function RobotCrew({
       document.removeEventListener("visibilitychange", visibility);
     };
   }, []);
-  const fallback = (
-    <div className="robot-fallback" aria-hidden="true">
-      {roles.map((role, i) => (
-        <div key={role} className={`robot-static ${i === selected ? "robot-static-selected" : ""}`}>
-          <div className="robot-static-head">
-            <span />
-            <span />
-          </div>
-          <div className="robot-static-body" />
-        </div>
-      ))}
-    </div>
-  );
+  const fallback = <div className="robot-fallback text-sm text-muted-foreground">{unavailable ? "Robotics unavailable" : "Preparing workshop…"}</div>;
   return (
     <div
       ref={container}
       className="kimble-robotics my-3 w-full"
       data-testid="robot-crew"
       data-active={working}
+      data-moving={working && visible && !reduced && !unavailable}
       data-phase={phaseId}
       aria-label={`Kimble crew: ${failed ? "Stopped after an error" : working ? tasks[selected] : "At rest"}`}
     >
@@ -131,12 +120,12 @@ export function RobotCrew({
         {roles.map((role, i) => (
           <div key={role} className="min-w-0">
             <span
-              className={`block text-[10px] font-semibold sm:text-xs ${selected === i ? "text-foreground" : "text-muted-foreground"}`}
+              className={`block text-[11px] font-semibold sm:text-xs ${selected === i ? "text-foreground" : "text-muted-foreground"}`}
             >
               {role}
             </span>
             <span className="block h-5 text-[10px] text-muted-foreground">
-              {selected === i ? (failed ? "Stopped" : working ? `${tasks[i]}…` : "At rest") : ""}
+              {selected === i ? (failed ? "Stopped" : working ? `${tasks[i]}…` : "At rest") : "Standby"}
             </span>
           </div>
         ))}

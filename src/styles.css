@@ -93,10 +93,10 @@ html[data-petal-auth-hint="1"] [data-auth-hint-hide] {
 }
 
 :root {
-  --robot-shell: oklch(0.82 0.012 240);
-  --robot-joint: oklch(0.3 0.01 240);
+  --robot-shell: #A8AFB5;
+  --robot-joint: #202427;
   --robot-face: oklch(0.19 0.015 240);
-  --robot-light: oklch(0.78 0.12 190);
+  --robot-light: #F0BF50;
   --robot-floor: oklch(0.88 0.009 240);
   --robot-line: oklch(0.62 0.01 240);
   /* Bumped from 0.875rem (14px) to 1rem (16px) for iOS-style rounding. */
@@ -499,11 +499,6 @@ button:not([role="switch"]), a[role="button"] {
 }
 
 /* A single unframed robotics scene in the live transcript. */
-.robotics-scene { width: 100%; height: 210px; overflow: hidden; }
-.robot-fallback { height: 100%; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; }
-.robot-static { position: relative; width: 48px; opacity: .6; }
-.robot-static-selected { opacity: 1; }
-.robot-static-head { height: 30px; border: 3px solid var(--robot-shell); border-radius: 9px; background: var(--robot-face); display: flex; justify-content: space-evenly; align-items: center; }
-.robot-static-head span { width: 8px; height: 3px; background: var(--robot-light); }
-.robot-static-body { height: 40px; margin: 5px 6px 0; border-radius: 8px; background: var(--robot-shell); border: 4px solid var(--robot-joint); }
-@media (max-width: 480px) { .robotics-scene { height: 145px; } }
+.robotics-scene { width: 100%; height: 350px; overflow: hidden; }
+.robot-fallback { height: 100%; display: flex; align-items: center; justify-content: center; }
+@media (max-width: 480px) { .robotics-scene { height: 285px; } }
