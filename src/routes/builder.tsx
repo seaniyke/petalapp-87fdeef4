@@ -93,6 +93,8 @@ import {
   type FriendlyError,
 } from "@/lib/friendly-errors";
 import { BuildActivityCard } from "@/components/BuildActivityCard";
+import { RobotCrew } from "@/components/build/RobotCrew";
+import { robotActivity } from "@/lib/robot-activity";
 import { BuildResultCard } from "@/components/BuildResultCard";
 import { ComposerActionsMenu } from "@/components/ComposerActionsMenu";
 import { useVoiceDictation } from "@/hooks/use-voice-dictation";
@@ -1316,6 +1318,7 @@ function Builder() {
   //   - isDeploying: Cloudflare deploy not yet ready/failed
   //   - awaitingBuild: post-generation, pre-deploy bridge (no flash)
   const petalIsWorking = busy || discussBusy || isDeploying || awaitingBuild;
+  const liveRobots = robotActivity(turnView.lifecycle, turnView.stage, { busy, isDeploying, awaitingBuild, awaitingSilentResume });
 
   // Pending clarifying question gate. When the LAST message is an assistant
   // turn that BOTH carries `suggestions` AND ends with a real question mark
@@ -5227,6 +5230,9 @@ function Builder() {
                 </div>
               );
             })}
+            {(liveRobots.active || activityVisible) && mode !== "discuss" && (
+              <RobotCrew {...liveRobots} />
+            )}
             {discussBusy && (
               <div className="flex items-center gap-2 text-[13px]">
                 <span className="petal-shimmer font-medium">Thinking</span>

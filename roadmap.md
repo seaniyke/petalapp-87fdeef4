@@ -1,5 +1,7 @@
 # Execution-engine replacement roadmap
 ## Current frontend request
+- [x] Replace cartoon crew with articulated 3D robots; initial-thinking integration, phase/terminal tests, phone light/dark captures, motion/stop/reduced-motion verification completed.
+- [ ] Observe the robots during an actual signed-in build — browser verification timed out opening the authenticated builder; no paid build started.
 - [x] Refine the existing iOS chat and fix oval action buttons without changing generation, billing, or Cloud.
 - [x] Check chat appearance and controls on phone and desktop (public/loading state; authenticated conversation not available).
 
