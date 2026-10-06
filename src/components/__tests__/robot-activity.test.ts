@@ -4,16 +4,38 @@ import { robotActivity } from "@/lib/robot-activity";
 
 describe("real robot activity", () => {
   it("covers initial thinking before the activity card mounts", () => {
-    expect(robotActivity("running", "understanding", { busy: true })).toEqual({ active: true, failed: false, phaseId: "thinking" });
+    expect(robotActivity("running", "understanding", { busy: true })).toEqual({
+      active: true,
+      failed: false,
+      phaseId: "thinking",
+    });
   });
   it("maps real work to its specialist without a phase timer", () => {
-    for (const [stage, phase] of [["planning", "designing"], ["writing", "writing"], ["repairing", "writing"], ["verifying", "polishing"], ["building", "deploying"]] as const) {
+    for (const [stage, phase] of [
+      ["planning", "designing"],
+      ["writing", "writing"],
+      ["repairing", "writing"],
+      ["verifying", "polishing"],
+      ["building", "deploying"],
+    ] as const) {
       expect(robotActivity("running", stage, { busy: true }).phaseId).toBe(phase);
     }
   });
   it("terminal and waiting states override stale busy flags", () => {
-    for (const lifecycle of ["ready", "failed", "cancelled", "build_failed", "verify_failed", "answered", "awaiting_approval", "paused", "stopping"]) {
-      expect(robotActivity(lifecycle, "writing", { busy: true, isDeploying: true }).active).toBe(false);
+    for (const lifecycle of [
+      "ready",
+      "failed",
+      "cancelled",
+      "build_failed",
+      "verify_failed",
+      "answered",
+      "awaiting_approval",
+      "paused",
+      "stopping",
+    ]) {
+      expect(robotActivity(lifecycle, "writing", { busy: true, isDeploying: true }).active).toBe(
+        false,
+      );
     }
   });
   it("has just one robot scene, outside the conditional activity card", () => {
