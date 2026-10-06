@@ -1,134 +1,55 @@
-/**
- * The Kimble crew — four small robots that show which part of the work is
- * happening right now. Purely presentational: the active robot comes from the
- * real build phase, never from a timer, so the animation never fakes progress.
- */
+import { Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import type { PhaseId } from "@/lib/build-phases";
+import type { RobotPalette } from "./RobotScene";
 
-type CrewId = "architect" | "builder" | "inspector" | "launcher";
-
-const CREW: { id: CrewId; name: string; task: string; phases: PhaseId[] }[] = [
-  { id: "architect", name: "Architect", task: "Planning", phases: ["thinking", "designing"] },
-  { id: "builder", name: "Builder", task: "Building", phases: ["writing"] },
-  { id: "inspector", name: "Inspector", task: "Checking", phases: ["polishing"] },
-  { id: "launcher", name: "Launcher", task: "Launching", phases: ["deploying", "live"] },
-];
-
-function Tool({ id }: { id: CrewId }) {
-  switch (id) {
-    case "architect":
-      // holographic blueprint
-      return (
-        <g className="crew-tool">
-          <path d="M8 44 L22 30 L22 52 Z" className="fill-primary/20" />
-          <rect x="2" y="44" width="14" height="10" rx="1.5" className="fill-none stroke-primary" strokeWidth="1.2" />
-          <path d="M5 49h8M5 51.5h5" className="stroke-primary" strokeWidth="1" />
-        </g>
-      );
-    case "builder":
-      // hammer + spark
-      return (
-        <g className="crew-tool">
-          <rect x="44" y="34" width="2.5" height="16" rx="1" className="fill-muted-foreground" />
-          <rect x="40" y="31" width="11" height="5" rx="1.2" className="fill-foreground/80" />
-          <circle cx="45" cy="54" r="1.6" className="crew-spark fill-primary" />
-        </g>
-      );
-    case "inspector":
-      // magnifier + scan beam
-      return (
-        <g className="crew-tool">
-          <path d="M34 22 L54 54 L14 54 Z" className="crew-beam fill-primary/15" />
-          <circle cx="45" cy="38" r="5" className="fill-background stroke-foreground/80" strokeWidth="1.6" />
-          <path d="M48.5 41.5l4 4" className="stroke-foreground/80" strokeWidth="2" strokeLinecap="round" />
-        </g>
-      );
-    case "launcher":
-      // thruster flame
-      return (
-        <g className="crew-tool">
-          <path d="M26 56 Q32 66 38 56 Z" className="crew-flame fill-primary" />
-          <path d="M29 56 Q32 61 35 56 Z" className="crew-flame fill-background/80" />
-        </g>
-      );
+const Scene = lazy(() => import("./RobotScene"));
+const roles = ["Architect", "Builder", "Inspector", "Launcher"];
+const tasks = ["Planning", "Building", "Checking", "Launching"];
+class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+function readPalette(element: HTMLElement): RobotPalette {
+  const style = getComputedStyle(element);
+  // Convert semantic CSS tokens to sRGB for the Three renderer.
+  const canvas = document.createElement("canvas"); canvas.width = canvas.height = 1;
+  const context = canvas.getContext("2d");
+  function color(token: string) {
+    if (!context) return style.getPropertyValue(token).trim();
+    context.clearRect(0, 0, 1, 1); context.fillStyle = style.getPropertyValue(token).trim(); context.fillRect(0, 0, 1, 1);
+    const [r, g, b] = context.getImageData(0, 0, 1, 1).data;
+    return `rgb(${r},${g},${b})`;
   }
+  return { shell: color("--robot-shell"), joint: color("--robot-joint"), face: color("--robot-face"), light: color("--robot-light"), floor: color("--robot-floor"), line: color("--robot-line") };
 }
-
-function Robot({ id, active, done }: { id: CrewId; active: boolean; done: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      className={`h-11 w-11 overflow-visible transition-all duration-500 ${
-        active ? "crew-active scale-110 opacity-100" : done ? "opacity-70" : "opacity-35 grayscale"
-      }`}
-      aria-hidden
-    >
-      <g className={active ? "crew-body" : undefined}>
-        {/* antenna */}
-        <line x1="32" y1="8" x2="32" y2="14" className="stroke-foreground/70" strokeWidth="1.6" />
-        <circle cx="32" cy="7" r="2.4" className={active ? "crew-blink fill-primary" : "fill-muted-foreground"} />
-        {/* head */}
-        <rect x="18" y="14" width="28" height="20" rx="7" className="fill-card stroke-foreground/70" strokeWidth="1.6" />
-        <rect x="22" y="19" width="20" height="10" rx="4" className="fill-foreground/90" />
-        <circle cx="28" cy="24" r="2" className={active ? "crew-eyes fill-primary" : "fill-muted-foreground"} />
-        <circle cx="36" cy="24" r="2" className={active ? "crew-eyes fill-primary" : "fill-muted-foreground"} />
-        {/* body */}
-        <rect x="22" y="36" width="20" height="18" rx="5" className="fill-card stroke-foreground/70" strokeWidth="1.6" />
-        <rect x="28" y="41" width="8" height="5" rx="1.5" className={done ? "fill-primary/60" : "fill-muted"} />
-        {/* arms */}
-        <path d="M22 40 L16 46" className="stroke-foreground/70" strokeWidth="2.2" strokeLinecap="round" />
-        <path d="M42 40 L46 44" className={`stroke-foreground/70 ${active ? "crew-arm" : ""}`} strokeWidth="2.2" strokeLinecap="round" />
-        {active && <Tool id={id} />}
-      </g>
-      {/* shadow */}
-      <ellipse cx="32" cy="60" rx="10" ry="1.8" className={`fill-foreground/10 ${active ? "crew-shadow" : ""}`} />
-    </svg>
-  );
-}
-
-export function RobotCrew({
-  phaseId,
-  active,
-  failed,
-}: {
-  phaseId?: PhaseId;
-  active: boolean;
-  failed?: boolean;
-}) {
-  const activeIdx = CREW.findIndex((c) => phaseId && c.phases.includes(phaseId));
-
-  return (
-    <div className="kimble-crew border-t border-border/60 px-3.5 py-3" data-testid="robot-crew">
-      <div className="relative grid grid-cols-4 gap-1">
-        {/* conveyor line connecting the crew */}
-        <div className="pointer-events-none absolute inset-x-6 top-[22px] h-px bg-border" aria-hidden />
-        <div
-          className="pointer-events-none absolute left-6 top-[22px] h-px bg-primary transition-all duration-700"
-          style={{ width: activeIdx < 0 ? 0 : `calc(${(activeIdx / (CREW.length - 1)) * 100}% - ${(activeIdx / (CREW.length - 1)) * 3}rem)` }}
-          aria-hidden
-        />
-        {CREW.map((c, i) => {
-          const isActive = active && !failed && i === activeIdx;
-          const isDone = activeIdx > i;
-          return (
-            <div key={c.id} className="relative flex flex-col items-center gap-1">
-              <div className="relative rounded-md bg-card/80 px-1">
-                <Robot id={c.id} active={isActive} done={isDone} />
-              </div>
-              <span
-                className={`text-[10.5px] font-semibold leading-none ${
-                  isActive ? "text-foreground" : "text-muted-foreground"
-                }`}
-              >
-                {c.name}
-              </span>
-              <span className="h-3 text-[9.5px] leading-none text-muted-foreground">
-                {isActive ? <span className="petal-shimmer">{c.task}…</span> : isDone ? "Done" : ""}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+export function RobotCrew({ phaseId = "thinking", active, failed = false }: { phaseId?: PhaseId; active: boolean; failed?: boolean }) {
+  const container = useRef<HTMLDivElement>(null);
+  const [palette, setPalette] = useState<RobotPalette | null>(null);
+  const [visible, setVisible] = useState(true);
+  const [reduced, setReduced] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  const selected = phaseId === "writing" ? 1 : phaseId === "polishing" ? 2 : ["deploying", "live"].includes(phaseId) ? 3 : 0;
+  const working = active && !failed;
+  useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const refresh = () => setPalette(readPalette(element));
+    refresh();
+    const theme = new MutationObserver(refresh); theme.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    const media = matchMedia("(prefers-reduced-motion: reduce)");
+    const motion = () => setReduced(media.matches); motion(); media.addEventListener("change", motion);
+    let intersecting = true;
+    const visibility = () => setVisible(intersecting && !document.hidden);
+    const observer = new IntersectionObserver(([entry]) => { intersecting = entry.isIntersecting; visibility(); });
+    observer.observe(element); document.addEventListener("visibilitychange", visibility);
+    return () => { theme.disconnect(); observer.disconnect(); media.removeEventListener("change", motion); document.removeEventListener("visibilitychange", visibility); };
+  }, []);
+  const fallback = <div className="robot-fallback" aria-hidden="true">{roles.map((role, i) => <div key={role} className={`robot-static ${i === selected ? "robot-static-selected" : ""}`}><div className="robot-static-head"><span /><span /></div><div className="robot-static-body" /></div>)}</div>;
+  return <div ref={container} className="kimble-robotics my-3 w-full" data-testid="robot-crew" data-active={working} data-phase={phaseId} aria-label={`Kimble crew: ${failed ? "Stopped after an error" : working ? tasks[selected] : "At rest"}`}>
+    <div className="robotics-scene" aria-hidden="true">
+      {palette && !unavailable ? <SceneBoundary fallback={fallback}><Suspense fallback={fallback}><Scene palette={palette} selected={selected} moving={working && visible && !reduced} onUnavailable={() => setUnavailable(true)} /></Suspense></SceneBoundary> : fallback}
     </div>
-  );
+    <div className="grid grid-cols-4 gap-1 text-center">{roles.map((role, i) => <div key={role} className="min-w-0"><span className={`block text-[10px] font-semibold sm:text-xs ${selected === i ? "text-foreground" : "text-muted-foreground"}`}>{role}</span><span className="block h-5 text-[10px] text-muted-foreground">{selected === i ? failed ? "Stopped" : working ? `${tasks[i]}…` : "At rest" : ""}</span></div>)}</div>
+  </div>;
 }
