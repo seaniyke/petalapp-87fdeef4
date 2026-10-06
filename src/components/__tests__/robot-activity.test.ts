@@ -45,8 +45,13 @@ describe("real robot activity", () => {
     expect(builder.match(/<RobotCrew/g)).toHaveLength(1);
     expect(card).not.toContain("RobotCrew");
     expect(builder).toContain("liveRobots.active || activityVisible");
-    const early = builder.slice(builder.indexOf("if (earlyEcho) {"), builder.indexOf("const proj = await ensureProject()"));
-    expect(early.indexOf('dispatchTurn({ type: "reset" })')).toBeLessThan(early.indexOf("setBusy(true)"));
+    const early = builder.slice(
+      builder.indexOf("if (earlyEcho) {"),
+      builder.indexOf("const proj = await ensureProject()"),
+    );
+    expect(early.indexOf('dispatchTurn({ type: "reset" })')).toBeLessThan(
+      early.indexOf("setBusy(true)"),
+    );
   });
   it("uses real joint articulation and no delayed terminal motion", () => {
     const robot = readFileSync("src/components/build/IndustrialRobot.tsx", "utf8");
