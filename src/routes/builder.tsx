@@ -2512,6 +2512,8 @@ function Builder() {
       // now instead of leaving the composer frozen until the row exists.
       const earlyEcho = !project && !internalRetry && !opts.suppressEcho;
       if (earlyEcho) {
+        // Project creation is real new work, not the previous terminal turn.
+        dispatchTurn({ type: "reset" });
         setMessages((prev) => [...prev, { role: "user", content: text }]);
         setInput("");
         setBusy(true);

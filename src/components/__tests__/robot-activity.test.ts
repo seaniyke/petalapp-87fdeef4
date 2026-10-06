@@ -4,6 +4,7 @@ import { robotActivity } from "@/lib/robot-activity";
 
 describe("real robot activity", () => {
   it("covers initial thinking before the activity card mounts", () => {
+    expect(robotActivity("idle", "idle", { busy: true }).active).toBe(true);
     expect(robotActivity("running", "understanding", { busy: true })).toEqual({
       active: true,
       failed: false,
@@ -44,5 +45,20 @@ describe("real robot activity", () => {
     expect(builder.match(/<RobotCrew/g)).toHaveLength(1);
     expect(card).not.toContain("RobotCrew");
     expect(builder).toContain("liveRobots.active || activityVisible");
+    const early = builder.slice(
+      builder.indexOf("if (earlyEcho) {"),
+      builder.indexOf("const proj = await ensureProject()"),
+    );
+    expect(early.indexOf('dispatchTurn({ type: "reset" })')).toBeLessThan(
+      early.indexOf("setBusy(true)"),
+    );
+  });
+  it("uses real joint articulation and no delayed terminal motion", () => {
+    const robot = readFileSync("src/components/build/IndustrialRobot.tsx", "utf8");
+    const crew = readFileSync("src/components/build/RobotCrew.tsx", "utf8");
+    expect(robot).toContain("Math.acos");
+    expect(robot).toContain("if (!moving || !selected) return");
+    expect(crew).toContain("moving={working && visible && !reduced}");
+    expect(crew).not.toContain("setTimeout");
   });
 });
