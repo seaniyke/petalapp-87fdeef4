@@ -9,12 +9,17 @@ import {
   Star,
   User as UserIcon,
   LogOut,
+  ChevronRight,
+  Check,
 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetTitle,
+  SheetDescription,
+  SheetClose,
 } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { ProjectThumbnail } from "@/components/ProjectThumbnail";
 import { useAuth } from "@/lib/auth";
 import {
@@ -101,133 +106,96 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="left"
-        className="flex w-[88vw] max-w-md flex-col gap-0 p-0 sm:max-w-md"
+        side="bottom"
+        className="inset-x-3 bottom-3 mx-auto flex max-h-[90dvh] w-auto max-w-md flex-col gap-0 overflow-hidden rounded-[1.75rem] border border-border/60 bg-background/95 p-0 pt-7 shadow-[var(--shadow-editorial)] backdrop-blur-2xl [&>button]:hidden motion-reduce:animate-none"
       >
-        <SheetTitle className="sr-only">Projects</SheetTitle>
+        <header className="flex items-center justify-between px-5 pb-4 pt-2">
+          <div>
+            <SheetTitle className="text-2xl font-bold tracking-normal">Projects</SheetTitle>
+            <SheetDescription className="mt-1 text-xs">Your workspace</SheetDescription>
+          </div>
+          <SheetClose asChild>
+            <Button variant="secondary" size="icon" className="h-8 w-8 rounded-md" aria-label="Close projects menu" title="Close projects menu">
+              <X />
+            </Button>
+          </SheetClose>
+        </header>
 
-        {/* Search */}
-        <div className="safe-top px-4 pt-4 pb-3">
+        <div className="px-5 pb-4">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search projects"
-              className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-9 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
+              aria-label="Search projects"
+              className="h-10 w-full rounded-md border border-border/40 bg-muted/60 pl-9 pr-10 text-sm outline-none transition focus:ring-2 focus:ring-ring/30"
             />
             {query && (
-              <button
-                onClick={() => setQuery("")}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition hover:bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <Button variant="ghost" size="icon" onClick={() => setQuery("")} aria-label="Clear search" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 rounded-md">
+                <X />
+              </Button>
             )}
           </div>
         </div>
 
-        {/* Scroll body */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
-          {/* Home */}
-          <button
-            onClick={() => go("/")}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition hover:bg-muted"
-          >
-            <Home className="h-4.5 w-4.5 text-foreground/80" />
-            <span className="font-medium">Home</span>
-          </button>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-5">
+          <SectionRow icon={<Home className="h-4 w-4" />} label="Home" active={false} onClick={() => go("/")} />
 
-          {/* Recent projects */}
-          <div className="mt-4 px-3 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Recent projects
+          <div className="mt-5 flex items-center justify-between border-t border-border/50 pb-3 pt-5">
+            <h2 className="text-xs font-medium text-muted-foreground">Recent projects</h2>
+            <Button variant="secondary" size="sm" onClick={() => go("/")} className="h-8 gap-1.5 rounded-md px-2.5 text-xs">
+              <Plus /> New project
+            </Button>
           </div>
-          <div className="space-y-1">
-            <button
-              onClick={() => go("/")}
-              className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-muted"
-            >
-              <span className="grid h-12 w-16 shrink-0 place-items-center rounded-xl border border-dashed border-border bg-muted/40">
-                <Plus className="h-4 w-4 text-muted-foreground" />
-              </span>
-              <span className="text-sm font-semibold">Create new project</span>
-            </button>
-
+          <div aria-busy={loading}>
             {loading && projects === null
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-xl p-2">
-                    <div className="h-12 w-16 shrink-0 animate-pulse rounded-xl bg-muted" />
-                    <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+                  <div key={i} className="flex h-[68px] items-center gap-3 border-b border-border/40">
+                    <div className="h-11 w-11 shrink-0 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />
+                    <div className="h-3 w-32 animate-pulse rounded bg-muted motion-reduce:animate-none" />
                   </div>
                 ))
               : recents.map((p) => (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={p.id}
                     onClick={() => openProject(p.id)}
-                    className={`flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-muted ${
-                      currentProjectId === p.id ? "bg-muted" : ""
-                    }`}
+                    aria-current={currentProjectId === p.id ? "page" : undefined}
+                    className={`h-[68px] w-full justify-start gap-3 rounded-md border-b border-border/40 px-2 text-left ${currentProjectId === p.id ? "bg-muted/70" : ""}`}
                   >
                     <ProjectThumbnail
                       projectId={p.id}
                       title={p.title}
                       subdomain={p.subdomain}
                       buildId={p.published_build_id ?? p.latest_build_id}
-                      className="h-12 w-16 shrink-0 overflow-hidden rounded-xl"
+                      className="h-11 w-11 shrink-0 overflow-hidden rounded-lg"
                     />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold">{p.title}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">
-                        {timeAgo(p.updated_at)}
-                      </div>
+                      <div className="truncate text-sm font-medium">{p.title}</div>
+                      <div className="mt-1 truncate text-[11px] font-normal text-muted-foreground">{timeAgo(p.updated_at)}</div>
                     </div>
-                  </button>
+                    {currentProjectId === p.id ? <Check className="text-primary" /> : <ChevronRight className="text-muted-foreground/60" />}
+                  </Button>
                 ))}
+            {!loading && recents.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">{query ? "No matching projects" : "No recent projects"}</p>
+            )}
           </div>
 
-          {/* Section switcher */}
-          <div className="mt-5 px-3 pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Projects
-          </div>
-          <div className="space-y-0.5">
-            <SectionRow
-              icon={<LayoutGrid className="h-4 w-4" />}
-              label="All projects"
-              active={false}
-              onClick={() => {
-                onOpenChange(false);
-                navigate({ to: "/projects" });
-              }}
-            />
-            <SectionRow
-              icon={<Star className="h-4 w-4" />}
-              label="Starred"
-              active={false}
-              onClick={() => {
-                onOpenChange(false);
-                navigate({ to: "/projects" });
-              }}
-            />
-            <SectionRow
-              icon={<UserIcon className="h-4 w-4" />}
-              label="Created by me"
-              active={false}
-              onClick={() => {
-                onOpenChange(false);
-                navigate({ to: "/projects" });
-              }}
-            />
-
+          <h2 className="pb-2 pt-5 text-xs font-medium text-muted-foreground">Library</h2>
+          <div className="divide-y divide-border/40">
+            <SectionRow icon={<LayoutGrid className="h-4 w-4" />} label="All projects" active={false} onClick={() => go("/projects")} />
+            <SectionRow icon={<Star className="h-4 w-4" />} label="Starred" active={false} onClick={() => go("/projects")} />
+            <SectionRow icon={<UserIcon className="h-4 w-4" />} label="Created by me" active={false} onClick={() => go("/projects")} />
           </div>
         </div>
 
-
         {/* Workspace footer */}
         {user && (
-          <div className="safe-bottom border-t border-border bg-card/60 px-3 py-3">
-            <div className="flex items-center gap-3 rounded-xl px-2 py-1.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-foreground text-sm font-medium text-background">
+          <div className="safe-bottom shrink-0 border-t border-border/50 bg-muted/30 px-5 py-3">
+            <div className="flex items-center gap-3 py-1">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-foreground text-sm font-medium text-background">
                 {initial}
               </span>
               <div className="min-w-0 flex-1">
@@ -240,17 +208,20 @@ export function ProjectsDrawer({ open, onOpenChange, currentProjectId }: Project
                   View profile
                 </Link>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Sign out"
                 onClick={async () => {
                   await signOut();
                   onOpenChange(false);
                   navigate({ to: "/" });
                 }}
                 aria-label="Sign out"
-                className="grid h-8 w-8 place-items-center rounded-xl text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground"
               >
                 <LogOut className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -271,15 +242,17 @@ function SectionRow({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
+      variant="ghost"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition ${
+      className={`h-11 w-full justify-start gap-3 rounded-md px-2 text-left text-sm ${
         active ? "bg-muted font-semibold" : "hover:bg-muted"
       }`}
     >
       <span className="text-foreground/70">{icon}</span>
-      <span>{label}</span>
-    </button>
+      <span className="flex-1 font-medium">{label}</span>
+      <ChevronRight className="text-muted-foreground/60" />
+    </Button>
   );
 }
 
