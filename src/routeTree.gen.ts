@@ -22,6 +22,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RobotCheckRouteImport } from './routes/robot-check'
 import { Route as SellRouteImport } from './routes/sell'
 import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -205,6 +206,11 @@ const ProjectsRoute = ProjectsRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RobotCheckRoute = RobotCheckRouteImport.update({
+  id: '/robot-check',
+  path: '/robot-check',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SellRoute = SellRouteImport.update({
@@ -843,6 +849,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/robot-check': typeof RobotCheckRoute
   '/sell': typeof SellRoute
   '/templates': typeof TemplatesRoute
   '/terms': typeof TermsRoute
@@ -977,6 +984,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/robot-check': typeof RobotCheckRoute
   '/sell': typeof SellRoute
   '/templates': typeof TemplatesRoute
   '/terms': typeof TermsRoute
@@ -1112,6 +1120,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/projects': typeof ProjectsRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/robot-check': typeof RobotCheckRoute
   '/sell': typeof SellRoute
   '/templates': typeof TemplatesRoute
   '/terms': typeof TermsRoute
@@ -1248,6 +1257,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/robot-check'
     | '/sell'
     | '/templates'
     | '/terms'
@@ -1382,6 +1392,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/robot-check'
     | '/sell'
     | '/templates'
     | '/terms'
@@ -1516,6 +1527,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/projects'
     | '/reset-password'
+    | '/robot-check'
     | '/sell'
     | '/templates'
     | '/terms'
@@ -1651,6 +1663,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ProjectsRoute: typeof ProjectsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  RobotCheckRoute: typeof RobotCheckRoute
   SellRoute: typeof SellRoute
   TemplatesRoute: typeof TemplatesRoute
   TermsRoute: typeof TermsRoute
@@ -1859,6 +1872,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/robot-check': {
+      id: '/robot-check'
+      path: '/robot-check'
+      fullPath: '/robot-check'
+      preLoaderRoute: typeof RobotCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sell': {
@@ -2755,6 +2775,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ProjectsRoute: ProjectsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  RobotCheckRoute: RobotCheckRoute,
   SellRoute: SellRoute,
   TemplatesRoute: TemplatesRoute,
   TermsRoute: TermsRoute,
