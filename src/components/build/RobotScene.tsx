@@ -1,7 +1,7 @@
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, RoundedBox } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
-import { CanvasTexture, Group, RepeatWrapping } from "three";
+import { CanvasTexture, Group, OrthographicCamera, RepeatWrapping } from "three";
 
 export type RobotPalette = { shell: string; joint: string; face: string; light: string; floor: string; line: string };
 
@@ -62,6 +62,13 @@ function Mechanism({ index, selected, moving, palette }: { index: number; select
 }
 
 function Workshop({ palette, selected, moving }: { palette: RobotPalette; selected: number; moving: boolean }) {
+  const { camera, size, invalidate } = useThree();
+  useEffect(() => {
+    if (camera instanceof OrthographicCamera) {
+      camera.zoom = Math.min(size.width / 10.5, size.height / 3.3);
+      camera.lookAt(0, 1.08, .3); camera.updateProjectionMatrix(); invalidate();
+    }
+  }, [camera, size.width, size.height, invalidate]);
   const texture = useMemo(() => {
     const canvas = document.createElement("canvas"); canvas.width = canvas.height = 128;
     const context = canvas.getContext("2d");
