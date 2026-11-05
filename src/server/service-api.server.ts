@@ -63,13 +63,9 @@ let cachedUserId: string | null = null;
 export async function serviceUserId(): Promise<string> {
   if (cachedUserId) return cachedUserId;
   const sb = await admin();
-  const { data: existing } = await sb
-    .from("profiles")
-    .select("id")
-    .eq("email" as never, SERVICE_ACCOUNT_EMAIL as never)
-    .maybeSingle();
-  if ((existing as { id?: string } | null)?.id) {
-    cachedUserId = (existing as { id: string }).id;
+  const configured = process.env.KIMBLE_SERVICE_USER_ID;
+  if (configured) {
+    cachedUserId = configured;
     return cachedUserId;
   }
   const created = await sb.auth.admin.createUser({
