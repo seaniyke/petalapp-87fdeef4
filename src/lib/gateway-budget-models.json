@@ -1,0 +1,53 @@
+[
+  {
+    "id": "google/gemini-3.1-flash-lite",
+    "name": "Gemini 3.1 Flash Lite",
+    "context": 1048576,
+    "vision": true,
+    "tools": true,
+    "inputUsdPerM": 1.0,
+    "outputUsdPerM": 6.0,
+    "features": [
+      "generate",
+      "discuss",
+      "triage",
+      "coach",
+      "memory",
+      "preflight",
+      "docs"
+    ]
+  },
+  {
+    "id": "google/gemini-3.8-flash",
+    "name": "Gemini 3.8 Flash",
+    "context": 1048576,
+    "vision": true,
+    "tools": true,
+    "inputUsdPerM": 3.0,
+    "outputUsdPerM": 15.0,
+    "features": [
+      "generate",
+      "discuss",
+      "design",
+      "triage",
+      "coach",
+      "memory",
+      "preflight",
+      "docs"
+    ]
+  },
+  {
+    "id": "openai/gpt-5.6-luna",
+    "name": "GPT-5.6 Luna",
+    "context": 272000,
+    "vision": true,
+    "tools": true,
+    "inputUsdPerM": 8.0,
+    "outputUsdPerM": 40.0,
+    "features": [
+      "generate",
+      "discuss",
+      "design"
+    ]
+  }
+]
