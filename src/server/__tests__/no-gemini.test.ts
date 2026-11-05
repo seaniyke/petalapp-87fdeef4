@@ -13,19 +13,18 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-describe("Gemini is never selected for text work", () => {
-  it("any Gemini request resolves to a DeepSeek model", () => {
-    for (const id of ["google/gemini-2.5-flash", "google/gemini-3-flash-preview", "google/gemini-2.5-pro"]) {
-      expect(coerceToConfiguredModel(id)).toMatch(/^deepseek\//);
-      expect(coerceToConfiguredModel(id, { utility: true })).toMatch(/^deepseek\//);
-      expect(coerceToConfiguredModel(id, { vision: true })).toMatch(/^deepseek\//);
+describe("only configured gateway models reach the wire", () => {
+  it("any legacy or unknown slug resolves to a configured model", () => {
+    for (const id of ["google/gemini-2.5-flash", "google/gemini-3-flash-preview", "google/gemini-2.5-pro", "deepseek/deepseek-v4-flash"]) {
+      expect(coerceToConfiguredModel(id)).toBe("google/gemini-3.8-flash");
+      expect(coerceToConfiguredModel(id, { utility: true })).toBe("google/gemini-3.1-flash-lite");
+      expect(coerceToConfiguredModel(id, { vision: true })).toBe("google/gemini-3.8-flash");
     }
   });
-  it("no server code hardcodes a Gemini text model", () => {
+  it("no server code hardcodes a retired model id", () => {
     const hits = walk("src/server")
       .concat(walk("src/routes/api"))
-      .filter((f) => !f.endsWith("image-generation.server.ts"))
-      .filter((f) => /["'`]google\/gemini-(?![0-9.]*-?flash-image)[0-9a-z.-]+["'`]/.test(readFileSync(f, "utf8")));
+      .filter((f) => /["'`](deepseek\/|google\/gemini-2\.|anthropic\/claude-(sonnet-4|haiku-4\.5)|openai\/gpt-5["'`])/.test(readFileSync(f, "utf8")));
     expect(hits).toEqual([]);
   });
 });

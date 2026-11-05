@@ -452,7 +452,7 @@ export const Route = createFileRoute("/api/triage")({
           body: {
             // Classification is a small, well-specified job — the lite model
             // is materially faster to first token and just as accurate here.
-            model: "deepseek/deepseek-v4-flash",
+            model: "google/gemini-3.1-flash-lite",
             messages: chatMessages,
             stream: true,
             tools: [TRIAGE_TOOL],

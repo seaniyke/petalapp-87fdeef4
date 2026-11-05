@@ -307,8 +307,8 @@ function isManagedScaffoldPath(path: string): boolean {
   );
 }
 
-const MODEL_FAST = "deepseek/deepseek-v4-flash";
-const MODEL_BEST = "deepseek/deepseek-v4-flash";
+const MODEL_FAST = "google/gemini-3.1-flash-lite";
+const MODEL_BEST = "google/gemini-3.8-flash";
 // Phase-aware reasoning candidates. Added to the smart-router pool so
 // the telemetry-driven picker (`pickBestModel`) can promote whichever
 // model is winning on success_rate / cost / latency for a given
@@ -322,7 +322,7 @@ const MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
  *  streamed tool calls. GPT-5 was returning HTTP 400 in production retry
  *  telemetry, which meant the retry never actually ran and `no_edit_emitted`
  *  leaked to users. */
-const MODEL_STRUCTURED_RETRY = "deepseek/deepseek-v4-flash";
+const MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
 
 /** One billable call's cost: provider-reported (ACTUAL) or token-estimated. */
 function turnCallCost(u: GatewayUsage): import("@/lib/build-pricing").CallCost {
@@ -331,7 +331,7 @@ function turnCallCost(u: GatewayUsage): import("@/lib/build-pricing").CallCost {
   return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
 }
 /** Vision-capable model used whenever the latest turn carries image attachments. */
-const MODEL_VISION = "deepseek/deepseek-v4-flash";
+const MODEL_VISION = "google/gemini-3.8-flash";
 
 /** Heuristic: when in "smart" mode, decide whether the turn deserves the Pro model. */
 function pickSmartModel(latestPrompt: string, fileCount: number): string {

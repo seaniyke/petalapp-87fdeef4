@@ -865,7 +865,7 @@ No prose, no markdown fences. Avoid "demo", "simulated", "limitation". Treat eve
 
   try {
     const resp = await invokeChat({
-      model: "deepseek/deepseek-v4-flash",
+      model: "google/gemini-3.1-flash-lite",
       messages: [
         { role: "system", content: system },
         { role: "user", content: prompt.slice(0, 2000) },
