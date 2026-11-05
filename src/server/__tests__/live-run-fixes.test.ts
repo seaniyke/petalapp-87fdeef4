@@ -108,7 +108,7 @@ describe("configured is not available", () => {
       markUpstreamFailed("OpenInference");
       markUpstreamFailed("DeepInfra");
       expect(failedUpstreamsForTurn()).toEqual(
-        expect.arrayContaining(["Azure", "OpenInference", "DeepInfra"]),
+        expect.arrayContaining(["azure", "openinference", "deepinfra"]),
       );
       expect(resolveProviderRouting({ codeWriting: true, avoid: failedUpstreamsForTurn() })).toBeUndefined();
     });
