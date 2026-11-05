@@ -292,71 +292,25 @@ async function resolveModelOverride(
 }
 
 /**
- * Lovable-AI model slugs sometimes don't exist verbatim on OpenRouter. This
- * map covers our defaults; anything not listed forwards as-is (OpenRouter
- * accepts most `provider/model` slugs unchanged).
- */
-const OPENROUTER_MODEL_MAP: Record<string, string> = {
-  // OpenAI — `openai/gpt-5` is NOT a live slug on our gateway. Telemetry:
-  // 107 calls, 107 errors (100%), ~358ms each. Every one of those was silently
-  // absorbed by the fallback chain, so it never surfaced as an incident while
-  // still costing a wasted round-trip on every heavy generate. The whole
-  // heavy-tier family now routes to a model with proven production numbers
-  // (claude-sonnet-4.5: 501 calls, 1 error).
-  "openai/gpt-5": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5-mini": "openai/gpt-5-mini",
-  "openai/gpt-5-nano": "openai/gpt-5-nano",
-  "openai/gpt-5.2": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5.4": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5.4-mini": "openai/gpt-5-mini",
-  "openai/gpt-5.4-nano": "openai/gpt-5-nano",
-  "openai/gpt-5.4-pro": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5.5": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5.5-pro": "anthropic/claude-sonnet-4.5",
-  // Anthropic — only reachable via OpenRouter today. Used by curated-briefs
-  // and (soon) the smart-router as candidates for implement/debug phases.
-  "anthropic/claude-sonnet-4.5": "anthropic/claude-sonnet-4.5",
-  "anthropic/claude-haiku-4.5": "anthropic/claude-haiku-4.5",
-  "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
-};
-
-/**
- * Model ids that are known-dead on the gateway. Anything landing here is a
- * configuration mistake (usually an admin override or a stale constant), not a
- * transient outage — the fallback chain hides it, so we log loudly instead of
- * letting it rot for another 169 wasted calls.
- */
-const DEAD_MODEL_IDS = new Set(["openai/gpt-5"]);
-
-export function isDeadModelId(model: string | null | undefined): boolean {
-  return !!model && DEAD_MODEL_IDS.has(model);
-}
-
-/**
- * Every model id we consider "known" — the remap table's keys and targets.
- * `model-health.server.ts` also treats the budget catalog as known. An id
- * outside both sets is a typo or a stale admin override and gets flagged.
+ * Every model id we consider "known" — Kimble's configured gateway models
+ * plus the other current catalog ids an admin override might legitimately
+ * name. `model-health.server.ts` also treats the budget catalog as known.
+ * An id outside both sets is a typo or a stale admin override and gets flagged.
  */
 export const KNOWN_MODEL_IDS: ReadonlySet<string> = new Set<string>([
-  ...Object.keys(OPENROUTER_MODEL_MAP),
-  ...Object.values(OPENROUTER_MODEL_MAP),
-  "google/gemini-2.5-flash-image",
-  // Active utility model (DEFAULT_UTILITY_MODEL); was missing, so every
-  // health pass flagged a working model as a typo.
-  "deepseek/deepseek-v4-flash-0731",
+  "google/gemini-3.8-flash",
+  "google/gemini-4-argon",
+  "google/gemini-3.1-flash-lite",
+  "google/gemini-3.1-flash-lite-image",
+  "openai/gpt-5.6-sol",
+  "openai/gpt-5.6-luna",
+  "openai/gpt-6-astra",
+  "openai/gpt-image-2.5-sunburst",
+  "openai/gpt-transcribe",
+  "anthropic/claude-sonnet-5",
+  "anthropic/claude-haiku-4-5",
+  "anthropic/claude-opus-5-5",
 ]);
-
-
-function remapModelForOpenRouter(model: string | undefined): string | undefined {
-  if (!model) return model;
-  const mapped = OPENROUTER_MODEL_MAP[model] ?? model;
-  if (DEAD_MODEL_IDS.has(mapped)) {
-    console.error(
-      `[ai-provider] configured model "${model}" resolves to dead slug "${mapped}" — this call will fail and fall back. Fix the model configuration.`,
-    );
-  }
-  return mapped;
-}
 
 
 // ---------------- Telemetry ----------------
