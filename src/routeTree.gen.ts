@@ -11,23 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as BuilderRouteImport } from './routes/builder'
-import { Route as ChangelogRouteImport } from './routes/changelog'
-import { Route as CoffeeRouteImport } from './routes/coffee'
-import { Route as DocsRouteImport } from './routes/docs'
-import { Route as GalleryRouteImport } from './routes/gallery'
-import { Route as InvestRouteImport } from './routes/invest'
-import { Route as PacksRouteImport } from './routes/packs'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as ProjectsRouteImport } from './routes/projects'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as SellRouteImport } from './routes/sell'
-import { Route as TemplatesRouteImport } from './routes/templates'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as ThemesRouteImport } from './routes/themes'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
-import { Route as WaitlistRouteImport } from './routes/waitlist'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAiProvidersRouteImport } from './routes/admin.ai-providers'
 import { Route as AdminAiSpendRouteImport } from './routes/admin.ai-spend'
@@ -40,17 +24,13 @@ import { Route as AdminEconomicsRouteImport } from './routes/admin.economics'
 import { Route as AdminFailuresRouteImport } from './routes/admin.failures'
 import { Route as AdminFeaturesRouteImport } from './routes/admin.features'
 import { Route as AdminLedgersRouteImport } from './routes/admin.ledgers'
-import { Route as AdminMarketplaceRouteImport } from './routes/admin.marketplace'
-import { Route as AdminMobileSigningRouteImport } from './routes/admin.mobile-signing'
 import { Route as AdminPicturesRouteImport } from './routes/admin.pictures'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminQaRouteImport } from './routes/admin.qa'
 import { Route as AdminTestLabRouteImport } from './routes/admin.test-lab'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminWaitlistRouteImport } from './routes/admin.waitlist'
 import { Route as ApiBackendRouteImport } from './routes/api/backend'
-import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as ApiConnectorsRouteImport } from './routes/api/connectors'
 import { Route as ApiCreditPausesRouteImport } from './routes/api/credit-pauses'
 import { Route as ApiDiscussRouteImport } from './routes/api/discuss'
@@ -58,25 +38,13 @@ import { Route as ApiDomainsRouteImport } from './routes/api/domains'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiGenerateImageRouteImport } from './routes/api/generate-image'
 import { Route as ApiIntegrationsRouteImport } from './routes/api/integrations'
-import { Route as ApiLabsRouteImport } from './routes/api/labs'
 import { Route as ApiPublishRouteImport } from './routes/api/publish'
 import { Route as ApiSiteInfoRouteImport } from './routes/api/site-info'
 import { Route as ApiSubdomainRouteImport } from './routes/api/subdomain'
 import { Route as ApiTranscribeRouteImport } from './routes/api/transcribe'
 import { Route as ApiTriageRouteImport } from './routes/api/triage'
 import { Route as ApiVisitorsRouteImport } from './routes/api/visitors'
-import { Route as BillingIndexRouteImport } from './routes/billing.index'
-import { Route as BillingReturnRouteImport } from './routes/billing.return'
-import { Route as CoffeeThanksRouteImport } from './routes/coffee.thanks'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as FeaturesSlugRouteImport } from './routes/features.$slug'
-import { Route as MarketplaceIndexRouteImport } from './routes/marketplace.index'
-import { Route as MarketplaceSlugRouteImport } from './routes/marketplace.$slug'
-import { Route as PSlugRouteImport } from './routes/p.$slug'
-import { Route as PacksSlugRouteImport } from './routes/packs.$slug'
-import { Route as RCodeRouteImport } from './routes/r.$code'
-import { Route as ShareTokenRouteImport } from './routes/share.$token'
-import { Route as WhySlugRouteImport } from './routes/why.$slug'
 import { Route as ApiAdminAiProvidersRouteImport } from './routes/api/admin/ai-providers'
 import { Route as ApiAdminCreditsRouteImport } from './routes/api/admin/credits'
 import { Route as ApiAdminDigestsRouteImport } from './routes/api/admin/digests'
@@ -92,12 +60,9 @@ import { Route as ApiDomainsDnsCheckRouteImport } from './routes/api/domains/dns
 import { Route as ApiInternalHealthRouteImport } from './routes/api/internal/health'
 import { Route as ApiPreviewProjectIdRouteImport } from './routes/api/preview.$projectId'
 import { Route as ApiPublicHostLookupRouteImport } from './routes/api/public/host-lookup'
-import { Route as ApiPublicInvestRouteImport } from './routes/api/public/invest'
-import { Route as ApiPublicMarketplaceFeatureRouteImport } from './routes/api/public/marketplace-feature'
 import { Route as ApiPublicTrackRouteImport } from './routes/api/public/track'
 import { Route as ApiPublicTrackFailureRouteImport } from './routes/api/public/track-failure'
 import { Route as ApiPublicTrackRuntimeErrorRouteImport } from './routes/api/public/track-runtime-error'
-import { Route as ApiPublicWaitlistRouteImport } from './routes/api/public/waitlist'
 import { Route as ApiRegistrarPollRouteImport } from './routes/api/registrar/poll'
 import { Route as ApiRegistrarPurchaseRouteImport } from './routes/api/registrar/purchase'
 import { Route as ApiRegistrarPurchaseCreditsRouteImport } from './routes/api/registrar/purchase-credits'
@@ -110,9 +75,6 @@ import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/b
 import { Route as ApiPublicAgentOpsRouteImport } from './routes/api/public/agent/ops'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 import { Route as ApiPublicBuildsHeartbeatRouteImport } from './routes/api/public/builds/heartbeat'
-import { Route as ApiPublicCoffeeCryptoRouteImport } from './routes/api/public/coffee/crypto'
-import { Route as ApiPublicCoffeeInitializeRouteImport } from './routes/api/public/coffee/initialize'
-import { Route as ApiPublicCoffeeVerifyRouteImport } from './routes/api/public/coffee/verify'
 import { Route as ApiPublicConnectorsCallbackRouteImport } from './routes/api/public/connectors/callback'
 import { Route as ApiPublicCronBackendAutoscaleRouteImport } from './routes/api/public/cron/backend-autoscale'
 import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
@@ -158,89 +120,9 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BuilderRoute = BuilderRouteImport.update({
-  id: '/builder',
-  path: '/builder',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChangelogRoute = ChangelogRouteImport.update({
-  id: '/changelog',
-  path: '/changelog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CoffeeRoute = CoffeeRouteImport.update({
-  id: '/coffee',
-  path: '/coffee',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocsRoute = DocsRouteImport.update({
-  id: '/docs',
-  path: '/docs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GalleryRoute = GalleryRouteImport.update({
-  id: '/gallery',
-  path: '/gallery',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InvestRoute = InvestRouteImport.update({
-  id: '/invest',
-  path: '/invest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PacksRoute = PacksRouteImport.update({
-  id: '/packs',
-  path: '/packs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectsRoute = ProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SellRoute = SellRouteImport.update({
-  id: '/sell',
-  path: '/sell',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TemplatesRoute = TemplatesRouteImport.update({
-  id: '/templates',
-  path: '/templates',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ThemesRoute = ThemesRouteImport.update({
-  id: '/themes',
-  path: '/themes',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const WaitlistRoute = WaitlistRouteImport.update({
-  id: '/waitlist',
-  path: '/waitlist',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -303,16 +185,6 @@ const AdminLedgersRoute = AdminLedgersRouteImport.update({
   path: '/admin/ledgers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminMarketplaceRoute = AdminMarketplaceRouteImport.update({
-  id: '/admin/marketplace',
-  path: '/admin/marketplace',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminMobileSigningRoute = AdminMobileSigningRouteImport.update({
-  id: '/admin/mobile-signing',
-  path: '/admin/mobile-signing',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminPicturesRoute = AdminPicturesRouteImport.update({
   id: '/admin/pictures',
   path: '/admin/pictures',
@@ -343,19 +215,9 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminWaitlistRoute = AdminWaitlistRouteImport.update({
-  id: '/admin/waitlist',
-  path: '/admin/waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiBackendRoute = ApiBackendRouteImport.update({
   id: '/api/backend',
   path: '/api/backend',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiCoachRoute = ApiCoachRouteImport.update({
-  id: '/api/coach',
-  path: '/api/coach',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiConnectorsRoute = ApiConnectorsRouteImport.update({
@@ -393,11 +255,6 @@ const ApiIntegrationsRoute = ApiIntegrationsRouteImport.update({
   path: '/api/integrations',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiLabsRoute = ApiLabsRouteImport.update({
-  id: '/api/labs',
-  path: '/api/labs',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublishRoute = ApiPublishRouteImport.update({
   id: '/api/publish',
   path: '/api/publish',
@@ -428,64 +285,9 @@ const ApiVisitorsRoute = ApiVisitorsRouteImport.update({
   path: '/api/visitors',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BillingIndexRoute = BillingIndexRouteImport.update({
-  id: '/billing/',
-  path: '/billing/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BillingReturnRoute = BillingReturnRouteImport.update({
-  id: '/billing/return',
-  path: '/billing/return',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CoffeeThanksRoute = CoffeeThanksRouteImport.update({
-  id: '/thanks',
-  path: '/thanks',
-  getParentRoute: () => CoffeeRoute,
-} as any)
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FeaturesSlugRoute = FeaturesSlugRouteImport.update({
-  id: '/features/$slug',
-  path: '/features/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarketplaceIndexRoute = MarketplaceIndexRouteImport.update({
-  id: '/marketplace/',
-  path: '/marketplace/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarketplaceSlugRoute = MarketplaceSlugRouteImport.update({
-  id: '/marketplace/$slug',
-  path: '/marketplace/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PSlugRoute = PSlugRouteImport.update({
-  id: '/p/$slug',
-  path: '/p/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PacksSlugRoute = PacksSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => PacksRoute,
-} as any)
-const RCodeRoute = RCodeRouteImport.update({
-  id: '/r/$code',
-  path: '/r/$code',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ShareTokenRoute = ShareTokenRouteImport.update({
-  id: '/share/$token',
-  path: '/share/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const WhySlugRoute = WhySlugRouteImport.update({
-  id: '/why/$slug',
-  path: '/why/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminAiProvidersRoute = ApiAdminAiProvidersRouteImport.update({
@@ -563,17 +365,6 @@ const ApiPublicHostLookupRoute = ApiPublicHostLookupRouteImport.update({
   path: '/api/public/host-lookup',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicInvestRoute = ApiPublicInvestRouteImport.update({
-  id: '/api/public/invest',
-  path: '/api/public/invest',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicMarketplaceFeatureRoute =
-  ApiPublicMarketplaceFeatureRouteImport.update({
-    id: '/api/public/marketplace-feature',
-    path: '/api/public/marketplace-feature',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicTrackRoute = ApiPublicTrackRouteImport.update({
   id: '/api/public/track',
   path: '/api/public/track',
@@ -590,11 +381,6 @@ const ApiPublicTrackRuntimeErrorRoute =
     path: '/api/public/track-runtime-error',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicWaitlistRoute = ApiPublicWaitlistRouteImport.update({
-  id: '/api/public/waitlist',
-  path: '/api/public/waitlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiRegistrarPollRoute = ApiRegistrarPollRouteImport.update({
   id: '/api/registrar/poll',
   path: '/api/registrar/poll',
@@ -660,22 +446,6 @@ const ApiPublicBuildsHeartbeatRoute =
     path: '/api/public/builds/heartbeat',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicCoffeeCryptoRoute = ApiPublicCoffeeCryptoRouteImport.update({
-  id: '/api/public/coffee/crypto',
-  path: '/api/public/coffee/crypto',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicCoffeeInitializeRoute =
-  ApiPublicCoffeeInitializeRouteImport.update({
-    id: '/api/public/coffee/initialize',
-    path: '/api/public/coffee/initialize',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicCoffeeVerifyRoute = ApiPublicCoffeeVerifyRouteImport.update({
-  id: '/api/public/coffee/verify',
-  path: '/api/public/coffee/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicConnectorsCallbackRoute =
   ApiPublicConnectorsCallbackRouteImport.update({
     id: '/api/public/connectors/callback',
@@ -870,23 +640,7 @@ const ApiPublicV1TurnsIdCancelRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/builder': typeof BuilderRoute
-  '/changelog': typeof ChangelogRoute
-  '/coffee': typeof CoffeeRouteWithChildren
-  '/docs': typeof DocsRoute
-  '/gallery': typeof GalleryRoute
-  '/invest': typeof InvestRoute
-  '/packs': typeof PacksRouteWithChildren
-  '/privacy': typeof PrivacyRoute
-  '/profile': typeof ProfileRoute
-  '/projects': typeof ProjectsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/sell': typeof SellRoute
-  '/templates': typeof TemplatesRoute
-  '/terms': typeof TermsRoute
-  '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/benchmark': typeof AdminBenchmarkRoute
@@ -898,17 +652,13 @@ export interface FileRoutesByFullPath {
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
-  '/admin/marketplace': typeof AdminMarketplaceRoute
-  '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pictures': typeof AdminPicturesRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/test-lab': typeof AdminTestLabRoute
   '/admin/users': typeof AdminUsersRoute
-  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
-  '/api/coach': typeof ApiCoachRoute
   '/api/connectors': typeof ApiConnectorsRoute
   '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -916,26 +666,14 @@ export interface FileRoutesByFullPath {
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/integrations': typeof ApiIntegrationsRoute
-  '/api/labs': typeof ApiLabsRoute
   '/api/publish': typeof ApiPublishRoute
   '/api/site-info': typeof ApiSiteInfoRoute
   '/api/subdomain': typeof ApiSubdomainRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
-  '/billing/return': typeof BillingReturnRoute
-  '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
-  '/features/$slug': typeof FeaturesSlugRoute
-  '/marketplace/$slug': typeof MarketplaceSlugRoute
-  '/p/$slug': typeof PSlugRoute
-  '/packs/$slug': typeof PacksSlugRoute
-  '/r/$code': typeof RCodeRoute
-  '/share/$token': typeof ShareTokenRoute
-  '/why/$slug': typeof WhySlugRoute
   '/admin/': typeof AdminIndexRoute
-  '/billing/': typeof BillingIndexRoute
-  '/marketplace/': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -951,12 +689,9 @@ export interface FileRoutesByFullPath {
   '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
-  '/api/public/invest': typeof ApiPublicInvestRoute
-  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
-  '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/purchase-credits': typeof ApiRegistrarPurchaseCreditsRoute
@@ -969,9 +704,6 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
-  '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
-  '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
-  '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
@@ -1010,23 +742,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/builder': typeof BuilderRoute
-  '/changelog': typeof ChangelogRoute
-  '/coffee': typeof CoffeeRouteWithChildren
-  '/docs': typeof DocsRoute
-  '/gallery': typeof GalleryRoute
-  '/invest': typeof InvestRoute
-  '/packs': typeof PacksRouteWithChildren
-  '/privacy': typeof PrivacyRoute
-  '/profile': typeof ProfileRoute
-  '/projects': typeof ProjectsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/sell': typeof SellRoute
-  '/templates': typeof TemplatesRoute
-  '/terms': typeof TermsRoute
-  '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/benchmark': typeof AdminBenchmarkRoute
@@ -1038,17 +754,13 @@ export interface FileRoutesByTo {
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
-  '/admin/marketplace': typeof AdminMarketplaceRoute
-  '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pictures': typeof AdminPicturesRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/test-lab': typeof AdminTestLabRoute
   '/admin/users': typeof AdminUsersRoute
-  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
-  '/api/coach': typeof ApiCoachRoute
   '/api/connectors': typeof ApiConnectorsRoute
   '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -1056,26 +768,14 @@ export interface FileRoutesByTo {
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/integrations': typeof ApiIntegrationsRoute
-  '/api/labs': typeof ApiLabsRoute
   '/api/publish': typeof ApiPublishRoute
   '/api/site-info': typeof ApiSiteInfoRoute
   '/api/subdomain': typeof ApiSubdomainRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
-  '/billing/return': typeof BillingReturnRoute
-  '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
-  '/features/$slug': typeof FeaturesSlugRoute
-  '/marketplace/$slug': typeof MarketplaceSlugRoute
-  '/p/$slug': typeof PSlugRoute
-  '/packs/$slug': typeof PacksSlugRoute
-  '/r/$code': typeof RCodeRoute
-  '/share/$token': typeof ShareTokenRoute
-  '/why/$slug': typeof WhySlugRoute
   '/admin': typeof AdminIndexRoute
-  '/billing': typeof BillingIndexRoute
-  '/marketplace': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -1091,12 +791,9 @@ export interface FileRoutesByTo {
   '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
-  '/api/public/invest': typeof ApiPublicInvestRoute
-  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
-  '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/purchase-credits': typeof ApiRegistrarPurchaseCreditsRoute
@@ -1109,9 +806,6 @@ export interface FileRoutesByTo {
   '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
-  '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
-  '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
-  '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
@@ -1151,23 +845,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/builder': typeof BuilderRoute
-  '/changelog': typeof ChangelogRoute
-  '/coffee': typeof CoffeeRouteWithChildren
-  '/docs': typeof DocsRoute
-  '/gallery': typeof GalleryRoute
-  '/invest': typeof InvestRoute
-  '/packs': typeof PacksRouteWithChildren
-  '/privacy': typeof PrivacyRoute
-  '/profile': typeof ProfileRoute
-  '/projects': typeof ProjectsRoute
-  '/reset-password': typeof ResetPasswordRoute
-  '/sell': typeof SellRoute
-  '/templates': typeof TemplatesRoute
-  '/terms': typeof TermsRoute
-  '/themes': typeof ThemesRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/waitlist': typeof WaitlistRoute
   '/admin/ai-providers': typeof AdminAiProvidersRoute
   '/admin/ai-spend': typeof AdminAiSpendRoute
   '/admin/benchmark': typeof AdminBenchmarkRoute
@@ -1179,17 +857,13 @@ export interface FileRoutesById {
   '/admin/failures': typeof AdminFailuresRoute
   '/admin/features': typeof AdminFeaturesRoute
   '/admin/ledgers': typeof AdminLedgersRoute
-  '/admin/marketplace': typeof AdminMarketplaceRoute
-  '/admin/mobile-signing': typeof AdminMobileSigningRoute
   '/admin/pictures': typeof AdminPicturesRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/qa': typeof AdminQaRoute
   '/admin/test-lab': typeof AdminTestLabRoute
   '/admin/users': typeof AdminUsersRoute
-  '/admin/waitlist': typeof AdminWaitlistRoute
   '/api/backend': typeof ApiBackendRoute
-  '/api/coach': typeof ApiCoachRoute
   '/api/connectors': typeof ApiConnectorsRoute
   '/api/credit-pauses': typeof ApiCreditPausesRoute
   '/api/discuss': typeof ApiDiscussRoute
@@ -1197,26 +871,14 @@ export interface FileRoutesById {
   '/api/generate': typeof ApiGenerateRoute
   '/api/generate-image': typeof ApiGenerateImageRoute
   '/api/integrations': typeof ApiIntegrationsRoute
-  '/api/labs': typeof ApiLabsRoute
   '/api/publish': typeof ApiPublishRoute
   '/api/site-info': typeof ApiSiteInfoRoute
   '/api/subdomain': typeof ApiSubdomainRoute
   '/api/transcribe': typeof ApiTranscribeRoute
   '/api/triage': typeof ApiTriageRoute
   '/api/visitors': typeof ApiVisitorsRoute
-  '/billing/return': typeof BillingReturnRoute
-  '/coffee/thanks': typeof CoffeeThanksRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
-  '/features/$slug': typeof FeaturesSlugRoute
-  '/marketplace/$slug': typeof MarketplaceSlugRoute
-  '/p/$slug': typeof PSlugRoute
-  '/packs/$slug': typeof PacksSlugRoute
-  '/r/$code': typeof RCodeRoute
-  '/share/$token': typeof ShareTokenRoute
-  '/why/$slug': typeof WhySlugRoute
   '/admin/': typeof AdminIndexRoute
-  '/billing/': typeof BillingIndexRoute
-  '/marketplace/': typeof MarketplaceIndexRoute
   '/api/admin/ai-providers': typeof ApiAdminAiProvidersRoute
   '/api/admin/credits': typeof ApiAdminCreditsRoute
   '/api/admin/digests': typeof ApiAdminDigestsRoute
@@ -1232,12 +894,9 @@ export interface FileRoutesById {
   '/api/internal/health': typeof ApiInternalHealthRoute
   '/api/preview/$projectId': typeof ApiPreviewProjectIdRoute
   '/api/public/host-lookup': typeof ApiPublicHostLookupRoute
-  '/api/public/invest': typeof ApiPublicInvestRoute
-  '/api/public/marketplace-feature': typeof ApiPublicMarketplaceFeatureRoute
   '/api/public/track': typeof ApiPublicTrackRoute
   '/api/public/track-failure': typeof ApiPublicTrackFailureRoute
   '/api/public/track-runtime-error': typeof ApiPublicTrackRuntimeErrorRoute
-  '/api/public/waitlist': typeof ApiPublicWaitlistRoute
   '/api/registrar/poll': typeof ApiRegistrarPollRoute
   '/api/registrar/purchase': typeof ApiRegistrarPurchaseRoute
   '/api/registrar/purchase-credits': typeof ApiRegistrarPurchaseCreditsRoute
@@ -1250,9 +909,6 @@ export interface FileRoutesById {
   '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
-  '/api/public/coffee/crypto': typeof ApiPublicCoffeeCryptoRoute
-  '/api/public/coffee/initialize': typeof ApiPublicCoffeeInitializeRoute
-  '/api/public/coffee/verify': typeof ApiPublicCoffeeVerifyRoute
   '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
@@ -1293,23 +949,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/builder'
-    | '/changelog'
-    | '/coffee'
-    | '/docs'
-    | '/gallery'
-    | '/invest'
-    | '/packs'
-    | '/privacy'
-    | '/profile'
-    | '/projects'
-    | '/reset-password'
-    | '/sell'
-    | '/templates'
-    | '/terms'
-    | '/themes'
     | '/unsubscribe'
-    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/benchmark'
@@ -1321,17 +961,13 @@ export interface FileRouteTypes {
     | '/admin/failures'
     | '/admin/features'
     | '/admin/ledgers'
-    | '/admin/marketplace'
-    | '/admin/mobile-signing'
     | '/admin/pictures'
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/test-lab'
     | '/admin/users'
-    | '/admin/waitlist'
     | '/api/backend'
-    | '/api/coach'
     | '/api/connectors'
     | '/api/credit-pauses'
     | '/api/discuss'
@@ -1339,26 +975,14 @@ export interface FileRouteTypes {
     | '/api/generate'
     | '/api/generate-image'
     | '/api/integrations'
-    | '/api/labs'
     | '/api/publish'
     | '/api/site-info'
     | '/api/subdomain'
     | '/api/transcribe'
     | '/api/triage'
     | '/api/visitors'
-    | '/billing/return'
-    | '/coffee/thanks'
     | '/email/unsubscribe'
-    | '/features/$slug'
-    | '/marketplace/$slug'
-    | '/p/$slug'
-    | '/packs/$slug'
-    | '/r/$code'
-    | '/share/$token'
-    | '/why/$slug'
     | '/admin/'
-    | '/billing/'
-    | '/marketplace/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1374,12 +998,9 @@ export interface FileRouteTypes {
     | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
-    | '/api/public/invest'
-    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
-    | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/purchase-credits'
@@ -1392,9 +1013,6 @@ export interface FileRouteTypes {
     | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
-    | '/api/public/coffee/crypto'
-    | '/api/public/coffee/initialize'
-    | '/api/public/coffee/verify'
     | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
@@ -1433,23 +1051,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/builder'
-    | '/changelog'
-    | '/coffee'
-    | '/docs'
-    | '/gallery'
-    | '/invest'
-    | '/packs'
-    | '/privacy'
-    | '/profile'
-    | '/projects'
-    | '/reset-password'
-    | '/sell'
-    | '/templates'
-    | '/terms'
-    | '/themes'
     | '/unsubscribe'
-    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/benchmark'
@@ -1461,17 +1063,13 @@ export interface FileRouteTypes {
     | '/admin/failures'
     | '/admin/features'
     | '/admin/ledgers'
-    | '/admin/marketplace'
-    | '/admin/mobile-signing'
     | '/admin/pictures'
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/test-lab'
     | '/admin/users'
-    | '/admin/waitlist'
     | '/api/backend'
-    | '/api/coach'
     | '/api/connectors'
     | '/api/credit-pauses'
     | '/api/discuss'
@@ -1479,26 +1077,14 @@ export interface FileRouteTypes {
     | '/api/generate'
     | '/api/generate-image'
     | '/api/integrations'
-    | '/api/labs'
     | '/api/publish'
     | '/api/site-info'
     | '/api/subdomain'
     | '/api/transcribe'
     | '/api/triage'
     | '/api/visitors'
-    | '/billing/return'
-    | '/coffee/thanks'
     | '/email/unsubscribe'
-    | '/features/$slug'
-    | '/marketplace/$slug'
-    | '/p/$slug'
-    | '/packs/$slug'
-    | '/r/$code'
-    | '/share/$token'
-    | '/why/$slug'
     | '/admin'
-    | '/billing'
-    | '/marketplace'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1514,12 +1100,9 @@ export interface FileRouteTypes {
     | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
-    | '/api/public/invest'
-    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
-    | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/purchase-credits'
@@ -1532,9 +1115,6 @@ export interface FileRouteTypes {
     | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
-    | '/api/public/coffee/crypto'
-    | '/api/public/coffee/initialize'
-    | '/api/public/coffee/verify'
     | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
@@ -1573,23 +1153,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
-    | '/builder'
-    | '/changelog'
-    | '/coffee'
-    | '/docs'
-    | '/gallery'
-    | '/invest'
-    | '/packs'
-    | '/privacy'
-    | '/profile'
-    | '/projects'
-    | '/reset-password'
-    | '/sell'
-    | '/templates'
-    | '/terms'
-    | '/themes'
     | '/unsubscribe'
-    | '/waitlist'
     | '/admin/ai-providers'
     | '/admin/ai-spend'
     | '/admin/benchmark'
@@ -1601,17 +1165,13 @@ export interface FileRouteTypes {
     | '/admin/failures'
     | '/admin/features'
     | '/admin/ledgers'
-    | '/admin/marketplace'
-    | '/admin/mobile-signing'
     | '/admin/pictures'
     | '/admin/pipeline'
     | '/admin/projects'
     | '/admin/qa'
     | '/admin/test-lab'
     | '/admin/users'
-    | '/admin/waitlist'
     | '/api/backend'
-    | '/api/coach'
     | '/api/connectors'
     | '/api/credit-pauses'
     | '/api/discuss'
@@ -1619,26 +1179,14 @@ export interface FileRouteTypes {
     | '/api/generate'
     | '/api/generate-image'
     | '/api/integrations'
-    | '/api/labs'
     | '/api/publish'
     | '/api/site-info'
     | '/api/subdomain'
     | '/api/transcribe'
     | '/api/triage'
     | '/api/visitors'
-    | '/billing/return'
-    | '/coffee/thanks'
     | '/email/unsubscribe'
-    | '/features/$slug'
-    | '/marketplace/$slug'
-    | '/p/$slug'
-    | '/packs/$slug'
-    | '/r/$code'
-    | '/share/$token'
-    | '/why/$slug'
     | '/admin/'
-    | '/billing/'
-    | '/marketplace/'
     | '/api/admin/ai-providers'
     | '/api/admin/credits'
     | '/api/admin/digests'
@@ -1654,12 +1202,9 @@ export interface FileRouteTypes {
     | '/api/internal/health'
     | '/api/preview/$projectId'
     | '/api/public/host-lookup'
-    | '/api/public/invest'
-    | '/api/public/marketplace-feature'
     | '/api/public/track'
     | '/api/public/track-failure'
     | '/api/public/track-runtime-error'
-    | '/api/public/waitlist'
     | '/api/registrar/poll'
     | '/api/registrar/purchase'
     | '/api/registrar/purchase-credits'
@@ -1672,9 +1217,6 @@ export interface FileRouteTypes {
     | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
-    | '/api/public/coffee/crypto'
-    | '/api/public/coffee/initialize'
-    | '/api/public/coffee/verify'
     | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
@@ -1714,23 +1256,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
-  BuilderRoute: typeof BuilderRoute
-  ChangelogRoute: typeof ChangelogRoute
-  CoffeeRoute: typeof CoffeeRouteWithChildren
-  DocsRoute: typeof DocsRoute
-  GalleryRoute: typeof GalleryRoute
-  InvestRoute: typeof InvestRoute
-  PacksRoute: typeof PacksRouteWithChildren
-  PrivacyRoute: typeof PrivacyRoute
-  ProfileRoute: typeof ProfileRoute
-  ProjectsRoute: typeof ProjectsRoute
-  ResetPasswordRoute: typeof ResetPasswordRoute
-  SellRoute: typeof SellRoute
-  TemplatesRoute: typeof TemplatesRoute
-  TermsRoute: typeof TermsRoute
-  ThemesRoute: typeof ThemesRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
-  WaitlistRoute: typeof WaitlistRoute
   AdminAiProvidersRoute: typeof AdminAiProvidersRoute
   AdminAiSpendRoute: typeof AdminAiSpendRoute
   AdminBenchmarkRoute: typeof AdminBenchmarkRoute
@@ -1742,17 +1268,13 @@ export interface RootRouteChildren {
   AdminFailuresRoute: typeof AdminFailuresRoute
   AdminFeaturesRoute: typeof AdminFeaturesRoute
   AdminLedgersRoute: typeof AdminLedgersRoute
-  AdminMarketplaceRoute: typeof AdminMarketplaceRoute
-  AdminMobileSigningRoute: typeof AdminMobileSigningRoute
   AdminPicturesRoute: typeof AdminPicturesRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminQaRoute: typeof AdminQaRoute
   AdminTestLabRoute: typeof AdminTestLabRoute
   AdminUsersRoute: typeof AdminUsersRoute
-  AdminWaitlistRoute: typeof AdminWaitlistRoute
   ApiBackendRoute: typeof ApiBackendRoute
-  ApiCoachRoute: typeof ApiCoachRoute
   ApiConnectorsRoute: typeof ApiConnectorsRoute
   ApiCreditPausesRoute: typeof ApiCreditPausesRoute
   ApiDiscussRoute: typeof ApiDiscussRoute
@@ -1760,24 +1282,14 @@ export interface RootRouteChildren {
   ApiGenerateRoute: typeof ApiGenerateRoute
   ApiGenerateImageRoute: typeof ApiGenerateImageRoute
   ApiIntegrationsRoute: typeof ApiIntegrationsRoute
-  ApiLabsRoute: typeof ApiLabsRoute
   ApiPublishRoute: typeof ApiPublishRoute
   ApiSiteInfoRoute: typeof ApiSiteInfoRoute
   ApiSubdomainRoute: typeof ApiSubdomainRoute
   ApiTranscribeRoute: typeof ApiTranscribeRoute
   ApiTriageRoute: typeof ApiTriageRoute
   ApiVisitorsRoute: typeof ApiVisitorsRoute
-  BillingReturnRoute: typeof BillingReturnRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
-  FeaturesSlugRoute: typeof FeaturesSlugRoute
-  MarketplaceSlugRoute: typeof MarketplaceSlugRoute
-  PSlugRoute: typeof PSlugRoute
-  RCodeRoute: typeof RCodeRoute
-  ShareTokenRoute: typeof ShareTokenRoute
-  WhySlugRoute: typeof WhySlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
-  BillingIndexRoute: typeof BillingIndexRoute
-  MarketplaceIndexRoute: typeof MarketplaceIndexRoute
   ApiAdminAiProvidersRoute: typeof ApiAdminAiProvidersRoute
   ApiAdminCreditsRoute: typeof ApiAdminCreditsRoute
   ApiAdminDigestsRoute: typeof ApiAdminDigestsRoute
@@ -1792,12 +1304,9 @@ export interface RootRouteChildren {
   ApiInternalHealthRoute: typeof ApiInternalHealthRoute
   ApiPreviewProjectIdRoute: typeof ApiPreviewProjectIdRoute
   ApiPublicHostLookupRoute: typeof ApiPublicHostLookupRoute
-  ApiPublicInvestRoute: typeof ApiPublicInvestRoute
-  ApiPublicMarketplaceFeatureRoute: typeof ApiPublicMarketplaceFeatureRoute
   ApiPublicTrackRoute: typeof ApiPublicTrackRoute
   ApiPublicTrackFailureRoute: typeof ApiPublicTrackFailureRoute
   ApiPublicTrackRuntimeErrorRoute: typeof ApiPublicTrackRuntimeErrorRoute
-  ApiPublicWaitlistRoute: typeof ApiPublicWaitlistRoute
   ApiRegistrarPollRoute: typeof ApiRegistrarPollRoute
   ApiRegistrarPurchaseRoute: typeof ApiRegistrarPurchaseRoute
   ApiRegistrarPurchaseCreditsRoute: typeof ApiRegistrarPurchaseCreditsRoute
@@ -1809,9 +1318,6 @@ export interface RootRouteChildren {
   ApiPublicAgentOpsRoute: typeof ApiPublicAgentOpsRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
   ApiPublicBuildsHeartbeatRoute: typeof ApiPublicBuildsHeartbeatRoute
-  ApiPublicCoffeeCryptoRoute: typeof ApiPublicCoffeeCryptoRoute
-  ApiPublicCoffeeInitializeRoute: typeof ApiPublicCoffeeInitializeRoute
-  ApiPublicCoffeeVerifyRoute: typeof ApiPublicCoffeeVerifyRoute
   ApiPublicConnectorsCallbackRoute: typeof ApiPublicConnectorsCallbackRoute
   ApiPublicCronBackendAutoscaleRoute: typeof ApiPublicCronBackendAutoscaleRoute
   ApiPublicCronBackendHibernateRoute: typeof ApiPublicCronBackendHibernateRoute
@@ -1862,123 +1368,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/builder': {
-      id: '/builder'
-      path: '/builder'
-      fullPath: '/builder'
-      preLoaderRoute: typeof BuilderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/changelog': {
-      id: '/changelog'
-      path: '/changelog'
-      fullPath: '/changelog'
-      preLoaderRoute: typeof ChangelogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coffee': {
-      id: '/coffee'
-      path: '/coffee'
-      fullPath: '/coffee'
-      preLoaderRoute: typeof CoffeeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/docs': {
-      id: '/docs'
-      path: '/docs'
-      fullPath: '/docs'
-      preLoaderRoute: typeof DocsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/gallery': {
-      id: '/gallery'
-      path: '/gallery'
-      fullPath: '/gallery'
-      preLoaderRoute: typeof GalleryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invest': {
-      id: '/invest'
-      path: '/invest'
-      fullPath: '/invest'
-      preLoaderRoute: typeof InvestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/packs': {
-      id: '/packs'
-      path: '/packs'
-      fullPath: '/packs'
-      preLoaderRoute: typeof PacksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projects': {
-      id: '/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof ProjectsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sell': {
-      id: '/sell'
-      path: '/sell'
-      fullPath: '/sell'
-      preLoaderRoute: typeof SellRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/templates': {
-      id: '/templates'
-      path: '/templates'
-      fullPath: '/templates'
-      preLoaderRoute: typeof TemplatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/themes': {
-      id: '/themes'
-      path: '/themes'
-      fullPath: '/themes'
-      preLoaderRoute: typeof ThemesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/unsubscribe': {
       id: '/unsubscribe'
       path: '/unsubscribe'
       fullPath: '/unsubscribe'
       preLoaderRoute: typeof UnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/waitlist': {
-      id: '/waitlist'
-      path: '/waitlist'
-      fullPath: '/waitlist'
-      preLoaderRoute: typeof WaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -2065,20 +1459,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLedgersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/marketplace': {
-      id: '/admin/marketplace'
-      path: '/admin/marketplace'
-      fullPath: '/admin/marketplace'
-      preLoaderRoute: typeof AdminMarketplaceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/mobile-signing': {
-      id: '/admin/mobile-signing'
-      path: '/admin/mobile-signing'
-      fullPath: '/admin/mobile-signing'
-      preLoaderRoute: typeof AdminMobileSigningRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin/pictures': {
       id: '/admin/pictures'
       path: '/admin/pictures'
@@ -2121,25 +1501,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/waitlist': {
-      id: '/admin/waitlist'
-      path: '/admin/waitlist'
-      fullPath: '/admin/waitlist'
-      preLoaderRoute: typeof AdminWaitlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/backend': {
       id: '/api/backend'
       path: '/api/backend'
       fullPath: '/api/backend'
       preLoaderRoute: typeof ApiBackendRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/coach': {
-      id: '/api/coach'
-      path: '/api/coach'
-      fullPath: '/api/coach'
-      preLoaderRoute: typeof ApiCoachRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/connectors': {
@@ -2191,13 +1557,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIntegrationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/labs': {
-      id: '/api/labs'
-      path: '/api/labs'
-      fullPath: '/api/labs'
-      preLoaderRoute: typeof ApiLabsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/publish': {
       id: '/api/publish'
       path: '/api/publish'
@@ -2240,88 +1599,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVisitorsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/billing/': {
-      id: '/billing/'
-      path: '/billing'
-      fullPath: '/billing/'
-      preLoaderRoute: typeof BillingIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/billing/return': {
-      id: '/billing/return'
-      path: '/billing/return'
-      fullPath: '/billing/return'
-      preLoaderRoute: typeof BillingReturnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coffee/thanks': {
-      id: '/coffee/thanks'
-      path: '/thanks'
-      fullPath: '/coffee/thanks'
-      preLoaderRoute: typeof CoffeeThanksRouteImport
-      parentRoute: typeof CoffeeRoute
-    }
     '/email/unsubscribe': {
       id: '/email/unsubscribe'
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/features/$slug': {
-      id: '/features/$slug'
-      path: '/features/$slug'
-      fullPath: '/features/$slug'
-      preLoaderRoute: typeof FeaturesSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marketplace/': {
-      id: '/marketplace/'
-      path: '/marketplace'
-      fullPath: '/marketplace/'
-      preLoaderRoute: typeof MarketplaceIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marketplace/$slug': {
-      id: '/marketplace/$slug'
-      path: '/marketplace/$slug'
-      fullPath: '/marketplace/$slug'
-      preLoaderRoute: typeof MarketplaceSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/p/$slug': {
-      id: '/p/$slug'
-      path: '/p/$slug'
-      fullPath: '/p/$slug'
-      preLoaderRoute: typeof PSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/packs/$slug': {
-      id: '/packs/$slug'
-      path: '/$slug'
-      fullPath: '/packs/$slug'
-      preLoaderRoute: typeof PacksSlugRouteImport
-      parentRoute: typeof PacksRoute
-    }
-    '/r/$code': {
-      id: '/r/$code'
-      path: '/r/$code'
-      fullPath: '/r/$code'
-      preLoaderRoute: typeof RCodeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/share/$token': {
-      id: '/share/$token'
-      path: '/share/$token'
-      fullPath: '/share/$token'
-      preLoaderRoute: typeof ShareTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/why/$slug': {
-      id: '/why/$slug'
-      path: '/why/$slug'
-      fullPath: '/why/$slug'
-      preLoaderRoute: typeof WhySlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/ai-providers': {
@@ -2429,20 +1711,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHostLookupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/invest': {
-      id: '/api/public/invest'
-      path: '/api/public/invest'
-      fullPath: '/api/public/invest'
-      preLoaderRoute: typeof ApiPublicInvestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/marketplace-feature': {
-      id: '/api/public/marketplace-feature'
-      path: '/api/public/marketplace-feature'
-      fullPath: '/api/public/marketplace-feature'
-      preLoaderRoute: typeof ApiPublicMarketplaceFeatureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/track': {
       id: '/api/public/track'
       path: '/api/public/track'
@@ -2462,13 +1730,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/track-runtime-error'
       fullPath: '/api/public/track-runtime-error'
       preLoaderRoute: typeof ApiPublicTrackRuntimeErrorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/waitlist': {
-      id: '/api/public/waitlist'
-      path: '/api/public/waitlist'
-      fullPath: '/api/public/waitlist'
-      preLoaderRoute: typeof ApiPublicWaitlistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/registrar/poll': {
@@ -2553,27 +1814,6 @@ declare module '@tanstack/react-router' {
       path: '/api/public/builds/heartbeat'
       fullPath: '/api/public/builds/heartbeat'
       preLoaderRoute: typeof ApiPublicBuildsHeartbeatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/coffee/crypto': {
-      id: '/api/public/coffee/crypto'
-      path: '/api/public/coffee/crypto'
-      fullPath: '/api/public/coffee/crypto'
-      preLoaderRoute: typeof ApiPublicCoffeeCryptoRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/coffee/initialize': {
-      id: '/api/public/coffee/initialize'
-      path: '/api/public/coffee/initialize'
-      fullPath: '/api/public/coffee/initialize'
-      preLoaderRoute: typeof ApiPublicCoffeeInitializeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/coffee/verify': {
-      id: '/api/public/coffee/verify'
-      path: '/api/public/coffee/verify'
-      fullPath: '/api/public/coffee/verify'
-      preLoaderRoute: typeof ApiPublicCoffeeVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/connectors/callback': {
@@ -2817,27 +2057,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface CoffeeRouteChildren {
-  CoffeeThanksRoute: typeof CoffeeThanksRoute
-}
-
-const CoffeeRouteChildren: CoffeeRouteChildren = {
-  CoffeeThanksRoute: CoffeeThanksRoute,
-}
-
-const CoffeeRouteWithChildren =
-  CoffeeRoute._addFileChildren(CoffeeRouteChildren)
-
-interface PacksRouteChildren {
-  PacksSlugRoute: typeof PacksSlugRoute
-}
-
-const PacksRouteChildren: PacksRouteChildren = {
-  PacksSlugRoute: PacksSlugRoute,
-}
-
-const PacksRouteWithChildren = PacksRoute._addFileChildren(PacksRouteChildren)
-
 interface ApiDomainsRouteChildren {
   ApiDomainsDnsCheckRoute: typeof ApiDomainsDnsCheckRoute
 }
@@ -2886,23 +2105,7 @@ const ApiPublicV1TurnsIdRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
-  BuilderRoute: BuilderRoute,
-  ChangelogRoute: ChangelogRoute,
-  CoffeeRoute: CoffeeRouteWithChildren,
-  DocsRoute: DocsRoute,
-  GalleryRoute: GalleryRoute,
-  InvestRoute: InvestRoute,
-  PacksRoute: PacksRouteWithChildren,
-  PrivacyRoute: PrivacyRoute,
-  ProfileRoute: ProfileRoute,
-  ProjectsRoute: ProjectsRoute,
-  ResetPasswordRoute: ResetPasswordRoute,
-  SellRoute: SellRoute,
-  TemplatesRoute: TemplatesRoute,
-  TermsRoute: TermsRoute,
-  ThemesRoute: ThemesRoute,
   UnsubscribeRoute: UnsubscribeRoute,
-  WaitlistRoute: WaitlistRoute,
   AdminAiProvidersRoute: AdminAiProvidersRoute,
   AdminAiSpendRoute: AdminAiSpendRoute,
   AdminBenchmarkRoute: AdminBenchmarkRoute,
@@ -2914,17 +2117,13 @@ const rootRouteChildren: RootRouteChildren = {
   AdminFailuresRoute: AdminFailuresRoute,
   AdminFeaturesRoute: AdminFeaturesRoute,
   AdminLedgersRoute: AdminLedgersRoute,
-  AdminMarketplaceRoute: AdminMarketplaceRoute,
-  AdminMobileSigningRoute: AdminMobileSigningRoute,
   AdminPicturesRoute: AdminPicturesRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminProjectsRoute: AdminProjectsRoute,
   AdminQaRoute: AdminQaRoute,
   AdminTestLabRoute: AdminTestLabRoute,
   AdminUsersRoute: AdminUsersRoute,
-  AdminWaitlistRoute: AdminWaitlistRoute,
   ApiBackendRoute: ApiBackendRoute,
-  ApiCoachRoute: ApiCoachRoute,
   ApiConnectorsRoute: ApiConnectorsRoute,
   ApiCreditPausesRoute: ApiCreditPausesRoute,
   ApiDiscussRoute: ApiDiscussRoute,
@@ -2932,24 +2131,14 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGenerateRoute: ApiGenerateRoute,
   ApiGenerateImageRoute: ApiGenerateImageRoute,
   ApiIntegrationsRoute: ApiIntegrationsRoute,
-  ApiLabsRoute: ApiLabsRoute,
   ApiPublishRoute: ApiPublishRoute,
   ApiSiteInfoRoute: ApiSiteInfoRoute,
   ApiSubdomainRoute: ApiSubdomainRoute,
   ApiTranscribeRoute: ApiTranscribeRoute,
   ApiTriageRoute: ApiTriageRoute,
   ApiVisitorsRoute: ApiVisitorsRoute,
-  BillingReturnRoute: BillingReturnRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
-  FeaturesSlugRoute: FeaturesSlugRoute,
-  MarketplaceSlugRoute: MarketplaceSlugRoute,
-  PSlugRoute: PSlugRoute,
-  RCodeRoute: RCodeRoute,
-  ShareTokenRoute: ShareTokenRoute,
-  WhySlugRoute: WhySlugRoute,
   AdminIndexRoute: AdminIndexRoute,
-  BillingIndexRoute: BillingIndexRoute,
-  MarketplaceIndexRoute: MarketplaceIndexRoute,
   ApiAdminAiProvidersRoute: ApiAdminAiProvidersRoute,
   ApiAdminCreditsRoute: ApiAdminCreditsRoute,
   ApiAdminDigestsRoute: ApiAdminDigestsRoute,
@@ -2964,12 +2153,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInternalHealthRoute: ApiInternalHealthRoute,
   ApiPreviewProjectIdRoute: ApiPreviewProjectIdRoute,
   ApiPublicHostLookupRoute: ApiPublicHostLookupRoute,
-  ApiPublicInvestRoute: ApiPublicInvestRoute,
-  ApiPublicMarketplaceFeatureRoute: ApiPublicMarketplaceFeatureRoute,
   ApiPublicTrackRoute: ApiPublicTrackRoute,
   ApiPublicTrackFailureRoute: ApiPublicTrackFailureRoute,
   ApiPublicTrackRuntimeErrorRoute: ApiPublicTrackRuntimeErrorRoute,
-  ApiPublicWaitlistRoute: ApiPublicWaitlistRoute,
   ApiRegistrarPollRoute: ApiRegistrarPollRoute,
   ApiRegistrarPurchaseRoute: ApiRegistrarPurchaseRoute,
   ApiRegistrarPurchaseCreditsRoute: ApiRegistrarPurchaseCreditsRoute,
@@ -2981,9 +2167,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentOpsRoute: ApiPublicAgentOpsRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
   ApiPublicBuildsHeartbeatRoute: ApiPublicBuildsHeartbeatRoute,
-  ApiPublicCoffeeCryptoRoute: ApiPublicCoffeeCryptoRoute,
-  ApiPublicCoffeeInitializeRoute: ApiPublicCoffeeInitializeRoute,
-  ApiPublicCoffeeVerifyRoute: ApiPublicCoffeeVerifyRoute,
   ApiPublicConnectorsCallbackRoute: ApiPublicConnectorsCallbackRoute,
   ApiPublicCronBackendAutoscaleRoute: ApiPublicCronBackendAutoscaleRoute,
   ApiPublicCronBackendHibernateRoute: ApiPublicCronBackendHibernateRoute,
