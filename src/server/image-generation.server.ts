@@ -17,7 +17,7 @@
  */
 import { createHash } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { OPENROUTER_CHAT_URL, defaultImageModel } from "@/lib/ai-model-config";
+import { AI_GATEWAY_BASE_URL, defaultImageModel } from "@/lib/ai-model-config";
 import { findLibraryPicture } from "./registry/pictures.server";
 import { findProjectPicture } from "./registry/project-pictures.server";
 import { currentTurnContext } from "./turn-context.server";
@@ -122,7 +122,7 @@ function extensionFor(mime: string): string {
   return "png";
 }
 
-/** Generate one image via OpenRouter and upload to the public bucket. */
+/** Generate one image via the Lovable AI Gateway and upload to the public bucket. */
 export async function generatePetalImage(
   opts: GenerateImageOptions,
 ): Promise<GenerateImageResult> {
@@ -130,12 +130,11 @@ export async function generatePetalImage(
   const { agentIO } = await import("@/server/agent-io.server");
   const io = agentIO();
   if (io.kind === "gateway" && io.generateImage) return io.generateImage(opts);
-  // OPENROUTER ONLY. Image generation also goes through OpenRouter; DeepSeek
-  // has no image-output model, so the configured image model is served by
-  // OpenRouter (see src/lib/ai-model-config.ts).
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const upstreamUrl = OPENROUTER_CHAT_URL;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured.");
+  // GATEWAY ONLY. Image generation goes through the Lovable AI Gateway's
+  // OpenAI-format images endpoint (see src/lib/ai-model-config.ts).
+  const apiKey = process.env.LOVABLE_API_KEY;
+  const upstreamUrl = `${AI_GATEWAY_BASE_URL}/images/generations`;
+  if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured.");
 
   const prompt = opts.prompt.trim();
   if (!prompt) throw new Error("Image prompt is empty.");
@@ -176,13 +175,11 @@ export async function generatePetalImage(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": process.env.OPENROUTER_REFERER || "https://buildwithpetal.com",
-      "X-Title": "Kimble",
+      "X-Lovable-AIG-SDK": "fetch",
     },
     body: JSON.stringify({
       model: defaultImageModel(),
-      messages: [{ role: "user", content: fullPrompt }],
-      modalities: ["image", "text"],
+      prompt: fullPrompt,
     }),
   });
 
@@ -194,14 +191,12 @@ export async function generatePetalImage(
   }
 
   const json = (await upstream.json()) as {
-    choices?: Array<{
-      message?: { images?: Array<{ image_url?: { url?: string } }> };
-    }>;
+    data?: Array<{ b64_json?: string }>;
   };
-  const dataUrl = json.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  if (!dataUrl) throw new Error("Image gateway returned no image.");
+  const b64 = json.data?.[0]?.b64_json;
+  if (!b64) throw new Error("Image gateway returned no image.");
 
-  const { bytes, mime } = dataUrlToBytes(dataUrl);
+  const { bytes, mime } = dataUrlToBytes(`data:image/png;base64,${b64}`);
   const filename = `${key}.${extensionFor(mime)}`;
 
   const { error: upErr } = await supabaseAdmin.storage
