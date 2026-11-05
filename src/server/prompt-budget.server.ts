@@ -30,8 +30,8 @@ export function estimateTokens(text: string): number {
 
 /** Context window per model, in tokens. Conservative, not marketing numbers. */
 const CONTEXT_WINDOWS: Array<{ match: RegExp; tokens: number }> = [
-  { match: /deepseek/i, tokens: 128_000 },
-  { match: /gemini/i, tokens: 200_000 },
+  { match: /gemini/i, tokens: 1_000_000 },
+  { match: /gpt-5\.6|gpt-6/i, tokens: 272_000 },
   { match: /gpt-5|gpt-4|openai/i, tokens: 128_000 },
   { match: /claude/i, tokens: 200_000 },
 ];
