@@ -8,3 +8,4 @@
 - Chat uses AI Elements MessageResponse and PromptInput/PromptInputSubmit, with InputGroupTextarea instead of the Enter-intercepting PromptInputTextarea — why: keep Kimble's newline/send and existing attachment contracts unchanged.
 - Shared CSS enforces rectangular action geometry for legacy and design-system controls, excluding switch tracks — why: local radius overrides left oval actions behind.
 <!-- LOVABLE:END -->
+- Kimble is headless: external systems drive it only through `/api/public/v1/*` (bearer `KIMBLE_SERVICE_KEY`, one service account, `src/server/service-api.server.ts`), which forwards to the unchanged `/api/generate` pipeline; the only UI left is the admin console + operator sign-in — why: machine-to-machine use without a second orchestrator or bypassed billing/verification.
