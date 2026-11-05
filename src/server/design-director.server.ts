@@ -509,7 +509,7 @@ export async function pickDesignDirection(args: {
     }
     return picked;
   };
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return persist(fallback());
   }
 

@@ -371,7 +371,7 @@ export function mergePrd(prior: Prd, raw: RawPrd): Prd {
 /** Run the model pass. Always resolves — falls back to the deterministic PRD. */
 export async function modelPrd(brief: string, userId?: string): Promise<Prd> {
   const prior = deterministicPrd(brief);
-  if (!process.env.OPENROUTER_API_KEY) return prior;
+  if (!process.env.LOVABLE_API_KEY) return prior;
 
   try {
     const res = await aiChatCompletions({

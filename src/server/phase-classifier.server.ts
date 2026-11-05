@@ -89,7 +89,7 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
     return heuristic ?? { phase: "implement", confidence: "medium", source: "fallback" };
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return heuristic ?? { phase: "implement", confidence: "low", source: "fallback" };
   }
 

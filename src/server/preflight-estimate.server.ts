@@ -111,7 +111,7 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
   const cached = readCache(key);
   if (cached) return cached;
 
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return fallbackEstimate(trimmed);
   }
 

@@ -162,7 +162,7 @@ Rules:
 - NEVER invent endpoints, fields, or env var names that are not visible in the supplied source. If the source is thin, say so explicitly inside the brief and emit only what you can verify.`;
 
 async function aiSynth(input: SynthInput): Promise<SynthJson | null> {
-  if (!process.env.OPENROUTER_API_KEY) return null;
+  if (!process.env.LOVABLE_API_KEY) return null;
   const userMsg =
     input.kind === "url"
       ? `Source URL: ${input.url}\n\nFetched content (truncated):\n"""\n${input.body}\n"""`

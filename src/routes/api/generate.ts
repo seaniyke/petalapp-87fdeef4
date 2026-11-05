@@ -2136,7 +2136,7 @@ async function handleGenerateRequestCore(
 
   // Provider key check is handled inside aiChatCompletions; we only verify
   // here so we can surface the existing friendly 500 if no provider is set.
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return new Response("AI gateway is not configured.", { status: 500 });
   }
 
