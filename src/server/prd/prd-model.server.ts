@@ -21,7 +21,7 @@ import { deterministicPrd } from "./prd-deterministic";
 import type { Prd, PrdSurface, ProductType } from "./prd-types";
 import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 
-const MODEL = "deepseek/deepseek-v4-flash";
+const MODEL = "google/gemini-3.8-flash";
 
 const SYSTEM = `You are Kimble's product architect. You turn a user's one-line app request into a precise internal PRD that an engineering pipeline will build and then verify against.
 
@@ -371,7 +371,7 @@ export function mergePrd(prior: Prd, raw: RawPrd): Prd {
 /** Run the model pass. Always resolves — falls back to the deterministic PRD. */
 export async function modelPrd(brief: string, userId?: string): Promise<Prd> {
   const prior = deterministicPrd(brief);
-  if (!process.env.OPENROUTER_API_KEY) return prior;
+  if (!process.env.LOVABLE_API_KEY) return prior;
 
   try {
     const res = await aiChatCompletions({

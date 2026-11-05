@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { buildGenerationUnits, safeUnitBudget } from "@/server/requested-scope";
-import { codegenProviderRouting, bufferedResponse } from "@/server/ai-provider.server";
+import { bufferedResponse } from "@/server/ai-provider.server";
 import { runWriteGate } from "@/server/write-gate.server";
 import { runScopedBuildCleanup } from "@/server/build-cleanup-scope.server";
 
@@ -19,14 +19,6 @@ describe("planner fits the real output budget", () => {
   it("safe budget leaves headroom", () => {
     expect(safeUnitBudget(10_000)).toBe(8_000);
     expect(safeUnitBudget(18_000)).toBe(11_000);
-  });
-});
-
-describe("one page-generation provider policy", () => {
-  it("failed upstreams accumulate in ignore; OpenRouter picks among the rest", () => {
-    const r = codegenProviderRouting(["openinference", "azure"]) as { ignore: string[]; only?: string[] };
-    expect(r.ignore).toEqual(expect.arrayContaining(["openinference", "azure", "digitalocean", "nextbit"]));
-    expect(r.only).toBeUndefined();
   });
 });
 

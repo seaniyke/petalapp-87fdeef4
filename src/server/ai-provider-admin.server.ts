@@ -14,7 +14,9 @@ import {
   type AiFeature,
 } from "@/server/ai-provider.server";
 
-export type Provider = "lovable" | "openrouter";
+// The Lovable AI Gateway is the only provider; legacy "openrouter" rows
+// are normalised to "lovable" on read.
+export type Provider = "lovable";
 
 export type BudgetConfigRow = {
   feature: AiFeature;
@@ -47,7 +49,7 @@ export type AiCostRow = {
 };
 
 // AI_PROVIDER / AI_PROVIDER_<FEATURE> no longer steer traffic (every call goes
-// through OpenRouter), so they are not reported as an active choice.
+// through the Lovable AI Gateway), so they are not reported as an active choice.
 function envChoiceFor(_feature: AiFeature): Provider | null {
   return null;
 }
@@ -63,7 +65,7 @@ export async function assertAdmin(userId: string): Promise<void> {
 
 export async function listProviderSettings(): Promise<{
   rows: AiFeatureRow[];
-  openrouterKeyConfigured: boolean;
+  gatewayKeyConfigured: boolean;
 }> {
   const { data, error } = await supabaseAdmin
     .from("ai_provider_settings")
@@ -86,10 +88,7 @@ export async function listProviderSettings(): Promise<{
 
   const rows: AiFeatureRow[] = ALL_AI_FEATURES.map((feature) => {
     const r = overrides.get(feature);
-    const override =
-      r?.provider === "openrouter" || r?.provider === "lovable"
-        ? (r.provider as Provider)
-        : null;
+    const override = r?.provider ? ("lovable" as Provider) : null;
     const envChoice = envChoiceFor(feature);
     const effective: Provider = override ?? envChoice ?? "lovable";
     return {
@@ -108,7 +107,7 @@ export async function listProviderSettings(): Promise<{
 
   return {
     rows,
-    openrouterKeyConfigured: Boolean(process.env.OPENROUTER_API_KEY),
+    gatewayKeyConfigured: Boolean(process.env.LOVABLE_API_KEY),
   };
 }
 
@@ -126,14 +125,8 @@ export async function setProviderSetting(
   if (!ALL_AI_FEATURES.includes(input.feature)) {
     throw new Error(`Unknown feature: ${input.feature}`);
   }
-  // Image generation can now route through OpenRouter too — both providers
-  // expose Gemini image models via the chat-completions `modalities` shape.
-  if (
-    input.provider !== null &&
-    input.provider !== "lovable" &&
-    input.provider !== "openrouter"
-  ) {
-    throw new Error("provider must be 'lovable', 'openrouter', or null");
+  if (input.provider !== null && input.provider !== "lovable") {
+    throw new Error("provider must be 'lovable' or null");
   }
 
   const wantsClear =
@@ -270,7 +263,7 @@ export async function getCostSummary(daysInput: number | undefined): Promise<{
   let totalErrors = 0;
 
   for (const r of logs ?? []) {
-    const provider: Provider = r.provider === "openrouter" ? "openrouter" : "lovable";
+    const provider: Provider = "lovable";
     const key = `${r.feature}|${provider}|${r.model ?? ""}`;
     let row = buckets.get(key);
     if (!row) {

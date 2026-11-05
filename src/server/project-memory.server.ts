@@ -261,7 +261,7 @@ async function runMemoryWriter(
   const trimmedUser = (userMessage ?? "").trim();
   if (trimmedUser.length < 4) return true;
 
-  if (!process.env.OPENROUTER_API_KEY) return true;
+  if (!process.env.LOVABLE_API_KEY) return true;
 
   let existing: MemoryEntry[] = [];
   try {
@@ -297,7 +297,7 @@ async function runMemoryWriter(
     const resp = await aiChatCompletions({
       feature: "memory",
       body: {
-        model: "deepseek/deepseek-v4-flash",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           { role: "system", content: MEMORY_WRITER_SYSTEM },
           { role: "user", content: userPrompt },

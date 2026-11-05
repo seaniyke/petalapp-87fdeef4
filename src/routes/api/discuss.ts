@@ -91,7 +91,7 @@ export const Route = createFileRoute("/api/discuss")({
 
         // Provider key check is handled inside aiChatCompletions; we only verify
         // here for the friendly early-fail path used by the existing UI.
-        if (!process.env.OPENROUTER_API_KEY) {
+        if (!process.env.LOVABLE_API_KEY) {
           return new Response("AI gateway is not configured.", { status: 500 });
         }
 
@@ -222,7 +222,7 @@ export const Route = createFileRoute("/api/discuss")({
           feature: "discuss",
           body: {
             // Vision needs a vision-capable model; otherwise stay on the fast default.
-            model: hasVisionTurn ? "deepseek/deepseek-v4-flash" : "deepseek/deepseek-v4-flash",
+            model: hasVisionTurn ? "google/gemini-3.8-flash" : "google/gemini-3.1-flash-lite",
             messages: chatMessages,
             stream: false,
           },

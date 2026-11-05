@@ -98,7 +98,7 @@ export async function expandBriefIfVague(input: string): Promise<BriefExpansion>
     const upstream = await aiChatCompletions({
       feature: "triage",
       body: {
-        model: "deepseek/deepseek-v4-flash",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           {
             role: "system",

@@ -30,7 +30,7 @@
  * the specificity, the category selects the recovery guidance.
  *
  * `provider_failure` is tracked for telemetry only and NEVER counts toward a
- * trip — OpenRouter/provider failover already owns that problem, and a model
+ * trip — gateway provider failover already owns that problem, and a model
  * that stalls is not an agent that is reasoning badly.
  */
 export type FailureCategory =

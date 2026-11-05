@@ -34,14 +34,14 @@ export interface TurnContext {
    *  again by ANY later call in the same turn (retry, recovery, continuation,
    *  missing-page follow-up, repair). A fresh user turn starts empty. */
   failedUpstreams?: Set<string>;
-  /** Set when OpenRouter had no eligible provider left for a code call.
+  /** Set when the gateway had no eligible provider left for a code call.
    *  Terminal for the call: it is never re-sent in this turn. */
   providersExhausted?: boolean;
   /** First builds: the model's own summary ("it's live") is never streamed
    *  mid-build. Only the authoritative final result carries the message. */
   holdSummary?: boolean;
   /** ISOLATED inference evaluation (bench account + explicit header only):
-   *  Kimble picks the model chain, OpenRouter does provider failover. */
+   *  Kimble picks the model chain, the gateway does provider failover. */
   inferenceEval?: { models: string[] } | null;
   /** Where this turn's saved-data reads/writes go. Unset = direct database
    *  (Worker path). The Railway runtime sets a signed-gateway adapter. */
@@ -72,7 +72,7 @@ export function currentTurnContext(): TurnContext {
   }
 }
 
-/** Normalise an OpenRouter upstream name to its routing slug. */
+/** Normalise an upstream provider name to its routing slug. */
 export function upstreamSlug(name: string): string {
   return name.toLowerCase().replace(/\s+/g, "");
 }

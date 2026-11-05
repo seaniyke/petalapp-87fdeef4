@@ -30,8 +30,8 @@ export function estimateTokens(text: string): number {
 
 /** Context window per model, in tokens. Conservative, not marketing numbers. */
 const CONTEXT_WINDOWS: Array<{ match: RegExp; tokens: number }> = [
-  { match: /deepseek/i, tokens: 128_000 },
-  { match: /gemini/i, tokens: 200_000 },
+  { match: /gemini/i, tokens: 1_000_000 },
+  { match: /gpt-5\.6|gpt-6/i, tokens: 272_000 },
   { match: /gpt-5|gpt-4|openai/i, tokens: 128_000 },
   { match: /claude/i, tokens: 200_000 },
 ];
@@ -146,9 +146,9 @@ export interface ProviderError {
 }
 
 /**
- * Recognise an OpenRouter / OpenAI-compatible error frame.
+ * Recognise an OpenAI-compatible error frame from the gateway.
  *
- * OpenRouter reports upstream failures as a 200 SSE stream carrying
+ * The gateway reports upstream failures as a 200 SSE stream carrying
  * `{"error": {...}}` with no `choices`. The reader used to skip that frame,
  * which is exactly why a refused turn looked like an empty one.
  */

@@ -44,7 +44,7 @@ export interface ComplexityAssessment {
 
 /**
  * Expected-cost baselines per class, seeded from measured turns
- * (ai_call_log, DeepSeek V4 Flash via OpenRouter, Sept 2026): small edits
+ * (ai_call_log, gateway chat model, Sept 2026): small edits
  * ~$0.002–0.006, feature turns ~$0.01, multi-page first builds $0.03–0.08.
  * Recorded next to the actual cost so the bands can be re-fit from data.
  */

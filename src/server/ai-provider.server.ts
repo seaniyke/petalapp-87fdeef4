@@ -1,6 +1,6 @@
-import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
+import rawBudgetModelCatalog from "@/lib/gateway-budget-models.json";
 import {
-  OPENROUTER_CHAT_URL,
+  AI_GATEWAY_CHAT_URL,
   UTILITY_MAX_OUTPUT_TOKENS,
   coerceToConfiguredModel,
   defaultFallbackModel,
@@ -9,18 +9,17 @@ import {
   isUtilityFeature,
 } from "@/lib/ai-model-config";
 
-import { codegenProviderRouting, resolveProviderRouting, isEmptyAllowList } from "@/server/engine/provider-policy";
-export { codegenProviderRouting };
+import { resolveProviderRouting, isEmptyAllowList } from "@/server/engine/provider-policy";
 
 /**
- * AI provider abstraction — OPENROUTER ONLY.
+ * AI provider abstraction — LOVABLE AI GATEWAY ONLY.
  *
- *     Kimble  →  OpenRouter  →  DeepSeek
+ *     Kimble  →  Lovable AI Gateway  →  configured model
  *
  * Every server-side AI call in Kimble goes through `aiChatCompletions(...)`.
  * The helper resolves the model through the central config
  * (`src/lib/ai-model-config.ts`), forwards the request as an OpenAI-compatible
- * chat completions call to OpenRouter, and:
+ * chat completions call to the Lovable AI Gateway, and:
  *
  *   1. Records a telemetry row in `ai_call_log` (best-effort, never blocks) with
  *      model, provider, token counts, cost, user/project/turn ids.
@@ -32,12 +31,12 @@ export { codegenProviderRouting };
  * without any change.
  *
  * There are no direct model-provider integrations (OpenAI, Anthropic, Google,
- * DeepSeek first-party) and no Lovable AI Gateway chat path. Model ids supplied
- * by callers or by legacy DB overrides are coerced to the configured DeepSeek
- * model; `openrouter/auto` is never used.
+ * DeepSeek first-party) and no OpenRouter path. Model ids supplied
+ * by callers or by legacy DB overrides are coerced to the configured gateway
+ * model; the model is always explicit.
  *
  * To change the model everywhere: edit src/lib/ai-model-config.ts (or set
- * OPENROUTER_MODEL / OPENROUTER_VISION_MODEL / OPENROUTER_FALLBACK_MODEL).
+ * AI_GATEWAY_MODEL / AI_GATEWAY_VISION_MODEL / AI_GATEWAY_FALLBACK_MODEL).
  */
 
 export type AiFeature =
@@ -51,10 +50,10 @@ export type AiFeature =
   | "preflight"
   | "image";
 
-/** Retained as a one-member union: OpenRouter is the only gateway. */
-type Provider = "openrouter";
+/** Retained as a one-member union: the Lovable AI Gateway is the only gateway. */
+type Provider = "lovable";
 
-const OPENROUTER_URL = OPENROUTER_CHAT_URL;
+const GATEWAY_URL = AI_GATEWAY_CHAT_URL;
 
 /** True when the request carries image parts (vision models required). */
 function requestHasImageParts(body: Record<string, unknown>): boolean {
@@ -170,8 +169,9 @@ async function loadDbSettings(): Promise<Map<string, FeatureSettings>> {
         shadow_pct: number | null;
       }>) {
         map.set(row.feature, {
-          // Legacy rows may say "lovable"; OpenRouter is the only gateway now.
-          provider: row.provider === "openrouter" ? "openrouter" : null,
+          // Legacy rows may say "openrouter"; the Lovable AI Gateway is the
+          // only gateway now.
+          provider: row.provider === "openrouter" || row.provider === "lovable" ? "lovable" : null,
           model: row.model || null,
           fallback_model: row.fallback_model || null,
           budget_enabled: row.budget_enabled ?? null,
@@ -203,14 +203,14 @@ export function invalidateProviderCache(): void {
 // ---------------- Resolution ----------------
 
 /**
- * OPENROUTER-ONLY. Kimble has a single AI provider: OpenRouter.
+ * GATEWAY-ONLY. Kimble has a single AI provider: the Lovable AI Gateway.
  *
- * Legacy DB rows (`ai_provider_settings.provider = 'lovable'`) and legacy env
- * vars (`AI_PROVIDER`, `AI_PROVIDER_<FEATURE>`) are intentionally ignored so a
- * stale configuration row cannot silently re-open a direct-provider path.
+ * Legacy DB rows (`ai_provider_settings.provider = 'openrouter'`) and legacy
+ * env vars (`AI_PROVIDER`, `AI_PROVIDER_<FEATURE>`) are intentionally ignored
+ * so a stale configuration row cannot silently re-open a direct-provider path.
  */
 async function resolveProvider(_feature: AiFeature): Promise<Provider> {
-  return "openrouter";
+  return "lovable";
 }
 
 /** Public: resolve which provider a given feature is configured to use.
@@ -292,100 +292,62 @@ async function resolveModelOverride(
 }
 
 /**
- * Lovable-AI model slugs sometimes don't exist verbatim on OpenRouter. This
- * map covers our defaults; anything not listed forwards as-is (OpenRouter
- * accepts most `provider/model` slugs unchanged).
- */
-const OPENROUTER_MODEL_MAP: Record<string, string> = {
-  // OpenAI — `openai/gpt-5` is NOT a live slug on our gateway. Telemetry:
-  // 107 calls, 107 errors (100%), ~358ms each. Every one of those was silently
-  // absorbed by the fallback chain, so it never surfaced as an incident while
-  // still costing a wasted round-trip on every heavy generate. The whole
-  // heavy-tier family now routes to a model with proven production numbers
-  // (claude-sonnet-4.5: 501 calls, 1 error).
-  "openai/gpt-5": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5-mini": "openai/gpt-5-mini",
-  "openai/gpt-5-nano": "openai/gpt-5-nano",
-  "openai/gpt-5.2": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5.4": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5.4-mini": "openai/gpt-5-mini",
-  "openai/gpt-5.4-nano": "openai/gpt-5-nano",
-  "openai/gpt-5.4-pro": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5.5": "anthropic/claude-sonnet-4.5",
-  "openai/gpt-5.5-pro": "anthropic/claude-sonnet-4.5",
-  // Anthropic — only reachable via OpenRouter today. Used by curated-briefs
-  // and (soon) the smart-router as candidates for implement/debug phases.
-  "anthropic/claude-sonnet-4.5": "anthropic/claude-sonnet-4.5",
-  "anthropic/claude-haiku-4.5": "anthropic/claude-haiku-4.5",
-  "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5",
-};
-
-/**
- * Model ids that are known-dead on the gateway. Anything landing here is a
- * configuration mistake (usually an admin override or a stale constant), not a
- * transient outage — the fallback chain hides it, so we log loudly instead of
- * letting it rot for another 169 wasted calls.
- */
-const DEAD_MODEL_IDS = new Set(["openai/gpt-5"]);
-
-export function isDeadModelId(model: string | null | undefined): boolean {
-  return !!model && DEAD_MODEL_IDS.has(model);
-}
-
-/**
- * Every model id we consider "known" — the remap table's keys and targets.
- * `model-health.server.ts` also treats the budget catalog as known. An id
- * outside both sets is a typo or a stale admin override and gets flagged.
+ * Every model id we consider "known" — Kimble's configured gateway models
+ * plus the other current catalog ids an admin override might legitimately
+ * name. `model-health.server.ts` also treats the budget catalog as known.
+ * An id outside both sets is a typo or a stale admin override and gets flagged.
  */
 export const KNOWN_MODEL_IDS: ReadonlySet<string> = new Set<string>([
-  ...Object.keys(OPENROUTER_MODEL_MAP),
-  ...Object.values(OPENROUTER_MODEL_MAP),
-  "google/gemini-2.5-flash-image",
-  // Active utility model (DEFAULT_UTILITY_MODEL); was missing, so every
-  // health pass flagged a working model as a typo.
-  "deepseek/deepseek-v4-flash-0731",
+  "google/gemini-3.8-flash",
+  "google/gemini-4-argon",
+  "google/gemini-3.1-flash-lite",
+  "google/gemini-3.1-flash-lite-image",
+  "openai/gpt-5.6-sol",
+  "openai/gpt-5.6-luna",
+  "openai/gpt-6-astra",
+  "openai/gpt-image-2.5-sunburst",
+  "openai/gpt-transcribe",
+  "anthropic/claude-sonnet-5",
+  "anthropic/claude-haiku-4-5",
+  "anthropic/claude-opus-5-5",
 ]);
-
-
-function remapModelForOpenRouter(model: string | undefined): string | undefined {
-  if (!model) return model;
-  const mapped = OPENROUTER_MODEL_MAP[model] ?? model;
-  if (DEAD_MODEL_IDS.has(mapped)) {
-    console.error(
-      `[ai-provider] configured model "${model}" resolves to dead slug "${mapped}" — this call will fail and fall back. Fix the model configuration.`,
-    );
-  }
-  return mapped;
-}
 
 
 // ---------------- Telemetry ----------------
 
 /**
- * Per-million-token USD price (rough, blended input+output) for the models we
- * route through the gateway. Used to populate `ai_call_log.cost_usd_micro` so
- * the admin dashboard shows a non-zero "Estimated cost" — the gateway doesn't
- * return a $ amount, only token counts. Prices are conservative averages of
- * OpenRouter list prices as of mid-2026; close enough for an internal
- * estimate, OpenRouter remains the source of truth for actual billing.
+ * USD value of one gateway credit for internal cost estimation. The gateway
+ * bills workspace credits per token; `ai_call_log.cost_usd_micro` is USD
+ * micro, so credit rates are converted at this rate. Conservative default
+ * of $1.00 per credit; override with AI_GATEWAY_CREDIT_USD. Estimates are
+ * always recorded with cost_basis "estimated" / cost_source "price_table" —
+ * the workspace credit ledger remains the source of truth for actual billing.
+ */
+function gatewayCreditUsd(): number {
+  const raw = typeof process !== "undefined" ? process.env?.AI_GATEWAY_CREDIT_USD : undefined;
+  const n = raw == null || raw === "" ? 1.0 : Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 1.0;
+}
+
+/**
+ * Per-million-token gateway credit rates for the models we route, from the
+ * authenticated catalog listing (Nov 2026). Multiplied by gatewayCreditUsd()
+ * to populate `ai_call_log.cost_usd_micro` so the admin dashboard shows a
+ * non-zero "Estimated cost" — the gateway returns token counts, not dollars.
  */
 const MODEL_PRICE_PER_M_TOKENS: Array<{ match: RegExp; inUsd: number; outUsd: number }> = [
-  { match: /claude-(sonnet|opus)-4/i, inUsd: 3.0, outUsd: 15.0 },
-  { match: /claude-haiku/i, inUsd: 0.8, outUsd: 4.0 },
-  { match: /gpt-5(\.\d+)?-(nano|mini)/i, inUsd: 0.25, outUsd: 2.0 },
-  { match: /gpt-5(\.\d+)?-pro/i, inUsd: 10.0, outUsd: 40.0 },
-  { match: /gpt-5(\.\d+)?$/i, inUsd: 1.25, outUsd: 10.0 },
-  { match: /gemini-(2\.5|3\.?\d?)-pro/i, inUsd: 1.25, outUsd: 5.0 },
-  { match: /gemini-(2\.5|3\.?\d?)-flash-lite/i, inUsd: 0.1, outUsd: 0.4 },
-  { match: /gemini-(2\.5|3\.?\d?)-flash/i, inUsd: 0.3, outUsd: 1.2 },
-  { match: /deepseek/i, inUsd: 0.3, outUsd: 1.2 },
-  // Budget-tier OpenRouter models (as of mid-2026, used when economy mode is on).
-  { match: /qwen\/qwen3\.7-flash/i, inUsd: 0.03, outUsd: 0.13 },
-  { match: /openai\/gpt-oss-20b/i, inUsd: 0.03, outUsd: 0.13 },
-  { match: /meta-llama\/llama-3\.1-8b-instruct/i, inUsd: 0.05, outUsd: 0.08 },
-  { match: /poolside\/laguna-xs-2\.1/i, inUsd: 0.06, outUsd: 0.12 },
-  { match: /mistralai\/mistral-nemo/i, inUsd: 0.02, outUsd: 0.03 },
-  { match: /google\/gemma-3-12b-it/i, inUsd: 0.05, outUsd: 0.15 },
+  { match: /gemini-3\.1-flash-lite/i, inUsd: 1.0, outUsd: 6.0 },
+  { match: /gemini-3\.8-flash/i, inUsd: 3.0, outUsd: 15.0 },
+  { match: /gemini-4-argon/i, inUsd: 3.0, outUsd: 15.0 },
+  { match: /gemini-.*-pro/i, inUsd: 12.0, outUsd: 72.0 },
+  { match: /gemini-.*-flash/i, inUsd: 3.0, outUsd: 15.0 },
+  { match: /gpt-5\.6-sol/i, inUsd: 16.0, outUsd: 80.0 },
+  { match: /gpt-5\.6-(luna|terra)/i, inUsd: 8.0, outUsd: 40.0 },
+  { match: /gpt-6/i, inUsd: 16.0, outUsd: 80.0 },
+  { match: /gpt-5/i, inUsd: 10.0, outUsd: 60.0 },
+  { match: /claude-haiku/i, inUsd: 5.0, outUsd: 25.0 },
+  { match: /claude-sonnet/i, inUsd: 15.0, outUsd: 75.0 },
+  { match: /claude-opus/i, inUsd: 25.0, outUsd: 125.0 },
 ];
 
 export function estimateCostUsdMicro(
@@ -444,7 +406,7 @@ export interface ParsedUsage {
 const num = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
 
-/** Normalise an OpenRouter/OpenAI-shaped `usage` object. */
+/** Normalise an OpenAI-shaped `usage` object from the gateway. */
 export function parseUsageObject(u: unknown): ParsedUsage | null {
   if (!u || typeof u !== "object") return null;
   const o = u as Record<string, unknown>;
@@ -614,7 +576,6 @@ async function recordTelemetryInner(
         prompt_tokens: args.promptTokens ?? null,
         completion_tokens: args.completionTokens ?? null,
         total_tokens: args.totalTokens ?? null,
-        cost_usd_micro: args.costUsdMicro ?? null,
         latency_ms: args.latencyMs,
         fallback_used: args.fallbackUsed,
         error_message: args.errorMessage ?? null,
@@ -638,10 +599,10 @@ async function recordTelemetryInner(
         key_owner: "platform",
         // Unknown until real usage arrives — never a fake 0. A request the
         // provider rejected outright (HTTP 4xx/5xx before any output) is not
-        // billed by OpenRouter: record it as a measured $0, not unknown.
+        // billed by the gateway: record it as a measured $0, not unknown.
         ...(args.status >= 400 && args.status < 599
           ? { cost_basis: "actual", cost_source: "provider_error_unbilled", cost_usd_micro: 0 }
-          : { cost_basis: "unknown", cost_source: null }),
+          : { cost_basis: "unknown", cost_source: null, cost_usd_micro: args.costUsdMicro ?? null }),
         request_id: args.requestId ?? null,
         upstream_provider: args.upstream ?? null,
         ...(args.extra ?? {}),
@@ -661,42 +622,6 @@ async function recordTelemetryInner(
   }
 }
 
-/**
- * OpenRouter generation record for one request id. Stats land a few seconds
- * after the stream closes, so poll briefly. Returns null (UNKNOWN) on any
- * failure — never a fake zero.
- */
-export async function fetchGenerationUsage(requestId: string): Promise<ParsedUsage | null> {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return null;
-  for (const delay of [3_000, 6_000, 12_000]) {
-    await new Promise((r) => setTimeout(r, delay));
-    try {
-      const res = await fetch(
-        `https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(requestId)}`,
-        { headers: { Authorization: `Bearer ${key}` } },
-      );
-      if (!res.ok) continue;
-      const d = ((await res.json()) as { data?: Record<string, unknown> }).data;
-      if (!d) continue;
-      const p = num(d.native_tokens_prompt) ?? num(d.tokens_prompt);
-      const c = num(d.native_tokens_completion) ?? num(d.tokens_completion);
-      if (p == null && c == null) continue;
-      return {
-        promptTokens: p,
-        completionTokens: c,
-        totalTokens: p != null && c != null ? p + c : null,
-        cachedTokens: num(d.native_tokens_cached),
-        cacheWriteTokens: null,
-        reasoningTokens: num(d.native_tokens_reasoning),
-        costUsd: num(d.total_cost) ?? num(d.usage),
-      };
-    } catch {
-      /* try again */
-    }
-  }
-  return null;
-}
 
 /**
  * Wrap a streamed (SSE) response so its final usage chunk is parsed in-flight
@@ -788,9 +713,8 @@ function meterStream(
     }
     let u = last as ParsedUsage | null;
     // Stalled / cancelled / empty streams never deliver the final usage
-    // chunk, but the provider still bills them. Read the real numbers from
-    // OpenRouter's generation record instead of leaving tokens/cost unknown.
-    if (!u && requestId) u = await fetchGenerationUsage(requestId);
+    // chunk. The gateway has no after-the-fact usage lookup, so these are
+    // recorded as UNKNOWN — never as zero tokens or a free call.
     try {
       const id = await rowId;
       if (!id) return;
@@ -888,7 +812,7 @@ async function updateLastCallUsageInner(args: {
   totalTokens: number | null;
   cachedPromptTokens?: number | null;
   /** Provider-reported USD cost for this call, when the gateway returns one
-   *  (OpenRouter does). When present it is recorded as ACTUAL cost; otherwise
+   *  When present it is recorded as ACTUAL cost; otherwise
    *  we fall back to the internal price table and mark it ESTIMATED. */
   actualCostUsd?: number | null;
   turnId?: string | null;
@@ -1042,8 +966,8 @@ export interface AiCallOptions {
   signal?: AbortSignal;
   meta?: AiCallMeta;
   /**
-   * When true, this call may be routed to an ultra-cheap budget model via
-   * OpenRouter if the user has economy mode enabled or if admin shadow testing
+   * When true, this call may be routed to an ultra-cheap budget model on the
+   * gateway if the user has economy mode enabled or if admin shadow testing
    * is active. Callers should opt in for non-critical, low-risk features.
    */
   budgetAware?: boolean;
@@ -1106,7 +1030,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
         );
         if (picked) {
           budgetModelOverride = picked;
-          budgetProviderOverride = "openrouter";
+          budgetProviderOverride = "lovable";
         }
       }
     } catch (err) {
@@ -1116,8 +1040,8 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     }
   }
 
-  // Provider is always OpenRouter — `budgetProviderOverride` can only ever be
-  // "openrouter" too; kept for telemetry shape compatibility.
+  // Provider is always the Lovable AI Gateway — `budgetProviderOverride` can
+  // only ever be "lovable" too; kept for telemetry shape compatibility.
   const provider: Provider = budgetProviderOverride ?? (await resolveProvider(opts.feature));
   const { model: dbModel, fallback } = await resolveModelOverride(opts.feature);
 
@@ -1128,13 +1052,13 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   const requestedModel =
     budgetModelOverride || (opts.lockCallerModel ? callerModel : dbModel || callerModel) || null;
 
-  // OPENROUTER-ONLY MODEL POLICY. Every requested slug is normalised to the
-  // centrally configured DeepSeek model (src/lib/ai-model-config.ts) so no
-  // legacy hardcoded Gemini/GPT/Claude id can reach the wire. `openrouter/auto`
-  // is never used — the model is always explicit.
+  // GATEWAY-ONLY MODEL POLICY. Every requested slug is normalised to a
+  // centrally configured gateway model (src/lib/ai-model-config.ts) so no
+  // legacy hardcoded Gemini/GPT/Claude/DeepSeek id can reach the wire — the
+  // model is always explicit.
   const needsVision = requestHasImageParts(opts.body);
   // Utility tier: short classification / summarisation features run on the
-  // cheaper utility model unless the caller asked for a specific DeepSeek slug
+  // cheaper utility model unless the caller asked for a specific configured slug
   // or the request carries images.
   const utility = isUtilityFeature(opts.feature) && !needsVision && !opts.codeOutput;
   let primaryModel: string = coerceToConfiguredModel(requestedModel, {
@@ -1195,26 +1119,21 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   }
   const hasTools = Array.isArray(body.tools) && (body.tools as unknown[]).length > 0;
   const isCodeWriting = opts.codeOutput === true || (opts.feature === "generate" && hasTools);
-  // Sole provider authority: any caller-supplied provider block is replaced.
+  // Sole provider authority: any caller-supplied provider block is dropped —
+  // the Lovable AI Gateway owns upstream selection and failover.
   delete body.provider;
   let inferenceEval: { models: string[] } | null = null;
   try {
     const { currentTurnContext } = await import("@/server/turn-context.server");
     inferenceEval = currentTurnContext().inferenceEval ?? null;
   } catch { /* no turn */ }
-  const routing = inferenceEval && isCodeWriting
-    // Evaluation: OpenRouter owns provider failover for each model; Kimble
-    // only names the model chain. NextBit stays excluded (it corrupts tool
-    // arguments — a known correctness defect, not an availability one).
-    ? { allow_fallbacks: true, require_parameters: true, ignore: Array.from(new Set(["nextbit", ...turnFailed.map((u) => u.toLowerCase().replace(/\s+/g, ""))])) }
-    : resolveProviderRouting({ codeWriting: isCodeWriting, avoid: turnFailed, hasTools });
-  if (routing) body.provider = routing;
   if (inferenceEval && isCodeWriting) {
+    // Evaluation: one model per call (the gateway has no multi-model
+    // fallback array); the eval harness iterates the chain itself.
     body.model = inferenceEval.models[0];
-    if (inferenceEval.models.length > 1) body.models = inferenceEval.models;
     body.__inferenceEval = true;
   }
-  if (isCodeWriting) console.log(`[provider-policy] avoid=${turnFailed.join(",") || "-"} routing=${JSON.stringify(routing)}`);
+  if (isCodeWriting) console.log(`[provider-policy] avoid=${turnFailed.join(",") || "-"} routing=gateway`);
   const streamExtra = {
     fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
     fallback_from_upstream: opts.meta?.fallbackFromUpstream ?? null,
@@ -1235,16 +1154,16 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     return providersExhaustedResponse();
   }
   let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
-  // OpenRouter owns provider failover. A 404 on a code call means it found no
-  // eligible endpoint for this model after its own failover: terminal for
-  // this call, never re-sent (not even on the fallback model).
+  // The gateway owns provider failover. A 404 on a code call means it found
+  // no eligible endpoint for this model: terminal for this call, never
+  // re-sent (not even on the fallback model).
   const exhausted = isCodeWriting && !primary.ok && primary.status === 404;
   if (exhausted) {
     try {
       const { markProvidersExhausted } = await import("@/server/turn-context.server");
       markProvidersExhausted();
     } catch { /* no turn */ }
-    console.warn(`[provider-policy] providers_exhausted (OpenRouter 404) — not retried`);
+    console.warn(`[provider-policy] providers_exhausted (gateway 404) — not retried`);
   }
   const latency = Date.now() - t0;
   const effectiveProvider = provider;
@@ -1252,10 +1171,11 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     (globalThis as Record<string, unknown>)["__petalLastProviderPaymentFailureAt"] = Date.now();
   }
 
-  // NOTE: there is no cross-provider failover any more. OpenRouter is the only
-  // gateway, so a 401/402/403 is an account problem that a second provider
-  // cannot paper over. At most ONE bounded retry (fallback model) happens below,
-  // which guarantees a single operation never fans out to multiple providers.
+  // NOTE: there is no cross-provider failover any more. The Lovable AI
+  // Gateway is the only gateway, so a 401/402/403 is an account problem that a
+  // second provider cannot paper over. At most ONE bounded retry (fallback
+  // model) happens below, which guarantees a single operation never fans out
+  // to multiple providers.
 
   // Decide whether to retry on fallback model (same provider).
   // Retry on 5xx, 429 (rate-limit), 402 (credits), AND 400/404 — the latter
@@ -1432,11 +1352,11 @@ async function dispatch(
   signal: AbortSignal | undefined,
   tierOverride?: AiCallTimeoutTier,
 ): Promise<Response> {
-  const url = OPENROUTER_URL;
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const url = GATEWAY_URL;
+  const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "OPENROUTER_API_KEY is not configured. Kimble routes all AI traffic through OpenRouter.",
+      "LOVABLE_API_KEY is not configured. Kimble routes all AI traffic through the Lovable AI Gateway.",
     );
   }
   // Final safety net: coerce whatever slug arrives here to the configured model.
@@ -1444,42 +1364,23 @@ async function dispatch(
   const evalRun = outBody.__inferenceEval === true;
   if ("__inferenceEval" in outBody) { outBody = { ...outBody }; delete outBody.__inferenceEval; }
   const wireModel = evalRun ? (outBody.model as string) : coerceToConfiguredModel(
-    remapModelForOpenRouter(outBody.model as string | undefined) ?? defaultTextModel(),
+    (outBody.model as string | undefined) ?? defaultTextModel(),
     { vision: requestHasImageParts(outBody) },
   );
   if (wireModel !== outBody.model) {
     outBody = { ...outBody, model: wireModel };
   }
-  // Ask OpenRouter for token usage on streamed calls too, so `ai_call_log`
+  // Ask the gateway for token usage on streamed calls too, so `ai_call_log`
   // records prompt/completion/total tokens for every request.
   if (outBody.stream === true && !outBody.stream_options) {
     outBody = { ...outBody, stream_options: { include_usage: true } };
-  }
-  // OpenRouter: always return usage (incl. cached tokens + real cost).
-  if (!outBody.usage) outBody = { ...outBody, usage: { include: true } };
-  // Provider routing is decided solely by engine/provider-policy (set in
-  // aiChatCompletions). dispatch never adds or changes a provider block.
-  // Sticky routing per project so repeated calls land on the same upstream
-  // and can reuse its prompt cache. Stable per project — never per request.
-  if (!outBody.session_id) {
-    try {
-      const { currentTurnContext } = await import("@/server/turn-context.server");
-      const pid = currentTurnContext().projectId;
-      if (pid) outBody = { ...outBody, session_id: `kimble-${pid}` };
-    } catch {
-      /* no ambient turn */
-    }
   }
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
+    "X-Lovable-AIG-SDK": "fetch",
   };
-
-  {
-    headers["HTTP-Referer"] = process.env.OPENROUTER_REFERER || "https://buildwithpetal.com";
-    headers["X-Title"] = "Kimble";
-  }
 
   const isStreaming = outBody.stream === true;
   const tier: AiCallTimeoutTier =

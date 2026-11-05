@@ -89,7 +89,7 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
     return heuristic ?? { phase: "implement", confidence: "medium", source: "fallback" };
   }
 
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return heuristic ?? { phase: "implement", confidence: "low", source: "fallback" };
   }
 
@@ -100,7 +100,7 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
     const resp = await aiChatCompletions({
       feature: "preflight",
       body: {
-        model: "deepseek/deepseek-v4-flash",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           {
             role: "system",
@@ -134,7 +134,7 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
 /**
  * Map a phase to a model preference. The caller still gets to override
  * (e.g. vision turns force a vision model). "cheap" = fast/cheap Lovable-AI
- * models, "smart" = strong reasoning models, "budget" = ultra-cheap OpenRouter
+ * models, "smart" = strong reasoning models, "budget" = ultra-cheap gateway
  * models (used when a user enables economy mode).
  *
  * Tuning note (2026-07-30): Economy mode pushes low-risk phases (`docs`, low-

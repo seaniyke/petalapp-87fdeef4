@@ -25,8 +25,8 @@ import { aiChatCompletions } from "@/server/ai-provider.server";
  * Purely low-risk reports (visual craft notes, known-benign advisories) never
  * reach a model at all.
  */
-const ESCALATED_MODEL = "deepseek/deepseek-v4-flash";
-const CHEAP_MODEL = "deepseek/deepseek-v4-flash";
+const ESCALATED_MODEL = "google/gemini-3.8-flash";
+const CHEAP_MODEL = "google/gemini-3.1-flash-lite";
 const MAX_DEFECTS = 24;
 const TIMEOUT_MS = 45_000;
 

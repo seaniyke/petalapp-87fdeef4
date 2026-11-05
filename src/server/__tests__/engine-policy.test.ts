@@ -3,14 +3,10 @@ import { resolveProviderRouting } from "@/server/engine/provider-policy";
 import { RecoveryBudget } from "@/server/engine/recovery-policy";
 
 describe("single provider policy", () => {
-  it("code calls: OpenRouter native routing, failed upstreams ignored", () => {
-    const r = resolveProviderRouting({ codeWriting: true, avoid: ["OpenInference"] }) as { ignore: string[]; only?: string[] };
-    expect(r.only).toBeUndefined();
-    expect(r.ignore).toContain("openinference");
-  });
-  it("non-code calls only inherit exclusions", () => {
+  it("no provider block is ever sent — the gateway owns upstream failover", () => {
+    expect(resolveProviderRouting({ codeWriting: true, avoid: ["OpenInference"] })).toBeUndefined();
     expect(resolveProviderRouting({ codeWriting: false, avoid: [] })).toBeUndefined();
-    expect(resolveProviderRouting({ codeWriting: false, avoid: ["Azure"] })).toEqual({ ignore: ["azure"] });
+    expect(resolveProviderRouting({ codeWriting: false, avoid: ["Azure"] })).toBeUndefined();
   });
 });
 

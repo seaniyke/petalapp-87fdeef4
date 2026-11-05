@@ -307,8 +307,8 @@ function isManagedScaffoldPath(path: string): boolean {
   );
 }
 
-const MODEL_FAST = "deepseek/deepseek-v4-flash";
-const MODEL_BEST = "deepseek/deepseek-v4-flash";
+const MODEL_FAST = "google/gemini-3.1-flash-lite";
+const MODEL_BEST = "google/gemini-3.8-flash";
 // Phase-aware reasoning candidates. Added to the smart-router pool so
 // the telemetry-driven picker (`pickBestModel`) can promote whichever
 // model is winning on success_rate / cost / latency for a given
@@ -316,13 +316,13 @@ const MODEL_BEST = "deepseek/deepseek-v4-flash";
 // telemetry exists yet, and the phase_router cheap-direct path still
 // short-circuits to MODEL_FAST for trivial turns.
 const MODEL_REASONING = "openai/gpt-5.4";
-const MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
+const MODEL_CLAUDE = "anthropic/claude-sonnet-5";
 /** Escalation model used when the primary returned prose / no tool call.
  *  This must be a model that is known-good on the Lovable AI gateway for
  *  streamed tool calls. GPT-5 was returning HTTP 400 in production retry
  *  telemetry, which meant the retry never actually ran and `no_edit_emitted`
  *  leaked to users. */
-const MODEL_STRUCTURED_RETRY = "deepseek/deepseek-v4-flash";
+const MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
 
 /** One billable call's cost: provider-reported (ACTUAL) or token-estimated. */
 function turnCallCost(u: GatewayUsage): import("@/lib/build-pricing").CallCost {
@@ -331,7 +331,7 @@ function turnCallCost(u: GatewayUsage): import("@/lib/build-pricing").CallCost {
   return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
 }
 /** Vision-capable model used whenever the latest turn carries image attachments. */
-const MODEL_VISION = "deepseek/deepseek-v4-flash";
+const MODEL_VISION = "google/gemini-3.8-flash";
 
 /** Heuristic: when in "smart" mode, decide whether the turn deserves the Pro model. */
 function pickSmartModel(latestPrompt: string, fileCount: number): string {
@@ -754,19 +754,19 @@ type ParsedTool = {
     prompt_tokens?: number;
     completion_tokens?: number;
     total_tokens?: number;
-    /** OpenAI/Anthropic via OpenRouter normalize cached prefix tokens here. */
+    /** OpenAI/Anthropic via the gateway normalize cached prefix tokens here. */
     prompt_tokens_details?: { cached_tokens?: number };
-    /** Anthropic raw via OpenRouter exposes these directly. */
+    /** Anthropic raw via the gateway exposes these directly. */
     cache_read_input_tokens?: number;
     cache_creation_input_tokens?: number;
   } | null;
   /**
-   * Upstream refusal carried INSIDE a 200 stream. OpenRouter reports upstream
+   * Upstream refusal carried INSIDE a 200 stream. The gateway reports upstream
    * failures as `{"error": {...}}` frames with no `choices`; before this the
    * reader skipped them and the turn looked empty instead of refused.
    */
   providerError?: ProviderError | null;
-  /** Upstream (OpenRouter `provider` field) that served this stream. */
+  /** Upstream provider that served this stream, when the gateway reports it. */
   upstream?: string | null;
   /** Set when the provider stopped making progress and we abandoned it. */
   stall?: { ms: number; afterOutput: boolean; upstream: string | null } | null;
@@ -818,7 +818,7 @@ function simulateDeadStream(real: Response): Response {
     async pull(ctrl) {
       if (dead) {
         await new Promise((r) => setTimeout(r, 10_000));
-        ctrl.enqueue(enc.encode(": OPENROUTER PROCESSING\n\n"));
+        ctrl.enqueue(enc.encode(": GATEWAY PROCESSING\n\n"));
         return;
       }
       const { value, done } = await reader.read();
@@ -1292,8 +1292,8 @@ async function structuredRetryCompletion(args: {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
     timeoutTier: "stream",
-    // No providerOverride: follow the resolved provider (DB → env → OpenRouter
-    // when its key is set). Pinning "lovable" here meant a funded OpenRouter
+    // No providerOverride: follow the resolved provider (DB → default).
+    // Legacy note: pinning "lovable" here once meant a funded OpenRouter
     // account was never used and every turn died on the Lovable gateway's 402.
     lockCallerModel: true,
     signal: args.signal,
@@ -2136,7 +2136,7 @@ async function handleGenerateRequestCore(
 
   // Provider key check is handled inside aiChatCompletions; we only verify
   // here so we can surface the existing friendly 500 if no provider is set.
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return new Response("AI gateway is not configured.", { status: 500 });
   }
 
@@ -3933,7 +3933,7 @@ async function handleGenerateRequestCore(
     {
       // STATIC PREFIX. Content uses the array shape so we can attach
       // Anthropic-style `cache_control: { type: "ephemeral" }`. Gemini /
-      // OpenAI via OpenRouter ignore the marker safely and rely on
+      // OpenAI via the gateway ignores the marker safely and relies on
       // automatic prefix-cache matching — which works because the text
       // above is stable across turns.
       role: "system",
@@ -4481,7 +4481,7 @@ async function handleGenerateRequestCore(
           while (recovery.take("provider_failure")) {
             attempts++;
             // Recorded for observability only. Provider trouble is owned by
-            // the provider layer (OpenRouter failover + per-turn upstream
+            // the provider layer (gateway failover + per-turn upstream
             // exclusions) and can NEVER trip the agent breaker: a model that
             // stalled is not an agent that is reasoning badly.
             breaker.recordFailure({
@@ -7161,7 +7161,7 @@ async function handleGenerateRequestCore(
         // and we can't distinguish "model returned a full project" from
         // "model returned a one-line refusal".
         // Pull cached-prefix tokens out of whichever shape the upstream used.
-        // OpenAI / Anthropic via OpenRouter: usage.prompt_tokens_details.cached_tokens.
+        // OpenAI / Anthropic via the gateway: usage.prompt_tokens_details.cached_tokens.
         // Anthropic raw: usage.cache_read_input_tokens.
         const cachedPromptTokens =
           collected.usage?.prompt_tokens_details?.cached_tokens ??
@@ -7174,7 +7174,7 @@ async function handleGenerateRequestCore(
           completionTokens: collected.usage?.completion_tokens ?? null,
           totalTokens: collected.usage?.total_tokens ?? null,
           cachedPromptTokens,
-          // OpenRouter returns a real USD amount on the usage object when
+          // The gateway may return a real USD amount on the usage object when
           // available; when it doesn't, the estimate is labelled as such.
           actualCostUsd:
             typeof (collected.usage as { cost?: unknown } | undefined)?.cost === "number"

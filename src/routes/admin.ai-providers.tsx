@@ -1,14 +1,11 @@
 /**
  * /admin/ai-providers — operator console for AI routing.
  *
- * Per feature you can choose:
- *   - Provider (Auto / Kimble / OpenRouter)
+ * All traffic goes through the Lovable AI Gateway. Per feature you can set:
  *   - Primary model (free text, validated server-side)
  *   - Fallback model (retried once on 429/402/5xx)
  *
  * Plus a 7-day cost & usage rollup at the top.
- *
- * Image gen is hard-pinned to Kimble AI and shown as locked.
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -20,7 +17,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Lock,
-  ExternalLink,
   Save,
   RefreshCw,
   Zap,
@@ -42,7 +38,7 @@ import type {
   SetBudgetInput,
 } from "@/server/ai-provider-admin.server";
 import type { AiFeature } from "@/server/ai-provider.server";
-import budgetCatalog from "@/lib/openrouter-budget-models.json";
+import budgetCatalog from "@/lib/gateway-budget-models.json";
 
 /**
  * Call the admin API with the user's Supabase access token. We use a plain
@@ -96,60 +92,60 @@ export const Route = createFileRoute("/admin/ai-providers")({
   component: AiProvidersPage,
 });
 
-const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recommended: { lovable: string; openrouter: string }; fallback: string }> = {
+const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recommended: string; fallback: string }> = {
   generate: {
     label: "Code generation",
     blurb: "The big one — every Build turn. Where most of your AI cost lives.",
-    recommended: { lovable: "google/gemini-2.5-pro", openrouter: "anthropic/claude-sonnet-4.5" },
-    fallback: "openai/gpt-5-mini",
+    recommended: "google/gemini-3.8-flash",
+    fallback: "openai/gpt-5.6-sol",
   },
   discuss: {
     label: "Discuss / Plan mode",
     blurb: "Chat replies that don't touch files. Cheap-friendly.",
-    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "deepseek/deepseek-v4-flash" },
-    fallback: "google/gemini-2.5-flash",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   triage: {
     label: "Triage (warm reply)",
     blurb: "The instant 'hi' before Build. Tool-call reliability matters.",
-    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "openai/gpt-5-mini" },
-    fallback: "anthropic/claude-haiku-4.5",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   coach: {
     label: "Idea Coach",
     blurb: "The 'I don't know what to build' guided dialogue.",
-    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "deepseek/deepseek-v4-flash" },
-    fallback: "google/gemini-2.5-flash",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   design: {
     label: "Design Director",
     blurb: "Picks a bold visual direction at the start of a project.",
-    recommended: { lovable: "google/gemini-2.5-pro", openrouter: "anthropic/claude-sonnet-4.5" },
-    fallback: "openai/gpt-5-mini",
+    recommended: "google/gemini-3.8-flash",
+    fallback: "openai/gpt-5.6-sol",
   },
   memory: {
     label: "Project Memory writer",
     blurb: "Background tagger. Pure summarisation — go cheap.",
-    recommended: { lovable: "google/gemini-2.5-flash-lite", openrouter: "google/gemini-2.5-flash-lite" },
-    fallback: "google/gemini-2.5-flash",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   recovery: {
     label: "Self-recovery",
     blurb: "Post-build self-check. Debugging quality matters.",
-    recommended: { lovable: "google/gemini-2.5-pro", openrouter: "anthropic/claude-sonnet-4.5" },
-    fallback: "openai/gpt-5-mini",
+    recommended: "google/gemini-3.8-flash",
+    fallback: "openai/gpt-5.6-sol",
   },
   preflight: {
     label: "Pre-flight estimate",
     blurb: "Cheap classifier that previews cost/time before you hit send.",
-    recommended: { lovable: "google/gemini-2.5-flash-lite", openrouter: "google/gemini-2.5-flash-lite" },
-    fallback: "google/gemini-2.5-flash",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   image: {
     label: "Image generation",
-    blurb: "Nano-banana / Gemini image gen. Routable through Kimble AI or OpenRouter.",
-    recommended: { lovable: "google/gemini-2.5-flash-image", openrouter: "google/gemini-2.5-flash-image" },
-    fallback: "google/gemini-2.5-flash-image",
+    blurb: "Image generation via the gateway's images endpoint.",
+    recommended: "openai/gpt-image-2.5-sunburst",
+    fallback: "openai/gpt-image-2.5-sunburst",
   },
 };
 
@@ -165,7 +161,7 @@ function AiProvidersPage() {
 
   const [rows, setRows] = useState<AiFeatureRow[] | null>(null);
   const [budgetRows, setBudgetRows] = useState<BudgetConfigRow[] | null>(null);
-  const [openrouterReady, setOpenrouterReady] = useState(true);
+  const [gatewayReady, setGatewayReady] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savingFeature, setSavingFeature] = useState<AiFeature | null>(null);
   const [savingBudget, setSavingBudget] = useState<AiFeature | null>(null);
@@ -182,10 +178,10 @@ function AiProvidersPage() {
     try {
       const res = await callAdminApi<{
         rows: AiFeatureRow[];
-        openrouterKeyConfigured: boolean;
+        gatewayKeyConfigured: boolean;
       }>("list");
       setRows(res.rows);
-      setOpenrouterReady(res.openrouterKeyConfigured);
+      setGatewayReady(res.gatewayKeyConfigured);
       const budgetRes = await callAdminApi<{ rows: BudgetConfigRow[] }>("budget-config");
       setBudgetRows(budgetRes.rows);
     } catch (e) {
@@ -227,7 +223,7 @@ function AiProvidersPage() {
 
   const onProviderChange = async (
     feature: AiFeature,
-    choice: "lovable" | "openrouter" | "auto",
+    choice: "lovable" | "auto",
   ) => {
     setSavingFeature(feature);
     try {
@@ -237,7 +233,7 @@ function AiProvidersPage() {
       toast.success(
         choice === "auto"
           ? `${FEATURE_DETAILS[feature].label}: cleared override`
-          : `${FEATURE_DETAILS[feature].label} → ${choice === "openrouter" ? "OpenRouter" : "Kimble AI"}`,
+          : `${FEATURE_DETAILS[feature].label} → Kimble AI`,
       );
       await refresh();
     } catch (e) {
@@ -348,41 +344,33 @@ function AiProvidersPage() {
           onSave={onBudgetSave}
         />
 
-        {/* OpenRouter status banner */}
+        {/* Gateway status banner */}
         <Card
           className={`mb-6 border ${
-            openrouterReady ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
+            gatewayReady ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
           }`}
         >
           <CardContent className="flex items-start gap-3 p-4">
-            {openrouterReady ? (
+            {gatewayReady ? (
               <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-500" />
             ) : (
               <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
             )}
             <div className="flex-1 text-sm">
               <p className="font-medium">
-                {openrouterReady ? "OpenRouter key is configured." : "OpenRouter key not configured."}
+                {gatewayReady ? "AI Gateway key is configured." : "AI Gateway key not configured."}
               </p>
               <p className="mt-0.5 text-muted-foreground">
-                {openrouterReady ? (
-                  <>You can switch any feature to OpenRouter below.</>
+                {gatewayReady ? (
+                  <>All AI traffic routes through the Lovable AI Gateway.</>
                 ) : (
                   <>
-                    Add <code className="rounded bg-muted px-1 py-0.5 text-xs">OPENROUTER_API_KEY</code>{" "}
-                    in Cloud → Secrets, then refresh this page.
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">LOVABLE_API_KEY</code>{" "}
+                    is missing — it is auto-provisioned per project; re-provision it, then refresh.
                   </>
                 )}
               </p>
             </div>
-            <a
-              href="https://openrouter.ai/activity"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              OpenRouter usage <ExternalLink className="h-3 w-3" />
-            </a>
           </CardContent>
         </Card>
 
@@ -397,7 +385,6 @@ function AiProvidersPage() {
               <FeatureRow
                 key={row.feature}
                 row={row}
-                openrouterReady={openrouterReady}
                 saving={savingFeature === row.feature}
                 onProviderChange={(choice) => onProviderChange(row.feature, choice)}
                 onModelSave={(model, fallback) => onModelSave(row.feature, model, fallback)}
@@ -410,26 +397,22 @@ function AiProvidersPage() {
           <CardContent className="p-5 text-sm text-muted-foreground">
             <div className="mb-2 flex items-center gap-2 text-foreground">
               <Sparkles className="h-4 w-4" />
-              <span className="font-medium">Recommended setup (April 2026 benchmarks)</span>
+              <span className="font-medium">Recommended setup</span>
             </div>
             <ul className="ml-5 list-disc space-y-1">
               <li>
-                <strong>Code generation</strong> → OpenRouter <code>anthropic/claude-sonnet-4.5</code>{" "}
-                (best code + tool reliability), fallback <code>openai/gpt-5-mini</code>.
+                <strong>Code generation</strong> → <code>google/gemini-3.8-flash</code>,{" "}
+                fallback <code>openai/gpt-5.6-sol</code>.
               </li>
               <li>
-                <strong>Discuss / Coach</strong> → OpenRouter <code>deepseek/deepseek-v4-flash</code>{" "}
-                (~20× cheaper than Sonnet, indistinguishable for chat).
+                <strong>Discuss / Coach / Triage</strong> → <code>google/gemini-3.1-flash-lite</code> — cheap and fast for chat.
               </li>
               <li>
-                <strong>Triage</strong> → <code>openai/gpt-5-mini</code> — tool-call reliability matters more than cost.
-              </li>
-              <li>
-                <strong>Memory / Preflight</strong> → <code>google/gemini-2.5-flash-lite</code> — pure classification.
+                <strong>Memory / Preflight</strong> → <code>google/gemini-3.1-flash-lite</code> — pure classification.
               </li>
               <li>
                 Always set a fallback model. The helper retries once on 429/402/5xx so
-                OpenRouter outages don't break Kimble.
+                a gateway outage doesn't break Kimble.
               </li>
             </ul>
           </CardContent>
@@ -653,16 +636,9 @@ function CostDashboard({
           </div>
         )}
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Cost is estimated from token counts; OpenRouter exact billing is on{" "}
-          <a
-            href="https://openrouter.ai/activity"
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            their dashboard
-          </a>
-          . Tokens may be 0 for streaming responses where usage isn't reported.
+          Cost is estimated from token counts at catalog rates; the workspace
+          credit ledger is the exact billing record. Tokens may be 0 for
+          streaming responses where usage isn't reported.
         </p>
       </CardContent>
     </Card>
@@ -671,23 +647,21 @@ function CostDashboard({
 
 function FeatureRow({
   row,
-  openrouterReady,
   saving,
   onProviderChange,
   onModelSave,
 }: {
   row: AiFeatureRow;
-  openrouterReady: boolean;
   saving: boolean;
-  onProviderChange: (choice: "lovable" | "openrouter" | "auto") => void;
+  onProviderChange: (choice: "lovable" | "auto") => void;
   onModelSave: (model: string, fallback: string) => void;
 }) {
   const details = FEATURE_DETAILS[row.feature];
-  const current: "lovable" | "openrouter" | "auto" = row.override ?? "auto";
+  const current: "lovable" | "auto" = row.override ?? "auto";
 
   const recommendedModel = useMemo(
-    () => details.recommended[row.effective] || "",
-    [details, row.effective],
+    () => details.recommended || "",
+    [details],
   );
   const recommendedFallback = details.fallback;
 
@@ -734,14 +708,6 @@ function FeatureRow({
               onClick={() => onProviderChange("lovable")}
             >
               Kimble
-            </SegBtn>
-            <SegBtn
-              active={current === "openrouter"}
-              disabled={row.locked || saving || !openrouterReady}
-              onClick={() => onProviderChange("openrouter")}
-              title={!openrouterReady ? "Add OPENROUTER_API_KEY first" : undefined}
-            >
-              OpenRouter
             </SegBtn>
             {saving && <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           </div>
@@ -837,17 +803,13 @@ function SegBtn({
   );
 }
 
-function ProviderBadge({ provider }: { provider: "lovable" | "openrouter" }) {
-  const isLovable = provider === "lovable";
+function ProviderBadge({ provider }: { provider: "lovable" }) {
+  void provider;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${
-        isLovable
-          ? "bg-primary/10 text-primary"
-          : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-      }`}
+      className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary"
     >
-      {isLovable ? "Kimble" : "OpenRouter"}
+      Kimble
     </span>
   );
 }
@@ -1043,17 +1005,9 @@ function BudgetModelsCard({
               <h2 className="font-display text-lg font-semibold">Budget-tier routing</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Ultra-cheap OpenRouter models used when a user enables Economy mode.
+              Ultra-cheap gateway models used when a user enables Economy mode.
             </p>
           </div>
-          <a
-            href="https://openrouter.ai/models"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-          >
-            OpenRouter models <ExternalLink className="h-3 w-3" />
-          </a>
         </div>
 
         {!rows || !featureRows ? (
@@ -1064,14 +1018,12 @@ function BudgetModelsCard({
           <div className="space-y-3">
             {features.map((feature) => {
               const row = rows.find((r) => r.feature === feature)!;
-              const featureRow = featureRows.find((r) => r.feature === feature);
               const isEditing = editing === feature;
               const isSaving = saving === feature;
               const enabled = draftEnabled[feature] ?? row.enabled;
               const selected = draftModels[feature] ?? row.allowedModels;
               const shadow = draftShadow[feature] ?? row.shadowPct;
               const available = budgetCatalog.filter((m) => m.features.includes(feature));
-              const hasOpenRouter = featureRow?.effective === "openrouter";
 
               return (
                 <div key={feature} className="rounded-xl border border-border/60 p-3">
@@ -1087,9 +1039,6 @@ function BudgetModelsCard({
                       >
                         {enabled ? "ON" : "OFF"}
                       </span>
-                      {!hasOpenRouter && enabled && (
-                        <span className="text-[10px] text-amber-500">needs OpenRouter provider</span>
-                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       {isEditing ? (

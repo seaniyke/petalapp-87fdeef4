@@ -47,18 +47,18 @@ var require_react_production = __commonJS({
   "node_modules/react/cjs/react.production.js"(exports) {
     "use strict";
     init_define_import_meta_env();
-    var REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element");
-    var REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal");
-    var REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment");
-    var REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode");
-    var REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler");
-    var REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer");
-    var REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context");
-    var REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref");
-    var REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense");
-    var REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo");
-    var REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
-    var REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity");
+    var REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element");
+    var REACT_PORTAL_TYPE = Symbol.for("react.portal");
+    var REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
+    var REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode");
+    var REACT_PROFILER_TYPE = Symbol.for("react.profiler");
+    var REACT_CONSUMER_TYPE = Symbol.for("react.consumer");
+    var REACT_CONTEXT_TYPE = Symbol.for("react.context");
+    var REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref");
+    var REACT_SUSPENSE_TYPE = Symbol.for("react.suspense");
+    var REACT_MEMO_TYPE = Symbol.for("react.memo");
+    var REACT_LAZY_TYPE = Symbol.for("react.lazy");
+    var REACT_ACTIVITY_TYPE = Symbol.for("react.activity");
     var MAYBE_ITERATOR_SYMBOL = Symbol.iterator;
     function getIteratorFn(maybeIterable) {
       if (null === maybeIterable || "object" !== typeof maybeIterable) return null;
@@ -470,11 +470,11 @@ var require_react_production = __commonJS({
     exports.useState = function(initialState) {
       return ReactSharedInternals.H.useState(initialState);
     };
-    exports.useSyncExternalStore = function(subscribe2, getSnapshot2, getServerSnapshot) {
+    exports.useSyncExternalStore = function(subscribe2, getSnapshot3, getServerSnapshot2) {
       return ReactSharedInternals.H.useSyncExternalStore(
         subscribe2,
-        getSnapshot2,
-        getServerSnapshot
+        getSnapshot3,
+        getServerSnapshot2
       );
     };
     exports.useTransition = function() {
@@ -954,7 +954,7 @@ var require_react_development = __commonJS({
         }
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), MAYBE_ITERATOR_SYMBOL = Symbol.iterator, didWarnStateUpdateForUnmountedComponent = {}, ReactNoopUpdateQueue = {
+      var REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = Symbol.for("react.activity"), MAYBE_ITERATOR_SYMBOL = Symbol.iterator, didWarnStateUpdateForUnmountedComponent = {}, ReactNoopUpdateQueue = {
         isMounted: function() {
           return false;
         },
@@ -997,7 +997,7 @@ var require_react_development = __commonJS({
       deprecatedAPIs.constructor = PureComponent;
       assign(deprecatedAPIs, Component2.prototype);
       deprecatedAPIs.isPureReactComponent = true;
-      var isArrayImpl = Array.isArray, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = {
+      var isArrayImpl = Array.isArray, REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), ReactSharedInternals = {
         H: null,
         A: null,
         T: null,
@@ -1441,11 +1441,11 @@ var require_react_development = __commonJS({
       exports.useState = function(initialState) {
         return resolveDispatcher().useState(initialState);
       };
-      exports.useSyncExternalStore = function(subscribe2, getSnapshot2, getServerSnapshot) {
+      exports.useSyncExternalStore = function(subscribe2, getSnapshot3, getServerSnapshot2) {
         return resolveDispatcher().useSyncExternalStore(
           subscribe2,
-          getSnapshot2,
-          getServerSnapshot
+          getSnapshot3,
+          getServerSnapshot2
         );
       };
       exports.useTransition = function() {
@@ -1475,8 +1475,8 @@ var require_react_jsx_runtime_production = __commonJS({
   "node_modules/react/cjs/react-jsx-runtime.production.js"(exports) {
     "use strict";
     init_define_import_meta_env();
-    var REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element");
-    var REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment");
+    var REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element");
+    var REACT_FRAGMENT_TYPE = Symbol.for("react.fragment");
     function jsxProd(type, config, maybeKey) {
       var key = null;
       void 0 !== maybeKey && (key = "" + maybeKey);
@@ -1716,7 +1716,7 @@ var require_react_jsx_runtime_development = __commonJS({
       function isValidElement(object) {
         return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE;
       }
-      var React3 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React3.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty2 = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+      var React3 = require_react(), REACT_ELEMENT_TYPE = Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = Symbol.for("react.memo"), REACT_LAZY_TYPE = Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = Symbol.for("react.client.reference"), ReactSharedInternals = React3.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty2 = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
         return null;
       };
       React3 = {
@@ -1782,21 +1782,21 @@ var require_use_sync_external_store_shim_production = __commonJS({
       return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
     }
     var objectIs = "function" === typeof Object.is ? Object.is : is;
-    var useState2 = React3.useState;
-    var useEffect3 = React3.useEffect;
-    var useLayoutEffect2 = React3.useLayoutEffect;
+    var useState = React3.useState;
+    var useEffect2 = React3.useEffect;
+    var useLayoutEffect = React3.useLayoutEffect;
     var useDebugValue = React3.useDebugValue;
-    function useSyncExternalStore$2(subscribe2, getSnapshot2) {
-      var value = getSnapshot2(), _useState = useState2({ inst: { value, getSnapshot: getSnapshot2 } }), inst = _useState[0].inst, forceUpdate = _useState[1];
-      useLayoutEffect2(
+    function useSyncExternalStore$2(subscribe2, getSnapshot3) {
+      var value = getSnapshot3(), _useState = useState({ inst: { value, getSnapshot: getSnapshot3 } }), inst = _useState[0].inst, forceUpdate = _useState[1];
+      useLayoutEffect(
         function() {
           inst.value = value;
-          inst.getSnapshot = getSnapshot2;
+          inst.getSnapshot = getSnapshot3;
           checkIfSnapshotChanged(inst) && forceUpdate({ inst });
         },
-        [subscribe2, value, getSnapshot2]
+        [subscribe2, value, getSnapshot3]
       );
-      useEffect3(
+      useEffect2(
         function() {
           checkIfSnapshotChanged(inst) && forceUpdate({ inst });
           return subscribe2(function() {
@@ -1818,8 +1818,8 @@ var require_use_sync_external_store_shim_production = __commonJS({
         return true;
       }
     }
-    function useSyncExternalStore$1(subscribe2, getSnapshot2) {
-      return getSnapshot2();
+    function useSyncExternalStore$1(subscribe2, getSnapshot3) {
+      return getSnapshot3();
     }
     var shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
     exports.useSyncExternalStore = void 0 !== React3.useSyncExternalStore ? React3.useSyncExternalStore : shim;
@@ -1835,30 +1835,30 @@ var require_use_sync_external_store_shim_development = __commonJS({
       function is(x, y) {
         return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
       }
-      function useSyncExternalStore$2(subscribe2, getSnapshot2) {
+      function useSyncExternalStore$2(subscribe2, getSnapshot3) {
         didWarnOld18Alpha || void 0 === React3.startTransition || (didWarnOld18Alpha = true, console.error(
           "You are using an outdated, pre-release alpha of React 18 that does not support useSyncExternalStore. The use-sync-external-store shim will not work correctly. Upgrade to a newer pre-release."
         ));
-        var value = getSnapshot2();
+        var value = getSnapshot3();
         if (!didWarnUncachedGetSnapshot) {
-          var cachedValue = getSnapshot2();
+          var cachedValue = getSnapshot3();
           objectIs(value, cachedValue) || (console.error(
             "The result of getSnapshot should be cached to avoid an infinite loop"
           ), didWarnUncachedGetSnapshot = true);
         }
-        cachedValue = useState2({
-          inst: { value, getSnapshot: getSnapshot2 }
+        cachedValue = useState({
+          inst: { value, getSnapshot: getSnapshot3 }
         });
         var inst = cachedValue[0].inst, forceUpdate = cachedValue[1];
-        useLayoutEffect2(
+        useLayoutEffect(
           function() {
             inst.value = value;
-            inst.getSnapshot = getSnapshot2;
+            inst.getSnapshot = getSnapshot3;
             checkIfSnapshotChanged(inst) && forceUpdate({ inst });
           },
-          [subscribe2, value, getSnapshot2]
+          [subscribe2, value, getSnapshot3]
         );
-        useEffect3(
+        useEffect2(
           function() {
             checkIfSnapshotChanged(inst) && forceUpdate({ inst });
             return subscribe2(function() {
@@ -1880,11 +1880,11 @@ var require_use_sync_external_store_shim_development = __commonJS({
           return true;
         }
       }
-      function useSyncExternalStore$1(subscribe2, getSnapshot2) {
-        return getSnapshot2();
+      function useSyncExternalStore$1(subscribe2, getSnapshot3) {
+        return getSnapshot3();
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React3 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState2 = React3.useState, useEffect3 = React3.useEffect, useLayoutEffect2 = React3.useLayoutEffect, useDebugValue = React3.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
+      var React3 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState = React3.useState, useEffect2 = React3.useEffect, useLayoutEffect = React3.useLayoutEffect, useDebugValue = React3.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
       exports.useSyncExternalStore = void 0 !== React3.useSyncExternalStore ? React3.useSyncExternalStore : shim;
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
     })();
@@ -1916,12 +1916,12 @@ var require_with_selector_production = __commonJS({
     }
     var objectIs = "function" === typeof Object.is ? Object.is : is;
     var useSyncExternalStore = shim.useSyncExternalStore;
-    var useRef5 = React3.useRef;
-    var useEffect3 = React3.useEffect;
+    var useRef4 = React3.useRef;
+    var useEffect2 = React3.useEffect;
     var useMemo2 = React3.useMemo;
     var useDebugValue = React3.useDebugValue;
-    exports.useSyncExternalStoreWithSelector = function(subscribe2, getSnapshot2, getServerSnapshot, selector, isEqual) {
-      var instRef = useRef5(null);
+    exports.useSyncExternalStoreWithSelector = function(subscribe2, getSnapshot3, getServerSnapshot2, selector, isEqual) {
+      var instRef = useRef4(null);
       if (null === instRef.current) {
         var inst = { hasValue: false, value: null };
         instRef.current = inst;
@@ -1948,20 +1948,20 @@ var require_with_selector_production = __commonJS({
             memoizedSnapshot = nextSnapshot;
             return memoizedSelection = nextSelection;
           }
-          var hasMemo = false, memoizedSnapshot, memoizedSelection, maybeGetServerSnapshot = void 0 === getServerSnapshot ? null : getServerSnapshot;
+          var hasMemo = false, memoizedSnapshot, memoizedSelection, maybeGetServerSnapshot = void 0 === getServerSnapshot2 ? null : getServerSnapshot2;
           return [
             function() {
-              return memoizedSelector(getSnapshot2());
+              return memoizedSelector(getSnapshot3());
             },
             null === maybeGetServerSnapshot ? void 0 : function() {
               return memoizedSelector(maybeGetServerSnapshot());
             }
           ];
         },
-        [getSnapshot2, getServerSnapshot, selector, isEqual]
+        [getSnapshot3, getServerSnapshot2, selector, isEqual]
       );
       var value = useSyncExternalStore(subscribe2, instRef[0], instRef[1]);
-      useEffect3(
+      useEffect2(
         function() {
           inst.hasValue = true;
           inst.value = value;
@@ -1984,9 +1984,9 @@ var require_with_selector_development = __commonJS({
         return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React3 = require_react(), shim = require_shim(), objectIs = "function" === typeof Object.is ? Object.is : is, useSyncExternalStore = shim.useSyncExternalStore, useRef5 = React3.useRef, useEffect3 = React3.useEffect, useMemo2 = React3.useMemo, useDebugValue = React3.useDebugValue;
-      exports.useSyncExternalStoreWithSelector = function(subscribe2, getSnapshot2, getServerSnapshot, selector, isEqual) {
-        var instRef = useRef5(null);
+      var React3 = require_react(), shim = require_shim(), objectIs = "function" === typeof Object.is ? Object.is : is, useSyncExternalStore = shim.useSyncExternalStore, useRef4 = React3.useRef, useEffect2 = React3.useEffect, useMemo2 = React3.useMemo, useDebugValue = React3.useDebugValue;
+      exports.useSyncExternalStoreWithSelector = function(subscribe2, getSnapshot3, getServerSnapshot2, selector, isEqual) {
+        var instRef = useRef4(null);
         if (null === instRef.current) {
           var inst = { hasValue: false, value: null };
           instRef.current = inst;
@@ -2014,20 +2014,20 @@ var require_with_selector_development = __commonJS({
               memoizedSnapshot = nextSnapshot;
               return memoizedSelection = nextSelection;
             }
-            var hasMemo = false, memoizedSnapshot, memoizedSelection, maybeGetServerSnapshot = void 0 === getServerSnapshot ? null : getServerSnapshot;
+            var hasMemo = false, memoizedSnapshot, memoizedSelection, maybeGetServerSnapshot = void 0 === getServerSnapshot2 ? null : getServerSnapshot2;
             return [
               function() {
-                return memoizedSelector(getSnapshot2());
+                return memoizedSelector(getSnapshot3());
               },
               null === maybeGetServerSnapshot ? void 0 : function() {
                 return memoizedSelector(maybeGetServerSnapshot());
               }
             ];
           },
-          [getSnapshot2, getServerSnapshot, selector, isEqual]
+          [getSnapshot3, getServerSnapshot2, selector, isEqual]
         );
         var value = useSyncExternalStore(subscribe2, instRef[0], instRef[1]);
-        useEffect3(
+        useEffect2(
           function() {
             inst.hasValue = true;
             inst.value = value;
@@ -2051,428 +2051,6 @@ var require_with_selector = __commonJS({
       module.exports = require_with_selector_production();
     } else {
       module.exports = require_with_selector_development();
-    }
-  }
-});
-
-// node_modules/react-dom/cjs/react-dom.production.js
-var require_react_dom_production = __commonJS({
-  "node_modules/react-dom/cjs/react-dom.production.js"(exports) {
-    "use strict";
-    init_define_import_meta_env();
-    var React3 = require_react();
-    function formatProdErrorMessage(code) {
-      var url = "https://react.dev/errors/" + code;
-      if (1 < arguments.length) {
-        url += "?args[]=" + encodeURIComponent(arguments[1]);
-        for (var i = 2; i < arguments.length; i++)
-          url += "&args[]=" + encodeURIComponent(arguments[i]);
-      }
-      return "Minified React error #" + code + "; visit " + url + " for the full message or use the non-minified dev environment for full errors and additional helpful warnings.";
-    }
-    function noop() {
-    }
-    var Internals = {
-      d: {
-        f: noop,
-        r: function() {
-          throw Error(formatProdErrorMessage(522));
-        },
-        D: noop,
-        C: noop,
-        L: noop,
-        m: noop,
-        X: noop,
-        S: noop,
-        M: noop
-      },
-      p: 0,
-      findDOMNode: null
-    };
-    var REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal");
-    function createPortal$1(children, containerInfo, implementation) {
-      var key = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
-      return {
-        $$typeof: REACT_PORTAL_TYPE,
-        key: null == key ? null : "" + key,
-        children,
-        containerInfo,
-        implementation
-      };
-    }
-    var ReactSharedInternals = React3.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
-    function getCrossOriginStringAs(as, input) {
-      if ("font" === as) return "";
-      if ("string" === typeof input)
-        return "use-credentials" === input ? input : "";
-    }
-    exports.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = Internals;
-    exports.createPortal = function(children, container) {
-      var key = 2 < arguments.length && void 0 !== arguments[2] ? arguments[2] : null;
-      if (!container || 1 !== container.nodeType && 9 !== container.nodeType && 11 !== container.nodeType)
-        throw Error(formatProdErrorMessage(299));
-      return createPortal$1(children, container, null, key);
-    };
-    exports.flushSync = function(fn2) {
-      var previousTransition = ReactSharedInternals.T, previousUpdatePriority = Internals.p;
-      try {
-        if (ReactSharedInternals.T = null, Internals.p = 2, fn2) return fn2();
-      } finally {
-        ReactSharedInternals.T = previousTransition, Internals.p = previousUpdatePriority, Internals.d.f();
-      }
-    };
-    exports.preconnect = function(href, options) {
-      "string" === typeof href && (options ? (options = options.crossOrigin, options = "string" === typeof options ? "use-credentials" === options ? options : "" : void 0) : options = null, Internals.d.C(href, options));
-    };
-    exports.prefetchDNS = function(href) {
-      "string" === typeof href && Internals.d.D(href);
-    };
-    exports.preinit = function(href, options) {
-      if ("string" === typeof href && options && "string" === typeof options.as) {
-        var as = options.as, crossOrigin = getCrossOriginStringAs(as, options.crossOrigin), integrity = "string" === typeof options.integrity ? options.integrity : void 0, fetchPriority = "string" === typeof options.fetchPriority ? options.fetchPriority : void 0;
-        "style" === as ? Internals.d.S(
-          href,
-          "string" === typeof options.precedence ? options.precedence : void 0,
-          {
-            crossOrigin,
-            integrity,
-            fetchPriority
-          }
-        ) : "script" === as && Internals.d.X(href, {
-          crossOrigin,
-          integrity,
-          fetchPriority,
-          nonce: "string" === typeof options.nonce ? options.nonce : void 0
-        });
-      }
-    };
-    exports.preinitModule = function(href, options) {
-      if ("string" === typeof href)
-        if ("object" === typeof options && null !== options) {
-          if (null == options.as || "script" === options.as) {
-            var crossOrigin = getCrossOriginStringAs(
-              options.as,
-              options.crossOrigin
-            );
-            Internals.d.M(href, {
-              crossOrigin,
-              integrity: "string" === typeof options.integrity ? options.integrity : void 0,
-              nonce: "string" === typeof options.nonce ? options.nonce : void 0
-            });
-          }
-        } else null == options && Internals.d.M(href);
-    };
-    exports.preload = function(href, options) {
-      if ("string" === typeof href && "object" === typeof options && null !== options && "string" === typeof options.as) {
-        var as = options.as, crossOrigin = getCrossOriginStringAs(as, options.crossOrigin);
-        Internals.d.L(href, as, {
-          crossOrigin,
-          integrity: "string" === typeof options.integrity ? options.integrity : void 0,
-          nonce: "string" === typeof options.nonce ? options.nonce : void 0,
-          type: "string" === typeof options.type ? options.type : void 0,
-          fetchPriority: "string" === typeof options.fetchPriority ? options.fetchPriority : void 0,
-          referrerPolicy: "string" === typeof options.referrerPolicy ? options.referrerPolicy : void 0,
-          imageSrcSet: "string" === typeof options.imageSrcSet ? options.imageSrcSet : void 0,
-          imageSizes: "string" === typeof options.imageSizes ? options.imageSizes : void 0,
-          media: "string" === typeof options.media ? options.media : void 0
-        });
-      }
-    };
-    exports.preloadModule = function(href, options) {
-      if ("string" === typeof href)
-        if (options) {
-          var crossOrigin = getCrossOriginStringAs(options.as, options.crossOrigin);
-          Internals.d.m(href, {
-            as: "string" === typeof options.as && "script" !== options.as ? options.as : void 0,
-            crossOrigin,
-            integrity: "string" === typeof options.integrity ? options.integrity : void 0
-          });
-        } else Internals.d.m(href);
-    };
-    exports.requestFormReset = function(form) {
-      Internals.d.r(form);
-    };
-    exports.unstable_batchedUpdates = function(fn2, a2) {
-      return fn2(a2);
-    };
-    exports.useFormState = function(action, initialState, permalink) {
-      return ReactSharedInternals.H.useFormState(action, initialState, permalink);
-    };
-    exports.useFormStatus = function() {
-      return ReactSharedInternals.H.useHostTransitionStatus();
-    };
-    exports.version = "19.2.5";
-  }
-});
-
-// node_modules/react-dom/cjs/react-dom.development.js
-var require_react_dom_development = __commonJS({
-  "node_modules/react-dom/cjs/react-dom.development.js"(exports) {
-    "use strict";
-    init_define_import_meta_env();
-    "production" !== process.env.NODE_ENV && (function() {
-      function noop() {
-      }
-      function testStringCoercion(value) {
-        return "" + value;
-      }
-      function createPortal$1(children, containerInfo, implementation) {
-        var key = 3 < arguments.length && void 0 !== arguments[3] ? arguments[3] : null;
-        try {
-          testStringCoercion(key);
-          var JSCompiler_inline_result = false;
-        } catch (e) {
-          JSCompiler_inline_result = true;
-        }
-        JSCompiler_inline_result && (console.error(
-          "The provided key is an unsupported type %s. This value must be coerced to a string before using it here.",
-          "function" === typeof Symbol && Symbol.toStringTag && key[Symbol.toStringTag] || key.constructor.name || "Object"
-        ), testStringCoercion(key));
-        return {
-          $$typeof: REACT_PORTAL_TYPE,
-          key: null == key ? null : "" + key,
-          children,
-          containerInfo,
-          implementation
-        };
-      }
-      function getCrossOriginStringAs(as, input) {
-        if ("font" === as) return "";
-        if ("string" === typeof input)
-          return "use-credentials" === input ? input : "";
-      }
-      function getValueDescriptorExpectingObjectForWarning(thing) {
-        return null === thing ? "`null`" : void 0 === thing ? "`undefined`" : "" === thing ? "an empty string" : 'something with type "' + typeof thing + '"';
-      }
-      function getValueDescriptorExpectingEnumForWarning(thing) {
-        return null === thing ? "`null`" : void 0 === thing ? "`undefined`" : "" === thing ? "an empty string" : "string" === typeof thing ? JSON.stringify(thing) : "number" === typeof thing ? "`" + thing + "`" : 'something with type "' + typeof thing + '"';
-      }
-      function resolveDispatcher() {
-        var dispatcher = ReactSharedInternals.H;
-        null === dispatcher && console.error(
-          "Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://react.dev/link/invalid-hook-call for tips about how to debug and fix this problem."
-        );
-        return dispatcher;
-      }
-      "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React3 = require_react(), Internals = {
-        d: {
-          f: noop,
-          r: function() {
-            throw Error(
-              "Invalid form element. requestFormReset must be passed a form that was rendered by React."
-            );
-          },
-          D: noop,
-          C: noop,
-          L: noop,
-          m: noop,
-          X: noop,
-          S: noop,
-          M: noop
-        },
-        p: 0,
-        findDOMNode: null
-      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React3.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
-      "function" === typeof Map && null != Map.prototype && "function" === typeof Map.prototype.forEach && "function" === typeof Set && null != Set.prototype && "function" === typeof Set.prototype.clear && "function" === typeof Set.prototype.forEach || console.error(
-        "React depends on Map and Set built-in types. Make sure that you load a polyfill in older browsers. https://reactjs.org/link/react-polyfills"
-      );
-      exports.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = Internals;
-      exports.createPortal = function(children, container) {
-        var key = 2 < arguments.length && void 0 !== arguments[2] ? arguments[2] : null;
-        if (!container || 1 !== container.nodeType && 9 !== container.nodeType && 11 !== container.nodeType)
-          throw Error("Target container is not a DOM element.");
-        return createPortal$1(children, container, null, key);
-      };
-      exports.flushSync = function(fn2) {
-        var previousTransition = ReactSharedInternals.T, previousUpdatePriority = Internals.p;
-        try {
-          if (ReactSharedInternals.T = null, Internals.p = 2, fn2)
-            return fn2();
-        } finally {
-          ReactSharedInternals.T = previousTransition, Internals.p = previousUpdatePriority, Internals.d.f() && console.error(
-            "flushSync was called from inside a lifecycle method. React cannot flush when React is already rendering. Consider moving this call to a scheduler task or micro task."
-          );
-        }
-      };
-      exports.preconnect = function(href, options) {
-        "string" === typeof href && href ? null != options && "object" !== typeof options ? console.error(
-          "ReactDOM.preconnect(): Expected the `options` argument (second) to be an object but encountered %s instead. The only supported option at this time is `crossOrigin` which accepts a string.",
-          getValueDescriptorExpectingEnumForWarning(options)
-        ) : null != options && "string" !== typeof options.crossOrigin && console.error(
-          "ReactDOM.preconnect(): Expected the `crossOrigin` option (second argument) to be a string but encountered %s instead. Try removing this option or passing a string value instead.",
-          getValueDescriptorExpectingObjectForWarning(options.crossOrigin)
-        ) : console.error(
-          "ReactDOM.preconnect(): Expected the `href` argument (first) to be a non-empty string but encountered %s instead.",
-          getValueDescriptorExpectingObjectForWarning(href)
-        );
-        "string" === typeof href && (options ? (options = options.crossOrigin, options = "string" === typeof options ? "use-credentials" === options ? options : "" : void 0) : options = null, Internals.d.C(href, options));
-      };
-      exports.prefetchDNS = function(href) {
-        if ("string" !== typeof href || !href)
-          console.error(
-            "ReactDOM.prefetchDNS(): Expected the `href` argument (first) to be a non-empty string but encountered %s instead.",
-            getValueDescriptorExpectingObjectForWarning(href)
-          );
-        else if (1 < arguments.length) {
-          var options = arguments[1];
-          "object" === typeof options && options.hasOwnProperty("crossOrigin") ? console.error(
-            "ReactDOM.prefetchDNS(): Expected only one argument, `href`, but encountered %s as a second argument instead. This argument is reserved for future options and is currently disallowed. It looks like the you are attempting to set a crossOrigin property for this DNS lookup hint. Browsers do not perform DNS queries using CORS and setting this attribute on the resource hint has no effect. Try calling ReactDOM.prefetchDNS() with just a single string argument, `href`.",
-            getValueDescriptorExpectingEnumForWarning(options)
-          ) : console.error(
-            "ReactDOM.prefetchDNS(): Expected only one argument, `href`, but encountered %s as a second argument instead. This argument is reserved for future options and is currently disallowed. Try calling ReactDOM.prefetchDNS() with just a single string argument, `href`.",
-            getValueDescriptorExpectingEnumForWarning(options)
-          );
-        }
-        "string" === typeof href && Internals.d.D(href);
-      };
-      exports.preinit = function(href, options) {
-        "string" === typeof href && href ? null == options || "object" !== typeof options ? console.error(
-          "ReactDOM.preinit(): Expected the `options` argument (second) to be an object with an `as` property describing the type of resource to be preinitialized but encountered %s instead.",
-          getValueDescriptorExpectingEnumForWarning(options)
-        ) : "style" !== options.as && "script" !== options.as && console.error(
-          'ReactDOM.preinit(): Expected the `as` property in the `options` argument (second) to contain a valid value describing the type of resource to be preinitialized but encountered %s instead. Valid values for `as` are "style" and "script".',
-          getValueDescriptorExpectingEnumForWarning(options.as)
-        ) : console.error(
-          "ReactDOM.preinit(): Expected the `href` argument (first) to be a non-empty string but encountered %s instead.",
-          getValueDescriptorExpectingObjectForWarning(href)
-        );
-        if ("string" === typeof href && options && "string" === typeof options.as) {
-          var as = options.as, crossOrigin = getCrossOriginStringAs(as, options.crossOrigin), integrity = "string" === typeof options.integrity ? options.integrity : void 0, fetchPriority = "string" === typeof options.fetchPriority ? options.fetchPriority : void 0;
-          "style" === as ? Internals.d.S(
-            href,
-            "string" === typeof options.precedence ? options.precedence : void 0,
-            {
-              crossOrigin,
-              integrity,
-              fetchPriority
-            }
-          ) : "script" === as && Internals.d.X(href, {
-            crossOrigin,
-            integrity,
-            fetchPriority,
-            nonce: "string" === typeof options.nonce ? options.nonce : void 0
-          });
-        }
-      };
-      exports.preinitModule = function(href, options) {
-        var encountered = "";
-        "string" === typeof href && href || (encountered += " The `href` argument encountered was " + getValueDescriptorExpectingObjectForWarning(href) + ".");
-        void 0 !== options && "object" !== typeof options ? encountered += " The `options` argument encountered was " + getValueDescriptorExpectingObjectForWarning(options) + "." : options && "as" in options && "script" !== options.as && (encountered += " The `as` option encountered was " + getValueDescriptorExpectingEnumForWarning(options.as) + ".");
-        if (encountered)
-          console.error(
-            "ReactDOM.preinitModule(): Expected up to two arguments, a non-empty `href` string and, optionally, an `options` object with a valid `as` property.%s",
-            encountered
-          );
-        else
-          switch (encountered = options && "string" === typeof options.as ? options.as : "script", encountered) {
-            case "script":
-              break;
-            default:
-              encountered = getValueDescriptorExpectingEnumForWarning(encountered), console.error(
-                'ReactDOM.preinitModule(): Currently the only supported "as" type for this function is "script" but received "%s" instead. This warning was generated for `href` "%s". In the future other module types will be supported, aligning with the import-attributes proposal. Learn more here: (https://github.com/tc39/proposal-import-attributes)',
-                encountered,
-                href
-              );
-          }
-        if ("string" === typeof href)
-          if ("object" === typeof options && null !== options) {
-            if (null == options.as || "script" === options.as)
-              encountered = getCrossOriginStringAs(
-                options.as,
-                options.crossOrigin
-              ), Internals.d.M(href, {
-                crossOrigin: encountered,
-                integrity: "string" === typeof options.integrity ? options.integrity : void 0,
-                nonce: "string" === typeof options.nonce ? options.nonce : void 0
-              });
-          } else null == options && Internals.d.M(href);
-      };
-      exports.preload = function(href, options) {
-        var encountered = "";
-        "string" === typeof href && href || (encountered += " The `href` argument encountered was " + getValueDescriptorExpectingObjectForWarning(href) + ".");
-        null == options || "object" !== typeof options ? encountered += " The `options` argument encountered was " + getValueDescriptorExpectingObjectForWarning(options) + "." : "string" === typeof options.as && options.as || (encountered += " The `as` option encountered was " + getValueDescriptorExpectingObjectForWarning(options.as) + ".");
-        encountered && console.error(
-          'ReactDOM.preload(): Expected two arguments, a non-empty `href` string and an `options` object with an `as` property valid for a `<link rel="preload" as="..." />` tag.%s',
-          encountered
-        );
-        if ("string" === typeof href && "object" === typeof options && null !== options && "string" === typeof options.as) {
-          encountered = options.as;
-          var crossOrigin = getCrossOriginStringAs(
-            encountered,
-            options.crossOrigin
-          );
-          Internals.d.L(href, encountered, {
-            crossOrigin,
-            integrity: "string" === typeof options.integrity ? options.integrity : void 0,
-            nonce: "string" === typeof options.nonce ? options.nonce : void 0,
-            type: "string" === typeof options.type ? options.type : void 0,
-            fetchPriority: "string" === typeof options.fetchPriority ? options.fetchPriority : void 0,
-            referrerPolicy: "string" === typeof options.referrerPolicy ? options.referrerPolicy : void 0,
-            imageSrcSet: "string" === typeof options.imageSrcSet ? options.imageSrcSet : void 0,
-            imageSizes: "string" === typeof options.imageSizes ? options.imageSizes : void 0,
-            media: "string" === typeof options.media ? options.media : void 0
-          });
-        }
-      };
-      exports.preloadModule = function(href, options) {
-        var encountered = "";
-        "string" === typeof href && href || (encountered += " The `href` argument encountered was " + getValueDescriptorExpectingObjectForWarning(href) + ".");
-        void 0 !== options && "object" !== typeof options ? encountered += " The `options` argument encountered was " + getValueDescriptorExpectingObjectForWarning(options) + "." : options && "as" in options && "string" !== typeof options.as && (encountered += " The `as` option encountered was " + getValueDescriptorExpectingObjectForWarning(options.as) + ".");
-        encountered && console.error(
-          'ReactDOM.preloadModule(): Expected two arguments, a non-empty `href` string and, optionally, an `options` object with an `as` property valid for a `<link rel="modulepreload" as="..." />` tag.%s',
-          encountered
-        );
-        "string" === typeof href && (options ? (encountered = getCrossOriginStringAs(
-          options.as,
-          options.crossOrigin
-        ), Internals.d.m(href, {
-          as: "string" === typeof options.as && "script" !== options.as ? options.as : void 0,
-          crossOrigin: encountered,
-          integrity: "string" === typeof options.integrity ? options.integrity : void 0
-        })) : Internals.d.m(href));
-      };
-      exports.requestFormReset = function(form) {
-        Internals.d.r(form);
-      };
-      exports.unstable_batchedUpdates = function(fn2, a2) {
-        return fn2(a2);
-      };
-      exports.useFormState = function(action, initialState, permalink) {
-        return resolveDispatcher().useFormState(action, initialState, permalink);
-      };
-      exports.useFormStatus = function() {
-        return resolveDispatcher().useHostTransitionStatus();
-      };
-      exports.version = "19.2.5";
-      "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
-    })();
-  }
-});
-
-// node_modules/react-dom/index.js
-var require_react_dom = __commonJS({
-  "node_modules/react-dom/index.js"(exports, module) {
-    "use strict";
-    init_define_import_meta_env();
-    function checkDCE() {
-      if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ === "undefined" || typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE !== "function") {
-        return;
-      }
-      if (process.env.NODE_ENV !== "production") {
-        throw new Error("^_^");
-      }
-      try {
-        __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE(checkDCE);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    if (process.env.NODE_ENV === "production") {
-      checkDCE();
-      module.exports = require_react_dom_production();
-    } else {
-      module.exports = require_react_dom_development();
     }
   }
 });
@@ -15854,7 +15432,7 @@ var require_helpers = __commonJS({
       return timeNow + expiresIn;
     }
     function generateCallbackId() {
-      return /* @__PURE__ */ Symbol("auth-callback");
+      return Symbol("auth-callback");
     }
     var isBrowser = () => typeof window !== "undefined" && typeof document !== "undefined";
     exports.isBrowser = isBrowser;
@@ -20529,9 +20107,9 @@ var require_GoTrueClient = __commonJS({
         this._debug("#_acquireLock", "begin", acquireTimeout);
         try {
           if (this.lockAcquired) {
-            const last = this.pendingInLock.length ? this.pendingInLock[this.pendingInLock.length - 1] : Promise.resolve();
+            const last2 = this.pendingInLock.length ? this.pendingInLock[this.pendingInLock.length - 1] : Promise.resolve();
             const result = (async () => {
-              await last;
+              await last2;
               return await fn2();
             })();
             this.pendingInLock.push((async () => {
@@ -23809,14 +23387,14 @@ function tryFirstLastAnchor(haystack, needle, replace) {
   const lines = needle.split("\n").filter((l) => l.trim().length > 0);
   if (lines.length < 2) return null;
   const first = lines[0];
-  const last = lines[lines.length - 1];
-  if (first.trim().length < 4 || last.trim().length < 3) return null;
+  const last2 = lines[lines.length - 1];
+  if (first.trim().length < 4 || last2.trim().length < 3) return null;
   if (countOccurrences(haystack, first) !== 1) return null;
-  if (countOccurrences(haystack, last) !== 1) return null;
+  if (countOccurrences(haystack, last2) !== 1) return null;
   const firstIdx = haystack.indexOf(first);
-  const lastIdx = haystack.indexOf(last, firstIdx);
+  const lastIdx = haystack.indexOf(last2, firstIdx);
   if (lastIdx === -1) return null;
-  const spanEnd = lastIdx + last.length;
+  const spanEnd = lastIdx + last2.length;
   const span = haystack.slice(firstIdx, spanEnd);
   if (span.length > needle.length * 3 + 200) return null;
   if (interiorSimilarity(span, needle) < 0.6) return null;
@@ -30987,10 +30565,10 @@ var require_lib = __commonJS({
             break;
           case "ObjectExpression":
             node.type = "ObjectPattern";
-            for (let i = 0, length = node.properties.length, last = length - 1; i < length; i++) {
+            for (let i = 0, length = node.properties.length, last2 = length - 1; i < length; i++) {
               var _node$extra2;
               const prop = node.properties[i];
-              const isLast = i === last;
+              const isLast = i === last2;
               this.toAssignableObjectExpressionProp(prop, isLast, isLHS);
               if (isLast && prop.type === "RestElement" && (_node$extra2 = node.extra) != null && _node$extra2.trailingCommaLoc) {
                 this.raise(Errors.RestTrailingComma, node.extra.trailingCommaLoc);
@@ -31078,9 +30656,9 @@ var require_lib = __commonJS({
           case "RestElement":
             return true;
           case "ObjectExpression": {
-            const last = node.properties.length - 1;
+            const last2 = node.properties.length - 1;
             return node.properties.every((prop, i) => {
-              return prop.type !== "ObjectMethod" && (i === last || prop.type !== "SpreadElement") && this.isAssignable(prop);
+              return prop.type !== "ObjectMethod" && (i === last2 || prop.type !== "SpreadElement") && this.isAssignable(prop);
             });
           }
           case "ObjectProperty":
@@ -39063,21 +38641,21 @@ function assessRouteCoverage(args) {
   for (const raw of args.expectedRoutes) {
     const route = String(raw ?? "").trim();
     if (!route) continue;
-    const slug4 = route.replace(/^\/+|\/+$/g, "").split("/")[0]?.toLowerCase() ?? "";
-    if (!slug4) {
+    const slug3 = route.replace(/^\/+|\/+$/g, "").split("/")[0]?.toLowerCase() ?? "";
+    if (!slug3) {
       if (!/\/(index|home|landing)\.(t|j)sx?$/im.test(haystack) && !/index/.test(haystack)) {
         missing.push("/");
       }
       continue;
     }
-    if (/[:$*]/.test(slug4)) continue;
-    if (!haystack.includes(slug4)) {
+    if (/[:$*]/.test(slug3)) continue;
+    if (!haystack.includes(slug3)) {
       missing.push(route);
       continue;
     }
     if (args.routerSource) {
       const registered = new RegExp(
-        `path\\s*[=:]\\s*["'\`][^"'\`]*${slug4.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+        `path\\s*[=:]\\s*["'\`][^"'\`]*${slug3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
         "i"
       ).test(args.routerSource);
       if (!registered) missing.push(route);
@@ -39637,7 +39215,6 @@ var init_circuit_breaker = __esm({
       constructor(thresholds = BREAKER_THRESHOLDS) {
         this.thresholds = thresholds;
       }
-      thresholds;
       state = "CLOSED";
       tripReason = null;
       totalFailures = 0;
@@ -61337,6 +60914,7 @@ var economics_config_server_exports = {};
 __export(economics_config_server_exports, {
   ECONOMICS_DEFAULTS: () => ECONOMICS_DEFAULTS,
   buildEconomics: () => buildEconomics,
+  cloudRates: () => cloudRates,
   economicsValue: () => economicsValue,
   economicsValues: () => economicsValues,
   invalidateEconomicsCache: () => invalidateEconomicsCache
@@ -61375,6 +60953,22 @@ async function buildEconomics() {
     minChargeCredits: v.min_charge_credits,
     roundingStep: v.credit_rounding_step,
     reservationHeadroom: v.reservation_headroom
+  };
+}
+async function cloudRates() {
+  const v = await economicsValues();
+  return {
+    externalMarginPct: v.cloud_external_margin_pct,
+    sharedDiscountPct: v.cloud_shared_discount_pct,
+    revenuePerCreditUsd: v.revenue_per_credit_usd,
+    supabaseMicroHourUsd: v.supabase_micro_hour_usd,
+    supabaseDiskGbMonthUsd: v.supabase_disk_gb_month_usd,
+    supabaseIncludedDiskGb: v.supabase_included_disk_gb,
+    railwayCpuVcpuMinUsd: v.railway_cpu_vcpu_min_usd,
+    railwayRamGbMinUsd: v.railway_ram_gb_min_usd,
+    railwayDiskGbMinUsd: v.railway_disk_gb_min_usd,
+    railwayEgressGbUsd: v.railway_egress_gb_usd,
+    railwayFallbackHourUsd: v.railway_fallback_hour_usd
   };
 }
 var ECONOMICS_DEFAULTS, CACHE_TTL_MS2, cache2;
@@ -61416,7 +61010,19 @@ var init_economics_config_server = __esm({
       estimate_cost_standard_usd: 0.03,
       estimate_cost_heavy_usd: 0.05,
       estimate_cost_complex_usd: 0.1,
-      estimate_cost_escalated_usd: 0.15
+      estimate_cost_escalated_usd: 0.15,
+      // Kimble Cloud (see src/lib/cloud-pricing.ts). Provider rates are the
+      // published Supabase / Railway rates; margin is GROSS margin.
+      cloud_external_margin_pct: 30,
+      cloud_shared_discount_pct: 50,
+      supabase_micro_hour_usd: 0.01344,
+      supabase_disk_gb_month_usd: 0.125,
+      supabase_included_disk_gb: 8,
+      railway_cpu_vcpu_min_usd: 463e-6,
+      railway_ram_gb_min_usd: 231e-6,
+      railway_disk_gb_min_usd: 0.15 / 43200,
+      railway_egress_gb_usd: 0.05,
+      railway_fallback_hour_usd: 0.03
     };
     CACHE_TTL_MS2 = 5 * 60 * 1e3;
     cache2 = null;
@@ -61983,13 +61589,14 @@ async function computeHealth(projectId) {
   }
 }
 async function listBillableCompute() {
-  const { data: data2 } = await supabaseAdmin.from("project_compute").select("project_id, owner_id, awake_since, billed_through, last_active_at").eq("status", "ready");
+  const { data: data2 } = await supabaseAdmin.from("project_compute").select("project_id, owner_id, awake_since, billed_through, last_active_at, service_id").eq("status", "ready");
   return (data2 ?? []).map((r) => ({
     projectId: String(r.project_id),
     ownerId: String(r.owner_id),
     awakeSince: r.awake_since,
     billedThrough: r.billed_through,
-    lastActiveAt: r.last_active_at
+    lastActiveAt: r.last_active_at,
+    serviceId: r.service_id ?? null
   }));
 }
 function hoursOwed(row, nowMs = Date.now()) {
@@ -62024,6 +61631,7 @@ var init_compute_server = __esm({
 var backend_autoscale_server_exports = {};
 __export(backend_autoscale_server_exports, {
   clearCapabilityRequests: () => clearCapabilityRequests,
+  considerCompute: () => considerCompute,
   considerUpgrade: () => considerUpgrade,
   evaluateProject: () => evaluateProject,
   notifyOwner: () => notifyOwner,
@@ -62225,6 +61833,11 @@ async function runGrowthWatcher(limit = 10) {
   const pending = /* @__PURE__ */ new Set();
   const { data: requests } = await supabaseAdmin.from("project_upgrade_events").select("project_id").eq("status", "requested").order("created_at", { ascending: false }).limit(200);
   for (const r of requests ?? []) pending.add(r.project_id);
+  const { data: computeWanted } = await supabaseAdmin.from("projects").select("id").eq("cloud_tier_intent", "kimble_compute").eq("auto_upgrade_opt_out", false).limit(50);
+  const sharedIds = new Set((projects ?? []).map((p2) => p2.id));
+  for (const p2 of computeWanted ?? []) {
+    if (!sharedIds.has(p2.id)) await considerCompute(p2.id);
+  }
   for (const p2 of projects ?? []) {
     if (summary.upgraded >= limit) break;
     summary.checked++;
@@ -62275,37 +61888,19 @@ var init_backend_autoscale_server = __esm({
   }
 });
 
-// src/lib/openrouter-budget-models.json
-var openrouter_budget_models_default;
-var init_openrouter_budget_models = __esm({
-  "src/lib/openrouter-budget-models.json"() {
-    openrouter_budget_models_default = [
+// src/lib/gateway-budget-models.json
+var gateway_budget_models_default;
+var init_gateway_budget_models = __esm({
+  "src/lib/gateway-budget-models.json"() {
+    gateway_budget_models_default = [
       {
-        id: "deepseek/deepseek-v4-flash",
-        name: "DeepSeek V4 Flash",
-        context: 1048576,
-        vision: false,
-        tools: true,
-        inputUsdPerM: 0.089,
-        outputUsdPerM: 0.177,
-        features: [
-          "generate",
-          "discuss",
-          "triage",
-          "coach",
-          "memory",
-          "preflight",
-          "docs"
-        ]
-      },
-      {
-        id: "deepseek/deepseek-v4-flash-vision-exp",
-        name: "DeepSeek V4 Flash (vision)",
+        id: "google/gemini-3.1-flash-lite",
+        name: "Gemini 3.1 Flash Lite",
         context: 1048576,
         vision: true,
         tools: true,
-        inputUsdPerM: 0.22,
-        outputUsdPerM: 0.66,
+        inputUsdPerM: 1,
+        outputUsdPerM: 6,
         features: [
           "generate",
           "discuss",
@@ -62317,21 +61912,36 @@ var init_openrouter_budget_models = __esm({
         ]
       },
       {
-        id: "deepseek/deepseek-v3.2",
-        name: "DeepSeek V3.2",
-        context: 163840,
-        vision: false,
+        id: "google/gemini-3.8-flash",
+        name: "Gemini 3.8 Flash",
+        context: 1048576,
+        vision: true,
         tools: true,
-        inputUsdPerM: 0.25,
-        outputUsdPerM: 0.4,
+        inputUsdPerM: 3,
+        outputUsdPerM: 15,
         features: [
           "generate",
           "discuss",
+          "design",
           "triage",
           "coach",
           "memory",
           "preflight",
           "docs"
+        ]
+      },
+      {
+        id: "openai/gpt-5.6-luna",
+        name: "GPT-5.6 Luna",
+        context: 272e3,
+        vision: true,
+        tools: true,
+        inputUsdPerM: 8,
+        outputUsdPerM: 40,
+        features: [
+          "generate",
+          "discuss",
+          "design"
         ]
       }
     ];
@@ -62341,84 +61951,83 @@ var init_openrouter_budget_models = __esm({
 // src/lib/ai-model-config.ts
 var ai_model_config_exports = {};
 __export(ai_model_config_exports, {
-  CODEGEN_PREFERRED_MIN_TPS_DEFAULT: () => CODEGEN_PREFERRED_MIN_TPS_DEFAULT,
-  CODEGEN_PROVIDER_IGNORE: () => CODEGEN_PROVIDER_IGNORE,
+  AI_GATEWAY_BASE_URL: () => AI_GATEWAY_BASE_URL,
+  AI_GATEWAY_CHAT_URL: () => AI_GATEWAY_CHAT_URL,
+  CONFIGURED_MODEL_IDS: () => CONFIGURED_MODEL_IDS,
   CONTINUATION_MAX_OUTPUT_TOKENS: () => CONTINUATION_MAX_OUTPUT_TOKENS,
   DEFAULT_FALLBACK_MODEL: () => DEFAULT_FALLBACK_MODEL,
   DEFAULT_IMAGE_MODEL: () => DEFAULT_IMAGE_MODEL,
   DEFAULT_TEXT_MODEL: () => DEFAULT_TEXT_MODEL,
+  DEFAULT_TRANSCRIBE_MODEL: () => DEFAULT_TRANSCRIBE_MODEL,
   DEFAULT_UTILITY_MODEL: () => DEFAULT_UTILITY_MODEL,
   DEFAULT_VISION_MODEL: () => DEFAULT_VISION_MODEL,
   INFERENCE_EVAL_HEADER: () => INFERENCE_EVAL_HEADER,
   INFERENCE_EVAL_MODELS: () => INFERENCE_EVAL_MODELS,
   INFERENCE_EVAL_USER_IDS: () => INFERENCE_EVAL_USER_IDS,
-  OPENROUTER_CHAT_URL: () => OPENROUTER_CHAT_URL,
   UTILITY_FEATURES: () => UTILITY_FEATURES,
   UTILITY_MAX_OUTPUT_TOKENS: () => UTILITY_MAX_OUTPUT_TOKENS,
-  codegenPreferredMinTps: () => codegenPreferredMinTps,
   coerceToConfiguredModel: () => coerceToConfiguredModel,
   defaultFallbackModel: () => defaultFallbackModel,
   defaultImageModel: () => defaultImageModel,
   defaultTextModel: () => defaultTextModel,
+  defaultTranscribeModel: () => defaultTranscribeModel,
   defaultUtilityModel: () => defaultUtilityModel,
   defaultVisionModel: () => defaultVisionModel,
-  isDeepSeekModel: () => isDeepSeekModel,
+  isConfiguredModel: () => isConfiguredModel,
   isUtilityFeature: () => isUtilityFeature
 });
-function codegenPreferredMinTps() {
-  const raw = typeof process !== "undefined" ? process.env?.CODEGEN_PREFERRED_MIN_TPS : void 0;
-  const n = raw == null || raw === "" ? CODEGEN_PREFERRED_MIN_TPS_DEFAULT : Number(raw);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
 function env(name) {
   if (typeof process === "undefined" || !process.env) return void 0;
   const v = process.env[name];
   return v && v.trim() ? v.trim() : void 0;
 }
 function defaultTextModel() {
-  return env("OPENROUTER_MODEL") ?? DEFAULT_TEXT_MODEL;
+  return env("AI_GATEWAY_MODEL") ?? DEFAULT_TEXT_MODEL;
 }
 function defaultVisionModel() {
-  return env("OPENROUTER_VISION_MODEL") ?? DEFAULT_VISION_MODEL;
+  return env("AI_GATEWAY_VISION_MODEL") ?? DEFAULT_VISION_MODEL;
 }
 function defaultFallbackModel() {
-  return env("OPENROUTER_FALLBACK_MODEL") ?? DEFAULT_FALLBACK_MODEL;
+  return env("AI_GATEWAY_FALLBACK_MODEL") ?? DEFAULT_FALLBACK_MODEL;
 }
 function defaultImageModel() {
-  return env("OPENROUTER_IMAGE_MODEL") ?? DEFAULT_IMAGE_MODEL;
+  return env("AI_GATEWAY_IMAGE_MODEL") ?? DEFAULT_IMAGE_MODEL;
+}
+function defaultTranscribeModel() {
+  return env("AI_GATEWAY_TRANSCRIBE_MODEL") ?? DEFAULT_TRANSCRIBE_MODEL;
 }
 function defaultUtilityModel() {
-  return env("OPENROUTER_UTILITY_MODEL") ?? DEFAULT_UTILITY_MODEL;
+  return env("AI_GATEWAY_UTILITY_MODEL") ?? DEFAULT_UTILITY_MODEL;
 }
 function isUtilityFeature(feature) {
   return !!feature && UTILITY_FEATURES.has(feature);
 }
-function isDeepSeekModel(model) {
-  return !!model && model.startsWith("deepseek/");
+function isConfiguredModel(model) {
+  return !!model && CONFIGURED_MODEL_IDS.has(model);
 }
 function coerceToConfiguredModel(requested, opts) {
   const vision = opts?.vision === true;
-  if (isDeepSeekModel(requested)) {
-    if (vision && !/vision/.test(requested)) return defaultVisionModel();
+  if (isConfiguredModel(requested)) {
+    if (vision && requested === defaultUtilityModel()) return defaultVisionModel();
     return requested;
   }
   if (vision) return defaultVisionModel();
   if (opts?.utility === true) return defaultUtilityModel();
   return defaultTextModel();
 }
-var OPENROUTER_CHAT_URL, DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_UTILITY_MODEL, UTILITY_MAX_OUTPUT_TOKENS, CODEGEN_PROVIDER_IGNORE, CODEGEN_PREFERRED_MIN_TPS_DEFAULT, CONTINUATION_MAX_OUTPUT_TOKENS, UTILITY_FEATURES, INFERENCE_EVAL_HEADER, INFERENCE_EVAL_USER_IDS, INFERENCE_EVAL_MODELS;
+var AI_GATEWAY_CHAT_URL, AI_GATEWAY_BASE_URL, DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_TRANSCRIBE_MODEL, DEFAULT_UTILITY_MODEL, UTILITY_MAX_OUTPUT_TOKENS, CONTINUATION_MAX_OUTPUT_TOKENS, UTILITY_FEATURES, CONFIGURED_MODEL_IDS, INFERENCE_EVAL_HEADER, INFERENCE_EVAL_USER_IDS, INFERENCE_EVAL_MODELS;
 var init_ai_model_config = __esm({
   "src/lib/ai-model-config.ts"() {
     init_define_import_meta_env();
-    OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
-    DEFAULT_TEXT_MODEL = "deepseek/deepseek-v4-flash";
-    DEFAULT_VISION_MODEL = "deepseek/deepseek-v4-flash-vision-exp";
-    DEFAULT_FALLBACK_MODEL = "deepseek/deepseek-v3.2";
-    DEFAULT_IMAGE_MODEL = "google/gemini-2.5-flash-image";
-    DEFAULT_UTILITY_MODEL = "deepseek/deepseek-v4-flash-0731";
+    AI_GATEWAY_CHAT_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    AI_GATEWAY_BASE_URL = "https://ai.gateway.lovable.dev/v1";
+    DEFAULT_TEXT_MODEL = "google/gemini-3.8-flash";
+    DEFAULT_VISION_MODEL = "google/gemini-3.8-flash";
+    DEFAULT_FALLBACK_MODEL = "openai/gpt-5.6-sol";
+    DEFAULT_IMAGE_MODEL = "openai/gpt-image-2.5-sunburst";
+    DEFAULT_TRANSCRIBE_MODEL = "openai/gpt-transcribe";
+    DEFAULT_UTILITY_MODEL = "google/gemini-3.1-flash-lite";
     UTILITY_MAX_OUTPUT_TOKENS = 1024;
-    CODEGEN_PROVIDER_IGNORE = ["digitalocean", "nextbit"];
-    CODEGEN_PREFERRED_MIN_TPS_DEFAULT = 50;
     CONTINUATION_MAX_OUTPUT_TOKENS = 6e3;
     UTILITY_FEATURES = /* @__PURE__ */ new Set([
       "triage",
@@ -62427,34 +62036,25 @@ var init_ai_model_config = __esm({
       "coach",
       "recovery"
     ]);
+    CONFIGURED_MODEL_IDS = /* @__PURE__ */ new Set([
+      DEFAULT_TEXT_MODEL,
+      DEFAULT_VISION_MODEL,
+      DEFAULT_FALLBACK_MODEL,
+      DEFAULT_UTILITY_MODEL,
+      DEFAULT_IMAGE_MODEL,
+      DEFAULT_TRANSCRIBE_MODEL
+    ]);
     INFERENCE_EVAL_HEADER = "x-kimble-inference-eval";
     INFERENCE_EVAL_USER_IDS = ["42b3c128-bd12-4c94-8d71-e4ae8f5a2a53"];
     INFERENCE_EVAL_MODELS = [
-      "deepseek/deepseek-v4.1-flash",
-      "deepseek/deepseek-v4-flash-0731",
-      "deepseek/deepseek-v4-pro-0813"
+      "google/gemini-3.8-flash",
+      "google/gemini-4-argon",
+      "openai/gpt-5.6-sol"
     ];
   }
 });
 
 // src/server/engine/provider-policy.ts
-function slug(upstream) {
-  return upstream.toLowerCase().replace(/\s+/g, "");
-}
-function codegenProviderRouting(avoid = []) {
-  const ignore = Array.from(/* @__PURE__ */ new Set([...CODEGEN_PROVIDER_IGNORE, ...avoid.map(slug)]));
-  const tps = codegenPreferredMinTps();
-  return { allow_fallbacks: true, require_parameters: true, ignore, ...tps ? { preferred_min_throughput: { p50: tps } } : {} };
-}
-function resolveProviderRouting(args) {
-  const avoid = Array.from(new Set(args.avoid.map(slug)));
-  if (args.codeWriting) return codegenProviderRouting(avoid);
-  if (args.hasTools) {
-    return { require_parameters: true, ignore: Array.from(/* @__PURE__ */ new Set(["nextbit", ...avoid])) };
-  }
-  if (avoid.length) return { ignore: avoid };
-  return void 0;
-}
 function isEmptyAllowList(routing) {
   const only = routing?.only;
   return Array.isArray(only) && only.length === 0;
@@ -62462,7 +62062,6 @@ function isEmptyAllowList(routing) {
 var init_provider_policy = __esm({
   "src/server/engine/provider-policy.ts"() {
     init_define_import_meta_env();
-    init_ai_model_config();
   }
 });
 
@@ -63461,12 +63060,10 @@ __export(ai_provider_server_exports, {
   KNOWN_MODEL_IDS: () => KNOWN_MODEL_IDS,
   aiChatCompletions: () => aiChatCompletions,
   bufferedResponse: () => bufferedResponse,
-  codegenProviderRouting: () => codegenProviderRouting,
   currentModelFor: () => currentModelFor,
   currentProviderFor: () => currentProviderFor,
   defaultBudgetModelForFeature: () => defaultBudgetModelForFeature,
   estimateCostUsdMicro: () => estimateCostUsdMicro,
-  fetchGenerationUsage: () => fetchGenerationUsage,
   flushCostWrites: () => flushCostWrites,
   getBudgetConfigForFeature: () => getBudgetConfigForFeature,
   getBudgetModelsForFeature: () => getBudgetModelsForFeature,
@@ -63474,7 +63071,6 @@ __export(ai_provider_server_exports, {
   getUserEconomyMode: () => getUserEconomyMode,
   hadRecentProviderPaymentFailure: () => hadRecentProviderPaymentFailure,
   invalidateProviderCache: () => invalidateProviderCache,
-  isDeadModelId: () => isDeadModelId,
   isProviderUnavailableStatus: () => isProviderUnavailableStatus,
   markLastCallFailure: () => markLastCallFailure,
   markProviderPaymentFailure: () => markProviderPaymentFailure,
@@ -63541,8 +63137,9 @@ async function loadDbSettings() {
       const map = /* @__PURE__ */ new Map();
       for (const row of data2 ?? []) {
         map.set(row.feature, {
-          // Legacy rows may say "lovable"; OpenRouter is the only gateway now.
-          provider: row.provider === "openrouter" ? "openrouter" : null,
+          // Legacy rows may say "openrouter"; the Lovable AI Gateway is the
+          // only gateway now.
+          provider: row.provider === "openrouter" || row.provider === "lovable" ? "lovable" : null,
           model: row.model || null,
           fallback_model: row.fallback_model || null,
           budget_enabled: row.budget_enabled ?? null,
@@ -63570,7 +63167,7 @@ function invalidateProviderCache() {
   cacheLoadedAt = 0;
 }
 async function resolveProvider(_feature) {
-  return "openrouter";
+  return "lovable";
 }
 async function getProviderForFeature(feature) {
   return resolveProvider(feature);
@@ -63619,19 +63216,6 @@ async function resolveModelOverride(feature) {
     model: s?.model ?? null,
     fallback: s?.fallback_model ?? null
   };
-}
-function isDeadModelId(model) {
-  return !!model && DEAD_MODEL_IDS.has(model);
-}
-function remapModelForOpenRouter(model) {
-  if (!model) return model;
-  const mapped = OPENROUTER_MODEL_MAP[model] ?? model;
-  if (DEAD_MODEL_IDS.has(mapped)) {
-    console.error(
-      `[ai-provider] configured model "${model}" resolves to dead slug "${mapped}" \u2014 this call will fail and fall back. Fix the model configuration.`
-    );
-  }
-  return mapped;
 }
 function estimateCostUsdMicro(model, promptTokens, completionTokens) {
   if (!model) return null;
@@ -63767,7 +63351,6 @@ async function recordTelemetryInner(args) {
       prompt_tokens: args.promptTokens ?? null,
       completion_tokens: args.completionTokens ?? null,
       total_tokens: args.totalTokens ?? null,
-      cost_usd_micro: args.costUsdMicro ?? null,
       latency_ms: args.latencyMs,
       fallback_used: args.fallbackUsed,
       error_message: args.errorMessage ?? null,
@@ -63785,8 +63368,8 @@ async function recordTelemetryInner(args) {
       key_owner: "platform",
       // Unknown until real usage arrives — never a fake 0. A request the
       // provider rejected outright (HTTP 4xx/5xx before any output) is not
-      // billed by OpenRouter: record it as a measured $0, not unknown.
-      ...args.status >= 400 && args.status < 599 ? { cost_basis: "actual", cost_source: "provider_error_unbilled", cost_usd_micro: 0 } : { cost_basis: "unknown", cost_source: null },
+      // billed by the gateway: record it as a measured $0, not unknown.
+      ...args.status >= 400 && args.status < 599 ? { cost_basis: "actual", cost_source: "provider_error_unbilled", cost_usd_micro: 0 } : { cost_basis: "unknown", cost_source: null, cost_usd_micro: args.costUsdMicro ?? null },
       request_id: args.requestId ?? null,
       upstream_provider: args.upstream ?? null,
       ...args.extra ?? {},
@@ -63804,41 +63387,11 @@ async function recordTelemetryInner(args) {
     return null;
   }
 }
-async function fetchGenerationUsage(requestId) {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return null;
-  for (const delay of [3e3, 6e3, 12e3]) {
-    await new Promise((r) => setTimeout(r, delay));
-    try {
-      const res = await fetch(
-        `https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(requestId)}`,
-        { headers: { Authorization: `Bearer ${key}` } }
-      );
-      if (!res.ok) continue;
-      const d = (await res.json()).data;
-      if (!d) continue;
-      const p2 = num(d.native_tokens_prompt) ?? num(d.tokens_prompt);
-      const c = num(d.native_tokens_completion) ?? num(d.tokens_completion);
-      if (p2 == null && c == null) continue;
-      return {
-        promptTokens: p2,
-        completionTokens: c,
-        totalTokens: p2 != null && c != null ? p2 + c : null,
-        cachedTokens: num(d.native_tokens_cached),
-        cacheWriteTokens: null,
-        reasoningTokens: num(d.native_tokens_reasoning),
-        costUsd: num(d.total_cost) ?? num(d.usage)
-      };
-    } catch {
-    }
-  }
-  return null;
-}
 function meterStream(resp, rowId, model, startedAt = Date.now()) {
   if (!resp.ok || !resp.body) return resp;
   const decoder = new TextDecoder();
   let buf = "";
-  let last = null;
+  let last2 = null;
   let requestId = resp.headers.get("x-generation-id") ?? resp.headers.get("x-request-id") ?? null;
   let turnCtx = null;
   void Promise.resolve().then(() => (init_turn_context_server(), turn_context_server_exports)).then((m) => {
@@ -63869,7 +63422,7 @@ function meterStream(resp, rowId, model, startedAt = Date.now()) {
       }
       const u = j.usage ? parseUsageObject(j.usage) : null;
       if (u) {
-        last = u;
+        last2 = u;
         requestId = j.id ?? requestId;
       }
     } catch {
@@ -63889,8 +63442,7 @@ function meterStream(resp, rowId, model, startedAt = Date.now()) {
       } catch {
       }
     }
-    let u = last;
-    if (!u && requestId) u = await fetchGenerationUsage(requestId);
+    let u = last2;
     try {
       const id = await rowId;
       if (!id) return;
@@ -63899,7 +63451,7 @@ function meterStream(resp, rowId, model, startedAt = Date.now()) {
         // Honest accounting: no usage from the provider is recorded as
         // UNKNOWN — never as zero tokens or a free call.
         ...u ? usageColumns(u, model) : { usage_state: "usage_unknown" },
-        ...u && !last && u.costUsd != null ? { cost_source: "provider_generation" } : {},
+        ...u && !last2 && u.costUsd != null ? { cost_source: "provider_generation" } : {},
         ...!u ? { cost_source: "unknown" } : {},
         ...requestId ? { request_id: requestId } : {},
         ...upstream ? { upstream_provider: upstream } : {},
@@ -64042,7 +63594,7 @@ async function aiChatCompletions(opts) {
         );
         if (picked) {
           budgetModelOverride = picked;
-          budgetProviderOverride = "openrouter";
+          budgetProviderOverride = "lovable";
         }
       }
     } catch (err) {
@@ -64097,14 +63649,11 @@ async function aiChatCompletions(opts) {
     inferenceEval = currentTurnContext2().inferenceEval ?? null;
   } catch {
   }
-  const routing = inferenceEval && isCodeWriting ? { allow_fallbacks: true, require_parameters: true, ignore: Array.from(/* @__PURE__ */ new Set(["nextbit", ...turnFailed.map((u) => u.toLowerCase().replace(/\s+/g, ""))])) } : resolveProviderRouting({ codeWriting: isCodeWriting, avoid: turnFailed, hasTools });
-  if (routing) body.provider = routing;
   if (inferenceEval && isCodeWriting) {
     body.model = inferenceEval.models[0];
-    if (inferenceEval.models.length > 1) body.models = inferenceEval.models;
     body.__inferenceEval = true;
   }
-  if (isCodeWriting) console.log(`[provider-policy] avoid=${turnFailed.join(",") || "-"} routing=${JSON.stringify(routing)}`);
+  if (isCodeWriting) console.log(`[provider-policy] avoid=${turnFailed.join(",") || "-"} routing=gateway`);
   const streamExtra = {
     fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
     fallback_from_upstream: opts.meta?.fallbackFromUpstream ?? null,
@@ -64128,7 +63677,7 @@ async function aiChatCompletions(opts) {
       markProvidersExhausted2();
     } catch {
     }
-    console.warn(`[provider-policy] providers_exhausted (OpenRouter 404) \u2014 not retried`);
+    console.warn(`[provider-policy] providers_exhausted (gateway 404) \u2014 not retried`);
   }
   const latency = Date.now() - t0;
   const effectiveProvider = provider;
@@ -64223,11 +63772,11 @@ function effectiveSignal(caller, tier) {
   return AbortSignal.any([caller, timeout]);
 }
 async function dispatch(_provider, body, signal, tierOverride) {
-  const url = OPENROUTER_URL;
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const url = GATEWAY_URL;
+  const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "OPENROUTER_API_KEY is not configured. Kimble routes all AI traffic through OpenRouter."
+      "LOVABLE_API_KEY is not configured. Kimble routes all AI traffic through the Lovable AI Gateway."
     );
   }
   let outBody = body;
@@ -64237,7 +63786,7 @@ async function dispatch(_provider, body, signal, tierOverride) {
     delete outBody.__inferenceEval;
   }
   const wireModel = evalRun ? outBody.model : coerceToConfiguredModel(
-    remapModelForOpenRouter(outBody.model) ?? defaultTextModel(),
+    outBody.model ?? defaultTextModel(),
     { vision: requestHasImageParts(outBody) }
   );
   if (wireModel !== outBody.model) {
@@ -64246,23 +63795,11 @@ async function dispatch(_provider, body, signal, tierOverride) {
   if (outBody.stream === true && !outBody.stream_options) {
     outBody = { ...outBody, stream_options: { include_usage: true } };
   }
-  if (!outBody.usage) outBody = { ...outBody, usage: { include: true } };
-  if (!outBody.session_id) {
-    try {
-      const { currentTurnContext: currentTurnContext2 } = await Promise.resolve().then(() => (init_turn_context_server(), turn_context_server_exports));
-      const pid = currentTurnContext2().projectId;
-      if (pid) outBody = { ...outBody, session_id: `kimble-${pid}` };
-    } catch {
-    }
-  }
   const headers = {
     Authorization: `Bearer ${apiKey}`,
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "X-Lovable-AIG-SDK": "fetch"
   };
-  {
-    headers["HTTP-Referer"] = process.env.OPENROUTER_REFERER || "https://buildwithpetal.com";
-    headers["X-Title"] = "Kimble";
-  }
   const isStreaming = outBody.stream === true;
   const tier = tierOverride ?? (isStreaming ? "stream" : "default");
   return fetch(url, {
@@ -64281,68 +63818,46 @@ async function currentModelFor(feature) {
 function isProviderUnavailableStatus(status) {
   return status === 404 || status === 408 || status === 502 || status === 503 || status === 524;
 }
-var OPENROUTER_URL, BUDGET_MODELS, CACHE_TTL_MS3, cachedSettings, cacheLoadedAt, inflight2, OPENROUTER_MODEL_MAP, DEAD_MODEL_IDS, KNOWN_MODEL_IDS, MODEL_PRICE_PER_M_TOKENS, num, pendingCostWrites, DEFAULT_TIMEOUT_MS, PAYMENT_FAILURE_KEY, DEFAULT_STREAM_TIMEOUT_MS, FIRST_BUILD_STREAM_TIMEOUT_MS, ALL_AI_FEATURES;
+var GATEWAY_URL, BUDGET_MODELS, CACHE_TTL_MS3, cachedSettings, cacheLoadedAt, inflight2, KNOWN_MODEL_IDS, MODEL_PRICE_PER_M_TOKENS, num, pendingCostWrites, DEFAULT_TIMEOUT_MS, PAYMENT_FAILURE_KEY, DEFAULT_STREAM_TIMEOUT_MS, FIRST_BUILD_STREAM_TIMEOUT_MS, ALL_AI_FEATURES;
 var init_ai_provider_server = __esm({
   "src/server/ai-provider.server.ts"() {
     init_define_import_meta_env();
-    init_openrouter_budget_models();
+    init_gateway_budget_models();
     init_ai_model_config();
     init_provider_policy();
-    OPENROUTER_URL = OPENROUTER_CHAT_URL;
-    BUDGET_MODELS = openrouter_budget_models_default;
+    GATEWAY_URL = AI_GATEWAY_CHAT_URL;
+    BUDGET_MODELS = gateway_budget_models_default;
     CACHE_TTL_MS3 = 3e4;
     cachedSettings = null;
     cacheLoadedAt = 0;
     inflight2 = null;
-    OPENROUTER_MODEL_MAP = {
-      // OpenAI — `openai/gpt-5` is NOT a live slug on our gateway. Telemetry:
-      // 107 calls, 107 errors (100%), ~358ms each. Every one of those was silently
-      // absorbed by the fallback chain, so it never surfaced as an incident while
-      // still costing a wasted round-trip on every heavy generate. The whole
-      // heavy-tier family now routes to a model with proven production numbers
-      // (claude-sonnet-4.5: 501 calls, 1 error).
-      "openai/gpt-5": "anthropic/claude-sonnet-4.5",
-      "openai/gpt-5-mini": "openai/gpt-5-mini",
-      "openai/gpt-5-nano": "openai/gpt-5-nano",
-      "openai/gpt-5.2": "anthropic/claude-sonnet-4.5",
-      "openai/gpt-5.4": "anthropic/claude-sonnet-4.5",
-      "openai/gpt-5.4-mini": "openai/gpt-5-mini",
-      "openai/gpt-5.4-nano": "openai/gpt-5-nano",
-      "openai/gpt-5.4-pro": "anthropic/claude-sonnet-4.5",
-      "openai/gpt-5.5": "anthropic/claude-sonnet-4.5",
-      "openai/gpt-5.5-pro": "anthropic/claude-sonnet-4.5",
-      // Anthropic — only reachable via OpenRouter today. Used by curated-briefs
-      // and (soon) the smart-router as candidates for implement/debug phases.
-      "anthropic/claude-sonnet-4.5": "anthropic/claude-sonnet-4.5",
-      "anthropic/claude-haiku-4.5": "anthropic/claude-haiku-4.5",
-      "claude-sonnet-4-5": "anthropic/claude-sonnet-4.5"
-    };
-    DEAD_MODEL_IDS = /* @__PURE__ */ new Set(["openai/gpt-5"]);
     KNOWN_MODEL_IDS = /* @__PURE__ */ new Set([
-      ...Object.keys(OPENROUTER_MODEL_MAP),
-      ...Object.values(OPENROUTER_MODEL_MAP),
-      "google/gemini-2.5-flash-image",
-      // Active utility model (DEFAULT_UTILITY_MODEL); was missing, so every
-      // health pass flagged a working model as a typo.
-      "deepseek/deepseek-v4-flash-0731"
+      "google/gemini-3.8-flash",
+      "google/gemini-4-argon",
+      "google/gemini-3.1-flash-lite",
+      "google/gemini-3.1-flash-lite-image",
+      "openai/gpt-5.6-sol",
+      "openai/gpt-5.6-luna",
+      "openai/gpt-6-astra",
+      "openai/gpt-image-2.5-sunburst",
+      "openai/gpt-transcribe",
+      "anthropic/claude-sonnet-5",
+      "anthropic/claude-haiku-4-5",
+      "anthropic/claude-opus-5-5"
     ]);
     MODEL_PRICE_PER_M_TOKENS = [
-      { match: /claude-(sonnet|opus)-4/i, inUsd: 3, outUsd: 15 },
-      { match: /claude-haiku/i, inUsd: 0.8, outUsd: 4 },
-      { match: /gpt-5(\.\d+)?-(nano|mini)/i, inUsd: 0.25, outUsd: 2 },
-      { match: /gpt-5(\.\d+)?-pro/i, inUsd: 10, outUsd: 40 },
-      { match: /gpt-5(\.\d+)?$/i, inUsd: 1.25, outUsd: 10 },
-      { match: /gemini-(2\.5|3\.?\d?)-pro/i, inUsd: 1.25, outUsd: 5 },
-      { match: /gemini-(2\.5|3\.?\d?)-flash-lite/i, inUsd: 0.1, outUsd: 0.4 },
-      { match: /gemini-(2\.5|3\.?\d?)-flash/i, inUsd: 0.3, outUsd: 1.2 },
-      { match: /deepseek/i, inUsd: 0.3, outUsd: 1.2 },
-      // Budget-tier OpenRouter models (as of mid-2026, used when economy mode is on).
-      { match: /qwen\/qwen3\.7-flash/i, inUsd: 0.03, outUsd: 0.13 },
-      { match: /openai\/gpt-oss-20b/i, inUsd: 0.03, outUsd: 0.13 },
-      { match: /meta-llama\/llama-3\.1-8b-instruct/i, inUsd: 0.05, outUsd: 0.08 },
-      { match: /poolside\/laguna-xs-2\.1/i, inUsd: 0.06, outUsd: 0.12 },
-      { match: /mistralai\/mistral-nemo/i, inUsd: 0.02, outUsd: 0.03 },
-      { match: /google\/gemma-3-12b-it/i, inUsd: 0.05, outUsd: 0.15 }
+      { match: /gemini-3\.1-flash-lite/i, inUsd: 1, outUsd: 6 },
+      { match: /gemini-3\.8-flash/i, inUsd: 3, outUsd: 15 },
+      { match: /gemini-4-argon/i, inUsd: 3, outUsd: 15 },
+      { match: /gemini-.*-pro/i, inUsd: 12, outUsd: 72 },
+      { match: /gemini-.*-flash/i, inUsd: 3, outUsd: 15 },
+      { match: /gpt-5\.6-sol/i, inUsd: 16, outUsd: 80 },
+      { match: /gpt-5\.6-(luna|terra)/i, inUsd: 8, outUsd: 40 },
+      { match: /gpt-6/i, inUsd: 16, outUsd: 80 },
+      { match: /gpt-5/i, inUsd: 10, outUsd: 60 },
+      { match: /claude-haiku/i, inUsd: 5, outUsd: 25 },
+      { match: /claude-sonnet/i, inUsd: 15, outUsd: 75 },
+      { match: /claude-opus/i, inUsd: 25, outUsd: 125 }
     ];
     num = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
     pendingCostWrites = /* @__PURE__ */ new Set();
@@ -64718,15 +64233,15 @@ function jsxTagBalance(src2) {
 function looksTruncated(src2) {
   const trimmed = src2.trimEnd();
   if (trimmed.length === 0) return false;
-  const last = trimmed[trimmed.length - 1];
-  if ([")", "}", "]", ";"].includes(last)) return false;
+  const last2 = trimmed[trimmed.length - 1];
+  if ([")", "}", "]", ";"].includes(last2)) return false;
   if (/(?:^|\n)[ \t]*export[ \t]+default[ \t]+[A-Za-z_$][\w$]*[ \t]*$/.test(trimmed)) return false;
   if (/(?:^|\n)[ \t]*export[ \t]*\{[^{}]*\}[ \t]*$/.test(trimmed)) return false;
   if (trimmed.endsWith("*/")) return false;
   if (/(?:^|\n)[ \t]*\/\/[^\n]*$/.test(trimmed)) return false;
-  if (last === '"' || last === "'" || last === "`") return false;
+  if (last2 === '"' || last2 === "'" || last2 === "`") return false;
   if (/\bas[ \t]+const[ \t]*$/.test(trimmed)) return false;
-  if (last === ">") {
+  if (last2 === ">") {
     if (trimmed.endsWith("/>")) return false;
     const lastOpen = trimmed.lastIndexOf("<");
     if (lastOpen >= 0 && trimmed[lastOpen + 1] === "/") return false;
@@ -69954,7 +69469,7 @@ var init_types = __esm({
         ...processCreateParams(params)
       });
     };
-    BRAND = /* @__PURE__ */ Symbol("zod_brand");
+    BRAND = Symbol("zod_brand");
     ZodBranded = class extends ZodType {
       _parse(input) {
         const { ctx } = this._processInputParams(input);
@@ -70561,9 +70076,9 @@ function loadAllDesignSystems(raw = RAW) {
   if (raw === RAW) cache6 = result;
   return result;
 }
-function getDesignSystem(slug4) {
-  if (!slug4) return null;
-  const r = loadAllDesignSystems().get(slug4);
+function getDesignSystem(slug3) {
+  if (!slug3) return null;
+  const r = loadAllDesignSystems().get(slug3);
   return r && r.ok ? r.pkg : null;
 }
 function listDesignSystems(opts = {}) {
@@ -70598,7 +70113,7 @@ function resolveDefaultPackage() {
 function resolvePackageForIntent(brief) {
   const text = (brief ?? "").slice(0, 4e3);
   const installed = listDesignSystems();
-  const byslug = (slug4) => installed.find((p2) => p2.meta.slug === slug4) ?? null;
+  const byslug = (slug3) => installed.find((p2) => p2.meta.slug === slug3) ?? null;
   if (text && DARK_EDITORIAL.test(text)) {
     const obsidian = byslug("obsidian");
     if (obsidian) {
@@ -96091,8 +95606,8 @@ __export(industry_packs_exports, {
   getPack: () => getPack,
   packToPrompt: () => packToPrompt
 });
-function getPack(slug4) {
-  return INDUSTRY_PACKS.find((p2) => p2.slug === slug4);
+function getPack(slug3) {
+  return INDUSTRY_PACKS.find((p2) => p2.slug === slug3);
 }
 function packToPrompt(pack) {
   const cloudHints = pack.cloud.length > 0 ? `
@@ -96661,9 +96176,9 @@ function assembleFirstBuildContext(args) {
   const preloaded = new Set([...manualAlways, ...manualCond].map((s) => s.slug));
   const reference = [];
   const index = [];
-  const addDoc = (slug4, title, text) => {
+  const addDoc = (slug3, title, text) => {
     if (!text.trim()) return;
-    const path = `${KNOWLEDGE_DIR}/${slug4}.md`;
+    const path = `${KNOWLEDGE_DIR}/${slug3}.md`;
     if (reference.some((r) => r.path === path)) return;
     reference.push({ path, content: text.trim() + "\n" });
     index.push(`- ${path} \u2014 ${title} (${Math.round(text.length / 4)} tokens)`);
@@ -96788,8 +96303,8 @@ function anchoredWindows(content, opts) {
   for (const line of anchors) {
     const start = Math.max(1, line - pad);
     const end = Math.min(lines.length, line + pad);
-    const last = ranges[ranges.length - 1];
-    if (last && start <= last[1] + 1) last[1] = Math.max(last[1], end);
+    const last2 = ranges[ranges.length - 1];
+    if (last2 && start <= last2[1] + 1) last2[1] = Math.max(last2[1], end);
     else ranges.push([start, end]);
   }
   let budget = maxLines;
@@ -96860,8 +96375,8 @@ var init_prompt_budget_server = __esm({
   "src/server/prompt-budget.server.ts"() {
     init_define_import_meta_env();
     CONTEXT_WINDOWS = [
-      { match: /deepseek/i, tokens: 128e3 },
-      { match: /gemini/i, tokens: 2e5 },
+      { match: /gemini/i, tokens: 1e6 },
+      { match: /gpt-5\.6|gpt-6/i, tokens: 272e3 },
       { match: /gpt-5|gpt-4|openai/i, tokens: 128e3 },
       { match: /claude/i, tokens: 2e5 }
     ];
@@ -97058,7 +96573,7 @@ async function generateFallbackArchetype(prompt, invokeChat) {
 No prose, no markdown fences. Avoid "demo", "simulated", "limitation". Treat every prompt as a real live product.`;
   try {
     const resp = await invokeChat({
-      model: "deepseek/deepseek-v4-flash",
+      model: "google/gemini-3.1-flash-lite",
       messages: [
         { role: "system", content: system },
         { role: "user", content: prompt.slice(0, 2e3) }
@@ -142003,7 +141518,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144760,7 +144274,7 @@ function strings(v, cap = 12) {
 }
 async function understandRequest(brief, opts = {}) {
   const fallback = deterministicUnderstanding(brief);
-  if (!process.env.OPENROUTER_API_KEY) return fallback;
+  if (!process.env.LOVABLE_API_KEY) return fallback;
   if ((brief ?? "").trim().length < 4) return fallback;
   try {
     const priorBlock = opts.prior ? `
@@ -144903,7 +144417,7 @@ var init_understanding_server = __esm({
     init_prd_deterministic();
     init_target_inference();
     init_prompt_limits();
-    MODEL = "deepseek/deepseek-v4-flash";
+    MODEL = "google/gemini-3.8-flash";
     PLATFORMS = ["web", "mobile", "web-mobile", "backend", "extension"];
     SYSTEM = `You are Kimble's product engineer. You read a build request and decide what is ACTUALLY being asked for, the way a senior engineer would before writing a line of code.
 
@@ -145066,7 +144580,7 @@ function mergePrd(prior, raw) {
 }
 async function modelPrd(brief, userId) {
   const prior = deterministicPrd(brief);
-  if (!process.env.OPENROUTER_API_KEY) return prior;
+  if (!process.env.LOVABLE_API_KEY) return prior;
   try {
     const res = await aiChatCompletions({
       feature: "preflight",
@@ -145127,7 +144641,7 @@ var init_prd_model_server = __esm({
     init_ai_provider_server();
     init_prd_deterministic();
     init_prompt_limits();
-    MODEL2 = "deepseek/deepseek-v4-flash";
+    MODEL2 = "google/gemini-3.8-flash";
     SYSTEM2 = `You are Kimble's product architect. You turn a user's one-line app request into a precise internal PRD that an engineering pipeline will build and then verify against.
 
 You are given a deterministic draft produced by rules. Improve it. Keep what is right, fix what is wrong, fill what is blank.
@@ -145524,7 +145038,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145634,7 +145147,7 @@ __export(prd_requirements_exports, {
   splitRequestedItems: () => splitRequestedItems,
   stageForTurn: () => stageForTurn
 });
-function slug2(s) {
+function slug(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 }
 function splitRequestedItems(brief) {
@@ -145674,9 +145187,9 @@ function deriveRequirements(brief, now = (/* @__PURE__ */ new Date()).toISOStrin
       if (!out.has(c.id)) out.set(c.id, { ...fromConcept(c, now), description: titleCase(item) });
       continue;
     }
-    const id = `feature-${slug2(item)}`;
+    const id = `feature-${slug(item)}`;
     if (!id.endsWith("-") && !out.has(id)) {
-      const words2 = slug2(item).split("-").filter((w) => w.length > 2);
+      const words2 = slug(item).split("-").filter((w) => w.length > 2);
       out.set(id, {
         id,
         description: titleCase(item),
@@ -146120,7 +145633,7 @@ function applyIntentContract(prd, brief, now = (/* @__PURE__ */ new Date()).toIS
   const reqs = [...prd.requirements ?? []];
   const have = new Set(reqs.map((r) => r.id));
   for (const page of c.pages) {
-    const id = page.route === "/" ? "home" : slug3(page.label);
+    const id = page.route === "/" ? "home" : slug2(page.label);
     if (have.has(id)) continue;
     const r = {
       id,
@@ -146156,7 +145669,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, SURFACE_LINE, slug3;
+var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -146282,7 +145795,7 @@ var init_intent_contract = __esm({
       app: "Structure: an application only \u2014 the app shell (sidebar or top bar) on every page, no marketing landing page.",
       "public+app": "Structure: TWO surfaces. (1) Public website at / (and any public pages): header navigation, footer, what the product does, and a clear Sign in / Get started entry to /login. (2) Signed-in application from /dashboard onwards: its own app shell (sidebar navigation), no marketing footer. Keep the two layouts separate. The app shell is a pathless layout route (no path prop) so / belongs only to the public Home."
     };
-    slug3 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+    slug2 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
   }
 });
 
@@ -146616,7 +146129,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -146641,7 +146153,6 @@ var init_ledger = __esm({
       constructor(limits = TURN_LIMITS) {
         this.limits = limits;
       }
-      limits;
       counts = /* @__PURE__ */ new Map();
       reads = /* @__PURE__ */ new Set();
       /** Files whose current content was inspected in THIS operation. A ledger is
@@ -146736,8 +146247,6 @@ var init_transaction = __esm({
         this.writer = writer;
         this.base = new Map(baseline.map((f) => [f.path, f.content]));
       }
-      ledger;
-      writer;
       base;
       staged = /* @__PURE__ */ new Map();
       verdicts = [];
@@ -146849,10 +146358,10 @@ async function commitTurn(args) {
   const rejections = [];
   const noOps = [];
   const refusalReason = () => {
-    const last = args.ledger.summary().refusals.at(-1) ?? "";
-    if (last.includes(":limit")) return "limit";
-    if (last.includes(":foreign_writer")) return "foreign_writer";
-    if (last.includes(":cancelled")) return "cancelled";
+    const last2 = args.ledger.summary().refusals.at(-1) ?? "";
+    if (last2.includes(":limit")) return "limit";
+    if (last2.includes(":foreign_writer")) return "foreign_writer";
+    if (last2.includes(":cancelled")) return "cancelled";
     return "other";
   };
   for (const [path, content] of next) {
@@ -148361,9 +147870,9 @@ var init_model_agent_server = __esm({
     init_define_import_meta_env();
     init_ai_provider_server();
     MODEL_BY_PROFILE = {
-      cheap: "deepseek/deepseek-v4-flash",
-      balanced: "deepseek/deepseek-v4-flash",
-      deep: "deepseek/deepseek-v4-flash"
+      cheap: "google/gemini-3.1-flash-lite",
+      balanced: "google/gemini-3.8-flash",
+      deep: "openai/gpt-5.6-sol"
     };
     MAX_DECISIONS = 5;
     MAX_OBJECTIONS = 3;
@@ -150228,8 +149737,8 @@ function findScreenTargets(prompt, paths) {
   for (const m of text.matchAll(SCREEN_PHRASE)) {
     const words2 = m[1].split(/\s+/).filter((w) => !STOP4.has(w));
     if (words2.length) wanted.add(norm4(words2.join("")));
-    const last = words2[words2.length - 1];
-    if (last) wanted.add(norm4(last));
+    const last2 = words2[words2.length - 1];
+    if (last2) wanted.add(norm4(last2));
   }
   for (const w of SECTION_WORDS) if (new RegExp(`\\b${w}\\b`).test(text.replace(/-/g, ""))) wanted.add(w);
   if (wanted.size === 0) return [];
@@ -152963,8 +152472,8 @@ function routerPages(files) {
   for (const file of byIdent.values()) {
     if (routed.has(file)) continue;
     const name = file.split("/").pop().replace(/\.tsx$/, "");
-    const slug4 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-    const route = HOME_NAMES.test(name) && !seen.has(pageKey("/")) ? "/" : `/${slug4}`;
+    const slug3 = name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+    const route = HOME_NAMES.test(name) && !seen.has(pageKey("/")) ? "/" : `/${slug3}`;
     const key = pageKey(route);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -153146,8 +152655,8 @@ function diagnoseTrajectory(recent, remaining = []) {
     parts.push(`You repeated the same ${r.a.tool}${r.a.path ? ` on ${r.a.path}` : ""} ${r.n} times with the same result (${r.a.firstLine}). Do something different.`);
   }
   if (writeFails.length) {
-    const last = writeFails[writeFails.length - 1];
-    parts.push(`Writes keep failing validation (latest: ${last.path ?? "?"} \u2014 ${last.firstLine}). Fix exactly the reported error.`);
+    const last2 = writeFails[writeFails.length - 1];
+    parts.push(`Writes keep failing validation (latest: ${last2.path ?? "?"} \u2014 ${last2.firstLine}). Fix exactly the reported error.`);
   }
   if (finishRefused) parts.push("finish was refused; fix the listed gaps by writing files, not by calling finish again.");
   if (remaining.length) {
@@ -154068,7 +153577,6 @@ var init_failure_classification = __esm({
         this.status = status;
         this.name = "InfrastructureFailure";
       }
-      status;
       origin = "infrastructure";
     };
     INFRA = /\b(50[0-4]|429|bad gateway|service unavailable|gateway time-?out|upstream|provider (error|unavailable|outage)|rate.?limit|overloaded|ECONNRESET|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|fetch failed|timed? ?out|socket hang up|network error)\b/i;
@@ -154765,18 +154273,18 @@ function backoffDelay(attempt, random = Math.random) {
 }
 async function withProviderRetry(run, opts = {}) {
   const sleep3 = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-  let last = null;
+  let last2 = null;
   let lastErr = null;
   for (let attempt = 1; attempt <= MAX_PROVIDER_RETRIES + 1; attempt++) {
     let status = null;
     try {
-      last = await run();
-      status = last.status;
+      last2 = await run();
+      status = last2.status;
       lastErr = null;
     } catch (e) {
       if (opts.signal?.aborted) throw e;
       lastErr = e;
-      last = null;
+      last2 = null;
     }
     const cls = classifyProviderStatus(status);
     const retry = (cls === "rate_limited" || cls === "server_error" || cls === "connection") && attempt <= MAX_PROVIDER_RETRIES && !opts.signal?.aborted;
@@ -154784,12 +154292,12 @@ async function withProviderRetry(run, opts = {}) {
     opts.onAttempt?.({ attempt, status, failureClass: cls, delayMs });
     if (!retry) break;
     try {
-      await last?.body?.cancel();
+      await last2?.body?.cancel();
     } catch {
     }
     await sleep3(delayMs);
   }
-  if (last) return last;
+  if (last2) return last2;
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 var RETRYABLE_STATUS, MAX_PROVIDER_RETRIES, BASE_DELAY_MS, MAX_DELAY_MS;
@@ -156026,185 +155534,8 @@ function toOperationType(classifierOp, opts) {
 // node_modules/@tanstack/react-router/dist/esm/index.js
 init_define_import_meta_env();
 
-// node_modules/@tanstack/react-router/dist/esm/utils.js
-init_define_import_meta_env();
-var React$1 = __toESM(require_react(), 1);
-function useIntersectionObserver(ref, callback, intersectionObserverOptions2 = {}, options = {}) {
-  React$1.useEffect(() => {
-    if (!ref.current || options.disabled || typeof IntersectionObserver !== "function") return;
-    const observer = new IntersectionObserver(([entry]) => {
-      callback(entry);
-    }, intersectionObserverOptions2);
-    observer.observe(ref.current);
-    return () => {
-      observer.disconnect();
-    };
-  }, [
-    callback,
-    intersectionObserverOptions2,
-    options.disabled,
-    ref
-  ]);
-}
-function useForwardedRef(ref) {
-  const innerRef = React$1.useRef(null);
-  React$1.useImperativeHandle(ref, () => innerRef.current, []);
-  return innerRef;
-}
-
-// node_modules/@tanstack/router-core/dist/esm/index.js
-init_define_import_meta_env();
-
-// node_modules/@tanstack/router-core/dist/esm/utils.js
-init_define_import_meta_env();
-
 // node_modules/@tanstack/router-core/dist/esm/isServer/server.js
 init_define_import_meta_env();
-var isServer = process.env.NODE_ENV === "test" ? void 0 : true;
-
-// node_modules/@tanstack/router-core/dist/esm/utils.js
-function isFunction(d) {
-  return typeof d === "function";
-}
-function functionalUpdate(updater, previous) {
-  if (isFunction(updater)) return updater(previous);
-  return updater;
-}
-var hasOwn = Object.prototype.hasOwnProperty;
-var isEnumerable = Object.prototype.propertyIsEnumerable;
-function hasKeys(obj) {
-  for (const key in obj) if (hasOwn.call(obj, key)) return true;
-  return false;
-}
-function replaceEqualDeep(prev, _next, _makeObj = () => ({}), _depth = 0) {
-  if (isServer) return _next;
-  if (prev === _next) return prev;
-  if (_depth > 500) return _next;
-  const next = _next;
-  const array = isPlainArray(prev) && isPlainArray(next);
-  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next;
-  const prevItems = array ? prev : getEnumerableOwnKeys(prev);
-  if (!prevItems) return next;
-  const nextItems = array ? next : getEnumerableOwnKeys(next);
-  if (!nextItems) return next;
-  const prevSize = prevItems.length;
-  const nextSize = nextItems.length;
-  const copy = array ? new Array(nextSize) : _makeObj();
-  let equalItems = 0;
-  for (let i = 0; i < nextSize; i++) {
-    const key = array ? i : nextItems[i];
-    const p2 = prev[key];
-    const n = next[key];
-    if (p2 === n) {
-      copy[key] = p2;
-      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++;
-      continue;
-    }
-    if (p2 === null || n === null || typeof p2 !== "object" || typeof n !== "object") {
-      copy[key] = n;
-      continue;
-    }
-    const v = replaceEqualDeep(p2, n, _makeObj, _depth + 1);
-    copy[key] = v;
-    if (v === p2) equalItems++;
-  }
-  return prevSize === nextSize && equalItems === prevSize ? prev : copy;
-}
-function getEnumerableOwnKeys(o) {
-  const names = Object.getOwnPropertyNames(o);
-  for (const name of names) if (!isEnumerable.call(o, name)) return false;
-  const symbols = Object.getOwnPropertySymbols(o);
-  if (symbols.length === 0) return names;
-  const keys = names;
-  for (const symbol of symbols) {
-    if (!isEnumerable.call(o, symbol)) return false;
-    keys.push(symbol);
-  }
-  return keys;
-}
-function isPlainObject(o) {
-  if (!hasObjectPrototype(o)) return false;
-  const ctor = o.constructor;
-  if (typeof ctor === "undefined") return true;
-  const prot = ctor.prototype;
-  if (!hasObjectPrototype(prot)) return false;
-  if (!prot.hasOwnProperty("isPrototypeOf")) return false;
-  return true;
-}
-function hasObjectPrototype(o) {
-  return Object.prototype.toString.call(o) === "[object Object]";
-}
-function isPlainArray(value) {
-  return Array.isArray(value) && value.length === Object.keys(value).length;
-}
-function deepEqual(a2, b, opts) {
-  if (a2 === b) return true;
-  if (typeof a2 !== typeof b) return false;
-  if (Array.isArray(a2) && Array.isArray(b)) {
-    if (a2.length !== b.length) return false;
-    for (let i = 0, l = a2.length; i < l; i++) if (!deepEqual(a2[i], b[i], opts)) return false;
-    return true;
-  }
-  if (isPlainObject(a2) && isPlainObject(b)) {
-    const ignoreUndefined = opts?.ignoreUndefined ?? true;
-    if (opts?.partial) {
-      for (const k in b) if (!ignoreUndefined || b[k] !== void 0) {
-        if (!deepEqual(a2[k], b[k], opts)) return false;
-      }
-      return true;
-    }
-    let aCount = 0;
-    if (!ignoreUndefined) aCount = Object.keys(a2).length;
-    else for (const k in a2) if (a2[k] !== void 0) aCount++;
-    let bCount = 0;
-    for (const k in b) if (!ignoreUndefined || b[k] !== void 0) {
-      bCount++;
-      if (bCount > aCount || !deepEqual(a2[k], b[k], opts)) return false;
-    }
-    return aCount === bCount;
-  }
-  return false;
-}
-function isDangerousProtocol(url, allowlist) {
-  if (!url) return false;
-  try {
-    const parsed = new URL(url);
-    return !allowlist.has(parsed.protocol);
-  } catch {
-    return false;
-  }
-}
-
-// node_modules/@tanstack/router-core/dist/esm/invariant.js
-init_define_import_meta_env();
-function invariant() {
-  throw new Error("Invariant failed");
-}
-
-// node_modules/@tanstack/router-core/dist/esm/path.js
-init_define_import_meta_env();
-function joinPaths(paths) {
-  return cleanPath(paths.filter((val) => {
-    return val !== void 0;
-  }).join("/"));
-}
-function cleanPath(path) {
-  return path.replace(/\/{2,}/g, "/");
-}
-function trimPathLeft(path) {
-  return path === "/" ? path : path.replace(/^\/{1,}/, "");
-}
-function trimPathRight(path) {
-  const len = path.length;
-  return len > 1 && path[len - 1] === "/" ? path.replace(/\/{1,}$/, "") : path;
-}
-function removeTrailingSlash(value, basepath) {
-  if (value?.endsWith("/") && value !== "/" && value !== `${basepath}/`) return value.slice(0, -1);
-  return value;
-}
-function exactPathTest(pathName1, pathName2, basepath) {
-  return removeTrailingSlash(pathName1, basepath) === removeTrailingSlash(pathName2, basepath);
-}
 
 // node_modules/@tanstack/router-core/dist/esm/root.js
 init_define_import_meta_env();
@@ -156214,11 +155545,6 @@ var rootRouteId = "__root__";
 init_define_import_meta_env();
 function redirect(opts) {
   opts.statusCode = opts.statusCode || opts.code || 307;
-  if (!opts._builtLocation && !opts.reloadDocument && typeof opts.href === "string") try {
-    new URL(opts.href);
-    opts.reloadDocument = true;
-  } catch {
-  }
   const headers = new Headers(opts.headers);
   if (opts.href && headers.get("Location") === null) headers.set("Location", opts.href);
   const response = new Response(null, {
@@ -156229,6 +155555,144 @@ function redirect(opts) {
   if (opts.throw) throw response;
   return response;
 }
+
+// node_modules/@tanstack/router-core/dist/esm/utils.js
+init_define_import_meta_env();
+function last(arr) {
+  return arr[arr.length - 1];
+}
+function functionalUpdate(updater, previous) {
+  if (typeof updater === "function") return updater(previous);
+  return updater;
+}
+var hasOwn = Object.prototype.hasOwnProperty;
+var createNull = () => /* @__PURE__ */ Object.create(null);
+function replaceEqualDeep(prev, next, _nullProto, _depth = 0) {
+  if (isServer) return next;
+  if (prev === next) return prev;
+  if (_depth++ > 500) return next;
+  const array = Array.isArray(prev) && Array.isArray(next);
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next;
+  const prevKeys = Object.keys(prev);
+  const previousCount = prevKeys.length;
+  const nextKeys = Object.keys(next);
+  const length = nextKeys.length;
+  if (array ? previousCount !== prev.length || length !== next.length || previousCount && last(prevKeys) !== `${previousCount - 1}` || length && last(nextKeys) !== `${length - 1}` : previousCount !== Object.getOwnPropertyNames(prev).length || length !== Object.getOwnPropertyNames(next).length || Object.getOwnPropertySymbols(next).length) return next;
+  let i = 0;
+  let child;
+  let previous;
+  let key;
+  if (array) {
+    for (; i < length; i++) {
+      key = i;
+      previous = prev[key];
+      child = next[key];
+      child = previous === child ? previous : typeof previous === "object" ? replaceEqualDeep(previous, child, _nullProto, _depth) : child;
+      if (child !== previous) break;
+    }
+    if (i === length && previousCount === length) return prev;
+  } else {
+    let equal = previousCount === length;
+    let unchanged = true;
+    for (; i < length; i++) {
+      key = nextKeys[i];
+      previous = prev[key];
+      const incoming = next[key];
+      child = previous === incoming ? previous : typeof previous === "object" ? replaceEqualDeep(previous, incoming, _nullProto, _depth) : incoming;
+      equal &&= child === previous && (prevKeys[i] === key || hasOwn.call(prev, key));
+      unchanged &&= Object.is(child, incoming);
+      prevKeys[i] = child;
+    }
+    if (equal) return Object.getOwnPropertySymbols(prev).length ? next : prev;
+    if (unchanged) return next;
+  }
+  const copy = array ? nextKeys.fill(0) : _nullProto ? createNull() : {};
+  for (let j = 0; j < length; j++) {
+    key = array ? j : nextKeys[j];
+    if (array) {
+      previous = prev[key];
+      if (j > i) {
+        child = next[key];
+        child = previous === child ? previous : typeof previous === "object" ? replaceEqualDeep(previous, child, _nullProto, _depth) : child;
+      }
+      copy[key] = j < i ? previous : child;
+    } else copy[key] = prevKeys[j];
+  }
+  return copy;
+}
+function isPlainObject(o) {
+  if (!o || typeof o !== "object") return false;
+  return (Object.getPrototypeOf(o)?.constructor ?? Object) === Object;
+}
+function deepEqual(a2, b, partial, explicitUndefined) {
+  if (a2 === b) return true;
+  if (Array.isArray(a2) && Array.isArray(b)) {
+    if (a2.length !== b.length) return false;
+    for (let i = 0, l = a2.length; i < l; i++) {
+      const av = a2[i];
+      const bv = b[i];
+      if (av !== bv && !deepEqual(av, bv, partial, explicitUndefined)) return false;
+    }
+    return true;
+  }
+  if (isPlainObject(a2) && isPlainObject(b)) {
+    if (partial) {
+      for (const k in b) if (explicitUndefined || b[k] !== void 0) {
+        if (!deepEqual(a2[k], b[k], partial, explicitUndefined)) return false;
+      }
+      return true;
+    }
+    let aCount = 0;
+    if (explicitUndefined) aCount = Object.keys(a2).length;
+    else for (const k in a2) if (a2[k] !== void 0) aCount++;
+    for (const k in b) if (explicitUndefined || b[k] !== void 0) {
+      if (aCount-- === 0 || !deepEqual(a2[k], b[k], partial, explicitUndefined)) return false;
+    }
+    return aCount === 0;
+  }
+  return false;
+}
+function getUrlScheme(url) {
+  if (url[0] === "/") return;
+  if (!url.includes(":")) return;
+  return /^[\x00-\x20]*([a-z][a-z\d+.\t\n\r-]*:)/i.exec(url)?.[1]?.replace(/[\t\n\r]/g, "").toLowerCase();
+}
+var protocolRelativePrefixRegex = /^[\x00-\x20]*[\\/][\t\n\r]*[\\/]/;
+function isDangerousProtocol(url, allowlist) {
+  if (!url) return false;
+  if (protocolRelativePrefixRegex.test(url)) return true;
+  const scheme = getUrlScheme(url);
+  return scheme ? !allowlist.has(scheme) : false;
+}
+
+// node_modules/@tanstack/router-core/dist/esm/path.js
+init_define_import_meta_env();
+function cleanPath(path) {
+  return path.replace(/\/{2,}/g, "/");
+}
+function trimPathLeft(path) {
+  return path === "/" ? path : path.replace(/^\/+/, "");
+}
+function trimPathRight(path) {
+  const len = path.length;
+  return len > 1 && path[len - 1] === "/" ? path.replace(/\/+$/, "") : path;
+}
+function removeTrailingSlash(value, basepath) {
+  if (value?.endsWith("/") && value !== "/" && value !== `${basepath}/`) return value.slice(0, -1);
+  return value;
+}
+
+// node_modules/@tanstack/router-core/dist/esm/invariant.js
+init_define_import_meta_env();
+function invariant() {
+  throw new Error("Invariant failed");
+}
+
+// node_modules/@tanstack/router-core/dist/esm/isServer/server.js
+var isServer = process.env.NODE_ENV === "test" ? void 0 : true;
+
+// node_modules/@tanstack/router-core/dist/esm/index.js
+init_define_import_meta_env();
 
 // node_modules/@tanstack/router-core/dist/esm/link.js
 init_define_import_meta_env();
@@ -156250,8 +155714,9 @@ var BaseRoute = class {
     return this._fullPath;
   }
   constructor(options) {
-    this.init = (opts) => {
-      this.originalIndex = opts.originalIndex;
+    this.init = (originalIndex) => {
+      this.originalIndex = originalIndex;
+      this._branch = void 0;
       const options2 = this.options;
       const isRoot = !options2?.path && !options2?.id;
       this.parentRoute = this.options.getParentRoute?.();
@@ -156263,10 +155728,9 @@ var BaseRoute = class {
       let path = isRoot ? rootRouteId : options2?.path;
       if (path && path !== "/") path = trimPathLeft(path);
       const customId = options2?.id || path;
-      let id = isRoot ? rootRouteId : joinPaths([this.parentRoute.id === "__root__" ? "" : this.parentRoute.id, customId]);
+      const id = isRoot ? rootRouteId : cleanPath((this.parentRoute.id === "__root__" ? "" : this.parentRoute.id) + "/" + (customId ?? ""));
       if (path === "__root__") path = "/";
-      if (id !== "__root__") id = joinPaths(["/", id]);
-      const fullPath = id === "__root__" ? "/" : joinPaths([this.parentRoute.fullPath, path]);
+      const fullPath = id === "__root__" ? "/" : path === void 0 ? this.parentRoute.fullPath : cleanPath(this.parentRoute.fullPath + "/" + path);
       this._path = path;
       this._id = id;
       this._fullPath = fullPath;
@@ -156309,8 +155773,10 @@ var BaseRoute = class {
 init_define_import_meta_env();
 var import_react = __toESM(require_react(), 1);
 var import_jsx_runtime = __toESM(require_jsx_runtime(), 1);
-function useHydrated() {
-  return import_react.default.useSyncExternalStore(subscribe, () => true, () => false);
+var getSnapshot = () => true;
+var getServerSnapshot = () => false;
+function useHydrated(enabled = true) {
+  return import_react.default.useSyncExternalStore(subscribe, getSnapshot, enabled ? getServerSnapshot : getSnapshot);
 }
 function subscribe() {
   return () => {
@@ -156322,17 +155788,18 @@ init_define_import_meta_env();
 
 // node_modules/@tanstack/react-router/dist/esm/routerContext.js
 init_define_import_meta_env();
-var React$12 = __toESM(require_react(), 1);
-var routerContext = React$12.createContext(null);
+var React$1 = __toESM(require_react(), 1);
+var routerContext = React$1.createContext(null);
 
 // node_modules/@tanstack/react-router/dist/esm/useRouter.js
-var React$13 = __toESM(require_react(), 1);
+var React$12 = __toESM(require_react(), 1);
 function useRouter(opts) {
-  const value = React$13.useContext(routerContext);
-  if (process.env.NODE_ENV !== "production") {
-    if ((opts?.warn ?? true) && !value) console.warn("Warning: useRouter must be used inside a <RouterProvider> component!");
-  }
+  const value = React$12.useContext(routerContext);
+  if (!value) warnMissingRouter(opts);
   return value;
+}
+function warnMissingRouter(opts) {
+  if (process.env.NODE_ENV !== "production" && (opts?.warn ?? true)) console.warn("Warning: useRouter must be used inside a <RouterProvider> component!");
 }
 
 // node_modules/@tanstack/react-router/dist/esm/useMatch.js
@@ -156340,57 +155807,37 @@ init_define_import_meta_env();
 
 // node_modules/@tanstack/react-router/dist/esm/matchContext.js
 init_define_import_meta_env();
-var React$14 = __toESM(require_react(), 1);
-var matchContext = React$14.createContext(void 0);
-var dummyMatchContext = React$14.createContext(void 0);
+var React$13 = __toESM(require_react(), 1);
+var matchContext = React$13.createContext(void 0);
+var dummyMatchContext = React$13.createContext(void 0);
 
 // node_modules/@tanstack/react-router/dist/esm/useMatch.js
-var React$15 = __toESM(require_react(), 1);
+var React$14 = __toESM(require_react(), 1);
 
-// node_modules/@tanstack/react-store/dist/esm/index.js
+// node_modules/@tanstack/react-store/dist/index.js
 init_define_import_meta_env();
 
-// node_modules/@tanstack/react-store/dist/esm/useStore.js
+// node_modules/@tanstack/react-store/dist/useSelector.js
 init_define_import_meta_env();
 var import_react2 = __toESM(require_react(), 1);
 var import_with_selector = __toESM(require_with_selector(), 1);
 function defaultCompare(a2, b) {
   return a2 === b;
 }
-function useStore(atom, selector, compare = defaultCompare) {
-  const subscribe2 = (0, import_react2.useCallback)(
-    (handleStoreChange) => {
-      if (!atom) {
-        return () => {
-        };
-      }
-      const { unsubscribe } = atom.subscribe(handleStoreChange);
-      return unsubscribe;
-    },
-    [atom]
-  );
-  const boundGetSnapshot = (0, import_react2.useCallback)(() => atom?.get(), [atom]);
-  const selectedSnapshot = (0, import_with_selector.useSyncExternalStoreWithSelector)(
-    subscribe2,
-    boundGetSnapshot,
-    boundGetSnapshot,
-    selector,
-    compare
-  );
-  return selectedSnapshot;
+function useSelector(source, selector = (s) => s, options) {
+  const compare = options?.compare ?? defaultCompare;
+  const subscribe2 = (0, import_react2.useCallback)((handleStoreChange) => {
+    const { unsubscribe } = source.subscribe(handleStoreChange);
+    return unsubscribe;
+  }, [source]);
+  const getSnapshot3 = (0, import_react2.useCallback)(() => source.get(), [source]);
+  return (0, import_with_selector.useSyncExternalStoreWithSelector)(subscribe2, getSnapshot3, getSnapshot3, selector, compare);
 }
 
 // node_modules/@tanstack/react-router/dist/esm/useMatch.js
-var dummyStore = {
-  get() {
-  },
-  subscribe() {
-    return { unsubscribe() {
-    } };
-  }
-};
+var dummyMatch = {};
 function useStructuralSharing(opts, router) {
-  const previousResult = React$15.useRef();
+  const previousResult = React$14.useRef();
   return (slice) => {
     const selected = opts?.select ? opts.select(slice) : slice;
     if (opts?.structuralSharing ?? router.options.defaultStructuralSharing) return previousResult.current = replaceEqualDeep(previousResult.current, selected);
@@ -156399,10 +155846,11 @@ function useStructuralSharing(opts, router) {
 }
 function useMatch(opts) {
   const router = useRouter();
-  const nearestMatchId = React$15.useContext(opts.from ? dummyMatchContext : matchContext);
-  const matchStore = opts.from ? router.stores.getRouteMatchStore(opts.from) : router.stores.matchStores.get(nearestMatchId);
+  const nearestRouteId = React$14.useContext(opts.from ? dummyMatchContext : matchContext);
+  const routeId = opts.from ?? nearestRouteId;
+  const matchStore = router.stores.getMatchStore(routeId);
   if (isServer ?? router.isServer) {
-    const match = matchStore?.get();
+    const match = matchStore.get();
     if (!match) {
       if (opts.shouldThrow ?? true) {
         if (process.env.NODE_ENV !== "production") throw new Error(`Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : "a nearest match!"}`);
@@ -156413,8 +155861,8 @@ function useMatch(opts) {
     return opts.select ? opts.select(match) : match;
   }
   const selector = useStructuralSharing(opts, router);
-  const matchSelection = useStore(matchStore ?? dummyStore, (match) => match ? selector(match) : dummyStore);
-  if (matchSelection !== dummyStore) return matchSelection;
+  const matchSelection = useSelector(matchStore, (match) => match ? selector(match) : dummyMatch);
+  if (matchSelection !== dummyMatch) return matchSelection;
   if (opts.shouldThrow ?? true) {
     if (process.env.NODE_ENV !== "production") throw new Error(`Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : "a nearest match!"}`);
     invariant();
@@ -156477,10 +155925,10 @@ function useSearch(opts) {
 
 // node_modules/@tanstack/react-router/dist/esm/useNavigate.js
 init_define_import_meta_env();
-var React$16 = __toESM(require_react(), 1);
+var React$15 = __toESM(require_react(), 1);
 function useNavigate(_defaultOpts) {
   const router = useRouter();
-  return React$16.useCallback((options) => {
+  return React$15.useCallback((options) => {
     return router.navigate({
       ...options,
       from: options.from ?? _defaultOpts?.from
@@ -156499,286 +155947,157 @@ function useRouteContext(opts) {
 
 // node_modules/@tanstack/react-router/dist/esm/link.js
 init_define_import_meta_env();
-var React$17 = __toESM(require_react(), 1);
+var React$16 = __toESM(require_react(), 1);
 var import_jsx_runtime2 = __toESM(require_jsx_runtime(), 1);
-var import_react_dom = __toESM(require_react_dom(), 1);
-function useLinkProps(options, forwardedRef) {
-  const router = useRouter();
-  const innerRef = useForwardedRef(forwardedRef);
-  const _isServer = isServer ?? router.isServer;
-  const { activeProps, inactiveProps, activeOptions, to, preload: userPreload, preloadDelay: userPreloadDelay, preloadIntentProximity: _preloadIntentProximity, hashScrollIntoView, replace, startTransition, resetScroll, viewTransition, children, target, disabled, style, className, onClick, onBlur, onFocus, onMouseEnter, onMouseLeave, onTouchStart, ignoreBlocker, params: _params, search: _search, hash: _hash, state: _state, mask: _mask, reloadDocument: _reloadDocument, unsafeRelative: _unsafeRelative, from: _from, _fromLocation, ...propsSafeToSpread } = options;
-  if (_isServer) {
-    const safeInternal = isSafeInternal(to);
-    if (typeof to === "string" && !safeInternal && to.indexOf(":") > -1) try {
-      new URL(to);
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== "production") console.warn(`Blocked Link with dangerous protocol: ${to}`);
-        return {
-          ...propsSafeToSpread,
-          ref: innerRef,
-          href: void 0,
-          ...children && { children },
-          ...target && { target },
-          ...disabled && { disabled },
-          ...style && { style },
-          ...className && { className }
-        };
-      }
-      return {
-        ...propsSafeToSpread,
-        ref: innerRef,
-        href: to,
-        ...children && { children },
-        ...target && { target },
-        ...disabled && { disabled },
-        ...style && { style },
-        ...className && { className }
-      };
-    } catch {
-    }
-    const next2 = router.buildLocation({
-      ...options,
-      from: options.from
-    });
-    const hrefOption2 = getHrefOption(next2.maskedLocation ? next2.maskedLocation.publicHref : next2.publicHref, next2.maskedLocation ? next2.maskedLocation.external : next2.external, router.history, disabled);
-    const externalLink2 = (() => {
-      if (hrefOption2?.external) {
-        if (isDangerousProtocol(hrefOption2.href, router.protocolAllowlist)) {
-          if (process.env.NODE_ENV !== "production") console.warn(`Blocked Link with dangerous protocol: ${hrefOption2.href}`);
-          return;
-        }
-        return hrefOption2.href;
-      }
-      if (safeInternal) return void 0;
-      if (typeof to === "string" && to.indexOf(":") > -1) try {
-        new URL(to);
-        if (isDangerousProtocol(to, router.protocolAllowlist)) {
-          if (process.env.NODE_ENV !== "production") console.warn(`Blocked Link with dangerous protocol: ${to}`);
-          return;
-        }
-        return to;
-      } catch {
-      }
-    })();
-    const isActive2 = (() => {
-      if (externalLink2) return false;
-      const currentLocation2 = router.stores.location.get();
-      const exact = activeOptions?.exact ?? false;
-      if (exact) {
-        if (!exactPathTest(currentLocation2.pathname, next2.pathname, router.basepath)) return false;
-      } else {
-        const currentPathSplit = removeTrailingSlash(currentLocation2.pathname, router.basepath);
-        const nextPathSplit = removeTrailingSlash(next2.pathname, router.basepath);
-        if (!(currentPathSplit.startsWith(nextPathSplit) && (currentPathSplit.length === nextPathSplit.length || currentPathSplit[nextPathSplit.length] === "/"))) return false;
-      }
-      if (activeOptions?.includeSearch ?? true) {
-        if (currentLocation2.search !== next2.search) {
-          const currentSearchEmpty = !currentLocation2.search || typeof currentLocation2.search === "object" && !hasKeys(currentLocation2.search);
-          const nextSearchEmpty = !next2.search || typeof next2.search === "object" && !hasKeys(next2.search);
-          if (!(currentSearchEmpty && nextSearchEmpty)) {
-            if (!deepEqual(currentLocation2.search, next2.search, {
-              partial: !exact,
-              ignoreUndefined: !activeOptions?.explicitUndefined
-            })) return false;
-          }
-        }
-      }
-      if (activeOptions?.includeHash) return false;
-      return true;
-    })();
-    if (externalLink2) return {
-      ...propsSafeToSpread,
-      ref: innerRef,
-      href: externalLink2,
-      ...children && { children },
-      ...target && { target },
-      ...disabled && { disabled },
-      ...style && { style },
-      ...className && { className }
-    };
-    const resolvedActiveProps2 = isActive2 ? functionalUpdate(activeProps, {}) ?? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT;
-    const resolvedInactiveProps2 = isActive2 ? STATIC_EMPTY_OBJECT : functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT;
-    const resolvedStyle2 = (() => {
-      const baseStyle = style;
-      const activeStyle = resolvedActiveProps2.style;
-      const inactiveStyle = resolvedInactiveProps2.style;
-      if (!baseStyle && !activeStyle && !inactiveStyle) return;
-      if (baseStyle && !activeStyle && !inactiveStyle) return baseStyle;
-      if (!baseStyle && activeStyle && !inactiveStyle) return activeStyle;
-      if (!baseStyle && !activeStyle && inactiveStyle) return inactiveStyle;
-      return {
-        ...baseStyle,
-        ...activeStyle,
-        ...inactiveStyle
-      };
-    })();
-    const resolvedClassName2 = (() => {
-      const baseClassName = className;
-      const activeClassName = resolvedActiveProps2.className;
-      const inactiveClassName = resolvedInactiveProps2.className;
-      if (!baseClassName && !activeClassName && !inactiveClassName) return "";
-      let out = "";
-      if (baseClassName) out = baseClassName;
-      if (activeClassName) out = out ? `${out} ${activeClassName}` : activeClassName;
-      if (inactiveClassName) out = out ? `${out} ${inactiveClassName}` : inactiveClassName;
-      return out;
-    })();
-    return {
-      ...propsSafeToSpread,
-      ...resolvedActiveProps2,
-      ...resolvedInactiveProps2,
-      href: hrefOption2?.href,
-      ref: innerRef,
-      disabled: !!disabled,
-      target,
-      ...resolvedStyle2 && { style: resolvedStyle2 },
-      ...resolvedClassName2 && { className: resolvedClassName2 },
-      ...disabled && STATIC_DISABLED_PROPS,
-      ...isActive2 && STATIC_ACTIVE_PROPS
-    };
+function useStableValues(...values) {
+  const ref = React$16.useRef(values);
+  const stable = ref.current;
+  values.forEach((value, index) => {
+    if (!deepEqual(stable[index], value, false, true)) stable[index] = value;
+  });
+  return ref.current;
+}
+function preloadLink(router, options) {
+  router.preloadRoute(options).catch((err) => {
+    console.warn(err);
+    console.warn(preloadWarning);
+  });
+}
+var LINK_SELECTOR_OPTIONS = { compare: (a2, b) => a2[0] === b[0] && a2[1] === b[1] };
+function resolveExternalLink(to, protocolAllowlist) {
+  const scheme = typeof to === "string" && getUrlScheme(to);
+  if (!scheme) return;
+  if (!protocolAllowlist.has(scheme)) {
+    if (process.env.NODE_ENV !== "production") console.warn(`Blocked Link with dangerous protocol: ${to}`);
+    return null;
   }
-  const isHydrated = useHydrated();
-  const _options = React$17.useMemo(() => options, [
+  return to;
+}
+function resolveIsActive(location2, next, activeOptions, basepath, isHydrated) {
+  const currentPath = removeTrailingSlash(location2.pathname, basepath);
+  const nextPath = removeTrailingSlash(next.pathname, basepath);
+  if (activeOptions?.exact ? currentPath !== nextPath : !(currentPath.startsWith(nextPath) && (currentPath.length === nextPath.length || currentPath[nextPath.length] === "/"))) return false;
+  if (activeOptions?.includeSearch ?? true) {
+    if (!deepEqual(location2.search, next.search, !activeOptions?.exact, activeOptions?.explicitUndefined)) return false;
+  }
+  if (activeOptions?.includeHash) return isHydrated && location2.hash === next.hash;
+  return true;
+}
+function useLinkProps(options, forwardedRef, host) {
+  const router = useRouter();
+  if (isServer ?? router.isServer) return getServerLinkProps(router, options, forwardedRef, host);
+  const innerRef = React$16.useRef(null);
+  const mergedRef = React$16.useCallback((element) => {
+    innerRef.current = element;
+    if (typeof forwardedRef === "function") return forwardedRef(element);
+    if (forwardedRef) forwardedRef.current = element;
+  }, [forwardedRef]);
+  const { activeOptions, to, preload: userPreload, preloadDelay: userPreloadDelay, hashScrollIntoView, replace, startTransition, resetScroll, viewTransition, ignoreBlocker, disabled, target, onClick, onBlur, onFocus, onMouseEnter, onMouseLeave, onTouchStart } = options;
+  const isHydrated = useHydrated(!!activeOptions?.includeHash);
+  const [stableSearch, stableParams, stableActiveOptions] = useStableValues(options.search, options.params, activeOptions);
+  const [_options, dest] = React$16.useMemo(() => [options, { ...options }], [
     router,
     options.from,
     options._fromLocation,
     options.hash,
     options.to,
-    options.search,
-    options.params,
+    stableSearch,
+    stableParams,
     options.state,
     options.mask,
     options.unsafeRelative
   ]);
-  const currentLocation = useStore(router.stores.location, (l) => l, (prev, next2) => prev.href === next2.href);
-  const next = React$17.useMemo(() => {
-    const opts = {
-      _fromLocation: currentLocation,
-      ..._options
+  const selectLinkState = React$16.useMemo(() => {
+    const directExternalLink = resolveExternalLink(to, router.protocolAllowlist);
+    if (directExternalLink !== void 0) {
+      const state = [directExternalLink ?? void 0];
+      return () => state;
+    }
+    let inactive;
+    let active;
+    return (location2) => {
+      if (!_options._fromLocation) dest._fromLocation = location2;
+      const next = router.buildLocation(dest);
+      const href2 = getHrefOption(next, router, disabled);
+      if (!inactive || inactive[0] !== href2) {
+        inactive = [href2, !(disabled || href2 && !getUrlScheme(href2)) && void 0];
+        active = [href2, true];
+      }
+      return inactive[1] !== void 0 && resolveIsActive(location2, next, stableActiveOptions, router.basepath, isHydrated) ? active : inactive;
     };
-    return router.buildLocation(opts);
   }, [
-    router,
-    currentLocation,
-    _options
-  ]);
-  const hrefOptionPublicHref = next.maskedLocation ? next.maskedLocation.publicHref : next.publicHref;
-  const hrefOptionExternal = next.maskedLocation ? next.maskedLocation.external : next.external;
-  const hrefOption = React$17.useMemo(() => getHrefOption(hrefOptionPublicHref, hrefOptionExternal, router.history, disabled), [
+    stableActiveOptions,
     disabled,
-    hrefOptionExternal,
-    hrefOptionPublicHref,
-    router.history
-  ]);
-  const externalLink = React$17.useMemo(() => {
-    if (hrefOption?.external) {
-      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== "production") console.warn(`Blocked Link with dangerous protocol: ${hrefOption.href}`);
-        return;
-      }
-      return hrefOption.href;
-    }
-    if (isSafeInternal(to)) return void 0;
-    if (typeof to !== "string" || to.indexOf(":") === -1) return void 0;
-    try {
-      new URL(to);
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== "production") console.warn(`Blocked Link with dangerous protocol: ${to}`);
-        return;
-      }
-      return to;
-    } catch {
-    }
-  }, [
-    to,
-    hrefOption,
-    router.protocolAllowlist
-  ]);
-  const isActive = React$17.useMemo(() => {
-    if (externalLink) return false;
-    if (activeOptions?.exact) {
-      if (!exactPathTest(currentLocation.pathname, next.pathname, router.basepath)) return false;
-    } else {
-      const currentPathSplit = removeTrailingSlash(currentLocation.pathname, router.basepath);
-      const nextPathSplit = removeTrailingSlash(next.pathname, router.basepath);
-      if (!(currentPathSplit.startsWith(nextPathSplit) && (currentPathSplit.length === nextPathSplit.length || currentPathSplit[nextPathSplit.length] === "/"))) return false;
-    }
-    if (activeOptions?.includeSearch ?? true) {
-      if (!deepEqual(currentLocation.search, next.search, {
-        partial: !activeOptions?.exact,
-        ignoreUndefined: !activeOptions?.explicitUndefined
-      })) return false;
-    }
-    if (activeOptions?.includeHash) return isHydrated && currentLocation.hash === next.hash;
-    return true;
-  }, [
-    activeOptions?.exact,
-    activeOptions?.explicitUndefined,
-    activeOptions?.includeHash,
-    activeOptions?.includeSearch,
-    currentLocation,
-    externalLink,
     isHydrated,
-    next.hash,
-    next.pathname,
-    next.search,
-    router.basepath
+    _options,
+    dest,
+    router,
+    to
   ]);
-  const resolvedActiveProps = isActive ? functionalUpdate(activeProps, {}) ?? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT;
-  const resolvedInactiveProps = isActive ? STATIC_EMPTY_OBJECT : functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT;
-  const resolvedClassName = [
-    className,
-    resolvedActiveProps.className,
-    resolvedInactiveProps.className
-  ].filter(Boolean).join(" ");
-  const resolvedStyle = (style || resolvedActiveProps.style || resolvedInactiveProps.style) && {
-    ...style,
-    ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style
-  };
-  const [isTransitioning, setIsTransitioning] = React$17.useState(false);
-  const hasRenderFetched = React$17.useRef(false);
-  const preload = options.reloadDocument || externalLink ? false : userPreload ?? router.options.defaultPreload;
+  const [href, isActive] = useSelector(router.stores.location, selectLinkState, LINK_SELECTOR_OPTIONS);
+  const externalLink = isActive === void 0 && href;
+  const linkDisabled = disabled || href === void 0;
+  const hasRenderFetched = React$16.useRef(false);
+  const preload = options.reloadDocument || externalLink || linkDisabled ? false : userPreload ?? router.options.defaultPreload;
   const preloadDelay = userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0;
-  const doPreload = React$17.useCallback(() => {
-    router.preloadRoute({
-      ..._options,
-      _builtLocation: next
-    }).catch((err) => {
-      console.warn(err);
-      console.warn(preloadWarning);
-    });
+  const enqueuePreload = React$16.useCallback((e) => {
+    const isIntersecting = e?.isIntersecting;
+    if (!(isIntersecting ?? preload === "intent")) {
+      if (isIntersecting === false) cancelPreload(innerRef);
+      return;
+    }
+    if (!preloadDelay) {
+      preloadLink(router, _options);
+      return;
+    }
+    if (timeoutMap.has(innerRef)) return;
+    timeoutMap.set(innerRef, setTimeout(() => {
+      timeoutMap.delete(innerRef);
+      preloadLink(router, _options);
+    }, preloadDelay));
   }, [
     router,
     _options,
-    next
+    innerRef,
+    preload,
+    preloadDelay
   ]);
-  useIntersectionObserver(innerRef, React$17.useCallback((entry) => {
-    if (entry?.isIntersecting) doPreload();
-  }, [doPreload]), intersectionObserverOptions, { disabled: !!disabled || !(preload === "viewport") });
-  React$17.useEffect(() => {
-    if (hasRenderFetched.current) return;
-    if (!disabled && preload === "render") {
-      doPreload();
+  React$16.useEffect(() => {
+    if (!preload) return;
+    if (preload === "render" && !hasRenderFetched.current) {
       hasRenderFetched.current = true;
+      preloadLink(router, _options);
     }
+    let active = true;
+    let observer;
+    if (preload === "viewport" && innerRef.current && typeof IntersectionObserver === "function") {
+      observer = new IntersectionObserver((entries) => {
+        if (active) enqueuePreload(entries.pop());
+      }, { rootMargin: "100px" });
+      observer.observe(innerRef.current);
+    }
+    return () => {
+      active = false;
+      observer?.disconnect();
+      cancelPreload(innerRef);
+    };
   }, [
-    disabled,
-    doPreload,
-    preload
+    router,
+    _options,
+    preload,
+    enqueuePreload,
+    innerRef
   ]);
+  const props = collectElementProps(options, host);
+  props.ref = forwardedRef ? mergedRef : innerRef;
+  if (externalLink) {
+    props.href = externalLink;
+    return props;
+  }
   const handleClick = (e) => {
-    const elementTarget = e.currentTarget.getAttribute("target");
-    const effectiveTarget = target !== void 0 ? target : elementTarget;
-    if (!disabled && !isCtrlEvent(e) && !e.defaultPrevented && (!effectiveTarget || effectiveTarget === "_self") && e.button === 0) {
+    const effectiveTarget = target ?? e.currentTarget.getAttribute("target");
+    if (!linkDisabled && !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) && !e.defaultPrevented && (!effectiveTarget || effectiveTarget === "_self") && e.button === 0) {
       e.preventDefault();
-      (0, import_react_dom.flushSync)(() => {
-        setIsTransitioning(true);
-      });
-      const unsub = router.subscribe("onResolved", () => {
-        unsub();
-        setIsTransitioning(false);
-      });
       router.navigate({
         ..._options,
         replace,
@@ -156790,119 +156109,128 @@ function useLinkProps(options, forwardedRef) {
       });
     }
   };
-  if (externalLink) return {
-    ...propsSafeToSpread,
-    ref: innerRef,
-    href: externalLink,
-    ...children && { children },
-    ...target && { target },
-    ...disabled && { disabled },
-    ...style && { style },
-    ...className && { className },
-    ...onClick && { onClick },
-    ...onBlur && { onBlur },
-    ...onFocus && { onFocus },
-    ...onMouseEnter && { onMouseEnter },
-    ...onMouseLeave && { onMouseLeave },
-    ...onTouchStart && { onTouchStart }
+  const handleTouchStart = () => {
+    if (preload === "intent") preloadLink(router, _options);
   };
-  const enqueueIntentPreload = (e) => {
-    if (disabled || preload !== "intent") return;
-    if (!preloadDelay) {
-      doPreload();
-      return;
-    }
-    const eventTarget = e.currentTarget;
-    if (timeoutMap.has(eventTarget)) return;
-    const id = setTimeout(() => {
-      timeoutMap.delete(eventTarget);
-      doPreload();
-    }, preloadDelay);
-    timeoutMap.set(eventTarget, id);
+  const handleLeave = () => {
+    if (preload === "intent") cancelPreload(innerRef);
   };
-  const handleTouchStart = (_) => {
-    if (disabled || preload !== "intent") return;
-    doPreload();
-  };
-  const handleLeave = (e) => {
-    if (disabled || !preload || !preloadDelay) return;
-    const eventTarget = e.currentTarget;
-    const id = timeoutMap.get(eventTarget);
-    if (id) {
-      clearTimeout(id);
-      timeoutMap.delete(eventTarget);
-    }
-  };
-  return {
-    ...propsSafeToSpread,
-    ...resolvedActiveProps,
-    ...resolvedInactiveProps,
-    href: hrefOption?.href,
-    ref: innerRef,
-    onClick: composeHandlers([onClick, handleClick]),
-    onBlur: composeHandlers([onBlur, handleLeave]),
-    onFocus: composeHandlers([onFocus, enqueueIntentPreload]),
-    onMouseEnter: composeHandlers([onMouseEnter, enqueueIntentPreload]),
-    onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
-    onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
-    disabled: !!disabled,
-    target,
-    ...resolvedStyle && { style: resolvedStyle },
-    ...resolvedClassName && { className: resolvedClassName },
-    ...disabled && STATIC_DISABLED_PROPS,
-    ...isActive && STATIC_ACTIVE_PROPS,
-    ...isHydrated && isTransitioning && STATIC_TRANSITIONING_PROPS
-  };
+  props.onClick = composeHandlers(onClick, handleClick);
+  props.onBlur = composeHandlers(onBlur, handleLeave);
+  props.onFocus = composeHandlers(onFocus, enqueuePreload);
+  props.onMouseEnter = composeHandlers(onMouseEnter, enqueuePreload);
+  props.onMouseLeave = composeHandlers(onMouseLeave, handleLeave);
+  props.onTouchStart = composeHandlers(onTouchStart, handleTouchStart);
+  return applyLinkState(props, options, isActive, href, linkDisabled, host);
 }
 var STATIC_EMPTY_OBJECT = {};
 var STATIC_ACTIVE_OBJECT = { className: "active" };
-var STATIC_DISABLED_PROPS = {
-  role: "link",
-  "aria-disabled": true
-};
-var STATIC_ACTIVE_PROPS = {
-  "data-status": "active",
-  "aria-current": "page"
-};
-var STATIC_TRANSITIONING_PROPS = { "data-transitioning": "transitioning" };
+var ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
+  "to",
+  "params",
+  "search",
+  "hash",
+  "state",
+  "mask",
+  "from",
+  "unsafeRelative",
+  "_fromLocation",
+  "reloadDocument",
+  "preload",
+  "preloadDelay",
+  "preloadIntentProximity",
+  "hashScrollIntoView",
+  "replace",
+  "startTransition",
+  "resetScroll",
+  "viewTransition",
+  "ignoreBlocker",
+  "activeProps",
+  "inactiveProps",
+  "activeOptions",
+  "_asChild"
+]);
+function collectElementProps(options, host) {
+  const props = {};
+  for (const key in options) {
+    if (ROUTER_OPTION_KEYS.has(key) || key === "type" && host !== void 0 || key === "disabled" && host === "a") continue;
+    props[key] = options[key];
+  }
+  return props;
+}
+function applyLinkState(props, options, isActive, href, linkDisabled, host) {
+  const { activeProps, inactiveProps, className, style, target } = options;
+  const stateProps = functionalUpdate(isActive ? activeProps : inactiveProps, {}) ?? (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT);
+  Object.assign(props, stateProps);
+  props.href = href;
+  if (host !== "a") props.disabled = linkDisabled;
+  props.target = target;
+  const stateStyle = stateProps.style;
+  if (style || stateStyle) props.style = style && stateStyle ? {
+    ...style,
+    ...stateStyle
+  } : style || stateStyle;
+  const stateClassName = stateProps.className;
+  if (className || stateClassName) props.className = className ? stateClassName ? `${className} ${stateClassName}` : className : stateClassName;
+  if (linkDisabled) {
+    props.role = "link";
+    props["aria-disabled"] = true;
+  }
+  if (isActive) {
+    props["data-status"] = "active";
+    props["aria-current"] = "page";
+  }
+  return props;
+}
+function getServerLinkProps(router, options, forwardedRef, host) {
+  const { to, disabled, activeOptions } = options;
+  const directExternalLink = resolveExternalLink(to, router.protocolAllowlist);
+  const next = directExternalLink === void 0 ? router.buildLocation(options) : void 0;
+  const hrefOption = next ? getHrefOption(next, router, disabled) : directExternalLink ?? void 0;
+  const linkDisabled = disabled || !hrefOption;
+  const externalLink = directExternalLink ?? (hrefOption && getUrlScheme(hrefOption) ? hrefOption : void 0);
+  const props = collectElementProps(options, host);
+  props.ref = forwardedRef;
+  if (externalLink) {
+    props.href = externalLink;
+    return props;
+  }
+  return applyLinkState(props, options, !!next && !(!disabled && !hrefOption) && resolveIsActive(router.stores.location.get(), next, activeOptions, router.basepath, false), hrefOption, linkDisabled, host);
+}
 var timeoutMap = /* @__PURE__ */ new WeakMap();
-var intersectionObserverOptions = { rootMargin: "100px" };
-var composeHandlers = (handlers) => (e) => {
-  for (const handler of handlers) {
-    if (!handler) continue;
-    if (e.defaultPrevented) return;
-    handler(e);
-  }
+var cancelPreload = (eventTarget) => {
+  clearTimeout(timeoutMap.get(eventTarget));
+  timeoutMap.delete(eventTarget);
 };
-function getHrefOption(publicHref, external, history, disabled) {
-  if (disabled) return void 0;
-  if (external) return {
-    href: publicHref,
-    external: true
-  };
-  return {
-    href: history.createHref(publicHref) || "/",
-    external: false
-  };
-}
-function isSafeInternal(to) {
-  if (typeof to !== "string") return false;
-  const zero = to.charCodeAt(0);
-  if (zero === 47) return to.charCodeAt(1) !== 47;
-  return zero === 46;
-}
-var Link = React$17.forwardRef((props, ref) => {
-  const { _asChild, ...rest } = props;
-  const { type: _type, ...linkProps } = useLinkProps(rest, ref);
-  const children = typeof rest.children === "function" ? rest.children({ isActive: linkProps["data-status"] === "active" }) : rest.children;
-  if (!_asChild) {
-    const { disabled: _, ...rest2 } = linkProps;
-    return React$17.createElement("a", rest2, children);
+var composeHandlers = (first, second) => {
+  if (!first) return second;
+  return (event) => event.defaultPrevented || (first(event), event.defaultPrevented || second(event));
+};
+function getHrefOption(next, router, disabled) {
+  if (disabled) return;
+  const location2 = next.maskedLocation ?? next;
+  const href = location2.external ? location2.publicHref : router.history.createHref(location2.publicHref) || "/";
+  if ((location2.external || href !== location2.publicHref) && isDangerousProtocol(href, router.protocolAllowlist)) {
+    if (process.env.NODE_ENV !== "production") console.warn(`Blocked Link with dangerous protocol: ${href}`);
+    return;
   }
-  return React$17.createElement(_asChild, linkProps, children);
-});
-function isCtrlEvent(e) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey);
+  return href;
+}
+var Link = React$16.memo(React$16.forwardRef((props, ref) => {
+  const host = props._asChild || "a";
+  const linkProps = useLinkProps(props, ref, host);
+  const children = typeof props.children === "function" ? props.children({ isActive: linkProps["data-status"] === "active" }) : props.children;
+  return React$16.createElement(host, linkProps, children);
+}), areLinkPropsEqual);
+function areLinkPropsEqual(prev, next) {
+  let extraKeys = 0;
+  for (const key in next) {
+    extraKeys++;
+    if (prev[key] === next[key]) continue;
+    if (!ROUTER_OPTION_KEYS.has(key) || !deepEqual(prev[key], next[key], false, true)) return false;
+  }
+  for (const _key in prev) extraKeys--;
+  return extraKeys === 0;
 }
 
 // node_modules/@tanstack/react-router/dist/esm/route.js
@@ -156917,9 +156245,8 @@ var Route = class extends BaseRoute {
     super(options);
     this.useMatch = (opts) => {
       return useMatch({
-        select: opts?.select,
-        from: this.id,
-        structuralSharing: opts?.structuralSharing
+        ...opts,
+        from: this.id
       });
     };
     this.useRouteContext = (opts) => {
@@ -156930,15 +156257,13 @@ var Route = class extends BaseRoute {
     };
     this.useSearch = (opts) => {
       return useSearch({
-        select: opts?.select,
-        structuralSharing: opts?.structuralSharing,
+        ...opts,
         from: this.id
       });
     };
     this.useParams = (opts) => {
       return useParams({
-        select: opts?.select,
-        structuralSharing: opts?.structuralSharing,
+        ...opts,
         from: this.id
       });
     };
@@ -156973,22 +156298,12 @@ function createRoute(options) {
 // node_modules/@tanstack/react-router/dist/esm/fileRoute.js
 init_define_import_meta_env();
 function createFileRoute(path) {
-  return new FileRoute(path, { silent: true }).createRoute;
+  return (options) => {
+    const route = createRoute(options);
+    route.isRoot = false;
+    return route;
+  };
 }
-var FileRoute = class {
-  constructor(path, _opts) {
-    this.path = path;
-    this.createRoute = (options) => {
-      if (process.env.NODE_ENV !== "production") {
-        if (!this.silent) console.warn("Warning: FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.");
-      }
-      const route = createRoute(options);
-      route.isRoot = false;
-      return route;
-    };
-    this.silent = _opts?.silent;
-  }
-};
 
 // src/routes/api/generate.ts
 init_dist4();
@@ -157664,9 +156979,9 @@ function findRenderAnchor(content) {
 function findImportAnchor(content) {
   const imports = [...content.matchAll(/^import\s[^\n]*\n/gm)];
   if (!imports.length) return null;
-  const last = imports[imports.length - 1];
-  if (typeof last.index !== "number") return null;
-  return uniqueSearch(content, last.index, last[0].length);
+  const last2 = imports[imports.length - 1];
+  if (typeof last2.index !== "number") return null;
+  return uniqueSearch(content, last2.index, last2[0].length);
 }
 function sectionsFile(component) {
   return `const features = [
@@ -161951,11 +161266,11 @@ var GATEWAY_AWARE_SERVICES = {
   // Storage
   "aws-s3": { connectorId: "aws_s3", displayName: "AWS S3", reason: "Credentials proxied via the gateway." }
 };
-function gatewayHintFor(slug4) {
-  return GATEWAY_AWARE_SERVICES[slug4] ?? null;
+function gatewayHintFor(slug3) {
+  return GATEWAY_AWARE_SERVICES[slug3] ?? null;
 }
-function renderGatewayHint(slug4, displayName) {
-  const hint = gatewayHintFor(slug4);
+function renderGatewayHint(slug3, displayName) {
+  const hint = gatewayHintFor(slug3);
   if (!hint) return "";
   return [
     "",
@@ -161972,15 +161287,15 @@ var FETCH_TIMEOUT_MS = 6e3;
 function slugifyService(name) {
   return name.toLowerCase().trim().replace(/^@/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 }
-async function readCache(slug4) {
+async function readCache(slug3) {
   const { data: data2 } = await supabaseAdmin.from("integration_docs_cache").select(
     "service_slug, display_name, npm_package, docs_url, prompt_block, required_secrets, source, refreshed_at"
-  ).eq("service_slug", slug4).maybeSingle();
+  ).eq("service_slug", slug3).maybeSingle();
   if (!data2) return null;
   const ageMs = Date.now() - new Date(data2.refreshed_at).getTime();
   const maxMs = CACHE_MAX_AGE_DAYS * 24 * 60 * 60 * 1e3;
   if (ageMs > maxMs) return null;
-  void supabaseAdmin.from("integration_docs_cache").update({ hit_count: data2.hit_count ?? 0 + 1 }).eq("service_slug", slug4);
+  void supabaseAdmin.from("integration_docs_cache").update({ hit_count: data2.hit_count ?? 0 + 1 }).eq("service_slug", slug3);
   return {
     serviceSlug: data2.service_slug,
     displayName: data2.display_name,
@@ -162017,14 +161332,14 @@ async function fetchWithTimeout(url, ms = FETCH_TIMEOUT_MS) {
     clearTimeout(t);
   }
 }
-async function tryNpm(slug4, displayName) {
+async function tryNpm(slug3, displayName) {
   const guesses = [
-    slug4,
-    slug4.replace(/-/g, ""),
-    `@${slug4}/sdk`,
-    `${slug4}-sdk`,
-    `${slug4}-node`,
-    `node-${slug4}`
+    slug3,
+    slug3.replace(/-/g, ""),
+    `@${slug3}/sdk`,
+    `${slug3}-sdk`,
+    `${slug3}-node`,
+    `node-${slug3}`
   ];
   for (const pkg of guesses) {
     const res = await fetchWithTimeout(`https://registry.npmjs.org/${encodeURIComponent(pkg)}`);
@@ -162054,7 +161369,7 @@ ${readmeSnippet}
 """` : ""
     ].filter(Boolean).join("\n");
     return {
-      serviceSlug: slug4,
+      serviceSlug: slug3,
       displayName,
       npmPackage: data2.name,
       docsUrl: homepage,
@@ -162070,8 +161385,8 @@ function guessSecrets(displayName) {
   if (!base) return [];
   return [`${base}_API_KEY`];
 }
-async function tryAiSynth(slug4, displayName) {
-  if (!process.env.OPENROUTER_API_KEY) return null;
+async function tryAiSynth(slug3, displayName) {
+  if (!process.env.LOVABLE_API_KEY) return null;
   try {
     const { aiChatCompletions: aiChatCompletions2 } = await Promise.resolve().then(() => (init_ai_provider_server(), ai_provider_server_exports));
     const r = await aiChatCompletions2({
@@ -162100,7 +161415,7 @@ async function tryAiSynth(slug4, displayName) {
     const brief = String(parsed.brief ?? "").slice(0, 4e3);
     if (!brief) return null;
     return {
-      serviceSlug: slug4,
+      serviceSlug: slug3,
       displayName,
       npmPackage: typeof parsed.npm === "string" ? parsed.npm : null,
       docsUrl: typeof parsed.docs === "string" ? parsed.docs : null,
@@ -162124,30 +161439,30 @@ function safeJson(s) {
 async function resolveIntegration(rawName) {
   const displayName = rawName.trim();
   if (!displayName) return null;
-  const slug4 = slugifyService(displayName);
-  if (!slug4) return null;
-  const cached7 = await readCache(slug4);
+  const slug3 = slugifyService(displayName);
+  if (!slug3) return null;
+  const cached7 = await readCache(slug3);
   if (cached7) return cached7;
-  const curated = CURATED_INTEGRATIONS[slug4];
+  const curated = CURATED_INTEGRATIONS[slug3];
   if (curated) {
-    const r = { ...curated, serviceSlug: slug4, source: "curated" };
-    const hint = renderGatewayHint(slug4, r.displayName);
+    const r = { ...curated, serviceSlug: slug3, source: "curated" };
+    const hint = renderGatewayHint(slug3, r.displayName);
     if (hint) r.promptBlock = `${r.promptBlock}
 ${hint}`;
     void writeCache(r);
     return r;
   }
-  const npm = await tryNpm(slug4, displayName);
+  const npm = await tryNpm(slug3, displayName);
   if (npm) {
-    const hint = renderGatewayHint(slug4, npm.displayName);
+    const hint = renderGatewayHint(slug3, npm.displayName);
     if (hint) npm.promptBlock = `${npm.promptBlock}
 ${hint}`;
     void writeCache(npm);
     return npm;
   }
-  const ai = await tryAiSynth(slug4, displayName);
+  const ai = await tryAiSynth(slug3, displayName);
   if (ai) {
-    const hint = renderGatewayHint(slug4, ai.displayName);
+    const hint = renderGatewayHint(slug3, ai.displayName);
     if (hint) ai.promptBlock = `${ai.promptBlock}
 ${hint}`;
     void writeCache(ai);
@@ -162256,7 +161571,7 @@ Rules:
    4. one or two concrete pitfalls (auth header format, idempotency, signature verification, pagination)
 - NEVER invent endpoints, fields, or env var names that are not visible in the supplied source. If the source is thin, say so explicitly inside the brief and emit only what you can verify.`;
 async function aiSynth(input) {
-  if (!process.env.OPENROUTER_API_KEY) return null;
+  if (!process.env.LOVABLE_API_KEY) return null;
   const userMsg = input.kind === "url" ? `Source URL: ${input.url}
 
 Fetched content (truncated):
@@ -163381,10 +162696,10 @@ init_turn_context_server();
 var BUCKET = "petal-images";
 var MAX_IMAGES_PER_GENERATION = 6;
 var PLACEHOLDER_RE = /petal-image:\/\/([^\s"'`<>\)]+)/g;
-function slugToPrompt(slug4) {
-  let decoded = slug4;
+function slugToPrompt(slug3) {
+  let decoded = slug3;
   try {
-    decoded = decodeURIComponent(slug4);
+    decoded = decodeURIComponent(slug3);
   } catch {
   }
   if (/\s/.test(decoded) || decoded.length > 40) return decoded;
@@ -163433,9 +162748,9 @@ async function generatePetalImage(opts) {
   const { agentIO: agentIO2 } = await Promise.resolve().then(() => (init_agent_io_server(), agent_io_server_exports));
   const io = agentIO2();
   if (io.kind === "gateway" && io.generateImage) return io.generateImage(opts);
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const upstreamUrl = OPENROUTER_CHAT_URL;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured.");
+  const apiKey = process.env.LOVABLE_API_KEY;
+  const upstreamUrl = `${AI_GATEWAY_BASE_URL}/images/generations`;
+  if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured.");
   const prompt = opts.prompt.trim();
   if (!prompt) throw new Error("Image prompt is empty.");
   const key = opts.cacheKey ?? cacheKeyFor(prompt, opts.aspectRatio);
@@ -163465,13 +162780,11 @@ async function generatePetalImage(opts) {
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": process.env.OPENROUTER_REFERER || "https://buildwithpetal.com",
-      "X-Title": "Kimble"
+      "X-Lovable-AIG-SDK": "fetch"
     },
     body: JSON.stringify({
       model: defaultImageModel(),
-      messages: [{ role: "user", content: fullPrompt }],
-      modalities: ["image", "text"]
+      prompt: fullPrompt
     })
   });
   if (!upstream.ok) {
@@ -163481,9 +162794,9 @@ async function generatePetalImage(opts) {
     );
   }
   const json = await upstream.json();
-  const dataUrl = json.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  if (!dataUrl) throw new Error("Image gateway returned no image.");
-  const { bytes: bytes2, mime } = dataUrlToBytes(dataUrl);
+  const b64 = json.data?.[0]?.b64_json;
+  if (!b64) throw new Error("Image gateway returned no image.");
+  const { bytes: bytes2, mime } = dataUrlToBytes(`data:image/png;base64,${b64}`);
   const filename = `${key}.${extensionFor(mime)}`;
   const { error: upErr } = await supabaseAdmin.storage.from(BUCKET).upload(filename, bytes2, {
     contentType: mime,
@@ -163526,66 +162839,66 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
   let failed = 0;
   const queue = [...ordered];
   const liveUrls = [];
-  const fallbackUrl = (slug4) => {
-    const label2 = slug4.replace(/[-_]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim().slice(0, 48) || "Picture";
-    const hue = Math.abs([...slug4].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
+  const fallbackUrl = (slug3) => {
+    const label2 = slug3.replace(/[-_]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim().slice(0, 48) || "Picture";
+    const hue = Math.abs([...slug3].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue} 60% 88%)"/><stop offset="1" stop-color="hsl(${(hue + 55) % 360} 58% 72%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><circle cx="920" cy="170" r="240" fill="white" opacity=".2"/><path d="M0 700 330 390l210 190 170-150 490 370H0Z" fill="white" opacity=".35"/><text x="70" y="720" font-family="Arial,sans-serif" font-size="42" fill="#172033" opacity=".72">${label2}</text></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   };
-  const announce = (slug4, url) => {
+  const announce = (slug3, url) => {
     liveUrls.push(url);
     try {
-      onImage?.({ url, slug: slug4, index: liveUrls.length });
+      onImage?.({ url, slug: slug3, index: liveUrls.length });
     } catch {
     }
   };
   async function worker() {
     while (queue.length) {
-      const slug4 = queue.shift();
-      if (!slug4) return;
+      const slug3 = queue.shift();
+      if (!slug3) return;
       try {
-        const own = await findProjectPicture(projectId, slugToPrompt(slug4));
+        const own = await findProjectPicture(projectId, slugToPrompt(slug3));
         if (own) {
-          urlMap.set(slug4, own.url);
+          urlMap.set(slug3, own.url);
           resolved += 1;
-          announce(slug4, own.url);
+          announce(slug3, own.url);
           continue;
         }
       } catch {
       }
       try {
-        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug4) });
+        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug3) });
         if (fromLibrary) {
-          urlMap.set(slug4, fromLibrary.url);
+          urlMap.set(slug3, fromLibrary.url);
           resolved += 1;
-          announce(slug4, fromLibrary.url);
+          announce(slug3, fromLibrary.url);
           continue;
         }
       } catch {
       }
       try {
-        const r = await generatePetalImage({ prompt: slugToPrompt(slug4) });
-        urlMap.set(slug4, r.url);
+        const r = await generatePetalImage({ prompt: slugToPrompt(slug3) });
+        urlMap.set(slug3, r.url);
         resolved += 1;
-        announce(slug4, r.url);
+        announce(slug3, r.url);
       } catch (e) {
         failed += 1;
-        console.warn(`[petal-image] generation failed for "${slug4}":`, e);
-        const url = fallbackUrl(slug4);
-        urlMap.set(slug4, url);
-        announce(slug4, url);
+        console.warn(`[petal-image] generation failed for "${slug3}":`, e);
+        const url = fallbackUrl(slug3);
+        urlMap.set(slug3, url);
+        announce(slug3, url);
       }
     }
   }
   await Promise.all([worker(), worker()]);
-  for (const slug4 of skipped) {
-    urlMap.set(slug4, fallbackUrl(slug4));
+  for (const slug3 of skipped) {
+    urlMap.set(slug3, fallbackUrl(slug3));
   }
   const next = files.map((f) => {
     if (allowed && !allowed.has(f.path)) return f;
     if (!f.content.includes("petal-image://")) return f;
-    const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug4) => {
-      return urlMap.get(slug4) ?? fallbackUrl(slug4);
+    const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug3) => {
+      return urlMap.get(slug3) ?? fallbackUrl(slug3);
     });
     return updated === f.content ? f : { ...f, content: updated };
   });
@@ -164046,7 +163359,7 @@ async function runMemoryWriter(supabase, args) {
   const { projectId, userMessage, assistantSummary } = args;
   const trimmedUser = (userMessage ?? "").trim();
   if (trimmedUser.length < 4) return true;
-  if (!process.env.OPENROUTER_API_KEY) return true;
+  if (!process.env.LOVABLE_API_KEY) return true;
   let existing = [];
   try {
     const { data: data2, error } = await supabase.from("project_memory").select("key, value").eq("project_id", projectId).order("updated_at", { ascending: false }).limit(MAX_KEYS);
@@ -164075,7 +163388,7 @@ Return your merge plan now.`;
     const resp = await aiChatCompletions({
       feature: "memory",
       body: {
-        model: "deepseek/deepseek-v4-flash",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           { role: "system", content: MEMORY_WRITER_SYSTEM },
           { role: "user", content: userPrompt2 }
@@ -164269,7 +163582,7 @@ init_ai_provider_server();
 init_authority();
 init_templates_server();
 init_app_shape_classifier();
-var DIRECTOR_MODEL = "deepseek/deepseek-v4-flash";
+var DIRECTOR_MODEL = "google/gemini-3.8-flash";
 var DOMAIN_FONT_DEFAULTS = {
   crm: { display: "Plus Jakarta Sans", body: "Inter" },
   helpdesk: { display: "Plus Jakarta Sans", body: "Inter" },
@@ -164594,7 +163907,7 @@ async function pickDesignDirection(args) {
     }
     return picked;
   };
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return persist(fallback());
   }
   const relevantKeys = /* @__PURE__ */ new Set([
@@ -164887,7 +164200,7 @@ async function humanizeBuildError(args) {
     message: args.rawMessage || "Something went wrong on my end.",
     suggestions: []
   };
-  if (!process.env.OPENROUTER_API_KEY) return fallback;
+  if (!process.env.LOVABLE_API_KEY) return fallback;
   const raw = (args.rawMessage ?? "").trim().slice(0, 1500);
   if (!raw) return fallback;
   const userPrompt2 = `RAW ERROR:
@@ -166894,8 +166207,8 @@ function summarizeExecution(traces, opts = {}) {
   };
   const sum = (f) => traces.reduce((n, t) => n + f(t), 0);
   const first = traces[0];
-  const last = traces[traces.length - 1];
-  const wallMs = first && last ? last.startedAt + last.durationMs + last.toolMs - first.startedAt : 0;
+  const last2 = traces[traces.length - 1];
+  const wallMs = first && last2 ? last2.startedAt + last2.durationMs + last2.toolMs - first.startedAt : 0;
   const aiMs = sum((t) => t.durationMs);
   const toolMs = sum((t) => t.toolMs);
   const validationMs = sum((t) => t.validationMs);
@@ -168055,14 +167368,14 @@ function capPetalImages(content, report) {
   const re = /petal-image:\/\/([a-zA-Z0-9_\-%]+)/g;
   const seen = /* @__PURE__ */ new Set();
   let stripped = 0;
-  const out = content.replace(re, (whole, slug4) => {
-    if (seen.has(slug4)) return whole;
+  const out = content.replace(re, (whole, slug3) => {
+    if (seen.has(slug3)) return whole;
     if (seen.size < 6) {
-      seen.add(slug4);
+      seen.add(slug3);
       return whole;
     }
     stripped++;
-    return `https://picsum.photos/seed/${slug4.slice(0, 16)}/800/600`;
+    return `https://picsum.photos/seed/${slug3.slice(0, 16)}/800/600`;
   });
   if (stripped > 0) {
     report.fixedCount += stripped;
@@ -168251,14 +167564,14 @@ async function classifyPhase(prompt) {
   if (process.env.KIMBLE_AI_PHASE_TAGGER !== "1") {
     return heuristic ?? { phase: "implement", confidence: "medium", source: "fallback" };
   }
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return heuristic ?? { phase: "implement", confidence: "low", source: "fallback" };
   }
   try {
     const resp = await aiChatCompletions({
       feature: "preflight",
       body: {
-        model: "deepseek/deepseek-v4-flash",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           {
             role: "system",
@@ -169295,7 +168608,6 @@ var TurnRecorder = class {
   constructor(ctx) {
     this.ctx = ctx;
   }
-  ctx;
   rows = [];
   flushed = false;
   /** Record a single tier outcome. */
@@ -170899,8 +170211,8 @@ function looksIncomplete(content) {
     else if (c === "}") depth--;
   }
   if (depth !== 0) return true;
-  const last = trimmed[trimmed.length - 1] ?? "";
-  return !["}", ")", ";", "`", "]", ">"].includes(last);
+  const last2 = trimmed[trimmed.length - 1] ?? "";
+  return !["}", ")", ";", "`", "]", ">"].includes(last2);
 }
 function enforceFileBudgets(nextFiles, priorFiles, rejections) {
   if (rejections.length === 0) return nextFiles;
@@ -171105,7 +170417,7 @@ async function rebuildSnapshot() {
   cacheLoadedAt2 = Date.now();
   return snap;
 }
-async function getSnapshot() {
+async function getSnapshot2() {
   const now = Date.now();
   if (cached5 && now - cacheLoadedAt2 < CACHE_TTL_MS5) return cached5;
   if (inflight3) return inflight3;
@@ -171127,7 +170439,7 @@ async function pickBestModel(args) {
   }
   let snap;
   try {
-    snap = await getSnapshot();
+    snap = await getSnapshot2();
   } catch (e) {
     console.warn("[smart-router] snapshot failed:", e);
     return { model: args.defaultModel, reason: "default_fallback", stat: null };
@@ -171297,7 +170609,7 @@ async function expandBriefIfVague(input) {
     const upstream = await aiChatCompletions({
       feature: "triage",
       body: {
-        model: "deepseek/deepseek-v4-flash",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           {
             role: "system",
@@ -171441,8 +170753,8 @@ function resolveSpec(fromPath, spec, byPath) {
   return null;
 }
 function basenameKey(spec) {
-  const last = spec.split("/").filter(Boolean).pop() ?? spec;
-  const noExt = last.replace(/\.(tsx?|jsx?)$/i, "");
+  const last2 = spec.split("/").filter(Boolean).pop() ?? spec;
+  const noExt = last2.replace(/\.(tsx?|jsx?)$/i, "");
   const lower = noExt.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[_\s]+/g, "-");
   return lower.replace(/-?(page|view|section|screen|component)$/i, "");
 }
@@ -172082,6 +171394,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -172482,23 +171795,23 @@ function wireOrphanPages(files) {
     const component = exportedComponent(page.content, base);
     if (!component) continue;
     if (new RegExp(`\\b${component}\\b`).test(content)) continue;
-    const slug4 = `/${kebab(base)}`;
-    if (declaredPaths.has(slug4)) continue;
-    declaredPaths.add(slug4);
+    const slug3 = `/${kebab(base)}`;
+    if (declaredPaths.has(slug3)) continue;
+    declaredPaths.add(slug3);
     const spec = `./${page.path.replace(/^src\//, "").replace(/\.(tsx|jsx)$/, "")}`;
     const importLine = isDefaultExport(page.content, component) ? `import ${component} from "${spec}";` : `import { ${component} } from "${spec}";`;
     additions.push({
       importLine,
-      route: `              <Route path="${slug4}" element={<${component} />} />`,
+      route: `              <Route path="${slug3}" element={<${component} />} />`,
       label: titleize(base),
-      path: slug4
+      path: slug3
     });
   }
   if (!additions.length) return { files, notes, wired };
   const importMatches = Array.from(content.matchAll(/^import\s.+$/gm));
-  const last = importMatches[importMatches.length - 1];
-  if (!last || last.index === void 0) return { files, notes, wired };
-  const insertAt = last.index + last[0].length;
+  const last2 = importMatches[importMatches.length - 1];
+  if (!last2 || last2.index === void 0) return { files, notes, wired };
+  const insertAt = last2.index + last2[0].length;
   content = content.slice(0, insertAt) + "\n" + additions.map((a2) => a2.importLine).join("\n") + content.slice(insertAt);
   const routeBlock = additions.map((a2) => a2.route).join("\n");
   const wildcard = content.match(/^[ \t]*<Route\b[^>]*path\s*=\s*["']\*["'][^>]*\/>\s*$/m);
@@ -173188,8 +172501,8 @@ function repairPaletteIntegrity(input) {
     if (tok === "foreground") continue;
     const list4 = byToken.get(tok);
     if (!list4 || list4.length < 2) continue;
-    const last = list4[list4.length - 1];
-    if (refOf(last.value) === "foreground" || refOf(last.value) === tok) doomed.add(last);
+    const last2 = list4[list4.length - 1];
+    if (refOf(last2.value) === "foreground" || refOf(last2.value) === tok) doomed.add(last2);
   }
   if (doomed.size === 0) return { files: input, notes: [], fixes: 0 };
   let css = styles.content;
@@ -174254,8 +173567,8 @@ function fold(name) {
 }
 function moduleName(path) {
   const parts = path.replace(/\.(tsx?|jsx?)$/, "").split("/");
-  const last = parts[parts.length - 1];
-  return last === "index" && parts.length > 1 ? parts[parts.length - 2] : last;
+  const last2 = parts[parts.length - 1];
+  return last2 === "index" && parts.length > 1 ? parts[parts.length - 2] : last2;
 }
 function toSpec(targetPath, useAlias, fromPath) {
   const bare2 = targetPath.replace(/\.(tsx?|jsx?)$/, "").replace(/\/index$/, "");
@@ -175491,8 +174804,8 @@ function rewriteFile2(source) {
     const imports = [...out.matchAll(/^import[^\n]*from\s+["'][^"']+["'];?[ \t]*$/gm)];
     const line = `import { renderNode } from "${HELPER_IMPORT}";`;
     if (imports.length > 0) {
-      const last = imports[imports.length - 1];
-      const at = (last.index ?? 0) + last[0].length;
+      const last2 = imports[imports.length - 1];
+      const at = (last2.index ?? 0) + last2[0].length;
       return { content: `${out.slice(0, at)}
 ${line}${out.slice(at)}`, changes };
     }
@@ -176001,11 +175314,11 @@ init_budget();
 var TURN_REPAIR_COST_CEILING_USD = 0.35;
 var TURN_REPAIR_COST_WARN_USD = 0.22;
 var BLENDED_RATE_PER_MTOK = {
-  "deepseek/deepseek-v4-flash": 0.4,
-  "openai/gpt-5-nano": 0.5,
-  "openai/gpt-5-mini": 2,
-  "openai/gpt-5": 10,
-  "openai/gpt-5.2": 10
+  "google/gemini-3.1-flash-lite": 3.5,
+  "google/gemini-3.8-flash": 9,
+  "openai/gpt-5.6-luna": 24,
+  "openai/gpt-5.6-sol": 48,
+  "openai/gpt-6-astra": 48
 };
 var DEFAULT_RATE_PER_MTOK = 5;
 function estimateCostUsd(model, tokens2) {
@@ -176320,7 +175633,6 @@ var GenerationSlotTaken = class extends Error {
     this.existingTurnId = existingTurnId;
     this.name = "GenerationSlotTaken";
   }
-  existingTurnId;
 };
 function interpretClaim(requestedTurnId, claim) {
   if (!claim || claim.claimed) return { kind: "claimed" };
@@ -176799,7 +176111,7 @@ async function gatherWebIntel(args) {
 init_define_import_meta_env();
 init_ai_provider_server();
 init_client_server_shim();
-var PLAN_MODEL = "deepseek/deepseek-v4-flash";
+var PLAN_MODEL = "google/gemini-3.8-flash";
 var PLAN_MAX_FILES = 24;
 var PLAN_TOOL = {
   type: "function",
@@ -176990,17 +176302,17 @@ var RELEVANT_FILE_CONTEXT_CHAR_LIMIT = 18e3;
 function isManagedScaffoldPath(path) {
   return path.startsWith("src/components/ui/") || path.startsWith("src/components/examples/") || path.startsWith("src/components/blocks/") || path.startsWith("src/components/mobile/") || path.startsWith("src/integrations/backend/") || path === "vite.config.ts" || path === "tsconfig.json" || path === "src/lib/utils.ts" || path === "petal-source-plugin.mjs";
 }
-var MODEL_FAST = "deepseek/deepseek-v4-flash";
-var MODEL_BEST = "deepseek/deepseek-v4-flash";
+var MODEL_FAST = "google/gemini-3.1-flash-lite";
+var MODEL_BEST = "google/gemini-3.8-flash";
 var MODEL_REASONING = "openai/gpt-5.4";
-var MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
-var MODEL_STRUCTURED_RETRY = "deepseek/deepseek-v4-flash";
+var MODEL_CLAUDE = "anthropic/claude-sonnet-5";
+var MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
 function turnCallCost(u) {
   if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
   const micro = estimateCostUsdMicro(MODEL_STRUCTURED_RETRY, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
   return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
 }
-var MODEL_VISION = "deepseek/deepseek-v4-flash";
+var MODEL_VISION = "google/gemini-3.8-flash";
 function pickSmartModel(latestPrompt, fileCount) {
   const p2 = latestPrompt.toLowerCase();
   const heavyKeywords = [
@@ -177289,7 +176601,7 @@ function simulateDeadStream(real) {
     async pull(ctrl) {
       if (dead) {
         await new Promise((r) => setTimeout(r, 1e4));
-        ctrl.enqueue(enc2.encode(": OPENROUTER PROCESSING\n\n"));
+        ctrl.enqueue(enc2.encode(": GATEWAY PROCESSING\n\n"));
         return;
       }
       const { value, done } = await reader.read();
@@ -177364,7 +176676,7 @@ async function relayAndCollect(upstream, controller, encoder) {
     const progressDeadline = lastOutputAt == null ? streamStartedAt + STREAM_FIRST_OUTPUT_TIMEOUT_MS : lastOutputAt + STREAM_STALL_TIMEOUT_MS;
     const progressWait = Math.max(0, progressDeadline - Date.now());
     const stallFires = progressWait < STREAM_IDLE_TIMEOUT_MS;
-    const STALL = /* @__PURE__ */ Symbol("stall");
+    const STALL = Symbol("stall");
     let timer = null;
     const idle = new Promise((resolve2, reject) => {
       timer = setTimeout(() => {
@@ -177625,8 +176937,8 @@ async function structuredRetryCompletion(args) {
     feature: "generate",
     body: { ...bodyBase, model: MODEL_STRUCTURED_RETRY },
     timeoutTier: "stream",
-    // No providerOverride: follow the resolved provider (DB → env → OpenRouter
-    // when its key is set). Pinning "lovable" here meant a funded OpenRouter
+    // No providerOverride: follow the resolved provider (DB → default).
+    // Legacy note: pinning "lovable" here once meant a funded OpenRouter
     // account was never used and every turn died on the Lovable gateway's 402.
     lockCallerModel: true,
     signal: args.signal,
@@ -178147,7 +177459,7 @@ async function handleGenerateRequestCore(request, turnId, workSignal, onStage) {
   const economyMode = await loadEconomyMode(userId);
   const rl = checkGenerateRateLimit(userId);
   if (!rl.ok) return rateLimitResponse(rl);
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.LOVABLE_API_KEY) {
     return new Response("AI gateway is not configured.", { status: 500 });
   }
   let body;
@@ -179342,7 +178654,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
     {
       // STATIC PREFIX. Content uses the array shape so we can attach
       // Anthropic-style `cache_control: { type: "ephemeral" }`. Gemini /
-      // OpenAI via OpenRouter ignore the marker safely and rely on
+      // OpenAI via the gateway ignores the marker safely and relies on
       // automatic prefix-cache matching — which works because the text
       // above is stable across turns.
       role: "system",
@@ -181772,7 +181084,11 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         if (body.projectId) {
           try {
             const { recordTierIntent: recordTierIntent2 } = await Promise.resolve().then(() => (init_cloud_tier_server(), cloud_tier_server_exports));
-            await recordTierIntent2(body.projectId, lastUserContent ?? "");
+            const signal = await recordTierIntent2(body.projectId, lastUserContent ?? "");
+            if (signal.tier === "kimble_compute") {
+              const { considerCompute: considerCompute2 } = await Promise.resolve().then(() => (init_backend_autoscale_server(), backend_autoscale_server_exports));
+              await considerCompute2(body.projectId);
+            }
           } catch (e) {
             console.warn("[cloud-tier] intent skipped:", e instanceof Error ? e.message : String(e));
           }
@@ -181797,7 +181113,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           completionTokens: collected.usage?.completion_tokens ?? null,
           totalTokens: collected.usage?.total_tokens ?? null,
           cachedPromptTokens,
-          // OpenRouter returns a real USD amount on the usage object when
+          // The gateway may return a real USD amount on the usage object when
           // available; when it doesn't, the estimate is labelled as such.
           actualCostUsd: typeof collected.usage?.cost === "number" ? collected.usage.cost : null,
           turnId: logicalTurnId,
@@ -182974,7 +182290,6 @@ var Builder = class {
     this.send = send;
     this.q = { op: "db.query", table, action: "select", filters: [] };
   }
-  send;
   q;
   select(columns) {
     if (this.q.action === "select") this.q.columns = columns;

@@ -179,7 +179,7 @@ export async function humanizeBuildError(args: {
     suggestions: [],
   };
 
-  if (!process.env.OPENROUTER_API_KEY) return fallback;
+  if (!process.env.LOVABLE_API_KEY) return fallback;
 
   const raw = (args.rawMessage ?? "").trim().slice(0, 1500);
   if (!raw) return fallback;

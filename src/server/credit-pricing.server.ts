@@ -6,7 +6,7 @@ export type GatewayUsage = {
   prompt_tokens?: number;
   completion_tokens?: number;
   total_tokens?: number;
-  /** Real USD amount OpenRouter charged for this call, when reported. */
+  /** Real USD amount the gateway charged for this call, when reported. */
   cost?: number;
   prompt_tokens_details?: { cached_tokens?: number };
 };

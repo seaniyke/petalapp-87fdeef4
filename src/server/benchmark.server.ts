@@ -35,7 +35,7 @@ const GENERATION_TIMEOUT_MS = 12 * 60_000;
 const BUILD_TIMEOUT_MS = 8 * 60_000;
 const BUILD_POLL_MS = 5_000;
 /** Judge model for spec adherence. Cheap: it reads criteria, not architecture. */
-const SPEC_JUDGE_MODEL = "deepseek/deepseek-v4-flash";
+const SPEC_JUDGE_MODEL = "google/gemini-3.1-flash-lite";
 
 function baseUrl(): string {
   return (

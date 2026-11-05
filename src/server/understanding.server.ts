@@ -24,7 +24,7 @@ import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 import type { BuildTargetId } from "@/lib/build-targets";
 import type { Confidence, PicUnderstanding } from "./pic/pic-types";
 
-const MODEL = "deepseek/deepseek-v4-flash";
+const MODEL = "google/gemini-3.8-flash";
 
 const PLATFORMS: BuildTargetId[] = ["web", "mobile", "web-mobile", "backend", "extension"];
 
@@ -185,7 +185,7 @@ export async function understandRequest(
   opts: { userId?: string; projectId?: string | null; prior?: PicUnderstanding | null; signal?: AbortSignal } = {},
 ): Promise<PicUnderstanding> {
   const fallback = deterministicUnderstanding(brief);
-  if (!process.env.OPENROUTER_API_KEY) return fallback;
+  if (!process.env.LOVABLE_API_KEY) return fallback;
   if ((brief ?? "").trim().length < 4) return fallback;
 
   try {

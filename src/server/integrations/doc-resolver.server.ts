@@ -183,7 +183,7 @@ function guessSecrets(displayName: string): string[] {
 /* ---------------------------- AI synth ---------------------------- */
 
 async function tryAiSynth(slug: string, displayName: string): Promise<ResolvedIntegration | null> {
-  if (!process.env.OPENROUTER_API_KEY) return null;
+  if (!process.env.LOVABLE_API_KEY) return null;
   try {
     const { aiChatCompletions } = await import("@/server/ai-provider.server");
     const r = await aiChatCompletions({

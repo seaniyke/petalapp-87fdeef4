@@ -262,7 +262,7 @@ export async function recordTurnEconomics(args: RecordTurnEconomicsArgs): Promis
 }
 
 /**
- * Mirror every AI call of the turn into cost_events (ACTUAL where OpenRouter
+ * Mirror every AI call of the turn into cost_events (ACTUAL where the gateway
  * reported a cost), stamp call classes, and split credits into free-build vs
  * paid from the ledger. Idempotent; safe to call again after builds finish.
  */

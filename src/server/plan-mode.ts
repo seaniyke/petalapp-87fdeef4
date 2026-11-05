@@ -39,7 +39,7 @@ export type PlanProposal = {
   risk: PlanRisk;
 };
 
-const PLAN_MODEL = "deepseek/deepseek-v4-flash";
+const PLAN_MODEL = "google/gemini-3.8-flash";
 const PLAN_MAX_FILES = 24;
 
 const PLAN_TOOL = {

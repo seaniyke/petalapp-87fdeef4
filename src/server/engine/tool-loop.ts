@@ -58,7 +58,7 @@ export interface ModelReply {
   ttftMs?: number;
   finishReason?: string | null;
   model?: string;
-  /** Upstream provider that served the call (OpenRouter `provider`), when known. */
+  /** Upstream provider that served the call, when the gateway reports it. */
   upstream?: string;
 }
 
