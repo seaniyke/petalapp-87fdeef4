@@ -648,23 +648,21 @@ function CostDashboard({
 
 function FeatureRow({
   row,
-  openrouterReady,
   saving,
   onProviderChange,
   onModelSave,
 }: {
   row: AiFeatureRow;
-  openrouterReady: boolean;
   saving: boolean;
-  onProviderChange: (choice: "lovable" | "openrouter" | "auto") => void;
+  onProviderChange: (choice: "lovable" | "auto") => void;
   onModelSave: (model: string, fallback: string) => void;
 }) {
   const details = FEATURE_DETAILS[row.feature];
-  const current: "lovable" | "openrouter" | "auto" = row.override ?? "auto";
+  const current: "lovable" | "auto" = row.override ?? "auto";
 
   const recommendedModel = useMemo(
-    () => details.recommended[row.effective] || "",
-    [details, row.effective],
+    () => details.recommended || "",
+    [details],
   );
   const recommendedFallback = details.fallback;
 
@@ -711,14 +709,6 @@ function FeatureRow({
               onClick={() => onProviderChange("lovable")}
             >
               Kimble
-            </SegBtn>
-            <SegBtn
-              active={current === "openrouter"}
-              disabled={row.locked || saving || !openrouterReady}
-              onClick={() => onProviderChange("openrouter")}
-              title={!openrouterReady ? "Add OPENROUTER_API_KEY first" : undefined}
-            >
-              OpenRouter
             </SegBtn>
             {saving && <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin text-muted-foreground" />}
           </div>
@@ -814,17 +804,13 @@ function SegBtn({
   );
 }
 
-function ProviderBadge({ provider }: { provider: "lovable" | "openrouter" }) {
-  const isLovable = provider === "lovable";
+function ProviderBadge({ provider }: { provider: "lovable" }) {
+  void provider;
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${
-        isLovable
-          ? "bg-primary/10 text-primary"
-          : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-      }`}
+      className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary"
     >
-      {isLovable ? "Kimble" : "OpenRouter"}
+      Kimble
     </span>
   );
 }
@@ -1020,17 +1006,9 @@ function BudgetModelsCard({
               <h2 className="font-display text-lg font-semibold">Budget-tier routing</h2>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Ultra-cheap OpenRouter models used when a user enables Economy mode.
+              Ultra-cheap gateway models used when a user enables Economy mode.
             </p>
           </div>
-          <a
-            href="https://openrouter.ai/models"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-          >
-            OpenRouter models <ExternalLink className="h-3 w-3" />
-          </a>
         </div>
 
         {!rows || !featureRows ? (
@@ -1048,7 +1026,6 @@ function BudgetModelsCard({
               const selected = draftModels[feature] ?? row.allowedModels;
               const shadow = draftShadow[feature] ?? row.shadowPct;
               const available = budgetCatalog.filter((m) => m.features.includes(feature));
-              const hasOpenRouter = featureRow?.effective === "openrouter";
 
               return (
                 <div key={feature} className="rounded-xl border border-border/60 p-3">
@@ -1064,9 +1041,6 @@ function BudgetModelsCard({
                       >
                         {enabled ? "ON" : "OFF"}
                       </span>
-                      {!hasOpenRouter && enabled && (
-                        <span className="text-[10px] text-amber-500">needs OpenRouter provider</span>
-                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       {isEditing ? (
