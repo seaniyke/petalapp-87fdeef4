@@ -134,6 +134,7 @@ import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/emai
 import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
+import { Route as ApiPublicV1GenerateRouteImport } from './routes/api/public/v1/generate'
 import { Route as ApiPublicV1HealthRouteImport } from './routes/api/public/v1/health'
 import { Route as ApiPublicV1ProjectsRouteImport } from './routes/api/public/v1/projects'
 import { Route as ApiTurnsIdCancelRouteImport } from './routes/api/turns.$id.cancel'
@@ -795,6 +796,11 @@ const ApiPublicSharedSplatRoute = ApiPublicSharedSplatRouteImport.update({
   path: '/api/public/shared/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1GenerateRoute = ApiPublicV1GenerateRouteImport.update({
+  id: '/api/public/v1/generate',
+  path: '/api/public/v1/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1HealthRoute = ApiPublicV1HealthRouteImport.update({
   id: '/api/public/v1/health',
   path: '/api/public/v1/health',
@@ -987,6 +993,7 @@ export interface FileRoutesByFullPath {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
@@ -1126,6 +1133,7 @@ export interface FileRoutesByTo {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
@@ -1266,6 +1274,7 @@ export interface FileRoutesById {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
@@ -1407,6 +1416,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
@@ -1546,6 +1556,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
@@ -1685,6 +1696,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
@@ -1821,6 +1833,7 @@ export interface RootRouteChildren {
   ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiPublicSharedSplatRoute: typeof ApiPublicSharedSplatRoute
+  ApiPublicV1GenerateRoute: typeof ApiPublicV1GenerateRoute
   ApiPublicV1HealthRoute: typeof ApiPublicV1HealthRoute
   ApiPublicV1ProjectsRoute: typeof ApiPublicV1ProjectsRouteWithChildren
   ApiTurnsIdCancelRoute: typeof ApiTurnsIdCancelRoute
@@ -2710,6 +2723,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSharedSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/generate': {
+      id: '/api/public/v1/generate'
+      path: '/api/public/v1/generate'
+      fullPath: '/api/public/v1/generate'
+      preLoaderRoute: typeof ApiPublicV1GenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/health': {
       id: '/api/public/v1/health'
       path: '/api/public/v1/health'
@@ -2986,6 +3006,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiPublicSharedSplatRoute: ApiPublicSharedSplatRoute,
+  ApiPublicV1GenerateRoute: ApiPublicV1GenerateRoute,
   ApiPublicV1HealthRoute: ApiPublicV1HealthRoute,
   ApiPublicV1ProjectsRoute: ApiPublicV1ProjectsRouteWithChildren,
   ApiTurnsIdCancelRoute: ApiTurnsIdCancelRoute,
