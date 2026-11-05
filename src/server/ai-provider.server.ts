@@ -406,7 +406,7 @@ export interface ParsedUsage {
 const num = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
 
-/** Normalise an OpenRouter/OpenAI-shaped `usage` object. */
+/** Normalise an OpenAI-shaped `usage` object from the gateway. */
 export function parseUsageObject(u: unknown): ParsedUsage | null {
   if (!u || typeof u !== "object") return null;
   const o = u as Record<string, unknown>;
@@ -813,7 +813,7 @@ async function updateLastCallUsageInner(args: {
   totalTokens: number | null;
   cachedPromptTokens?: number | null;
   /** Provider-reported USD cost for this call, when the gateway returns one
-   *  (OpenRouter does). When present it is recorded as ACTUAL cost; otherwise
+   *  When present it is recorded as ACTUAL cost; otherwise
    *  we fall back to the internal price table and mark it ESTIMATED. */
   actualCostUsd?: number | null;
   turnId?: string | null;
@@ -967,8 +967,8 @@ export interface AiCallOptions {
   signal?: AbortSignal;
   meta?: AiCallMeta;
   /**
-   * When true, this call may be routed to an ultra-cheap budget model via
-   * OpenRouter if the user has economy mode enabled or if admin shadow testing
+   * When true, this call may be routed to an ultra-cheap budget model on the
+   * gateway if the user has economy mode enabled or if admin shadow testing
    * is active. Callers should opt in for non-critical, low-risk features.
    */
   budgetAware?: boolean;
@@ -1053,10 +1053,10 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   const requestedModel =
     budgetModelOverride || (opts.lockCallerModel ? callerModel : dbModel || callerModel) || null;
 
-  // OPENROUTER-ONLY MODEL POLICY. Every requested slug is normalised to the
-  // centrally configured DeepSeek model (src/lib/ai-model-config.ts) so no
-  // legacy hardcoded Gemini/GPT/Claude id can reach the wire. `openrouter/auto`
-  // is never used — the model is always explicit.
+  // GATEWAY-ONLY MODEL POLICY. Every requested slug is normalised to a
+  // centrally configured gateway model (src/lib/ai-model-config.ts) so no
+  // legacy hardcoded Gemini/GPT/Claude/DeepSeek id can reach the wire — the
+  // model is always explicit.
   const needsVision = requestHasImageParts(opts.body);
   // Utility tier: short classification / summarisation features run on the
   // cheaper utility model unless the caller asked for a specific DeepSeek slug
@@ -1172,10 +1172,11 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     (globalThis as Record<string, unknown>)["__petalLastProviderPaymentFailureAt"] = Date.now();
   }
 
-  // NOTE: there is no cross-provider failover any more. OpenRouter is the only
-  // gateway, so a 401/402/403 is an account problem that a second provider
-  // cannot paper over. At most ONE bounded retry (fallback model) happens below,
-  // which guarantees a single operation never fans out to multiple providers.
+  // NOTE: there is no cross-provider failover any more. The Lovable AI
+  // Gateway is the only gateway, so a 401/402/403 is an account problem that a
+  // second provider cannot paper over. At most ONE bounded retry (fallback
+  // model) happens below, which guarantees a single operation never fans out
+  // to multiple providers.
 
   // Decide whether to retry on fallback model (same provider).
   // Retry on 5xx, 429 (rate-limit), 402 (credits), AND 400/404 — the latter
