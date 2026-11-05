@@ -362,30 +362,38 @@ function remapModelForOpenRouter(model: string | undefined): string | undefined 
 // ---------------- Telemetry ----------------
 
 /**
- * Per-million-token USD price (rough, blended input+output) for the models we
- * route through the gateway. Used to populate `ai_call_log.cost_usd_micro` so
- * the admin dashboard shows a non-zero "Estimated cost" — the gateway doesn't
- * return a $ amount, only token counts. Prices are conservative averages of
- * OpenRouter list prices as of mid-2026; close enough for an internal
- * estimate, OpenRouter remains the source of truth for actual billing.
+ * USD value of one gateway credit for internal cost estimation. The gateway
+ * bills workspace credits per token; `ai_call_log.cost_usd_micro` is USD
+ * micro, so credit rates are converted at this rate. Conservative default
+ * of $1.00 per credit; override with AI_GATEWAY_CREDIT_USD. Estimates are
+ * always recorded with cost_basis "estimated" / cost_source "price_table" —
+ * the workspace credit ledger remains the source of truth for actual billing.
+ */
+function gatewayCreditUsd(): number {
+  const raw = typeof process !== "undefined" ? process.env?.AI_GATEWAY_CREDIT_USD : undefined;
+  const n = raw == null || raw === "" ? 1.0 : Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 1.0;
+}
+
+/**
+ * Per-million-token gateway credit rates for the models we route, from the
+ * authenticated catalog listing (Nov 2026). Multiplied by gatewayCreditUsd()
+ * to populate `ai_call_log.cost_usd_micro` so the admin dashboard shows a
+ * non-zero "Estimated cost" — the gateway returns token counts, not dollars.
  */
 const MODEL_PRICE_PER_M_TOKENS: Array<{ match: RegExp; inUsd: number; outUsd: number }> = [
-  { match: /claude-(sonnet|opus)-4/i, inUsd: 3.0, outUsd: 15.0 },
-  { match: /claude-haiku/i, inUsd: 0.8, outUsd: 4.0 },
-  { match: /gpt-5(\.\d+)?-(nano|mini)/i, inUsd: 0.25, outUsd: 2.0 },
-  { match: /gpt-5(\.\d+)?-pro/i, inUsd: 10.0, outUsd: 40.0 },
-  { match: /gpt-5(\.\d+)?$/i, inUsd: 1.25, outUsd: 10.0 },
-  { match: /gemini-(2\.5|3\.?\d?)-pro/i, inUsd: 1.25, outUsd: 5.0 },
-  { match: /gemini-(2\.5|3\.?\d?)-flash-lite/i, inUsd: 0.1, outUsd: 0.4 },
-  { match: /gemini-(2\.5|3\.?\d?)-flash/i, inUsd: 0.3, outUsd: 1.2 },
-  { match: /deepseek/i, inUsd: 0.3, outUsd: 1.2 },
-  // Budget-tier OpenRouter models (as of mid-2026, used when economy mode is on).
-  { match: /qwen\/qwen3\.7-flash/i, inUsd: 0.03, outUsd: 0.13 },
-  { match: /openai\/gpt-oss-20b/i, inUsd: 0.03, outUsd: 0.13 },
-  { match: /meta-llama\/llama-3\.1-8b-instruct/i, inUsd: 0.05, outUsd: 0.08 },
-  { match: /poolside\/laguna-xs-2\.1/i, inUsd: 0.06, outUsd: 0.12 },
-  { match: /mistralai\/mistral-nemo/i, inUsd: 0.02, outUsd: 0.03 },
-  { match: /google\/gemma-3-12b-it/i, inUsd: 0.05, outUsd: 0.15 },
+  { match: /gemini-3\.1-flash-lite/i, inUsd: 1.0, outUsd: 6.0 },
+  { match: /gemini-3\.8-flash/i, inUsd: 3.0, outUsd: 15.0 },
+  { match: /gemini-4-argon/i, inUsd: 3.0, outUsd: 15.0 },
+  { match: /gemini-.*-pro/i, inUsd: 12.0, outUsd: 72.0 },
+  { match: /gemini-.*-flash/i, inUsd: 3.0, outUsd: 15.0 },
+  { match: /gpt-5\.6-sol/i, inUsd: 16.0, outUsd: 80.0 },
+  { match: /gpt-5\.6-(luna|terra)/i, inUsd: 8.0, outUsd: 40.0 },
+  { match: /gpt-6/i, inUsd: 16.0, outUsd: 80.0 },
+  { match: /gpt-5/i, inUsd: 10.0, outUsd: 60.0 },
+  { match: /claude-haiku/i, inUsd: 5.0, outUsd: 25.0 },
+  { match: /claude-sonnet/i, inUsd: 15.0, outUsd: 75.0 },
+  { match: /claude-opus/i, inUsd: 25.0, outUsd: 125.0 },
 ];
 
 export function estimateCostUsdMicro(
