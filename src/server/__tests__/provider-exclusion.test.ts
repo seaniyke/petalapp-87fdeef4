@@ -1,6 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { CODEGEN_PROVIDER_IGNORE } from "@/lib/ai-model-config";
-import { codegenProviderRouting } from "@/server/ai-provider.server";
 import {
   runWithTurnContext,
   markUpstreamFailed,
@@ -11,9 +9,9 @@ import { assessRouteCoverage, mergeChunk } from "@/server/chunked-generation.ser
 import { EMPTY_HOME_BUILD_FAILURE_MESSAGE, PROMPT_BLAME_PATTERN } from "@/server/build-failure-copy";
 
 describe("page-writing provider routing", () => {
-  it("keeps no Kimble allow-list; only known-bad providers are ignored", () => {
-    expect(CODEGEN_PROVIDER_IGNORE).toEqual(["digitalocean", "nextbit"]);
-    expect(codegenProviderRouting().only).toBeUndefined();
+  it("sends no provider block — the gateway owns upstream failover", async () => {
+    const { resolveProviderRouting } = await import("@/server/engine/provider-policy");
+    expect(resolveProviderRouting({ codeWriting: true, avoid: [] })).toBeUndefined();
   });
 });
 
@@ -24,9 +22,6 @@ describe("per-turn failed-provider exclusion", () => {
       markUpstreamFailed("DeepInfra");
       const avoid = failedUpstreamsForTurn();
       expect(avoid).toEqual(["deepinfra"]);
-      // Every codegen call (retry, continuation, missing-page, repair) routes through this.
-      const r = codegenProviderRouting(avoid);
-      expect(r.ignore).toContain("deepinfra");
     });
   });
   it("a fresh turn starts with no exclusions", async () => {

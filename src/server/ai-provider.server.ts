@@ -576,7 +576,6 @@ async function recordTelemetryInner(
         prompt_tokens: args.promptTokens ?? null,
         completion_tokens: args.completionTokens ?? null,
         total_tokens: args.totalTokens ?? null,
-        cost_usd_micro: args.costUsdMicro ?? null,
         latency_ms: args.latencyMs,
         fallback_used: args.fallbackUsed,
         error_message: args.errorMessage ?? null,
@@ -603,7 +602,7 @@ async function recordTelemetryInner(
         // billed by the gateway: record it as a measured $0, not unknown.
         ...(args.status >= 400 && args.status < 599
           ? { cost_basis: "actual", cost_source: "provider_error_unbilled", cost_usd_micro: 0 }
-          : { cost_basis: "unknown", cost_source: null }),
+          : { cost_basis: "unknown", cost_source: null, cost_usd_micro: args.costUsdMicro ?? null }),
         request_id: args.requestId ?? null,
         upstream_provider: args.upstream ?? null,
         ...(args.extra ?? {}),

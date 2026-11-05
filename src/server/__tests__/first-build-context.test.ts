@@ -20,7 +20,6 @@ import { FIRST_BUILD_TOOL_NOTE, firstBuildBrief } from "@/server/engine/first-bu
 import { TEMPLATE_PRELOADED_RULE } from "@/server/engine/template-contract";
 import { runToolLoop, type ModelReply, type ToolCallMsg, type LoopMessage } from "@/server/engine/tool-loop";
 import { validateUnitImports } from "@/server/engine/work-unit";
-import { codegenProviderRouting } from "@/server/engine/provider-policy";
 
 const SKILL_IDS = ["copy-and-verify", "motion", "page-composition", "redesign-safety", "section-architectures"] as const;
 const manual = loadCoreKnowledge("full").text;
@@ -222,20 +221,5 @@ describe("telemetry and provider performance", () => {
     expect(t.context.brief).toBe(5);
     expect(t.workUnit).toBe("finish");
     expect(typeof t.progress).toBe("boolean");
-  });
-
-  it("code routing adds a soft throughput preference, never an allow-list", () => {
-    const r = codegenProviderRouting() as Record<string, any>;
-    expect(r.only).toBeUndefined();
-    expect(r.order).toBeUndefined();
-    expect(r.allow_fallbacks).toBe(true);
-    expect(r.preferred_min_throughput?.p50).toBeGreaterThan(0);
-    const prev = process.env.CODEGEN_PREFERRED_MIN_TPS;
-    process.env.CODEGEN_PREFERRED_MIN_TPS = "0";
-    try {
-      expect((codegenProviderRouting() as Record<string, unknown>).preferred_min_throughput).toBeUndefined();
-    } finally {
-      if (prev === undefined) delete process.env.CODEGEN_PREFERRED_MIN_TPS; else process.env.CODEGEN_PREFERRED_MIN_TPS = prev;
-    }
   });
 });

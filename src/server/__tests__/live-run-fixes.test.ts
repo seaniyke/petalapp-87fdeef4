@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { codegenProviderRouting, resolveProviderRouting } from "@/server/engine/provider-policy";
+import { resolveProviderRouting } from "@/server/engine/provider-policy";
 import { describeIncomplete, incompleteBuildMessage, neutraliseSuccessClaims } from "@/server/engine/build-state";
 import { frameIsComplete, pageInstruction, projectContract } from "@/server/engine/write";
 import { pageFileFor } from "@/server/engine/plan";
@@ -8,13 +8,12 @@ import { revertCleanupBreakage } from "@/server/write-gate.server";
 
 const f = (path: string, content: string) => ({ path, content });
 
-describe("provider picker is authoritative", () => {
-  it("code-writing calls never send an allow-list", () => {
-    expect((codegenProviderRouting() as { only?: string[] }).only).toBeUndefined();
+describe("provider routing is gateway-owned", () => {
+  it("code-writing calls never send a provider block", () => {
+    expect(resolveProviderRouting({ codeWriting: true, avoid: [] })).toBeUndefined();
   });
-  it("a turn's failed upstream is ignored", () => {
-    const r = resolveProviderRouting({ codeWriting: true, avoid: ["Azure"] }) as { ignore: string[] };
-    expect(r.ignore).toContain("azure");
+  it("a turn's failed upstreams never produce an ignore list", () => {
+    expect(resolveProviderRouting({ codeWriting: true, avoid: ["Azure"] })).toBeUndefined();
   });
 });
 

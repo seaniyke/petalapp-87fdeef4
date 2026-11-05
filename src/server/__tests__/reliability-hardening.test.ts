@@ -22,7 +22,7 @@ describe("planner fits the real output budget", () => {
   });
 });
 
-import { bufferedResponse } from "@/server/ai-provider.server";describe("body read fix", () => {
+describe("body read fix", () => {
   it("buffered response can be read by the caller after usage is read", async () => {
     const r = await bufferedResponse(new Response(JSON.stringify({ usage: { prompt_tokens: 1 }, ok: 1 })));
     await r.clone().text();
