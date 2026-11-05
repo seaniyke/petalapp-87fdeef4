@@ -133,6 +133,6 @@ The Pages project is auto-created on first deploy. Subsequent deploys overwrite 
 `vendor/agent-core.mjs` is the app's generation pipeline, bundled by
 `bun scripts/build-agent-core.mjs` from the repo root. Re-run it whenever
 generation code changes, then redeploy. Required env on Railway:
-`BUILDER_SHARED_SECRET` (already set), `OPENROUTER_API_KEY`, `AGENT_IN_PROCESS=1`.
+`BUILDER_SHARED_SECRET` (already set), `LOVABLE_API_KEY`, `AGENT_IN_PROCESS=1`.
 No database key is needed: saved data goes through the app's signed
 `/api/public/agent/ops` gateway, scoped to one build.

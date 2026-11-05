@@ -14,14 +14,14 @@ gated by `INTERNAL_HEALTH_TOKEN`).
 | `SUPABASE_URL` | Backend URL | Auto-injected by Lovable Cloud |
 | `SUPABASE_PUBLISHABLE_KEY` | Browser/RLS client | Auto-injected |
 | `SUPABASE_SERVICE_ROLE_KEY` | Admin client (`client.server.ts`) | Auto-injected |
-| `OPENROUTER_API_KEY` | **The only AI provider.** All chat/completions + image generation (Kimble → OpenRouter → DeepSeek) | openrouter.ai dashboard; server-side only, never exposed to the browser |
-| `LOVABLE_API_KEY` | Voice-to-text only (`/api/transcribe`) + internal email routes. No text-model traffic. | Auto-managed; rotate via `lovable_api_key--rotate_lovable_api_key` |
+| `LOVABLE_API_KEY` | **The only AI provider.** All chat/completions, image generation and voice-to-text go through the Lovable AI Gateway | Auto-managed; rotate via `lovable_api_key--rotate_lovable_api_key` |
 
 Optional AI overrides (all read server-side, defaults in `src/lib/ai-model-config.ts`):
-`OPENROUTER_MODEL` (default `deepseek/deepseek-v4-flash`), `OPENROUTER_VISION_MODEL`
-(`deepseek/deepseek-v4-flash-vision-exp`), `OPENROUTER_FALLBACK_MODEL`
-(`deepseek/deepseek-v3.2`), `OPENROUTER_IMAGE_MODEL` (`google/gemini-2.5-flash-image`),
-`OPENROUTER_REFERER`. The legacy `AI_PROVIDER*` vars are ignored.
+`AI_GATEWAY_MODEL` (default `google/gemini-3.8-flash`), `AI_GATEWAY_VISION_MODEL`
+(`google/gemini-3.8-flash`), `AI_GATEWAY_FALLBACK_MODEL`
+(`openai/gpt-5.6-sol`), `AI_GATEWAY_IMAGE_MODEL` (`openai/gpt-image-2.5-sunburst`),
+`AI_GATEWAY_UTILITY_MODEL` (`google/gemini-3.1-flash-lite`),
+`AI_GATEWAY_TRANSCRIBE_MODEL` (`openai/gpt-transcribe`). The legacy `AI_PROVIDER*` vars are ignored.
 | `INTERNAL_HEALTH_TOKEN` | Gates `/api/internal/health` | Generate with `openssl rand -hex 32` |
 
 ## Mobile pipeline (Codemagic + Expo)
@@ -65,7 +65,6 @@ Optional AI overrides (all read server-side, defaults in `src/lib/ai-model-confi
 
 | Secret | Purpose |
 |---|---|
-| `OPENROUTER_API_KEY` | Fallback AI provider if Lovable gateway is down |
 | `SEMRUSH_API_KEY` | SEO Insights tab |
 
 ---

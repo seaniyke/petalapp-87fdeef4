@@ -49,7 +49,7 @@ If the user does insist:
   import Anthropic from "@anthropic-ai/sdk";
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const msg = await client.messages.create({
-    model: "claude-sonnet-4-5",
+    model: "anthropic/claude-sonnet-5",
     max_tokens: 1024,
     messages: [{ role: "user", content: prompt }],
   });
