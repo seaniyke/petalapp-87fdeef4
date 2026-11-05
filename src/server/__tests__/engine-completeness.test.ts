@@ -20,11 +20,9 @@ describe("plan drives write", () => {
 });
 
 describe("single provider authority", () => {
-  it("non-code tool calls skip NextBit and still exclude failed upstreams", () => {
-    expect(resolveProviderRouting({ codeWriting: false, avoid: ["Azure"], hasTools: true })).toEqual({
-      require_parameters: true,
-      ignore: ["nextbit", "azure"],
-    });
+  it("no provider block is ever sent — the gateway owns upstream failover", () => {
+    expect(resolveProviderRouting({ codeWriting: false, avoid: ["Azure"], hasTools: true })).toBeUndefined();
+    expect(resolveProviderRouting({ codeWriting: true, avoid: ["Azure"], hasTools: true })).toBeUndefined();
   });
 });
 

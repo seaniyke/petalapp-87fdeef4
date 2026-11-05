@@ -169,11 +169,12 @@ describe("audit consolidation", () => {
   });
 });
 
-describe("eval routing honours the per-turn failed providers", () => {
-  it("source keeps failed upstreams in the eval ignore list and records the sent model", async () => {
+describe("eval routing", () => {
+  it("eval runs send one model per call and never a provider block", async () => {
     const fs = await import("node:fs");
     const src = fs.readFileSync("src/server/ai-provider.server.ts", "utf8");
-    expect(src).toMatch(/ignore: Array\.from\(new Set\(\["nextbit", \.\.\.turnFailed/);
+    expect(src).toContain("body.model = inferenceEval.models[0]");
+    expect(src).not.toMatch(/body\.provider = /);
     expect(src).not.toMatch(/\n\s+model: primaryModel,\n/);
   });
 });
