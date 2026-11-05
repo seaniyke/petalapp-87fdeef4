@@ -169,8 +169,9 @@ async function loadDbSettings(): Promise<Map<string, FeatureSettings>> {
         shadow_pct: number | null;
       }>) {
         map.set(row.feature, {
-          // Legacy rows may say "lovable"; OpenRouter is the only gateway now.
-          provider: row.provider === "openrouter" ? "openrouter" : null,
+          // Legacy rows may say "openrouter"; the Lovable AI Gateway is the
+          // only gateway now.
+          provider: row.provider === "openrouter" || row.provider === "lovable" ? "lovable" : null,
           model: row.model || null,
           fallback_model: row.fallback_model || null,
           budget_enabled: row.budget_enabled ?? null,
@@ -202,14 +203,14 @@ export function invalidateProviderCache(): void {
 // ---------------- Resolution ----------------
 
 /**
- * OPENROUTER-ONLY. Kimble has a single AI provider: OpenRouter.
+ * GATEWAY-ONLY. Kimble has a single AI provider: the Lovable AI Gateway.
  *
- * Legacy DB rows (`ai_provider_settings.provider = 'lovable'`) and legacy env
- * vars (`AI_PROVIDER`, `AI_PROVIDER_<FEATURE>`) are intentionally ignored so a
- * stale configuration row cannot silently re-open a direct-provider path.
+ * Legacy DB rows (`ai_provider_settings.provider = 'openrouter'`) and legacy
+ * env vars (`AI_PROVIDER`, `AI_PROVIDER_<FEATURE>`) are intentionally ignored
+ * so a stale configuration row cannot silently re-open a direct-provider path.
  */
 async function resolveProvider(_feature: AiFeature): Promise<Provider> {
-  return "openrouter";
+  return "lovable";
 }
 
 /** Public: resolve which provider a given feature is configured to use.
