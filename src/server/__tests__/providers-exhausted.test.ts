@@ -1,9 +1,9 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { OPENROUTER_CHAT_URL } from "@/lib/ai-model-config";
+import { AI_GATEWAY_CHAT_URL } from "@/lib/ai-model-config";
 import { isEmptyAllowList } from "@/server/engine/provider-policy";
 import { runWithTurnContext, providersExhaustedForTurn, markUpstreamFailed } from "@/server/turn-context.server";
 
-describe("OpenRouter native routing for code generation", () => {
+describe("gateway routing for code generation", () => {
   const realFetch = globalThis.fetch;
   let calls: Array<Record<string, unknown>>;
   let status = 200;
@@ -11,9 +11,9 @@ describe("OpenRouter native routing for code generation", () => {
   beforeEach(() => {
     calls = [];
     status = 200;
-    process.env.OPENROUTER_API_KEY = "test-key";
+    process.env.LOVABLE_API_KEY = "test-key";
     globalThis.fetch = vi.fn(async (url: unknown, init: unknown) => {
-      if (String(url) === OPENROUTER_CHAT_URL) calls.push(JSON.parse((init as { body: string }).body));
+      if (String(url) === AI_GATEWAY_CHAT_URL) calls.push(JSON.parse((init as { body: string }).body));
       return new Response(JSON.stringify(status === 200 ? { choices: [] } : { error: { message: "No endpoints found" } }), {
         status,
         headers: { "content-type": "application/json" },
@@ -29,18 +29,16 @@ describe("OpenRouter native routing for code generation", () => {
     return aiChatCompletions({ feature: "generate", codeOutput: true, body: { messages: [{ role: "user", content: "x" }] } });
   };
 
-  it("normal generation: one request, no allow-list, fallbacks on", async () => {
+  it("normal generation: one request, no provider block (gateway owns failover)", async () => {
     await runWithTurnContext({ turnId: "a" }, async () => {
       const r = await call();
       expect(r.ok).toBe(true);
     });
     expect(calls.length).toBe(1);
-    const p = calls[0].provider as Record<string, unknown>;
-    expect(p.only).toBeUndefined();
-    expect(p.allow_fallbacks).toBe(true);
+    expect(calls[0].provider).toBeUndefined();
   }, 30_000);
 
-  it("after provider failures, the next call ignores them and still goes to OpenRouter", async () => {
+  it("after provider failures, the next call still goes straight to the gateway", async () => {
     await runWithTurnContext({ turnId: "b" }, async () => {
       markUpstreamFailed("DeepInfra");
       markUpstreamFailed("Azure");
@@ -48,12 +46,10 @@ describe("OpenRouter native routing for code generation", () => {
       expect(r.ok).toBe(true);
     });
     expect(calls.length).toBe(1);
-    const p = calls[0].provider as { ignore: string[]; only?: unknown };
-    expect(p.only).toBeUndefined();
-    expect(p.ignore).toEqual(expect.arrayContaining(["deepinfra", "azure"]));
+    expect(calls[0].provider).toBeUndefined();
   }, 30_000);
 
-  it("no eligible provider (OpenRouter 404): terminal, never re-sent", async () => {
+  it("no eligible provider (gateway 404): terminal, never re-sent", async () => {
     status = 404;
     let exhausted = false;
     await runWithTurnContext({ turnId: "c" }, async () => {
