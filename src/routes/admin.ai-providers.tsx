@@ -1,14 +1,11 @@
 /**
  * /admin/ai-providers — operator console for AI routing.
  *
- * Per feature you can choose:
- *   - Provider (Auto / Kimble / OpenRouter)
+ * All traffic goes through the Lovable AI Gateway. Per feature you can set:
  *   - Primary model (free text, validated server-side)
  *   - Fallback model (retried once on 429/402/5xx)
  *
  * Plus a 7-day cost & usage rollup at the top.
- *
- * Image gen is hard-pinned to Kimble AI and shown as locked.
  */
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -42,7 +39,7 @@ import type {
   SetBudgetInput,
 } from "@/server/ai-provider-admin.server";
 import type { AiFeature } from "@/server/ai-provider.server";
-import budgetCatalog from "@/lib/openrouter-budget-models.json";
+import budgetCatalog from "@/lib/gateway-budget-models.json";
 
 /**
  * Call the admin API with the user's Supabase access token. We use a plain
@@ -96,60 +93,60 @@ export const Route = createFileRoute("/admin/ai-providers")({
   component: AiProvidersPage,
 });
 
-const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recommended: { lovable: string; openrouter: string }; fallback: string }> = {
+const FEATURE_DETAILS: Record<AiFeature, { label: string; blurb: string; recommended: string; fallback: string }> = {
   generate: {
     label: "Code generation",
     blurb: "The big one — every Build turn. Where most of your AI cost lives.",
-    recommended: { lovable: "google/gemini-2.5-pro", openrouter: "anthropic/claude-sonnet-4.5" },
-    fallback: "openai/gpt-5-mini",
+    recommended: "google/gemini-3.8-flash",
+    fallback: "openai/gpt-5.6-sol",
   },
   discuss: {
     label: "Discuss / Plan mode",
     blurb: "Chat replies that don't touch files. Cheap-friendly.",
-    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "deepseek/deepseek-v4-flash" },
-    fallback: "google/gemini-2.5-flash",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   triage: {
     label: "Triage (warm reply)",
     blurb: "The instant 'hi' before Build. Tool-call reliability matters.",
-    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "openai/gpt-5-mini" },
-    fallback: "anthropic/claude-haiku-4.5",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   coach: {
     label: "Idea Coach",
     blurb: "The 'I don't know what to build' guided dialogue.",
-    recommended: { lovable: "google/gemini-2.5-flash", openrouter: "deepseek/deepseek-v4-flash" },
-    fallback: "google/gemini-2.5-flash",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   design: {
     label: "Design Director",
     blurb: "Picks a bold visual direction at the start of a project.",
-    recommended: { lovable: "google/gemini-2.5-pro", openrouter: "anthropic/claude-sonnet-4.5" },
-    fallback: "openai/gpt-5-mini",
+    recommended: "google/gemini-3.8-flash",
+    fallback: "openai/gpt-5.6-sol",
   },
   memory: {
     label: "Project Memory writer",
     blurb: "Background tagger. Pure summarisation — go cheap.",
-    recommended: { lovable: "google/gemini-2.5-flash-lite", openrouter: "google/gemini-2.5-flash-lite" },
-    fallback: "google/gemini-2.5-flash",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   recovery: {
     label: "Self-recovery",
     blurb: "Post-build self-check. Debugging quality matters.",
-    recommended: { lovable: "google/gemini-2.5-pro", openrouter: "anthropic/claude-sonnet-4.5" },
-    fallback: "openai/gpt-5-mini",
+    recommended: "google/gemini-3.8-flash",
+    fallback: "openai/gpt-5.6-sol",
   },
   preflight: {
     label: "Pre-flight estimate",
     blurb: "Cheap classifier that previews cost/time before you hit send.",
-    recommended: { lovable: "google/gemini-2.5-flash-lite", openrouter: "google/gemini-2.5-flash-lite" },
-    fallback: "google/gemini-2.5-flash",
+    recommended: "google/gemini-3.1-flash-lite",
+    fallback: "google/gemini-3.8-flash",
   },
   image: {
     label: "Image generation",
-    blurb: "Nano-banana / Gemini image gen. Routable through Kimble AI or OpenRouter.",
-    recommended: { lovable: "google/gemini-2.5-flash-image", openrouter: "google/gemini-2.5-flash-image" },
-    fallback: "google/gemini-2.5-flash-image",
+    blurb: "Image generation via the gateway's images endpoint.",
+    recommended: "openai/gpt-image-2.5-sunburst",
+    fallback: "openai/gpt-image-2.5-sunburst",
   },
 };
 
@@ -165,7 +162,7 @@ function AiProvidersPage() {
 
   const [rows, setRows] = useState<AiFeatureRow[] | null>(null);
   const [budgetRows, setBudgetRows] = useState<BudgetConfigRow[] | null>(null);
-  const [openrouterReady, setOpenrouterReady] = useState(true);
+  const [gatewayReady, setGatewayReady] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savingFeature, setSavingFeature] = useState<AiFeature | null>(null);
   const [savingBudget, setSavingBudget] = useState<AiFeature | null>(null);
@@ -182,10 +179,10 @@ function AiProvidersPage() {
     try {
       const res = await callAdminApi<{
         rows: AiFeatureRow[];
-        openrouterKeyConfigured: boolean;
+        gatewayKeyConfigured: boolean;
       }>("list");
       setRows(res.rows);
-      setOpenrouterReady(res.openrouterKeyConfigured);
+      setGatewayReady(res.gatewayKeyConfigured);
       const budgetRes = await callAdminApi<{ rows: BudgetConfigRow[] }>("budget-config");
       setBudgetRows(budgetRes.rows);
     } catch (e) {
@@ -227,7 +224,7 @@ function AiProvidersPage() {
 
   const onProviderChange = async (
     feature: AiFeature,
-    choice: "lovable" | "openrouter" | "auto",
+    choice: "lovable" | "auto",
   ) => {
     setSavingFeature(feature);
     try {
@@ -237,7 +234,7 @@ function AiProvidersPage() {
       toast.success(
         choice === "auto"
           ? `${FEATURE_DETAILS[feature].label}: cleared override`
-          : `${FEATURE_DETAILS[feature].label} → ${choice === "openrouter" ? "OpenRouter" : "Kimble AI"}`,
+          : `${FEATURE_DETAILS[feature].label} → Kimble AI`,
       );
       await refresh();
     } catch (e) {
