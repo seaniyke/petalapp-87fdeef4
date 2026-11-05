@@ -1031,7 +1031,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
         );
         if (picked) {
           budgetModelOverride = picked;
-          budgetProviderOverride = "openrouter";
+          budgetProviderOverride = "lovable";
         }
       }
     } catch (err) {
@@ -1041,8 +1041,8 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     }
   }
 
-  // Provider is always OpenRouter — `budgetProviderOverride` can only ever be
-  // "openrouter" too; kept for telemetry shape compatibility.
+  // Provider is always the Lovable AI Gateway — `budgetProviderOverride` can
+  // only ever be "lovable" too; kept for telemetry shape compatibility.
   const provider: Provider = budgetProviderOverride ?? (await resolveProvider(opts.feature));
   const { model: dbModel, fallback } = await resolveModelOverride(opts.feature);
 
@@ -1120,26 +1120,21 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   }
   const hasTools = Array.isArray(body.tools) && (body.tools as unknown[]).length > 0;
   const isCodeWriting = opts.codeOutput === true || (opts.feature === "generate" && hasTools);
-  // Sole provider authority: any caller-supplied provider block is replaced.
+  // Sole provider authority: any caller-supplied provider block is dropped —
+  // the Lovable AI Gateway owns upstream selection and failover.
   delete body.provider;
   let inferenceEval: { models: string[] } | null = null;
   try {
     const { currentTurnContext } = await import("@/server/turn-context.server");
     inferenceEval = currentTurnContext().inferenceEval ?? null;
   } catch { /* no turn */ }
-  const routing = inferenceEval && isCodeWriting
-    // Evaluation: OpenRouter owns provider failover for each model; Kimble
-    // only names the model chain. NextBit stays excluded (it corrupts tool
-    // arguments — a known correctness defect, not an availability one).
-    ? { allow_fallbacks: true, require_parameters: true, ignore: Array.from(new Set(["nextbit", ...turnFailed.map((u) => u.toLowerCase().replace(/\s+/g, ""))])) }
-    : resolveProviderRouting({ codeWriting: isCodeWriting, avoid: turnFailed, hasTools });
-  if (routing) body.provider = routing;
   if (inferenceEval && isCodeWriting) {
+    // Evaluation: one model per call (the gateway has no multi-model
+    // fallback array); the eval harness iterates the chain itself.
     body.model = inferenceEval.models[0];
-    if (inferenceEval.models.length > 1) body.models = inferenceEval.models;
     body.__inferenceEval = true;
   }
-  if (isCodeWriting) console.log(`[provider-policy] avoid=${turnFailed.join(",") || "-"} routing=${JSON.stringify(routing)}`);
+  if (isCodeWriting) console.log(`[provider-policy] avoid=${turnFailed.join(",") || "-"} routing=gateway`);
   const streamExtra = {
     fallback_number: opts.meta?.fallbackNumber ?? (body.stream === true ? 0 : null),
     fallback_from_upstream: opts.meta?.fallbackFromUpstream ?? null,
@@ -1160,16 +1155,16 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
     return providersExhaustedResponse();
   }
   let primary = await dispatch(provider, body, opts.signal, opts.timeoutTier);
-  // OpenRouter owns provider failover. A 404 on a code call means it found no
-  // eligible endpoint for this model after its own failover: terminal for
-  // this call, never re-sent (not even on the fallback model).
+  // The gateway owns provider failover. A 404 on a code call means it found
+  // no eligible endpoint for this model: terminal for this call, never
+  // re-sent (not even on the fallback model).
   const exhausted = isCodeWriting && !primary.ok && primary.status === 404;
   if (exhausted) {
     try {
       const { markProvidersExhausted } = await import("@/server/turn-context.server");
       markProvidersExhausted();
     } catch { /* no turn */ }
-    console.warn(`[provider-policy] providers_exhausted (OpenRouter 404) — not retried`);
+    console.warn(`[provider-policy] providers_exhausted (gateway 404) — not retried`);
   }
   const latency = Date.now() - t0;
   const effectiveProvider = provider;
