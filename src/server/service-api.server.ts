@@ -178,3 +178,44 @@ export async function deliverWebhook(url: string, payload: unknown): Promise<voi
   }
   console.warn("[service-api] webhook delivery failed", new URL(url).host);
 }
+
+const TERMINAL = new Set(["succeeded", "failed", "aborted", "awaiting_credits"]);
+
+/**
+ * Tail a turn's durable events (`turn_events`) as SSE lines, starting after
+ * `afterSeq`, until the turn is terminal or `maxMs` passes. Used when the
+ * build runs on the build server and for reconnects.
+ */
+export async function* tailTurnEvents(
+  turnId: string,
+  afterSeq = 0,
+  maxMs = 25 * 60_000,
+): AsyncGenerator<{ kind: string; payload: Record<string, unknown>; seq: number }> {
+  const sb = await admin();
+  const started = Date.now();
+  let seq = afterSeq;
+  while (Date.now() - started < maxMs) {
+    const { data: events } = await sb
+      .from("turn_events")
+      .select("seq,kind,payload")
+      .eq("turn_id", turnId)
+      .gt("seq", seq)
+      .order("seq", { ascending: true })
+      .limit(500);
+    for (const e of events ?? []) {
+      seq = e.seq;
+      const payload = (e.payload && typeof e.payload === "object" ? e.payload : {}) as Record<string, unknown>;
+      yield { kind: e.kind, payload, seq: e.seq };
+      if (e.kind === "done") return;
+    }
+    if (!events?.length) {
+      const { data: turn } = await sb.from("turns").select("status").eq("id", turnId).maybeSingle();
+      if (!turn || TERMINAL.has(turn.status)) {
+        yield { kind: "done", payload: { status: turn?.status ?? "unknown" }, seq };
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+  yield { kind: "timeout", payload: { message: "stream window ended; reconnect with after=<seq>" }, seq };
+}
