@@ -623,42 +623,6 @@ async function recordTelemetryInner(
   }
 }
 
-/**
- * OpenRouter generation record for one request id. Stats land a few seconds
- * after the stream closes, so poll briefly. Returns null (UNKNOWN) on any
- * failure — never a fake zero.
- */
-export async function fetchGenerationUsage(requestId: string): Promise<ParsedUsage | null> {
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) return null;
-  for (const delay of [3_000, 6_000, 12_000]) {
-    await new Promise((r) => setTimeout(r, delay));
-    try {
-      const res = await fetch(
-        `https://openrouter.ai/api/v1/generation?id=${encodeURIComponent(requestId)}`,
-        { headers: { Authorization: `Bearer ${key}` } },
-      );
-      if (!res.ok) continue;
-      const d = ((await res.json()) as { data?: Record<string, unknown> }).data;
-      if (!d) continue;
-      const p = num(d.native_tokens_prompt) ?? num(d.tokens_prompt);
-      const c = num(d.native_tokens_completion) ?? num(d.tokens_completion);
-      if (p == null && c == null) continue;
-      return {
-        promptTokens: p,
-        completionTokens: c,
-        totalTokens: p != null && c != null ? p + c : null,
-        cachedTokens: num(d.native_tokens_cached),
-        cacheWriteTokens: null,
-        reasoningTokens: num(d.native_tokens_reasoning),
-        costUsd: num(d.total_cost) ?? num(d.usage),
-      };
-    } catch {
-      /* try again */
-    }
-  }
-  return null;
-}
 
 /**
  * Wrap a streamed (SSE) response so its final usage chunk is parsed in-flight
@@ -750,9 +714,8 @@ function meterStream(
     }
     let u = last as ParsedUsage | null;
     // Stalled / cancelled / empty streams never deliver the final usage
-    // chunk, but the provider still bills them. Read the real numbers from
-    // OpenRouter's generation record instead of leaving tokens/cost unknown.
-    if (!u && requestId) u = await fetchGenerationUsage(requestId);
+    // chunk. The gateway has no after-the-fact usage lookup, so these are
+    // recorded as UNKNOWN — never as zero tokens or a free call.
     try {
       const id = await rowId;
       if (!id) return;
