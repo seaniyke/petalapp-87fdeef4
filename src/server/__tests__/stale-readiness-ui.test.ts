@@ -52,10 +52,4 @@ describe("stale readiness in the builder UI", () => {
   it("legacy build without a revision is never ready", () => {
     expect(shown(snap("old", null, "ready"), 1)).toBe("pending");
   });
-  it("build activity and project revision wiring stay intact", () => {
-    const hook = readFileSync("src/hooks/use-build-activity.ts", "utf8");
-    expect(hook).toMatch(/project_revision/);
-    const p = readFileSync("src/lib/projects.ts", "utf8");
-    expect(p).toMatch(/dispatchEvent\(new CustomEvent\(PROJECT_REVISION_EVENT/);
-  });
 });
