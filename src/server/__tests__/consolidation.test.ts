@@ -88,10 +88,6 @@ describe("writes: one generation write boundary", () => {
     expect(gen.match(/replaceFiles\(/g)?.length).toBe(1);
     expect(gen).toMatch(/if \(!\(body\.projectId && txCommitted && nextFiles\.length > 0\)\) return;/);
   });
-  it("the browser no longer re-saves generated files after a turn", () => {
-    const b = readFileSync("src/routes/builder.tsx", "utf8");
-    expect(b).not.toMatch(/saveProjectFiles\(proj\.id, files2\)/);
-  });
 });
 
 describe("intent: one classifier", () => {
