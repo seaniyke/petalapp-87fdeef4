@@ -253,7 +253,7 @@ describe("Race: Stop vs completion has exactly one winner", () => {
     const db = fakeDb([]);
     await expect(claimTurnCommit(A, undefined, db.client)).resolves.toBeUndefined();
   });
-
+});
 
 describe("Queued silent retry respects a Stop", () => {
   it("only an explicitly stopped turn is refused", () => {
