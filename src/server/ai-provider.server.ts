@@ -1059,7 +1059,7 @@ export async function aiChatCompletions(opts: AiCallOptions): Promise<Response> 
   // model is always explicit.
   const needsVision = requestHasImageParts(opts.body);
   // Utility tier: short classification / summarisation features run on the
-  // cheaper utility model unless the caller asked for a specific DeepSeek slug
+  // cheaper utility model unless the caller asked for a specific configured slug
   // or the request carries images.
   const utility = isUtilityFeature(opts.feature) && !needsVision && !opts.codeOutput;
   let primaryModel: string = coerceToConfiguredModel(requestedModel, {
