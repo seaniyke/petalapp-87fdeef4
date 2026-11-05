@@ -134,6 +134,8 @@ import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/emai
 import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
+import { Route as ApiPublicV1HealthRouteImport } from './routes/api/public/v1/health'
+import { Route as ApiPublicV1ProjectsRouteImport } from './routes/api/public/v1/projects'
 import { Route as ApiTurnsIdCancelRouteImport } from './routes/api/turns.$id.cancel'
 import { Route as ApiTurnsIdEventsRouteImport } from './routes/api/turns.$id.events'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
@@ -141,6 +143,9 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
+import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/public/v1/projects/$id.files'
+import { Route as ApiPublicV1TurnsIdCancelRouteImport } from './routes/api/public/v1/turns/$id.cancel'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -790,6 +795,16 @@ const ApiPublicSharedSplatRoute = ApiPublicSharedSplatRouteImport.update({
   path: '/api/public/shared/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1HealthRoute = ApiPublicV1HealthRouteImport.update({
+  id: '/api/public/v1/health',
+  path: '/api/public/v1/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1ProjectsRoute = ApiPublicV1ProjectsRouteImport.update({
+  id: '/api/public/v1/projects',
+  path: '/api/public/v1/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTurnsIdCancelRoute = ApiTurnsIdCancelRouteImport.update({
   id: '/api/turns/$id/cancel',
   path: '/api/turns/$id/cancel',
@@ -827,6 +842,23 @@ const LovableEmailTransactionalSendRoute =
     id: '/lovable/email/transactional/send',
     path: '/lovable/email/transactional/send',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicV1TurnsIdRoute = ApiPublicV1TurnsIdRouteImport.update({
+  id: '/api/public/v1/turns/$id',
+  path: '/api/public/v1/turns/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicV1ProjectsIdFilesRoute =
+  ApiPublicV1ProjectsIdFilesRouteImport.update({
+    id: '/$id/files',
+    path: '/$id/files',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
+const ApiPublicV1TurnsIdCancelRoute =
+  ApiPublicV1TurnsIdCancelRouteImport.update({
+    id: '/cancel',
+    path: '/cancel',
+    getParentRoute: () => ApiPublicV1TurnsIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -955,6 +987,8 @@ export interface FileRoutesByFullPath {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/health': typeof ApiPublicV1HealthRoute
+  '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -962,6 +996,9 @@ export interface FileRoutesByFullPath {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
+  '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -1089,6 +1126,8 @@ export interface FileRoutesByTo {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/health': typeof ApiPublicV1HealthRoute
+  '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -1096,6 +1135,9 @@ export interface FileRoutesByTo {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
+  '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -1224,6 +1266,8 @@ export interface FileRoutesById {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/health': typeof ApiPublicV1HealthRoute
+  '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -1231,6 +1275,9 @@ export interface FileRoutesById {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
+  '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1360,6 +1407,8 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/health'
+    | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
@@ -1367,6 +1416,9 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/files'
+    | '/api/public/v1/turns/$id/cancel'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1494,6 +1546,8 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/health'
+    | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
@@ -1501,6 +1555,9 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/files'
+    | '/api/public/v1/turns/$id/cancel'
   id:
     | '__root__'
     | '/'
@@ -1628,6 +1685,8 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/health'
+    | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
     | '/lovable/email/auth/preview'
@@ -1635,6 +1694,9 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/files'
+    | '/api/public/v1/turns/$id/cancel'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1759,6 +1821,8 @@ export interface RootRouteChildren {
   ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiPublicSharedSplatRoute: typeof ApiPublicSharedSplatRoute
+  ApiPublicV1HealthRoute: typeof ApiPublicV1HealthRoute
+  ApiPublicV1ProjectsRoute: typeof ApiPublicV1ProjectsRouteWithChildren
   ApiTurnsIdCancelRoute: typeof ApiTurnsIdCancelRoute
   ApiTurnsIdEventsRoute: typeof ApiTurnsIdEventsRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -1766,6 +1830,7 @@ export interface RootRouteChildren {
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
+  ApiPublicV1TurnsIdRoute: typeof ApiPublicV1TurnsIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -2645,6 +2710,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSharedSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/health': {
+      id: '/api/public/v1/health'
+      path: '/api/public/v1/health'
+      fullPath: '/api/public/v1/health'
+      preLoaderRoute: typeof ApiPublicV1HealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/projects': {
+      id: '/api/public/v1/projects'
+      path: '/api/public/v1/projects'
+      fullPath: '/api/public/v1/projects'
+      preLoaderRoute: typeof ApiPublicV1ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/turns/$id/cancel': {
       id: '/api/turns/$id/cancel'
       path: '/api/turns/$id/cancel'
@@ -2694,6 +2773,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/turns/$id': {
+      id: '/api/public/v1/turns/$id'
+      path: '/api/public/v1/turns/$id'
+      fullPath: '/api/public/v1/turns/$id'
+      preLoaderRoute: typeof ApiPublicV1TurnsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/projects/$id/files': {
+      id: '/api/public/v1/projects/$id/files'
+      path: '/$id/files'
+      fullPath: '/api/public/v1/projects/$id/files'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdFilesRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
+    '/api/public/v1/turns/$id/cancel': {
+      id: '/api/public/v1/turns/$id/cancel'
+      path: '/cancel'
+      fullPath: '/api/public/v1/turns/$id/cancel'
+      preLoaderRoute: typeof ApiPublicV1TurnsIdCancelRouteImport
+      parentRoute: typeof ApiPublicV1TurnsIdRoute
+    }
   }
 }
 
@@ -2740,6 +2840,28 @@ const ApiBillingCryptoRouteChildren: ApiBillingCryptoRouteChildren = {
 
 const ApiBillingCryptoRouteWithChildren =
   ApiBillingCryptoRoute._addFileChildren(ApiBillingCryptoRouteChildren)
+
+interface ApiPublicV1ProjectsRouteChildren {
+  ApiPublicV1ProjectsIdFilesRoute: typeof ApiPublicV1ProjectsIdFilesRoute
+}
+
+const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
+  ApiPublicV1ProjectsIdFilesRoute: ApiPublicV1ProjectsIdFilesRoute,
+}
+
+const ApiPublicV1ProjectsRouteWithChildren =
+  ApiPublicV1ProjectsRoute._addFileChildren(ApiPublicV1ProjectsRouteChildren)
+
+interface ApiPublicV1TurnsIdRouteChildren {
+  ApiPublicV1TurnsIdCancelRoute: typeof ApiPublicV1TurnsIdCancelRoute
+}
+
+const ApiPublicV1TurnsIdRouteChildren: ApiPublicV1TurnsIdRouteChildren = {
+  ApiPublicV1TurnsIdCancelRoute: ApiPublicV1TurnsIdCancelRoute,
+}
+
+const ApiPublicV1TurnsIdRouteWithChildren =
+  ApiPublicV1TurnsIdRoute._addFileChildren(ApiPublicV1TurnsIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -2864,6 +2986,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiPublicSharedSplatRoute: ApiPublicSharedSplatRoute,
+  ApiPublicV1HealthRoute: ApiPublicV1HealthRoute,
+  ApiPublicV1ProjectsRoute: ApiPublicV1ProjectsRouteWithChildren,
   ApiTurnsIdCancelRoute: ApiTurnsIdCancelRoute,
   ApiTurnsIdEventsRoute: ApiTurnsIdEventsRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
@@ -2871,6 +2995,7 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
+  ApiPublicV1TurnsIdRoute: ApiPublicV1TurnsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
