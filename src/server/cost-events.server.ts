@@ -93,7 +93,7 @@ type AiRow = {
   revision?: number | null;
 };
 
-/** Map one ai_call_log row to its cost event (ACTUAL when OpenRouter reported). */
+/** Map one ai_call_log row to its cost event (ACTUAL when the gateway reported cost). */
 export function aiRowToCostEvent(r: AiRow): CostEvent {
   const cost = r.cost_usd_micro == null ? null : Number(r.cost_usd_micro) / 1_000_000;
   const basis: CostBasisTag = cost == null ? "UNKNOWN" : r.cost_basis === "actual" ? "ACTUAL" : "ESTIMATED";

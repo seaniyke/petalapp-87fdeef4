@@ -146,9 +146,9 @@ export interface ProviderError {
 }
 
 /**
- * Recognise an OpenRouter / OpenAI-compatible error frame.
+ * Recognise an OpenAI-compatible error frame from the gateway.
  *
- * OpenRouter reports upstream failures as a 200 SSE stream carrying
+ * The gateway reports upstream failures as a 200 SSE stream carrying
  * `{"error": {...}}` with no `choices`. The reader used to skip that frame,
  * which is exactly why a refused turn looked like an empty one.
  */

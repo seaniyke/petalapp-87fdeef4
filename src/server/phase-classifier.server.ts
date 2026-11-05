@@ -134,7 +134,7 @@ export async function classifyPhase(prompt: string): Promise<PhaseTag> {
 /**
  * Map a phase to a model preference. The caller still gets to override
  * (e.g. vision turns force a vision model). "cheap" = fast/cheap Lovable-AI
- * models, "smart" = strong reasoning models, "budget" = ultra-cheap OpenRouter
+ * models, "smart" = strong reasoning models, "budget" = ultra-cheap gateway
  * models (used when a user enables economy mode).
  *
  * Tuning note (2026-07-30): Economy mode pushes low-risk phases (`docs`, low-

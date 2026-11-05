@@ -347,7 +347,7 @@ function AdminIndexPage() {
           <SectionCard
             to="/admin/ai-providers"
             title="AI Providers"
-            description="Route each AI feature to Kimble AI or OpenRouter to control cost."
+            description="Set the model and fallback for each AI feature to control cost."
             icon={<Cpu className="h-5 w-5" />}
           />
           <SectionCard
