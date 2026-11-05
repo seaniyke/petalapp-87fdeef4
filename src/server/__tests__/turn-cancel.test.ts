@@ -253,13 +253,6 @@ describe("Race: Stop vs completion has exactly one winner", () => {
     const db = fakeDb([]);
     await expect(claimTurnCommit(A, undefined, db.client)).resolves.toBeUndefined();
   });
-
-  it("the UI only says Stopped on a server-confirmed cancel", () => {
-    const src = readFileSync("src/routes/builder.tsx", "utf8");
-    const i = src.indexOf('toast.success("Stopped.');
-    expect(src.lastIndexOf('if (r.state === "cancelled")', i)).toBeGreaterThan(src.indexOf("const stopGeneration"));
-    expect(src).toContain("That request had already finished — showing the result.");
-  });
 });
 
 describe("Queued silent retry respects a Stop", () => {

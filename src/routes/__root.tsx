@@ -1,7 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { NoticeSheet } from "@/components/NoticeSheet";
 import { AuthProvider } from "@/lib/auth";
-import { ConsentBanner } from "@/components/ConsentBanner";
 
 import appCss from "../styles.css?url";
 
@@ -32,24 +31,24 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "Kimble — Build real apps with AI" },
+      { title: "Kimble Engine" },
       {
         name: "description",
         content:
-          "Kimble turns conversations into working web apps. Chat, preview, and ship — no setup required.",
+          "Private software generation service driven over API.",
       },
       { name: "author", content: "Kimble" },
-      { property: "og:title", content: "Kimble — Build real apps with AI" },
+      { property: "og:title", content: "Kimble Engine" },
       {
         property: "og:description",
-        content: "Turn conversations into working web apps in minutes.",
+        content: "Private software generation service driven over API.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Kimble — Build real apps with AI" },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Kimble Engine" },
       {
         name: "twitter:description",
-        content: "Turn conversations into working web apps in minutes.",
+        content: "Private software generation service driven over API.",
       },
       // og:image / twitter:image intentionally omitted at the root —
       // TanStack concatenates head() across matched routes and a root og:image
@@ -63,18 +62,6 @@ export const Route = createRootRoute({
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400..800&family=Sora:wght@400..800&family=JetBrains+Mono:wght@400;500&display=swap",
-      },
-    ],
-    scripts: [
-      {
-        src: "https://www.googletagmanager.com/gtag/js?id=G-3DLEXWLWEW",
-        async: true,
-      },
-      {
-        // Consent Mode v2: every signal defaults to "denied" until the
-        // ConsentBanner updates it after the visitor chooses.
-        children:
-          "window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});gtag('js', new Date());gtag('config', 'G-3DLEXWLWEW');",
       },
     ],
   }),
@@ -129,7 +116,6 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           {children}
           <NoticeSheet />
-          <ConsentBanner />
         </AuthProvider>
         <Scripts />
       </body>
