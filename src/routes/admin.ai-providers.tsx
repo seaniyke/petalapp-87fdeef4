@@ -345,41 +345,33 @@ function AiProvidersPage() {
           onSave={onBudgetSave}
         />
 
-        {/* OpenRouter status banner */}
+        {/* Gateway status banner */}
         <Card
           className={`mb-6 border ${
-            openrouterReady ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
+            gatewayReady ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-500/30 bg-amber-500/5"
           }`}
         >
           <CardContent className="flex items-start gap-3 p-4">
-            {openrouterReady ? (
+            {gatewayReady ? (
               <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-500" />
             ) : (
               <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
             )}
             <div className="flex-1 text-sm">
               <p className="font-medium">
-                {openrouterReady ? "OpenRouter key is configured." : "OpenRouter key not configured."}
+                {gatewayReady ? "AI Gateway key is configured." : "AI Gateway key not configured."}
               </p>
               <p className="mt-0.5 text-muted-foreground">
-                {openrouterReady ? (
-                  <>You can switch any feature to OpenRouter below.</>
+                {gatewayReady ? (
+                  <>All AI traffic routes through the Lovable AI Gateway.</>
                 ) : (
                   <>
-                    Add <code className="rounded bg-muted px-1 py-0.5 text-xs">OPENROUTER_API_KEY</code>{" "}
-                    in Cloud → Secrets, then refresh this page.
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">LOVABLE_API_KEY</code>{" "}
+                    is missing — it is auto-provisioned per project; re-provision it, then refresh.
                   </>
                 )}
               </p>
             </div>
-            <a
-              href="https://openrouter.ai/activity"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-background px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              OpenRouter usage <ExternalLink className="h-3 w-3" />
-            </a>
           </CardContent>
         </Card>
 
@@ -394,7 +386,6 @@ function AiProvidersPage() {
               <FeatureRow
                 key={row.feature}
                 row={row}
-                openrouterReady={openrouterReady}
                 saving={savingFeature === row.feature}
                 onProviderChange={(choice) => onProviderChange(row.feature, choice)}
                 onModelSave={(model, fallback) => onModelSave(row.feature, model, fallback)}
@@ -407,26 +398,22 @@ function AiProvidersPage() {
           <CardContent className="p-5 text-sm text-muted-foreground">
             <div className="mb-2 flex items-center gap-2 text-foreground">
               <Sparkles className="h-4 w-4" />
-              <span className="font-medium">Recommended setup (April 2026 benchmarks)</span>
+              <span className="font-medium">Recommended setup</span>
             </div>
             <ul className="ml-5 list-disc space-y-1">
               <li>
-                <strong>Code generation</strong> → OpenRouter <code>anthropic/claude-sonnet-4.5</code>{" "}
-                (best code + tool reliability), fallback <code>openai/gpt-5-mini</code>.
+                <strong>Code generation</strong> → <code>google/gemini-3.8-flash</code>,{" "}
+                fallback <code>openai/gpt-5.6-sol</code>.
               </li>
               <li>
-                <strong>Discuss / Coach</strong> → OpenRouter <code>deepseek/deepseek-v4-flash</code>{" "}
-                (~20× cheaper than Sonnet, indistinguishable for chat).
+                <strong>Discuss / Coach / Triage</strong> → <code>google/gemini-3.1-flash-lite</code> — cheap and fast for chat.
               </li>
               <li>
-                <strong>Triage</strong> → <code>openai/gpt-5-mini</code> — tool-call reliability matters more than cost.
-              </li>
-              <li>
-                <strong>Memory / Preflight</strong> → <code>google/gemini-2.5-flash-lite</code> — pure classification.
+                <strong>Memory / Preflight</strong> → <code>google/gemini-3.1-flash-lite</code> — pure classification.
               </li>
               <li>
                 Always set a fallback model. The helper retries once on 429/402/5xx so
-                OpenRouter outages don't break Kimble.
+                a gateway outage doesn't break Kimble.
               </li>
             </ul>
           </CardContent>
@@ -650,16 +637,9 @@ function CostDashboard({
           </div>
         )}
         <p className="mt-3 text-[11px] text-muted-foreground">
-          Cost is estimated from token counts; OpenRouter exact billing is on{" "}
-          <a
-            href="https://openrouter.ai/activity"
-            target="_blank"
-            rel="noreferrer"
-            className="underline"
-          >
-            their dashboard
-          </a>
-          . Tokens may be 0 for streaming responses where usage isn't reported.
+          Cost is estimated from token counts at catalog rates; the workspace
+          credit ledger is the exact billing record. Tokens may be 0 for
+          streaming responses where usage isn't reported.
         </p>
       </CardContent>
     </Card>
