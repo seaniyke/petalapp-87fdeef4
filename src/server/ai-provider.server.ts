@@ -1,6 +1,6 @@
-import rawBudgetModelCatalog from "@/lib/openrouter-budget-models.json";
+import rawBudgetModelCatalog from "@/lib/gateway-budget-models.json";
 import {
-  OPENROUTER_CHAT_URL,
+  AI_GATEWAY_CHAT_URL,
   UTILITY_MAX_OUTPUT_TOKENS,
   coerceToConfiguredModel,
   defaultFallbackModel,
@@ -9,18 +9,17 @@ import {
   isUtilityFeature,
 } from "@/lib/ai-model-config";
 
-import { codegenProviderRouting, resolveProviderRouting, isEmptyAllowList } from "@/server/engine/provider-policy";
-export { codegenProviderRouting };
+import { resolveProviderRouting, isEmptyAllowList } from "@/server/engine/provider-policy";
 
 /**
- * AI provider abstraction — OPENROUTER ONLY.
+ * AI provider abstraction — LOVABLE AI GATEWAY ONLY.
  *
- *     Kimble  →  OpenRouter  →  DeepSeek
+ *     Kimble  →  Lovable AI Gateway  →  configured model
  *
  * Every server-side AI call in Kimble goes through `aiChatCompletions(...)`.
  * The helper resolves the model through the central config
  * (`src/lib/ai-model-config.ts`), forwards the request as an OpenAI-compatible
- * chat completions call to OpenRouter, and:
+ * chat completions call to the Lovable AI Gateway, and:
  *
  *   1. Records a telemetry row in `ai_call_log` (best-effort, never blocks) with
  *      model, provider, token counts, cost, user/project/turn ids.
@@ -32,12 +31,12 @@ export { codegenProviderRouting };
  * without any change.
  *
  * There are no direct model-provider integrations (OpenAI, Anthropic, Google,
- * DeepSeek first-party) and no Lovable AI Gateway chat path. Model ids supplied
- * by callers or by legacy DB overrides are coerced to the configured DeepSeek
- * model; `openrouter/auto` is never used.
+ * DeepSeek first-party) and no OpenRouter path. Model ids supplied
+ * by callers or by legacy DB overrides are coerced to the configured gateway
+ * model; the model is always explicit.
  *
  * To change the model everywhere: edit src/lib/ai-model-config.ts (or set
- * OPENROUTER_MODEL / OPENROUTER_VISION_MODEL / OPENROUTER_FALLBACK_MODEL).
+ * AI_GATEWAY_MODEL / AI_GATEWAY_VISION_MODEL / AI_GATEWAY_FALLBACK_MODEL).
  */
 
 export type AiFeature =
@@ -51,10 +50,10 @@ export type AiFeature =
   | "preflight"
   | "image";
 
-/** Retained as a one-member union: OpenRouter is the only gateway. */
-type Provider = "openrouter";
+/** Retained as a one-member union: the Lovable AI Gateway is the only gateway. */
+type Provider = "lovable";
 
-const OPENROUTER_URL = OPENROUTER_CHAT_URL;
+const GATEWAY_URL = AI_GATEWAY_CHAT_URL;
 
 /** True when the request carries image parts (vision models required). */
 function requestHasImageParts(body: Record<string, unknown>): boolean {
