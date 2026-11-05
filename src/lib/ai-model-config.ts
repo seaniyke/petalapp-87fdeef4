@@ -170,6 +170,6 @@ export const INFERENCE_EVAL_HEADER = "x-kimble-inference-eval";
 export const INFERENCE_EVAL_USER_IDS = ["42b3c128-bd12-4c94-8d71-e4ae8f5a2a53"] as const;
 export const INFERENCE_EVAL_MODELS = [
   "google/gemini-3.8-flash",
-  "google/gemini-3.7-flash",
+  "google/gemini-4-argon",
   "openai/gpt-5.6-sol",
 ] as const;
