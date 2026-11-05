@@ -600,7 +600,7 @@ async function recordTelemetryInner(
         key_owner: "platform",
         // Unknown until real usage arrives — never a fake 0. A request the
         // provider rejected outright (HTTP 4xx/5xx before any output) is not
-        // billed by OpenRouter: record it as a measured $0, not unknown.
+        // billed by the gateway: record it as a measured $0, not unknown.
         ...(args.status >= 400 && args.status < 599
           ? { cost_basis: "actual", cost_source: "provider_error_unbilled", cost_usd_micro: 0 }
           : { cost_basis: "unknown", cost_source: null }),
@@ -1352,11 +1352,11 @@ async function dispatch(
   signal: AbortSignal | undefined,
   tierOverride?: AiCallTimeoutTier,
 ): Promise<Response> {
-  const url = OPENROUTER_URL;
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const url = GATEWAY_URL;
+  const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) {
     throw new Error(
-      "OPENROUTER_API_KEY is not configured. Kimble routes all AI traffic through OpenRouter.",
+      "LOVABLE_API_KEY is not configured. Kimble routes all AI traffic through the Lovable AI Gateway.",
     );
   }
   // Final safety net: coerce whatever slug arrives here to the configured model.
@@ -1364,42 +1364,23 @@ async function dispatch(
   const evalRun = outBody.__inferenceEval === true;
   if ("__inferenceEval" in outBody) { outBody = { ...outBody }; delete outBody.__inferenceEval; }
   const wireModel = evalRun ? (outBody.model as string) : coerceToConfiguredModel(
-    remapModelForOpenRouter(outBody.model as string | undefined) ?? defaultTextModel(),
+    (outBody.model as string | undefined) ?? defaultTextModel(),
     { vision: requestHasImageParts(outBody) },
   );
   if (wireModel !== outBody.model) {
     outBody = { ...outBody, model: wireModel };
   }
-  // Ask OpenRouter for token usage on streamed calls too, so `ai_call_log`
+  // Ask the gateway for token usage on streamed calls too, so `ai_call_log`
   // records prompt/completion/total tokens for every request.
   if (outBody.stream === true && !outBody.stream_options) {
     outBody = { ...outBody, stream_options: { include_usage: true } };
-  }
-  // OpenRouter: always return usage (incl. cached tokens + real cost).
-  if (!outBody.usage) outBody = { ...outBody, usage: { include: true } };
-  // Provider routing is decided solely by engine/provider-policy (set in
-  // aiChatCompletions). dispatch never adds or changes a provider block.
-  // Sticky routing per project so repeated calls land on the same upstream
-  // and can reuse its prompt cache. Stable per project — never per request.
-  if (!outBody.session_id) {
-    try {
-      const { currentTurnContext } = await import("@/server/turn-context.server");
-      const pid = currentTurnContext().projectId;
-      if (pid) outBody = { ...outBody, session_id: `kimble-${pid}` };
-    } catch {
-      /* no ambient turn */
-    }
   }
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
     "Content-Type": "application/json",
+    "X-Lovable-AIG-SDK": "fetch",
   };
-
-  {
-    headers["HTTP-Referer"] = process.env.OPENROUTER_REFERER || "https://buildwithpetal.com";
-    headers["X-Title"] = "Kimble";
-  }
 
   const isStreaming = outBody.stream === true;
   const tier: AiCallTimeoutTier =
