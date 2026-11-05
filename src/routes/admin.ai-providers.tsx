@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Lock,
-  ExternalLink,
   Save,
   RefreshCw,
   Zap,
@@ -1019,7 +1018,6 @@ function BudgetModelsCard({
           <div className="space-y-3">
             {features.map((feature) => {
               const row = rows.find((r) => r.feature === feature)!;
-              const featureRow = featureRows.find((r) => r.feature === feature);
               const isEditing = editing === feature;
               const isSaving = saving === feature;
               const enabled = draftEnabled[feature] ?? row.enabled;
