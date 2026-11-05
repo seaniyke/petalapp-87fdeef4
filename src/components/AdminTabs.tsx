@@ -4,13 +4,12 @@
  */
 import { Link, useRouterState } from "@tanstack/react-router";
 
-type Tab = { to: "/admin" | "/admin/users" | "/admin/projects" | "/admin/waitlist" | "/admin/ledgers" | "/admin/billing" | "/admin/cloud-cost" | "/admin/economics" | "/admin/ai-providers" | "/admin/ai-spend" | "/admin/pipeline" | "/admin/failures" | "/admin/digest" | "/admin/benchmark" | "/admin/qa" | "/admin/test-lab" | "/admin/mobile-signing" | "/admin/builder" | "/admin/pictures" | "/admin/features" | "/admin/marketplace"; label: string; exact?: boolean };
+type Tab = { to: "/admin" | "/admin/users" | "/admin/projects" | "/admin/ledgers" | "/admin/billing" | "/admin/cloud-cost" | "/admin/economics" | "/admin/ai-providers" | "/admin/ai-spend" | "/admin/pipeline" | "/admin/failures" | "/admin/digest" | "/admin/benchmark" | "/admin/qa" | "/admin/test-lab" | "/admin/builder" | "/admin/pictures" | "/admin/features"; label: string; exact?: boolean };
 
 const TABS: Tab[] = [
   { to: "/admin", label: "Overview", exact: true },
   { to: "/admin/users", label: "Users" },
   { to: "/admin/projects", label: "Projects" },
-  { to: "/admin/waitlist", label: "Waitlist" },
   { to: "/admin/ledgers", label: "Ledgers" },
   { to: "/admin/billing", label: "Billing" },
   { to: "/admin/cloud-cost", label: "Cloud Cost" },
@@ -23,11 +22,9 @@ const TABS: Tab[] = [
   { to: "/admin/benchmark", label: "Benchmark" },
   { to: "/admin/qa", label: "Catalog QA" },
   { to: "/admin/test-lab", label: "Test Lab" },
-  { to: "/admin/mobile-signing", label: "Mobile Signing" },
   { to: "/admin/builder", label: "Builder" },
   { to: "/admin/pictures", label: "Pictures" },
   { to: "/admin/features", label: "Features" },
-  { to: "/admin/marketplace", label: "Marketplace" },
 ];
 
 

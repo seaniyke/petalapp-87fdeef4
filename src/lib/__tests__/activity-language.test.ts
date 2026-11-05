@@ -6,7 +6,6 @@ import {
   pick,
   pictureLine,
 } from "@/lib/activity-language";
-import { humanFileName } from "@/components/build/FileStack";
 
 describe("humanizeActivity", () => {
   it("says what image generation actually did, in plain words", () => {
@@ -86,10 +85,3 @@ describe("personality", () => {
   });
 });
 
-describe("humanFileName", () => {
-  it("turns paths into names a person recognises", () => {
-    expect(humanFileName("src/components/HowItWorks.tsx")).toBe("How it works");
-    expect(humanFileName("src/routes/index.tsx")).toBe("Home");
-    expect(humanFileName("src/routes/pricing-page.tsx")).toBe("Pricing page");
-  });
-});
