@@ -21,6 +21,7 @@ import {
   loadProjectFiles,
   preflight,
   serviceAccessToken,
+  tailTurnEvents,
   verifyServiceKey,
 } from "@/server/service-api.server";
 
@@ -78,12 +79,13 @@ export const Route = createFileRoute("/api/public/v1/generate")({
           });
         }
 
-        // Tap the stream: forward every byte, remember turn id + result, fire webhook on `done`.
+        // Forward the engine stream; if the build was handed to the build
+        // server (stream ends without `done`), keep following its durable
+        // events. Fire the webhook once on the terminal `done`.
         let turnId: string | null = null;
         let result: Record<string, unknown> | null = null;
+        let lastSeq = 0;
         let fired = false;
-        let buf = "";
-        const decoder = new TextDecoder();
         const fire = async (status: string) => {
           if (fired || !webhookUrl) return;
           fired = true;
@@ -98,35 +100,68 @@ export const Route = createFileRoute("/api/public/v1/generate")({
             summary: result?.summary ?? null,
           });
         };
-        const tap = new TransformStream<Uint8Array, Uint8Array>({
-          async transform(chunk, controller) {
-            controller.enqueue(chunk);
-            buf += decoder.decode(chunk, { stream: true });
-            const parts = buf.split("\n\n");
-            buf = parts.pop() ?? "";
-            for (const block of parts) {
-              const line = block.split("\n").find((l) => l.startsWith("data:"));
-              if (!line) continue;
-              try {
-                const evt = JSON.parse(line.slice(5).trim()) as Record<string, unknown>;
-                if (evt.type === "turn_id" && typeof evt.turnId === "string") turnId = evt.turnId;
-                if (evt.type === "result") {
-                  const { files: _f, ...rest } = evt;
-                  result = rest;
+        const observe = async (evt: Record<string, unknown>) => {
+          if (evt.type === "turn_id" && typeof evt.turnId === "string") turnId = evt.turnId;
+          if (typeof evt.seq === "number") lastSeq = Math.max(lastSeq, evt.seq);
+          if (evt.type === "result") {
+            const { files: _f, ...rest } = evt;
+            result = rest;
+          }
+          if (evt.type === "done") {
+            await fire(String(evt.status ?? "unknown"));
+            return true;
+          }
+          return false;
+        };
+        const encoder = new TextEncoder();
+        const source = res.body;
+        const stream = new ReadableStream<Uint8Array>({
+          async start(controller) {
+            const decoder = new TextDecoder();
+            const reader = source.getReader();
+            let buf = "";
+            let done = false;
+            try {
+              for (;;) {
+                const { value, done: end } = await reader.read();
+                if (end) break;
+                controller.enqueue(value);
+                buf += decoder.decode(value, { stream: true });
+                const parts = buf.split("\n\n");
+                buf = parts.pop() ?? "";
+                for (const block of parts) {
+                  const line = block.split("\n").find((l) => l.startsWith("data:"));
+                  if (!line) continue;
+                  try {
+                    if (await observe(JSON.parse(line.slice(5).trim()))) done = true;
+                  } catch {
+                    /* keepalive */
+                  }
                 }
-                if (evt.type === "done") await fire(String(evt.status ?? "unknown"));
-              } catch {
-                /* non-JSON keepalive */
               }
+              if (!done && turnId) {
+                for await (const e of tailTurnEvents(turnId, lastSeq)) {
+                  const evt = { type: e.kind, ...e.payload, seq: e.seq };
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`));
+                  if (await observe(evt)) {
+                    done = true;
+                    break;
+                  }
+                }
+              }
+              if (!done) await fire("disconnected");
+            } catch (e) {
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: "error", message: (e as Error).message })}\n\n`),
+              );
+            } finally {
+              controller.close();
             }
-          },
-          async flush() {
-            await fire(result ? "succeeded" : "disconnected");
           },
         });
         const headers = new Headers(res.headers);
         for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
-        return new Response(res.body.pipeThrough(tap), { status: res.status, headers });
+        return new Response(stream, { status: res.status, headers });
       },
     },
   },

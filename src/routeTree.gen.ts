@@ -109,6 +109,7 @@ import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lova
 import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
 import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/public/v1/projects/$id.files'
 import { Route as ApiPublicV1TurnsIdCancelRouteImport } from './routes/api/public/v1/turns/$id.cancel'
+import { Route as ApiPublicV1TurnsIdEventsRouteImport } from './routes/api/public/v1/turns/$id.events'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -636,6 +637,12 @@ const ApiPublicV1TurnsIdCancelRoute =
     path: '/cancel',
     getParentRoute: () => ApiPublicV1TurnsIdRoute,
   } as any)
+const ApiPublicV1TurnsIdEventsRoute =
+  ApiPublicV1TurnsIdEventsRouteImport.update({
+    id: '/events',
+    path: '/events',
+    getParentRoute: () => ApiPublicV1TurnsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -738,6 +745,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
+  '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -840,6 +848,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
+  '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -943,6 +952,7 @@ export interface FileRoutesById {
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
+  '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -1047,6 +1057,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/turns/$id/cancel'
+    | '/api/public/v1/turns/$id/events'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -1149,6 +1160,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/turns/$id/cancel'
+    | '/api/public/v1/turns/$id/events'
   id:
     | '__root__'
     | '/'
@@ -1251,6 +1263,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/turns/$id/cancel'
+    | '/api/public/v1/turns/$id/events'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -2054,6 +2067,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1TurnsIdCancelRouteImport
       parentRoute: typeof ApiPublicV1TurnsIdRoute
     }
+    '/api/public/v1/turns/$id/events': {
+      id: '/api/public/v1/turns/$id/events'
+      path: '/events'
+      fullPath: '/api/public/v1/turns/$id/events'
+      preLoaderRoute: typeof ApiPublicV1TurnsIdEventsRouteImport
+      parentRoute: typeof ApiPublicV1TurnsIdRoute
+    }
   }
 }
 
@@ -2093,10 +2113,12 @@ const ApiPublicV1ProjectsRouteWithChildren =
 
 interface ApiPublicV1TurnsIdRouteChildren {
   ApiPublicV1TurnsIdCancelRoute: typeof ApiPublicV1TurnsIdCancelRoute
+  ApiPublicV1TurnsIdEventsRoute: typeof ApiPublicV1TurnsIdEventsRoute
 }
 
 const ApiPublicV1TurnsIdRouteChildren: ApiPublicV1TurnsIdRouteChildren = {
   ApiPublicV1TurnsIdCancelRoute: ApiPublicV1TurnsIdCancelRoute,
+  ApiPublicV1TurnsIdEventsRoute: ApiPublicV1TurnsIdEventsRoute,
 }
 
 const ApiPublicV1TurnsIdRouteWithChildren =
