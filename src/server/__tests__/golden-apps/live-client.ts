@@ -11,7 +11,7 @@
  * prompt. No retries, no rescue, no telemetry. The point of Track B is
  * to expose drift, not to hide it.
  */
-const GATEWAY_URL = "https://openrouter.ai/api/v1/chat/completions";
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 export interface LiveCallOptions {
   model: string;
@@ -53,13 +53,13 @@ export interface LiveCallResult {
 }
 
 export async function callLiveModel(opts: LiveCallOptions): Promise<LiveCallResult> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) {
     return {
       ok: false,
       status: 0,
       latencyMs: 0,
-      error: "OPENROUTER_API_KEY is not set in the environment",
+      error: "LOVABLE_API_KEY is not set in the environment",
     };
   }
 
