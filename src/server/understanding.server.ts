@@ -24,7 +24,7 @@ import { MAX_USER_PROMPT_CHARS } from "@/lib/prompt-limits";
 import type { BuildTargetId } from "@/lib/build-targets";
 import type { Confidence, PicUnderstanding } from "./pic/pic-types";
 
-const MODEL = "deepseek/deepseek-v4-flash";
+const MODEL = "google/gemini-3.8-flash";
 
 const PLATFORMS: BuildTargetId[] = ["web", "mobile", "web-mobile", "backend", "extension"];
 

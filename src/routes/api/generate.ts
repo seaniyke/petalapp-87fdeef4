@@ -316,7 +316,7 @@ const MODEL_BEST = "google/gemini-3.8-flash";
 // telemetry exists yet, and the phase_router cheap-direct path still
 // short-circuits to MODEL_FAST for trivial turns.
 const MODEL_REASONING = "openai/gpt-5.4";
-const MODEL_CLAUDE = "anthropic/claude-sonnet-4.5";
+const MODEL_CLAUDE = "anthropic/claude-sonnet-5";
 /** Escalation model used when the primary returned prose / no tool call.
  *  This must be a model that is known-good on the Lovable AI gateway for
  *  streamed tool calls. GPT-5 was returning HTTP 400 in production retry

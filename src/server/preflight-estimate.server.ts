@@ -120,7 +120,7 @@ export async function estimatePromptCost(prompt: string): Promise<PreflightEstim
     const res = await aiChatCompletions({
       feature: "preflight",
       body: {
-        model: "deepseek/deepseek-v4-flash",
+        model: "google/gemini-3.1-flash-lite",
         messages: [
           {
             role: "system",
