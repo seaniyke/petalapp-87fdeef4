@@ -27,7 +27,22 @@ import type { ProjectFile } from "./generate.server";
 const BUCKET = "petal-images";
 
 /** Hard cap — protects against an AI that emits 50 placeholder URLs in one turn. */
-const MAX_IMAGES_PER_GENERATION = 6;
+const MAX_IMAGES_PER_GENERATION = 12;
+
+/** Attempts per picture before it falls back (transient gateway/timeout
+ *  errors were turning a single hiccup into a permanent placeholder). */
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAYS_MS = [1500, 4000];
+
+/** A fallback picture carries its slug so a later pass can make it for real. */
+const PENDING_MARK = "petal-pending:";
+/** Matches a fallback SVG data URL and captures its encoded slug. */
+const PENDING_RE = /data:image\/svg\+xml,[^"'`\s)]*?%3Cdesc%3Epetal-pending%3A([^%]+(?:%[0-9A-F]{2}[^%]*)*?)%3C%2Fdesc%3E[^"'`\s)]*/g;
+
+/** Errors that mean "stop", never "try again". */
+function isFinalImageError(e: unknown): boolean {
+  return /turn_stopped|turn_not_running|not configured|empty/i.test((e as Error)?.message ?? "");
+}
 
 /** Matches `petal-image://<slug-or-prompt>` inside any string content.
  *  The "value" capture stops at whitespace, quotes, parens, or angle brackets
@@ -241,8 +256,29 @@ export async function resolvePetalImagePlaceholders(
   projectId?: string | null,
   /** Existing apps: only placeholders introduced by this turn are eligible. */
   targetPaths?: Iterable<string>,
-): Promise<{ files: ProjectFile[]; resolved: number; failed: number; urls: string[] }> {
+  /** Test seam + failure reporting. */
+  deps: {
+    generate?: (opts: GenerateImageOptions) => Promise<GenerateImageResult>;
+    sleep?: (ms: number) => Promise<void>;
+    onFailure?: (failure: { slug: string; reason: string }) => void;
+  } = {},
+): Promise<{ files: ProjectFile[]; resolved: number; failed: number; urls: string[]; failures: Array<{ slug: string; reason: string }> }> {
   const allowed = targetPaths ? new Set(targetPaths) : null;
+  const generate = deps.generate ?? generatePetalImage;
+  const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const failures: Array<{ slug: string; reason: string }> = [];
+  // 0. Pictures that fell back in an earlier pass become requests again.
+  files = files.map((f) => {
+    if (allowed && !allowed.has(f.path)) return f;
+    if (!f.content.includes("petal-pending%3A")) return f;
+    PENDING_RE.lastIndex = 0;
+    const content = f.content.replace(PENDING_RE, (_m, enc: string) => {
+      let slug = enc;
+      try { slug = decodeURIComponent(enc); } catch { /* keep */ }
+      return `petal-image://${slug}`;
+    });
+    return content === f.content ? f : { ...f, content };
+  });
   // 1. Collect all unique placeholders across the project.
   const slugs = new Set<string>();
   for (const f of files) {
@@ -253,7 +289,7 @@ export async function resolvePetalImagePlaceholders(
       slugs.add(m[1]);
     }
   }
-  if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [] };
+  if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [], failures };
 
   // 2. Cap to avoid runaway generations.
   const ordered = Array.from(slugs).slice(0, MAX_IMAGES_PER_GENERATION);
@@ -266,16 +302,28 @@ export async function resolvePetalImagePlaceholders(
   const queue = [...ordered];
 
   const liveUrls: string[] = [];
+  // Last resort only: a quiet neutral tone (no bright colour, no caption
+  // text) that carries its request so the next pass can make it for real.
   const fallbackUrl = (slug: string) => {
-    const label = slug
-      .replace(/[-_]+/g, " ")
-      .replace(/[^a-z0-9 ]/gi, "")
-      .trim()
-      .slice(0, 48) || "Picture";
-    const hue = Math.abs([...slug].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue} 60% 88%)"/><stop offset="1" stop-color="hsl(${(hue + 55) % 360} 58% 72%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><circle cx="920" cy="170" r="240" fill="white" opacity=".2"/><path d="M0 700 330 390l210 190 170-150 490 370H0Z" fill="white" opacity=".35"/><text x="70" y="720" font-family="Arial,sans-serif" font-size="42" fill="#172033" opacity=".72">${label}</text></svg>`;
+    const safe = slug.replace(/[<>&"]/g, "");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><desc>${PENDING_MARK}${safe}</desc><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(30 6% 22%)"/><stop offset="1" stop-color="hsl(30 5% 12%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/></svg>`;
     return `data:image/svg+xml,${encodeURIComponent(svg)}`;
   };
+  /** Make one picture, retrying transient failures. */
+  const makeWithRetry = async (slug: string): Promise<string> => {
+    let last: unknown;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        return (await generate({ prompt: slugToPrompt(slug) })).url;
+      } catch (e) {
+        last = e;
+        if (isFinalImageError(e)) break;
+        if (attempt < MAX_ATTEMPTS - 1) await sleep(RETRY_DELAYS_MS[attempt] ?? 4000);
+      }
+    }
+    throw last;
+  };
+  const retryLater: string[] = [];
   const announce = (slug: string, url: string) => {
     liveUrls.push(url);
     try {
@@ -317,20 +365,39 @@ export async function resolvePetalImagePlaceholders(
         // Library trouble must never stop a build — generate instead.
       }
       try {
-        const r = await generatePetalImage({ prompt: slugToPrompt(slug) });
-        urlMap.set(slug, r.url);
-        resolved += 1;
-        announce(slug, r.url);
-      } catch (e) {
-        failed += 1;
-        console.warn(`[petal-image] generation failed for "${slug}":`, e);
-        const url = fallbackUrl(slug);
+        const url = await makeWithRetry(slug);
         urlMap.set(slug, url);
+        resolved += 1;
         announce(slug, url);
+      } catch (e) {
+        if (isFinalImageError(e)) {
+          recordFailure(slug, e);
+        } else {
+          // One more try once the others are done (less contention).
+          retryLater.push(slug);
+        }
       }
     }
   }
+  const recordFailure = (slug: string, e: unknown) => {
+    failed += 1;
+    const reason = ((e as Error)?.message ?? String(e)).slice(0, 200);
+    console.warn(`[petal-image] generation failed for "${slug}":`, reason);
+    failures.push({ slug, reason });
+    try { deps.onFailure?.({ slug, reason }); } catch { /* reporting only */ }
+    urlMap.set(slug, fallbackUrl(slug));
+  };
   await Promise.all([worker(), worker()]);
+  for (const slug of retryLater) {
+    try {
+      const url = await makeWithRetry(slug);
+      urlMap.set(slug, url);
+      resolved += 1;
+      announce(slug, url);
+    } catch (e) {
+      recordFailure(slug, e);
+    }
+  }
 
   // 4. Slugs beyond the generation cap still receive reliable local artwork.
   for (const slug of skipped) {
@@ -347,5 +414,6 @@ export async function resolvePetalImagePlaceholders(
     return updated === f.content ? f : { ...f, content: updated };
   });
 
-  return { files: next, resolved, failed, urls: liveUrls };
+  for (const slug of skipped) failures.push({ slug, reason: "over_per_build_limit" });
+  return { files: next, resolved, failed, urls: liveUrls, failures };
 }
