@@ -325,9 +325,9 @@ const MODEL_CLAUDE = "anthropic/claude-sonnet-5";
 const MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
 
 /** One billable call's cost: provider-reported (ACTUAL) or token-estimated. */
-function turnCallCost(u: GatewayUsage): import("@/lib/build-pricing").CallCost {
+function turnCallCost(u: GatewayUsage, model: string = MODEL_STRUCTURED_RETRY): import("@/lib/build-pricing").CallCost {
   if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
-  const micro = estimateCostUsdMicro(MODEL_STRUCTURED_RETRY, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
+  const micro = estimateCostUsdMicro(model, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
   return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
 }
 /** Vision-capable model used whenever the latest turn carries image attachments. */
@@ -4828,13 +4828,16 @@ async function handleGenerateRequestCore(
                 return (row) => supabaseAdmin.from("tool_loop_calls" as never).insert(row as never);
               },
             );
+            // Cognitive tiering: the first build runs on the frontier model;
+            // edits keep the fast model (MODEL_BEST / MODEL_STRUCTURED_RETRY).
+            const firstBuildModel = defaultFirstBuildModel();
             const callModel = makeCallModel(
               (reqBody, signal) =>
                 withProviderRetry(
                   () =>
                     aiChatCompletions({
                       feature: "generate",
-                      body: { ...reqBody, reasoning: { enabled: false }, model: MODEL_STRUCTURED_RETRY },
+                      body: { ...reqBody, reasoning: { enabled: false }, model: firstBuildModel },
                       timeoutTier: "stream_first_build",
                       lockCallerModel: true,
                       codeOutput: true,
@@ -4858,7 +4861,7 @@ async function handleGenerateRequestCore(
                 // tokens and cost (ACTUAL from the provider, else ESTIMATED).
                 void updateLastCallUsage({
                   feature: "generate",
-                  model: MODEL_STRUCTURED_RETRY,
+                  model: firstBuildModel,
                   promptTokens: u.prompt_tokens ?? null,
                   completionTokens: u.completion_tokens ?? null,
                   totalTokens: u.total_tokens ?? null,
@@ -4942,7 +4945,7 @@ async function handleGenerateRequestCore(
               costOf: (r) => {
                 if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
                 if (r.usage) {
-                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens } as GatewayUsage).costUsd;
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens } as GatewayUsage, firstBuildModel).costUsd;
                   if (c != null) return c;
                 }
                 return buildReservation?.classCostUsd ?? 0.03;

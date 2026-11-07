@@ -338,7 +338,7 @@ function gatewayCreditUsd(): number {
 const MODEL_PRICE_PER_M_TOKENS: Array<{ match: RegExp; inUsd: number; outUsd: number }> = [
   { match: /gemini-3\.1-flash-lite/i, inUsd: 1.0, outUsd: 6.0 },
   { match: /gemini-3\.8-flash/i, inUsd: 3.0, outUsd: 15.0 },
-  { match: /gemini-4-argon/i, inUsd: 3.0, outUsd: 15.0 },
+  { match: /gemini-4-argon/i, inUsd: 8.0, outUsd: 40.0 },
   { match: /gemini-.*-pro/i, inUsd: 12.0, outUsd: 72.0 },
   { match: /gemini-.*-flash/i, inUsd: 3.0, outUsd: 15.0 },
   { match: /gpt-5\.6-sol/i, inUsd: 16.0, outUsd: 80.0 },

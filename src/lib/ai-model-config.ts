@@ -34,6 +34,14 @@ export const DEFAULT_TEXT_MODEL = "google/gemini-3.8-flash";
  */
 export const DEFAULT_VISION_MODEL = "google/gemini-3.8-flash";
 
+/**
+ * First-build tier — the frontier Gemini model writes the initial app (whole
+ * schema, every page, relationships) where deeper reasoning pays off once.
+ * Follow-up edits stay on DEFAULT_TEXT_MODEL for speed and cost.
+ * Same chat-completions tool protocol as the flash model (verified live).
+ */
+export const DEFAULT_FIRST_BUILD_MODEL = "google/gemini-4-argon";
+
 /** Single bounded retry target when the primary model errors. */
 export const DEFAULT_FALLBACK_MODEL = "openai/gpt-5.6-sol";
 
@@ -71,6 +79,11 @@ function env(name: string): string | undefined {
 /** Resolved default text model (env override wins). */
 export function defaultTextModel(): string {
   return env("AI_GATEWAY_MODEL") ?? DEFAULT_TEXT_MODEL;
+}
+
+/** Resolved first-build model (env override wins). */
+export function defaultFirstBuildModel(): string {
+  return env("AI_GATEWAY_FIRST_BUILD_MODEL") ?? DEFAULT_FIRST_BUILD_MODEL;
 }
 
 /** Resolved vision model (env override wins). */
@@ -123,6 +136,7 @@ export function isUtilityFeature(feature: string | null | undefined): boolean {
  */
 export const CONFIGURED_MODEL_IDS: ReadonlySet<string> = new Set([
   DEFAULT_TEXT_MODEL,
+  DEFAULT_FIRST_BUILD_MODEL,
   DEFAULT_VISION_MODEL,
   DEFAULT_FALLBACK_MODEL,
   DEFAULT_UTILITY_MODEL,
