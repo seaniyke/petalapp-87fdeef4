@@ -7155,7 +7155,7 @@ async function handleGenerateRequestCore(
         // stands in. The reservation caps the result (DB-enforced).
         const { buildEconomics } = await import("@/server/economics-config.server");
         let priced: import("@/lib/build-pricing").PricedTurn = priceTurnCost(
-          turnUsages.filter((u): u is GatewayUsage => !!u).map(turnCallCost),
+          turnUsages.filter((u): u is GatewayUsage => !!u).map((u) => turnCallCost(u)),
           await buildEconomics(),
           buildReservation?.classCostUsd ?? 0,
         );
