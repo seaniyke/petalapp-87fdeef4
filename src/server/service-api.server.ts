@@ -1,8 +1,8 @@
 /**
  * Machine-to-machine service API helpers.
  *
- * Kimble is driven by another system over HTTP. That caller proves itself
- * with one shared bearer key (`KIMBLE_SERVICE_KEY`) and acts through ONE
+ * Petal is driven by Custard AI over HTTP. That caller proves itself
+ * with one shared bearer key (`CUSTARD_API_KEY`) and acts through ONE
  * dedicated service account. Every build request is then forwarded to the
  * unchanged `/api/generate` pipeline with a real session for that account,
  * so ownership, credits, verification, checkpoints and billing all run
@@ -11,7 +11,12 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-export const SERVICE_ACCOUNT_EMAIL = "service@kimble.cloud";
+export const SERVICE_ACCOUNT_EMAIL = "service@custardai.dev";
+
+/** The shared key Custard AI uses for bearer auth and webhook signing. */
+export function serviceKey(): string {
+  return process.env.CUSTARD_API_KEY ?? "";
+}
 
 export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +47,7 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 
 /** Returns null when the caller holds the service key, else a 401/500. */
 export function verifyServiceKey(request: Request): Response | null {
-  const expected = process.env.KIMBLE_SERVICE_KEY;
+  const expected = serviceKey();
   if (!expected || expected.length < 16) {
     return json({ error: "service_key_not_configured" }, 500);
   }
@@ -63,7 +68,7 @@ let cachedUserId: string | null = null;
 export async function serviceUserId(): Promise<string> {
   if (cachedUserId) return cachedUserId;
   const sb = await admin();
-  const configured = process.env.KIMBLE_SERVICE_USER_ID;
+  const configured = process.env.CUSTARD_SERVICE_USER_ID;
   if (configured) {
     cachedUserId = configured;
     return cachedUserId;
@@ -157,15 +162,15 @@ export function isAllowedWebhookUrl(raw: string): boolean {
   }
 }
 
-/** Signed POST: header `X-Kimble-Signature: sha256=<hex HMAC of body with the service key>`. */
+/** Signed POST: header `X-Petal-Signature: sha256=<hex HMAC of body with CUSTARD_API_KEY>`. */
 export async function deliverWebhook(url: string, payload: unknown): Promise<void> {
   const body = JSON.stringify(payload);
-  const sig = await hmacHex(process.env.KIMBLE_SERVICE_KEY ?? "", body);
+  const sig = await hmacHex(serviceKey(), body);
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Kimble-Signature": `sha256=${sig}` },
+        headers: { "Content-Type": "application/json", "X-Petal-Signature": `sha256=${sig}`, "X-Petal-Event": String((payload as { event?: string })?.event ?? "") },
         body,
         signal: AbortSignal.timeout(10_000),
       });

@@ -7,10 +7,10 @@ const req = (auth?: string) =>
 
 describe("service API key", () => {
   afterEach(() => {
-    delete process.env.KIMBLE_SERVICE_KEY;
+    delete process.env.CUSTARD_API_KEY;
   });
   it("accepts only the exact service key", () => {
-    process.env.KIMBLE_SERVICE_KEY = KEY;
+    process.env.CUSTARD_API_KEY = KEY;
     expect(verifyServiceKey(req(`Bearer ${KEY}`))).toBeNull();
     expect(verifyServiceKey(req(`Bearer ${KEY}x`))?.status).toBe(401);
     expect(verifyServiceKey(req()))?.toBeTruthy();
