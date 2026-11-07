@@ -59,17 +59,11 @@ export const MIN_SCORE = 4;
 
 /** Deterministic, no I/O. Label words count most, then tags. */
 export function scoreProjectPicture(pic: ProjectPicture, words: string[]): number {
-  // Each request word counts once (label beats tag), and one shared word
-  // is never enough — otherwise "dark" alone pinned an unrelated photo.
-  const label = new Set(tokenize(pic.label));
-  const tags = new Set(pic.tags.map((t) => String(t).toLowerCase()));
+  const want = new Set(words);
   let score = 0;
-  let matched = 0;
-  for (const w of new Set(words)) {
-    if (label.has(w)) { score += 4; matched += 1; }
-    else if (tags.has(w)) { score += 3; matched += 1; }
-  }
-  return matched >= MIN_MATCHED_WORDS ? score : Math.min(score, MIN_SCORE - 1);
+  for (const w of tokenize(pic.label)) if (want.has(w)) score += 4;
+  for (const t of pic.tags) if (want.has(String(t).toLowerCase())) score += 3;
+  return score;
 }
 
 /**
