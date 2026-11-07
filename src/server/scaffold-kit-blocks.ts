@@ -344,36 +344,17 @@ export function GradientText({
 `;
 
 const GRADIENT_BLOB = `import * as React from "react";
-import { cn, slotNode } from "@/lib/utils";
 
 /**
- * Decorative blurred gradient blob for hero backgrounds. Position-absolute
- * by default — drop inside a relatively-positioned section with
- * \`overflow-hidden\` on the parent.
- *   <div className="relative overflow-hidden">
- *     <GradientBlob className="-top-32 -left-20" />
- *     ...content
- *   </div>
+ * Retired decoration. Kept only so older apps that import it still build;
+ * it renders nothing. Do not use in new pages.
  */
-export function GradientBlob({
-  className,
-  size = "lg",
-  tone = "primary",
-}: {
+export function GradientBlob(_props: {
   className?: string;
   size?: "sm" | "md" | "lg" | "xl";
   tone?: "primary" | "accent" | "muted";
 }) {
-  const sz =
-    size === "sm" ? "h-48 w-48" : size === "md" ? "h-72 w-72" : size === "lg" ? "h-96 w-96" : "h-[32rem] w-[32rem]";
-  const t =
-    tone === "accent" ? "bg-accent/40" : tone === "muted" ? "bg-muted/60" : "bg-primary/30";
-  return (
-    <div
-      aria-hidden
-      className={cn("pointer-events-none absolute -z-10 rounded-full blur-3xl", sz, t, className)}
-    />
-  );
+  return null;
 }
 `;
 
@@ -578,7 +559,7 @@ export function HeroCentered({
       <Container size="lg">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           {eyebrow && (
-            <span className="mb-5 inline-flex items-center rounded-full border border-border bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+            <span className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {eyebrow}
             </span>
           )}
@@ -660,7 +641,7 @@ export function HeroSplitImage({
         <div className={cn("grid items-center gap-12 lg:grid-cols-2 lg:gap-16", reverse && "lg:[&>*:first-child]:order-2")}>
           <div>
             {eyebrow && (
-              <span className="mb-4 inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+              <span className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 {eyebrow}
               </span>
             )}
@@ -849,14 +830,12 @@ export function HeroCenteredGradient({
 }) {
   return (
     <section className={cn("relative overflow-hidden py-24 md:py-36", className)}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.18),transparent_55%),radial-gradient(circle_at_70%_80%,hsl(var(--primary)/0.12),transparent_60%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.4)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.4)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
       <GradientBlob className="-top-32 left-1/2 -translate-x-1/2" size="xl" />
       <Container size="lg" className="relative">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           {eyebrow && (
-            <span className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-              <Sparkles className="h-3 w-3" /> {eyebrow}
+            <span className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {eyebrow}
             </span>
           )}
           <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground md:text-7xl">
@@ -932,11 +911,10 @@ export function HeroSplitWithDashboardMock({
   ];
   return (
     <section className={cn("relative overflow-hidden py-20 md:py-28", className)}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.12),transparent_50%)]" />
       <Container size="xl" className="relative">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div>
-            {eyebrow && (<Badge variant="secondary" className="mb-4 rounded-full">{eyebrow}</Badge>)}
+            {eyebrow && (<span className="mb-4 block text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</span>)}
             <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-6xl">{title}</h1>
             {description && (<p className="mt-5 max-w-lg text-base text-muted-foreground md:text-lg">{description}</p>)}
             {bullets && bullets.length > 0 && (
@@ -1047,7 +1025,7 @@ export function HeroProductScreenshot({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.15),transparent_60%)]" />
       <Container size="xl" className="relative">
         <div className="mx-auto max-w-3xl text-center">
-          {eyebrow && (<Badge variant="secondary" className="mb-5 rounded-full">{eyebrow}</Badge>)}
+          {eyebrow && (<span className="mb-5 block text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</span>)}
           <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-6xl">{title}</h1>
           {description && (<p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>)}
           {(primaryCta || secondaryCta) && (
@@ -1068,7 +1046,6 @@ export function HeroProductScreenshot({
           )}
         </div>
         <div className="relative mx-auto mt-14 max-w-5xl">
-          <div className="absolute -inset-6 rounded-3xl bg-gradient-to-b from-primary/20 to-transparent blur-2xl" />
           <div className="relative rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10 overflow-hidden">
             <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-2.5">
               <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
