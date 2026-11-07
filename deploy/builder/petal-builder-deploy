@@ -18,6 +18,10 @@
 #   script would recreate (ports, network, volume, limits, restart, env names).
 # - Waits (bounded) for the builder to be idle; defers (exit 75) instead of
 #   interrupting running builds or generations.
+# - Then drains the builder (new jobs get a retryable 503 that Petal re-sends)
+#   and confirms it is still idle, so nothing can start between the last idle
+#   check and the stop. If work slipped in, the drain is lifted and it waits
+#   again. The drain is always lifted on exit unless the swap succeeded.
 # - Verifies /healthz and /agent/healthz (version + core hash) locally and
 #   through the public URL; restores the previous container on any failure.
 # - Never prints environment values, the .env file, or docker inspect env.
@@ -61,6 +65,11 @@ readonly PUBLIC_URL=https://builder-main.custardai.dev
 
 readonly IDLE_TIMEOUT_S=1800
 readonly IDLE_POLL_S=20
+# Drain mode (builder/src/drain.ts): this file inside the container makes the
+# builder refuse NEW jobs with a retryable 503 while accepted work finishes.
+readonly DRAIN_FILE_IN_CONTAINER=/app/.petal-drain
+readonly DRAIN_SETTLE_S=60              # max wait for work that slipped in just before the drain
+readonly DRAIN_POLL_S=2
 readonly HEALTH_TIMEOUT_S=90
 readonly STOP_TIMEOUT_S=30
 readonly KEEP_IMAGES=3
@@ -105,11 +114,11 @@ busy_count() {
     ($a.inFlight // 0) + ($a.queued // 0)'
 }
 
-# Bounded idle gate: two consecutive zero reads. Exits 75 when it gives up.
+# Bounded idle gate: two consecutive zero reads before $1 (epoch deadline).
+# Exits 75 when it gives up.
 wait_for_idle() {
-  local deadline zero_reads=0 n
-  deadline=$(( $(date +%s) + IDLE_TIMEOUT_S ))
-  log "waiting for builder to be idle (max ${IDLE_TIMEOUT_S}s)"
+  local deadline=$1 zero_reads=0 n
+  log "waiting for builder to be idle (until $(date -u -d "@$deadline" +%TZ 2>/dev/null || echo "$deadline"))"
   while :; do
     if n=$(busy_count); then
       if [[ "$n" == "0" ]]; then
@@ -131,12 +140,103 @@ wait_for_idle() {
   done
 }
 
+# ---- Drain mode ----------------------------------------------------------------
+DRAINED=0
+
+healthz_flag() { fetch_json "$LOCAL_URL/healthz" 2>/dev/null | jq -e --arg k "$1" '.[$k] == true' >/dev/null 2>&1; }
+
+start_drain() {
+  docker exec "$CONTAINER" touch "$DRAIN_FILE_IN_CONTAINER" >>"$LOG_FILE" 2>&1 || return 1
+  DRAINED=1
+  local i
+  for i in 1 2 3 4 5; do
+    healthz_flag draining && { log "drain on: builder now refuses new jobs (Petal re-sends them)"; return 0; }
+    sleep 1
+  done
+  return 1
+}
+
+# Lifts the drain on whatever container currently holds the name. Safe to call
+# any time: a fresh or restarted builder clears the file itself on start.
+end_drain() {
+  [[ "$DRAINED" == "1" ]] || return 0
+  if container_exists "$CONTAINER" && [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" == "true" ]]; then
+    docker exec "$CONTAINER" rm -f "$DRAIN_FILE_IN_CONTAINER" >>"$LOG_FILE" 2>&1 || true
+  fi
+  DRAINED=0
+  log "drain lifted: builder accepts new jobs again"
+}
+trap 'end_drain' EXIT
+
+# While drained, nothing new can start, so a zero reading is final. Two zero
+# reads in a row within DRAIN_SETTLE_S, or give up (returns 1).
+wait_drained_idle() {
+  local deadline zero_reads=0 n
+  deadline=$(( $(date +%s) + DRAIN_SETTLE_S ))
+  while (( $(date +%s) < deadline )); do
+    if n=$(busy_count) && [[ "$n" == "0" ]]; then
+      zero_reads=$((zero_reads + 1))
+      [[ $zero_reads -ge 2 ]] && return 0
+    else
+      zero_reads=0
+      [[ -n "${n:-}" ]] && log "draining: ${n} job(s) accepted just before the drain are still running"
+    fi
+    sleep "$DRAIN_POLL_S"
+  done
+  return 1
+}
+
+# Idle gate + drain. Returns only when the builder is idle AND (when supported)
+# refusing new work, so the swap cannot cut off a job. Exits 75 on timeout.
+quiesce() {
+  local deadline
+  deadline=$(( $(date +%s) + IDLE_TIMEOUT_S ))
+  while :; do
+    wait_for_idle "$deadline"
+    if ! healthz_flag drain; then
+      # The builder being replaced predates drain mode (first upgrade only).
+      log "running builder has no drain mode; using the idle gate and Petal's re-send window"
+      local n
+      n=$(busy_count) || die "builder unreachable right before swap; nothing changed" 75
+      [[ "$n" == "0" ]] || { log "DEFERRED: a job started right before swap; nothing changed"; exit 75; }
+      return 0
+    fi
+    start_drain || die "could not switch the builder to drain mode; nothing was changed" 3
+    if wait_drained_idle; then
+      log "builder drained and idle"
+      return 0
+    fi
+    end_drain
+    if (( $(date +%s) >= deadline )); then
+      log "DEFERRED: builder stayed busy for ${IDLE_TIMEOUT_S}s; nothing was changed"
+      exit 75
+    fi
+    log "work is still running after ${DRAIN_SETTLE_S}s of drain; lifted it and waiting for idle again"
+  done
+}
+
 # Waits until base_url answers healthy. Optional expected version/hash/inProcess.
 wait_for_health() {
   local base_url=$1 want_version=${2:-} want_hash=${3:-} want_inproc=${4:-null}
   local deadline h a
   deadline=$(( $(date +%s) + HEALTH_TIMEOUT_S ))
   while (( $(date +%s) < deadline )); do
+    # Fail fast instead of waiting out the timeout: a crashed container, or a
+    # builder answering with the wrong version/hash, will not fix itself.
+    if [[ "$base_url" == "$LOCAL_URL" ]] && container_exists "$CONTAINER" \
+       && [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" != "true" ]] \
+       && [[ "$(docker inspect -f '{{.State.Restarting}}' "$CONTAINER" 2>/dev/null)" != "true" ]]; then
+      log "health check failed at $base_url: container exited"
+      return 1
+    fi
+    if [[ "$base_url" == "$LOCAL_URL" && -n "$want_version$want_hash" ]] \
+       && a=$(fetch_json "$base_url/agent/healthz" 2>/dev/null) \
+       && jq -e '.ok == true' >/dev/null <<<"$a" \
+       && ! jq -e --arg v "$want_version" --arg hs "$want_hash" '
+           ($v == "" or .version == $v) and ($hs == "" or .coreHash == $hs)' >/dev/null <<<"$a"; then
+      log "health check failed at $base_url: version=$(jq -r '.version // "?"' <<<"$a") core=$(jq -r '(.coreHash // "?")[0:16]' <<<"$a") (expected $want_version ${want_hash:0:16})"
+      return 1
+    fi
     if h=$(fetch_json "$base_url/healthz" 2>/dev/null) \
       && a=$(fetch_json "$base_url/agent/healthz" 2>/dev/null) \
       && jq -e '.ok == true' >/dev/null <<<"$h" \
@@ -418,16 +518,14 @@ cmd_deploy() {
     fi
   fi
 
-  # 6) Idle gate, then a last check immediately before the swap.
-  wait_for_idle
-  local n
-  n=$(busy_count) || die "builder unreachable right before swap; nothing changed" 75
-  [[ "$n" == "0" ]] || { log "DEFERRED: a job started right before swap; nothing changed"; exit 75; }
+  # 6) Idle gate + drain: nothing can start between the last check and the stop.
+  quiesce
 
   # 7) Swap + verify (restores previous on failure).
   if ! swap_to_image "${IMAGE_REPO}:${short}" "$sha" "$want_version" "$want_hash" "$prev_inproc"; then
     die "deploy of $short failed; previous builder restored" 1
   fi
+  DRAINED=0   # the new container was never drained
 
   printf '%s %s %s %s\n' "$(date -u +%FT%TZ)" "$sha" "$want_version" "$want_hash" >"$STATE_DIR/last-success"
   prune_own_images "$short"
@@ -441,12 +539,13 @@ cmd_rollback() {
   docker image inspect "${IMAGE_REPO}:previous" >/dev/null 2>&1 || die "no ${IMAGE_REPO}:previous image to roll back to"
   container_exists "$CONTAINER" || die "container $CONTAINER not found"
   check_config_drift
-  wait_for_idle
+  quiesce
   local bad_image
   bad_image=$(docker inspect -f '{{.Image}}' "$CONTAINER")
   if ! swap_to_image "${IMAGE_REPO}:previous" rollback; then
     die "rollback failed; the builder that was running has been restored" 1
   fi
+  DRAINED=0
   docker tag "$bad_image" "${IMAGE_REPO}:rolled-back"
   log "SUCCESS: rolled back to ${IMAGE_REPO}:previous (replaced image kept as ${IMAGE_REPO}:rolled-back)"
 }
