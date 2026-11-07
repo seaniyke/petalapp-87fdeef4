@@ -59,7 +59,7 @@ export interface FirstBuildDesign {
  * Deterministic text — no AI call, no per-page cost.
  */
 export const COMPOSITION_RULES = [
-  "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, metric/stat bar, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
+  "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
   "Alternate surface tone every two or three sections (bg-background then bg-muted) so the page reads as bands, not one flat sheet.",
   "Vary heading scale down the page instead of giving every section the same size.",
@@ -69,6 +69,12 @@ export const COMPOSITION_RULES = [
   "Real photography comes ONLY from the image tool: write src=\"petal-image://<cinematic-specific-prompt>\" (subject, setting, light, lens, mood — e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt — every one is made; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.",
   "Marketing sites lead with imagery, not tools: the hero is a large photograph or full-bleed visual with one headline and one primary action. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
   "Studio, portfolio, architecture, luxury and hospitality sites are editorial: big photographs, generous negative space, few words per section, serif display headings. Keep technical detail off the homepage.",
+  "Restraint over density. A website is not a dashboard: every section has one idea, a short heading, at most two short sentences, and white space around it. Fewer, larger pictures beat many small ones.",
+  "Card anatomy is fixed: picture, title, one meta line (category · year or role), optionally one short sentence. No chips, badges, spec rows, numbers, credits or buttons inside a card — the whole card is the link.",
+  "Never invent technical specifications, measurements, ratings, percentages or industry jargon (lux, Kelvin, CRI, Ra, ROI figures, client/architect credits) unless the user supplied them. Describe the work in plain words a client understands.",
+  "No unrequested tools or widgets on websites: no calculators, tuners, sliders, simulators, configurators, live counters or charts unless the user asked for that tool by name.",
+  "One primary action per screen. Repeat the same action (e.g. 'Start a project') instead of inventing new ones; never more than one button per card or section.",
+  "The header has a solid background (bg-background with a border-b), never translucent or blurred. The phone menu uses the kit Sheet so it opens as a solid full-height panel.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
   "Every link points somewhere real — no href=\"#\" placeholders. One <h1> per page.",
 ].join("\n- ");

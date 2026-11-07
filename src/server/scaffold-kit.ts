@@ -1812,7 +1812,7 @@ export function SheetContent({
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/50" onClick={() => ctx.setOpen(false)} />
       <div
-        className={cn("absolute bg-background p-6 shadow-lg transition-all", sideClass[side], className)}
+        className={cn("absolute p-6 shadow-lg transition-all", sideClass[side], className, "bg-background text-foreground")}
         {...props}
       >
         <button
