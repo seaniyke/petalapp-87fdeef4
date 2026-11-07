@@ -15,7 +15,25 @@ export const SERVICE_ACCOUNT_EMAIL = "service@custardai.dev";
 
 /** The shared key Custard AI uses for bearer auth and webhook signing. */
 export function serviceKey(): string {
-  return process.env.CUSTARD_API_KEY ?? "";
+  return process.env.PETAL_API_KEY || process.env.CUSTARD_API_KEY || "";
+}
+
+/** The live address of the ready build for a turn (or the project's latest ready build). */
+export async function previewUrlFor(projectId: string, turnId: string | null): Promise<string | null> {
+  const sb = await admin();
+  const pick = async (byTurn: boolean) => {
+    let q = sb.from("project_builds").select("dist_path").eq("project_id", projectId).eq("status", "ready");
+    if (byTurn && turnId) q = q.eq("turn_id", turnId);
+    const { data } = await q.order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const url = (data as { dist_path?: string | null } | null)?.dist_path ?? null;
+    return url && /^https:\/\//.test(url) ? url : null;
+  };
+  return (turnId ? await pick(true) : null) ?? (await pick(false));
+}
+
+/** The three aliases Custard AI's canvas reads. */
+export function previewFields(url: string | null) {
+  return { previewUrl: url, preview_url: url, publishedUrl: url };
 }
 
 export const CORS_HEADERS: Record<string, string> = {
