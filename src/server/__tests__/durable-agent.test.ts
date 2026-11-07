@@ -70,8 +70,9 @@ describe("durable agent: ingress", () => {
       throw new Error("ECONNREFUSED");
     }) as unknown as typeof fetch;
     const p = buildAgentJobPayload(new Request("https://app.test/x"), TURN, USER, {});
-    expect(await dispatchAgentJob(p, busy, ENV)).toMatchObject({ ok: false, status: 503 });
-    expect(await dispatchAgentJob(p, down, ENV)).toMatchObject({ ok: false, status: 0 });
+    const noRetry = { delaysMs: [] };
+    expect(await dispatchAgentJob(p, busy, ENV, noRetry)).toMatchObject({ ok: false, status: 503 });
+    expect(await dispatchAgentJob(p, down, ENV, noRetry)).toMatchObject({ ok: false, status: 0 });
   });
 
   it("accepted response is turn_id then end (client reconnects to events)", async () => {

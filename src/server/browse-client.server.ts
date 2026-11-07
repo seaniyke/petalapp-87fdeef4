@@ -12,6 +12,7 @@
  *
  * Signed with the same HMAC convention as `/build` and `/exec`.
  */
+import { sendWithBuilderRetry, SUBCALL_RETRY_DELAYS_MS } from "@/server/builder-retry";
 import { signRequest } from "@/server/builder.server";
 
 export type BrowseAction =
@@ -103,16 +104,22 @@ export async function runBrowseSession(args: {
   args.signal?.addEventListener("abort", onAbort);
 
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-petal-timestamp": timestamp,
-        "x-petal-signature": signature,
-      },
-      body,
-      signal: controller.signal,
-    });
+    // 502/503/504 prove the request never reached a builder (pool full, a
+    // deploy draining it, or the container swap), so a short re-send is safe.
+    const res = await sendWithBuilderRetry(
+      () =>
+        fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-petal-timestamp": timestamp,
+            "x-petal-signature": signature,
+          },
+          body,
+          signal: controller.signal,
+        }),
+      { delaysMs: SUBCALL_RETRY_DELAYS_MS, retryNetworkErrors: false, maxTotalMs: 30_000, signal: controller.signal },
+    );
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Browser session failed (${res.status}): ${text.slice(0, 300)}`);
