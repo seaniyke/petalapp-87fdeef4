@@ -67,3 +67,23 @@ describe("one picture per slot", () => {
     expect(seenAvoid[0]).toContain(used);
   });
 });
+
+describe("every picture a site asks for gets made", () => {
+  it("makes all 16 pictures on a four-page site — no dark stand-ins", async () => {
+    const generate = async (o: { prompt: string }) => ({ url: `https://cdn/${o.prompt.replace(/\s/g, "-")}.png`, cached: false });
+    const slugs = Array.from({ length: 16 }, (_, i) => `petal-image://studio-photo-${i}`);
+    const files = [{ path: "src/data/studio.ts", content: JSON.stringify(slugs) }];
+    const r = await resolvePetalImagePlaceholders(files, undefined, null, undefined, { generate, sleep: noSleep });
+    expect(r.resolved).toBe(16);
+    expect(r.files[0].content).not.toContain("petal-pending");
+    expect(r.files[0].content).not.toContain("petal-image://");
+  });
+
+  it("still stops a runaway request at 40", async () => {
+    const generate = async (o: { prompt: string }) => ({ url: `https://cdn/${o.prompt.replace(/\s/g, "-")}.png`, cached: false });
+    const slugs = Array.from({ length: 45 }, (_, i) => `petal-image://photo-${i}`);
+    const files = [{ path: "src/data/many.ts", content: JSON.stringify(slugs) }];
+    const r = await resolvePetalImagePlaceholders(files, undefined, null, undefined, { generate, sleep: noSleep });
+    expect(r.resolved).toBe(40);
+  });
+});
