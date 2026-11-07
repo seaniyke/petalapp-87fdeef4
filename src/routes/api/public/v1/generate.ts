@@ -15,6 +15,9 @@ import { z } from "zod";
 import {
   CORS_HEADERS,
   deliverWebhook,
+  followBuild,
+  triggerProjectBuild,
+  type PublicBuild,
   isAllowedWebhookUrl,
   json,
   loadOwnedProject,
@@ -86,6 +89,38 @@ export const Route = createFileRoute("/api/public/v1/generate")({
         let result: Record<string, unknown> | null = null;
         let lastSeq = 0;
         let fired = false;
+        let turnStatus = "unknown";
+        const followDeploy = async (emit: (evt: Record<string, unknown>) => void) => {
+          const revision = typeof result?.committedRevision === "number" ? result.committedRevision : null;
+          const started = await triggerProjectBuild(new URL(request.url).origin, projectId, { turnId, revision });
+          if (!started.ok || !started.buildId) {
+            const error = started.ok ? "no_build_started" : started.error;
+            emit({ type: "build", status: "failed", error });
+            if (webhookUrl) {
+              await deliverWebhook(webhookUrl, { event: "build.completed", projectId, turnId, buildId: null, status: "failed", deploymentUrl: null, error });
+            }
+            return;
+          }
+          let last: PublicBuild | null = null;
+          for await (const b of followBuild(projectId, started.buildId)) {
+            last = b;
+            emit({ type: "build", ...b });
+          }
+          const finished = last?.status === "ready" || last?.status === "failed";
+          if (!finished) emit({ type: "build", buildId: started.buildId, status: last?.status ?? "pending", note: "still running; poll GET /api/public/v1/projects/:id/builds" });
+          if (webhookUrl && finished && last) {
+            await deliverWebhook(webhookUrl, {
+              event: "build.completed",
+              projectId,
+              turnId,
+              buildId: last.buildId,
+              revision: last.revision,
+              status: last.status,
+              deploymentUrl: last.deploymentUrl,
+              error: last.error,
+            });
+          }
+        };
         const fire = async (status: string) => {
           if (fired || !webhookUrl) return;
           fired = true;
@@ -108,7 +143,8 @@ export const Route = createFileRoute("/api/public/v1/generate")({
             result = rest;
           }
           if (evt.type === "done") {
-            await fire(String(evt.status ?? "unknown"));
+            turnStatus = String(evt.status ?? "unknown");
+            await fire(turnStatus);
             return true;
           }
           return false;
@@ -150,6 +186,13 @@ export const Route = createFileRoute("/api/public/v1/generate")({
                 }
               }
               if (!done) await fire("disconnected");
+              // A successful turn always continues to compile + test + deploy.
+              // The build server normally starts this itself; the trigger is
+              // idempotent per revision, so this only guarantees it happened
+              // and lets the caller follow the build to its live address.
+              if (done && turnStatus === "succeeded" && result?.persisted !== false) {
+                await followDeploy((evt) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`)));
+              }
             } catch (e) {
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ type: "error", message: (e as Error).message })}\n\n`),
