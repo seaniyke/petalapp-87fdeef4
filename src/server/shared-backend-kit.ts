@@ -140,6 +140,24 @@ export const db = {
   remove(collection: string, id: string): Promise<{ ok: true }> {
     return request("/records/" + encodeURIComponent(collection) + "/" + id, { method: "DELETE" });
   },
+  /**
+   * Starter records: writes \\`rows\\` into an EMPTY collection once, so a new
+   * app opens with real, saved data instead of blank tables. Never touches a
+   * collection that already holds records. Returns the current records.
+   */
+  async seedOnce<T = Record<string, unknown>>(collection: string, rows: T[]): Promise<PetalRecord<T>[]> {
+    const current = await db.list<T>(collection, { limit: 1 });
+    if (current.records.length > 0 || rows.length === 0) return (await db.list<T>(collection)).records;
+    const flag = "petal_seeded_" + PROJECT_ID + "_" + collection;
+    if (typeof window !== "undefined") {
+      if (window.localStorage.getItem(flag)) return current.records;
+      window.localStorage.setItem(flag, "1");
+    }
+    for (const row of rows.slice(0, 20)) {
+      try { await db.create<T>(collection, row); } catch { break; }
+    }
+    return (await db.list<T>(collection)).records;
+  },
 };
 
 export const auth = {
