@@ -26,6 +26,7 @@ import {
 } from "@/server/build-cleanup-scope.server";
 import { injectPreviewGuard } from "@/server/preview-guard.server";
 import { pinLooseDeps } from "@/server/pin-loose-deps";
+import { sendWithBuilderRetry, RETRYABLE_BUILDER_STATUSES } from "@/server/builder-retry";
 
 const MAX_AGE_SECONDS = 5 * 60;
 
@@ -156,18 +157,17 @@ export async function postBuildToRailway(args: {
     files: filesToShip,
     ...(args.verify ? { verify: args.verify } : {}),
   });
-  const { timestamp, signature } = signRequest(sharedSecret, body);
-
   // Strip trailing slash so we don't double-up on `/build`.
   const url = builderUrl.replace(/\/+$/, "") + "/build";
 
-  // Bound the request. Railway responds 202 in well under a second once warm,
-  // but cold containers can take 10-20s to accept the connection. Allow one
-  // retry on transient network errors / aborts so a single cold start or
-  // dropped TCP connection doesn't surface as "Could not reach build service".
-  const attempt = async (timeoutMs: number): Promise<Response> => {
+  // Bound each attempt. A warm builder answers 202 in well under a second;
+  // a cold one can take 10-20s to accept the connection.
+  const attempt = async (n: number): Promise<Response> => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), n === 0 ? 45_000 : 60_000);
+    // Fresh signature per attempt so a late retry never falls outside the
+    // receiver's five-minute window.
+    const { timestamp, signature } = signRequest(sharedSecret, body);
     try {
       return await fetch(url, {
         method: "POST",
@@ -184,65 +184,38 @@ export async function postBuildToRailway(args: {
     }
   };
 
-  const isTransient = (err: unknown) => {
+  // Queue pressure (503 busy), a deploy draining the builder (503 +
+  // Retry-After), the few-second container swap (502/504 or a refused
+  // connection) and upstream blips are NOT failures — the build just hasn't
+  // found a builder yet. Re-sending is safe: the builder acknowledges a build
+  // id it already holds instead of running it twice.
+  let res: Response;
+  try {
+    res = await sendWithBuilderRetry(attempt, {
+      delaysMs: BUILD_DISPATCH_RETRY_DELAYS_MS,
+      retryNetworkErrors: true,
+      maxTotalMs: BUILD_DISPATCH_MAX_TOTAL_MS,
+      onRetry: ({ attempt: n, waitMs, reason }) =>
+        console.warn(`[builder] ${reason} — retrying in ${waitMs}ms (attempt ${n + 1})`),
+    });
+  } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    const name = err instanceof Error ? err.name : "";
-    return (
-      name === "AbortError" ||
-      /aborted|fetch failed|network|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up|terminated/i.test(msg)
-    );
-  };
-
-  // Queue pressure (503 "Builder is busy") and upstream blips (502/504/429)
-  // are NOT failures — the job simply hasn't found a slot yet. Retrying with
-  // backoff turns what used to be a dead-end "Could not reach build service"
-  // card into an invisible wait. Total worst-case wait ≈ 2s+5s+10s+20s.
-  const RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000];
-  const isRetryableStatus = (status: number) =>
-    status === 429 || status === 502 || status === 503 || status === 504;
-
-  let res: Response | null = null;
-  let networkRetried = false;
-
-  for (let i = 0; ; i++) {
-    try {
-      res = await attempt(i === 0 ? 45_000 : 60_000);
-    } catch (err) {
-      if (!isTransient(err) || networkRetried) {
-        const msg = err instanceof Error ? err.message : String(err);
-        throw new Error(
-          networkRetried ? `Builder unreachable after retry: ${msg}` : msg,
-        );
-      }
-      networkRetried = true;
-      console.warn(
-        "[builder] attempt failed, retrying:",
-        err instanceof Error ? err.message : err,
-      );
-      await new Promise((r) => setTimeout(r, 1500));
-      continue;
-    }
-
-    if (res.ok) return;
-
-    if (isRetryableStatus(res.status) && i < RETRY_DELAYS_MS.length) {
-      // Drain the body so the connection can be reused.
-      await res.text().catch(() => "");
-      const wait = RETRY_DELAYS_MS[i];
-      console.warn(
-        `[builder] busy (${res.status}) — retrying in ${wait}ms (attempt ${i + 2}/${RETRY_DELAYS_MS.length + 1})`,
-      );
-      await new Promise((r) => setTimeout(r, wait));
-      continue;
-    }
-
-    const text = await res.text().catch(() => "");
-    if (isRetryableStatus(res.status)) {
-      throw new Error(
-        "The build queue is full right now. Your files are saved — press Retry in a moment and Kimble will pick up where it left off.",
-      );
-    }
-    throw new Error(`Builder rejected request (${res.status}): ${text.slice(0, 300)}`);
+    throw new Error(`Builder unreachable after retry: ${msg}`);
   }
+  if (res.ok) return;
+  const text = await res.text().catch(() => "");
+  if (RETRYABLE_BUILDER_STATUSES.has(res.status)) {
+    throw new Error(
+      "The build queue is full right now. Your files are saved — press Retry in a moment and Kimble will pick up where it left off.",
+    );
+  }
+  throw new Error(`Builder rejected request (${res.status}): ${text.slice(0, 300)}`);
 }
+
+/**
+ * Wait schedule for handing a build to the builder: about 2 minutes in total,
+ * which covers a deploy's drain + container swap with room to spare.
+ */
+export const BUILD_DISPATCH_RETRY_DELAYS_MS = [2_000, 5_000, 10_000, 20_000, 30_000, 45_000] as const;
+export const BUILD_DISPATCH_MAX_TOTAL_MS = 150_000;
 
