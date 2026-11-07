@@ -4971,6 +4971,7 @@ async function handleGenerateRequestCore(
                     playbook: pkg.designMd,
                   };
                 })(),
+                sharedBackend ? { shared: true } : null,
               ),
 
               files: seedFiles,
