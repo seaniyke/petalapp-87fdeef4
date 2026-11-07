@@ -109,6 +109,8 @@ export async function judgeDefects(args: {
   intent?: string | null;
   projectId?: string | null;
   userId?: string | null;
+  /** Caller's deadline (e.g. the build callback's pre-ready budget). */
+  signal?: AbortSignal;
 }): Promise<JudgedDefects> {
   const prior = partitionVerificationDefects(args.defects);
   const all = [...prior.blocking, ...prior.visual, ...prior.advisory];
@@ -125,9 +127,13 @@ export async function judgeDefects(args: {
     return { ...prior, noise: [], judged: false, tier: "prior" as const, reasons: {} };
   }
   const model = escalate ? ESCALATED_MODEL : CHEAP_MODEL;
+  // Out of time already: the deterministic prior is the verdict.
+  if (args.signal?.aborted) return fallback(args.defects);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const onOuterAbort = () => controller.abort();
+  args.signal?.addEventListener("abort", onOuterAbort, { once: true });
   try {
     const listing = all.map((d, i) => `${i}. ${d}`).join("\n");
     const res = await aiChatCompletions({
@@ -199,5 +205,6 @@ export async function judgeDefects(args: {
     return fallback(args.defects);
   } finally {
     clearTimeout(timer);
+    args.signal?.removeEventListener("abort", onOuterAbort);
   }
 }
