@@ -328,7 +328,7 @@ const MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
 /** One billable call's cost: provider-reported (ACTUAL) or token-estimated. */
 function turnCallCost(u: GatewayUsage, model: string = MODEL_STRUCTURED_RETRY): import("@/lib/build-pricing").CallCost {
   if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
-  const micro = estimateCostUsdMicro(model, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
+  const micro = estimateCostUsdMicro(u.model ?? model, u.prompt_tokens ?? 0, u.completion_tokens ?? 0, u.prompt_tokens_details?.cached_tokens ?? null);
   return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
 }
 /** Vision-capable model used whenever the latest turn carries image attachments. */
@@ -4857,7 +4857,7 @@ async function handleGenerateRequestCore(
                 ),
               (u) => {
                 if (!u) return;
-                pageWriteUsages.push(u);
+                pageWriteUsages.push({ ...u, model: firstBuildModel });
                 // Cost capture: every loop call's ai_call_log row gets its
                 // tokens and cost (ACTUAL from the provider, else ESTIMATED).
                 void updateLastCallUsage({
@@ -7145,7 +7145,7 @@ async function handleGenerateRequestCore(
         // continuation, self-check) stay on Kimble's tab and are NOT
         // appended here — same convention as `body.isAutoFix`.
         const turnUsages: Array<GatewayUsage | null> = [
-          collected.usage ?? null,
+          collected.usage ? { ...collected.usage, model: (collected.usage as GatewayUsage).model ?? model } : null,
           ...pageWriteUsages,
           ...agentLoopUsages,
         ];
