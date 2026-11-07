@@ -66,11 +66,14 @@ export const DEFAULT_CLASS_EFFORT: Record<ExecutionClass, number> = {
 export type Curve = { a: number; p: number; floor: number; step: number };
 
 /**
- * credits = a × effort^p. Calibrated from two anchors: a one-line edit
- * (effort ≈ 0.9) ≈ 0.35 credits and a complete 4-page website (effort ≈ 18)
- * ≈ 5 credits → p = ln(14.3)/ln(19.7) ≈ 0.9, a ≈ 0.38.
+ * credits = a × effort^p. Calibrated (7 Nov 2026) from 19 measured builds
+ * and edits: each one's real token use priced at gateway rates (first
+ * builds on the frontier model, edits on the fast model). A log-log fit of
+ * "credits needed for 55% margin" against effort gave p ≈ 1.0, a ≈ 0.97;
+ * a = 1.15 keeps every class at ≥ ~45% margin at $0.15/credit and ~55% at
+ * the lower average revenue per credit after pack discounts.
  */
-export const DEFAULT_CURVE: Curve = { a: 0.38, p: 0.9, floor: 0.3, step: 0.01 };
+export const DEFAULT_CURVE: Curve = { a: 1.15, p: 1, floor: 0.3, step: 0.01 };
 
 export type EffortSignals = {
   cls: ExecutionClass;

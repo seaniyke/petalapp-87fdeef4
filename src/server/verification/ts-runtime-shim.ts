@@ -8,7 +8,17 @@
  * not exist, so the import threw "__filename is not defined" and killed every
  * generation turn. The checker never touches the disk (it uses an in-memory
  * host), so placeholder paths are enough. Real CommonJS scopes keep their own.
+ *
+ * In the production Worker bundle TypeScript is its own chunk, which is
+ * evaluated BEFORE this module's body runs, so the import-order trick alone
+ * is too late there. `installTsRuntimeGlobals()` is therefore also called by
+ * the server request middleware in src/start.ts, which runs before any
+ * handler lazily loads the checker.
  */
+export function installTsRuntimeGlobals(): true {
+  return install();
+}
+
 function install(): true {
   const g = globalThis as { __filename?: string; __dirname?: string };
   if (typeof g.__filename === "undefined") g.__filename = "/node_modules/typescript/lib/typescript.js";
