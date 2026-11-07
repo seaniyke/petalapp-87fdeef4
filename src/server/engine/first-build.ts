@@ -107,11 +107,19 @@ function designSection(d: FirstBuildDesign): string {
   );
 }
 
+/** First-build rule: data-backed apps open with real saved records, never blank tables. */
+export const STARTER_DATA_RULE =
+  "Each list/table page loads its collection with `db.seedOnce(collection, rows)` from `@/integrations/backend/client` " +
+  "instead of `db.list` on first load, passing 5-8 realistic, domain-specific rows (real-sounding names, dates, amounts, statuses). " +
+  "seedOnce writes them to the database only when the collection is empty, so the app opens alive and the data is real and editable. " +
+  "Never hardcode sample arrays in pages.";
+
 export function firstBuildBrief(
   request: string,
   planned: Array<{ route: string; file: string }>,
   existing: string[],
   design?: FirstBuildDesign | null,
+  data?: { shared: boolean } | null,
 ): string {
   const pages = planned.map((p) => `${p.route} → ${p.file}`).join(", ");
   const workspace = existing.length
@@ -127,6 +135,7 @@ export function firstBuildBrief(
     (design ? designSection(design) : "") +
     `\n### Composition\n- ${COMPOSITION_RULES}\n` +
     `\n### Copy\n${COPY_RULES}\n` +
-    `\n### Correctness\n- ${CORRECTNESS_RULES}\n`
+    `\n### Correctness\n- ${CORRECTNESS_RULES}\n` +
+    (data?.shared ? `\n### Starter data\n${STARTER_DATA_RULE}\n` : "")
   );
 }

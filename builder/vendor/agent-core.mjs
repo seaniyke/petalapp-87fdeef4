@@ -42,6 +42,119 @@ var init_define_import_meta_env = __esm({
   }
 });
 
+// src/lib/ai-model-config.ts
+var ai_model_config_exports = {};
+__export(ai_model_config_exports, {
+  AI_GATEWAY_BASE_URL: () => AI_GATEWAY_BASE_URL,
+  AI_GATEWAY_CHAT_URL: () => AI_GATEWAY_CHAT_URL,
+  CONFIGURED_MODEL_IDS: () => CONFIGURED_MODEL_IDS,
+  CONTINUATION_MAX_OUTPUT_TOKENS: () => CONTINUATION_MAX_OUTPUT_TOKENS,
+  DEFAULT_FALLBACK_MODEL: () => DEFAULT_FALLBACK_MODEL,
+  DEFAULT_FIRST_BUILD_MODEL: () => DEFAULT_FIRST_BUILD_MODEL,
+  DEFAULT_IMAGE_MODEL: () => DEFAULT_IMAGE_MODEL,
+  DEFAULT_TEXT_MODEL: () => DEFAULT_TEXT_MODEL,
+  DEFAULT_TRANSCRIBE_MODEL: () => DEFAULT_TRANSCRIBE_MODEL,
+  DEFAULT_UTILITY_MODEL: () => DEFAULT_UTILITY_MODEL,
+  DEFAULT_VISION_MODEL: () => DEFAULT_VISION_MODEL,
+  INFERENCE_EVAL_HEADER: () => INFERENCE_EVAL_HEADER,
+  INFERENCE_EVAL_MODELS: () => INFERENCE_EVAL_MODELS,
+  INFERENCE_EVAL_USER_IDS: () => INFERENCE_EVAL_USER_IDS,
+  UTILITY_FEATURES: () => UTILITY_FEATURES,
+  UTILITY_MAX_OUTPUT_TOKENS: () => UTILITY_MAX_OUTPUT_TOKENS,
+  coerceToConfiguredModel: () => coerceToConfiguredModel,
+  defaultFallbackModel: () => defaultFallbackModel,
+  defaultFirstBuildModel: () => defaultFirstBuildModel,
+  defaultImageModel: () => defaultImageModel,
+  defaultTextModel: () => defaultTextModel,
+  defaultTranscribeModel: () => defaultTranscribeModel,
+  defaultUtilityModel: () => defaultUtilityModel,
+  defaultVisionModel: () => defaultVisionModel,
+  isConfiguredModel: () => isConfiguredModel,
+  isUtilityFeature: () => isUtilityFeature
+});
+function env(name) {
+  if (typeof process === "undefined" || !process.env) return void 0;
+  const v = process.env[name];
+  return v && v.trim() ? v.trim() : void 0;
+}
+function defaultTextModel() {
+  return env("AI_GATEWAY_MODEL") ?? DEFAULT_TEXT_MODEL;
+}
+function defaultFirstBuildModel() {
+  return env("AI_GATEWAY_FIRST_BUILD_MODEL") ?? DEFAULT_FIRST_BUILD_MODEL;
+}
+function defaultVisionModel() {
+  return env("AI_GATEWAY_VISION_MODEL") ?? DEFAULT_VISION_MODEL;
+}
+function defaultFallbackModel() {
+  return env("AI_GATEWAY_FALLBACK_MODEL") ?? DEFAULT_FALLBACK_MODEL;
+}
+function defaultImageModel() {
+  return env("AI_GATEWAY_IMAGE_MODEL") ?? DEFAULT_IMAGE_MODEL;
+}
+function defaultTranscribeModel() {
+  return env("AI_GATEWAY_TRANSCRIBE_MODEL") ?? DEFAULT_TRANSCRIBE_MODEL;
+}
+function defaultUtilityModel() {
+  return env("AI_GATEWAY_UTILITY_MODEL") ?? DEFAULT_UTILITY_MODEL;
+}
+function isUtilityFeature(feature) {
+  return !!feature && UTILITY_FEATURES.has(feature);
+}
+function isConfiguredModel(model) {
+  return !!model && CONFIGURED_MODEL_IDS.has(model);
+}
+function coerceToConfiguredModel(requested, opts) {
+  const vision = opts?.vision === true;
+  if (isConfiguredModel(requested)) {
+    if (vision && requested === defaultUtilityModel()) return defaultVisionModel();
+    return requested;
+  }
+  if (vision) return defaultVisionModel();
+  if (opts?.utility === true) return defaultUtilityModel();
+  return defaultTextModel();
+}
+var AI_GATEWAY_CHAT_URL, AI_GATEWAY_BASE_URL, DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL, DEFAULT_FIRST_BUILD_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_TRANSCRIBE_MODEL, DEFAULT_UTILITY_MODEL, UTILITY_MAX_OUTPUT_TOKENS, CONTINUATION_MAX_OUTPUT_TOKENS, UTILITY_FEATURES, CONFIGURED_MODEL_IDS, INFERENCE_EVAL_HEADER, INFERENCE_EVAL_USER_IDS, INFERENCE_EVAL_MODELS;
+var init_ai_model_config = __esm({
+  "src/lib/ai-model-config.ts"() {
+    init_define_import_meta_env();
+    AI_GATEWAY_CHAT_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+    AI_GATEWAY_BASE_URL = "https://ai.gateway.lovable.dev/v1";
+    DEFAULT_TEXT_MODEL = "google/gemini-3.8-flash";
+    DEFAULT_VISION_MODEL = "google/gemini-3.8-flash";
+    DEFAULT_FIRST_BUILD_MODEL = "google/gemini-4-argon";
+    DEFAULT_FALLBACK_MODEL = "openai/gpt-5.6-sol";
+    DEFAULT_IMAGE_MODEL = "openai/gpt-image-2.5-sunburst";
+    DEFAULT_TRANSCRIBE_MODEL = "openai/gpt-transcribe";
+    DEFAULT_UTILITY_MODEL = "google/gemini-3.1-flash-lite";
+    UTILITY_MAX_OUTPUT_TOKENS = 1024;
+    CONTINUATION_MAX_OUTPUT_TOKENS = 6e3;
+    UTILITY_FEATURES = /* @__PURE__ */ new Set([
+      "triage",
+      "preflight",
+      "memory",
+      "coach",
+      "recovery"
+    ]);
+    CONFIGURED_MODEL_IDS = /* @__PURE__ */ new Set([
+      DEFAULT_TEXT_MODEL,
+      DEFAULT_FIRST_BUILD_MODEL,
+      DEFAULT_VISION_MODEL,
+      DEFAULT_FALLBACK_MODEL,
+      DEFAULT_UTILITY_MODEL,
+      DEFAULT_IMAGE_MODEL,
+      DEFAULT_TRANSCRIBE_MODEL
+    ]);
+    INFERENCE_EVAL_HEADER = "x-kimble-inference-eval";
+    INFERENCE_EVAL_USER_IDS = ["42b3c128-bd12-4c94-8d71-e4ae8f5a2a53"];
+    INFERENCE_EVAL_MODELS = [
+      "google/gemini-3.8-flash",
+      "google/gemini-4-argon",
+      "openai/gpt-5.6-sol"
+    ];
+  }
+});
+
 // node_modules/react/cjs/react.production.js
 var require_react_production = __commonJS({
   "node_modules/react/cjs/react.production.js"(exports) {
@@ -39946,6 +40059,24 @@ export const db = {
   remove(collection: string, id: string): Promise<{ ok: true }> {
     return request("/records/" + encodeURIComponent(collection) + "/" + id, { method: "DELETE" });
   },
+  /**
+   * Starter records: writes the given rows into an EMPTY collection once, so a new
+   * app opens with real, saved data instead of blank tables. Never touches a
+   * collection that already holds records. Returns the current records.
+   */
+  async seedOnce<T = Record<string, unknown>>(collection: string, rows: T[]): Promise<PetalRecord<T>[]> {
+    const current = await db.list<T>(collection, { limit: 1 });
+    if (current.records.length > 0 || rows.length === 0) return (await db.list<T>(collection)).records;
+    const flag = "petal_seeded_" + API_KEY.slice(-8) + "_" + collection;
+    if (typeof window !== "undefined") {
+      if (window.localStorage.getItem(flag)) return current.records;
+      window.localStorage.setItem(flag, "1");
+    }
+    for (const row of rows.slice(0, 20)) {
+      try { await db.create<T>(collection, row); } catch { break; }
+    }
+    return (await db.list<T>(collection)).records;
+  },
 };
 
 export const auth = {
@@ -61948,112 +62079,6 @@ var init_gateway_budget_models = __esm({
   }
 });
 
-// src/lib/ai-model-config.ts
-var ai_model_config_exports = {};
-__export(ai_model_config_exports, {
-  AI_GATEWAY_BASE_URL: () => AI_GATEWAY_BASE_URL,
-  AI_GATEWAY_CHAT_URL: () => AI_GATEWAY_CHAT_URL,
-  CONFIGURED_MODEL_IDS: () => CONFIGURED_MODEL_IDS,
-  CONTINUATION_MAX_OUTPUT_TOKENS: () => CONTINUATION_MAX_OUTPUT_TOKENS,
-  DEFAULT_FALLBACK_MODEL: () => DEFAULT_FALLBACK_MODEL,
-  DEFAULT_IMAGE_MODEL: () => DEFAULT_IMAGE_MODEL,
-  DEFAULT_TEXT_MODEL: () => DEFAULT_TEXT_MODEL,
-  DEFAULT_TRANSCRIBE_MODEL: () => DEFAULT_TRANSCRIBE_MODEL,
-  DEFAULT_UTILITY_MODEL: () => DEFAULT_UTILITY_MODEL,
-  DEFAULT_VISION_MODEL: () => DEFAULT_VISION_MODEL,
-  INFERENCE_EVAL_HEADER: () => INFERENCE_EVAL_HEADER,
-  INFERENCE_EVAL_MODELS: () => INFERENCE_EVAL_MODELS,
-  INFERENCE_EVAL_USER_IDS: () => INFERENCE_EVAL_USER_IDS,
-  UTILITY_FEATURES: () => UTILITY_FEATURES,
-  UTILITY_MAX_OUTPUT_TOKENS: () => UTILITY_MAX_OUTPUT_TOKENS,
-  coerceToConfiguredModel: () => coerceToConfiguredModel,
-  defaultFallbackModel: () => defaultFallbackModel,
-  defaultImageModel: () => defaultImageModel,
-  defaultTextModel: () => defaultTextModel,
-  defaultTranscribeModel: () => defaultTranscribeModel,
-  defaultUtilityModel: () => defaultUtilityModel,
-  defaultVisionModel: () => defaultVisionModel,
-  isConfiguredModel: () => isConfiguredModel,
-  isUtilityFeature: () => isUtilityFeature
-});
-function env(name) {
-  if (typeof process === "undefined" || !process.env) return void 0;
-  const v = process.env[name];
-  return v && v.trim() ? v.trim() : void 0;
-}
-function defaultTextModel() {
-  return env("AI_GATEWAY_MODEL") ?? DEFAULT_TEXT_MODEL;
-}
-function defaultVisionModel() {
-  return env("AI_GATEWAY_VISION_MODEL") ?? DEFAULT_VISION_MODEL;
-}
-function defaultFallbackModel() {
-  return env("AI_GATEWAY_FALLBACK_MODEL") ?? DEFAULT_FALLBACK_MODEL;
-}
-function defaultImageModel() {
-  return env("AI_GATEWAY_IMAGE_MODEL") ?? DEFAULT_IMAGE_MODEL;
-}
-function defaultTranscribeModel() {
-  return env("AI_GATEWAY_TRANSCRIBE_MODEL") ?? DEFAULT_TRANSCRIBE_MODEL;
-}
-function defaultUtilityModel() {
-  return env("AI_GATEWAY_UTILITY_MODEL") ?? DEFAULT_UTILITY_MODEL;
-}
-function isUtilityFeature(feature) {
-  return !!feature && UTILITY_FEATURES.has(feature);
-}
-function isConfiguredModel(model) {
-  return !!model && CONFIGURED_MODEL_IDS.has(model);
-}
-function coerceToConfiguredModel(requested, opts) {
-  const vision = opts?.vision === true;
-  if (isConfiguredModel(requested)) {
-    if (vision && requested === defaultUtilityModel()) return defaultVisionModel();
-    return requested;
-  }
-  if (vision) return defaultVisionModel();
-  if (opts?.utility === true) return defaultUtilityModel();
-  return defaultTextModel();
-}
-var AI_GATEWAY_CHAT_URL, AI_GATEWAY_BASE_URL, DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL, DEFAULT_FALLBACK_MODEL, DEFAULT_IMAGE_MODEL, DEFAULT_TRANSCRIBE_MODEL, DEFAULT_UTILITY_MODEL, UTILITY_MAX_OUTPUT_TOKENS, CONTINUATION_MAX_OUTPUT_TOKENS, UTILITY_FEATURES, CONFIGURED_MODEL_IDS, INFERENCE_EVAL_HEADER, INFERENCE_EVAL_USER_IDS, INFERENCE_EVAL_MODELS;
-var init_ai_model_config = __esm({
-  "src/lib/ai-model-config.ts"() {
-    init_define_import_meta_env();
-    AI_GATEWAY_CHAT_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-    AI_GATEWAY_BASE_URL = "https://ai.gateway.lovable.dev/v1";
-    DEFAULT_TEXT_MODEL = "google/gemini-3.8-flash";
-    DEFAULT_VISION_MODEL = "google/gemini-3.8-flash";
-    DEFAULT_FALLBACK_MODEL = "openai/gpt-5.6-sol";
-    DEFAULT_IMAGE_MODEL = "openai/gpt-image-2.5-sunburst";
-    DEFAULT_TRANSCRIBE_MODEL = "openai/gpt-transcribe";
-    DEFAULT_UTILITY_MODEL = "google/gemini-3.1-flash-lite";
-    UTILITY_MAX_OUTPUT_TOKENS = 1024;
-    CONTINUATION_MAX_OUTPUT_TOKENS = 6e3;
-    UTILITY_FEATURES = /* @__PURE__ */ new Set([
-      "triage",
-      "preflight",
-      "memory",
-      "coach",
-      "recovery"
-    ]);
-    CONFIGURED_MODEL_IDS = /* @__PURE__ */ new Set([
-      DEFAULT_TEXT_MODEL,
-      DEFAULT_VISION_MODEL,
-      DEFAULT_FALLBACK_MODEL,
-      DEFAULT_UTILITY_MODEL,
-      DEFAULT_IMAGE_MODEL,
-      DEFAULT_TRANSCRIBE_MODEL
-    ]);
-    INFERENCE_EVAL_HEADER = "x-kimble-inference-eval";
-    INFERENCE_EVAL_USER_IDS = ["42b3c128-bd12-4c94-8d71-e4ae8f5a2a53"];
-    INFERENCE_EVAL_MODELS = [
-      "google/gemini-3.8-flash",
-      "google/gemini-4-argon",
-      "openai/gpt-5.6-sol"
-    ];
-  }
-});
-
 // src/server/engine/provider-policy.ts
 function isEmptyAllowList(routing) {
   const only = routing?.only;
@@ -63877,7 +63902,7 @@ var init_ai_provider_server = __esm({
     MODEL_PRICE_PER_M_TOKENS = [
       { match: /gemini-3\.1-flash-lite/i, inUsd: 1, outUsd: 6 },
       { match: /gemini-3\.8-flash/i, inUsd: 3, outUsd: 15 },
-      { match: /gemini-4-argon/i, inUsd: 3, outUsd: 15 },
+      { match: /gemini-4-argon/i, inUsd: 8, outUsd: 40 },
       { match: /gemini-.*-pro/i, inUsd: 12, outUsd: 72 },
       { match: /gemini-.*-flash/i, inUsd: 3, outUsd: 15 },
       { match: /gpt-5\.6-sol/i, inUsd: 16, outUsd: 80 },
@@ -70320,7 +70345,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -155570,6 +155594,7 @@ init_define_import_meta_env();
 
 // src/routes/api/generate.ts
 init_define_import_meta_env();
+init_ai_model_config();
 
 // src/lib/operation-identity.ts
 init_define_import_meta_env();
@@ -168161,7 +168186,8 @@ Styling is already fully set up: never create or edit a stylesheet, a Tailwind c
 ${d.playbook.trim()}
 `;
 }
-function firstBuildBrief(request, planned, existing, design3) {
+var STARTER_DATA_RULE = "Each list/table page loads its collection with `db.seedOnce(collection, rows)` from `@/integrations/backend/client` instead of `db.list` on first load, passing 5-8 realistic, domain-specific rows (real-sounding names, dates, amounts, statuses). seedOnce writes them to the database only when the collection is empty, so the app opens alive and the data is real and editable. Never hardcode sample arrays in pages.";
+function firstBuildBrief(request, planned, existing, design3, data2) {
   const pages = planned.map((p2) => `${p2.route} \u2192 ${p2.file}`).join(", ");
   const workspace = existing.length ? `The workspace already holds ${existing.length} saved files from an interrupted run: ${existing.join(", ")}. Do not rewrite them; write what is still missing.` : `No app code has been written yet. The scaffold below is already installed, so you know the workspace \u2014 do not list or read files before writing. Start writing immediately.`;
   return `${request}
@@ -168177,7 +168203,10 @@ ${COPY_RULES}
 
 ### Correctness
 - ${CORRECTNESS_RULES}
-`;
+` + (data2?.shared ? `
+### Starter data
+${STARTER_DATA_RULE}
+` : "");
 }
 
 // src/server/pipeline/tier-esbuild.ts
@@ -176355,9 +176384,9 @@ var MODEL_BEST = "google/gemini-3.8-flash";
 var MODEL_REASONING = "openai/gpt-5.4";
 var MODEL_CLAUDE = "anthropic/claude-sonnet-5";
 var MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
-function turnCallCost(u) {
+function turnCallCost(u, model = MODEL_STRUCTURED_RETRY) {
   if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
-  const micro = estimateCostUsdMicro(MODEL_STRUCTURED_RETRY, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
+  const micro = estimateCostUsdMicro(model, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
   return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
 }
 var MODEL_VISION = "google/gemini-3.8-flash";
@@ -179381,11 +179410,12 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 return (row) => supabaseAdmin2.from("tool_loop_calls").insert(row);
               }
             );
+            const firstBuildModel = defaultFirstBuildModel();
             const callModel = makeCallModel2(
               (reqBody, signal) => withProviderRetry2(
                 () => aiChatCompletions({
                   feature: "generate",
-                  body: { ...reqBody, reasoning: { enabled: false }, model: MODEL_STRUCTURED_RETRY },
+                  body: { ...reqBody, reasoning: { enabled: false }, model: firstBuildModel },
                   timeoutTier: "stream_first_build",
                   lockCallerModel: true,
                   codeOutput: true,
@@ -179407,7 +179437,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 pageWriteUsages.push(u);
                 void updateLastCallUsage({
                   feature: "generate",
-                  model: MODEL_STRUCTURED_RETRY,
+                  model: firstBuildModel,
                   promptTokens: u.prompt_tokens ?? null,
                   completionTokens: u.completion_tokens ?? null,
                   totalTokens: u.total_tokens ?? null,
@@ -179488,7 +179518,7 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
               costOf: (r) => {
                 if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
                 if (r.usage) {
-                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens }).costUsd;
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens }, firstBuildModel).costUsd;
                   if (c != null) return c;
                 }
                 return buildReservation?.classCostUsd ?? 0.03;
@@ -179512,7 +179542,8 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                     bodyFont: picContext?.design?.typography?.bodyFont ?? pkg.meta.fonts[1] ?? "sans-serif",
                     playbook: pkg.designMd
                   };
-                })()
+                })(),
+                sharedBackend ? { shared: true } : null
               ),
               files: seedFiles,
               // The kit the commit applies, visible (read-only) to reads and
@@ -181149,7 +181180,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         ];
         const { buildEconomics: buildEconomics2 } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
         let priced = priceTurnCost(
-          turnUsages.filter((u) => !!u).map(turnCallCost),
+          turnUsages.filter((u) => !!u).map((u) => turnCallCost(u)),
           await buildEconomics2(),
           buildReservation?.classCostUsd ?? 0
         );
