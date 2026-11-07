@@ -109,9 +109,9 @@ const GENERIC_FONTS = new Set(["inter", "roboto", "system-ui", "sans-serif", "ar
 export type MotionIntensity = "still" | "subtle" | "expressive" | "cinematic";
 
 /**
- * Named FX recipes. Each recipe expands to a concrete shopping list of
- * `@/components/fx` + `@/components/motion` + (for cinematic) Awwwards-layer
- * primitives. The model can pick a recipe by key; if it doesn't, we infer
+ * Named design recipes. Each recipe describes the composition and motion
+ * language (photography, type, spacing, `@/components/motion` reveals and,
+ * for cinematic, Awwwards-layer primitives). The model can pick a recipe by key; if it doesn't, we infer
  * one from app shape via `pickFxRecipe()` so every build gets a defensible
  * starting palette instead of inventing effects ad-hoc.
  */
@@ -301,7 +301,7 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - palette_mood: a sentence describing the actual hues, not "modern colors". E.g. "warm cream background, burnt sienna primary, ink-black text, sage accents".
 - density: minimal / balanced / dense. Match the audience: consumer landing → minimal/balanced; data dashboards → dense; editorial → balanced with generous white space.
 - motion: still / subtle / expressive / cinematic. Default subtle. Use expressive when the brand calls for energy. Use cinematic ONLY for agency / portfolio / showcase / luxury sites where Awwwards-grade scroll choreography is the point — it pulls in Lenis smooth-scroll, GSAP ScrollTrigger, and optionally a R3F 3D hero, which is overkill for SaaS dashboards or internal tools.
-- fx_recipe: name the FX bundle this app should compose. Pick ONE of: vivid-color, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe drives which @/components/fx primitives the builder reaches for. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
+- fx_recipe: name the FX bundle this app should compose. Pick ONE of: vivid-color, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe sets the composition and motion language. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
 - design_moves: 2–4 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" — those aren't moves.
 
 Calibration — two recent Kimble outputs, same builder, very different results:

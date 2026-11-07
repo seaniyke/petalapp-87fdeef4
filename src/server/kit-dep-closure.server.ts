@@ -108,7 +108,6 @@ export interface KitDepClosureResult {
 export const ON_DEMAND_KIT_PATHS = [
   "src/components/examples",
   "src/components/motion",
-  "src/components/fx",
   "src/components/three",
   "src/components/scroll",
   "src/components/content",

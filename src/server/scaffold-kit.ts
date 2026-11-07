@@ -47,7 +47,6 @@ import { KIT_BLOCK_FILES_4 } from "./scaffold-kit-blocks-4";
 import { KIT_BLOCK_FILES_MOBILE } from "./scaffold-kit-mobile";
 import { KIT_BLOCK_FILES_MOBILE_2 } from "./scaffold-kit-mobile-2";
 import { KIT_MOTION_FILES } from "./scaffold-kit-motion";
-import { KIT_FX_FILES } from "./scaffold-kit-fx";
 import { KIT_SHADCN_FILES } from "./scaffold-kit-shadcn";
 import { KIT_DATA_FILES } from "./scaffold-kit-data";
 import { KIT_TYPOGRAPHY_FILES } from "./scaffold-kit-typography";
@@ -108,7 +107,6 @@ const TSCONFIG = `{
   "exclude": [
     "src/components/examples",
     "src/components/motion",
-    "src/components/fx",
     "src/components/three",
     "src/components/scroll",
     "src/components/content",
@@ -4193,7 +4191,7 @@ export const KIT_FILES: KitFile[] = [
   // legal-demo, ticketing, POS, CRM, helpdesk, analytics, community,
   // portfolio).
   ...EXAMPLES_PACK_2,
-  // Phase-1 expansion: new atoms (Marquee/Stat/EmptyState/Section/etc.) +
+  // Phase-1 expansion: new atoms (Stat/EmptyState/Section/etc.) +
   // composed section blocks (Hero/Features variants) so generated landing
   // pages stop converging on the same centered-hero + 3-card layout.
   // Defined in a separate module so this file stays reviewable.
@@ -4226,13 +4224,6 @@ export const KIT_FILES: KitFile[] = [
   // FadeIn / SlideUp / Stagger / Reveal / Magnetic / Tilt / Parallax /
   // SplitText / CountUp / WordRotate / BlurFade. Import from "@/components/motion".
   ...KIT_MOTION_FILES,
-  // Phase 11 — Marketing FX layer. MagicUI/Aceternity-style effects:
-  // GridPattern/DotPattern/RetroGrid/FlickeringGrid/AnimatedGridPattern/Ripple/
-  // NoiseTexture/LightRays/MeshGradient/Meteors/Particles/Sparkles, AuroraText/
-  // GradientText/ShinyText, MagicCard/BorderBeam/GlowCard/BentoGrid+BentoCard/
-  // Marquee/InfiniteMovingCards/OrbitingCircles/HeroParallax/AnimatedBeam,
-  // ShimmerButton/RainbowButton/ShinyButton. Import from "@/components/fx".
-  ...KIT_FX_FILES,
   // Phase 12 — Missing shadcn primitives. 18 components mirroring shadcn's
   // API: Breadcrumb, Collapsible, HoverCard, Toggle + ToggleGroup, AspectRatio,
   // Spinner, ContextMenu, Menubar, NavigationMenu, Empty, Field, InputGroup,
@@ -4565,7 +4556,6 @@ export const PETAL_CUSTOMIZED_MARKER = "petal:customized";
 const CUSTOMIZABLE_KIT_PREFIXES = [
   "src/components/blocks/",
   "src/components/examples/",
-  "src/components/fx/",
   "src/components/sections/",
 ];
 
