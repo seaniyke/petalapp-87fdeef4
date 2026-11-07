@@ -60274,6 +60274,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -146260,7 +146261,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -168333,6 +168333,10 @@ var COMPOSITION_RULES = [
   "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6.",
   "Two, at most three calls to action across an entire page. The final CTA is its own section; the footer is not a CTA.",
   "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
+  'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Use up to 6 distinct prompts; reuse a URL when the same picture repeats. Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
+  "Marketing sites lead with imagery, not tools: the hero is a large photograph or full-bleed visual with one headline and one primary action. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
+  "Studio, portfolio, architecture, luxury and hospitality sites are editorial: big photographs, generous negative space, few words per section, serif display headings. Keep technical detail off the homepage.",
+  "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
   'Every link points somewhere real \u2014 no href="#" placeholders. One <h1> per page.'
 ].join("\n- ");
 var CORRECTNESS_RULES = [

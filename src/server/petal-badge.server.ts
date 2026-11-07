@@ -29,10 +29,10 @@ const PETAL_BADGE_HTML = `
     if (document.getElementById('petal-badge')) return;
     var a = document.createElement('a');
     a.id = 'petal-badge';
-    a.href = 'https://kimble.cloud?utm_source=kimble_badge';
+    a.href = 'https://custardai.dev';
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.setAttribute('aria-label', 'Built with Kimble');
+    a.setAttribute('aria-label', 'Built with Custard AI');
     a.style.cssText = [
       'position:fixed','right:14px','bottom:14px','z-index:2147483646',
       'display:inline-flex','align-items:center','gap:6px',
@@ -47,17 +47,26 @@ const PETAL_BADGE_HTML = `
     ].join(';') + ';';
     var dot = document.createElement('span');
     dot.setAttribute('aria-hidden','true');
-    dot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;background:#000;box-shadow:0 0 0 1px rgba(255,255,255,0.14) inset;overflow:hidden;';
-    var mark = document.createElement('img');
-    mark.src = 'https://kimble.cloud/kimble-logo.png';
-    mark.alt = '';
-    mark.style.cssText = 'width:11px;height:11px;object-fit:contain;filter:invert(1);';
-    dot.appendChild(mark);
+    dot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;';
+    var NS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width','16'); svg.setAttribute('height','16'); svg.setAttribute('viewBox','0 0 24 24');
+    var bubble = document.createElementNS(NS, 'path');
+    bubble.setAttribute('fill','#9DEDCB');
+    bubble.setAttribute('d','M5 3h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H9.5L4 22.5V19.2A4 4 0 0 1 1 15V7a4 4 0 0 1 4-4z');
+    svg.appendChild(bubble);
+    [[7,9.5,12.5],[9.5,8,14],[12,6.5,15.5],[14.5,8,14],[17,9.5,12.5]].forEach(function(b){
+      var bar = document.createElementNS(NS, 'path');
+      bar.setAttribute('d','M'+b[0]+' '+b[1]+'V'+b[2]);
+      bar.setAttribute('stroke','#101815'); bar.setAttribute('stroke-width','1.6'); bar.setAttribute('stroke-linecap','round');
+      svg.appendChild(bar);
+    });
+    dot.appendChild(svg);
     var label = document.createElement('span');
     label.appendChild(document.createTextNode('Built with '));
     var strong = document.createElement('strong');
     strong.style.fontWeight = '600';
-    strong.textContent = 'Kimble';
+    strong.textContent = 'Custard AI';
     label.appendChild(strong);
     a.appendChild(dot); a.appendChild(label);
     a.addEventListener('mouseenter', function(){ a.style.opacity='1'; a.style.transform='translateY(-1px)'; });
