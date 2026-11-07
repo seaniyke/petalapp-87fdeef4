@@ -1,3 +1,4 @@
 - The Railway agent bundle keeps `esbuild-wasm` and `typescript` external (installed as builder runtime dependencies) — why: bundling the TypeScript compiler pushed agent-core.mjs past the 10 MB commit limit.
 - Build server never rewrites source: syntax-heal runs report-only (`reportSyntax` in builder/src/fs-helpers.ts) — why: the app server's verified source is the only authority; silent builder rewrites hid defects.
 - The build server browser check clicks a non-submit "Register/Sign up" toggle before filling sign-up — why: combined login pages submitted sign-up as sign-in and failed every delivery preview with "Wrong email or password".
+- A live test is valid only after `GET $BUILDER_URL/agent/healthz` reports the current `AGENT_CORE_VERSION`; publishing Petal does not update the build server — why: every 7 Nov live run executed the 28 Sept bundle.
