@@ -1,0 +1,89 @@
+# Deploys the Petal Builder (builder/**) to the VPS over a restricted SSH key.
+#
+# SWITCHED OFF until the repository variable BUILDER_AUTODEPLOY is set to "true"
+# (Settings -> Secrets and variables -> Actions -> Variables). While it is unset,
+# every run is skipped and nothing touches the VPS.
+#
+# Safety:
+# - No code checkout, no third-party actions, read-only token.
+# - The only data sent to the VPS is "deploy <40-hex commit sha>". The VPS-side
+#   forced command (deploy/builder/petal-deploy-wrapper) re-validates it.
+# - No ${{ }} expression is ever written directly into a shell script; values
+#   reach `run:` only through environment variables.
+# - Host key is pinned (StrictHostKeyChecking=yes).
+# - Runs never overlap (concurrency group) and never cancel a running deploy.
+
+name: Deploy Petal Builder
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "builder/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: petal-builder-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.BUILDER_AUTODEPLOY == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 45
+    steps:
+      - name: Prepare SSH identity
+        env:
+          DEPLOY_KEY: ${{ secrets.VPS_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_KEY}" ] || [ -z "${KNOWN_HOSTS}" ]; then
+            echo "VPS_DEPLOY_KEY and VPS_KNOWN_HOSTS secrets are required." >&2
+            exit 1
+          fi
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "${DEPLOY_KEY}" > "$HOME/.ssh/petal_deploy"
+          printf '%s\n' "${KNOWN_HOSTS}" > "$HOME/.ssh/petal_known_hosts"
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "${DEPLOY_SHA}" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "Refusing: commit id is not a 40-character hex sha." >&2
+            exit 1
+          fi
+          if [ -z "${VPS_HOST}" ]; then
+            echo "VPS_HOST secret is required." >&2
+            exit 1
+          fi
+          port="${VPS_SSH_PORT:-22}"
+          if ! printf '%s' "${port}" | grep -Eq '^[0-9]{1,5}$'; then
+            echo "VPS_SSH_PORT must be a number." >&2
+            exit 1
+          fi
+          ssh \
+            -i "$HOME/.ssh/petal_deploy" \
+            -p "${port}" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/petal_known_hosts" \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=10 \
+            -o ConnectTimeout=20 \
+            "petal-deploy@${VPS_HOST}" \
+            "deploy ${DEPLOY_SHA}"
+
+      - name: Remove SSH identity
+        if: always()
+        run: rm -f "$HOME/.ssh/petal_deploy" "$HOME/.ssh/petal_known_hosts"

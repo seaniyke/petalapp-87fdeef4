@@ -1,0 +1,8 @@
+# Petal Builder deploy identity — install as /etc/sudoers.d/petal-deploy
+#   install -o root -g root -m 0440 sudoers.petal-deploy /etc/sudoers.d/petal-deploy
+#   visudo -cf /etc/sudoers.d/petal-deploy
+#
+# Allows exactly two invocations of one root-owned script. Argument regexes
+# need sudo >= 1.9.10 (Ubuntu 24.04 ships 1.9.15). The script re-validates too.
+Defaults:petal-deploy env_reset, !requiretty, secure_path="/usr/sbin:/usr/bin:/sbin:/bin"
+petal-deploy ALL=(root) NOPASSWD: /usr/local/sbin/petal-builder-deploy ^deploy [0-9a-f]{40}$, /usr/local/sbin/petal-builder-deploy ^status$
