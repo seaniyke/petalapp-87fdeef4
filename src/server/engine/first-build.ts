@@ -112,6 +112,7 @@ export function firstBuildBrief(
   planned: Array<{ route: string; file: string }>,
   existing: string[],
   design?: FirstBuildDesign | null,
+  data?: { shared: boolean } | null,
 ): string {
   const pages = planned.map((p) => `${p.route} → ${p.file}`).join(", ");
   const workspace = existing.length
@@ -127,6 +128,7 @@ export function firstBuildBrief(
     (design ? designSection(design) : "") +
     `\n### Composition\n- ${COMPOSITION_RULES}\n` +
     `\n### Copy\n${COPY_RULES}\n` +
-    `\n### Correctness\n- ${CORRECTNESS_RULES}\n`
+    `\n### Correctness\n- ${CORRECTNESS_RULES}\n` +
+    (data?.shared ? `\n### Starter data\n${STARTER_DATA_RULE}\n` : "")
   );
 }

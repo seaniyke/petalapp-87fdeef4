@@ -141,7 +141,7 @@ export const db = {
     return request("/records/" + encodeURIComponent(collection) + "/" + id, { method: "DELETE" });
   },
   /**
-   * Starter records: writes \\`rows\\` into an EMPTY collection once, so a new
+   * Starter records: writes the given rows into an EMPTY collection once, so a new
    * app opens with real, saved data instead of blank tables. Never touches a
    * collection that already holds records. Returns the current records.
    */
