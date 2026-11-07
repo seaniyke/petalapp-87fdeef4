@@ -13801,12 +13801,12 @@ var init_dist3 = __esm({
         return path.replace(/^\/|\/$/g, "").replace(/\/+/g, "/");
       }
       /** Modifies the `query`, appending values the from `transform` */
-      applyTransformOptsToQuery(query, transform2) {
-        if (transform2.width) query.set("width", transform2.width.toString());
-        if (transform2.height) query.set("height", transform2.height.toString());
-        if (transform2.resize) query.set("resize", transform2.resize);
-        if (transform2.format) query.set("format", transform2.format);
-        if (transform2.quality) query.set("quality", transform2.quality.toString());
+      applyTransformOptsToQuery(query, transform) {
+        if (transform.width) query.set("width", transform.width.toString());
+        if (transform.height) query.set("height", transform.height.toString());
+        if (transform.resize) query.set("resize", transform.resize);
+        if (transform.format) query.set("format", transform.format);
+        if (transform.quality) query.set("quality", transform.quality.toString());
         return query;
       }
     };
@@ -66736,12 +66736,12 @@ var init_types = __esm({
       and(incoming) {
         return ZodIntersection.create(this, incoming, this._def);
       }
-      transform(transform2) {
+      transform(transform) {
         return new ZodEffects({
           ...processCreateParams(this._def),
           schema: this,
           typeName: ZodFirstPartyTypeKind.ZodEffects,
-          effect: { type: "transform", transform: transform2 }
+          effect: { type: "transform", transform }
         });
       }
       default(def) {
@@ -140127,15 +140127,54 @@ var init_jsx_attr_literal_fixer_server = __esm({
   }
 });
 
+// src/server/esbuild-worker-runtime.ts
+var esbuild_worker_runtime_exports = {};
+__export(esbuild_worker_runtime_exports, {
+  loadWorkerEsbuild: () => loadWorkerEsbuild
+});
+async function loadWorkerEsbuild() {
+  const [esbuild2, wasm] = await Promise.all([
+    import("esbuild-wasm/esm/browser.js"),
+    // @ts-expect-error — Cloudflare's Vite plugin resolves `.wasm?module`.
+    import("esbuild-wasm/esbuild.wasm?module")
+  ]);
+  return { esbuild: esbuild2, wasmModule: wasm.default };
+}
+var init_esbuild_worker_runtime = __esm({
+  "src/server/esbuild-worker-runtime.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+  }
+});
+
 // src/server/esbuild-verifier.server.ts
 var esbuild_verifier_server_exports = {};
 __export(esbuild_verifier_server_exports, {
   verifyFilesEsbuild: () => verifyFilesEsbuild
 });
-import * as esbuild from "esbuild-wasm";
+import * as esbuildNode from "esbuild-wasm";
+function onWorker() {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+}
 function ensureInit() {
   if (initPromise) return initPromise;
   const alreadyUp = (err) => /more than once/i.test(err?.message ?? "");
+  if (onWorker()) {
+    initPromise = (async () => {
+      const { loadWorkerEsbuild: loadWorkerEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_worker_runtime(), esbuild_worker_runtime_exports));
+      const { esbuild: browserApi, wasmModule } = await loadWorkerEsbuild2();
+      try {
+        await browserApi.initialize({ wasmModule, worker: false });
+      } catch (err) {
+        if (!alreadyUp(err)) throw err;
+      }
+      esbuild = browserApi;
+    })().catch((err) => {
+      initPromise = null;
+      throw err;
+    });
+    return initPromise;
+  }
   try {
     initPromise = esbuild.initialize({ worker: false }).catch((err) => {
       if (alreadyUp(err)) return;
@@ -140233,10 +140272,11 @@ async function verifyFilesEsbuild(files, changedPaths, options = {}) {
     checkedPaths: targets.map((f) => f.path)
   };
 }
-var SCANNABLE4, initPromise;
+var esbuild, SCANNABLE4, initPromise;
 var init_esbuild_verifier_server = __esm({
   "src/server/esbuild-verifier.server.ts"() {
     init_define_import_meta_env();
+    esbuild = esbuildNode;
     SCANNABLE4 = /\.(tsx?|jsx?)$/;
     initPromise = null;
   }
