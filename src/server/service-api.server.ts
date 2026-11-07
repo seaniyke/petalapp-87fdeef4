@@ -184,6 +184,125 @@ export async function deliverWebhook(url: string, payload: unknown): Promise<voi
   console.warn("[service-api] webhook delivery failed", new URL(url).host);
 }
 
+/** A build as Custard AI sees it. `deploymentUrl` is set only once live. */
+export type PublicBuild = {
+  buildId: string;
+  status: "pending" | "building" | "ready" | "failed";
+  revision: number | null;
+  turnId: string | null;
+  deploymentUrl: string | null;
+  progress: string | null;
+  error: string | null;
+  createdAt: string;
+  readyAt: string | null;
+};
+
+type BuildRow = {
+  id: string;
+  status: string;
+  project_revision: number | null;
+  turn_id: string | null;
+  dist_path: string | null;
+  deployed: boolean | null;
+  progress_label: string | null;
+  error_message: string | null;
+  created_at: string;
+  ready_at: string | null;
+};
+
+const BUILD_COLUMNS =
+  "id,status,project_revision,turn_id,dist_path,deployed,progress_label,error_message,created_at,ready_at";
+
+export function toPublicBuild(row: BuildRow): PublicBuild {
+  const ready = row.status === "ready";
+  const url = ready && row.dist_path && /^https:\/\//.test(row.dist_path) ? row.dist_path : null;
+  return {
+    buildId: row.id,
+    status: (["pending", "building", "ready", "failed"].includes(row.status) ? row.status : "pending") as PublicBuild["status"],
+    revision: row.project_revision == null ? null : Number(row.project_revision),
+    turnId: row.turn_id,
+    deploymentUrl: url,
+    progress: row.progress_label,
+    error: row.status === "failed" ? row.error_message : null,
+    createdAt: row.created_at,
+    readyAt: row.ready_at,
+  };
+}
+
+export async function listProjectBuilds(projectId: string, limit = 10): Promise<PublicBuild[]> {
+  const sb = await admin();
+  const { data } = await sb
+    .from("project_builds")
+    .select(BUILD_COLUMNS)
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as unknown as BuildRow[]).map(toPublicBuild);
+}
+
+export async function getProjectBuild(projectId: string, buildId: string): Promise<PublicBuild | null> {
+  const sb = await admin();
+  const { data } = await sb
+    .from("project_builds")
+    .select(BUILD_COLUMNS)
+    .eq("project_id", projectId)
+    .eq("id", buildId)
+    .maybeSingle();
+  return data ? toPublicBuild(data as unknown as BuildRow) : null;
+}
+
+/**
+ * Start (or reuse) the compile + test + deploy run for a project through the
+ * one build entry point, `/api/builds/trigger`, as the service account. The
+ * trigger is idempotent per code revision, so calling it after the build
+ * server already started the same revision returns that build.
+ */
+export async function triggerProjectBuild(
+  selfOrigin: string,
+  projectId: string,
+  opts: { turnId?: string | null; revision?: number | null } = {},
+): Promise<{ ok: true; buildId: string | null; status: string; superseded?: boolean; reused?: boolean } | { ok: false; status: number; error: string }> {
+  const secret = process.env.BUILDER_SHARED_SECRET;
+  if (!secret) return { ok: false, status: 500, error: "builder_not_configured" };
+  const userId = await serviceUserId();
+  const res = await fetch(new URL("/api/builds/trigger", selfOrigin), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret, "x-petal-internal-user": userId },
+    body: JSON.stringify({
+      projectId,
+      ...(opts.turnId ? { turnId: opts.turnId } : {}),
+      ...(opts.revision != null ? { revision: Number(opts.revision) } : {}),
+    }),
+  }).catch((e: Error) => ({ ok: false, status: 0, json: async () => ({ error: e.message }) }) as unknown as Response);
+  const out = (await res.json().catch(() => null)) as
+    | { buildId?: string | null; status?: string; error?: string; superseded?: boolean; reused?: boolean }
+    | null;
+  if (!res.ok) return { ok: false, status: res.status, error: out?.error ?? `trigger_failed_${res.status}` };
+  if (out?.status === "failed") return { ok: false, status: 502, error: out.error ?? "build_service_unreachable" };
+  return { ok: true, buildId: out?.buildId ?? null, status: out?.status ?? "pending", superseded: out?.superseded, reused: out?.reused };
+}
+
+/** Poll one build until it is ready/failed or `maxMs` passes. Yields each change. */
+export async function* followBuild(
+  projectId: string,
+  buildId: string,
+  maxMs = 20 * 60_000,
+): AsyncGenerator<PublicBuild> {
+  const started = Date.now();
+  let last = "";
+  while (Date.now() - started < maxMs) {
+    const b = await getProjectBuild(projectId, buildId);
+    if (!b) return;
+    const key = `${b.status}|${b.progress ?? ""}`;
+    if (key !== last) {
+      last = key;
+      yield b;
+    }
+    if (b.status === "ready" || b.status === "failed") return;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+}
+
 const TERMINAL = new Set(["succeeded", "failed", "aborted", "awaiting_credits"]);
 
 /**
