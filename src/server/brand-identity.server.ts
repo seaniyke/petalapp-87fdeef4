@@ -509,3 +509,41 @@ export function ensureBrandIdentity(files: ProjectFile[]): {
 
   return { files: next, notes };
 }
+
+/** A product name worth putting in the browser tab (never "App"/"Untitled"). */
+function usableName(name: string | null | undefined): string | null {
+  const n = String(name ?? "").replace(/\s+/g, " ").trim();
+  if (n.length < 2 || n.length > 60) return null;
+  if (/^(app|my app|untitled|untitled project|website|site|studio|project|document)$/i.test(n)) return null;
+  return n;
+}
+
+/**
+ * Deterministic site identity for the page shell: browser-tab name, site
+ * icon and theme colour. Touches index.html only.
+ *
+ * Runs at the commit point of a first build, after the design package is
+ * installed, because index.html is Kimble-owned: the general cleanup pass
+ * restores Kimble-owned files to their original bytes, so a tab name set
+ * there never reached the published site ("App" on the live Aura site).
+ *
+ * `productName` is the product's own name from the brief; the header
+ * wordmark is the fallback. A real title already present is never replaced.
+ */
+export function ensureSiteIdentity(
+  files: ProjectFile[],
+  productName?: string | null,
+): { files: ProjectFile[]; notes: string[] } {
+  const html = files.find((f) => f.path === "index.html");
+  if (!html) return { files, notes: [] };
+  const brand = usableName(productName) ?? usableName(detectBrandName(files)) ?? "Studio";
+  const initials = initialsFrom(brand);
+  const primary = resolvePrimaryHex(files) ?? "#111318";
+  const glyph = markGlyphFrom(files);
+  const content = ensureFavicon(html.content, initials, brand, primary, glyph);
+  if (content === html.content) return { files, notes: [] };
+  return {
+    files: files.map((f) => (f.path === "index.html" ? { ...f, content } : f)),
+    notes: [`site-identity: tab name "${brand}", site icon and theme colour set`],
+  };
+}

@@ -7254,6 +7254,14 @@ async function handleGenerateRequestCore(
           } else if (picContext?.design?.package) {
             console.warn(`[design-system] not applied: ${pkgApply.reason}`);
           }
+          // Site identity (tab name, icon, theme colour) is written here, after
+          // cleanup, because cleanup restores Kimble-owned index.html.
+          if (isInitial) {
+            const { ensureSiteIdentity } = await import("@/server/brand-identity.server");
+            const identity = ensureSiteIdentity(nextFiles, resolvedPrd?.prd?.productName ?? null);
+            nextFiles = identity.files;
+            for (const n of identity.notes) console.info("[site-identity]", n);
+          }
           const { lintDesignSystem } = await import("@/server/design/design-system-lint.server");
           if (picContext?.design) {
             const lint = lintDesignSystem(nextFiles, picContext.design);

@@ -23,3 +23,29 @@ describe("browser tab title", () => {
     expect(title(out.files)).toBe("Aura");
   });
 });
+
+import { ensureSiteIdentity } from "@/server/brand-identity.server";
+
+describe("site identity at the save step (live Aura: tab still said 'App')", () => {
+  it("uses the product's own name from the brief", () => {
+    const out = ensureSiteIdentity([{ path: "index.html", content: html("App") }], "Aura Light Studio");
+    expect(title(out.files)).toBe("Aura Light Studio");
+  });
+
+  it("falls back to the header wordmark when the brief has no usable name", () => {
+    const out = ensureSiteIdentity(
+      [
+        { path: "index.html", content: html("App") },
+        { path: "src/components/site-layout.tsx", content: `<span className="font-serif text-xl">\n  Aura Light Studio\n</span>` },
+      ],
+      "Untitled",
+    );
+    expect(title(out.files)).toBe("Aura Light Studio");
+  });
+
+  it("adds a site icon and never replaces a real title", () => {
+    const out = ensureSiteIdentity([{ path: "index.html", content: html("Aura") }], "Something Else");
+    expect(title(out.files)).toBe("Aura");
+    expect(out.files[0].content).toContain('rel="icon"');
+  });
+});

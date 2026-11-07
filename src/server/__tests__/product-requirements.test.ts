@@ -236,3 +236,19 @@ describe("merge and evidence helpers", () => {
     expect(integrationsFromSecretNames(["STRIPE_SECRET_KEY", "RESEND_API_KEY"])).toEqual(["stripe", "email"]);
   });
 });
+
+describe("requirement list from a website brief (live Aura rebuild)", () => {
+  const AURA =
+    "Build a premium marketing website for Aura Light Studio, an architectural lighting design studio in London that designs lighting for museums, boutique hotels and private residences. Pages: Home (hero, short studio intro, selected projects, client logos, call to action), Projects (a grid of past projects with a category filter: Museums, Hospitality, Residential), Studio (team, approach, awards) and Contact (an inquiry form with name, email, project type and message, plus studio address). Use real, atmospheric architectural photography throughout. Elegant, editorial, modern feel. Website only, no accounts or logins.";
+
+  it("lists the four named pages and nothing else", () => {
+    const r = deriveRequirements(AURA);
+    expect(ids(r).sort()).toEqual(["contact", "feature-projects", "feature-studio", "home"]);
+  });
+
+  it("never turns 'no accounts' into an accounts requirement or a form's email field into email notifications", () => {
+    const r = ids(deriveRequirements(AURA));
+    expect(r).not.toContain("auth");
+    expect(r).not.toContain("notifications");
+  });
+});

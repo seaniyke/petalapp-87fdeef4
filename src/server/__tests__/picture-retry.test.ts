@@ -38,3 +38,32 @@ describe("project pictures", () => {
     expect(second.files[0].content).toBe(`<img src="https://cdn/later.png" />`);
   });
 });
+
+describe("one picture per slot", () => {
+  it("the AI's own pages get pictures before unused reference examples, which get none", async () => {
+    const asked: string[] = [];
+    const generate = async (o: { prompt: string }) => {
+      asked.push(o.prompt);
+      return { url: `https://cdn/${asked.length}.png`, cached: false };
+    };
+    const files = [
+      { path: "src/components/examples/kit-ai-image-hero.tsx", content: `<img src="petal-image://moody-mountain-sunrise" />` },
+      { path: "src/data/projects.ts", content: `["petal-image://museum-gallery", "petal-image://hotel-courtyard"]` },
+    ];
+    const r = await resolvePetalImagePlaceholders(files, undefined, null, undefined, { generate, sleep: noSleep });
+    expect(asked).toEqual(["museum gallery", "hotel courtyard"]);
+    expect(r.files[0].content).toContain("petal-image://moody-mountain-sunrise");
+  });
+
+  it("asks for a fresh picture instead of reusing one already on the site", async () => {
+    const seenAvoid: string[][] = [];
+    const generate = async (o: { prompt: string; avoidUrls?: ReadonlySet<string> }) => {
+      seenAvoid.push([...(o.avoidUrls ?? [])]);
+      return { url: `https://cdn/${o.prompt.replace(/\s/g, "-")}.png`, cached: false };
+    };
+    const used = "https://abc.supabase.co/storage/v1/object/public/petal-images/spa.png";
+    const files = [{ path: "src/data/projects.ts", content: `["${used}", "petal-image://museum-gallery"]` }];
+    await resolvePetalImagePlaceholders(files, undefined, null, undefined, { generate, sleep: noSleep });
+    expect(seenAvoid[0]).toContain(used);
+  });
+});

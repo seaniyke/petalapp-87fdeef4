@@ -53,6 +53,7 @@ export default defineConfig({
       "src/server/registry/__tests__/registry.test.ts",
       "src/server/registry/__tests__/project-pictures.test.ts",
       "src/server/registry/__tests__/generated-pictures.test.ts",
+      "src/server/registry/__tests__/picture-distinct.test.ts",
 
       "src/components/__tests__/one-result-card.test.ts",
       "src/server/__tests__/shared-backend-origins.test.ts",
