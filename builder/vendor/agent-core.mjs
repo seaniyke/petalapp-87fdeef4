@@ -60274,7 +60274,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -140126,7 +140125,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141216,7 +141214,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141381,7 +141378,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141425,7 +141421,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -142124,7 +142119,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -162940,7 +162934,14 @@ async function keepChatPhotos(projectId, attachments) {
 // src/server/image-generation.server.ts
 init_turn_context_server();
 var BUCKET = "petal-images";
-var MAX_IMAGES_PER_GENERATION = 6;
+var MAX_IMAGES_PER_GENERATION = 12;
+var MAX_ATTEMPTS = 3;
+var RETRY_DELAYS_MS = [1500, 4e3];
+var PENDING_MARK = "petal-pending:";
+var PENDING_RE = /data:image\/svg\+xml,[^"'`\s)]*?%3Cdesc%3Epetal-pending%3A([^%]+(?:%[0-9A-F]{2}[^%]*)*?)%3C%2Fdesc%3E[^"'`\s)]*/g;
+function isFinalImageError(e) {
+  return /turn_stopped|turn_not_running|not configured|empty/i.test(e?.message ?? "");
+}
 var PLACEHOLDER_RE = /petal-image:\/\/([^\s"'`<>\)]+)/g;
 function slugToPrompt(slug3) {
   let decoded = slug3;
@@ -163066,8 +163067,25 @@ async function generatePetalImage(opts) {
   }
   return { url: pub.publicUrl, cached: false };
 }
-async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPaths) {
+async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPaths, deps = {}) {
   const allowed = targetPaths ? new Set(targetPaths) : null;
+  const generate = deps.generate ?? generatePetalImage;
+  const sleep3 = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const failures = [];
+  files = files.map((f) => {
+    if (allowed && !allowed.has(f.path)) return f;
+    if (!f.content.includes("petal-pending%3A")) return f;
+    PENDING_RE.lastIndex = 0;
+    const content = f.content.replace(PENDING_RE, (_m, enc2) => {
+      let slug3 = enc2;
+      try {
+        slug3 = decodeURIComponent(enc2);
+      } catch {
+      }
+      return `petal-image://${slug3}`;
+    });
+    return content === f.content ? f : { ...f, content };
+  });
   const slugs = /* @__PURE__ */ new Set();
   for (const f of files) {
     if (allowed && !allowed.has(f.path)) continue;
@@ -163077,7 +163095,7 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
       slugs.add(m[1]);
     }
   }
-  if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [] };
+  if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [], failures };
   const ordered = Array.from(slugs).slice(0, MAX_IMAGES_PER_GENERATION);
   const skipped = Array.from(slugs).slice(MAX_IMAGES_PER_GENERATION);
   const urlMap = /* @__PURE__ */ new Map();
@@ -163086,11 +163104,24 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
   const queue = [...ordered];
   const liveUrls = [];
   const fallbackUrl = (slug3) => {
-    const label2 = slug3.replace(/[-_]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim().slice(0, 48) || "Picture";
-    const hue = Math.abs([...slug3].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue} 60% 88%)"/><stop offset="1" stop-color="hsl(${(hue + 55) % 360} 58% 72%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><circle cx="920" cy="170" r="240" fill="white" opacity=".2"/><path d="M0 700 330 390l210 190 170-150 490 370H0Z" fill="white" opacity=".35"/><text x="70" y="720" font-family="Arial,sans-serif" font-size="42" fill="#172033" opacity=".72">${label2}</text></svg>`;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    const safe = slug3.replace(/[<>&"]/g, "");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><desc>${PENDING_MARK}${safe}</desc><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(30 6% 22%)"/><stop offset="1" stop-color="hsl(30 5% 12%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg).replace(/\(/g, "%28").replace(/\)/g, "%29")}`;
   };
+  const makeWithRetry = async (slug3) => {
+    let last2;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        return (await generate({ prompt: slugToPrompt(slug3) })).url;
+      } catch (e) {
+        last2 = e;
+        if (isFinalImageError(e)) break;
+        if (attempt < MAX_ATTEMPTS - 1) await sleep3(RETRY_DELAYS_MS[attempt] ?? 4e3);
+      }
+    }
+    throw last2;
+  };
+  const retryLater = [];
   const announce = (slug3, url) => {
     liveUrls.push(url);
     try {
@@ -163123,20 +163154,41 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
       } catch {
       }
       try {
-        const r = await generatePetalImage({ prompt: slugToPrompt(slug3) });
-        urlMap.set(slug3, r.url);
-        resolved += 1;
-        announce(slug3, r.url);
-      } catch (e) {
-        failed += 1;
-        console.warn(`[petal-image] generation failed for "${slug3}":`, e);
-        const url = fallbackUrl(slug3);
+        const url = await makeWithRetry(slug3);
         urlMap.set(slug3, url);
+        resolved += 1;
         announce(slug3, url);
+      } catch (e) {
+        if (isFinalImageError(e)) {
+          recordFailure(slug3, e);
+        } else {
+          retryLater.push(slug3);
+        }
       }
     }
   }
+  const recordFailure = (slug3, e) => {
+    failed += 1;
+    const reason = (e?.message ?? String(e)).slice(0, 200);
+    console.warn(`[petal-image] generation failed for "${slug3}":`, reason);
+    failures.push({ slug: slug3, reason });
+    try {
+      deps.onFailure?.({ slug: slug3, reason });
+    } catch {
+    }
+    urlMap.set(slug3, fallbackUrl(slug3));
+  };
   await Promise.all([worker(), worker()]);
+  for (const slug3 of retryLater) {
+    try {
+      const url = await makeWithRetry(slug3);
+      urlMap.set(slug3, url);
+      resolved += 1;
+      announce(slug3, url);
+    } catch (e) {
+      recordFailure(slug3, e);
+    }
+  }
   for (const slug3 of skipped) {
     urlMap.set(slug3, fallbackUrl(slug3));
   }
@@ -163148,7 +163200,8 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
     });
     return updated === f.content ? f : { ...f, content: updated };
   });
-  return { files: next, resolved, failed, urls: liveUrls };
+  for (const slug3 of skipped) failures.push({ slug: slug3, reason: "over_per_build_limit" });
+  return { files: next, resolved, failed, urls: liveUrls, failures };
 }
 
 // src/routes/api/generate.ts
@@ -181132,7 +181185,25 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                 );
               },
               body.projectId ?? null,
-              imageTargetPaths
+              imageTargetPaths,
+              {
+                // A picture that could not be made is said plainly (and kept
+                // in the turn's events for audit), never passed off as real.
+                onFailure: ({ reason }) => {
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "image_resolve",
+                        outcome: "failed",
+                        message: "One picture couldn't be made yet \u2014 it will be retried on the next change.",
+                        detail: reason,
+                        ts: Date.now()
+                      })
+                    )
+                  );
+                }
+              }
             );
             nextFiles = imgResult.files;
             if (imgResult.resolved > 0) {

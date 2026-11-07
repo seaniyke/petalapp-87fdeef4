@@ -6783,7 +6783,10 @@ async function handleGenerateRequestCore(
               );
           const imageTargetSet = imageTargetPaths ? new Set(imageTargetPaths) : null;
           const hasPlaceholders = nextFiles.some(
-            (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://"),
+            (f) =>
+              (!imageTargetSet || imageTargetSet.has(f.path)) &&
+              // Earlier pictures that could not be made are retried too.
+              (f.content.includes("petal-image://") || f.content.includes("petal-pending%3A")),
           );
           const seenPictureUrls = new Set<string>();
           if (hasPlaceholders) {
