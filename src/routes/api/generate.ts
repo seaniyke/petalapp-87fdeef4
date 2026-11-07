@@ -4957,11 +4957,15 @@ async function handleGenerateRequestCore(
               costOf: (r) => {
                 if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
                 if (r.usage) {
-                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens } as GatewayUsage, firstBuildModel).costUsd;
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } } as GatewayUsage, firstBuildModel).costUsd;
                   if (c != null) return c;
                 }
-                return buildReservation?.classCostUsd ?? 0.03;
+                // Unmeasured call: never free — the per-build size estimate stands in.
+                return Math.max(buildReservation?.classCostUsd ?? 0.03, loopSizeEstimate.usd);
               },
+              // Checked before EVERY call, including the first: all prompt
+              // tokens at the uncached rate plus a typical write's output.
+              predictCallUsd: (promptTokens) => predictCallCostUsd(promptTokens, loopModelPrice),
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
