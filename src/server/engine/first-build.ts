@@ -58,6 +58,20 @@ export interface FirstBuildDesign {
  *
  * Deterministic text — no AI call, no per-page cost.
  */
+/**
+ * Agency-grade finish: the typographic and interaction details that separate
+ * a studio-made site from a merely tidy one. Deterministic text.
+ */
+export const FINISH_RULES = [
+  "Type finish: small uppercase labels (kickers, meta lines, nav links) use text-xs tracking-[0.18em] uppercase text-muted-foreground. Display headings use tight leading (leading-[1.05] to leading-[1.1]) and tracking-tight.",
+  "Headings scale with the screen and never exceed three lines on a phone: hero h1 text-4xl sm:text-5xl lg:text-7xl, section h2 text-3xl md:text-5xl. Body copy max-w-prose, text-base md:text-lg, leading-relaxed.",
+  "Cards respond to the pointer: wrap the picture in overflow-hidden and give it transition-transform duration-700 ease-out group-hover:scale-[1.03]; the title gets a subtle underline or colour shift on group-hover. Whole card is one <Link className=\"group block\">.",
+  "Every interactive element has transition-colors duration-300 and a visible focus-visible:ring-2 ring-ring ring-offset-2 state. Buttons never jump size on hover.",
+  "Grids align: cards in one row share the same picture aspect ratio (aspect-[4/3] or aspect-[3/4]) and never offset each other vertically unless the whole section is a deliberate staggered layout.",
+  "Section changes are calm: alternate only between bg-background and a near tone (bg-muted/40) with a thin border-t border-border/60 between bands — never a harsh jump between unrelated surfaces.",
+  "Footer is quiet and complete: brand, the requested page links, contact line and © year, in text-sm text-muted-foreground on a border-t.",
+];
+
 export const COMPOSITION_RULES = [
   "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
@@ -77,6 +91,7 @@ export const COMPOSITION_RULES = [
   "The header has a solid background (bg-background with a border-b), never translucent or blurred. The phone menu uses the kit Sheet so it opens as a solid full-height panel.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
   "Every link points somewhere real — no href=\"#\" placeholders. One <h1> per page.",
+  ...FINISH_RULES,
 ].join("\n- ");
 
 /**

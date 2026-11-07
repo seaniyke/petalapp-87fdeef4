@@ -142159,7 +142159,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -146797,7 +146796,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -168604,6 +168602,15 @@ function firstBuildSeedFiles(args) {
   }
 }
 var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWork in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, write it, let it validate, then move to the next. Inspect enough to start safely \u2014 you do not need to understand the whole starter kit before your first write. The starter-kit API above is authoritative and complete: do not list directories to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go in one response. After each write step Kimble reports the whole-workspace verification verdict; trust it instead of re-reading files. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
+var FINISH_RULES = [
+  "Type finish: small uppercase labels (kickers, meta lines, nav links) use text-xs tracking-[0.18em] uppercase text-muted-foreground. Display headings use tight leading (leading-[1.05] to leading-[1.1]) and tracking-tight.",
+  "Headings scale with the screen and never exceed three lines on a phone: hero h1 text-4xl sm:text-5xl lg:text-7xl, section h2 text-3xl md:text-5xl. Body copy max-w-prose, text-base md:text-lg, leading-relaxed.",
+  'Cards respond to the pointer: wrap the picture in overflow-hidden and give it transition-transform duration-700 ease-out group-hover:scale-[1.03]; the title gets a subtle underline or colour shift on group-hover. Whole card is one <Link className="group block">.',
+  "Every interactive element has transition-colors duration-300 and a visible focus-visible:ring-2 ring-ring ring-offset-2 state. Buttons never jump size on hover.",
+  "Grids align: cards in one row share the same picture aspect ratio (aspect-[4/3] or aspect-[3/4]) and never offset each other vertically unless the whole section is a deliberate staggered layout.",
+  "Section changes are calm: alternate only between bg-background and a near tone (bg-muted/40) with a thin border-t border-border/60 between bands \u2014 never a harsh jump between unrelated surfaces.",
+  "Footer is quiet and complete: brand, the requested page links, contact line and \xA9 year, in text-sm text-muted-foreground on a border-t."
+];
 var COMPOSITION_RULES = [
   "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
@@ -168622,7 +168629,8 @@ var COMPOSITION_RULES = [
   "One primary action per screen. Repeat the same action (e.g. 'Start a project') instead of inventing new ones; never more than one button per card or section.",
   "The header has a solid background (bg-background with a border-b), never translucent or blurred. The phone menu uses the kit Sheet so it opens as a solid full-height panel.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
-  'Every link points somewhere real \u2014 no href="#" placeholders. One <h1> per page.'
+  'Every link points somewhere real \u2014 no href="#" placeholders. One <h1> per page.',
+  ...FINISH_RULES
 ].join("\n- ");
 var CORRECTNESS_RULES = [
   "Import every identifier you use, including every lucide-react icon and every React hook. An undefined name fails validation and the write is returned to you.",
@@ -171927,6 +171935,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
