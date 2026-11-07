@@ -59,6 +59,9 @@ export type GenerateImageOptions = {
   /** Who this picture belongs to. Set server-side only: it decides which
    *  remembered pictures may be reused and who owns the new one. */
   scope?: { projectId?: string | null; ownerId?: string | null; turnId?: string | null };
+  /** Pictures already used elsewhere in this build — a remembered picture
+   *  on this list is never reused; a fresh one is made instead. */
+  avoidUrls?: ReadonlySet<string>;
 };
 
 
@@ -176,6 +179,7 @@ export async function generatePetalImage(
       request: prompt,
       scope,
       aspectRatio: opts.aspectRatio ?? null,
+      exclude: opts.avoidUrls,
     });
     if (remembered) return { url: remembered.url, cached: true };
   } catch {
@@ -243,6 +247,27 @@ export async function generatePetalImage(
 }
 
 
+/** A picture already stored for some site (our own bucket). */
+const STORED_PICTURE_RE = /https:\/\/[^\s"'`<>)]+\/storage\/v1\/object\/public\/petal-images\/[A-Za-z0-9._-]+/g;
+
+const EXAMPLES_DIR = "src/components/examples/";
+
+/** Kimble's reference examples are read by the AI, not shown to visitors —
+ *  unless a real page imports one. */
+function isRenderedPictureFile(file: ProjectFile, files: ProjectFile[]): boolean {
+  if (!file.path.startsWith(EXAMPLES_DIR)) return true;
+  const base = file.path.slice(EXAMPLES_DIR.length).replace(/\.[jt]sx?$/, "");
+  const ref = `components/examples/${base}`;
+  return files.some((f) => !f.path.startsWith(EXAMPLES_DIR) && f.content.includes(ref));
+}
+
+/** Pages and data the AI wrote first, Kimble's shared building blocks last. */
+function pictureFileRank(path: string): number {
+  if (path.startsWith(EXAMPLES_DIR)) return 3;
+  if (path.startsWith("src/components/blocks/") || path.startsWith("src/components/ui/")) return 2;
+  return 1;
+}
+
 /** Walk every file content, find `petal-image://...` URLs, and replace them
  *  with real generated images. Replacements are deduped by slug so the same
  *  placeholder used five times only generates one image. Failed generations
@@ -279,10 +304,14 @@ export async function resolvePetalImagePlaceholders(
     });
     return content === f.content ? f : { ...f, content };
   });
-  // 1. Collect all unique placeholders across the project.
+  // 1. Collect all unique placeholders across the project. Pages the AI
+  // wrote come first so Kimble's own reference files can never use up the
+  // per-build picture allowance; reference examples nobody imports are
+  // never rendered, so they get no pictures at all.
+  const eligible = files.filter((f) => (!allowed || allowed.has(f.path)) && isRenderedPictureFile(f, files));
+  const ordered0 = [...eligible].sort((a, b) => pictureFileRank(a.path) - pictureFileRank(b.path));
   const slugs = new Set<string>();
-  for (const f of files) {
-    if (allowed && !allowed.has(f.path)) continue;
+  for (const f of ordered0) {
     PLACEHOLDER_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = PLACEHOLDER_RE.exec(f.content)) !== null) {
@@ -290,6 +319,16 @@ export async function resolvePetalImagePlaceholders(
     }
   }
   if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [], failures };
+  const eligiblePaths = new Set(eligible.map((f) => f.path));
+
+  // Every distinct slot gets its own picture: pictures already on the site
+  // (and each one placed during this pass) are never handed out again.
+  const usedUrls = new Set<string>();
+  for (const f of files) {
+    STORED_PICTURE_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = STORED_PICTURE_RE.exec(f.content)) !== null) usedUrls.add(m[0]);
+  }
 
   // 2. Cap to avoid runaway generations.
   const ordered = Array.from(slugs).slice(0, MAX_IMAGES_PER_GENERATION);
@@ -315,7 +354,7 @@ export async function resolvePetalImagePlaceholders(
     let last: unknown;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
-        return (await generate({ prompt: slugToPrompt(slug) })).url;
+        return (await generate({ prompt: slugToPrompt(slug), avoidUrls: usedUrls })).url;
       } catch (e) {
         last = e;
         if (isFinalImageError(e)) break;
@@ -325,6 +364,12 @@ export async function resolvePetalImagePlaceholders(
     throw last;
   };
   const retryLater: string[] = [];
+  /** Claim a picture for one slot; false when another slot already has it. */
+  const claim = (url: string): boolean => {
+    if (usedUrls.has(url)) return false;
+    usedUrls.add(url);
+    return true;
+  };
   const announce = (slug: string, url: string) => {
     liveUrls.push(url);
     try {
@@ -341,8 +386,8 @@ export async function resolvePetalImagePlaceholders(
       // The owner's own photos first — a real photograph of the real
       // business beats anything curated or generated.
       try {
-        const own = await findProjectPicture(projectId, slugToPrompt(slug));
-        if (own) {
+        const own = await findProjectPicture(projectId, slugToPrompt(slug), usedUrls);
+        if (own && claim(own.url)) {
           urlMap.set(slug, own.url);
           resolved += 1;
           announce(slug, own.url);
@@ -355,8 +400,8 @@ export async function resolvePetalImagePlaceholders(
       // consistent than generating; a weak match is skipped so quality
       // never drops for the sake of a saving.
       try {
-        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug) });
-        if (fromLibrary) {
+        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug), exclude: usedUrls });
+        if (fromLibrary && claim(fromLibrary.url)) {
           urlMap.set(slug, fromLibrary.url);
           resolved += 1;
           announce(slug, fromLibrary.url);
@@ -367,6 +412,7 @@ export async function resolvePetalImagePlaceholders(
       }
       try {
         const url = await makeWithRetry(slug);
+        usedUrls.add(url);
         urlMap.set(slug, url);
         resolved += 1;
         announce(slug, url);
@@ -392,6 +438,7 @@ export async function resolvePetalImagePlaceholders(
   for (const slug of retryLater) {
     try {
       const url = await makeWithRetry(slug);
+      usedUrls.add(url);
       urlMap.set(slug, url);
       resolved += 1;
       announce(slug, url);
@@ -407,7 +454,7 @@ export async function resolvePetalImagePlaceholders(
 
   // 5. Apply substitutions.
   const next = files.map((f) => {
-    if (allowed && !allowed.has(f.path)) return f;
+    if (!eligiblePaths.has(f.path)) return f;
     if (!f.content.includes("petal-image://")) return f;
     const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug) => {
       return urlMap.get(slug) ?? fallbackUrl(slug);
