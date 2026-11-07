@@ -23,6 +23,7 @@ import {
   loadOwnedProject,
   loadProjectFiles,
   preflight,
+  previewFields,
   serviceAccessToken,
   tailTurnEvents,
   verifyServiceKey,
@@ -90,7 +91,7 @@ export const Route = createFileRoute("/api/public/v1/generate")({
         let lastSeq = 0;
         let fired = false;
         let turnStatus = "unknown";
-        const followDeploy = async (emit: (evt: Record<string, unknown>) => void) => {
+        const followDeploy = async (emit: (evt: Record<string, unknown>) => void): Promise<string | null> => {
           const revision = typeof result?.committedRevision === "number" ? result.committedRevision : null;
           const started = await triggerProjectBuild(new URL(request.url).origin, projectId, { turnId, revision });
           if (!started.ok || !started.buildId) {
@@ -99,7 +100,7 @@ export const Route = createFileRoute("/api/public/v1/generate")({
             if (webhookUrl) {
               await deliverWebhook(webhookUrl, { event: "build.completed", projectId, turnId, buildId: null, status: "failed", deploymentUrl: null, error });
             }
-            return;
+            return null;
           }
           let last: PublicBuild | null = null;
           for await (const b of followBuild(projectId, started.buildId)) {
@@ -117,11 +118,13 @@ export const Route = createFileRoute("/api/public/v1/generate")({
               revision: last.revision,
               status: last.status,
               deploymentUrl: last.deploymentUrl,
+              ...previewFields(last.deploymentUrl),
               error: last.error,
             });
           }
+          return last?.deploymentUrl ?? null;
         };
-        const fire = async (status: string) => {
+        const fire = async (status: string, url: string | null = null) => {
           if (fired || !webhookUrl) return;
           fired = true;
           await deliverWebhook(webhookUrl, {
@@ -129,6 +132,7 @@ export const Route = createFileRoute("/api/public/v1/generate")({
             projectId,
             turnId,
             status,
+            ...previewFields(url),
             committedRevision: result?.committedRevision ?? null,
             persisted: result?.persisted ?? false,
             creditsCharged: result?.creditsCharged ?? null,
@@ -144,7 +148,8 @@ export const Route = createFileRoute("/api/public/v1/generate")({
           }
           if (evt.type === "done") {
             turnStatus = String(evt.status ?? "unknown");
-            await fire(turnStatus);
+            // A succeeded turn waits for its build so turn.completed carries the live address.
+            if (!(turnStatus === "succeeded" && result?.persisted !== false)) await fire(turnStatus);
             return true;
           }
           return false;
@@ -191,7 +196,12 @@ export const Route = createFileRoute("/api/public/v1/generate")({
               // idempotent per revision, so this only guarantees it happened
               // and lets the caller follow the build to its live address.
               if (done && turnStatus === "succeeded" && result?.persisted !== false) {
-                await followDeploy((evt) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`)));
+                let url: string | null = null;
+                try {
+                  url = await followDeploy((evt) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`)));
+                } finally {
+                  await fire(turnStatus, url);
+                }
               }
             } catch (e) {
               controller.enqueue(

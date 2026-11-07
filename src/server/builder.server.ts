@@ -13,6 +13,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ProjectFile } from "@/server/generate.server";
 import { injectPetalBadge } from "@/server/petal-badge.server";
+import { injectCustardWidget } from "@/server/custard-widget.server";
 import { fixSourceEscapes } from "@/server/source-escape-fixer.server";
 import { fixImportSyntax } from "@/server/import-syntax-fixer.server";
 import { fixJsxAttrLiterals } from "@/server/jsx-attr-literal-fixer.server";
@@ -82,6 +83,8 @@ export async function postBuildToRailway(args: {
    * (e.g. paid-plan project that has hidden the badge in settings).
    */
   hideBadge?: boolean;
+  /** Add Custard AI's staff widget (apps owned by the Custard service account). */
+  custardWidget?: boolean;
   /**
    * Post-deploy browser verification plan. When present the builder loads the
    * deployed app in a real browser, signs a throwaway user in, runs the write
@@ -144,7 +147,8 @@ export async function postBuildToRailway(args: {
   // Replacing it here guarantees the exact payload sent to the builder always
   // contains one current, parse-safe guard.
   const guarded = pinLooseDeps(injectPreviewGuard(brandWired.files, { projectId: args.projectId }).files);
-  const filesToShip = args.hideBadge ? guarded : injectPetalBadge(guarded);
+  const badged = args.hideBadge ? guarded : injectPetalBadge(guarded);
+  const filesToShip = args.custardWidget ? injectCustardWidget(badged) : badged;
 
   const body = JSON.stringify({
     projectId: args.projectId,
