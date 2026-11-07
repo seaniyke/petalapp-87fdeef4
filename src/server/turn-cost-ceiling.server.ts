@@ -31,9 +31,10 @@ export const TURN_REPAIR_COST_WARN_USD = 0.22;
 const BLENDED_RATE_PER_MTOK: Record<string, number> = {
   "google/gemini-3.1-flash-lite": 3.5,
   "google/gemini-3.8-flash": 9,
-  "openai/gpt-5.6-luna": 24,
+  "google/gemini-4-argon": 24,
+  "openai/gpt-5.6-luna": 2.8,
   "openai/gpt-5.6-sol": 48,
-  "openai/gpt-6-astra": 48,
+  "openai/gpt-6-astra": 120,
 };
 
 const DEFAULT_RATE_PER_MTOK = 5;

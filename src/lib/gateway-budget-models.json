@@ -42,8 +42,8 @@
     "context": 272000,
     "vision": true,
     "tools": true,
-    "inputUsdPerM": 8.0,
-    "outputUsdPerM": 40.0,
+    "inputUsdPerM": 0.8,
+    "outputUsdPerM": 4.8,
     "features": [
       "generate",
       "discuss",
