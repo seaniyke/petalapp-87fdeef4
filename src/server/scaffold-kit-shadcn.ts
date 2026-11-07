@@ -1016,6 +1016,7 @@ export function DataTable<TData, TValue>({
 // ===========================================================================
 const SIDEBAR = `"use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
@@ -1108,7 +1109,8 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
       );
     }
     if (isMobile) {
-      return (
+      if (typeof document === "undefined") return null;
+      return createPortal(
         <>
           <div
             onClick={() => setOpenMobile(false)}
@@ -1128,7 +1130,8 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
             style={{ "--sidebar-width-mobile": SIDEBAR_WIDTH_MOBILE } as React.CSSProperties}
             {...rest}
           >{children}</aside>
-        </>
+        </>,
+        document.body,
       );
     }
     return (
