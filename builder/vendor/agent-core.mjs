@@ -60297,6 +60297,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -158165,11 +158166,13 @@ async function lookupBackendForGenerate(projectId) {
   if (data2.status !== "ready") return null;
   return { url: data2.supabase_url, anonKey: data2.anon_key };
 }
+var PUBLISHED_ORIGIN = "https://petalapp.lovable.app";
 var STABLE_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app";
-function sharedApiOrigins() {
-  const configured = (process.env.PETAL_PUBLIC_ORIGIN || "").trim();
-  const extra = (process.env.PETAL_FALLBACK_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const all = [configured, "https://kimble.cloud", STABLE_ORIGIN, ...extra].filter(Boolean).map((u) => u.replace(/\/$/, ""));
+var RETIRED_ORIGINS = /^https?:\/\/(www\.)?(kimble\.cloud|buildwithpetal\.com)\/?$/i;
+function sharedApiOrigins(env2 = process.env) {
+  const configured = (env2.PETAL_PUBLIC_ORIGIN || "").trim();
+  const extra = (env2.PETAL_FALLBACK_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const all = [configured, PUBLISHED_ORIGIN, STABLE_ORIGIN, ...extra].filter((u) => u && !RETIRED_ORIGINS.test(u)).filter(Boolean).map((u) => u.replace(/\/$/, ""));
   const unique = Array.from(new Set(all));
   return { baseUrl: unique[0], fallbackUrls: unique.slice(1) };
 }
@@ -179432,12 +179435,12 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
           const cd = intentActions.cloud;
           const say = (message) => controller.enqueue(encoder.encode(sse({ type: "status", message })));
           if (cd.status === "enabled") {
-            say(`${cd.reason} Kimble Cloud enabled a database and sign-in for it.`);
-            say("Connecting your app to Kimble Cloud\u2026");
+            say(`${cd.reason} Petal turned on a database and sign-in for it.`);
+            say("Connecting your app to its database\u2026");
           } else if (cd.status === "already_enabled" && isInitial) {
-            say("Kimble Cloud is already on for this project \u2014 connecting your app to it\u2026");
+            say("This project already has a database \u2014 connecting your app to it\u2026");
           } else if (cd.status === "failed" && cd.needed) {
-            say(`${cd.reason ?? "This app needs saved data."} Kimble Cloud couldn't be switched on, so accounts and saved data are not connected yet.`);
+            say(`${cd.reason ?? "This app needs saved data."} The database couldn't be switched on, so accounts and saved data are not connected yet.`);
           }
         }
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path\u2026" })));
@@ -181074,7 +181077,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             sse({
               type: "cycle_progress",
               cycle: 1,
-              message: "Checking the files Kimble just wrote for build errors\u2026"
+              message: "Checking the new files for build errors\u2026"
             })
           )
         );
