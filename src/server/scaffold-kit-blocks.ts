@@ -532,7 +532,7 @@ import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Centered hero with optional eyebrow + dual CTA. Default landing-page hero —
- * works for SaaS, agency, app launches. Pair with a soft \`GradientBlob\`.
+ * works for SaaS, agency, app launches.
  */
 export function HeroCentered({
   eyebrow,
