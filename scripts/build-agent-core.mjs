@@ -33,7 +33,7 @@ await build({
   banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" },
   // The Node entry locates its adjacent WASM runner via CommonJS module paths
   // and deliberately rejects bundling. Let Railway load it from node_modules.
-  external: ["esbuild-wasm", "esbuild-wasm/*", "typescript"],
+  external: ["esbuild-wasm", "typescript"],
   plugins: [
     {
       name: "kimble-agent-aliases",

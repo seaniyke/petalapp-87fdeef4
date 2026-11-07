@@ -22,8 +22,26 @@ function onWorker(): boolean {
   return typeof navigator !== "undefined" && (navigator as { userAgent?: string }).userAgent === "Cloudflare-Workers";
 }
 
-type EsbuildApi = Pick<typeof esbuildNode, "initialize" | "transform">;
-let esbuild: EsbuildApi = esbuildNode;
+const esbuild = esbuildNode;
+
+/** Worker parse gate: the real TypeScript parser (pure JS, no WASM, no
+ *  child process). Same contract as the esbuild pass: syntax errors only. */
+async function parseWithTypescript(targets: { path: string; content: string }[]): Promise<EsbuildIssue[]> {
+  const { installTsRuntimeGlobals } = await import("./verification/ts-runtime-shim");
+  installTsRuntimeGlobals();
+  const ts = (await import("typescript")).default;
+  const issues: EsbuildIssue[] = [];
+  for (const f of targets) {
+    const kind = f.path.endsWith(".tsx") ? ts.ScriptKind.TSX : f.path.endsWith(".jsx") ? ts.ScriptKind.JSX : f.path.endsWith(".ts") ? ts.ScriptKind.TS : ts.ScriptKind.JS;
+    const sf = ts.createSourceFile(f.path, f.content, ts.ScriptTarget.ES2022, true, kind);
+    const diags = (sf as unknown as { parseDiagnostics?: import("typescript").Diagnostic[] }).parseDiagnostics ?? [];
+    for (const d of diags) {
+      const pos = sf.getLineAndCharacterOfPosition(d.start ?? 0);
+      issues.push({ path: f.path, line: pos.line + 1, column: pos.character, message: ts.flattenDiagnosticMessageText(d.messageText, "\n"), kind: "parse" });
+    }
+  }
+  return issues;
+}
 
 export type EsbuildIssue = {
   path: string;
@@ -62,22 +80,6 @@ function ensureInit(): Promise<void> {
   // esbuild-wasm throws "more than once" SYNCHRONOUSLY after a module reload
   // (not as a rejected promise), so the whole parse check used to be skipped.
   // Either form means esbuild is already running — that is success.
-  if (onWorker()) {
-    initPromise = (async () => {
-      const { loadWorkerEsbuild } = await import("./esbuild-worker-runtime");
-      const { esbuild: browserApi, wasmModule } = await loadWorkerEsbuild();
-      try {
-        await browserApi.initialize({ wasmModule, worker: false });
-      } catch (err) {
-        if (!alreadyUp(err)) throw err;
-      }
-      esbuild = browserApi as unknown as EsbuildApi;
-    })().catch((err: unknown) => {
-      initPromise = null;
-      throw err;
-    });
-    return initPromise;
-  }
   try {
     initPromise = esbuild.initialize({ worker: false }).catch((err: unknown) => {
       if (alreadyUp(err)) return;
@@ -118,6 +120,16 @@ export async function verifyFilesEsbuild(
     (f) => changed.has(f.path) && !shouldSkip(f.path, options.includeScaffoldOwned === true),
   );
   if (targets.length === 0) return { status: "not_checked", ok: true, issues: [], checkedPaths: [] };
+
+  if (onWorker()) {
+    try {
+      const issues = await parseWithTypescript(targets);
+      return { status: issues.length ? "failed" : "passed", ok: issues.length === 0, issues, checkedPaths: targets.map((f) => f.path) };
+    } catch (err) {
+      const detail = (err as Error)?.message ?? String(err);
+      return { status: "unavailable", ok: false, issues: [], checkedPaths: [], unavailableReason: "initialization_error", unavailableDetail: detail };
+    }
+  }
 
   try {
     await ensureInit();
