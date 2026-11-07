@@ -561,7 +561,6 @@ const CTA_GRADIENT_BAND = `import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientBlob } from "@/components/ui/gradient-blob";
 import { cn, slotNode } from "@/lib/utils";
 
 type CtaLike = {

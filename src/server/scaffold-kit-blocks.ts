@@ -527,7 +527,6 @@ const HERO_CENTERED = `import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientBlob } from "@/components/ui/gradient-blob";
 import { GradientText } from "@/components/ui/gradient-text";
 import { cn, slotNode } from "@/lib/utils";
 
@@ -555,7 +554,6 @@ export function HeroCentered({
 }) {
   return (
     <section className={cn("relative overflow-hidden py-24 md:py-32", className)}>
-      <GradientBlob className="-top-40 left-1/2 -translate-x-1/2" size="xl" />
       <Container size="lg">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           {eyebrow && (
@@ -799,10 +797,9 @@ export function HeroEditorial({
 // ---------------------------------------------------------------------------
 
 const HERO_CENTERED_GRADIENT = `import * as React from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientBlob } from "@/components/ui/gradient-blob";
 import { GradientText } from "@/components/ui/gradient-text";
 import { cn, slotNode } from "@/lib/utils";
 
@@ -830,7 +827,6 @@ export function HeroCenteredGradient({
 }) {
   return (
     <section className={cn("relative overflow-hidden py-24 md:py-36", className)}>
-      <GradientBlob className="-top-32 left-1/2 -translate-x-1/2" size="xl" />
       <Container size="lg" className="relative">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           {eyebrow && (
