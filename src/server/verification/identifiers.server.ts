@@ -227,6 +227,7 @@ export function checkUndefinedIdentifiers(
   changedPaths: string[],
   opts: { budgetMs?: number; now?: () => number } = {},
 ): IdentifierCheckResult {
+  if (!TS_RUNTIME_READY) return { status: "unavailable", issues: [], reason: "typescript runtime not ready" };
   const targets = changedPaths.filter((p) => PARSEABLE.test(p));
   if (targets.length === 0) return { status: "verified", issues: [] };
   const now = opts.now ?? (() => Date.now());
