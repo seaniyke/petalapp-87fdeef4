@@ -22,7 +22,9 @@ export const Route = createFileRoute("/api/public/v1/turns/$id")({
           .maybeSingle();
         if (!data || data.user_id !== owner) return json({ error: "not_found" }, 404);
         const { user_id: _omit, ...turn } = data;
-        return json({ turn });
+        const { previewUrlFor, previewFields } = await import("@/server/service-api.server");
+        const url = data.status === "succeeded" ? await previewUrlFor(data.project_id, data.id) : null;
+        return json({ turn: { ...turn, ...previewFields(url) }, ...previewFields(url) });
       },
     },
   },

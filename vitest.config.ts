@@ -11,6 +11,7 @@ export default defineConfig({
     // importing scripts that call process.exit at module scope.
     include: [
       "src/server/__tests__/public-origin-and-builds.test.ts",
+      "src/server/__tests__/custard-contract.test.ts",
       "src/server/__tests__/service-api.test.ts",
       "src/components/__tests__/robot-activity.test.ts",
       "src/lib/__tests__/cloud-pricing.test.ts",
