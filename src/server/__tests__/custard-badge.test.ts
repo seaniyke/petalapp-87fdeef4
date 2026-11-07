@@ -3,9 +3,11 @@ import { injectPetalBadge } from "@/server/petal-badge.server";
 import { COMPOSITION_RULES } from "@/server/engine/first-build";
 
 describe("Custard AI badge and image rules", () => {
-  it("badge says Built with Custard AI and links to custardai.dev", () => {
+  it("badge says Powered by Custard and links to custardai.dev", () => {
     const [f] = injectPetalBadge([{ path: "index.html", content: "<html><body></body></html>" }]);
-    expect(f.content).toContain("'Custard AI'");
+    expect(f.content).toContain("'Powered by '");
+    expect(f.content).toContain("strong.textContent = 'Custard';");
+    expect(f.content).not.toContain("Built with");
     expect(f.content).toContain("https://custardai.dev");
     expect(f.content).not.toContain("kimble.cloud");
   });
