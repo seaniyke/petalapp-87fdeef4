@@ -7,10 +7,9 @@ import * as shadcn from "../scaffold-kit-shadcn";
 function allFiles(mod: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const v of Object.values(mod)) {
-    if (v && typeof v === "object") {
-      for (const [k, c] of Object.entries(v as Record<string, unknown>)) {
-        if (typeof c === "string" && /\.tsx$/.test(k)) out[k] = c;
-      }
+    if (!Array.isArray(v)) continue;
+    for (const f of v as Array<{ path?: unknown; content?: unknown }>) {
+      if (f && typeof f.path === "string" && typeof f.content === "string") out[f.path] = f.content;
     }
   }
   return out;
