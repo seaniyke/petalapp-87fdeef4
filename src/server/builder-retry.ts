@@ -14,6 +14,9 @@
  */
 export const RETRYABLE_BUILDER_STATUSES: ReadonlySet<number> = new Set([429, 502, 503, 504]);
 
+/** /exec and /browse: short waits, ~30s total, status codes only. */
+export const SUBCALL_RETRY_DELAYS_MS: readonly number[] = [2_000, 4_000, 8_000, 15_000];
+
 /** Longest Retry-After we honour, so a bad header can't stall a request. */
 const MAX_RETRY_AFTER_MS = 30_000;
 

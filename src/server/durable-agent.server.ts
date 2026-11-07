@@ -109,6 +109,9 @@ export async function dispatchAgentJob(
   env: Record<string, string | undefined> = process.env,
   retry: Partial<Pick<BuilderRetryOptions, "delaysMs" | "sleep" | "now">> = {},
 ): Promise<{ ok: true } | { ok: false; status: number; reason: string }> {
+  if (!env.BUILDER_URL || !env.BUILDER_SHARED_SECRET) {
+    return { ok: false, status: 0, reason: "Builder is not configured" };
+  }
   try {
     const res = await sendWithBuilderRetry(
       () => signedPost("/agent/generate", job, fetcher, env, AGENT_DISPATCH_ATTEMPT_TIMEOUT_MS),
