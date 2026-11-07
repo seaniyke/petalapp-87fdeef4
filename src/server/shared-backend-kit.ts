@@ -148,7 +148,7 @@ export const db = {
   async seedOnce<T = Record<string, unknown>>(collection: string, rows: T[]): Promise<PetalRecord<T>[]> {
     const current = await db.list<T>(collection, { limit: 1 });
     if (current.records.length > 0 || rows.length === 0) return (await db.list<T>(collection)).records;
-    const flag = "petal_seeded_" + PROJECT_ID + "_" + collection;
+    const flag = "petal_seeded_" + API_KEY.slice(-8) + "_" + collection;
     if (typeof window !== "undefined") {
       if (window.localStorage.getItem(flag)) return current.records;
       window.localStorage.setItem(flag, "1");
