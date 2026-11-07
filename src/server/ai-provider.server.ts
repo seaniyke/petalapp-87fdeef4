@@ -335,34 +335,60 @@ function gatewayCreditUsd(): number {
  * to populate `ai_call_log.cost_usd_micro` so the admin dashboard shows a
  * non-zero "Estimated cost" — the gateway returns token counts, not dollars.
  */
-const MODEL_PRICE_PER_M_TOKENS: Array<{ match: RegExp; inUsd: number; outUsd: number }> = [
-  { match: /gemini-3\.1-flash-lite/i, inUsd: 1.0, outUsd: 6.0 },
-  { match: /gemini-3\.8-flash/i, inUsd: 3.0, outUsd: 15.0 },
-  { match: /gemini-4-argon/i, inUsd: 8.0, outUsd: 40.0 },
-  { match: /gemini-.*-pro/i, inUsd: 12.0, outUsd: 72.0 },
-  { match: /gemini-.*-flash/i, inUsd: 3.0, outUsd: 15.0 },
-  { match: /gpt-5\.6-sol/i, inUsd: 16.0, outUsd: 80.0 },
-  { match: /gpt-5\.6-(luna|terra)/i, inUsd: 8.0, outUsd: 40.0 },
-  { match: /gpt-6/i, inUsd: 16.0, outUsd: 80.0 },
-  { match: /gpt-5/i, inUsd: 10.0, outUsd: 60.0 },
-  { match: /claude-haiku/i, inUsd: 5.0, outUsd: 25.0 },
-  { match: /claude-sonnet/i, inUsd: 15.0, outUsd: 75.0 },
-  { match: /claude-opus/i, inUsd: 25.0, outUsd: 125.0 },
+export type ModelPrice = { inUsd: number; cachedInUsd: number; outUsd: number };
+
+/**
+ * `cachedInUsd` is the gateway's `cache_read` rate: prompt tokens the provider
+ * already holds from an earlier call in the same build bill at 5–10% of the
+ * input rate. Ignoring it overstated measured build cost about 3× (7 Nov 2026
+ * audit). Exact ids first; family patterns only as a last resort.
+ */
+const MODEL_PRICE_PER_M_TOKENS: Array<{ match: RegExp } & ModelPrice> = [
+  { match: /gemini-3\.1-flash-lite/i, inUsd: 1.0, cachedInUsd: 0.1, outUsd: 6.0 },
+  { match: /gemini-3\.[678]-flash/i, inUsd: 3.0, cachedInUsd: 0.3, outUsd: 15.0 },
+  { match: /gemini-4-argon/i, inUsd: 8.0, cachedInUsd: 0.4, outUsd: 40.0 },
+  { match: /gemini-3\.1-pro/i, inUsd: 8.0, cachedInUsd: 0.8, outUsd: 48.0 },
+  { match: /gemini-.*-pro/i, inUsd: 8.0, cachedInUsd: 0.8, outUsd: 48.0 },
+  { match: /gemini-.*-flash/i, inUsd: 3.0, cachedInUsd: 0.3, outUsd: 15.0 },
+  { match: /gpt-5\.6-sol/i, inUsd: 16.0, cachedInUsd: 1.6, outUsd: 80.0 },
+  { match: /gpt-5\.6-terra/i, inUsd: 8.0, cachedInUsd: 0.8, outUsd: 48.0 },
+  { match: /gpt-5\.6-luna/i, inUsd: 0.8, cachedInUsd: 0.08, outUsd: 4.8 },
+  { match: /gpt-6-astra/i, inUsd: 40.0, cachedInUsd: 4.0, outUsd: 200.0 },
+  { match: /gpt-6\.1-sol/i, inUsd: 8.0, cachedInUsd: 0.4, outUsd: 40.0 },
+  { match: /gpt-6\.1-terra/i, inUsd: 4.0, cachedInUsd: 0.2, outUsd: 20.0 },
+  { match: /gpt-6-sol/i, inUsd: 8.0, cachedInUsd: 0.8, outUsd: 40.0 },
+  { match: /gpt-6-luna/i, inUsd: 0.4, cachedInUsd: 0.04, outUsd: 2.0 },
+  { match: /gpt-6/i, inUsd: 40.0, cachedInUsd: 4.0, outUsd: 200.0 },
+  { match: /gpt-5/i, inUsd: 10.0, cachedInUsd: 1.0, outUsd: 60.0 },
+  { match: /claude-haiku/i, inUsd: 4.0, cachedInUsd: 0.4, outUsd: 20.0 },
+  { match: /claude-sonnet/i, inUsd: 8.0, cachedInUsd: 0.8, outUsd: 40.0 },
+  { match: /claude-opus/i, inUsd: 20.0, cachedInUsd: 2.0, outUsd: 100.0 },
 ];
+
+/** Price per million tokens for a model; generic fallback when unknown. */
+export function modelPricePerM(model: string | null | undefined): ModelPrice {
+  const hit = model ? MODEL_PRICE_PER_M_TOKENS.find((e) => e.match.test(model)) : undefined;
+  return hit ? { inUsd: hit.inUsd, cachedInUsd: hit.cachedInUsd, outUsd: hit.outUsd } : { inUsd: 0.5, cachedInUsd: 0.5, outUsd: 2.0 };
+}
 
 export function estimateCostUsdMicro(
   model: string | null | undefined,
   promptTokens: number | null | undefined,
   completionTokens: number | null | undefined,
+  cachedPromptTokens?: number | null,
 ): number | null {
   if (!model) return null;
   const pin = promptTokens ?? 0;
   const pout = completionTokens ?? 0;
   if (pin <= 0 && pout <= 0) return null;
-  const entry =
-    MODEL_PRICE_PER_M_TOKENS.find((e) => e.match.test(model)) ??
-    { inUsd: 0.5, outUsd: 2.0 }; // generic fallback
-  const usd = (pin / 1_000_000) * entry.inUsd + (pout / 1_000_000) * entry.outUsd;
+  const entry = modelPricePerM(model);
+  // Cached tokens are a subset of prompt tokens; clamp so bad data can never
+  // make a call look cheaper than its cached share allows.
+  const cached = Math.min(Math.max(0, cachedPromptTokens ?? 0), Math.max(0, pin));
+  const usd =
+    ((pin - cached) / 1_000_000) * entry.inUsd +
+    (cached / 1_000_000) * entry.cachedInUsd +
+    (pout / 1_000_000) * entry.outUsd;
   return Math.round(usd * 1_000_000);
 }
 
@@ -488,7 +514,7 @@ function usageColumns(u: ParsedUsage, model: string | null): Record<string, unkn
     cols.cost_source = "provider";
     cols.usage_state = "usage_confirmed";
   } else {
-    const c = estimateCostUsdMicro(model, u.promptTokens, u.completionTokens);
+    const c = estimateCostUsdMicro(model, u.promptTokens, u.completionTokens, u.cachedTokens);
     if (c != null) {
       cols.cost_usd_micro = c;
       cols.cost_basis = "estimated";
@@ -869,6 +895,7 @@ async function updateLastCallUsageInner(args: {
         args.model,
         args.promptTokens,
         args.completionTokens,
+        args.cachedPromptTokens,
       );
       if (cost != null) {
         patch.cost_usd_micro = cost;
