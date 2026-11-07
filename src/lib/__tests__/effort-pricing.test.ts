@@ -26,11 +26,11 @@ describe("effort model scenarios are monotonic and in calibration ranges", () =>
   const website = price({ filesCreated: 6, pages: 4, linesPerFile: [60, 180, 190, 170, 150, 50], validationsPassed: 3, durationMs: 170_000 });
   const complexApp = price({ cls: "COMPLEX", filesCreated: 22, filesModified: 3, pages: 9, capabilities: 3, linesPerFile: Array(25).fill(200), validationsPassed: 6, durationMs: 600_000 });
 
-  it("tiny edit ~0.3–0.75", () => { expect(tiny).toBeGreaterThanOrEqual(0.3); expect(tiny).toBeLessThanOrEqual(0.75); });
-  it("small work ~0.5–1.5", () => { expect(simple).toBeGreaterThanOrEqual(0.3); expect(multi).toBeLessThanOrEqual(1.8); });
-  it("page/component medium ~1–3", () => { expect(component).toBeGreaterThan(0.7); expect(page).toBeLessThanOrEqual(3.5); });
-  it("complete website is a major build ~4–8", () => { expect(website).toBeGreaterThanOrEqual(4); expect(website).toBeLessThanOrEqual(8); });
-  it("complex app ~7–15+", () => expect(complexApp).toBeGreaterThanOrEqual(7));
+  it("tiny edit ~0.8–1.5", () => { expect(tiny).toBeGreaterThanOrEqual(0.8); expect(tiny).toBeLessThanOrEqual(1.5); });
+  it("small work ~1–5", () => { expect(simple).toBeGreaterThanOrEqual(1); expect(multi).toBeLessThanOrEqual(5); });
+  it("page/component medium ~2–10", () => { expect(component).toBeGreaterThan(2); expect(page).toBeLessThanOrEqual(10); });
+  it("complete website is a major build ~15–30", () => { expect(website).toBeGreaterThanOrEqual(15); expect(website).toBeLessThanOrEqual(30); });
+  it("complex app 40+", () => expect(complexApp).toBeGreaterThanOrEqual(40));
   it("ordered", () => {
     const seq = [tiny, simple, multi, page, backend, auth, website, complexApp];
     for (let i = 1; i < seq.length; i++) expect(seq[i]).toBeGreaterThanOrEqual(seq[i - 1]);
