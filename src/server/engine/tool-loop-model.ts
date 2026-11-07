@@ -14,7 +14,16 @@ export interface RawUsage {
   prompt_tokens_details?: { cached_tokens?: number };
 }
 
-export async function parseToolStream(res: Response, startedAt: number): Promise<ModelReply & { rawUsage: RawUsage | null }> {
+/** Finish reason reported when the connection dropped after complete tool calls arrived. */
+export const STREAM_INTERRUPTED = "stream_interrupted";
+
+/** True for a call whose arguments are complete, parseable JSON. */
+function isCompleteCall(c: ToolCallMsg): boolean {
+  if (!c.function.name) return false;
+  try { JSON.parse(c.function.arguments || "{}"); return true; } catch { return false; }
+}
+
+export async function parseToolStream(res: Response, startedAt: number, signal?: AbortSignal): Promise<ModelReply & { rawUsage: RawUsage | null }> {
   const reader = res.body!.getReader();
   const dec = new TextDecoder();
   let buf = "";
@@ -50,17 +59,29 @@ export async function parseToolStream(res: Response, startedAt: number): Promise
       calls.set(i, cur);
     }
   };
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let nl: number;
-    while ((nl = buf.indexOf("\n")) >= 0) {
-      handle(buf.slice(0, nl).trim());
-      buf = buf.slice(nl + 1);
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        handle(buf.slice(0, nl).trim());
+        buf = buf.slice(nl + 1);
+      }
     }
+    if (buf.trim()) handle(buf.trim());
+  } catch (e) {
+    // Our own cancel, or an error frame the provider sent: not a dropped line.
+    if (signal?.aborted || e instanceof InfrastructureFailure || (e as { name?: string })?.name === "AbortError") throw e;
+    // The connection dropped mid-reply. Some models (Gemini) deliver each
+    // tool call whole, so everything already received is complete, paid-for
+    // work: keep it and let the loop carry on. A half-received call is dropped.
+    const complete = [...calls.entries()].sort((a, b) => a[0] - b[0]).map(([, c]) => c).filter(isCompleteCall);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (complete.length === 0) throw new StreamInterruptedFailure(msg);
+    return { content: content || null, toolCalls: complete, usage: undefined, ttftMs, finishReason: STREAM_INTERRUPTED, model, upstream, rawUsage: null };
   }
-  if (buf.trim()) handle(buf.trim());
   const u = rawUsage as RawUsage | null;
   return {
     content: content || null,
@@ -74,17 +95,38 @@ export async function parseToolStream(res: Response, startedAt: number): Promise
   };
 }
 
+/** The reply stream dropped before any complete tool call arrived. */
+export class StreamInterruptedFailure extends InfrastructureFailure {
+  readonly streamInterrupted = true as const;
+  constructor(cause: string) {
+    super(`provider stream interrupted: ${cause}`, null);
+  }
+}
+
+/** Re-sends after a dropped reply stream that delivered nothing usable. Bounded. */
+export const MAX_STREAM_RESENDS = 1;
+
 /** Build a CallModel from a transport. Non-OK responses are infrastructure failures. */
 export function makeCallModel(
   send: (body: Record<string, unknown>, signal?: AbortSignal) => Promise<Response>,
   onUsage?: (u: RawUsage | null) => void,
 ): CallModel {
   return async (messages, tools, signal) => {
-    const startedAt = Date.now();
-    const res = await send({ messages, tools, tool_choice: "auto", stream: true, stream_options: { include_usage: true } }, signal);
-    if (!res.ok || !res.body) throw new InfrastructureFailure(`AI provider returned HTTP ${res.status}`, res.status);
-    const reply = await parseToolStream(res, startedAt);
-    onUsage?.(reply.rawUsage);
-    return reply;
+    for (let attempt = 0; ; attempt++) {
+      const startedAt = Date.now();
+      const res = await send({ messages, tools, tool_choice: "auto", stream: true, stream_options: { include_usage: true } }, signal);
+      if (!res.ok || !res.body) throw new InfrastructureFailure(`AI provider returned HTTP ${res.status}`, res.status);
+      try {
+        const reply = await parseToolStream(res, startedAt, signal);
+        onUsage?.(reply.rawUsage);
+        return reply;
+      } catch (e) {
+        if (e instanceof StreamInterruptedFailure && attempt < MAX_STREAM_RESENDS && !signal?.aborted) {
+          console.warn(`[tool-loop-model] ${e.message} — re-sending once`);
+          continue;
+        }
+        throw e;
+      }
+    }
   };
 }

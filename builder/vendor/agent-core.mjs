@@ -60270,6 +60270,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -70100,7 +70101,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70359,7 +70359,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140123,7 +140122,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141160,7 +141158,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141325,7 +141322,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141369,7 +141365,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -142069,7 +142064,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -146206,7 +146200,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -153734,10 +153727,22 @@ var init_failure_classification = __esm({
 // src/server/engine/tool-loop-model.ts
 var tool_loop_model_exports = {};
 __export(tool_loop_model_exports, {
+  MAX_STREAM_RESENDS: () => MAX_STREAM_RESENDS,
+  STREAM_INTERRUPTED: () => STREAM_INTERRUPTED,
+  StreamInterruptedFailure: () => StreamInterruptedFailure,
   makeCallModel: () => makeCallModel,
   parseToolStream: () => parseToolStream
 });
-async function parseToolStream(res, startedAt) {
+function isCompleteCall(c) {
+  if (!c.function.name) return false;
+  try {
+    JSON.parse(c.function.arguments || "{}");
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function parseToolStream(res, startedAt, signal) {
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buf = "";
@@ -153777,17 +153782,25 @@ async function parseToolStream(res, startedAt) {
       calls.set(i, cur);
     }
   };
-  for (; ; ) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let nl;
-    while ((nl = buf.indexOf("\n")) >= 0) {
-      handle(buf.slice(0, nl).trim());
-      buf = buf.slice(nl + 1);
+  try {
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf("\n")) >= 0) {
+        handle(buf.slice(0, nl).trim());
+        buf = buf.slice(nl + 1);
+      }
     }
+    if (buf.trim()) handle(buf.trim());
+  } catch (e) {
+    if (signal?.aborted || e instanceof InfrastructureFailure || e?.name === "AbortError") throw e;
+    const complete = [...calls.entries()].sort((a2, b) => a2[0] - b[0]).map(([, c]) => c).filter(isCompleteCall);
+    const msg = e instanceof Error ? e.message : String(e);
+    if (complete.length === 0) throw new StreamInterruptedFailure(msg);
+    return { content: content || null, toolCalls: complete, usage: void 0, ttftMs, finishReason: STREAM_INTERRUPTED, model, upstream, rawUsage: null };
   }
-  if (buf.trim()) handle(buf.trim());
   const u = rawUsage;
   return {
     content: content || null,
@@ -153802,18 +153815,37 @@ async function parseToolStream(res, startedAt) {
 }
 function makeCallModel(send, onUsage) {
   return async (messages, tools, signal) => {
-    const startedAt = Date.now();
-    const res = await send({ messages, tools, tool_choice: "auto", stream: true, stream_options: { include_usage: true } }, signal);
-    if (!res.ok || !res.body) throw new InfrastructureFailure(`AI provider returned HTTP ${res.status}`, res.status);
-    const reply = await parseToolStream(res, startedAt);
-    onUsage?.(reply.rawUsage);
-    return reply;
+    for (let attempt = 0; ; attempt++) {
+      const startedAt = Date.now();
+      const res = await send({ messages, tools, tool_choice: "auto", stream: true, stream_options: { include_usage: true } }, signal);
+      if (!res.ok || !res.body) throw new InfrastructureFailure(`AI provider returned HTTP ${res.status}`, res.status);
+      try {
+        const reply = await parseToolStream(res, startedAt, signal);
+        onUsage?.(reply.rawUsage);
+        return reply;
+      } catch (e) {
+        if (e instanceof StreamInterruptedFailure && attempt < MAX_STREAM_RESENDS && !signal?.aborted) {
+          console.warn(`[tool-loop-model] ${e.message} \u2014 re-sending once`);
+          continue;
+        }
+        throw e;
+      }
+    }
   };
 }
+var STREAM_INTERRUPTED, StreamInterruptedFailure, MAX_STREAM_RESENDS;
 var init_tool_loop_model = __esm({
   "src/server/engine/tool-loop-model.ts"() {
     init_define_import_meta_env();
     init_failure_classification();
+    STREAM_INTERRUPTED = "stream_interrupted";
+    StreamInterruptedFailure = class extends InfrastructureFailure {
+      streamInterrupted = true;
+      constructor(cause) {
+        super(`provider stream interrupted: ${cause}`, null);
+      }
+    };
+    MAX_STREAM_RESENDS = 1;
   }
 });
 
