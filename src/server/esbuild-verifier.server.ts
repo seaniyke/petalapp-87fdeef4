@@ -15,7 +15,15 @@
  * Failure mode policy: initialization failure is an explicit unavailable
  * verdict. Callers must stop safely: unknown is neither clean nor broken.
  */
-import * as esbuild from "esbuild-wasm";
+import * as esbuildNode from "esbuild-wasm";
+
+/** True on the live Cloudflare Worker (no child processes there). */
+function onWorker(): boolean {
+  return typeof navigator !== "undefined" && (navigator as { userAgent?: string }).userAgent === "Cloudflare-Workers";
+}
+
+type EsbuildApi = Pick<typeof esbuildNode, "initialize" | "transform">;
+let esbuild: EsbuildApi = esbuildNode;
 
 export type EsbuildIssue = {
   path: string;
@@ -54,6 +62,22 @@ function ensureInit(): Promise<void> {
   // esbuild-wasm throws "more than once" SYNCHRONOUSLY after a module reload
   // (not as a rejected promise), so the whole parse check used to be skipped.
   // Either form means esbuild is already running — that is success.
+  if (onWorker()) {
+    initPromise = (async () => {
+      const { loadWorkerEsbuild } = await import("./esbuild-worker-runtime");
+      const { esbuild: browserApi, wasmModule } = await loadWorkerEsbuild();
+      try {
+        await browserApi.initialize({ wasmModule, worker: false });
+      } catch (err) {
+        if (!alreadyUp(err)) throw err;
+      }
+      esbuild = browserApi as unknown as EsbuildApi;
+    })().catch((err: unknown) => {
+      initPromise = null;
+      throw err;
+    });
+    return initPromise;
+  }
   try {
     initPromise = esbuild.initialize({ worker: false }).catch((err: unknown) => {
       if (alreadyUp(err)) return;
