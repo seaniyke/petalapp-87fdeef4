@@ -141647,6 +141647,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143964,6 +143965,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145168,6 +145170,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -162940,7 +162943,14 @@ async function keepChatPhotos(projectId, attachments) {
 // src/server/image-generation.server.ts
 init_turn_context_server();
 var BUCKET = "petal-images";
-var MAX_IMAGES_PER_GENERATION = 6;
+var MAX_IMAGES_PER_GENERATION = 12;
+var MAX_ATTEMPTS = 3;
+var RETRY_DELAYS_MS = [1500, 4e3];
+var PENDING_MARK = "petal-pending:";
+var PENDING_RE = /data:image\/svg\+xml,[^"'`\s)]*?%3Cdesc%3Epetal-pending%3A([^%]+(?:%[0-9A-F]{2}[^%]*)*?)%3C%2Fdesc%3E[^"'`\s)]*/g;
+function isFinalImageError(e) {
+  return /turn_stopped|turn_not_running|not configured|empty/i.test(e?.message ?? "");
+}
 var PLACEHOLDER_RE = /petal-image:\/\/([^\s"'`<>\)]+)/g;
 function slugToPrompt(slug3) {
   let decoded = slug3;
@@ -163066,8 +163076,25 @@ async function generatePetalImage(opts) {
   }
   return { url: pub.publicUrl, cached: false };
 }
-async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPaths) {
+async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPaths, deps = {}) {
   const allowed = targetPaths ? new Set(targetPaths) : null;
+  const generate = deps.generate ?? generatePetalImage;
+  const sleep3 = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  const failures = [];
+  files = files.map((f) => {
+    if (allowed && !allowed.has(f.path)) return f;
+    if (!f.content.includes("petal-pending%3A")) return f;
+    PENDING_RE.lastIndex = 0;
+    const content = f.content.replace(PENDING_RE, (_m, enc2) => {
+      let slug3 = enc2;
+      try {
+        slug3 = decodeURIComponent(enc2);
+      } catch {
+      }
+      return `petal-image://${slug3}`;
+    });
+    return content === f.content ? f : { ...f, content };
+  });
   const slugs = /* @__PURE__ */ new Set();
   for (const f of files) {
     if (allowed && !allowed.has(f.path)) continue;
@@ -163077,7 +163104,7 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
       slugs.add(m[1]);
     }
   }
-  if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [] };
+  if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [], failures };
   const ordered = Array.from(slugs).slice(0, MAX_IMAGES_PER_GENERATION);
   const skipped = Array.from(slugs).slice(MAX_IMAGES_PER_GENERATION);
   const urlMap = /* @__PURE__ */ new Map();
@@ -163086,11 +163113,24 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
   const queue = [...ordered];
   const liveUrls = [];
   const fallbackUrl = (slug3) => {
-    const label2 = slug3.replace(/[-_]+/g, " ").replace(/[^a-z0-9 ]/gi, "").trim().slice(0, 48) || "Picture";
-    const hue = Math.abs([...slug3].reduce((n, c) => n + c.charCodeAt(0), 0)) % 360;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(${hue} 60% 88%)"/><stop offset="1" stop-color="hsl(${(hue + 55) % 360} 58% 72%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><circle cx="920" cy="170" r="240" fill="white" opacity=".2"/><path d="M0 700 330 390l210 190 170-150 490 370H0Z" fill="white" opacity=".35"/><text x="70" y="720" font-family="Arial,sans-serif" font-size="42" fill="#172033" opacity=".72">${label2}</text></svg>`;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    const safe = slug3.replace(/[<>&"]/g, "");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><desc>${PENDING_MARK}${safe}</desc><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(30 6% 22%)"/><stop offset="1" stop-color="hsl(30 5% 12%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg).replace(/\(/g, "%28").replace(/\)/g, "%29")}`;
   };
+  const makeWithRetry = async (slug3) => {
+    let last2;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        return (await generate({ prompt: slugToPrompt(slug3) })).url;
+      } catch (e) {
+        last2 = e;
+        if (isFinalImageError(e)) break;
+        if (attempt < MAX_ATTEMPTS - 1) await sleep3(RETRY_DELAYS_MS[attempt] ?? 4e3);
+      }
+    }
+    throw last2;
+  };
+  const retryLater = [];
   const announce = (slug3, url) => {
     liveUrls.push(url);
     try {
@@ -163123,20 +163163,41 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
       } catch {
       }
       try {
-        const r = await generatePetalImage({ prompt: slugToPrompt(slug3) });
-        urlMap.set(slug3, r.url);
-        resolved += 1;
-        announce(slug3, r.url);
-      } catch (e) {
-        failed += 1;
-        console.warn(`[petal-image] generation failed for "${slug3}":`, e);
-        const url = fallbackUrl(slug3);
+        const url = await makeWithRetry(slug3);
         urlMap.set(slug3, url);
+        resolved += 1;
         announce(slug3, url);
+      } catch (e) {
+        if (isFinalImageError(e)) {
+          recordFailure(slug3, e);
+        } else {
+          retryLater.push(slug3);
+        }
       }
     }
   }
+  const recordFailure = (slug3, e) => {
+    failed += 1;
+    const reason = (e?.message ?? String(e)).slice(0, 200);
+    console.warn(`[petal-image] generation failed for "${slug3}":`, reason);
+    failures.push({ slug: slug3, reason });
+    try {
+      deps.onFailure?.({ slug: slug3, reason });
+    } catch {
+    }
+    urlMap.set(slug3, fallbackUrl(slug3));
+  };
   await Promise.all([worker(), worker()]);
+  for (const slug3 of retryLater) {
+    try {
+      const url = await makeWithRetry(slug3);
+      urlMap.set(slug3, url);
+      resolved += 1;
+      announce(slug3, url);
+    } catch (e) {
+      recordFailure(slug3, e);
+    }
+  }
   for (const slug3 of skipped) {
     urlMap.set(slug3, fallbackUrl(slug3));
   }
@@ -163148,7 +163209,8 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
     });
     return updated === f.content ? f : { ...f, content: updated };
   });
-  return { files: next, resolved, failed, urls: liveUrls };
+  for (const slug3 of skipped) failures.push({ slug: slug3, reason: "over_per_build_limit" });
+  return { files: next, resolved, failed, urls: liveUrls, failures };
 }
 
 // src/routes/api/generate.ts
@@ -171657,7 +171719,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -181084,7 +181145,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
           );
           const imageTargetSet = imageTargetPaths ? new Set(imageTargetPaths) : null;
           const hasPlaceholders = nextFiles.some(
-            (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://")
+            (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && // Earlier pictures that could not be made are retried too.
+            (f.content.includes("petal-image://") || f.content.includes("petal-pending%3A"))
           );
           const seenPictureUrls = /* @__PURE__ */ new Set();
           if (hasPlaceholders) {
@@ -181132,7 +181194,25 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                 );
               },
               body.projectId ?? null,
-              imageTargetPaths
+              imageTargetPaths,
+              {
+                // A picture that could not be made is said plainly (and kept
+                // in the turn's events for audit), never passed off as real.
+                onFailure: ({ reason }) => {
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "image_resolve",
+                        outcome: "failed",
+                        message: "One picture couldn't be made yet \u2014 it will be retried on the next change.",
+                        detail: reason,
+                        ts: Date.now()
+                      })
+                    )
+                  );
+                }
+              }
             );
             nextFiles = imgResult.files;
             if (imgResult.resolved > 0) {

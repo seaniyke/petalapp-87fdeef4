@@ -6783,7 +6783,10 @@ async function handleGenerateRequestCore(
               );
           const imageTargetSet = imageTargetPaths ? new Set(imageTargetPaths) : null;
           const hasPlaceholders = nextFiles.some(
-            (f) => (!imageTargetSet || imageTargetSet.has(f.path)) && f.content.includes("petal-image://"),
+            (f) =>
+              (!imageTargetSet || imageTargetSet.has(f.path)) &&
+              // Earlier pictures that could not be made are retried too.
+              (f.content.includes("petal-image://") || f.content.includes("petal-pending%3A")),
           );
           const seenPictureUrls = new Set<string>();
           if (hasPlaceholders) {
@@ -6835,6 +6838,23 @@ async function handleGenerateRequestCore(
               },
               body.projectId ?? null,
               imageTargetPaths,
+              {
+                // A picture that could not be made is said plainly (and kept
+                // in the turn's events for audit), never passed off as real.
+                onFailure: ({ reason }) => {
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "image_resolve",
+                        outcome: "failed",
+                        message: `One picture couldn't be made yet (${reason.slice(0, 80)}) — it will be retried on the next change.`,
+                        ts: Date.now(),
+                      }),
+                    ),
+                  );
+                },
+              },
             );
             nextFiles = imgResult.files;
             if (imgResult.resolved > 0) {
