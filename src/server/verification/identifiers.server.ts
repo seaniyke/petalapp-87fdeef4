@@ -28,6 +28,7 @@
  *   - Only reports on files the turn actually changed.
  *   - No network, no filesystem, no AI.
  */
+import "./ts-runtime-shim";
 import ts from "typescript";
 
 export type IdentifierCheckStatus = "verified" | "failed" | "unavailable";
