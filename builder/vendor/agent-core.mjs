@@ -57395,7 +57395,7 @@ export function SheetContent({
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/50" onClick={() => ctx.setOpen(false)} />
       <div
-        className={cn("absolute bg-background p-6 shadow-lg transition-all", sideClass[side], className)}
+        className={cn("absolute p-6 shadow-lg transition-all", sideClass[side], className, "bg-background text-foreground")}
         {...props}
       >
         <button
@@ -60297,7 +60297,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -70243,7 +70242,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -142161,7 +142159,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144487,7 +144484,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145692,7 +145688,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146801,7 +146796,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -164511,7 +164505,7 @@ var GENERIC_FONTS = /* @__PURE__ */ new Set(["inter", "roboto", "system-ui", "sa
 var FX_RECIPE_DETAILS = {
   "vivid-color": "MeshGradient or a two-hue colour wash behind the hero, GradientText or AuroraText on one headline word, saturated colour-block section bands (full-bleed brand-hue panel alternating with a light tint of the supporting hue), GlowCard or MagicCard tiles, ShimmerButton primary CTA, BlurFade + SlideUp reveals. Colour carries the page \u2014 never beige, never all-neutral.",
   "modern-saas": 'MeshGradient or soft brand-tinted wash BEHIND the hero copy (DotPattern is BANNED as the sole hero background \u2014 use it only as a secondary section divider after the fold). Product UI mockup as the hero visual, framed in BrowserMockup with 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) overlapping at the corners. Primary CTA = filled <Button size="lg"> or <ShimmerButton> \u2014 NEVER a bare anchor + arrow. Secondary CTA = <Button variant="outline">. BorderBeam on the primary feature card. FadeIn + SlideUp throughout.',
-  "agency-portfolio": "HeroParallax for the showcase reel, MagicCard for project tiles, Marquee of client logos, Magnetic CTAs, Tilt on case-study covers, Stagger reveals.",
+  "agency-portfolio": "Full-bleed photographic hero, plain image-led project tiles (picture, title, one meta line), generous white space, quiet FadeIn/Stagger reveals only. No marquees, tilt, glow or magnetic effects \u2014 the photographs carry the page.",
   "cyberpunk-crypto": "RetroGrid floor on hero, Meteors layered behind, AuroraText on the headline, GlowCard for stat tiles, ShimmerButton or RainbowButton for the CTA, OrbitingCircles around the brand mark.",
   "ai-product": "AnimatedBeam connecting input \u2192 AI \u2192 output diagram, Sparkles around the chat surface, GradientText on the headline, MagicCard for capability tiles, BorderBeam on the CTA.",
   "playful-consumer": "FlickeringGrid background, GradientText headline, Ripple on interactive tiles, Marquee of testimonials, WordRotate in the hero subhead, confetti via `@/lib/confetti` on success states.",
@@ -168609,7 +168603,7 @@ function firstBuildSeedFiles(args) {
 }
 var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWork in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, write it, let it validate, then move to the next. Inspect enough to start safely \u2014 you do not need to understand the whole starter kit before your first write. The starter-kit API above is authoritative and complete: do not list directories to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go in one response. After each write step Kimble reports the whole-workspace verification verdict; trust it instead of re-reading files. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
 var COMPOSITION_RULES = [
-  "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, metric/stat bar, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
+  "Give every section its own layout shape. Choose per section from: full-bleed hero, split (text one side, image the other), bento grid of unequal tiles, single spotlight, numbered steps, horizontal scroll rail, editorial quote, logo or badge strip, accordion. Never blend two shapes in one section.",
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
   "Alternate surface tone every two or three sections (bg-background then bg-muted) so the page reads as bands, not one flat sheet.",
   "Vary heading scale down the page instead of giving every section the same size.",
@@ -168619,6 +168613,12 @@ var COMPOSITION_RULES = [
   'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt \u2014 every one is made; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
   "Marketing sites lead with imagery, not tools: the hero is a large photograph or full-bleed visual with one headline and one primary action. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
   "Studio, portfolio, architecture, luxury and hospitality sites are editorial: big photographs, generous negative space, few words per section, serif display headings. Keep technical detail off the homepage.",
+  "Restraint over density. A website is not a dashboard: every section has one idea, a short heading, at most two short sentences, and white space around it. Fewer, larger pictures beat many small ones.",
+  "Card anatomy is fixed: picture, title, one meta line (category \xB7 year or role), optionally one short sentence. No chips, badges, spec rows, numbers, credits or buttons inside a card \u2014 the whole card is the link.",
+  "Never invent technical specifications, measurements, ratings, percentages or industry jargon (lux, Kelvin, CRI, Ra, ROI figures, client/architect credits) unless the user supplied them. Describe the work in plain words a client understands.",
+  "No unrequested tools or widgets on websites: no calculators, tuners, sliders, simulators, configurators, live counters or charts unless the user asked for that tool by name.",
+  "One primary action per screen. Repeat the same action (e.g. 'Start a project') instead of inventing new ones; never more than one button per card or section.",
+  "The header has a solid background (bg-background with a border-b), never translucent or blurred. The phone menu uses the kit Sheet so it opens as a solid full-height panel.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
   'Every link points somewhere real \u2014 no href="#" placeholders. One <h1> per page.'
 ].join("\n- ");
@@ -171925,6 +171925,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
