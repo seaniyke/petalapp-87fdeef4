@@ -64,3 +64,16 @@ describe("responsive advisories (non-blocking)", () => {
   it("oversized fixed width is flagged", () => expect(w(`<aside className="w-[720px]">x</aside>`)[0]!.rule).toBe("fixed-width-over-mobile"));
   it("unchanged files are ignored", () => expect(responsiveWarnings([{ path: "a.tsx", content: "<table>" }], [])).toEqual([]));
 });
+
+describe("negated app words (Aura live run, 7 Nov 2026)", () => {
+  const aura = "Build a website for Aura, an architectural lighting design studio. Pages: Home, Services, Projects (portfolio with category filter), Contact (inquiry form and studio details). Website only, no accounts.";
+  it("'Website only, no accounts' is a public website, not an app", () => {
+    expect(deriveIntentContract(aura).surface).toBe("public");
+  });
+  it("'without login' does not ask for sign-in", () => {
+    expect(deriveIntentContract("A bakery website without login").surface).toBe("public");
+  });
+  it("a real request for accounts is still an app", () => {
+    expect(deriveIntentContract("A task app where users sign in to their accounts").surface).not.toBe("public");
+  });
+});
