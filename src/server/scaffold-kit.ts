@@ -243,31 +243,8 @@ export const STYLES_CSS = `@import "tailwindcss";
   --ring: oklch(0.72 0.16 280);
 }
 
-/* Auto-apply dark tokens when the OS prefers dark, unless the app explicitly
-   set a theme on <html> (\`.light\` or \`.dark\`). */
-@media (prefers-color-scheme: dark) {
-  :root:not(.light):not(.dark) {
-    --background: oklch(0.16 0.02 280);
-    --foreground: oklch(0.96 0.01 90);
-    --card: oklch(0.20 0.02 280);
-    --card-foreground: oklch(0.96 0.01 90);
-    --popover: oklch(0.20 0.02 280);
-    --popover-foreground: oklch(0.96 0.01 90);
-    --primary: oklch(0.72 0.16 280);
-    --primary-foreground: oklch(0.16 0.02 280);
-    --secondary: oklch(0.26 0.02 280);
-    --secondary-foreground: oklch(0.96 0.01 90);
-    --muted: oklch(0.26 0.02 280);
-    --muted-foreground: oklch(0.7 0.02 280);
-    --accent: oklch(0.32 0.05 320);
-    --accent-foreground: oklch(0.96 0.01 90);
-    --destructive: oklch(0.55 0.22 25);
-    --destructive-foreground: oklch(0.98 0.01 90);
-    --border: oklch(0.28 0.02 280);
-    --input: oklch(0.28 0.02 280);
-    --ring: oklch(0.72 0.16 280);
-  }
-}
+/* No automatic OS dark mode: a site keeps the palette it was designed with.
+   Dark tokens apply only when the app sets <html class="dark"> itself. */
 
 html, body, #root { height: 100%; }
 body {

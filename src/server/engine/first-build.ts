@@ -31,7 +31,7 @@ export const FIRST_BUILD_TOOL_NOTE =
   "write it, let it validate, then move to the next. Inspect enough to start safely — you do not need to understand " +
   "the whole starter kit before your first write. The starter-kit API above is authoritative and complete: do not list directories " +
   "to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go " +
-  "in one response. After each write step Kimble reports the whole-workspace verification verdict; trust it instead of re-reading files. You may call finish in the same response as your last writes.\n" +
+  "in one response. After each write step Petal reports the whole-workspace verification verdict; trust it instead of re-reading files. You may call finish in the same response as your last writes.\n" +
   "Batch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, " +
   "a page with a local component only it imports, the router with its pages) belong in one response. Pages that each " +
   "stand alone on already-written shared modules may share a response too. Write shared modules before the files that " +
@@ -80,7 +80,7 @@ export const COMPOSITION_RULES = [
   "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6. This padding goes on each <section> only — never on the page/layout wrapper or around the header, which must sit flush at the top of the page.",
   "Two, at most three calls to action across an entire page. The final CTA is its own section; the footer is not a CTA.",
   "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
-  "Real photography comes ONLY from the image tool: write src=\"petal-image://<cinematic-specific-prompt>\" (subject, setting, light, lens, mood — e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt — every one is made; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.",
+  "Real photography comes ONLY from the image tool: write src=\"petal-image://<cinematic-specific-prompt>\" (subject, setting, light, lens, mood — e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Petal generates each one after you finish. Never write any other image URL (unsplash, picsum, pexels or any https photo link) — invented links are broken and show as empty boxes. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt — every one is made; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.",
   "Marketing sites lead with imagery, not tools: the hero is a large photograph or full-bleed visual with one headline and one primary action. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
   "Studio, portfolio, architecture, luxury and hospitality sites are editorial: big photographs, generous negative space, few words per section, serif display headings. Keep technical detail off the homepage.",
   "Restraint over density. A website is not a dashboard: every section has one idea, a short heading, at most two short sentences, and white space around it. Fewer, larger pictures beat many small ones.",
@@ -100,7 +100,7 @@ export const COMPOSITION_RULES = [
  * material as knowledge sections ("common typescript error patterns", "import
  * path rules", "file organization", "first-build optimization", "token
  * efficiency"); that text names Webby's own tools and its own scaffold, so
- * the behaviour is restated here against Kimble's tools and scaffold instead.
+ * the behaviour is restated here against Petal's tools and scaffold instead.
  */
 export const CORRECTNESS_RULES = [
   "Import every identifier you use, including every lucide-react icon and every React hook. An undefined name fails validation and the write is returned to you.",
