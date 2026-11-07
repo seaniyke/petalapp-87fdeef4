@@ -65259,16 +65259,27 @@ async function loadPictureLibrary(force = false) {
 function tokenize(text) {
   return String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(" ").map((w) => w.trim()).filter((w) => w.length > 2 && !STOP2.has(w));
 }
+function pictureWords(pic) {
+  const out = new Set(tokenize(pic.subject ?? ""));
+  for (const t of pic.tags ?? []) for (const w of tokenize(String(t))) out.add(w);
+  return out;
+}
+function matchedWords(words2, described) {
+  let n = 0;
+  for (const w of new Set(words2)) if (described.has(w)) n += 1;
+  return n;
+}
 function scorePicture(pic, words2, briefTags, aspectRatio) {
   const want = new Set(words2);
   const tags = new Set(briefTags.map((t) => t.toLowerCase()));
+  const subjectWords = new Set(tokenize(pic.subject));
+  const tagWords = new Set(pic.tags.map((t) => t.toLowerCase()));
   let score = 0;
-  for (const w of tokenize(pic.subject)) if (want.has(w)) score += 4;
-  for (const t of pic.tags) {
-    const tag = t.toLowerCase();
-    if (want.has(tag)) score += 3;
-    else if (tags.has(tag)) score += 2;
+  for (const w of want) {
+    if (subjectWords.has(w)) score += 4;
+    else if (tagWords.has(w)) score += 3;
   }
+  for (const tag of tagWords) if (!want.has(tag) && tags.has(tag)) score += 2;
   for (const field of [pic.industry, pic.mood, pic.style, pic.tone, pic.location]) {
     if (!field) continue;
     const f = field.toLowerCase();
@@ -65287,6 +65298,8 @@ async function findLibraryPicture(query) {
   let best = null;
   let bestScore = 0;
   for (const pic of rows) {
+    if (query.exclude?.has(pic.url)) continue;
+    if (matchedWords(words2, pictureWords(pic)) < MIN_MATCHED_WORDS) continue;
     const score = scorePicture(pic, words2, briefTags, query.aspectRatio);
     if (score > bestScore) {
       bestScore = score;
@@ -65295,7 +65308,7 @@ async function findLibraryPicture(query) {
   }
   return bestScore >= MIN_SCORE ? best : null;
 }
-var CACHE_MS2, cache4, STOP2, MIN_SCORE;
+var CACHE_MS2, cache4, STOP2, MIN_MATCHED_WORDS, MIN_SCORE;
 var init_pictures_server = __esm({
   "src/server/registry/pictures.server.ts"() {
     "use strict";
@@ -65324,6 +65337,7 @@ var init_pictures_server = __esm({
       "high",
       "quality"
     ]);
+    MIN_MATCHED_WORDS = 2;
     MIN_SCORE = 6;
   }
 });
@@ -65333,7 +65347,9 @@ var generated_pictures_server_exports = {};
 __export(generated_pictures_server_exports, {
   describePrompt: () => describePrompt,
   findRememberedPicture: () => findRememberedPicture,
+  fitsRequest: () => fitsRequest,
   imageDimensions: () => imageDimensions,
+  isSharedAccount: () => isSharedAccount,
   orientationFor: () => orientationFor,
   providerFor: () => providerFor,
   rankRememberedPictures: () => rankRememberedPictures,
@@ -65461,14 +65477,40 @@ async function rememberGeneratedPicture(row) {
   }
 }
 async function findRememberedPicture(query) {
-  const ranked = await rankRememberedPictures(query, 1);
-  return ranked[0]?.row ?? null;
+  const ranked = await rankRememberedPictures(query, 5);
+  return ranked.find((r) => !query.exclude?.has(r.row.url))?.row ?? null;
+}
+function fitsRequest(row, words2, fit) {
+  const described = pictureWords(row);
+  const want = new Set(words2);
+  const matched = matchedWords(words2, described);
+  if (matched < MIN_MATCHED_WORDS || !described.size || !want.size) return false;
+  const pictureCoverage = matched / described.size;
+  if (fit === "context") return pictureCoverage >= CONTEXT_PICTURE_COVERAGE;
+  return matched / want.size >= SLOT_REQUEST_COVERAGE && pictureCoverage >= SLOT_PICTURE_COVERAGE;
+}
+async function isSharedAccount(ownerId) {
+  if (process.env.CUSTARD_SERVICE_USER_ID && ownerId === process.env.CUSTARD_SERVICE_USER_ID) return true;
+  const known = sharedAccountCache.get(ownerId);
+  if (known !== void 0) return known;
+  try {
+    const { data: data2, error } = await supabaseAdmin.auth.admin.getUserById(ownerId);
+    if (error || !data2?.user) return true;
+    const meta = data2.user.user_metadata ?? {};
+    const shared = meta.service_account === true || data2.user.email === "service@custardai.dev";
+    sharedAccountCache.set(ownerId, shared);
+    return shared;
+  } catch {
+    return true;
+  }
 }
 async function rankRememberedPictures(query, limit = 5) {
   const words2 = tokenize(query.request);
   if (!words2.length) return [];
+  const fit = query.fit ?? "slot";
   const projectId = query.scope?.projectId ?? null;
-  const ownerId = query.scope?.ownerId ?? null;
+  const rawOwnerId = query.scope?.ownerId ?? null;
+  const ownerId = rawOwnerId && !await isSharedAccount(rawOwnerId) ? rawOwnerId : null;
   const rows = [];
   const seen = /* @__PURE__ */ new Set();
   const add = (list4) => {
@@ -65498,6 +65540,7 @@ async function rankRememberedPictures(query, limit = 5) {
   for (const row of rows) {
     const visible = scopeOf(row, { projectId, ownerId });
     if (!visible) continue;
+    if (!fitsRequest(row, words2, fit)) continue;
     const score = scorePicture(asScorable(row), words2, briefTags, query.aspectRatio);
     if (score >= MIN_SCORE) out.push({ row, score, scope: visible });
   }
@@ -65506,7 +65549,7 @@ async function rankRememberedPictures(query, limit = 5) {
 }
 async function renderReusablePicturesBlock(query) {
   try {
-    const ranked = await rankRememberedPictures(query, query.limit ?? 5);
+    const ranked = await rankRememberedPictures({ ...query, fit: "context" }, query.limit ?? 5);
     if (!ranked.length) return "";
     const lines = ranked.map(({ row }) => {
       const shape2 = row.width && row.height ? `${row.width}x${row.height}` : row.aspect_ratio || row.orientation || "";
@@ -65518,7 +65561,7 @@ async function renderReusablePicturesBlock(query) {
     return "";
   }
 }
-var COLUMNS, VOCAB, TRAITS;
+var COLUMNS, VOCAB, TRAITS, SLOT_REQUEST_COVERAGE, SLOT_PICTURE_COVERAGE, CONTEXT_PICTURE_COVERAGE, sharedAccountCache;
 var init_generated_pictures_server = __esm({
   "src/server/registry/generated-pictures.server.ts"() {
     init_define_import_meta_env();
@@ -65560,6 +65603,10 @@ var init_generated_pictures_server = __esm({
       ]
     };
     TRAITS = /\b(red|orange|yellow|green|blue|purple|pink|black|white|gold|golden|neutral|pastel|monochrome|colou?rful|natural light|soft light|studio light|shallow depth|wide angle|aerial|close-?up|overhead)\b/g;
+    SLOT_REQUEST_COVERAGE = 0.6;
+    SLOT_PICTURE_COVERAGE = 0.5;
+    CONTEXT_PICTURE_COVERAGE = 0.5;
+    sharedAccountCache = /* @__PURE__ */ new Map();
   }
 });
 
@@ -139986,6 +140033,385 @@ var init_dynamicIconImports2 = __esm({
   }
 });
 
+// src/server/brand-identity.server.ts
+var brand_identity_server_exports = {};
+__export(brand_identity_server_exports, {
+  ensureBrandIdentity: () => ensureBrandIdentity,
+  ensureBrandMarkWired: () => ensureBrandMarkWired,
+  ensureSiteIdentity: () => ensureSiteIdentity,
+  markGlyphFrom: () => markGlyphFrom,
+  resolvePrimaryHex: () => resolvePrimaryHex
+});
+function initialsFrom(name) {
+  const words2 = name.replace(/[^A-Za-z0-9\s&-]/g, " ").split(/[\s&-]+/).filter((w) => w && !/^(the|and|app|inc|co|ltd|studio)$/i.test(w));
+  if (words2.length === 0) return "A";
+  if (words2.length === 1) return words2[0].slice(0, 2).toUpperCase();
+  return (words2[0][0] + words2[1][0]).toUpperCase();
+}
+function detectBrandName(files) {
+  const html = files.find((f) => f.path === "index.html")?.content ?? "";
+  const title = /<title>([^<]{2,60})<\/title>/i.exec(html)?.[1]?.trim();
+  if (title && !/^(vite|react|app|document)\b/i.test(title)) {
+    return title.split(/[–—|·-]/)[0].trim();
+  }
+  const own = files.filter(
+    (f) => /\.(tsx|jsx)$/.test(f.path) && !/^src\/components\/(blocks|examples|ui|motion|fx|content|mobile)\//.test(f.path)
+  );
+  const ranked = [
+    ...own.filter((f) => /layout|header|nav|brand|logo/i.test(f.path)),
+    ...own.filter((f) => !/layout|header|nav|brand|logo/i.test(f.path))
+  ];
+  for (const f of ranked) {
+    const m = /font-(?:display|serif|bold|semibold|black)[^>]*>\s*([A-Z][A-Za-z0-9&'’.\s]{1,28})\s*</.exec(
+      f.content
+    );
+    if (m) {
+      const name = m[1].trim().replace(/\s+/g, " ");
+      return /^[A-Z0-9&'’.\s]+$/.test(name) && name.length > 1 ? name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : name;
+    }
+  }
+  return "Studio";
+}
+function brandMarkSource(initials) {
+  return `import * as React from "react";
+import { cn } from "@/lib/utils";
+
+/**
+ * The product's logo mark. A single source of truth so the header, footer,
+ * auth screens and empty states never drift. Colors come from theme tokens,
+ * so the mark works in light and dark mode.
+ */
+export function BrandMark({
+  className,
+  initials = "${initials}",
+}: {
+  className?: string;
+  initials?: string;
+}) {
+  const id = React.useId();
+  return (
+    <svg
+      viewBox="0 0 48 48"
+      role="img"
+      aria-label="Logo"
+      className={cn("h-8 w-8 shrink-0", className)}
+    >
+      <defs>
+        <linearGradient id={\`bm-\${id}\`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.95" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0.55" />
+        </linearGradient>
+      </defs>
+      <rect width="48" height="48" rx="13" fill={\`url(#bm-\${id})\`} className="text-primary" />
+      <path
+        d="M24 10c6.2 3.1 9.5 7.6 9.5 12.6 0 5.3-4.2 9.4-9.5 9.4s-9.5-4.1-9.5-9.4C14.5 17.6 17.8 13.1 24 10Z"
+        fill="currentColor"
+        opacity="0.16"
+      />
+      <text
+        x="24"
+        y="31"
+        textAnchor="middle"
+        fontSize="18"
+        fontWeight="700"
+        letterSpacing="-0.5"
+        fill="hsl(var(--primary-foreground, 0 0% 100%))"
+        style={{ fontFamily: "inherit" }}
+      >
+        {initials}
+      </text>
+    </svg>
+  );
+}
+
+export default BrandMark;
+`;
+}
+function resolvePrimaryHex(files) {
+  const css = files.find((f) => /^src\/(index|styles|globals?)\.css$/.test(f.path));
+  if (!css) return null;
+  const hex = /--primary:\s*(#[0-9a-fA-F]{3,8})\s*;/.exec(css.content);
+  if (hex) return hex[1];
+  const hsl = /--primary:\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%/.exec(css.content);
+  if (!hsl) return null;
+  return hslToHex(Number(hsl[1]), Number(hsl[2]), Number(hsl[3]));
+}
+function hslToHex(h, s, l) {
+  const sat = s / 100;
+  const lig = l / 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a2 = sat * Math.min(lig, 1 - lig);
+  const f = (n) => lig - a2 * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const to = (n) => Math.round(255 * f(n)).toString(16).padStart(2, "0");
+  return `#${to(0)}${to(8)}${to(4)}`;
+}
+function readableOn(hex) {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h.slice(0, 6);
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.6 ? "#111318" : "#ffffff";
+}
+function markGlyphFrom(files) {
+  const mark = files.find((f) => f.path === BRAND_MARK_PATH);
+  if (!mark) return null;
+  const vb = /viewBox="([^"]+)"/.exec(mark.content);
+  const open = /<svg\b[^>]*>/.exec(mark.content);
+  const close = mark.content.lastIndexOf("</svg>");
+  if (!vb || !open || close < 0) return null;
+  let body = mark.content.slice(open.index + open[0].length, close);
+  body = body.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").trim();
+  if (!body || /[{}]/.test(body) || /<[A-Z]/.test(body)) return null;
+  body = body.replace(/\b([a-z]+)([A-Z][a-zA-Z]*)=/g, (_m, a2, b) => `${a2}-${b.toLowerCase()}=`).replace(/\sclassName="[^"]*"/g, "").replace(/\s+/g, " ");
+  if (body.length > 1200) return null;
+  return { body, viewBox: vb[1] };
+}
+function faviconDataUri(initials, primary, glyph) {
+  const fg = readableOn(primary);
+  const svg = glyph ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${glyph.viewBox}" fill="none" color="${primary}">${glyph.body.replace(/currentColor/g, primary)}</svg>` : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="13" fill="${primary}"/><text x="24" y="32" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="22" font-weight="700" fill="${fg}">${initials}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+function isBrandSurface(path) {
+  return /(^|\/)(App\.tsx|main\.tsx)$|nav|header|footer|shell|layout|sidebar|topbar|brand|logo|__root/i.test(
+    path
+  );
+}
+function swapPlaceholderLogo(content) {
+  let out = content;
+  const swapped = [];
+  for (const icon2 of PLACEHOLDER_ICONS) {
+    const re = new RegExp(
+      `<${icon2}\\b([^>]*?)/>(\\s*)(<span\\b[^>]*font-)`,
+      "g"
+    );
+    if (!re.test(out)) continue;
+    re.lastIndex = 0;
+    out = out.replace(re, (_m, attrs, gap, tail) => {
+      const cls = /className=("[^"]*"|\{[^}]*\})/.exec(attrs)?.[1];
+      const sized = cls ? ` className=${cls}` : ' className="h-8 w-8"';
+      return `<BrandMark${sized} />${gap}${tail}`;
+    });
+    swapped.push(icon2);
+  }
+  if (swapped.length === 0) return { content, swapped };
+  out = out.replace(
+    /import\s*\{([^}]*)\}\s*from\s*["']lucide-react["'];?/g,
+    (full, names) => {
+      const kept = names.split(",").map((n) => n.trim()).filter(Boolean).filter((n) => {
+        const local = n.split(/\s+as\s+/).pop().trim();
+        if (!swapped.includes(local)) return true;
+        return new RegExp(`<${local}\\b`).test(out);
+      });
+      if (kept.length === 0) return "";
+      if (kept.length === names.split(",").filter((s) => s.trim()).length) return full;
+      return `import { ${kept.join(", ")} } from "lucide-react";`;
+    }
+  );
+  if (!/from\s+["']@\/components\/brand-mark["']/.test(out)) {
+    const firstImport = /^import .*$/m.exec(out);
+    const line = `import { BrandMark } from "@/components/brand-mark";`;
+    out = firstImport ? out.slice(0, firstImport.index) + line + "\n" + out.slice(firstImport.index) : line + "\n" + out;
+  }
+  return { content: out, swapped };
+}
+function ensureFavicon(html, initials, brand, primary, glyph) {
+  let out = html;
+  const href = faviconDataUri(initials, primary, glyph);
+  const legacyTile = /ff6ea8|%23ff6ea8/i.test(out);
+  const hasRealIcon = /<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]*>/i.test(out) && !/vite\.svg|favicon\.ico/i.test(out) && !legacyTile;
+  if (!hasRealIcon) {
+    out = out.replace(
+      /<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]*>\s*/gi,
+      ""
+    );
+    const tags = [
+      `    <link rel="icon" type="image/svg+xml" href="${href}" />`,
+      `    <link rel="apple-touch-icon" href="${href}" />`
+    ].join("\n");
+    out = out.replace(/<\/head>/i, `${tags}
+  </head>`);
+  }
+  if (!/name=["']theme-color["']/i.test(out)) {
+    out = out.replace(
+      /<\/head>/i,
+      `    <meta name="theme-color" content="${primary}" />
+  </head>`
+    );
+  }
+  if (/<title>\s*(vite(\s*\+\s*react(\s*\+\s*ts)?)?|react app|app|document|untitled)?\s*<\/title>/i.test(out) && brand !== "Studio") {
+    out = out.replace(/<title>[^<]*<\/title>/i, `<title>${brand}</title>`);
+  }
+  return out;
+}
+function ensureBrandMarkWired(files) {
+  const notes = [];
+  const MODULE = "@/components/brand-mark";
+  const usesTag = (src2) => /<BrandMark[\s/>]/.test(stripNoise3(src2));
+  const referenced = files.some(
+    (f) => /\.(tsx|jsx)$/.test(f.path) && f.path !== BRAND_MARK_PATH && (usesTag(f.content) || f.content.includes(MODULE))
+  );
+  if (!referenced) return { files, notes };
+  const brand = detectBrandName(files);
+  const initials = initialsFrom(brand);
+  let next = [...files];
+  const existing = next.find((f) => f.path === BRAND_MARK_PATH);
+  if (!existing) {
+    next.push({ path: BRAND_MARK_PATH, content: brandMarkSource(initials) });
+    notes.push(`brand-identity: created ${BRAND_MARK_PATH} (monogram "${initials}")`);
+  } else if (!/export\s+(?:function|const)\s+BrandMark\b/.test(existing.content)) {
+    next = next.map(
+      (f) => f.path === BRAND_MARK_PATH ? { ...f, content: brandMarkSource(initials) } : f
+    );
+    notes.push(`brand-identity: repaired ${BRAND_MARK_PATH} (missing named export)`);
+  }
+  let wired = 0;
+  next = next.map((f) => {
+    if (!/\.(tsx|jsx)$/.test(f.path) || f.path === BRAND_MARK_PATH) return f;
+    if (!usesTag(f.content)) return f;
+    if (isBrandMarkDeclared(f.content)) return f;
+    wired++;
+    return { ...f, content: injectBrandMarkImport(f.content) };
+  });
+  if (wired > 0) notes.push(`brand-identity: wired <BrandMark/> import into ${wired} file(s)`);
+  return { files: next, notes };
+}
+function stripNoise3(src2) {
+  return src2.replace(/\/\/[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/`(?:\\[\s\S]|\$\{[\s\S]*?\}|[^`\\])*`/g, " ").replace(/"(?:\\[\s\S]|[^"\\])*"/g, " ").replace(/'(?:\\[\s\S]|[^'\\])*'/g, " ");
+}
+function isBrandMarkDeclared(src2) {
+  const clean = stripNoise3(src2);
+  if (/(?:const|let|var|function|class)\s+BrandMark\b/.test(clean)) return true;
+  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]*)\})?[^;\n]*from/g;
+  let m;
+  while (m = importRe.exec(clean)) {
+    if (m[1] === "BrandMark") return true;
+    if (m[2]) {
+      for (const part of m[2].split(",")) {
+        const local = part.trim().replace(/^type\s+/i, "").split(/\s+as\s+/i).pop()?.trim();
+        if (local === "BrandMark") return true;
+      }
+    }
+  }
+  return false;
+}
+function injectBrandMarkImport(src2) {
+  const line = `import { BrandMark } from "@/components/brand-mark";
+`;
+  const importRe = /^import[^\n]*\n/gm;
+  let lastEnd = 0;
+  let m;
+  while (m = importRe.exec(src2)) lastEnd = m.index + m[0].length;
+  if (lastEnd === 0) return line + src2;
+  return src2.slice(0, lastEnd) + line + src2.slice(lastEnd);
+}
+function injectNamedImport(src2, name, module) {
+  if (new RegExp(`from\\s+["']${module.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`).test(src2)) {
+    return src2;
+  }
+  const line = `import { ${name} } from "${module}";
+`;
+  const importRe = /^import[^\n]*\n/gm;
+  let lastEnd = 0;
+  let match;
+  while (match = importRe.exec(src2)) lastEnd = match.index + match[0].length;
+  return src2.slice(0, lastEnd) + line + src2.slice(lastEnd);
+}
+function ensureVisibleLogoPlacement(files) {
+  const logoFile = files.find(
+    (file) => file.path === "src/components/Logo.tsx" && /export\s+(?:function|const)\s+Logo\b/.test(file.content)
+  );
+  const name = logoFile ? "Logo" : "BrandMark";
+  const module = logoFile ? "@/components/Logo" : "@/components/brand-mark";
+  let wired = 0;
+  const next = files.map((file) => {
+    if (!/\.(tsx|jsx)$/.test(file.path) || file.path.startsWith("src/components/blocks/")) return file;
+    if (!/<NavBar\s*\/>/.test(file.content)) return file;
+    let content = file.content.replace(/<NavBar\s*\/>/g, `<NavBar brand={<${name} />} />`);
+    content = injectNamedImport(content, name, module);
+    wired++;
+    return { ...file, content };
+  });
+  return {
+    files: next,
+    notes: wired > 0 ? [`brand-identity: placed the logo in ${wired} empty navigation surface(s)`] : []
+  };
+}
+function ensureBrandIdentity(files) {
+  const notes = [];
+  const wiredPass = ensureBrandMarkWired(files);
+  let next = wiredPass.files;
+  notes.push(...wiredPass.notes);
+  const html = next.find((f) => f.path === "index.html");
+  if (!html) return { files: next, notes };
+  const brand = detectBrandName(next);
+  const initials = initialsFrom(brand);
+  if (!next.some((f) => f.path === BRAND_MARK_PATH)) {
+    next.push({ path: BRAND_MARK_PATH, content: brandMarkSource(initials) });
+    notes.push(`brand-identity: created ${BRAND_MARK_PATH} (monogram "${initials}")`);
+  }
+  let swaps = 0;
+  next = next.map((f) => {
+    if (!/\.(tsx|jsx)$/.test(f.path) || !isBrandSurface(f.path)) return f;
+    if (f.path === BRAND_MARK_PATH) return f;
+    const { content, swapped } = swapPlaceholderLogo(f.content);
+    if (swapped.length === 0) return f;
+    swaps += swapped.length;
+    return { ...f, content };
+  });
+  if (swaps > 0) notes.push(`brand-identity: replaced ${swaps} placeholder logo glyph(s) with <BrandMark/>`);
+  const placementPass = ensureVisibleLogoPlacement(next);
+  next = placementPass.files;
+  notes.push(...placementPass.notes);
+  const primary = resolvePrimaryHex(next) ?? "#111318";
+  const glyph = markGlyphFrom(next);
+  next = next.map((f) => {
+    if (f.path !== "index.html") return f;
+    const content = ensureFavicon(f.content, initials, brand, primary, glyph);
+    if (content !== f.content) notes.push("brand-identity: injected favicon + apple-touch-icon");
+    return { ...f, content };
+  });
+  return { files: next, notes };
+}
+function usableName(name) {
+  const n = String(name ?? "").replace(/\s+/g, " ").trim();
+  if (n.length < 2 || n.length > 60) return null;
+  if (/^(app|my app|untitled|untitled project|website|site|studio|project|document)$/i.test(n)) return null;
+  return n;
+}
+function ensureSiteIdentity(files, productName) {
+  const html = files.find((f) => f.path === "index.html");
+  if (!html) return { files, notes: [] };
+  const brand = usableName(productName) ?? usableName(detectBrandName(files)) ?? "Studio";
+  const initials = initialsFrom(brand);
+  const primary = resolvePrimaryHex(files) ?? "#111318";
+  const glyph = markGlyphFrom(files);
+  const content = ensureFavicon(html.content, initials, brand, primary, glyph);
+  if (content === html.content) return { files, notes: [] };
+  return {
+    files: files.map((f) => f.path === "index.html" ? { ...f, content } : f),
+    notes: [`site-identity: tab name "${brand}", site icon and theme colour set`]
+  };
+}
+var BRAND_MARK_PATH, PLACEHOLDER_ICONS;
+var init_brand_identity_server = __esm({
+  "src/server/brand-identity.server.ts"() {
+    init_define_import_meta_env();
+    BRAND_MARK_PATH = "src/components/brand-mark.tsx";
+    PLACEHOLDER_ICONS = [
+      "Square",
+      "Box",
+      "Circle",
+      "Squircle",
+      "Hexagon",
+      "Triangle",
+      "Shapes",
+      "Component",
+      "Sparkle",
+      "Sparkles"
+    ];
+  }
+});
+
 // src/server/jsx-attr-literal-fixer.server.ts
 function matchBracket(src2, open) {
   const pairs = { "[": "]", "{": "}", "(": ")" };
@@ -140126,7 +140552,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141216,7 +141641,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141381,7 +141805,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141425,7 +141848,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141647,7 +142069,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -142125,7 +142546,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -143965,7 +144385,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145170,7 +145589,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145285,9 +145703,19 @@ function slug(s) {
 }
 function splitRequestedItems(brief) {
   const text = brief.replace(/\s+/g, " ");
-  const m = text.match(/\b(?:with|including|includes|featuring|that has|needs?)\b(.+)$/i);
-  const tail = m ? m[1] : text;
-  return tail.split(/,|;|\band\b|\bplus\b|\+/i).map((s) => s.replace(/[.!?]+$/g, "").trim()).filter((s) => s.length >= 3 && s.split(" ").length <= 6);
+  const m = text.match(/\bpages?\s*:\s*(.+)$/i) ?? text.match(/\b(?:with|including|includes|featuring|that has|needs?)\b(.+)$/i);
+  let tail = m ? m[1] : text;
+  for (let i = 0; i < 4 && /\([^()]*\)/.test(tail); i++) tail = tail.replace(/\s*\([^()]*\)/g, "");
+  tail = tail.replace(/[()]/g, " ");
+  return tail.split(/,|;|\band\b|\bplus\b|\+|[.!?](?=\s|$)/i).map((s) => s.replace(/[.!?:]+$/g, "").trim()).filter((s) => s.length >= 3 && s.split(" ").length <= 6).filter((s) => !isNotARequirement(s));
+}
+function isNotARequirement(item) {
+  const s = item.toLowerCase().trim();
+  if (/^(no|not|without|never|don'?t|do not|nothing)\b/.test(s)) return true;
+  if (/\bonly\b/.test(s)) return true;
+  if (/^(use|make it|keep it|feel|look)\b/.test(s)) return true;
+  if (/\b(photograph(y|s)?|imagery|images|photos|fonts?|typography|colou?rs?|palette|throughout|vibe|aesthetic)\b/.test(s)) return true;
+  return /^(elegant|editorial|modern|minimal(ist)?|premium|luxury|luxurious|clean|bold|warm|dark|light|sleek|simple|playful|calm)(\s+(feel|look|style|tone|design))?$/.test(s);
 }
 function conceptFor(item) {
   const order = ["management", "detail", "payments", "notifications", "responsive", "analytics", "admin", "auth", "cart", "booking", "catalog", "search", "blog", "about", "contact", "home"];
@@ -146269,7 +146697,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -162879,7 +163306,7 @@ function scoreProjectPicture(pic, words2) {
   for (const t of pic.tags) if (want.has(String(t).toLowerCase())) score += 3;
   return score;
 }
-async function findProjectPicture(projectId, request) {
+async function findProjectPicture(projectId, request, exclude) {
   const words2 = tokenize(request);
   if (!words2.length) return null;
   const rows = await loadProjectPictures(projectId);
@@ -162887,6 +163314,7 @@ async function findProjectPicture(projectId, request) {
   let best = null;
   let bestScore = 0;
   for (const pic of rows) {
+    if (exclude?.has(pic.url)) continue;
     const score = scoreProjectPicture(pic, words2);
     if (score > bestScore) {
       bestScore = score;
@@ -163025,7 +163453,8 @@ async function generatePetalImage(opts) {
     const remembered = await findRememberedPicture2({
       request: prompt,
       scope,
-      aspectRatio: opts.aspectRatio ?? null
+      aspectRatio: opts.aspectRatio ?? null,
+      exclude: opts.avoidUrls
     });
     if (remembered) return { url: remembered.url, cached: true };
   } catch {
@@ -163076,13 +163505,28 @@ async function generatePetalImage(opts) {
   }
   return { url: pub.publicUrl, cached: false };
 }
+var STORED_PICTURE_RE = /https:\/\/[^\s"'`<>)]+\/storage\/v1\/object\/public\/petal-images\/[A-Za-z0-9._-]+/g;
+var EXAMPLES_DIR = "src/components/examples/";
+function isRenderedPictureFile(file, files) {
+  if (!file.path.startsWith(EXAMPLES_DIR)) return true;
+  const base = file.path.slice(EXAMPLES_DIR.length).replace(/\.[jt]sx?$/, "");
+  const ref = `components/examples/${base}`;
+  return files.some((f) => !f.path.startsWith(EXAMPLES_DIR) && f.content.includes(ref));
+}
+function pictureFileRank(path) {
+  if (path.startsWith(EXAMPLES_DIR)) return 3;
+  if (path.startsWith("src/components/blocks/") || path.startsWith("src/components/ui/")) return 2;
+  return 1;
+}
 async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPaths, deps = {}) {
   const allowed = targetPaths ? new Set(targetPaths) : null;
   const generate = deps.generate ?? generatePetalImage;
   const sleep3 = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   const failures = [];
+  const original = files;
   files = files.map((f) => {
     if (allowed && !allowed.has(f.path)) return f;
+    if (!isRenderedPictureFile(f, original)) return f;
     if (!f.content.includes("petal-pending%3A")) return f;
     PENDING_RE.lastIndex = 0;
     const content = f.content.replace(PENDING_RE, (_m, enc2) => {
@@ -163095,9 +163539,10 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
     });
     return content === f.content ? f : { ...f, content };
   });
+  const eligible = files.filter((f) => (!allowed || allowed.has(f.path)) && isRenderedPictureFile(f, files));
+  const ordered0 = [...eligible].sort((a2, b) => pictureFileRank(a2.path) - pictureFileRank(b.path));
   const slugs = /* @__PURE__ */ new Set();
-  for (const f of files) {
-    if (allowed && !allowed.has(f.path)) continue;
+  for (const f of ordered0) {
     PLACEHOLDER_RE.lastIndex = 0;
     let m;
     while ((m = PLACEHOLDER_RE.exec(f.content)) !== null) {
@@ -163105,6 +163550,13 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
     }
   }
   if (slugs.size === 0) return { files, resolved: 0, failed: 0, urls: [], failures };
+  const eligiblePaths = new Set(eligible.map((f) => f.path));
+  const usedUrls = /* @__PURE__ */ new Set();
+  for (const f of files) {
+    STORED_PICTURE_RE.lastIndex = 0;
+    let m;
+    while ((m = STORED_PICTURE_RE.exec(f.content)) !== null) usedUrls.add(m[0]);
+  }
   const ordered = Array.from(slugs).slice(0, MAX_IMAGES_PER_GENERATION);
   const skipped = Array.from(slugs).slice(MAX_IMAGES_PER_GENERATION);
   const urlMap = /* @__PURE__ */ new Map();
@@ -163121,7 +163573,7 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
     let last2;
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
-        return (await generate({ prompt: slugToPrompt(slug3) })).url;
+        return (await generate({ prompt: slugToPrompt(slug3), avoidUrls: usedUrls })).url;
       } catch (e) {
         last2 = e;
         if (isFinalImageError(e)) break;
@@ -163131,6 +163583,11 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
     throw last2;
   };
   const retryLater = [];
+  const claim = (url) => {
+    if (usedUrls.has(url)) return false;
+    usedUrls.add(url);
+    return true;
+  };
   const announce = (slug3, url) => {
     liveUrls.push(url);
     try {
@@ -163143,8 +163600,8 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
       const slug3 = queue.shift();
       if (!slug3) return;
       try {
-        const own = await findProjectPicture(projectId, slugToPrompt(slug3));
-        if (own) {
+        const own = await findProjectPicture(projectId, slugToPrompt(slug3), usedUrls);
+        if (own && claim(own.url)) {
           urlMap.set(slug3, own.url);
           resolved += 1;
           announce(slug3, own.url);
@@ -163153,8 +163610,8 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
       } catch {
       }
       try {
-        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug3) });
-        if (fromLibrary) {
+        const fromLibrary = await findLibraryPicture({ request: slugToPrompt(slug3), exclude: usedUrls });
+        if (fromLibrary && claim(fromLibrary.url)) {
           urlMap.set(slug3, fromLibrary.url);
           resolved += 1;
           announce(slug3, fromLibrary.url);
@@ -163164,6 +163621,7 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
       }
       try {
         const url = await makeWithRetry(slug3);
+        usedUrls.add(url);
         urlMap.set(slug3, url);
         resolved += 1;
         announce(slug3, url);
@@ -163191,6 +163649,7 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
   for (const slug3 of retryLater) {
     try {
       const url = await makeWithRetry(slug3);
+      usedUrls.add(url);
       urlMap.set(slug3, url);
       resolved += 1;
       announce(slug3, url);
@@ -163202,7 +163661,7 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
     urlMap.set(slug3, fallbackUrl(slug3));
   }
   const next = files.map((f) => {
-    if (allowed && !allowed.has(f.path)) return f;
+    if (!eligiblePaths.has(f.path)) return f;
     if (!f.content.includes("petal-image://")) return f;
     const updated = f.content.replace(PLACEHOLDER_RE, (_match, slug3) => {
       return urlMap.get(slug3) ?? fallbackUrl(slug3);
@@ -164871,9 +165330,9 @@ What to say:
     body: `
 
 [Reinforcement \u2014 Images]
-Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECIFIC (e.g. "petal-image://cozy-coffee-shop-hero-warm-morning-light"). Max 6 unique placeholders per turn \u2014 extras silently fall back to picsum. NEVER use unsplash.com / placeholder.com / picsum.photos when petal-image:// fits.
+Use \`petal-image://<descriptive-prompt>\` for any AI-generated visual. Be SPECIFIC (e.g. "petal-image://cozy-coffee-shop-hero-warm-morning-light"). Up to 12 distinct placeholders per turn, one per distinct picture slot \u2014 beyond that a plain dark tone is shown until a later turn. NEVER use unsplash.com / placeholder.com / picsum.photos when petal-image:// fits.
 
-CRITICAL \u2014 no gratuitous photo grids: do NOT add a generic "Gallery / Recent Work / Our Projects / Portfolio" grid of 3-6 stock photos on a service-business landing page (plumber, electrician, lawyer, dentist, restaurant, salon, etc.) UNLESS the user explicitly asked for a gallery / portfolio / case studies. These grids land as random grayscale picsum fallbacks and look amateur. Default to FeaturesGrid3 (icon + title + copy) or StatsBand for trust signals instead. Use GalleryGrid ONLY for: photographer / designer / architect / restaurant menu / real-estate portfolios, and ONLY when the brief implies showcasing visual work.`
+CRITICAL \u2014 no gratuitous photo grids: do NOT add a generic "Gallery / Recent Work / Our Projects / Portfolio" grid of 3-6 stock photos on a service-business landing page (plumber, electrician, lawyer, dentist, restaurant, salon, etc.) UNLESS the user explicitly asked for a gallery / portfolio / case studies. These grids read as filler and look amateur. Default to FeaturesGrid3 (icon + title + copy) or StatsBand for trust signals instead. Use GalleryGrid ONLY for: photographer / designer / architect / restaurant menu / real-estate portfolios, and ONLY when the brief implies showcasing visual work.`
   },
   navbarBrand: {
     triggers: /\b(nav|navbar|header|landing|marketing site|site|website|portfolio|saas|product page|app|dashboard|home ?page)\b/i,
@@ -167065,351 +167524,8 @@ function fixMissingShadcnImports(files) {
   return { files: out, fixes };
 }
 
-// src/server/brand-identity.server.ts
-init_define_import_meta_env();
-var BRAND_MARK_PATH = "src/components/brand-mark.tsx";
-var PLACEHOLDER_ICONS = [
-  "Square",
-  "Box",
-  "Circle",
-  "Squircle",
-  "Hexagon",
-  "Triangle",
-  "Shapes",
-  "Component",
-  "Sparkle",
-  "Sparkles"
-];
-function initialsFrom(name) {
-  const words2 = name.replace(/[^A-Za-z0-9\s&-]/g, " ").split(/[\s&-]+/).filter((w) => w && !/^(the|and|app|inc|co|ltd|studio)$/i.test(w));
-  if (words2.length === 0) return "A";
-  if (words2.length === 1) return words2[0].slice(0, 2).toUpperCase();
-  return (words2[0][0] + words2[1][0]).toUpperCase();
-}
-function detectBrandName(files) {
-  const html = files.find((f) => f.path === "index.html")?.content ?? "";
-  const title = /<title>([^<]{2,60})<\/title>/i.exec(html)?.[1]?.trim();
-  if (title && !/^(vite|react|app|document)\b/i.test(title)) {
-    return title.split(/[–—|·-]/)[0].trim();
-  }
-  const own = files.filter(
-    (f) => /\.(tsx|jsx)$/.test(f.path) && !/^src\/components\/(blocks|examples|ui|motion|fx|content|mobile)\//.test(f.path)
-  );
-  const ranked = [
-    ...own.filter((f) => /layout|header|nav|brand|logo/i.test(f.path)),
-    ...own.filter((f) => !/layout|header|nav|brand|logo/i.test(f.path))
-  ];
-  for (const f of ranked) {
-    const m = /font-(?:display|serif|bold|semibold|black)[^>]*>\s*([A-Z][A-Za-z0-9&'’.\s]{1,28})\s*</.exec(
-      f.content
-    );
-    if (m) {
-      const name = m[1].trim().replace(/\s+/g, " ");
-      return /^[A-Z0-9&'’.\s]+$/.test(name) && name.length > 1 ? name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : name;
-    }
-  }
-  return "Studio";
-}
-function brandMarkSource(initials) {
-  return `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-/**
- * The product's logo mark. A single source of truth so the header, footer,
- * auth screens and empty states never drift. Colors come from theme tokens,
- * so the mark works in light and dark mode.
- */
-export function BrandMark({
-  className,
-  initials = "${initials}",
-}: {
-  className?: string;
-  initials?: string;
-}) {
-  const id = React.useId();
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      role="img"
-      aria-label="Logo"
-      className={cn("h-8 w-8 shrink-0", className)}
-    >
-      <defs>
-        <linearGradient id={\`bm-\${id}\`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.55" />
-        </linearGradient>
-      </defs>
-      <rect width="48" height="48" rx="13" fill={\`url(#bm-\${id})\`} className="text-primary" />
-      <path
-        d="M24 10c6.2 3.1 9.5 7.6 9.5 12.6 0 5.3-4.2 9.4-9.5 9.4s-9.5-4.1-9.5-9.4C14.5 17.6 17.8 13.1 24 10Z"
-        fill="currentColor"
-        opacity="0.16"
-      />
-      <text
-        x="24"
-        y="31"
-        textAnchor="middle"
-        fontSize="18"
-        fontWeight="700"
-        letterSpacing="-0.5"
-        fill="hsl(var(--primary-foreground, 0 0% 100%))"
-        style={{ fontFamily: "inherit" }}
-      >
-        {initials}
-      </text>
-    </svg>
-  );
-}
-
-export default BrandMark;
-`;
-}
-function resolvePrimaryHex(files) {
-  const css = files.find((f) => /^src\/(index|styles|globals?)\.css$/.test(f.path));
-  if (!css) return null;
-  const hex = /--primary:\s*(#[0-9a-fA-F]{3,8})\s*;/.exec(css.content);
-  if (hex) return hex[1];
-  const hsl = /--primary:\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%/.exec(css.content);
-  if (!hsl) return null;
-  return hslToHex(Number(hsl[1]), Number(hsl[2]), Number(hsl[3]));
-}
-function hslToHex(h, s, l) {
-  const sat = s / 100;
-  const lig = l / 100;
-  const k = (n) => (n + h / 30) % 12;
-  const a2 = sat * Math.min(lig, 1 - lig);
-  const f = (n) => lig - a2 * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  const to = (n) => Math.round(255 * f(n)).toString(16).padStart(2, "0");
-  return `#${to(0)}${to(8)}${to(4)}`;
-}
-function readableOn(hex) {
-  const h = hex.replace("#", "");
-  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h.slice(0, 6);
-  const [r, g, b] = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16) / 255);
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return lum > 0.6 ? "#111318" : "#ffffff";
-}
-function markGlyphFrom(files) {
-  const mark = files.find((f) => f.path === BRAND_MARK_PATH);
-  if (!mark) return null;
-  const vb = /viewBox="([^"]+)"/.exec(mark.content);
-  const open = /<svg\b[^>]*>/.exec(mark.content);
-  const close = mark.content.lastIndexOf("</svg>");
-  if (!vb || !open || close < 0) return null;
-  let body = mark.content.slice(open.index + open[0].length, close);
-  body = body.replace(/\{\/\*[\s\S]*?\*\/\}/g, "").trim();
-  if (!body || /[{}]/.test(body) || /<[A-Z]/.test(body)) return null;
-  body = body.replace(/\b([a-z]+)([A-Z][a-zA-Z]*)=/g, (_m, a2, b) => `${a2}-${b.toLowerCase()}=`).replace(/\sclassName="[^"]*"/g, "").replace(/\s+/g, " ");
-  if (body.length > 1200) return null;
-  return { body, viewBox: vb[1] };
-}
-function faviconDataUri(initials, primary, glyph) {
-  const fg = readableOn(primary);
-  const svg = glyph ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${glyph.viewBox}" fill="none" color="${primary}">${glyph.body.replace(/currentColor/g, primary)}</svg>` : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="13" fill="${primary}"/><text x="24" y="32" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="22" font-weight="700" fill="${fg}">${initials}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-function isBrandSurface(path) {
-  return /(^|\/)(App\.tsx|main\.tsx)$|nav|header|footer|shell|layout|sidebar|topbar|brand|logo|__root/i.test(
-    path
-  );
-}
-function swapPlaceholderLogo(content) {
-  let out = content;
-  const swapped = [];
-  for (const icon2 of PLACEHOLDER_ICONS) {
-    const re = new RegExp(
-      `<${icon2}\\b([^>]*?)/>(\\s*)(<span\\b[^>]*font-)`,
-      "g"
-    );
-    if (!re.test(out)) continue;
-    re.lastIndex = 0;
-    out = out.replace(re, (_m, attrs, gap, tail) => {
-      const cls = /className=("[^"]*"|\{[^}]*\})/.exec(attrs)?.[1];
-      const sized = cls ? ` className=${cls}` : ' className="h-8 w-8"';
-      return `<BrandMark${sized} />${gap}${tail}`;
-    });
-    swapped.push(icon2);
-  }
-  if (swapped.length === 0) return { content, swapped };
-  out = out.replace(
-    /import\s*\{([^}]*)\}\s*from\s*["']lucide-react["'];?/g,
-    (full, names) => {
-      const kept = names.split(",").map((n) => n.trim()).filter(Boolean).filter((n) => {
-        const local = n.split(/\s+as\s+/).pop().trim();
-        if (!swapped.includes(local)) return true;
-        return new RegExp(`<${local}\\b`).test(out);
-      });
-      if (kept.length === 0) return "";
-      if (kept.length === names.split(",").filter((s) => s.trim()).length) return full;
-      return `import { ${kept.join(", ")} } from "lucide-react";`;
-    }
-  );
-  if (!/from\s+["']@\/components\/brand-mark["']/.test(out)) {
-    const firstImport = /^import .*$/m.exec(out);
-    const line = `import { BrandMark } from "@/components/brand-mark";`;
-    out = firstImport ? out.slice(0, firstImport.index) + line + "\n" + out.slice(firstImport.index) : line + "\n" + out;
-  }
-  return { content: out, swapped };
-}
-function ensureFavicon(html, initials, brand, primary, glyph) {
-  let out = html;
-  const href = faviconDataUri(initials, primary, glyph);
-  const legacyTile = /ff6ea8|%23ff6ea8/i.test(out);
-  const hasRealIcon = /<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]*>/i.test(out) && !/vite\.svg|favicon\.ico/i.test(out) && !legacyTile;
-  if (!hasRealIcon) {
-    out = out.replace(
-      /<link[^>]+rel=["'][^"']*icon[^"']*["'][^>]*>\s*/gi,
-      ""
-    );
-    const tags = [
-      `    <link rel="icon" type="image/svg+xml" href="${href}" />`,
-      `    <link rel="apple-touch-icon" href="${href}" />`
-    ].join("\n");
-    out = out.replace(/<\/head>/i, `${tags}
-  </head>`);
-  }
-  if (!/name=["']theme-color["']/i.test(out)) {
-    out = out.replace(
-      /<\/head>/i,
-      `    <meta name="theme-color" content="${primary}" />
-  </head>`
-    );
-  }
-  if (/<title>\s*(vite(\s*\+\s*react(\s*\+\s*ts)?)?|react app|app|document|untitled)?\s*<\/title>/i.test(out) && brand !== "Studio") {
-    out = out.replace(/<title>[^<]*<\/title>/i, `<title>${brand}</title>`);
-  }
-  return out;
-}
-function ensureBrandMarkWired(files) {
-  const notes = [];
-  const MODULE = "@/components/brand-mark";
-  const usesTag = (src2) => /<BrandMark[\s/>]/.test(stripNoise3(src2));
-  const referenced = files.some(
-    (f) => /\.(tsx|jsx)$/.test(f.path) && f.path !== BRAND_MARK_PATH && (usesTag(f.content) || f.content.includes(MODULE))
-  );
-  if (!referenced) return { files, notes };
-  const brand = detectBrandName(files);
-  const initials = initialsFrom(brand);
-  let next = [...files];
-  const existing = next.find((f) => f.path === BRAND_MARK_PATH);
-  if (!existing) {
-    next.push({ path: BRAND_MARK_PATH, content: brandMarkSource(initials) });
-    notes.push(`brand-identity: created ${BRAND_MARK_PATH} (monogram "${initials}")`);
-  } else if (!/export\s+(?:function|const)\s+BrandMark\b/.test(existing.content)) {
-    next = next.map(
-      (f) => f.path === BRAND_MARK_PATH ? { ...f, content: brandMarkSource(initials) } : f
-    );
-    notes.push(`brand-identity: repaired ${BRAND_MARK_PATH} (missing named export)`);
-  }
-  let wired = 0;
-  next = next.map((f) => {
-    if (!/\.(tsx|jsx)$/.test(f.path) || f.path === BRAND_MARK_PATH) return f;
-    if (!usesTag(f.content)) return f;
-    if (isBrandMarkDeclared(f.content)) return f;
-    wired++;
-    return { ...f, content: injectBrandMarkImport(f.content) };
-  });
-  if (wired > 0) notes.push(`brand-identity: wired <BrandMark/> import into ${wired} file(s)`);
-  return { files: next, notes };
-}
-function stripNoise3(src2) {
-  return src2.replace(/\/\/[^\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/`(?:\\[\s\S]|\$\{[\s\S]*?\}|[^`\\])*`/g, " ").replace(/"(?:\\[\s\S]|[^"\\])*"/g, " ").replace(/'(?:\\[\s\S]|[^'\\])*'/g, " ");
-}
-function isBrandMarkDeclared(src2) {
-  const clean = stripNoise3(src2);
-  if (/(?:const|let|var|function|class)\s+BrandMark\b/.test(clean)) return true;
-  const importRe = /import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]*)\})?[^;\n]*from/g;
-  let m;
-  while (m = importRe.exec(clean)) {
-    if (m[1] === "BrandMark") return true;
-    if (m[2]) {
-      for (const part of m[2].split(",")) {
-        const local = part.trim().replace(/^type\s+/i, "").split(/\s+as\s+/i).pop()?.trim();
-        if (local === "BrandMark") return true;
-      }
-    }
-  }
-  return false;
-}
-function injectBrandMarkImport(src2) {
-  const line = `import { BrandMark } from "@/components/brand-mark";
-`;
-  const importRe = /^import[^\n]*\n/gm;
-  let lastEnd = 0;
-  let m;
-  while (m = importRe.exec(src2)) lastEnd = m.index + m[0].length;
-  if (lastEnd === 0) return line + src2;
-  return src2.slice(0, lastEnd) + line + src2.slice(lastEnd);
-}
-function injectNamedImport(src2, name, module) {
-  if (new RegExp(`from\\s+["']${module.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`).test(src2)) {
-    return src2;
-  }
-  const line = `import { ${name} } from "${module}";
-`;
-  const importRe = /^import[^\n]*\n/gm;
-  let lastEnd = 0;
-  let match;
-  while (match = importRe.exec(src2)) lastEnd = match.index + match[0].length;
-  return src2.slice(0, lastEnd) + line + src2.slice(lastEnd);
-}
-function ensureVisibleLogoPlacement(files) {
-  const logoFile = files.find(
-    (file) => file.path === "src/components/Logo.tsx" && /export\s+(?:function|const)\s+Logo\b/.test(file.content)
-  );
-  const name = logoFile ? "Logo" : "BrandMark";
-  const module = logoFile ? "@/components/Logo" : "@/components/brand-mark";
-  let wired = 0;
-  const next = files.map((file) => {
-    if (!/\.(tsx|jsx)$/.test(file.path) || file.path.startsWith("src/components/blocks/")) return file;
-    if (!/<NavBar\s*\/>/.test(file.content)) return file;
-    let content = file.content.replace(/<NavBar\s*\/>/g, `<NavBar brand={<${name} />} />`);
-    content = injectNamedImport(content, name, module);
-    wired++;
-    return { ...file, content };
-  });
-  return {
-    files: next,
-    notes: wired > 0 ? [`brand-identity: placed the logo in ${wired} empty navigation surface(s)`] : []
-  };
-}
-function ensureBrandIdentity(files) {
-  const notes = [];
-  const wiredPass = ensureBrandMarkWired(files);
-  let next = wiredPass.files;
-  notes.push(...wiredPass.notes);
-  const html = next.find((f) => f.path === "index.html");
-  if (!html) return { files: next, notes };
-  const brand = detectBrandName(next);
-  const initials = initialsFrom(brand);
-  if (!next.some((f) => f.path === BRAND_MARK_PATH)) {
-    next.push({ path: BRAND_MARK_PATH, content: brandMarkSource(initials) });
-    notes.push(`brand-identity: created ${BRAND_MARK_PATH} (monogram "${initials}")`);
-  }
-  let swaps = 0;
-  next = next.map((f) => {
-    if (!/\.(tsx|jsx)$/.test(f.path) || !isBrandSurface(f.path)) return f;
-    if (f.path === BRAND_MARK_PATH) return f;
-    const { content, swapped } = swapPlaceholderLogo(f.content);
-    if (swapped.length === 0) return f;
-    swaps += swapped.length;
-    return { ...f, content };
-  });
-  if (swaps > 0) notes.push(`brand-identity: replaced ${swaps} placeholder logo glyph(s) with <BrandMark/>`);
-  const placementPass = ensureVisibleLogoPlacement(next);
-  next = placementPass.files;
-  notes.push(...placementPass.notes);
-  const primary = resolvePrimaryHex(next) ?? "#111318";
-  const glyph = markGlyphFrom(next);
-  next = next.map((f) => {
-    if (f.path !== "index.html") return f;
-    const content = ensureFavicon(f.content, initials, brand, primary, glyph);
-    if (content !== f.content) notes.push("brand-identity: injected favicon + apple-touch-icon");
-    return { ...f, content };
-  });
-  return { files: next, notes };
-}
+// src/server/stream-autofixer.ts
+init_brand_identity_server();
 
 // src/server/array-safety-fixer.server.ts
 init_define_import_meta_env();
@@ -168407,10 +168523,10 @@ var COMPOSITION_RULES = [
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
   "Alternate surface tone every two or three sections (bg-background then bg-muted) so the page reads as bands, not one flat sheet.",
   "Vary heading scale down the page instead of giving every section the same size.",
-  "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6.",
+  "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6. This padding goes on each <section> only \u2014 never on the page/layout wrapper or around the header, which must sit flush at the top of the page.",
   "Two, at most three calls to action across an entire page. The final CTA is its own section; the footer is not a CTA.",
   "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
-  'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Use up to 6 distinct prompts; reuse a URL when the same picture repeats. Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
+  'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt, up to 12 per build; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
   "Marketing sites lead with imagery, not tools: the hero is a large photograph or full-bleed visual with one headline and one primary action. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
   "Studio, portfolio, architecture, luxury and hospitality sites are editorial: big photographs, generous negative space, few words per section, serif display headings. Keep technical detail off the homepage.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
@@ -171719,6 +171835,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -175161,6 +175278,9 @@ function fixComponentChildren(files) {
   return { files: next, notes };
 }
 
+// src/server/repair-all.server.ts
+init_brand_identity_server();
+
 // src/server/auth-api-align.server.ts
 init_define_import_meta_env();
 var KIT_FILES2 = [
@@ -175933,6 +176053,7 @@ If the user's idea implies persistence (accounts, saved data, payments, file upl
 }
 
 // src/routes/api/generate.ts
+init_brand_identity_server();
 init_prompt_budget_server();
 
 // src/server/turn-recorder.server.ts
@@ -181205,8 +181326,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                         type: "timeline",
                         step: "image_resolve",
                         outcome: "failed",
-                        message: "One picture couldn't be made yet \u2014 it will be retried on the next change.",
-                        detail: reason,
+                        message: `One picture couldn't be made yet (${reason.slice(0, 80)}) \u2014 it will be retried on the next change.`,
                         ts: Date.now()
                       })
                     )
@@ -181492,6 +181612,12 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
             if (pkgApply.changedPaths.length) console.info(`[design-system] installed ${picContext?.design?.package?.systemId}/${picContext?.design?.package?.accent} paths=${pkgApply.changedPaths.join(",")}`);
           } else if (picContext?.design?.package) {
             console.warn(`[design-system] not applied: ${pkgApply.reason}`);
+          }
+          if (isInitial) {
+            const { ensureSiteIdentity: ensureSiteIdentity2 } = await Promise.resolve().then(() => (init_brand_identity_server(), brand_identity_server_exports));
+            const identity = ensureSiteIdentity2(nextFiles, resolvedPrd?.prd?.productName ?? null);
+            nextFiles = identity.files;
+            for (const n of identity.notes) console.info("[site-identity]", n);
           }
           const { lintDesignSystem: lintDesignSystem2 } = await Promise.resolve().then(() => (init_design_system_lint_server(), design_system_lint_server_exports));
           if (picContext?.design) {
