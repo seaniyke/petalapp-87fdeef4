@@ -31,17 +31,25 @@ export async function lookupBackendForGenerate(projectId: string): Promise<{
  * its sign-in at once. So we ship a primary plus stable backups, and the
  * client walks the list until one answers.
  */
+const PUBLISHED_ORIGIN = "https://petalapp.lovable.app";
 const STABLE_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app";
+/** Hosts that no longer serve Petal's API — never baked into a generated app. */
+const RETIRED_ORIGINS = /^https?:\/\/(www\.)?(kimble\.cloud|buildwithpetal\.com)\/?$/i;
 
-export function sharedApiOrigins(): { baseUrl: string; fallbackUrls: string[] } {
-  const configured = (process.env.PETAL_PUBLIC_ORIGIN || "").trim();
-  const extra = (process.env.PETAL_FALLBACK_ORIGINS || "")
+export function sharedApiOrigins(
+  env: Record<string, string | undefined> = process.env,
+): { baseUrl: string; fallbackUrls: string[] } {
+  const configured = (env.PETAL_PUBLIC_ORIGIN || "").trim();
+  const extra = (env.PETAL_FALLBACK_ORIGINS || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  // buildwithpetal.com is NOT listed: it serves an older deployment that
-  // rejects valid project keys (401), which broke sign-in on generated apps.
-  const all = [configured, "https://kimble.cloud", STABLE_ORIGIN, ...extra]
+  // kimble.cloud answers 404 for every API path and buildwithpetal.com
+  // serves an older deployment that rejects valid project keys. Either one
+  // first in the list made every page log a failed request, and the build
+  // server's browser check refused to publish the site.
+  const all = [configured, PUBLISHED_ORIGIN, STABLE_ORIGIN, ...extra]
+    .filter((u) => u && !RETIRED_ORIGINS.test(u))
     .filter(Boolean)
     .map((u) => u.replace(/\/$/, ""));
   const unique = Array.from(new Set(all));

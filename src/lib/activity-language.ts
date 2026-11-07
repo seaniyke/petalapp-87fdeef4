@@ -140,7 +140,7 @@ export function humanizeActivity(
             : outcome === "failed"
               ? "Repair pass had trouble — kept the working version"
               : "Double-checked everything — nothing to repair",
-        detail: "A second read over every file Kimble just wrote.",
+        detail: "A second read over every new file.",
       };
 
     case "file_budget":

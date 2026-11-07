@@ -87,6 +87,7 @@ export const COMPOSITION_RULES = [
   "Card anatomy is fixed: picture, title, one meta line (category · year or role), optionally one short sentence. No chips, badges, spec rows, numbers, credits or buttons inside a card — the whole card is the link.",
   "Never invent technical specifications, measurements, ratings, percentages or industry jargon (lux, Kelvin, CRI, Ra, ROI figures, client/architect credits) unless the user supplied them. Describe the work in plain words a client understands.",
   "No unrequested tools or widgets on websites: no calculators, tuners, sliders, simulators, configurators, live counters or charts unless the user asked for that tool by name.",
+  "Shops keep checkout out of the header: the header shows a bag icon with its item count, and checkout is reached from the bag.",
   "One primary action per screen. Repeat the same action (e.g. 'Start a project') instead of inventing new ones; never more than one button per card or section.",
   "The header has a solid background (bg-background with a border-b), never translucent or blurred. The phone menu uses the kit Sheet so it opens as a solid full-height panel.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
@@ -136,8 +137,11 @@ function designSection(d: FirstBuildDesign): string {
 export const STARTER_DATA_RULE =
   "Each list/table page loads its collection with `db.seedOnce(collection, rows)` from `@/integrations/backend/client` " +
   "instead of `db.list` on first load, passing 5-8 realistic, domain-specific rows (real-sounding names, dates, amounts, statuses). " +
-  "seedOnce writes them to the database only when the collection is empty, so the app opens alive and the data is real and editable. " +
-  "Never hardcode sample arrays in pages.";
+  "seedOnce writes them to the database only when the collection is empty, so the app opens alive and the data is real. " +
+  "seedOnce and db.list return an array of records (`rows.map(r => ({ id: r.id, ...r.data }))`); db.create/db.update return the saved record (`saved.id`, `saved.data`). " +
+  "Never hardcode sample arrays in pages. " +
+  "On customer-facing pages (shop, product, menu, treatments, booking, cart) visitors only browse, add to bag, book and pay: " +
+  "never show add, edit or delete controls for the catalogue there. Owner tools exist only inside a signed-in area, and only when the user asked for one.";
 
 export function firstBuildBrief(
   request: string,

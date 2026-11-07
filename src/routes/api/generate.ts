@@ -4243,12 +4243,12 @@ async function handleGenerateRequestCore(
           const cd = intentActions.cloud;
           const say = (message: string) => controller.enqueue(encoder.encode(sse({ type: "status", message })));
           if (cd.status === "enabled") {
-            say(`${cd.reason} Kimble Cloud enabled a database and sign-in for it.`);
-            say("Connecting your app to Kimble Cloud…");
+            say(`${cd.reason} Petal turned on a database and sign-in for it.`);
+            say("Connecting your app to its database…");
           } else if (cd.status === "already_enabled" && isInitial) {
-            say("Kimble Cloud is already on for this project — connecting your app to it…");
+            say("This project already has a database — connecting your app to it…");
           } else if (cd.status === "failed" && cd.needed) {
-            say(`${cd.reason ?? "This app needs saved data."} Kimble Cloud couldn't be switched on, so accounts and saved data are not connected yet.`);
+            say(`${cd.reason ?? "This app needs saved data."} The database couldn't be switched on, so accounts and saved data are not connected yet.`);
           }
         }
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
@@ -6390,7 +6390,7 @@ async function handleGenerateRequestCore(
             sse({
               type: "cycle_progress",
               cycle: 1,
-              message: "Checking the files Kimble just wrote for build errors…",
+              message: "Checking the new files for build errors…",
             }),
           ),
         );

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { COMPOSITION_RULES } from "@/server/engine/first-build";
+import { COMPOSITION_RULES, STARTER_DATA_RULE } from "@/server/engine/first-build";
 import { readFileSync } from "node:fs";
 
 describe("website restraint rules", () => {
@@ -15,5 +15,12 @@ describe("website restraint rules", () => {
   it("phone menu panel background cannot be overridden to see-through", () => {
     const kit = readFileSync("src/server/scaffold-kit.ts", "utf8");
     expect(kit).toContain('sideClass[side], className, "bg-background text-foreground")');
+  });
+  it("shop visitors never get catalogue add/edit/delete controls", () => {
+    expect(STARTER_DATA_RULE).toMatch(/never show add, edit or delete controls for the catalogue/);
+    expect(STARTER_DATA_RULE).not.toMatch(/real and editable/);
+  });
+  it("shops keep checkout out of the header", () => {
+    expect(COMPOSITION_RULES).toMatch(/Shops keep checkout out of the header/);
   });
 });
