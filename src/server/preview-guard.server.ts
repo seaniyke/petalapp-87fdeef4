@@ -1,0 +1,312 @@
+import type { ProjectFile } from "./generate.server";
+
+const GUARD_PATH = "public/__petal_guard.js";
+// Bump on every behavioural change to the guard script. The version is
+// stamped into (a) the script URL query so a CDN can never serve a stale
+// copy, (b) the tag's data attribute, (c) a window global, and (d) every
+// error report — so a crash coming from an out-of-date cached guard is
+// immediately identifiable instead of looking like a live-code bug.
+const GUARD_VERSION = 10;
+const DEFAULT_INGEST_URL =
+  "https://buildwithpetal.com/api/public/track-runtime-error";
+
+interface GuardOptions {
+  /** Petal project UUID. When present, the guard POSTs runtime errors to
+   *  the ingest endpoint so deployed/CDN previews surface crashes back to
+   *  Petal even when there's no parent iframe to receive postMessage. */
+  projectId?: string;
+  /** Override the ingest URL (used for staging/preview environments). */
+  ingestUrl?: string;
+}
+
+function buildGuardScript(opts: GuardOptions): string {
+  const projectId = opts.projectId ? JSON.stringify(opts.projectId) : "null";
+  const ingestUrl = JSON.stringify(opts.ingestUrl || DEFAULT_INGEST_URL);
+  return `(() => {
+  var VERSION = ${GUARD_VERSION};
+  if (window.__petalPreviewGuardVersion && window.__petalPreviewGuardVersion >= VERSION) return;
+  window.__petalPreviewGuardVersion = VERSION;
+  var PROJECT_ID = ${projectId};
+  var INGEST_URL = ${ingestUrl};
+  var lastError = null;
+  var overlayShown = false;
+  var posted = false;
+
+  function asText(value) {
+    if (!value) return "Unknown preview error";
+    if (value.message) return String(value.message);
+    if (typeof value === "string") return value;
+    try { return JSON.stringify(value); } catch (_) { return String(value); }
+  }
+
+  function stackOf(value) {
+    return value && value.stack ? String(value.stack).slice(0, 5000) : "";
+  }
+
+  function post(type, payload) {
+    try {
+      if (payload && typeof payload === "object") payload.guardVersion = VERSION;
+    } catch (_) {}
+    try { parent.postMessage({ type: type, payload: payload }, "*"); } catch (_) {}
+    // Also POST to Petal's ingest endpoint so deployed apps (no parent
+    // iframe) surface crashes back to the project owner. Best-effort; we
+    // never let an analytics failure break the user's app.
+    if (!PROJECT_ID || posted) return;
+    posted = true;
+    try {
+      var body = JSON.stringify({
+        projectId: PROJECT_ID,
+        kind: payload && payload.kind ? payload.kind : "error",
+        message: (payload && payload.message) || "Unknown error",
+        stack: (payload && payload.stack) || null,
+        source: (payload && payload.source) || null,
+        lineno: (payload && payload.lineno) || null,
+        colno: (payload && payload.colno) || null,
+        pageUrl: (location && location.href) ? String(location.href).slice(0, 1000) : null,
+        guardVersion: VERSION,
+      });
+      // Use a CORS-safelisted content type so cross-origin runtime telemetry
+      // never triggers a preflight. A failed analytics request must not become
+      // a console error that the verifier mistakes for an app defect.
+      fetch(INGEST_URL, {
+        method: "POST",
+        mode: "cors",
+        keepalive: true,
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: body,
+      }).catch(function () {});
+    } catch (_) {}
+  }
+
+  function showOverlay(title, detail, stack) {
+    if (overlayShown) return;
+    overlayShown = true;
+    var panel = document.createElement("div");
+    panel.setAttribute("data-petal-preview-guard", "true");
+    panel.style.cssText = "position:fixed;inset:0;z-index:2147483647;box-sizing:border-box;display:grid;place-items:center;padding:24px;background:#09090bcc;color:#f7f7fb;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;";
+    var main = document.createElement("main");
+    main.style.cssText = "width:min(720px,100%);border:1px solid #34343d;border-radius:14px;background:#111118;box-shadow:0 24px 80px rgba(0,0,0,.45);padding:22px";
+    var label = document.createElement("p");
+    label.style.cssText = "margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#a1a1aa";
+    label.textContent = "Preview issue";
+    var heading = document.createElement("h1");
+    heading.style.cssText = "margin:0 0 12px;font-size:24px;line-height:1.15;color:#fff";
+    heading.textContent = String(title || "Preview issue");
+    var message = document.createElement("p");
+    message.style.cssText = "margin:0;color:#d4d4dd;line-height:1.5;font-size:14px";
+    message.textContent = String(detail || "No extra detail was available.");
+    main.appendChild(label);
+    main.appendChild(heading);
+    main.appendChild(message);
+    if (stack) {
+      var trace = document.createElement("pre");
+      trace.style.cssText = "margin:16px 0 0;max-height:280px;overflow:auto;border:1px solid #2f2f38;border-radius:10px;background:#09090b;padding:12px;color:#c7c7d1;font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap";
+      trace.textContent = String(stack);
+      main.appendChild(trace);
+    }
+    panel.appendChild(main);
+    (document.body || document.documentElement).appendChild(panel);
+  }
+
+  var badgeShown = false;
+  function showBadge(message) {
+    if (badgeShown || overlayShown) return;
+    badgeShown = true;
+    try {
+      var b = document.createElement("div");
+      b.setAttribute("data-petal-runtime-badge", "true");
+      b.style.cssText = "position:fixed;bottom:12px;right:12px;z-index:2147483646;max-width:320px;padding:10px 12px;border-radius:10px;background:#1f1f25;border:1px solid #3a3a44;color:#f5f5f7;font:12px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.35);";
+      var badgeTitle = document.createElement("div");
+      badgeTitle.style.cssText = "font-weight:600;margin-bottom:2px;color:#fff";
+      badgeTitle.textContent = "Runtime error";
+      var badgeMessage = document.createElement("div");
+      badgeMessage.style.cssText = "color:#c7c7d1;word-break:break-word";
+      badgeMessage.textContent = String(message || "Runtime error");
+      var dismiss = document.createElement("button");
+      dismiss.type = "button";
+      dismiss.style.cssText = "position:absolute;top:4px;right:6px;background:none;border:0;color:#9a9aa3;font-size:14px;cursor:pointer;line-height:1";
+      dismiss.setAttribute("aria-label", "Dismiss");
+      dismiss.textContent = "×";
+      b.appendChild(badgeTitle);
+      b.appendChild(badgeMessage);
+      b.appendChild(dismiss);
+      b.style.position = "fixed";
+      dismiss.addEventListener("click", function () { try { b.remove(); } catch (_) {} });
+      (document.body || document.documentElement).appendChild(b);
+    } catch (_) {}
+  }
+
+  function visibleElementExists(root) {
+    if (!root) return false;
+    if ((root.textContent || "").trim().length > 0) return true;
+    var nodes = root.querySelectorAll("canvas,svg,img,video,button,a,input,textarea,select,[role]");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      var style = getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") continue;
+      var rect = el.getBoundingClientRect();
+      if (rect.width > 2 && rect.height > 2) return true;
+    }
+    return false;
+  }
+
+  function reportError(kind, err, source, lineno, colno) {
+    lastError = err || asText(err);
+    var payload = {
+      message: asText(err),
+      stack: stackOf(err) || null,
+      source: source || null,
+      lineno: lineno || null,
+      colno: colno || null,
+      kind: kind,
+    };
+    post("petal:runtime:error", payload);
+    // Only show the unrecoverable full-screen overlay when the app actually
+    // failed to render anything. If #root already has visible content, the
+    // error came from an event handler / async callback / effect after first
+    // paint — the app is still usable, so surface a dismissible badge and
+    // let the user keep interacting. Fatal-vs-recoverable is decided by
+    // "did anything render?", not by error type.
+    var root = document.getElementById("root");
+    var rendered = root && visibleElementExists(root);
+    if (rendered) {
+      showBadge(payload.message);
+    } else {
+      showOverlay("This preview crashed while rendering.", payload.message, payload.stack || "");
+    }
+  }
+
+  window.addEventListener("error", function (event) {
+    var target = event && event.target;
+    if (target && target !== window && (target.tagName === "SCRIPT" || target.tagName === "LINK" || target.tagName === "IMG")) {
+      // A failed stylesheet / font / image / async script DOES NOT crash the
+      // app. React still mounts, fonts fall back, images show broken icons.
+      // Showing the unrecoverable "Preview crashed" overlay here is wrong —
+      // users saw a fully-working app behind a fatal error card. Post a
+      // non-fatal telemetry ping so Petal can still suggest a fix, but do
+      // NOT show the overlay.
+      var url = target.src || target.href || "unknown asset";
+      try { parent.postMessage({ type: "petal:runtime:asset-error", payload: { tag: String(target.tagName).toLowerCase(), url: String(url).slice(0, 500) } }, "*"); } catch (_) {}
+      return;
+    }
+    if (!event || !event.message || event.message === "Script error." || event.message.indexOf("ResizeObserver loop") === 0) return;
+    reportError("error", event.error || event.message, event.filename, event.lineno, event.colno);
+  }, true);
+
+
+  window.addEventListener("unhandledrejection", function (event) {
+    reportError("unhandledrejection", event && event.reason ? event.reason : "Unhandled promise rejection", null, null, null);
+  });
+
+  function checkBlank() {
+    if (overlayShown) return;
+    var root = document.getElementById("root");
+    if (root && visibleElementExists(root)) return;
+    var message = lastError ? asText(lastError) : "The app loaded, but nothing visible was rendered into #root.";
+    var stack = lastError ? stackOf(lastError) : "";
+    var payload = { message: message, stack: stack || null, source: null, lineno: null, colno: null, kind: "blank" };
+    post("petal:preview:blank", payload);
+    showOverlay("This preview rendered blank.", message, stack);
+  }
+
+  // Report which page of the app is on screen, so an edit aimed at "this
+  // page" lands on the route the user is actually looking at.
+  var lastRoute = null;
+  function reportRoute() {
+    try {
+      var path = location.pathname + (location.hash || "");
+      if (path === lastRoute) return;
+      lastRoute = path;
+      var h1 = document.querySelector("h1");
+      parent.postMessage({ type: "petal:preview:route", payload: {
+        path: String(path).slice(0, 300),
+        title: (document.title || "").slice(0, 120),
+        heading: h1 ? (h1.textContent || "").trim().slice(0, 120) : null,
+      } }, "*");
+    } catch (_) {}
+  }
+  try {
+    var _push = history.pushState;
+    var _replace = history.replaceState;
+    history.pushState = function () { _push.apply(this, arguments); setTimeout(reportRoute, 40); };
+    history.replaceState = function () { _replace.apply(this, arguments); setTimeout(reportRoute, 40); };
+  } catch (_) {}
+  window.addEventListener("popstate", function () { setTimeout(reportRoute, 40); });
+  window.addEventListener("hashchange", function () { setTimeout(reportRoute, 40); });
+  setTimeout(reportRoute, 300);
+  setTimeout(reportRoute, 1800);
+
+  setTimeout(checkBlank, 2500);
+  setTimeout(checkBlank, 6500);
+})();
+`;
+}
+
+export function injectPreviewGuard(
+  files: ProjectFile[],
+  opts: GuardOptions = {},
+): { files: ProjectFile[]; injected: boolean } {
+  const script = buildGuardScript(opts);
+  const byPath = new Map(files.map((file) => [file.path, file.content]));
+
+  const index = byPath.get("index.html");
+  if (!index) {
+    return { files: Array.from(byPath, ([path, content]) => ({ path, content })), injected: false };
+  }
+
+  // The guard MUST be inlined, never `<script src="/__petal_guard.js">`.
+  // Vite/Rollup treats every non-module script tag in index.html as a build
+  // input and tries to resolve it from the project graph, so a public-dir
+  // reference (especially with a `?v=` query) fails the production build with
+  //   [vite]: Rollup failed to resolve import "/__petal_guard.js?v=5"
+  // An inline classic script has no import to resolve and still runs before
+  // the app module, which is all the guard needs.
+  const versionAttr = `data-petal-preview-guard-version="${GUARD_VERSION}"`;
+  // Safety net: nothing inside the inline script may look like markup to the
+  // HTML parser. Vite parses index.html with parse5 and hard-fails on
+  // `invalid-first-character-of-tag-name`, so neutralise any stray `<`/`</`.
+  const safeScript = script
+    .replace(/<\/(?=[a-zA-Z!/])/g, "\\u003c/")
+    .replace(/<(?=[^\s=(),;])/g, "\\u003c");
+  const guardTag = `<script ${versionAttr}>${safeScript}</script>`;
+
+  // Strip every previously injected guard — external tags from older builds
+  // and inline tags from this one alike — so re-running is idempotent and a
+  // stale external reference can never survive into the bundle. Trailing
+  // whitespace is consumed rather than leading: the injector re-adds the
+  // separator itself, so eating it on the way out is what makes a second
+  // pass byte-identical to the first.
+  const stripped = index
+    // Self-closing form (`<script src="/__petal_guard.js" />`) never matches
+    // the paired pattern below, and a survivor fails the Rollup build.
+    .replace(/<script\b[^>]*__petal_guard\.js[^>]*\/>\s*/gi, "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>\s*/gi, (tag) => {
+      const isGuard =
+        /__petal_guard\.js/i.test(tag) ||
+        /data-petal-preview-guard-version/i.test(tag) ||
+        /__petalPreviewGuardVersion/.test(tag);
+      return isGuard ? "" : tag;
+    });
+
+
+  // The guard file itself is no longer emitted; drop any copy left behind by
+  // an earlier build so the public dir doesn't ship dead code.
+  byPath.delete(GUARD_PATH);
+
+  const moduleScript =
+    /<script\b(?=[^>]*\btype=["']module["'])(?=[^>]*\bsrc=["']\/src\/main\.tsx["'])[^>]*><\/script>/i;
+  const moduleMatch = stripped.match(moduleScript)?.[0];
+  const next = moduleMatch
+    ? stripped.replace(moduleMatch, `${guardTag}\n    ${moduleMatch}`)
+    : stripped.includes("</body>")
+      ? stripped.replace("</body>", `${guardTag}\n</body>`)
+      : `${stripped}\n${guardTag}\n`;
+
+  byPath.set("index.html", next);
+
+  return {
+    files: Array.from(byPath, ([path, content]) => ({ path, content })),
+    injected: next !== index,
+  };
+}
+
