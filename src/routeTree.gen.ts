@@ -96,6 +96,7 @@ import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/emai
 import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
+import { Route as ApiPublicV1BillingRouteImport } from './routes/api/public/v1/billing'
 import { Route as ApiPublicV1GenerateRouteImport } from './routes/api/public/v1/generate'
 import { Route as ApiPublicV1HealthRouteImport } from './routes/api/public/v1/health'
 import { Route as ApiPublicV1ProjectsRouteImport } from './routes/api/public/v1/projects'
@@ -107,6 +108,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
+import { Route as ApiPublicV1ProjectsIdBillingRouteImport } from './routes/api/public/v1/projects/$id.billing'
 import { Route as ApiPublicV1ProjectsIdBuildRouteImport } from './routes/api/public/v1/projects/$id.build'
 import { Route as ApiPublicV1ProjectsIdBuildsRouteImport } from './routes/api/public/v1/projects/$id.builds'
 import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/public/v1/projects/$id.files'
@@ -569,6 +571,11 @@ const ApiPublicSharedSplatRoute = ApiPublicSharedSplatRouteImport.update({
   path: '/api/public/shared/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1BillingRoute = ApiPublicV1BillingRouteImport.update({
+  id: '/api/public/v1/billing',
+  path: '/api/public/v1/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1GenerateRoute = ApiPublicV1GenerateRouteImport.update({
   id: '/api/public/v1/generate',
   path: '/api/public/v1/generate',
@@ -627,6 +634,12 @@ const ApiPublicV1TurnsIdRoute = ApiPublicV1TurnsIdRouteImport.update({
   path: '/api/public/v1/turns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1ProjectsIdBillingRoute =
+  ApiPublicV1ProjectsIdBillingRouteImport.update({
+    id: '/$id/billing',
+    path: '/$id/billing',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
 const ApiPublicV1ProjectsIdBuildRoute =
   ApiPublicV1ProjectsIdBuildRouteImport.update({
     id: '/$id/build',
@@ -746,6 +759,7 @@ export interface FileRoutesByFullPath {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
@@ -757,6 +771,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
@@ -851,6 +866,7 @@ export interface FileRoutesByTo {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
@@ -862,6 +878,7 @@ export interface FileRoutesByTo {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
@@ -957,6 +974,7 @@ export interface FileRoutesById {
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
+  '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
@@ -968,6 +986,7 @@ export interface FileRoutesById {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
@@ -1064,6 +1083,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/billing'
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/projects'
@@ -1075,6 +1095,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/files'
@@ -1169,6 +1190,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/billing'
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/projects'
@@ -1180,6 +1202,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/files'
@@ -1274,6 +1297,7 @@ export interface FileRouteTypes {
     | '/api/public/mobile/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
+    | '/api/public/v1/billing'
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/projects'
@@ -1285,6 +1309,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/files'
@@ -1378,6 +1403,7 @@ export interface RootRouteChildren {
   ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiPublicSharedSplatRoute: typeof ApiPublicSharedSplatRoute
+  ApiPublicV1BillingRoute: typeof ApiPublicV1BillingRoute
   ApiPublicV1GenerateRoute: typeof ApiPublicV1GenerateRoute
   ApiPublicV1HealthRoute: typeof ApiPublicV1HealthRoute
   ApiPublicV1ProjectsRoute: typeof ApiPublicV1ProjectsRouteWithChildren
@@ -2002,6 +2028,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSharedSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/billing': {
+      id: '/api/public/v1/billing'
+      path: '/api/public/v1/billing'
+      fullPath: '/api/public/v1/billing'
+      preLoaderRoute: typeof ApiPublicV1BillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/generate': {
       id: '/api/public/v1/generate'
       path: '/api/public/v1/generate'
@@ -2079,6 +2112,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1TurnsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/projects/$id/billing': {
+      id: '/api/public/v1/projects/$id/billing'
+      path: '/$id/billing'
+      fullPath: '/api/public/v1/projects/$id/billing'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdBillingRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
     '/api/public/v1/projects/$id/build': {
       id: '/api/public/v1/projects/$id/build'
       path: '/$id/build'
@@ -2141,12 +2181,14 @@ const ApiBillingCryptoRouteWithChildren =
   ApiBillingCryptoRoute._addFileChildren(ApiBillingCryptoRouteChildren)
 
 interface ApiPublicV1ProjectsRouteChildren {
+  ApiPublicV1ProjectsIdBillingRoute: typeof ApiPublicV1ProjectsIdBillingRoute
   ApiPublicV1ProjectsIdBuildRoute: typeof ApiPublicV1ProjectsIdBuildRoute
   ApiPublicV1ProjectsIdBuildsRoute: typeof ApiPublicV1ProjectsIdBuildsRoute
   ApiPublicV1ProjectsIdFilesRoute: typeof ApiPublicV1ProjectsIdFilesRoute
 }
 
 const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
+  ApiPublicV1ProjectsIdBillingRoute: ApiPublicV1ProjectsIdBillingRoute,
   ApiPublicV1ProjectsIdBuildRoute: ApiPublicV1ProjectsIdBuildRoute,
   ApiPublicV1ProjectsIdBuildsRoute: ApiPublicV1ProjectsIdBuildsRoute,
   ApiPublicV1ProjectsIdFilesRoute: ApiPublicV1ProjectsIdFilesRoute,
@@ -2255,6 +2297,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiPublicSharedSplatRoute: ApiPublicSharedSplatRoute,
+  ApiPublicV1BillingRoute: ApiPublicV1BillingRoute,
   ApiPublicV1GenerateRoute: ApiPublicV1GenerateRoute,
   ApiPublicV1HealthRoute: ApiPublicV1HealthRoute,
   ApiPublicV1ProjectsRoute: ApiPublicV1ProjectsRouteWithChildren,

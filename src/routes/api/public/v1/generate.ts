@@ -25,9 +25,11 @@ import {
   preflight,
   previewFields,
   serviceAccessToken,
+  serviceUserId,
   tailTurnEvents,
   verifyServiceKey,
 } from "@/server/service-api.server";
+import { turnBill, type TurnBill } from "@/server/service-billing.server";
 
 const Body = z.object({
   projectId: z.string().uuid(),
@@ -127,6 +129,12 @@ export const Route = createFileRoute("/api/public/v1/generate")({
         const fire = async (status: string, url: string | null = null) => {
           if (fired || !webhookUrl) return;
           fired = true;
+          let billing: TurnBill | null = null;
+          if (turnId) {
+            billing = await serviceUserId()
+              .then((owner) => turnBill(owner, turnId as string))
+              .catch(() => null);
+          }
           await deliverWebhook(webhookUrl, {
             event: "turn.completed",
             projectId,
@@ -136,6 +144,7 @@ export const Route = createFileRoute("/api/public/v1/generate")({
             committedRevision: result?.committedRevision ?? null,
             persisted: result?.persisted ?? false,
             creditsCharged: result?.creditsCharged ?? null,
+            billing,
             summary: result?.summary ?? null,
           });
         };
