@@ -655,13 +655,18 @@ PaginationEllipsis.displayName = "PaginationEllipsis";
 
 // AlertDialog — Dialog variant for destructive/blocking confirms. Same
 // surface as shadcn's alert-dialog so the destructive-confirm example
-// compiles. Implemented as a controlled portal-less modal (kept simple to
+// compiles. Implemented as a controlled modal portaled to document.body (kept simple to
 // avoid pulling @radix-ui/react-alert-dialog).
 const ALERT_DIALOG = `import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 type Ctx = { open: boolean; onOpenChange: (o: boolean) => void };
 const AlertDialogContext = React.createContext<Ctx | null>(null);
+
+function toBody(node: React.ReactNode) {
+  return typeof document === "undefined" ? null : createPortal(node, document.body);
+}
 
 export interface AlertDialogProps {
   open?: boolean;
@@ -718,7 +723,7 @@ export const AlertDialogContent = React.forwardRef<HTMLDivElement, React.HTMLAtt
   ({ className, children, ...props }, ref) => {
     const { open, onOpenChange } = useAlertDialog();
     if (!open) return null;
-    return (
+    return toBody(
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
         <div
@@ -1071,10 +1076,15 @@ export function TabsContent({ value, className, children, ...props }: React.HTML
 `;
 
 const DIALOG = `import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 type DialogContextValue = { open: boolean; setOpen: (v: boolean) => void };
 const DialogContext = React.createContext<DialogContextValue | null>(null);
+
+function toBody(node: React.ReactNode) {
+  return typeof document === "undefined" ? null : createPortal(node, document.body);
+}
 
 export function Dialog({
   open: controlled,
@@ -1106,7 +1116,7 @@ export function DialogContent({ className, children, ...props }: React.HTMLAttri
   const ctx = React.useContext(DialogContext);
   if (!ctx) throw new Error("DialogContent must be inside Dialog");
   if (!ctx.open) return null;
-  return (
+  return toBody(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={() => ctx.setOpen(false)} />
       <div
@@ -1747,11 +1757,16 @@ TableCaption.displayName = "TableCaption";
 `;
 
 const SHEET = `import * as React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SheetContextValue = { open: boolean; setOpen: (v: boolean) => void };
 const SheetContext = React.createContext<SheetContextValue | null>(null);
+
+function toBody(node: React.ReactNode) {
+  return typeof document === "undefined" ? null : createPortal(node, document.body);
+}
 
 export function Sheet({
   open: controlled,
@@ -1793,7 +1808,7 @@ export function SheetContent({
     top: "inset-x-0 top-0 h-1/3 border-b",
     bottom: "inset-x-0 bottom-0 h-1/3 border-t",
   };
-  return (
+  return toBody(
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/50" onClick={() => ctx.setOpen(false)} />
       <div
@@ -3840,6 +3855,7 @@ export function FormMessage({ className, children }: { className?: string; child
 `;
 
 const DRAWER = `import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 /**
@@ -3862,6 +3878,10 @@ import { cn } from "@/lib/utils";
  */
 type Ctx = { open: boolean; setOpen: (v: boolean) => void };
 const DrawerContext = React.createContext<Ctx | null>(null);
+
+function toBody(node: React.ReactNode) {
+  return typeof document === "undefined" ? null : createPortal(node, document.body);
+}
 
 export function Drawer({
   open: controlled,
@@ -3904,7 +3924,7 @@ export function DrawerContent({ className, children, ...props }: React.HTMLAttri
     return () => document.removeEventListener("keydown", onEsc);
   }, [ctx]);
   if (!ctx?.open) return null;
-  return (
+  return toBody(
     <>
       <div className="fixed inset-0 z-50 bg-black/50" onClick={() => ctx.setOpen(false)} />
       <div
