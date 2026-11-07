@@ -69,6 +69,10 @@ const PETAL_BADGE_HTML = `
     strong.textContent = 'Custard';
     label.appendChild(strong);
     a.appendChild(dot); a.appendChild(label);
+    // Step aside while a menu or pop-up is open so it never covers its buttons.
+    var hide = document.createElement('style');
+    hide.textContent = 'body[data-scroll-locked] #petal-badge{display:none!important}';
+    document.head.appendChild(hide);
     a.addEventListener('mouseenter', function(){ a.style.opacity='1'; a.style.transform='translateY(-1px)'; });
     a.addEventListener('mouseleave', function(){ a.style.opacity='0.92'; a.style.transform='none'; });
     document.body.appendChild(a);

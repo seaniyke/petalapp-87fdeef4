@@ -254,6 +254,12 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Headings default to the display font so starter blocks match the page's
+   own headings. Layered, so an explicit font-sans class still wins. */
+@layer base {
+  h1, h2, h3 { font-family: var(--font-display); }
+}
+
 /* Display utility for hero/h1 type — uses the display font + tightest
    tracking. Apply with \`<h1 className="font-display">\`. */
 .font-display { font-family: var(--font-display); letter-spacing: var(--tracking-tightest); }

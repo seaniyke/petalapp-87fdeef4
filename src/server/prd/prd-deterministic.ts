@@ -457,8 +457,13 @@ function extractExplicitName(brief: string): string | null {
   const name = forName[1].replace(/\s+(?:of|and|the|de|&)$/i, "").trim();
   const first = name.split(/\s+/)[0];
   if (/^(My|Our|Your|His|Her|Their|A|An|The|This|That|Me|Us|I)$/.test(first)) return null;
-  // A single Capitalised word is usually a sentence-start or a place, not a brand.
-  if (name.split(/\s+/).length < 2) return null;
+  // A single Capitalised word is usually a sentence-start or a place, not a
+  // brand — unless it is introduced like one: "a website for Solenne, a small
+  // boutique hotel". Without this the fallback named the site "Solenne Small Site".
+  if (name.split(/\s+/).length < 2) {
+    const after = brief.slice((forName.index ?? 0) + forName[0].length);
+    if (!/^\s*(?:,|—|–|-)\s*(?:a|an|the|our|my)\b/i.test(after)) return null;
+  }
   return name.length >= 3 && name.length <= 40 ? name : null;
 }
 
@@ -501,7 +506,7 @@ function fallbackIdentity(brief: string, type: ProductType): {
   const subject = seen.join(" ") || "the job at hand";
   const label = TYPE_LABEL[type];
   return {
-    productName: title ? `${title} ${label[0].toUpperCase()}${label.slice(1)}` : `Kimble ${label[0].toUpperCase()}${label.slice(1)}`,
+    productName: title ? `${title} ${label[0].toUpperCase()}${label.slice(1)}` : `New ${label[0].toUpperCase()}${label.slice(1)}`,
     purpose: `A ${label} for ${subject}, built from the user's request: "${brief.trim().slice(0, 140)}".`,
     targetUser: `Someone who needs to handle ${subject} without extra tooling.`,
     primaryOutcome: `Complete the main job around ${subject} and see a real result.`,

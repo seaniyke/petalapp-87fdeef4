@@ -113,6 +113,8 @@ export const CORRECTNESS_RULES = [
   "src/App.tsx is the only place that owns <BrowserRouter>. Never nest a second router inside a page or layout. Router names come from \"react-router-dom\" (or its kit re-export @/components/ui/router) — never invent another router module.",
   "Write each file once, complete, in a single create_file call. Do not emit partial files, TODO stubs or '...rest unchanged'. Use edit_file for a bounded change to a file that already exists.",
   "Write the shared layout and any shared module before the pages that import them, then emit the pages together in one response.",
+  "Date and time inputs start empty or from today computed at runtime (new Date()); never hardcode a calendar date or year, so a form never opens on a date in the past.",
+  "A form that sends something to the business (stay or booking request, enquiry, contact message, RSVP) saves it with db.create from @/integrations/backend/client when that client exists, and shows the confirmation only after the save succeeds. Never fake a send by writing to localStorage and showing 'sent' or 'dispatched'.",
 ].join("\n- ");
 
 /** Words that make copy read as machine-written. */

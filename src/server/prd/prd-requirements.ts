@@ -136,6 +136,11 @@ function isStyleSentence(sentence: string): boolean {
   if (/^(the\s+)?(overall\s+)?(look|feel|style|design|vibe|tone|aesthetic|mood|branding)\b/.test(s)) return true;
   if (/^(it|the (site|website|app|page))\s+should\s+(look|feel)\b/.test(s)) return true;
   if (/^(make|keep)\s+(it|the|everything)\b/.test(s)) return true;
+  // "I want it crisp, sleek and modern, with proper typography…"
+  if (/^(i|we)\s+(really\s+)?(want|would like|need|'d like)\s+(it|the (site|website|look|design|page))\s+(to\s+(be|look|feel)\s+)?/.test(s)) {
+    const rest = s.replace(/^(i|we)\s+(really\s+)?(want|would like|need|'d like)\s+(it|the (site|website|look|design|page))\s+(to\s+(be|look|feel)\s+)?/, "");
+    if (new RegExp(`^(very\\s+|really\\s+)?(${STYLE_WORDS})\\b`).test(rest)) return true;
+  }
   return false;
 }
 
