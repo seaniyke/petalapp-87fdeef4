@@ -1,5 +1,5 @@
 /**
- * "Powered by Kimble" badge injection.
+ * "Powered by Custard" badge injection.
  *
  * Adds a small, non-intrusive floating link to the bottom-right of built apps.
  * We append a <style> + <a> block to index.html so the badge renders on every
@@ -32,7 +32,7 @@ const PETAL_BADGE_HTML = `
     a.href = 'https://custardai.dev';
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.setAttribute('aria-label', 'Built with Custard AI');
+    a.setAttribute('aria-label', 'Powered by Custard');
     a.style.cssText = [
       'position:fixed','right:14px','bottom:14px','z-index:2147483646',
       'display:inline-flex','align-items:center','gap:6px',
@@ -63,10 +63,10 @@ const PETAL_BADGE_HTML = `
     });
     dot.appendChild(svg);
     var label = document.createElement('span');
-    label.appendChild(document.createTextNode('Built with '));
+    label.appendChild(document.createTextNode('Powered by '));
     var strong = document.createElement('strong');
     strong.style.fontWeight = '600';
-    strong.textContent = 'Custard AI';
+    strong.textContent = 'Custard';
     label.appendChild(strong);
     a.appendChild(dot); a.appendChild(label);
     a.addEventListener('mouseenter', function(){ a.style.opacity='1'; a.style.transform='translateY(-1px)'; });
