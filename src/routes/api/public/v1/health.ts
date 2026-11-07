@@ -7,10 +7,10 @@ export const Route = createFileRoute("/api/public/v1/health")({
       OPTIONS: async () => preflight(),
       GET: async () =>
         json({
-          service: "kimble-engine",
+          service: "petal-engine",
           status: "ok",
           gateway: Boolean(process.env.LOVABLE_API_KEY),
-          serviceKey: Boolean(process.env.KIMBLE_SERVICE_KEY),
+          serviceKey: Boolean(process.env.CUSTARD_API_KEY),
           time: new Date().toISOString(),
         }),
     },
