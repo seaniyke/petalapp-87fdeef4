@@ -32,6 +32,7 @@ import { runBackendAcceptance } from "@/server/backend-acceptance.server";
 import { backendAcceptanceEnabled } from "@/server/completion-flags.server";
 import { attachBuildEconomics, syncTurnCosts } from "@/server/turn-economics.server";
 import { warmProjectThumbnail } from "@/server/project-thumbnail.server";
+import { PRE_READY_BUDGET_MS } from "@/lib/build-callback-budget";
 
 /**
  * Pull the committed design contract for a project so craft QA judges the app
@@ -304,6 +305,12 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
   }
 
   if (payload.status === "ready") {
+    // The build service waits CALLBACK_ACK_TIMEOUT_MS for our answer and the
+    // host cancels this request when it hangs up. The AI reviews below must
+    // fit inside PRE_READY_BUDGET_MS or the live site is never recorded as
+    // ready (every retry was cancelled the same way). Out of time, they fall
+    // back to their deterministic verdicts.
+    const preReady = AbortSignal.timeout(PRE_READY_BUDGET_MS);
     // AI Generation Bible §8 — the builder's own "ready" is a claim, not
     // evidence. Fetch the URL we are about to advertise as live and confirm
     // it serves a real app. A failed probe becomes an honest build failure;
@@ -355,13 +362,20 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // findings are advisory by construction — they queue polish, never a
     // rollback.
     let visualDefects: string[] = [];
+    let visualChecked = false;
     if (payload.verification?.visual?.length) {
       const shots = payload.verification.visual;
       // Only the "is it broken?" check can block shipping, so only it runs
       // before the preview goes live. Craft review is advisory — it runs
       // after the build is marked ready (see below) and joins the defect list
       // for the polish pass without delaying the first usable result.
-      const broken = await scoreVisualQA({ shots, projectId: payload.projectId }).catch(() => [] as string[]);
+      const broken = await scoreVisualQA({ shots, projectId: payload.projectId, signal: preReady }).catch(
+        () => [] as string[],
+      );
+      visualChecked = !preReady.aborted;
+      if (!visualChecked) {
+        console.warn(`[builds/callback] visual QA skipped (time budget) for ${payload.buildId}`);
+      }
       visualDefects = [...broken];
       if (visualDefects.length) {
         console.warn(
@@ -380,7 +394,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
           ]);
           return {
             ...rest,
-            visualChecked: Boolean(payload.verification.visual?.length),
+            visualChecked,
             defects,
             ok: defects.length === 0,
           };
@@ -415,6 +429,7 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     const partitioned = await judgeDefects({
       defects: verification?.defects ?? (acceptance.ran ? acceptance.defects : undefined),
       projectId: payload.projectId,
+      signal: preReady,
     });
     console.info(
       `[builds/callback] severity tier=${partitioned.tier} blocking=${partitioned.blocking.length} visual=${partitioned.visual.length} advisory=${partitioned.advisory.length} for ${payload.buildId}`,
