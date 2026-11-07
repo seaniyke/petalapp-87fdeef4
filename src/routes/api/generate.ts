@@ -4406,7 +4406,7 @@ async function handleGenerateRequestCore(
                 sse({
                   type: "credits_estimate",
                   credits: creditsForCost(
-                    [collected.usage ?? null, ...pageWriteUsages]
+                    [collected.usage ? { ...collected.usage, model: (collected.usage as GatewayUsage).model ?? model } : null, ...pageWriteUsages]
                       .filter((u): u is GatewayUsage => !!u)
                       .reduce((a, u) => a + (turnCallCost(u).costUsd ?? 0), 0),
                     DEFAULT_BUILD_ECONOMICS,
