@@ -65,11 +65,14 @@ readonly HEALTH_TIMEOUT_S=90
 readonly STOP_TIMEOUT_S=30
 readonly KEEP_IMAGES=3
 
+if [[ $EUID -ne 0 ]]; then echo "petal-builder-deploy: must run as root (via sudo)" >&2; exit 2; fi
+
 # ---- Logging (never fails the script if the SSH client disconnects) ---------
 trap '' HUP PIPE
 mkdir -p "$LOG_DIR"
 chmod 0750 "$LOG_DIR"
-LOG_FILE="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-${1:-none}.log"
+case "${1:-}" in deploy|status|rollback) LOG_NAME=$1 ;; *) LOG_NAME=invalid ;; esac
+LOG_FILE="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-${LOG_NAME}.log"
 touch "$LOG_FILE"
 chmod 0640 "$LOG_FILE"
 
@@ -87,8 +90,6 @@ require_tools() {
     command -v "$t" >/dev/null 2>&1 || die "missing required tool: $t"
   done
 }
-
-[[ $EUID -eq 0 ]] || die "must run as root (via sudo)" 2
 
 # ---- Builder HTTP helpers ----------------------------------------------------
 fetch_json() { curl -fsS --max-time 10 "$1"; }
@@ -325,10 +326,10 @@ prune_own_images() {
     | tail -n +"$KEEP_IMAGES" \
     | while read -r tag; do
         docker image rm "${IMAGE_REPO}:${tag}" >>"$LOG_FILE" 2>&1 && log "removed old image ${IMAGE_REPO}:${tag}" || true
-      done
+      done || true
   find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/[0-9a-f]{40}' -printf '%T@ %p\n' 2>/dev/null \
     | sort -rn | tail -n +$((KEEP_IMAGES + 1)) | cut -d' ' -f2- \
-    | while read -r d; do rm -rf -- "$d"; done
+    | while read -r d; do rm -rf -- "$d"; done || true
 }
 
 # ---- Commands ----------------------------------------------------------------
@@ -370,7 +371,7 @@ cmd_deploy() {
   # 2) Expected values from that exact commit.
   local want_version want_hash actual_hash
   want_version=$("${g[@]}" cat-file blob "${sha}:builder/src/server.ts" \
-    | sed -n -E 's/^const AGENT_CORE_VERSION = "([A-Za-z0-9._-]+)";.*/\1/p' | head -n1)
+    | sed -n -E '/^const AGENT_CORE_VERSION = /{s/^const AGENT_CORE_VERSION = "([A-Za-z0-9._-]+)";.*/\1/p;q;}')
   [[ -n "$want_version" ]] || die "could not read AGENT_CORE_VERSION from commit $short"
   want_hash=$("${g[@]}" cat-file blob "${sha}:builder/vendor/agent-core.version.json" | jq -r '.hash // empty')
   [[ "$want_hash" =~ ^[0-9a-f]{64}$ ]] || die "invalid hash in agent-core.version.json"
