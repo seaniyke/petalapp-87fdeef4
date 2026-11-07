@@ -179,6 +179,16 @@ const INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashb
 const SAAS = /\b(saas|software as a service|platform|marketplace)\b/i;
 /** The request asks for signed-in functionality. */
 const APP_WORDS = /\b(management system|management app|system|portal|dashboard|app|application|sign ?in|log ?in|accounts?|saas|platform|crm|erp)\b/i;
+/** Explicit "website only / just a website" — the user ruled out an app. */
+const WEBSITE_ONLY = /\b((web)?site only|only (an? )?(web)?site|just (an? )?(simple )?(web)?site|static (web)?site)\b/i;
+/**
+ * Remove app words the user NEGATED ("no accounts", "without login",
+ * "doesn't need a dashboard") so they never count as asking for an app.
+ */
+const NEGATED_APP = /\b(no|without|not|don'?t need|doesn'?t need|never|zero)\s+(an?\s+|any\s+|user\s+|customer\s+)?(management system|system|portal|dashboard|app|application|sign[- ]?ins?|sign[- ]?ups?|log[- ]?ins?|accounts?|backend|database|crm|erp)\b/gi;
+export function withoutNegatedAppWords(text: string): string {
+  return (text || "").replace(NEGATED_APP, " ");
+}
 
 /**
  * Deterministic product structure. Explicit words win (internal → app,
@@ -187,7 +197,8 @@ const APP_WORDS = /\b(management system|management app|system|portal|dashboard|a
  * inventory, CRM, projects) stay apps. Returns null when nothing is clear.
  */
 export function deriveProductSurface(brief: string, roles: string[] = []): ProductSurface | null {
-  const t = brief || "";
+  const t = withoutNegatedAppWords(brief || "");
+  if (WEBSITE_ONLY.test(t) && !INTERNAL_ONLY.test(t)) return "public";
   if (INTERNAL_ONLY.test(t)) return "app";
   const wantsApp = APP_WORDS.test(t.replace(/\bweb ?app\b/gi, "app"));
   if (PUBLIC_ONLY.test(t) && !wantsApp) return "public";
@@ -208,7 +219,7 @@ export const COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|prod
 const COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
 
 export function deriveIntentContract(brief: string, prd?: Prd | null): IntentContract {
-  const text = brief || "";
+  const text = withoutNegatedAppWords(brief || "");
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce")!;
   const commerceRequested = commerceFamily.triggers.test(text);
   // Domain families win over commerce words used incidentally ("hospital pharmacy store").
