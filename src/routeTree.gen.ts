@@ -107,6 +107,8 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
+import { Route as ApiPublicV1ProjectsIdBuildRouteImport } from './routes/api/public/v1/projects/$id.build'
+import { Route as ApiPublicV1ProjectsIdBuildsRouteImport } from './routes/api/public/v1/projects/$id.builds'
 import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/public/v1/projects/$id.files'
 import { Route as ApiPublicV1TurnsIdCancelRouteImport } from './routes/api/public/v1/turns/$id.cancel'
 import { Route as ApiPublicV1TurnsIdEventsRouteImport } from './routes/api/public/v1/turns/$id.events'
@@ -625,6 +627,18 @@ const ApiPublicV1TurnsIdRoute = ApiPublicV1TurnsIdRouteImport.update({
   path: '/api/public/v1/turns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1ProjectsIdBuildRoute =
+  ApiPublicV1ProjectsIdBuildRouteImport.update({
+    id: '/$id/build',
+    path: '/$id/build',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
+const ApiPublicV1ProjectsIdBuildsRoute =
+  ApiPublicV1ProjectsIdBuildsRouteImport.update({
+    id: '/$id/builds',
+    path: '/$id/builds',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
 const ApiPublicV1ProjectsIdFilesRoute =
   ApiPublicV1ProjectsIdFilesRouteImport.update({
     id: '/$id/files',
@@ -743,6 +757,8 @@ export interface FileRoutesByFullPath {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
+  '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -846,6 +862,8 @@ export interface FileRoutesByTo {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
+  '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -950,6 +968,8 @@ export interface FileRoutesById {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
+  '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -1055,6 +1075,8 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/build'
+    | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -1158,6 +1180,8 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/build'
+    | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -1261,6 +1285,8 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/build'
+    | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -2053,6 +2079,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1TurnsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/projects/$id/build': {
+      id: '/api/public/v1/projects/$id/build'
+      path: '/$id/build'
+      fullPath: '/api/public/v1/projects/$id/build'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdBuildRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
+    '/api/public/v1/projects/$id/builds': {
+      id: '/api/public/v1/projects/$id/builds'
+      path: '/$id/builds'
+      fullPath: '/api/public/v1/projects/$id/builds'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdBuildsRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
     '/api/public/v1/projects/$id/files': {
       id: '/api/public/v1/projects/$id/files'
       path: '/$id/files'
@@ -2101,10 +2141,14 @@ const ApiBillingCryptoRouteWithChildren =
   ApiBillingCryptoRoute._addFileChildren(ApiBillingCryptoRouteChildren)
 
 interface ApiPublicV1ProjectsRouteChildren {
+  ApiPublicV1ProjectsIdBuildRoute: typeof ApiPublicV1ProjectsIdBuildRoute
+  ApiPublicV1ProjectsIdBuildsRoute: typeof ApiPublicV1ProjectsIdBuildsRoute
   ApiPublicV1ProjectsIdFilesRoute: typeof ApiPublicV1ProjectsIdFilesRoute
 }
 
 const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
+  ApiPublicV1ProjectsIdBuildRoute: ApiPublicV1ProjectsIdBuildRoute,
+  ApiPublicV1ProjectsIdBuildsRoute: ApiPublicV1ProjectsIdBuildsRoute,
   ApiPublicV1ProjectsIdFilesRoute: ApiPublicV1ProjectsIdFilesRoute,
 }
 

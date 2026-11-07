@@ -12,6 +12,7 @@
  * just owns the connection. Switched on with USE_DURABLE_AGENT=1.
  */
 import { createHmac } from "node:crypto";
+import { trustedAppOrigin } from "@/server/public-origin";
 
 /** Same header scheme as builder/src/signing.ts (kept local: this module is
  *  imported on the Stop path and must stay lightweight). */
@@ -61,7 +62,7 @@ export function buildAgentJobPayload(
     process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY
       ? { supabaseUrl: process.env.SUPABASE_URL, supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY }
       : undefined;
-  return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: new URL(request.url).origin, publicConfig };
+  return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: trustedAppOrigin(request.url), publicConfig };
 }
 
 type FetchLike = typeof fetch;
