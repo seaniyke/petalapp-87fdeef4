@@ -6334,6 +6334,7 @@ export type Database = {
             }
             Returns: boolean
           }
+      sync_builder_cron_secret: { Args: { _value: string }; Returns: undefined }
       waitlist_gen_code: { Args: never; Returns: string }
       waitlist_status: {
         Args: { _token: string }
