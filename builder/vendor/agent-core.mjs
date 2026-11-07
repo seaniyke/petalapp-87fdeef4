@@ -38224,7 +38224,7 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
   - \`<img src="petal-image://minimalist-product-photo-leather-wallet-on-marble" />\`
   - \`<img src="petal-image://abstract-purple-gradient-mesh-background" />\`
 - Be SPECIFIC and VISUAL. \`petal-image://hero\` is bad. \`petal-image://founder-portrait-natural-light-warm-smile\` is good.
-- Limits: max 6 unique placeholders per generation (extras fall back to picsum). Same slug used multiple times = one image, deduped automatically.
+- Limits: up to 12 unique placeholders per generation (extras show a plain dark stand-in until a later turn). Same slug used multiple times = one image, deduped automatically.
 - DO NOT use picsum.photos, unsplash.com, placeholder.com, or any other stock-photo URL when \`petal-image://\` would do \u2014 generated images always look more on-brand.
 - Never fabricate testimonials, customer names, ratings, usage numbers or social proof. Use testimonials only when the user supplied them; otherwise show honest product/company content.
 
@@ -38397,7 +38397,7 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
 - Examples: \`<img src="petal-image://cozy-coffee-shop-hero-warm-morning-light" />\`, \`<img src="petal-image://leather-wallet-on-marble-product-shot" />\`.
 - Be SPECIFIC and VISUAL \u2014 the slug IS the prompt to the image model.
 - DO NOT introduce picsum.photos / unsplash / placeholder URLs in NEW image elements when \`petal-image://\` would do. Existing image URLs in the codebase may stay unless the user asks otherwise.
-- Limit: max 6 unique placeholders per turn (extras silently fall back to picsum).
+- Limit: up to 12 unique placeholders per turn (extras show a plain dark stand-in until a later turn).
 
 MULTI-PAGE ROUTING:
 - Use "@/components/ui/router" (re-exports react-router-dom). When adding a new page, wire it through the EXISTING <Routes>; never create a second <Router>. Detailed API appears in [Reinforcement \u2014 Routing] when relevant.
@@ -70220,7 +70220,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -140622,6 +140621,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141711,6 +141711,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141875,6 +141876,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141918,6 +141920,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -142617,6 +142620,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -144187,7 +144191,16 @@ function inferEntities(brief, type, needsAuth) {
 }
 function extractExplicitName(brief) {
   const m = brief.match(/\b(?:called|named)\s+["“']?([A-Z][\w' -]{1,28})["”']?/) || brief.match(/["“']([A-Z][\w' -]{2,28})["”']\s+(?:app|site|tool|platform)/);
-  return m ? m[1].trim() : null;
+  if (m) return m[1].trim();
+  const forName = brief.match(
+    /\b(?:website|site|web\s*site|landing\s+page|home\s*page|app|application|store|shop|platform|portfolio)\s+for\s+((?:[A-Z][\w'&.-]*)(?:\s+(?:[A-Z][\w'&.-]*|&|of|and|the|de)){0,4})/
+  );
+  if (!forName) return null;
+  const name = forName[1].replace(/\s+(?:of|and|the|de|&)$/i, "").trim();
+  const first = name.split(/\s+/)[0];
+  if (/^(My|Our|Your|His|Her|Their|A|An|The|This|That|Me|Us|I)$/.test(first)) return null;
+  if (name.split(/\s+/).length < 2) return null;
+  return name.length >= 3 && name.length <= 40 ? name : null;
 }
 function fallbackIdentity(brief, type) {
   const words2 = (brief.toLowerCase().match(/[a-z][a-z'-]{2,}/g) ?? []).filter((w) => !STOP_WORDS.has(w));
@@ -167871,24 +167884,8 @@ function fixBadImports(content, report, hasBackendKit) {
   }
   return out;
 }
-function capPetalImages(content, report) {
-  const re = /petal-image:\/\/([a-zA-Z0-9_\-%]+)/g;
-  const seen = /* @__PURE__ */ new Set();
-  let stripped = 0;
-  const out = content.replace(re, (whole, slug3) => {
-    if (seen.has(slug3)) return whole;
-    if (seen.size < 6) {
-      seen.add(slug3);
-      return whole;
-    }
-    stripped++;
-    return `https://picsum.photos/seed/${slug3.slice(0, 16)}/800/600`;
-  });
-  if (stripped > 0) {
-    report.fixedCount += stripped;
-    report.notes.push(`petal-image:// budget exceeded \u2014 swapped ${stripped} extras to picsum`);
-  }
-  return out;
+function capPetalImages(content, _report) {
+  return content;
 }
 function normalizePath2(path) {
   const out = [];
@@ -173264,8 +173261,10 @@ function enforceRuntimeContracts(input) {
 // src/server/layout-hygiene.server.ts
 init_define_import_meta_env();
 var SCANNABLE15 = /\.(tsx|jsx)$/;
-function isPageShell(path) {
-  return /\/(main|App|__root|root|layout|Layout)\.(tsx|jsx)$/.test(path);
+function isPageShell(path, content = "") {
+  if (/\/(main|App|__root|root)\.(tsx|jsx)$/.test(path)) return true;
+  if (/(?:^|[/_.-])(?:layout|shell)\.(tsx|jsx)$/i.test(path) || /(?:Layout|Shell)\.(tsx|jsx)$/.test(path)) return true;
+  return /<Outlet\b/.test(content);
 }
 var DECORATIVE = /^(bg-|from-|via-|to-|backdrop-|opacity-|mix-blend|bg\[|blur|rounded|border|ring|shadow|inset-0|absolute|z-|animate-|pointer-events-|transition|[-a-z]*gradient)/;
 var HEADING_RAMP = {
@@ -173279,7 +173278,7 @@ function healClassList(raw, ctx) {
   let tokens2 = raw.split(/\s+/).filter(Boolean);
   if (tokens2.length === 0) return raw;
   const has2 = (re) => tokens2.some((t) => re.test(t));
-  const shell = isPageShell(ctx.path);
+  const shell = ctx.shell;
   tokens2 = tokens2.map((t) => {
     if (!shell) {
       if (t === "h-screen" || t === "h-dvh" || t === "h-svh") return "min-h-[70svh]";
@@ -173315,6 +173314,7 @@ function healClassList(raw, ctx) {
 }
 function healFile(path, content) {
   let fixes = 0;
+  const shell = isPageShell(path, content);
   const elementRx = /<([A-Za-z][\w.-]*)((?:[^<>"'{}]|"[^"]*"|'[^']*'|\{[^{}]*\})*?)(\/?)>/g;
   const next = content.replace(elementRx, (whole, tag, attrs, slash) => {
     const classRx = /className=(?:"([^"]*)"|\{`([^`${}]*)`\})/;
@@ -173324,6 +173324,7 @@ function healFile(path, content) {
     if (!raw.trim()) return whole;
     const healed = healClassList(raw, {
       path,
+      shell,
       selfClosing: slash === "/",
       tag: tag.toLowerCase()
     });

@@ -446,7 +446,20 @@ function extractExplicitName(brief: string): string | null {
   const m =
     brief.match(/\b(?:called|named)\s+["“']?([A-Z][\w' -]{1,28})["”']?/) ||
     brief.match(/["“']([A-Z][\w' -]{2,28})["”']\s+(?:app|site|tool|platform)/);
-  return m ? m[1].trim() : null;
+  if (m) return m[1].trim();
+  // "a website for Aura Light Studio, an architectural…" — a run of
+  // Capitalised words right after "<thing> for". Without this the fallback
+  // invented "Aura Light Site" and that became the browser tab name.
+  const forName = brief.match(
+    /\b(?:website|site|web\s*site|landing\s+page|home\s*page|app|application|store|shop|platform|portfolio)\s+for\s+((?:[A-Z][\w'&.-]*)(?:\s+(?:[A-Z][\w'&.-]*|&|of|and|the|de)){0,4})/,
+  );
+  if (!forName) return null;
+  const name = forName[1].replace(/\s+(?:of|and|the|de|&)$/i, "").trim();
+  const first = name.split(/\s+/)[0];
+  if (/^(My|Our|Your|His|Her|Their|A|An|The|This|That|Me|Us|I)$/.test(first)) return null;
+  // A single Capitalised word is usually a sentence-start or a place, not a brand.
+  if (name.split(/\s+/).length < 2) return null;
+  return name.length >= 3 && name.length <= 40 ? name : null;
 }
 
 const STOP_WORDS = new Set([

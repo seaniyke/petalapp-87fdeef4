@@ -100,7 +100,7 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
   - \`<img src="petal-image://minimalist-product-photo-leather-wallet-on-marble" />\`
   - \`<img src="petal-image://abstract-purple-gradient-mesh-background" />\`
 - Be SPECIFIC and VISUAL. \`petal-image://hero\` is bad. \`petal-image://founder-portrait-natural-light-warm-smile\` is good.
-- Limits: max 6 unique placeholders per generation (extras fall back to picsum). Same slug used multiple times = one image, deduped automatically.
+- Limits: up to 12 unique placeholders per generation (extras show a plain dark stand-in until a later turn). Same slug used multiple times = one image, deduped automatically.
 - DO NOT use picsum.photos, unsplash.com, placeholder.com, or any other stock-photo URL when \`petal-image://\` would do — generated images always look more on-brand.
 - Never fabricate testimonials, customer names, ratings, usage numbers or social proof. Use testimonials only when the user supplied them; otherwise show honest product/company content.
 
@@ -274,7 +274,7 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
 - Examples: \`<img src="petal-image://cozy-coffee-shop-hero-warm-morning-light" />\`, \`<img src="petal-image://leather-wallet-on-marble-product-shot" />\`.
 - Be SPECIFIC and VISUAL — the slug IS the prompt to the image model.
 - DO NOT introduce picsum.photos / unsplash / placeholder URLs in NEW image elements when \`petal-image://\` would do. Existing image URLs in the codebase may stay unless the user asks otherwise.
-- Limit: max 6 unique placeholders per turn (extras silently fall back to picsum).
+- Limit: up to 12 unique placeholders per turn (extras show a plain dark stand-in until a later turn).
 
 MULTI-PAGE ROUTING:
 - Use "@/components/ui/router" (re-exports react-router-dom). When adding a new page, wire it through the EXISTING <Routes>; never create a second <Router>. Detailed API appears in [Reinforcement — Routing] when relevant.
