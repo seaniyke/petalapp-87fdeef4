@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { COMPOSITION_RULES } from "@/server/engine/first-build";
-import { SCAFFOLD_FILES } from "@/server/scaffold-kit";
+import { readFileSync } from "node:fs";
 
 describe("website restraint rules", () => {
   it("fixes card anatomy and bans invented specs and unrequested widgets", () => {
@@ -11,5 +11,9 @@ describe("website restraint rules", () => {
   });
   it("header must be solid, never blurred", () => {
     expect(COMPOSITION_RULES).toMatch(/never translucent or blurred/);
+  });
+  it("phone menu panel background cannot be overridden to see-through", () => {
+    const kit = readFileSync("src/server/scaffold-kit.ts", "utf8");
+    expect(kit).toContain('sideClass[side], className, "bg-background text-foreground")');
   });
 });
