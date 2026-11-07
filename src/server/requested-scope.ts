@@ -43,7 +43,7 @@ function cleanName(raw: string): string | null {
  * Returns [] when no explicit page list is present.
  */
 export function extractRequestedPages(prompt: string): string[] {
-  const text = prompt.replace(/\s+/g, " ");
+  const raw = prompt.replace(/\s+/g, " ");
   const found: string[] = [];
   const push = (raw: string) => {
     for (const part of raw.split(/,|\/|\band\b|\+|;/i)) {
@@ -56,8 +56,15 @@ export function extractRequestedPages(prompt: string): string[] {
     }
   };
 
-  // "pages: A, B and C" / "pages (A, B)" / "pages — A, B"
-  for (const m of text.matchAll(/\bpages?\s*(?::|\(|—|-|including|include)\s*([^.!?\n)]{2,160})/gi)) {
+  // "pages (A, B)" — here the parentheses ARE the page list.
+  for (const m of raw.matchAll(/\bpages?\s*\(([^)]{2,160})\)/gi)) {
+    push(m[1]);
+  }
+  // Everywhere else a parenthetical describes what goes ON a page
+  // ("Home (hero, testimonials, call to action)"): sections, never pages.
+  const text = raw.replace(/\bpages?\s*\([^)]*\)/gi, " ").replace(/\([^()]*\)/g, " ");
+  // "pages: A, B and C" / "pages — A, B"
+  for (const m of text.matchAll(/\bpages?\s*(?::|—|-|including|include)\s*([^.!?\n)]{2,160})/gi)) {
     push(m[1]);
   }
   // "A, B, C and D pages" — also the Oxford comma "A, B, and C pages"
