@@ -29,10 +29,10 @@ const PETAL_BADGE_HTML = `
     if (document.getElementById('petal-badge')) return;
     var a = document.createElement('a');
     a.id = 'petal-badge';
-    a.href = 'https://kimble.cloud?utm_source=kimble_badge';
+    a.href = 'https://custardai.dev';
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.setAttribute('aria-label', 'Built with Kimble');
+    a.setAttribute('aria-label', 'Built with Custard AI');
     a.style.cssText = [
       'position:fixed','right:14px','bottom:14px','z-index:2147483646',
       'display:inline-flex','align-items:center','gap:6px',
@@ -47,17 +47,13 @@ const PETAL_BADGE_HTML = `
     ].join(';') + ';';
     var dot = document.createElement('span');
     dot.setAttribute('aria-hidden','true');
-    dot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:999px;background:#000;box-shadow:0 0 0 1px rgba(255,255,255,0.14) inset;overflow:hidden;';
-    var mark = document.createElement('img');
-    mark.src = 'https://kimble.cloud/kimble-logo.png';
-    mark.alt = '';
-    mark.style.cssText = 'width:11px;height:11px;object-fit:contain;filter:invert(1);';
-    dot.appendChild(mark);
+    dot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;';
+    dot.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#9DEDCB" d="M5 3h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H9.5L4 22.5V19.2A4 4 0 0 1 1 15V7a4 4 0 0 1 4-4z"/><g stroke="#101815" stroke-width="1.6" stroke-linecap="round"><path d="M7 9.5v3"/><path d="M9.5 8v6"/><path d="M12 6.5v9"/><path d="M14.5 8v6"/><path d="M17 9.5v3"/></g></svg>';
     var label = document.createElement('span');
     label.appendChild(document.createTextNode('Built with '));
     var strong = document.createElement('strong');
     strong.style.fontWeight = '600';
-    strong.textContent = 'Kimble';
+    strong.textContent = 'Custard AI';
     label.appendChild(strong);
     a.appendChild(dot); a.appendChild(label);
     a.addEventListener('mouseenter', function(){ a.style.opacity='1'; a.style.transform='translateY(-1px)'; });
