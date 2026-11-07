@@ -70253,6 +70253,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -142178,6 +142179,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144503,6 +144505,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145707,6 +145710,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -149090,6 +149094,7 @@ var init_telemetry_server = __esm({
 // src/server/hero-contract.server.ts
 var hero_contract_server_exports = {};
 __export(hero_contract_server_exports, {
+  HERO_CONTRACT: () => HERO_CONTRACT,
   renderHeroContractBlock: () => renderHeroContractBlock
 });
 function looksLikeSaasBrief(brief) {
@@ -149097,16 +149102,13 @@ function looksLikeSaasBrief(brief) {
     const shape2 = classifyAppShape(brief);
     return shape2.category === "saas" || shape2.category === "internal-tool" || shape2.category === "ai-tool";
   } catch {
-    return /\b(saas|b2b|crm|pipeline|dashboard|admin|workflow|automation|leads?|funnel|analytics|sales\s+team)\b/i.test(
-      brief
-    );
+    return /\b(saas|b2b|crm|dashboard|analytics)\b/i.test(brief);
   }
 }
 function renderHeroContractBlock(opts) {
   if (!opts.isInitial) return "";
   if (opts.webSubtype && opts.webSubtype !== "marketing") return "";
-  const saasAddendum = opts.brief && looksLikeSaasBrief(opts.brief) ? SAAS_ADDENDUM : "";
-  return HERO_CONTRACT + saasAddendum;
+  return HERO_CONTRACT + (opts.brief && looksLikeSaasBrief(opts.brief) ? SAAS_ADDENDUM : "");
 }
 var HERO_CONTRACT, SAAS_ADDENDUM;
 var init_hero_contract_server = __esm({
@@ -149115,32 +149117,17 @@ var init_hero_contract_server = __esm({
     init_app_shape_classifier();
     HERO_CONTRACT = `
 
-### Hero Contract (non-negotiable for the home page on initial build)
-The home route hero must follow this shape exactly. No exceptions, no "modern minimal" reinterpretations, no swapping it for a centered text block.
+### Hero Contract (home page, initial build)
+Modern studio hero: one picture, one headline, one action. Restraint is the look.
 
-1. **Eyebrow badge** \u2014 small pill with an icon + 2-4 words. Themed colored background (NOT plain border). Skip only if it would be redundant with the brand mark.
-2. **H1 headline** \u2014 display font, fluid clamp \`text-4xl sm:text-5xl md:text-6xl lg:text-7xl\`, font-weight 600-800, tight tracking, max 2 lines. ONE word visually emphasized via highlight-marker span, gradient text, underline accent, or AuroraText. The H1 is the largest thing on the fold \u2014 never let the eyebrow visually compete.
-3. **Subhead** \u2014 2-3 lines, \`text-base sm:text-lg md:text-xl\`, \`text-muted-foreground\`. Real sentences, not feature bullets.
-4. **CTA row** \u2014 TWO Buttons side by side, both from \`@/components/ui/button\`:
-   - Primary: \`<Button size="lg">\` (filled, default variant) OR \`<ShimmerButton>\` from \`@/components/fx\`. Must read as a solid, tappable shape.
-   - Secondary: \`<Button size="lg" variant="outline">\` OR \`variant="ghost"\`. Outlined pill or quiet ghost \u2014 never bare text.
-   - **BANNED**: bare \`<a className="...">Learn more \u2192</a>\`, bare \`<span>Start <ArrowRight/></span>\`, or any CTA that is only an icon + text with no button chrome. If you catch yourself writing \`Start Your Free Trial \u2192\` as a plain link, stop and wrap it in \`<Button>\`.
-5. **Hero visual** \u2014 occupies \u2265 40% of the fold height on desktop, sits beside or below the copy. MUST be one of:
-   - \`<img src="petal-image://..." />\` \u2014 a real generated photograph or render. ALWAYS use this for consumer / lifestyle / wellness / fashion / food / travel.
-   - A framed product mockup (\`<BrowserMockup>\` / \`<PhoneMockup>\`) WITH a \`petal-image://\` screenshot inside, plus 1-2 floating decorative cards (testimonial pull-quote, KPI tile, status pill) overlapping the frame at the corners.
-   - For SaaS / dashboards / B2B: a product UI mockup PLUS at least one floating decorative card. Never just the bare mockup centered in dead space.
-   - For ai-product / crypto: a 3D scene, gradient mesh, or animated beam diagram counts.
-   - **BANNED**: a hero whose only visual is a background pattern (DotPattern, GridPattern, FlickeringGrid) with no foreground subject. Patterns are decoration, not the subject.
-6. **Background** \u2014 soft tonal wash (gradient, MeshGradient, or solid muted background). A DotPattern/GridPattern is OK as a subtle texture but MUST sit behind a real foreground subject, never as the entire hero.
-7. **Density** \u2014 hero section padding \`py-12 sm:py-16 md:py-24\`. Never \`min-h-screen\` with empty space; the fold should feel full, not airy-to-the-point-of-empty.
-
-Mental check before you write the hero JSX: "Does this look like Stripe / Linear / Vercel / Framer's homepage, or does it look like a placeholder?" If placeholder, restart with a real hero visual and filled CTAs.`;
+1. **Optional kicker** \u2014 plain text only: \`text-xs uppercase tracking-[0.18em] text-muted-foreground\`. Never a pill, badge, chip or icon.
+2. **H1** \u2014 display font, \`text-4xl sm:text-5xl lg:text-7xl leading-[1.02] tracking-tight\`, max 2 lines on desktop, 3 on phone, one colour. Never colour, italicise, highlight or gradient a single word.
+3. **Subhead** \u2014 optional, one sentence, \`text-base md:text-lg text-muted-foreground max-w-xl\`.
+4. **Action** \u2014 ONE primary \`<Button size="lg">\`; an optional second action is a quiet text link with an arrow, never a second filled or outlined button. Buttons are rectangles (rounded-md); never rounded-full pills.
+5. **Visual** \u2014 a large, sharp \`petal-image://\` photograph (full-bleed or a 7/5 split), \`object-cover\` with an explicit aspect ratio. For SaaS: one framed product screenshot, no floating cards.
+6. **Nothing else in the fold** \u2014 no booking or time-slot widgets, availability cards, tickers, marquees, product grids, stats, forms, calculators or badges. Those belong in their own sections below.`;
     SAAS_ADDENDUM = `
-
-### SaaS / B2B hero \u2014 extra rules (this brief reads as SaaS/B2B)
-- The primary CTA copy is "Start free" / "Get started" / "Start your free trial" \u2014 wrap it in a FILLED Button, not a text+arrow link.
-- The hero visual is a product UI mockup. Generate the screenshot inside it as \`petal-image://product-dashboard-...-clean-modern-ui\` and frame it in BrowserMockup or a custom rounded container with a window chrome row. Add 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) anchored to the mockup's corners with \`absolute\` positioning + soft shadows. The Flowy comparison: their hero photo had a floating "5 Days to Flow" status card. Yours needs the same overlay treatment on the mockup.
-- Background: prefer MeshGradient or a soft brand-tinted wash. DotPattern alone is BANNED for the hero fold on SaaS briefs.`;
+- SaaS: primary action is "Get started"/"Start free"; the visual is one clean product screenshot in a simple rounded frame.`;
   }
 });
 
@@ -149156,8 +149143,8 @@ function renderBrandContractBlock(opts) {
 ### Brand Identity Contract (non-negotiable)
 Every app you build is a real product with a real brand. Never ship placeholder identity.
 
-- **Logo mark**: create \`src/components/brand-mark.tsx\` exporting \`<BrandMark className="\u2026" />\` \u2014 a hand-authored inline SVG (geometric monogram, abstract glyph, or emblem) built from theme tokens so it works in light AND dark mode. Render it in the header, the footer, and any auth/empty-state screen.
-- **BANNED as a logo**: bare lucide glyphs (\`Square\`, \`Box\`, \`Circle\`, \`Hexagon\`, \`Sparkles\`, \`Shapes\`), an emoji, or a wordmark with no mark at all.
+- **Logo**: create \`src/components/brand-mark.tsx\` exporting \`<BrandMark className="\u2026" />\`. For websites (beauty, fashion, studio, hospitality, editorial, luxury) the logo is a confident typographic wordmark: the brand name alone in the display font, one line, no tagline under it. Apps and SaaS may add a small simple geometric monogram (one or two letters, a single shape) beside the name. Never an illustrative drawing (drops, leaves, faces, circles with lines through them).
+- **BANNED as a logo**: bare lucide glyphs (\`Square\`, \`Box\`, \`Circle\`, \`Hexagon\`, \`Sparkles\`, \`Shapes\`), emoji, clip-art SVG, or a tagline stacked under the name in the header.
 - **Favicon**: index.html must carry \`<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,\u2026">\` using the same mark, plus \`apple-touch-icon\` and a \`theme-color\` meta. Never leave the framework default.
 - **Wordmark**: the brand name next to the mark uses the display font, tight tracking, and semibold-or-heavier weight.
 - **App shells**: if you use a sidebar/app shell, the brand lockup MUST also be visible in the mobile top bar \u2014 a mobile header showing only a hamburger and empty space is a bug.
@@ -164712,7 +164699,7 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - density: minimal / balanced / dense. Match the audience: consumer landing \u2192 minimal/balanced; data dashboards \u2192 dense; editorial \u2192 balanced with generous white space.
 - motion: still / subtle / expressive / cinematic. Default subtle. Use expressive when the brand calls for energy. Use cinematic ONLY for agency / portfolio / showcase / luxury sites where Awwwards-grade scroll choreography is the point \u2014 it pulls in Lenis smooth-scroll, GSAP ScrollTrigger, and optionally a R3F 3D hero, which is overkill for SaaS dashboards or internal tools.
 - fx_recipe: name the FX bundle this app should compose. Pick ONE of: vivid-color, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe drives which @/components/fx primitives the builder reaches for. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
-- design_moves: 2\u20134 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "pill-shaped CTAs with hard shadow", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" \u2014 those aren't moves.
+- design_moves: 2\u20134 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" \u2014 those aren't moves.
 
 Calibration \u2014 two recent Kimble outputs, same builder, very different results:
 \u2705 GOOD ("Flowy", period tracker): magenta brand-dot logo + wordmark, pink eyebrow pill, bold sans display H1 with marker-highlight on one word, 3-line subhead in muted ink, filled pink pill primary CTA + outlined pill secondary, real hero photo of a person with a floating "5 Days to Flow" status card overlapping the photo. Feels like a real product.
@@ -166673,7 +166660,7 @@ Kimble is being judged on whether the landing looks like it was made by a person
    - \`\xA9 2024\` in the footer \u2014 the current year is passed to you separately, use it.
    - Every h1 the same size and weight across pages.
 
-5. Depth and layered composition. Landings must have layered depth: subtle gradients on hero backgrounds using the LOCKED palette, one soft radial glow behind the headline, generous shadows on elevated cards (\`shadow-2xl shadow-primary/10\` or similar semantic-token shadow), controlled use of blur/backdrop-blur on floating pills or badges.
+5. Depth and layered composition. Landings must have layered depth: subtle gradients on hero backgrounds using the LOCKED palette, one soft radial glow behind the headline, generous shadows on elevated cards (\`shadow-2xl shadow-primary/10\` or similar semantic-token shadow), no blur, glassmorphism or floating pills.
 
 6. Real animation, once. If \`framer-motion\` is installed, animate the hero on mount (opacity + 20px y-translate, 0.6s ease), animate section entries as they scroll into view via IntersectionObserver, and add one signature motion element (a rotating word, a scrolling marquee, a scroll-linked reveal). Do NOT animate every card and every icon.
 
@@ -168704,6 +168691,9 @@ var FINISH_RULES = [
   "Every interactive element has transition-colors duration-300 and a visible focus-visible:ring-2 ring-ring ring-offset-2 state. Buttons never jump size on hover.",
   "Grids align: cards in one row share the same picture aspect ratio (aspect-[4/3] or aspect-[3/4]) and never offset each other vertically unless the whole section is a deliberate staggered layout.",
   "Section changes are calm: alternate only between bg-background and a near tone (bg-muted/40) with a thin border-t border-border/60 between bands \u2014 never a harsh jump between unrelated surfaces.",
+  "Buttons are compact rectangles (rounded-md), never rounded-full pills. No pill-shaped badges or chips on marketing pages; labels are plain uppercase text.",
+  "Header is one clean line: wordmark left, at most 5 text links, one icon or one button right. No tagline under the brand, no stacked text, no decorative mark drawings.",
+  "Never colour, italicise or highlight a single word inside a heading. Headings are one colour, one style.",
   "Footer is quiet and complete: brand, the requested page links, contact line and \xA9 year, in text-sm text-muted-foreground on a border-t."
 ];
 var COMPOSITION_RULES = [
@@ -172032,7 +172022,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
