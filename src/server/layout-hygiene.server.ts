@@ -36,9 +36,17 @@ export interface LayoutHygieneResult {
   fixes: number;
 }
 
-/** Page-shell files legitimately want a full-height flex column. */
-function isPageShell(path: string): boolean {
-  return /\/(main|App|__root|root|layout|Layout)\.(tsx|jsx)$/.test(path);
+/**
+ * Page-shell files legitimately want a full-height flex column. A shell is
+ * recognised by name (main, App, root, any *layout / *shell file such as
+ * `site-layout.tsx`) or by rendering nested routes (`<Outlet`). Treating a
+ * shell as a section gave the live Aura site a 96px empty band above its
+ * header (`min-h-screen` → `min-h-[70svh] py-16 md:py-24` on the wrapper).
+ */
+function isPageShell(path: string, content = ""): boolean {
+  if (/\/(main|App|__root|root)\.(tsx|jsx)$/.test(path)) return true;
+  if (/(?:^|[/_.-])(?:layout|shell)\.(tsx|jsx)$/i.test(path) || /(?:Layout|Shell)\.(tsx|jsx)$/.test(path)) return true;
+  return /<Outlet\b/.test(content);
 }
 
 const DECORATIVE = /^(bg-|from-|via-|to-|backdrop-|opacity-|mix-blend|bg\[|blur|rounded|border|ring|shadow|inset-0|absolute|z-|animate-|pointer-events-|transition|[-a-z]*gradient)/;
@@ -53,6 +61,8 @@ const HEADING_RAMP: Record<string, string> = {
 
 interface Ctx {
   path: string;
+  /** whether the file is a page shell (see isPageShell). */
+  shell: boolean;
   /** true when the className belongs to a self-closing, childless element. */
   selfClosing: boolean;
   /** the tag the className sits on, lowercased (e.g. "div", "header"). */
@@ -65,7 +75,7 @@ function healClassList(raw: string, ctx: Ctx): string {
   if (tokens.length === 0) return raw;
 
   const has = (re: RegExp) => tokens.some((t) => re.test(t));
-  const shell = isPageShell(ctx.path);
+  const shell = ctx.shell;
 
   tokens = tokens.map((t) => {
     // A / B — viewport-locked heights on anything that is not the page shell.
@@ -148,6 +158,7 @@ function healClassList(raw: string, ctx: Ctx): string {
  */
 function healFile(path: string, content: string): { content: string; fixes: number } {
   let fixes = 0;
+  const shell = isPageShell(path, content);
   // Matches `<tag ... className="…" ... >` or `… />`, capturing the tag, the
   // class list, and whether the element self-closes.
   const elementRx = /<([A-Za-z][\w.-]*)((?:[^<>"'{}]|"[^"]*"|'[^']*'|\{[^{}]*\})*?)(\/?)>/g;
@@ -161,6 +172,7 @@ function healFile(path: string, content: string): { content: string; fixes: numb
 
     const healed = healClassList(raw, {
       path,
+      shell,
       selfClosing: slash === "/",
       tag: tag.toLowerCase(),
     });

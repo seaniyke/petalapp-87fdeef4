@@ -233,28 +233,13 @@ function fixBadImports(content: string, report: AutofixReport, hasBackendKit: bo
   return out;
 }
 
-/** Cap petal-image:// placeholders to 6 unique slugs per file. Beyond that we
- *  swap to picsum so the AI never blows the image budget on one file. */
-function capPetalImages(content: string, report: AutofixReport): string {
-  const re = /petal-image:\/\/([a-zA-Z0-9_\-%]+)/g;
-  const seen = new Set<string>();
-  let stripped = 0;
-  const out = content.replace(re, (whole, slug: string) => {
-    if (seen.has(slug)) return whole; // dedupe — stays as same petal-image
-    if (seen.size < 6) {
-      seen.add(slug);
-      return whole;
-    }
-    stripped++;
-    // Use a deterministic picsum seed derived from slug length so swaps are
-    // stable across re-renders.
-    return `https://picsum.photos/seed/${slug.slice(0, 16)}/800/600`;
-  });
-  if (stripped > 0) {
-    report.fixedCount += stripped;
-    report.notes.push(`petal-image:// budget exceeded — swapped ${stripped} extras to picsum`);
-  }
-  return out;
+/** Picture placeholders are never rewritten here. The per-build budget lives
+ *  in image-generation (12 per build; extras get a plain dark stand-in that a
+ *  later turn fills). A per-file cap of 6 used to swap the rest to random
+ *  picsum stock — off-topic photos, and two slugs sharing their first 16
+ *  characters got the identical picture (live Aura team portraits). */
+function capPetalImages(content: string, _report: AutofixReport): string {
+  return content;
 }
 
 function normalizePath(path: string): string {
