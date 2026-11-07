@@ -423,7 +423,7 @@ export function renderDesignDirectionBlock(
             : `motion=cinematic → wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) +
       `\n` +
     `- fx recipe: ${d.fx_recipe ?? "(unset)"} — ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}\n` +
-    `- decorative FX (\`@/components/fx\` backgrounds, glowing/shimmer buttons, marquees, gradient text) are retired: do not import them. Photography, type and spacing carry the page.
+    `- there is no \`@/components/fx\` folder and no marquee or gradient-text component: never import them or hand-build glowing/shimmer buttons, scrolling strips or colour-fade text. Photography, type and spacing carry the page.
 ` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
