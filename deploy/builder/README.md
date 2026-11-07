@@ -271,10 +271,11 @@ Only `petal-builder*` names are touched. Never run `docker system prune`,
 ## Known limits
 
 - **First upgrade:** the builder running today has no drain mode, so the first
-  deploy uses the idle gate alone. A job arriving in the second between the
-  last idle check and the stop is still held and re-sent by Petal (once Petal
-  itself is published with this change), so it isn't lost. Every later deploy
-  drains.
+  deploy uses the idle gate alone, and stops the old builder at once instead of
+  waiting 30 seconds (it ignores the polite stop signal and would keep taking
+  jobs meanwhile). A job arriving in that last second is held and re-sent by
+  Petal, as long as Petal itself is published with this change first. Every
+  later deploy drains.
 - **Very busy periods:** the swap needs a moment with zero running jobs. If the
   builder never goes idle for 30 minutes the deploy defers (exit 75) and changes
   nothing; run it again later.

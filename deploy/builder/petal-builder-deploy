@@ -152,8 +152,8 @@ healthz_flag() { fetch_json "$LOCAL_URL/healthz" 2>/dev/null | jq -e --arg k "$1
 start_drain() {
   docker exec "$CONTAINER" touch "$DRAIN_FILE_IN_CONTAINER" >>"$LOG_FILE" 2>&1 || return 1
   DRAINED=1
-  local i
-  for i in 1 2 3 4 5; do
+  local _
+  for _ in 1 2 3 4 5; do
     healthz_flag draining && { log "drain on: builder now refuses new jobs (Petal re-sends them)"; return 0; }
     sleep 1
   done

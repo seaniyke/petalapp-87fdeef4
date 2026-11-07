@@ -208,7 +208,7 @@ stops_while_busy() { grep -E '^stop petal-builder-prev busy=[1-9]' "$FAKE_STATE/
 
 setup_git
 write_fakes
-SHORT=${SHA:0:12}
+SHORT=${SHA:0:12}  # shellcheck disable=SC2034 # used inside check strings
 
 echo "1) normal deploy"
 reset_world 1; rc=$(run_deploy)
