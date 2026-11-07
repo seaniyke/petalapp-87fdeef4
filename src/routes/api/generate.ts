@@ -4811,7 +4811,7 @@ async function handleGenerateRequestCore(
             // every later write; finish is refused while the workspace is
             // incomplete. No per-page calls, no second scheduler.
             const { runToolLoop } = await import("@/server/engine/tool-loop");
-            const { buildEconomics: loopEconomics } = await import("@/server/economics-config.server");
+            const { buildEconomics: loopEconomics, economicsValues: loopEconomicsValues } = await import("@/server/economics-config.server");
             // Runaway ceiling = size estimate × headroom. The size estimate is
             // the p90 of MEASURED first-build tokens priced at the model this
             // loop runs (never the flat DeepSeek-era class dollars alone), so
@@ -4821,7 +4821,7 @@ async function handleGenerateRequestCore(
             const { modelPricePerM } = await import("@/server/ai-provider.server");
             const loopModelPrice = modelPricePerM(defaultFirstBuildModel());
             const loopEcon = await loopEconomics();
-            const loopSizeEstimate = estimateFirstBuildCost(await firstBuildTokenSamples(), loopModelPrice, Math.max(1, Math.round(loopEcon.minSamples ?? 20)));
+            const loopSizeEstimate = estimateFirstBuildCost(await firstBuildTokenSamples(), loopModelPrice, Math.max(1, Math.round((await loopEconomicsValues()).estimate_min_samples ?? 20)));
             const loopCeilingUsd = economicCeilingUsd(null, Math.max(buildReservation?.classCostUsd ?? 0, loopSizeEstimate.usd), loopEcon) /* internal cost limit, decoupled from the effort-priced hold */;
             turnStrategy.loopSizeEstimate = { usd: loopSizeEstimate.usd, basis: loopSizeEstimate.basis, samples: loopSizeEstimate.samples, model: defaultFirstBuildModel() };
             const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage, model).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
