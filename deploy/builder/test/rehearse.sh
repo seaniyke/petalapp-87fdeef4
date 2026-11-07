@@ -22,20 +22,16 @@ ok()   { PASS=$((PASS + 1)); printf '  ok   %s\n' "$1"; }
 bad()  { FAIL=$((FAIL + 1)); printf '  FAIL %s\n' "$1"; }
 check() { if eval "$2"; then ok "$1"; else bad "$1"; fi; }
 
-# ---- Git source with a matching agent-core bundle --------------------------
+# ---- Source tree with a matching agent-core bundle (served by a fake git) ----
 setup_git() {
   local g=$ROOT/git
-  mkdir -p "$g/work/builder/src" "$g/work/builder/vendor"
-  echo 'const AGENT_CORE_VERSION = "rehearsal-new";' >"$g/work/builder/src/server.ts"
-  echo 'export const core = 1;' >"$g/work/builder/vendor/agent-core.mjs"
-  GOOD_HASH=$(sha256sum "$g/work/builder/vendor/agent-core.mjs" | cut -d' ' -f1)
-  printf '{"hash":"%s"}\n' "$GOOD_HASH" >"$g/work/builder/vendor/agent-core.version.json"
-  git -C "$g/work" init -q -b main
-  git -C "$g/work" -c user.email=t@t -c user.name=t add -A
-  git -C "$g/work" -c user.email=t@t -c user.name=t commit -qm init
-  git clone -q --bare "$g/work" "$g/origin.git"
-  SHA=$(git -C "$g/work" rev-parse HEAD)
-  export GOOD_HASH SHA
+  mkdir -p "$g/builder/src" "$g/builder/vendor"
+  echo 'const AGENT_CORE_VERSION = "rehearsal-new";' >"$g/builder/src/server.ts"
+  echo 'export const core = 1;' >"$g/builder/vendor/agent-core.mjs"
+  GOOD_HASH=$(sha256sum "$g/builder/vendor/agent-core.mjs" | cut -d' ' -f1)
+  printf '{"hash":"%s"}\n' "$GOOD_HASH" >"$g/builder/vendor/agent-core.version.json"
+  SHA=$(printf 'rehearsal' | sha1sum | cut -d' ' -f1)
+  export GOOD_HASH SHA FAKE_GIT_TREE=$g
 }
 
 # ---- Fake docker + curl -----------------------------------------------------
@@ -143,7 +139,24 @@ case "$url" in
   *) exit 22 ;;
 esac
 EOF
-  chmod +x "$bin/docker" "$bin/curl"
+  cat >"$bin/git" <<'EOF'
+#!/bin/bash
+# Only the subcommands petal-builder-deploy uses, over a plain directory.
+while [[ $1 == -c || $1 == -C ]]; do shift 2; done
+sub=$1; shift
+case "$sub" in
+  fetch) exit 0 ;;
+  cat-file)
+    if [[ $1 == -e ]]; then [[ ${2%%^*} == "$SHA" ]]; exit; fi
+    [[ $1 == blob ]] || exit 1
+    [[ ${2%%:*} == "$SHA" ]] || exit 1
+    cat "$FAKE_GIT_TREE/${2#*:}" ;;
+  merge-base) [[ $2 == "$SHA" && -z ${NOT_ON_MAIN:-} ]] ;;
+  archive) [[ $1 == "$SHA" ]] && tar -C "$FAKE_GIT_TREE" -c "$2" ;;
+  *) exit 1 ;;
+esac
+EOF
+  chmod +x "$bin/docker" "$bin/curl" "$bin/git"
 }
 
 # ---- Fresh world per scenario -----------------------------------------------
@@ -159,7 +172,7 @@ reset_world() {
   local c=$FAKE_STATE/containers/petal-builder
   echo true >"$c/running"; echo petal-builder:live >"$c/image"; echo old >"$c/label"
   echo 'BUILDER_SHARED_SECRET=x' >"$W/opt/petal-builder/.env"
-  git clone -q "$ROOT/git/origin.git" "$W/src"
+  mkdir -p "$W/src"
 
   # Script copy pointed at the temp world, with short timings and the config
   # drift check stubbed (it inspects real Docker JSON; unchanged by drain).
@@ -272,7 +285,12 @@ check "exited on the signal (rc=$rc)" '[[ $rc == 130 ]]'
 check "drain lifted on the way out" '! drain_left'
 check "nothing swapped" '[[ $(live_image) == petal-builder:live ]]'
 
-echo "11) second deploy while one is running"
+echo "11) commit not on main"
+reset_world 1; rc=$(NOT_ON_MAIN=1 run_deploy)
+check "refused (exit 3)" '[[ $rc == 3 ]]'
+check "nothing touched" '[[ ! -s $FAKE_STATE/events ]]'
+
+echo "12) second deploy while one is running"
 reset_world 1
 ( flock 9; sleep 3 ) 9>"$W/lock/petal-builder-deploy.lock" &
 sleep 0.5; rc=$(run_deploy); wait
