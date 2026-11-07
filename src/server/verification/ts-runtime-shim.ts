@@ -1,5 +1,6 @@
 /**
- * Must be imported before `typescript`.
+ * Must be imported before `typescript`, and its export must be referenced
+ * (the package is `sideEffects: false`, so a bare import is dropped).
  *
  * On the live server (Cloudflare Worker with Node compatibility) TypeScript
  * sees a Node-like runtime and builds its Node system at import time, reading
@@ -8,8 +9,11 @@
  * generation turn. The checker never touches the disk (it uses an in-memory
  * host), so placeholder paths are enough. Real CommonJS scopes keep their own.
  */
-const g = globalThis as { __filename?: string; __dirname?: string };
-if (typeof g.__filename === "undefined") g.__filename = "/node_modules/typescript/lib/typescript.js";
-if (typeof g.__dirname === "undefined") g.__dirname = "/node_modules/typescript/lib";
+function install(): true {
+  const g = globalThis as { __filename?: string; __dirname?: string };
+  if (typeof g.__filename === "undefined") g.__filename = "/node_modules/typescript/lib/typescript.js";
+  if (typeof g.__dirname === "undefined") g.__dirname = "/node_modules/typescript/lib";
+  return true;
+}
 
-export {};
+export const TS_RUNTIME_READY: true = install();
