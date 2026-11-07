@@ -97,12 +97,35 @@ function slug(s: string): string {
 /** Split "with A, B, C and D" style enumerations into items. */
 export function splitRequestedItems(brief: string): string[] {
   const text = brief.replace(/\s+/g, " ");
-  const m = text.match(/\b(?:with|including|includes|featuring|that has|needs?)\b(.+)$/i);
-  const tail = m ? m[1] : text;
+  // An explicit "Pages: A, B, C" list wins over the first "with …".
+  const m =
+    text.match(/\bpages?\s*:\s*(.+)$/i) ??
+    text.match(/\b(?:with|including|includes|featuring|that has|needs?)\b(.+)$/i);
+  // Detail in brackets belongs to the item before it — "Projects (a grid
+  // with a filter: A, B)" is the Projects page, not five requirements.
+  let tail = m ? m[1] : text;
+  for (let i = 0; i < 4 && /\([^()]*\)/.test(tail); i++) tail = tail.replace(/\s*\([^()]*\)/g, "");
+  tail = tail.replace(/[()]/g, " ");
   return tail
-    .split(/,|;|\band\b|\bplus\b|\+/i)
-    .map((s) => s.replace(/[.!?]+$/g, "").trim())
-    .filter((s) => s.length >= 3 && s.split(" ").length <= 6);
+    .split(/,|;|\band\b|\bplus\b|\+|[.!?](?=\s|$)/i)
+    .map((s) => s.replace(/[.!?:]+$/g, "").trim())
+    .filter((s) => s.length >= 3 && s.split(" ").length <= 6)
+    .filter((s) => !isNotARequirement(s));
+}
+
+/**
+ * Exclusions ("no accounts", "website only"), instructions ("use real
+ * photography") and look-and-feel words ("elegant", "modern feel") describe
+ * how to build, not something to build — they were showing up as unmet
+ * requirements, and "no accounts" even as a Customer accounts requirement.
+ */
+function isNotARequirement(item: string): boolean {
+  const s = item.toLowerCase().trim();
+  if (/^(no|not|without|never|don'?t|do not|nothing)\b/.test(s)) return true;
+  if (/\bonly\b/.test(s)) return true;
+  if (/^(use|make it|keep it|feel|look)\b/.test(s)) return true;
+  if (/\b(photograph(y|s)?|imagery|images|photos|fonts?|typography|colou?rs?|palette|throughout|vibe|aesthetic)\b/.test(s)) return true;
+  return /^(elegant|editorial|modern|minimal(ist)?|premium|luxury|luxurious|clean|bold|warm|dark|light|sleek|simple|playful|calm)(\s+(feel|look|style|tone|design))?$/.test(s);
 }
 
 function conceptFor(item: string): Concept | null {
