@@ -81,6 +81,7 @@ export default defineConfig({
 
       "src/server/__tests__/skills.test.ts",
       "src/server/__tests__/build-reconcile.test.ts",
+      "src/server/__tests__/build-callback-budget.test.ts",
       "src/server/__tests__/builder-callback-fallback.test.ts",
       "src/server/__tests__/router-provider-comma.test.ts",
       "src/server/__tests__/auth-api-align.test.ts",
