@@ -55,6 +55,7 @@ import {
 } from "./verify.js";
 import { callbackCandidates } from "./callback-urls.js";
 import { AgentJobSchema, AgentPool, runAgentJob, cancelAgent, inProcessEnabled, inProcessFetcher } from "./agent.js";
+import { DrainGate, AcceptedJobs, DRAIN_RETRY_AFTER_S, waitUntilIdle } from "./drain.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const SHARED_SECRET = process.env.BUILDER_SHARED_SECRET;
@@ -77,6 +78,18 @@ if (!SHARED_SECRET) throw new Error("BUILDER_SHARED_SECRET env var is required")
 if (!CF_API_TOKEN) throw new Error("CLOUDFLARE_API_TOKEN env var is required");
 if (!CF_ACCOUNT_ID) throw new Error("CLOUDFLARE_ACCOUNT_ID env var is required");
 if (!CALLBACK_URL) throw new Error("PETAL_CALLBACK_URL env var is required");
+
+/**
+ * Deploy drain (see drain.ts). While draining, new /build and /agent/generate
+ * requests get a retryable 503 and the app re-sends them; accepted work and
+ * its /exec + /browse sub-calls carry on.
+ */
+const drain = new DrainGate();
+drain.clearStale();
+const acceptedBuilds = new AcceptedJobs();
+const acceptedTurns = new AcceptedJobs();
+/** Docker's stop timeout is 30s; leave room to close cleanly before SIGKILL. */
+const SHUTDOWN_GRACE_MS = Number(process.env.SHUTDOWN_GRACE_MS ?? 25_000);
 
 const fastify = Fastify({
   logger: { level: process.env.LOG_LEVEL ?? "info" },
@@ -189,8 +202,25 @@ function releaseSlot() {
   if (next) next();
 }
 
+/** Everything that would be cut off by a restart right now. */
+function busyCount(): number {
+  const a = agentPool.snapshot();
+  return inFlight + queue.length + execInFlight + execQueue.length + a.inFlight + a.queued;
+}
+
+/** Retryable refusal while a deploy is draining this builder. */
+function refuseDraining(reply: import("fastify").FastifyReply) {
+  return reply
+    .code(503)
+    .header("Retry-After", String(DRAIN_RETRY_AFTER_S))
+    .send({ error: "Builder is updating, please retry", draining: true });
+}
+
 fastify.get("/healthz", async () => ({
   ok: true,
+  // Presence tells the deploy script this builder supports drain mode.
+  drain: true,
+  draining: drain.isDraining(),
   inFlight,
   queued: queue.length,
   execInFlight,
@@ -226,19 +256,33 @@ fastify.post("/build", async (req, reply) => {
   }
   const body: BuildBody = parsed.data;
 
-  // 3) Acquire a build slot (or 503 if queue is full).
+  // 3) A re-sent request for a build already queued or running here is
+  //    acknowledged, never started twice (the app retries lost responses).
+  if (acceptedBuilds.has(body.buildId)) {
+    return reply.code(202).send({ accepted: true, buildId: body.buildId, duplicate: true });
+  }
+  // 4) A deploy is draining this builder: the app holds the build and
+  //    re-sends it to the next builder that answers.
+  if (drain.isDraining()) return refuseDraining(reply);
+
+  // 5) Acquire a build slot (or 503 if queue is full).
+  acceptedBuilds.begin(body.buildId);
   try {
     await acquireSlot();
   } catch {
+    acceptedBuilds.end(body.buildId);
     return reply.code(503).send({ error: "Builder is busy, please retry" });
   }
 
-  // 4) Respond 202 immediately, then run the build asynchronously. The caller
+  // 6) Respond 202 immediately, then run the build asynchronously. The caller
   //    polls our app's `project_builds` table for the result.
   reply.code(202).send({ accepted: true, buildId: body.buildId });
 
   // Fire-and-forget — but do NOT throw out of this handler scope.
-  void runBuild(body).finally(releaseSlot);
+  void runBuild(body).finally(() => {
+    acceptedBuilds.end(body.buildId);
+    releaseSlot();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -324,10 +368,23 @@ fastify.post("/agent/generate", async (req, reply) => {
     return reply.code(400).send({ error: "Invalid body", details: parsed.error.flatten() });
   }
   const job = parsed.data;
+  // Same turn already queued or running here: acknowledge, don't run it twice.
+  if (acceptedTurns.has(job.turnId)) {
+    return reply.code(202).send({ accepted: true, turnId: job.turnId, duplicate: true });
+  }
+  if (drain.isDraining()) return refuseDraining(reply);
+  acceptedTurns.begin(job.turnId);
   const accepted = agentPool.tryEnqueue(async () => {
-    await runAgentJob(job, SHARED_SECRET, req.log, inProcessEnabled() ? inProcessFetcher(job, SHARED_SECRET) : fetch);
+    try {
+      await runAgentJob(job, SHARED_SECRET, req.log, inProcessEnabled() ? inProcessFetcher(job, SHARED_SECRET) : fetch);
+    } finally {
+      acceptedTurns.end(job.turnId);
+    }
   });
-  if (!accepted) return reply.code(503).send({ error: "Builder is busy, please retry" });
+  if (!accepted) {
+    acceptedTurns.end(job.turnId);
+    return reply.code(503).send({ error: "Builder is busy, please retry" });
+  }
   return reply.code(202).send({ accepted: true, turnId: job.turnId });
 });
 
@@ -765,6 +822,25 @@ async function postCallback(payload: Callback): Promise<void> {
 
   throw new Error(lastError);
 }
+
+/**
+ * Graceful stop. Node as a container's PID 1 ignores SIGTERM unless it has a
+ * handler, so `docker stop` used to wait its full timeout and then SIGKILL.
+ * Now: refuse new jobs, let running ones finish (up to SHUTDOWN_GRACE_MS),
+ * close, exit. An idle builder exits at once, which keeps the deploy swap gap
+ * to the new container's start-up time.
+ */
+async function shutdown(signal: string): Promise<void> {
+  if (drain.isShuttingDown()) return;
+  drain.beginShutdown();
+  fastify.log.info({ signal, busy: busyCount() }, "Shutting down: refusing new jobs");
+  const idle = await waitUntilIdle(busyCount, SHUTDOWN_GRACE_MS);
+  if (!idle) fastify.log.warn({ busy: busyCount() }, "Shutdown grace ended with work still running");
+  await fastify.close().catch(() => {});
+  process.exit(0);
+}
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
 
 fastify.listen({ port: PORT, host: "0.0.0.0" }, (err, addr) => {
   if (err) {
