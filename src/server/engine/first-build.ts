@@ -63,7 +63,7 @@ export const COMPOSITION_RULES = [
   "Never place three grid-shaped sections in a row, and never make two adjacent sections share the same layout direction.",
   "Alternate surface tone every two or three sections (bg-background then bg-muted) so the page reads as bands, not one flat sheet.",
   "Vary heading scale down the page instead of giving every section the same size.",
-  "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6.",
+  "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6. This padding goes on each <section> only — never on the page/layout wrapper or around the header, which must sit flush at the top of the page.",
   "Two, at most three calls to action across an entire page. The final CTA is its own section; the footer is not a CTA.",
   "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
   "Real photography comes ONLY from the image tool: write src=\"petal-image://<cinematic-specific-prompt>\" (subject, setting, light, lens, mood — e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt, up to 12 per build; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.",
