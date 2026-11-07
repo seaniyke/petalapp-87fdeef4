@@ -49033,8 +49033,8 @@ export function MenuSection({ title, subtitle, items, className }: MenuSectionPr
   return (
     <section className={cn("py-12", className)}>
       <div className="mx-auto max-w-3xl px-4">
-        <header className="mb-8 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground">{title}</h2>
+        <header className="mb-8">
+          <h2 className="font-display text-2xl font-normal tracking-tight text-foreground sm:text-3xl">{title}</h2>
           {subtitle && <p className="mt-2 text-muted-foreground">{subtitle}</p>}
         </header>
         <ul className="divide-y divide-border">
@@ -54392,6 +54392,12 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Headings default to the display font so starter blocks match the page's
+   own headings. Layered, so an explicit font-sans class still wins. */
+@layer base {
+  h1, h2, h3 { font-family: var(--font-display); }
+}
+
 /* Display utility for hero/h1 type \u2014 uses the display font + tightest
    tracking. Apply with \`<h1 className="font-display">\`. */
 .font-display { font-family: var(--font-display); letter-spacing: var(--tracking-tightest); }
@@ -58774,6 +58780,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -58801,7 +58808,14 @@ var init_intent_registry = __esm({
           /\b(?:CRUD|REST API|edge function|webhook)\b/i,
           /\bRow Level Security\b/i,
           /\bpayments?\b.*\b(?:stripe|paddle|paystack)\b/i,
-          /\bemail (?:notifications?|magic link)/i
+          /\bemail (?:notifications?|magic link)/i,
+          // Visitors sending something to the business must actually reach it —
+          // otherwise the site fakes a "sent" screen from the browser only.
+          /\b(?:stay|booking|reservation|appointment|quote|viewing|callback|table|event|catering)\s+(?:requests?|enquir(?:y|ies)|inquir(?:y|ies))\b/i,
+          /\b(?:send|submit|make|place|leave)\s+(?:a|an|their|your)?\s*(?:request|enquiry|inquiry|message)\b/i,
+          /\b(?:request|book|reserve)\s+(?:a|an)\s+(?:table|stay|room|quote|viewing|callback|consultation|appointment|session|class)\b/i,
+          /\bcontact\s+form\b/i,
+          /\b(?:rsvp|waitlist|wait-list)\b/i
         ],
         augment: (t) => {
           if (BACKEND_PERSIST_VERBS.test(t) && BACKEND_ENTITY_WORDS.test(t)) {
@@ -68727,6 +68741,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -68993,6 +69008,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139135,6 +139151,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140222,6 +140239,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140386,6 +140404,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140429,6 +140448,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -140650,6 +140670,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -141127,6 +141148,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -142705,7 +142727,10 @@ function extractExplicitName(brief) {
   const name = forName[1].replace(/\s+(?:of|and|the|de|&)$/i, "").trim();
   const first = name.split(/\s+/)[0];
   if (/^(My|Our|Your|His|Her|Their|A|An|The|This|That|Me|Us|I)$/.test(first)) return null;
-  if (name.split(/\s+/).length < 2) return null;
+  if (name.split(/\s+/).length < 2) {
+    const after = brief.slice((forName.index ?? 0) + forName[0].length);
+    if (!/^\s*(?:,|—|–|-)\s*(?:a|an|the|our|my)\b/i.test(after)) return null;
+  }
   return name.length >= 3 && name.length <= 40 ? name : null;
 }
 function fallbackIdentity(brief, type) {
@@ -142719,7 +142744,7 @@ function fallbackIdentity(brief, type) {
   const subject = seen.join(" ") || "the job at hand";
   const label2 = TYPE_LABEL[type];
   return {
-    productName: title ? `${title} ${label2[0].toUpperCase()}${label2.slice(1)}` : `Kimble ${label2[0].toUpperCase()}${label2.slice(1)}`,
+    productName: title ? `${title} ${label2[0].toUpperCase()}${label2.slice(1)}` : `New ${label2[0].toUpperCase()}${label2.slice(1)}`,
     purpose: `A ${label2} for ${subject}, built from the user's request: "${brief.trim().slice(0, 140)}".`,
     targetUser: `Someone who needs to handle ${subject} without extra tooling.`,
     primaryOutcome: `Complete the main job around ${subject} and see a real result.`,
@@ -142975,6 +143000,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144179,6 +144205,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -144304,6 +144331,10 @@ function isStyleSentence(sentence) {
   if (/^(the\s+)?(overall\s+)?(look|feel|style|design|vibe|tone|aesthetic|mood|branding)\b/.test(s)) return true;
   if (/^(it|the (site|website|app|page))\s+should\s+(look|feel)\b/.test(s)) return true;
   if (/^(make|keep)\s+(it|the|everything)\b/.test(s)) return true;
+  if (/^(i|we)\s+(really\s+)?(want|would like|need|'d like)\s+(it|the (site|website|look|design|page))\s+(to\s+(be|look|feel)\s+)?/.test(s)) {
+    const rest = s.replace(/^(i|we)\s+(really\s+)?(want|would like|need|'d like)\s+(it|the (site|website|look|design|page))\s+(to\s+(be|look|feel)\s+)?/, "");
+    if (new RegExp(`^(very\\s+|really\\s+)?(${STYLE_WORDS})\\b`).test(rest)) return true;
+  }
   return false;
 }
 function isNotARequirement(item) {
@@ -145297,6 +145328,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -154160,7 +154192,7 @@ var init_customer_privacy = __esm({
     init_define_import_meta_env();
     KIT_PATH = /^src\/(integrations|components\/(ui|examples|blocks|fx|mobile|content|image))\//;
     SIGNED_IN_PATH = /(dashboard|admin|staff|owner|manage|backoffice|back-office|portal|account|studio-os|console)/i;
-    PRIVATE = /(^|[_-])(bookings?|appointments?|reservations?|orders?|messages?|enquir(y|ies)|inquir(y|ies)|leads?|submissions?|customers?|clients?|patients?|subscribers?|registrations?|rsvps?|carts?|bags?|baskets?)$/i;
+    PRIVATE = /(^|[_-])(bookings?|appointments?|reservations?|orders?|messages?|enquir(y|ies)|inquir(y|ies)|leads?|submissions?|requests?|customers?|clients?|patients?|subscribers?|registrations?|rsvps?|carts?|bags?|baskets?)$/i;
     CATALOGUE = /(^|[_-])(products?|services?|treatments?|menu(_items)?|menus|catalog(ue)?s?|formulas?|formulations?|offerings?|packages?|classes|courses?|listings?|collections?|rooms?)$/i;
     CALL = /\bdb\.(seedOnce|list|create|update|remove|delete|upsert)\s*(?:<[^>()]*>)?\s*\(\s*(["'`])([\w-]+)\2([^)]{0,160})/g;
   }
@@ -167189,7 +167221,9 @@ var CORRECTNESS_RULES = [
   "Absolute imports only, via the @/ alias. No relative ../.. chains, no file extensions, no imports of packages the scaffold does not already use.",
   'src/App.tsx is the only place that owns <BrowserRouter>. Never nest a second router inside a page or layout. Router names come from "react-router-dom" (or its kit re-export @/components/ui/router) \u2014 never invent another router module.',
   "Write each file once, complete, in a single create_file call. Do not emit partial files, TODO stubs or '...rest unchanged'. Use edit_file for a bounded change to a file that already exists.",
-  "Write the shared layout and any shared module before the pages that import them, then emit the pages together in one response."
+  "Write the shared layout and any shared module before the pages that import them, then emit the pages together in one response.",
+  "Date and time inputs start empty or from today computed at runtime (new Date()); never hardcode a calendar date or year, so a form never opens on a date in the past.",
+  "A form that sends something to the business (stay or booking request, enquiry, contact message, RSVP) saves it with db.create from @/integrations/backend/client when that client exists, and shows the confirmation only after the save succeeds. Never fake a send by writing to localStorage and showing 'sent' or 'dispatched'."
 ].join("\n- ");
 var COPY_RULES = `Write copy as the business would: concrete and specific, never superlative. Banned words: elevate, seamless, unleash, next-gen, revolutionize, empower, supercharge, "transform your", "take it to the next level", "in today's fast-paced world". No lorem ipsum, no [placeholder], no invented statistics, testimonials, client names or contact details. A heading should say something specific to this business, not name a category ("Our Features").`;
 function designSection(d) {
@@ -170485,7 +170519,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
