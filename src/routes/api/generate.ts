@@ -4248,7 +4248,7 @@ async function handleGenerateRequestCore(
           } else if (cd.status === "already_enabled" && isInitial) {
             say("This project already has a database — connecting your app to it…");
           } else if (cd.status === "failed" && cd.needed) {
-            say(`${cd.reason ?? "This app needs saved data."} Kimble Cloud couldn't be switched on, so accounts and saved data are not connected yet.`);
+            say(`${cd.reason ?? "This app needs saved data."} The database couldn't be switched on, so accounts and saved data are not connected yet.`);
           }
         }
         controller.enqueue(encoder.encode(sse({ type: "status", message: "Reading your request and choosing the safest edit path…" })));
