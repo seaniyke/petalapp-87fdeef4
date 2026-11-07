@@ -293,8 +293,10 @@ export async function resolvePetalImagePlaceholders(
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const failures: Array<{ slug: string; reason: string }> = [];
   // 0. Pictures that fell back in an earlier pass become requests again.
+  const original = files;
   files = files.map((f) => {
     if (allowed && !allowed.has(f.path)) return f;
+    if (!isRenderedPictureFile(f, original)) return f;
     if (!f.content.includes("petal-pending%3A")) return f;
     PENDING_RE.lastIndex = 0;
     const content = f.content.replace(PENDING_RE, (_m, enc: string) => {
