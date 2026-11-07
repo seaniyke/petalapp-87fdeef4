@@ -7,8 +7,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const from = vi.fn();
+const getUserById = vi.fn(async (id: string) => ({
+  data: { user: { id, email: `${id}@example.com`, user_metadata: {} } },
+  error: null,
+}));
 vi.mock("@/integrations/supabase/client.server", () => ({
-  supabaseAdmin: { from: (t: string) => from(t) },
+  supabaseAdmin: { from: (t: string) => from(t), auth: { admin: { getUserById: (id: string) => getUserById(id) } } },
 }));
 
 import {
