@@ -307,7 +307,8 @@ export async function resolvePetalImagePlaceholders(
   const fallbackUrl = (slug: string) => {
     const safe = slug.replace(/[<>&"]/g, "");
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><desc>${PENDING_MARK}${safe}</desc><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="hsl(30 6% 22%)"/><stop offset="1" stop-color="hsl(30 5% 12%)"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/></svg>`;
-    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    // Parens encoded too, so the URL survives CSS url(...) and our own matcher.
+    return `data:image/svg+xml,${encodeURIComponent(svg).replace(/\(/g, "%28").replace(/\)/g, "%29")}`;
   };
   /** Make one picture, retrying transient failures. */
   const makeWithRetry = async (slug: string): Promise<string> => {
