@@ -73,7 +73,7 @@ export async function parseToolStream(res: Response, startedAt: number, signal?:
     if (buf.trim()) handle(buf.trim());
   } catch (e) {
     // Our own cancel, or an error frame the provider sent: not a dropped line.
-    if (signal?.aborted || e instanceof InfrastructureFailure) throw e;
+    if (signal?.aborted || e instanceof InfrastructureFailure || (e as { name?: string })?.name === "AbortError") throw e;
     // The connection dropped mid-reply. Some models (Gemini) deliver each
     // tool call whole, so everything already received is complete, paid-for
     // work: keep it and let the loop carry on. A half-received call is dropped.
