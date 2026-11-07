@@ -6,6 +6,7 @@ import {
   renderUnpublishedPage,
   resolveHost,
 } from "@/server/host-routing.server";
+import { installTsRuntimeGlobals } from "@/server/verification/ts-runtime-shim";
 
 /**
  * Global request middleware that sets cross-origin isolation headers on every
@@ -27,6 +28,9 @@ import {
  * lose cross-origin isolation gracefully and fall back to the static preview.
  */
 const crossOriginIsolation = createMiddleware().server(async ({ next }) => {
+  // Must run before any handler loads the TypeScript checker chunk — see
+  // ts-runtime-shim.ts. Idempotent.
+  installTsRuntimeGlobals();
   setResponseHeader("Cross-Origin-Opener-Policy", "same-origin");
   setResponseHeader("Cross-Origin-Embedder-Policy", "credentialless");
   // Allow same-origin iframes/images served by this app to be embedded.
