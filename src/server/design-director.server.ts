@@ -171,7 +171,7 @@ const FX_RECIPE_DETAILS: Record<FxRecipe, string> = {
   "modern-saas":
     "MeshGradient or soft brand-tinted wash BEHIND the hero copy (DotPattern is BANNED as the sole hero background — use it only as a secondary section divider after the fold). Product UI mockup as the hero visual, framed in BrowserMockup with 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) overlapping at the corners. Primary CTA = filled <Button size=\"lg\"> or <ShimmerButton> — NEVER a bare anchor + arrow. Secondary CTA = <Button variant=\"outline\">. BorderBeam on the primary feature card. FadeIn + SlideUp throughout.",
   "agency-portfolio":
-    "HeroParallax for the showcase reel, MagicCard for project tiles, Marquee of client logos, Magnetic CTAs, Tilt on case-study covers, Stagger reveals.",
+    "Full-bleed photographic hero, plain image-led project tiles (picture, title, one meta line), generous white space, quiet FadeIn/Stagger reveals only. No marquees, tilt, glow or magnetic effects — the photographs carry the page.",
   "cyberpunk-crypto":
     "RetroGrid floor on hero, Meteors layered behind, AuroraText on the headline, GlowCard for stat tiles, ShimmerButton or RainbowButton for the CTA, OrbitingCircles around the brand mark.",
   "ai-product":
