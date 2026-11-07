@@ -561,7 +561,6 @@ const CTA_GRADIENT_BAND = `import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientBlob } from "@/components/ui/gradient-blob";
 import { cn, slotNode } from "@/lib/utils";
 
 type CtaLike = {
@@ -608,8 +607,6 @@ export function CtaGradientBand({
   const secondary = normalizeCta(secondaryCta ?? secondaryLink);
   return (
     <section className={cn("relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28", className)}>
-      <GradientBlob className="-bottom-40 -right-20" size="xl" tone="accent" />
-      <GradientBlob className="-top-32 -left-10" size="lg" tone="muted" />
       <Container size="lg">
         <div className="relative mx-auto max-w-3xl text-center">
           {title && <h2 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h2>}

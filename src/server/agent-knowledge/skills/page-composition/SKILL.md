@@ -26,7 +26,7 @@ A page where every section is the same shape reads as a wall, however good each 
 2. **Adjacent sections must not share a layout direction.** If one section is content-left/visual-right, the next must not repeat it. Alternate, center, or go full-width.
 3. **Vary heading scale between sections.** If every section heading is `text-4xl`, the page has no dynamics. Move between `text-3xl` and `text-5xl` deliberately — a quiet section before a loud one makes the loud one land.
 4. **Alternate background tone every two to three sections.** `bg-background` → `bg-muted` → `bg-background`. Never five sections on an identical background.
-5. **One visual break per long page.** A full-bleed image, one large statistic, or a marquee strip — a section that isn't another content block.
+5. **One visual break per long page.** A full-bleed image, or one large statistic — a section that isn't another content block.
 
 ## Vertical rhythm
 

@@ -148,7 +148,7 @@ grid grid-cols-1 lg:grid-cols-2 gap-6
 ```
 grid grid-cols-1 md:grid-cols-3 gap-6 items-start
   card: rounded-xl border p-8
-  recommended: border-primary/40 ring-1 ring-primary/20 bg-primary/5 + small pill badge
+  recommended: border-primary/40 ring-1 ring-primary/20 bg-primary/5 + plain uppercase "Recommended" label
     price: text-4xl font-semibold + /mo in text-muted-foreground
     features: max 6–8, lead with what differs between plans
     Button className="w-full mt-8"
@@ -212,7 +212,7 @@ Every footer link must point somewhere real. A category with no page is plain te
 
 - **R. Full-bleed image** — `h-[40vh] md:h-[55vh] object-cover`, no text.
 - **S. Giant statement** — one number or one sentence, `text-5xl md:text-7xl`, generous space, nothing else.
-- **T. Marquee strip** — a slow continuous scroll of names or tags, `py-6 border-y`.
+- **T. Name strip** — a single static row of names or logos, `py-6 border-y`, no scrolling.
 
 ---
 

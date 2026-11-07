@@ -45650,36 +45650,17 @@ export function GradientText({
 }
 `;
     GRADIENT_BLOB = `import * as React from "react";
-import { cn, slotNode } from "@/lib/utils";
 
 /**
- * Decorative blurred gradient blob for hero backgrounds. Position-absolute
- * by default \u2014 drop inside a relatively-positioned section with
- * \`overflow-hidden\` on the parent.
- *   <div className="relative overflow-hidden">
- *     <GradientBlob className="-top-32 -left-20" />
- *     ...content
- *   </div>
+ * Retired decoration. Kept only so older apps that import it still build;
+ * it renders nothing. Do not use in new pages.
  */
-export function GradientBlob({
-  className,
-  size = "lg",
-  tone = "primary",
-}: {
+export function GradientBlob(_props: {
   className?: string;
   size?: "sm" | "md" | "lg" | "xl";
   tone?: "primary" | "accent" | "muted";
 }) {
-  const sz =
-    size === "sm" ? "h-48 w-48" : size === "md" ? "h-72 w-72" : size === "lg" ? "h-96 w-96" : "h-[32rem] w-[32rem]";
-  const t =
-    tone === "accent" ? "bg-accent/40" : tone === "muted" ? "bg-muted/60" : "bg-primary/30";
-  return (
-    <div
-      aria-hidden
-      className={cn("pointer-events-none absolute -z-10 rounded-full blur-3xl", sz, t, className)}
-    />
-  );
+  return null;
 }
 `;
     SECTION = `import * as React from "react";
@@ -45843,13 +45824,12 @@ export function Prose({ className, children }: { className?: string; children: R
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientBlob } from "@/components/ui/gradient-blob";
 import { GradientText } from "@/components/ui/gradient-text";
 import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Centered hero with optional eyebrow + dual CTA. Default landing-page hero \u2014
- * works for SaaS, agency, app launches. Pair with a soft \`GradientBlob\`.
+ * works for SaaS, agency, app launches.
  */
 export function HeroCentered({
   eyebrow,
@@ -45871,11 +45851,10 @@ export function HeroCentered({
 }) {
   return (
     <section className={cn("relative overflow-hidden py-24 md:py-32", className)}>
-      <GradientBlob className="-top-40 left-1/2 -translate-x-1/2" size="xl" />
       <Container size="lg">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           {eyebrow && (
-            <span className="mb-5 inline-flex items-center rounded-full border border-border bg-background/60 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+            <span className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
               {eyebrow}
             </span>
           )}
@@ -45956,7 +45935,7 @@ export function HeroSplitImage({
         <div className={cn("grid items-center gap-12 lg:grid-cols-2 lg:gap-16", reverse && "lg:[&>*:first-child]:order-2")}>
           <div>
             {eyebrow && (
-              <span className="mb-4 inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+              <span className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
                 {eyebrow}
               </span>
             )}
@@ -46105,10 +46084,9 @@ export function HeroEditorial({
 }
 `;
     HERO_CENTERED_GRADIENT2 = `import * as React from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientBlob } from "@/components/ui/gradient-blob";
 import { GradientText } from "@/components/ui/gradient-text";
 import { cn, slotNode } from "@/lib/utils";
 
@@ -46136,14 +46114,11 @@ export function HeroCenteredGradient({
 }) {
   return (
     <section className={cn("relative overflow-hidden py-24 md:py-36", className)}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.18),transparent_55%),radial-gradient(circle_at_70%_80%,hsl(var(--primary)/0.12),transparent_60%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.4)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.4)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]" />
-      <GradientBlob className="-top-32 left-1/2 -translate-x-1/2" size="xl" />
       <Container size="lg" className="relative">
         <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
           {eyebrow && (
-            <span className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-              <Sparkles className="h-3 w-3" /> {eyebrow}
+            <span className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {eyebrow}
             </span>
           )}
           <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground md:text-7xl">
@@ -46218,11 +46193,10 @@ export function HeroSplitWithDashboardMock({
   ];
   return (
     <section className={cn("relative overflow-hidden py-20 md:py-28", className)}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.12),transparent_50%)]" />
       <Container size="xl" className="relative">
         <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div>
-            {eyebrow && (<Badge variant="secondary" className="mb-4 rounded-full">{eyebrow}</Badge>)}
+            {eyebrow && (<span className="mb-4 block text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</span>)}
             <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-6xl">{title}</h1>
             {description && (<p className="mt-5 max-w-lg text-base text-muted-foreground md:text-lg">{description}</p>)}
             {bullets && bullets.length > 0 && (
@@ -46332,7 +46306,7 @@ export function HeroProductScreenshot({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.15),transparent_60%)]" />
       <Container size="xl" className="relative">
         <div className="mx-auto max-w-3xl text-center">
-          {eyebrow && (<Badge variant="secondary" className="mb-5 rounded-full">{eyebrow}</Badge>)}
+          {eyebrow && (<span className="mb-5 block text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</span>)}
           <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-6xl">{title}</h1>
           {description && (<p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>)}
           {(primaryCta || secondaryCta) && (
@@ -46353,7 +46327,6 @@ export function HeroProductScreenshot({
           )}
         </div>
         <div className="relative mx-auto mt-14 max-w-5xl">
-          <div className="absolute -inset-6 rounded-3xl bg-gradient-to-b from-primary/20 to-transparent blur-2xl" />
           <div className="relative rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10 overflow-hidden">
             <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-2.5">
               <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
@@ -47157,7 +47130,6 @@ export function CtaSplit({
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientBlob } from "@/components/ui/gradient-blob";
 import { cn, slotNode } from "@/lib/utils";
 
 type CtaLike = {
@@ -47204,8 +47176,6 @@ export function CtaGradientBand({
   const secondary = normalizeCta(secondaryCta ?? secondaryLink);
   return (
     <section className={cn("relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28", className)}>
-      <GradientBlob className="-bottom-40 -right-20" size="xl" tone="accent" />
-      <GradientBlob className="-top-32 -left-10" size="lg" tone="muted" />
       <Container size="lg">
         <div className="relative mx-auto max-w-3xl text-center">
           {title && <h2 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h2>}
@@ -70520,6 +70490,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -96227,7 +96198,7 @@ var init_SKILL2 = __esm({
 var SKILL_default3;
 var init_SKILL3 = __esm({
   "vite-raw:/dev-server/src/server/agent-knowledge/skills/page-composition/SKILL.md"() {
-    SKILL_default3 = "---\nname: page-composition\ndescription: How sections sequence and vary across a whole page \u2014 order, rhythm, and the anti-monotony rules.\npreload: true\n---\n\nA page is a sequence, not a stack of blocks. These rules govern the page as a whole. Where a `section-architectures` skill is listed as available, it covers the shape of the individual sections; these rules still apply either way.\n\n## Order\n\nMulti-section marketing pages answer the visitor's questions in this order. Skip any section the site doesn't need \u2014 never reorder the ones you keep.\n\n**Hero \u2192 WHAT it does \u2192 PROOF others use it \u2192 HOW it works \u2192 RESULTS \u2192 PRICING \u2192 REMAINING OBJECTIONS \u2192 FINAL CTA \u2192 FOOTER**\n\nThe final CTA is its own section. The footer is not a CTA.\n\n**Scope.** These are rules for a page you are building or restructuring as a whole. When the user asks for a single new section on an existing page, apply them only to the section you are adding, and do not restyle or rewrite the surrounding ones.\n\nTwo different things are being asked of that new section, and they are not in conflict: its **design vocabulary** must match the page (same palette, type family, spacing scale, component styling), while its **layout shape** should differ from its immediate neighbours (heading scale, background tone, column structure). Consistent materials, varied form.\n\n## Rhythm \u2014 the anti-monotony rules\n\nA page where every section is the same shape reads as a wall, however good each section is on its own. Apply all five:\n\n1. **Never three grid sections in a row.** Two consecutive grid-based sections is the maximum. Break the run with a split layout, a full-width band, or a single centered statement.\n2. **Adjacent sections must not share a layout direction.** If one section is content-left/visual-right, the next must not repeat it. Alternate, center, or go full-width.\n3. **Vary heading scale between sections.** If every section heading is `text-4xl`, the page has no dynamics. Move between `text-3xl` and `text-5xl` deliberately \u2014 a quiet section before a loud one makes the loud one land.\n4. **Alternate background tone every two to three sections.** `bg-background` \u2192 `bg-muted` \u2192 `bg-background`. Never five sections on an identical background.\n5. **One visual break per long page.** A full-bleed image, one large statistic, or a marquee strip \u2014 a section that isn't another content block.\n\n## Vertical rhythm\n\nNot every section deserves the same padding. Uniform padding is what makes a page feel machine-generated.\n\n| Section kind | Padding |\n|---|---|\n| Content-heavy (features, pricing, FAQ) | `py-16 md:py-24` |\n| Final CTA banner | `py-16 md:py-20` |\n| Logo / proof strip | `py-10 md:py-14` |\n| Visual break | `py-8 md:py-12` or none |\n| Footer | `py-12 md:py-16` |\n\n## CTAs\n\nTwo, maybe three across the entire page: one in the hero, one at the end, optionally one mid-page. A CTA in every section reads as desperation and trains the visitor to ignore all of them.\n\n## Sections belong to the page\n\nEvery section continues what the hero established \u2014 same palette, same type scale, same component vocabulary. A section that could be dropped into any other site unchanged is a generic section. If the hero is restrained, a loud section below it looks like a different site, not a highlight.\n";
+    SKILL_default3 = "---\nname: page-composition\ndescription: How sections sequence and vary across a whole page \u2014 order, rhythm, and the anti-monotony rules.\npreload: true\n---\n\nA page is a sequence, not a stack of blocks. These rules govern the page as a whole. Where a `section-architectures` skill is listed as available, it covers the shape of the individual sections; these rules still apply either way.\n\n## Order\n\nMulti-section marketing pages answer the visitor's questions in this order. Skip any section the site doesn't need \u2014 never reorder the ones you keep.\n\n**Hero \u2192 WHAT it does \u2192 PROOF others use it \u2192 HOW it works \u2192 RESULTS \u2192 PRICING \u2192 REMAINING OBJECTIONS \u2192 FINAL CTA \u2192 FOOTER**\n\nThe final CTA is its own section. The footer is not a CTA.\n\n**Scope.** These are rules for a page you are building or restructuring as a whole. When the user asks for a single new section on an existing page, apply them only to the section you are adding, and do not restyle or rewrite the surrounding ones.\n\nTwo different things are being asked of that new section, and they are not in conflict: its **design vocabulary** must match the page (same palette, type family, spacing scale, component styling), while its **layout shape** should differ from its immediate neighbours (heading scale, background tone, column structure). Consistent materials, varied form.\n\n## Rhythm \u2014 the anti-monotony rules\n\nA page where every section is the same shape reads as a wall, however good each section is on its own. Apply all five:\n\n1. **Never three grid sections in a row.** Two consecutive grid-based sections is the maximum. Break the run with a split layout, a full-width band, or a single centered statement.\n2. **Adjacent sections must not share a layout direction.** If one section is content-left/visual-right, the next must not repeat it. Alternate, center, or go full-width.\n3. **Vary heading scale between sections.** If every section heading is `text-4xl`, the page has no dynamics. Move between `text-3xl` and `text-5xl` deliberately \u2014 a quiet section before a loud one makes the loud one land.\n4. **Alternate background tone every two to three sections.** `bg-background` \u2192 `bg-muted` \u2192 `bg-background`. Never five sections on an identical background.\n5. **One visual break per long page.** A full-bleed image, or one large statistic \u2014 a section that isn't another content block.\n\n## Vertical rhythm\n\nNot every section deserves the same padding. Uniform padding is what makes a page feel machine-generated.\n\n| Section kind | Padding |\n|---|---|\n| Content-heavy (features, pricing, FAQ) | `py-16 md:py-24` |\n| Final CTA banner | `py-16 md:py-20` |\n| Logo / proof strip | `py-10 md:py-14` |\n| Visual break | `py-8 md:py-12` or none |\n| Footer | `py-12 md:py-16` |\n\n## CTAs\n\nTwo, maybe three across the entire page: one in the hero, one at the end, optionally one mid-page. A CTA in every section reads as desperation and trains the visitor to ignore all of them.\n\n## Sections belong to the page\n\nEvery section continues what the hero established \u2014 same palette, same type scale, same component vocabulary. A section that could be dropped into any other site unchanged is a generic section. If the hero is restrained, a loud section below it looks like a different site, not a highlight.\n";
   }
 });
 
@@ -96243,7 +96214,7 @@ var init_SKILL4 = __esm({
 var SKILL_default5;
 var init_SKILL5 = __esm({
   "vite-raw:/dev-server/src/server/agent-knowledge/skills/section-architectures/SKILL.md"() {
-    SKILL_default5 = "---\nname: section-architectures\ndescription: A menu of named section layouts to commit to, instead of defaulting to three equal cards.\ntriggers: landing, marketing, homepage, home page, pricing, testimonial, faq, footer, section, portfolio, features, about page\ntargets: website\n---\n\nLeft to itself, an AI builds the same section every time: an eyebrow, a centered heading, and three equal cards each with an icon, a bold line, and a paragraph. It is the single most recognisable \"nobody designed this\" pattern on the web.\n\nThe fix is not more creativity. It is **commitment**. For each section, pick ONE architecture below and build it fully. Do not blend two \u2014 a blend always averages back toward the three-card default.\n\nUse the template's existing components and semantic tokens (`bg-card`, `bg-muted`, `text-muted-foreground`, `border-border`). Never hardcode colors.\n\nThe components named below (`Card`, `Button`, `Accordion`, `Badge`) are the usual ones, but **check `template.json`'s `shadcn_components` first** \u2014 templates differ. If one is missing, build the section with plain elements and the same tokens rather than importing something that isn't there.\n\n---\n\n## FEATURES \u2014 what it does\n\n### A. Bento Grid\n*For 4\u20136 features of clearly unequal importance.*\n\nOne cell dominates; the others support. Cells hold **different kinds of content** \u2014 a screenshot in one, a statistic in another, a short quote in a third.\n\n```\ngrid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[minmax(180px,auto)]\n  primary cell:   md:col-span-2 md:row-span-2  bg-card border rounded-xl p-8\n  support cells:  bg-card border rounded-xl p-6\n```\n\n\u26A0 Fails when every cell is the same size with the same icon-heading-paragraph. If all six cells look alike, this is a 3-card grid wearing a costume \u2014 make one cell twice the size and give it a real visual.\n\n### B. Stacked Showcase\n*For 2\u20133 major features that each deserve room.*\n\nFull-width rows, alternating side. Text one side, visual the other; next row reversed.\n\n```\nspace-y-16 md:space-y-24\n  row: grid grid-cols-1 lg:grid-cols-2 gap-10 items-center\n    text side:   heading + 2 sentences + optional 3 check bullets\n    visual side: real image, rounded-xl border\n```\n\nUse `lg:order-1` / `lg:order-2` to flip the visual, keeping text first in the DOM for screen readers.\n\n\u26A0 The alternation must be visible on desktop. Reversing only in source order changes nothing on screen.\n\n### C. Single Spotlight\n*For one defining feature, a product shot, or a demo.*\n\nMinimal text, one large visual that IS the section.\n\n```\nmax-w-5xl mx-auto text-center\n  eyebrow + heading (max-w-2xl mx-auto) + one sentence\n  visual: rounded-xl border overflow-hidden shadow-lg\n```\n\n---\n\n## PROOF \u2014 who trusts it\n\n### D. Logo Strip\n*Only when the user supplied real client or brand names.* Never invent logos.\n\n```\npy-10 border-y border-border\n  small uppercase label, text-xs tracking-wide text-muted-foreground\n  flex flex-wrap items-center justify-center gap-10\n  each logo: h-7 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 transition\n```\n\n### E. Testimonial Cascade\n*For service businesses where a human voice sells.*\n\nAsymmetric \u2014 one quote is featured, the rest support. Not a row of identical cards.\n\n```\ngrid grid-cols-1 lg:grid-cols-3 gap-6\n  featured: lg:col-span-2  bg-muted rounded-xl p-8\n            quote text-xl md:text-2xl leading-relaxed\n            author row: avatar + name + role, text-sm\n  support:  bg-card border rounded-xl p-6, quote text-base\n```\n\n\u26A0 Three identical centered testimonial cards is the #1 proof-section default. One card must dominate. Only use real names the user gave you.\n\n### F. Metric Bar\n*For genuinely impressive numbers the user provided.*\n\n```\npy-14 border-y border-border\n  grid grid-cols-2 lg:grid-cols-4 gap-8 text-center\n  number: text-4xl md:text-5xl font-semibold tracking-tight tabular-nums\n  label:  text-sm text-muted-foreground mt-2\n```\n\n---\n\n## PROCESS \u2014 how it works\n\n### G. Numbered Steps\n*For 3\u20135 steps, especially uneven ones.* Vertical, with a connecting rule.\n\n```\nrelative space-y-12  (vertical line: absolute left-6 inset-y-0 w-px bg-border)\n  step: flex gap-6 items-start\n    numeral: size-12 rounded-full border-2 bg-background grid place-items-center relative z-10\n    content: heading text-lg font-medium + one or two sentences\n```\n\n### H. Horizontal Flow\n*Only for a genuinely simple 3-step process.*\n\n```\ngrid grid-cols-1 md:grid-cols-3 gap-8\n  step: icon (size-10) + heading + one sentence\n```\n\n\u26A0 This is the highest-risk architecture in this document \u2014 it is three boxes with icons, i.e. exactly the default. Use it only for a real 3-step sequence. Four or more steps, or steps of unequal weight: use **G** instead.\n\n---\n\n## RESULTS \u2014 case studies\n\n### I. Card Gallery\n*For visual portfolio work.* **Vary the aspect ratios** \u2014 uniform tiles read as a stock grid.\n\n```\ngrid grid-cols-1 lg:grid-cols-2 gap-6\n  card: group relative rounded-xl overflow-hidden  (alternate aspect-[4/3] and aspect-[3/4])\n    img: object-cover w-full h-full transition group-hover:scale-105\n    overlay: absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/70 to-transparent\n             name text-white, result line text-white/70 text-sm\n```\n\n### J. Single Deep Dive\n*For one flagship story.* Full-width image, then challenge on one side and results on the other.\n\n---\n\n## PRICING\n\n### K. Clean Tiers\n*For 2\u20133 plans.*\n\n```\ngrid grid-cols-1 md:grid-cols-3 gap-6 items-start\n  card: rounded-xl border p-8\n  recommended: border-primary/40 ring-1 ring-primary/20 bg-primary/5 + small pill badge\n    price: text-4xl font-semibold + /mo in text-muted-foreground\n    features: max 6\u20138, lead with what differs between plans\n    Button className=\"w-full mt-8\"\n```\n\n`items-start` matters \u2014 the recommended card being slightly taller is the point.\n\n\u26A0 Fifteen features in tiny text is unreadable. Cap at 6\u20138 and lead with the differentiators, not the items every plan shares.\n\n### L. Comparison Table\n*For complex products.* Minimal plan cards, then a detailed feature matrix below.\n\n---\n\n## OBJECTIONS\n\n### M. FAQ Accordion\n*For 5\u20138 real questions.* Prefer the template's `Accordion` component when `template.json` lists it; only hand-roll one if it doesn't.\n\n```\nmax-w-3xl mx-auto\n  Accordion type=\"single\" collapsible\n  question: text-base font-medium, left-aligned\n  answer:   text-muted-foreground leading-relaxed\n```\n\n---\n\n## CLOSING\n\n### N. Full-Width CTA Banner\n*The universal closer.*\n\n```\npy-16 md:py-20 bg-primary text-primary-foreground text-center\n  heading text-3xl md:text-4xl font-semibold tracking-tight\n  one sentence, opacity-90, max-w-xl mx-auto\n  ONE Button, variant that contrasts with bg-primary\n```\n\n\u26A0 One heading, one button. A CTA banner with three buttons, a form, and social links converts worse than a bare one. Check the button is visible against `bg-primary` \u2014 this is the most common contrast bug in the whole build.\n\n### O. Split CTA\nVisual one side, heading and button the other.\n\n---\n\n## FOOTER\n\n### P. Minimal Strip\n*For single-goal landing pages.* Logo left, essential links center, socials right, copyright below.\n\n### Q. Structured Footer\n*For multi-page sites.* Brand column plus three or four link columns, then a bottom bar with copyright and legal links.\n\nEvery footer link must point somewhere real. A category with no page is plain text, not a dead link.\n\n---\n\n## VISUAL BREAKS\n\n- **R. Full-bleed image** \u2014 `h-[40vh] md:h-[55vh] object-cover`, no text.\n- **S. Giant statement** \u2014 one number or one sentence, `text-5xl md:text-7xl`, generous space, nothing else.\n- **T. Marquee strip** \u2014 a slow continuous scroll of names or tags, `py-6 border-y`.\n\n---\n\n## Before you move on\n\nFor each section, confirm: I picked one architecture and built it fully \xB7 it doesn't repeat the previous section's shape \xB7 its content is real, not placeholder \xB7 one cell or card dominates where the architecture calls for it.\n\nIf you have used a 3-equal-column grid twice already on this page, you may not use one again. Pick a different architecture.\n";
+    SKILL_default5 = '---\nname: section-architectures\ndescription: A menu of named section layouts to commit to, instead of defaulting to three equal cards.\ntriggers: landing, marketing, homepage, home page, pricing, testimonial, faq, footer, section, portfolio, features, about page\ntargets: website\n---\n\nLeft to itself, an AI builds the same section every time: an eyebrow, a centered heading, and three equal cards each with an icon, a bold line, and a paragraph. It is the single most recognisable "nobody designed this" pattern on the web.\n\nThe fix is not more creativity. It is **commitment**. For each section, pick ONE architecture below and build it fully. Do not blend two \u2014 a blend always averages back toward the three-card default.\n\nUse the template\'s existing components and semantic tokens (`bg-card`, `bg-muted`, `text-muted-foreground`, `border-border`). Never hardcode colors.\n\nThe components named below (`Card`, `Button`, `Accordion`, `Badge`) are the usual ones, but **check `template.json`\'s `shadcn_components` first** \u2014 templates differ. If one is missing, build the section with plain elements and the same tokens rather than importing something that isn\'t there.\n\n---\n\n## FEATURES \u2014 what it does\n\n### A. Bento Grid\n*For 4\u20136 features of clearly unequal importance.*\n\nOne cell dominates; the others support. Cells hold **different kinds of content** \u2014 a screenshot in one, a statistic in another, a short quote in a third.\n\n```\ngrid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[minmax(180px,auto)]\n  primary cell:   md:col-span-2 md:row-span-2  bg-card border rounded-xl p-8\n  support cells:  bg-card border rounded-xl p-6\n```\n\n\u26A0 Fails when every cell is the same size with the same icon-heading-paragraph. If all six cells look alike, this is a 3-card grid wearing a costume \u2014 make one cell twice the size and give it a real visual.\n\n### B. Stacked Showcase\n*For 2\u20133 major features that each deserve room.*\n\nFull-width rows, alternating side. Text one side, visual the other; next row reversed.\n\n```\nspace-y-16 md:space-y-24\n  row: grid grid-cols-1 lg:grid-cols-2 gap-10 items-center\n    text side:   heading + 2 sentences + optional 3 check bullets\n    visual side: real image, rounded-xl border\n```\n\nUse `lg:order-1` / `lg:order-2` to flip the visual, keeping text first in the DOM for screen readers.\n\n\u26A0 The alternation must be visible on desktop. Reversing only in source order changes nothing on screen.\n\n### C. Single Spotlight\n*For one defining feature, a product shot, or a demo.*\n\nMinimal text, one large visual that IS the section.\n\n```\nmax-w-5xl mx-auto text-center\n  eyebrow + heading (max-w-2xl mx-auto) + one sentence\n  visual: rounded-xl border overflow-hidden shadow-lg\n```\n\n---\n\n## PROOF \u2014 who trusts it\n\n### D. Logo Strip\n*Only when the user supplied real client or brand names.* Never invent logos.\n\n```\npy-10 border-y border-border\n  small uppercase label, text-xs tracking-wide text-muted-foreground\n  flex flex-wrap items-center justify-center gap-10\n  each logo: h-7 opacity-60 grayscale hover:opacity-100 hover:grayscale-0 transition\n```\n\n### E. Testimonial Cascade\n*For service businesses where a human voice sells.*\n\nAsymmetric \u2014 one quote is featured, the rest support. Not a row of identical cards.\n\n```\ngrid grid-cols-1 lg:grid-cols-3 gap-6\n  featured: lg:col-span-2  bg-muted rounded-xl p-8\n            quote text-xl md:text-2xl leading-relaxed\n            author row: avatar + name + role, text-sm\n  support:  bg-card border rounded-xl p-6, quote text-base\n```\n\n\u26A0 Three identical centered testimonial cards is the #1 proof-section default. One card must dominate. Only use real names the user gave you.\n\n### F. Metric Bar\n*For genuinely impressive numbers the user provided.*\n\n```\npy-14 border-y border-border\n  grid grid-cols-2 lg:grid-cols-4 gap-8 text-center\n  number: text-4xl md:text-5xl font-semibold tracking-tight tabular-nums\n  label:  text-sm text-muted-foreground mt-2\n```\n\n---\n\n## PROCESS \u2014 how it works\n\n### G. Numbered Steps\n*For 3\u20135 steps, especially uneven ones.* Vertical, with a connecting rule.\n\n```\nrelative space-y-12  (vertical line: absolute left-6 inset-y-0 w-px bg-border)\n  step: flex gap-6 items-start\n    numeral: size-12 rounded-full border-2 bg-background grid place-items-center relative z-10\n    content: heading text-lg font-medium + one or two sentences\n```\n\n### H. Horizontal Flow\n*Only for a genuinely simple 3-step process.*\n\n```\ngrid grid-cols-1 md:grid-cols-3 gap-8\n  step: icon (size-10) + heading + one sentence\n```\n\n\u26A0 This is the highest-risk architecture in this document \u2014 it is three boxes with icons, i.e. exactly the default. Use it only for a real 3-step sequence. Four or more steps, or steps of unequal weight: use **G** instead.\n\n---\n\n## RESULTS \u2014 case studies\n\n### I. Card Gallery\n*For visual portfolio work.* **Vary the aspect ratios** \u2014 uniform tiles read as a stock grid.\n\n```\ngrid grid-cols-1 lg:grid-cols-2 gap-6\n  card: group relative rounded-xl overflow-hidden  (alternate aspect-[4/3] and aspect-[3/4])\n    img: object-cover w-full h-full transition group-hover:scale-105\n    overlay: absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/70 to-transparent\n             name text-white, result line text-white/70 text-sm\n```\n\n### J. Single Deep Dive\n*For one flagship story.* Full-width image, then challenge on one side and results on the other.\n\n---\n\n## PRICING\n\n### K. Clean Tiers\n*For 2\u20133 plans.*\n\n```\ngrid grid-cols-1 md:grid-cols-3 gap-6 items-start\n  card: rounded-xl border p-8\n  recommended: border-primary/40 ring-1 ring-primary/20 bg-primary/5 + plain uppercase "Recommended" label\n    price: text-4xl font-semibold + /mo in text-muted-foreground\n    features: max 6\u20138, lead with what differs between plans\n    Button className="w-full mt-8"\n```\n\n`items-start` matters \u2014 the recommended card being slightly taller is the point.\n\n\u26A0 Fifteen features in tiny text is unreadable. Cap at 6\u20138 and lead with the differentiators, not the items every plan shares.\n\n### L. Comparison Table\n*For complex products.* Minimal plan cards, then a detailed feature matrix below.\n\n---\n\n## OBJECTIONS\n\n### M. FAQ Accordion\n*For 5\u20138 real questions.* Prefer the template\'s `Accordion` component when `template.json` lists it; only hand-roll one if it doesn\'t.\n\n```\nmax-w-3xl mx-auto\n  Accordion type="single" collapsible\n  question: text-base font-medium, left-aligned\n  answer:   text-muted-foreground leading-relaxed\n```\n\n---\n\n## CLOSING\n\n### N. Full-Width CTA Banner\n*The universal closer.*\n\n```\npy-16 md:py-20 bg-primary text-primary-foreground text-center\n  heading text-3xl md:text-4xl font-semibold tracking-tight\n  one sentence, opacity-90, max-w-xl mx-auto\n  ONE Button, variant that contrasts with bg-primary\n```\n\n\u26A0 One heading, one button. A CTA banner with three buttons, a form, and social links converts worse than a bare one. Check the button is visible against `bg-primary` \u2014 this is the most common contrast bug in the whole build.\n\n### O. Split CTA\nVisual one side, heading and button the other.\n\n---\n\n## FOOTER\n\n### P. Minimal Strip\n*For single-goal landing pages.* Logo left, essential links center, socials right, copyright below.\n\n### Q. Structured Footer\n*For multi-page sites.* Brand column plus three or four link columns, then a bottom bar with copyright and legal links.\n\nEvery footer link must point somewhere real. A category with no page is plain text, not a dead link.\n\n---\n\n## VISUAL BREAKS\n\n- **R. Full-bleed image** \u2014 `h-[40vh] md:h-[55vh] object-cover`, no text.\n- **S. Giant statement** \u2014 one number or one sentence, `text-5xl md:text-7xl`, generous space, nothing else.\n- **T. Name strip** \u2014 a single static row of names or logos, `py-6 border-y`, no scrolling.\n\n---\n\n## Before you move on\n\nFor each section, confirm: I picked one architecture and built it fully \xB7 it doesn\'t repeat the previous section\'s shape \xB7 its content is real, not placeholder \xB7 one cell or card dominates where the architecture calls for it.\n\nIf you have used a 3-equal-column grid twice already on this page, you may not use one again. Pick a different architecture.\n';
   }
 });
 
@@ -164585,14 +164556,14 @@ function pickFontDefault(brief) {
 }
 var GENERIC_FONTS = /* @__PURE__ */ new Set(["inter", "roboto", "system-ui", "sans-serif", "arial", "poppins"]);
 var FX_RECIPE_DETAILS = {
-  "vivid-color": "MeshGradient or a two-hue colour wash behind the hero, GradientText or AuroraText on one headline word, saturated colour-block section bands (full-bleed brand-hue panel alternating with a light tint of the supporting hue), GlowCard or MagicCard tiles, ShimmerButton primary CTA, BlurFade + SlideUp reveals. Colour carries the page \u2014 never beige, never all-neutral.",
-  "modern-saas": 'MeshGradient or soft brand-tinted wash BEHIND the hero copy (DotPattern is BANNED as the sole hero background \u2014 use it only as a secondary section divider after the fold). Product UI mockup as the hero visual, framed in BrowserMockup with 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) overlapping at the corners. Primary CTA = filled <Button size="lg"> or <ShimmerButton> \u2014 NEVER a bare anchor + arrow. Secondary CTA = <Button variant="outline">. BorderBeam on the primary feature card. FadeIn + SlideUp throughout.',
+  "vivid-color": "Confident colour-block sections (full-bleed brand-hue panel alternating with a light tint), bold display type, real photography, quiet FadeIn reveals. No gradient meshes, glow cards or shimmer buttons.",
+  "modern-saas": 'Clean split hero: headline, one sentence, one filled <Button size="lg"> plus optional outline button; real product screenshot on a plain surface. No floating decorative cards, no mesh washes, no beams. FadeIn on major sections only.',
   "agency-portfolio": "Full-bleed photographic hero, plain image-led project tiles (picture, title, one meta line), generous white space, quiet FadeIn/Stagger reveals only. No marquees, tilt, glow or magnetic effects \u2014 the photographs carry the page.",
-  "cyberpunk-crypto": "RetroGrid floor on hero, Meteors layered behind, AuroraText on the headline, GlowCard for stat tiles, ShimmerButton or RainbowButton for the CTA, OrbitingCircles around the brand mark.",
-  "ai-product": "AnimatedBeam connecting input \u2192 AI \u2192 output diagram, Sparkles around the chat surface, GradientText on the headline, MagicCard for capability tiles, BorderBeam on the CTA.",
-  "playful-consumer": "FlickeringGrid background, GradientText headline, Ripple on interactive tiles, Marquee of testimonials, WordRotate in the hero subhead, confetti via `@/lib/confetti` on success states.",
-  "luxury-brand": "NoiseTexture, oversized serif headlines via SplitText, slow Parallax on product imagery, ShinyText accents. No beams, no grids \u2014 silence is luxury.",
-  "data-dashboard": "GridPattern background, KPI tiles with CountUp + Sparkles on positive deltas, FadeIn on cards, no heavy motion. Density over flash.",
+  "cyberpunk-crypto": "Dark solid surfaces, mono accents for numbers, crisp hairline borders, one saturated accent. No retro grids, meteors, rainbow or shimmer buttons.",
+  "ai-product": "Plain product surface as the hero visual (the real chat/workspace UI), clear capability rows with icon + title + sentence, solid primary button. No beams, sparkles or gradient text.",
+  "playful-consumer": "Warm colour blocks, rounded-but-restrained cards, friendly display type, real photography, gentle FadeIn. No marquees, flickering grids, ripples or rotating words.",
+  "luxury-brand": "Oversized serif headlines, slow subtle reveals on product imagery, generous white space, solid neutral surfaces. No beams, grids, noise or shiny text \u2014 silence is luxury.",
+  "data-dashboard": "Plain surfaces, KPI tiles with CountUp, FadeIn on cards, no background patterns. Density over flash.",
   "awwwards-3d": "R3F HeroSphere or SplineEmbed as hero centerpiece, LenisProvider wrapping the app, useScrollScene for pinned reveal sequences, GSAP ScrollTrigger horizontal scroll for showcase, SplitText hero, view transitions on route changes."
 };
 function pickFxRecipe(brief, motion2) {
@@ -164708,9 +164679,9 @@ The difference is composition discipline, not the kit. SaaS briefs deserve Flowy
 
 Anti-slop rules \u2014 these are hard constraints on the direction you commit to:
 1. No symmetric card triplets as the primary rhythm. If a section has three peers, break it: change one card's span, offset it vertically, or make the first one a full-width statement.
-2. COLOR IS MANDATORY. Every direction ships a saturated brand hue plus one supporting hue \u2014 beige/cream/ink "editorial" palettes, all-grey neutrals and washed-out pastels-only schemes are BANNED. Use the two hues with intent: primary for CTAs and key marks, the supporting hue for one accent surface or highlight. Never more than two chromatic hues plus neutrals, and never a stock purple-to-indigo gradient.
+2. Colour with intent. One primary hue for actions and key marks, optionally one supporting hue, plus neutrals. Quiet, neutral, cream and editorial palettes are welcome when they fit the business. Never a stock purple-to-indigo gradient.
 2b. Contrast is non-negotiable: body text \u2265 4.5:1 against its surface, large display text \u2265 3:1, and every filled button's label must contrast against its own fill (never a light accent with white text). If a hue is too light for white text, darken the fill instead of lightening the text.
-2c. "Editorial", "magazine", "swiss", "ink-on-cream" and "newsprint" are forbidden vibes. Reach instead for confident colour-led directions: vivid-gradient, sunlit-pop, jewel-tone, neon-noir, candy-brutalist, tropical-luxe, electric-minimal.
+2c. Prefer directions modern studios actually ship: quiet editorial, warm natural, crisp monochrome, confident colour-block, technical. No vivid-gradient, neon or glassy directions.
 3. No purple/indigo-on-white gradient heroes, no glowing blurred blobs behind centered text, no floating sparkle icon as the hero graphic.
 4. Type must have a scale jump: display headings at least 3x the body size, with tight negative tracking. Even a "minimal" direction commits to one oversized element per screen.
 5. Motion is one register applied consistently \u2014 pick a single easing and duration family. Never mix a bouncy spring with a slow cinematic fade in the same app.
@@ -164796,9 +164767,9 @@ ${moves}
 - palette mood: ${d.palette_mood}. Translate this into oklch tokens in src/styles.css (background, foreground, primary, accent, muted). DO NOT use stock purple gradients on white.
 `) + `- density: ${d.density}
 - motion: ${d.motion}
-- motion primitives (\`@/components/motion\`): FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Magnetic, Tilt, Parallax, SplitText, CountUp, WordRotate, BlurFade. ` + (d.motion === "still" ? `motion=still \u2192 do NOT import these. Type and color do the work.` : d.motion === "subtle" ? `motion=subtle \u2192 FadeIn / SlideUp / BlurFade on the hero and major sections only. No SplitText, no Magnetic.` : d.motion === "expressive" ? `motion=expressive \u2192 Stagger + SplitText on the hero, WordRotate in the subhead, Magnetic CTAs, Parallax/Tilt on hero media. Layer 3-5 across the page, not on every element.` : `motion=cinematic \u2192 wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) + `
+- motion primitives (\`@/components/motion\`): FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Parallax, SplitText, CountUp, BlurFade. ` + (d.motion === "still" ? `motion=still \u2192 do NOT import these. Type and color do the work.` : d.motion === "subtle" ? `motion=subtle \u2192 FadeIn / SlideUp / BlurFade on the hero and major sections only. No SplitText, no Magnetic.` : d.motion === "expressive" ? `motion=expressive \u2192 Stagger + SplitText on the hero, gentle Parallax on hero media. Layer 2-3 across the page, not on every element.` : `motion=cinematic \u2192 wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) + `
 - fx recipe: ${d.fx_recipe ?? "(unset)"} \u2014 ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}
-- FX catalog (\`@/components/fx\`) for reference: Backgrounds: GridPattern, DotPattern, RetroGrid, FlickeringGrid, AnimatedGridPattern, Ripple, NoiseTexture, LightRays, MeshGradient, Meteors, Particles, Sparkles. Text: AuroraText, GradientText, ShinyText. Containers: MagicCard, BorderBeam, GlowCard, BentoGrid + BentoCard, Marquee, InfiniteMovingCards, OrbitingCircles, HeroParallax, AnimatedBeam. Buttons: ShimmerButton, RainbowButton, ShinyButton. Stick to the recipe above \u2014 layer at most 2 FX per section. Restraint matters.
+- decorative FX (\`@/components/fx\` backgrounds, glowing/shimmer buttons, marquees, gradient text) are retired: do not import them. Photography, type and spacing carry the page.
 - design moves to land:
 ${moves}
 Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.
@@ -165298,19 +165269,19 @@ Compose pages by picking ONE variant per section from "@/components/blocks/*". D
 
 Available section blocks:
 - Nav: <NavBar>, <NavWithCta>, <NavWithSearch>
-- Hero: <HeroCentered>, <HeroSplitImage>, <HeroEditorial>
-- Logos: <LogosGrid>, <LogosMarquee>
+- Hero: <HeroSplitImage>, <HeroEditorial>, <HeroCentered>
+- Logos: <LogosGrid>
 - Features: <FeaturesGrid3>, <FeaturesBento>, <FeaturesAlternatingRows>
 - Stats: <StatsBand>, <StatsGrid>, <StatsWithChart>
-- Testimonials: <TestimonialsCards>, <TestimonialsMarquee>, <TestimonialsQuoteHero>
+- Testimonials: <TestimonialsCards>, <TestimonialsQuoteHero>
 - Pricing: <PricingSingleProduct> (3-tier and comparison table examples in examples-pack)
 - FAQ: <FaqAccordion>, <FaqTwoColumn>
-- CTA: <CtaCentered>, <CtaSplit>, <CtaGradientBand>
+- CTA: <CtaCentered>, <CtaSplit>
 - Footer: <FooterColumns>, <FooterMinimal>, <FooterNewsletter>
 
 Exact data prop names for blocks that render lists:
 - <TestimonialsCards items={[{ quote, name, role }]} /> (alias accepted: testimonials)
-- <LogosMarquee logos={[{ name, src }]} /> or logos={["/logo.svg"]}
+- <LogosGrid logos={[{ name, src }]} />
 - <PricingTable tiers={[{ name, price, features, cta: { label, href } }]} />
 - <FaqAccordion items={[{ q, a }]} /> (aliases accepted: faqs with question/answer)
 - <FeaturesGrid3 items={[{ icon: Film, title, description }]} />
@@ -165327,11 +165298,11 @@ Reference page assemblies \u2014 READ ONE before composing a similar page:
 Composition rules \u2014 this is the difference between forgettable and memorable:
 1. MIX variants across a single page. Do NOT use all "centered" variants together. Pair an asymmetric hero with alternating-rows features; pair a split-image hero with a bento grid.
 2. Match variants to the Design Direction vibe. These are STYLE PAIRINGS, not a checklist \u2014 use only the sections the request needs (nav, hero, footer as baseline); never add Stats/Testimonials/Pricing/FAQ/CTA/Logos just because a recipe lists them:
-   - agency / portfolio / studio \u2192 NavBar + HeroSplit or HeroEditorial (restyled with saturated colour blocks, never cream) + FeaturesAlternatingRows + TestimonialsQuoteHero + CtaSplit + FooterMinimal
-   - playful / maximalist / consumer launch \u2192 NavWithCta + HeroCentered (GradientBlob) + FeaturesBento + TestimonialsMarquee + CtaGradientBand + FooterNewsletter
-   - SaaS product / dev tools \u2192 NavWithCta + HeroSplitImage + LogosMarquee + FeaturesBento + StatsBand + TestimonialsCards + PricingSingleProduct + FaqAccordion + CtaCentered + FooterColumns
+   - agency / portfolio / studio \u2192 NavBar + HeroSplit or HeroEditorial  + FeaturesAlternatingRows + TestimonialsQuoteHero + CtaSplit + FooterMinimal
+   - consumer brand / shop \u2192 NavBar + HeroSplitImage + FeaturesAlternatingRows + TestimonialsQuoteHero + CtaSplit + FooterMinimal
+   - SaaS product / dev tools \u2192 NavWithCta + HeroSplitImage + LogosGrid + FeaturesBento + StatsBand + TestimonialsCards + PricingSingleProduct + FaqAccordion + CtaCentered + FooterColumns
    - docs / dashboard / app interior \u2192 NavWithSearch + content + EmptyState
-3. Supporting atoms for spaces between blocks: <Section eyebrow title description>, <Marquee>, <Stat>, <Timeline>, <Rating>, <FeatureIcon>, <GradientBlob>/<GradientText>, <Prose>, <Divider label>, <EmptyState>.
+3. Supporting atoms for spaces between blocks: <Section eyebrow title description>, <Stat>, <Timeline>, <Rating>, <FeatureIcon>, <Prose>, <Divider label>, <EmptyState>.
 4. Each block accepts \`className\`. Sharper corners \u2192 override rounded-2xl. Different type \u2192 override in styles.css and blocks inherit.
 5. NEVER reinvent a section the kit already provides. If you're writing \`<section><div className="grid grid-cols-3">\u2026three cards\u2026</div></section>\`, stop and use <FeaturesGrid3>. If you're writing a sticky <header> with mobile toggle, use <NavWithCta>. If you're writing a footer with link columns, use <FooterColumns>.`
   },
@@ -165733,7 +165704,7 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
 
 4. Typography floor. Pair a distinctive display font with a clean body font \u2014 never both Inter, never both Poppins. Display headings get \`font-display tracking-tight leading-[1.05]\` (or \`leading-tight\`). Body copy gets \`leading-relaxed\` and a max measure (\`max-w-prose\` or \`max-w-2xl\`). Minimum hero h1: \`text-4xl md:text-6xl font-semibold tracking-tight\`. Never ship default browser typography.
 
-5. Color discipline. Commit to ONE accent (primary) + neutral surfaces + at most one secondary accent. No rainbow gradients. No purple-on-white "AI default". Gradients allowed: \`bg-gradient-to-br from-primary to-primary/60\` (semantic tokens only, never \`from-purple-500 to-pink-500\`).
+5. Color discipline. Commit to ONE accent (primary) + neutral surfaces + at most one secondary accent. No rainbow gradients. No purple-on-white "AI default". No decorative gradients; the only allowed gradient is a dark photo overlay for text legibility.
 
 6. Spacing rhythm. Use the \`<Section>\` block when available. Otherwise: \`py-16 md:py-24\` between sections, \`gap-6 md:gap-8\` inside grids, \`space-y-4\` inside cards. Never random \`mt-7\` / \`pb-11\` \u2014 stick to the 4/6/8/12/16/24 scale.
 
@@ -165749,11 +165720,11 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
 
 12. Intent first, decoration second. Before writing a single component, restate the user's brief in one sentence: "This is a {archetype} for {audience} whose primary job is {action}." Every section on the page must serve that job. If a section (testimonials, stats, logo cloud, FAQ) doesn't reinforce the primary action, cut it \u2014 do not pad. A short, focused page always beats a long generic one.
 
-13. Opinionated, COLOURFUL visual direction. Editorial / ink-on-cream / all-neutral schemes are banned \u2014 every project commits to a saturated brand hue plus one supporting hue, checked for contrast (body text 4.5:1, button labels against their own fill). Pick ONE and commit: vivid-gradient (mesh/duotone washes + bold sans), colour-block brutalist (mono/sans + hard borders + saturated accent), soft-futurist (geometric sans + gradient mesh + glass cards), organic (rounded serif + warm palette + botanical imagery), or technical (mono + grid + terminal accents). Choose based on the brief's domain; NEVER default to "clean modern" (Inter + white + indigo + rounded-2xl cards) \u2014 that is the single most tired AI aesthetic and it makes every Kimble app look identical. Match font pairing, radius scale, shadow depth, and imagery style to the chosen direction, and encode those choices as design tokens in \`src/styles.css\` so the whole app inherits them.
+13. One clear visual direction. Choose what fits the business \u2014 quiet editorial, warm natural, crisp monochrome, confident colour-block or technical \u2014 and commit to it. Neutral, cream and restrained palettes are welcome. Never decorate with gradient meshes, blobs, glass cards or glows. Encode the font pair, radius and colours as design tokens in \`src/styles.css\` so the whole app inherits them.
 
 14. Real content, real images. Never ship "Lorem ipsum", "Feature One / Feature Two / Feature Three", or grey-box image placeholders. Write copy that references the specific product ("Track macros without logging every gram" beats "Amazing feature that helps users"). For hero and section imagery, prefer AI-generated project-specific art (via the image generation tool) or well-chosen semantic placeholder services (Unsplash Source with domain-relevant queries) over solid grey blocks. Every image gets a meaningful alt and \`loading="lazy"\` except the hero image (\`loading="eager"\`).
 
-15. Section variety on a landing page. If the page has 4+ sections, at least THREE distinct layout patterns must appear: e.g. split-screen hero + asymmetric feature row + full-bleed testimonial + bento grid + centered CTA. Do NOT stack five identical three-column card grids in a row \u2014 that is the fastest tell of a generated page. Alternate light/dark surfaces, alternate image-left/image-right rows, alternate density.
+15. Section variety on a landing page. If the page has 4+ sections, at least THREE distinct layout patterns must appear: e.g. split-screen hero + asymmetric feature row + full-bleed testimonial + bento grid + centered CTA. Do NOT stack five identical three-column card grids in a row \u2014 that is the fastest tell of a generated page. Alternate image-left/image-right rows, alternate density.
 
 16. NO placeholder pages, ever. Every file under \`src/pages/\` is a real screen a real user navigates to, named after what the user sees (Services, Booking, Confirmation) \u2014 never after code concepts (Hooks, Main, UseAxe, Utils, Types, Index). If an import does not resolve, create the hook/util/component it actually refers to in the right folder; NEVER satisfy it with a page whose body is "This is a placeholder for the X page". A page with no real content must not be written at all, and must not be linked in the router.`
   },
@@ -166414,7 +166385,6 @@ var DECORATIONS = [
   { id: "deco-mesh", kind: "decoration", label: "Mesh gradient", description: "Two or three soft colour blobs blurred behind the hero at low opacity. One per page, hero only.", tags: ["saas", "startup", "ai", "modern"] },
   { id: "deco-grid", kind: "decoration", label: "Grid lines", description: "Faint 1px grid or dot field behind the hero, fading out towards the fold.", tags: ["developer", "technical", "ai", "infrastructure"] },
   { id: "deco-noise", kind: "decoration", label: "Film grain", description: "Very low-opacity noise overlay on dark surfaces to kill banding.", tags: ["dark", "luxury", "editorial", "cinematic"] },
-  { id: "deco-glass", kind: "decoration", label: "Glass surface", description: "Translucent blurred panels for floating cards and the sticky header only.", tags: ["modern", "saas", "mobile", "glass"] },
   { id: "deco-image-overlay", kind: "decoration", label: "Image overlay", description: "Dark-to-transparent gradient over a photograph so text stays readable. Mandatory whenever text sits on a photo.", tags: ["hospitality", "travel", "restaurant", "real-estate", "photography"] },
   { id: "deco-shape", kind: "decoration", label: "Cut shapes", description: "Large flat geometric shapes bleeding off the edge of a section.", tags: ["brutalist", "playful", "kids", "sports"] },
   { id: "deco-rule", kind: "decoration", label: "Editorial rules", description: "Hairline horizontal rules and generous margins instead of cards.", tags: ["editorial", "luxury", "portfolio", "minimal"] },
@@ -166642,7 +166612,7 @@ var TASTE_BODY = `
 [Reinforcement \u2014 Design taste commitments (READ BEFORE WRITING ANY VISUAL FILE)]
 Kimble is being judged on whether the landing looks like it was made by a person with taste, not by an AI that reached for the safe default. Every visual file you write this turn must satisfy ALL of the following:
 
-1. Commit to ONE COLOURFUL direction. Pick vivid-gradient OR maximalist OR retro-futuristic OR playful-pop OR jewel-tone OR neo-brutalist-colour OR art-deco OR tropical-organic \u2014 and execute it with conviction across every section. Never blend three neutral styles into "safe SaaS mush". Editorial / ink-on-cream / all-beige / all-grey looks are BANNED: every build ships a saturated brand hue plus one supporting hue, with body text at 4.5:1 contrast and button labels that contrast against their own fill.
+1. Commit to ONE clear direction and execute it with conviction across every section: quiet editorial, warm natural, crisp monochrome, confident colour-block or technical. Restrained, neutral or cream palettes are welcome when they fit the business. Body text at 4.5:1 contrast and button labels that contrast against their own fill.
 
 2. Distinctive typography, always. Never Inter + Inter. Never Poppins for both heading and body. Use the LOCKED FONT PAIR (below) verbatim \u2014 load it from Google Fonts via a \`<link rel="stylesheet">\` in the \`<head>\` of \`index.html\`, expose it as \`--font-display\` and \`--font-body\` inside the \`@theme\` block in \`src/styles.css\`, set \`body { font-family: var(--font-body) }\` and \`h1,h2,h3 { font-family: var(--font-display) }\`, then use \`font-display\` and \`font-body\` in components. A declared font variable with no <link> renders in system sans \u2014 that is a defect, not a style choice. Display headings are DISPLAY-scale (text-5xl \u2192 text-8xl on hero), tight tracking, tight leading. Never accept default browser typography.
 
@@ -166660,13 +166630,13 @@ Kimble is being judged on whether the landing looks like it was made by a person
    - \`\xA9 2024\` in the footer \u2014 the current year is passed to you separately, use it.
    - Every h1 the same size and weight across pages.
 
-5. Depth and layered composition. Landings must have layered depth: subtle gradients on hero backgrounds using the LOCKED palette, one soft radial glow behind the headline, generous shadows on elevated cards (\`shadow-2xl shadow-primary/10\` or similar semantic-token shadow), no blur, glassmorphism or floating pills.
+5. Calm surfaces. Depth comes from real photography, type scale and spacing \u2014 not decoration. No gradient blobs, radial glows, mesh washes, glassmorphism, blur or floating pills. Shadows only where elevation helps (menus, a card on hover).
 
-6. Real animation, once. If \`framer-motion\` is installed, animate the hero on mount (opacity + 20px y-translate, 0.6s ease), animate section entries as they scroll into view via IntersectionObserver, and add one signature motion element (a rotating word, a scrolling marquee, a scroll-linked reveal). Do NOT animate every card and every icon.
+6. Quiet motion. If motion is used, a single gentle fade/slide on the hero and as sections enter view. No marquees, tickers, rotating words, shimmer or glow effects. Do NOT animate every card and every icon.
 
-7. Signature moment per landing. Every landing needs ONE unforgettable moment: an oversized italic word in the hero, a bento tile with a live-looking mini-chart, a marquee of testimonial fragments, a scroll-swap sticky feature browser. Pick one, execute it well, do not sprinkle five.
+7. Let one thing lead. The memorable moment on a website is a strong photograph with a confident headline \u2014 never an unrequested widget, calculator, live chart, slider or ticker.
 
-8. Density matches vision. Minimalist commitment = generous whitespace, few sections, single accent. Maximalist commitment = dense compositions, layered gradients, multiple accents, mixed media in bento tiles. Do not build a maximalist hero followed by a minimalist features section.
+8. Density matches vision. Minimalist commitment = generous whitespace, few sections, single accent. Bolder commitment = larger type and stronger colour blocks, still with one accent and no decorative gradients. Do not build a maximalist hero followed by a minimalist features section.
 
 9. Layout hygiene \u2014 NO empty bands, NO overlapping components. Every section must be sized by its content:
    - NEVER put \`h-screen\` or \`min-h-screen\` on a section. Sections are sized with \`py-16 md:py-24\` (or \`py-20 md:py-28\` for the hero). \`min-h-screen\` belongs only on the page shell wrapper.
@@ -166680,7 +166650,7 @@ Kimble is being judged on whether the landing looks like it was made by a person
 
 If your draft violates ANY of the above, REWRITE before emitting. The goal is that when the user pastes the URL into a designer channel, no one guesses it was AI-generated.`;
 function packageTasteBody() {
-  const a2 = TASTE_BODY.indexOf("1. Commit to ONE COLOURFUL");
+  const a2 = TASTE_BODY.indexOf("1. Commit to ONE clear direction");
   const b = TASTE_BODY.indexOf("4. Refused");
   if (a2 < 0 || b < a2) return TASTE_BODY;
   return TASTE_BODY.slice(0, a2) + `1-3. Colour and typography come from the SELECTED DESIGN SYSTEM. Execute its DESIGN.md with conviction; use its semantic tokens and installed fonts; body text at 4.5:1 contrast. Never write your own palette, font pair or font links.

@@ -19,7 +19,7 @@ import { renderIllustrationBlock } from "./registry/illustrations";
 const TASTE_BODY = `\n\n[Reinforcement — Design taste commitments (READ BEFORE WRITING ANY VISUAL FILE)]
 Kimble is being judged on whether the landing looks like it was made by a person with taste, not by an AI that reached for the safe default. Every visual file you write this turn must satisfy ALL of the following:
 
-1. Commit to ONE COLOURFUL direction. Pick vivid-gradient OR maximalist OR retro-futuristic OR playful-pop OR jewel-tone OR neo-brutalist-colour OR art-deco OR tropical-organic — and execute it with conviction across every section. Never blend three neutral styles into "safe SaaS mush". Editorial / ink-on-cream / all-beige / all-grey looks are BANNED: every build ships a saturated brand hue plus one supporting hue, with body text at 4.5:1 contrast and button labels that contrast against their own fill.
+1. Commit to ONE clear direction and execute it with conviction across every section: quiet editorial, warm natural, crisp monochrome, confident colour-block or technical. Restrained, neutral or cream palettes are welcome when they fit the business. Body text at 4.5:1 contrast and button labels that contrast against their own fill.
 
 2. Distinctive typography, always. Never Inter + Inter. Never Poppins for both heading and body. Use the LOCKED FONT PAIR (below) verbatim — load it from Google Fonts via a \`<link rel="stylesheet">\` in the \`<head>\` of \`index.html\`, expose it as \`--font-display\` and \`--font-body\` inside the \`@theme\` block in \`src/styles.css\`, set \`body { font-family: var(--font-body) }\` and \`h1,h2,h3 { font-family: var(--font-display) }\`, then use \`font-display\` and \`font-body\` in components. A declared font variable with no <link> renders in system sans — that is a defect, not a style choice. Display headings are DISPLAY-scale (text-5xl → text-8xl on hero), tight tracking, tight leading. Never accept default browser typography.
 
@@ -37,13 +37,13 @@ Kimble is being judged on whether the landing looks like it was made by a person
    - \`© 2024\` in the footer — the current year is passed to you separately, use it.
    - Every h1 the same size and weight across pages.
 
-5. Depth and layered composition. Landings must have layered depth: subtle gradients on hero backgrounds using the LOCKED palette, one soft radial glow behind the headline, generous shadows on elevated cards (\`shadow-2xl shadow-primary/10\` or similar semantic-token shadow), no blur, glassmorphism or floating pills.
+5. Calm surfaces. Depth comes from real photography, type scale and spacing — not decoration. No gradient blobs, radial glows, mesh washes, glassmorphism, blur or floating pills. Shadows only where elevation helps (menus, a card on hover).
 
-6. Real animation, once. If \`framer-motion\` is installed, animate the hero on mount (opacity + 20px y-translate, 0.6s ease), animate section entries as they scroll into view via IntersectionObserver, and add one signature motion element (a rotating word, a scrolling marquee, a scroll-linked reveal). Do NOT animate every card and every icon.
+6. Quiet motion. If motion is used, a single gentle fade/slide on the hero and as sections enter view. No marquees, tickers, rotating words, shimmer or glow effects. Do NOT animate every card and every icon.
 
-7. Signature moment per landing. Every landing needs ONE unforgettable moment: an oversized italic word in the hero, a bento tile with a live-looking mini-chart, a marquee of testimonial fragments, a scroll-swap sticky feature browser. Pick one, execute it well, do not sprinkle five.
+7. Let one thing lead. The memorable moment on a website is a strong photograph with a confident headline — never an unrequested widget, calculator, live chart, slider or ticker.
 
-8. Density matches vision. Minimalist commitment = generous whitespace, few sections, single accent. Maximalist commitment = dense compositions, layered gradients, multiple accents, mixed media in bento tiles. Do not build a maximalist hero followed by a minimalist features section.
+8. Density matches vision. Minimalist commitment = generous whitespace, few sections, single accent. Bolder commitment = larger type and stronger colour blocks, still with one accent and no decorative gradients. Do not build a maximalist hero followed by a minimalist features section.
 
 9. Layout hygiene — NO empty bands, NO overlapping components. Every section must be sized by its content:
    - NEVER put \`h-screen\` or \`min-h-screen\` on a section. Sections are sized with \`py-16 md:py-24\` (or \`py-20 md:py-28\` for the hero). \`min-h-screen\` belongs only on the page shell wrapper.
@@ -59,7 +59,7 @@ If your draft violates ANY of the above, REWRITE before emitting. The goal is th
 
 /** Taste body with the colour/type rules handed to the design system package. */
 function packageTasteBody(): string {
-  const a = TASTE_BODY.indexOf("1. Commit to ONE COLOURFUL");
+  const a = TASTE_BODY.indexOf("1. Commit to ONE clear direction");
   const b = TASTE_BODY.indexOf("4. Refused");
   if (a < 0 || b < a) return TASTE_BODY;
   return (
