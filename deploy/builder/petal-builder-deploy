@@ -68,7 +68,7 @@ readonly IDLE_POLL_S=20
 # Drain mode (builder/src/drain.ts): this file inside the container makes the
 # builder refuse NEW jobs with a retryable 503 while accepted work finishes.
 readonly DRAIN_FILE_IN_CONTAINER=/app/.petal-drain
-readonly DRAIN_SETTLE_S=60              # max wait for work that slipped in just before the drain
+readonly DRAIN_SETTLE_S=45              # max wait for work that slipped in just before the drain (keep under Petal's ~75s re-send window)
 readonly DRAIN_POLL_S=2
 readonly HEALTH_TIMEOUT_S=90
 readonly STOP_TIMEOUT_S=30

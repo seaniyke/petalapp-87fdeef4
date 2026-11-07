@@ -62187,9 +62187,59 @@ var init_public_origin = __esm({
   }
 });
 
+// src/server/builder-retry.ts
+function retryAfterMs(res) {
+  const raw = res.headers.get("retry-after");
+  if (!raw) return null;
+  const s = Number(raw);
+  if (!Number.isFinite(s) || s < 0) return null;
+  return Math.min(s * 1e3, MAX_RETRY_AFTER_MS);
+}
+async function sendWithBuilderRetry(send, opts) {
+  const sleep3 = opts.sleep ?? defaultSleep;
+  const now = opts.now ?? Date.now;
+  const started = now();
+  for (let attempt = 0; ; attempt++) {
+    let res = null;
+    let error = null;
+    try {
+      res = await send(attempt);
+    } catch (e) {
+      error = e;
+    }
+    if (res && !RETRYABLE_BUILDER_STATUSES.has(res.status)) return res;
+    if (!res && (!opts.retryNetworkErrors || opts.signal?.aborted)) throw error;
+    const planned = opts.delaysMs[attempt];
+    const hinted = res ? retryAfterMs(res) : null;
+    const waitMs = planned === void 0 ? void 0 : Math.max(planned, hinted ?? 0);
+    const outOfTime = waitMs === void 0 || opts.signal?.aborted || opts.maxTotalMs !== void 0 && now() - started + waitMs > opts.maxTotalMs;
+    if (outOfTime) {
+      if (res) return res;
+      throw error;
+    }
+    if (res) await res.text().catch(() => "");
+    opts.onRetry?.({
+      attempt: attempt + 1,
+      waitMs,
+      reason: res ? `status ${res.status}` : error instanceof Error ? error.message : String(error)
+    });
+    await sleep3(waitMs);
+  }
+}
+var RETRYABLE_BUILDER_STATUSES, MAX_RETRY_AFTER_MS, defaultSleep;
+var init_builder_retry = __esm({
+  "src/server/builder-retry.ts"() {
+    init_define_import_meta_env();
+    RETRYABLE_BUILDER_STATUSES = /* @__PURE__ */ new Set([429, 502, 503, 504]);
+    MAX_RETRY_AFTER_MS = 3e4;
+    defaultSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  }
+});
+
 // src/server/durable-agent.server.ts
 var durable_agent_server_exports = {};
 __export(durable_agent_server_exports, {
+  AGENT_DISPATCH_RETRY_DELAYS_MS: () => AGENT_DISPATCH_RETRY_DELAYS_MS,
   DURABLE_TURN_HEADER: () => DURABLE_TURN_HEADER,
   FORWARDED_HEADERS: () => FORWARDED_HEADERS,
   buildAgentJobPayload: () => buildAgentJobPayload,
@@ -62216,7 +62266,7 @@ function buildAgentJobPayload(request, turnId, userId, body) {
   const publicConfig = process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY ? { supabaseUrl: process.env.SUPABASE_URL, supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : void 0;
   return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: trustedAppOrigin(request.url), publicConfig };
 }
-async function signedPost(path, payload, fetcher, env2) {
+async function signedPost(path, payload, fetcher, env2, timeoutMs) {
   const base = env2.BUILDER_URL;
   const secret = env2.BUILDER_SHARED_SECRET;
   if (!base || !secret) throw new Error("Builder is not configured");
@@ -62229,12 +62279,26 @@ async function signedPost(path, payload, fetcher, env2) {
       "x-petal-timestamp": timestamp,
       "x-petal-signature": signature
     },
-    body: raw
+    body: raw,
+    ...timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}
   });
 }
-async function dispatchAgentJob(job, fetcher = fetch, env2 = process.env) {
+async function dispatchAgentJob(job, fetcher = fetch, env2 = process.env, retry = {}) {
+  if (!env2.BUILDER_URL || !env2.BUILDER_SHARED_SECRET) {
+    return { ok: false, status: 0, reason: "Builder is not configured" };
+  }
   try {
-    const res = await signedPost("/agent/generate", job, fetcher, env2);
+    const res = await sendWithBuilderRetry(
+      () => signedPost("/agent/generate", job, fetcher, env2, AGENT_DISPATCH_ATTEMPT_TIMEOUT_MS),
+      {
+        delaysMs: retry.delaysMs ?? AGENT_DISPATCH_RETRY_DELAYS_MS,
+        retryNetworkErrors: true,
+        maxTotalMs: AGENT_DISPATCH_MAX_TOTAL_MS,
+        sleep: retry.sleep,
+        now: retry.now,
+        onRetry: ({ attempt, waitMs, reason }) => console.warn(`[durable-agent] dispatch ${reason} \u2014 retrying in ${waitMs}ms (attempt ${attempt + 1})`)
+      }
+    );
     if (res.status === 202) return { ok: true };
     const text = await res.text().catch(() => "");
     return { ok: false, status: res.status, reason: text.slice(0, 300) || `builder returned ${res.status}` };
@@ -62262,13 +62326,17 @@ function ingressAcceptedResponse(turnId) {
     }
   });
 }
-var DURABLE_TURN_HEADER, FORWARDED_HEADERS;
+var DURABLE_TURN_HEADER, FORWARDED_HEADERS, AGENT_DISPATCH_RETRY_DELAYS_MS, AGENT_DISPATCH_MAX_TOTAL_MS, AGENT_DISPATCH_ATTEMPT_TIMEOUT_MS;
 var init_durable_agent_server = __esm({
   "src/server/durable-agent.server.ts"() {
     init_define_import_meta_env();
     init_public_origin();
+    init_builder_retry();
     DURABLE_TURN_HEADER = "x-petal-durable-turn";
     FORWARDED_HEADERS = ["authorization", "x-petal-target", "x-kimble-inference-eval"];
+    AGENT_DISPATCH_RETRY_DELAYS_MS = [1e3, 2e3, 4e3, 8e3, 15e3, 3e4];
+    AGENT_DISPATCH_MAX_TOTAL_MS = 75e3;
+    AGENT_DISPATCH_ATTEMPT_TIMEOUT_MS = 3e4;
   }
 });
 
@@ -70152,6 +70220,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70410,6 +70479,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -142069,6 +142139,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144385,6 +144456,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145589,6 +145661,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146697,6 +146770,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -171835,7 +171909,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
