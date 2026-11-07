@@ -1,5 +1,5 @@
 /**
- * "Powered by Kimble" badge injection.
+ * "Powered by Custard" badge injection.
  *
  * Adds a small, non-intrusive floating link to the bottom-right of built apps.
  * We append a <style> + <a> block to index.html so the badge renders on every
