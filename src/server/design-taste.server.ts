@@ -59,7 +59,7 @@ If your draft violates ANY of the above, REWRITE before emitting. The goal is th
 
 /** Taste body with the colour/type rules handed to the design system package. */
 function packageTasteBody(): string {
-  const a = TASTE_BODY.indexOf("1. Commit to ONE COLOURFUL");
+  const a = TASTE_BODY.indexOf("1. Commit to ONE clear direction");
   const b = TASTE_BODY.indexOf("4. Refused");
   if (a < 0 || b < a) return TASTE_BODY;
   return (

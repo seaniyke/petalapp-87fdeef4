@@ -143,7 +143,7 @@ export type DesignDirection = {
    * Motion intensity ladder.
    *   still       — zero motion primitives, type only.
    *   subtle      — FadeIn / SlideUp / BlurFade on key sections.
-   *   expressive  — Stagger + SplitText + Magnetic CTAs + Parallax/Tilt.
+   *   expressive  — Stagger + SplitText + gentle Parallax.
    *   cinematic   — Awwwards layer: Lenis smooth-scroll + GSAP ScrollTrigger
    *                 reveals + optional R3F hero scene + view transitions.
    */
@@ -311,9 +311,9 @@ The difference is composition discipline, not the kit. SaaS briefs deserve Flowy
 
 Anti-slop rules — these are hard constraints on the direction you commit to:
 1. No symmetric card triplets as the primary rhythm. If a section has three peers, break it: change one card's span, offset it vertically, or make the first one a full-width statement.
-2. COLOR IS MANDATORY. Every direction ships a saturated brand hue plus one supporting hue — beige/cream/ink "editorial" palettes, all-grey neutrals and washed-out pastels-only schemes are BANNED. Use the two hues with intent: primary for CTAs and key marks, the supporting hue for one accent surface or highlight. Never more than two chromatic hues plus neutrals, and never a stock purple-to-indigo gradient.
+2. Colour with intent. One primary hue for actions and key marks, optionally one supporting hue, plus neutrals. Quiet, neutral, cream and editorial palettes are welcome when they fit the business. Never a stock purple-to-indigo gradient.
 2b. Contrast is non-negotiable: body text ≥ 4.5:1 against its surface, large display text ≥ 3:1, and every filled button's label must contrast against its own fill (never a light accent with white text). If a hue is too light for white text, darken the fill instead of lightening the text.
-2c. "Editorial", "magazine", "swiss", "ink-on-cream" and "newsprint" are forbidden vibes. Reach instead for confident colour-led directions: vivid-gradient, sunlit-pop, jewel-tone, neon-noir, candy-brutalist, tropical-luxe, electric-minimal.
+2c. Prefer directions modern studios actually ship: quiet editorial, warm natural, crisp monochrome, confident colour-block, technical. No vivid-gradient, neon or glassy directions.
 3. No purple/indigo-on-white gradient heroes, no glowing blurred blobs behind centered text, no floating sparkle icon as the hero graphic.
 4. Type must have a scale jump: display headings at least 3x the body size, with tight negative tracking. Even a "minimal" direction commits to one oversized element per screen.
 5. Motion is one register applied consistently — pick a single easing and duration family. Never mix a bouncy spring with a slow cinematic fade in the same app.
@@ -419,7 +419,7 @@ export function renderDesignDirectionBlock(
         : d.motion === "subtle"
           ? `motion=subtle → FadeIn / SlideUp / BlurFade on the hero and major sections only. No SplitText, no Magnetic.`
           : d.motion === "expressive"
-            ? `motion=expressive → Stagger + SplitText on the hero, WordRotate in the subhead, Magnetic CTAs, Parallax/Tilt on hero media. Layer 3-5 across the page, not on every element.`
+            ? `motion=expressive → Stagger + SplitText on the hero, gentle Parallax on hero media. Layer 2-3 across the page, not on every element.`
             : `motion=cinematic → wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) +
       `\n` +
     `- fx recipe: ${d.fx_recipe ?? "(unset)"} — ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}\n` +
