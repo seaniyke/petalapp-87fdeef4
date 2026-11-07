@@ -167,21 +167,21 @@ export type DesignDirection = {
  */
 const FX_RECIPE_DETAILS: Record<FxRecipe, string> = {
   "vivid-color":
-    "MeshGradient or a two-hue colour wash behind the hero, GradientText or AuroraText on one headline word, saturated colour-block section bands (full-bleed brand-hue panel alternating with a light tint of the supporting hue), GlowCard or MagicCard tiles, ShimmerButton primary CTA, BlurFade + SlideUp reveals. Colour carries the page — never beige, never all-neutral.",
+    "Confident colour-block sections (full-bleed brand-hue panel alternating with a light tint), bold display type, real photography, quiet FadeIn reveals. No gradient meshes, glow cards or shimmer buttons.",
   "modern-saas":
-    "MeshGradient or soft brand-tinted wash BEHIND the hero copy (DotPattern is BANNED as the sole hero background — use it only as a secondary section divider after the fold). Product UI mockup as the hero visual, framed in BrowserMockup with 1-2 floating decorative cards (KPI tile, notification pill, avatar stack) overlapping at the corners. Primary CTA = filled <Button size=\"lg\"> or <ShimmerButton> — NEVER a bare anchor + arrow. Secondary CTA = <Button variant=\"outline\">. BorderBeam on the primary feature card. FadeIn + SlideUp throughout.",
+    "Clean split hero: headline, one sentence, one filled <Button size=\"lg\"> plus optional outline button; real product screenshot on a plain surface. No floating decorative cards, no mesh washes, no beams. FadeIn on major sections only.",
   "agency-portfolio":
     "Full-bleed photographic hero, plain image-led project tiles (picture, title, one meta line), generous white space, quiet FadeIn/Stagger reveals only. No marquees, tilt, glow or magnetic effects — the photographs carry the page.",
   "cyberpunk-crypto":
-    "RetroGrid floor on hero, Meteors layered behind, AuroraText on the headline, GlowCard for stat tiles, ShimmerButton or RainbowButton for the CTA, OrbitingCircles around the brand mark.",
+    "Dark solid surfaces, mono accents for numbers, crisp hairline borders, one saturated accent. No retro grids, meteors, rainbow or shimmer buttons.",
   "ai-product":
-    "AnimatedBeam connecting input → AI → output diagram, Sparkles around the chat surface, GradientText on the headline, MagicCard for capability tiles, BorderBeam on the CTA.",
+    "Plain product surface as the hero visual (the real chat/workspace UI), clear capability rows with icon + title + sentence, solid primary button. No beams, sparkles or gradient text.",
   "playful-consumer":
-    "FlickeringGrid background, GradientText headline, Ripple on interactive tiles, Marquee of testimonials, WordRotate in the hero subhead, confetti via `@/lib/confetti` on success states.",
+    "Warm colour blocks, rounded-but-restrained cards, friendly display type, real photography, gentle FadeIn. No marquees, flickering grids, ripples or rotating words.",
   "luxury-brand":
-    "NoiseTexture, oversized serif headlines via SplitText, slow Parallax on product imagery, ShinyText accents. No beams, no grids — silence is luxury.",
+    "Oversized serif headlines, slow subtle reveals on product imagery, generous white space, solid neutral surfaces. No beams, grids, noise or shiny text — silence is luxury.",
   "data-dashboard":
-    "GridPattern background, KPI tiles with CountUp + Sparkles on positive deltas, FadeIn on cards, no heavy motion. Density over flash.",
+    "Plain surfaces, KPI tiles with CountUp, FadeIn on cards, no background patterns. Density over flash.",
   "awwwards-3d":
     "R3F HeroSphere or SplineEmbed as hero centerpiece, LenisProvider wrapping the app, useScrollScene for pinned reveal sequences, GSAP ScrollTrigger horizontal scroll for showcase, SplitText hero, view transitions on route changes.",
 };
@@ -413,7 +413,7 @@ export function renderDesignDirectionBlock(
         `- palette mood: ${d.palette_mood}. Translate this into oklch tokens in src/styles.css (background, foreground, primary, accent, muted). DO NOT use stock purple gradients on white.\n`) +
     `- density: ${d.density}\n` +
     `- motion: ${d.motion}\n` +
-    `- motion primitives (\`@/components/motion\`): FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Magnetic, Tilt, Parallax, SplitText, CountUp, WordRotate, BlurFade. ` +
+    `- motion primitives (\`@/components/motion\`): FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Parallax, SplitText, CountUp, BlurFade. ` +
       (d.motion === "still"
         ? `motion=still → do NOT import these. Type and color do the work.`
         : d.motion === "subtle"
@@ -423,7 +423,8 @@ export function renderDesignDirectionBlock(
             : `motion=cinematic → wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) +
       `\n` +
     `- fx recipe: ${d.fx_recipe ?? "(unset)"} — ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}\n` +
-    `- FX catalog (\`@/components/fx\`) for reference: Backgrounds: GridPattern, DotPattern, RetroGrid, FlickeringGrid, AnimatedGridPattern, Ripple, NoiseTexture, LightRays, MeshGradient, Meteors, Particles, Sparkles. Text: AuroraText, GradientText, ShinyText. Containers: MagicCard, BorderBeam, GlowCard, BentoGrid + BentoCard, Marquee, InfiniteMovingCards, OrbitingCircles, HeroParallax, AnimatedBeam. Buttons: ShimmerButton, RainbowButton, ShinyButton. Stick to the recipe above — layer at most 2 FX per section. Restraint matters.\n` +
+    `- decorative FX (\`@/components/fx\` backgrounds, glowing/shimmer buttons, marquees, gradient text) are retired: do not import them. Photography, type and spacing carry the page.
+` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
     templateBlock

@@ -32,7 +32,6 @@ export const DECORATIONS: readonly DecorationRecord[] = [
   { id: "deco-mesh", kind: "decoration", label: "Mesh gradient", description: "Two or three soft colour blobs blurred behind the hero at low opacity. One per page, hero only.", tags: ["saas", "startup", "ai", "modern"] },
   { id: "deco-grid", kind: "decoration", label: "Grid lines", description: "Faint 1px grid or dot field behind the hero, fading out towards the fold.", tags: ["developer", "technical", "ai", "infrastructure"] },
   { id: "deco-noise", kind: "decoration", label: "Film grain", description: "Very low-opacity noise overlay on dark surfaces to kill banding.", tags: ["dark", "luxury", "editorial", "cinematic"] },
-  { id: "deco-glass", kind: "decoration", label: "Glass surface", description: "Translucent blurred panels for floating cards and the sticky header only.", tags: ["modern", "saas", "mobile", "glass"] },
   { id: "deco-image-overlay", kind: "decoration", label: "Image overlay", description: "Dark-to-transparent gradient over a photograph so text stays readable. Mandatory whenever text sits on a photo.", tags: ["hospitality", "travel", "restaurant", "real-estate", "photography"] },
   { id: "deco-shape", kind: "decoration", label: "Cut shapes", description: "Large flat geometric shapes bleeding off the edge of a section.", tags: ["brutalist", "playful", "kids", "sports"] },
   { id: "deco-rule", kind: "decoration", label: "Editorial rules", description: "Hairline horizontal rules and generous margins instead of cards.", tags: ["editorial", "luxury", "portfolio", "minimal"] },

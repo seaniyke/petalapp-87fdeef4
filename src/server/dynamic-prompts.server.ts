@@ -161,19 +161,19 @@ Compose pages by picking ONE variant per section from "@/components/blocks/*". D
 
 Available section blocks:
 - Nav: <NavBar>, <NavWithCta>, <NavWithSearch>
-- Hero: <HeroCentered>, <HeroSplitImage>, <HeroEditorial>
-- Logos: <LogosGrid>, <LogosMarquee>
+- Hero: <HeroSplitImage>, <HeroEditorial>, <HeroCentered>
+- Logos: <LogosGrid>
 - Features: <FeaturesGrid3>, <FeaturesBento>, <FeaturesAlternatingRows>
 - Stats: <StatsBand>, <StatsGrid>, <StatsWithChart>
-- Testimonials: <TestimonialsCards>, <TestimonialsMarquee>, <TestimonialsQuoteHero>
+- Testimonials: <TestimonialsCards>, <TestimonialsQuoteHero>
 - Pricing: <PricingSingleProduct> (3-tier and comparison table examples in examples-pack)
 - FAQ: <FaqAccordion>, <FaqTwoColumn>
-- CTA: <CtaCentered>, <CtaSplit>, <CtaGradientBand>
+- CTA: <CtaCentered>, <CtaSplit>
 - Footer: <FooterColumns>, <FooterMinimal>, <FooterNewsletter>
 
 Exact data prop names for blocks that render lists:
 - <TestimonialsCards items={[{ quote, name, role }]} /> (alias accepted: testimonials)
-- <LogosMarquee logos={[{ name, src }]} /> or logos={["/logo.svg"]}
+- <LogosGrid logos={[{ name, src }]} />
 - <PricingTable tiers={[{ name, price, features, cta: { label, href } }]} />
 - <FaqAccordion items={[{ q, a }]} /> (aliases accepted: faqs with question/answer)
 - <FeaturesGrid3 items={[{ icon: Film, title, description }]} />
@@ -190,11 +190,11 @@ Reference page assemblies — READ ONE before composing a similar page:
 Composition rules — this is the difference between forgettable and memorable:
 1. MIX variants across a single page. Do NOT use all "centered" variants together. Pair an asymmetric hero with alternating-rows features; pair a split-image hero with a bento grid.
 2. Match variants to the Design Direction vibe. These are STYLE PAIRINGS, not a checklist — use only the sections the request needs (nav, hero, footer as baseline); never add Stats/Testimonials/Pricing/FAQ/CTA/Logos just because a recipe lists them:
-   - agency / portfolio / studio → NavBar + HeroSplit or HeroEditorial (restyled with saturated colour blocks, never cream) + FeaturesAlternatingRows + TestimonialsQuoteHero + CtaSplit + FooterMinimal
-   - playful / maximalist / consumer launch → NavWithCta + HeroCentered (GradientBlob) + FeaturesBento + TestimonialsMarquee + CtaGradientBand + FooterNewsletter
-   - SaaS product / dev tools → NavWithCta + HeroSplitImage + LogosMarquee + FeaturesBento + StatsBand + TestimonialsCards + PricingSingleProduct + FaqAccordion + CtaCentered + FooterColumns
+   - agency / portfolio / studio → NavBar + HeroSplit or HeroEditorial  + FeaturesAlternatingRows + TestimonialsQuoteHero + CtaSplit + FooterMinimal
+   - consumer brand / shop → NavBar + HeroSplitImage + FeaturesAlternatingRows + TestimonialsQuoteHero + CtaSplit + FooterMinimal
+   - SaaS product / dev tools → NavWithCta + HeroSplitImage + LogosGrid + FeaturesBento + StatsBand + TestimonialsCards + PricingSingleProduct + FaqAccordion + CtaCentered + FooterColumns
    - docs / dashboard / app interior → NavWithSearch + content + EmptyState
-3. Supporting atoms for spaces between blocks: <Section eyebrow title description>, <Marquee>, <Stat>, <Timeline>, <Rating>, <FeatureIcon>, <GradientBlob>/<GradientText>, <Prose>, <Divider label>, <EmptyState>.
+3. Supporting atoms for spaces between blocks: <Section eyebrow title description>, <Stat>, <Timeline>, <Rating>, <FeatureIcon>, <Prose>, <Divider label>, <EmptyState>.
 4. Each block accepts \`className\`. Sharper corners → override rounded-2xl. Different type → override in styles.css and blocks inherit.
 5. NEVER reinvent a section the kit already provides. If you're writing \`<section><div className="grid grid-cols-3">…three cards…</div></section>\`, stop and use <FeaturesGrid3>. If you're writing a sticky <header> with mobile toggle, use <NavWithCta>. If you're writing a footer with link columns, use <FooterColumns>.`,
   },
@@ -568,7 +568,7 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
 
 4. Typography floor. Pair a distinctive display font with a clean body font — never both Inter, never both Poppins. Display headings get \`font-display tracking-tight leading-[1.05]\` (or \`leading-tight\`). Body copy gets \`leading-relaxed\` and a max measure (\`max-w-prose\` or \`max-w-2xl\`). Minimum hero h1: \`text-4xl md:text-6xl font-semibold tracking-tight\`. Never ship default browser typography.
 
-5. Color discipline. Commit to ONE accent (primary) + neutral surfaces + at most one secondary accent. No rainbow gradients. No purple-on-white "AI default". Gradients allowed: \`bg-gradient-to-br from-primary to-primary/60\` (semantic tokens only, never \`from-purple-500 to-pink-500\`).
+5. Color discipline. Commit to ONE accent (primary) + neutral surfaces + at most one secondary accent. No rainbow gradients. No purple-on-white "AI default". No decorative gradients; the only allowed gradient is a dark photo overlay for text legibility.
 
 6. Spacing rhythm. Use the \`<Section>\` block when available. Otherwise: \`py-16 md:py-24\` between sections, \`gap-6 md:gap-8\` inside grids, \`space-y-4\` inside cards. Never random \`mt-7\` / \`pb-11\` — stick to the 4/6/8/12/16/24 scale.
 
@@ -584,11 +584,11 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
 
 12. Intent first, decoration second. Before writing a single component, restate the user's brief in one sentence: "This is a {archetype} for {audience} whose primary job is {action}." Every section on the page must serve that job. If a section (testimonials, stats, logo cloud, FAQ) doesn't reinforce the primary action, cut it — do not pad. A short, focused page always beats a long generic one.
 
-13. Opinionated, COLOURFUL visual direction. Editorial / ink-on-cream / all-neutral schemes are banned — every project commits to a saturated brand hue plus one supporting hue, checked for contrast (body text 4.5:1, button labels against their own fill). Pick ONE and commit: vivid-gradient (mesh/duotone washes + bold sans), colour-block brutalist (mono/sans + hard borders + saturated accent), soft-futurist (geometric sans + gradient mesh + glass cards), organic (rounded serif + warm palette + botanical imagery), or technical (mono + grid + terminal accents). Choose based on the brief's domain; NEVER default to "clean modern" (Inter + white + indigo + rounded-2xl cards) — that is the single most tired AI aesthetic and it makes every Kimble app look identical. Match font pairing, radius scale, shadow depth, and imagery style to the chosen direction, and encode those choices as design tokens in \`src/styles.css\` so the whole app inherits them.
+13. One clear visual direction. Choose what fits the business — quiet editorial, warm natural, crisp monochrome, confident colour-block or technical — and commit to it. Neutral, cream and restrained palettes are welcome. Never decorate with gradient meshes, blobs, glass cards or glows. Encode the font pair, radius and colours as design tokens in \`src/styles.css\` so the whole app inherits them.
 
 14. Real content, real images. Never ship "Lorem ipsum", "Feature One / Feature Two / Feature Three", or grey-box image placeholders. Write copy that references the specific product ("Track macros without logging every gram" beats "Amazing feature that helps users"). For hero and section imagery, prefer AI-generated project-specific art (via the image generation tool) or well-chosen semantic placeholder services (Unsplash Source with domain-relevant queries) over solid grey blocks. Every image gets a meaningful alt and \`loading="lazy"\` except the hero image (\`loading="eager"\`).
 
-15. Section variety on a landing page. If the page has 4+ sections, at least THREE distinct layout patterns must appear: e.g. split-screen hero + asymmetric feature row + full-bleed testimonial + bento grid + centered CTA. Do NOT stack five identical three-column card grids in a row — that is the fastest tell of a generated page. Alternate light/dark surfaces, alternate image-left/image-right rows, alternate density.
+15. Section variety on a landing page. If the page has 4+ sections, at least THREE distinct layout patterns must appear: e.g. split-screen hero + asymmetric feature row + full-bleed testimonial + bento grid + centered CTA. Do NOT stack five identical three-column card grids in a row — that is the fastest tell of a generated page. Alternate image-left/image-right rows, alternate density.
 
 16. NO placeholder pages, ever. Every file under \`src/pages/\` is a real screen a real user navigates to, named after what the user sees (Services, Booking, Confirmation) — never after code concepts (Hooks, Main, UseAxe, Utils, Types, Index). If an import does not resolve, create the hook/util/component it actually refers to in the right folder; NEVER satisfy it with a page whose body is "This is a placeholder for the X page". A page with no real content must not be written at all, and must not be linked in the router.`,
   },
