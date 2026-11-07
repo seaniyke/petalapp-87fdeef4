@@ -79,26 +79,48 @@ export interface PictureQuery {
   briefTags?: string[];
   /** "16:9" etc, when the build asked for a shape. */
   aspectRatio?: string | null;
+  /** Pictures already used elsewhere in this build — never picked again. */
+  exclude?: ReadonlySet<string>;
 }
+
+/** Every word a picture's own description carries (subject + tags). */
+export function pictureWords(pic: { subject?: string | null; tags?: string[] | null }): Set<string> {
+  const out = new Set(tokenize(pic.subject ?? ""));
+  for (const t of pic.tags ?? []) for (const w of tokenize(String(t))) out.add(w);
+  return out;
+}
+
+/** How many DISTINCT request words the picture's description covers. */
+export function matchedWords(words: string[], described: Set<string>): number {
+  let n = 0;
+  for (const w of new Set(words)) if (described.has(w)) n += 1;
+  return n;
+}
+
+/** One shared word ("dark", "lighting") is never a match. */
+export const MIN_MATCHED_WORDS = 2;
 
 /**
  * Score one picture against a request. Deterministic, no I/O.
  *
  * Subject words count most, then tags, then industry/mood, then shape.
+ * Each request word counts ONCE (subject or tag, not both) — counting it
+ * twice let a single shared word like "dark" clear the bar on its own.
  * A picture must clear MIN_SCORE to be used — a weak match looks worse
  * than a generated image.
  */
 export function scorePicture(pic: LibraryPicture, words: string[], briefTags: string[], aspectRatio?: string | null): number {
   const want = new Set(words);
   const tags = new Set(briefTags.map((t) => t.toLowerCase()));
+  const subjectWords = new Set(tokenize(pic.subject));
+  const tagWords = new Set(pic.tags.map((t) => t.toLowerCase()));
   let score = 0;
 
-  for (const w of tokenize(pic.subject)) if (want.has(w)) score += 4;
-  for (const t of pic.tags) {
-    const tag = t.toLowerCase();
-    if (want.has(tag)) score += 3;
-    else if (tags.has(tag)) score += 2;
+  for (const w of want) {
+    if (subjectWords.has(w)) score += 4;
+    else if (tagWords.has(w)) score += 3;
   }
+  for (const tag of tagWords) if (!want.has(tag) && tags.has(tag)) score += 2;
   for (const field of [pic.industry, pic.mood, pic.style, pic.tone, pic.location]) {
     if (!field) continue;
     const f = field.toLowerCase();
@@ -126,6 +148,8 @@ export async function findLibraryPicture(query: PictureQuery): Promise<LibraryPi
   let best: LibraryPicture | null = null;
   let bestScore = 0;
   for (const pic of rows) {
+    if (query.exclude?.has(pic.url)) continue;
+    if (matchedWords(words, pictureWords(pic)) < MIN_MATCHED_WORDS) continue;
     const score = scorePicture(pic, words, briefTags, query.aspectRatio);
     if (score > bestScore) {
       bestScore = score;
