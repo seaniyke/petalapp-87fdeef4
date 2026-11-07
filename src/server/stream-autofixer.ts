@@ -10,7 +10,7 @@
  *      only when the backend kit is present (type-only imports stay alone)
  *   3. <input type="date">                           → noted (cannot rewrite JSX safely; logged)
  *   4. lucide-react icons that don't exist           → swapped for nearest valid icon
- *   5. Kimble-image:// placeholders > 6 unique        → first 6 kept, rest stripped to picsum
+ *   5. picture placeholders are left untouched (the 12-per-build budget lives in image-generation)
  *
  * Each fix logs to the returned report so we can surface a "auto-corrected N
  * issues" status in the chat.
