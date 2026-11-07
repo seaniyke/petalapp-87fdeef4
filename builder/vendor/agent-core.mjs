@@ -13801,12 +13801,12 @@ var init_dist3 = __esm({
         return path.replace(/^\/|\/$/g, "").replace(/\/+/g, "/");
       }
       /** Modifies the `query`, appending values the from `transform` */
-      applyTransformOptsToQuery(query, transform2) {
-        if (transform2.width) query.set("width", transform2.width.toString());
-        if (transform2.height) query.set("height", transform2.height.toString());
-        if (transform2.resize) query.set("resize", transform2.resize);
-        if (transform2.format) query.set("format", transform2.format);
-        if (transform2.quality) query.set("quality", transform2.quality.toString());
+      applyTransformOptsToQuery(query, transform) {
+        if (transform.width) query.set("width", transform.width.toString());
+        if (transform.height) query.set("height", transform.height.toString());
+        if (transform.resize) query.set("resize", transform.resize);
+        if (transform.format) query.set("format", transform.format);
+        if (transform.quality) query.set("quality", transform.quality.toString());
         return query;
       }
     };
@@ -66736,12 +66736,12 @@ var init_types = __esm({
       and(incoming) {
         return ZodIntersection.create(this, incoming, this._def);
       }
-      transform(transform2) {
+      transform(transform) {
         return new ZodEffects({
           ...processCreateParams(this._def),
           schema: this,
           typeName: ZodFirstPartyTypeKind.ZodEffects,
-          effect: { type: "transform", transform: transform2 }
+          effect: { type: "transform", transform }
         });
       }
       default(def) {
@@ -70101,6 +70101,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70359,6 +70360,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140127,12 +140129,55 @@ var init_jsx_attr_literal_fixer_server = __esm({
   }
 });
 
+// src/server/verification/ts-runtime-shim.ts
+var ts_runtime_shim_exports = {};
+__export(ts_runtime_shim_exports, {
+  TS_RUNTIME_READY: () => TS_RUNTIME_READY,
+  installTsRuntimeGlobals: () => installTsRuntimeGlobals
+});
+function installTsRuntimeGlobals() {
+  return install();
+}
+function install() {
+  const g = globalThis;
+  if (typeof g.__filename === "undefined") g.__filename = "/node_modules/typescript/lib/typescript.js";
+  if (typeof g.__dirname === "undefined") g.__dirname = "/node_modules/typescript/lib";
+  return true;
+}
+var TS_RUNTIME_READY;
+var init_ts_runtime_shim = __esm({
+  "src/server/verification/ts-runtime-shim.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    TS_RUNTIME_READY = install();
+  }
+});
+
 // src/server/esbuild-verifier.server.ts
 var esbuild_verifier_server_exports = {};
 __export(esbuild_verifier_server_exports, {
   verifyFilesEsbuild: () => verifyFilesEsbuild
 });
-import * as esbuild from "esbuild-wasm";
+import * as esbuildNode from "esbuild-wasm";
+function onWorker() {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+}
+async function parseWithTypescript(targets) {
+  const { installTsRuntimeGlobals: installTsRuntimeGlobals2 } = await Promise.resolve().then(() => (init_ts_runtime_shim(), ts_runtime_shim_exports));
+  installTsRuntimeGlobals2();
+  const ts2 = (await import("typescript")).default;
+  const issues = [];
+  for (const f of targets) {
+    const kind = f.path.endsWith(".tsx") ? ts2.ScriptKind.TSX : f.path.endsWith(".jsx") ? ts2.ScriptKind.JSX : f.path.endsWith(".ts") ? ts2.ScriptKind.TS : ts2.ScriptKind.JS;
+    const sf = ts2.createSourceFile(f.path, f.content, ts2.ScriptTarget.ES2022, true, kind);
+    const diags = sf.parseDiagnostics ?? [];
+    for (const d of diags) {
+      const pos = sf.getLineAndCharacterOfPosition(d.start ?? 0);
+      issues.push({ path: f.path, line: pos.line + 1, column: pos.character, message: ts2.flattenDiagnosticMessageText(d.messageText, "\n"), kind: "parse" });
+    }
+  }
+  return issues;
+}
 function ensureInit() {
   if (initPromise) return initPromise;
   const alreadyUp = (err) => /more than once/i.test(err?.message ?? "");
@@ -140168,6 +140213,15 @@ async function verifyFilesEsbuild(files, changedPaths, options = {}) {
     (f) => changed.has(f.path) && !shouldSkip(f.path, options.includeScaffoldOwned === true)
   );
   if (targets.length === 0) return { status: "not_checked", ok: true, issues: [], checkedPaths: [] };
+  if (onWorker()) {
+    try {
+      const issues2 = await parseWithTypescript(targets);
+      return { status: issues2.length ? "failed" : "passed", ok: issues2.length === 0, issues: issues2, checkedPaths: targets.map((f) => f.path) };
+    } catch (err) {
+      const detail = err?.message ?? String(err);
+      return { status: "unavailable", ok: false, issues: [], checkedPaths: [], unavailableReason: "initialization_error", unavailableDetail: detail };
+    }
+  }
   try {
     await ensureInit();
   } catch (err) {
@@ -140233,10 +140287,11 @@ async function verifyFilesEsbuild(files, changedPaths, options = {}) {
     checkedPaths: targets.map((f) => f.path)
   };
 }
-var SCANNABLE4, initPromise;
+var esbuild, SCANNABLE4, initPromise;
 var init_esbuild_verifier_server = __esm({
   "src/server/esbuild-verifier.server.ts"() {
     init_define_import_meta_env();
+    esbuild = esbuildNode;
     SCANNABLE4 = /\.(tsx?|jsx?)$/;
     initPromise = null;
   }
@@ -141158,6 +141213,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141322,6 +141378,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141365,6 +141422,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141586,6 +141644,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143902,6 +143961,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145106,6 +145166,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -154075,22 +154136,6 @@ var init_work_unit = __esm({
     isSource2 = (p2) => /\.(tsx?|jsx?)$/.test(p2);
     isPage = (p2) => p2.startsWith("src/pages/");
     IMPORT = /import\s+(type\s+)?([\w$]+)?\s*,?\s*(\{[^}]*\})?\s*(?:\*\s+as\s+[\w$]+\s*)?from\s*["']([^"']+)["']/g;
-  }
-});
-
-// src/server/verification/ts-runtime-shim.ts
-function install() {
-  const g = globalThis;
-  if (typeof g.__filename === "undefined") g.__filename = "/node_modules/typescript/lib/typescript.js";
-  if (typeof g.__dirname === "undefined") g.__dirname = "/node_modules/typescript/lib";
-  return true;
-}
-var TS_RUNTIME_READY;
-var init_ts_runtime_shim = __esm({
-  "src/server/verification/ts-runtime-shim.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    TS_RUNTIME_READY = install();
   }
 });
 
@@ -171597,7 +171642,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

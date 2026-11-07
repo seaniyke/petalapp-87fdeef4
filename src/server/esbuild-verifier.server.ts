@@ -15,7 +15,33 @@
  * Failure mode policy: initialization failure is an explicit unavailable
  * verdict. Callers must stop safely: unknown is neither clean nor broken.
  */
-import * as esbuild from "esbuild-wasm";
+import * as esbuildNode from "esbuild-wasm";
+
+/** True on the live Cloudflare Worker (no child processes there). */
+function onWorker(): boolean {
+  return typeof navigator !== "undefined" && (navigator as { userAgent?: string }).userAgent === "Cloudflare-Workers";
+}
+
+const esbuild = esbuildNode;
+
+/** Worker parse gate: the real TypeScript parser (pure JS, no WASM, no
+ *  child process). Same contract as the esbuild pass: syntax errors only. */
+async function parseWithTypescript(targets: { path: string; content: string }[]): Promise<EsbuildIssue[]> {
+  const { installTsRuntimeGlobals } = await import("./verification/ts-runtime-shim");
+  installTsRuntimeGlobals();
+  const ts = (await import("typescript")).default;
+  const issues: EsbuildIssue[] = [];
+  for (const f of targets) {
+    const kind = f.path.endsWith(".tsx") ? ts.ScriptKind.TSX : f.path.endsWith(".jsx") ? ts.ScriptKind.JSX : f.path.endsWith(".ts") ? ts.ScriptKind.TS : ts.ScriptKind.JS;
+    const sf = ts.createSourceFile(f.path, f.content, ts.ScriptTarget.ES2022, true, kind);
+    const diags = (sf as unknown as { parseDiagnostics?: import("typescript").Diagnostic[] }).parseDiagnostics ?? [];
+    for (const d of diags) {
+      const pos = sf.getLineAndCharacterOfPosition(d.start ?? 0);
+      issues.push({ path: f.path, line: pos.line + 1, column: pos.character, message: ts.flattenDiagnosticMessageText(d.messageText, "\n"), kind: "parse" });
+    }
+  }
+  return issues;
+}
 
 export type EsbuildIssue = {
   path: string;
@@ -94,6 +120,16 @@ export async function verifyFilesEsbuild(
     (f) => changed.has(f.path) && !shouldSkip(f.path, options.includeScaffoldOwned === true),
   );
   if (targets.length === 0) return { status: "not_checked", ok: true, issues: [], checkedPaths: [] };
+
+  if (onWorker()) {
+    try {
+      const issues = await parseWithTypescript(targets);
+      return { status: issues.length ? "failed" : "passed", ok: issues.length === 0, issues, checkedPaths: targets.map((f) => f.path) };
+    } catch (err) {
+      const detail = (err as Error)?.message ?? String(err);
+      return { status: "unavailable", ok: false, issues: [], checkedPaths: [], unavailableReason: "initialization_error", unavailableDetail: detail };
+    }
+  }
 
   try {
     await ensureInit();
