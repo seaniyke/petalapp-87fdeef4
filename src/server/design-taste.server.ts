@@ -37,7 +37,7 @@ Kimble is being judged on whether the landing looks like it was made by a person
    - \`© 2024\` in the footer — the current year is passed to you separately, use it.
    - Every h1 the same size and weight across pages.
 
-5. Depth and layered composition. Landings must have layered depth: subtle gradients on hero backgrounds using the LOCKED palette, one soft radial glow behind the headline, generous shadows on elevated cards (\`shadow-2xl shadow-primary/10\` or similar semantic-token shadow), controlled use of blur/backdrop-blur on floating pills or badges.
+5. Depth and layered composition. Landings must have layered depth: subtle gradients on hero backgrounds using the LOCKED palette, one soft radial glow behind the headline, generous shadows on elevated cards (\`shadow-2xl shadow-primary/10\` or similar semantic-token shadow), no blur, glassmorphism or floating pills.
 
 6. Real animation, once. If \`framer-motion\` is installed, animate the hero on mount (opacity + 20px y-translate, 0.6s ease), animate section entries as they scroll into view via IntersectionObserver, and add one signature motion element (a rotating word, a scrolling marquee, a scroll-linked reveal). Do NOT animate every card and every icon.
 
