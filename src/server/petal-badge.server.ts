@@ -48,7 +48,7 @@ const PETAL_BADGE_HTML = `
     var dot = document.createElement('span');
     dot.setAttribute('aria-hidden','true');
     dot.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;';
-    dot.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#9DEDCB" d="M5 3h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H9.5L4 22.5V19.2A4 4 0 0 1 1 15V7a4 4 0 0 1 4-4z"/><g stroke="#101815" stroke-width="1.6" stroke-linecap="round"><path d="M7 9.5v3"/><path d="M9.5 8v6"/><path d="M12 6.5v9"/><path d="M14.5 8v6"/><path d="M17 9.5v3"/></g></svg>';
+    dot.innerHTML = '\\x3csvg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">\\x3cpath fill="#9DEDCB" d="M5 3h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H9.5L4 22.5V19.2A4 4 0 0 1 1 15V7a4 4 0 0 1 4-4z"/>\\x3cg stroke="#101815" stroke-width="1.6" stroke-linecap="round">\\x3cpath d="M7 9.5v3"/>\\x3cpath d="M9.5 8v6"/>\\x3cpath d="M12 6.5v9"/>\\x3cpath d="M14.5 8v6"/>\\x3cpath d="M17 9.5v3"/>\\x3c/g>\\x3c/svg>';
     var label = document.createElement('span');
     label.appendChild(document.createTextNode('Built with '));
     var strong = document.createElement('strong');
