@@ -31,47 +31,6 @@ type KitFile = ProjectFile & { overwrite: boolean };
 // ATOMS — small, generic primitives the model historically hand-rolled badly.
 // =============================================================================
 
-const MARQUEE = `import * as React from "react";
-import { cn, slotNode } from "@/lib/utils";
-
-/**
- * Infinite horizontal scroller. Duplicates children so the loop is seamless.
- * Use for logo clouds, testimonials rows, "as seen in" strips.
- *   <Marquee speed={30}> {logos.map(l => <img key={l} src={l} />)} </Marquee>
- */
-export function Marquee({
-  children,
-  className,
-  speed = 30,
-  pauseOnHover = true,
-  reverse = false,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  /** seconds for one full loop. Lower = faster. */
-  speed?: number;
-  pauseOnHover?: boolean;
-  reverse?: boolean;
-}) {
-  return (
-    <div className={cn("group relative flex w-full overflow-hidden", className)}>
-      <div
-        className={cn(
-          "flex shrink-0 items-center gap-12 whitespace-nowrap will-change-transform",
-          reverse ? "animate-[petal-marquee-rev_var(--marquee-d)_linear_infinite]" : "animate-[petal-marquee_var(--marquee-d)_linear_infinite]",
-          pauseOnHover && "group-hover:[animation-play-state:paused]",
-        )}
-        style={{ ["--marquee-d" as string]: \`\${speed}s\` }}
-      >
-        {children}
-        {children}
-      </div>
-      <style>{\`@keyframes petal-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes petal-marquee-rev{from{transform:translateX(-50%)}to{transform:translateX(0)}}\`}</style>
-    </div>
-  );
-}
-`;
-
 const KBD = `import * as React from "react";
 import { cn, slotNode } from "@/lib/utils";
 
@@ -316,48 +275,6 @@ export function FeatureIcon(props: {
 }
 `;
 
-const GRADIENT_TEXT = `import * as React from "react";
-import { cn, slotNode } from "@/lib/utils";
-
-/**
- * Inline gradient headline. Wraps a span with a from/to gradient using
- * design tokens — keeps colors on-brand instead of random tailwind blends.
- *   <GradientText>Build faster.</GradientText>
- */
-export function GradientText({
-  children,
-  className,
-  from = "from-primary",
-  to = "to-accent",
-}: {
-  children: React.ReactNode;
-  className?: string;
-  from?: string;
-  to?: string;
-}) {
-  return (
-    <span className={cn("bg-gradient-to-r bg-clip-text text-transparent", from, to, className)}>
-      {children}
-    </span>
-  );
-}
-`;
-
-const GRADIENT_BLOB = `import * as React from "react";
-
-/**
- * Retired decoration. Kept only so older apps that import it still build;
- * it renders nothing. Do not use in new pages.
- */
-export function GradientBlob(_props: {
-  className?: string;
-  size?: "sm" | "md" | "lg" | "xl";
-  tone?: "primary" | "accent" | "muted";
-}) {
-  return null;
-}
-`;
-
 const SECTION = `import * as React from "react";
 import { cn, slotNode } from "@/lib/utils";
 
@@ -527,7 +444,6 @@ const HERO_CENTERED = `import * as React from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientText } from "@/components/ui/gradient-text";
 import { cn, slotNode } from "@/lib/utils";
 
 /**
@@ -537,7 +453,6 @@ import { cn, slotNode } from "@/lib/utils";
 export function HeroCentered({
   eyebrow,
   title,
-  highlight,
   description,
   primaryCta,
   secondaryCta,
@@ -545,8 +460,6 @@ export function HeroCentered({
 }: {
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
-  /** Optional fragment of the title rendered with gradient emphasis. */
-  highlight?: React.ReactNode;
   description?: React.ReactNode;
   primaryCta?: { label: string; href?: string; onClick?: () => void };
   secondaryCta?: { label: string; href?: string; onClick?: () => void };
@@ -563,12 +476,6 @@ export function HeroCentered({
           )}
           <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
             {title}
-            {highlight && (
-              <>
-                {" "}
-                <GradientText>{highlight}</GradientText>
-              </>
-            )}
           </h1>
           {description && (
             <p className="mt-6 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>
@@ -796,76 +703,6 @@ export function HeroEditorial({
 // the hero looks like a product, not a wireframe.
 // ---------------------------------------------------------------------------
 
-const HERO_CENTERED_GRADIENT = `import * as React from "react";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/ui/container";
-import { GradientText } from "@/components/ui/gradient-text";
-import { cn, slotNode } from "@/lib/utils";
-
-/**
- * Vivid centered hero with layered gradient blobs + subtle grid backdrop.
- * Use for AI tools, creative apps, launch pages — anything that needs to
- * feel premium and energetic. No image asset required.
- */
-export function HeroCenteredGradient({
-  eyebrow,
-  title,
-  highlight,
-  description,
-  primaryCta,
-  secondaryCta,
-  className,
-}: {
-  eyebrow?: React.ReactNode;
-  title: React.ReactNode;
-  highlight?: React.ReactNode;
-  description?: React.ReactNode;
-  primaryCta?: { label: string; href?: string; onClick?: () => void };
-  secondaryCta?: { label: string; href?: string; onClick?: () => void };
-  className?: string;
-}) {
-  return (
-    <section className={cn("relative overflow-hidden py-24 md:py-36", className)}>
-      <Container size="lg" className="relative">
-        <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          {eyebrow && (
-            <span className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              {eyebrow}
-            </span>
-          )}
-          <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground md:text-7xl">
-            {title}
-            {highlight && (<> <GradientText>{highlight}</GradientText></>)}
-          </h1>
-          {description && (
-            <p className="mt-6 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>
-          )}
-          {(primaryCta || secondaryCta) && (
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              {primaryCta && (
-                <Button size="lg" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
-                  {primaryCta.href ? (
-                    <a href={primaryCta.href}>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></a>
-                  ) : (
-                    <>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></>
-                  )}
-                </Button>
-              )}
-              {secondaryCta && (
-                <Button size="lg" variant="outline" onClick={secondaryCta.onClick} asChild={!!secondaryCta.href}>
-                  {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </Container>
-    </section>
-  );
-}
-`;
-
 const HERO_SPLIT_WITH_DASHBOARD_MOCK = `import * as React from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -988,110 +825,6 @@ export function HeroSplitWithDashboardMock({
   );
 }
 `;
-
-const HERO_PRODUCT_SCREENSHOT = `import * as React from "react";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/ui/container";
-import { Badge } from "@/components/ui/badge";
-import { cn, slotNode } from "@/lib/utils";
-
-/**
- * Centered hero with a faux product screenshot floating below — browser
- * chrome, header row, content grid. No imageSrc required. Use for product
- * launches where you want the eye to land on the artifact under the headline.
- */
-export function HeroProductScreenshot({
-  eyebrow,
-  title,
-  description,
-  primaryCta,
-  secondaryCta,
-  className,
-}: {
-  eyebrow?: React.ReactNode;
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  primaryCta?: { label: string; href?: string; onClick?: () => void };
-  secondaryCta?: { label: string; href?: string; onClick?: () => void };
-  className?: string;
-}) {
-  return (
-    <section className={cn("relative overflow-hidden pt-20 md:pt-28", className)}>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.15),transparent_60%)]" />
-      <Container size="xl" className="relative">
-        <div className="mx-auto max-w-3xl text-center">
-          {eyebrow && (<span className="mb-5 block text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</span>)}
-          <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-6xl">{title}</h1>
-          {description && (<p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>)}
-          {(primaryCta || secondaryCta) && (
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              {primaryCta && (
-                <Button size="lg" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
-                  {primaryCta.href ? (
-                    <a href={primaryCta.href}>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></a>
-                  ) : (<>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></>)}
-                </Button>
-              )}
-              {secondaryCta && (
-                <Button size="lg" variant="outline" onClick={secondaryCta.onClick} asChild={!!secondaryCta.href}>
-                  {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="relative mx-auto mt-14 max-w-5xl">
-          <div className="relative rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10 overflow-hidden">
-            <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-2.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
-              <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/60" />
-              <div className="mx-auto rounded-md bg-background px-3 py-0.5 text-[11px] text-muted-foreground">app.product.com</div>
-            </div>
-            <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <div className="flex items-center gap-3">
-                <div className="h-6 w-6 rounded-md bg-primary" />
-                <div className="h-3 w-20 rounded bg-muted" />
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-full bg-muted" />
-              </div>
-            </div>
-            <div className="grid grid-cols-12 gap-4 p-5">
-              <div className="col-span-3 space-y-2">
-                {[0,1,2,3,4].map((i)=>(
-                  <div key={i} className={cn("h-7 rounded-md", i===1?"bg-primary/15":"bg-muted/60")} />
-                ))}
-              </div>
-              <div className="col-span-9 space-y-3">
-                <div className="grid grid-cols-3 gap-3">
-                  {[0,1,2].map((i)=>(
-                    <div key={i} className="rounded-lg border border-border bg-background p-3">
-                      <div className="h-2.5 w-12 rounded bg-muted/80" />
-                      <div className="mt-2 h-5 w-20 rounded bg-foreground/80" />
-                      <div className="mt-1 h-2 w-10 rounded bg-emerald-500/60" />
-                    </div>
-                  ))}
-                </div>
-                <div className="h-40 rounded-lg border border-border bg-background p-3">
-                  <div className="flex h-full items-end gap-1.5">
-                    {[30,55,42,68,50,72,80,62,85,58,74,90,66,78].map((h,i)=>(
-                      <div key={i} className="flex-1 rounded-sm bg-gradient-to-t from-primary/40 to-primary" style={{height: \`\${h}%\`}} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Container>
-    </section>
-  );
-}
-`;
-
-
 
 const FEATURES_GRID_3 = `import * as React from "react";
 import { Container } from "@/components/ui/container";
@@ -1308,15 +1041,12 @@ export function FeaturesAlternatingRows({
 
 export const KIT_BLOCK_FILES: KitFile[] = [
   // Atoms
-  { path: "src/components/ui/marquee.tsx", content: MARQUEE, overwrite: true },
   { path: "src/components/ui/kbd.tsx", content: KBD, overwrite: true },
   { path: "src/components/ui/code-block.tsx", content: CODE_BLOCK, overwrite: true },
   { path: "src/components/ui/empty-state.tsx", content: EMPTY_STATE, overwrite: true },
   { path: "src/components/ui/stat.tsx", content: STAT, overwrite: true },
   { path: "src/components/ui/timeline.tsx", content: TIMELINE, overwrite: true },
   { path: "src/components/ui/feature-icon.tsx", content: FEATURE_ICON, overwrite: true },
-  { path: "src/components/ui/gradient-text.tsx", content: GRADIENT_TEXT, overwrite: true },
-  { path: "src/components/ui/gradient-blob.tsx", content: GRADIENT_BLOB, overwrite: true },
   { path: "src/components/ui/section.tsx", content: SECTION, overwrite: true },
   { path: "src/components/ui/divider.tsx", content: DIVIDER, overwrite: true },
   { path: "src/components/ui/rating.tsx", content: RATING, overwrite: true },
@@ -1325,9 +1055,7 @@ export const KIT_BLOCK_FILES: KitFile[] = [
   { path: "src/components/blocks/hero-centered.tsx", content: HERO_CENTERED, overwrite: true },
   { path: "src/components/blocks/hero-split-image.tsx", content: HERO_SPLIT_IMAGE, overwrite: true },
   { path: "src/components/blocks/hero-editorial.tsx", content: HERO_EDITORIAL, overwrite: true },
-  { path: "src/components/blocks/hero-centered-gradient.tsx", content: HERO_CENTERED_GRADIENT, overwrite: true },
   { path: "src/components/blocks/hero-split-with-dashboard-mock.tsx", content: HERO_SPLIT_WITH_DASHBOARD_MOCK, overwrite: true },
-  { path: "src/components/blocks/hero-product-screenshot.tsx", content: HERO_PRODUCT_SCREENSHOT, overwrite: true },
   { path: "src/components/blocks/features-grid-3.tsx", content: FEATURES_GRID_3, overwrite: true },
   { path: "src/components/blocks/features-bento.tsx", content: FEATURES_BENTO, overwrite: true },
   { path: "src/components/blocks/features-alternating-rows.tsx", content: FEATURES_ALTERNATING, overwrite: true },

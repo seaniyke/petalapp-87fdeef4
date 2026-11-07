@@ -132,11 +132,9 @@ const HOOKS = [
 
 const KIT_LIST_PROP_CONTRACTS: Record<string, string[][]> = {
   TestimonialsCards: [["items", "testimonials"]],
-  TestimonialsMarquee: [["items", "testimonials"]],
   FaqAccordion: [["items", "faqs"]],
   FaqTwoColumn: [["items", "faqs"]],
   LogosGrid: [["logos"]],
-  LogosMarquee: [["logos"]],
   FeaturesGrid3: [["items"]],
   FeaturesBento: [["items"]],
   FeaturesAlternatingRows: [["items"]],

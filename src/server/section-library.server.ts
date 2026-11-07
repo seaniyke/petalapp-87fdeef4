@@ -30,8 +30,7 @@ const VARIANTS: SectionVariant[] = [
   { id: "hero-terminal", section: "hero", label: "Terminal / product demo", description: "For developer or AI tools: headline + subhead left, a real-looking terminal or code editor mock right with typed animation." },
 
   // SOCIAL PROOF
-  { id: "sp-marquee", section: "social-proof", label: "Logo marquee", description: "Auto-scrolling horizontal marquee of 8-12 grayscale customer logos with 'Trusted by' eyebrow." },
-  { id: "sp-logo-wall", section: "social-proof", label: "Static logo grid", description: "3-column grid of 6-9 customer logos with soft dividers, no marquee." },
+  { id: "sp-logo-wall", section: "social-proof", label: "Static logo grid", description: "3-column grid of 6-9 customer logos with soft dividers." },
   { id: "sp-stat-strip", section: "social-proof", label: "Metric strip", description: "3-4 large numbers (users, uptime, savings, rating) with tiny labels, no logos." },
   { id: "sp-testimonial-hero", section: "social-proof", label: "Anchor testimonial", description: "One giant customer quote with photo + name + company, no logos." },
 
