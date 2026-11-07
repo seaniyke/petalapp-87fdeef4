@@ -13,7 +13,7 @@
  */
 
 import { pickDesignForBrief, type DesignPick } from "./palette-presets.server";
-import { TOKENS_START } from "./design-systems/apply";
+import { hasTokenBlock } from "./design-systems/apply";
 
 /** The scaffold's default primary. Its presence means "nobody themed this". */
 const SCAFFOLD_PRIMARY = /--primary:\s*oklch\(0\.55\s+0\.18\s+280\)/;
@@ -153,7 +153,7 @@ export interface PaletteFloorResult { css: string; changed: boolean; label: stri
 export function applyPaletteFloor(css: string, brief: string, pick?: DesignPick): PaletteFloorResult {
   // A design-system package owns this stylesheet's palette: never overlay a
   // preset on top of it. The floor still guards legacy, package-less projects.
-  if (css.includes(TOKENS_START)) return { css, changed: false, label: null };
+  if (hasTokenBlock(css)) return { css, changed: false, label: null };
   if (!SCAFFOLD_PRIMARY.test(css)) return { css, changed: false, label: null };
   const chosen = pick ?? pickDesignForBrief(brief);
   const blocks = buildPaletteBlocks(chosen);

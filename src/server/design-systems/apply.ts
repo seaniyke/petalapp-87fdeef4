@@ -14,12 +14,33 @@
 import type { ProjectFile } from "@/server/generate.server";
 import { isValidAccent, type DesignSystemPackage } from "./loader";
 
-export const TOKENS_START = "/* kimble-design-system:start */";
-export const TOKENS_END = "/* kimble-design-system:end */";
-export const FONTS_START = "/* kimble-fonts:start */";
-export const FONTS_END = "/* kimble-fonts:end */";
-export const HTML_FONTS_START = "<!-- kimble-fonts:start -->";
-export const HTML_FONTS_END = "<!-- kimble-fonts:end -->";
+export const TOKENS_START = "/* petal-design-system:start */";
+export const TOKENS_END = "/* petal-design-system:end */";
+export const FONTS_START = "/* petal-fonts:start */";
+export const FONTS_END = "/* petal-fonts:end */";
+export const HTML_FONTS_START = "<!-- petal-fonts:start -->";
+export const HTML_FONTS_END = "<!-- petal-fonts:end -->";
+
+/** Markers written by older builds; recognised and replaced on re-apply. */
+const LEGACY: Record<string, string> = {
+  [TOKENS_START]: "/* kimble-design-system:start */",
+  [TOKENS_END]: "/* kimble-design-system:end */",
+  [FONTS_START]: "/* kimble-fonts:start */",
+  [FONTS_END]: "/* kimble-fonts:end */",
+  [HTML_FONTS_START]: "<!-- kimble-fonts:start -->",
+  [HTML_FONTS_END]: "<!-- kimble-fonts:end -->",
+};
+
+/** Position of a marker, accepting the legacy spelling. */
+export function markerIndex(src: string, marker: string): number {
+  const i = src.indexOf(marker);
+  return i >= 0 ? i : LEGACY[marker] ? src.indexOf(LEGACY[marker]) : -1;
+}
+
+/** True when the stylesheet carries a design-system token block (current or legacy markers). */
+export function hasTokenBlock(css: string): boolean {
+  return markerIndex(css, TOKENS_START) >= 0;
+}
 
 const STYLE_PATHS = ["src/styles.css", "src/index.css"];
 const ROOT_PATH = "src/routes/__root.tsx";
@@ -39,7 +60,7 @@ export function renderTokenBlock(pkg: DesignSystemPackage, accent: string): stri
   const a = pkg.accents[accent]!;
   return [
     TOKENS_START,
-    `/* ${pkg.meta.slug}@${pkg.meta.version} accent=${accent} — managed by Kimble; edit the package, not this block */`,
+    `/* ${pkg.meta.slug}@${pkg.meta.version} accent=${accent} — managed by Petal; edit the package, not this block */`,
     pkg.tokensCss.trim(),
     block(":root", a.light),
     a.dark ? block(".dark", a.dark) : "",
@@ -48,11 +69,12 @@ export function renderTokenBlock(pkg: DesignSystemPackage, accent: string): stri
 }
 
 function replaceRegion(src: string, start: string, end: string, body: string): string | null {
-  const s = src.indexOf(start);
-  const e = src.indexOf(end);
+  const s = markerIndex(src, start);
+  const e = markerIndex(src, end);
   if (s < 0 && e < 0) return null;
   if (s < 0 || e < s) return null; // corrupted markers
-  return src.slice(0, s) + body + src.slice(e + end.length);
+  const endLen = src.startsWith(end, e) ? end.length : (LEGACY[end] ?? end).length;
+  return src.slice(0, s) + body + src.slice(e + endLen);
 }
 
 export function applyTokens(css: string, pkg: DesignSystemPackage, accent: string): string {

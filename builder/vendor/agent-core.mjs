@@ -55896,31 +55896,8 @@ export default defineConfig({
   --ring: oklch(0.72 0.16 280);
 }
 
-/* Auto-apply dark tokens when the OS prefers dark, unless the app explicitly
-   set a theme on <html> (\`.light\` or \`.dark\`). */
-@media (prefers-color-scheme: dark) {
-  :root:not(.light):not(.dark) {
-    --background: oklch(0.16 0.02 280);
-    --foreground: oklch(0.96 0.01 90);
-    --card: oklch(0.20 0.02 280);
-    --card-foreground: oklch(0.96 0.01 90);
-    --popover: oklch(0.20 0.02 280);
-    --popover-foreground: oklch(0.96 0.01 90);
-    --primary: oklch(0.72 0.16 280);
-    --primary-foreground: oklch(0.16 0.02 280);
-    --secondary: oklch(0.26 0.02 280);
-    --secondary-foreground: oklch(0.96 0.01 90);
-    --muted: oklch(0.26 0.02 280);
-    --muted-foreground: oklch(0.7 0.02 280);
-    --accent: oklch(0.32 0.05 320);
-    --accent-foreground: oklch(0.96 0.01 90);
-    --destructive: oklch(0.55 0.22 25);
-    --destructive-foreground: oklch(0.98 0.01 90);
-    --border: oklch(0.28 0.02 280);
-    --input: oklch(0.28 0.02 280);
-    --ring: oklch(0.72 0.16 280);
-  }
-}
+/* No automatic OS dark mode: a site keeps the palette it was designed with.
+   Dark tokens apply only when the app sets <html class="dark"> itself. */
 
 html, body, #root { height: 100%; }
 body {
@@ -60322,7 +60299,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -70170,6 +70146,13 @@ var init_loader = __esm({
 });
 
 // src/server/design-systems/apply.ts
+function markerIndex(src2, marker) {
+  const i = src2.indexOf(marker);
+  return i >= 0 ? i : LEGACY[marker] ? src2.indexOf(LEGACY[marker]) : -1;
+}
+function hasTokenBlock(css) {
+  return markerIndex(css, TOKENS_START) >= 0;
+}
 function block(selector, decls) {
   const lines = Object.entries(decls).map(([k, v]) => `  --${k}: ${v};`);
   return lines.length ? `${selector} {
@@ -70180,7 +70163,7 @@ function renderTokenBlock(pkg, accent) {
   const a2 = pkg.accents[accent];
   return [
     TOKENS_START,
-    `/* ${pkg.meta.slug}@${pkg.meta.version} accent=${accent} \u2014 managed by Kimble; edit the package, not this block */`,
+    `/* ${pkg.meta.slug}@${pkg.meta.version} accent=${accent} \u2014 managed by Petal; edit the package, not this block */`,
     pkg.tokensCss.trim(),
     block(":root", a2.light),
     a2.dark ? block(".dark", a2.dark) : "",
@@ -70188,11 +70171,12 @@ function renderTokenBlock(pkg, accent) {
   ].filter(Boolean).join("\n");
 }
 function replaceRegion(src2, start, end, body) {
-  const s = src2.indexOf(start);
-  const e = src2.indexOf(end);
+  const s = markerIndex(src2, start);
+  const e = markerIndex(src2, end);
   if (s < 0 && e < 0) return null;
   if (s < 0 || e < s) return null;
-  return src2.slice(0, s) + body + src2.slice(e + end.length);
+  const endLen = src2.startsWith(end, e) ? end.length : (LEGACY[end] ?? end).length;
+  return src2.slice(0, s) + body + src2.slice(e + endLen);
 }
 function applyTokens(css, pkg, accent) {
   const body = renderTokenBlock(pkg, accent);
@@ -70265,17 +70249,25 @@ function applyDesignSystem(files, pkg, accent) {
   for (const [p2, c] of updates) if (!byPath.has(p2)) out.push({ path: p2, content: c });
   return { ok: true, files: out, changedPaths: changedPaths.sort(), changed: changedPaths.length > 0 };
 }
-var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
+var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
     init_define_import_meta_env();
     init_loader();
-    TOKENS_START = "/* kimble-design-system:start */";
-    TOKENS_END = "/* kimble-design-system:end */";
-    FONTS_START = "/* kimble-fonts:start */";
-    FONTS_END = "/* kimble-fonts:end */";
-    HTML_FONTS_START = "<!-- kimble-fonts:start -->";
-    HTML_FONTS_END = "<!-- kimble-fonts:end -->";
+    TOKENS_START = "/* petal-design-system:start */";
+    TOKENS_END = "/* petal-design-system:end */";
+    FONTS_START = "/* petal-fonts:start */";
+    FONTS_END = "/* petal-fonts:end */";
+    HTML_FONTS_START = "<!-- petal-fonts:start -->";
+    HTML_FONTS_END = "<!-- petal-fonts:end -->";
+    LEGACY = {
+      [TOKENS_START]: "/* kimble-design-system:start */",
+      [TOKENS_END]: "/* kimble-design-system:end */",
+      [FONTS_START]: "/* kimble-fonts:start */",
+      [FONTS_END]: "/* kimble-fonts:end */",
+      [HTML_FONTS_START]: "<!-- kimble-fonts:start -->",
+      [HTML_FONTS_END]: "<!-- kimble-fonts:end -->"
+    };
     STYLE_PATHS = ["src/styles.css", "src/index.css"];
     ROOT_PATH = "src/routes/__root.tsx";
     HTML_PATH = "index.html";
@@ -70526,6 +70518,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -142185,6 +142178,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -145714,6 +145708,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146822,7 +146817,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -156087,14 +156081,14 @@ function lintDesignSystem(files, design3, opts = {}) {
       });
     }
     if (design3.package) {
-      const a2 = css.indexOf(TOKENS_START);
-      const b = css.indexOf(TOKENS_END);
+      const a2 = markerIndex(css, TOKENS_START);
+      const b = markerIndex(css, TOKENS_END);
       if (a2 < 0 || b < a2) {
         findings.push({
           path: stylesFile.path,
           rule: "package/tokens-block",
           severity: "error",
-          message: `The ${design3.package.systemId} design-system token block is missing or broken. It is installed by Kimble \u2014 do not edit or remove it.`
+          message: `The ${design3.package.systemId} design-system token block is missing or broken. It is installed by Petal \u2014 do not edit or remove it.`
         });
       }
     }
@@ -168630,7 +168624,7 @@ function firstBuildSeedFiles(args) {
     return [];
   }
 }
-var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWork in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, write it, let it validate, then move to the next. Inspect enough to start safely \u2014 you do not need to understand the whole starter kit before your first write. The starter-kit API above is authoritative and complete: do not list directories to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go in one response. After each write step Kimble reports the whole-workspace verification verdict; trust it instead of re-reading files. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
+var FIRST_BUILD_TOOL_NOTE = "\n\n### Execution mode: tools\nThere is NO write_project tool in this conversation. Build the app with the provided tools: create_file for new files, edit_file for exact changes, read_file/list_files/search only when you need information you do not already have, finish when done.\nWork in units: pick the next work unit (e.g. the shared layout, then one page), read ONLY what that unit needs, write it, let it validate, then move to the next. Inspect enough to start safely \u2014 you do not need to understand the whole starter kit before your first write. The starter-kit API above is authoritative and complete: do not list directories to discover the kit, and do not read sections for later units now. Reads the current unit genuinely needs may go in one response. After each write step Petal reports the whole-workspace verification verdict; trust it instead of re-reading files. You may call finish in the same response as your last writes.\nBatch only coherent work: files that form one dependency-safe unit (a shared module with the layout that uses it, a page with a local component only it imports, the router with its pages) belong in one response. Pages that each stand alone on already-written shared modules may share a response too. Write shared modules before the files that import them; if a write fails validation, fix it before starting new work. Batch when it is coherent \u2014 neither one file per response nor everything at once is a goal in itself.\n";
 var FINISH_RULES = [
   "Type finish: small uppercase labels (kickers, meta lines, nav links) use text-xs tracking-[0.18em] uppercase text-muted-foreground. Display headings use tight leading (leading-[1.05] to leading-[1.1]) and tracking-tight.",
   "Headings scale with the screen and never exceed three lines on a phone: hero h1 text-4xl sm:text-5xl lg:text-7xl, section h2 text-3xl md:text-5xl. Body copy max-w-prose, text-base md:text-lg, leading-relaxed.",
@@ -168648,7 +168642,7 @@ var COMPOSITION_RULES = [
   "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6. This padding goes on each <section> only \u2014 never on the page/layout wrapper or around the header, which must sit flush at the top of the page.",
   "Two, at most three calls to action across an entire page. The final CTA is its own section; the footer is not a CTA.",
   "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
-  'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt \u2014 every one is made; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
+  'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Petal generates each one after you finish. Never write any other image URL (unsplash, picsum, pexels or any https photo link) \u2014 invented links are broken and show as empty boxes. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt \u2014 every one is made; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
   "Marketing sites lead with imagery, not tools: the hero is a large photograph or full-bleed visual with one headline and one primary action. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
   "Studio, portfolio, architecture, luxury and hospitality sites are editorial: big photographs, generous negative space, few words per section, serif display headings. Keep technical detail off the homepage.",
   "Restraint over density. A website is not a dashboard: every section has one idea, a short heading, at most two short sentences, and white space around it. Fewer, larger pictures beat many small ones.",
@@ -170490,7 +170484,7 @@ function buildGuardScript(opts) {
       if (payload && typeof payload === "object") payload.guardVersion = VERSION;
     } catch (_) {}
     try { parent.postMessage({ type: type, payload: payload }, "*"); } catch (_) {}
-    // Also POST to Kimble's ingest endpoint so deployed apps (no parent
+    // Also POST to Petal's ingest endpoint so deployed apps (no parent
     // iframe) surface crashes back to the project owner. Best-effort; we
     // never let an analytics failure break the user's app.
     if (!PROJECT_ID || posted) return;
@@ -170625,7 +170619,7 @@ function buildGuardScript(opts) {
       // app. React still mounts, fonts fall back, images show broken icons.
       // Showing the unrecoverable "Preview crashed" overlay here is wrong \u2014
       // users saw a fully-working app behind a fatal error card. Post a
-      // non-fatal telemetry ping so Kimble can still suggest a fix, but do
+      // non-fatal telemetry ping so Petal can still suggest a fix, but do
       // NOT show the overlay.
       var url = target.src || target.href || "unknown asset";
       try { parent.postMessage({ type: "petal:runtime:asset-error", payload: { tag: String(target.tagName).toLowerCase(), url: String(url).slice(0, 500) } }, "*"); } catch (_) {}
@@ -171965,7 +171959,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -173792,7 +173785,7 @@ ${css.slice(i)}`;
   return null;
 }
 function applyPaletteFloor(css, brief, pick2) {
-  if (css.includes(TOKENS_START)) return { css, changed: false, label: null };
+  if (hasTokenBlock(css)) return { css, changed: false, label: null };
   if (!SCAFFOLD_PRIMARY.test(css)) return { css, changed: false, label: null };
   const chosen = pick2 ?? pickDesignForBrief(brief);
   const blocks = buildPaletteBlocks(chosen);
@@ -174032,7 +174025,7 @@ function enforceDesignFinish(input, pick2) {
   const fallbackPair = resolvedPick?.fontPair ?? DEFAULT_PAIR;
   const display = readFamily(styles.content, "font-display") ?? fallbackPair.display;
   const body = readFamily(styles.content, "font-body") ?? fallbackPair.body;
-  const packageOwned = styles.content.includes(TOKENS_START);
+  const packageOwned = hasTokenBlock(styles.content);
   let css = styles.content;
   const tokens2 = packageOwned ? { css, changed: false } : ensureFontTokens(css, display, body);
   css = tokens2.css;

@@ -12,7 +12,7 @@
 
 import type { ProjectFile } from "@/server/generate.server";
 import type { PicDesignSystem } from "@/server/pic/pic-types";
-import { TOKENS_START, TOKENS_END } from "@/server/design-systems/apply";
+import { TOKENS_START, TOKENS_END, markerIndex } from "@/server/design-systems/apply";
 
 export interface DesignLintFinding {
   path: string;
@@ -115,14 +115,14 @@ export function lintDesignSystem(
     // Package tokens (var(--kimble-*) and the semantic roles it sets) are
     // legitimate; a missing or broken block means the package was bypassed.
     if (design.package) {
-      const a = css.indexOf(TOKENS_START);
-      const b = css.indexOf(TOKENS_END);
+      const a = markerIndex(css, TOKENS_START);
+      const b = markerIndex(css, TOKENS_END);
       if (a < 0 || b < a) {
         findings.push({
           path: stylesFile.path,
           rule: "package/tokens-block",
           severity: "error",
-          message: `The ${design.package.systemId} design-system token block is missing or broken. It is installed by Kimble — do not edit or remove it.`,
+          message: `The ${design.package.systemId} design-system token block is missing or broken. It is installed by Petal — do not edit or remove it.`,
         });
       }
     }

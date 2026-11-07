@@ -26,7 +26,7 @@
 import type { ProjectFile } from "./generate.server";
 import { applyPaletteFloor } from "./palette-floor.server";
 import { pickDesignForBrief, type DesignPick } from "./palette-presets.server";
-import { TOKENS_START } from "./design-systems/apply";
+import { hasTokenBlock } from "./design-systems/apply";
 
 export interface DesignFinishResult {
   files: ProjectFile[];
@@ -342,7 +342,7 @@ export function enforceDesignFinish(input: ProjectFile[], pick?: DesignPick): De
 
   // A design-system package owns fonts + palette: skip the locked-pair and
   // palette-floor steps so no preset is layered over it.
-  const packageOwned = styles.content.includes(TOKENS_START);
+  const packageOwned = hasTokenBlock(styles.content);
 
   // 1 + 2 — tokens and base typography.
   let css = styles.content;

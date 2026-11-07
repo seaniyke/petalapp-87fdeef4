@@ -168,7 +168,7 @@ export async function generatePetalImage(
     if (cached) return { url: cached, cached: true };
   }
 
-  // A picture Kimble already made for this project/owner (or one an admin
+  // A picture Petal already made for this project/owner (or one an admin
   // shared) beats paying to make the same thing again. A weak match is
   // ignored — quality always outranks the saving.
   const scope = opts.scope ?? {
@@ -255,7 +255,7 @@ const STORED_PICTURE_RE = /https:\/\/[^\s"'`<>)]+\/storage\/v1\/object\/public\/
 
 const EXAMPLES_DIR = "src/components/examples/";
 
-/** Kimble's reference examples are read by the AI, not shown to visitors —
+/** Petal's reference examples are read by the AI, not shown to visitors —
  *  unless a real page imports one. */
 function isRenderedPictureFile(file: ProjectFile, files: ProjectFile[]): boolean {
   if (!file.path.startsWith(EXAMPLES_DIR)) return true;
@@ -264,7 +264,7 @@ function isRenderedPictureFile(file: ProjectFile, files: ProjectFile[]): boolean
   return files.some((f) => !f.path.startsWith(EXAMPLES_DIR) && f.content.includes(ref));
 }
 
-/** Pages and data the AI wrote first, Kimble's shared building blocks last. */
+/** Pages and data the AI wrote first, Petal's shared building blocks last. */
 function pictureFileRank(path: string): number {
   if (path.startsWith(EXAMPLES_DIR)) return 3;
   if (path.startsWith("src/components/blocks/") || path.startsWith("src/components/ui/")) return 2;
@@ -310,7 +310,7 @@ export async function resolvePetalImagePlaceholders(
     return content === f.content ? f : { ...f, content };
   });
   // 1. Collect all unique placeholders across the project. Pages the AI
-  // wrote come first so Kimble's own reference files can never use up the
+  // wrote come first so Petal's own reference files can never use up the
   // per-build picture allowance; reference examples nobody imports are
   // never rendered, so they get no pictures at all.
   const eligible = files.filter((f) => (!allowed || allowed.has(f.path)) && isRenderedPictureFile(f, files));
