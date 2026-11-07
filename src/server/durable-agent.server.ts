@@ -13,6 +13,7 @@
  */
 import { createHmac } from "node:crypto";
 import { trustedAppOrigin } from "@/server/public-origin";
+import { sendWithBuilderRetry, type BuilderRetryOptions } from "@/server/builder-retry";
 
 /** Same header scheme as builder/src/signing.ts (kept local: this module is
  *  imported on the Stop path and must stay lightweight). */
@@ -72,6 +73,7 @@ async function signedPost(
   payload: unknown,
   fetcher: FetchLike,
   env: Record<string, string | undefined>,
+  timeoutMs?: number,
 ): Promise<Response> {
   const base = env.BUILDER_URL;
   const secret = env.BUILDER_SHARED_SECRET;
@@ -86,17 +88,40 @@ async function signedPost(
       "x-petal-signature": signature,
     },
     body: raw,
+    ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
   });
 }
+
+/**
+ * Wait schedule for handing a generation to the builder: about a minute, which
+ * covers a deploy's drain + container swap. Re-sending is safe — the builder
+ * acknowledges a turn id it already holds instead of running it twice, and the
+ * turn row allows only one running turn per project.
+ */
+export const AGENT_DISPATCH_RETRY_DELAYS_MS: readonly number[] = [1_000, 2_000, 4_000, 8_000, 15_000, 30_000];
+const AGENT_DISPATCH_MAX_TOTAL_MS = 75_000;
+const AGENT_DISPATCH_ATTEMPT_TIMEOUT_MS = 30_000;
 
 /** Hand the job to the builder. True only when the builder accepted it (202). */
 export async function dispatchAgentJob(
   job: AgentJobPayload,
   fetcher: FetchLike = fetch,
   env: Record<string, string | undefined> = process.env,
+  retry: Partial<Pick<BuilderRetryOptions, "delaysMs" | "sleep" | "now">> = {},
 ): Promise<{ ok: true } | { ok: false; status: number; reason: string }> {
   try {
-    const res = await signedPost("/agent/generate", job, fetcher, env);
+    const res = await sendWithBuilderRetry(
+      () => signedPost("/agent/generate", job, fetcher, env, AGENT_DISPATCH_ATTEMPT_TIMEOUT_MS),
+      {
+        delaysMs: retry.delaysMs ?? AGENT_DISPATCH_RETRY_DELAYS_MS,
+        retryNetworkErrors: true,
+        maxTotalMs: AGENT_DISPATCH_MAX_TOTAL_MS,
+        sleep: retry.sleep,
+        now: retry.now,
+        onRetry: ({ attempt, waitMs, reason }) =>
+          console.warn(`[durable-agent] dispatch ${reason} — retrying in ${waitMs}ms (attempt ${attempt + 1})`),
+      },
+    );
     if (res.status === 202) return { ok: true };
     const text = await res.text().catch(() => "");
     return { ok: false, status: res.status, reason: text.slice(0, 300) || `builder returned ${res.status}` };
