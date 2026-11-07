@@ -108,34 +108,54 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   throw lastError || new Error("Request failed");
 }
 
+/** A list of records that can also be read as { records } — both styles work. */
+export type RecordList<T> = PetalRecord<T>[] & { records: PetalRecord<T>[] };
+/** One record that can also be read as { record } — both styles work. */
+export type RecordResult<T> = PetalRecord<T> & { record: PetalRecord<T> };
+
+function asList<T>(records: PetalRecord<T>[] | undefined): RecordList<T> {
+  const arr = (Array.isArray(records) ? records.slice() : []) as RecordList<T>;
+  Object.defineProperty(arr, "records", { value: arr, enumerable: false });
+  return arr;
+}
+
+function asRecord<T>(record: PetalRecord<T>): RecordResult<T> {
+  return Object.assign({}, record, { record }) as RecordResult<T>;
+}
+
 /** Typed data access. Collections are created on first write — no migrations. */
 export const db = {
-  list<T = Record<string, unknown>>(
+  async list<T = Record<string, unknown>>(
     collection: string,
     opts: { mine?: boolean; limit?: number; offset?: number } = {},
-  ): Promise<{ records: PetalRecord<T>[] }> {
+  ): Promise<RecordList<T>> {
     const q = new URLSearchParams();
     if (opts.mine) q.set("mine", "1");
     if (opts.limit) q.set("limit", String(opts.limit));
     if (opts.offset) q.set("offset", String(opts.offset));
     const qs = q.toString();
-    return request("/records/" + encodeURIComponent(collection) + (qs ? "?" + qs : ""));
+    const body = await request<{ records: PetalRecord<T>[] }>(
+      "/records/" + encodeURIComponent(collection) + (qs ? "?" + qs : ""),
+    );
+    return asList(body.records);
   },
-  create<T = Record<string, unknown>>(collection: string, data: T): Promise<{ record: PetalRecord<T> }> {
-    return request("/records/" + encodeURIComponent(collection), {
+  async create<T = Record<string, unknown>>(collection: string, data: T): Promise<RecordResult<T>> {
+    const body = await request<{ record: PetalRecord<T> }>("/records/" + encodeURIComponent(collection), {
       method: "POST",
       body: JSON.stringify(data),
     });
+    return asRecord(body.record);
   },
-  update<T = Record<string, unknown>>(
+  async update<T = Record<string, unknown>>(
     collection: string,
     id: string,
     data: Partial<T>,
-  ): Promise<{ record: PetalRecord<T> }> {
-    return request("/records/" + encodeURIComponent(collection) + "/" + id, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
+  ): Promise<RecordResult<T>> {
+    const body = await request<{ record: PetalRecord<T> }>(
+      "/records/" + encodeURIComponent(collection) + "/" + id,
+      { method: "PATCH", body: JSON.stringify(data) },
+    );
+    return asRecord(body.record);
   },
   remove(collection: string, id: string): Promise<{ ok: true }> {
     return request("/records/" + encodeURIComponent(collection) + "/" + id, { method: "DELETE" });
@@ -143,20 +163,21 @@ export const db = {
   /**
    * Starter records: writes the given rows into an EMPTY collection once, so a new
    * app opens with real, saved data instead of blank tables. Never touches a
-   * collection that already holds records. Returns the current records.
+   * collection that already holds records. Returns the current records (usable
+   * as an array or as { records }).
    */
-  async seedOnce<T = Record<string, unknown>>(collection: string, rows: T[]): Promise<PetalRecord<T>[]> {
+  async seedOnce<T = Record<string, unknown>>(collection: string, rows: T[]): Promise<RecordList<T>> {
     const current = await db.list<T>(collection, { limit: 1 });
-    if (current.records.length > 0 || rows.length === 0) return (await db.list<T>(collection)).records;
+    if (current.length > 0 || rows.length === 0) return db.list<T>(collection);
     const flag = "petal_seeded_" + API_KEY.slice(-8) + "_" + collection;
     if (typeof window !== "undefined") {
-      if (window.localStorage.getItem(flag)) return current.records;
+      if (window.localStorage.getItem(flag)) return current;
       window.localStorage.setItem(flag, "1");
     }
     for (const row of rows.slice(0, 20)) {
       try { await db.create<T>(collection, row); } catch { break; }
     }
-    return (await db.list<T>(collection)).records;
+    return db.list<T>(collection);
   },
 };
 
