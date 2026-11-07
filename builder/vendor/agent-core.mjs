@@ -60139,7 +60139,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -62130,6 +62129,34 @@ var init_call_accounting = __esm({
   }
 });
 
+// src/server/public-origin.ts
+function isPrivateHost(hostname) {
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal")) return true;
+  if (h === "::1" || h === "0.0.0.0") return true;
+  if (/^(10|127|0)\./.test(h) || /^192\.168\./.test(h) || /^169\.254\./.test(h)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
+  if (/^(fc|fd)[0-9a-f]{2}:/.test(h) || h.startsWith("fe80:")) return true;
+  return false;
+}
+function trustedAppOrigin(requestUrl, env2 = process.env) {
+  const fallback = (env2.PETAL_PUBLIC_ORIGIN || DEFAULT_PUBLIC_ORIGIN).replace(/\/+$/, "");
+  try {
+    const u = new URL(requestUrl);
+    if (u.protocol !== "https:" || isPrivateHost(u.hostname)) return fallback;
+    return u.origin;
+  } catch {
+    return fallback;
+  }
+}
+var DEFAULT_PUBLIC_ORIGIN;
+var init_public_origin = __esm({
+  "src/server/public-origin.ts"() {
+    init_define_import_meta_env();
+    DEFAULT_PUBLIC_ORIGIN = "https://petalapp.lovable.app";
+  }
+});
+
 // src/server/durable-agent.server.ts
 var durable_agent_server_exports = {};
 __export(durable_agent_server_exports, {
@@ -62157,7 +62184,7 @@ function buildAgentJobPayload(request, turnId, userId, body) {
     if (v) headers[name] = v;
   }
   const publicConfig = process.env.SUPABASE_URL && process.env.SUPABASE_PUBLISHABLE_KEY ? { supabaseUrl: process.env.SUPABASE_URL, supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY } : void 0;
-  return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: new URL(request.url).origin, publicConfig };
+  return { turnId, userId, body: { ...body, turnId }, headers, appOrigin: trustedAppOrigin(request.url), publicConfig };
 }
 async function signedPost(path, payload, fetcher, env2) {
   const base = env2.BUILDER_URL;
@@ -62209,6 +62236,7 @@ var DURABLE_TURN_HEADER, FORWARDED_HEADERS;
 var init_durable_agent_server = __esm({
   "src/server/durable-agent.server.ts"() {
     init_define_import_meta_env();
+    init_public_origin();
     DURABLE_TURN_HEADER = "x-petal-durable-turn";
     FORWARDED_HEADERS = ["authorization", "x-petal-target", "x-kimble-inference-eval"];
   }
@@ -140054,7 +140082,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141091,7 +141118,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141256,7 +141282,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141300,7 +141325,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -146133,6 +146157,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -153902,6 +153927,22 @@ var init_work_unit = __esm({
   }
 });
 
+// src/server/verification/ts-runtime-shim.ts
+function install() {
+  const g = globalThis;
+  if (typeof g.__filename === "undefined") g.__filename = "/node_modules/typescript/lib/typescript.js";
+  if (typeof g.__dirname === "undefined") g.__dirname = "/node_modules/typescript/lib";
+  return true;
+}
+var TS_RUNTIME_READY;
+var init_ts_runtime_shim = __esm({
+  "src/server/verification/ts-runtime-shim.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    TS_RUNTIME_READY = install();
+  }
+});
+
 // src/server/verification/identifiers.server.ts
 var identifiers_server_exports = {};
 __export(identifiers_server_exports, {
@@ -153914,6 +153955,7 @@ function isPlatformGlobal(name) {
   return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
 }
 function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
+  if (!TS_RUNTIME_READY) return { status: "unavailable", issues: [], reason: "typescript runtime not ready" };
   const targets = changedPaths.filter((p2) => PARSEABLE2.test(p2));
   if (targets.length === 0) return { status: "verified", issues: [] };
   const now = opts.now ?? (() => Date.now());
@@ -154004,6 +154046,7 @@ var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, E
 var init_identifiers_server = __esm({
   "src/server/verification/identifiers.server.ts"() {
     init_define_import_meta_env();
+    init_ts_runtime_shim();
     IDENTIFIER_CHECK_BUDGET_MS = 8e3;
     CANNOT_FIND_NAME = 2304;
     PARSEABLE2 = /\.(tsx?|jsx?)$/i;
