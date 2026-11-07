@@ -83,7 +83,7 @@ case "$cmd" in
   rename) mv "$(c_dir "$1")" "$(c_dir "$2")"; ev "rename $1 $2" ;;
   stop)
     name=${@: -1}; c=$(c_dir "$name")
-    ev "stop $name busy=$(cat "$S/busy") drained=$([[ -f $c/drain ]] && echo 1 || echo 0)"
+    ev "stop $name busy=$(cat "$S/busy") drained=$([[ -f $c/drain ]] && echo 1 || echo 0) wait=$2"
     echo false >"$c/running" ;;
   run)
     name="" label="" image=${@: -1}
@@ -214,7 +214,7 @@ echo "1) normal deploy"
 reset_world 1; rc=$(run_deploy)
 check "exit 0" '[[ $rc == 0 ]]'
 check "drain switched on before the stop" 'events | grep -n -E "^(drain-on|stop)" | head -1 | grep -q drain-on'
-check "stopped only while idle and drained" 'events | grep -q "^stop petal-builder-prev busy=0 drained=1"'
+check "stopped only while idle and drained, graceful wait" 'events | grep -q "^stop petal-builder-prev busy=0 drained=1 wait=30"'
 check "new image live" '[[ $(live_image) == petal-builder:$SHORT && $(live_running) == true ]]'
 check "new builder not drained" '! drain_left'
 check "old container removed" '[[ ! -d $FAKE_STATE/containers/petal-builder-prev ]]'
@@ -268,6 +268,7 @@ reset_world 0; rc=$(run_deploy)
 check "exit 0" '[[ $rc == 0 ]]'
 check "fell back to the idle gate" 'grep -q "has no drain mode" "$W/out"'
 check "no drain attempted" '! events | grep -q "^drain-on"'
+check "old builder stopped at once (it ignores SIGTERM)" 'events | grep -q "^stop petal-builder-prev busy=0 drained=0 wait=0"'
 check "new image live" '[[ $(live_image) == petal-builder:$SHORT ]]'
 
 echo "9) builder always busy"

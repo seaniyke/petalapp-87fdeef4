@@ -142,6 +142,10 @@ wait_for_idle() {
 
 # ---- Drain mode ----------------------------------------------------------------
 DRAINED=0
+# Graceful stop wait. A drain-capable builder exits as soon as it is idle; one
+# without drain mode ignores SIGTERM as PID 1 and would keep accepting jobs for
+# the whole wait, so for it we stop at once (it was confirmed idle just before).
+STOP_WAIT=$STOP_TIMEOUT_S
 
 healthz_flag() { fetch_json "$LOCAL_URL/healthz" 2>/dev/null | jq -e --arg k "$1" '.[$k] == true' >/dev/null 2>&1; }
 
@@ -204,6 +208,7 @@ quiesce() {
       local n
       n=$(busy_count) || die "builder unreachable right before swap; nothing changed" 75
       [[ "$n" == "0" ]] || { log "DEFERRED: a job started right before swap; nothing changed"; exit 75; }
+      STOP_WAIT=0
       return 0
     fi
     start_drain || die "could not switch the builder to drain mode; nothing was changed" 3
@@ -371,7 +376,7 @@ swap_to_image() {
 
   log "stopping current builder (kept as $PREV_CONTAINER)"
   docker rename "$CONTAINER" "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1 || { trap on_signal INT TERM; log "rename failed"; return 1; }
-  if ! docker stop --time "$STOP_TIMEOUT_S" "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1; then
+  if ! docker stop --time "$STOP_WAIT" "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1; then
     log "stop failed"
     restore_previous; return 1
   fi
