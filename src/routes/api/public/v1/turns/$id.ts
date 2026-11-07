@@ -23,8 +23,12 @@ export const Route = createFileRoute("/api/public/v1/turns/$id")({
         if (!data || data.user_id !== owner) return json({ error: "not_found" }, 404);
         const { user_id: _omit, ...turn } = data;
         const { previewUrlFor, previewFields } = await import("@/server/service-api.server");
-        const url = data.status === "succeeded" ? await previewUrlFor(data.project_id, data.id) : null;
-        return json({ turn: { ...turn, ...previewFields(url) }, ...previewFields(url) });
+        const { turnBill } = await import("@/server/service-billing.server");
+        const [url, billing] = await Promise.all([
+          data.status === "succeeded" ? previewUrlFor(data.project_id, data.id) : Promise.resolve(null),
+          turnBill(owner, data.id),
+        ]);
+        return json({ turn: { ...turn, ...previewFields(url) }, billing, ...previewFields(url) });
       },
     },
   },
