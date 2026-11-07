@@ -10,7 +10,7 @@
  *      only when the backend kit is present (type-only imports stay alone)
  *   3. <input type="date">                           → noted (cannot rewrite JSX safely; logged)
  *   4. lucide-react icons that don't exist           → swapped for nearest valid icon
- *   5. picture placeholders are left untouched (the 12-per-build budget lives in image-generation)
+ *   5. picture placeholders are left untouched (the per-build runaway guard lives in image-generation)
  *
  * Each fix logs to the returned report so we can surface a "auto-corrected N
  * issues" status in the chat.
@@ -234,7 +234,7 @@ function fixBadImports(content: string, report: AutofixReport, hasBackendKit: bo
 }
 
 /** Picture placeholders are never rewritten here. The per-build budget lives
- *  in image-generation (12 per build; extras get a plain dark stand-in that a
+ *  in image-generation (runaway guard of 40 per build; extras get a plain dark stand-in that a
  *  later turn fills). A per-file cap of 6 used to swap the rest to random
  *  picsum stock — off-topic photos, and two slugs sharing their first 16
  *  characters got the identical picture (live Aura team portraits). */

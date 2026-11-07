@@ -38224,7 +38224,7 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
   - \`<img src="petal-image://minimalist-product-photo-leather-wallet-on-marble" />\`
   - \`<img src="petal-image://abstract-purple-gradient-mesh-background" />\`
 - Be SPECIFIC and VISUAL. \`petal-image://hero\` is bad. \`petal-image://founder-portrait-natural-light-warm-smile\` is good.
-- Limits: up to 12 unique placeholders per generation (extras show a plain dark stand-in until a later turn). Same slug used multiple times = one image, deduped automatically.
+- Limits: give every distinct picture slot its own placeholder \u2014 all of them are made (runaway guard: 40 per generation). Same slug used multiple times = one image, deduped automatically.
 - DO NOT use picsum.photos, unsplash.com, placeholder.com, or any other stock-photo URL when \`petal-image://\` would do \u2014 generated images always look more on-brand.
 - Never fabricate testimonials, customer names, ratings, usage numbers or social proof. Use testimonials only when the user supplied them; otherwise show honest product/company content.
 
@@ -38397,7 +38397,7 @@ IMAGES (use \`petal-image://\` for AI-generated visuals):
 - Examples: \`<img src="petal-image://cozy-coffee-shop-hero-warm-morning-light" />\`, \`<img src="petal-image://leather-wallet-on-marble-product-shot" />\`.
 - Be SPECIFIC and VISUAL \u2014 the slug IS the prompt to the image model.
 - DO NOT introduce picsum.photos / unsplash / placeholder URLs in NEW image elements when \`petal-image://\` would do. Existing image URLs in the codebase may stay unless the user asks otherwise.
-- Limit: up to 12 unique placeholders per turn (extras show a plain dark stand-in until a later turn).
+- Limit: every distinct placeholder is made (runaway guard: 40 per turn).
 
 MULTI-PAGE ROUTING:
 - Use "@/components/ui/router" (re-exports react-router-dom). When adding a new page, wire it through the EXISTING <Routes>; never create a second <Router>. Detailed API appears in [Reinforcement \u2014 Routing] when relevant.
@@ -70502,7 +70502,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -142162,6 +142161,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144487,6 +144487,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145691,6 +145692,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146799,6 +146801,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -163473,7 +163476,8 @@ async function keepChatPhotos(projectId, attachments) {
 // src/server/image-generation.server.ts
 init_turn_context_server();
 var BUCKET = "petal-images";
-var MAX_IMAGES_PER_GENERATION = 12;
+var MAX_IMAGES_PER_GENERATION = 40;
+var IMAGE_CONCURRENCY = 3;
 var MAX_ATTEMPTS = 3;
 var RETRY_DELAYS_MS = [1500, 4e3];
 var PENDING_MARK = "petal-pending:";
@@ -163747,7 +163751,7 @@ async function resolvePetalImagePlaceholders(files, onImage, projectId, targetPa
     }
     urlMap.set(slug3, fallbackUrl(slug3));
   };
-  await Promise.all([worker(), worker()]);
+  await Promise.all(Array.from({ length: Math.min(IMAGE_CONCURRENCY, ordered.length) }, () => worker()));
   for (const slug3 of retryLater) {
     try {
       const url = await makeWithRetry(slug3);
@@ -168612,7 +168616,7 @@ var COMPOSITION_RULES = [
   "Vertical rhythm: content sections py-16 md:py-24, strips py-10 md:py-14, final CTA py-16 md:py-20, footer py-12 md:py-16. Content width max-w-6xl mx-auto px-6. This padding goes on each <section> only \u2014 never on the page/layout wrapper or around the header, which must sit flush at the top of the page.",
   "Two, at most three calls to action across an entire page. The final CTA is its own section; the footer is not a CTA.",
   "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
-  'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt, up to 12 per build; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
+  'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Kimble generates each one after you finish. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt \u2014 every one is made; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
   "Marketing sites lead with imagery, not tools: the hero is a large photograph or full-bleed visual with one headline and one primary action. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
   "Studio, portfolio, architecture, luxury and hospitality sites are editorial: big photographs, generous negative space, few words per section, serif display headings. Keep technical detail off the homepage.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
@@ -171921,7 +171925,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

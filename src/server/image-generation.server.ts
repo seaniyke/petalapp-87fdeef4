@@ -26,8 +26,11 @@ import type { ProjectFile } from "./generate.server";
 
 const BUCKET = "petal-images";
 
-/** Hard cap — protects against an AI that emits 50 placeholder URLs in one turn. */
-const MAX_IMAGES_PER_GENERATION = 12;
+/** Runaway guard only — every picture a real site asks for gets made.
+ *  (12 left four empty dark boxes on a four-page studio site.) */
+export const MAX_IMAGES_PER_GENERATION = 40;
+/** Pictures made at the same time, so a fuller site does not take much longer. */
+const IMAGE_CONCURRENCY = 3;
 
 /** Attempts per picture before it falls back (transient gateway/timeout
  *  errors were turning a single hiccup into a permanent placeholder). */
@@ -336,7 +339,7 @@ export async function resolvePetalImagePlaceholders(
   const ordered = Array.from(slugs).slice(0, MAX_IMAGES_PER_GENERATION);
   const skipped = Array.from(slugs).slice(MAX_IMAGES_PER_GENERATION);
 
-  // 3. Resolve each — concurrency 2 to be gentle on the gateway.
+  // 3. Resolve each, a few at a time.
   const urlMap = new Map<string, string>();
   let resolved = 0;
   let failed = 0;
@@ -436,7 +439,7 @@ export async function resolvePetalImagePlaceholders(
     try { deps.onFailure?.({ slug, reason }); } catch { /* reporting only */ }
     urlMap.set(slug, fallbackUrl(slug));
   };
-  await Promise.all([worker(), worker()]);
+  await Promise.all(Array.from({ length: Math.min(IMAGE_CONCURRENCY, ordered.length) }, () => worker()));
   for (const slug of retryLater) {
     try {
       const url = await makeWithRetry(slug);

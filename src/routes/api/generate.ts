@@ -6771,8 +6771,8 @@ async function handleGenerateRequestCore(
 
         // Phase 4: resolve `petal-image://...` placeholders into real
         // AI-generated images uploaded to the public petal-images
-        // bucket. Failures fall back to picsum so the build never
-        // breaks because of a flaky image call.
+        // bucket. Failures fall back to a plain dark stand-in so the build
+        // never breaks because of a flaky image call.
         try {
           const imageTargetPaths = isInitial
             ? undefined
