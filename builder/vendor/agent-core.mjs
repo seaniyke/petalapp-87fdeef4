@@ -34804,15 +34804,15 @@ var require_lib = __commonJS({
           }
           this.sawUnambiguousESM = true;
         } else if (this.isContextual(105) || this.isContextual(97)) {
-          const isSource3 = this.isContextual(105);
-          this.expectPlugin(isSource3 ? "sourcePhaseImports" : "deferredImportEvaluation");
+          const isSource4 = this.isContextual(105);
+          this.expectPlugin(isSource4 ? "sourcePhaseImports" : "deferredImportEvaluation");
           if (!(this.optionFlags & 512)) {
             throw this.raise(Errors.DynamicImportPhaseRequiresImportExpressions, this.state.startLoc, {
               phase: this.state.value
             });
           }
           this.next();
-          node.phase = isSource3 ? "source" : "defer";
+          node.phase = isSource4 ? "source" : "defer";
           return this.parseImportCall(node);
         }
         return this.parseMetaProperty(node, id, "meta");
@@ -60299,6 +60299,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -70518,7 +70519,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -142178,7 +142178,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -145708,7 +145707,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145822,18 +145820,27 @@ function slug(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 }
 function splitRequestedItems(brief) {
-  const text = brief.replace(/\s+/g, " ");
+  const text = brief.replace(/\s+/g, " ").split(/(?<=[.!?])\s+/).filter((s) => !isStyleSentence(s)).join(" ");
   const m = text.match(/\bpages?\s*:\s*(.+)$/i) ?? text.match(/\b(?:with|including|includes|featuring|that has|needs?)\b(.+)$/i);
   let tail = m ? m[1] : text;
   for (let i = 0; i < 4 && /\([^()]*\)/.test(tail); i++) tail = tail.replace(/\s*\([^()]*\)/g, "");
   tail = tail.replace(/[()]/g, " ");
   return tail.split(/,|;|\band\b|\bplus\b|\+|[.!?](?=\s|$)/i).map((s) => s.replace(/[.!?:]+$/g, "").trim()).filter((s) => s.length >= 3 && s.split(" ").length <= 6).filter((s) => !isNotARequirement(s));
 }
+function isStyleSentence(sentence) {
+  const s = sentence.toLowerCase().trim();
+  if (/^(the\s+)?(overall\s+)?(look|feel|style|design|vibe|tone|aesthetic|mood|branding)\b/.test(s)) return true;
+  if (/^(it|the (site|website|app|page))\s+should\s+(look|feel)\b/.test(s)) return true;
+  if (/^(make|keep)\s+(it|the|everything)\b/.test(s)) return true;
+  return false;
+}
 function isNotARequirement(item) {
-  const s = item.toLowerCase().trim();
+  const s = item.toLowerCase().trim().replace(/^(the|a|an)\s+/, "");
   if (/^(no|not|without|never|don'?t|do not|nothing)\b/.test(s)) return true;
   if (/\bonly\b/.test(s)) return true;
-  if (/^(use|make it|keep it|feel|look)\b/.test(s)) return true;
+  if (/^(use|make|keep|feel|look)\b/.test(s)) return true;
+  if (/^(look|feel|style|design|vibe|tone)\s+(should|must|is|to be)\b/.test(s)) return true;
+  if (new RegExp(`^(very\\s+|more\\s+)?(${STYLE_WORDS})(\\s+(feel|look|style|tone|design))?$`).test(s)) return true;
   if (/\b(photograph(y|s)?|imagery|images|photos|fonts?|typography|colou?rs?|palette|throughout|vibe|aesthetic)\b/.test(s)) return true;
   return /^(elegant|editorial|modern|minimal(ist)?|premium|luxury|luxurious|clean|bold|warm|dark|light|sleek|simple|playful|calm)(\s+(feel|look|style|tone|design))?$/.test(s);
 }
@@ -146144,7 +146151,7 @@ function renderRequirementsBlock(reqs, plan) {
   );
   return lines.join("\n");
 }
-var CONCEPTS, CONCEPT_BY_ID, OPEN3, CONTINUE_RE;
+var CONCEPTS, CONCEPT_BY_ID, STYLE_WORDS, OPEN3, CONTINUE_RE;
 var init_prd_requirements = __esm({
   "src/server/prd/prd-requirements.ts"() {
     init_define_import_meta_env();
@@ -146167,6 +146174,7 @@ var init_prd_requirements = __esm({
       { id: "responsive", label: "Responsive design", category: "quality", match: /\b(responsive|mobile[- ]friendly|works on (phones?|mobile)|mobile layout)\b/i, evidence: /$^/, dependsOn: [], nextAction: "Check the phone layout" }
     ];
     CONCEPT_BY_ID = new Map(CONCEPTS.map((c) => [c.id, c]));
+    STYLE_WORDS = "elegant|editorial|modern|minimal(?:ist)?|premium|luxury|luxurious|clean|bold|warm|dark|light|sleek|simple|playful|calm|natural|native|organic|soft|airy|refined|polished|sophisticated|timeless|chic|earthy|cosy|cozy|fresh|classic|vibrant|understated|serene|feminine|masculine|glamorous|high-end|upscale|beautiful|stylish|smooth|crisp|subtle";
     OPEN3 = ["NOT_STARTED", "IN_PROGRESS"];
     CONTINUE_RE = /^\s*(continue|keep going|keep building|next( stage| step)?|go on|carry on|proceed|finish (it|the rest)|build the rest|do the rest|all)\b/i;
   }
@@ -146817,6 +146825,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -155637,6 +155646,69 @@ var init_source_server = __esm({
     init_identifiers_server();
     init_gates();
     init_responsive();
+  }
+});
+
+// src/server/verification/customer-privacy.ts
+var customer_privacy_exports = {};
+__export(customer_privacy_exports, {
+  customerPrivacyIssues: () => customerPrivacyIssues
+});
+function isSource3(path) {
+  return /\.(tsx?|jsx?)$/.test(path);
+}
+function hasSignedInArea(tree, file) {
+  if (/<RequireAuth\b/.test(file.content)) return true;
+  return tree.some((f) => f.path !== file.path && isSource3(f.path) && /<RequireAuth\b/.test(f.content));
+}
+function isCustomerFacing(file, tree) {
+  if (!isSource3(file.path) || KIT_PATH.test(file.path)) return false;
+  if (SIGNED_IN_PATH.test(file.path) || /<RequireAuth\b/.test(file.content)) return false;
+  if (hasSignedInArea(tree, file)) return /^src\/pages\//.test(file.path);
+  return true;
+}
+function customerPrivacyIssues(file, tree) {
+  if (!isCustomerFacing(file, tree)) return [];
+  const out = /* @__PURE__ */ new Set();
+  CALL.lastIndex = 0;
+  let m;
+  while (m = CALL.exec(file.content)) {
+    const op = m[1];
+    const collection = m[3];
+    const rest = m[4] ?? "";
+    if (PRIVATE.test(collection)) {
+      if (op === "seedOnce") {
+        out.add(
+          `${file.path}: db.seedOnce("${collection}") fills the shared "${collection}" collection with made-up customers that every visitor then sees. Seed only what the business sells (products, treatments). Remove this seed; "${collection}" starts empty and is only written by db.create when a visitor books or orders.`
+        );
+      } else if (op === "list" && !/\bmine\s*:\s*true\b/.test(rest)) {
+        out.add(
+          `${file.path}: db.list("${collection}") loads EVERY visitor's ${collection} into a public page, so customers see each other's names and details. A visitor only sees their own: after db.create, keep the saved record in component state (or localStorage) and show that confirmation. Remove this list call and any list of other people's ${collection} (with reschedule, cancel or release buttons).`
+        );
+      } else if (op === "update" || op === "remove" || op === "delete" || op === "upsert") {
+        out.add(
+          `${file.path}: db.${op}("${collection}") lets any visitor change or cancel other customers' ${collection}. Public pages only create new ${collection}; remove this ${op} function and the buttons that call it.`
+        );
+      }
+      continue;
+    }
+    if (CATALOGUE.test(collection) && op !== "seedOnce" && op !== "list") {
+      out.add(
+        `${file.path}: db.${op}("${collection}") lets any visitor change the store's ${collection}, whatever the button is called. Visitors only browse, add to bag, book and pay. Remove this function and the form or button that calls it.`
+      );
+    }
+  }
+  return [...out];
+}
+var KIT_PATH, SIGNED_IN_PATH, PRIVATE, CATALOGUE, CALL;
+var init_customer_privacy = __esm({
+  "src/server/verification/customer-privacy.ts"() {
+    init_define_import_meta_env();
+    KIT_PATH = /^src\/(integrations|components\/(ui|examples|blocks|fx|mobile|content|image))\//;
+    SIGNED_IN_PATH = /(dashboard|admin|staff|owner|manage|backoffice|back-office|portal|account|studio-os|console)/i;
+    PRIVATE = /(^|[_-])(bookings?|appointments?|reservations?|orders?|messages?|enquir(y|ies)|inquir(y|ies)|leads?|submissions?|customers?|clients?|patients?|subscribers?|registrations?|rsvps?|carts?|bags?|baskets?)$/i;
+    CATALOGUE = /(^|[_-])(products?|services?|treatments?|menu(_items)?|menus|catalog(ue)?s?|formulas?|formulations?|offerings?|packages?|classes|courses?|listings?|collections?|rooms?)$/i;
+    CALL = /\bdb\.(seedOnce|list|create|update|remove|delete|upsert)\s*(?:<[^>()]*>)?\s*\(\s*(["'`])([\w-]+)\2([^)]{0,160})/g;
   }
 });
 
@@ -168649,7 +168721,8 @@ var COMPOSITION_RULES = [
   "Card anatomy is fixed: picture, title, one meta line (category \xB7 year or role), optionally one short sentence. No chips, badges, spec rows, numbers, credits or buttons inside a card \u2014 the whole card is the link.",
   "Never invent technical specifications, measurements, ratings, percentages or industry jargon (lux, Kelvin, CRI, Ra, ROI figures, client/architect credits) unless the user supplied them. Describe the work in plain words a client understands.",
   "No unrequested tools or widgets on websites: no calculators, tuners, sliders, simulators, configurators, live counters or charts unless the user asked for that tool by name.",
-  "Shops keep checkout out of the header: the header shows a bag icon with its item count, and checkout is reached from the bag.",
+  "Shops keep checkout out of the header: the header shows a bag icon with its item count, and checkout is reached from the bag. Checkout is never a link in the header, the phone menu or the footer, and the bag appears once (the icon), not also as a text link.",
+  "Every pop-up, drawer and side panel uses the kit Dialog or Sheet, so it closes with Esc, the backdrop and a close button. Never hand-build a fixed overlay.",
   "One primary action per screen. Repeat the same action (e.g. 'Start a project') instead of inventing new ones; never more than one button per card or section.",
   "The header has a solid background (bg-background with a border-b), never translucent or blurred. The phone menu uses the kit Sheet so it opens as a solid full-height panel.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
@@ -168674,7 +168747,7 @@ Styling is already fully set up: never create or edit a stylesheet, a Tailwind c
 ${d.playbook.trim()}
 `;
 }
-var STARTER_DATA_RULE = "Each list/table page loads its collection with `db.seedOnce(collection, rows)` from `@/integrations/backend/client` instead of `db.list` on first load, passing 5-8 realistic, domain-specific rows (real-sounding names, dates, amounts, statuses). seedOnce writes them to the database only when the collection is empty, so the app opens alive and the data is real. seedOnce and db.list return an array of records (`rows.map(r => ({ id: r.id, ...r.data }))`); db.create/db.update return the saved record (`saved.id`, `saved.data`). Never hardcode sample arrays in pages. On customer-facing pages (shop, product, menu, treatments, booking, cart) visitors only browse, add to bag, book and pay: never show add, edit or delete controls for the catalogue there. Owner tools exist only inside a signed-in area, and only when the user asked for one.";
+var STARTER_DATA_RULE = "Each list/table page loads its collection with `db.seedOnce(collection, rows)` from `@/integrations/backend/client` instead of `db.list` on first load, passing 5-8 realistic, domain-specific rows (real-sounding names, dates, amounts, statuses). seedOnce writes them to the database only when the collection is empty, so the app opens alive and the data is real. seedOnce and db.list return an array of records (`rows.map(r => ({ id: r.id, ...r.data }))`); db.create/db.update return the saved record (`saved.id`, `saved.data`). Never hardcode sample arrays in pages. On customer-facing pages (shop, product, menu, treatments, booking, cart) visitors only browse, add to bag, book and pay: never show add, edit or delete controls for the catalogue there, whatever the button is called (no 'Add to store', 'New formula', 'Bespoke blend' forms). Visitors never see other people's bookings, orders or messages: seed only what the business sells, never sample bookings or orders with customer names; after a visitor books or orders, db.create the record and show only that visitor's own confirmation from component state \u2014 never a list of everyone's bookings, and no reschedule/cancel buttons on others' records. Owner tools exist only inside a signed-in area, and only when the user asked for one.";
 function firstBuildBrief(request, planned, existing, design3, data2) {
   const pages = planned.map((p2) => `${p2.route} \u2192 ${p2.file}`).join(", ");
   const workspace = existing.length ? `The workspace already holds ${existing.length} saved files from an interrupted run: ${existing.join(", ")}. Do not rewrite them; write what is still missing.` : `No app code has been written yet. The scaffold below is already installed, so you know the workspace \u2014 do not list or read files before writing. Start writing immediately.`;
@@ -171959,6 +172032,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -180093,9 +180167,11 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                 if (v.status === "unavailable") throw new Error(v.unavailableDetail ?? v.unavailableReason ?? "esbuild unavailable");
                 const out = v.issues.map((i) => i.message);
                 if (out.length) return out;
+                const { customerPrivacyIssues: customerPrivacyIssues2 } = await Promise.resolve().then(() => (init_customer_privacy(), customer_privacy_exports));
                 return [
                   ...validateUnitImports2(file, tree).map((d) => d.message),
-                  ...undefinedNames2(file, tree, (t, c) => checkIdsForUnits(t, c)).map((d) => d.message)
+                  ...undefinedNames2(file, tree, (t, c) => checkIdsForUnits(t, c)).map((d) => d.message),
+                  ...customerPrivacyIssues2(file, tree)
                 ];
               },
               typecheck: (tree, paths) => {

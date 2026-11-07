@@ -5037,9 +5037,11 @@ async function handleGenerateRequestCore(
                 if (v.status === "unavailable") throw new Error(v.unavailableDetail ?? v.unavailableReason ?? "esbuild unavailable");
                 const out = v.issues.map((i) => i.message);
                 if (out.length) return out;
+                const { customerPrivacyIssues } = await import("@/server/verification/customer-privacy");
                 return [
                   ...validateUnitImports(file, tree).map((d) => d.message),
                   ...undefinedNames(file, tree, (t, c) => checkIdsForUnits(t, c)).map((d) => d.message),
+                  ...customerPrivacyIssues(file, tree),
                 ];
               },
               typecheck: (tree, paths) => {

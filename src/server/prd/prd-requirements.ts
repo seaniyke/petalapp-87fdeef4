@@ -96,7 +96,14 @@ function slug(s: string): string {
 
 /** Split "with A, B, C and D" style enumerations into items. */
 export function splitRequestedItems(brief: string): string[] {
-  const text = brief.replace(/\s+/g, " ");
+  // Whole sentences about the look or the amount of copy ("The look should
+  // be modern, sleek, native and natural.", "Keep the home page light on
+  // words.") describe how to build, so they never become requirements.
+  const text = brief
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => !isStyleSentence(s))
+    .join(" ");
   // An explicit "Pages: A, B, C" list wins over the first "with …".
   const m =
     text.match(/\bpages?\s*:\s*(.+)$/i) ??
@@ -119,11 +126,26 @@ export function splitRequestedItems(brief: string): string[] {
  * how to build, not something to build — they were showing up as unmet
  * requirements, and "no accounts" even as a Customer accounts requirement.
  */
+const STYLE_WORDS =
+  "elegant|editorial|modern|minimal(?:ist)?|premium|luxury|luxurious|clean|bold|warm|dark|light|sleek|simple|playful|calm|" +
+  "natural|native|organic|soft|airy|refined|polished|sophisticated|timeless|chic|earthy|cosy|cozy|fresh|classic|vibrant|" +
+  "understated|serene|feminine|masculine|glamorous|high-end|upscale|beautiful|stylish|smooth|crisp|subtle";
+
+function isStyleSentence(sentence: string): boolean {
+  const s = sentence.toLowerCase().trim();
+  if (/^(the\s+)?(overall\s+)?(look|feel|style|design|vibe|tone|aesthetic|mood|branding)\b/.test(s)) return true;
+  if (/^(it|the (site|website|app|page))\s+should\s+(look|feel)\b/.test(s)) return true;
+  if (/^(make|keep)\s+(it|the|everything)\b/.test(s)) return true;
+  return false;
+}
+
 function isNotARequirement(item: string): boolean {
-  const s = item.toLowerCase().trim();
+  const s = item.toLowerCase().trim().replace(/^(the|a|an)\s+/, "");
   if (/^(no|not|without|never|don'?t|do not|nothing)\b/.test(s)) return true;
   if (/\bonly\b/.test(s)) return true;
-  if (/^(use|make it|keep it|feel|look)\b/.test(s)) return true;
+  if (/^(use|make|keep|feel|look)\b/.test(s)) return true;
+  if (/^(look|feel|style|design|vibe|tone)\s+(should|must|is|to be)\b/.test(s)) return true;
+  if (new RegExp(`^(very\\s+|more\\s+)?(${STYLE_WORDS})(\\s+(feel|look|style|tone|design))?$`).test(s)) return true;
   if (/\b(photograph(y|s)?|imagery|images|photos|fonts?|typography|colou?rs?|palette|throughout|vibe|aesthetic)\b/.test(s)) return true;
   return /^(elegant|editorial|modern|minimal(ist)?|premium|luxury|luxurious|clean|bold|warm|dark|light|sleek|simple|playful|calm)(\s+(feel|look|style|tone|design))?$/.test(s);
 }
