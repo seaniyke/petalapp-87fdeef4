@@ -72,6 +72,8 @@ export function scoreProjectPicture(pic: ProjectPicture, words: string[]): numbe
 export async function findProjectPicture(
   projectId: string | null | undefined,
   request: string,
+  /** Photos already placed elsewhere in this build — not picked twice. */
+  exclude?: ReadonlySet<string>,
 ): Promise<ProjectPicture | null> {
   const words = tokenize(request);
   if (!words.length) return null;
@@ -81,6 +83,7 @@ export async function findProjectPicture(
   let best: ProjectPicture | null = null;
   let bestScore = 0;
   for (const pic of rows) {
+    if (exclude?.has(pic.url)) continue;
     const score = scoreProjectPicture(pic, words);
     if (score > bestScore) {
       bestScore = score;

@@ -17,7 +17,7 @@
  */
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { tokenize, scorePicture, MIN_SCORE, type LibraryPicture } from "./pictures.server";
+import { tokenize, scorePicture, pictureWords, matchedWords, MIN_SCORE, MIN_MATCHED_WORDS, type LibraryPicture } from "./pictures.server";
 
 export interface RememberedPicture {
   id: string;
@@ -252,9 +252,59 @@ export async function findRememberedPicture(query: {
   scope?: PictureScope;
   briefTags?: string[];
   aspectRatio?: string | null;
+  /** Pictures already used elsewhere in this build — never picked again. */
+  exclude?: ReadonlySet<string>;
 }): Promise<RememberedPicture | null> {
-  const ranked = await rankRememberedPictures(query, 1);
-  return ranked[0]?.row ?? null;
+  const ranked = await rankRememberedPictures(query, 5);
+  return ranked.find((r) => !query.exclude?.has(r.row.url))?.row ?? null;
+}
+
+/**
+ * How closely a remembered picture must fit.
+ *
+ * "slot": filling one picture slot. The picture must show essentially the
+ * same thing — most of the request's words AND most of the picture's own
+ * words agree. Two shared words ("dark", "lighting") between a museum and a
+ * spa is not a match; that reused a spa photo for a museum project.
+ *
+ * "context": listing pictures for the AI to consider. The picture's subject
+ * must be mostly described by the person's request.
+ */
+export type PictureFit = "slot" | "context";
+const SLOT_REQUEST_COVERAGE = 0.6;
+const SLOT_PICTURE_COVERAGE = 0.5;
+const CONTEXT_PICTURE_COVERAGE = 0.5;
+
+export function fitsRequest(row: Pick<RememberedPicture, "subject" | "tags">, words: string[], fit: PictureFit): boolean {
+  const described = pictureWords(row);
+  const want = new Set(words);
+  const matched = matchedWords(words, described);
+  if (matched < MIN_MATCHED_WORDS || !described.size || !want.size) return false;
+  const pictureCoverage = matched / described.size;
+  if (fit === "context") return pictureCoverage >= CONTEXT_PICTURE_COVERAGE;
+  return matched / want.size >= SLOT_REQUEST_COVERAGE && pictureCoverage >= SLOT_PICTURE_COVERAGE;
+}
+
+/**
+ * Accounts that build for many different customers (the Custard AI service
+ * account). Their "other projects" belong to other people, so pictures are
+ * never reused across them. Unknown → treated as shared: quality first.
+ */
+const sharedAccountCache = new Map<string, boolean>();
+export async function isSharedAccount(ownerId: string): Promise<boolean> {
+  if (process.env.CUSTARD_SERVICE_USER_ID && ownerId === process.env.CUSTARD_SERVICE_USER_ID) return true;
+  const known = sharedAccountCache.get(ownerId);
+  if (known !== undefined) return known;
+  try {
+    const { data, error } = await supabaseAdmin.auth.admin.getUserById(ownerId);
+    if (error || !data?.user) return true;
+    const meta = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+    const shared = meta.service_account === true || data.user.email === "service@custardai.dev";
+    sharedAccountCache.set(ownerId, shared);
+    return shared;
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -262,14 +312,17 @@ export async function findRememberedPicture(query: {
  * the quality bar and inside the caller's scope. Never throws.
  */
 export async function rankRememberedPictures(
-  query: { request: string; scope?: PictureScope; briefTags?: string[]; aspectRatio?: string | null },
+  query: { request: string; scope?: PictureScope; briefTags?: string[]; aspectRatio?: string | null; fit?: PictureFit },
   limit = 5,
 ): Promise<Array<{ row: RememberedPicture; score: number; scope: PictureReuseScope }>> {
   const words = tokenize(query.request);
   if (!words.length) return [];
+  const fit: PictureFit = query.fit ?? "slot";
 
   const projectId = query.scope?.projectId ?? null;
-  const ownerId = query.scope?.ownerId ?? null;
+  const rawOwnerId = query.scope?.ownerId ?? null;
+  // A shared builder account's other projects are other customers' sites.
+  const ownerId = rawOwnerId && !(await isSharedAccount(rawOwnerId)) ? rawOwnerId : null;
 
   const rows: RememberedPicture[] = [];
   const seen = new Set<string>();
@@ -325,6 +378,7 @@ export async function rankRememberedPictures(
     // if a query ever returned one.
     const visible = scopeOf(row, { projectId, ownerId });
     if (!visible) continue;
+    if (!fitsRequest(row, words, fit)) continue;
     const score = scorePicture(asScorable(row), words, briefTags, query.aspectRatio);
     if (score >= MIN_SCORE) out.push({ row, score, scope: visible });
   }
@@ -342,7 +396,7 @@ export async function renderReusablePicturesBlock(query: {
   limit?: number;
 }): Promise<string> {
   try {
-    const ranked = await rankRememberedPictures(query, query.limit ?? 5);
+    const ranked = await rankRememberedPictures({ ...query, fit: "context" }, query.limit ?? 5);
     if (!ranked.length) return "";
     const lines = ranked.map(({ row }) => {
       const shape = row.width && row.height ? `${row.width}x${row.height}` : row.aspect_ratio || row.orientation || "";
