@@ -140126,6 +140126,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141215,6 +141216,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141379,6 +141381,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141422,6 +141425,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -142120,6 +142124,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -146261,6 +146266,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -167024,12 +167030,21 @@ function detectBrandName(files) {
   if (title && !/^(vite|react|app|document)\b/i.test(title)) {
     return title.split(/[–—|·-]/)[0].trim();
   }
-  for (const f of files) {
-    if (!/\.(tsx|jsx)$/.test(f.path)) continue;
-    const m = /font-(?:display|bold|semibold|black)[^>]*>\s*([A-Z][A-Za-z0-9&'’.\s]{1,28})\s*</.exec(
+  const own = files.filter(
+    (f) => /\.(tsx|jsx)$/.test(f.path) && !/^src\/components\/(blocks|examples|ui|motion|fx|content|mobile)\//.test(f.path)
+  );
+  const ranked = [
+    ...own.filter((f) => /layout|header|nav|brand|logo/i.test(f.path)),
+    ...own.filter((f) => !/layout|header|nav|brand|logo/i.test(f.path))
+  ];
+  for (const f of ranked) {
+    const m = /font-(?:display|serif|bold|semibold|black)[^>]*>\s*([A-Z][A-Za-z0-9&'’.\s]{1,28})\s*</.exec(
       f.content
     );
-    if (m) return m[1].trim();
+    if (m) {
+      const name = m[1].trim().replace(/\s+/g, " ");
+      return /^[A-Z0-9&'’.\s]+$/.test(name) && name.length > 1 ? name.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : name;
+    }
   }
   return "Studio";
 }
@@ -167199,7 +167214,7 @@ function ensureFavicon(html, initials, brand, primary, glyph) {
   </head>`
     );
   }
-  if (/<title>\s*(vite|react|app|document)?[^<]{0,12}<\/title>/i.test(out)) {
+  if (/<title>\s*(vite(\s*\+\s*react(\s*\+\s*ts)?)?|react app|app|document|untitled)?\s*<\/title>/i.test(out) && brand !== "Studio") {
     out = out.replace(/<title>[^<]*<\/title>/i, `<title>${brand}</title>`);
   }
   return out;
