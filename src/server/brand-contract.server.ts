@@ -22,8 +22,8 @@ export function renderBrandContractBlock(opts: { isInitial: boolean }): string {
 ### Brand Identity Contract (non-negotiable)
 Every app you build is a real product with a real brand. Never ship placeholder identity.
 
-- **Logo mark**: create \`src/components/brand-mark.tsx\` exporting \`<BrandMark className="…" />\` — a hand-authored inline SVG (geometric monogram, abstract glyph, or emblem) built from theme tokens so it works in light AND dark mode. Render it in the header, the footer, and any auth/empty-state screen.
-- **BANNED as a logo**: bare lucide glyphs (\`Square\`, \`Box\`, \`Circle\`, \`Hexagon\`, \`Sparkles\`, \`Shapes\`), an emoji, or a wordmark with no mark at all.
+- **Logo**: create \`src/components/brand-mark.tsx\` exporting \`<BrandMark className="…" />\`. For websites (beauty, fashion, studio, hospitality, editorial, luxury) the logo is a confident typographic wordmark: the brand name alone in the display font, one line, no tagline under it. Apps and SaaS may add a small simple geometric monogram (one or two letters, a single shape) beside the name. Never an illustrative drawing (drops, leaves, faces, circles with lines through them).
+- **BANNED as a logo**: bare lucide glyphs (\`Square\`, \`Box\`, \`Circle\`, \`Hexagon\`, \`Sparkles\`, \`Shapes\`), emoji, clip-art SVG, or a tagline stacked under the name in the header.
 - **Favicon**: index.html must carry \`<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,…">\` using the same mark, plus \`apple-touch-icon\` and a \`theme-color\` meta. Never leave the framework default.
 - **Wordmark**: the brand name next to the mark uses the display font, tight tracking, and semibold-or-heavier weight.
 - **App shells**: if you use a sidebar/app shell, the brand lockup MUST also be visible in the mobile top bar — a mobile header showing only a hamburger and empty space is a bug.

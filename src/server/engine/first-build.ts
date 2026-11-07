@@ -69,6 +69,9 @@ export const FINISH_RULES = [
   "Every interactive element has transition-colors duration-300 and a visible focus-visible:ring-2 ring-ring ring-offset-2 state. Buttons never jump size on hover.",
   "Grids align: cards in one row share the same picture aspect ratio (aspect-[4/3] or aspect-[3/4]) and never offset each other vertically unless the whole section is a deliberate staggered layout.",
   "Section changes are calm: alternate only between bg-background and a near tone (bg-muted/40) with a thin border-t border-border/60 between bands — never a harsh jump between unrelated surfaces.",
+  "Buttons are compact rectangles (rounded-md), never rounded-full pills. No pill-shaped badges or chips on marketing pages; labels are plain uppercase text.",
+  "Header is one clean line: wordmark left, at most 5 text links, one icon or one button right. No tagline under the brand, no stacked text, no decorative mark drawings.",
+  "Never colour, italicise or highlight a single word inside a heading. Headings are one colour, one style.",
   "Footer is quiet and complete: brand, the requested page links, contact line and © year, in text-sm text-muted-foreground on a border-t.",
 ];
 
