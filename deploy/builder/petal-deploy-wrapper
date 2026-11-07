@@ -1,0 +1,28 @@
+#!/bin/bash
+# Petal Builder — SSH forced command for the `petal-deploy` user.
+#
+# Install (as root, once):
+#   install -o root -g root -m 0755 petal-deploy-wrapper /usr/local/sbin/petal-deploy-wrapper
+#
+# authorized_keys line for petal-deploy:
+#   restrict,command="/usr/local/sbin/petal-deploy-wrapper" ssh-ed25519 AAAA... github-actions-petal-builder
+#
+# This is the ONLY thing the GitHub Actions key can run. It accepts exactly:
+#   deploy <40-hex sha>
+#   status
+# Anything else is refused. The copy in the git repo is a reference; the VPS
+# runs only the root-owned copy in /usr/local/sbin.
+set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+umask 077
+
+cmd="${SSH_ORIGINAL_COMMAND:-}"
+
+if [[ "$cmd" =~ ^deploy\ ([0-9a-f]{40})$ ]]; then
+  exec /usr/bin/sudo -n /usr/local/sbin/petal-builder-deploy deploy "${BASH_REMATCH[1]}"
+elif [[ "$cmd" == "status" ]]; then
+  exec /usr/bin/sudo -n /usr/local/sbin/petal-builder-deploy status
+fi
+
+echo "petal-deploy: command not allowed" >&2
+exit 2

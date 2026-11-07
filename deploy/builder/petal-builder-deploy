@@ -1,0 +1,460 @@
+#!/bin/bash
+# Petal Builder — deploy / status / rollback for the `petal-builder` container.
+#
+# Install (as root, once; re-install by hand when this file changes in git):
+#   install -o root -g root -m 0750 petal-builder-deploy /usr/local/sbin/petal-builder-deploy
+#
+# Usage (root only):
+#   petal-builder-deploy deploy <40-hex sha>   # called via sudo by petal-deploy-wrapper
+#   petal-builder-deploy status
+#   petal-builder-deploy rollback              # admin only, NOT exposed over SSH
+#
+# Guarantees:
+# - Touches only the `petal-builder` container, `petal-builder:*` images and
+#   /opt/petal-builder. Never prunes globally, never restarts Docker.
+# - One deploy at a time (flock).
+# - Refuses commits that are not on origin/main.
+# - Refuses to run if the live container's configuration differs from what this
+#   script would recreate (ports, network, volume, limits, restart, env names).
+# - Waits (bounded) for the builder to be idle; defers (exit 75) instead of
+#   interrupting running builds or generations.
+# - Verifies /healthz and /agent/healthz (version + core hash) locally and
+#   through the public URL; restores the previous container on any failure.
+# - Never prints environment values, the .env file, or docker inspect env.
+#
+# Exit codes: 0 ok · 1 failed (previous builder restored) · 2 bad usage ·
+#             3 refused before any change · 73 another deploy running ·
+#             75 deferred (builder busy, nothing changed) ·
+#             90 rollback failed — manual action needed.
+
+set -Eeuo pipefail
+umask 027
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export LC_ALL=C
+export GIT_TERMINAL_PROMPT=0
+
+# ---- Expected production configuration (must match the live container) -----
+readonly SOURCE_DIR=/opt/petal-source
+readonly DEPLOY_DIR=/opt/petal-builder
+readonly RELEASES_DIR=/opt/petal-builder/releases
+readonly STATE_DIR=/opt/petal-builder/.deploy-state
+readonly ENV_FILE=/opt/petal-builder/.env
+readonly LOG_DIR=/var/log/petal-builder-deploy
+readonly LOCK_FILE=/run/lock/petal-builder-deploy.lock
+
+readonly CONTAINER=petal-builder
+readonly PREV_CONTAINER=petal-builder-prev
+readonly IMAGE_REPO=petal-builder
+readonly NETWORK=petal-net
+readonly HOST_IP=127.0.0.1
+readonly HOST_PORT=8086
+readonly CONTAINER_PORT=8080
+readonly VOLUME_NAME=petal-workspaces
+readonly VOLUME_TARGET=/tmp
+readonly MEMORY_BYTES=8589934592        # --memory 8g
+readonly NANO_CPUS=4000000000           # --cpus 4
+readonly PIDS_LIMIT=4096
+readonly RESTART_POLICY=unless-stopped
+
+readonly LOCAL_URL="http://${HOST_IP}:${HOST_PORT}"
+readonly PUBLIC_URL=https://builder-main.custardai.dev
+
+readonly IDLE_TIMEOUT_S=1800
+readonly IDLE_POLL_S=20
+readonly HEALTH_TIMEOUT_S=90
+readonly STOP_TIMEOUT_S=30
+readonly KEEP_IMAGES=3
+
+if [[ $EUID -ne 0 ]]; then echo "petal-builder-deploy: must run as root (via sudo)" >&2; exit 2; fi
+
+# ---- Logging (never fails the script if the SSH client disconnects) ---------
+trap '' HUP PIPE
+mkdir -p "$LOG_DIR"
+chmod 0750 "$LOG_DIR"
+case "${1:-}" in deploy|status|rollback) LOG_NAME=$1 ;; *) LOG_NAME=invalid ;; esac
+LOG_FILE="$LOG_DIR/$(date -u +%Y%m%dT%H%M%SZ)-${LOG_NAME}.log"
+touch "$LOG_FILE"
+chmod 0640 "$LOG_FILE"
+
+log() {
+  local line
+  line="[petal-deploy] $(date -u +%FT%TZ) $*"
+  printf '%s\n' "$line" >>"$LOG_FILE"
+  printf '%s\n' "$line" 2>/dev/null || true
+}
+die() { log "ERROR: $1"; exit "${2:-3}"; }
+
+require_tools() {
+  local t
+  for t in docker git jq curl rsync flock sha256sum tar sed comm; do
+    command -v "$t" >/dev/null 2>&1 || die "missing required tool: $t"
+  done
+}
+
+# ---- Builder HTTP helpers ----------------------------------------------------
+fetch_json() { curl -fsS --max-time 10 "$1"; }
+
+# Prints the total number of running + queued jobs, or fails if unreachable.
+busy_count() {
+  local h a
+  h=$(fetch_json "$LOCAL_URL/healthz") || return 1
+  a=$(fetch_json "$LOCAL_URL/agent/healthz") || return 1
+  jq -n --argjson h "$h" --argjson a "$a" '
+    ($h.inFlight // 0) + ($h.queued // 0) + ($h.execInFlight // 0) +
+    ($h.execQueued // 0) + (($h.active // []) | length) +
+    ($a.inFlight // 0) + ($a.queued // 0)'
+}
+
+# Bounded idle gate: two consecutive zero reads. Exits 75 when it gives up.
+wait_for_idle() {
+  local deadline zero_reads=0 n
+  deadline=$(( $(date +%s) + IDLE_TIMEOUT_S ))
+  log "waiting for builder to be idle (max ${IDLE_TIMEOUT_S}s)"
+  while :; do
+    if n=$(busy_count); then
+      if [[ "$n" == "0" ]]; then
+        zero_reads=$((zero_reads + 1))
+        [[ $zero_reads -ge 2 ]] && { log "builder idle"; return 0; }
+      else
+        zero_reads=0
+        log "builder busy: ${n} job(s) running or queued"
+      fi
+    else
+      zero_reads=0
+      log "builder health endpoint unreachable; treating as busy"
+    fi
+    if (( $(date +%s) >= deadline )); then
+      log "DEFERRED: builder stayed busy for ${IDLE_TIMEOUT_S}s; nothing was changed"
+      exit 75
+    fi
+    sleep "$IDLE_POLL_S"
+  done
+}
+
+# Waits until base_url answers healthy. Optional expected version/hash/inProcess.
+wait_for_health() {
+  local base_url=$1 want_version=${2:-} want_hash=${3:-} want_inproc=${4:-null}
+  local deadline h a
+  deadline=$(( $(date +%s) + HEALTH_TIMEOUT_S ))
+  while (( $(date +%s) < deadline )); do
+    if h=$(fetch_json "$base_url/healthz" 2>/dev/null) \
+      && a=$(fetch_json "$base_url/agent/healthz" 2>/dev/null) \
+      && jq -e '.ok == true' >/dev/null <<<"$h" \
+      && jq -e --arg v "$want_version" --arg hs "$want_hash" --argjson ip "$want_inproc" '
+           .ok == true
+           and ($v == "" or .version == $v)
+           and ($hs == "" or .coreHash == $hs)
+           and ($ip == null or .inProcess == $ip)' >/dev/null <<<"$a"; then
+      log "healthy at $base_url: version=$(jq -r .version <<<"$a") core=$(jq -r '.coreHash[0:16]' <<<"$a") inProcess=$(jq -r .inProcess <<<"$a")"
+      return 0
+    fi
+    sleep 3
+  done
+  log "health check failed at $base_url"
+  if [[ -n "${a:-}" ]]; then
+    log "last /agent/healthz: version=$(jq -r '.version // "?"' <<<"$a" 2>/dev/null) core=$(jq -r '(.coreHash // "?")[0:16]' <<<"$a" 2>/dev/null)"
+  fi
+  return 1
+}
+
+# ---- Live container configuration -------------------------------------------
+container_exists() { docker container inspect "$1" >/dev/null 2>&1; }
+
+# Validates the live container against the expected configuration and exports
+# the few extra settings we carry over (shm size, init, memory-swap, logging).
+check_config_drift() {
+  local host mounts nets running cmd_c cmd_i image_id problems=()
+  running=$(docker inspect -f '{{.State.Running}}' "$CONTAINER")
+  [[ "$running" == "true" ]] || die "container $CONTAINER is not running; refusing to deploy"
+
+  host=$(docker inspect -f '{{json .HostConfig}}' "$CONTAINER")
+  mounts=$(docker inspect -f '{{json .Mounts}}' "$CONTAINER")
+  nets=$(docker inspect -f '{{json .NetworkSettings.Networks}}' "$CONTAINER" | jq -c 'keys')
+  image_id=$(docker inspect -f '{{.Image}}' "$CONTAINER")
+
+  jq -e --arg ip "$HOST_IP" --arg hp "$HOST_PORT" --arg cp "${CONTAINER_PORT}/tcp" '
+      (.PortBindings | keys) == [$cp]
+      and (.PortBindings[$cp] | length) == 1
+      and .PortBindings[$cp][0].HostIp == $ip
+      and .PortBindings[$cp][0].HostPort == $hp' >/dev/null <<<"$host" || problems+=("port mapping")
+  jq -e --argjson m "$MEMORY_BYTES" '.Memory == $m' >/dev/null <<<"$host" || problems+=("memory limit")
+  jq -e --argjson c "$NANO_CPUS" '.NanoCpus == $c' >/dev/null <<<"$host" || problems+=("cpu limit")
+  jq -e --argjson p "$PIDS_LIMIT" '.PidsLimit == $p' >/dev/null <<<"$host" || problems+=("pids limit")
+  jq -e --arg r "$RESTART_POLICY" '.RestartPolicy.Name == $r' >/dev/null <<<"$host" || problems+=("restart policy")
+  jq -e '(.Privileged | not) and (.ReadonlyRootfs | not)
+         and ((.CapAdd // []) | length) == 0 and ((.CapDrop // []) | length) == 0
+         and ((.SecurityOpt // []) | length) == 0 and ((.Devices // []) | length) == 0
+         and ((.Ulimits // []) | length) == 0 and ((.ExtraHosts // []) | length) == 0
+         and ((.Dns // []) | length) == 0 and ((.Tmpfs // {}) | length) == 0' \
+    >/dev/null <<<"$host" || problems+=("unsupported extra flags (caps/security-opt/devices/ulimits/hosts/dns/tmpfs)")
+  jq -e --arg n "$NETWORK" '. == [$n]' >/dev/null <<<"$nets" || problems+=("networks (expected only $NETWORK)")
+  jq -e --arg v "$VOLUME_NAME" --arg d "$VOLUME_TARGET" '
+      length == 1 and .[0].Type == "volume" and .[0].Name == $v and .[0].Destination == $d' \
+    >/dev/null <<<"$mounts" || problems+=("mounts (expected only $VOLUME_NAME:$VOLUME_TARGET)")
+  [[ -z "$(docker inspect -f '{{.Config.User}}' "$CONTAINER")" ]] || problems+=("custom --user")
+
+  cmd_c=$(docker inspect -f '{{json .Config.Cmd}}{{json .Config.Entrypoint}}' "$CONTAINER")
+  cmd_i=$(docker image inspect -f '{{json .Config.Cmd}}{{json .Config.Entrypoint}}' "$image_id")
+  [[ "$cmd_c" == "$cmd_i" ]] || problems+=("custom command/entrypoint")
+
+  # Every environment variable NAME in the live container must come from the
+  # image or the env file — otherwise it was passed with -e and would be lost.
+  # Only names are compared; values are never read into output.
+  [[ -f "$ENV_FILE" ]] || die "env file $ENV_FILE not found"
+  local c_names i_names f_names missing
+  c_names=$(docker inspect -f '{{json .Config.Env}}' "$CONTAINER" | jq -r '(. // [])[] | sub("=.*$"; "")' | sort -u)
+  i_names=$(docker image inspect -f '{{json .Config.Env}}' "$image_id" | jq -r '(. // [])[] | sub("=.*$"; "")' | sort -u)
+  f_names=$(sed -n -E 's/^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=.*/\1/p' "$ENV_FILE" | sort -u)
+  missing=$(comm -23 <(printf '%s\n' "$c_names") <(printf '%s\n%s\n' "$i_names" "$f_names" | sort -u) | sed '/^$/d' | tr '\n' ' ')
+  [[ -z "$missing" ]] || problems+=("env names not in $ENV_FILE: $missing")
+
+  if (( ${#problems[@]} > 0 )); then
+    local p
+    for p in "${problems[@]}"; do log "config drift: $p"; done
+    die "live container differs from expected configuration; update this script's constants first. Nothing was changed."
+  fi
+
+  CARRY_SHM=$(jq -r '.ShmSize // 0' <<<"$host")
+  CARRY_INIT=$(jq -r '.Init // false' <<<"$host")
+  CARRY_MEMSWAP=$(jq -r '.MemorySwap // 0' <<<"$host")
+  CARRY_LOG_DRIVER=$(jq -r '.LogConfig.Type // ""' <<<"$host")
+  mapfile -t CARRY_LOG_OPTS < <(jq -r '(.LogConfig.Config // {}) | to_entries[] | "\(.key)=\(.value)"' <<<"$host")
+  log "live config matches expected (shm=${CARRY_SHM} init=${CARRY_INIT} log=${CARRY_LOG_DRIVER:-default})"
+}
+
+run_args() {
+  # $1 image, $2 deploy sha label (may be "rollback")
+  RUN_ARGS=(
+    run -d
+    --name "$CONTAINER"
+    --network "$NETWORK"
+    -p "${HOST_IP}:${HOST_PORT}:${CONTAINER_PORT}"
+    --env-file "$ENV_FILE"
+    --mount "type=volume,src=${VOLUME_NAME},dst=${VOLUME_TARGET}"
+    --memory "${MEMORY_BYTES}b"
+    --cpus 4
+    --pids-limit "$PIDS_LIMIT"
+    --restart "$RESTART_POLICY"
+    --label "petal.deploy.sha=$2"
+  )
+  [[ "$CARRY_MEMSWAP" =~ ^[0-9]+$ && "$CARRY_MEMSWAP" -gt 0 ]] && RUN_ARGS+=(--memory-swap "${CARRY_MEMSWAP}b")
+  [[ "$CARRY_MEMSWAP" == "-1" ]] && RUN_ARGS+=(--memory-swap -1)
+  [[ "$CARRY_SHM" =~ ^[0-9]+$ && "$CARRY_SHM" -gt 0 ]] && RUN_ARGS+=(--shm-size "${CARRY_SHM}b")
+  [[ "$CARRY_INIT" == "true" ]] && RUN_ARGS+=(--init)
+  if [[ -n "$CARRY_LOG_DRIVER" ]]; then
+    RUN_ARGS+=(--log-driver "$CARRY_LOG_DRIVER")
+    local o
+    for o in "${CARRY_LOG_OPTS[@]}"; do [[ -n "$o" ]] && RUN_ARGS+=(--log-opt "$o"); done
+  fi
+  RUN_ARGS+=("$1")
+}
+
+# ---- Swap with automatic restore --------------------------------------------
+# Returns 0 on success. On failure restores the previous container and returns 1
+# (or exits 90 if the restore itself fails). Errexit is not relied on here.
+swap_to_image() {
+  local image=$1 label=$2 want_version=${3:-} want_hash=${4:-} want_inproc=${5:-null}
+
+  if container_exists "$PREV_CONTAINER"; then
+    die "leftover container $PREV_CONTAINER exists from an interrupted run; resolve manually (see README). Nothing was changed."
+  fi
+
+  run_args "$image" "$label"
+
+  # Critical section: do not let a cancelled CI job kill us half-way.
+  trap '' INT TERM
+
+  log "stopping current builder (kept as $PREV_CONTAINER)"
+  docker rename "$CONTAINER" "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1 || { trap - INT TERM; log "rename failed"; return 1; }
+  if ! docker stop --time "$STOP_TIMEOUT_S" "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1; then
+    log "stop failed"
+    restore_previous; return 1
+  fi
+
+  log "starting $image"
+  if ! docker "${RUN_ARGS[@]}" >>"$LOG_FILE" 2>&1; then
+    log "docker run failed"
+    restore_previous; return 1
+  fi
+
+  if ! wait_for_health "$LOCAL_URL" "$want_version" "$want_hash" "$want_inproc"; then
+    docker logs --tail 40 "$CONTAINER" >>"$LOG_FILE" 2>&1 || true
+    restore_previous; return 1
+  fi
+  if ! wait_for_health "$PUBLIC_URL" "$want_version" "$want_hash" "$want_inproc"; then
+    restore_previous; return 1
+  fi
+
+  trap - INT TERM
+  docker rm "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1 || log "warning: could not remove stopped $PREV_CONTAINER"
+  return 0
+}
+
+restore_previous() {
+  log "ROLLBACK: restoring previous builder"
+  if container_exists "$CONTAINER"; then
+    local lbl
+    lbl=$(docker inspect -f '{{index .Config.Labels "petal.deploy.sha"}}' "$CONTAINER" 2>/dev/null || true)
+    if [[ "$lbl" == "${RUN_LABEL:-}" ]]; then
+      docker rm -f "$CONTAINER" >>"$LOG_FILE" 2>&1 || true
+    else
+      log "ROLLBACK FAILED: unexpected container named $CONTAINER; not touching it"
+      exit 90
+    fi
+  fi
+  if ! container_exists "$PREV_CONTAINER"; then
+    log "ROLLBACK FAILED: $PREV_CONTAINER not found"
+    exit 90
+  fi
+  docker rename "$PREV_CONTAINER" "$CONTAINER" >>"$LOG_FILE" 2>&1 || { log "ROLLBACK FAILED: rename"; exit 90; }
+  docker start "$CONTAINER" >>"$LOG_FILE" 2>&1 || { log "ROLLBACK FAILED: start"; exit 90; }
+  trap - INT TERM
+  if wait_for_health "$LOCAL_URL"; then
+    log "previous builder restored and healthy"
+  else
+    log "ROLLBACK FAILED: previous builder did not become healthy"
+    exit 90
+  fi
+}
+
+# ---- Housekeeping (scoped to petal-builder only) ----------------------------
+prune_own_images() {
+  local keep_tag=$1 tag
+  docker image ls --filter "reference=${IMAGE_REPO}:*" --format '{{.CreatedAt}}|{{.Tag}}' \
+    | sort -r | cut -d'|' -f2 \
+    | grep -E '^[0-9a-f]{12}$' | grep -vx "$keep_tag" \
+    | tail -n +"$KEEP_IMAGES" \
+    | while read -r tag; do
+        docker image rm "${IMAGE_REPO}:${tag}" >>"$LOG_FILE" 2>&1 && log "removed old image ${IMAGE_REPO}:${tag}" || true
+      done || true
+  find "$RELEASES_DIR" -mindepth 1 -maxdepth 1 -type d -regextype posix-extended -regex '.*/[0-9a-f]{40}' -printf '%T@ %p\n' 2>/dev/null \
+    | sort -rn | tail -n +$((KEEP_IMAGES + 1)) | cut -d' ' -f2- \
+    | while read -r d; do rm -rf -- "$d"; done || true
+}
+
+# ---- Commands ----------------------------------------------------------------
+cmd_status() {
+  local img lbl h a
+  if container_exists "$CONTAINER"; then
+    img=$(docker inspect -f '{{.Config.Image}}' "$CONTAINER")
+    lbl=$(docker inspect -f '{{index .Config.Labels "petal.deploy.sha"}}' "$CONTAINER" 2>/dev/null || true)
+    log "container: $CONTAINER running=$(docker inspect -f '{{.State.Running}}' "$CONTAINER") image=$img sha=${lbl:-unknown}"
+  else
+    log "container: $CONTAINER not found"
+  fi
+  docker image inspect "${IMAGE_REPO}:previous" >/dev/null 2>&1 && log "rollback image: ${IMAGE_REPO}:previous present" || log "rollback image: none"
+  container_exists "$PREV_CONTAINER" && log "WARNING: leftover $PREV_CONTAINER exists"
+  [[ -f "$STATE_DIR/last-success" ]] && log "last success: $(cat "$STATE_DIR/last-success")"
+  if h=$(fetch_json "$LOCAL_URL/healthz") && a=$(fetch_json "$LOCAL_URL/agent/healthz"); then
+    log "health: ok=$(jq -r .ok <<<"$h") version=$(jq -r .version <<<"$a") core=$(jq -r '.coreHash[0:16]' <<<"$a") inProcess=$(jq -r .inProcess <<<"$a") busy=$(busy_count || echo '?')"
+  else
+    log "health: unreachable"
+  fi
+}
+
+cmd_deploy() {
+  local sha=$1
+  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || die "invalid sha" 2
+  local short=${sha:0:12}
+  RUN_LABEL=$sha
+
+  exec 9>"$LOCK_FILE"
+  flock -n 9 || die "another deploy is already running" 73
+  log "deploy $sha requested"
+
+  # 1) Source: fetch and make sure the commit is on main.
+  local g=(git -c "safe.directory=$SOURCE_DIR" -C "$SOURCE_DIR")
+  "${g[@]}" fetch --quiet origin main >>"$LOG_FILE" 2>&1 || die "git fetch failed"
+  "${g[@]}" cat-file -e "${sha}^{commit}" 2>/dev/null || die "commit $short not found after fetch"
+  "${g[@]}" merge-base --is-ancestor "$sha" origin/main || die "commit $short is not on origin/main"
+
+  # 2) Expected values from that exact commit.
+  local want_version want_hash actual_hash
+  want_version=$("${g[@]}" cat-file blob "${sha}:builder/src/server.ts" \
+    | sed -n -E '/^const AGENT_CORE_VERSION = /{s/^const AGENT_CORE_VERSION = "([A-Za-z0-9._-]+)";.*/\1/p;q;}')
+  [[ -n "$want_version" ]] || die "could not read AGENT_CORE_VERSION from commit $short"
+  want_hash=$("${g[@]}" cat-file blob "${sha}:builder/vendor/agent-core.version.json" | jq -r '.hash // empty')
+  [[ "$want_hash" =~ ^[0-9a-f]{64}$ ]] || die "invalid hash in agent-core.version.json"
+  actual_hash=$("${g[@]}" cat-file blob "${sha}:builder/vendor/agent-core.mjs" | sha256sum | cut -d' ' -f1)
+  [[ "$actual_hash" == "$want_hash" ]] || die "agent-core.mjs does not match agent-core.version.json in commit $short"
+  log "target: version=$want_version core=${want_hash:0:16}"
+
+  # 3) Live container must match what we will recreate.
+  container_exists "$CONTAINER" || die "container $CONTAINER not found"
+  check_config_drift
+  local prev_inproc
+  prev_inproc=$(fetch_json "$LOCAL_URL/agent/healthz" | jq -c '.inProcess // null') || prev_inproc=null
+  log "current inProcess=$prev_inproc (kept)"
+
+  # 4) Stage a clean copy of builder/ from that commit.
+  mkdir -p "$RELEASES_DIR" "$STATE_DIR"
+  local rel="$RELEASES_DIR/$sha"
+  if [[ ! -d "$rel" ]]; then
+    rm -rf -- "$rel.tmp"
+    mkdir -p "$rel.tmp"
+    "${g[@]}" archive "$sha" builder | tar -x -C "$rel.tmp" --strip-components=1
+    mv "$rel.tmp" "$rel"
+  fi
+  [[ "$(sha256sum "$rel/vendor/agent-core.mjs" | cut -d' ' -f1)" == "$want_hash" ]] || die "staged bundle hash mismatch"
+  rsync -a --exclude='/.env' --exclude='/releases/' --exclude='/.deploy-state/' "$rel/" "$DEPLOY_DIR/"
+  log "staged builder files"
+
+  # 5) Build the new image while the current builder keeps serving.
+  local current_image
+  current_image=$(docker inspect -f '{{.Image}}' "$CONTAINER")
+  docker tag "$current_image" "${IMAGE_REPO}:previous"
+  log "current image preserved as ${IMAGE_REPO}:previous"
+  if docker image inspect "${IMAGE_REPO}:${short}" >/dev/null 2>&1 \
+     && [[ "$(docker image inspect -f '{{index .Config.Labels "petal.deploy.sha"}}' "${IMAGE_REPO}:${short}")" == "$sha" ]]; then
+    log "image ${IMAGE_REPO}:${short} already built"
+  else
+    log "building ${IMAGE_REPO}:${short} (output in $LOG_FILE)"
+    if ! DOCKER_BUILDKIT=1 docker build --progress=plain \
+        --label "petal.deploy.sha=$sha" \
+        --label "petal.agent-core.version=$want_version" \
+        -t "${IMAGE_REPO}:${short}" "$rel" >>"$LOG_FILE" 2>&1; then
+      tail -n 30 "$LOG_FILE" 2>/dev/null || true
+      die "docker build failed; current builder untouched" 1
+    fi
+  fi
+
+  # 6) Idle gate, then a last check immediately before the swap.
+  wait_for_idle
+  local n
+  n=$(busy_count) || die "builder unreachable right before swap; nothing changed" 75
+  [[ "$n" == "0" ]] || { log "DEFERRED: a job started right before swap; nothing changed"; exit 75; }
+
+  # 7) Swap + verify (restores previous on failure).
+  if ! swap_to_image "${IMAGE_REPO}:${short}" "$sha" "$want_version" "$want_hash" "$prev_inproc"; then
+    die "deploy of $short failed; previous builder restored" 1
+  fi
+
+  printf '%s %s %s %s\n' "$(date -u +%FT%TZ)" "$sha" "$want_version" "$want_hash" >"$STATE_DIR/last-success"
+  prune_own_images "$short"
+  log "SUCCESS: $short live (version=$want_version core=${want_hash:0:16})"
+}
+
+cmd_rollback() {
+  RUN_LABEL=rollback
+  exec 9>"$LOCK_FILE"
+  flock -n 9 || die "another deploy is already running" 73
+  docker image inspect "${IMAGE_REPO}:previous" >/dev/null 2>&1 || die "no ${IMAGE_REPO}:previous image to roll back to"
+  container_exists "$CONTAINER" || die "container $CONTAINER not found"
+  check_config_drift
+  wait_for_idle
+  local bad_image
+  bad_image=$(docker inspect -f '{{.Image}}' "$CONTAINER")
+  if ! swap_to_image "${IMAGE_REPO}:previous" rollback; then
+    die "rollback failed; the builder that was running has been restored" 1
+  fi
+  docker tag "$bad_image" "${IMAGE_REPO}:rolled-back"
+  log "SUCCESS: rolled back to ${IMAGE_REPO}:previous (replaced image kept as ${IMAGE_REPO}:rolled-back)"
+}
+
+require_tools
+case "${1:-}" in
+  deploy)   [[ $# -eq 2 ]] || die "usage: $0 deploy <sha>" 2; cmd_deploy "$2" ;;
+  status)   [[ $# -eq 1 ]] || die "usage: $0 status" 2; cmd_status ;;
+  rollback) [[ $# -eq 1 ]] || die "usage: $0 rollback" 2; cmd_rollback ;;
+  *)        die "usage: $0 {deploy <sha>|status|rollback}" 2 ;;
+esac
