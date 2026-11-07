@@ -18,7 +18,7 @@ const KIT_PATH = /^src\/(integrations|components\/(ui|examples|blocks|fx|mobile|
 const SIGNED_IN_PATH = /(dashboard|admin|staff|owner|manage|backoffice|back-office|portal|account|studio-os|console)/i;
 
 /** People's private records: one visitor must never read another's. */
-const PRIVATE = /(^|[_-])(bookings?|appointments?|reservations?|orders?|messages?|enquir(y|ies)|inquir(y|ies)|leads?|submissions?|customers?|clients?|patients?|subscribers?|registrations?|rsvps?|carts?|bags?|baskets?)$/i;
+const PRIVATE = /(^|[_-])(bookings?|appointments?|reservations?|orders?|messages?|enquir(y|ies)|inquir(y|ies)|leads?|submissions?|requests?|customers?|clients?|patients?|subscribers?|registrations?|rsvps?|carts?|bags?|baskets?)$/i;
 /** What the business sells: visitors browse it, never change it. */
 const CATALOGUE = /(^|[_-])(products?|services?|treatments?|menu(_items)?|menus|catalog(ue)?s?|formulas?|formulations?|offerings?|packages?|classes|courses?|listings?|collections?|rooms?)$/i;
 

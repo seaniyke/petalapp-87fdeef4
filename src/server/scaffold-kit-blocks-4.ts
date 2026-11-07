@@ -94,8 +94,8 @@ export function MenuSection({ title, subtitle, items, className }: MenuSectionPr
   return (
     <section className={cn("py-12", className)}>
       <div className="mx-auto max-w-3xl px-4">
-        <header className="mb-8 text-center">
-          <h2 className="text-3xl font-semibold tracking-tight text-foreground">{title}</h2>
+        <header className="mb-8">
+          <h2 className="font-display text-2xl font-normal tracking-tight text-foreground sm:text-3xl">{title}</h2>
           {subtitle && <p className="mt-2 text-muted-foreground">{subtitle}</p>}
         </header>
         <ul className="divide-y divide-border">

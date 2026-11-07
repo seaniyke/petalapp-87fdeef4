@@ -91,6 +91,13 @@ const RULES: Record<SimpleIntentId, Rule> = {
       /\bRow Level Security\b/i,
       /\bpayments?\b.*\b(?:stripe|paddle|paystack)\b/i,
       /\bemail (?:notifications?|magic link)/i,
+      // Visitors sending something to the business must actually reach it —
+      // otherwise the site fakes a "sent" screen from the browser only.
+      /\b(?:stay|booking|reservation|appointment|quote|viewing|callback|table|event|catering)\s+(?:requests?|enquir(?:y|ies)|inquir(?:y|ies))\b/i,
+      /\b(?:send|submit|make|place|leave)\s+(?:a|an|their|your)?\s*(?:request|enquiry|inquiry|message)\b/i,
+      /\b(?:request|book|reserve)\s+(?:a|an)\s+(?:table|stay|room|quote|viewing|callback|consultation|appointment|session|class)\b/i,
+      /\bcontact\s+form\b/i,
+      /\b(?:rsvp|waitlist|wait-list)\b/i,
     ],
     augment: (t) => {
       if (BACKEND_PERSIST_VERBS.test(t) && BACKEND_ENTITY_WORDS.test(t)) {
