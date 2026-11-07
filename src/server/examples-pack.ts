@@ -852,40 +852,6 @@ export default function PricingComparisonTable() {
  * HERO (4)
  * ================================================================= */
 
-const HERO_CENTERED_GRADIENT = `import { ArrowRight, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-
-/**
- * Centered marketing hero with gradient backdrop, eyebrow badge, and dual CTAs.
- */
-export default function CenteredGradientHero() {
-  return (
-    <section className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_hsl(var(--primary)/0.12),_transparent_60%)]" />
-      <div className="mx-auto flex max-w-4xl flex-col items-center px-4 py-24 text-center sm:py-32">
-        <Badge variant="secondary" className="mb-6 inline-flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3" /> Now in public beta
-        </Badge>
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
-          Ship products at the speed of thought.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-          A workspace built for makers, designers, and tiny teams who want to move quickly without the bloat.
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button size="lg" className="inline-flex items-center gap-1.5">
-            Get started <ArrowRight className="h-4 w-4" />
-          </Button>
-          <Button size="lg" variant="outline">Watch demo</Button>
-        </div>
-        <p className="mt-6 text-xs text-muted-foreground">No credit card required</p>
-      </div>
-    </section>
-  );
-}
-`;
-
 const HERO_SPLIT_SCREENSHOT = `import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -912,8 +878,7 @@ export default function SplitScreenshotHero() {
         </div>
       </div>
       <div className="relative">
-        <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-br from-primary/20 via-transparent to-transparent blur-2xl" />
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
           <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-3 py-2">
             <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
             <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
@@ -3701,7 +3666,6 @@ matching file below and adapt — do not invent layouts from scratch.
 - \`pricing-comparison-table.tsx\` — side-by-side feature matrix
 
 ## Hero
-- \`hero-centered-gradient.tsx\` — centered marketing hero with gradient
 - \`hero-split-screenshot.tsx\` — copy left, product mock right
 - \`hero-logo-cloud.tsx\` — social-proof logo strip
 - \`hero-feature-band.tsx\` — four-up feature row below the hero
@@ -3938,7 +3902,6 @@ export const EXAMPLES_PACK: Array<ProjectFile & { overwrite: boolean }> = [
   { path: "src/components/examples/pricing-comparison-table.tsx", content: PRICING_COMPARISON_TABLE, overwrite: true },
 
   // Hero
-  { path: "src/components/examples/hero-centered-gradient.tsx", content: HERO_CENTERED_GRADIENT, overwrite: true },
   { path: "src/components/examples/hero-split-screenshot.tsx", content: HERO_SPLIT_SCREENSHOT, overwrite: true },
   { path: "src/components/examples/hero-logo-cloud.tsx", content: HERO_LOGO_CLOUD, overwrite: true },
   { path: "src/components/examples/hero-feature-band.tsx", content: HERO_FEATURE_BAND, overwrite: true },

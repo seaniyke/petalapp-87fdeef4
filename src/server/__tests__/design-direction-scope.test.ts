@@ -21,13 +21,13 @@ const direction: DesignDirection = {
 describe("design direction prompt scope", () => {
   it("full detail carries the scaffolding instructions", () => {
     const block = renderDesignDirectionBlock(direction, { detail: "full" });
-    expect(block).toContain("decorative FX");
+    expect(block).toContain("no `@/components/fx` folder");
     expect(block).toContain("Fraunces");
     expect(block).toContain("oversized menu numerals");
   });
 
   it("defaults to full detail when no options are passed", () => {
-    expect(renderDesignDirectionBlock(direction)).toContain("decorative FX");
+    expect(renderDesignDirectionBlock(direction)).toContain("no `@/components/fx` folder");
   });
 
   it("compact detail keeps identity but drops the scaffolding", () => {
@@ -35,7 +35,7 @@ describe("design direction prompt scope", () => {
     expect(block).toContain("Fraunces");
     expect(block).toContain("ember and bone");
     expect(block).toContain("oversized menu numerals");
-    expect(block).not.toContain("decorative FX");
+    expect(block).not.toContain("no `@/components/fx` folder");
     expect(block).not.toContain("fx recipe");
   });
 

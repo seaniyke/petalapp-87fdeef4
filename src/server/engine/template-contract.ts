@@ -20,7 +20,7 @@ import { KIT_FILES } from "@/server/scaffold-kit";
 export const TEMPLATE_CONTRACT_PATH = "template.json";
 
 /** Kit directories the metadata may advertise, kept only when shipped. */
-export const REFERENCE_DIRS = ["@/components/blocks", "@/components/examples", "@/components/motion", "@/components/fx"] as const;
+export const REFERENCE_DIRS = ["@/components/blocks", "@/components/examples", "@/components/motion"] as const;
 
 /**
  * THE template grounding rule — exactly one of these reaches the model.
@@ -101,7 +101,6 @@ const MAP_AREAS: Array<{ dir: string; label: string; api: boolean }> = [
   { dir: "src/components/ui/", label: "UI kit", api: true },
   { dir: "src/components/blocks/", label: "Page sections (blocks)", api: true },
   { dir: "src/components/motion/", label: "Motion", api: true },
-  { dir: "src/components/fx/", label: "Visual effects", api: false },
   { dir: "src/components/content/", label: "Content", api: false },
   { dir: "src/components/image/", label: "Images", api: false },
   { dir: "src/components/scroll/", label: "Scroll", api: false },

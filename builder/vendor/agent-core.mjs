@@ -40604,7 +40604,7 @@ export function useNativeShell() {
 });
 
 // src/server/examples-pack.ts
-var AUTH_SIGN_IN_CARD, AUTH_SIGN_UP_SPLIT, AUTH_FORGOT_PASSWORD, AUTH_RESET_PASSWORD, AUTH_OTP_CARD, DASHBOARD_STATS_GRID, DASHBOARD_SIDEBAR_LAYOUT, DASHBOARD_CHART_CARD, DASHBOARD_ACTIVITY_FEED, DASHBOARD_EMPTY_STATE, PRICING_THREE_TIER, PRICING_TOGGLE_BILLING, PRICING_COMPARISON_TABLE, HERO_CENTERED_GRADIENT, HERO_SPLIT_SCREENSHOT, HERO_LOGO_CLOUD, HERO_FEATURE_BAND, FORM_PROFILE_SETTINGS, FORM_MULTI_STEP, FORM_CONTACT, FORM_INLINE_VALIDATION, TABLE_USERS_LIST, TABLE_INVOICES, TABLE_FILTER_TOOLBAR, TABLE_PAGINATED, ONBOARDING_WELCOME, ONBOARDING_SIGNUP_STEP, ONBOARDING_VERIFY_STEP, ONBOARDING_SUCCESS, ONBOARDING_FLOW, AUTH_SIGN_UP_DIALOG, AUTH_SIGN_IN_DIALOG, AUTH_PASSWORD_RESET_SHEET, AUTH_MAGIC_LINK_DIALOG, WIDGET_KPI_CARD, WIDGET_FILTER_BAR, WIDGET_CHART_AREA, WIDGET_CHART_BAR, WIDGET_CHART_DONUT, WIDGET_ACTIVITY_LOG, WIDGET_TABLE_SORTABLE, TABLE_INLINE_EDIT, TABLE_DESTRUCTIVE_CONFIRM, FORM_MULTI_STEP_ERROR, KIT_VALIDATED_FORM, KIT_SALES_CHART_CARD, KIT_AI_IMAGE_HERO, KIT_AI_IMAGE_GALLERY, KIT_MULTI_PAGE_APP, EXAMPLES_INDEX, FINTECH_VIEM_READONLY, FINTECH_PLAID_LINK_BUTTON, BACKEND_EXAMPLES_PACK, EXAMPLES_PACK;
+var AUTH_SIGN_IN_CARD, AUTH_SIGN_UP_SPLIT, AUTH_FORGOT_PASSWORD, AUTH_RESET_PASSWORD, AUTH_OTP_CARD, DASHBOARD_STATS_GRID, DASHBOARD_SIDEBAR_LAYOUT, DASHBOARD_CHART_CARD, DASHBOARD_ACTIVITY_FEED, DASHBOARD_EMPTY_STATE, PRICING_THREE_TIER, PRICING_TOGGLE_BILLING, PRICING_COMPARISON_TABLE, HERO_SPLIT_SCREENSHOT, HERO_LOGO_CLOUD, HERO_FEATURE_BAND, FORM_PROFILE_SETTINGS, FORM_MULTI_STEP, FORM_CONTACT, FORM_INLINE_VALIDATION, TABLE_USERS_LIST, TABLE_INVOICES, TABLE_FILTER_TOOLBAR, TABLE_PAGINATED, ONBOARDING_WELCOME, ONBOARDING_SIGNUP_STEP, ONBOARDING_VERIFY_STEP, ONBOARDING_SUCCESS, ONBOARDING_FLOW, AUTH_SIGN_UP_DIALOG, AUTH_SIGN_IN_DIALOG, AUTH_PASSWORD_RESET_SHEET, AUTH_MAGIC_LINK_DIALOG, WIDGET_KPI_CARD, WIDGET_FILTER_BAR, WIDGET_CHART_AREA, WIDGET_CHART_BAR, WIDGET_CHART_DONUT, WIDGET_ACTIVITY_LOG, WIDGET_TABLE_SORTABLE, TABLE_INLINE_EDIT, TABLE_DESTRUCTIVE_CONFIRM, FORM_MULTI_STEP_ERROR, KIT_VALIDATED_FORM, KIT_SALES_CHART_CARD, KIT_AI_IMAGE_HERO, KIT_AI_IMAGE_GALLERY, KIT_MULTI_PAGE_APP, EXAMPLES_INDEX, FINTECH_VIEM_READONLY, FINTECH_PLAID_LINK_BUTTON, BACKEND_EXAMPLES_PACK, EXAMPLES_PACK;
 var init_examples_pack = __esm({
   "src/server/examples-pack.ts"() {
     "use strict";
@@ -41411,39 +41411,6 @@ export default function PricingComparisonTable() {
   );
 }
 `;
-    HERO_CENTERED_GRADIENT = `import { ArrowRight, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-
-/**
- * Centered marketing hero with gradient backdrop, eyebrow badge, and dual CTAs.
- */
-export default function CenteredGradientHero() {
-  return (
-    <section className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_hsl(var(--primary)/0.12),_transparent_60%)]" />
-      <div className="mx-auto flex max-w-4xl flex-col items-center px-4 py-24 text-center sm:py-32">
-        <Badge variant="secondary" className="mb-6 inline-flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3" /> Now in public beta
-        </Badge>
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
-          Ship products at the speed of thought.
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
-          A workspace built for makers, designers, and tiny teams who want to move quickly without the bloat.
-        </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button size="lg" className="inline-flex items-center gap-1.5">
-            Get started <ArrowRight className="h-4 w-4" />
-          </Button>
-          <Button size="lg" variant="outline">Watch demo</Button>
-        </div>
-        <p className="mt-6 text-xs text-muted-foreground">No credit card required</p>
-      </div>
-    </section>
-  );
-}
-`;
     HERO_SPLIT_SCREENSHOT = `import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -41470,8 +41437,7 @@ export default function SplitScreenshotHero() {
         </div>
       </div>
       <div className="relative">
-        <div className="absolute inset-0 -z-10 rounded-2xl bg-gradient-to-br from-primary/20 via-transparent to-transparent blur-2xl" />
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
           <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-3 py-2">
             <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
             <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
@@ -44164,7 +44130,6 @@ matching file below and adapt \u2014 do not invent layouts from scratch.
 - \`pricing-comparison-table.tsx\` \u2014 side-by-side feature matrix
 
 ## Hero
-- \`hero-centered-gradient.tsx\` \u2014 centered marketing hero with gradient
 - \`hero-split-screenshot.tsx\` \u2014 copy left, product mock right
 - \`hero-logo-cloud.tsx\` \u2014 social-proof logo strip
 - \`hero-feature-band.tsx\` \u2014 four-up feature row below the hero
@@ -44372,7 +44337,6 @@ export default function PlaidLinkButton() {
       { path: "src/components/examples/pricing-toggle-billing.tsx", content: PRICING_TOGGLE_BILLING, overwrite: true },
       { path: "src/components/examples/pricing-comparison-table.tsx", content: PRICING_COMPARISON_TABLE, overwrite: true },
       // Hero
-      { path: "src/components/examples/hero-centered-gradient.tsx", content: HERO_CENTERED_GRADIENT, overwrite: true },
       { path: "src/components/examples/hero-split-screenshot.tsx", content: HERO_SPLIT_SCREENSHOT, overwrite: true },
       { path: "src/components/examples/hero-logo-cloud.tsx", content: HERO_LOGO_CLOUD, overwrite: true },
       { path: "src/components/examples/hero-feature-band.tsx", content: HERO_FEATURE_BAND, overwrite: true },
@@ -45340,51 +45304,11 @@ export default function petalSourcePlugin() {
 });
 
 // src/server/scaffold-kit-blocks.ts
-var MARQUEE, KBD, CODE_BLOCK, EMPTY_STATE, STAT, TIMELINE, FEATURE_ICON, GRADIENT_TEXT, GRADIENT_BLOB, SECTION, DIVIDER, RATING, PROSE, HERO_CENTERED, HERO_SPLIT_IMAGE, HERO_EDITORIAL, HERO_CENTERED_GRADIENT2, HERO_SPLIT_WITH_DASHBOARD_MOCK, HERO_PRODUCT_SCREENSHOT, FEATURES_GRID_3, FEATURES_BENTO, FEATURES_ALTERNATING, KIT_BLOCK_FILES;
+var KBD, CODE_BLOCK, EMPTY_STATE, STAT, TIMELINE, FEATURE_ICON, SECTION, DIVIDER, RATING, PROSE, HERO_CENTERED, HERO_SPLIT_IMAGE, HERO_EDITORIAL, HERO_SPLIT_WITH_DASHBOARD_MOCK, FEATURES_GRID_3, FEATURES_BENTO, FEATURES_ALTERNATING, KIT_BLOCK_FILES;
 var init_scaffold_kit_blocks = __esm({
   "src/server/scaffold-kit-blocks.ts"() {
     "use strict";
     init_define_import_meta_env();
-    MARQUEE = `import * as React from "react";
-import { cn, slotNode } from "@/lib/utils";
-
-/**
- * Infinite horizontal scroller. Duplicates children so the loop is seamless.
- * Use for logo clouds, testimonials rows, "as seen in" strips.
- *   <Marquee speed={30}> {logos.map(l => <img key={l} src={l} />)} </Marquee>
- */
-export function Marquee({
-  children,
-  className,
-  speed = 30,
-  pauseOnHover = true,
-  reverse = false,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  /** seconds for one full loop. Lower = faster. */
-  speed?: number;
-  pauseOnHover?: boolean;
-  reverse?: boolean;
-}) {
-  return (
-    <div className={cn("group relative flex w-full overflow-hidden", className)}>
-      <div
-        className={cn(
-          "flex shrink-0 items-center gap-12 whitespace-nowrap will-change-transform",
-          reverse ? "animate-[petal-marquee-rev_var(--marquee-d)_linear_infinite]" : "animate-[petal-marquee_var(--marquee-d)_linear_infinite]",
-          pauseOnHover && "group-hover:[animation-play-state:paused]",
-        )}
-        style={{ ["--marquee-d" as string]: \`\${speed}s\` }}
-      >
-        {children}
-        {children}
-      </div>
-      <style>{\`@keyframes petal-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}@keyframes petal-marquee-rev{from{transform:translateX(-50%)}to{transform:translateX(0)}}\`}</style>
-    </div>
-  );
-}
-`;
     KBD = `import * as React from "react";
 import { cn, slotNode } from "@/lib/utils";
 
@@ -45623,46 +45547,6 @@ export function FeatureIcon(props: {
   );
 }
 `;
-    GRADIENT_TEXT = `import * as React from "react";
-import { cn, slotNode } from "@/lib/utils";
-
-/**
- * Inline gradient headline. Wraps a span with a from/to gradient using
- * design tokens \u2014 keeps colors on-brand instead of random tailwind blends.
- *   <GradientText>Build faster.</GradientText>
- */
-export function GradientText({
-  children,
-  className,
-  from = "from-primary",
-  to = "to-accent",
-}: {
-  children: React.ReactNode;
-  className?: string;
-  from?: string;
-  to?: string;
-}) {
-  return (
-    <span className={cn("bg-gradient-to-r bg-clip-text text-transparent", from, to, className)}>
-      {children}
-    </span>
-  );
-}
-`;
-    GRADIENT_BLOB = `import * as React from "react";
-
-/**
- * Retired decoration. Kept only so older apps that import it still build;
- * it renders nothing. Do not use in new pages.
- */
-export function GradientBlob(_props: {
-  className?: string;
-  size?: "sm" | "md" | "lg" | "xl";
-  tone?: "primary" | "accent" | "muted";
-}) {
-  return null;
-}
-`;
     SECTION = `import * as React from "react";
 import { cn, slotNode } from "@/lib/utils";
 
@@ -45824,7 +45708,6 @@ export function Prose({ className, children }: { className?: string; children: R
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { GradientText } from "@/components/ui/gradient-text";
 import { cn, slotNode } from "@/lib/utils";
 
 /**
@@ -45834,7 +45717,6 @@ import { cn, slotNode } from "@/lib/utils";
 export function HeroCentered({
   eyebrow,
   title,
-  highlight,
   description,
   primaryCta,
   secondaryCta,
@@ -45842,8 +45724,6 @@ export function HeroCentered({
 }: {
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
-  /** Optional fragment of the title rendered with gradient emphasis. */
-  highlight?: React.ReactNode;
   description?: React.ReactNode;
   primaryCta?: { label: string; href?: string; onClick?: () => void };
   secondaryCta?: { label: string; href?: string; onClick?: () => void };
@@ -45860,12 +45740,6 @@ export function HeroCentered({
           )}
           <h1 className="text-4xl font-semibold tracking-tight text-foreground md:text-6xl">
             {title}
-            {highlight && (
-              <>
-                {" "}
-                <GradientText>{highlight}</GradientText>
-              </>
-            )}
           </h1>
           {description && (
             <p className="mt-6 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>
@@ -46083,75 +45957,6 @@ export function HeroEditorial({
   );
 }
 `;
-    HERO_CENTERED_GRADIENT2 = `import * as React from "react";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/ui/container";
-import { GradientText } from "@/components/ui/gradient-text";
-import { cn, slotNode } from "@/lib/utils";
-
-/**
- * Vivid centered hero with layered gradient blobs + subtle grid backdrop.
- * Use for AI tools, creative apps, launch pages \u2014 anything that needs to
- * feel premium and energetic. No image asset required.
- */
-export function HeroCenteredGradient({
-  eyebrow,
-  title,
-  highlight,
-  description,
-  primaryCta,
-  secondaryCta,
-  className,
-}: {
-  eyebrow?: React.ReactNode;
-  title: React.ReactNode;
-  highlight?: React.ReactNode;
-  description?: React.ReactNode;
-  primaryCta?: { label: string; href?: string; onClick?: () => void };
-  secondaryCta?: { label: string; href?: string; onClick?: () => void };
-  className?: string;
-}) {
-  return (
-    <section className={cn("relative overflow-hidden py-24 md:py-36", className)}>
-      <Container size="lg" className="relative">
-        <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          {eyebrow && (
-            <span className="mb-5 text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
-              {eyebrow}
-            </span>
-          )}
-          <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground md:text-7xl">
-            {title}
-            {highlight && (<> <GradientText>{highlight}</GradientText></>)}
-          </h1>
-          {description && (
-            <p className="mt-6 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>
-          )}
-          {(primaryCta || secondaryCta) && (
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              {primaryCta && (
-                <Button size="lg" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
-                  {primaryCta.href ? (
-                    <a href={primaryCta.href}>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></a>
-                  ) : (
-                    <>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></>
-                  )}
-                </Button>
-              )}
-              {secondaryCta && (
-                <Button size="lg" variant="outline" onClick={secondaryCta.onClick} asChild={!!secondaryCta.href}>
-                  {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      </Container>
-    </section>
-  );
-}
-`;
     HERO_SPLIT_WITH_DASHBOARD_MOCK = `import * as React from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46262,107 +46067,6 @@ export function HeroSplitWithDashboardMock({
                         <span className="text-foreground/85">{r}</span>
                         <span className="text-muted-foreground">paid</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Container>
-    </section>
-  );
-}
-`;
-    HERO_PRODUCT_SCREENSHOT = `import * as React from "react";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/ui/container";
-import { Badge } from "@/components/ui/badge";
-import { cn, slotNode } from "@/lib/utils";
-
-/**
- * Centered hero with a faux product screenshot floating below \u2014 browser
- * chrome, header row, content grid. No imageSrc required. Use for product
- * launches where you want the eye to land on the artifact under the headline.
- */
-export function HeroProductScreenshot({
-  eyebrow,
-  title,
-  description,
-  primaryCta,
-  secondaryCta,
-  className,
-}: {
-  eyebrow?: React.ReactNode;
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  primaryCta?: { label: string; href?: string; onClick?: () => void };
-  secondaryCta?: { label: string; href?: string; onClick?: () => void };
-  className?: string;
-}) {
-  return (
-    <section className={cn("relative overflow-hidden pt-20 md:pt-28", className)}>
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.15),transparent_60%)]" />
-      <Container size="xl" className="relative">
-        <div className="mx-auto max-w-3xl text-center">
-          {eyebrow && (<span className="mb-5 block text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">{eyebrow}</span>)}
-          <h1 className="text-balance text-4xl font-semibold tracking-tight text-foreground md:text-6xl">{title}</h1>
-          {description && (<p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground md:text-lg">{description}</p>)}
-          {(primaryCta || secondaryCta) && (
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              {primaryCta && (
-                <Button size="lg" onClick={primaryCta.onClick} asChild={!!primaryCta.href}>
-                  {primaryCta.href ? (
-                    <a href={primaryCta.href}>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></a>
-                  ) : (<>{primaryCta.label} <ArrowRight className="ml-2 h-4 w-4" /></>)}
-                </Button>
-              )}
-              {secondaryCta && (
-                <Button size="lg" variant="outline" onClick={secondaryCta.onClick} asChild={!!secondaryCta.href}>
-                  {secondaryCta.href ? <a href={secondaryCta.href}>{secondaryCta.label}</a> : secondaryCta.label}
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="relative mx-auto mt-14 max-w-5xl">
-          <div className="relative rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10 overflow-hidden">
-            <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-4 py-2.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
-              <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/60" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/60" />
-              <div className="mx-auto rounded-md bg-background px-3 py-0.5 text-[11px] text-muted-foreground">app.product.com</div>
-            </div>
-            <div className="flex items-center justify-between border-b border-border px-5 py-3">
-              <div className="flex items-center gap-3">
-                <div className="h-6 w-6 rounded-md bg-primary" />
-                <div className="h-3 w-20 rounded bg-muted" />
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-full bg-muted" />
-              </div>
-            </div>
-            <div className="grid grid-cols-12 gap-4 p-5">
-              <div className="col-span-3 space-y-2">
-                {[0,1,2,3,4].map((i)=>(
-                  <div key={i} className={cn("h-7 rounded-md", i===1?"bg-primary/15":"bg-muted/60")} />
-                ))}
-              </div>
-              <div className="col-span-9 space-y-3">
-                <div className="grid grid-cols-3 gap-3">
-                  {[0,1,2].map((i)=>(
-                    <div key={i} className="rounded-lg border border-border bg-background p-3">
-                      <div className="h-2.5 w-12 rounded bg-muted/80" />
-                      <div className="mt-2 h-5 w-20 rounded bg-foreground/80" />
-                      <div className="mt-1 h-2 w-10 rounded bg-emerald-500/60" />
-                    </div>
-                  ))}
-                </div>
-                <div className="h-40 rounded-lg border border-border bg-background p-3">
-                  <div className="flex h-full items-end gap-1.5">
-                    {[30,55,42,68,50,72,80,62,85,58,74,90,66,78].map((h,i)=>(
-                      <div key={i} className="flex-1 rounded-sm bg-gradient-to-t from-primary/40 to-primary" style={{height: \`\${h}%\`}} />
                     ))}
                   </div>
                 </div>
@@ -46583,15 +46287,12 @@ export function FeaturesAlternatingRows({
 `;
     KIT_BLOCK_FILES = [
       // Atoms
-      { path: "src/components/ui/marquee.tsx", content: MARQUEE, overwrite: true },
       { path: "src/components/ui/kbd.tsx", content: KBD, overwrite: true },
       { path: "src/components/ui/code-block.tsx", content: CODE_BLOCK, overwrite: true },
       { path: "src/components/ui/empty-state.tsx", content: EMPTY_STATE, overwrite: true },
       { path: "src/components/ui/stat.tsx", content: STAT, overwrite: true },
       { path: "src/components/ui/timeline.tsx", content: TIMELINE, overwrite: true },
       { path: "src/components/ui/feature-icon.tsx", content: FEATURE_ICON, overwrite: true },
-      { path: "src/components/ui/gradient-text.tsx", content: GRADIENT_TEXT, overwrite: true },
-      { path: "src/components/ui/gradient-blob.tsx", content: GRADIENT_BLOB, overwrite: true },
       { path: "src/components/ui/section.tsx", content: SECTION, overwrite: true },
       { path: "src/components/ui/divider.tsx", content: DIVIDER, overwrite: true },
       { path: "src/components/ui/rating.tsx", content: RATING, overwrite: true },
@@ -46600,9 +46301,7 @@ export function FeaturesAlternatingRows({
       { path: "src/components/blocks/hero-centered.tsx", content: HERO_CENTERED, overwrite: true },
       { path: "src/components/blocks/hero-split-image.tsx", content: HERO_SPLIT_IMAGE, overwrite: true },
       { path: "src/components/blocks/hero-editorial.tsx", content: HERO_EDITORIAL, overwrite: true },
-      { path: "src/components/blocks/hero-centered-gradient.tsx", content: HERO_CENTERED_GRADIENT2, overwrite: true },
       { path: "src/components/blocks/hero-split-with-dashboard-mock.tsx", content: HERO_SPLIT_WITH_DASHBOARD_MOCK, overwrite: true },
-      { path: "src/components/blocks/hero-product-screenshot.tsx", content: HERO_PRODUCT_SCREENSHOT, overwrite: true },
       { path: "src/components/blocks/features-grid-3.tsx", content: FEATURES_GRID_3, overwrite: true },
       { path: "src/components/blocks/features-bento.tsx", content: FEATURES_BENTO, overwrite: true },
       { path: "src/components/blocks/features-alternating-rows.tsx", content: FEATURES_ALTERNATING, overwrite: true }
@@ -46611,7 +46310,7 @@ export function FeaturesAlternatingRows({
 });
 
 // src/server/scaffold-kit-blocks-2.ts
-var TESTIMONIALS_CARDS, TESTIMONIALS_MARQUEE, TESTIMONIALS_QUOTE_HERO, PRICING_SINGLE_PRODUCT, FAQ_ACCORDION, FAQ_TWO_COLUMN, CTA_CENTERED, CTA_SPLIT, CTA_GRADIENT_BAND, FOOTER_COLUMNS, FOOTER_MINIMAL, FOOTER_NEWSLETTER, NAV_BAR, NAV_WITH_CTA, NAV_WITH_SEARCH, LOGOS_GRID, LOGOS_MARQUEE, STATS_BAND, STATS_GRID, STATS_WITH_CHART, EXAMPLE_LANDING_SAAS, EXAMPLE_LANDING_EDITORIAL, EXAMPLE_LANDING_ECOMMERCE, EXAMPLE_LANDING_AGENCY, EXAMPLE_APP_SHELL, EXAMPLE_BLOG_INDEX, EXAMPLE_BLOG_DETAIL, KIT_BLOCK_FILES_2;
+var TESTIMONIALS_CARDS, TESTIMONIALS_QUOTE_HERO, PRICING_SINGLE_PRODUCT, FAQ_ACCORDION, FAQ_TWO_COLUMN, CTA_CENTERED, CTA_SPLIT, FOOTER_COLUMNS, FOOTER_MINIMAL, FOOTER_NEWSLETTER, NAV_BAR, NAV_WITH_CTA, NAV_WITH_SEARCH, LOGOS_GRID, STATS_BAND, STATS_GRID, STATS_WITH_CHART, EXAMPLE_LANDING_SAAS, EXAMPLE_LANDING_EDITORIAL, EXAMPLE_LANDING_ECOMMERCE, EXAMPLE_LANDING_AGENCY, EXAMPLE_APP_SHELL, EXAMPLE_BLOG_INDEX, EXAMPLE_BLOG_DETAIL, KIT_BLOCK_FILES_2;
 var init_scaffold_kit_blocks_2 = __esm({
   "src/server/scaffold-kit-blocks-2.ts"() {
     "use strict";
@@ -46638,8 +46337,7 @@ export interface Testimonial {
 
 /**
  * Classic 3-up testimonial card grid. Safe default. Pair with a
- * HeroSplitImage or HeroCentered. For maximalist sites, use the marquee
- * variant instead.
+ * HeroSplitImage or HeroCentered.
  */
 export function TestimonialsCards({
   eyebrow,
@@ -46680,74 +46378,6 @@ export function TestimonialsCards({
               </figcaption>
             </figure>
           ))}
-        </div>
-      </Section>
-    </Container>
-  );
-}
-`;
-    TESTIMONIALS_MARQUEE = `import * as React from "react";
-import { Container } from "@/components/ui/container";
-import { Section } from "@/components/ui/section";
-import { Marquee } from "@/components/ui/marquee";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, slotNode } from "@/lib/utils";
-
-export interface MarqueeTestimonial {
-  quote: string;
-  name: string;
-  role?: string;
-  title?: string;
-  avatarSrc?: string;
-  image?: string;
-  avatar?: string;
-}
-
-/**
- * Two-row infinite-scroll testimonial marquee. Reverse direction on the
- * second row creates motion. Best for playful/maximalist vibes \u2014 heavy in
- * social proof. Each row uses a different speed so they don't sync.
- */
-export function TestimonialsMarquee({
-  eyebrow,
-  title,
-  description,
-  items,
-  testimonials,
-  className,
-}: {
-  eyebrow?: React.ReactNode;
-  title?: React.ReactNode;
-  description?: React.ReactNode;
-  items?: MarqueeTestimonial[];
-  testimonials?: MarqueeTestimonial[];
-  className?: string;
-}) {
-  const list = Array.isArray(items) ? items : Array.isArray(testimonials) ? testimonials : [];
-  const half = Math.ceil(list.length / 2);
-  const rowA = list.slice(0, half);
-  const rowB = list.slice(half).length ? list.slice(half) : list;
-  const Card = ({ t }: { t: MarqueeTestimonial }) => (
-    <figure className="mx-3 w-[320px] shrink-0 rounded-2xl border border-border bg-card p-5">
-      <blockquote className="text-sm leading-relaxed text-foreground/90">&ldquo;{t.quote}&rdquo;</blockquote>
-      <figcaption className="mt-4 flex items-center gap-3">
-        <Avatar className="h-9 w-9">
-          {(t.avatarSrc || t.image || t.avatar) && <AvatarImage src={t.avatarSrc ?? t.image ?? t.avatar} alt={t.name} />}
-          <AvatarFallback>{t.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-foreground">{t.name}</div>
-          {(t.role || t.title) && <div className="truncate text-xs text-muted-foreground">{t.role ?? t.title}</div>}
-        </div>
-      </figcaption>
-    </figure>
-  );
-  return (
-    <Container size="xl" className={cn("[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]", className)}>
-      <Section eyebrow={eyebrow} title={title} description={description} align="center">
-        <div className="space-y-4">
-          <Marquee speed={45}>{rowA.map((t, i) => <Card key={i} t={t} />)}</Marquee>
-          <Marquee speed={55} reverse>{rowB.map((t, i) => <Card key={i} t={t} />)}</Marquee>
         </div>
       </Section>
     </Container>
@@ -47120,94 +46750,6 @@ export function CtaSplit({
               </Button>
             )}
           </div>
-        </div>
-      </Container>
-    </section>
-  );
-}
-`;
-    CTA_GRADIENT_BAND = `import * as React from "react";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/ui/container";
-import { cn, slotNode } from "@/lib/utils";
-
-type CtaLike = {
-  label?: React.ReactNode;
-  text?: React.ReactNode;
-  children?: React.ReactNode;
-  href?: string;
-  onClick?: () => void;
-};
-
-function normalizeCta(c: CtaLike | undefined): { label: React.ReactNode; href?: string; onClick?: () => void } | null {
-  if (!c) return null;
-  const label = c.label ?? c.children ?? c.text ?? "";
-  if (!label && !c.href && !c.onClick) return null;
-  return { label, href: c.href, onClick: c.onClick };
-}
-
-/**
- * Bold full-bleed gradient CTA band. Use sparingly \u2014 high visual weight,
- * great for the FINAL section of a marketing page.
- *
- * Accepts \`primaryCta\` / \`secondaryCta\` (preferred) OR
- * \`primaryLink\` / \`secondaryLink\` (alias). CTA objects may use
- * { label } or { children } / { text }.
- */
-export function CtaGradientBand({
-  title,
-  description,
-  primaryCta,
-  secondaryCta,
-  primaryLink,
-  secondaryLink,
-  className,
-}: {
-  title?: React.ReactNode;
-  description?: React.ReactNode;
-  primaryCta?: CtaLike;
-  secondaryCta?: CtaLike;
-  primaryLink?: CtaLike;
-  secondaryLink?: CtaLike;
-  className?: string;
-}) {
-  const primary = normalizeCta(primaryCta ?? primaryLink);
-  const secondary = normalizeCta(secondaryCta ?? secondaryLink);
-  return (
-    <section className={cn("relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28", className)}>
-      <Container size="lg">
-        <div className="relative mx-auto max-w-3xl text-center">
-          {title && <h2 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h2>}
-          {description && (
-            <p className="mx-auto mt-5 max-w-xl text-base text-primary-foreground/80 md:text-lg">{description}</p>
-          )}
-          {(primary || secondary) && (
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              {primary && (
-                <Button size="lg" variant="secondary" onClick={primary.onClick} asChild={!!primary.href}>
-                  {primary.href ? (
-                    <a href={primary.href}>
-                      {primary.label} <ArrowRight className="ml-2 h-4 w-4" />
-                    </a>
-                  ) : (
-                    <>{primary.label} <ArrowRight className="ml-2 h-4 w-4" /></>
-                  )}
-                </Button>
-              )}
-              {secondary && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-                  onClick={secondary.onClick}
-                  asChild={!!secondary.href}
-                >
-                  {secondary.href ? <a href={secondary.href}>{secondary.label}</a> : secondary.label}
-                </Button>
-              )}
-            </div>
-          )}
         </div>
       </Container>
     </section>
@@ -47779,7 +47321,6 @@ import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Static centered logo grid. Pair with a short eyebrow ("Trusted by teams at").
- * For long lists or motion, use LogosMarquee.
  */
 export function LogosGrid({
   eyebrow,
@@ -47821,93 +47362,6 @@ export function LogosGrid({
     </section>
   );
 }
-`;
-    LOGOS_MARQUEE = `import * as React from "react";
-import { Container } from "@/components/ui/container";
-import { Marquee } from "@/components/ui/marquee";
-import { cn, slotNode } from "@/lib/utils";
-
-type LogoEntry = string | { name?: string; src?: string; url?: string };
-
-function normalizeLogo(l: LogoEntry): { name: string; src?: string } {
-  if (typeof l === "string") return { name: "", src: l };
-  return { name: l.name ?? "", src: l.src ?? l.url };
-}
-
-/**
- * Infinite-scroll press / customer strip. Accepts either an array of
- * \`{ name, src }\` objects or a plain string[] of image URLs.
- *
- * Rendering rule: a name is ALWAYS shown as a wordmark. When a \`src\` is also
- * given it renders as a small mark next to that wordmark \u2014 never as a lone
- * tiny image, which reads as visual noise at logo scale.
- *
- * Prop aliases (\`heading\`/\`title\` for \`eyebrow\`, \`duration\` for \`speed\`) are
- * accepted so a caller never silently loses its heading.
- */
-export function LogosMarquee({
-  eyebrow,
-  heading,
-  title,
-  logos,
-  speed,
-  duration,
-  className,
-}: {
-  eyebrow?: React.ReactNode;
-  /** Alias of eyebrow. */
-  heading?: React.ReactNode;
-  /** Alias of eyebrow. */
-  title?: React.ReactNode;
-  logos: LogoEntry[];
-  speed?: number;
-  /** Alias of speed. */
-  duration?: number;
-  className?: string;
-}) {
-  const list = Array.isArray(logos) ? logos.map((l) => normalizeLogo(l)) : [];
-  const label = eyebrow ?? heading ?? title;
-  return (
-    <section className={cn("py-12 md:py-16", className)}>
-      <Container size="xl">
-        {label && (
-          <p className="mb-8 text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            {label}
-          </p>
-        )}
-        <div className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
-          <Marquee speed={speed ?? duration ?? 40}>
-            {list.map((l, i) => (
-              <div
-                key={i}
-                className="mx-8 flex shrink-0 items-center gap-2.5 opacity-70 transition-opacity hover:opacity-100"
-              >
-                {l.src && (
-                  <img
-                    src={l.src}
-                    alt={l.name || ""}
-                    className={
-                      l.name
-                        ? "h-8 w-8 shrink-0 rounded-full object-cover"
-                        : "h-8 w-auto max-w-[150px] shrink-0 object-contain"
-                    }
-                    loading="lazy"
-                  />
-                )}
-                {l.name && (
-                  <span className="whitespace-nowrap text-base font-semibold tracking-tight text-foreground/80">
-                    {l.name}
-                  </span>
-                )}
-              </div>
-            ))}
-          </Marquee>
-        </div>
-      </Container>
-    </section>
-  );
-}
-
 `;
     STATS_BAND = `import * as React from "react";
 import { Container } from "@/components/ui/container";
@@ -48055,7 +47509,7 @@ export function StatsWithChart({
     EXAMPLE_LANDING_SAAS = `/**
  * REFERENCE \u2014 SaaS product landing page.
  *
- * Shape: NavWithCta \u2192 HeroSplitImage \u2192 LogosMarquee \u2192 FeaturesBento \u2192
+ * Shape: NavWithCta \u2192 HeroSplitImage \u2192 LogosGrid \u2192 FeaturesBento \u2192
  *        StatsBand \u2192 TestimonialsCards \u2192 PricingSingleProduct \u2192 FaqAccordion \u2192
  *        CtaCentered \u2192 FooterColumns
  *
@@ -48065,7 +47519,7 @@ export function StatsWithChart({
 import { Bolt, BookOpen, GitBranch, Globe, ShieldCheck, Sparkles, Twitter, Github } from "lucide-react";
 import { NavWithCta } from "@/components/blocks/nav-with-cta";
 import { HeroSplitImage } from "@/components/blocks/hero-split-image";
-import { LogosMarquee } from "@/components/blocks/logos-marquee";
+import { LogosGrid } from "@/components/blocks/logos-grid";
 import { FeaturesBento } from "@/components/blocks/features-bento";
 import { StatsBand } from "@/components/blocks/stats-band";
 import { TestimonialsCards } from "@/components/blocks/testimonials-cards";
@@ -48091,7 +47545,7 @@ export default function LandingSaasReference() {
         secondaryCta={{label:"Watch demo",href:"#"}}
         imageSrc="petal-image://saas-product-screenshot-clean-dark-mode"
       />
-      <LogosMarquee eyebrow="Used at" logos={[{name:"Acme"},{name:"Globex"},{name:"Initech"},{name:"Hooli"},{name:"Stark"},{name:"Wonka"}]} />
+      <LogosGrid eyebrow="Used at" logos={[{name:"Acme"},{name:"Globex"},{name:"Initech"},{name:"Hooli"},{name:"Stark"},{name:"Wonka"}]} />
       <FeaturesBento
         eyebrow="Why teams switch"
         title="Built for the work, not the demo."
@@ -48210,8 +47664,8 @@ export default function LandingEditorialReference() {
  * REFERENCE \u2014 Single-product e-commerce landing page.
  *
  * Shape: NavWithCta \u2192 HeroSplitImage (product shot) \u2192 StatsBand (social proof) \u2192
- *        FeaturesAlternatingRows \u2192 TestimonialsMarquee \u2192 PricingSingleProduct \u2192
- *        FaqTwoColumn \u2192 CtaGradientBand \u2192 FooterNewsletter
+ *        FeaturesAlternatingRows \u2192 TestimonialsCards \u2192 PricingSingleProduct \u2192
+ *        FaqTwoColumn \u2192 CtaCentered \u2192 FooterNewsletter
  *
  * Copy for: D2C product launches, lifetime deals, single SKU stores.
  */
@@ -48220,10 +47674,10 @@ import { NavWithCta } from "@/components/blocks/nav-with-cta";
 import { HeroSplitImage } from "@/components/blocks/hero-split-image";
 import { StatsBand } from "@/components/blocks/stats-band";
 import { FeaturesAlternatingRows } from "@/components/blocks/features-alternating-rows";
-import { TestimonialsMarquee } from "@/components/blocks/testimonials-marquee";
+import { TestimonialsCards } from "@/components/blocks/testimonials-cards";
 import { PricingSingleProduct } from "@/components/blocks/pricing-single-product";
 import { FaqTwoColumn } from "@/components/blocks/faq-two-column";
-import { CtaGradientBand } from "@/components/blocks/cta-gradient-band";
+import { CtaCentered } from "@/components/blocks/cta-centered";
 import { FooterNewsletter } from "@/components/blocks/footer-newsletter";
 
 export default function LandingEcommerceReference() {
@@ -48249,10 +47703,14 @@ export default function LandingEcommerceReference() {
           {eyebrow:"Shipped",title:"Carbon-neutral, every cup.",description:"Compostable packaging. Offset shipping. We plant a tree for every order.",imageSrc:"petal-image://ceramic-cup-packaging-craft-paper"},
         ]}
       />
-      <TestimonialsMarquee
+      <TestimonialsCards
         eyebrow="From real cupboards"
         title="Quiet cult favorite."
-        items={Array.from({length:8}).map((_,i)=>({quote:"Use it every single morning. Wouldn't swap it.",name:\`Customer \${i+1}\`,role:"Verified buyer"}))}
+        items={[
+          {quote:"Use it every single morning. Wouldn't swap it.",name:"Marta Silva",role:"Lisbon"},
+          {quote:"The rim is perfect. Coffee tastes better, somehow.",name:"Tom Becker",role:"Berlin"},
+          {quote:"Bought one, then three more as gifts.",name:"Aiko Mori",role:"Kyoto"},
+        ]}
       />
       <PricingSingleProduct
         title="The Cup"
@@ -48274,7 +47732,7 @@ export default function LandingEcommerceReference() {
           {q:"Can I order more than one?",a:"Up to 4 per order while supplies last."},
         ]}
       />
-      <CtaGradientBand
+      <CtaCentered
         title="The last cup, while it lasts."
         description="612 of 2,000 left. Once they're gone, that's it."
         primaryCta={{label:"Order yours \u2014 $49",href:"#buy"}}
@@ -48495,7 +47953,6 @@ export default function BlogPostDetailReference() {
     KIT_BLOCK_FILES_2 = [
       // Testimonials
       { path: "src/components/blocks/testimonials-cards.tsx", content: TESTIMONIALS_CARDS, overwrite: true },
-      { path: "src/components/blocks/testimonials-marquee.tsx", content: TESTIMONIALS_MARQUEE, overwrite: true },
       { path: "src/components/blocks/testimonials-quote-hero.tsx", content: TESTIMONIALS_QUOTE_HERO, overwrite: true },
       // Pricing
       { path: "src/components/blocks/pricing-single-product.tsx", content: PRICING_SINGLE_PRODUCT, overwrite: true },
@@ -48505,7 +47962,6 @@ export default function BlogPostDetailReference() {
       // CTA
       { path: "src/components/blocks/cta-centered.tsx", content: CTA_CENTERED, overwrite: true },
       { path: "src/components/blocks/cta-split.tsx", content: CTA_SPLIT, overwrite: true },
-      { path: "src/components/blocks/cta-gradient-band.tsx", content: CTA_GRADIENT_BAND, overwrite: true },
       // Footer
       { path: "src/components/blocks/footer-columns.tsx", content: FOOTER_COLUMNS, overwrite: true },
       { path: "src/components/blocks/footer-minimal.tsx", content: FOOTER_MINIMAL, overwrite: true },
@@ -48516,7 +47972,6 @@ export default function BlogPostDetailReference() {
       { path: "src/components/blocks/nav-with-search.tsx", content: NAV_WITH_SEARCH, overwrite: true },
       // Logo cloud
       { path: "src/components/blocks/logos-grid.tsx", content: LOGOS_GRID, overwrite: true },
-      { path: "src/components/blocks/logos-marquee.tsx", content: LOGOS_MARQUEE, overwrite: true },
       // Stats
       { path: "src/components/blocks/stats-band.tsx", content: STATS_BAND, overwrite: true },
       { path: "src/components/blocks/stats-grid.tsx", content: STATS_GRID, overwrite: true },
@@ -52038,946 +51493,6 @@ BlurFade.displayName = "BlurFade";
   }
 });
 
-// src/server/scaffold-kit-fx.ts
-var FX_INDEX, GRID_PATTERN, DOT_PATTERN, RETRO_GRID, FLICKERING_GRID, ANIMATED_GRID, RIPPLE, NOISE_TEXTURE, LIGHT_RAYS, MESH_GRADIENT, METEORS, PARTICLES, SPARKLES, AURORA_TEXT, GRADIENT_TEXT2, SHINY_TEXT, MAGIC_CARD, BORDER_BEAM, GLOW_CARD, BENTO_GRID, MARQUEE2, INFINITE_MOVING_CARDS, ORBITING_CIRCLES, HERO_PARALLAX, ANIMATED_BEAM, SHIMMER_BUTTON, RAINBOW_BUTTON, SHINY_BUTTON, KIT_FX_FILES;
-var init_scaffold_kit_fx = __esm({
-  "src/server/scaffold-kit-fx.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    FX_INDEX = `// Kimble FX layer \u2014 marketing effects (MagicUI/Aceternity flavor).
-// Import from "@/components/fx".
-
-// Backgrounds
-export { GridPattern } from "./grid-pattern";
-export { DotPattern } from "./dot-pattern";
-export { RetroGrid } from "./retro-grid";
-export { FlickeringGrid } from "./flickering-grid";
-export { AnimatedGridPattern } from "./animated-grid-pattern";
-export { Ripple } from "./ripple";
-export { NoiseTexture } from "./noise-texture";
-export { LightRays } from "./light-rays";
-export { MeshGradient } from "./mesh-gradient";
-export { Meteors } from "./meteors";
-export { Particles } from "./particles";
-export { Sparkles } from "./sparkles";
-
-// Text
-export { AuroraText } from "./aurora-text";
-export { GradientText } from "./gradient-text";
-export { ShinyText } from "./shiny-text";
-
-// Containers
-export { MagicCard } from "./magic-card";
-export { BorderBeam } from "./border-beam";
-export { GlowCard } from "./glow-card";
-export { BentoGrid, BentoCard } from "./bento-grid";
-export { Marquee } from "./marquee";
-export { InfiniteMovingCards } from "./infinite-moving-cards";
-export { OrbitingCircles } from "./orbiting-circles";
-export { HeroParallax } from "./hero-parallax";
-export { AnimatedBeam } from "./animated-beam";
-
-// Buttons
-export { ShimmerButton } from "./shimmer-button";
-export { RainbowButton } from "./rainbow-button";
-export { ShinyButton } from "./shiny-button";
-`;
-    GRID_PATTERN = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface GridPatternProps extends React.SVGProps<SVGSVGElement> {
-  width?: number;
-  height?: number;
-  strokeDasharray?: string;
-}
-
-export const GridPattern: React.FC<GridPatternProps> = ({
-  width = 40, height = 40, strokeDasharray = "0", className, ...rest
-}) => {
-  const id = React.useId();
-  return (
-    <svg
-      aria-hidden
-      className={cn("pointer-events-none absolute inset-0 h-full w-full fill-foreground/[0.04] stroke-foreground/[0.08]", className)}
-      {...rest}
-    >
-      <defs>
-        <pattern id={id} width={width} height={height} patternUnits="userSpaceOnUse">
-          <path d={\`M.5 \${height}V.5H\${width}\`} fill="none" strokeDasharray={strokeDasharray} />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={\`url(#\${id})\`} />
-    </svg>
-  );
-};
-`;
-    DOT_PATTERN = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface DotPatternProps extends React.SVGProps<SVGSVGElement> {
-  width?: number;
-  height?: number;
-  cr?: number;
-}
-
-export const DotPattern: React.FC<DotPatternProps> = ({
-  width = 24, height = 24, cr = 1, className, ...rest
-}) => {
-  const id = React.useId();
-  return (
-    <svg
-      aria-hidden
-      className={cn("pointer-events-none absolute inset-0 h-full w-full fill-foreground/30", className)}
-      {...rest}
-    >
-      <defs>
-        <pattern id={id} width={width} height={height} patternUnits="userSpaceOnUse">
-          <circle cx={width / 2} cy={height / 2} r={cr} />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={\`url(#\${id})\`} />
-    </svg>
-  );
-};
-`;
-    RETRO_GRID = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface RetroGridProps extends React.HTMLAttributes<HTMLDivElement> {
-  angle?: number;
-  cellSize?: number;
-  opacity?: number;
-  lightLineColor?: string;
-  darkLineColor?: string;
-}
-
-export const RetroGrid: React.FC<RetroGridProps> = ({
-  angle = 65, cellSize = 60, opacity = 0.5,
-  lightLineColor = "hsl(var(--foreground) / 0.5)",
-  darkLineColor = "hsl(var(--foreground) / 0.6)",
-  className, style, ...rest
-}) => (
-  <div
-    aria-hidden
-    className={cn("pointer-events-none absolute inset-0 size-full overflow-hidden [perspective:200px]", className)}
-    style={{ "--grid-angle": \`\${angle}deg\`, "--cell-size": \`\${cellSize}px\`, "--opacity": opacity, "--line-color": lightLineColor, ...style } as React.CSSProperties}
-    {...rest}
-  >
-    <div className="absolute inset-0 [transform:rotateX(var(--grid-angle))]">
-      <div className="animate-[retro-grid_15s_linear_infinite] [background-image:linear-gradient(to_right,var(--line-color)_1px,transparent_0),linear-gradient(to_bottom,var(--line-color)_1px,transparent_0)] [background-repeat:repeat] [background-size:var(--cell-size)_var(--cell-size)] [height:300vh] [inset:0%_0px] [margin-left:-200%] [transform-origin:100%_0_0] [width:600vw]" style={{ opacity: "var(--opacity)" as unknown as number }} />
-    </div>
-    <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent to-90%" />
-    <style>{\`@keyframes retro-grid { 0% { transform: translateY(0); } 100% { transform: translateY(var(--cell-size)); } }\`}</style>
-  </div>
-);
-`;
-    FLICKERING_GRID = `"use client";
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface FlickeringGridProps extends React.HTMLAttributes<HTMLDivElement> {
-  squareSize?: number;
-  gridGap?: number;
-  flickerChance?: number;
-  color?: string;
-  maxOpacity?: number;
-}
-
-export const FlickeringGrid: React.FC<FlickeringGridProps> = ({
-  squareSize = 4, gridGap = 6, flickerChance = 0.3,
-  color = "rgb(99 102 241)", maxOpacity = 0.3, className, ...rest
-}) => {
-  const ref = React.useRef<HTMLCanvasElement>(null);
-  React.useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    let raf = 0;
-    let cols = 0, rows = 0;
-    let squares: Float32Array = new Float32Array(0);
-
-    const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
-      const { width, height } = canvas.getBoundingClientRect();
-      canvas.width = Math.floor(width * dpr);
-      canvas.height = Math.floor(height * dpr);
-      cols = Math.floor(width / (squareSize + gridGap));
-      rows = Math.floor(height / (squareSize + gridGap));
-      squares = new Float32Array(cols * rows).map(() => Math.random() * maxOpacity);
-      ctx.scale(dpr, dpr);
-    };
-    resize();
-    const onResize = () => resize();
-    window.addEventListener("resize", onResize);
-
-    const draw = () => {
-      const { width, height } = canvas.getBoundingClientRect();
-      ctx.clearRect(0, 0, width, height);
-      for (let i = 0; i < squares.length; i++) {
-        if (Math.random() < flickerChance * 0.02) squares[i] = Math.random() * maxOpacity;
-        const c = i % cols, r = Math.floor(i / cols);
-        ctx.fillStyle = color.replace(/rgb\\(([^)]+)\\)/, (_m, p1) => \`rgba(\${p1}, \${squares[i]})\`);
-        ctx.fillRect(c * (squareSize + gridGap), r * (squareSize + gridGap), squareSize, squareSize);
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); };
-  }, [squareSize, gridGap, flickerChance, color, maxOpacity]);
-
-  return (
-    <div aria-hidden className={cn("pointer-events-none absolute inset-0 size-full", className)} {...rest}>
-      <canvas ref={ref} className="size-full" />
-    </div>
-  );
-};
-`;
-    ANIMATED_GRID = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export const AnimatedGridPattern: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...rest }) => (
-  <div aria-hidden className={cn("pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black,transparent_70%)]", className)} {...rest}>
-    <div className="absolute inset-0 animate-[grid-shift_20s_linear_infinite] [background-image:linear-gradient(to_right,hsl(var(--foreground)/0.08)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--foreground)/0.08)_1px,transparent_1px)] [background-size:40px_40px]" />
-    <style>{\`@keyframes grid-shift { 0% { background-position: 0 0; } 100% { background-position: 40px 40px; } }\`}</style>
-  </div>
-);
-`;
-    RIPPLE = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface RippleProps extends React.HTMLAttributes<HTMLDivElement> {
-  numCircles?: number;
-  mainCircleSize?: number;
-}
-
-export const Ripple: React.FC<RippleProps> = ({
-  numCircles = 8, mainCircleSize = 210, className, ...rest
-}) => (
-  <div aria-hidden className={cn("pointer-events-none absolute inset-0 flex items-center justify-center [mask-image:linear-gradient(to_bottom,white,transparent)]", className)} {...rest}>
-    {Array.from({ length: numCircles }).map((_, i) => {
-      const size = mainCircleSize + i * 70;
-      const opacity = Math.max(0.05, 0.3 - i * 0.03);
-      const delay = i * 0.06;
-      return (
-        <div key={i} className="absolute rounded-full border border-foreground/20 animate-[ripple_3.4s_ease-out_infinite]" style={{ width: size, height: size, opacity, animationDelay: \`\${delay}s\` }} />
-      );
-    })}
-    <style>{\`@keyframes ripple { 0% { transform: scale(0.9); opacity: var(--start-opacity,0.3); } 100% { transform: scale(1.1); opacity: 0; } }\`}</style>
-  </div>
-);
-`;
-    NOISE_TEXTURE = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface NoiseTextureProps extends React.HTMLAttributes<HTMLDivElement> {
-  opacity?: number;
-}
-
-export const NoiseTexture: React.FC<NoiseTextureProps> = ({ opacity = 0.06, className, style, ...rest }) => {
-  const id = React.useId();
-  return (
-    <div aria-hidden className={cn("pointer-events-none absolute inset-0 mix-blend-overlay", className)} style={{ opacity, ...style }} {...rest}>
-      <svg className="size-full">
-        <filter id={id}>
-          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter={\`url(#\${id})\`} />
-      </svg>
-    </div>
-  );
-};
-`;
-    LIGHT_RAYS = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export const LightRays: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...rest }) => (
-  <div aria-hidden className={cn("pointer-events-none absolute inset-x-0 top-0 h-[60vh] overflow-hidden [mask-image:linear-gradient(to_bottom,white,transparent)]", className)} {...rest}>
-    {Array.from({ length: 6 }).map((_, i) => (
-      <div key={i} className="absolute top-0 left-1/2 h-[80vh] w-[40vw] -translate-x-1/2 origin-top animate-[ray-sweep_8s_ease-in-out_infinite] bg-gradient-to-b from-primary/30 via-primary/10 to-transparent blur-3xl" style={{ transform: \`translateX(-50%) rotate(\${(i - 2.5) * 12}deg)\`, animationDelay: \`\${i * 0.4}s\` }} />
-    ))}
-    <style>{\`@keyframes ray-sweep { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }\`}</style>
-  </div>
-);
-`;
-    MESH_GRADIENT = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-/** Layered conic + radial gradients evoking a mesh. Uses design tokens. */
-export const MeshGradient: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, style, ...rest }) => (
-  <div
-    aria-hidden
-    className={cn("pointer-events-none absolute inset-0 opacity-60 [filter:blur(60px)] saturate-150", className)}
-    style={{
-      backgroundImage: [
-        "radial-gradient(at 20% 20%, hsl(var(--primary)/0.6) 0px, transparent 50%)",
-        "radial-gradient(at 80% 0%, hsl(var(--accent)/0.5) 0px, transparent 50%)",
-        "radial-gradient(at 0% 80%, hsl(var(--secondary)/0.5) 0px, transparent 50%)",
-        "radial-gradient(at 80% 80%, hsl(var(--primary)/0.4) 0px, transparent 50%)",
-      ].join(", "),
-      ...style,
-    }}
-    {...rest}
-  />
-);
-`;
-    METEORS = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface MeteorsProps extends React.HTMLAttributes<HTMLDivElement> {
-  number?: number;
-}
-
-export const Meteors: React.FC<MeteorsProps> = ({ number = 20, className, ...rest }) => {
-  const meteors = React.useMemo(
-    () => Array.from({ length: number }).map(() => ({
-      left: Math.floor(Math.random() * 100),
-      delay: (Math.random() * 0.6).toFixed(2),
-      duration: (Math.random() * 8 + 2).toFixed(2),
-    })),
-    [number],
-  );
-  return (
-    <div aria-hidden className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} {...rest}>
-      {meteors.map((m, i) => (
-        <span
-          key={i}
-          className="absolute top-0 h-0.5 w-0.5 rotate-[215deg] animate-[meteor_5s_linear_infinite] rounded-full bg-foreground shadow-[0_0_0_1px_hsl(var(--foreground)/0.1)] before:absolute before:top-1/2 before:h-px before:w-[60px] before:-translate-y-1/2 before:bg-gradient-to-r before:from-foreground before:to-transparent before:content-['']"
-          style={{ left: \`\${m.left}%\`, animationDelay: \`\${m.delay}s\`, animationDuration: \`\${m.duration}s\` }}
-        />
-      ))}
-      <style>{\`@keyframes meteor { 0% { transform: rotate(215deg) translateX(0); opacity: 1; } 70% { opacity: 1; } 100% { transform: rotate(215deg) translateX(-500px); opacity: 0; } }\`}</style>
-    </div>
-  );
-};
-`;
-    PARTICLES = `"use client";
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface ParticlesProps extends React.HTMLAttributes<HTMLDivElement> {
-  quantity?: number;
-  color?: string;
-  size?: number;
-}
-
-export const Particles: React.FC<ParticlesProps> = ({
-  quantity = 80, color = "hsl(var(--foreground))", size = 1, className, ...rest
-}) => {
-  const canvasRef = React.useRef<HTMLCanvasElement>(null);
-  React.useEffect(() => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    let raf = 0;
-    type P = { x: number; y: number; vx: number; vy: number; a: number };
-    let parts: P[] = [];
-    const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
-      const { width, height } = c.getBoundingClientRect();
-      c.width = width * dpr; c.height = height * dpr;
-      ctx.scale(dpr, dpr);
-      parts = Array.from({ length: quantity }).map(() => ({
-        x: Math.random() * width, y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
-        a: Math.random() * 0.6 + 0.2,
-      }));
-    };
-    resize();
-    const onResize = () => resize();
-    window.addEventListener("resize", onResize);
-    const draw = () => {
-      const { width, height } = c.getBoundingClientRect();
-      ctx.clearRect(0, 0, width, height);
-      for (const p of parts) {
-        p.x += p.vx; p.y += p.vy;
-        if (p.x < 0 || p.x > width) p.vx *= -1;
-        if (p.y < 0 || p.y > height) p.vy *= -1;
-        ctx.globalAlpha = p.a;
-        ctx.fillStyle = color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, size, 0, Math.PI * 2); ctx.fill();
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    raf = requestAnimationFrame(draw);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); };
-  }, [quantity, color, size]);
-  return (
-    <div aria-hidden className={cn("pointer-events-none absolute inset-0", className)} {...rest}>
-      <canvas ref={canvasRef} className="size-full" />
-    </div>
-  );
-};
-`;
-    SPARKLES = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface SparklesProps extends React.HTMLAttributes<HTMLDivElement> {
-  count?: number;
-}
-
-export const Sparkles: React.FC<SparklesProps> = ({ count = 30, className, ...rest }) => {
-  const stars = React.useMemo(() => Array.from({ length: count }).map(() => ({
-    top: Math.random() * 100, left: Math.random() * 100,
-    size: Math.random() * 3 + 1,
-    delay: Math.random() * 4,
-  })), [count]);
-  return (
-    <div aria-hidden className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} {...rest}>
-      {stars.map((s, i) => (
-        <span key={i} className="absolute rounded-full bg-foreground animate-[sparkle_3s_ease-in-out_infinite]" style={{ top: \`\${s.top}%\`, left: \`\${s.left}%\`, width: s.size, height: s.size, animationDelay: \`\${s.delay}s\` }} />
-      ))}
-      <style>{\`@keyframes sparkle { 0%,100% { opacity:0; transform:scale(0); } 50% { opacity:1; transform:scale(1); } }\`}</style>
-    </div>
-  );
-};
-`;
-    AURORA_TEXT = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface AuroraTextProps extends React.HTMLAttributes<HTMLSpanElement> {
-  colors?: string[];
-  speed?: number;
-}
-
-export const AuroraText: React.FC<AuroraTextProps> = ({
-  colors = ["#FF0080", "#7928CA", "#0070F3", "#38bdf8"], speed = 8, className, children, style, ...rest
-}) => (
-  <span
-    className={cn("inline-block bg-clip-text text-transparent animate-[aurora_var(--aurora-speed)_linear_infinite]", className)}
-    style={{
-      backgroundImage: \`linear-gradient(90deg, \${[...colors, colors[0]].join(", ")})\`,
-      backgroundSize: "200% auto",
-      "--aurora-speed": \`\${speed}s\`,
-      ...style,
-    } as React.CSSProperties}
-    {...rest}
-  >
-    {children}
-    <style>{\`@keyframes aurora { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }\`}</style>
-  </span>
-);
-`;
-    GRADIENT_TEXT2 = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface GradientTextProps extends React.HTMLAttributes<HTMLSpanElement> {
-  from?: string;
-  via?: string;
-  to?: string;
-}
-
-export const GradientText: React.FC<GradientTextProps> = ({
-  from = "hsl(var(--primary))", via, to = "hsl(var(--accent))", className, children, style, ...rest
-}) => (
-  <span
-    className={cn("inline-block bg-clip-text text-transparent", className)}
-    style={{ backgroundImage: \`linear-gradient(90deg, \${from}\${via ? ", " + via : ""}, \${to})\`, ...style }}
-    {...rest}
-  >
-    {children}
-  </span>
-);
-`;
-    SHINY_TEXT = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export const ShinyText: React.FC<React.HTMLAttributes<HTMLSpanElement>> = ({ className, children, style, ...rest }) => (
-  <span
-    className={cn("inline-block bg-clip-text text-transparent animate-[shine_3s_linear_infinite]", className)}
-    style={{
-      backgroundImage: "linear-gradient(110deg, hsl(var(--foreground)) 40%, hsl(var(--foreground)/0.4) 50%, hsl(var(--foreground)) 60%)",
-      backgroundSize: "200% 100%",
-      ...style,
-    }}
-    {...rest}
-  >
-    {children}
-    <style>{\`@keyframes shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }\`}</style>
-  </span>
-);
-`;
-    MAGIC_CARD = `"use client";
-import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface MagicCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  gradientSize?: number;
-  gradientColor?: string;
-}
-
-export const MagicCard: React.FC<MagicCardProps> = ({
-  gradientSize = 200, gradientColor = "hsl(var(--primary) / 0.18)",
-  className, children, ...rest
-}) => {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const [mouse, setMouse] = React.useState({ x: -200, y: -200 });
-  return (
-    <div
-      ref={ref}
-      onMouseMove={(e) => {
-        const r = ref.current?.getBoundingClientRect();
-        if (!r) return;
-        setMouse({ x: e.clientX - r.left, y: e.clientY - r.top });
-      }}
-      onMouseLeave={() => setMouse({ x: -200, y: -200 })}
-      className={cn("group relative rounded-xl border border-border bg-card p-px text-card-foreground", className)}
-      {...rest}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -inset-px rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={{ background: \`radial-gradient(\${gradientSize}px circle at \${mouse.x}px \${mouse.y}px, \${gradientColor}, transparent 70%)\` }}
-      />
-      <div className="relative h-full rounded-[inherit] bg-card p-6">{children}</div>
-    </div>
-  );
-};
-`;
-    BORDER_BEAM = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface BorderBeamProps {
-  size?: number;
-  duration?: number;
-  colorFrom?: string;
-  colorTo?: string;
-  className?: string;
-}
-
-export const BorderBeam: React.FC<BorderBeamProps> = ({
-  size = 200, duration = 10,
-  colorFrom = "hsl(var(--primary))", colorTo = "hsl(var(--accent))",
-  className,
-}) => (
-  <div
-    aria-hidden
-    className={cn("pointer-events-none absolute inset-0 rounded-[inherit] [border:1px_solid_transparent] ![mask-clip:padding-box,border-box] ![mask-composite:intersect] [mask:linear-gradient(transparent,transparent),linear-gradient(white,white)] after:absolute after:aspect-square after:w-[var(--size)] after:animate-[border-beam_var(--duration)_linear_infinite] after:[offset-anchor:90%_50%] after:[offset-path:rect(0_auto_auto_0_round_var(--size))] after:[background:linear-gradient(to_left,var(--color-from),var(--color-to),transparent)]", className)}
-    style={{
-      "--size": \`\${size}px\`,
-      "--duration": \`\${duration}s\`,
-      "--color-from": colorFrom,
-      "--color-to": colorTo,
-    } as React.CSSProperties}
-  >
-    <style>{\`@keyframes border-beam { 100% { offset-distance: 100%; } }\`}</style>
-  </div>
-);
-`;
-    GLOW_CARD = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export const GlowCard: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, children, ...rest }) => (
-  <div className={cn("group relative rounded-xl border border-border bg-card p-6 text-card-foreground transition", className)} {...rest}>
-    <div aria-hidden className="absolute -inset-px -z-10 rounded-[inherit] bg-gradient-to-r from-primary via-accent to-primary opacity-0 blur-xl transition-opacity duration-500 group-hover:opacity-60" />
-    {children}
-  </div>
-);
-`;
-    BENTO_GRID = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export const BentoGrid: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...rest }) => (
-  <div className={cn("grid w-full auto-rows-[18rem] grid-cols-3 gap-4", className)} {...rest} />
-);
-
-export interface BentoCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  name?: string;
-  description?: string;
-  Icon?: React.ComponentType<{ className?: string }>;
-  cta?: string;
-  href?: string;
-  background?: React.ReactNode;
-}
-
-export const BentoCard: React.FC<BentoCardProps> = ({
-  name, description, Icon, cta, href, background, className, children, ...rest
-}) => (
-  <div className={cn("group relative flex flex-col justify-between overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm transition hover:shadow-xl", className)} {...rest}>
-    {background && <div className="absolute inset-0 transition-transform duration-500 group-hover:scale-105">{background}</div>}
-    <div className="relative z-10 flex flex-col gap-1 p-6 transition-all duration-300 group-hover:-translate-y-2">
-      {Icon && <Icon className="h-8 w-8 origin-left transform transition-transform duration-300 group-hover:scale-90 text-foreground/70" />}
-      {name && <h3 className="text-lg font-semibold text-foreground">{name}</h3>}
-      {description && <p className="max-w-md text-sm text-muted-foreground">{description}</p>}
-      {children}
-    </div>
-    {cta && (
-      <div className="relative z-10 flex items-center p-6 pt-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-        <a href={href ?? "#"} className="text-sm font-medium text-primary">{cta} \u2192</a>
-      </div>
-    )}
-  </div>
-);
-`;
-    MARQUEE2 = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface MarqueeProps extends React.HTMLAttributes<HTMLDivElement> {
-  reverse?: boolean;
-  pauseOnHover?: boolean;
-  vertical?: boolean;
-  repeat?: number;
-}
-
-export const Marquee: React.FC<MarqueeProps> = ({
-  reverse, pauseOnHover, vertical, repeat = 4, className, children, ...rest
-}) => (
-  <div
-    className={cn(
-      "group flex overflow-hidden p-2 [--duration:40s] [--gap:1rem] [gap:var(--gap)]",
-      vertical ? "flex-col" : "flex-row",
-      "[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]",
-      className,
-    )}
-    {...rest}
-  >
-    {Array.from({ length: repeat }).map((_, i) => (
-      <div
-        key={i}
-        className={cn(
-          "flex shrink-0 justify-around [gap:var(--gap)]",
-          vertical
-            ? "animate-[marquee-y_var(--duration)_linear_infinite] flex-col"
-            : "animate-[marquee-x_var(--duration)_linear_infinite] flex-row",
-          pauseOnHover && "group-hover:[animation-play-state:paused]",
-          reverse && "[animation-direction:reverse]",
-        )}
-      >
-        {children}
-      </div>
-    ))}
-    <style>{\`
-      @keyframes marquee-x { 0% { transform: translateX(0); } 100% { transform: translateX(calc(-100% - var(--gap))); } }
-      @keyframes marquee-y { 0% { transform: translateY(0); } 100% { transform: translateY(calc(-100% - var(--gap))); } }
-    \`}</style>
-  </div>
-);
-`;
-    INFINITE_MOVING_CARDS = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface InfiniteMovingCardsProps {
-  items: Array<{ quote: string; name: string; title?: string }>;
-  direction?: "left" | "right";
-  speed?: "fast" | "normal" | "slow";
-  pauseOnHover?: boolean;
-  className?: string;
-}
-
-export const InfiniteMovingCards: React.FC<InfiniteMovingCardsProps> = ({
-  items, direction = "left", speed = "normal", pauseOnHover = true, className,
-}) => {
-  const duration = speed === "fast" ? "20s" : speed === "slow" ? "80s" : "40s";
-  return (
-    <div className={cn("group relative z-20 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]", className)}>
-      <ul
-        className="flex w-max gap-4 py-4 animate-[scroll_var(--duration)_linear_infinite]"
-        style={{ "--duration": duration, animationDirection: direction === "right" ? "reverse" : "normal", animationPlayState: undefined } as React.CSSProperties}
-        onMouseEnter={(e) => pauseOnHover && (e.currentTarget.style.animationPlayState = "paused")}
-        onMouseLeave={(e) => pauseOnHover && (e.currentTarget.style.animationPlayState = "running")}
-      >
-        {[...items, ...items].map((it, i) => (
-          <li key={i} className="w-[320px] shrink-0 rounded-xl border border-border bg-card p-6 text-card-foreground shadow-sm">
-            <p className="text-sm leading-relaxed">"{it.quote}"</p>
-            <footer className="mt-4 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{it.name}</span>
-              {it.title && <span> \xB7 {it.title}</span>}
-            </footer>
-          </li>
-        ))}
-      </ul>
-      <style>{\`@keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(calc(-50% - 0.5rem)); } }\`}</style>
-    </div>
-  );
-};
-`;
-    ORBITING_CIRCLES = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface OrbitingCirclesProps extends React.HTMLAttributes<HTMLDivElement> {
-  radius?: number;
-  duration?: number;
-  delay?: number;
-  reverse?: boolean;
-  iconSize?: number;
-}
-
-export const OrbitingCircles: React.FC<OrbitingCirclesProps> = ({
-  radius = 160, duration = 20, delay = 0, reverse = false, iconSize = 32,
-  className, children, ...rest
-}) => {
-  const items = React.Children.toArray(children);
-  return (
-    <div aria-hidden className={cn("pointer-events-none absolute inset-0", className)} {...rest}>
-      <div className="absolute left-1/2 top-1/2 size-0">
-        {items.map((c, i) => {
-          const angle = (360 / items.length) * i;
-          return (
-            <div
-              key={i}
-              className="absolute left-0 top-0 animate-[orbit_var(--duration)_linear_infinite]"
-              style={{
-                "--duration": \`\${duration}s\`,
-                "--radius": \`\${radius}px\`,
-                "--angle": \`\${angle}deg\`,
-                animationDirection: reverse ? "reverse" : "normal",
-                animationDelay: \`\${delay}s\`,
-                width: iconSize, height: iconSize, marginLeft: -iconSize / 2, marginTop: -iconSize / 2,
-              } as React.CSSProperties}
-            >
-              <div className="flex size-full items-center justify-center rounded-full border border-border bg-card text-card-foreground shadow-sm">
-                {c}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <style>{\`@keyframes orbit { 0% { transform: rotate(calc(var(--angle))) translateX(var(--radius)) rotate(calc(var(--angle) * -1)); } 100% { transform: rotate(calc(var(--angle) + 360deg)) translateX(var(--radius)) rotate(calc((var(--angle) + 360deg) * -1)); } }\`}</style>
-    </div>
-  );
-};
-`;
-    HERO_PARALLAX = `"use client";
-import * as React from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { cn } from "@/lib/utils";
-
-export interface HeroParallaxProps {
-  products: Array<{ title: string; thumbnail: string; link?: string }>;
-  className?: string;
-}
-
-export const HeroParallax: React.FC<HeroParallaxProps> = ({ products, className }) => {
-  const firstRow = products.slice(0, 5);
-  const secondRow = products.slice(5, 10);
-  const thirdRow = products.slice(10, 15);
-  const ref = React.useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const spring = { stiffness: 300, damping: 30, bounce: 100 };
-  const tx = useSpring(useTransform(scrollYProgress, [0, 1], [0, 1000]), spring);
-  const txR = useSpring(useTransform(scrollYProgress, [0, 1], [0, -1000]), spring);
-  const op = useSpring(useTransform(scrollYProgress, [0, 0.2], [0.2, 1]), spring);
-
-  return (
-    <div ref={ref} className={cn("relative flex h-[260vh] flex-col gap-20 overflow-hidden py-20 antialiased [perspective:1000px] [transform-style:preserve-3d]", className)}>
-      <motion.div style={{ opacity: op }} className="space-y-12">
-        <Row products={firstRow} translate={tx} />
-        <Row products={secondRow} translate={txR} reverse />
-        <Row products={thirdRow} translate={tx} />
-      </motion.div>
-    </div>
-  );
-};
-
-const Row: React.FC<{ products: HeroParallaxProps["products"]; translate: any; reverse?: boolean }> = ({ products, translate, reverse }) => (
-  <motion.div className={cn("flex gap-6", reverse && "flex-row-reverse")}>
-    {products.map((p, i) => (
-      <motion.a key={i} href={p.link ?? "#"} style={{ x: translate }} className="group relative h-72 w-[24rem] shrink-0 overflow-hidden rounded-xl border border-border bg-card">
-        <img src={p.thumbnail} alt={p.title} loading="lazy" className="absolute inset-0 size-full object-cover transition-transform duration-500 group-hover:scale-105" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent opacity-0 transition-opacity group-hover:opacity-90" />
-        <h3 className="absolute bottom-4 left-4 text-lg font-semibold text-foreground opacity-0 transition-opacity group-hover:opacity-100">{p.title}</h3>
-      </motion.a>
-    ))}
-  </motion.div>
-);
-`;
-    ANIMATED_BEAM = `"use client";
-import * as React from "react";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
-
-export interface AnimatedBeamProps {
-  containerRef: React.RefObject<HTMLElement>;
-  fromRef: React.RefObject<HTMLElement>;
-  toRef: React.RefObject<HTMLElement>;
-  curvature?: number;
-  duration?: number;
-  delay?: number;
-  pathColor?: string;
-  pathWidth?: number;
-  pathOpacity?: number;
-  gradientStartColor?: string;
-  gradientStopColor?: string;
-  reverse?: boolean;
-  className?: string;
-}
-
-export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
-  containerRef, fromRef, toRef,
-  curvature = 0, duration = 5, delay = 0,
-  pathColor = "hsl(var(--border))", pathWidth = 2, pathOpacity = 0.4,
-  gradientStartColor = "hsl(var(--primary))", gradientStopColor = "hsl(var(--accent))",
-  reverse, className,
-}) => {
-  const id = React.useId();
-  const [d, setD] = React.useState("");
-  const [size, setSize] = React.useState({ w: 0, h: 0 });
-
-  React.useEffect(() => {
-    const update = () => {
-      const c = containerRef.current, a = fromRef.current, b = toRef.current;
-      if (!c || !a || !b) return;
-      const cr = c.getBoundingClientRect();
-      const ar = a.getBoundingClientRect();
-      const br = b.getBoundingClientRect();
-      const x1 = ar.left - cr.left + ar.width / 2;
-      const y1 = ar.top - cr.top + ar.height / 2;
-      const x2 = br.left - cr.left + br.width / 2;
-      const y2 = br.top - cr.top + br.height / 2;
-      const cx = (x1 + x2) / 2;
-      const cy = (y1 + y2) / 2 - curvature;
-      setD(\`M \${x1},\${y1} Q \${cx},\${cy} \${x2},\${y2}\`);
-      setSize({ w: cr.width, h: cr.height });
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    if (containerRef.current) ro.observe(containerRef.current);
-    return () => ro.disconnect();
-  }, [containerRef, fromRef, toRef, curvature]);
-
-  return (
-    <svg
-      aria-hidden
-      width={size.w}
-      height={size.h}
-      className={cn("pointer-events-none absolute left-0 top-0", className)}
-    >
-      <path d={d} stroke={pathColor} strokeWidth={pathWidth} strokeOpacity={pathOpacity} fill="none" />
-      <path d={d} stroke={\`url(#\${id})\`} strokeWidth={pathWidth} strokeLinecap="round" fill="none" />
-      <defs>
-        <motion.linearGradient
-          id={id}
-          gradientUnits="userSpaceOnUse"
-          initial={{ x1: "0%", x2: "0%", y1: "0%", y2: "0%" }}
-          animate={{
-            x1: reverse ? ["100%", "0%"] : ["0%", "100%"],
-            x2: reverse ? ["110%", "10%"] : ["-10%", "90%"],
-          }}
-          transition={{ delay, duration, repeat: Infinity, ease: "linear" }}
-        >
-          <stop stopColor={gradientStartColor} stopOpacity="0" />
-          <stop stopColor={gradientStartColor} />
-          <stop offset="32.5%" stopColor={gradientStopColor} />
-          <stop offset="100%" stopColor={gradientStopColor} stopOpacity="0" />
-        </motion.linearGradient>
-      </defs>
-    </svg>
-  );
-};
-`;
-    SHIMMER_BUTTON = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export interface ShimmerButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  shimmerColor?: string;
-  background?: string;
-}
-
-export const ShimmerButton = React.forwardRef<HTMLButtonElement, ShimmerButtonProps>(
-  ({ shimmerColor = "hsl(var(--primary-foreground))", background = "hsl(var(--primary))", className, children, style, ...rest }, ref) => (
-    <button
-      ref={ref}
-      className={cn("group relative cursor-pointer overflow-hidden rounded-full px-6 py-3 text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-100", className)}
-      style={{ background, ...style }}
-      {...rest}
-    >
-      <span
-        aria-hidden
-        className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-current to-transparent opacity-30"
-        style={{ color: shimmerColor }}
-      />
-      <span className="relative">{children}</span>
-      <style>{\`@keyframes shimmer { 100% { transform: translateX(100%); } }\`}</style>
-    </button>
-  ),
-);
-ShimmerButton.displayName = "ShimmerButton";
-`;
-    RAINBOW_BUTTON = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export const RainbowButton = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-  ({ className, children, ...rest }, ref) => (
-    <button
-      ref={ref}
-      className={cn(
-        "group relative inline-flex h-11 cursor-pointer items-center justify-center rounded-xl px-8 py-2 text-sm font-medium text-primary-foreground",
-        "bg-[length:200%] bg-[linear-gradient(90deg,#ff0080,#7928ca,#0070f3,#38bdf8,#ff0080)] animate-[rainbow_4s_linear_infinite]",
-        "before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-[inherit] before:blur-xl before:opacity-60",
-        "transition-transform hover:scale-105 active:scale-100",
-        className,
-      )}
-      {...rest}
-    >
-      {children}
-      <style>{\`@keyframes rainbow { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }\`}</style>
-    </button>
-  ),
-);
-RainbowButton.displayName = "RainbowButton";
-`;
-    SHINY_BUTTON = `import * as React from "react";
-import { cn } from "@/lib/utils";
-
-export const ShinyButton = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
-  ({ className, children, ...rest }, ref) => (
-    <button
-      ref={ref}
-      className={cn(
-        "group relative inline-flex items-center justify-center rounded-md border border-border bg-background px-6 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted",
-        className,
-      )}
-      {...rest}
-    >
-      <span className="absolute inset-0 overflow-hidden rounded-[inherit]">
-        <span className="absolute -inset-px animate-[shine-sweep_3s_linear_infinite] bg-[linear-gradient(110deg,transparent_30%,hsl(var(--foreground)/0.15)_50%,transparent_70%)] bg-[length:200%_100%]" />
-      </span>
-      <span className="relative">{children}</span>
-      <style>{\`@keyframes shine-sweep { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }\`}</style>
-    </button>
-  ),
-);
-ShinyButton.displayName = "ShinyButton";
-`;
-    KIT_FX_FILES = [
-      { path: "src/components/fx/index.ts", content: FX_INDEX, overwrite: true },
-      // backgrounds
-      { path: "src/components/fx/grid-pattern.tsx", content: GRID_PATTERN, overwrite: true },
-      { path: "src/components/fx/dot-pattern.tsx", content: DOT_PATTERN, overwrite: true },
-      { path: "src/components/fx/retro-grid.tsx", content: RETRO_GRID, overwrite: true },
-      { path: "src/components/fx/flickering-grid.tsx", content: FLICKERING_GRID, overwrite: true },
-      { path: "src/components/fx/animated-grid-pattern.tsx", content: ANIMATED_GRID, overwrite: true },
-      { path: "src/components/fx/ripple.tsx", content: RIPPLE, overwrite: true },
-      { path: "src/components/fx/noise-texture.tsx", content: NOISE_TEXTURE, overwrite: true },
-      { path: "src/components/fx/light-rays.tsx", content: LIGHT_RAYS, overwrite: true },
-      { path: "src/components/fx/mesh-gradient.tsx", content: MESH_GRADIENT, overwrite: true },
-      { path: "src/components/fx/meteors.tsx", content: METEORS, overwrite: true },
-      { path: "src/components/fx/particles.tsx", content: PARTICLES, overwrite: true },
-      { path: "src/components/fx/sparkles.tsx", content: SPARKLES, overwrite: true },
-      // text
-      { path: "src/components/fx/aurora-text.tsx", content: AURORA_TEXT, overwrite: true },
-      { path: "src/components/fx/gradient-text.tsx", content: GRADIENT_TEXT2, overwrite: true },
-      { path: "src/components/fx/shiny-text.tsx", content: SHINY_TEXT, overwrite: true },
-      // containers
-      { path: "src/components/fx/magic-card.tsx", content: MAGIC_CARD, overwrite: true },
-      { path: "src/components/fx/border-beam.tsx", content: BORDER_BEAM, overwrite: true },
-      { path: "src/components/fx/glow-card.tsx", content: GLOW_CARD, overwrite: true },
-      { path: "src/components/fx/bento-grid.tsx", content: BENTO_GRID, overwrite: true },
-      { path: "src/components/fx/marquee.tsx", content: MARQUEE2, overwrite: true },
-      { path: "src/components/fx/infinite-moving-cards.tsx", content: INFINITE_MOVING_CARDS, overwrite: true },
-      { path: "src/components/fx/orbiting-circles.tsx", content: ORBITING_CIRCLES, overwrite: true },
-      { path: "src/components/fx/hero-parallax.tsx", content: HERO_PARALLAX, overwrite: true },
-      { path: "src/components/fx/animated-beam.tsx", content: ANIMATED_BEAM, overwrite: true },
-      // buttons
-      { path: "src/components/fx/shimmer-button.tsx", content: SHIMMER_BUTTON, overwrite: true },
-      { path: "src/components/fx/rainbow-button.tsx", content: RAINBOW_BUTTON, overwrite: true },
-      { path: "src/components/fx/shiny-button.tsx", content: SHINY_BUTTON, overwrite: true }
-    ];
-  }
-});
-
 // src/server/scaffold-kit-shadcn.ts
 var BREADCRUMB, COLLAPSIBLE, HOVER_CARD, TOGGLE, TOGGLE_GROUP, ASPECT_RATIO, SPINNER, CONTEXT_MENU, MENUBAR, NAVIGATION_MENU, EMPTY, FIELD, INPUT_GROUP, CAROUSEL, COMMAND, RESIZABLE, DATA_TABLE, SIDEBAR, KIT_SHADCN_FILES;
 var init_scaffold_kit_shadcn = __esm({
@@ -55675,7 +54190,6 @@ var init_scaffold_kit = __esm({
     init_scaffold_kit_mobile();
     init_scaffold_kit_mobile_2();
     init_scaffold_kit_motion();
-    init_scaffold_kit_fx();
     init_scaffold_kit_shadcn();
     init_scaffold_kit_data();
     init_scaffold_kit_typography();
@@ -55732,7 +54246,6 @@ export default defineConfig({
   "exclude": [
     "src/components/examples",
     "src/components/motion",
-    "src/components/fx",
     "src/components/three",
     "src/components/scroll",
     "src/components/content",
@@ -59728,7 +58241,7 @@ export { Grid } from "./grid";
       // legal-demo, ticketing, POS, CRM, helpdesk, analytics, community,
       // portfolio).
       ...EXAMPLES_PACK_2,
-      // Phase-1 expansion: new atoms (Marquee/Stat/EmptyState/Section/etc.) +
+      // Phase-1 expansion: new atoms (Stat/EmptyState/Section/etc.) +
       // composed section blocks (Hero/Features variants) so generated landing
       // pages stop converging on the same centered-hero + 3-card layout.
       // Defined in a separate module so this file stays reviewable.
@@ -59761,13 +58274,6 @@ export { Grid } from "./grid";
       // FadeIn / SlideUp / Stagger / Reveal / Magnetic / Tilt / Parallax /
       // SplitText / CountUp / WordRotate / BlurFade. Import from "@/components/motion".
       ...KIT_MOTION_FILES,
-      // Phase 11 — Marketing FX layer. MagicUI/Aceternity-style effects:
-      // GridPattern/DotPattern/RetroGrid/FlickeringGrid/AnimatedGridPattern/Ripple/
-      // NoiseTexture/LightRays/MeshGradient/Meteors/Particles/Sparkles, AuroraText/
-      // GradientText/ShinyText, MagicCard/BorderBeam/GlowCard/BentoGrid+BentoCard/
-      // Marquee/InfiniteMovingCards/OrbitingCircles/HeroParallax/AnimatedBeam,
-      // ShimmerButton/RainbowButton/ShinyButton. Import from "@/components/fx".
-      ...KIT_FX_FILES,
       // Phase 12 — Missing shadcn primitives. 18 components mirroring shadcn's
       // API: Breadcrumb, Collapsible, HoverCard, Toggle + ToggleGroup, AspectRatio,
       // Spinner, ContextMenu, Menubar, NavigationMenu, Empty, Field, InputGroup,
@@ -59840,7 +58346,6 @@ export { Grid } from "./grid";
     CUSTOMIZABLE_KIT_PREFIXES = [
       "src/components/blocks/",
       "src/components/examples/",
-      "src/components/fx/",
       "src/components/sections/"
     ];
     IMAGE_REF_RE = /petal-image:\/\/[^\s"'`<>)]+|https?:\/\/[^\s"'`<>)]+|data:image\/[^\s"'`<>)]+/g;
@@ -60269,7 +58774,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -70223,7 +68727,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -70490,7 +68993,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -141444,11 +139946,9 @@ var init_render_risk_linter = __esm({
     ];
     KIT_LIST_PROP_CONTRACTS = {
       TestimonialsCards: [["items", "testimonials"]],
-      TestimonialsMarquee: [["items", "testimonials"]],
       FaqAccordion: [["items", "faqs"]],
       FaqTwoColumn: [["items", "faqs"]],
       LogosGrid: [["logos"]],
-      LogosMarquee: [["logos"]],
       FeaturesGrid3: [["items"]],
       FeaturesBento: [["items"]],
       FeaturesAlternatingRows: [["items"]],
@@ -142150,7 +140650,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144476,7 +142975,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145681,7 +144179,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146800,7 +145297,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -164669,7 +163165,7 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - palette_mood: a sentence describing the actual hues, not "modern colors". E.g. "warm cream background, burnt sienna primary, ink-black text, sage accents".
 - density: minimal / balanced / dense. Match the audience: consumer landing \u2192 minimal/balanced; data dashboards \u2192 dense; editorial \u2192 balanced with generous white space.
 - motion: still / subtle / expressive / cinematic. Default subtle. Use expressive when the brand calls for energy. Use cinematic ONLY for agency / portfolio / showcase / luxury sites where Awwwards-grade scroll choreography is the point \u2014 it pulls in Lenis smooth-scroll, GSAP ScrollTrigger, and optionally a R3F 3D hero, which is overkill for SaaS dashboards or internal tools.
-- fx_recipe: name the FX bundle this app should compose. Pick ONE of: vivid-color, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe drives which @/components/fx primitives the builder reaches for. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
+- fx_recipe: name the FX bundle this app should compose. Pick ONE of: vivid-color, modern-saas, agency-portfolio, cyberpunk-crypto, ai-product, playful-consumer, luxury-brand, data-dashboard, awwwards-3d. The recipe sets the composition and motion language. If motion=cinematic you MUST pick fx_recipe=awwwards-3d.
 - design_moves: 2\u20134 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" \u2014 those aren't moves.
 
 Calibration \u2014 two recent Kimble outputs, same builder, very different results:
@@ -164769,7 +163265,7 @@ ${moves}
 - motion: ${d.motion}
 - motion primitives (\`@/components/motion\`): FadeIn, SlideUp, Stagger + StaggerItem, Reveal, Parallax, SplitText, CountUp, BlurFade. ` + (d.motion === "still" ? `motion=still \u2192 do NOT import these. Type and color do the work.` : d.motion === "subtle" ? `motion=subtle \u2192 FadeIn / SlideUp / BlurFade on the hero and major sections only. No SplitText, no Magnetic.` : d.motion === "expressive" ? `motion=expressive \u2192 Stagger + SplitText on the hero, gentle Parallax on hero media. Layer 2-3 across the page, not on every element.` : `motion=cinematic \u2192 wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) + `
 - fx recipe: ${d.fx_recipe ?? "(unset)"} \u2014 ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}
-- decorative FX (\`@/components/fx\` backgrounds, glowing/shimmer buttons, marquees, gradient text) are retired: do not import them. Photography, type and spacing carry the page.
+- there is no \`@/components/fx\` folder and no marquee or gradient-text component: never import them or hand-build glowing/shimmer buttons, scrolling strips or colour-fade text. Photography, type and spacing carry the page.
 - design moves to land:
 ${moves}
 Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.
@@ -166259,8 +164755,7 @@ var VARIANTS = [
   { id: "hero-video", section: "hero", label: "Video/animation loop", description: "Headline + CTA left, muted autoplay looping animation or scroll-driven canvas right; heavy motion floor." },
   { id: "hero-terminal", section: "hero", label: "Terminal / product demo", description: "For developer or AI tools: headline + subhead left, a real-looking terminal or code editor mock right with typed animation." },
   // SOCIAL PROOF
-  { id: "sp-marquee", section: "social-proof", label: "Logo marquee", description: "Auto-scrolling horizontal marquee of 8-12 grayscale customer logos with 'Trusted by' eyebrow." },
-  { id: "sp-logo-wall", section: "social-proof", label: "Static logo grid", description: "3-column grid of 6-9 customer logos with soft dividers, no marquee." },
+  { id: "sp-logo-wall", section: "social-proof", label: "Static logo grid", description: "3-column grid of 6-9 customer logos with soft dividers." },
   { id: "sp-stat-strip", section: "social-proof", label: "Metric strip", description: "3-4 large numbers (users, uptime, savings, rating) with tiny labels, no logos." },
   { id: "sp-testimonial-hero", section: "social-proof", label: "Anchor testimonial", description: "One giant customer quote with photo + name + company, no logos." },
   // FEATURES
@@ -168485,7 +166980,7 @@ init_define_import_meta_env();
 init_site_flags();
 init_scaffold_kit();
 var TEMPLATE_CONTRACT_PATH = "template.json";
-var REFERENCE_DIRS = ["@/components/blocks", "@/components/examples", "@/components/motion", "@/components/fx"];
+var REFERENCE_DIRS = ["@/components/blocks", "@/components/examples", "@/components/motion"];
 var TEMPLATE_PRELOADED_RULE = "This is the complete, authoritative contract; you do not need to read template.json.";
 function templateContractContent() {
   return KIT_FILES.find((f) => f.path === TEMPLATE_CONTRACT_PATH)?.content ?? "";
@@ -168523,7 +167018,6 @@ var MAP_AREAS = [
   { dir: "src/components/ui/", label: "UI kit", api: true },
   { dir: "src/components/blocks/", label: "Page sections (blocks)", api: true },
   { dir: "src/components/motion/", label: "Motion", api: true },
-  { dir: "src/components/fx/", label: "Visual effects", api: false },
   { dir: "src/components/content/", label: "Content", api: false },
   { dir: "src/components/image/", label: "Images", api: false },
   { dir: "src/components/scroll/", label: "Scroll", api: false },
@@ -171824,7 +170318,6 @@ function specifiersOf(content) {
 var ON_DEMAND_KIT_PATHS = [
   "src/components/examples",
   "src/components/motion",
-  "src/components/fx",
   "src/components/three",
   "src/components/scroll",
   "src/components/content",
@@ -171992,6 +170485,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

@@ -47,8 +47,7 @@ export interface Testimonial {
 
 /**
  * Classic 3-up testimonial card grid. Safe default. Pair with a
- * HeroSplitImage or HeroCentered. For maximalist sites, use the marquee
- * variant instead.
+ * HeroSplitImage or HeroCentered.
  */
 export function TestimonialsCards({
   eyebrow,
@@ -89,75 +88,6 @@ export function TestimonialsCards({
               </figcaption>
             </figure>
           ))}
-        </div>
-      </Section>
-    </Container>
-  );
-}
-`;
-
-const TESTIMONIALS_MARQUEE = `import * as React from "react";
-import { Container } from "@/components/ui/container";
-import { Section } from "@/components/ui/section";
-import { Marquee } from "@/components/ui/marquee";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, slotNode } from "@/lib/utils";
-
-export interface MarqueeTestimonial {
-  quote: string;
-  name: string;
-  role?: string;
-  title?: string;
-  avatarSrc?: string;
-  image?: string;
-  avatar?: string;
-}
-
-/**
- * Two-row infinite-scroll testimonial marquee. Reverse direction on the
- * second row creates motion. Best for playful/maximalist vibes — heavy in
- * social proof. Each row uses a different speed so they don't sync.
- */
-export function TestimonialsMarquee({
-  eyebrow,
-  title,
-  description,
-  items,
-  testimonials,
-  className,
-}: {
-  eyebrow?: React.ReactNode;
-  title?: React.ReactNode;
-  description?: React.ReactNode;
-  items?: MarqueeTestimonial[];
-  testimonials?: MarqueeTestimonial[];
-  className?: string;
-}) {
-  const list = Array.isArray(items) ? items : Array.isArray(testimonials) ? testimonials : [];
-  const half = Math.ceil(list.length / 2);
-  const rowA = list.slice(0, half);
-  const rowB = list.slice(half).length ? list.slice(half) : list;
-  const Card = ({ t }: { t: MarqueeTestimonial }) => (
-    <figure className="mx-3 w-[320px] shrink-0 rounded-2xl border border-border bg-card p-5">
-      <blockquote className="text-sm leading-relaxed text-foreground/90">&ldquo;{t.quote}&rdquo;</blockquote>
-      <figcaption className="mt-4 flex items-center gap-3">
-        <Avatar className="h-9 w-9">
-          {(t.avatarSrc || t.image || t.avatar) && <AvatarImage src={t.avatarSrc ?? t.image ?? t.avatar} alt={t.name} />}
-          <AvatarFallback>{t.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-foreground">{t.name}</div>
-          {(t.role || t.title) && <div className="truncate text-xs text-muted-foreground">{t.role ?? t.title}</div>}
-        </div>
-      </figcaption>
-    </figure>
-  );
-  return (
-    <Container size="xl" className={cn("[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]", className)}>
-      <Section eyebrow={eyebrow} title={title} description={description} align="center">
-        <div className="space-y-4">
-          <Marquee speed={45}>{rowA.map((t, i) => <Card key={i} t={t} />)}</Marquee>
-          <Marquee speed={55} reverse>{rowB.map((t, i) => <Card key={i} t={t} />)}</Marquee>
         </div>
       </Section>
     </Container>
@@ -550,95 +480,6 @@ export function CtaSplit({
               </Button>
             )}
           </div>
-        </div>
-      </Container>
-    </section>
-  );
-}
-`;
-
-const CTA_GRADIENT_BAND = `import * as React from "react";
-import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/ui/container";
-import { cn, slotNode } from "@/lib/utils";
-
-type CtaLike = {
-  label?: React.ReactNode;
-  text?: React.ReactNode;
-  children?: React.ReactNode;
-  href?: string;
-  onClick?: () => void;
-};
-
-function normalizeCta(c: CtaLike | undefined): { label: React.ReactNode; href?: string; onClick?: () => void } | null {
-  if (!c) return null;
-  const label = c.label ?? c.children ?? c.text ?? "";
-  if (!label && !c.href && !c.onClick) return null;
-  return { label, href: c.href, onClick: c.onClick };
-}
-
-/**
- * Bold full-bleed gradient CTA band. Use sparingly — high visual weight,
- * great for the FINAL section of a marketing page.
- *
- * Accepts \`primaryCta\` / \`secondaryCta\` (preferred) OR
- * \`primaryLink\` / \`secondaryLink\` (alias). CTA objects may use
- * { label } or { children } / { text }.
- */
-export function CtaGradientBand({
-  title,
-  description,
-  primaryCta,
-  secondaryCta,
-  primaryLink,
-  secondaryLink,
-  className,
-}: {
-  title?: React.ReactNode;
-  description?: React.ReactNode;
-  primaryCta?: CtaLike;
-  secondaryCta?: CtaLike;
-  primaryLink?: CtaLike;
-  secondaryLink?: CtaLike;
-  className?: string;
-}) {
-  const primary = normalizeCta(primaryCta ?? primaryLink);
-  const secondary = normalizeCta(secondaryCta ?? secondaryLink);
-  return (
-    <section className={cn("relative overflow-hidden bg-primary py-20 text-primary-foreground md:py-28", className)}>
-      <Container size="lg">
-        <div className="relative mx-auto max-w-3xl text-center">
-          {title && <h2 className="text-balance text-4xl font-semibold tracking-tight md:text-5xl">{title}</h2>}
-          {description && (
-            <p className="mx-auto mt-5 max-w-xl text-base text-primary-foreground/80 md:text-lg">{description}</p>
-          )}
-          {(primary || secondary) && (
-            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              {primary && (
-                <Button size="lg" variant="secondary" onClick={primary.onClick} asChild={!!primary.href}>
-                  {primary.href ? (
-                    <a href={primary.href}>
-                      {primary.label} <ArrowRight className="ml-2 h-4 w-4" />
-                    </a>
-                  ) : (
-                    <>{primary.label} <ArrowRight className="ml-2 h-4 w-4" /></>
-                  )}
-                </Button>
-              )}
-              {secondary && (
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-primary-foreground/40 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-                  onClick={secondary.onClick}
-                  asChild={!!secondary.href}
-                >
-                  {secondary.href ? <a href={secondary.href}>{secondary.label}</a> : secondary.label}
-                </Button>
-              )}
-            </div>
-          )}
         </div>
       </Container>
     </section>
@@ -1229,7 +1070,6 @@ import { cn, slotNode } from "@/lib/utils";
 
 /**
  * Static centered logo grid. Pair with a short eyebrow ("Trusted by teams at").
- * For long lists or motion, use LogosMarquee.
  */
 export function LogosGrid({
   eyebrow,
@@ -1271,94 +1111,6 @@ export function LogosGrid({
     </section>
   );
 }
-`;
-
-const LOGOS_MARQUEE = `import * as React from "react";
-import { Container } from "@/components/ui/container";
-import { Marquee } from "@/components/ui/marquee";
-import { cn, slotNode } from "@/lib/utils";
-
-type LogoEntry = string | { name?: string; src?: string; url?: string };
-
-function normalizeLogo(l: LogoEntry): { name: string; src?: string } {
-  if (typeof l === "string") return { name: "", src: l };
-  return { name: l.name ?? "", src: l.src ?? l.url };
-}
-
-/**
- * Infinite-scroll press / customer strip. Accepts either an array of
- * \`{ name, src }\` objects or a plain string[] of image URLs.
- *
- * Rendering rule: a name is ALWAYS shown as a wordmark. When a \`src\` is also
- * given it renders as a small mark next to that wordmark — never as a lone
- * tiny image, which reads as visual noise at logo scale.
- *
- * Prop aliases (\`heading\`/\`title\` for \`eyebrow\`, \`duration\` for \`speed\`) are
- * accepted so a caller never silently loses its heading.
- */
-export function LogosMarquee({
-  eyebrow,
-  heading,
-  title,
-  logos,
-  speed,
-  duration,
-  className,
-}: {
-  eyebrow?: React.ReactNode;
-  /** Alias of eyebrow. */
-  heading?: React.ReactNode;
-  /** Alias of eyebrow. */
-  title?: React.ReactNode;
-  logos: LogoEntry[];
-  speed?: number;
-  /** Alias of speed. */
-  duration?: number;
-  className?: string;
-}) {
-  const list = Array.isArray(logos) ? logos.map((l) => normalizeLogo(l)) : [];
-  const label = eyebrow ?? heading ?? title;
-  return (
-    <section className={cn("py-12 md:py-16", className)}>
-      <Container size="xl">
-        {label && (
-          <p className="mb-8 text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            {label}
-          </p>
-        )}
-        <div className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
-          <Marquee speed={speed ?? duration ?? 40}>
-            {list.map((l, i) => (
-              <div
-                key={i}
-                className="mx-8 flex shrink-0 items-center gap-2.5 opacity-70 transition-opacity hover:opacity-100"
-              >
-                {l.src && (
-                  <img
-                    src={l.src}
-                    alt={l.name || ""}
-                    className={
-                      l.name
-                        ? "h-8 w-8 shrink-0 rounded-full object-cover"
-                        : "h-8 w-auto max-w-[150px] shrink-0 object-contain"
-                    }
-                    loading="lazy"
-                  />
-                )}
-                {l.name && (
-                  <span className="whitespace-nowrap text-base font-semibold tracking-tight text-foreground/80">
-                    {l.name}
-                  </span>
-                )}
-              </div>
-            ))}
-          </Marquee>
-        </div>
-      </Container>
-    </section>
-  );
-}
-
 `;
 
 // =============================================================================
@@ -1520,7 +1272,7 @@ export function StatsWithChart({
 const EXAMPLE_LANDING_SAAS = `/**
  * REFERENCE — SaaS product landing page.
  *
- * Shape: NavWithCta → HeroSplitImage → LogosMarquee → FeaturesBento →
+ * Shape: NavWithCta → HeroSplitImage → LogosGrid → FeaturesBento →
  *        StatsBand → TestimonialsCards → PricingSingleProduct → FaqAccordion →
  *        CtaCentered → FooterColumns
  *
@@ -1530,7 +1282,7 @@ const EXAMPLE_LANDING_SAAS = `/**
 import { Bolt, BookOpen, GitBranch, Globe, ShieldCheck, Sparkles, Twitter, Github } from "lucide-react";
 import { NavWithCta } from "@/components/blocks/nav-with-cta";
 import { HeroSplitImage } from "@/components/blocks/hero-split-image";
-import { LogosMarquee } from "@/components/blocks/logos-marquee";
+import { LogosGrid } from "@/components/blocks/logos-grid";
 import { FeaturesBento } from "@/components/blocks/features-bento";
 import { StatsBand } from "@/components/blocks/stats-band";
 import { TestimonialsCards } from "@/components/blocks/testimonials-cards";
@@ -1556,7 +1308,7 @@ export default function LandingSaasReference() {
         secondaryCta={{label:"Watch demo",href:"#"}}
         imageSrc="petal-image://saas-product-screenshot-clean-dark-mode"
       />
-      <LogosMarquee eyebrow="Used at" logos={[{name:"Acme"},{name:"Globex"},{name:"Initech"},{name:"Hooli"},{name:"Stark"},{name:"Wonka"}]} />
+      <LogosGrid eyebrow="Used at" logos={[{name:"Acme"},{name:"Globex"},{name:"Initech"},{name:"Hooli"},{name:"Stark"},{name:"Wonka"}]} />
       <FeaturesBento
         eyebrow="Why teams switch"
         title="Built for the work, not the demo."
@@ -1677,8 +1429,8 @@ const EXAMPLE_LANDING_ECOMMERCE = `/**
  * REFERENCE — Single-product e-commerce landing page.
  *
  * Shape: NavWithCta → HeroSplitImage (product shot) → StatsBand (social proof) →
- *        FeaturesAlternatingRows → TestimonialsMarquee → PricingSingleProduct →
- *        FaqTwoColumn → CtaGradientBand → FooterNewsletter
+ *        FeaturesAlternatingRows → TestimonialsCards → PricingSingleProduct →
+ *        FaqTwoColumn → CtaCentered → FooterNewsletter
  *
  * Copy for: D2C product launches, lifetime deals, single SKU stores.
  */
@@ -1687,10 +1439,10 @@ import { NavWithCta } from "@/components/blocks/nav-with-cta";
 import { HeroSplitImage } from "@/components/blocks/hero-split-image";
 import { StatsBand } from "@/components/blocks/stats-band";
 import { FeaturesAlternatingRows } from "@/components/blocks/features-alternating-rows";
-import { TestimonialsMarquee } from "@/components/blocks/testimonials-marquee";
+import { TestimonialsCards } from "@/components/blocks/testimonials-cards";
 import { PricingSingleProduct } from "@/components/blocks/pricing-single-product";
 import { FaqTwoColumn } from "@/components/blocks/faq-two-column";
-import { CtaGradientBand } from "@/components/blocks/cta-gradient-band";
+import { CtaCentered } from "@/components/blocks/cta-centered";
 import { FooterNewsletter } from "@/components/blocks/footer-newsletter";
 
 export default function LandingEcommerceReference() {
@@ -1716,10 +1468,14 @@ export default function LandingEcommerceReference() {
           {eyebrow:"Shipped",title:"Carbon-neutral, every cup.",description:"Compostable packaging. Offset shipping. We plant a tree for every order.",imageSrc:"petal-image://ceramic-cup-packaging-craft-paper"},
         ]}
       />
-      <TestimonialsMarquee
+      <TestimonialsCards
         eyebrow="From real cupboards"
         title="Quiet cult favorite."
-        items={Array.from({length:8}).map((_,i)=>({quote:"Use it every single morning. Wouldn't swap it.",name:\`Customer \${i+1}\`,role:"Verified buyer"}))}
+        items={[
+          {quote:"Use it every single morning. Wouldn't swap it.",name:"Marta Silva",role:"Lisbon"},
+          {quote:"The rim is perfect. Coffee tastes better, somehow.",name:"Tom Becker",role:"Berlin"},
+          {quote:"Bought one, then three more as gifts.",name:"Aiko Mori",role:"Kyoto"},
+        ]}
       />
       <PricingSingleProduct
         title="The Cup"
@@ -1741,7 +1497,7 @@ export default function LandingEcommerceReference() {
           {q:"Can I order more than one?",a:"Up to 4 per order while supplies last."},
         ]}
       />
-      <CtaGradientBand
+      <CtaCentered
         title="The last cup, while it lasts."
         description="612 of 2,000 left. Once they're gone, that's it."
         primaryCta={{label:"Order yours — $49",href:"#buy"}}
@@ -1971,7 +1727,6 @@ export default function BlogPostDetailReference() {
 export const KIT_BLOCK_FILES_2: KitFile[] = [
   // Testimonials
   { path: "src/components/blocks/testimonials-cards.tsx", content: TESTIMONIALS_CARDS, overwrite: true },
-  { path: "src/components/blocks/testimonials-marquee.tsx", content: TESTIMONIALS_MARQUEE, overwrite: true },
   { path: "src/components/blocks/testimonials-quote-hero.tsx", content: TESTIMONIALS_QUOTE_HERO, overwrite: true },
   // Pricing
   { path: "src/components/blocks/pricing-single-product.tsx", content: PRICING_SINGLE_PRODUCT, overwrite: true },
@@ -1981,7 +1736,6 @@ export const KIT_BLOCK_FILES_2: KitFile[] = [
   // CTA
   { path: "src/components/blocks/cta-centered.tsx", content: CTA_CENTERED, overwrite: true },
   { path: "src/components/blocks/cta-split.tsx", content: CTA_SPLIT, overwrite: true },
-  { path: "src/components/blocks/cta-gradient-band.tsx", content: CTA_GRADIENT_BAND, overwrite: true },
   // Footer
   { path: "src/components/blocks/footer-columns.tsx", content: FOOTER_COLUMNS, overwrite: true },
   { path: "src/components/blocks/footer-minimal.tsx", content: FOOTER_MINIMAL, overwrite: true },
@@ -1992,7 +1746,6 @@ export const KIT_BLOCK_FILES_2: KitFile[] = [
   { path: "src/components/blocks/nav-with-search.tsx", content: NAV_WITH_SEARCH, overwrite: true },
   // Logo cloud
   { path: "src/components/blocks/logos-grid.tsx", content: LOGOS_GRID, overwrite: true },
-  { path: "src/components/blocks/logos-marquee.tsx", content: LOGOS_MARQUEE, overwrite: true },
   // Stats
   { path: "src/components/blocks/stats-band.tsx", content: STATS_BAND, overwrite: true },
   { path: "src/components/blocks/stats-grid.tsx", content: STATS_GRID, overwrite: true },
