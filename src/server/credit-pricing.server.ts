@@ -9,4 +9,6 @@ export type GatewayUsage = {
   /** Real USD amount the gateway charged for this call, when reported. */
   cost?: number;
   prompt_tokens_details?: { cached_tokens?: number };
+  /** Model that produced this usage, so the call is priced at its own rate. */
+  model?: string;
 };

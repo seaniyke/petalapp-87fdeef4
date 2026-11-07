@@ -354,6 +354,12 @@ export interface ToolLoopArgs {
   spentBeforeUsd?: number;
   /** Cost of one reply (USD). Must never return 0 for an unmeasured call. */
   costOf?: (reply: ModelReply) => number;
+  /**
+   * Predicted cost (USD) of the next call from its estimated prompt tokens.
+   * The ceiling check uses max(prediction, largest call seen), so the first
+   * call is bounded too. Omitted = largest call seen only.
+   */
+  predictCallUsd?: (promptTokens: number) => number;
 }
 
 export interface ToolLoopResult {
@@ -1024,7 +1030,16 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       compacted = true;
     }
 
-    if (ceiling != null && state.spentUsd + maxCallUsd > ceiling) {
+    const predictedUsd = (() => {
+      if (!args.predictCallUsd) return 0;
+      try {
+        const p = args.predictCallUsd(estimateTokens(messages));
+        return Number.isFinite(p) && p > 0 ? p : 0;
+      } catch {
+        return 0;
+      }
+    })();
+    if (ceiling != null && state.spentUsd + Math.max(maxCallUsd, predictedUsd) > ceiling) {
       state.stopReason = `economic ceiling reached ($${state.spentUsd.toFixed(4)} of $${ceiling.toFixed(4)})`;
       emit({ kind: "economic_ceiling", detail: state.stopReason });
       return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "breaker" };

@@ -328,7 +328,7 @@ const MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
 /** One billable call's cost: provider-reported (ACTUAL) or token-estimated. */
 function turnCallCost(u: GatewayUsage, model: string = MODEL_STRUCTURED_RETRY): import("@/lib/build-pricing").CallCost {
   if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
-  const micro = estimateCostUsdMicro(model, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
+  const micro = estimateCostUsdMicro(u.model ?? model, u.prompt_tokens ?? 0, u.completion_tokens ?? 0, u.prompt_tokens_details?.cached_tokens ?? null);
   return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
 }
 /** Vision-capable model used whenever the latest turn carries image attachments. */
@@ -4406,7 +4406,7 @@ async function handleGenerateRequestCore(
                 sse({
                   type: "credits_estimate",
                   credits: creditsForCost(
-                    [collected.usage ?? null, ...pageWriteUsages]
+                    [collected.usage ? { ...collected.usage, model: (collected.usage as GatewayUsage).model ?? model } : null, ...pageWriteUsages]
                       .filter((u): u is GatewayUsage => !!u)
                       .reduce((a, u) => a + (turnCallCost(u).costUsd ?? 0), 0),
                     DEFAULT_BUILD_ECONOMICS,
@@ -4811,9 +4811,20 @@ async function handleGenerateRequestCore(
             // every later write; finish is refused while the workspace is
             // incomplete. No per-page calls, no second scheduler.
             const { runToolLoop } = await import("@/server/engine/tool-loop");
-            const { buildEconomics: loopEconomics } = await import("@/server/economics-config.server");
-            const loopCeilingUsd = economicCeilingUsd(null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics()) /* internal cost limit: class cost × headroom, decoupled from the effort-priced hold */;
-            const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
+            const { buildEconomics: loopEconomics, economicsValues: loopEconomicsValues } = await import("@/server/economics-config.server");
+            // Runaway ceiling = size estimate × headroom. The size estimate is
+            // the p90 of MEASURED first-build tokens priced at the model this
+            // loop runs (never the flat DeepSeek-era class dollars alone), so
+            // a normal build finishes and only a runaway is stopped.
+            const { estimateFirstBuildCost, predictCallCostUsd } = await import("@/server/engine/loop-cost-estimate");
+            const { firstBuildTokenSamples } = await import("@/server/build-reservation.server");
+            const { modelPricePerM } = await import("@/server/ai-provider.server");
+            const loopModelPrice = modelPricePerM(defaultFirstBuildModel());
+            const loopEcon = await loopEconomics();
+            const loopSizeEstimate = estimateFirstBuildCost(await firstBuildTokenSamples(), loopModelPrice, Math.max(1, Math.round((await loopEconomicsValues()).estimate_min_samples ?? 20)));
+            const loopCeilingUsd = economicCeilingUsd(null, Math.max(buildReservation?.classCostUsd ?? 0, loopSizeEstimate.usd), loopEcon) /* internal cost limit, decoupled from the effort-priced hold */;
+            turnStrategy.loopSizeEstimate = { usd: loopSizeEstimate.usd, basis: loopSizeEstimate.basis, samples: loopSizeEstimate.samples, model: defaultFirstBuildModel() };
+            const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage, model).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
             const { makeCallModel } = await import("@/server/engine/tool-loop-model");
             const { validateUnitImports, undefinedNames } = await import("@/server/engine/work-unit");
             const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
@@ -4857,7 +4868,7 @@ async function handleGenerateRequestCore(
                 ),
               (u) => {
                 if (!u) return;
-                pageWriteUsages.push(u);
+                pageWriteUsages.push({ ...u, model: firstBuildModel });
                 // Cost capture: every loop call's ai_call_log row gets its
                 // tokens and cost (ACTUAL from the provider, else ESTIMATED).
                 void updateLastCallUsage({
@@ -4946,11 +4957,15 @@ async function handleGenerateRequestCore(
               costOf: (r) => {
                 if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
                 if (r.usage) {
-                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens } as GatewayUsage, firstBuildModel).costUsd;
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } } as GatewayUsage, firstBuildModel).costUsd;
                   if (c != null) return c;
                 }
-                return buildReservation?.classCostUsd ?? 0.03;
+                // Unmeasured call: never free — the per-build size estimate stands in.
+                return Math.max(buildReservation?.classCostUsd ?? 0.03, loopSizeEstimate.usd);
               },
+              // Checked before EVERY call, including the first: all prompt
+              // tokens at the uncached rate plus a typical write's output.
+              predictCallUsd: (promptTokens) => predictCallCostUsd(promptTokens, loopModelPrice),
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
@@ -7145,7 +7160,7 @@ async function handleGenerateRequestCore(
         // continuation, self-check) stay on Kimble's tab and are NOT
         // appended here — same convention as `body.isAutoFix`.
         const turnUsages: Array<GatewayUsage | null> = [
-          collected.usage ?? null,
+          collected.usage ? { ...collected.usage, model: (collected.usage as GatewayUsage).model ?? model } : null,
           ...pageWriteUsages,
           ...agentLoopUsages,
         ];

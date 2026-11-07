@@ -62067,8 +62067,8 @@ var init_gateway_budget_models = __esm({
         context: 272e3,
         vision: true,
         tools: true,
-        inputUsdPerM: 8,
-        outputUsdPerM: 40,
+        inputUsdPerM: 0.8,
+        outputUsdPerM: 4.8,
         features: [
           "generate",
           "discuss",
@@ -63128,6 +63128,7 @@ __export(ai_provider_server_exports, {
   isProviderUnavailableStatus: () => isProviderUnavailableStatus,
   markLastCallFailure: () => markLastCallFailure,
   markProviderPaymentFailure: () => markProviderPaymentFailure,
+  modelPricePerM: () => modelPricePerM,
   parseUsageObject: () => parseUsageObject,
   providersExhaustedResponse: () => providersExhaustedResponse,
   readTurnCallCosts: () => readTurnCallCosts,
@@ -63271,13 +63272,18 @@ async function resolveModelOverride(feature) {
     fallback: s?.fallback_model ?? null
   };
 }
-function estimateCostUsdMicro(model, promptTokens, completionTokens) {
+function modelPricePerM(model) {
+  const hit = model ? MODEL_PRICE_PER_M_TOKENS.find((e) => e.match.test(model)) : void 0;
+  return hit ? { inUsd: hit.inUsd, cachedInUsd: hit.cachedInUsd, outUsd: hit.outUsd } : { inUsd: 0.5, cachedInUsd: 0.5, outUsd: 2 };
+}
+function estimateCostUsdMicro(model, promptTokens, completionTokens, cachedPromptTokens) {
   if (!model) return null;
   const pin = promptTokens ?? 0;
   const pout = completionTokens ?? 0;
   if (pin <= 0 && pout <= 0) return null;
-  const entry = MODEL_PRICE_PER_M_TOKENS.find((e) => e.match.test(model)) ?? { inUsd: 0.5, outUsd: 2 };
-  const usd = pin / 1e6 * entry.inUsd + pout / 1e6 * entry.outUsd;
+  const entry = modelPricePerM(model);
+  const cached7 = Math.min(Math.max(0, cachedPromptTokens ?? 0), Math.max(0, pin));
+  const usd = (pin - cached7) / 1e6 * entry.inUsd + cached7 / 1e6 * entry.cachedInUsd + pout / 1e6 * entry.outUsd;
   return Math.round(usd * 1e6);
 }
 function parseUsageObject(u) {
@@ -63343,7 +63349,7 @@ function usageColumns(u, model) {
     cols.cost_source = "provider";
     cols.usage_state = "usage_confirmed";
   } else {
-    const c = estimateCostUsdMicro(model, u.promptTokens, u.completionTokens);
+    const c = estimateCostUsdMicro(model, u.promptTokens, u.completionTokens, u.cachedTokens);
     if (c != null) {
       cols.cost_usd_micro = c;
       cols.cost_basis = "estimated";
@@ -63595,7 +63601,8 @@ async function updateLastCallUsageInner(args) {
       const cost = estimateCostUsdMicro(
         args.model,
         args.promptTokens,
-        args.completionTokens
+        args.completionTokens,
+        args.cachedPromptTokens
       );
       if (cost != null) {
         patch.cost_usd_micro = cost;
@@ -63900,18 +63907,25 @@ var init_ai_provider_server = __esm({
       "anthropic/claude-opus-5-5"
     ]);
     MODEL_PRICE_PER_M_TOKENS = [
-      { match: /gemini-3\.1-flash-lite/i, inUsd: 1, outUsd: 6 },
-      { match: /gemini-3\.8-flash/i, inUsd: 3, outUsd: 15 },
-      { match: /gemini-4-argon/i, inUsd: 8, outUsd: 40 },
-      { match: /gemini-.*-pro/i, inUsd: 12, outUsd: 72 },
-      { match: /gemini-.*-flash/i, inUsd: 3, outUsd: 15 },
-      { match: /gpt-5\.6-sol/i, inUsd: 16, outUsd: 80 },
-      { match: /gpt-5\.6-(luna|terra)/i, inUsd: 8, outUsd: 40 },
-      { match: /gpt-6/i, inUsd: 16, outUsd: 80 },
-      { match: /gpt-5/i, inUsd: 10, outUsd: 60 },
-      { match: /claude-haiku/i, inUsd: 5, outUsd: 25 },
-      { match: /claude-sonnet/i, inUsd: 15, outUsd: 75 },
-      { match: /claude-opus/i, inUsd: 25, outUsd: 125 }
+      { match: /gemini-3\.1-flash-lite/i, inUsd: 1, cachedInUsd: 0.1, outUsd: 6 },
+      { match: /gemini-3\.[678]-flash/i, inUsd: 3, cachedInUsd: 0.3, outUsd: 15 },
+      { match: /gemini-4-argon/i, inUsd: 8, cachedInUsd: 0.4, outUsd: 40 },
+      { match: /gemini-3\.1-pro/i, inUsd: 8, cachedInUsd: 0.8, outUsd: 48 },
+      { match: /gemini-.*-pro/i, inUsd: 8, cachedInUsd: 0.8, outUsd: 48 },
+      { match: /gemini-.*-flash/i, inUsd: 3, cachedInUsd: 0.3, outUsd: 15 },
+      { match: /gpt-5\.6-sol/i, inUsd: 16, cachedInUsd: 1.6, outUsd: 80 },
+      { match: /gpt-5\.6-terra/i, inUsd: 8, cachedInUsd: 0.8, outUsd: 48 },
+      { match: /gpt-5\.6-luna/i, inUsd: 0.8, cachedInUsd: 0.08, outUsd: 4.8 },
+      { match: /gpt-6-astra/i, inUsd: 40, cachedInUsd: 4, outUsd: 200 },
+      { match: /gpt-6\.1-sol/i, inUsd: 8, cachedInUsd: 0.4, outUsd: 40 },
+      { match: /gpt-6\.1-terra/i, inUsd: 4, cachedInUsd: 0.2, outUsd: 20 },
+      { match: /gpt-6-sol/i, inUsd: 8, cachedInUsd: 0.8, outUsd: 40 },
+      { match: /gpt-6-luna/i, inUsd: 0.4, cachedInUsd: 0.04, outUsd: 2 },
+      { match: /gpt-6/i, inUsd: 40, cachedInUsd: 4, outUsd: 200 },
+      { match: /gpt-5/i, inUsd: 10, cachedInUsd: 1, outUsd: 60 },
+      { match: /claude-haiku/i, inUsd: 4, cachedInUsd: 0.4, outUsd: 20 },
+      { match: /claude-sonnet/i, inUsd: 8, cachedInUsd: 0.8, outUsd: 40 },
+      { match: /claude-opus/i, inUsd: 20, cachedInUsd: 2, outUsd: 100 }
     ];
     num = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
     pendingCostWrites = /* @__PURE__ */ new Set();
@@ -70087,6 +70101,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -70345,6 +70360,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -146183,6 +146199,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -150075,6 +150092,7 @@ var build_reservation_server_exports = {};
 __export(build_reservation_server_exports, {
   estimateEffortCredits: () => estimateEffortCredits,
   estimateForClass: () => estimateForClass,
+  firstBuildTokenSamples: () => firstBuildTokenSamples,
   releaseBuildReservation: () => releaseBuildReservation,
   reserveBuildCredits: () => reserveBuildCredits
 });
@@ -150093,6 +150111,21 @@ async function estimateForClass(cls) {
   }
   const pick2 = classCostUsd(p90, v[DEFAULT_KEY[cls]] ?? 0.03);
   return { ...pick2, economics };
+}
+async function firstBuildTokenSamples(limit = 500) {
+  try {
+    const { supabaseAdmin: supabaseAdmin2 } = await Promise.resolve().then(() => (init_client_server_shim(), client_server_shim_exports));
+    const since = new Date(Date.now() - 90 * 864e5).toISOString();
+    const { data: data2, error } = await supabaseAdmin2.from("turn_economics").select("prompt_tokens, cached_prompt_tokens, completion_tokens").eq("feature", "generate").eq("is_auto_fix", false).gt("prompt_tokens", 0).gte("created_at", since).contains("metadata", { execution: { signals: [{ name: "first_build" }] } }).order("created_at", { ascending: false }).limit(limit);
+    if (error || !data2) return [];
+    return data2.map((r) => ({
+      prompt: Number(r.prompt_tokens ?? 0),
+      cached: Number(r.cached_prompt_tokens ?? 0),
+      completion: Number(r.completion_tokens ?? 0)
+    }));
+  } catch {
+    return [];
+  }
 }
 async function estimateEffortCredits(cls) {
   const ep = await Promise.resolve().then(() => (init_effort_pricing(), effort_pricing_exports));
@@ -153222,7 +153255,16 @@ ${notReady}`, isError: true };
       readSeen.clear();
       compacted = true;
     }
-    if (ceiling != null && state.spentUsd + maxCallUsd > ceiling) {
+    const predictedUsd = (() => {
+      if (!args.predictCallUsd) return 0;
+      try {
+        const p2 = args.predictCallUsd(estimateTokens2(messages));
+        return Number.isFinite(p2) && p2 > 0 ? p2 : 0;
+      } catch {
+        return 0;
+      }
+    })();
+    if (ceiling != null && state.spentUsd + Math.max(maxCallUsd, predictedUsd) > ceiling) {
       state.stopReason = `economic ceiling reached ($${state.spentUsd.toFixed(4)} of $${ceiling.toFixed(4)})`;
       emit({ kind: "economic_ceiling", detail: state.stopReason });
       return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "breaker" };
@@ -153480,6 +153522,47 @@ var init_tool_loop = __esm({
     normPath = (p2) => String(p2 ?? "").trim().replace(/^\.?\/+/, "");
     IMPORT_RX = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
     EXTS4 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.js"];
+  }
+});
+
+// src/server/engine/loop-cost-estimate.ts
+var loop_cost_estimate_exports = {};
+__export(loop_cost_estimate_exports, {
+  DEFAULT_FIRST_BUILD_TOKENS: () => DEFAULT_FIRST_BUILD_TOKENS,
+  estimateFirstBuildCost: () => estimateFirstBuildCost,
+  percentile: () => percentile,
+  predictCallCostUsd: () => predictCallCostUsd,
+  sampleCostUsd: () => sampleCostUsd
+});
+function sampleCostUsd(s, price) {
+  const prompt = Math.max(0, s.prompt);
+  const cached7 = Math.min(Math.max(0, s.cached), prompt);
+  const out = Math.max(0, s.completion);
+  return ((prompt - cached7) * price.inUsd + cached7 * price.cachedInUsd + out * price.outUsd) / 1e6;
+}
+function percentile(values, p2) {
+  const v = values.filter((x) => Number.isFinite(x)).sort((a2, b) => a2 - b);
+  if (v.length === 0) return 0;
+  const rank3 = Math.min(100, Math.max(0, p2)) / 100 * (v.length - 1);
+  const lo = Math.floor(rank3);
+  const hi = Math.ceil(rank3);
+  return v[lo] + (v[hi] - v[lo]) * (rank3 - lo);
+}
+function estimateFirstBuildCost(samples, price, minSamples) {
+  const usable = samples.filter((s) => s.prompt > 0 || s.completion > 0);
+  if (usable.length >= Math.max(1, minSamples)) {
+    return { usd: percentile(usable.map((s) => sampleCostUsd(s, price)), 90), basis: "measured_p90", samples: usable.length };
+  }
+  return { usd: sampleCostUsd(DEFAULT_FIRST_BUILD_TOKENS, price), basis: "default", samples: usable.length };
+}
+function predictCallCostUsd(promptTokens, price, expectedOutputTokens = 4e3) {
+  return (Math.max(0, promptTokens) * price.inUsd + Math.max(0, expectedOutputTokens) * price.outUsd) / 1e6;
+}
+var DEFAULT_FIRST_BUILD_TOKENS;
+var init_loop_cost_estimate = __esm({
+  "src/server/engine/loop-cost-estimate.ts"() {
+    init_define_import_meta_env();
+    DEFAULT_FIRST_BUILD_TOKENS = { prompt: 9e5, cached: 65e4, completion: 3e4 };
   }
 });
 
@@ -175393,9 +175476,10 @@ var TURN_REPAIR_COST_WARN_USD = 0.22;
 var BLENDED_RATE_PER_MTOK = {
   "google/gemini-3.1-flash-lite": 3.5,
   "google/gemini-3.8-flash": 9,
-  "openai/gpt-5.6-luna": 24,
+  "google/gemini-4-argon": 24,
+  "openai/gpt-5.6-luna": 2.8,
   "openai/gpt-5.6-sol": 48,
-  "openai/gpt-6-astra": 48
+  "openai/gpt-6-astra": 120
 };
 var DEFAULT_RATE_PER_MTOK = 5;
 function estimateCostUsd(model, tokens2) {
@@ -176386,7 +176470,7 @@ var MODEL_CLAUDE = "anthropic/claude-sonnet-5";
 var MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
 function turnCallCost(u, model = MODEL_STRUCTURED_RETRY) {
   if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
-  const micro = estimateCostUsdMicro(model, u.prompt_tokens ?? 0, u.completion_tokens ?? 0);
+  const micro = estimateCostUsdMicro(u.model ?? model, u.prompt_tokens ?? 0, u.completion_tokens ?? 0, u.prompt_tokens_details?.cached_tokens ?? null);
   return micro == null ? { costUsd: null, basis: "unknown" } : { costUsd: micro / 1e6, basis: "estimated" };
 }
 var MODEL_VISION = "google/gemini-3.8-flash";
@@ -179095,7 +179179,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 sse({
                   type: "credits_estimate",
                   credits: creditsForCost(
-                    [collected.usage ?? null, ...pageWriteUsages].filter((u) => !!u).reduce((a2, u) => a2 + (turnCallCost(u).costUsd ?? 0), 0),
+                    [collected.usage ? { ...collected.usage, model: collected.usage.model ?? model } : null, ...pageWriteUsages].filter((u) => !!u).reduce((a2, u) => a2 + (turnCallCost(u).costUsd ?? 0), 0),
                     DEFAULT_BUILD_ECONOMICS
                   )
                 })
@@ -179392,9 +179476,16 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const pages = planned;
             await agentIO().assertActive(turnId, abortSignal, "page writing");
             const { runToolLoop: runToolLoop2 } = await Promise.resolve().then(() => (init_tool_loop(), tool_loop_exports));
-            const { buildEconomics: loopEconomics } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
-            const loopCeilingUsd = economicCeilingUsd(null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics());
-            const loopSpentBeforeUsd = collected.usage ? turnCallCost(collected.usage).costUsd ?? buildReservation?.classCostUsd ?? 0 : 0;
+            const { buildEconomics: loopEconomics, economicsValues: loopEconomicsValues } = await Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports));
+            const { estimateFirstBuildCost: estimateFirstBuildCost2, predictCallCostUsd: predictCallCostUsd2 } = await Promise.resolve().then(() => (init_loop_cost_estimate(), loop_cost_estimate_exports));
+            const { firstBuildTokenSamples: firstBuildTokenSamples2 } = await Promise.resolve().then(() => (init_build_reservation_server(), build_reservation_server_exports));
+            const { modelPricePerM: modelPricePerM2 } = await Promise.resolve().then(() => (init_ai_provider_server(), ai_provider_server_exports));
+            const loopModelPrice = modelPricePerM2(defaultFirstBuildModel());
+            const loopEcon = await loopEconomics();
+            const loopSizeEstimate = estimateFirstBuildCost2(await firstBuildTokenSamples2(), loopModelPrice, Math.max(1, Math.round((await loopEconomicsValues()).estimate_min_samples ?? 20)));
+            const loopCeilingUsd = economicCeilingUsd(null, Math.max(buildReservation?.classCostUsd ?? 0, loopSizeEstimate.usd), loopEcon);
+            turnStrategy.loopSizeEstimate = { usd: loopSizeEstimate.usd, basis: loopSizeEstimate.basis, samples: loopSizeEstimate.samples, model: defaultFirstBuildModel() };
+            const loopSpentBeforeUsd = collected.usage ? turnCallCost(collected.usage, model).costUsd ?? buildReservation?.classCostUsd ?? 0 : 0;
             const { makeCallModel: makeCallModel2 } = await Promise.resolve().then(() => (init_tool_loop_model(), tool_loop_model_exports));
             const { validateUnitImports: validateUnitImports2, undefinedNames: undefinedNames2 } = await Promise.resolve().then(() => (init_work_unit(), work_unit_exports));
             const { verifyFilesEsbuild: verifyFilesEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_verifier_server(), esbuild_verifier_server_exports));
@@ -179434,7 +179525,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
               ),
               (u) => {
                 if (!u) return;
-                pageWriteUsages.push(u);
+                pageWriteUsages.push({ ...u, model: firstBuildModel });
                 void updateLastCallUsage({
                   feature: "generate",
                   model: firstBuildModel,
@@ -179518,11 +179609,14 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
               costOf: (r) => {
                 if (typeof r.usage?.costUsd === "number" && Number.isFinite(r.usage.costUsd)) return r.usage.costUsd;
                 if (r.usage) {
-                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens }, firstBuildModel).costUsd;
+                  const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } }, firstBuildModel).costUsd;
                   if (c != null) return c;
                 }
-                return buildReservation?.classCostUsd ?? 0.03;
+                return Math.max(buildReservation?.classCostUsd ?? 0.03, loopSizeEstimate.usd);
               },
+              // Checked before EVERY call, including the first: all prompt
+              // tokens at the uncached rate plus a typical write's output.
+              predictCallUsd: (promptTokens) => predictCallCostUsd2(promptTokens, loopModelPrice),
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
@@ -181174,7 +181268,7 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
         }
         await saveProjectArchitecture(body.projectId, nextFiles);
         const turnUsages = [
-          collected.usage ?? null,
+          collected.usage ? { ...collected.usage, model: collected.usage.model ?? model } : null,
           ...pageWriteUsages,
           ...agentLoopUsages
         ];

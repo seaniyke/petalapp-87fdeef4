@@ -44,6 +44,35 @@ export async function estimateForClass(cls: ExecutionClass): Promise<{ usd: numb
   return { ...pick, economics };
 }
 
+/**
+ * Measured token usage of recent first builds (90 days, not auto-fix) — the
+ * model-neutral input to the loop's runaway ceiling. Never throws; [] on error.
+ */
+export async function firstBuildTokenSamples(limit = 500): Promise<import("@/server/engine/loop-cost-estimate").TokenSample[]> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const since = new Date(Date.now() - 90 * 86_400_000).toISOString();
+    const { data, error } = await supabaseAdmin
+      .from("turn_economics")
+      .select("prompt_tokens, cached_prompt_tokens, completion_tokens")
+      .eq("feature", "generate")
+      .eq("is_auto_fix", false)
+      .gt("prompt_tokens", 0)
+      .gte("created_at", since)
+      .contains("metadata", { execution: { signals: [{ name: "first_build" }] } } as never)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error || !data) return [];
+    return (data as Array<{ prompt_tokens: number | null; cached_prompt_tokens: number | null; completion_tokens: number | null }>).map((r) => ({
+      prompt: Number(r.prompt_tokens ?? 0),
+      cached: Number(r.cached_prompt_tokens ?? 0),
+      completion: Number(r.completion_tokens ?? 0),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /** Pre-build effort estimate → estimated customer credits (effort curve). */
 export async function estimateEffortCredits(cls: ExecutionClass): Promise<{ effort: number; credits: number; basis: "history" | "default" }> {
   const ep = await import("@/lib/effort-pricing");
