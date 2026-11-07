@@ -2,9 +2,9 @@
 
 When something under `builder/` lands on `main`, GitHub Actions connects to the
 VPS with a restricted key and asks it to deploy that exact commit. The VPS
-builds a new image, waits until no builds are running, swaps the
-`petal-builder` container, checks health and the agent-core hash, and puts the
-old container back if anything fails.
+builds a new image, waits until no builds are running, drains the builder so no
+new job can start, swaps the `petal-builder` container, checks health and the
+agent-core hash, and puts the old container back if anything fails.
 
 **Off by default.** Nothing runs until the repository variable
 `BUILDER_AUTODEPLOY` is `true`.
@@ -16,7 +16,8 @@ old container back if anything fails.
 | `.github/workflows/deploy-builder.yml` | GitHub | Sends `deploy <sha>` over SSH. No checkout, read-only token. |
 | `deploy/builder/petal-deploy-wrapper` | VPS `/usr/local/sbin` | Forced command: only `deploy <40-hex>` or `status`. |
 | `deploy/builder/sudoers.petal-deploy` | VPS `/etc/sudoers.d` | Lets `petal-deploy` run only that one script. |
-| `deploy/builder/petal-builder-deploy` | VPS `/usr/local/sbin` | Build, idle gate, swap, health, rollback. |
+| `deploy/builder/petal-builder-deploy` | VPS `/usr/local/sbin` | Build, idle gate, drain, swap, health, rollback. |
+| `deploy/builder/test/rehearse.sh` | Anywhere (not the VPS) | Rehearses the deploy script against a fake Docker and builder. |
 
 The VPS never runs these from the git checkout. Copy them by hand. When they
 change in git, review the change, then reinstall them yourself. A commit cannot
@@ -164,28 +165,82 @@ To turn it off, delete the variable or set it to anything other than `true`.
    generations (two zero readings in a row). If that never happens, it exits 75
    ("deferred"). Nothing is changed and the new image is kept, so re-running
    later is fast.
-8. Renames the old container to `petal-builder-prev`, stops it, and starts the
+8. **Drains** the builder: creates `/app/.petal-drain` inside the running
+   container (`docker exec … touch`). From then on the builder answers new
+   `/build` and `/agent/generate` requests with a retryable 503
+   (`Retry-After: 5`), and Petal holds them and re-sends them (see "Jobs that
+   arrive during a deploy" below). Work already accepted keeps running. The
+   script then requires two more zero readings within 45 seconds. If a job
+   slipped in just before the drain and is still running after 45 seconds, it
+   lifts the drain, waits for idle again, and retries, all within the same
+   30-minute limit.
+   A builder that predates drain mode (only the very first upgrade) skips this
+   step and uses the idle gate alone.
+9. Renames the old container to `petal-builder-prev`, stops it, and starts the
    new one with the same flags and `.env` (so `AGENT_IN_PROCESS` is unchanged).
-9. Requires, locally and through `https://builder-main.custardai.dev`:
+   An idle builder now exits on `docker stop` in well under a second.
+10. Requires, locally and through `https://builder-main.custardai.dev`:
    `/healthz` ok, and `/agent/healthz` with the new version, the exact core
-   hash, and the same `inProcess` value as before.
-10. On any failure: removes the new container, renames and starts the old one,
-    checks it is healthy, exits 1. If even that fails: exit 90 (see below).
-11. On success: removes the stopped old container, keeps `:previous` plus the 3
+   hash, and the same `inProcess` value as before. A container that exits, or
+   answers with the wrong version or hash, fails at once instead of after the
+   90-second timeout.
+11. On any failure: removes the new container, renames and starts the old one,
+    checks it is healthy, exits 1. The restarted builder clears its own drain
+    file on start, so it accepts work again straight away. If even that fails:
+    exit 90 (see below).
+12. On success: removes the stopped old container, keeps `:previous` plus the 3
     newest `petal-builder:<sha12>` images, and deletes older ones by exact tag.
+
+The drain is lifted on every exit path that doesn't end in a successful swap
+(deferred, refused, failed, Ctrl-C or `kill`). If the script is killed with
+`kill -9`, the builder ignores a drain file older than 10 minutes, and any
+restart clears it.
 
 Logs: `/var/log/petal-builder-deploy/` (root only). They never contain
 environment values.
+
+## Jobs that arrive during a deploy
+
+| What arrives | While draining | During the swap (a few seconds) | Covered for |
+|---|---|---|---|
+| New build (`/build`) | 503, Petal re-sends | 502/504 or refused, Petal re-sends | about 2½ minutes |
+| New generation (`/agent/generate`) | 503, Petal re-sends | 502/504 or refused, Petal re-sends | about 75 seconds |
+| Code check / browser test of running work (`/exec`, `/browse`) | accepted as normal | 502/503/504 re-sent for about 30 seconds | — |
+| A job already running | finishes normally | never stopped: the swap only starts at zero | — |
+
+Re-sending is safe: the builder acknowledges a build id or turn id it already
+holds instead of starting it twice. If the builder is still unreachable when
+the window ends, the customer sees the existing honest message ("couldn't start
+that build just now, nothing was charged" / "press Retry") — nothing is
+silently dropped.
+
+**If a running job is ever cut off anyway** (host reboot, out-of-memory kill,
+`kill -9`): builds are retried automatically by the every-minute build watchdog
+after about 2½ minutes of silence; a generation is closed as failed after 10
+minutes of silence, and a first build resumes from its saved checkpoint on the
+next send.
 
 | Exit | Meaning |
 |---|---|
 | 0 | Deployed and verified |
 | 1 | Failed; previous builder restored (or build failed before any swap) |
 | 2 | Bad usage |
-| 3 | Refused before changing anything (not on main, hash mismatch, config drift, leftover container) |
+| 3 | Refused before changing anything (not on main, hash mismatch, config drift, leftover container, drain could not be switched on) |
 | 73 | Another deploy is running |
 | 75 | Deferred: builder stayed busy, nothing changed |
 | 90 | Restore failed; manual action needed |
+
+## Rehearsal
+
+```bash
+bash deploy/builder/test/rehearse.sh
+```
+
+Runs the real deploy script against a fake Docker, a fake builder and a fake
+git source in a temp folder: normal deploy, jobs slipping in at the drain,
+wrong core hash, crashing container, unreachable public URL, first upgrade
+without drain, always busy, interrupted mid-drain, commit not on `main`,
+concurrent deploy and rollback. It never touches the VPS, Docker or GitHub.
 
 ## Rollback runbook
 
@@ -195,7 +250,7 @@ environment values.
 /usr/local/sbin/petal-builder-deploy rollback
 ```
 
-This waits for idle, swaps back to `petal-builder:previous` with the same flags,
+This waits for idle, drains, swaps back to `petal-builder:previous` with the same flags,
 and keeps the replaced image as `petal-builder:rolled-back`. It is not
 available over the GitHub SSH key.
 
@@ -215,10 +270,14 @@ Only `petal-builder*` names are touched. Never run `docker system prune`,
 
 ## Known limits
 
-- **Swap gap:** a request can arrive in the roughly 1 second between the last
-  idle check and the stop. The new container starts in a few seconds, and Petal
-  retries `/build` on 502/503 for about 37 seconds. A drain mode in the builder
-  would close the gap completely; it isn't built yet.
+- **First upgrade:** the builder running today has no drain mode, so the first
+  deploy uses the idle gate alone. A job arriving in the second between the
+  last idle check and the stop is still held and re-sent by Petal (once Petal
+  itself is published with this change), so it isn't lost. Every later deploy
+  drains.
+- **Very busy periods:** the swap needs a moment with zero running jobs. If the
+  builder never goes idle for 30 minutes the deploy defers (exit 75) and changes
+  nothing; run it again later.
 - **CPU during build:** `docker build` shares CPU with live jobs while the old
   builder is still serving.
 - **IP pinning:** GitHub's runner IPs change, so the key isn't limited by IP.
