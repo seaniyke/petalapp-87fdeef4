@@ -14,6 +14,20 @@ describe("requested scope is authoritative", () => {
     ).toEqual(["home", "menu", "about", "contact"]);
   });
 
+  it("sections listed in brackets after a page are not pages (Aura live run)", () => {
+    const prompt =
+      "Build a website for Aura, an architectural lighting design studio. Pages: Home (hero, philosophy, featured projects, testimonials, consultation call to action), Services, Projects (portfolio with category filter), Contact (inquiry form and studio details). Website only, no accounts.";
+    expect(extractRequestedPages(prompt)).toEqual(["home", "services", "projects", "contact"]);
+  });
+
+  it("still reads a page list written inside brackets", () => {
+    expect(extractRequestedPages("A café site with pages (Home, Menu, Contact).")).toEqual([
+      "home",
+      "menu",
+      "contact",
+    ]);
+  });
+
   it("a bakery with four named pages never gets /reservations", () => {
     const r = narrowRoutesToRequest(
       "A premium bakery website: Home, Menu, About, Contact pages",
