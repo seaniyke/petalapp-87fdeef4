@@ -6835,6 +6835,24 @@ async function handleGenerateRequestCore(
               },
               body.projectId ?? null,
               imageTargetPaths,
+              {
+                // A picture that could not be made is said plainly (and kept
+                // in the turn's events for audit), never passed off as real.
+                onFailure: ({ reason }) => {
+                  controller.enqueue(
+                    encoder.encode(
+                      sse({
+                        type: "timeline",
+                        step: "image_resolve",
+                        outcome: "failed",
+                        message: "One picture couldn't be made yet — it will be retried on the next change.",
+                        detail: reason,
+                        ts: Date.now(),
+                      }),
+                    ),
+                  );
+                },
+              },
             );
             nextFiles = imgResult.files;
             if (imgResult.resolved > 0) {
