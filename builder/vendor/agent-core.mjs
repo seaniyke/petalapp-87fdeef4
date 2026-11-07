@@ -53913,6 +53913,7 @@ export function DataTable<TData, TValue>({
 `;
     SIDEBAR = `"use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
@@ -54005,7 +54006,8 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
       );
     }
     if (isMobile) {
-      return (
+      if (typeof document === "undefined") return null;
+      return createPortal(
         <>
           <div
             onClick={() => setOpenMobile(false)}
@@ -54025,7 +54027,8 @@ export const Sidebar = React.forwardRef<HTMLDivElement, SidebarProps>(
             style={{ "--sidebar-width-mobile": SIDEBAR_WIDTH_MOBILE } as React.CSSProperties}
             {...rest}
           >{children}</aside>
-        </>
+        </>,
+        document.body,
       );
     }
     return (
@@ -56261,10 +56264,15 @@ export const PaginationEllipsis = ({ className, ...props }: React.HTMLAttributes
 PaginationEllipsis.displayName = "PaginationEllipsis";
 `;
     ALERT_DIALOG = `import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 type Ctx = { open: boolean; onOpenChange: (o: boolean) => void };
 const AlertDialogContext = React.createContext<Ctx | null>(null);
+
+function toBody(node: React.ReactNode) {
+  return typeof document === "undefined" ? null : createPortal(node, document.body);
+}
 
 export interface AlertDialogProps {
   open?: boolean;
@@ -56321,7 +56329,7 @@ export const AlertDialogContent = React.forwardRef<HTMLDivElement, React.HTMLAtt
   ({ className, children, ...props }, ref) => {
     const { open, onOpenChange } = useAlertDialog();
     if (!open) return null;
-    return (
+    return toBody(
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => onOpenChange(false)} />
         <div
@@ -56663,10 +56671,15 @@ export function TabsContent({ value, className, children, ...props }: React.HTML
 }
 `;
     DIALOG = `import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 type DialogContextValue = { open: boolean; setOpen: (v: boolean) => void };
 const DialogContext = React.createContext<DialogContextValue | null>(null);
+
+function toBody(node: React.ReactNode) {
+  return typeof document === "undefined" ? null : createPortal(node, document.body);
+}
 
 export function Dialog({
   open: controlled,
@@ -56698,7 +56711,7 @@ export function DialogContent({ className, children, ...props }: React.HTMLAttri
   const ctx = React.useContext(DialogContext);
   if (!ctx) throw new Error("DialogContent must be inside Dialog");
   if (!ctx.open) return null;
-  return (
+  return toBody(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={() => ctx.setOpen(false)} />
       <div
@@ -57327,11 +57340,16 @@ export const TableCaption = React.forwardRef<HTMLTableCaptionElement, React.HTML
 TableCaption.displayName = "TableCaption";
 `;
     SHEET = `import * as React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SheetContextValue = { open: boolean; setOpen: (v: boolean) => void };
 const SheetContext = React.createContext<SheetContextValue | null>(null);
+
+function toBody(node: React.ReactNode) {
+  return typeof document === "undefined" ? null : createPortal(node, document.body);
+}
 
 export function Sheet({
   open: controlled,
@@ -57373,7 +57391,7 @@ export function SheetContent({
     top: "inset-x-0 top-0 h-1/3 border-b",
     bottom: "inset-x-0 bottom-0 h-1/3 border-t",
   };
-  return (
+  return toBody(
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/50" onClick={() => ctx.setOpen(false)} />
       <div
@@ -59375,6 +59393,7 @@ export function FormMessage({ className, children }: { className?: string; child
 }
 `;
     DRAWER = `import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 /**
@@ -59397,6 +59416,10 @@ import { cn } from "@/lib/utils";
  */
 type Ctx = { open: boolean; setOpen: (v: boolean) => void };
 const DrawerContext = React.createContext<Ctx | null>(null);
+
+function toBody(node: React.ReactNode) {
+  return typeof document === "undefined" ? null : createPortal(node, document.body);
+}
 
 export function Drawer({
   open: controlled,
@@ -59439,7 +59462,7 @@ export function DrawerContent({ className, children, ...props }: React.HTMLAttri
     return () => document.removeEventListener("keydown", onEsc);
   }, [ctx]);
   if (!ctx?.open) return null;
-  return (
+  return toBody(
     <>
       <div className="fixed inset-0 z-50 bg-black/50" onClick={() => ctx.setOpen(false)} />
       <div
@@ -70220,6 +70243,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* kimble-design-system:start */";
@@ -140621,7 +140645,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141711,7 +141734,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141876,7 +141898,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141920,7 +141941,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -142142,7 +142162,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -142620,7 +142639,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -144469,7 +144487,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145674,7 +145691,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146783,7 +146799,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -171906,6 +171921,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
