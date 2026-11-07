@@ -1,3 +1,4 @@
+import { defaultFirstBuildModel } from "@/lib/ai-model-config";
 import { toOperationType } from "@/lib/operation-identity";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
