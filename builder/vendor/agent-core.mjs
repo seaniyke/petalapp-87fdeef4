@@ -141586,7 +141586,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143903,7 +143902,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145108,7 +145106,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145571,10 +145568,15 @@ __export(intent_contract_exports, {
   deriveProductSurface: () => deriveProductSurface,
   divergentPages: () => divergentPages,
   renderIntentBlock: () => renderIntentBlock,
-  stripRoutesFromRouter: () => stripRoutesFromRouter
+  stripRoutesFromRouter: () => stripRoutesFromRouter,
+  withoutNegatedAppWords: () => withoutNegatedAppWords
 });
+function withoutNegatedAppWords(text) {
+  return (text || "").replace(NEGATED_APP, " ");
+}
 function deriveProductSurface(brief, roles = []) {
-  const t = brief || "";
+  const t = withoutNegatedAppWords(brief || "");
+  if (WEBSITE_ONLY.test(t) && !INTERNAL_ONLY.test(t)) return "public";
   if (INTERNAL_ONLY.test(t)) return "app";
   const wantsApp = APP_WORDS.test(t.replace(/\bweb ?app\b/gi, "app"));
   if (PUBLIC_ONLY.test(t) && !wantsApp) return "public";
@@ -145584,7 +145586,7 @@ function deriveProductSurface(brief, roles = []) {
   return "app";
 }
 function deriveIntentContract(brief, prd) {
-  const text = brief || "";
+  const text = withoutNegatedAppWords(brief || "");
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce");
   const commerceRequested = commerceFamily.triggers.test(text);
   const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
@@ -145740,7 +145742,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
+var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -145856,6 +145858,8 @@ var init_intent_contract = __esm({
     INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashboard)|(just|only) (an? |the )?dashboard|dashboard (for|to) (our|my) (staff|team|employees))\b/i;
     SAAS = /\b(saas|software as a service|platform|marketplace)\b/i;
     APP_WORDS = /\b(management system|management app|system|portal|dashboard|app|application|sign ?in|log ?in|accounts?|saas|platform|crm|erp)\b/i;
+    WEBSITE_ONLY = /\b((web)?site only|only (an? )?(web)?site|just (an? )?(simple )?(web)?site|static (web)?site)\b/i;
+    NEGATED_APP = /\b(no|without|not|don'?t need|doesn'?t need|never|zero)\s+(an?\s+|any\s+|user\s+|customer\s+)?(management system|system|portal|dashboard|app|application|sign[- ]?ins?|sign[- ]?ups?|log[- ]?ins?|accounts?|backend|database|crm|erp)\b/gi;
     PUBLIC_PAGES = [p("/", "Home"), p("/login", "Sign in")];
     APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
     COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
@@ -171593,6 +171597,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
