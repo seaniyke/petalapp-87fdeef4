@@ -166,7 +166,11 @@ end_drain() {
   DRAINED=0
   log "drain lifted: builder accepts new jobs again"
 }
+# Interrupted (Ctrl-C, kill) outside the swap's critical section: exit through
+# the EXIT trap so a drain is never left behind.
+on_signal() { log "interrupted"; exit 130; }
 trap 'end_drain' EXIT
+trap on_signal INT TERM
 
 # While drained, nothing new can start, so a zero reading is final. Two zero
 # reads in a row within DRAIN_SETTLE_S, or give up (returns 1).
@@ -366,7 +370,7 @@ swap_to_image() {
   trap '' INT TERM
 
   log "stopping current builder (kept as $PREV_CONTAINER)"
-  docker rename "$CONTAINER" "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1 || { trap - INT TERM; log "rename failed"; return 1; }
+  docker rename "$CONTAINER" "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1 || { trap on_signal INT TERM; log "rename failed"; return 1; }
   if ! docker stop --time "$STOP_TIMEOUT_S" "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1; then
     log "stop failed"
     restore_previous; return 1
@@ -386,7 +390,7 @@ swap_to_image() {
     restore_previous; return 1
   fi
 
-  trap - INT TERM
+  trap on_signal INT TERM
   docker rm "$PREV_CONTAINER" >>"$LOG_FILE" 2>&1 || log "warning: could not remove stopped $PREV_CONTAINER"
   return 0
 }
@@ -409,7 +413,7 @@ restore_previous() {
   fi
   docker rename "$PREV_CONTAINER" "$CONTAINER" >>"$LOG_FILE" 2>&1 || { log "ROLLBACK FAILED: rename"; exit 90; }
   docker start "$CONTAINER" >>"$LOG_FILE" 2>&1 || { log "ROLLBACK FAILED: start"; exit 90; }
-  trap - INT TERM
+  trap on_signal INT TERM
   if wait_for_health "$LOCAL_URL"; then
     log "previous builder restored and healthy"
   else
