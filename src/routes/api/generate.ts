@@ -4812,8 +4812,19 @@ async function handleGenerateRequestCore(
             // incomplete. No per-page calls, no second scheduler.
             const { runToolLoop } = await import("@/server/engine/tool-loop");
             const { buildEconomics: loopEconomics } = await import("@/server/economics-config.server");
-            const loopCeilingUsd = economicCeilingUsd(null, buildReservation?.classCostUsd ?? 0.03, await loopEconomics()) /* internal cost limit: class cost × headroom, decoupled from the effort-priced hold */;
-            const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
+            // Runaway ceiling = size estimate × headroom. The size estimate is
+            // the p90 of MEASURED first-build tokens priced at the model this
+            // loop runs (never the flat DeepSeek-era class dollars alone), so
+            // a normal build finishes and only a runaway is stopped.
+            const { estimateFirstBuildCost, predictCallCostUsd } = await import("@/server/engine/loop-cost-estimate");
+            const { firstBuildTokenSamples } = await import("@/server/build-reservation.server");
+            const { modelPricePerM } = await import("@/server/ai-provider.server");
+            const loopModelPrice = modelPricePerM(defaultFirstBuildModel());
+            const loopEcon = await loopEconomics();
+            const loopSizeEstimate = estimateFirstBuildCost(await firstBuildTokenSamples(), loopModelPrice, Math.max(1, Math.round(loopEcon.minSamples ?? 20)));
+            const loopCeilingUsd = economicCeilingUsd(null, Math.max(buildReservation?.classCostUsd ?? 0, loopSizeEstimate.usd), loopEcon) /* internal cost limit, decoupled from the effort-priced hold */;
+            turnStrategy.loopSizeEstimate = { usd: loopSizeEstimate.usd, basis: loopSizeEstimate.basis, samples: loopSizeEstimate.samples, model: defaultFirstBuildModel() };
+            const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage, model).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
             const { makeCallModel } = await import("@/server/engine/tool-loop-model");
             const { validateUnitImports, undefinedNames } = await import("@/server/engine/work-unit");
             const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
