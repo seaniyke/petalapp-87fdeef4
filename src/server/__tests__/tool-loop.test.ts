@@ -303,7 +303,7 @@ describe("managed build surface", () => {
     for (const p of ["tailwind.config.js", "tailwind.config.ts", "postcss.config.cjs", "vite.config.mjs", ".postcssrc.json"]) {
       const m = scripted([reply(call("create_file", { path: p, content: "module.exports = {};\n" })), reply(call("finish", {}))]);
       const r = await runToolLoop({ ...surfaceBase, callModel: m.callModel });
-      expect(tool(m)).toContain("managed by Kimble");
+      expect(tool(m)).toContain("managed by Petal");
       expect(r.files.some((f) => f.path === p)).toBe(false);
     }
   });
@@ -319,7 +319,7 @@ describe("managed build surface", () => {
     for (const p of ["package.json", "index.html", "tsconfig.json", "components.json"]) {
       const m = scripted([reply(call("create_file", { path: p, content: "x" })), reply(call("finish", {}))]);
       await runToolLoop({ ...surfaceBase, callModel: m.callModel });
-      expect(tool(m)).toContain("managed by Kimble");
+      expect(tool(m)).toContain("managed by Petal");
     }
   });
 

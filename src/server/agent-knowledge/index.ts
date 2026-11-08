@@ -8,8 +8,8 @@
  * The files are never edited. Sections that describe Webby's own tool loop
  * (readFile/template.json/verifyBuild/askUser/site-memory tools, template
  * selection, Supabase wiring, response format) are skipped at load time
- * because Kimble does not have those tools — its runtime rules, output format
- * and verification are supplied by Kimble's own code.
+ * because Petal does not have those tools — its runtime rules, output format
+ * and verification are supplied by Petal's own code.
  *
  * platform/ (Shopify/WordPress) is intentionally NOT imported here.
  */
@@ -46,14 +46,14 @@ export const LOADED_KNOWLEDGE_FILES = [
  * whose whole section refers to Webby-only tools, templates or chat voice.
  *
  * Parity note: a filtered heading never means the BEHAVIOUR is dropped. The
- * sections below are filtered because their text names tools Kimble does not
+ * sections below are filtered because their text names tools Petal does not
  * have (analyzeProject, verifyBuild, editFile ordering) or describes Webby's
- * scaffold rather than Kimble's — e.g. "critical: never nest browserrouter"
+ * scaffold rather than Petal's — e.g. "critical: never nest browserrouter"
  * tells the model main.tsx already wraps the router, which is FALSE here:
- * Kimble's src/main.tsx mounts <App /> and src/App.tsx owns <BrowserRouter>.
+ * Petal's src/main.tsx mounts <App /> and src/App.tsx owns <BrowserRouter>.
  * Restating that text verbatim would produce routerless apps. The equivalent
  * guarantees (single router, import/export correctness, import path rules,
- * file order, one complete write per file) are stated against Kimble's own
+ * file order, one complete write per file) are stated against Petal's own
  * tools in CORRECTNESS_RULES in src/server/engine/first-build.ts, and are
  * additionally enforced deterministically by the tool loop's per-write
  * validation.
@@ -141,7 +141,7 @@ export function filterWebbyOnly(md: string): string {
 }
 
 const HEADER = `## Agent knowledge (canonical design & craft manual)
-Precedence: Kimble's runtime rules and output format above, then the user's CURRENT request, then this project's real files, design and memory, then this manual. This manual holds defaults for when the user is silent. It was written for a tool-driven agent: where it mentions template.json, routes files, or tools you do not have, apply the intent using the project files and output format you were given.`;
+Precedence: Petal's runtime rules and output format above, then the user's CURRENT request, then this project's real files, design and memory, then this manual. This manual holds defaults for when the user is silent. It was written for a tool-driven agent: where it mentions template.json, routes files, or tools you do not have, apply the intent using the project files and output format you were given.`;
 
 let cache: { full?: string; compact?: string; color?: string } = {};
 

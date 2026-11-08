@@ -3985,6 +3985,12 @@ async function handleGenerateRequestCore(
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
   let model: string;
   let chosenBy: string = "preset";
+  const editDifficulty = classifyTaskDifficulty({
+    scope: editClassification?.scope ?? null,
+    crossCutting: isCrossCutting,
+    multiEdit: !!multiEditIntent,
+    promptChars: lastUserContent.length,
+  });
   const maxCompletionTokens = completionBudget({
     isInitial,
     phase: phaseTag.phase,
@@ -3996,14 +4002,11 @@ async function handleGenerateRequestCore(
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
-  } else if (
-    classifyTaskDifficulty({
-      scope: editClassification?.scope ?? null,
-      crossCutting: isCrossCutting,
-      multiEdit: !!multiEditIntent,
-      promptChars: lastUserContent.length,
-    }) === "hard"
-  ) {
+  } else if (!isInitial && editDifficulty === "micro") {
+    // Micro lane: one small in-place change → fast code model, narrow context.
+    model = modelForDifficulty("micro");
+    chosenBy = "difficulty:micro";
+  } else if (editDifficulty === "hard") {
     // Hard work escalates to the frontier model (Configured; never coerced away).
     model = modelForDifficulty("hard");
     chosenBy = isCrossCutting ? "difficulty:cross_cutting" : multiEditIntent ? "difficulty:multi_edit" : "difficulty:hard";

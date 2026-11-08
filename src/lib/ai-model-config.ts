@@ -134,7 +134,9 @@ export function isUtilityFeature(feature: string | null | undefined): boolean {
  * model; everything else gets the fast code model. The utility model never
  * writes code.
  */
-export type TaskDifficulty = "standard" | "hard";
+/** micro = one small in-place change (copy, one style); it gets the narrow
+ * one-file context and the fast code model. */
+export type TaskDifficulty = "micro" | "standard" | "hard";
 
 export function classifyTaskDifficulty(s: {
   scope?: "micro" | "targeted" | "structural" | null;
@@ -144,6 +146,7 @@ export function classifyTaskDifficulty(s: {
 }): TaskDifficulty {
   if (s.crossCutting || s.multiEdit || s.scope === "structural") return "hard";
   if ((s.promptChars ?? 0) > 1500) return "hard";
+  if (s.scope === "micro" && (s.promptChars ?? 0) <= 400) return "micro";
   return "standard";
 }
 

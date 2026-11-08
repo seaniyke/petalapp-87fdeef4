@@ -1,4 +1,4 @@
-import { MOBILE_APPS_ENABLED } from "@/lib/site-flags";
+import { MOBILE_APPS_ENABLED, API_BACKENDS_ENABLED, CHROME_EXTENSIONS_ENABLED } from "@/lib/site-flags";
 /**
  * Dynamic system-prompt snippets (Tier 2 reliability).
  *
@@ -81,7 +81,7 @@ const SNIPPETS: Record<DynamicSnippetKey, SnippetDef> = {
   // Always-on. Pushes the model to be thorough rather than fast: do the
   // mental walk-through BEFORE writing the recap, and never claim work is
   // "done" if any obvious gap remains. Targeted at the verifier-pass-rate
-  // gap (~66% → 85%) and the "Kimble said it's done but it's not" UX bug.
+  // gap (~66% → 85%) and the "Petal said it's done but it's not" UX bug.
   verifyBeforeDone: {
     triggers: "always",
     body: `\n\n[Reinforcement — Verify before claiming done]
@@ -151,7 +151,7 @@ NEVER hand-roll overlays with fixed positioning.`,
   },
   // Fires on landing/marketing/page-shaped requests. Pushes the model toward
   // composing sections from "@/components/blocks/*" instead of inventing
-  // section layouts from scratch — which is the root cause of "every Kimble
+  // section layouts from scratch — which is the root cause of "every Petal
   // site looks the same" (LLMs default to centered hero + 3-card grid).
   sections: {
     triggers:
@@ -201,7 +201,7 @@ Composition rules — this is the difference between forgettable and memorable:
   // Fires on landing/marketing/site requests. The default failure mode for
   // AI builders is "stuff everything onto index.tsx with hash anchors" —
   // which kills SSR per-page metadata, makes deep links unshareable, and
-  // teaches users that Kimble only does one-pagers. The generated Vite app's
+  // teaches users that Petal only does one-pagers. The generated Vite app's
   // React Router setup makes proper multi-page routing straightforward; this tells
   // the model to USE it and to TELL the user it did.
   multiPage: {
@@ -224,9 +224,9 @@ Each page MUST set route-specific title and description metadata when it renders
 
 Hash anchors (#section) are allowed ONLY for in-page scrolling within a single long page (e.g. a TOC inside a docs page). They are NEVER the primary cross-section nav.
 
-In your chat reply: when you scaffold multiple pages, briefly tell the user which pages were created (e.g. "I built the Home, Menu and Contact pages"). This teaches users that Kimble builds real multi-page sites, not one-pagers.`,
+In your chat reply: when you scaffold multiple pages, briefly tell the user which pages were created (e.g. "I built the Home, Menu and Contact pages"). This teaches users that Petal builds real multi-page sites, not one-pagers.`,
   },
-  // Mobile-app intent. Kimble wraps the web app in a Capacitor shell (hidden
+  // Mobile-app intent. Petal wraps the web app in a Capacitor shell (hidden
   // from the user) and offloads native builds to a remote runner. The model
   // should NOT add Capacitor/RN imports speculatively, and should NOT promise
   // App Store publishing in code — that lives in the MobileAppPanel UI flow,
@@ -242,7 +242,7 @@ If the user asks for a real mobile app (App Store / Play Store presence, push no
 - Promise that "I shipped it to the App Store" — you didn't.
 
 Instead:
-- Confirm in plain language that Kimble can wrap this app for iOS + Android (cloud builds, no Mac needed).
+- Confirm in plain language that Petal can wrap this app for iOS + Android (cloud builds, no Mac needed).
 - Tell the user to click "Set it up" on the suggestion chip that will appear under your reply — that's where the real flow lives (bundle id, signing, build queue).
 - Continue making the WEB app excellent in this turn (responsive layout, large tap targets ≥44px, no hover-only affordances, viewport meta in head). A great responsive web app IS the mobile app — Capacitor is just the shell.
 
@@ -601,7 +601,7 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
   // — the rules that hold for every generated screen regardless of topic.
   frontendQuality: {
     triggers: "always",
-    body: `\n\n[Reinforcement — Kimble frontend quality floor]
+    body: `\n\n[Reinforcement — Petal frontend quality floor]
 Every screen you generate is held to this, no exceptions:
 
 1. TOKENS FIRST — semantic tokens (background, foreground, card, primary, secondary, muted, accent, destructive, border, ring) are defined in the global stylesheet before any component. Components NEVER hardcode colours (\`text-white\`, \`bg-black\`, \`bg-[#hex]\`). Every background has a declared foreground partner; body text ≥ 4.5:1 contrast.
@@ -617,11 +617,11 @@ Every screen you generate is held to this, no exceptions:
   // Always-on. The Backend Quality Bible floor (docs/petal-backend-quality-bible.md)
   // — every rule the deterministic linter (backend-quality.server.ts) enforces
   // after the fact, stated up front so the model gets it right the first time.
-  // Always-on. Kimble's constitution (docs/petal-product-principles.md) —
+  // Always-on. Petal's constitution (docs/petal-product-principles.md) —
   // the subset that constrains what the generator is allowed to emit.
   productPrinciples: {
     triggers: "always",
-    body: `\n\n[Reinforcement — Kimble product principles]
+    body: `\n\n[Reinforcement — Petal product principles]
 These are constraints, not suggestions. Lower number wins on conflict:
 
 1. NEVER OVERWRITE WORKING CODE — an edit changes what was asked and nothing else. Rewriting a working file to change a heading is a defect. If a rewrite is genuinely required, say so in one sentence first.
@@ -633,11 +633,11 @@ These are constraints, not suggestions. Lower number wins on conflict:
 17. MOBILE IS A TARGET — every screen ships a working phone layout in the same turn, never a desktop-only pass with a mobile follow-up.
 18. SUBTRACT BEFORE ADDING — if a new control duplicates an existing one, merge them. A second entry point for an existing action is a regression.
 19. REAL IDENTITY — every generated app gets a real name, a real logo mark, and real copy. Never a banner saying it is a demo, simulated, or not real.
-20. SAY WHAT IT IS — sentence case, second person, present tense. No exclamation marks, no hype adjectives ("revolutionary", "cutting-edge", "supercharge"), no apologising twice. Kimble-owned surfaces are called Kimble, Kimble Cloud, and Kimble AI.`,
+20. SAY WHAT IT IS — sentence case, second person, present tense. No exclamation marks, no hype adjectives ("revolutionary", "cutting-edge", "supercharge"), no apologising twice. Petal-owned surfaces are called Petal, Petal Cloud, and Petal AI.`,
   },
   backendQuality: {
     triggers: "always",
-    body: `\n\n[Reinforcement — Kimble backend quality floor]
+    body: `\n\n[Reinforcement — Petal backend quality floor]
 Whenever a turn touches the database, auth, storage, or a server function:
 
 1. MIGRATIONS ARE COMPLETE — every \`CREATE TABLE public.x\` is followed, in the SAME migration, by \`GRANT\` statements (\`authenticated\` for user tables, \`service_role\` always, \`anon\` only when a policy allows anon reads), then \`ENABLE ROW LEVEL SECURITY\`, then the policies. A table without grants is unreachable; a table without policies 403s.
@@ -790,7 +790,7 @@ head: ({ params, loaderData }) => ({
 }),
 \`\`\`
 
-Never leave a route with the default "Lovable App" / "Kimble App" title. That is a scanner-visible defect.`,
+Never leave a route with the default "Lovable App" / "Petal App" title. That is a scanner-visible defect.`,
   },
   // Fires on any mobile / native / phone / Expo / React Native ask. Raises
   // the same quality bar the web snippets enforce — real screens, native
@@ -850,9 +850,9 @@ A browser extension is a small app with its own runtime. Ship these pieces toget
 2. POPUP UX. Fixed width 320-400px, fixed height 400-600px. Use the SAME design tokens as the main app so it looks branded. Real states: loading skeleton, empty state with CTA, error toast. If it needs auth, deep-link to the app's auth page in a new tab (\`chrome.tabs.create({ url })\`) — never build a login form inside the popup.
 3. STORAGE + SYNC. Use \`chrome.storage.local\` for local, \`chrome.storage.sync\` for cross-device (quota 100KB). Wrap in a tiny \`storage.get/set\` helper. Never assume \`chrome.storage\` is synchronous — it's promise-based in MV3.
 4. TABS + MESSAGING. Get the active tab with \`chrome.tabs.query({ active: true, currentWindow: true })\`. Message background ↔ popup ↔ content with \`chrome.runtime.sendMessage\` / \`chrome.tabs.sendMessage\`; ALWAYS return \`true\` from \`onMessage\` when replying asynchronously.
-5. PACKAGING. Emit a build step that zips \`extension/\` to \`public/<name>.zip\`. The Kimble preview cannot serve authenticated static assets directly — provide a download button that does \`fetch('/<name>.zip').then(r => r.blob()).then(...) \` and triggers a blob download, NOT a bare \`<a href download>\`.
+5. PACKAGING. Emit a build step that zips \`extension/\` to \`public/<name>.zip\`. The Petal preview cannot serve authenticated static assets directly — provide a download button that does \`fetch('/<name>.zip').then(r => r.blob()).then(...) \` and triggers a blob download, NOT a bare \`<a href download>\`.
 6. INSTALL INSTRUCTIONS. Add a short "How to install" panel on the app's page: 1) download zip, 2) unzip, 3) open chrome://extensions, 4) enable Developer mode, 5) Load unpacked → pick the folder. Works in Chrome / Edge / Brave / Arc / Opera. Store publishing needs the Web Store — mention it once, don't scaffold it.
-7. HOST APP. Even for extension-only briefs, ship a minimal landing page in the Kimble app that markets the extension, shows a screenshot, and hosts the download link. Never leave the user with a naked zip.
+7. HOST APP. Even for extension-only briefs, ship a minimal landing page in the Petal app that markets the extension, shows a screenshot, and hosts the download link. Never leave the user with a naked zip.
 
 Forbidden: MV2 manifest, \`localStorage\` in the SW, bare \`<a download>\` on the preview, missing icons, popup that's just "Hello world".`,
   },
@@ -900,7 +900,7 @@ export function needsBackendCapability(text: string): boolean {
   if (!WEAK_BACKEND_RX.test(text)) return false;
   // Weak-only match inside an explicitly static/marketing brief → not a
   // backend ask. This is the "Stayora landing page" false positive: the
-  // brief says "Log in / Sign up" nav items and Kimble used to stall on it.
+  // brief says "Log in / Sign up" nav items and Petal used to stall on it.
   return !STATIC_PAGE_RX.test(text);
 }
 
@@ -969,13 +969,14 @@ export function pickDynamicSnippets(args: {
   // re-state the target (e.g. "make it blue" on a mobile app must still
   // use native primitives).
   const targetId = args.buildTarget?.id ?? "web";
-  if (targetId === "mobile" || targetId === "ios" || targetId === "android" || targetId === "web-mobile") {
+  // Paused build types never reach the engine (site-flags).
+  if (MOBILE_APPS_ENABLED && (targetId === "mobile" || targetId === "ios" || targetId === "android" || targetId === "web-mobile")) {
     if (!matched.includes("mobileCraft")) matched.push("mobileCraft");
   }
-  if (targetId === "backend") {
+  if (API_BACKENDS_ENABLED && targetId === "backend") {
     if (!matched.includes("backendCraft")) matched.push("backendCraft");
   }
-  if (targetId === "extension") {
+  if (CHROME_EXTENSIONS_ENABLED && targetId === "extension") {
     if (!matched.includes("chromeExtensionCraft")) matched.push("chromeExtensionCraft");
   }
 
