@@ -8,3 +8,4 @@
 - Shared CSS enforces rectangular action geometry for legacy and design-system controls, excluding switch tracks — why: local radius overrides left oval actions behind.
 - Kimble is headless: external systems drive it only through `/api/public/v1/*` (bearer `KIMBLE_SERVICE_KEY`, one service account, `src/server/service-api.server.ts`), which forwards to the unchanged `/api/generate` pipeline; the only UI left is the admin console + operator sign-in — why: machine-to-machine use without a second orchestrator or bypassed billing/verification.
 <!-- LOVABLE:END -->
+- Domains are sold only through Domain Name API (`src/server/domain-name-api.server.ts`: search, register-with-contacts, info, zones); Cloudflare is used only for SaaS custom hostnames/SSL — why: Cloudflare Registrar is not a reseller platform.

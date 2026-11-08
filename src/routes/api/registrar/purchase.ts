@@ -24,7 +24,7 @@ import { initializeTransaction, getEnvironment } from "@/server/paystack.server"
 import {
   searchDomains,
   applyMarkup,
-} from "@/server/cloudflare-registrar.server";
+} from "@/server/domain-name-api.server";
 import { checkRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
 
 const SUPPORTED_CURRENCIES = ["NGN", "GHS", "KES", "ZAR", "USD"] as const;
@@ -100,7 +100,7 @@ export const Route = createFileRoute("/api/registrar/purchase")({
           });
         }
 
-        // 3) Re-check availability + price with Cloudflare.
+        // 3) Re-check availability + price with the registrar.
         let wholesaleCents: number;
         try {
           const results = await searchDomains(parsed.hostname);

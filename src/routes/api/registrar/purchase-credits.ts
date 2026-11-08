@@ -3,7 +3,7 @@
  *
  * GET  → { usdCentsPerCredit }  (so the dialog can show a credit price)
  * POST → { projectId, hostname } → spends credits, then kicks off the
- *        Cloudflare registration exactly like the paid-by-card path.
+ *        registrar registration exactly like the paid-by-card path.
  *
  * Money safety:
  *   - price is re-quoted server side (never trusted from the client)
@@ -13,7 +13,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { searchDomains, applyMarkup } from "@/server/cloudflare-registrar.server";
+import { searchDomains, applyMarkup } from "@/server/domain-name-api.server";
 import { checkRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
 import { economicsValue } from "@/server/economics-config.server";
 import { spendCredit, refundCredit } from "@/server/credits.server";
@@ -90,7 +90,7 @@ export const Route = createFileRoute("/api/registrar/purchase-credits")({
           return new Response("That domain is already being registered.", { status: 409 });
         }
 
-        // Re-quote with Cloudflare so the price can't be tampered with.
+        // Re-quote with the registrar so the price can't be tampered with.
         let wholesaleCents: number;
         try {
           const results = await searchDomains(parsed.hostname);
@@ -155,7 +155,7 @@ export const Route = createFileRoute("/api/registrar/purchase-credits")({
           });
         }
 
-        // If Cloudflare rejected the registration outright, the user never got
+        // If the registrar rejected the registration outright, the user never got
         // a domain — give the credits straight back.
         const { data: after } = await supabaseAdmin
           .from("purchased_domains")

@@ -20,9 +20,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   registerDomain,
   registrationStatus,
-  type CfRegistrationWorkflow,
-} from "@/server/cloudflare-registrar.server";
-import { pointZoneAtSaas } from "@/server/cloudflare-zones.server";
+  type RegistrationWorkflow,
+} from "@/server/domain-name-api.server";
+import { pointDomainAtPetal } from "@/server/domain-name-api.server";
 import { createCustomHostname } from "@/server/cloudflare-saas.server";
 
 type Row = {
@@ -79,7 +79,7 @@ export async function startDomainRegistration(args: {
     .update({ status: "registering" })
     .eq("id", row.id);
 
-  let workflow: CfRegistrationWorkflow;
+  let workflow: RegistrationWorkflow;
   try {
     workflow = await registerDomain({
       hostname: row.hostname,
@@ -128,7 +128,7 @@ export async function pollDomainRegistration(args: {
   }
   if (row.status === "pending_payment") return { status: row.status };
 
-  let workflow: CfRegistrationWorkflow;
+  let workflow: RegistrationWorkflow;
   try {
     workflow = await registrationStatus(row.hostname);
   } catch (e) {
@@ -201,7 +201,7 @@ async function ensureProjectDomainRow(row: Row): Promise<ProjectDomainLink | nul
       ssl_status: "initializing",
       provider_hostname_id: null,
       verification_txt_name: `_purchased.${row.hostname}`,
-      verification_txt_value: "Kimble-managed — no DNS changes needed",
+      verification_txt_value: "Petal-managed — no DNS changes needed",
       verification_records: [],
       last_checked_at: new Date().toISOString(),
       error_message: "Domain registered; connection setup is finishing automatically.",
@@ -218,7 +218,7 @@ async function ensureProjectDomainRow(row: Row): Promise<ProjectDomainLink | nul
 
 async function finalizeSuccess(
   row: Row,
-  workflow: CfRegistrationWorkflow,
+  workflow: RegistrationWorkflow,
 ): Promise<{ status: string }> {
   if (row.status === "active" && row.connected_domain_id) return { status: "active" };
 
@@ -229,11 +229,11 @@ async function finalizeSuccess(
   let zoneOk = false;
   let setupError: string | null = null;
   try {
-    await pointZoneAtSaas({ hostname: row.hostname });
+    await pointDomainAtPetal(row.hostname);
     zoneOk = true;
   } catch (e) {
     setupError = e instanceof Error ? e.message : "Zone setup failed";
-    console.error("[domain] pointZoneAtSaas failed", row.hostname, e);
+    console.error("[domain] pointDomainAtPetal failed", row.hostname, e);
   }
 
   // Step B: register the hostname on our SaaS zone so traffic routes to the project.
@@ -249,7 +249,7 @@ async function finalizeSuccess(
           ssl_status: cfHostname.ssl?.status ?? "initializing",
           provider_hostname_id: providerHostnameId,
           verification_txt_name: `_purchased.${row.hostname}`,
-          verification_txt_value: "Kimble-managed — no DNS changes needed",
+          verification_txt_value: "Petal-managed — no DNS changes needed",
           verification_records: [],
           error_message: null,
           last_checked_at: new Date().toISOString(),
