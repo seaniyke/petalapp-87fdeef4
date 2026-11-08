@@ -40192,27 +40192,37 @@ export const auth = {
 
   // --- Parity aliases: same names + \`{ error }\` shape as the dedicated tier,
   // so page code written against either backend works unchanged.
-  async signInWithPassword(email: string, password: string): Promise<{ error: Error | null; user: PetalUser | null }> {
+  // Accepts (email, password) or the object form ({ email, password }) that
+  // page code often writes \u2014 the object form used to send a 400.
+  async signInWithPassword(emailOrCreds: string | Creds, password?: string): Promise<{ error: Error | null; user: PetalUser | null }> {
     try {
-      const user = await auth.signIn(email, password);
+      const c = creds(emailOrCreds, password);
+      const user = await auth.signIn(c.email, c.password);
       return { error: null, user };
     } catch (e) {
       return { error: e instanceof Error ? e : new Error("Sign in failed"), user: null };
     }
   },
   async signUpWithPassword(
-    email: string,
-    password: string,
+    emailOrCreds: string | Creds,
+    password?: string,
     name?: string,
   ): Promise<{ error: Error | null; user: PetalUser | null }> {
     try {
-      const user = await auth.signUp(email, password, name);
+      const c = creds(emailOrCreds, password, name);
+      const user = await auth.signUp(c.email, c.password, c.name);
       return { error: null, user };
     } catch (e) {
       return { error: e instanceof Error ? e : new Error("Sign up failed"), user: null };
     }
   },
 };
+
+export type Creds = { email: string; password: string; name?: string; options?: { data?: { name?: string; full_name?: string } } };
+function creds(a: string | Creds, password?: string, name?: string): { email: string; password: string; name?: string } {
+  if (typeof a === "object" && a) return { email: String(a.email ?? ""), password: String(a.password ?? ""), name: a.name ?? a.options?.data?.name ?? a.options?.data?.full_name };
+  return { email: String(a ?? ""), password: String(password ?? ""), name };
+}
 
 `;
 }
@@ -40233,7 +40243,7 @@ var init_shared_backend_kit = __esm({
 // Auth provider + useAuth hook (Petal backend, shared tier).
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "@/components/ui/router";
-import { auth, type PetalUser } from "./client";
+import { auth, type PetalUser, type Creds } from "./client";
 
 type AuthResult = { error: Error | null };
 
@@ -40242,8 +40252,8 @@ type AuthCtx = {
   session: { user: PetalUser } | null;
   loading: boolean;
   /** Parity API with the dedicated tier \u2014 never throws, returns { error }. */
-  signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
-  signUpWithPassword: (email: string, password: string, name?: string) => Promise<AuthResult>;
+  signInWithPassword: (email: string | Creds, password?: string) => Promise<AuthResult>;
+  signUpWithPassword: (email: string | Creds, password?: string, name?: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
@@ -139246,6 +139256,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140333,6 +140344,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140497,6 +140509,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140540,6 +140553,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141239,6 +141253,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
