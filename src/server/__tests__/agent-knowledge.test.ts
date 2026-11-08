@@ -36,8 +36,8 @@ describe("agent knowledge loader", () => {
     }
   });
 
-  it("puts Kimble runtime and the current request above the manual", () => {
-    expect(loadCoreKnowledge("full").text).toMatch(/Precedence: Kimble's runtime rules.*then the user's CURRENT request.*then this manual/s);
+  it("puts Petal runtime and the current request above the manual", () => {
+    expect(loadCoreKnowledge("full").text).toMatch(/Precedence: Petal's runtime rules.*then the user's CURRENT request.*then this manual/s);
     const i = generateSrc.indexOf("const staticPrefixText");
     const seg = generateSrc.slice(i, i + 800);
     expect(seg.indexOf("baseSystem")).toBeLessThan(seg.indexOf("coreKnowledge.text"));
