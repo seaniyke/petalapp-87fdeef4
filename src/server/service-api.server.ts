@@ -38,7 +38,7 @@ export function previewFields(url: string | null) {
 
 export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
 };
 
@@ -360,4 +360,20 @@ export async function* tailTurnEvents(
     }
   }
   yield { kind: "timeout", payload: { message: "stream window ended; reconnect with after=<seq>" }, seq };
+}
+
+
+/** Re-wrap a reused internal handler's response as JSON + CORS for partner callers. */
+export async function asServiceResponse(res: Response): Promise<Response> {
+  const text = await res.text();
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = res.ok ? { ok: true, message: text } : { error: text || "request_failed" };
+  }
+  if (!res.ok && (typeof body !== "object" || body === null || !("error" in body))) {
+    body = { error: body };
+  }
+  return json(body, res.status);
 }
