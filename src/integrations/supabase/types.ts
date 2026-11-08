@@ -4453,6 +4453,7 @@ export type Database = {
           is_starred: boolean
           latest_build_id: string | null
           owner_id: string
+          partner_paused: boolean
           primary_domain_id: string | null
           published_at: string | null
           published_build_id: string | null
@@ -4489,6 +4490,7 @@ export type Database = {
           is_starred?: boolean
           latest_build_id?: string | null
           owner_id: string
+          partner_paused?: boolean
           primary_domain_id?: string | null
           published_at?: string | null
           published_build_id?: string | null
@@ -4525,6 +4527,7 @@ export type Database = {
           is_starred?: boolean
           latest_build_id?: string | null
           owner_id?: string
+          partner_paused?: boolean
           primary_domain_id?: string | null
           published_at?: string | null
           published_build_id?: string | null
