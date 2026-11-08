@@ -49,6 +49,37 @@ const ACCENT_RULES: Array<{ accent: string; re: RegExp }> = [
 
 const DARK_EDITORIAL = /\b(luxur|couture|fine dining|michelin|whisky|whiskey|spirits|cinematic|noir|dark mode only|dark[- ]first|high[- ]end|premium brand|gallery|architect|photograph)\w*/i;
 
+/**
+ * Studio packages chosen by the brief's domain, after the dark-editorial rule
+ * and before the house style. First match wins.
+ */
+const STUDIO_RULES: Array<{ slug: string; re: RegExp; accents: Array<{ accent: string; re: RegExp }> }> = [
+  {
+    slug: "haven",
+    re: /\b(clinic|hospital|health|medical|dental|dentist|doctor|patient|pharmac|therap|physio|care home|nursing|counsel|tutor|school|charity)\w*/i,
+    accents: [
+      { accent: "ocean", re: /\b(hospital|pharmac|school)\w*/i },
+      { accent: "sage", re: /\b(therap|counsel|care home|nursing|charity)\w*/i },
+    ],
+  },
+  {
+    slug: "atelier",
+    re: /\b(salon|beauty|spa|skincare|nail|barber|lash|brow|boutique|wedding|bridal|florist|flower|hotel|retreat|resort|wellness)\w*/i,
+    accents: [
+      { accent: "sage", re: /\b(spa|wellness|retreat|florist|flower|skincare)\w*/i },
+      { accent: "bronze", re: /\b(barber|hotel|resort|boutique)\w*/i },
+    ],
+  },
+  {
+    slug: "meridian",
+    re: /\b(saas|dashboard|analytic|developer|fintech|crm|startup|ai (tool|product|platform)|admin panel|software)\w*/i,
+    accents: [
+      { accent: "lime", re: /\b(fintech|crypto|trading|money)\w*/i },
+      { accent: "coral", re: /\b(creator|social|community|marketing)\w*/i },
+    ],
+  },
+];
+
 export function resolvePackageForIntent(brief: string | null | undefined): { pkg: DesignSystemPackage; accent: string } | null {
   const text = (brief ?? "").slice(0, 4000);
   const installed = listDesignSystems();
@@ -59,6 +90,17 @@ export function resolvePackageForIntent(brief: string | null | undefined): { pkg
     if (obsidian) {
       const accent = /\b(gold|luxur|whisky|whiskey|spirits|fine dining|michelin)\b/i.test(text) ? "gold" : "platinum";
       return { pkg: obsidian, accent: obsidian.accents[accent] ? accent : obsidian.meta.default_accent };
+    }
+  }
+
+  if (text) {
+    for (const rule of STUDIO_RULES) {
+      if (!rule.re.test(text)) continue;
+      const pkg = byslug(rule.slug);
+      if (!pkg) continue;
+      const hit = rule.accents.find((a) => a.re.test(text));
+      const accent = hit && pkg.accents[hit.accent] ? hit.accent : pkg.meta.default_accent;
+      return { pkg, accent };
     }
   }
 
