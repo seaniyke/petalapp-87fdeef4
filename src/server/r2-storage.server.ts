@@ -52,9 +52,20 @@ export function safeFileName(name: string | null | undefined): string {
   return cleaned || "file";
 }
 
-/** Object key: always namespaced by project. */
-export function objectKeyFor(projectId: string, fileName: string, id: string): string {
-  return `${projectId}/${id}-${safeFileName(fileName)}`;
+/** Object key: always namespaced by project, then by the uploading visitor. */
+export function objectKeyFor(
+  projectId: string,
+  ownerId: string | null,
+  fileName: string,
+  id: string,
+): string {
+  return `${projectId}/${ownerId ?? "guest"}/${id}-${safeFileName(fileName)}`;
+}
+
+/** A visitor may delete only files they uploaded while signed in, in this project. */
+export function canDeleteKey(projectId: string, ownerId: string | null, key: string): boolean {
+  if (!ownerId || key.includes("..")) return false;
+  return key.startsWith(`${projectId}/${ownerId}/`);
 }
 
 type R2Config = {
@@ -146,13 +157,14 @@ export type UploadResult = { key: string; url: string; size: number; contentType
 
 export async function uploadProjectFile(input: {
   projectId: string;
+  ownerId: string | null;
   fileName: string;
   contentType: string;
   bytes: Uint8Array;
 }): Promise<UploadResult> {
   const cfg = r2Config();
   if (!cfg) throw new Error("File uploads are not set up yet.");
-  const key = objectKeyFor(input.projectId, input.fileName, crypto.randomUUID());
+  const key = objectKeyFor(input.projectId, input.ownerId, input.fileName, crypto.randomUUID());
   const res = await signedFetch(cfg, "PUT", key, input.bytes, input.contentType);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -167,9 +179,13 @@ export async function uploadProjectFile(input: {
   };
 }
 
-/** Deletes a file — only when the key belongs to this project. */
-export async function deleteProjectFile(projectId: string, key: string): Promise<boolean> {
-  if (!key.startsWith(projectId + "/") || key.includes("..")) return false;
+/** Deletes a file — only when the signed-in visitor uploaded it in this project. */
+export async function deleteProjectFile(
+  projectId: string,
+  ownerId: string | null,
+  key: string,
+): Promise<boolean> {
+  if (!canDeleteKey(projectId, ownerId, key)) return false;
   const cfg = r2Config();
   if (!cfg) throw new Error("File uploads are not set up yet.");
   const res = await signedFetch(cfg, "DELETE", key, null);

@@ -174,6 +174,47 @@ async function handle(request: Request): Promise<Response> {
     return json({ error: "Method not allowed" }, 405);
   }
 
+  /* ---------------- uploads (Cloudflare R2) ---------------- */
+  if (section === "uploads") {
+    const { UPLOAD_LIMITS, uploadProjectFile, deleteProjectFile } = await import(
+      "@/server/r2-storage.server"
+    );
+    try {
+      if (request.method === "POST") {
+        const contentType = (request.headers.get("content-type") ?? "").split(";")[0].trim();
+        if (!(UPLOAD_LIMITS.allowedTypes as readonly string[]).includes(contentType)) {
+          return json({ error: "Only images (JPG, PNG, WebP, GIF, AVIF) and PDFs can be uploaded." }, 415);
+        }
+        const declared = Number(request.headers.get("content-length") ?? 0);
+        if (declared > UPLOAD_LIMITS.maxBytes) return json({ error: "File is larger than 5 MB." }, 413);
+        const bytes = new Uint8Array(await request.arrayBuffer());
+        if (bytes.byteLength === 0) return json({ error: "Empty file" }, 400);
+        if (bytes.byteLength > UPLOAD_LIMITS.maxBytes) {
+          return json({ error: "File is larger than 5 MB." }, 413);
+        }
+        const name = new URL(request.url).searchParams.get("name") ?? "file";
+        const file = await uploadProjectFile({
+          projectId,
+          ownerId: userId,
+          fileName: name,
+          contentType,
+          bytes,
+        });
+        return json({ file }, 201);
+      }
+      if (request.method === "DELETE") {
+        const key = parts.slice(2).join("/");
+        if (!userId) return json({ error: "Sign in required" }, 401);
+        const done = await deleteProjectFile(projectId, userId, key);
+        if (!done) return json({ error: "Not found" }, 404);
+        return json({ ok: true });
+      }
+    } catch (e) {
+      return json({ error: e instanceof Error ? e.message : "Upload failed" }, 400);
+    }
+    return json({ error: "Method not allowed" }, 405);
+  }
+
   return json({ error: "Unknown endpoint" }, 404);
 }
 
