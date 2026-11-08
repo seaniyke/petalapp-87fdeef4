@@ -73,8 +73,8 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   max_active_compute: 25,
   badge_removal_credits: 25,
   // What one credit is worth in USD cents when we charge a real cash cost
-  // (domain registration). Conservative vs the cheapest pack (20 credits/$5).
-  credit_retail_usd_cents: 20,
+  // (domain registration). Matches the $0.15 credit sale price.
+  credit_retail_usd_cents: 15,
   // Build billing (see src/lib/build-pricing.ts). Cost/credit is DERIVED:
   // revenue_per_credit_usd × (1 − target_gross_margin_pct/100).
   revenue_per_credit_usd: 0.13,

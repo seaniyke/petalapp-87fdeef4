@@ -65,7 +65,7 @@ export async function fetchCreditRate(): Promise<number> {
 
 /** Whole credits charged for a cash cost in USD cents. */
 export function creditsForUsdCents(usdCents: number, usdCentsPerCredit: number): number {
-  const rate = usdCentsPerCredit > 0 ? usdCentsPerCredit : 20;
+  const rate = usdCentsPerCredit > 0 ? usdCentsPerCredit : 15;
   return Math.max(1, Math.ceil(usdCents / rate));
 }
 
