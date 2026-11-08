@@ -24,13 +24,14 @@ export const Route = createFileRoute("/api/public/og-image/$projectId")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: project } = await supabaseAdmin
           .from("projects")
-          .select("id, published_visibility")
+          .select("id, published_visibility, published_build_id")
           .eq("id", params.projectId)
           .maybeSingle();
         if (!project || project.published_visibility !== "public") return new Response("Not found", { status: 404 });
 
+        // Always the screenshot of the build that is live now.
         const { ensureSavedThumbnail } = await import("@/server/project-thumbnail.server");
-        const thumb = await ensureSavedThumbnail(project.id).catch(() => null);
+        const thumb = await ensureSavedThumbnail(project.id, project.published_build_id, { wait: true }).catch(() => null);
         if (!thumb?.url) return new Response("No screenshot yet", { status: 404, headers: { "Cache-Control": "no-store" } });
 
         const candidates = [ogRenderUrl(thumb.url), thumb.url].filter(Boolean) as string[];
