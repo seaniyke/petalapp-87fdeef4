@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "meridian",
+  "name": "Meridian",
+  "description": "Precise modern product style: cool near-white surfaces, a tight geometric grotesque display, crisp hairlines, dense-but-calm data layouts and surgical motion.",
+  "when_to_use": "SaaS, developer tools, fintech, analytics, dashboards, CRMs, AI products, startups and any app people use every day.",
+  "version": "1.0.0",
+  "default_accent": "cobalt",
+  "accents": [
+    "cobalt",
+    "lime",
+    "coral"
+  ],
+  "capabilities": [
+    "light",
+    "dark",
+    "motion",
+    "dense",
+    "product-ui",
+    "data"
+  ],
+  "token_categories": [
+    "color",
+    "typography",
+    "radius",
+    "shadow",
+    "motion",
+    "spacing"
+  ],
+  "fonts": [
+    "Space Grotesk",
+    "Manrope"
+  ],
+  "has_components": false
+}
