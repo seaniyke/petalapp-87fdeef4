@@ -584,6 +584,19 @@ export async function handleBuildCallback(request: Request): Promise<Response> {
     // the worker cuts this short, the cron sweep backfills it.
     warmProjectThumbnail(payload.projectId, payload.buildId);
 
+    // Custard AI projects (service-account owned) go live on their address
+    // automatically once a ready build of the current revision lands.
+    try {
+      const { loadOwnedProject } = await import("@/server/service-api.server");
+      if (await loadOwnedProject(payload.projectId)) {
+        const { publishLatestBuild } = await import("@/server/project-publish.server");
+        const r = await publishLatestBuild(payload.projectId);
+        if (!r.ok) console.info(`[publish] auto-publish skipped project=${payload.projectId} reason=${r.error}`);
+      }
+    } catch (e) {
+      console.error("[publish] auto-publish failed", payload.projectId, e);
+    }
+
     // Requirement progress. This build is ready AND still the current
     // revision (CAS above), so its verification is authoritative evidence.
     // Best-effort; never changes the build outcome.
