@@ -831,41 +831,53 @@ export function NavBar({
       : Array.isArray(items)
         ? items
         : []) as NavLink[];
+  // Lock page scroll and close on Escape while the mobile menu is open.
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
   return (
-    <header className={cn("sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur", className)}>
+    <header className={cn("sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70", className)}>
       <Container size="xl">
-        <div className="flex h-14 items-center justify-between">
-          <a href={brandHref} className="text-base font-semibold text-foreground">{slotNode(brandNode)}</a>
-          <nav className="hidden items-center gap-6 md:flex">
+        <div className="flex h-16 items-center justify-between gap-6">
+          <a href={brandHref} className="shrink-0 text-base font-semibold tracking-tight text-foreground">{slotNode(brandNode)}</a>
+          <nav className="hidden items-center gap-7 md:flex" aria-label="Main">
             {navItems.map((l, i) => (
-              <a key={i} href={l.href} className="text-sm text-muted-foreground transition hover:text-foreground">
+              <a key={i} href={l.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                 {l.label}
               </a>
             ))}
-            {slotNode(cta)}
           </nav>
-
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)} aria-label="Toggle menu">
+          <div className="hidden md:block">{slotNode(cta)}</div>
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)} aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
-        {open && (
-          <nav className="grid gap-1 border-t border-border py-3 md:hidden">
+      </Container>
+      {open && (
+        <div className="fixed inset-x-0 bottom-0 top-16 z-40 flex flex-col bg-background md:hidden">
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-6 py-6" aria-label="Mobile">
             {navItems.map((l, i) => (
               <a
                 key={i}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="rounded-md px-2 py-2 text-sm text-foreground hover:bg-muted"
+                className="border-b border-border/60 py-4 text-2xl font-medium tracking-tight text-foreground"
               >
                 {l.label}
               </a>
             ))}
-            {cta ? <div className="px-2 pt-2">{slotNode(cta)}</div> : null}
           </nav>
-
-        )}
-      </Container>
+          {cta ? <div className="border-t border-border/60 p-6 [&_a]:w-full [&_button]:w-full">{slotNode(cta)}</div> : null}
+        </div>
+      )}
     </header>
   );
 }
