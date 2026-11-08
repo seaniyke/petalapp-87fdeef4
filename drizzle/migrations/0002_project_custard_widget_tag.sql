@@ -1,0 +1,2 @@
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS custard_widget_tag text;
+COMMENT ON COLUMN public.projects.custard_widget_tag IS 'Sanitized Custard AI staff widget <script> tag (keeps data-* attributes and ?agent= query) injected into published sites.';
