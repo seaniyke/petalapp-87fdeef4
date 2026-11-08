@@ -36,10 +36,11 @@ type Row = {
   cf_registration_resource_link: string | null;
   cf_state: string | null;
   connected_domain_id: string | null;
+  term_years: number | null;
 };
 
 const SELECT_COLS =
-  "id, hostname, project_id, user_id, wholesale_cost_cents, status, cf_registration_id, cf_registration_resource_link, cf_state, connected_domain_id";
+  "id, hostname, project_id, user_id, wholesale_cost_cents, status, cf_registration_id, cf_registration_resource_link, cf_state, connected_domain_id, term_years";
 
 async function loadByReference(reference: string): Promise<Row | null> {
   const { data } = await supabaseAdmin
@@ -84,6 +85,7 @@ export async function startDomainRegistration(args: {
     workflow = await registerDomain({
       hostname: row.hostname,
       expectedWholesaleCents: row.wholesale_cost_cents,
+      years: row.term_years ?? undefined,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Registration kickoff failed";
