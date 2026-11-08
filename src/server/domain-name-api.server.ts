@@ -356,3 +356,261 @@ export async function pointDomainAtPetal(hostname: string): Promise<{ skipped: b
   });
   return { skipped: false };
 }
+
+/* ---------------------------- Catalogue (real renewal prices) ---------------------------- */
+
+export type TldTerms = {
+  tld: string;
+  registrationPeriods: number[];
+  renewalPeriods: number[];
+  /** 1-year renewal list price in USD cents from the catalogue (our cost basis for renewals). */
+  renewCents: number | null;
+  /** Price per period exactly as the catalogue lists it. */
+  renewByPeriod: Record<number, number>;
+  privacyAvailable: boolean;
+  autoRenewGraceDays: number | null;
+  restorableDays: number | null;
+};
+
+let catalogueCache: { at: number; byTld: Map<string, TldTerms> } | null = null;
+const CATALOGUE_TTL_MS = 6 * 3600_000;
+
+type CatalogueItem = {
+  name: string;
+  registrationPeriods?: number[];
+  renewalPeriods?: number[];
+  isPrivacyAvailable?: boolean;
+  autoRenewGracePeriod?: number;
+  deletionRestorablePeriod?: number;
+  prices?: Array<{ priceGroup: string; renew?: Array<{ period: number; price: number; currency: string }> }>;
+};
+
+export function termsFromCatalogue(item: CatalogueItem, group: string): TldTerms {
+  const prices = item.prices?.find((p) => p.priceGroup === group) ?? item.prices?.[0];
+  const renewByPeriod: Record<number, number> = {};
+  for (const r of prices?.renew ?? []) {
+    if (r.currency?.toUpperCase() === "USD") renewByPeriod[r.period] = Math.round(r.price * 100);
+  }
+  return {
+    tld: item.name.toLowerCase(),
+    registrationPeriods: [...(item.registrationPeriods ?? [])].sort((a, b) => a - b),
+    renewalPeriods: [...(item.renewalPeriods ?? [])].sort((a, b) => a - b),
+    renewCents: renewByPeriod[1] ?? null,
+    renewByPeriod,
+    privacyAvailable: item.isPrivacyAvailable === true,
+    autoRenewGraceDays: item.autoRenewGracePeriod ?? null,
+    restorableDays: item.deletionRestorablePeriod ?? null,
+  };
+}
+
+/** Free, unmetered call; cached 6h as the docs recommend. */
+export async function loadCatalogue(): Promise<Map<string, TldTerms>> {
+  if (catalogueCache && Date.now() - catalogueCache.at < CATALOGUE_TTL_MS) return catalogueCache.byTld;
+  const me = await dnaFetch<{ resellerGroupName?: string }>("/deposit/accounts/me").catch(() => ({} as { resellerGroupName?: string }));
+  const group = me.resellerGroupName || "Reseller";
+  const byTld = new Map<string, TldTerms>();
+  for (let skip = 0; skip < 5000; skip += 500) {
+    const page = await dnaFetch<{ totalCount: number; items: CatalogueItem[] }>(
+      `/products/tlds?skipCount=${skip}&maxResultCount=500&currency=USD`,
+    );
+    for (const it of page.items ?? []) byTld.set(it.name.toLowerCase(), termsFromCatalogue(it, group));
+    if (!page.items?.length || skip + 500 >= page.totalCount) break;
+  }
+  catalogueCache = { at: Date.now(), byTld };
+  return byTld;
+}
+
+export function tldOf(hostname: string, known: Map<string, unknown>): string {
+  const parts = hostname.toLowerCase().split(".");
+  for (let i = 1; i < parts.length; i++) {
+    const t = parts.slice(i).join(".");
+    if (known.has(t)) return t;
+  }
+  return parts.slice(1).join(".");
+}
+
+export async function termsFor(hostname: string): Promise<TldTerms | null> {
+  const cat = await loadCatalogue();
+  return cat.get(tldOf(hostname, cat)) ?? null;
+}
+
+/* ---------------------------- Domain info ---------------------------- */
+
+export type DomainInfo = {
+  hostname: string;
+  status: string;
+  expiresAt: string | null;
+  autoRenew: boolean;
+  locked: boolean;
+  privacy: boolean;
+  nameServers: string[];
+};
+
+export async function domainInfo(hostname: string): Promise<DomainInfo> {
+  const r = await dnaFetch<any>(`/domains/info?domainName=${encodeURIComponent(hostname)}`);
+  return {
+    hostname,
+    status: r.status,
+    expiresAt: r.expirationDate ?? null,
+    autoRenew: r.renewalMode === "AutoRenew" || r.renewalMode === 1,
+    locked: r.lockStatus === true || r.lockStatus === "Locked",
+    privacy: r.privacyProtectionStatus === true || r.privacyStatus === true,
+    nameServers: Array.isArray(r.nameServers) ? r.nameServers.map((n: any) => (typeof n === "string" ? n : n?.name)).filter(Boolean) : [],
+  };
+}
+
+/* ---------------------------- Renewal ---------------------------- */
+
+export type RenewalQuote = {
+  renewable: boolean;
+  period: number;
+  wholesaleCents: number | null;
+  premium: boolean;
+  errorCode: string | null;
+  allowedPeriods: number[];
+};
+
+/** Dry run (free): /renew/check + catalogue price for the exact period. */
+export async function quoteRenewal(hostname: string, period: number): Promise<RenewalQuote> {
+  const terms = await termsFor(hostname);
+  const allowed = terms?.renewalPeriods ?? [];
+  if (allowed.length && !allowed.includes(period)) {
+    return { renewable: false, period, wholesaleCents: null, premium: false, errorCode: "Dna.DomainService:Domain:10002", allowedPeriods: allowed };
+  }
+  const c = await dnaFetch<{
+    renewabilityStatus: boolean; errorMessageKey: string | null; isPremium: boolean;
+    premiumPrice: number | null; premiumCurrency: string | null;
+  }>("/domains/renew/check", { method: "POST", body: JSON.stringify({ domainName: hostname, period }) });
+  const wholesale = c.isPremium
+    ? (c.premiumPrice != null && c.premiumCurrency?.toUpperCase() === "USD" ? Math.round(c.premiumPrice * 100) : null)
+    : (terms?.renewByPeriod[period] ?? null);
+  return {
+    renewable: c.renewabilityStatus && wholesale != null,
+    period,
+    wholesaleCents: wholesale,
+    premium: c.isPremium,
+    errorCode: c.errorMessageKey ?? (wholesale == null ? "no_price" : null),
+    allowedPeriods: allowed,
+  };
+}
+
+export const RENEWAL_ERROR_TEXT: Record<string, string> = {
+  "Dna.DomainService:Domain:10020": "Already renewed automatically after expiry.",
+  "Dna.DomainService:Domain:10051": "Renewed in the last few days. Try again later.",
+  "Dna.DomainService:Domain:10021": "Too early: this ending can only be renewed within 60 days of expiry.",
+  "Dna.DomainService:Domain:1028": "That would exceed the longest term allowed. Choose fewer years.",
+  "Dna.DomainService:Domain:1016": "That term is too long. Choose fewer years.",
+  "Dna.DomainService:Domain:10002": "That number of years isn't sold for this ending.",
+  "Dna.DomainService:Domain:10071": "Premium domains renew one year at a time.",
+  "Dna.DomainService:Domain:10045": "Renewal is blocked at the registry.",
+  "Dna.DomainService:Domain:10018": "This domain can't be renewed in its current state.",
+  "Dna.DomainService:Domain:10019": "Registry temporarily unavailable. Try again later.",
+  "Dna.DomainService:Deposit:10001": "Registrar balance is too low.",
+};
+
+/**
+ * Renew and store the registry's expirationDate. On 10020/10051 the renewal
+ * already happened, so we read /domains/info instead of retrying (docs).
+ * 10059 must never be retried.
+ */
+export async function renewDomain(hostname: string, period: number): Promise<{ expiresAt: string | null; alreadyRenewed: boolean }> {
+  try {
+    const r = await dnaFetch<{ expirationDate?: string }>("/domains/renew", {
+      method: "POST", body: JSON.stringify({ domainName: hostname, period }),
+    });
+    return { expiresAt: r.expirationDate ?? null, alreadyRenewed: false };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (/Domain:10020|Domain:10051/.test(msg)) {
+      const info = await domainInfo(hostname);
+      return { expiresAt: info.expiresAt, alreadyRenewed: true };
+    }
+    throw e;
+  }
+}
+
+/* ---------------------------- DNS records ---------------------------- */
+
+export const DNS_RECORD_TYPES = ["A", "AAAA", "CNAME", "ALIAS", "MX", "TXT", "CAA", "SRV"] as const;
+export type DnsRecordType = (typeof DNS_RECORD_TYPES)[number];
+export type DnsRecordSet = { name: string; type: string; ttl: number; values: string[] };
+
+export function validateRecord(rec: { name: string; type: string; values: string[] }): string | null {
+  const name = rec.name.trim();
+  if (!(DNS_RECORD_TYPES as readonly string[]).includes(rec.type)) return "unsupported_type";
+  if (!rec.values.length) return "missing_value";
+  if (rec.type === "CNAME" && (name === "" || name === "@")) return "cname_at_apex_use_alias";
+  const ipv4 = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+  for (const v of rec.values) {
+    if (rec.type === "A" && !ipv4.test(v)) return "invalid_ipv4";
+    if (rec.type === "AAAA" && !/^[0-9a-f:]+$/i.test(v)) return "invalid_ipv6";
+    if ((rec.type === "CNAME" || rec.type === "ALIAS") && ipv4.test(v)) return "hostname_required";
+    if (rec.type === "MX" && !/^\d+\s+\S+$/.test(v)) return "mx_format_priority_host";
+    if (rec.type === "CAA" && v.trim().split(/\s+/).length < 3) return "caa_format_flag_tag_value";
+    if (rec.type === "SRV" && v.trim().split(/\s+/).length !== 4) return "srv_format_priority_weight_port_host";
+  }
+  return null;
+}
+
+function zoneQ(hostname: string) { return `?domainName=${encodeURIComponent(hostname)}`; }
+
+export async function listDnsRecords(hostname: string): Promise<DnsRecordSet[]> {
+  const sets = await dnaFetch<Array<{ name: string; type: string; ttl: number; records: Array<{ content: string; disabled: boolean }> }>>(
+    `/domains/zones${zoneQ(hostname)}`,
+  );
+  return (sets ?? []).map((s) => ({
+    name: s.name, type: s.type, ttl: s.ttl,
+    values: s.records.filter((r) => !r.disabled).map((r) => r.content),
+  }));
+}
+
+/** POST merges values into the set (docs: adds, never replaces). */
+export async function addDnsRecord(hostname: string, rec: { name: string; type: string; ttl?: number; values: string[] }) {
+  await dnaFetch(`/domains/zones${zoneQ(hostname)}`, {
+    method: "POST",
+    body: JSON.stringify({ zoneStruct: { name: rec.name || "@", type: rec.type, ttl: rec.ttl ?? 3600, contents: rec.values } }),
+  });
+}
+
+/** PUT replaces every value in the set with `values`. */
+export async function replaceDnsRecord(hostname: string, rec: { name: string; type: string; ttl?: number; values: string[] }) {
+  await dnaFetch(`/domains/zones${zoneQ(hostname)}&recordName=${encodeURIComponent(rec.name || "@")}`, {
+    method: "PUT",
+    body: JSON.stringify({ zoneStruct: { name: rec.name || "@", type: rec.type, ttl: rec.ttl ?? 3600, contents: rec.values } }),
+  });
+}
+
+/** DELETE removes one value; name must be inside the zone (full form). */
+export async function deleteDnsRecord(hostname: string, rec: { name: string; type: string; value: string }) {
+  const short = rec.name.replace(/\.$/, "");
+  const full = !short || short === "@" ? hostname : short.endsWith(hostname) ? short : `${short}.${hostname}`;
+  await dnaFetch(`/domains/zones${zoneQ(hostname)}`, {
+    method: "DELETE",
+    body: JSON.stringify({ name: full, recordType: rec.type, record: rec.value }),
+  });
+}
+
+/** Delegate to DNA name servers so zone records resolve. Idempotent. */
+export async function applyZone(hostname: string) {
+  return dnaFetch<{ nameServersChanged: boolean; previousNameServers: string[]; currentNameServers: string[] }>(
+    `/domains/zones/apply${zoneQ(hostname)}`, { method: "POST" },
+  );
+}
+
+/* ---------------------------- Lock / privacy / auth code ---------------------------- */
+
+export async function setTransferLock(hostname: string, locked: boolean) {
+  await dnaFetch(locked ? "/domains/lock" : "/domains/unlock", { method: "POST", body: JSON.stringify({ domainName: hostname }) });
+}
+
+export async function setPrivacy(hostname: string, on: boolean) {
+  const terms = await termsFor(hostname);
+  if (terms && !terms.privacyAvailable) throw new Error("WHOIS privacy isn't available for this ending.");
+  await dnaFetch("/domains/privacy", { method: "POST", body: JSON.stringify({ domainName: hostname, privacyStatus: on }) });
+}
+
+/** Regenerates the code; the previous one stops working immediately (docs). */
+export async function regenerateAuthCode(hostname: string): Promise<string> {
+  const r = await dnaFetch<{ authCode: string }>("/domains/auth", { method: "PUT", body: JSON.stringify({ domainName: hostname }) });
+  return r.authCode;
+}
