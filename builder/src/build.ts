@@ -400,7 +400,8 @@ export async function buildAndDeploy(
   //     than the AI template so existing projects also pick up the fix on
   //     their next deploy.
   //     See: https://developers.cloudflare.com/pages/configuration/headers/
-  const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n`;
+  //     frame-ancestors lets Custard AI's canvas (and Petal) embed the site.
+  const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n  Content-Security-Policy: ${FRAME_ANCESTORS_CSP}\n`;
   await writeFile(join(distDir, "_headers"), headersFile, "utf8");
 
   // 2c) Pre-deploy browser check. The verifier drives the real built output

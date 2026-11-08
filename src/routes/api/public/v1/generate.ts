@@ -51,7 +51,9 @@ export const Route = createFileRoute("/api/public/v1/generate")({
         if (denied) return denied;
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return json({ error: "invalid_body", issues: parsed.error.issues }, 400);
-        const { projectId, prompt, history, webhookUrl, planFirst } = parsed.data;
+        const { projectId, prompt, history, planFirst } = parsed.data;
+        // Custard AI's agreed receiver is the default when the call omits one.
+        const webhookUrl = parsed.data.webhookUrl ?? "https://custardai.dev/api/public/petal/webhook";
         if (webhookUrl && !isAllowedWebhookUrl(webhookUrl)) {
           return json({ error: "webhook_url_not_allowed" }, 400);
         }
