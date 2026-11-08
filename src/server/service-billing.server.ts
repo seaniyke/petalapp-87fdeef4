@@ -175,6 +175,53 @@ export async function turnBill(ownerId: string, turnId: string): Promise<TurnBil
   return buildTurnBill(turnId, (rows ?? []) as LedgerRow[], (econ as EconomicsRow | null) ?? null);
 }
 
+export type ActiveDay = { date: string; credits: number };
+
+/**
+ * Charged Shared Cloud days from ledger rows, oldest first. A day is the
+ * date the daily charge was made (it covers the 24 hours before it). One
+ * entry per date; idle and unpaid days never appear.
+ */
+export function sharedActiveDays(rows: LedgerRow[]): ActiveDay[] {
+  const byDate = new Map<string, number>();
+  for (const row of rows) {
+    const delta = Number(row.delta);
+    if (row.reason !== "runtime_charge" || !(delta < 0)) continue;
+    const meta = (row.metadata ?? {}) as { runtime_meter?: string; day?: string };
+    if (meta.runtime_meter !== "cloud_shared") continue;
+    const date = typeof meta.day === "string" ? meta.day : String(row.created_at ?? "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    byDate.set(date, (byDate.get(date) ?? 0) - delta);
+  }
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, credits]) => ({ date, credits: r2(credits) }));
+}
+
+/** Shared Cloud days charged for one project between two dates (inclusive). */
+export async function projectActiveDays(ownerId: string, projectId: string, fromDate: string, toDate: string) {
+  const sb = await admin();
+  const end = new Date(`${toDate}T00:00:00Z`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  const { data } = await sb
+    .from("credit_ledger")
+    .select(LEDGER_COLUMNS)
+    .eq("user_id", ownerId)
+    .eq("project_id", projectId)
+    .eq("reason", "runtime_charge")
+    .gte("created_at", `${fromDate}T00:00:00Z`)
+    .lt("created_at", end.toISOString())
+    .limit(1000);
+  const days = sharedActiveDays((data ?? []) as LedgerRow[]);
+  return {
+    from: fromDate,
+    to: toDate,
+    activeDays: days,
+    activeDayCount: days.length,
+    credits: r2(days.reduce((s, d) => s + d.credits, 0)),
+  };
+}
+
 export type Range = { from: string; to: string };
 
 export function defaultRange(now = new Date()): Range {
