@@ -69,6 +69,7 @@ export async function readSavedThumbnails(
 export async function ensureSavedThumbnail(
   projectId: string,
   expectedBuildId?: string | null,
+  opts: { wait?: boolean } = {},
 ): Promise<SavedThumbnail | null> {
   if (!projectId) return null;
 
@@ -92,6 +93,9 @@ export async function ensureSavedThumbnail(
       inFlight.delete(key);
     });
   inFlight.set(key, job);
+  // Callers that need the current build (the share card) wait for it and
+  // fall back to the older image only if the capture fails.
+  if (opts.wait) return (await job) ?? existing ?? null;
   // A stale-but-present preview is better than a spinner while the new one
   // renders, so hand back what we have and let the capture land in the
   // background.
