@@ -61,6 +61,7 @@ __export(ai_model_config_exports, {
   INFERENCE_EVAL_USER_IDS: () => INFERENCE_EVAL_USER_IDS,
   UTILITY_FEATURES: () => UTILITY_FEATURES,
   UTILITY_MAX_OUTPUT_TOKENS: () => UTILITY_MAX_OUTPUT_TOKENS,
+  classifyTaskDifficulty: () => classifyTaskDifficulty,
   coerceToConfiguredModel: () => coerceToConfiguredModel,
   defaultFallbackModel: () => defaultFallbackModel,
   defaultFirstBuildModel: () => defaultFirstBuildModel,
@@ -70,7 +71,8 @@ __export(ai_model_config_exports, {
   defaultUtilityModel: () => defaultUtilityModel,
   defaultVisionModel: () => defaultVisionModel,
   isConfiguredModel: () => isConfiguredModel,
-  isUtilityFeature: () => isUtilityFeature
+  isUtilityFeature: () => isUtilityFeature,
+  modelForDifficulty: () => modelForDifficulty
 });
 function env(name) {
   if (typeof process === "undefined" || !process.env) return void 0;
@@ -100,6 +102,14 @@ function defaultUtilityModel() {
 }
 function isUtilityFeature(feature) {
   return !!feature && UTILITY_FEATURES.has(feature);
+}
+function classifyTaskDifficulty(s) {
+  if (s.crossCutting || s.multiEdit || s.scope === "structural") return "hard";
+  if ((s.promptChars ?? 0) > 1500) return "hard";
+  return "standard";
+}
+function modelForDifficulty(d) {
+  return d === "hard" ? defaultFirstBuildModel() : defaultTextModel();
 }
 function isConfiguredModel(model) {
   return !!model && CONFIGURED_MODEL_IDS.has(model);
@@ -58824,7 +58834,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -69087,7 +69096,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140317,7 +140325,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140482,7 +140489,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140526,7 +140532,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -153674,6 +153679,37 @@ var init_provider_retry = __esm({
   }
 });
 
+// src/server/verification/structure.ts
+function headerBlocks(src2) {
+  return src2.match(/<header\b[\s\S]*?<\/header>/gi) ?? [];
+}
+function siteNavTags(src2) {
+  return (src2.match(/<nav\b[^>]*>/gi) ?? []).filter((tag) => !IN_PAGE_NAV.test(tag));
+}
+function duplicateChromeFindings(files) {
+  const out = [];
+  for (const f of files) {
+    if (!/^src\/pages\/.+\.(t|j)sx$/.test(f.path)) continue;
+    const src2 = f.content ?? "";
+    if (headerBlocks(src2).some((h) => siteNavTags(h).length > 0)) {
+      out.push({ path: f.path, reason: `${f.path} renders its own site header with navigation \u2014 the shared layout already shows the header, so remove it from the page` });
+      continue;
+    }
+    if (ANNOUNCEMENT_CLASS.test(src2)) {
+      out.push({ path: f.path, reason: `${f.path} adds an announcement/top bar \u2014 the page must start with its own content under the shared header; remove the extra bar` });
+    }
+  }
+  return out;
+}
+var IN_PAGE_NAV, ANNOUNCEMENT_CLASS;
+var init_structure = __esm({
+  "src/server/verification/structure.ts"() {
+    init_define_import_meta_env();
+    IN_PAGE_NAV = /aria-label\s*=\s*["'{][^"'}]*(breadcrumb|tab|pagination|page\s*nav|step|filter|section|table of contents|toc|categor)/i;
+    ANNOUNCEMENT_CLASS = /className\s*=\s*["'`{][^"'`}]*\b(announcement(-bar)?|promo-?bar|top-?bar|notice-?bar|banner-?strip|marquee-?bar)\b/i;
+  }
+});
+
 // src/server/engine/route-paths.ts
 function join(parent, child) {
   const segs = [...parent.split("/"), ...child.split("/")].filter(Boolean);
@@ -153927,6 +153963,12 @@ function routesGate(files, requestedRoutes, opts = {}) {
     reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation, and a footer or sidebar frame)");
     bad.push("src/App.tsx");
   }
+  if (opts.requireShell) {
+    for (const c of duplicateChromeFindings(files)) {
+      reasons.push(c.reason);
+      bad.push(c.path);
+    }
+  }
   const completeness = assessCompleteness({ requestedRoutes, files });
   if (!completeness.complete) {
     reasons.push(`missing requested: ${completeness.missingRoutes.join(", ")}`);
@@ -154094,6 +154136,7 @@ var init_gates = __esm({
     init_app_map();
     init_build_state();
     init_write();
+    init_structure();
     init_route_paths();
     GATE_ORDER = ["syntax", "dependencies", "routes", "build", "browser"];
     MAX_REPAIR_TARGETS = 3;
@@ -175512,8 +175555,6 @@ function isManagedScaffoldPath(path) {
 }
 var MODEL_FAST = "google/gemini-3.1-flash-lite";
 var MODEL_BEST = "google/gemini-3.8-flash";
-var MODEL_REASONING = "openai/gpt-5.4";
-var MODEL_CLAUDE = "anthropic/claude-sonnet-5";
 var MODEL_STRUCTURED_RETRY = "google/gemini-3.8-flash";
 function turnCallCost(u, model = MODEL_STRUCTURED_RETRY) {
   if (typeof u.cost === "number" && Number.isFinite(u.cost)) return { costUsd: u.cost, basis: "actual" };
@@ -177915,11 +177956,16 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
-  } else if (multiEditIntent || isCrossCutting) {
-    model = MODEL_BEST;
-    chosenBy = isCrossCutting ? "cross_cutting_pin" : "multi_edit_pin";
+  } else if (classifyTaskDifficulty({
+    scope: editClassification?.scope ?? null,
+    crossCutting: isCrossCutting,
+    multiEdit: !!multiEditIntent,
+    promptChars: lastUserContent.length
+  }) === "hard") {
+    model = modelForDifficulty("hard");
+    chosenBy = isCrossCutting ? "difficulty:cross_cutting" : multiEditIntent ? "difficulty:multi_edit" : "difficulty:hard";
   } else if (preset === "smart") {
-    const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
+    const phaseDefault = MODEL_BEST;
     chosenBy = "phase_router";
     if (tier === "cheap") {
       model = phaseDefault;
@@ -177929,7 +177975,8 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
         const pick2 = await pickBestModel({
           feature: "generate",
           phase: phaseTag.phase,
-          candidates: [MODEL_FAST, MODEL_BEST, MODEL_REASONING, MODEL_CLAUDE],
+          // Only configured ids: unconfigured slugs were silently coerced to flash.
+          candidates: [MODEL_BEST, defaultFirstBuildModel()],
           defaultModel: phaseDefault
         });
         model = pick2.model;

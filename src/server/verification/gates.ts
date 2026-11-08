@@ -16,6 +16,7 @@ import { toVerdict } from "@/server/execution/verdict";
 import { buildAppMap } from "@/server/engine/app-map";
 import { assessCompleteness, isUnfinishedPage } from "@/server/engine/build-state";
 import { frameIsComplete } from "@/server/engine/write";
+import { duplicateChromeFindings } from "@/server/verification/structure";
 import { deadInternalLinks, resolveRouteTree, unguardedAppRoutes } from "@/server/engine/route-paths";
 export { isUnfinishedPage };
 
@@ -149,6 +150,13 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
   if (opts.requireShell && !frameIsComplete(files, requestedRoutes.length)) {
     reasons.push("app shell is missing or incomplete (src/App.tsx needs routes, navigation, and a footer or sidebar frame)");
     bad.push("src/App.tsx");
+  }
+  // New apps: pages never stack a second header/announcement bar over the frame's.
+  if (opts.requireShell) {
+    for (const c of duplicateChromeFindings(files)) {
+      reasons.push(c.reason);
+      bad.push(c.path);
+    }
   }
   const completeness = assessCompleteness({ requestedRoutes, files });
   if (!completeness.complete) {

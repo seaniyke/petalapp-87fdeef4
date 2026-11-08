@@ -173,6 +173,7 @@ export default defineConfig({
       "src/server/__tests__/economic-ceiling.test.ts",
       "src/server/__tests__/disabled-targets.test.ts", "src/server/__tests__/cost-write-flush.test.ts",
       "src/server/__tests__/app-sidebar-frame.test.ts",
+      "src/server/__tests__/phase2-structure-routing.test.ts",
       "src/lib/__tests__/connector-catalog.test.ts",
       "src/server/__tests__/connector-oauth.test.ts", "src/server/__tests__/brand-title.test.ts", "src/server/__tests__/picture-retry.test.ts", "src/server/__tests__/aura-rebuild-regressions.test.ts",
     "src/server/__tests__/overlay-portal.test.ts",
