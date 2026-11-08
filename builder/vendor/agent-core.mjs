@@ -58835,6 +58835,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -62491,6 +62492,10 @@ async function dispatch(_provider, body, signal, tierOverride) {
   );
   if (wireModel !== outBody.model) {
     outBody = { ...outBody, model: wireModel };
+  }
+  if (wireModel.startsWith("openai/") && "reasoning" in outBody) {
+    outBody = { ...outBody };
+    delete outBody.reasoning;
   }
   if (outBody.stream === true && !outBody.stream_options) {
     outBody = { ...outBody, stream_options: { include_usage: true } };
@@ -68795,7 +68800,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -144795,7 +144799,8 @@ function deriveIntentContract(brief, prd) {
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce");
   const commerceRequested = commerceFamily.triggers.test(text);
   const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
-  const family = FAMILIES.find((f) => f.id !== "commerce" && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
+  const aestheticClinic = AESTHETIC_CLINIC.test(text) && !HOSPITAL_ONLY.test(text);
+  const family = FAMILIES.find((f) => f.id !== "commerce" && !(aestheticClinic && f.id === "healthcare") && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
   const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
   if (!family) {
     const surface2 = deriveProductSurface(text, prd?.roles ?? []);
@@ -144947,7 +144952,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
+var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -144967,7 +144972,7 @@ var init_intent_contract = __esm({
         // Capability-based: any service business where customers book time/services.
         id: "booking",
         label: "booking / appointments",
-        triggers: /\b(salons?|barbers?(hop)?s?|spas?|beauty|nail (studio|bar|salon)|stylists?|hairdress(er|ers|ing)|massage|tutor(s|ing)?|lessons?|personal trainers?|appointment[- ]based|book(ing)? (an? )?(appointments?|sessions?|lessons?)|appointments? (booking|scheduling)|booking (system|app|platform))\b/i,
+        triggers: /\b(salons?|barbers?(hop)?s?|spas?|beauty|aesthetics?|med ?spas?|wellness clinic|nail (studio|bar|salon)|stylists?|hairdress(er|ers|ing)|massage|tutor(s|ing)?|lessons?|personal trainers?|appointment[- ]based|book(ing)? (an? )?(appointments?|sessions?|lessons?)|appointments? (booking|scheduling)|booking (system|app|platform))\b/i,
         appOnly: true,
         productType: "workflow-app",
         roles: ["admin", "staff", "customer"],
@@ -145069,6 +145074,8 @@ var init_intent_contract = __esm({
     APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
     COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
     COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
+    AESTHETIC_CLINIC = /\b(aesthetics?|cosmetic|med ?spas?|medspas?|skin ?care|skincare|wellness|beauty|laser|facials?|dermal fillers?|botox|hydrafacial)\b/i;
+    HOSPITAL_ONLY = /\b(hospital|wards?|inpatient|outpatient|ehr|emr|medical records?|prescriptions?|pharmacy|nurs(e|es|ing))\b/i;
     ALWAYS_ALLOWED = /^\/($|auth|login|sign-?in|sign-?up|register|account|profile|dashboard|settings|404|not-found)/i;
     SURFACE_LINE = {
       public: "Structure: a public website only \u2014 header navigation and a footer, no sign-in area or dashboard.",
@@ -178616,6 +178623,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const loopCeilingUsd = economicCeilingUsd(null, Math.max(buildReservation?.classCostUsd ?? 0, loopSizeEstimate.usd), loopEcon);
             turnStrategy.loopSizeEstimate = { usd: loopSizeEstimate.usd, basis: loopSizeEstimate.basis, samples: loopSizeEstimate.samples, model: defaultFirstBuildModel() };
             const loopSpentBeforeUsd = collected.usage ? turnCallCost(collected.usage, model).costUsd ?? buildReservation?.classCostUsd ?? 0 : 0;
+            let lastPromptTokens = 0;
             const { makeCallModel: makeCallModel2 } = await Promise.resolve().then(() => (init_tool_loop_model(), tool_loop_model_exports));
             const { validateUnitImports: validateUnitImports2, undefinedNames: undefinedNames2 } = await Promise.resolve().then(() => (init_work_unit(), work_unit_exports));
             const { verifyFilesEsbuild: verifyFilesEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_verifier_server(), esbuild_verifier_server_exports));
@@ -178742,11 +178750,14 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                   const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } }, firstBuildModel).costUsd;
                   if (c != null) return c;
                 }
-                return Math.max(buildReservation?.classCostUsd ?? 0.03, loopSizeEstimate.usd);
+                return Math.max(buildReservation?.classCostUsd ?? 0.03, predictCallCostUsd2(lastPromptTokens, loopModelPrice));
               },
               // Checked before EVERY call, including the first: all prompt
               // tokens at the uncached rate plus a typical write's output.
-              predictCallUsd: (promptTokens) => predictCallCostUsd2(promptTokens, loopModelPrice),
+              predictCallUsd: (promptTokens) => {
+                lastPromptTokens = promptTokens;
+                return predictCallCostUsd2(promptTokens, loopModelPrice);
+              },
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
