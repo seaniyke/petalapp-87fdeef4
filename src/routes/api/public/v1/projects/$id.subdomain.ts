@@ -38,7 +38,7 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/subdomain")({
         const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
         const { subdomainHandlers } = await import("@/routes/api/subdomain");
         return asServiceResponse(
-          await subdomainHandlers.claim(await serviceUserId(), { slug: body.slug, projectId: params.id }),
+          await subdomainHandlers.claim(await serviceUserId(), { slug: body.slug ?? body.subdomain, projectId: params.id }),
         );
       },
       DELETE: async ({ request, params }) => {
