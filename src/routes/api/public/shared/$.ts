@@ -70,6 +70,12 @@ async function handle(request: Request): Promise<Response> {
   if (access === "no_backend") {
     return json({ error: "This app has no backend set up yet." }, 404);
   }
+  if (access === "paused") {
+    return json(
+      { error: "backend_paused", message: "This service is temporarily paused. Please contact the site owner." },
+      402,
+    );
+  }
   if (access !== "ok") return json({ error: "Invalid or missing project key" }, 401);
 
   const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;

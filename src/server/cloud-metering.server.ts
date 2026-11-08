@@ -141,7 +141,7 @@ export async function sharedWindowPrice(projectId: string, hours: number, r: Clo
   ]);
   const raw = (bill as { monthly_fixed_usd?: number | string | null } | null)?.monthly_fixed_usd;
   const monthly = raw == null ? null : Number(raw);
-  return priceShared(
+  const base = priceShared(
     {
       hours,
       projectRows: projectRows ?? 0,
@@ -150,6 +150,30 @@ export async function sharedWindowPrice(projectId: string, hours: number, r: Clo
     },
     r,
   );
+  // Customer price is the flat Shared Cloud rate per active day; the cost
+  // allocation above stays as-is for margin reporting.
+  const { economicsValues } = await import("@/server/economics-config.server");
+  const v = await economicsValues();
+  return applyFlatSharedRate(base, hours, v.cloud_shared_daily_credits, v.credit_retail_usd_cents / 100);
+}
+
+/** Flat Shared Cloud price: `dailyCredits` per 24 active hours. */
+export function applyFlatSharedRate(
+  base: PricedCharge,
+  hours: number,
+  dailyCredits: number,
+  usdPerCredit: number,
+): PricedCharge {
+  if (!(dailyCredits > 0)) return base;
+  const credits = Math.round(dailyCredits * (hours / 24) * 10_000) / 10_000;
+  const priceUsd = Math.round(credits * usdPerCredit * 1_000_000) / 1_000_000;
+  const cost = base.costs[0]?.costUsd ?? null;
+  return {
+    ...base,
+    credits,
+    priceUsd,
+    marginPct: cost == null || priceUsd <= 0 ? null : Math.round(((priceUsd - cost) / priceUsd) * 10_000) / 100,
+  };
 }
 
 /* ---------------- Charge + ledger ---------------- */
