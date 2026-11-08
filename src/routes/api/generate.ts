@@ -1,4 +1,4 @@
-import { defaultFirstBuildModel } from "@/lib/ai-model-config";
+import { defaultFirstBuildModel, classifyTaskDifficulty, modelForDifficulty } from "@/lib/ai-model-config";
 import { toOperationType } from "@/lib/operation-identity";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
@@ -3996,9 +3996,17 @@ async function handleGenerateRequestCore(
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
-  } else if (multiEditIntent || isCrossCutting) {
-    model = MODEL_BEST;
-    chosenBy = isCrossCutting ? "cross_cutting_pin" : "multi_edit_pin";
+  } else if (
+    classifyTaskDifficulty({
+      scope: editClassification?.scope ?? null,
+      crossCutting: isCrossCutting,
+      multiEdit: !!multiEditIntent,
+      promptChars: lastUserContent.length,
+    }) === "hard"
+  ) {
+    // Hard work escalates to the frontier model (Configured; never coerced away).
+    model = modelForDifficulty("hard");
+    chosenBy = isCrossCutting ? "difficulty:cross_cutting" : multiEditIntent ? "difficulty:multi_edit" : "difficulty:hard";
   } else if (preset === "smart") {
     // Phase tag overrides the keyword heuristic in smart mode.
     const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
@@ -4019,7 +4027,8 @@ async function handleGenerateRequestCore(
         const pick = await pickBestModel({
           feature: "generate",
           phase: phaseTag.phase,
-          candidates: [MODEL_FAST, MODEL_BEST, MODEL_REASONING, MODEL_CLAUDE],
+          // Only configured ids: unconfigured slugs were silently coerced to flash.
+          candidates: [MODEL_BEST, defaultFirstBuildModel()],
           defaultModel: phaseDefault,
         });
         model = pick.model;
