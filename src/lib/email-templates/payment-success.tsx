@@ -59,9 +59,9 @@ const introByPurpose: Record<Purpose, (p: Props) => string> = {
 };
 
 const ctaByPurpose: Record<Purpose, { label: string; href: string }> = {
-  plan: { label: "Open Kimble", href: SITE_URL },
+  plan: { label: "Open Petal", href: SITE_URL },
   pack: { label: "Start a build", href: SITE_URL },
-  runtime_topup: { label: "Open Kimble", href: SITE_URL },
+  runtime_topup: { label: "Open Petal", href: SITE_URL },
   addon: { label: "Open project", href: SITE_URL },
   domain_purchase: { label: "View domain", href: SITE_URL },
 };

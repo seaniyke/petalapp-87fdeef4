@@ -1,8 +1,9 @@
 /**
  * Low-balance email for partner accounts (Custard AI's service account).
  *
- * Runs every 5 minutes from the turn-resume cron. When the account's
- * available credits fall below the threshold, Petal's admins get one email;
+ * Called every 5 minutes from the turn-resume cron but only checks once an
+ * hour. When the account's available credits fall below the threshold, the
+ * owner (PARTNER_ALERT_RECIPIENT) gets one email;
  * the alert re-arms once the balance is back at or above the threshold, so
  * each dip sends exactly one email. State lives in `balance_alerts`.
  */
@@ -10,6 +11,19 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /** Credits below which the owner is emailed about Custard's balance. */
 export const PARTNER_LOW_BALANCE_CREDITS = 1000;
+
+/** The owner's address for partner balance alerts. */
+export const PARTNER_ALERT_RECIPIENT = "ikemadu26@gmail.com";
+
+/** The balance is checked at most once per hour (the cron ticks every 5 min). */
+export const BALANCE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
+/** True when the last check is older than the interval (or never ran). */
+export function checkIsDue(lastCheckedAt: string | null, now: number = Date.now()): boolean {
+  if (!lastCheckedAt) return true;
+  const last = Date.parse(lastCheckedAt);
+  return !Number.isFinite(last) || now - last >= BALANCE_CHECK_INTERVAL_MS;
+}
 
 export type AlertDecision = "send" | "rearm" | "none";
 
@@ -23,7 +37,7 @@ function fmt(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-/** Queue the owner notice through Petal's own email sender (one send per admin). */
+/** Queue the owner notice through Petal's own email sender. */
 export async function emailAdmins(
   origin: string,
   name: string,
@@ -31,10 +45,8 @@ export async function emailAdmins(
   threshold: number,
   key: string,
 ): Promise<string | null> {
-  const { resolveAdminRecipients } = await import("@/server/self-learning-digest.server");
-  const to = await resolveAdminRecipients();
+  const to = [PARTNER_ALERT_RECIPIENT];
   const secret = process.env.BUILDER_SHARED_SECRET;
-  if (!to.length) return "no admin recipients";
   if (!secret) return "BUILDER_SHARED_SECRET not configured";
   const errors: string[] = [];
   for (const [i, recipientEmail] of to.entries()) {
@@ -67,10 +79,15 @@ export async function checkPartnerBalance(origin: string): Promise<BalanceAlertR
   if (!userId) return { balance: null, decision: "skipped", emailed: false, error: "no partner account" };
   const threshold = PARTNER_LOW_BALANCE_CREDITS;
 
-  const [{ data: bal, error: balErr }, { data: state }] = await Promise.all([
-    supabaseAdmin.rpc("available_credits", { _user_id: userId }),
-    supabaseAdmin.from("balance_alerts").select("alerted_at").eq("user_id", userId).maybeSingle(),
-  ]);
+  const { data: state } = await supabaseAdmin
+    .from("balance_alerts")
+    .select("alerted_at, updated_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!checkIsDue(state?.updated_at ?? null)) {
+    return { balance: null, decision: "skipped", emailed: false, error: null };
+  }
+  const { data: bal, error: balErr } = await supabaseAdmin.rpc("available_credits", { _user_id: userId });
   if (balErr || bal == null) return { balance: null, decision: "skipped", emailed: false, error: balErr?.message ?? "no balance" };
   const balance = Number(bal);
   const decision = alertDecision(balance, threshold, state?.alerted_at ?? null);
