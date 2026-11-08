@@ -202,6 +202,7 @@ export async function retryStalledBuild(
       files: withEnv,
       hideBadge,
       custardWidget: await (await import("@/server/custard-widget.server")).isCustardOwned(project.owner_id),
+      custardWidgetTag: await (await import("@/server/custard-widget.server")).readCustardWidgetTag(build.project_id),
       cleanupPaths: [],
       cleanupMeta: { unitId: source },
     });

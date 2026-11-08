@@ -86,6 +86,8 @@ export async function postBuildToRailway(args: {
   hideBadge?: boolean;
   /** Add Custard AI's staff widget (apps owned by the Custard service account). */
   custardWidget?: boolean;
+  /** Exact Custard widget tag for this project (keeps data-agent / ?agent=). */
+  custardWidgetTag?: string | null;
   /**
    * Post-deploy browser verification plan. When present the builder loads the
    * deployed app in a real browser, signs a throwaway user in, runs the write
@@ -149,7 +151,7 @@ export async function postBuildToRailway(args: {
   // contains one current, parse-safe guard.
   const guarded = pinLooseDeps(injectPreviewGuard(brandWired.files, { projectId: args.projectId }).files);
   const badged = args.hideBadge ? guarded : injectPetalBadge(guarded);
-  const filesToShip = args.custardWidget ? injectCustardWidget(badged) : badged;
+  const filesToShip = args.custardWidget ? injectCustardWidget(badged, args.custardWidgetTag) : badged;
 
   const body = JSON.stringify({
     projectId: args.projectId,

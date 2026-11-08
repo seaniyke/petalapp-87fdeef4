@@ -1,7 +1,11 @@
 /**
  * POST /api/public/v1/generate — start a build for an API-owned project.
  *
- * Body: { projectId, prompt, history?: [{role, content}], webhookUrl?, planFirst? }
+ * Body: { projectId, prompt, history?: [{role, content}], webhookUrl?, planFirst?,
+ *         agentId?, widgetTag? }
+ * `agentId` / `widgetTag` (or a Custard widget <script> pasted in the prompt)
+ * pick the AI staff member; the tag is kept with its data-* attributes and
+ * ?agent= query and added to every published build of the project.
  * Response: the engine's live Server-Sent Events stream (turn_id, phase,
  * status, result, done …). When `webhookUrl` is given, a signed POST is also
  * sent when the turn reaches its terminal `done` event.
@@ -40,6 +44,8 @@ const Body = z.object({
     .optional(),
   webhookUrl: z.string().url().max(2000).optional(),
   planFirst: z.boolean().optional(),
+  agentId: z.string().trim().regex(/^[A-Za-z0-9_\-.:]{1,200}$/).optional(),
+  widgetTag: z.string().max(2000).optional(),
 });
 
 export const Route = createFileRoute("/api/public/v1/generate")({
@@ -59,6 +65,17 @@ export const Route = createFileRoute("/api/public/v1/generate")({
         }
         const project = await loadOwnedProject(projectId);
         if (!project) return json({ error: "project_not_found" }, 404);
+
+        // Remember which Custard staff member this site belongs to, so every
+        // published build carries the full widget tag (data-agent / ?agent=).
+        {
+          const w = await import("@/server/custard-widget.server");
+          const tag =
+            w.parseCustardWidgetTag(parsed.data.widgetTag) ??
+            (parsed.data.agentId ? w.custardWidgetTagForAgent(parsed.data.agentId) : null) ??
+            w.parseCustardWidgetTag(prompt);
+          if (tag) await w.saveCustardWidgetTag(projectId, tag);
+        }
 
         const [token, files] = await Promise.all([serviceAccessToken(), loadProjectFiles(projectId)]);
         const now = Date.now();
