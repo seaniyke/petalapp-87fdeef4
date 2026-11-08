@@ -21,6 +21,10 @@ import { startPreviewServer } from "./preview-server.js";
 import { partitionVerificationDefects } from "./verification-report.js";
 import { Heartbeat } from "./progress.js";
 
+/** Origins allowed to embed deployed sites (Custard AI canvas + Petal). */
+const FRAME_ANCESTORS_CSP =
+  "frame-ancestors 'self' https://custardai.dev https://*.custardai.dev https://*.lovable.app https://usefuljohn.com https://www.usefuljohn.com https://buildwithpetal.com https://*.buildwithpetal.com;";
+
 /**
  * How long a child process may stay completely silent before we call it
  * wedged. Generous on purpose: a large npm install on a cold cache can pause
