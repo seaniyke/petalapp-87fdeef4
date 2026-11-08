@@ -58780,7 +58780,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -68741,7 +68740,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -69008,7 +69006,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -167213,6 +167210,7 @@ var COMPOSITION_RULES = [
   "The header has a solid background (bg-background with a border-b), never translucent or blurred. The phone menu uses the kit Sheet so it opens as a solid full-height panel.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
   'Every link points somewhere real \u2014 no href="#" placeholders. One <h1> per page.',
+  'Chat-led sites: when the brief mentions an AI receptionist, AI staff, a chat assistant, or booking/enquiring by chat, the main booking and enquiry buttons open the chat instead of a form. Create src/lib/chat.ts once with `declare global { interface Window { CustardWidget?: { open: () => void } } }` and `export function openChat() { if (window.CustardWidget?.open) window.CustardWidget.open(); else window.location.hash = "chat"; }`, and use <button type="button" onClick={openChat}> for those buttons. Never add the chat widget <script> tag yourself \u2014 Petal adds it to the page.',
   ...FINISH_RULES
 ].join("\n- ");
 var CORRECTNESS_RULES = [
