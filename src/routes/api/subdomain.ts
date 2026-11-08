@@ -167,3 +167,6 @@ export const Route = createFileRoute("/api/subdomain")({
     },
   },
 });
+
+/** Reused by the partner API (/api/public/v1) — same logic, service-account owner. */
+export const subdomainHandlers = { check: handleCheck, claim: handleClaim, release: handleRelease };

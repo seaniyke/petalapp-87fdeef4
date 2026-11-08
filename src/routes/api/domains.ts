@@ -412,3 +412,12 @@ export const Route = createFileRoute("/api/domains")({
     },
   },
 });
+
+/** Reused by the partner API (/api/public/v1) — same logic, service-account owner. */
+export const domainHandlers = {
+  list: handleList,
+  add: handleAdd,
+  verify: handleVerify,
+  setPrimary: handleSetPrimary,
+  remove: handleRemove,
+};
