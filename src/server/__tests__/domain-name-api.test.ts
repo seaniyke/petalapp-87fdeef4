@@ -82,7 +82,10 @@ describe("automatic renewal timing and charge", () => {
   it("does not renew a domain expiring in 45 days", () => {
     expect(isRenewalDue("2026-12-23T00:00:00Z", now)).toBe(false);
   });
-  it("a $12.29 .com renewal with 25% markup costs a customer 77 credits at 20¢", () => {
-    expect(creditsForUsdCents(1536, 20)).toBe(77);
+  it("a $12.29 .com renewal with 25% markup costs a customer 103 credits at 15¢", () => {
+    expect(creditsForUsdCents(1536, 15)).toBe(103);
+  });
+  it("falls back to 15¢ per credit when no rate is set", () => {
+    expect(creditsForUsdCents(1536, 0)).toBe(103);
   });
 });
