@@ -130,6 +130,26 @@ export async function recheckCustomHostname(
   });
 }
 
+/** Find a registered custom hostname by exact name (null when absent). */
+export async function findCustomHostnameByName(hostname: string): Promise<CfHostname | null> {
+  const { zoneId } = getEnv();
+  const list = await cfFetch<CfHostname[]>(
+    `/zones/${zoneId}/custom_hostnames?hostname=${encodeURIComponent(hostname)}`,
+  );
+  return (list ?? []).find((h) => h.hostname === hostname) ?? null;
+}
+
+/**
+ * Make sure `hostname` has its own Cloudflare for SaaS certificate.
+ * Wildcard certificates need the Enterprise plan, so every Petal address on
+ * an external root (e.g. `<slug>.sites.custardai.dev`) is registered one by one.
+ */
+export async function ensureCustomHostname(hostname: string): Promise<CfHostname> {
+  const existing = await findCustomHostnameByName(hostname);
+  if (existing) return existing;
+  return createCustomHostname(hostname);
+}
+
 /** Poll a previously-registered hostname for its current status. */
 export async function getCustomHostname(id: string): Promise<CfHostname> {
   const { zoneId } = getEnv();
