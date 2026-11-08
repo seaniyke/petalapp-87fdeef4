@@ -4009,7 +4009,8 @@ async function handleGenerateRequestCore(
     chosenBy = isCrossCutting ? "difficulty:cross_cutting" : multiEditIntent ? "difficulty:multi_edit" : "difficulty:hard";
   } else if (preset === "smart") {
     // Phase tag overrides the keyword heuristic in smart mode.
-    const phaseDefault = tier === "smart" ? MODEL_BEST : MODEL_FAST;
+    // Code-writing never runs on the utility model; it lacks the depth for edits.
+    const phaseDefault = MODEL_BEST;
     chosenBy = "phase_router";
     if (tier === "cheap") {
       // Implement/docs turns are mostly code-writing. Keep them on the
