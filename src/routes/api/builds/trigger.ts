@@ -116,6 +116,12 @@ export const Route = createFileRoute("/api/builds/trigger")({
           return Response.json({ error: "Not authorized to build this project" }, { status: 403 });
         }
 
+        // Every project gets its own live address + SSL automatically
+        // (best-effort; never blocks or fails the build).
+        void import("@/server/petal-subdomain.server")
+          .then((m) => m.ensureProjectSubdomain(projectId))
+          .catch((e) => console.error("[subdomain] auto-claim failed", projectId, e));
+
         // 2) Load files together with the code revision they belong to
         //    (admin client bypasses RLS — safe, we already authorized). The
         //    build is labelled with exactly this revision, captured now.
