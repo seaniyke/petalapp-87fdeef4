@@ -40104,6 +40104,50 @@ export const db = {
   },
 };
 
+export type PetalFile = { key: string; url: string; size: number; contentType: string };
+
+/** File uploads (images up to 5 MB, PDFs). Returns a public URL to save on a record. */
+export const storage = {
+  async upload(file: File | Blob, name?: string): Promise<PetalFile> {
+    const fileName = name || (file as File).name || "file";
+    const token = getToken();
+    const first = pickedBase();
+    const order = [first, ...BASES.filter((b) => b !== first)];
+    let lastError: Error | null = null;
+    for (const base of order) {
+      let res: Response;
+      try {
+        res = await fetch(base + "/uploads?name=" + encodeURIComponent(fileName), {
+          method: "POST",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+            "x-petal-key": API_KEY,
+            ...(token ? { Authorization: "Bearer " + token } : {}),
+          },
+          body: file,
+        });
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error("Network error");
+        continue;
+      }
+      const body = (await res.json().catch(() => ({}))) as any;
+      if (!res.ok) {
+        lastError = new Error(body?.error || "Upload failed (" + res.status + ")");
+        if ([401, 404, 502, 503, 504].includes(res.status)) continue;
+        throw lastError;
+      }
+      rememberBase(base);
+      return body.file as PetalFile;
+    }
+    throw lastError || new Error("Upload failed");
+  },
+  remove(key: string): Promise<{ ok: true }> {
+    return request("/uploads/" + key.split("/").map(encodeURIComponent).join("/"), {
+      method: "DELETE",
+    });
+  },
+};
+
 export const auth = {
   async signUp(email: string, password: string, name?: string) {
     const r = await request<{ token: string; user: PetalUser }>("/auth/signup", {
@@ -58780,6 +58824,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -59643,8 +59688,8 @@ var init_economics_config_server = __esm({
       max_active_compute: 25,
       badge_removal_credits: 25,
       // What one credit is worth in USD cents when we charge a real cash cost
-      // (domain registration). Conservative vs the cheapest pack (20 credits/$5).
-      credit_retail_usd_cents: 20,
+      // (domain registration). Matches the $0.15 credit sale price.
+      credit_retail_usd_cents: 15,
       // Build billing (see src/lib/build-pricing.ts). Cost/credit is DERIVED:
       // revenue_per_credit_usd × (1 − target_gross_margin_pct/100).
       revenue_per_credit_usd: 0.13,
@@ -139148,7 +139193,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140236,7 +140280,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140401,7 +140444,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140445,7 +140487,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -140667,7 +140708,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -141145,7 +141185,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -142997,7 +143036,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144202,7 +144240,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145325,7 +145362,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -170517,6 +170553,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
