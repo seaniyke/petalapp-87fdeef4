@@ -6,7 +6,7 @@ import { activityRange } from "@/routes/api/public/v1/projects/$id.backend";
 import { iconExtension, isOwnSiteImageUrl, isPartnerAssetUrl } from "@/lib/site-image-url";
 import { ogRenderUrl } from "@/routes/api/public/og-image.$projectId";
 import { ECONOMICS_DEFAULTS } from "@/server/economics-config.server";
-import { alertDecision, PARTNER_LOW_BALANCE_CREDITS } from "@/server/balance-alert.server";
+import { alertDecision, checkIsDue, PARTNER_ALERT_RECIPIENT, PARTNER_LOW_BALANCE_CREDITS } from "@/server/balance-alert.server";
 
 const base = {
   costs: [{ resource: "cloud_shared", quantity: 10, unit: "rows", costUsd: 0.001, basis: "ALLOCATED" as const }],
@@ -105,6 +105,15 @@ describe("partner low-balance email", () => {
     expect(alertDecision(10450.96, 1000, null)).toBe("none");
     expect(alertDecision(1000, 1000, null)).toBe("none");
     expect(alertDecision(5000, 1000, "2026-11-08T00:00:00Z")).toBe("rearm");
+  });
+  it("goes to the owner's address", () => {
+    expect(PARTNER_ALERT_RECIPIENT).toBe("ikemadu26@gmail.com");
+  });
+  it("checks the balance at most once an hour", () => {
+    const now = Date.parse("2026-11-08T19:00:00Z");
+    expect(checkIsDue(null, now)).toBe(true);
+    expect(checkIsDue("2026-11-08T18:05:00Z", now)).toBe(false);
+    expect(checkIsDue("2026-11-08T18:00:00Z", now)).toBe(true);
   });
 });
 
