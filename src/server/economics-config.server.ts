@@ -43,6 +43,7 @@ export type EconomicsKey =
   | "estimate_cost_escalated_usd"
   | "cloud_external_margin_pct"
   | "cloud_shared_discount_pct"
+  | "cloud_shared_daily_credits"
   | "supabase_micro_hour_usd"
   | "supabase_disk_gb_month_usd"
   | "supabase_included_disk_gb"
@@ -92,6 +93,8 @@ export const ECONOMICS_DEFAULTS: Record<EconomicsKey, number> = {
   // published Supabase / Railway rates; margin is GROSS margin.
   cloud_external_margin_pct: 30,
   cloud_shared_discount_pct: 50,
+  // Shared Cloud flat rate: credits per ACTIVE day (0.55 ≈ $2.50 / 30 days).
+  cloud_shared_daily_credits: 0.55,
   supabase_micro_hour_usd: 0.01344,
   supabase_disk_gb_month_usd: 0.125,
   supabase_included_disk_gb: 8,

@@ -95,6 +95,7 @@ import { Route as ApiPublicCronTurnResumeRouteImport } from './routes/api/public
 import { Route as ApiPublicEmailResendWebhookRouteImport } from './routes/api/public/email/resend-webhook'
 import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
 import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
+import { Route as ApiPublicOgImageProjectIdRouteImport } from './routes/api/public/og-image.$projectId'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
 import { Route as ApiPublicV1BillingRouteImport } from './routes/api/public/v1/billing'
@@ -110,6 +111,7 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as ApiPublicV1DomainsSearchRouteImport } from './routes/api/public/v1/domains.search'
 import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
+import { Route as ApiPublicV1ProjectsIdBackendRouteImport } from './routes/api/public/v1/projects/$id.backend'
 import { Route as ApiPublicV1ProjectsIdBillingRouteImport } from './routes/api/public/v1/projects/$id.billing'
 import { Route as ApiPublicV1ProjectsIdBrandingRouteImport } from './routes/api/public/v1/projects/$id.branding'
 import { Route as ApiPublicV1ProjectsIdBuildRouteImport } from './routes/api/public/v1/projects/$id.build'
@@ -118,6 +120,7 @@ import { Route as ApiPublicV1ProjectsIdDomainsRouteImport } from './routes/api/p
 import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/public/v1/projects/$id.files'
 import { Route as ApiPublicV1ProjectsIdOverviewRouteImport } from './routes/api/public/v1/projects/$id.overview'
 import { Route as ApiPublicV1ProjectsIdPublishRouteImport } from './routes/api/public/v1/projects/$id.publish'
+import { Route as ApiPublicV1ProjectsIdSiteInfoRouteImport } from './routes/api/public/v1/projects/$id.site-info'
 import { Route as ApiPublicV1ProjectsIdSubdomainRouteImport } from './routes/api/public/v1/projects/$id.subdomain'
 import { Route as ApiPublicV1TurnsIdCancelRouteImport } from './routes/api/public/v1/turns/$id.cancel'
 import { Route as ApiPublicV1TurnsIdEventsRouteImport } from './routes/api/public/v1/turns/$id.events'
@@ -577,6 +580,12 @@ const ApiPublicMobileCallbackRoute = ApiPublicMobileCallbackRouteImport.update({
   path: '/api/public/mobile/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicOgImageProjectIdRoute =
+  ApiPublicOgImageProjectIdRouteImport.update({
+    id: '/api/public/og-image/$projectId',
+    path: '/api/public/og-image/$projectId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaystackWebhookRoute =
   ApiPublicPaystackWebhookRouteImport.update({
     id: '/api/public/paystack/webhook',
@@ -657,6 +666,12 @@ const ApiPublicV1TurnsIdRoute = ApiPublicV1TurnsIdRouteImport.update({
   path: '/api/public/v1/turns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1ProjectsIdBackendRoute =
+  ApiPublicV1ProjectsIdBackendRouteImport.update({
+    id: '/$id/backend',
+    path: '/$id/backend',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
 const ApiPublicV1ProjectsIdBillingRoute =
   ApiPublicV1ProjectsIdBillingRouteImport.update({
     id: '/$id/billing',
@@ -703,6 +718,12 @@ const ApiPublicV1ProjectsIdPublishRoute =
   ApiPublicV1ProjectsIdPublishRouteImport.update({
     id: '/$id/publish',
     path: '/$id/publish',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
+const ApiPublicV1ProjectsIdSiteInfoRoute =
+  ApiPublicV1ProjectsIdSiteInfoRouteImport.update({
+    id: '/$id/site-info',
+    path: '/$id/site-info',
     getParentRoute: () => ApiPublicV1ProjectsRoute,
   } as any)
 const ApiPublicV1ProjectsIdSubdomainRoute =
@@ -835,6 +856,7 @@ export interface FileRoutesByFullPath {
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
+  '/api/public/og-image/$projectId': typeof ApiPublicOgImageProjectIdRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
@@ -850,6 +872,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/branding': typeof ApiPublicV1ProjectsIdBrandingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
@@ -858,6 +881,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
+  '/api/public/v1/projects/$id/site-info': typeof ApiPublicV1ProjectsIdSiteInfoRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -953,6 +977,7 @@ export interface FileRoutesByTo {
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
+  '/api/public/og-image/$projectId': typeof ApiPublicOgImageProjectIdRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
@@ -968,6 +993,7 @@ export interface FileRoutesByTo {
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/branding': typeof ApiPublicV1ProjectsIdBrandingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
@@ -976,6 +1002,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
+  '/api/public/v1/projects/$id/site-info': typeof ApiPublicV1ProjectsIdSiteInfoRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -1072,6 +1099,7 @@ export interface FileRoutesById {
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
+  '/api/public/og-image/$projectId': typeof ApiPublicOgImageProjectIdRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
@@ -1087,6 +1115,7 @@ export interface FileRoutesById {
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
+  '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/branding': typeof ApiPublicV1ProjectsIdBrandingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
@@ -1095,6 +1124,7 @@ export interface FileRoutesById {
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
+  '/api/public/v1/projects/$id/site-info': typeof ApiPublicV1ProjectsIdSiteInfoRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -1192,6 +1222,7 @@ export interface FileRouteTypes {
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
+    | '/api/public/og-image/$projectId'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
     | '/api/public/v1/billing'
@@ -1207,6 +1238,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/send'
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/backend'
     | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/branding'
     | '/api/public/v1/projects/$id/build'
@@ -1215,6 +1247,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
     | '/api/public/v1/projects/$id/publish'
+    | '/api/public/v1/projects/$id/site-info'
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -1310,6 +1343,7 @@ export interface FileRouteTypes {
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
+    | '/api/public/og-image/$projectId'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
     | '/api/public/v1/billing'
@@ -1325,6 +1359,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/send'
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/backend'
     | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/branding'
     | '/api/public/v1/projects/$id/build'
@@ -1333,6 +1368,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
     | '/api/public/v1/projects/$id/publish'
+    | '/api/public/v1/projects/$id/site-info'
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -1428,6 +1464,7 @@ export interface FileRouteTypes {
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
+    | '/api/public/og-image/$projectId'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
     | '/api/public/v1/billing'
@@ -1443,6 +1480,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/send'
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
+    | '/api/public/v1/projects/$id/backend'
     | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/branding'
     | '/api/public/v1/projects/$id/build'
@@ -1451,6 +1489,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
     | '/api/public/v1/projects/$id/publish'
+    | '/api/public/v1/projects/$id/site-info'
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -1545,6 +1584,7 @@ export interface RootRouteChildren {
   ApiPublicEmailResendWebhookRoute: typeof ApiPublicEmailResendWebhookRoute
   ApiPublicEmailSendRoute: typeof ApiPublicEmailSendRoute
   ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
+  ApiPublicOgImageProjectIdRoute: typeof ApiPublicOgImageProjectIdRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiPublicSharedSplatRoute: typeof ApiPublicSharedSplatRoute
   ApiPublicV1BillingRoute: typeof ApiPublicV1BillingRoute
@@ -2166,6 +2206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMobileCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/og-image/$projectId': {
+      id: '/api/public/og-image/$projectId'
+      path: '/api/public/og-image/$projectId'
+      fullPath: '/api/public/og-image/$projectId'
+      preLoaderRoute: typeof ApiPublicOgImageProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/paystack/webhook': {
       id: '/api/public/paystack/webhook'
       path: '/api/public/paystack/webhook'
@@ -2271,6 +2318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1TurnsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/projects/$id/backend': {
+      id: '/api/public/v1/projects/$id/backend'
+      path: '/$id/backend'
+      fullPath: '/api/public/v1/projects/$id/backend'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdBackendRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
     '/api/public/v1/projects/$id/billing': {
       id: '/api/public/v1/projects/$id/billing'
       path: '/$id/billing'
@@ -2325,6 +2379,13 @@ declare module '@tanstack/react-router' {
       path: '/$id/publish'
       fullPath: '/api/public/v1/projects/$id/publish'
       preLoaderRoute: typeof ApiPublicV1ProjectsIdPublishRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
+    '/api/public/v1/projects/$id/site-info': {
+      id: '/api/public/v1/projects/$id/site-info'
+      path: '/$id/site-info'
+      fullPath: '/api/public/v1/projects/$id/site-info'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdSiteInfoRouteImport
       parentRoute: typeof ApiPublicV1ProjectsRoute
     }
     '/api/public/v1/projects/$id/subdomain': {
@@ -2424,6 +2485,7 @@ const ApiPublicV1ProjectsIdDomainsRouteWithChildren =
   )
 
 interface ApiPublicV1ProjectsRouteChildren {
+  ApiPublicV1ProjectsIdBackendRoute: typeof ApiPublicV1ProjectsIdBackendRoute
   ApiPublicV1ProjectsIdBillingRoute: typeof ApiPublicV1ProjectsIdBillingRoute
   ApiPublicV1ProjectsIdBrandingRoute: typeof ApiPublicV1ProjectsIdBrandingRoute
   ApiPublicV1ProjectsIdBuildRoute: typeof ApiPublicV1ProjectsIdBuildRoute
@@ -2432,11 +2494,13 @@ interface ApiPublicV1ProjectsRouteChildren {
   ApiPublicV1ProjectsIdFilesRoute: typeof ApiPublicV1ProjectsIdFilesRoute
   ApiPublicV1ProjectsIdOverviewRoute: typeof ApiPublicV1ProjectsIdOverviewRoute
   ApiPublicV1ProjectsIdPublishRoute: typeof ApiPublicV1ProjectsIdPublishRoute
+  ApiPublicV1ProjectsIdSiteInfoRoute: typeof ApiPublicV1ProjectsIdSiteInfoRoute
   ApiPublicV1ProjectsIdSubdomainRoute: typeof ApiPublicV1ProjectsIdSubdomainRoute
   ApiPublicV1ProjectsIdRecordsCollectionRoute: typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
 }
 
 const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
+  ApiPublicV1ProjectsIdBackendRoute: ApiPublicV1ProjectsIdBackendRoute,
   ApiPublicV1ProjectsIdBillingRoute: ApiPublicV1ProjectsIdBillingRoute,
   ApiPublicV1ProjectsIdBrandingRoute: ApiPublicV1ProjectsIdBrandingRoute,
   ApiPublicV1ProjectsIdBuildRoute: ApiPublicV1ProjectsIdBuildRoute,
@@ -2446,6 +2510,7 @@ const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
   ApiPublicV1ProjectsIdFilesRoute: ApiPublicV1ProjectsIdFilesRoute,
   ApiPublicV1ProjectsIdOverviewRoute: ApiPublicV1ProjectsIdOverviewRoute,
   ApiPublicV1ProjectsIdPublishRoute: ApiPublicV1ProjectsIdPublishRoute,
+  ApiPublicV1ProjectsIdSiteInfoRoute: ApiPublicV1ProjectsIdSiteInfoRoute,
   ApiPublicV1ProjectsIdSubdomainRoute: ApiPublicV1ProjectsIdSubdomainRoute,
   ApiPublicV1ProjectsIdRecordsCollectionRoute:
     ApiPublicV1ProjectsIdRecordsCollectionRoute,
@@ -2553,6 +2618,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEmailResendWebhookRoute: ApiPublicEmailResendWebhookRoute,
   ApiPublicEmailSendRoute: ApiPublicEmailSendRoute,
   ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,
+  ApiPublicOgImageProjectIdRoute: ApiPublicOgImageProjectIdRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiPublicSharedSplatRoute: ApiPublicSharedSplatRoute,
   ApiPublicV1BillingRoute: ApiPublicV1BillingRoute,

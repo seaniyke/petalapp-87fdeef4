@@ -194,7 +194,7 @@ export async function getSharedBackend(projectId: string): Promise<SharedBackend
  * Outcome of an access check. Kept distinct on purpose: "we could not reach
  * the backend" must never be reported to an app as "your key is wrong".
  */
-export type SharedAccess = "ok" | "bad_key" | "no_backend" | "unavailable";
+export type SharedAccess = "ok" | "bad_key" | "no_backend" | "unavailable" | "paused";
 
 export async function resolveProjectAccess(
   projectId: string,
@@ -209,6 +209,18 @@ export async function resolveProjectAccess(
   }
   if (!backend) return "no_backend";
   if (backend.apiKey !== apiKey) return "bad_key";
+  // A paused backend (partner pause or unpaid Shared Cloud) answers nothing;
+  // the published pages keep loading from the edge.
+  try {
+    const { data: proj } = await supabaseAdmin
+      .from("projects")
+      .select("runtime_paused")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (proj?.runtime_paused) return "paused";
+  } catch {
+    return "unavailable";
+  }
   void supabaseAdmin
     .from("shared_backends")
     .update({ last_active_at: new Date().toISOString() })
