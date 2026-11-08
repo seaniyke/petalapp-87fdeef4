@@ -19,39 +19,38 @@ export function alertDecision(balance: number, threshold: number, alertedAt: str
   return alertedAt ? "rearm" : "none";
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
-
 function fmt(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-export async function emailAdmins(name: string, balance: number, threshold: number): Promise<string | null> {
+/** Queue the owner notice through Petal's own email sender (one send per admin). */
+export async function emailAdmins(
+  origin: string,
+  name: string,
+  balance: number,
+  threshold: number,
+  key: string,
+): Promise<string | null> {
   const { resolveAdminRecipients } = await import("@/server/self-learning-digest.server");
   const to = await resolveAdminRecipients();
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_ADDRESS || "Petal <noreply@buildwithpetal.com>";
+  const secret = process.env.BUILDER_SHARED_SECRET;
   if (!to.length) return "no admin recipients";
-  if (!apiKey) return "RESEND_API_KEY not configured";
-  const html = `<div style="font-family:Arial,sans-serif;font-size:15px;color:#18181b;line-height:1.5">
-<p><strong>${escapeHtml(name)}</strong> has <strong>${fmt(balance)} credits</strong> left, below your ${fmt(threshold)}-credit alert.</p>
-<p>Their builds and Shared Cloud keep running until the balance reaches zero. After that, sign-in and data on their sites pause 48 hours later, while the pages stay online.</p>
-<p>You'll get this email again the next time the balance drops below ${fmt(threshold)} after a top-up.</p>
-<p style="color:#71717a;font-size:13px">Petal</p></div>`;
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from,
-      to,
-      subject: `Petal · ${name} is below ${fmt(threshold)} credits (${fmt(balance)} left)`,
-      html,
-      tags: [{ name: "kind", value: "partner_low_balance" }],
-    }),
-  });
-  if (!res.ok) return `Resend ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`;
-  return null;
+  if (!secret) return "BUILDER_SHARED_SECRET not configured";
+  const errors: string[] = [];
+  for (const [i, recipientEmail] of to.entries()) {
+    const res = await fetch(new URL("/lovable/email/transactional/send", origin).toString(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-petal-internal-secret": secret },
+      body: JSON.stringify({
+        templateName: "partner-low-balance",
+        recipientEmail,
+        idempotencyKey: `${key}-${i}`,
+        templateData: { partnerName: name, balance: fmt(balance), threshold: fmt(threshold) },
+      }),
+    }).catch((e: unknown) => new Response(String(e), { status: 599 }));
+    if (!res.ok) errors.push(`send ${res.status}: ${(await res.text().catch(() => "")).slice(0, 160)}`);
+  }
+  return errors.length === to.length ? errors.join("; ") : null;
 }
 
 export type BalanceAlertResult = {
@@ -62,7 +61,7 @@ export type BalanceAlertResult = {
 };
 
 /** Check Custard's balance and email the owner on a dip below the threshold. */
-export async function checkPartnerBalance(): Promise<BalanceAlertResult> {
+export async function checkPartnerBalance(origin: string): Promise<BalanceAlertResult> {
   const { serviceUserId } = await import("@/server/service-api.server");
   const userId = await serviceUserId();
   if (!userId) return { balance: null, decision: "skipped", emailed: false, error: "no partner account" };
@@ -80,7 +79,7 @@ export async function checkPartnerBalance(): Promise<BalanceAlertResult> {
   let error: string | null = null;
   let alertedAt: string | null = state?.alerted_at ?? null;
   if (decision === "send") {
-    error = await emailAdmins("Custard AI", balance, threshold);
+    error = await emailAdmins(origin, "Custard AI", balance, threshold, `partner-low-balance-${userId}-${new Date().toISOString().slice(0, 13)}`);
     if (!error) {
       emailed = true;
       alertedAt = new Date().toISOString();

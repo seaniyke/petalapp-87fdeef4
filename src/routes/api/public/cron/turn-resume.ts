@@ -155,7 +155,7 @@ export async function handleTurnResume(request: Request): Promise<Response> {
   // Partner low-balance email (one per dip below the threshold).
   try {
     const { checkPartnerBalance } = await import("@/server/balance-alert.server");
-    const r = await checkPartnerBalance();
+    const r = await checkPartnerBalance(new URL(request.url).origin);
     if (r.error) console.warn("[cron/turn-resume] balance alert:", r.error);
   } catch (e) {
     console.warn("[cron/turn-resume] balance alert failed:", (e as Error).message);
