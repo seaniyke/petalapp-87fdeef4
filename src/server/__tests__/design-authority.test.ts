@@ -269,8 +269,12 @@ describe("Vite SPA projects (no __root.tsx)", () => {
 describe("package selection follows the brief", () => {
   const cases: Array<[string, string, string]> = [
     ["Build a 4-page website for a bakery called Crumb & Co", "substrate", "terracotta"],
-    ["A patient and appointment system for a hospital", "substrate", "blue"],
-    ["A SaaS analytics dashboard for developers", "substrate", "indigo"],
+    ["A patient and appointment system for a hospital", "haven", "ocean"],
+    ["A dental clinic website with booking", "haven", "teal"],
+    ["A beauty salon called Amara Glow", "atelier", "rose"],
+    ["A day spa and wellness retreat", "atelier", "sage"],
+    ["A SaaS analytics dashboard for developers", "meridian", "cobalt"],
+    ["A fintech budgeting app", "meridian", "lime"],
     ["An organic vegetable box subscription", "substrate", "emerald"],
     ["A photography portfolio with a dark editorial feel", "obsidian", "platinum"],
     ["A fine dining restaurant with a luxury whisky list", "obsidian", "gold"],

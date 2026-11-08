@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "slug": "atelier",
+  "name": "Atelier",
+  "description": "Warm editorial studio style: linen surfaces, a soft optical serif display, generous whitespace, photography-led layouts and physical, unhurried motion.",
+  "when_to_use": "Salons, beauty, spas, skincare, boutiques, weddings, florists, hotels, retreats and lifestyle brands that sell a feeling more than a feature list.",
+  "version": "1.0.0",
+  "default_accent": "rose",
+  "accents": [
+    "rose",
+    "sage",
+    "bronze"
+  ],
+  "capabilities": [
+    "light",
+    "dark",
+    "motion",
+    "serif-display",
+    "editorial",
+    "photography"
+  ],
+  "token_categories": [
+    "color",
+    "typography",
+    "radius",
+    "shadow",
+    "motion",
+    "spacing"
+  ],
+  "fonts": [
+    "Fraunces",
+    "Figtree"
+  ],
+  "has_components": false
+}
