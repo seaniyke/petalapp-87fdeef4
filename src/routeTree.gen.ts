@@ -117,6 +117,7 @@ import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/pub
 import { Route as ApiPublicV1ProjectsIdSubdomainRouteImport } from './routes/api/public/v1/projects/$id.subdomain'
 import { Route as ApiPublicV1TurnsIdCancelRouteImport } from './routes/api/public/v1/turns/$id.cancel'
 import { Route as ApiPublicV1TurnsIdEventsRouteImport } from './routes/api/public/v1/turns/$id.events'
+import { Route as ApiPublicV1ProjectsIdDomainsManageRouteImport } from './routes/api/public/v1/projects/$id.domains.manage'
 import { Route as ApiPublicV1ProjectsIdDomainsPurchaseRouteImport } from './routes/api/public/v1/projects/$id.domains.purchase'
 import { Route as ApiPublicV1ProjectsIdDomainsSearchRouteImport } from './routes/api/public/v1/projects/$id.domains.search'
 import { Route as ApiPublicV1ProjectsIdRecordsCollectionRouteImport } from './routes/api/public/v1/projects/$id.records.$collection'
@@ -694,6 +695,12 @@ const ApiPublicV1TurnsIdEventsRoute =
     path: '/events',
     getParentRoute: () => ApiPublicV1TurnsIdRoute,
   } as any)
+const ApiPublicV1ProjectsIdDomainsManageRoute =
+  ApiPublicV1ProjectsIdDomainsManageRouteImport.update({
+    id: '/manage',
+    path: '/manage',
+    getParentRoute: () => ApiPublicV1ProjectsIdDomainsRoute,
+  } as any)
 const ApiPublicV1ProjectsIdDomainsPurchaseRoute =
   ApiPublicV1ProjectsIdDomainsPurchaseRouteImport.update({
     id: '/purchase',
@@ -822,6 +829,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
+  '/api/public/v1/projects/$id/domains/manage': typeof ApiPublicV1ProjectsIdDomainsManageRoute
   '/api/public/v1/projects/$id/domains/purchase': typeof ApiPublicV1ProjectsIdDomainsPurchaseRoute
   '/api/public/v1/projects/$id/domains/search': typeof ApiPublicV1ProjectsIdDomainsSearchRoute
   '/api/public/v1/projects/$id/records/$collection': typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
@@ -935,6 +943,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
+  '/api/public/v1/projects/$id/domains/manage': typeof ApiPublicV1ProjectsIdDomainsManageRoute
   '/api/public/v1/projects/$id/domains/purchase': typeof ApiPublicV1ProjectsIdDomainsPurchaseRoute
   '/api/public/v1/projects/$id/domains/search': typeof ApiPublicV1ProjectsIdDomainsSearchRoute
   '/api/public/v1/projects/$id/records/$collection': typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
@@ -1049,6 +1058,7 @@ export interface FileRoutesById {
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
+  '/api/public/v1/projects/$id/domains/manage': typeof ApiPublicV1ProjectsIdDomainsManageRoute
   '/api/public/v1/projects/$id/domains/purchase': typeof ApiPublicV1ProjectsIdDomainsPurchaseRoute
   '/api/public/v1/projects/$id/domains/search': typeof ApiPublicV1ProjectsIdDomainsSearchRoute
   '/api/public/v1/projects/$id/records/$collection': typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
@@ -1164,6 +1174,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
+    | '/api/public/v1/projects/$id/domains/manage'
     | '/api/public/v1/projects/$id/domains/purchase'
     | '/api/public/v1/projects/$id/domains/search'
     | '/api/public/v1/projects/$id/records/$collection'
@@ -1277,6 +1288,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
+    | '/api/public/v1/projects/$id/domains/manage'
     | '/api/public/v1/projects/$id/domains/purchase'
     | '/api/public/v1/projects/$id/domains/search'
     | '/api/public/v1/projects/$id/records/$collection'
@@ -1390,6 +1402,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
+    | '/api/public/v1/projects/$id/domains/manage'
     | '/api/public/v1/projects/$id/domains/purchase'
     | '/api/public/v1/projects/$id/domains/search'
     | '/api/public/v1/projects/$id/records/$collection'
@@ -2254,6 +2267,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1TurnsIdEventsRouteImport
       parentRoute: typeof ApiPublicV1TurnsIdRoute
     }
+    '/api/public/v1/projects/$id/domains/manage': {
+      id: '/api/public/v1/projects/$id/domains/manage'
+      path: '/manage'
+      fullPath: '/api/public/v1/projects/$id/domains/manage'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdDomainsManageRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsIdDomainsRoute
+    }
     '/api/public/v1/projects/$id/domains/purchase': {
       id: '/api/public/v1/projects/$id/domains/purchase'
       path: '/purchase'
@@ -2302,12 +2322,15 @@ const ApiBillingCryptoRouteWithChildren =
   ApiBillingCryptoRoute._addFileChildren(ApiBillingCryptoRouteChildren)
 
 interface ApiPublicV1ProjectsIdDomainsRouteChildren {
+  ApiPublicV1ProjectsIdDomainsManageRoute: typeof ApiPublicV1ProjectsIdDomainsManageRoute
   ApiPublicV1ProjectsIdDomainsPurchaseRoute: typeof ApiPublicV1ProjectsIdDomainsPurchaseRoute
   ApiPublicV1ProjectsIdDomainsSearchRoute: typeof ApiPublicV1ProjectsIdDomainsSearchRoute
 }
 
 const ApiPublicV1ProjectsIdDomainsRouteChildren: ApiPublicV1ProjectsIdDomainsRouteChildren =
   {
+    ApiPublicV1ProjectsIdDomainsManageRoute:
+      ApiPublicV1ProjectsIdDomainsManageRoute,
     ApiPublicV1ProjectsIdDomainsPurchaseRoute:
       ApiPublicV1ProjectsIdDomainsPurchaseRoute,
     ApiPublicV1ProjectsIdDomainsSearchRoute:
