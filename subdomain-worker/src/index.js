@@ -162,7 +162,7 @@ async function proxy(request, target, projectId, meta) {
   if (projectId && ct.includes("text/html") && upstream.status >= 200 && upstream.status < 300) {
     const rewriter = new HTMLRewriter()
       .on("head", new TrackerInjector(projectId))
-      .on("head", new SiteMetaInjector(meta || {}));
+      .on("head", new SiteMetaInjector(meta || {}, new URL(request.url).host));
     // We also drop any pre-existing <title>/<link rel="icon">/og tags so our
     // overrides actually win — generated apps usually ship with their own
     // generic ones.
@@ -227,8 +227,9 @@ function escapeHtml(s) {
  *  generated app gets the Petal flower in browser tabs until the owner
  *  uploads their own. */
 class SiteMetaInjector {
-  constructor(meta) {
+  constructor(meta, host) {
     this.meta = meta;
+    this.host = host;
   }
   element(el) {
     const m = this.meta || {};
@@ -246,12 +247,33 @@ class SiteMetaInjector {
       parts.push(`<meta property="og:description" content="${escapeAttr(m.description)}" />`);
       parts.push(`<meta name="twitter:description" content="${escapeAttr(m.description)}" />`);
     }
-    const ogImage = m.ogImageUrl || iconUrl;
-    parts.push(`<meta property="og:image" content="${escapeAttr(ogImage)}" />`);
-    parts.push(`<meta name="twitter:image" content="${escapeAttr(ogImage)}" />`);
-    parts.push(`<meta name="twitter:card" content="${m.ogImageUrl ? "summary_large_image" : "summary"}" />`);
+    // Share image: the saved one, else this site's own screenshot card —
+    // never the Petal logo.
+    const ogImage = m.ogImageUrl || (this.host ? `https://${this.host}/og-image.png` : null);
+    if (ogImage) {
+      parts.push(`<meta property="og:image" content="${escapeAttr(ogImage)}" />`);
+      parts.push(`<meta name="twitter:image" content="${escapeAttr(ogImage)}" />`);
+    }
+    parts.push(`<meta name="twitter:card" content="summary_large_image" />`);
     el.prepend(parts.join(""), { html: true });
   }
+}
+
+/** 1200×630 screenshot card for this site, cached for one hour. */
+async function ogImage(projectId) {
+  const cacheKey = new Request(`https://og.internal/${projectId}.png`);
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return cached;
+  const res = await fetch(`${CONTROL_PLANE}/api/public/og-image/${projectId}`);
+  if (!res.ok) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  const out = new Response(res.body, {
+    headers: {
+      "Content-Type": res.headers.get("content-type") || "image/png",
+      "Cache-Control": "public, max-age=3600",
+    },
+  });
+  await caches.default.put(cacheKey, out.clone());
+  return out;
 }
 
 export default {
@@ -268,6 +290,9 @@ export default {
     }
 
     const result = await lookup(host);
+    if (result.kind === "proxy" && url.pathname === "/og-image.png" && request.method === "GET") {
+      return ogImage(result.projectId);
+    }
     if (result.kind === "proxy") return proxy(request, result.target, result.projectId, result.meta);
     return placeholder(result.kind);
   },
