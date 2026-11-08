@@ -4,7 +4,7 @@
  * Body: { query: string }
  * Returns: DomainSearchResult[] (hostname, available, priceCents)
  *
- * Auth required (any signed-in user) so we don't expose Cloudflare API quota
+ * Auth required (any signed-in user) so we don't expose registrar API quota
  * to the world.
  */
 import { createFileRoute } from "@tanstack/react-router";

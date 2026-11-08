@@ -3,7 +3,7 @@
  *
  * GET  → { usdCentsPerCredit }  (so the dialog can show a credit price)
  * POST → { projectId, hostname } → spends credits, then kicks off the
- *        Cloudflare registration exactly like the paid-by-card path.
+ *        registrar registration exactly like the paid-by-card path.
  *
  * Money safety:
  *   - price is re-quoted server side (never trusted from the client)
@@ -155,7 +155,7 @@ export const Route = createFileRoute("/api/registrar/purchase-credits")({
           });
         }
 
-        // If Cloudflare rejected the registration outright, the user never got
+        // If the registrar rejected the registration outright, the user never got
         // a domain — give the credits straight back.
         const { data: after } = await supabaseAdmin
           .from("purchased_domains")
