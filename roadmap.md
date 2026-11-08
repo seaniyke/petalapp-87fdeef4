@@ -13,7 +13,9 @@
 - [x] Accept iconUrl on custardai.dev; copy the logo into Petal storage
 - [x] Confirm reported active days match daily charges (same ledger rows)
 - [ ] Automatic top-up below 100 credits — needs owner go-ahead (Custard has no saved card; only a credit grant so far)
-- [ ] 8.54-credit refund for the 7 Nov old-rate charge — waiting on owner decision
+- [x] 8.54-credit refund — owner decided: no refund
+- [x] Grant Custard 10,000 credits (balance now 10,450.96)
+- [ ] Email owner when Custard drops below 1,000 credits — built and checking every 5 min; delivery blocked: Petal's app emails are switched off (needs owner OK to turn on)
 
 ## Current frontend request
 - [ ] Replace rejected small robot crew with a bold steel-and-amber workshop, substantial figures and task-specific articulation; verify actual motion and terminal stops.

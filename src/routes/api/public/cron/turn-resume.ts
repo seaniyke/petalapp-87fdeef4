@@ -152,6 +152,15 @@ export async function handleTurnResume(request: Request): Promise<Response> {
     console.warn("[cron/turn-resume] memory sweep failed:", (e as Error).message);
   }
 
+  // Partner low-balance email (one per dip below the threshold).
+  try {
+    const { checkPartnerBalance } = await import("@/server/balance-alert.server");
+    const r = await checkPartnerBalance(new URL(request.url).origin);
+    if (r.error) console.warn("[cron/turn-resume] balance alert:", r.error);
+  } catch (e) {
+    console.warn("[cron/turn-resume] balance alert failed:", (e as Error).message);
+  }
+
   let creditPausesRecovered = 0;
   try {
     const recovered = await recoverApplyingCreditPauses(MAX_PER_TICK);
