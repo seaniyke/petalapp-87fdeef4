@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { applyFlatSharedRate } from "@/server/cloud-metering.server";
-import { graceExpired, pauseReasonOf } from "@/server/shared-cloud-pause.server";
+import { backendEventPayload, graceExpired, pauseReasonOf, pauseReasonsOf } from "@/server/shared-cloud-pause.server";
+import { sharedActiveDays } from "@/server/service-billing.server";
+import { activityRange } from "@/routes/api/public/v1/projects/$id.backend";
 import { isOwnSiteImageUrl } from "@/lib/site-image-url";
 import { ogRenderUrl } from "@/routes/api/public/og-image.$projectId";
 import { ECONOMICS_DEFAULTS } from "@/server/economics-config.server";
@@ -28,16 +30,67 @@ describe("Shared Cloud flat rate", () => {
 });
 
 describe("Shared Cloud pause", () => {
-  it("reads billing vs partner pause", () => {
-    expect(pauseReasonOf({ runtime_paused: true, runtime_grace_until: "2026-01-01" })).toBe("billing");
-    expect(pauseReasonOf({ runtime_paused: true, runtime_grace_until: null })).toBe("partner");
-    expect(pauseReasonOf({ runtime_paused: false })).toBeNull();
+  it("keeps partner and billing pauses separate", () => {
+    expect(pauseReasonsOf({ partner_paused: true })).toEqual(["partner"]);
+    expect(pauseReasonsOf({ runtime_paused: true, runtime_grace_until: "2026-01-01" })).toEqual(["billing"]);
+    expect(pauseReasonsOf({ partner_paused: false, runtime_paused: false })).toEqual([]);
+  });
+  it("shows both reasons when a partner pause and a billing pause overlap", () => {
+    const both = { partner_paused: true, runtime_paused: true, runtime_grace_until: "2026-11-08T00:00:00Z" };
+    expect(pauseReasonsOf(both)).toEqual(["partner", "billing"]);
+    expect(pauseReasonOf(both)).toBe("both");
+  });
+  it("status webhook carries projectId, paused, pauseReason(s) and graceUntil", () => {
+    const at = new Date("2026-11-08T12:00:00Z");
+    expect(
+      backendEventPayload("backend.paused", "p1", { runtime_paused: true, runtime_grace_until: "2026-11-08T10:00:00Z" }, at),
+    ).toEqual({
+      event: "backend.paused",
+      projectId: "p1",
+      paused: true,
+      pauseReason: "billing",
+      pauseReasons: ["billing"],
+      graceUntil: "2026-11-08T10:00:00Z",
+      at: "2026-11-08T12:00:00.000Z",
+    });
   });
   it("pauses only after the grace window has passed", () => {
     const now = Date.parse("2026-11-08T12:00:00Z");
     expect(graceExpired("2026-11-08T11:00:00Z", now)).toBe(true);
     expect(graceExpired("2026-11-09T11:00:00Z", now)).toBe(false);
     expect(graceExpired(null, now)).toBe(false);
+  });
+});
+
+describe("active days per site", () => {
+  const charge = (day: string, delta = -0.55, meter = "cloud_shared") => ({
+    delta,
+    reason: "runtime_charge",
+    created_at: `${day}T03:20:00Z`,
+    metadata: { runtime_meter: meter, day },
+  });
+  it("lists each charged day once, oldest first, with its credits", () => {
+    expect(sharedActiveDays([charge("2026-11-09"), charge("2026-11-07"), charge("2026-11-08")])).toEqual([
+      { date: "2026-11-07", credits: 0.55 },
+      { date: "2026-11-08", credits: 0.55 },
+      { date: "2026-11-09", credits: 0.55 },
+    ]);
+  });
+  it("ignores other meters, refunds and build charges", () => {
+    expect(
+      sharedActiveDays([
+        charge("2026-11-08", -1.5, "backend_hour"),
+        { delta: 0.55, reason: "runtime_charge", metadata: { runtime_meter: "cloud_shared", day: "2026-11-08" } },
+        { delta: -20, reason: "ai_build_charge", created_at: "2026-11-08T10:00:00Z" },
+      ]),
+    ).toEqual([]);
+  });
+  it("defaults to the last 30 days and rejects ranges over 366 days", () => {
+    const now = new Date("2026-11-08T12:00:00Z");
+    expect(activityRange(new URL("https://x/api"), now)).toEqual({ from: "2026-10-10", to: "2026-11-08" });
+    expect(activityRange(new URL("https://x/api?from=2026-11-01&to=2026-11-07"), now)).toEqual({ from: "2026-11-01", to: "2026-11-07" });
+    expect(activityRange(new URL("https://x/api?from=2025-01-01&to=2026-11-07"), now)).toBeNull();
+    expect(activityRange(new URL("https://x/api?from=2026-11-07&to=2026-11-01"), now)).toBeNull();
   });
 });
 

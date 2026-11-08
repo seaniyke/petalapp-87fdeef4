@@ -22,7 +22,7 @@
  */
 
 /**
- * Kimble's own hosts — never a customer app. Covers both the original SaaS
+ * Petal's own hosts — never a customer app. Covers both the original SaaS
  * root and the current brand root, plus each one's `fallback.` origin host
  * (Cloudflare for SaaS sends customer traffic through it, but a direct visit
  * to the fallback host itself is not an app).
