@@ -2,8 +2,9 @@
  * Daily meter for Kimble Shared Cloud.
  *
  * Every app on the shared database that was active in the last 24 hours is
- * charged 24 hours of Shared Cloud: 50% below what the same app would pay on
- * the smallest dedicated database (src/lib/cloud-pricing.ts). Kimble's cost is
+ * charged the flat Shared Cloud rate (`cloud_shared_daily_credits`, 0.55/day).
+ * Out of credits past the 48h grace → backend paused (pages stay up); paused
+ * apps resume automatically once the owner has credits again. Kimble's cost is
  * ALLOCATED from the shared bill by stored rows, or UNKNOWN when no bill is
  * entered. Apps already on a dedicated database or their own server are
  * billed by their own meters, never here. Idempotent per project per day.
@@ -25,10 +26,31 @@ async function runSharedDay() {
     .select("project_id")
     .gte("last_active_at", since);
   const ids = (active ?? []).map((r) => String(r.project_id));
-  const summary = { active: ids.length, charged: 0, blocked: 0, skipped: 0, credits: 0 };
+  const { graceExpired, pauseForBilling, resumeBackend } = await import("@/server/shared-cloud-pause.server");
+  const { checkCreditBalance } = await import("@/server/credits.server");
+  const summary = { active: ids.length, charged: 0, blocked: 0, skipped: 0, credits: 0, paused: 0, resumed: 0 };
+
+  // 1. Auto-resume: apps paused for unpaid Shared Cloud come back as soon as
+  //    the owner has credits for a day again.
+  const { data: billingPaused } = await supabaseAdmin
+    .from("projects")
+    .select("id, owner_id")
+    .eq("runtime_paused", true)
+    .not("runtime_grace_until", "is", null)
+    .eq("backend_type", "shared");
+  const daily = (await (await import("@/server/economics-config.server")).economicsValues()).cloud_shared_daily_credits;
+  for (const p of billingPaused ?? []) {
+    if (!p.owner_id) continue;
+    const bal = await checkCreditBalance({ userId: p.owner_id, amount: daily });
+    if (bal.ok) {
+      await resumeBackend(p.id);
+      summary.resumed++;
+    }
+  }
+
   if (!ids.length) return summary;
   const [{ data: projects }, { data: dedicated }, { data: compute }] = await Promise.all([
-    supabaseAdmin.from("projects").select("id, owner_id, runtime_paused").in("id", ids),
+    supabaseAdmin.from("projects").select("id, owner_id, runtime_paused, runtime_grace_until").in("id", ids),
     supabaseAdmin.from("project_backends").select("project_id").in("project_id", ids).eq("status", "ready").eq("provider", "managed_petal"),
     supabaseAdmin.from("project_compute").select("project_id").in("project_id", ids).neq("status", "deleted"),
   ]);
@@ -51,7 +73,15 @@ async function runSharedDay() {
     if (res.ok) {
       summary.charged++;
       summary.credits += res.paidWithCredits ?? 0;
-    } else summary.blocked++;
+    } else {
+      summary.blocked++;
+      // 2. Out of credits past the 48h grace → pause sign-in and data.
+      //    (chargeRuntime opens the grace window on the first failure.)
+      if (graceExpired(p.runtime_grace_until)) {
+        await pauseForBilling(p.id);
+        summary.paused++;
+      }
+    }
   }
   return summary;
 }
