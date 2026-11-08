@@ -4379,6 +4379,7 @@ export type Database = {
           cloud_tier_intent: string
           created_at: string
           custom_instructions: string | null
+          external_user_id: string | null
           hide_petal_badge: boolean
           id: string
           is_featured: boolean
@@ -4413,6 +4414,7 @@ export type Database = {
           cloud_tier_intent?: string
           created_at?: string
           custom_instructions?: string | null
+          external_user_id?: string | null
           hide_petal_badge?: boolean
           id?: string
           is_featured?: boolean
@@ -4447,6 +4449,7 @@ export type Database = {
           cloud_tier_intent?: string
           created_at?: string
           custom_instructions?: string | null
+          external_user_id?: string | null
           hide_petal_badge?: boolean
           id?: string
           is_featured?: boolean
