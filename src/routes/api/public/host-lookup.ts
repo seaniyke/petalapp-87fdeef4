@@ -40,7 +40,7 @@ type SiteMeta = {
 };
 
 type Result =
-  | { kind: "proxy"; target: string; projectId: string; meta: SiteMeta }
+  | { kind: "proxy"; target: string; projectId: string; buildId: string | null; meta: SiteMeta }
   | { kind: "unpublished" | "private"; projectId: string }
   | { kind: "unknown" };
 
@@ -111,7 +111,7 @@ async function lookup(host: string): Promise<Result> {
     ogImageUrl: project.site_og_image_url?.trim() || null,
   };
 
-  return { kind: "proxy", target, projectId: project.id, meta };
+  return { kind: "proxy", target, projectId: project.id, buildId: project.published_build_id ?? null, meta };
 }
 
 export const Route = createFileRoute("/api/public/host-lookup")({

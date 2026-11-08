@@ -115,11 +115,16 @@ export async function chargeRuntime(opts: ChargeRuntimeOptions): Promise<ChargeR
         // Keep the existing 48h grace behaviour so a project isn't killed the
         // moment a balance runs out.
         if (opts.projectId) {
-          await supabaseAdmin
+          const { data: opened } = await supabaseAdmin
             .from("projects")
             .update({ runtime_grace_until: new Date(Date.now() + 48 * 3600_000).toISOString() })
             .eq("id", opts.projectId)
-            .is("runtime_grace_until", null);
+            .is("runtime_grace_until", null)
+            .select("id");
+          if (opened?.length) {
+            const { notifyBackendChange } = await import("@/server/shared-cloud-pause.server");
+            await notifyBackendChange(opts.projectId, "backend.grace_started");
+          }
         }
         return { ok: false, reason: "insufficient_balance", freeAfter: 0, topupAfter: 0 };
       }
@@ -148,11 +153,16 @@ export async function chargeRuntime(opts: ChargeRuntimeOptions): Promise<ChargeR
     });
 
     if (opts.projectId) {
-      await supabaseAdmin
+      const { data: closed } = await supabaseAdmin
         .from("projects")
         .update({ runtime_grace_until: null })
         .eq("id", opts.projectId)
-        .not("runtime_grace_until", "is", null);
+        .not("runtime_grace_until", "is", null)
+        .select("id");
+      if (closed?.length) {
+        const { notifyBackendChange } = await import("@/server/shared-cloud-pause.server");
+        await notifyBackendChange(opts.projectId, "backend.grace_ended");
+      }
     }
 
     return { ok: true, freeAfter: 0, topupAfter: 0, paidWithCredits: credits };

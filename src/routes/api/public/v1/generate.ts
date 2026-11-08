@@ -163,6 +163,8 @@ export const Route = createFileRoute("/api/public/v1/generate")({
             committedRevision: result?.committedRevision ?? null,
             persisted: result?.persisted ?? false,
             creditsCharged: result?.creditsCharged ?? null,
+            // Net credits this turn cost (charges minus refunds), from the ledger.
+            creditsUsed: billing?.net ?? null,
             billing,
             summary: result?.summary ?? null,
           });

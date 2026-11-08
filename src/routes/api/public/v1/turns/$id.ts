@@ -28,7 +28,12 @@ export const Route = createFileRoute("/api/public/v1/turns/$id")({
           data.status === "succeeded" ? previewUrlFor(data.project_id, data.id) : Promise.resolve(null),
           turnBill(owner, data.id),
         ]);
-        return json({ turn: { ...turn, ...previewFields(url) }, billing, ...previewFields(url) });
+        return json({
+          turn: { ...turn, ...previewFields(url) },
+          creditsUsed: billing.net,
+          billing,
+          ...previewFields(url),
+        });
       },
     },
   },

@@ -214,10 +214,10 @@ export async function resolveProjectAccess(
   try {
     const { data: proj } = await supabaseAdmin
       .from("projects")
-      .select("runtime_paused")
+      .select("runtime_paused, partner_paused")
       .eq("id", projectId)
       .maybeSingle();
-    if (proj?.runtime_paused) return "paused";
+    if (proj?.runtime_paused || proj?.partner_paused) return "paused";
   } catch {
     return "unavailable";
   }

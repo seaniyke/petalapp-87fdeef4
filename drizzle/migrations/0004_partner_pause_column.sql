@@ -1,0 +1,2 @@
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS partner_paused boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.projects.partner_paused IS 'Shared Cloud backend paused by the partner API. Independent of runtime_paused (billing pause).';

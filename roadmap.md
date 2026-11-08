@@ -1,4 +1,13 @@
 # Execution-engine replacement roadmap
+## Custard reply (8 Nov): billing/pause follow-ups
+- [x] og-image.png serves a real 1200×630 PNG on every site, refreshed per published build (router redeploy)
+- [x] iconUrl on partner site-info; no builder logo as default icon (lettermark from site name)
+- [x] Bare sites.custardai.dev: answer CNAME target + what it shows (redirect to custardai.dev)
+- [x] Backend status webhooks: grace started/ended, paused, resumed
+- [x] Active days per site over a date range on GET /projects/:id/backend
+- [x] Credits used per build: top-level creditsUsed on turn.completed + GET /turns/:id
+- [x] Partner pause and billing pause tracked separately; pauseReasons shows both
+- [x] Answer auto top-up question (not offered yet)
 ## Current frontend request
 - [ ] Replace rejected small robot crew with a bold steel-and-amber workshop, substantial figures and task-specific articulation; verify actual motion and terminal stops.
 - [x] Replace cartoon crew with articulated 3D robots; initial-thinking integration, phase/terminal tests, phone light/dark captures, motion/stop/reduced-motion verification completed.
