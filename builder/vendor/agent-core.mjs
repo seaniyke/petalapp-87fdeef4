@@ -68800,6 +68800,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -69102,6 +69103,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140759,6 +140761,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143087,6 +143090,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144291,6 +144295,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145416,6 +145421,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -151869,6 +151875,7 @@ __export(tool_loop_exports, {
   madeProgress: () => madeProgress,
   managedSurfaceRefusal: () => managedSurfaceRefusal,
   opId: () => opId,
+  readPage: () => readPage,
   rereadNotice: () => rereadNotice,
   runToolLoop: () => runToolLoop,
   snapshotEvidence: () => snapshotEvidence,
@@ -151993,6 +152000,24 @@ function hash(s) {
 }
 function opId(kind, path, detail = "") {
   return kind === "create" ? `create:${path}` : `edit:${path}:${hash(detail)}`;
+}
+function readPage(lines, s, e, max) {
+  const out = [];
+  let size = 0;
+  let last2 = s - 1;
+  for (let n = s; n <= e; n++) {
+    const line = `${n}: ${lines[n - 1] ?? ""}`;
+    if (out.length && size + line.length + 1 > max) break;
+    out.push(line);
+    size += line.length + 1;
+    last2 = n;
+  }
+  if (last2 >= e) return { text: out.join("\n"), truncated: false };
+  return {
+    text: `${out.join("\n")}
+\u2026[showing lines ${s}-${last2} of ${lines.length}. Continue with read_file start_line=${last2 + 1}, or use search to jump to a line.]`,
+    truncated: true
+  };
 }
 function clip(s, max) {
   return s.length <= max ? s : `${s.slice(0, max)}
@@ -152308,8 +152333,9 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         if (readSeen.get(seenKey) === h) {
           return { output: rereadNotice(path, incompleteNow()), isError: false };
         }
-        readSeen.set(seenKey, h);
-        return { output: clip(lines.slice(s - 1, e).map((l, i) => `${s + i}: ${l}`).join("\n"), cfg.maxToolOutput), isError: false };
+        const page = readPage(lines, s, e, cfg.maxToolOutput);
+        if (!page.truncated) readSeen.set(seenKey, h);
+        return { output: page.text, isError: false };
       }
       case "list_files": {
         const prefix = normPath(a2.prefix);
@@ -170675,7 +170701,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
