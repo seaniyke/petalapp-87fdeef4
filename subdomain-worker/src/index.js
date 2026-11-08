@@ -222,7 +222,7 @@ function escapeHtml(s) {
 
 /** Rounded-square letter icon from the site name, as a data: URL. Null when
  *  the name has no letter or digit (the site then has no icon). */
-export function letterIcon(title) {
+function letterIcon(title) {
   const m = String(title || "").trim().match(/[\p{L}\p{N}]/u);
   if (!m) return null;
   const ch = escapeHtml(m[0].toUpperCase());
@@ -233,7 +233,7 @@ export function letterIcon(title) {
 /** The share image URL for a page: the saved one, else this site's own
  *  screenshot card. The site's own card carries the live build id so social
  *  apps fetch a fresh picture after every published build. */
-export function shareImageUrl(saved, host, buildId) {
+function shareImageUrl(saved, host, buildId) {
   const own = host ? `https://${host}/og-image.png` : null;
   const v = buildId ? `?v=${String(buildId).slice(0, 8)}` : "";
   if (!saved) return own ? own + v : null;
