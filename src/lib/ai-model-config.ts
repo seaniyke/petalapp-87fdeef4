@@ -129,6 +129,29 @@ export function isUtilityFeature(feature: string | null | undefined): boolean {
 }
 
 /**
+ * Difficulty-based routing for code-writing turns. Hard work (site-wide or
+ * multi-part changes, structural rewrites, long briefs) gets the frontier
+ * model; everything else gets the fast code model. The utility model never
+ * writes code.
+ */
+export type TaskDifficulty = "standard" | "hard";
+
+export function classifyTaskDifficulty(s: {
+  scope?: "micro" | "targeted" | "structural" | null;
+  crossCutting?: boolean;
+  multiEdit?: boolean;
+  promptChars?: number;
+}): TaskDifficulty {
+  if (s.crossCutting || s.multiEdit || s.scope === "structural") return "hard";
+  if ((s.promptChars ?? 0) > 1500) return "hard";
+  return "standard";
+}
+
+export function modelForDifficulty(d: TaskDifficulty): string {
+  return d === "hard" ? defaultFirstBuildModel() : defaultTextModel();
+}
+
+/**
  * Model ids Kimble itself configures on the gateway. A caller-supplied id
  * inside this set is honoured as-is; anything else (legacy hardcoded
  * Gemini/Claude/GPT/DeepSeek slugs, stale admin overrides) is coerced to the
