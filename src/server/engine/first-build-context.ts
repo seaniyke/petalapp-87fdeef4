@@ -131,11 +131,17 @@ export const MANUAL_FIRST_BUILD = [
 ] as const;
 
 /** Agent-knowledge skills preloaded for a given kind of site. */
+/**
+ * Any build with a public website preloads the page rules, the named section
+ * layouts and the motion rules — left on-demand, the model never read them and
+ * fell back to the centred-heading + three-card default with no motion.
+ */
+const PUBLIC_SITE_SKILLS = ["page-composition", "section-architectures", "motion"];
 export function conditionalSkills(subtype: string, productSurface?: string | null): string[] {
-  if (subtype === "marketing" || subtype === "fullstack") return ["page-composition"];
+  if (subtype === "marketing" || subtype === "fullstack") return PUBLIC_SITE_SKILLS;
   // An app-classified request whose product also has a public website still
-  // composes a real landing page, so it needs the same composition skill.
-  if (productSurface === "public" || productSurface === "public+app") return ["page-composition"];
+  // composes a real landing page, so it needs the same skills.
+  if (productSurface === "public" || productSurface === "public+app") return PUBLIC_SITE_SKILLS;
   return [];
 }
 

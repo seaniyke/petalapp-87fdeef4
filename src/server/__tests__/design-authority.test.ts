@@ -278,6 +278,9 @@ describe("package selection follows the brief", () => {
     ["An organic vegetable box subscription", "substrate", "emerald"],
     ["A photography portfolio with a dark editorial feel", "obsidian", "platinum"],
     ["A fine dining restaurant with a luxury whisky list", "obsidian", "gold"],
+    // "Luxury" alone never forces the dark package.
+    ["A luxury aesthetics and wellness clinic", "haven", "teal"],
+    ["A luxury beauty salon called Lumière", "atelier", "rose"],
   ];
   for (const [brief, slug, accent] of cases) {
     it(`${slug}/${accent} for "${brief.slice(0, 32)}…"`, () => {
