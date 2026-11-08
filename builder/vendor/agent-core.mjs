@@ -58835,7 +58835,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -68796,6 +68795,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -69005,9 +69005,9 @@ var init_authority = __esm({
     STUDIO_RULES = [
       {
         slug: "haven",
-        re: /\b(clinic|hospital|health|medical|dental|dentist|doctor|patient|pharmac|therap|physio|care home|nursing|counsel|tutor|school|charity)\w*/i,
+        re: /\b(clinic|hospital|health|medical|dental|dentist|doctor|patient|pharmac|therap|physio|care home|nursing|counsel|charity)\w*/i,
         accents: [
-          { accent: "ocean", re: /\b(hospital|pharmac|school)\w*/i },
+          { accent: "ocean", re: /\b(hospital|pharmac)\w*/i },
           { accent: "sage", re: /\b(therap|counsel|care home|nursing|charity)\w*/i }
         ]
       },
@@ -151853,6 +151853,7 @@ __export(tool_loop_exports, {
   compact: () => compact2,
   completionGaps: () => completionGaps,
   createToolLoopState: () => createToolLoopState,
+  deleteRefusal: () => deleteRefusal,
   dependentsOf: () => dependentsOf,
   detectExplorationDrift: () => detectExplorationDrift,
   diagnoseTrajectory: () => diagnoseTrajectory,
@@ -151975,7 +151976,7 @@ function managedSurfaceRefusal(path, tree) {
   return null;
 }
 function toolsFor(light) {
-  const names = light ? ["read_file", "search", "edit_file", "create_file", "finish"] : ["read_file", "list_files", "search", "create_file", "edit_file", "finish"];
+  const names = light ? ["read_file", "search", "edit_file", "create_file", "delete_file", "finish"] : ["read_file", "list_files", "search", "create_file", "edit_file", "delete_file", "finish"];
   return names.map((n) => TOOLS[n]);
 }
 function hash(s) {
@@ -152013,6 +152014,14 @@ function resolveImport2(from, spec, files) {
     base = dir.join("/");
   } else return null;
   for (const e of EXTS4) if (files.has(base + e)) return base + e;
+  return null;
+}
+function deleteRefusal(path, files) {
+  const managed = managedSurfaceRefusal(path, /* @__PURE__ */ new Map());
+  if (managed) return managed.replace("cannot be written", "cannot be deleted");
+  if (UNDELETABLE.test(path)) return `Refused: ${path} is an app entry/router file and cannot be deleted.`;
+  const users = [...dependentsOf(files).get(path) ?? []];
+  if (users.length) return `Refused: ${path} is still imported by ${users.slice(0, 5).join(", ")}. Remove those imports first, then delete it.`;
   return null;
 }
 function dependentsOf(files) {
@@ -152353,6 +152362,23 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         breaker.recordProgress("file_written", path);
         return { output: report(path, errs) + fixed.note, isError: false };
       }
+      case "delete_file": {
+        if (!path) return { output: fail(name, null, "delete_file needs a path."), isError: true };
+        if (!tree.has(path)) return { output: `File not found: ${path}. Nothing to delete.`, isError: true, miss: true };
+        const refusal = deleteRefusal(path, tree);
+        if (refusal || args.isProtected?.(path) || ref.has(path)) {
+          return { output: fail(name, path, refusal ?? `Refused: ${path} is managed by Petal and cannot be deleted.`, "scope_violation"), isError: true };
+        }
+        if (args.onDelete && !await args.onDelete(path)) return { output: fail(name, path, `Refused by the write gate: ${path}.`, "scope_violation"), isError: true };
+        tree.delete(path);
+        dirty.delete(path);
+        state.read.delete(path);
+        state.validation.delete(path);
+        state.written = state.written.filter((w) => w !== path);
+        emit({ kind: "delete_ok", path });
+        breaker.recordProgress("file_written", path);
+        return { output: `OK: ${path} deleted.`, isError: false };
+      }
       case "edit_file": {
         const current2 = tree.get(path);
         if (current2 === void 0) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
@@ -152653,7 +152679,7 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
   state.stopReason = "iteration budget exhausted";
   return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "incomplete" };
 }
-var FULL_CONFIG, LIGHT_CONFIG, EXPLORATION_DRIFT_SIGNAL, MANAGED_CONFIG_STEMS, MANAGED_EXACT_FILES, STYLESHEET_PATHS, fn, TOOLS, READ_ONLY, normPath, IMPORT_RX, EXTS4;
+var FULL_CONFIG, LIGHT_CONFIG, EXPLORATION_DRIFT_SIGNAL, MANAGED_CONFIG_STEMS, MANAGED_EXACT_FILES, STYLESHEET_PATHS, fn, TOOLS, READ_ONLY, normPath, IMPORT_RX, EXTS4, UNDELETABLE;
 var init_tool_loop = __esm({
   "src/server/engine/tool-loop.ts"() {
     init_define_import_meta_env();
@@ -152708,12 +152734,16 @@ var init_tool_loop = __esm({
         replace: { type: "string" },
         occurrence: { type: "integer", description: "1-based match to replace when search appears more than once" }
       }, ["path", "search", "replace"]),
+      delete_file: fn("delete_file", "Delete a file that is no longer used (orphaned page, superseded component). Refused while any other file still imports it, and for entry, router, managed or protected files.", {
+        path: { type: "string" }
+      }, ["path"]),
       finish: fn("finish", "Declare the request complete. Runs the full deterministic verification (requested pages and routes, imports, sources) \u2014 the same check commit uses \u2014 so there is no need to search the workspace to verify first. Refused with exact findings while anything is missing or failing.", { summary: { type: "string" } }, [])
     };
     READ_ONLY = /* @__PURE__ */ new Set(["read_file", "list_files", "search"]);
     normPath = (p2) => String(p2 ?? "").trim().replace(/^\.?\/+/, "");
     IMPORT_RX = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
     EXTS4 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.js"];
+    UNDELETABLE = /^(src\/(main|App|router|start)\.(t|j)sx?|src\/routes\/__root\.(t|j)sx?|index\.html|src\/(index|styles)\.css)$/;
   }
 });
 

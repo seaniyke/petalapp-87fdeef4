@@ -337,6 +337,8 @@ export interface ToolLoopArgs {
   typecheck?: (tree: ProjectFile[], paths: string[]) => Promise<string[]> | string[];
   /** Staged write sink (TurnTransaction.stage + checkpoint). false = refused. */
   onWrite?: (file: ProjectFile) => Promise<boolean> | boolean;
+  /** Staged delete sink. false = refused. Deletions reach commit as paths missing from `files`. */
+  onDelete?: (path: string) => Promise<boolean> | boolean;
   /** Paths the loop must never write (managed kit, integration clients). */
   isProtected?: (path: string) => boolean;
   config?: Partial<LoopConfig>;
@@ -455,6 +457,9 @@ export const TOOLS = {
     replace: { type: "string" },
     occurrence: { type: "integer", description: "1-based match to replace when search appears more than once" },
   }, ["path", "search", "replace"]),
+  delete_file: fn("delete_file", "Delete a file that is no longer used (orphaned page, superseded component). Refused while any other file still imports it, and for entry, router, managed or protected files.", {
+    path: { type: "string" },
+  }, ["path"]),
   finish: fn("finish", "Declare the request complete. Runs the full deterministic verification (requested pages and routes, imports, sources) — the same check commit uses — so there is no need to search the workspace to verify first. Refused with exact findings while anything is missing or failing.", { summary: { type: "string" } }, []),
 } satisfies Record<string, ToolSchema>;
 
@@ -463,8 +468,8 @@ const READ_ONLY = new Set<ToolName>(["read_file", "list_files", "search"]);
 
 export function toolsFor(light: boolean): ToolSchema[] {
   const names: ToolName[] = light
-    ? ["read_file", "search", "edit_file", "create_file", "finish"]
-    : ["read_file", "list_files", "search", "create_file", "edit_file", "finish"];
+    ? ["read_file", "search", "edit_file", "create_file", "delete_file", "finish"]
+    : ["read_file", "list_files", "search", "create_file", "edit_file", "delete_file", "finish"];
   return names.map((n) => TOOLS[n]);
 }
 
@@ -516,6 +521,23 @@ function resolveImport(from: string, spec: string, files: Map<string, string>): 
     base = dir.join("/");
   } else return null;
   for (const e of EXTS) if (files.has(base + e)) return base + e;
+  return null;
+}
+
+/** Entry/router files the app cannot run without; never deletable by the loop. */
+const UNDELETABLE = /^(src\/(main|App|router|start)\.(t|j)sx?|src\/routes\/__root\.(t|j)sx?|index\.html|src\/(index|styles)\.css)$/;
+
+/**
+ * Why deleting `path` must be refused, or null when it is safe. Deterministic:
+ * managed config/files, entry/router files, and anything still imported by
+ * another file in the current workspace.
+ */
+export function deleteRefusal(path: string, files: Map<string, string>): string | null {
+  const managed = managedSurfaceRefusal(path, new Map());
+  if (managed) return managed.replace("cannot be written", "cannot be deleted");
+  if (UNDELETABLE.test(path)) return `Refused: ${path} is an app entry/router file and cannot be deleted.`;
+  const users = [...(dependentsOf(files).get(path) ?? [])];
+  if (users.length) return `Refused: ${path} is still imported by ${users.slice(0, 5).join(", ")}. Remove those imports first, then delete it.`;
   return null;
 }
 
@@ -924,6 +946,23 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         }
         breaker.recordProgress("file_written", path);
         return { output: report(path, errs) + fixed.note, isError: false };
+      }
+      case "delete_file": {
+        if (!path) return { output: fail(name, null, "delete_file needs a path."), isError: true };
+        if (!tree.has(path)) return { output: `File not found: ${path}. Nothing to delete.`, isError: true, miss: true };
+        const refusal = deleteRefusal(path, tree);
+        if (refusal || args.isProtected?.(path) || ref.has(path)) {
+          return { output: fail(name, path, refusal ?? `Refused: ${path} is managed by Petal and cannot be deleted.`, "scope_violation"), isError: true };
+        }
+        if (args.onDelete && !(await args.onDelete(path))) return { output: fail(name, path, `Refused by the write gate: ${path}.`, "scope_violation"), isError: true };
+        tree.delete(path);
+        dirty.delete(path);
+        state.read.delete(path);
+        state.validation.delete(path);
+        state.written = state.written.filter((w) => w !== path);
+        emit({ kind: "delete_ok", path });
+        breaker.recordProgress("file_written", path);
+        return { output: `OK: ${path} deleted.`, isError: false };
       }
       case "edit_file": {
         const current = tree.get(path);
