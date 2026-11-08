@@ -113,4 +113,4 @@ for (const route of ROUTES) {
   console.log(`✓ Route ${route.pattern} created`);
 }
 
-console.log("\nAll set. Test with:  curl -I https://<slug>.kimble.cloud");
+console.log("\nAll set. Test with:  curl -I https://<slug>.sites.custardai.dev");

@@ -24,7 +24,11 @@
  *     - never matches the reserved list enforced by the DB trigger
  *     - falls back to `petal-app-XXXXXX` if the title is unusable
  */
-import { deleteCustomHostname } from "@/server/cloudflare-saas.server";
+import {
+  deleteCustomHostname,
+  ensureCustomHostname,
+  findCustomHostnameByName,
+} from "@/server/cloudflare-saas.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const PETAL_ROOT_DOMAIN = "sites.custardai.dev";
@@ -175,6 +179,13 @@ export async function claimSubdomain(args: {
     await supabaseAdmin.from("project_domains").delete().eq("id", stale.id);
   }
 
+  // The current root (sites.custardai.dev) is an external zone, so each
+  // address needs its own Cloudflare for SaaS certificate (wildcards are
+  // Enterprise-only). Cloudflare issues it automatically within ~1 minute.
+  await ensureCustomHostname(hostname).catch((e) =>
+    console.error("[subdomain] certificate request failed", hostname, e),
+  );
+
   return { hostname, status: "active" };
 }
 
@@ -200,6 +211,10 @@ export async function releaseSubdomain(projectId: string): Promise<void> {
   if (domain?.provider_hostname_id) {
     await deleteCustomHostname(domain.provider_hostname_id).catch(() => {});
   }
+  const current = await findCustomHostnameByName(
+    `${project.subdomain}.${PETAL_ROOT_DOMAIN}`,
+  ).catch(() => null);
+  if (current) await deleteCustomHostname(current.id).catch(() => {});
   if (domain?.id) {
     await supabaseAdmin.from("project_domains").delete().eq("id", domain.id);
   }
