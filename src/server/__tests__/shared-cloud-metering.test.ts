@@ -3,7 +3,7 @@ import { applyFlatSharedRate } from "@/server/cloud-metering.server";
 import { backendEventPayload, graceExpired, pauseReasonOf, pauseReasonsOf } from "@/server/shared-cloud-pause.server";
 import { sharedActiveDays } from "@/server/service-billing.server";
 import { activityRange } from "@/routes/api/public/v1/projects/$id.backend";
-import { isOwnSiteImageUrl } from "@/lib/site-image-url";
+import { iconExtension, isOwnSiteImageUrl, isPartnerAssetUrl } from "@/lib/site-image-url";
 import { ogRenderUrl } from "@/routes/api/public/og-image.$projectId";
 import { ECONOMICS_DEFAULTS } from "@/server/economics-config.server";
 
@@ -101,6 +101,20 @@ describe("site-info share image", () => {
     expect(isOwnSiteImageUrl("http://amaraglow.sites.custardai.dev/og.png", "amaraglow", [])).toBe(false);
     expect(isOwnSiteImageUrl("https://evil.com/og.png", "amaraglow", ["amaraglow.com"])).toBe(false);
     expect(isOwnSiteImageUrl("https://other.sites.custardai.dev/og.png", "amaraglow", [])).toBe(false);
+  });
+  it("accepts partner logos on custardai.dev only over https", () => {
+    expect(isPartnerAssetUrl("https://custardai.dev/logos/amara.png")).toBe(true);
+    expect(isPartnerAssetUrl("https://cdn.custardai.dev/amara.png")).toBe(true);
+    expect(isPartnerAssetUrl("http://custardai.dev/amara.png")).toBe(false);
+    expect(isPartnerAssetUrl("https://custardai.dev.evil.com/amara.png")).toBe(false);
+    expect(isPartnerAssetUrl("https://notcustardai.dev/amara.png")).toBe(false);
+  });
+  it("copies only image types as tab icons", () => {
+    expect(iconExtension("image/png")).toBe("png");
+    expect(iconExtension("image/svg+xml; charset=utf-8")).toBe("svg");
+    expect(iconExtension("image/x-icon")).toBe("ico");
+    expect(iconExtension("text/html")).toBeNull();
+    expect(iconExtension(null)).toBeNull();
   });
   it("crops the saved screenshot to 1200x630", () => {
     expect(ogRenderUrl("https://x.supabase.co/storage/v1/object/public/petal-images/a.png")).toBe(
