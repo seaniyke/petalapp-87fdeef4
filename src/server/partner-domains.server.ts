@@ -22,6 +22,7 @@ export type PartnerSearchItem = {
   renewalCents: number | null;
   currency: "USD";
   period: number;
+  allowedYears: number[];
   tier: "standard" | "premium" | null;
   reason: string | null;
 };
@@ -29,7 +30,9 @@ export type PartnerSearchItem = {
 export async function partnerSearch(q: string): Promise<PartnerSearchItem[]> {
   const { searchDomains, loadCatalogue, tldOf } = await import("@/server/domain-name-api.server");
   const [results, catalogue] = await Promise.all([searchDomains(q), loadCatalogue().catch(() => null)]);
-  return results.map((r) => ({
+  return results.map((r) => {
+    const terms = catalogue?.get(tldOf(r.hostname, catalogue));
+    return {
     hostname: r.hostname,
     available: r.available,
     priceCents: r.priceCents,
@@ -38,10 +41,13 @@ export async function partnerSearch(q: string): Promise<PartnerSearchItem[]> {
     // registrar's catalogue, never assume it equals the first-year price.
     renewalCents: catalogue?.get(tldOf(r.hostname, catalogue))?.renewCents ?? null,
     currency: "USD",
-    period: r.period ?? 1,
+    // Shortest sellable term: .ai, for example, is sold in 2-year steps only.
+    period: terms?.registrationPeriods[0] ?? r.period ?? 1,
+    allowedYears: terms?.registrationPeriods ?? [r.period ?? 1],
     tier: r.tier,
     reason: r.reason,
-  }));
+  };
+  });
 }
 
 export function normalizeHostname(raw: string): string | null {
