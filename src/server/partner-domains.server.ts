@@ -22,6 +22,7 @@ export type PartnerSearchItem = {
   renewalCents: number | null;
   currency: "USD";
   period: number;
+  allowedYears: number[];
   tier: "standard" | "premium" | null;
   reason: string | null;
 };
@@ -29,7 +30,9 @@ export type PartnerSearchItem = {
 export async function partnerSearch(q: string): Promise<PartnerSearchItem[]> {
   const { searchDomains, loadCatalogue, tldOf } = await import("@/server/domain-name-api.server");
   const [results, catalogue] = await Promise.all([searchDomains(q), loadCatalogue().catch(() => null)]);
-  return results.map((r) => ({
+  return results.map((r) => {
+    const terms = catalogue?.get(tldOf(r.hostname, catalogue));
+    return {
     hostname: r.hostname,
     available: r.available,
     priceCents: r.priceCents,
@@ -38,10 +41,13 @@ export async function partnerSearch(q: string): Promise<PartnerSearchItem[]> {
     // registrar's catalogue, never assume it equals the first-year price.
     renewalCents: catalogue?.get(tldOf(r.hostname, catalogue))?.renewCents ?? null,
     currency: "USD",
-    period: r.period ?? 1,
+    // Shortest sellable term: .ai, for example, is sold in 2-year steps only.
+    period: terms?.registrationPeriods[0] ?? r.period ?? 1,
+    allowedYears: terms?.registrationPeriods ?? [r.period ?? 1],
     tier: r.tier,
     reason: r.reason,
-  }));
+  };
+  });
 }
 
 export function normalizeHostname(raw: string): string | null {
@@ -72,20 +78,24 @@ export async function partnerPurchase(args: {
 }): Promise<PurchaseOutcome> {
   const hostname = normalizeHostname(args.hostname);
   if (!hostname) return { status: 400, body: { error: "invalid_name" } };
-  if (args.termYears !== 1) return { status: 400, body: { error: "unsupported_term", supported: [1] } };
-
-  const { checkOne } = await import("@/server/domain-name-api.server");
+  const { checkOne, quoteRegistration } = await import("@/server/domain-name-api.server");
 
   if (args.sandbox) {
     let quote: Awaited<ReturnType<typeof checkOne>> | null = null;
-    try { quote = await checkOne(hostname); } catch { /* price is informational in sandbox */ }
-    const expiresAt = new Date(Date.now() + 365 * 86400_000).toISOString();
+    let termPrice: number | null = null;
+    try {
+      quote = await checkOne(hostname);
+      const t = await quoteRegistration(hostname, args.termYears, quote);
+      if (t.reason) return { status: 400, body: { error: t.reason, supported: t.allowedYears } };
+      termPrice = t.wholesaleCents;
+    } catch { /* price is informational in sandbox */ }
+    const expiresAt = new Date(Date.now() + args.termYears * 365 * 86400_000).toISOString();
     void deliverWebhook(CUSTARD_DOMAIN_WEBHOOK, domainActivePayload(args.projectId, hostname, true));
     return {
       status: 201,
       body: {
         success: true, sandbox: true, hostname, status: "active",
-        wholesaleCents: quote?.wholesaleCents ?? null, priceCents: quote?.priceCents ?? null,
+        termYears: args.termYears, wholesaleCents: termPrice,
         currency: "USD", expiresAt, sslStatus: "active",
       },
     };
@@ -117,15 +127,21 @@ export async function partnerPurchase(args: {
     return { status: unsupported ? 400 : 409, body: { error: unsupported ? "invalid_name" : "domain_taken", reason: quote.reason } };
   }
   if (quote.tier === "premium") return { status: 400, body: { error: "premium_not_supported" } };
+  const term = await quoteRegistration(hostname, args.termYears, quote).catch(() => null);
+  if (!term) return { status: 502, body: { error: "registrar_error", message: "price_lookup_failed" } };
+  if (term.reason || term.wholesaleCents == null) {
+    return { status: 400, body: { error: term.reason ?? "no_price", supported: term.allowedYears } };
+  }
 
   const reference = `cu_${crypto.randomUUID().replace(/-/g, "")}`;
   const { error } = await supabaseAdmin.from("purchased_domains").insert({
     project_id: args.projectId,
     user_id: owner,
     hostname,
-    wholesale_cost_cents: quote.wholesaleCents,
-    charged_cents: quote.wholesaleCents,
-    charged_minor: quote.wholesaleCents,
+    wholesale_cost_cents: term.wholesaleCents,
+    charged_cents: term.wholesaleCents,
+    charged_minor: term.wholesaleCents,
+    term_years: args.termYears,
     currency_code: "USD",
     status: "pending_payment",
     paystack_reference: reference,

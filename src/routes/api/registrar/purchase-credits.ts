@@ -33,11 +33,8 @@ const Body = z.object({
     ),
 });
 
-/** Cash cost in USD cents → whole credits, rounded up. */
-export function creditsForUsdCents(usdCents: number, usdCentsPerCredit: number): number {
-  const rate = usdCentsPerCredit > 0 ? usdCentsPerCredit : 20;
-  return Math.max(1, Math.ceil(usdCents / rate));
-}
+import { creditsForUsdCents } from "@/server/domain-credits";
+export { creditsForUsdCents };
 
 async function authUser(request: Request) {
   const auth = request.headers.get("authorization");

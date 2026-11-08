@@ -177,6 +177,29 @@ export async function checkOne(hostname: string): Promise<DomainSearchResult> {
   };
 }
 
+/* ---------------------------- Multi-year registration price ---------------------------- */
+
+/**
+ * Price to register for `years`. The availability search prices only the
+ * shortest term (docs), so: that exact search price when `years` matches it,
+ * otherwise the catalogue's listed registration price for that term. Premium
+ * names are one year only. Never computed by multiplying.
+ */
+export async function quoteRegistration(
+  hostname: string,
+  years: number,
+  searched?: DomainSearchResult,
+): Promise<{ wholesaleCents: number | null; allowedYears: number[]; reason: string | null }> {
+  const s = searched ?? (await checkOne(hostname));
+  const terms = await termsFor(hostname).catch(() => null);
+  const allowed = terms?.registrationPeriods?.length ? terms.registrationPeriods : [s.period ?? 1];
+  if (!allowed.includes(years)) return { wholesaleCents: null, allowedYears: allowed, reason: "unsupported_term" };
+  if (s.tier === "premium" && years !== 1) return { wholesaleCents: null, allowedYears: [1], reason: "premium_one_year_only" };
+  if (years === (s.period ?? 1)) return { wholesaleCents: s.wholesaleCents, allowedYears: allowed, reason: null };
+  const listed = terms?.registerByPeriod[years] ?? null;
+  return { wholesaleCents: listed, allowedYears: allowed, reason: listed == null ? "no_price" : null };
+}
+
 /* ---------------------------- Contact ---------------------------- */
 
 type DnaContact = {
@@ -255,6 +278,8 @@ export function mapStatus(status: string | undefined): RegistrationState {
 export async function registerDomain(args: {
   hostname: string;
   expectedWholesaleCents: number;
+  /** Years to register; defaults to the shortest term the search quoted. */
+  years?: number;
 }): Promise<RegistrationWorkflow> {
   const recheck = await checkOne(args.hostname);
   if (!recheck.available) {
@@ -266,7 +291,12 @@ export async function registerDomain(args: {
   }
   if (recheck.wholesaleCents == null) throw new Error("Couldn't confirm the price. Please try again.");
   if (recheck.tier === "premium") throw new Error("Premium domains aren't supported yet. Pick another name.");
-  if (recheck.wholesaleCents > Math.ceil(args.expectedWholesaleCents * 1.05)) {
+  const years = args.years ?? recheck.period ?? 1;
+  const quoted = years === (recheck.period ?? 1)
+    ? recheck.wholesaleCents
+    : (await quoteRegistration(args.hostname, years, recheck)).wholesaleCents;
+  if (quoted == null) throw new Error("That number of years isn't sold for this ending.");
+  if (quoted > Math.ceil(args.expectedWholesaleCents * 1.05)) {
     throw new Error("Price changed since you searched. Please refresh and try again.");
   }
 
@@ -277,7 +307,7 @@ export async function registerDomain(args: {
       method: "POST",
       body: JSON.stringify({
         domainName: args.hostname,
-        period: recheck.period ?? 1,
+        period: years,
         nameServers: DNA_NAME_SERVERS,
         contacts: [contact],
       }),
@@ -367,6 +397,8 @@ export type TldTerms = {
   renewCents: number | null;
   /** Price per period exactly as the catalogue lists it. */
   renewByPeriod: Record<number, number>;
+  /** Registration list price per period (USD cents). */
+  registerByPeriod: Record<number, number>;
   privacyAvailable: boolean;
   autoRenewGraceDays: number | null;
   restorableDays: number | null;
@@ -382,7 +414,11 @@ type CatalogueItem = {
   isPrivacyAvailable?: boolean;
   autoRenewGracePeriod?: number;
   deletionRestorablePeriod?: number;
-  prices?: Array<{ priceGroup: string; renew?: Array<{ period: number; price: number; currency: string }> }>;
+  prices?: Array<{
+    priceGroup: string;
+    renew?: Array<{ period: number; price: number; currency: string }>;
+    register?: Array<{ period: number; price: number; currency: string }>;
+  }>;
 };
 
 export function termsFromCatalogue(item: CatalogueItem, group: string): TldTerms {
@@ -391,12 +427,17 @@ export function termsFromCatalogue(item: CatalogueItem, group: string): TldTerms
   for (const r of prices?.renew ?? []) {
     if (r.currency?.toUpperCase() === "USD") renewByPeriod[r.period] = Math.round(r.price * 100);
   }
+  const registerByPeriod: Record<number, number> = {};
+  for (const r of prices?.register ?? []) {
+    if (r.currency?.toUpperCase() === "USD") registerByPeriod[r.period] = Math.round(r.price * 100);
+  }
   return {
     tld: item.name.toLowerCase(),
     registrationPeriods: [...(item.registrationPeriods ?? [])].sort((a, b) => a - b),
     renewalPeriods: [...(item.renewalPeriods ?? [])].sort((a, b) => a - b),
     renewCents: renewByPeriod[1] ?? null,
     renewByPeriod,
+    registerByPeriod,
     privacyAvailable: item.isPrivacyAvailable === true,
     autoRenewGraceDays: item.autoRenewGracePeriod ?? null,
     restorableDays: item.deletionRestorablePeriod ?? null,

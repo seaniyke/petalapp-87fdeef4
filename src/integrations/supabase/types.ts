@@ -1243,6 +1243,71 @@ export type Database = {
         }
         Relationships: []
       }
+      domain_renewals: {
+        Row: {
+          charged_cents: number | null
+          created_at: string
+          credit_ledger_id: string | null
+          credits: number | null
+          error_code: string | null
+          error_message: string | null
+          hostname: string
+          id: string
+          new_expires_at: string | null
+          payer: string
+          prior_expires_at: string | null
+          purchased_domain_id: string
+          status: string
+          trigger: string
+          wholesale_cents: number | null
+          years: number
+        }
+        Insert: {
+          charged_cents?: number | null
+          created_at?: string
+          credit_ledger_id?: string | null
+          credits?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          hostname: string
+          id?: string
+          new_expires_at?: string | null
+          payer: string
+          prior_expires_at?: string | null
+          purchased_domain_id: string
+          status: string
+          trigger: string
+          wholesale_cents?: number | null
+          years: number
+        }
+        Update: {
+          charged_cents?: number | null
+          created_at?: string
+          credit_ledger_id?: string | null
+          credits?: number | null
+          error_code?: string | null
+          error_message?: string | null
+          hostname?: string
+          id?: string
+          new_expires_at?: string | null
+          payer?: string
+          prior_expires_at?: string | null
+          purchased_domain_id?: string
+          status?: string
+          trigger?: string
+          wholesale_cents?: number | null
+          years?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "domain_renewals_purchased_domain_id_fkey"
+            columns: ["purchased_domain_id"]
+            isOneToOne: false
+            referencedRelation: "purchased_domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domain_slots: {
         Row: {
           addon_code: string
@@ -4520,10 +4585,14 @@ export type Database = {
           hostname: string
           id: string
           last_polled_at: string | null
+          last_renewed_at: string | null
           paystack_reference: string | null
           project_id: string
           registered_at: string | null
+          renewal_error: string | null
+          renewal_status: string | null
           status: string
+          term_years: number
           tier: string | null
           updated_at: string
           user_id: string
@@ -4544,10 +4613,14 @@ export type Database = {
           hostname: string
           id?: string
           last_polled_at?: string | null
+          last_renewed_at?: string | null
           paystack_reference?: string | null
           project_id: string
           registered_at?: string | null
+          renewal_error?: string | null
+          renewal_status?: string | null
           status?: string
+          term_years?: number
           tier?: string | null
           updated_at?: string
           user_id: string
@@ -4568,10 +4641,14 @@ export type Database = {
           hostname?: string
           id?: string
           last_polled_at?: string | null
+          last_renewed_at?: string | null
           paystack_reference?: string | null
           project_id?: string
           registered_at?: string | null
+          renewal_error?: string | null
+          renewal_status?: string | null
           status?: string
+          term_years?: number
           tier?: string | null
           updated_at?: string
           user_id?: string

@@ -6,7 +6,7 @@
  *        { hostname, action, ... } where action is one of:
  *        renew_quote {years} · renew {years} · dns_add {name,type,ttl?,values}
  *        dns_replace {name,type,ttl?,values} · dns_delete {name,type,value}
- *        dns_apply · lock {locked} · privacy {on} · auth_code
+ *        dns_apply · lock {locked} · privacy {on} · auth_code · auto_renew {on}
  * Only domains in purchased_domains for this project (status active) can be managed.
  */
 import { createFileRoute } from "@tanstack/react-router";
@@ -30,6 +30,7 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("lock"), hostname: z.string(), locked: z.boolean() }),
   z.object({ action: z.literal("privacy"), hostname: z.string(), on: z.boolean() }),
   z.object({ action: z.literal("auth_code"), hostname: z.string() }),
+  z.object({ action: z.literal("auto_renew"), hostname: z.string(), on: z.boolean() }),
 ]);
 
 async function ownedDomain(projectId: string, raw: string) {
@@ -39,12 +40,21 @@ async function ownedDomain(projectId: string, raw: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("purchased_domains")
-    .select("id, hostname, status")
+    .select("id, hostname, status, auto_renew, renewal_status, renewal_error, last_renewed_at, term_years")
     .eq("project_id", projectId)
     .eq("hostname", hostname)
     .eq("status", "active")
     .maybeSingle();
-  return data ? { id: data.id as string, hostname } : null;
+  return data
+    ? {
+        id: data.id as string,
+        hostname,
+        autoRenew: data.auto_renew as boolean,
+        renewalStatus: (data.renewal_status as string | null) ?? null,
+        renewalError: (data.renewal_error as string | null) ?? null,
+        lastRenewedAt: (data.last_renewed_at as string | null) ?? null,
+      }
+    : null;
 }
 
 function registrarError(e: unknown) {
@@ -73,6 +83,10 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/domains/manage
           return json({
             info,
             renewal: {
+              autoRenew: dom.autoRenew,
+              status: dom.renewalStatus?.startsWith("expiry_notified") ? null : dom.renewalStatus,
+              lastError: dom.renewalError,
+              lastRenewedAt: dom.lastRenewedAt,
               periods: terms?.renewalPeriods ?? [],
               wholesaleCentsByYears: terms?.renewByPeriod ?? {},
               autoRenewGraceDays: terms?.autoRenewGraceDays ?? null,
@@ -104,14 +118,18 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/domains/manage
               return json({ ...q, currency: "USD", reason: q.errorCode ? dna.RENEWAL_ERROR_TEXT[q.errorCode] ?? q.errorCode : null });
             }
             case "renew": {
-              const q = await dna.quoteRenewal(h, b.years);
-              if (!q.renewable) {
-                return json({ error: "not_renewable", code: q.errorCode, reason: q.errorCode ? dna.RENEWAL_ERROR_TEXT[q.errorCode] ?? q.errorCode : null, allowedPeriods: q.allowedPeriods }, 409);
+              const { renewPurchasedDomain } = await import("@/server/domain-renewal.server");
+              const r = await renewPurchasedDomain(dom.id, { years: b.years, trigger: "manual" });
+              if (r.ok) {
+                return json({ success: true, hostname: h, years: r.years, wholesaleCents: r.wholesaleCents, alreadyRenewed: r.alreadyRenewed, expiresAt: r.expiresAt, currency: "USD" });
               }
-              const r = await dna.renewDomain(h, b.years);
+              const status = r.error === "not_renewable" ? 409 : r.error === "renewal_in_progress" ? 409 : r.error === "registrar_balance_insufficient" ? 402 : 502;
+              return json({ error: r.error, code: r.code, reason: r.reason, allowedPeriods: r.allowedYears }, status);
+            }
+            case "auto_renew": {
               const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-              if (r.expiresAt) await supabaseAdmin.from("purchased_domains").update({ expires_at: r.expiresAt }).eq("id", dom.id);
-              return json({ success: true, hostname: h, years: b.years, wholesaleCents: r.alreadyRenewed ? 0 : q.wholesaleCents, alreadyRenewed: r.alreadyRenewed, expiresAt: r.expiresAt, currency: "USD" });
+              await supabaseAdmin.from("purchased_domains").update({ auto_renew: b.on }).eq("id", dom.id);
+              return json({ success: true, autoRenew: b.on });
             }
             case "dns_add":
             case "dns_replace": {

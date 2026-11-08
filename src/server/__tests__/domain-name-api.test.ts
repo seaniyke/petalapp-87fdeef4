@@ -70,3 +70,19 @@ describe("DNS record rules", () => {
     expect(validateRecord({ name: "@", type: "MX", values: ["10 mail.acme.com"] })).toBeNull();
   });
 });
+
+import { isRenewalDue } from "../domain-renewal.server";
+import { creditsForUsdCents } from "../domain-credits";
+
+describe("automatic renewal timing and charge", () => {
+  const now = Date.parse("2026-11-08T00:00:00Z");
+  it("renews a domain expiring in 29 days", () => {
+    expect(isRenewalDue("2026-12-07T00:00:00Z", now)).toBe(true);
+  });
+  it("does not renew a domain expiring in 45 days", () => {
+    expect(isRenewalDue("2026-12-23T00:00:00Z", now)).toBe(false);
+  });
+  it("a $12.29 .com renewal with 25% markup costs a customer 77 credits at 20¢", () => {
+    expect(creditsForUsdCents(1536, 20)).toBe(77);
+  });
+});
