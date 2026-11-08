@@ -107,6 +107,7 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as ApiPublicV1DomainsSearchRouteImport } from './routes/api/public/v1/domains.search'
 import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
 import { Route as ApiPublicV1ProjectsIdBillingRouteImport } from './routes/api/public/v1/projects/$id.billing'
 import { Route as ApiPublicV1ProjectsIdBuildRouteImport } from './routes/api/public/v1/projects/$id.build'
@@ -116,6 +117,8 @@ import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/pub
 import { Route as ApiPublicV1ProjectsIdSubdomainRouteImport } from './routes/api/public/v1/projects/$id.subdomain'
 import { Route as ApiPublicV1TurnsIdCancelRouteImport } from './routes/api/public/v1/turns/$id.cancel'
 import { Route as ApiPublicV1TurnsIdEventsRouteImport } from './routes/api/public/v1/turns/$id.events'
+import { Route as ApiPublicV1ProjectsIdDomainsPurchaseRouteImport } from './routes/api/public/v1/projects/$id.domains.purchase'
+import { Route as ApiPublicV1ProjectsIdDomainsSearchRouteImport } from './routes/api/public/v1/projects/$id.domains.search'
 import { Route as ApiPublicV1ProjectsIdRecordsCollectionRouteImport } from './routes/api/public/v1/projects/$id.records.$collection'
 
 const IndexRoute = IndexRouteImport.update({
@@ -632,6 +635,12 @@ const LovableEmailTransactionalSendRoute =
     path: '/lovable/email/transactional/send',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicV1DomainsSearchRoute =
+  ApiPublicV1DomainsSearchRouteImport.update({
+    id: '/api/public/v1/domains/search',
+    path: '/api/public/v1/domains/search',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicV1TurnsIdRoute = ApiPublicV1TurnsIdRouteImport.update({
   id: '/api/public/v1/turns/$id',
   path: '/api/public/v1/turns/$id',
@@ -684,6 +693,18 @@ const ApiPublicV1TurnsIdEventsRoute =
     id: '/events',
     path: '/events',
     getParentRoute: () => ApiPublicV1TurnsIdRoute,
+  } as any)
+const ApiPublicV1ProjectsIdDomainsPurchaseRoute =
+  ApiPublicV1ProjectsIdDomainsPurchaseRouteImport.update({
+    id: '/purchase',
+    path: '/purchase',
+    getParentRoute: () => ApiPublicV1ProjectsIdDomainsRoute,
+  } as any)
+const ApiPublicV1ProjectsIdDomainsSearchRoute =
+  ApiPublicV1ProjectsIdDomainsSearchRouteImport.update({
+    id: '/search',
+    path: '/search',
+    getParentRoute: () => ApiPublicV1ProjectsIdDomainsRoute,
   } as any)
 const ApiPublicV1ProjectsIdRecordsCollectionRoute =
   ApiPublicV1ProjectsIdRecordsCollectionRouteImport.update({
@@ -791,15 +812,18 @@ export interface FileRoutesByFullPath {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
-  '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRoute
+  '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
+  '/api/public/v1/projects/$id/domains/purchase': typeof ApiPublicV1ProjectsIdDomainsPurchaseRoute
+  '/api/public/v1/projects/$id/domains/search': typeof ApiPublicV1ProjectsIdDomainsSearchRoute
   '/api/public/v1/projects/$id/records/$collection': typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
 }
 export interface FileRoutesByTo {
@@ -901,15 +925,18 @@ export interface FileRoutesByTo {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
-  '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRoute
+  '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
+  '/api/public/v1/projects/$id/domains/purchase': typeof ApiPublicV1ProjectsIdDomainsPurchaseRoute
+  '/api/public/v1/projects/$id/domains/search': typeof ApiPublicV1ProjectsIdDomainsSearchRoute
   '/api/public/v1/projects/$id/records/$collection': typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
 }
 export interface FileRoutesById {
@@ -1012,15 +1039,18 @@ export interface FileRoutesById {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
-  '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRoute
+  '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
+  '/api/public/v1/projects/$id/domains/purchase': typeof ApiPublicV1ProjectsIdDomainsPurchaseRoute
+  '/api/public/v1/projects/$id/domains/search': typeof ApiPublicV1ProjectsIdDomainsSearchRoute
   '/api/public/v1/projects/$id/records/$collection': typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
 }
 export interface FileRouteTypes {
@@ -1124,6 +1154,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/build'
@@ -1133,6 +1164,8 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
+    | '/api/public/v1/projects/$id/domains/purchase'
+    | '/api/public/v1/projects/$id/domains/search'
     | '/api/public/v1/projects/$id/records/$collection'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -1234,6 +1267,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/build'
@@ -1243,6 +1277,8 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
+    | '/api/public/v1/projects/$id/domains/purchase'
+    | '/api/public/v1/projects/$id/domains/search'
     | '/api/public/v1/projects/$id/records/$collection'
   id:
     | '__root__'
@@ -1344,6 +1380,7 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/billing'
     | '/api/public/v1/projects/$id/build'
@@ -1353,6 +1390,8 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
+    | '/api/public/v1/projects/$id/domains/purchase'
+    | '/api/public/v1/projects/$id/domains/search'
     | '/api/public/v1/projects/$id/records/$collection'
   fileRoutesById: FileRoutesById
 }
@@ -1453,6 +1492,7 @@ export interface RootRouteChildren {
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
+  ApiPublicV1DomainsSearchRoute: typeof ApiPublicV1DomainsSearchRoute
   ApiPublicV1TurnsIdRoute: typeof ApiPublicV1TurnsIdRouteWithChildren
 }
 
@@ -2144,6 +2184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/domains/search': {
+      id: '/api/public/v1/domains/search'
+      path: '/api/public/v1/domains/search'
+      fullPath: '/api/public/v1/domains/search'
+      preLoaderRoute: typeof ApiPublicV1DomainsSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/turns/$id': {
       id: '/api/public/v1/turns/$id'
       path: '/api/public/v1/turns/$id'
@@ -2207,6 +2254,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1TurnsIdEventsRouteImport
       parentRoute: typeof ApiPublicV1TurnsIdRoute
     }
+    '/api/public/v1/projects/$id/domains/purchase': {
+      id: '/api/public/v1/projects/$id/domains/purchase'
+      path: '/purchase'
+      fullPath: '/api/public/v1/projects/$id/domains/purchase'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdDomainsPurchaseRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsIdDomainsRoute
+    }
+    '/api/public/v1/projects/$id/domains/search': {
+      id: '/api/public/v1/projects/$id/domains/search'
+      path: '/search'
+      fullPath: '/api/public/v1/projects/$id/domains/search'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdDomainsSearchRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsIdDomainsRoute
+    }
     '/api/public/v1/projects/$id/records/$collection': {
       id: '/api/public/v1/projects/$id/records/$collection'
       path: '/$id/records/$collection'
@@ -2240,11 +2301,29 @@ const ApiBillingCryptoRouteChildren: ApiBillingCryptoRouteChildren = {
 const ApiBillingCryptoRouteWithChildren =
   ApiBillingCryptoRoute._addFileChildren(ApiBillingCryptoRouteChildren)
 
+interface ApiPublicV1ProjectsIdDomainsRouteChildren {
+  ApiPublicV1ProjectsIdDomainsPurchaseRoute: typeof ApiPublicV1ProjectsIdDomainsPurchaseRoute
+  ApiPublicV1ProjectsIdDomainsSearchRoute: typeof ApiPublicV1ProjectsIdDomainsSearchRoute
+}
+
+const ApiPublicV1ProjectsIdDomainsRouteChildren: ApiPublicV1ProjectsIdDomainsRouteChildren =
+  {
+    ApiPublicV1ProjectsIdDomainsPurchaseRoute:
+      ApiPublicV1ProjectsIdDomainsPurchaseRoute,
+    ApiPublicV1ProjectsIdDomainsSearchRoute:
+      ApiPublicV1ProjectsIdDomainsSearchRoute,
+  }
+
+const ApiPublicV1ProjectsIdDomainsRouteWithChildren =
+  ApiPublicV1ProjectsIdDomainsRoute._addFileChildren(
+    ApiPublicV1ProjectsIdDomainsRouteChildren,
+  )
+
 interface ApiPublicV1ProjectsRouteChildren {
   ApiPublicV1ProjectsIdBillingRoute: typeof ApiPublicV1ProjectsIdBillingRoute
   ApiPublicV1ProjectsIdBuildRoute: typeof ApiPublicV1ProjectsIdBuildRoute
   ApiPublicV1ProjectsIdBuildsRoute: typeof ApiPublicV1ProjectsIdBuildsRoute
-  ApiPublicV1ProjectsIdDomainsRoute: typeof ApiPublicV1ProjectsIdDomainsRoute
+  ApiPublicV1ProjectsIdDomainsRoute: typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
   ApiPublicV1ProjectsIdFilesRoute: typeof ApiPublicV1ProjectsIdFilesRoute
   ApiPublicV1ProjectsIdSubdomainRoute: typeof ApiPublicV1ProjectsIdSubdomainRoute
   ApiPublicV1ProjectsIdRecordsCollectionRoute: typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
@@ -2254,7 +2333,8 @@ const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
   ApiPublicV1ProjectsIdBillingRoute: ApiPublicV1ProjectsIdBillingRoute,
   ApiPublicV1ProjectsIdBuildRoute: ApiPublicV1ProjectsIdBuildRoute,
   ApiPublicV1ProjectsIdBuildsRoute: ApiPublicV1ProjectsIdBuildsRoute,
-  ApiPublicV1ProjectsIdDomainsRoute: ApiPublicV1ProjectsIdDomainsRoute,
+  ApiPublicV1ProjectsIdDomainsRoute:
+    ApiPublicV1ProjectsIdDomainsRouteWithChildren,
   ApiPublicV1ProjectsIdFilesRoute: ApiPublicV1ProjectsIdFilesRoute,
   ApiPublicV1ProjectsIdSubdomainRoute: ApiPublicV1ProjectsIdSubdomainRoute,
   ApiPublicV1ProjectsIdRecordsCollectionRoute:
@@ -2375,6 +2455,7 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
+  ApiPublicV1DomainsSearchRoute: ApiPublicV1DomainsSearchRoute,
   ApiPublicV1TurnsIdRoute: ApiPublicV1TurnsIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
