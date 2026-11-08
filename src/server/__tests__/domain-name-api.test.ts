@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toResult, mapStatus, applyMarkup, parseRegistrantContact } from "./domain-name-api.server";
+import { toResult, mapStatus, applyMarkup, parseRegistrantContact } from "../domain-name-api.server";
 
 describe("Domain Name API rules", () => {
   it("charges registrar price + 25%", () => {

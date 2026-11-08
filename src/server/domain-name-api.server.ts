@@ -60,7 +60,9 @@ async function dnaFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const text = await res.text();
   let json: any = null;
   try { json = text ? JSON.parse(text) : null; } catch { /* plain-text 401s */ }
-  if (!res.ok || (json && json.success === false && !Array.isArray(json))) {
+  // bulk-search answers success:false when some extensions are unsupported but
+  // still returns per-domain `infos`; only treat it as an error without them.
+  if (!res.ok || (json && json.success === false && !Array.isArray(json) && !Array.isArray(json.infos))) {
     const code = json?.error?.code ?? json?.code;
     const msg = json?.error?.message ?? json?.message ?? json?.reason ?? text.slice(0, 300);
     throw new Error(`Domain registrar error (${res.status})${code ? ` ${code}` : ""}: ${msg || "unknown"}`);
