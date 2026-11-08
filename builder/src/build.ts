@@ -21,6 +21,10 @@ import { startPreviewServer } from "./preview-server.js";
 import { partitionVerificationDefects } from "./verification-report.js";
 import { Heartbeat } from "./progress.js";
 
+/** Origins allowed to embed deployed sites (Custard AI canvas + Petal). */
+const FRAME_ANCESTORS_CSP =
+  "frame-ancestors 'self' https://custardai.dev https://*.custardai.dev https://*.lovable.app https://usefuljohn.com https://www.usefuljohn.com https://buildwithpetal.com https://*.buildwithpetal.com;";
+
 /**
  * How long a child process may stay completely silent before we call it
  * wedged. Generous on purpose: a large npm install on a cold cache can pause
@@ -400,7 +404,8 @@ export async function buildAndDeploy(
   //     than the AI template so existing projects also pick up the fix on
   //     their next deploy.
   //     See: https://developers.cloudflare.com/pages/configuration/headers/
-  const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n`;
+  //     frame-ancestors lets Custard AI's canvas (and Petal) embed the site.
+  const headersFile = `/*\n  Cross-Origin-Resource-Policy: cross-origin\n  Access-Control-Allow-Origin: *\n  Content-Security-Policy: ${FRAME_ANCESTORS_CSP}\n`;
   await writeFile(join(distDir, "_headers"), headersFile, "utf8");
 
   // 2c) Pre-deploy browser check. The verifier drives the real built output

@@ -27,7 +27,9 @@
  * (Cloudflare for SaaS sends customer traffic through it, but a direct visit
  * to the fallback host itself is not an app).
  */
-const PETAL_ROOTS = ["buildwithpetal.com", "kimble.cloud"];
+const PETAL_ROOTS = ["sites.custardai.dev", "buildwithpetal.com", "kimble.cloud"];
+const FRAME_ANCESTORS_CSP =
+  "frame-ancestors 'self' https://custardai.dev https://*.custardai.dev https://*.lovable.app https://usefuljohn.com https://www.usefuljohn.com https://buildwithpetal.com https://*.buildwithpetal.com;";
 const CONTROL_PLANE = "https://kimble.cloud";
 const HOP_BY_HOP = new Set([
   "host",
@@ -140,8 +142,11 @@ async function proxy(request, target, projectId, meta) {
     if (k === "cross-origin-opener-policy") return;
     if (k === "cross-origin-embedder-policy") return;
     if (k === "cross-origin-resource-policy") return;
+    if (k === "content-security-policy" || k === "x-frame-options") return;
     respHeaders.set(key, value);
   });
+  // Let Custard AI's in-app canvas embed every site in an iframe.
+  respHeaders.set("Content-Security-Policy", FRAME_ANCESTORS_CSP);
 
   const response = new Response(upstream.body, {
     status: upstream.status,
