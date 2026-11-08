@@ -4838,6 +4838,7 @@ async function handleGenerateRequestCore(
             const loopCeilingUsd = economicCeilingUsd(null, Math.max(buildReservation?.classCostUsd ?? 0, loopSizeEstimate.usd), loopEcon) /* internal cost limit, decoupled from the effort-priced hold */;
             turnStrategy.loopSizeEstimate = { usd: loopSizeEstimate.usd, basis: loopSizeEstimate.basis, samples: loopSizeEstimate.samples, model: defaultFirstBuildModel() };
             const loopSpentBeforeUsd = collected.usage ? (turnCallCost(collected.usage, model).costUsd ?? buildReservation?.classCostUsd ?? 0) : 0;
+            let lastPromptTokens = 0;
             const { makeCallModel } = await import("@/server/engine/tool-loop-model");
             const { validateUnitImports, undefinedNames } = await import("@/server/engine/work-unit");
             const { verifyFilesEsbuild } = await import("@/server/esbuild-verifier.server");
@@ -4973,12 +4974,17 @@ async function handleGenerateRequestCore(
                   const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } } as GatewayUsage, firstBuildModel).costUsd;
                   if (c != null) return c;
                 }
-                // Unmeasured call: never free — the per-build size estimate stands in.
-                return Math.max(buildReservation?.classCostUsd ?? 0.03, loopSizeEstimate.usd);
+                // Unmeasured call (e.g. interrupted stream): never free, priced as
+                // ONE call at the uncached rate — never the whole-build estimate,
+                // which stopped healthy builds after two dropped streams.
+                return Math.max(buildReservation?.classCostUsd ?? 0.03, predictCallCostUsd(lastPromptTokens, loopModelPrice));
               },
               // Checked before EVERY call, including the first: all prompt
               // tokens at the uncached rate plus a typical write's output.
-              predictCallUsd: (promptTokens) => predictCallCostUsd(promptTokens, loopModelPrice),
+              predictCallUsd: (promptTokens) => {
+                lastPromptTokens = promptTokens;
+                return predictCallCostUsd(promptTokens, loopModelPrice);
+              },
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
