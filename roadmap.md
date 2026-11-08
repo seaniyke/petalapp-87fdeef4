@@ -8,6 +8,13 @@
 - [x] Credits used per build: top-level creditsUsed on turn.completed + GET /turns/:id
 - [x] Partner pause and billing pause tracked separately; pauseReasons shows both
 - [x] Answer auto top-up question (not offered yet)
+## Custard reply 2 (8 Nov evening)
+- [x] Issue certificate for bare sites.custardai.dev (switched to automatic validation; https forwards to custardai.dev)
+- [x] Accept iconUrl on custardai.dev; copy the logo into Petal storage
+- [x] Confirm reported active days match daily charges (same ledger rows)
+- [ ] Automatic top-up below 100 credits — needs owner go-ahead (Custard has no saved card; only a credit grant so far)
+- [ ] 8.54-credit refund for the 7 Nov old-rate charge — waiting on owner decision
+
 ## Current frontend request
 - [ ] Replace rejected small robot crew with a bold steel-and-amber workshop, substantial figures and task-specific articulation; verify actual motion and terminal stops.
 - [x] Replace cartoon crew with articulated 3D robots; initial-thinking integration, phase/terminal tests, phone light/dark captures, motion/stop/reduced-motion verification completed.
