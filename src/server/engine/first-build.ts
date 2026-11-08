@@ -96,6 +96,7 @@ export const COMPOSITION_RULES = [
   "The header has a solid background (bg-background with a border-b), never translucent or blurred. The phone menu uses the kit Sheet so it opens as a solid full-height panel.",
   "Header navigation lists only the requested pages (at most 5 links plus one action button). Home sections are never separate nav links or routes.",
   "Every link points somewhere real — no href=\"#\" placeholders. One <h1> per page.",
+  "Chat-led sites: when the brief mentions an AI receptionist, AI staff, a chat assistant, or booking/enquiring by chat, the main booking and enquiry buttons open the chat instead of a form. Create src/lib/chat.ts once with `declare global { interface Window { CustardWidget?: { open: () => void } } }` and `export function openChat() { if (window.CustardWidget?.open) window.CustardWidget.open(); else window.location.hash = \"chat\"; }`, and use <button type=\"button\" onClick={openChat}> for those buttons. Never add the chat widget <script> tag yourself — Petal adds it to the page.",
   ...FINISH_RULES,
 ].join("\n- ");
 

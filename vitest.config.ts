@@ -23,6 +23,8 @@ export default defineConfig({
       "src/server/__tests__/model-tier-and-starter-data.test.ts",
       "src/server/__tests__/public-origin-and-builds.test.ts",
       "src/server/__tests__/custard-contract.test.ts",
+      "src/server/__tests__/custard-widget-tag.test.ts",
+      "src/server/__tests__/custard-badge.test.ts",
       "src/server/__tests__/service-billing.test.ts",
       "src/server/__tests__/service-api.test.ts",
       "src/components/__tests__/robot-activity.test.ts",

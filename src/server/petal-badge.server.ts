@@ -1,7 +1,9 @@
 /**
- * "Powered by Custard" badge injection.
+ * "Powered by Custard AI" badge injection.
  *
- * Adds a small, non-intrusive floating link to the bottom-right of built apps.
+ * Adds a small, non-intrusive floating link to the bottom-LEFT of built apps.
+ * Bottom-left on purpose: Custard AI's chat launcher sits bottom-right
+ * (right:20px; bottom:20px) and the badge must never cover it.
  * We append a <style> + <a> block to index.html so the badge renders on every
  * route of the deployed SPA without touching any generated React code.
  *
@@ -32,9 +34,9 @@ const PETAL_BADGE_HTML = `
     a.href = 'https://custardai.dev';
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.setAttribute('aria-label', 'Powered by Custard');
+    a.setAttribute('aria-label', 'Powered by Custard AI');
     a.style.cssText = [
-      'position:fixed','right:14px','bottom:14px','z-index:2147483646',
+      'position:fixed','left:14px','bottom:14px','z-index:2147483646',
       'display:inline-flex','align-items:center','gap:6px',
       'padding:6px 10px 6px 8px','border-radius:999px',
       'background:rgba(17,17,17,0.85)','color:#fff',
@@ -66,7 +68,7 @@ const PETAL_BADGE_HTML = `
     label.appendChild(document.createTextNode('Powered by '));
     var strong = document.createElement('strong');
     strong.style.fontWeight = '600';
-    strong.textContent = 'Custard';
+    strong.textContent = 'Custard AI';
     label.appendChild(strong);
     a.appendChild(dot); a.appendChild(label);
     // Step aside while a menu or pop-up is open so it never covers its buttons.

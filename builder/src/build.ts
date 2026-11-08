@@ -23,7 +23,7 @@ import { Heartbeat } from "./progress.js";
 
 /** Origins allowed to embed deployed sites (Custard AI canvas + Petal). */
 const FRAME_ANCESTORS_CSP =
-  "frame-ancestors 'self' https://custardai.dev https://*.custardai.dev https://*.lovable.app https://usefuljohn.com https://www.usefuljohn.com https://buildwithpetal.com https://*.buildwithpetal.com;";
+  "frame-ancestors 'self' https://custardai.dev https://*.custardai.dev https://*.lovable.app https://usefuljohn.com https://www.usefuljohn.com https://buildwithpetal.com https://*.buildwithpetal.com http://localhost:* http://127.0.0.1:*;";
 
 /**
  * How long a child process may stay completely silent before we call it

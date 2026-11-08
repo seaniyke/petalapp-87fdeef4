@@ -4378,6 +4378,7 @@ export type Database = {
           backend_type: string
           cloud_tier_intent: string
           created_at: string
+          custard_widget_tag: string | null
           custom_instructions: string | null
           external_user_id: string | null
           hide_petal_badge: boolean
@@ -4413,6 +4414,7 @@ export type Database = {
           backend_type?: string
           cloud_tier_intent?: string
           created_at?: string
+          custard_widget_tag?: string | null
           custom_instructions?: string | null
           external_user_id?: string | null
           hide_petal_badge?: boolean
@@ -4448,6 +4450,7 @@ export type Database = {
           backend_type?: string
           cloud_tier_intent?: string
           created_at?: string
+          custard_widget_tag?: string | null
           custom_instructions?: string | null
           external_user_id?: string | null
           hide_petal_badge?: boolean
