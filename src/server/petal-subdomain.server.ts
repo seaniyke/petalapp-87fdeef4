@@ -190,6 +190,33 @@ export async function claimSubdomain(args: {
 }
 
 /**
+ * Give a project its own `<slug>.sites.custardai.dev` address (with SSL) if it
+ * has none yet. Slug comes from the title; taken slugs get a numeric suffix.
+ * Idempotent: a project that already has a subdomain is left untouched.
+ */
+export async function ensureProjectSubdomain(projectId: string): Promise<string | null> {
+  const { data: p } = await supabaseAdmin
+    .from("projects")
+    .select("subdomain, title")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!p) return null;
+  if (p.subdomain) return `${p.subdomain}.${PETAL_ROOT_DOMAIN}`;
+  const base = suggestSlugFromTitle(p.title).slice(0, 34).replace(/-+$/, "");
+  for (let i = 0; i < 6; i++) {
+    const slug = i === 0 ? base : `${base}-${i === 5 ? Math.random().toString(36).slice(2, 6) : i + 1}`;
+    if (!validateSlug(slug).ok || !(await isSlugAvailable(slug, projectId))) continue;
+    try {
+      const r = await claimSubdomain({ projectId, slug });
+      return r.hostname;
+    } catch (e) {
+      if (!(e instanceof Error && /taken/.test(e.message))) throw e;
+    }
+  }
+  return null;
+}
+
+/**
  * Release the project's current Kimble subdomain (if any). Removes the
  * hostname from Cloudflare, deletes the `project_domains` row, and clears
  * `projects.subdomain`. Best-effort: if Cloudflare delete fails we still
