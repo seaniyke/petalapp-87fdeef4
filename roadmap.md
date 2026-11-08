@@ -15,7 +15,7 @@
 - [ ] Automatic top-up below 100 credits — needs owner go-ahead (Custard has no saved card; only a credit grant so far)
 - [x] 8.54-credit refund — owner decided: no refund
 - [x] Grant Custard 10,000 credits (balance now 10,450.96)
-- [ ] Email owner when Custard drops below 1,000 credits — built and checking every 5 min; delivery blocked: Petal's app emails are switched off (needs owner OK to turn on)
+- [ ] Email owner (ikemadu26@gmail.com) when Custard drops below 1,000 credits — hourly check built, emails switched on; delivery blocked until buildwithpetal.com is reconnected as the email sender (owner action)
 
 ## Current frontend request
 - [ ] Replace rejected small robot crew with a bold steel-and-amber workshop, substantial figures and task-specific articulation; verify actual motion and terminal stops.
