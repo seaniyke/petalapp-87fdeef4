@@ -435,6 +435,30 @@ export type Database = {
         }
         Relationships: []
       }
+      balance_alerts: {
+        Row: {
+          alerted_at: string | null
+          last_balance: number | null
+          threshold: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alerted_at?: string | null
+          last_balance?: number | null
+          threshold: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alerted_at?: string | null
+          last_balance?: number | null
+          threshold?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       benchmark_cases: {
         Row: {
           build_completed: boolean
