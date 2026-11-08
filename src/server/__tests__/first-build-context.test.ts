@@ -77,7 +77,7 @@ describe("tiered first-build knowledge", () => {
     expect(site.system).toContain("## Skill: section-architectures");
     expect(site.system).toContain("## Skill: motion");
     expect(build({ subtype: "app", productSurface: "public+app" }).system).toContain("## Skill: section-architectures");
-    expect(app.system).not.toContain("## Skill: section-architectures");
+    expect(build({ subtype: "app" }).system).not.toContain("## Skill: section-architectures");
     const app = build({ subtype: "app" });
     expect(app.system).not.toContain("## Skill: page-composition");
     expect(app.reference.some((r) => r.path === `${KNOWLEDGE_DIR}/skill-page-composition.md`)).toBe(true);
