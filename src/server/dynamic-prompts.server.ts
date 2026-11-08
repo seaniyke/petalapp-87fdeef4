@@ -969,13 +969,14 @@ export function pickDynamicSnippets(args: {
   // re-state the target (e.g. "make it blue" on a mobile app must still
   // use native primitives).
   const targetId = args.buildTarget?.id ?? "web";
-  if (targetId === "mobile" || targetId === "ios" || targetId === "android" || targetId === "web-mobile") {
+  // Paused build types never reach the engine (site-flags).
+  if (MOBILE_APPS_ENABLED && (targetId === "mobile" || targetId === "ios" || targetId === "android" || targetId === "web-mobile")) {
     if (!matched.includes("mobileCraft")) matched.push("mobileCraft");
   }
-  if (targetId === "backend") {
+  if (API_BACKENDS_ENABLED && targetId === "backend") {
     if (!matched.includes("backendCraft")) matched.push("backendCraft");
   }
-  if (targetId === "extension") {
+  if (CHROME_EXTENSIONS_ENABLED && targetId === "extension") {
     if (!matched.includes("chromeExtensionCraft")) matched.push("chromeExtensionCraft");
   }
 
