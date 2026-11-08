@@ -95,6 +95,7 @@ import { Route as ApiPublicCronTurnResumeRouteImport } from './routes/api/public
 import { Route as ApiPublicEmailResendWebhookRouteImport } from './routes/api/public/email/resend-webhook'
 import { Route as ApiPublicEmailSendRouteImport } from './routes/api/public/email/send'
 import { Route as ApiPublicMobileCallbackRouteImport } from './routes/api/public/mobile/callback'
+import { Route as ApiPublicOgImageProjectIdRouteImport } from './routes/api/public/og-image.$projectId'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/shared/$'
 import { Route as ApiPublicV1BillingRouteImport } from './routes/api/public/v1/billing'
@@ -579,6 +580,12 @@ const ApiPublicMobileCallbackRoute = ApiPublicMobileCallbackRouteImport.update({
   path: '/api/public/mobile/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicOgImageProjectIdRoute =
+  ApiPublicOgImageProjectIdRouteImport.update({
+    id: '/api/public/og-image/$projectId',
+    path: '/api/public/og-image/$projectId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaystackWebhookRoute =
   ApiPublicPaystackWebhookRouteImport.update({
     id: '/api/public/paystack/webhook',
@@ -849,6 +856,7 @@ export interface FileRoutesByFullPath {
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
+  '/api/public/og-image/$projectId': typeof ApiPublicOgImageProjectIdRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
@@ -969,6 +977,7 @@ export interface FileRoutesByTo {
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
+  '/api/public/og-image/$projectId': typeof ApiPublicOgImageProjectIdRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
@@ -1090,6 +1099,7 @@ export interface FileRoutesById {
   '/api/public/email/resend-webhook': typeof ApiPublicEmailResendWebhookRoute
   '/api/public/email/send': typeof ApiPublicEmailSendRoute
   '/api/public/mobile/callback': typeof ApiPublicMobileCallbackRoute
+  '/api/public/og-image/$projectId': typeof ApiPublicOgImageProjectIdRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/shared/$': typeof ApiPublicSharedSplatRoute
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
@@ -1212,6 +1222,7 @@ export interface FileRouteTypes {
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
+    | '/api/public/og-image/$projectId'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
     | '/api/public/v1/billing'
@@ -1332,6 +1343,7 @@ export interface FileRouteTypes {
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
+    | '/api/public/og-image/$projectId'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
     | '/api/public/v1/billing'
@@ -1452,6 +1464,7 @@ export interface FileRouteTypes {
     | '/api/public/email/resend-webhook'
     | '/api/public/email/send'
     | '/api/public/mobile/callback'
+    | '/api/public/og-image/$projectId'
     | '/api/public/paystack/webhook'
     | '/api/public/shared/$'
     | '/api/public/v1/billing'
@@ -1571,6 +1584,7 @@ export interface RootRouteChildren {
   ApiPublicEmailResendWebhookRoute: typeof ApiPublicEmailResendWebhookRoute
   ApiPublicEmailSendRoute: typeof ApiPublicEmailSendRoute
   ApiPublicMobileCallbackRoute: typeof ApiPublicMobileCallbackRoute
+  ApiPublicOgImageProjectIdRoute: typeof ApiPublicOgImageProjectIdRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiPublicSharedSplatRoute: typeof ApiPublicSharedSplatRoute
   ApiPublicV1BillingRoute: typeof ApiPublicV1BillingRoute
@@ -2192,6 +2206,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMobileCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/og-image/$projectId': {
+      id: '/api/public/og-image/$projectId'
+      path: '/api/public/og-image/$projectId'
+      fullPath: '/api/public/og-image/$projectId'
+      preLoaderRoute: typeof ApiPublicOgImageProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/paystack/webhook': {
       id: '/api/public/paystack/webhook'
       path: '/api/public/paystack/webhook'
@@ -2597,6 +2618,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEmailResendWebhookRoute: ApiPublicEmailResendWebhookRoute,
   ApiPublicEmailSendRoute: ApiPublicEmailSendRoute,
   ApiPublicMobileCallbackRoute: ApiPublicMobileCallbackRoute,
+  ApiPublicOgImageProjectIdRoute: ApiPublicOgImageProjectIdRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiPublicSharedSplatRoute: ApiPublicSharedSplatRoute,
   ApiPublicV1BillingRoute: ApiPublicV1BillingRoute,
