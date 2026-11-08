@@ -117,6 +117,7 @@ import { Route as ApiPublicV1ProjectsIdBuildsRouteImport } from './routes/api/pu
 import { Route as ApiPublicV1ProjectsIdDomainsRouteImport } from './routes/api/public/v1/projects/$id.domains'
 import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/public/v1/projects/$id.files'
 import { Route as ApiPublicV1ProjectsIdOverviewRouteImport } from './routes/api/public/v1/projects/$id.overview'
+import { Route as ApiPublicV1ProjectsIdPublishRouteImport } from './routes/api/public/v1/projects/$id.publish'
 import { Route as ApiPublicV1ProjectsIdSubdomainRouteImport } from './routes/api/public/v1/projects/$id.subdomain'
 import { Route as ApiPublicV1TurnsIdCancelRouteImport } from './routes/api/public/v1/turns/$id.cancel'
 import { Route as ApiPublicV1TurnsIdEventsRouteImport } from './routes/api/public/v1/turns/$id.events'
@@ -698,6 +699,12 @@ const ApiPublicV1ProjectsIdOverviewRoute =
     path: '/$id/overview',
     getParentRoute: () => ApiPublicV1ProjectsRoute,
   } as any)
+const ApiPublicV1ProjectsIdPublishRoute =
+  ApiPublicV1ProjectsIdPublishRouteImport.update({
+    id: '/$id/publish',
+    path: '/$id/publish',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
 const ApiPublicV1ProjectsIdSubdomainRoute =
   ApiPublicV1ProjectsIdSubdomainRouteImport.update({
     id: '/$id/subdomain',
@@ -850,6 +857,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
+  '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -967,6 +975,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
+  '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -1085,6 +1094,7 @@ export interface FileRoutesById {
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
+  '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
   '/api/public/v1/turns/$id/cancel': typeof ApiPublicV1TurnsIdCancelRoute
   '/api/public/v1/turns/$id/events': typeof ApiPublicV1TurnsIdEventsRoute
@@ -1204,6 +1214,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/domains'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
+    | '/api/public/v1/projects/$id/publish'
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -1321,6 +1332,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/domains'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
+    | '/api/public/v1/projects/$id/publish'
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -1438,6 +1450,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/domains'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
+    | '/api/public/v1/projects/$id/publish'
     | '/api/public/v1/projects/$id/subdomain'
     | '/api/public/v1/turns/$id/cancel'
     | '/api/public/v1/turns/$id/events'
@@ -2307,6 +2320,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1ProjectsIdOverviewRouteImport
       parentRoute: typeof ApiPublicV1ProjectsRoute
     }
+    '/api/public/v1/projects/$id/publish': {
+      id: '/api/public/v1/projects/$id/publish'
+      path: '/$id/publish'
+      fullPath: '/api/public/v1/projects/$id/publish'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdPublishRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
     '/api/public/v1/projects/$id/subdomain': {
       id: '/api/public/v1/projects/$id/subdomain'
       path: '/$id/subdomain'
@@ -2411,6 +2431,7 @@ interface ApiPublicV1ProjectsRouteChildren {
   ApiPublicV1ProjectsIdDomainsRoute: typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
   ApiPublicV1ProjectsIdFilesRoute: typeof ApiPublicV1ProjectsIdFilesRoute
   ApiPublicV1ProjectsIdOverviewRoute: typeof ApiPublicV1ProjectsIdOverviewRoute
+  ApiPublicV1ProjectsIdPublishRoute: typeof ApiPublicV1ProjectsIdPublishRoute
   ApiPublicV1ProjectsIdSubdomainRoute: typeof ApiPublicV1ProjectsIdSubdomainRoute
   ApiPublicV1ProjectsIdRecordsCollectionRoute: typeof ApiPublicV1ProjectsIdRecordsCollectionRoute
 }
@@ -2424,6 +2445,7 @@ const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
     ApiPublicV1ProjectsIdDomainsRouteWithChildren,
   ApiPublicV1ProjectsIdFilesRoute: ApiPublicV1ProjectsIdFilesRoute,
   ApiPublicV1ProjectsIdOverviewRoute: ApiPublicV1ProjectsIdOverviewRoute,
+  ApiPublicV1ProjectsIdPublishRoute: ApiPublicV1ProjectsIdPublishRoute,
   ApiPublicV1ProjectsIdSubdomainRoute: ApiPublicV1ProjectsIdSubdomainRoute,
   ApiPublicV1ProjectsIdRecordsCollectionRoute:
     ApiPublicV1ProjectsIdRecordsCollectionRoute,
