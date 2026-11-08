@@ -27,15 +27,16 @@ export type PartnerSearchItem = {
 };
 
 export async function partnerSearch(q: string): Promise<PartnerSearchItem[]> {
-  const { searchDomains } = await import("@/server/domain-name-api.server");
-  const results = await searchDomains(q);
+  const { searchDomains, loadCatalogue, tldOf } = await import("@/server/domain-name-api.server");
+  const [results, catalogue] = await Promise.all([searchDomains(q), loadCatalogue().catch(() => null)]);
   return results.map((r) => ({
     hostname: r.hostname,
     available: r.available,
     priceCents: r.priceCents,
     wholesaleCents: r.wholesaleCents,
-    // Domain Name API quotes renewals at the registration rate.
-    renewalCents: r.wholesaleCents,
+    // Renewal is a different price from registration: read it from the
+    // registrar's catalogue, never assume it equals the first-year price.
+    renewalCents: catalogue?.get(tldOf(r.hostname, catalogue))?.renewCents ?? null,
     currency: "USD",
     period: r.period ?? 1,
     tier: r.tier,
