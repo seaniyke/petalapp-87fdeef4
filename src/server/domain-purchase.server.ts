@@ -288,6 +288,11 @@ async function finalizeSuccess(
     })
     .eq("id", row.id);
 
+  if (providerHostnameId) {
+    const { notifyPartnerDomainActive } = await import("@/server/partner-domains.server");
+    await notifyPartnerDomainActive(row.project_id, row.hostname);
+  }
+
   return { status: providerHostnameId ? "active" : "polling" };
 }
 
