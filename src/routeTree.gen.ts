@@ -85,6 +85,7 @@ import { Route as ApiPublicCronCloudSharedDayRouteImport } from './routes/api/pu
 import { Route as ApiPublicCronComputeHourRouteImport } from './routes/api/public/cron/compute-hour'
 import { Route as ApiPublicCronCostAlertsRouteImport } from './routes/api/public/cron/cost-alerts'
 import { Route as ApiPublicCronCryptoVerifyRouteImport } from './routes/api/public/cron/crypto-verify'
+import { Route as ApiPublicCronDomainRenewalsRouteImport } from './routes/api/public/cron/domain-renewals'
 import { Route as ApiPublicCronMobileCertExpiryRouteImport } from './routes/api/public/cron/mobile-cert-expiry'
 import { Route as ApiPublicCronRuntimeBackendHourRouteImport } from './routes/api/public/cron/runtime-backend-hour'
 import { Route as ApiPublicCronSelfLearningDigestRouteImport } from './routes/api/public/cron/self-learning-digest'
@@ -516,6 +517,12 @@ const ApiPublicCronCryptoVerifyRoute =
     path: '/api/public/cron/crypto-verify',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronDomainRenewalsRoute =
+  ApiPublicCronDomainRenewalsRouteImport.update({
+    id: '/api/public/cron/domain-renewals',
+    path: '/api/public/cron/domain-renewals',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronMobileCertExpiryRoute =
   ApiPublicCronMobileCertExpiryRouteImport.update({
     id: '/api/public/cron/mobile-cert-expiry',
@@ -797,6 +804,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/compute-hour': typeof ApiPublicCronComputeHourRoute
   '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
+  '/api/public/cron/domain-renewals': typeof ApiPublicCronDomainRenewalsRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -911,6 +919,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/compute-hour': typeof ApiPublicCronComputeHourRoute
   '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
+  '/api/public/cron/domain-renewals': typeof ApiPublicCronDomainRenewalsRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -1026,6 +1035,7 @@ export interface FileRoutesById {
   '/api/public/cron/compute-hour': typeof ApiPublicCronComputeHourRoute
   '/api/public/cron/cost-alerts': typeof ApiPublicCronCostAlertsRoute
   '/api/public/cron/crypto-verify': typeof ApiPublicCronCryptoVerifyRoute
+  '/api/public/cron/domain-renewals': typeof ApiPublicCronDomainRenewalsRoute
   '/api/public/cron/mobile-cert-expiry': typeof ApiPublicCronMobileCertExpiryRoute
   '/api/public/cron/runtime-backend-hour': typeof ApiPublicCronRuntimeBackendHourRoute
   '/api/public/cron/self-learning-digest': typeof ApiPublicCronSelfLearningDigestRoute
@@ -1142,6 +1152,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/compute-hour'
     | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
+    | '/api/public/cron/domain-renewals'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -1256,6 +1267,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/compute-hour'
     | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
+    | '/api/public/cron/domain-renewals'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -1370,6 +1382,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/compute-hour'
     | '/api/public/cron/cost-alerts'
     | '/api/public/cron/crypto-verify'
+    | '/api/public/cron/domain-renewals'
     | '/api/public/cron/mobile-cert-expiry'
     | '/api/public/cron/runtime-backend-hour'
     | '/api/public/cron/self-learning-digest'
@@ -1483,6 +1496,7 @@ export interface RootRouteChildren {
   ApiPublicCronComputeHourRoute: typeof ApiPublicCronComputeHourRoute
   ApiPublicCronCostAlertsRoute: typeof ApiPublicCronCostAlertsRoute
   ApiPublicCronCryptoVerifyRoute: typeof ApiPublicCronCryptoVerifyRoute
+  ApiPublicCronDomainRenewalsRoute: typeof ApiPublicCronDomainRenewalsRoute
   ApiPublicCronMobileCertExpiryRoute: typeof ApiPublicCronMobileCertExpiryRoute
   ApiPublicCronRuntimeBackendHourRoute: typeof ApiPublicCronRuntimeBackendHourRoute
   ApiPublicCronSelfLearningDigestRoute: typeof ApiPublicCronSelfLearningDigestRoute
@@ -2043,6 +2057,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronCryptoVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/domain-renewals': {
+      id: '/api/public/cron/domain-renewals'
+      path: '/api/public/cron/domain-renewals'
+      fullPath: '/api/public/cron/domain-renewals'
+      preLoaderRoute: typeof ApiPublicCronDomainRenewalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/mobile-cert-expiry': {
       id: '/api/public/cron/mobile-cert-expiry'
       path: '/api/public/cron/mobile-cert-expiry'
@@ -2455,6 +2476,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronComputeHourRoute: ApiPublicCronComputeHourRoute,
   ApiPublicCronCostAlertsRoute: ApiPublicCronCostAlertsRoute,
   ApiPublicCronCryptoVerifyRoute: ApiPublicCronCryptoVerifyRoute,
+  ApiPublicCronDomainRenewalsRoute: ApiPublicCronDomainRenewalsRoute,
   ApiPublicCronMobileCertExpiryRoute: ApiPublicCronMobileCertExpiryRoute,
   ApiPublicCronRuntimeBackendHourRoute: ApiPublicCronRuntimeBackendHourRoute,
   ApiPublicCronSelfLearningDigestRoute: ApiPublicCronSelfLearningDigestRoute,
