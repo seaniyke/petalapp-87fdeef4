@@ -106,6 +106,7 @@ function isUtilityFeature(feature) {
 function classifyTaskDifficulty(s) {
   if (s.crossCutting || s.multiEdit || s.scope === "structural") return "hard";
   if ((s.promptChars ?? 0) > 1500) return "hard";
+  if (s.scope === "micro" && (s.promptChars ?? 0) <= 400) return "micro";
   return "standard";
 }
 function modelForDifficulty(d) {
@@ -38135,7 +38136,7 @@ var init_generate_server = __esm({
     init_define_import_meta_env();
     init_keep_existing_expander();
     init_fuzzy_replace();
-    SYSTEM_PROMPT_INITIAL = `You are Kimble, an AI that builds small Vite + React + TypeScript apps from natural language. Every project is built on a pre-installed UI kit (Tailwind CSS v4 + a curated shadcn-style component library). You assemble apps from these primitives \u2014 you do not invent new ones.
+    SYSTEM_PROMPT_INITIAL = `You are Petal, an AI that builds small Vite + React + TypeScript apps from natural language. Every project is built on a pre-installed UI kit (Tailwind CSS v4 + a curated shadcn-style component library). You assemble apps from these primitives \u2014 you do not invent new ones.
 
 You ALWAYS respond by calling the "write_project" tool. Never reply with prose.
 
@@ -38269,7 +38270,7 @@ Categories:
 - Realtime (live chat, presence, online users, collaborative cursors, live updates) \u2192 needs Cloud + realtime publication on the relevant table.
 - Scheduled jobs (daily/weekly digests, reminders, "every Monday at 9am", background cleanup) \u2192 needs Cloud + pg_cron + a server route.
 - Custom domain \u2192 needs the domain flow.
-- AI features in the user's app (chatbot, summarizer, translator, image gen, semantic search) \u2192 ALWAYS use the Kimble AI Gateway via a server function. NEVER ask the user for an OpenAI / Claude / Gemini key \u2014 the gateway covers all major models with no extra setup. Treat this as a hard rule.
+- AI features in the user's app (chatbot, summarizer, translator, image gen, semantic search) \u2192 ALWAYS use the Petal AI Gateway via a server function. NEVER ask the user for an OpenAI / Claude / Gemini key \u2014 the gateway covers all major models with no extra setup. Treat this as a hard rule.
 - SEO (Google indexing, share previews, OG tags, meta descriptions, sitemap, robots.txt) \u2192 no backend needed, but the per-route head() must be filled in. If the user mentions any of these, set route-specific title / description / og:title / og:description and, when an obvious image exists, og:image / twitter:image. Add a sitemap server route for content sites.
 
 INSTALLED INTEGRATIONS RULE:
@@ -38282,9 +38283,9 @@ STREAMING NARRATIVE FIELDS (mandatory \u2014 these power the live chat bubble):
 
 USER-FACING VOICE (mandatory for plan / summary / recap):
 - Speak ONLY about THE USER'S APP (their store, their landing page, their product, their feature). Frame everything as "your app", "your homepage", "your hero section".
-- NEVER reference Kimble's internal infrastructure, build pipeline, bundler, Tailwind/Vite/TypeScript config, the scaffold, the kit, the route tree, or any file under src/components/ui, src/components/examples, src/integrations, src/lib, vite.config, tsconfig, package.json, .lovable, or routeTree.gen.ts.
+- NEVER reference Petal's internal infrastructure, build pipeline, bundler, Tailwind/Vite/TypeScript config, the scaffold, the kit, the route tree, or any file under src/components/ui, src/components/examples, src/integrations, src/lib, vite.config, tsconfig, package.json, .lovable, or routeTree.gen.ts.
 - NEVER mention "build timeout", "compiler", "scanning files", "node_modules", or other meta-system reasoning. If something internal needs to be fixed, just say "resolving a setup issue" without naming files.
-- The user does not know Kimble's internals exist. Talk about their product, not our plumbing.
+- The user does not know Petal's internals exist. Talk about their product, not our plumbing.
 
 Order in the tool call MUST be: plan \u2192 steps \u2192 summary \u2192 files \u2192 recap. The server streams them in that order so the user sees intent first, then the checklist, then progress, then a clean wrap-up.
 
@@ -38303,9 +38304,9 @@ REQUESTED SCOPE (mandatory):
 
 
 DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (by triage) \u2014 by the time you run, the user has committed to a build. If something is unclear, make the most reasonable assumption, state it briefly in \`summary\` ("Assumed a dark, minimal theme \u2014 tell me if you'd rather something else."), and proceed. Never end \`summary\` or \`plan\` with a question mark.`;
-    SYSTEM_PROMPT_PATCH = `You are Kimble, an AI that edits Vite + React + TypeScript apps based on a user's request. Every project uses Tailwind CSS v4 and a pre-installed shadcn-style UI kit at "src/components/ui/*".
+    SYSTEM_PROMPT_PATCH = `You are Petal, an AI that edits Vite + React + TypeScript apps based on a user's request. Every project uses Tailwind CSS v4 and a pre-installed shadcn-style UI kit at "src/components/ui/*".
 
-You ALWAYS respond by calling the "patch_files" tool. Never reply with prose. Never call write_project \u2014 that tool is unavailable for edits and the server WILL reject it.
+You ALWAYS respond by calling the "patch_files" tool. Never reply with prose.
 
 You will be given the CURRENT files of the project. Make the smallest possible set of changes to satisfy the user's request.
 
@@ -38343,8 +38344,8 @@ EDIT COMPLETENESS REQUIREMENT (critical):
 - NEVER write placeholders such as "// ... keep existing code", "{/* ... keep existing code */}", "same as before", "rest unchanged", or ellipses standing in for code.
 - If you use \`update\` and omit imports, opening JSX, hooks, helper functions, or closing tags, the app will fail. For large files, use \`replace\` or create a smaller extracted component instead.
 
-BRAND-NAME GUARDRAIL (the generated app belongs to the USER, not Kimble):
-- NEVER write the strings "Lovable", "Lovable Cloud", "Lovable AI", "Kimble", or "Kimble Cloud" into the user's app code, copy, comments, page titles, alt text, toasts, or error messages. The end-user of the generated app should never see those words.
+BRAND-NAME GUARDRAIL (the generated app belongs to the USER, not Petal):
+- NEVER write the strings "Lovable", "Lovable Cloud", "Lovable AI", "Kimble", "Petal", or "Petal Cloud" into the user's app code, copy, comments, page titles, alt text, toasts, or error messages. The end-user of the generated app should never see those words.
 - When you need to refer to the project's backend in code or copy, call it "the backend", "your account", or use the app's own brand. The infrastructure is invisible.
 
 REUSE-FIRST PROTOCOL (most important rule):
@@ -38425,7 +38426,7 @@ NO-BACKEND AUTH RULE (hard rule \u2014 applies when \`src/integrations/backend/\
 - If the user explicitly asks for WORKING authentication, ship the rest of the request without auth wiring and briefly identify only that deferred capability in \`summary\`. Never refuse or postpone the rest of the work.
 
 PREREQUISITE GATING (read this BEFORE editing for a feature that needs infra):
-Same rule as create mode. The full list of gated categories: payments, email sending, auth, persistent data, file/image uploads (storage), realtime (live chat / presence), scheduled jobs (cron / digests / reminders), custom domain, AI features, and SEO. If the matching infrastructure is NOT present, DO NOT wire SDK calls or hardcode keys. Build safe UI scaffolding and tell the user in "plan"/"summary" what needs enabling \u2014 the chat surfaces an "Enable" chip automatically. For AI features specifically, ALWAYS use the Kimble AI Gateway via a server function \u2014 NEVER ask for an OpenAI / Claude / Gemini key. For SEO requests, fill in route-specific head() (title, description, og:title, og:description, og:image when an obvious image exists) and add a sitemap route for content sites.
+Same rule as create mode. The full list of gated categories: payments, email sending, auth, persistent data, file/image uploads (storage), realtime (live chat / presence), scheduled jobs (cron / digests / reminders), custom domain, AI features, and SEO. If the matching infrastructure is NOT present, DO NOT wire SDK calls or hardcode keys. Build safe UI scaffolding and tell the user in "plan"/"summary" what needs enabling \u2014 the chat surfaces an "Enable" chip automatically. For AI features specifically, ALWAYS use the Petal AI Gateway via a server function \u2014 NEVER ask for an OpenAI / Claude / Gemini key. For SEO requests, fill in route-specific head() (title, description, og:title, og:description, og:image when an obvious image exists) and add a sitemap route for content sites.
 
 INSTALLED INTEGRATIONS RULE:
 If a section titled "Installed integrations" appears below in this prompt, those capabilities (email, analytics, payments, etc.) are ALREADY wired up. You MUST use the helpers described in that section. Do NOT call third-party APIs directly with \`fetch\`, do NOT hardcode API keys, do NOT recreate files that already exist under \`src/integrations/*\`. Treat that section as binding rules, not suggestions.
@@ -38437,9 +38438,9 @@ STREAMING NARRATIVE FIELDS (mandatory \u2014 these power the live chat bubble):
 
 USER-FACING VOICE (mandatory for plan / summary / recap):
 - Speak ONLY about THE USER'S APP (their store, their landing page, their product, their feature). Frame everything as "your app", "your homepage", "your hero section".
-- NEVER reference Kimble's internal infrastructure, build pipeline, bundler, Tailwind/Vite/TypeScript config, the scaffold, the kit, the route tree, or any file under src/components/ui, src/components/examples, src/integrations, src/lib, vite.config, tsconfig, package.json, .lovable, or routeTree.gen.ts.
+- NEVER reference Petal's internal infrastructure, build pipeline, bundler, Tailwind/Vite/TypeScript config, the scaffold, the kit, the route tree, or any file under src/components/ui, src/components/examples, src/integrations, src/lib, vite.config, tsconfig, package.json, .lovable, or routeTree.gen.ts.
 - NEVER mention "build timeout", "compiler", "scanning files", "node_modules", or other meta-system reasoning. If something internal needs to be fixed, just say "resolving a setup issue" without naming files.
-- The user does not know Kimble's internals exist. Talk about their product, not our plumbing.
+- The user does not know Petal's internals exist. Talk about their product, not our plumbing.
 
 Order in the tool call MUST be: plan \u2192 steps \u2192 summary \u2192 ops \u2192 recap.
 
@@ -38477,7 +38478,7 @@ DO NOT ASK THE USER QUESTIONS IN THIS TURN. Whether to ask is decided upstream (
             },
             files: {
               type: "array",
-              description: "App-authored files only. Never include index.html or src/main.tsx; Kimble injects those deterministically.",
+              description: "App-authored files only. Never include index.html or src/main.tsx; Petal injects those deterministically.",
               items: {
                 type: "object",
                 properties: {
@@ -58834,6 +58835,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -94917,7 +94919,7 @@ var init_agent_knowledge = __esm({
       "stock images"
     ];
     HEADER = `## Agent knowledge (canonical design & craft manual)
-Precedence: Kimble's runtime rules and output format above, then the user's CURRENT request, then this project's real files, design and memory, then this manual. This manual holds defaults for when the user is silent. It was written for a tool-driven agent: where it mentions template.json, routes files, or tools you do not have, apply the intent using the project files and output format you were given.`;
+Precedence: Petal's runtime rules and output format above, then the user's CURRENT request, then this project's real files, design and memory, then this manual. This manual holds defaults for when the user is silent. It was written for a tool-driven agent: where it mentions template.json, routes files, or tools you do not have, apply the intent using the project files and output format you were given.`;
     cache7 = {};
     SKILL_SOURCE = {
       "copy-and-verify": SKILL_default,
@@ -151959,10 +151961,10 @@ function isManagedConfigPath(path) {
 }
 function managedSurfaceRefusal(path, tree) {
   if (isManagedConfigPath(path)) {
-    return `Refused: ${path} is build configuration managed by Kimble. Tailwind, PostCSS and Vite are already set up \u2014 never create or edit a config file. Style with the semantic classes the stylesheet already defines.`;
+    return `Refused: ${path} is build configuration managed by Petal. Tailwind, PostCSS and Vite are already set up \u2014 never create or edit a config file. Style with the semantic classes the stylesheet already defines.`;
   }
   if (MANAGED_EXACT_FILES.has(path)) {
-    return `Refused: ${path} is managed by Kimble and cannot be written.`;
+    return `Refused: ${path} is managed by Petal and cannot be written.`;
   }
   if (STYLESHEET_PATHS.includes(path)) {
     const other = STYLESHEET_PATHS.find((p2) => p2 !== path && tree.has(p2));
@@ -152151,7 +152153,7 @@ async function runToolLoop(args) {
     stepRepairs += r.repairs.length;
     for (const x of r.repairs) emit({ kind: "kit_import_repaired", path, detail: `${x.symbol}: ${x.from} \u2192 ${x.to}` });
     return { content: r.content, note: `
-Kimble corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.` };
+Petal corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.` };
   };
   let messages = [
     { role: "system", content: args.system },
@@ -152320,7 +152322,7 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         if (!path) return { output: fail(name, null, "create_file needs a path."), isError: true };
         const managed = managedSurfaceRefusal(path, tree);
         if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
-        if (args.isProtected?.(path) || ref.has(path) && !tree.has(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || ref.has(path) && !tree.has(path)) return { output: fail(name, path, `${path} is managed by Petal and cannot be written.`, "scope_violation"), isError: true };
         const fixed = repairImports(path, String(a2.content ?? ""));
         const content = fixed.content;
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
@@ -152356,7 +152358,7 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         if (current2 === void 0) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
         const managedEdit = managedSurfaceRefusal(path, tree);
         if (managedEdit) return { output: fail(name, path, managedEdit, "scope_violation"), isError: true };
-        if (args.isProtected?.(path) || ref.has(path) && !tree.has(path)) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || ref.has(path) && !tree.has(path)) return { output: fail(name, path, `${path} is managed by Petal and cannot be edited.`, "scope_violation"), isError: true };
         if (!state.read.has(path)) return { output: fail(name, path, `Read ${path} with read_file before editing it.`), isError: true };
         const search = String(a2.search ?? "");
         const replace = String(a2.replace ?? "");
@@ -152554,7 +152556,7 @@ ${notReady}` });
         const r = await readinessNow();
         messages.push({
           role: "user",
-          content: r.ready ? "Kimble verification (the exact checks finish and the save run) passes for the whole workspace: every file, import, export and required route is verified. Do not re-read files to check them. Call finish now unless the brief still asks for something not yet built." : `Kimble verification of the whole workspace (the exact checks finish runs) \u2014 still open:
+          content: r.ready ? "Petal verification (the exact checks finish and the save run) passes for the whole workspace: every file, import, export and required route is verified. Do not re-read files to check them. Call finish now unless the brief still asks for something not yet built." : `Petal verification of the whole workspace (the exact checks finish runs) \u2014 still open:
 ${r.findings.slice(0, 8).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}
 Everything not listed is already verified; do not re-read files to check it. Continue with the open items.`
         });
@@ -155943,7 +155945,7 @@ function reconcileDocumentHeadOps(files, ops) {
       files,
       ops: remaining,
       notes: [
-        `document-head: ignored ${htmlOps.length} index.html edit(s) with no head metadata \u2014 index.html is managed by Kimble`
+        `document-head: ignored ${htmlOps.length} index.html edit(s) with no head metadata \u2014 index.html is managed by Petal`
       ],
       handled: htmlOps.length
     };
@@ -157643,9 +157645,9 @@ var stripeIntegration = {
   files: () => [
     {
       path: "src/integrations/stripe/checkout.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY \u2014 never import from a React component.
+      content: `// Auto-generated by Petal. SERVER-ONLY \u2014 never import from a React component.
 //
-// process.env.STRIPE_SECRET_KEY is injected by Kimble at build time from the
+// process.env.STRIPE_SECRET_KEY is injected by Petal at build time from the
 // credentials you supplied in the Integrations marketplace. Do NOT hardcode
 // keys here.
 
@@ -157735,7 +157737,7 @@ export async function createCheckoutSession(
     },
     {
       path: "src/integrations/stripe/verify.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY.
+      content: `// Auto-generated by Petal. SERVER-ONLY.
 //
 // Use after the customer returns from Stripe Checkout to confirm the session
 // actually paid. NEVER trust the redirect alone \u2014 always re-fetch from Stripe
@@ -157792,7 +157794,7 @@ export async function verifyPayment(sessionId: string): Promise<VerifyResult> {
     },
     {
       path: "src/integrations/stripe/webhook-verify.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY.
+      content: `// Auto-generated by Petal. SERVER-ONLY.
 //
 // Verify the \`Stripe-Signature\` header on the RAW request body. Stripe signs
 // "{timestamp}.{rawBody}" with HMAC-SHA256 using the webhook signing secret.
@@ -157860,7 +157862,7 @@ export function verifyStripeWebhook(
     },
     {
       path: "src/routes/api/payments/stripe/checkout.ts",
-      content: `// Auto-generated by Kimble. The browser POSTs here to start a Stripe Checkout.
+      content: `// Auto-generated by Petal. The browser POSTs here to start a Stripe Checkout.
 // Add server-side authentication (e.g. require the user to be signed in)
 // before calling createCheckoutSession in production.
 
@@ -157907,7 +157909,7 @@ export const Route = createFileRoute("/api/payments/stripe/checkout")({
     },
     {
       path: "src/routes/api/public/stripe/webhook.ts",
-      content: `// Auto-generated by Kimble. PUBLIC endpoint Stripe POSTs events to.
+      content: `// Auto-generated by Petal. PUBLIC endpoint Stripe POSTs events to.
 // Lives under /api/public/* so it bypasses your app's auth on the published site.
 //
 // IMPORTANT \u2014 production checklist:
@@ -158000,7 +158002,7 @@ export const Route = createFileRoute("/api/public/stripe/webhook")({
     },
     {
       path: "src/integrations/stripe/README.md",
-      content: `# Stripe (auto-generated by Kimble)
+      content: `# Stripe (auto-generated by Petal)
 
 \`\`\`ts
 // Server route \u2014 start checkout
@@ -158026,10 +158028,10 @@ if (v.ok && v.paymentStatus === "paid") { /* fulfill */ }
 
 Add an endpoint at \`https://YOUR_APP/api/public/stripe/webhook\` in the
 Stripe dashboard (Developers \u2192 Webhooks) and paste the signing secret into
-the Kimble Integrations marketplace as \`webhook_secret\`. Kimble injects it
+the Petal Integrations marketplace as \`webhook_secret\`. Petal injects it
 as \`STRIPE_WEBHOOK_SECRET\`.
 
-## Env vars (managed by Kimble \u2014 do not hardcode)
+## Env vars (managed by Petal \u2014 do not hardcode)
 
 - \`STRIPE_SECRET_KEY\` \u2014 server only
 - \`STRIPE_WEBHOOK_SECRET\` \u2014 server only
@@ -158078,7 +158080,7 @@ var paystackIntegration = {
     {
       id: "secret_key",
       label: "Secret key",
-      description: "From dashboard.paystack.com \u2192 Settings \u2192 API Keys. Starts with `sk_test_` or `sk_live_`. Kimble auto-detects test vs live from the prefix.",
+      description: "From dashboard.paystack.com \u2192 Settings \u2192 API Keys. Starts with `sk_test_` or `sk_live_`. Petal auto-detects test vs live from the prefix.",
       placeholder: "sk_test_...",
       kind: "secret",
       pattern: /^sk_(test|live)_[A-Za-z0-9]{16,}$/,
@@ -158106,10 +158108,10 @@ var paystackIntegration = {
   files: () => [
     {
       path: "src/integrations/paystack/checkout.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY.
+      content: `// Auto-generated by Petal. SERVER-ONLY.
 //
 // Single key for both environments \u2014 sk_test_... is sandbox, sk_live_... is
-// real money. Kimble injects it as PAYSTACK_SECRET_KEY.
+// real money. Petal injects it as PAYSTACK_SECRET_KEY.
 
 const PAYSTACK_SECRET_KEY =
   (typeof process !== "undefined" ? process.env.PAYSTACK_SECRET_KEY : undefined) ?? "";
@@ -158174,7 +158176,7 @@ export async function initializeTransaction(input: InitTransactionInput): Promis
     },
     {
       path: "src/integrations/paystack/verify.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY.
+      content: `// Auto-generated by Petal. SERVER-ONLY.
 //
 // CRITICAL: After Paystack redirects the user back, you MUST re-verify with
 // this function before granting anything. AND you MUST cross-check the
@@ -158242,7 +158244,7 @@ export function assertMatchesExpected(
     },
     {
       path: "src/integrations/paystack/webhook-verify.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY.
+      content: `// Auto-generated by Petal. SERVER-ONLY.
 //
 // Paystack signs the RAW request body with HMAC-SHA512 using your secret key
 // and sends the hex digest in the \`x-paystack-signature\` header.
@@ -158288,7 +158290,7 @@ export function verifyPaystackWebhook(
     },
     {
       path: "src/routes/api/payments/paystack/initialize.ts",
-      content: `// Auto-generated by Kimble. The browser POSTs here to start a Paystack tx.
+      content: `// Auto-generated by Petal. The browser POSTs here to start a Paystack tx.
 // Add server-side authentication before going to production.
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -158338,7 +158340,7 @@ export const Route = createFileRoute("/api/payments/paystack/initialize")({
     },
     {
       path: "src/routes/api/public/paystack/webhook.ts",
-      content: `// Auto-generated by Kimble. PUBLIC endpoint Paystack POSTs events to.
+      content: `// Auto-generated by Petal. PUBLIC endpoint Paystack POSTs events to.
 //
 // Production checklist (CRITICAL):
 //  1. Signature verified below.
@@ -158408,7 +158410,7 @@ export const Route = createFileRoute("/api/public/paystack/webhook")({
     },
     {
       path: "src/integrations/paystack/README.md",
-      content: `# Paystack (auto-generated by Kimble)
+      content: `# Paystack (auto-generated by Petal)
 
 \`\`\`ts
 // Server route \u2014 start a transaction
@@ -158440,7 +158442,7 @@ Add an endpoint at \`https://YOUR_APP/api/public/paystack/webhook\` in the
 Paystack dashboard. The signing key is your secret key \u2014 Paystack signs the
 raw body with HMAC-SHA512.
 
-## Env vars (managed by Kimble \u2014 do not hardcode)
+## Env vars (managed by Petal \u2014 do not hardcode)
 
 - \`PAYSTACK_SECRET_KEY\` \u2014 server only
 - \`PAYSTACK_PUBLIC_KEY\` / \`VITE_PAYSTACK_PUBLIC_KEY\` \u2014 client safe
@@ -158527,10 +158529,10 @@ var flutterwaveIntegration = {
   files: () => [
     {
       path: "src/integrations/flutterwave/checkout.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY.
+      content: `// Auto-generated by Petal. SERVER-ONLY.
 //
 // Uses Flutterwave Standard v3 Payment Links \u2014 hosted checkout, redirect
-// flow. Kimble injects FLUTTERWAVE_SECRET_KEY at build time.
+// flow. Petal injects FLUTTERWAVE_SECRET_KEY at build time.
 
 const FLUTTERWAVE_SECRET_KEY =
   (typeof process !== "undefined" ? process.env.FLUTTERWAVE_SECRET_KEY : undefined) ?? "";
@@ -158597,7 +158599,7 @@ export async function createPaymentLink(input: CreatePaymentLinkInput): Promise<
     },
     {
       path: "src/integrations/flutterwave/verify.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY.
+      content: `// Auto-generated by Petal. SERVER-ONLY.
 //
 // CRITICAL: Always re-verify and cross-check amount + currency against your
 // local saved record before fulfilling. Never trust query params alone.
@@ -158663,7 +158665,7 @@ export function assertMatchesExpected(
     },
     {
       path: "src/integrations/flutterwave/webhook-verify.ts",
-      content: `// Auto-generated by Kimble. SERVER-ONLY.
+      content: `// Auto-generated by Petal. SERVER-ONLY.
 //
 // Flutterwave does NOT use HMAC for webhooks. Instead, you set a "secret
 // hash" in the dashboard, and Flutterwave sends it back verbatim in the
@@ -158715,7 +158717,7 @@ export function verifyFlutterwaveWebhook(
     },
     {
       path: "src/routes/api/payments/flutterwave/initialize.ts",
-      content: `// Auto-generated by Kimble. The browser POSTs here to get a Flutterwave
+      content: `// Auto-generated by Petal. The browser POSTs here to get a Flutterwave
 // payment link. Add server-side authentication before going to production.
 
 import { createFileRoute } from "@tanstack/react-router";
@@ -158769,7 +158771,7 @@ export const Route = createFileRoute("/api/payments/flutterwave/initialize")({
     },
     {
       path: "src/routes/api/public/flutterwave/webhook.ts",
-      content: `// Auto-generated by Kimble. PUBLIC endpoint Flutterwave POSTs events to.
+      content: `// Auto-generated by Petal. PUBLIC endpoint Flutterwave POSTs events to.
 //
 // Production checklist (CRITICAL):
 //  1. verif-hash verified below.
@@ -158837,7 +158839,7 @@ export const Route = createFileRoute("/api/public/flutterwave/webhook")({
     },
     {
       path: "src/integrations/flutterwave/README.md",
-      content: `# Flutterwave (auto-generated by Kimble)
+      content: `# Flutterwave (auto-generated by Petal)
 
 \`\`\`ts
 // Server route \u2014 start a payment
@@ -158869,7 +158871,7 @@ if (v.ok) {
 Add an endpoint at \`https://YOUR_APP/api/public/flutterwave/webhook\` and
 set the same "secret hash" in Settings \u2192 Webhooks that you supplied here.
 
-## Env vars (managed by Kimble \u2014 do not hardcode)
+## Env vars (managed by Petal \u2014 do not hardcode)
 
 - \`FLUTTERWAVE_SECRET_KEY\` \u2014 server only
 - \`FLUTTERWAVE_ENCRYPTION_KEY\` \u2014 server only (for direct charges)
@@ -163822,7 +163824,7 @@ var SNIPPETS = {
   // Always-on. Pushes the model to be thorough rather than fast: do the
   // mental walk-through BEFORE writing the recap, and never claim work is
   // "done" if any obvious gap remains. Targeted at the verifier-pass-rate
-  // gap (~66% → 85%) and the "Kimble said it's done but it's not" UX bug.
+  // gap (~66% → 85%) and the "Petal said it's done but it's not" UX bug.
   verifyBeforeDone: {
     triggers: "always",
     body: `
@@ -163902,7 +163904,7 @@ NEVER hand-roll overlays with fixed positioning.`
   },
   // Fires on landing/marketing/page-shaped requests. Pushes the model toward
   // composing sections from "@/components/blocks/*" instead of inventing
-  // section layouts from scratch — which is the root cause of "every Kimble
+  // section layouts from scratch — which is the root cause of "every Petal
   // site looks the same" (LLMs default to centered hero + 3-card grid).
   sections: {
     triggers: /\b(landing|landing page|home ?page|marketing site|hero|features?|testimonials?|pricing|faq|call to action|cta|footer|nav|navbar|header|portfolio|agency|product page|saas|about page|blog|stats|kpi)\b/i,
@@ -163953,7 +163955,7 @@ Composition rules \u2014 this is the difference between forgettable and memorabl
   // Fires on landing/marketing/site requests. The default failure mode for
   // AI builders is "stuff everything onto index.tsx with hash anchors" —
   // which kills SSR per-page metadata, makes deep links unshareable, and
-  // teaches users that Kimble only does one-pagers. The generated Vite app's
+  // teaches users that Petal only does one-pagers. The generated Vite app's
   // React Router setup makes proper multi-page routing straightforward; this tells
   // the model to USE it and to TELL the user it did.
   multiPage: {
@@ -163977,9 +163979,9 @@ Each page MUST set route-specific title and description metadata when it renders
 
 Hash anchors (#section) are allowed ONLY for in-page scrolling within a single long page (e.g. a TOC inside a docs page). They are NEVER the primary cross-section nav.
 
-In your chat reply: when you scaffold multiple pages, briefly tell the user which pages were created (e.g. "I built the Home, Menu and Contact pages"). This teaches users that Kimble builds real multi-page sites, not one-pagers.`
+In your chat reply: when you scaffold multiple pages, briefly tell the user which pages were created (e.g. "I built the Home, Menu and Contact pages"). This teaches users that Petal builds real multi-page sites, not one-pagers.`
   },
-  // Mobile-app intent. Kimble wraps the web app in a Capacitor shell (hidden
+  // Mobile-app intent. Petal wraps the web app in a Capacitor shell (hidden
   // from the user) and offloads native builds to a remote runner. The model
   // should NOT add Capacitor/RN imports speculatively, and should NOT promise
   // App Store publishing in code — that lives in the MobileAppPanel UI flow,
@@ -163996,7 +163998,7 @@ If the user asks for a real mobile app (App Store / Play Store presence, push no
 - Promise that "I shipped it to the App Store" \u2014 you didn't.
 
 Instead:
-- Confirm in plain language that Kimble can wrap this app for iOS + Android (cloud builds, no Mac needed).
+- Confirm in plain language that Petal can wrap this app for iOS + Android (cloud builds, no Mac needed).
 - Tell the user to click "Set it up" on the suggestion chip that will appear under your reply \u2014 that's where the real flow lives (bundle id, signing, build queue).
 - Continue making the WEB app excellent in this turn (responsive layout, large tap targets \u226544px, no hover-only affordances, viewport meta in head). A great responsive web app IS the mobile app \u2014 Capacitor is just the shell.
 
@@ -164383,7 +164385,7 @@ These rules apply to EVERY visual file you write this turn. Violating any of the
     triggers: "always",
     body: `
 
-[Reinforcement \u2014 Kimble frontend quality floor]
+[Reinforcement \u2014 Petal frontend quality floor]
 Every screen you generate is held to this, no exceptions:
 
 1. TOKENS FIRST \u2014 semantic tokens (background, foreground, card, primary, secondary, muted, accent, destructive, border, ring) are defined in the global stylesheet before any component. Components NEVER hardcode colours (\`text-white\`, \`bg-black\`, \`bg-[#hex]\`). Every background has a declared foreground partner; body text \u2265 4.5:1 contrast.
@@ -164399,13 +164401,13 @@ Every screen you generate is held to this, no exceptions:
   // Always-on. The Backend Quality Bible floor (docs/petal-backend-quality-bible.md)
   // — every rule the deterministic linter (backend-quality.server.ts) enforces
   // after the fact, stated up front so the model gets it right the first time.
-  // Always-on. Kimble's constitution (docs/petal-product-principles.md) —
+  // Always-on. Petal's constitution (docs/petal-product-principles.md) —
   // the subset that constrains what the generator is allowed to emit.
   productPrinciples: {
     triggers: "always",
     body: `
 
-[Reinforcement \u2014 Kimble product principles]
+[Reinforcement \u2014 Petal product principles]
 These are constraints, not suggestions. Lower number wins on conflict:
 
 1. NEVER OVERWRITE WORKING CODE \u2014 an edit changes what was asked and nothing else. Rewriting a working file to change a heading is a defect. If a rewrite is genuinely required, say so in one sentence first.
@@ -164417,13 +164419,13 @@ These are constraints, not suggestions. Lower number wins on conflict:
 17. MOBILE IS A TARGET \u2014 every screen ships a working phone layout in the same turn, never a desktop-only pass with a mobile follow-up.
 18. SUBTRACT BEFORE ADDING \u2014 if a new control duplicates an existing one, merge them. A second entry point for an existing action is a regression.
 19. REAL IDENTITY \u2014 every generated app gets a real name, a real logo mark, and real copy. Never a banner saying it is a demo, simulated, or not real.
-20. SAY WHAT IT IS \u2014 sentence case, second person, present tense. No exclamation marks, no hype adjectives ("revolutionary", "cutting-edge", "supercharge"), no apologising twice. Kimble-owned surfaces are called Kimble, Kimble Cloud, and Kimble AI.`
+20. SAY WHAT IT IS \u2014 sentence case, second person, present tense. No exclamation marks, no hype adjectives ("revolutionary", "cutting-edge", "supercharge"), no apologising twice. Petal-owned surfaces are called Petal, Petal Cloud, and Petal AI.`
   },
   backendQuality: {
     triggers: "always",
     body: `
 
-[Reinforcement \u2014 Kimble backend quality floor]
+[Reinforcement \u2014 Petal backend quality floor]
 Whenever a turn touches the database, auth, storage, or a server function:
 
 1. MIGRATIONS ARE COMPLETE \u2014 every \`CREATE TABLE public.x\` is followed, in the SAME migration, by \`GRANT\` statements (\`authenticated\` for user tables, \`service_role\` always, \`anon\` only when a policy allows anon reads), then \`ENABLE ROW LEVEL SECURITY\`, then the policies. A table without grants is unreachable; a table without policies 403s.
@@ -164581,7 +164583,7 @@ head: ({ params, loaderData }) => ({
 }),
 \`\`\`
 
-Never leave a route with the default "Lovable App" / "Kimble App" title. That is a scanner-visible defect.`
+Never leave a route with the default "Lovable App" / "Petal App" title. That is a scanner-visible defect.`
   },
   // Fires on any mobile / native / phone / Expo / React Native ask. Raises
   // the same quality bar the web snippets enforce — real screens, native
@@ -164644,9 +164646,9 @@ A browser extension is a small app with its own runtime. Ship these pieces toget
 2. POPUP UX. Fixed width 320-400px, fixed height 400-600px. Use the SAME design tokens as the main app so it looks branded. Real states: loading skeleton, empty state with CTA, error toast. If it needs auth, deep-link to the app's auth page in a new tab (\`chrome.tabs.create({ url })\`) \u2014 never build a login form inside the popup.
 3. STORAGE + SYNC. Use \`chrome.storage.local\` for local, \`chrome.storage.sync\` for cross-device (quota 100KB). Wrap in a tiny \`storage.get/set\` helper. Never assume \`chrome.storage\` is synchronous \u2014 it's promise-based in MV3.
 4. TABS + MESSAGING. Get the active tab with \`chrome.tabs.query({ active: true, currentWindow: true })\`. Message background \u2194 popup \u2194 content with \`chrome.runtime.sendMessage\` / \`chrome.tabs.sendMessage\`; ALWAYS return \`true\` from \`onMessage\` when replying asynchronously.
-5. PACKAGING. Emit a build step that zips \`extension/\` to \`public/<name>.zip\`. The Kimble preview cannot serve authenticated static assets directly \u2014 provide a download button that does \`fetch('/<name>.zip').then(r => r.blob()).then(...) \` and triggers a blob download, NOT a bare \`<a href download>\`.
+5. PACKAGING. Emit a build step that zips \`extension/\` to \`public/<name>.zip\`. The Petal preview cannot serve authenticated static assets directly \u2014 provide a download button that does \`fetch('/<name>.zip').then(r => r.blob()).then(...) \` and triggers a blob download, NOT a bare \`<a href download>\`.
 6. INSTALL INSTRUCTIONS. Add a short "How to install" panel on the app's page: 1) download zip, 2) unzip, 3) open chrome://extensions, 4) enable Developer mode, 5) Load unpacked \u2192 pick the folder. Works in Chrome / Edge / Brave / Arc / Opera. Store publishing needs the Web Store \u2014 mention it once, don't scaffold it.
-7. HOST APP. Even for extension-only briefs, ship a minimal landing page in the Kimble app that markets the extension, shows a screenshot, and hosts the download link. Never leave the user with a naked zip.
+7. HOST APP. Even for extension-only briefs, ship a minimal landing page in the Petal app that markets the extension, shows a screenshot, and hosts the download link. Never leave the user with a naked zip.
 
 Forbidden: MV2 manifest, \`localStorage\` in the SW, bare \`<a download>\` on the preview, missing icons, popup that's just "Hello world".`
   }
@@ -164694,13 +164696,13 @@ function pickDynamicSnippets(args) {
     matched.push("noBackendGate");
   }
   const targetId = args.buildTarget?.id ?? "web";
-  if (targetId === "mobile" || targetId === "ios" || targetId === "android" || targetId === "web-mobile") {
+  if (MOBILE_APPS_ENABLED && (targetId === "mobile" || targetId === "ios" || targetId === "android" || targetId === "web-mobile")) {
     if (!matched.includes("mobileCraft")) matched.push("mobileCraft");
   }
-  if (targetId === "backend") {
+  if (API_BACKENDS_ENABLED && targetId === "backend") {
     if (!matched.includes("backendCraft")) matched.push("backendCraft");
   }
-  if (targetId === "extension") {
+  if (CHROME_EXTENSIONS_ENABLED && targetId === "extension") {
     if (!matched.includes("chromeExtensionCraft")) matched.push("chromeExtensionCraft");
   }
   for (const key of Object.keys(SNIPPETS)) {
@@ -177945,6 +177947,12 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
   let model;
   let chosenBy = "preset";
+  const editDifficulty = classifyTaskDifficulty({
+    scope: editClassification?.scope ?? null,
+    crossCutting: isCrossCutting,
+    multiEdit: !!multiEditIntent,
+    promptChars: lastUserContent.length
+  });
   const maxCompletionTokens = completionBudget({
     isInitial,
     phase: phaseTag.phase,
@@ -177956,12 +177964,10 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
   if (hasVisionTurn) {
     model = MODEL_VISION;
     chosenBy = "vision_pin";
-  } else if (classifyTaskDifficulty({
-    scope: editClassification?.scope ?? null,
-    crossCutting: isCrossCutting,
-    multiEdit: !!multiEditIntent,
-    promptChars: lastUserContent.length
-  }) === "hard") {
+  } else if (!isInitial && editDifficulty === "micro") {
+    model = modelForDifficulty("micro");
+    chosenBy = "difficulty:micro";
+  } else if (editDifficulty === "hard") {
     model = modelForDifficulty("hard");
     chosenBy = isCrossCutting ? "difficulty:cross_cutting" : multiEditIntent ? "difficulty:multi_edit" : "difficulty:hard";
   } else if (preset === "smart") {
