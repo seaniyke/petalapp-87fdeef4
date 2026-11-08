@@ -489,6 +489,25 @@ export function opId(kind: "create" | "edit", path: string, detail = ""): string
 
 const normPath = (p: unknown) => String(p ?? "").trim().replace(/^\.?\/+/, "");
 
+/** Numbered lines s..e, cut at whole lines within `max` chars, with a continue hint. */
+export function readPage(lines: string[], s: number, e: number, max: number): { text: string; truncated: boolean } {
+  const out: string[] = [];
+  let size = 0;
+  let last = s - 1;
+  for (let n = s; n <= e; n++) {
+    const line = `${n}: ${lines[n - 1] ?? ""}`;
+    if (out.length && size + line.length + 1 > max) break;
+    out.push(line);
+    size += line.length + 1;
+    last = n;
+  }
+  if (last >= e) return { text: out.join("\n"), truncated: false };
+  return {
+    text: `${out.join("\n")}\n…[showing lines ${s}-${last} of ${lines.length}. Continue with read_file start_line=${last + 1}, or use search to jump to a line.]`,
+    truncated: true,
+  };
+}
+
 function clip(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, max)}\n…[truncated ${s.length - max} chars]`;
 }
@@ -884,8 +903,13 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (readSeen.get(seenKey) === h) {
           return { output: rereadNotice(path, incompleteNow()), isError: false };
         }
-        readSeen.set(seenKey, h);
-        return { output: clip(lines.slice(s - 1, e).map((l, i) => `${s + i}: ${l}`).join("\n"), cfg.maxToolOutput), isError: false };
+        // A long file is shown in pages. A cut-off read is never remembered as
+        // "seen", and it says exactly where to continue — otherwise the model
+        // can never reach the rest of a large page (it re-read Appointments
+        // eight times and got "unchanged" while the problem was past the cut).
+        const page = readPage(lines, s, e, cfg.maxToolOutput);
+        if (!page.truncated) readSeen.set(seenKey, h);
+        return { output: page.text, isError: false };
       }
       case "list_files": {
         const prefix = normPath(a.prefix);
