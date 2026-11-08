@@ -39,3 +39,34 @@ describe("Domain Name API rules", () => {
     expect(c).toMatchObject({ firstName: "Ike", lastName: "Madu", country: "NG", phoneCountryCode: "234", phone: "8012345678" });
   });
 });
+
+import { termsFromCatalogue, tldOf, validateRecord } from "../domain-name-api.server";
+
+describe("renewal prices come from the registrar catalogue", () => {
+  const item = {
+    name: "co", registrationPeriods: [1, 2, 3, 4, 5], renewalPeriods: [1, 2, 3],
+    isPrivacyAvailable: true,
+    prices: [{ priceGroup: "Reseller", renew: [{ period: 1, price: 38.99, currency: "USD" }, { period: 2, price: 77.98, currency: "USD" }] }],
+  };
+  it(".co renews at $38.99, not its $19.49 first-year price", () => {
+    expect(termsFromCatalogue(item, "Reseller").renewCents).toBe(3899);
+  });
+  it("multi-year renewal uses the listed price for that term", () => {
+    expect(termsFromCatalogue(item, "Reseller").renewByPeriod[2]).toBe(7798);
+  });
+  it("co.uk is recognised as its own ending", () => {
+    expect(tldOf("acme.co.uk", new Map([["uk", 1], ["co.uk", 1]]))).toBe("co.uk");
+  });
+});
+
+describe("DNS record rules", () => {
+  it("rejects a CNAME at the root", () => {
+    expect(validateRecord({ name: "@", type: "CNAME", values: ["x.com"] })).toBe("cname_at_apex_use_alias");
+  });
+  it("rejects a non-IPv4 A record", () => {
+    expect(validateRecord({ name: "@", type: "A", values: ["abc"] })).toBe("invalid_ipv4");
+  });
+  it("accepts a valid MX record", () => {
+    expect(validateRecord({ name: "@", type: "MX", values: ["10 mail.acme.com"] })).toBeNull();
+  });
+});
