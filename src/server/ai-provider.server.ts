@@ -1397,6 +1397,12 @@ async function dispatch(
   if (wireModel !== outBody.model) {
     outBody = { ...outBody, model: wireModel };
   }
+  // OpenAI chat completions reject the OpenRouter-style `reasoning` object
+  // (400 unknown_parameter) — a fallback to openai/* must not fail on it.
+  if (wireModel.startsWith("openai/") && "reasoning" in outBody) {
+    outBody = { ...outBody };
+    delete outBody.reasoning;
+  }
   // Ask the gateway for token usage on streamed calls too, so `ai_call_log`
   // records prompt/completion/total tokens for every request.
   if (outBody.stream === true && !outBody.stream_options) {
