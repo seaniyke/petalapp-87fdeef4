@@ -23,8 +23,8 @@ import {
   Text,
 } from "@react-email/components";
 
-export const SITE_NAME = "Kimble";
-export const SITE_URL = "https://kimble.cloud";
+export const SITE_NAME = "Petal";
+export const SITE_URL = "https://buildwithpetal.com";
 
 interface LayoutProps {
   preview: string;

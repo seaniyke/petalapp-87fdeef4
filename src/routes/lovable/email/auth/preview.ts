@@ -10,7 +10,7 @@ const EMAIL_TEMPLATE_TITLES: Record<string, string> = {
 }
 
 // Configuration
-const SITE_NAME = "Kimble"
+const SITE_NAME = "Petal"
 const ROOT_DOMAIN = "buildwithpetal.com"
 
 // Sample data for preview mode ONLY (not used in actual email sending).
