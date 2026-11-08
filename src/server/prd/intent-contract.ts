@@ -77,7 +77,7 @@ const FAMILIES: Family[] = [
     // Capability-based: any service business where customers book time/services.
     id: "booking",
     label: "booking / appointments",
-    triggers: /\b(salons?|barbers?(hop)?s?|spas?|beauty|nail (studio|bar|salon)|stylists?|hairdress(er|ers|ing)|massage|tutor(s|ing)?|lessons?|personal trainers?|appointment[- ]based|book(ing)? (an? )?(appointments?|sessions?|lessons?)|appointments? (booking|scheduling)|booking (system|app|platform))\b/i,
+    triggers: /\b(salons?|barbers?(hop)?s?|spas?|beauty|aesthetics?|med ?spas?|wellness clinic|nail (studio|bar|salon)|stylists?|hairdress(er|ers|ing)|massage|tutor(s|ing)?|lessons?|personal trainers?|appointment[- ]based|book(ing)? (an? )?(appointments?|sessions?|lessons?)|appointments? (booking|scheduling)|booking (system|app|platform))\b/i,
     appOnly: true,
     productType: "workflow-app",
     roles: ["admin", "staff", "customer"],
@@ -218,13 +218,21 @@ export const COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|prod
 /** "Orders" is commerce only when it is not a domain word (lab/medical orders). */
 const COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
 
+/** Cosmetic / beauty / wellness practices (book treatments, not hospital care). */
+const AESTHETIC_CLINIC = /\b(aesthetics?|cosmetic|med ?spas?|medspas?|skin ?care|skincare|wellness|beauty|laser|facials?|dermal fillers?|botox|hydrafacial)\b/i;
+/** Words that only a medical facility uses — keep the healthcare family then. */
+const HOSPITAL_ONLY = /\b(hospital|wards?|inpatient|outpatient|ehr|emr|medical records?|prescriptions?|pharmacy|nurs(e|es|ing))\b/i;
+
 export function deriveIntentContract(brief: string, prd?: Prd | null): IntentContract {
   const text = withoutNegatedAppWords(brief || "");
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce")!;
   const commerceRequested = commerceFamily.triggers.test(text);
   // Domain families win over commerce words used incidentally ("hospital pharmacy store").
   const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
-  const family = FAMILIES.find((f) => f.id !== "commerce" && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
+  // Aesthetic / beauty / wellness clinics are appointment businesses, not
+  // hospitals: "clinic" alone must not force doctors, records and prescriptions.
+  const aestheticClinic = AESTHETIC_CLINIC.test(text) && !HOSPITAL_ONLY.test(text);
+  const family = FAMILIES.find((f) => f.id !== "commerce" && !(aestheticClinic && f.id === "healthcare") && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
   const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
   if (!family) {
     const surface = deriveProductSurface(text, prd?.roles ?? []);

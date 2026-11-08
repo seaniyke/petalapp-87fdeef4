@@ -40192,27 +40192,37 @@ export const auth = {
 
   // --- Parity aliases: same names + \`{ error }\` shape as the dedicated tier,
   // so page code written against either backend works unchanged.
-  async signInWithPassword(email: string, password: string): Promise<{ error: Error | null; user: PetalUser | null }> {
+  // Accepts (email, password) or the object form ({ email, password }) that
+  // page code often writes \u2014 the object form used to send a 400.
+  async signInWithPassword(emailOrCreds: string | Creds, password?: string): Promise<{ error: Error | null; user: PetalUser | null }> {
     try {
-      const user = await auth.signIn(email, password);
+      const c = creds(emailOrCreds, password);
+      const user = await auth.signIn(c.email, c.password);
       return { error: null, user };
     } catch (e) {
       return { error: e instanceof Error ? e : new Error("Sign in failed"), user: null };
     }
   },
   async signUpWithPassword(
-    email: string,
-    password: string,
+    emailOrCreds: string | Creds,
+    password?: string,
     name?: string,
   ): Promise<{ error: Error | null; user: PetalUser | null }> {
     try {
-      const user = await auth.signUp(email, password, name);
+      const c = creds(emailOrCreds, password, name);
+      const user = await auth.signUp(c.email, c.password, c.name);
       return { error: null, user };
     } catch (e) {
       return { error: e instanceof Error ? e : new Error("Sign up failed"), user: null };
     }
   },
 };
+
+export type Creds = { email: string; password: string; name?: string; options?: { data?: { name?: string; full_name?: string } } };
+function creds(a: string | Creds, password?: string, name?: string): { email: string; password: string; name?: string } {
+  if (typeof a === "object" && a) return { email: String(a.email ?? ""), password: String(a.password ?? ""), name: a.name ?? a.options?.data?.name ?? a.options?.data?.full_name };
+  return { email: String(a ?? ""), password: String(password ?? ""), name };
+}
 
 `;
 }
@@ -40233,7 +40243,7 @@ var init_shared_backend_kit = __esm({
 // Auth provider + useAuth hook (Petal backend, shared tier).
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "@/components/ui/router";
-import { auth, type PetalUser } from "./client";
+import { auth, type PetalUser, type Creds } from "./client";
 
 type AuthResult = { error: Error | null };
 
@@ -40242,8 +40252,8 @@ type AuthCtx = {
   session: { user: PetalUser } | null;
   loading: boolean;
   /** Parity API with the dedicated tier \u2014 never throws, returns { error }. */
-  signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
-  signUpWithPassword: (email: string, password: string, name?: string) => Promise<AuthResult>;
+  signInWithPassword: (email: string | Creds, password?: string) => Promise<AuthResult>;
+  signUpWithPassword: (email: string | Creds, password?: string, name?: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   resetPasswordForEmail: (email: string) => Promise<AuthResult>;
   updatePassword: (newPassword: string) => Promise<AuthResult>;
@@ -58835,6 +58845,7 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -62491,6 +62502,10 @@ async function dispatch(_provider, body, signal, tierOverride) {
   );
   if (wireModel !== outBody.model) {
     outBody = { ...outBody, model: wireModel };
+  }
+  if (wireModel.startsWith("openai/") && "reasoning" in outBody) {
+    outBody = { ...outBody };
+    delete outBody.reasoning;
   }
   if (outBody.stream === true && !outBody.stream_options) {
     outBody = { ...outBody, stream_options: { include_usage: true } };
@@ -69098,6 +69113,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139240,6 +139256,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140327,6 +140344,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140491,6 +140509,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140534,6 +140553,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -140755,6 +140775,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -141232,6 +141253,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -143083,6 +143105,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144287,6 +144310,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -144795,7 +144819,8 @@ function deriveIntentContract(brief, prd) {
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce");
   const commerceRequested = commerceFamily.triggers.test(text);
   const wantsApp = APP_WORDS.test(text.replace(/\bweb ?app\b/gi, "app")) && !(PUBLIC_ONLY.test(text) && !/\b(management|system|dashboard|portal|app|application)\b/i.test(text));
-  const family = FAMILIES.find((f) => f.id !== "commerce" && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
+  const aestheticClinic = AESTHETIC_CLINIC.test(text) && !HOSPITAL_ONLY.test(text);
+  const family = FAMILIES.find((f) => f.id !== "commerce" && !(aestheticClinic && f.id === "healthcare") && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
   const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
   if (!family) {
     const surface2 = deriveProductSurface(text, prd?.roles ?? []);
@@ -144947,7 +144972,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
+var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -144967,7 +144992,7 @@ var init_intent_contract = __esm({
         // Capability-based: any service business where customers book time/services.
         id: "booking",
         label: "booking / appointments",
-        triggers: /\b(salons?|barbers?(hop)?s?|spas?|beauty|nail (studio|bar|salon)|stylists?|hairdress(er|ers|ing)|massage|tutor(s|ing)?|lessons?|personal trainers?|appointment[- ]based|book(ing)? (an? )?(appointments?|sessions?|lessons?)|appointments? (booking|scheduling)|booking (system|app|platform))\b/i,
+        triggers: /\b(salons?|barbers?(hop)?s?|spas?|beauty|aesthetics?|med ?spas?|wellness clinic|nail (studio|bar|salon)|stylists?|hairdress(er|ers|ing)|massage|tutor(s|ing)?|lessons?|personal trainers?|appointment[- ]based|book(ing)? (an? )?(appointments?|sessions?|lessons?)|appointments? (booking|scheduling)|booking (system|app|platform))\b/i,
         appOnly: true,
         productType: "workflow-app",
         roles: ["admin", "staff", "customer"],
@@ -145069,6 +145094,8 @@ var init_intent_contract = __esm({
     APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
     COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
     COMMERCE_ORDERS = /(^|\/|\b)orders?(\b|\/|$)/i;
+    AESTHETIC_CLINIC = /\b(aesthetics?|cosmetic|med ?spas?|medspas?|skin ?care|skincare|wellness|beauty|laser|facials?|dermal fillers?|botox|hydrafacial)\b/i;
+    HOSPITAL_ONLY = /\b(hospital|wards?|inpatient|outpatient|ehr|emr|medical records?|prescriptions?|pharmacy|nurs(e|es|ing))\b/i;
     ALWAYS_ALLOWED = /^\/($|auth|login|sign-?in|sign-?up|register|account|profile|dashboard|settings|404|not-found)/i;
     SURFACE_LINE = {
       public: "Structure: a public website only \u2014 header navigation and a footer, no sign-in area or dashboard.",
@@ -145409,6 +145436,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -151862,6 +151890,7 @@ __export(tool_loop_exports, {
   madeProgress: () => madeProgress,
   managedSurfaceRefusal: () => managedSurfaceRefusal,
   opId: () => opId,
+  readPage: () => readPage,
   rereadNotice: () => rereadNotice,
   runToolLoop: () => runToolLoop,
   snapshotEvidence: () => snapshotEvidence,
@@ -151986,6 +152015,24 @@ function hash(s) {
 }
 function opId(kind, path, detail = "") {
   return kind === "create" ? `create:${path}` : `edit:${path}:${hash(detail)}`;
+}
+function readPage(lines, s, e, max) {
+  const out = [];
+  let size = 0;
+  let last2 = s - 1;
+  for (let n = s; n <= e; n++) {
+    const line = `${n}: ${lines[n - 1] ?? ""}`;
+    if (out.length && size + line.length + 1 > max) break;
+    out.push(line);
+    size += line.length + 1;
+    last2 = n;
+  }
+  if (last2 >= e) return { text: out.join("\n"), truncated: false };
+  return {
+    text: `${out.join("\n")}
+\u2026[showing lines ${s}-${last2} of ${lines.length}. Continue with read_file start_line=${last2 + 1}, or use search to jump to a line.]`,
+    truncated: true
+  };
 }
 function clip(s, max) {
   return s.length <= max ? s : `${s.slice(0, max)}
@@ -152301,8 +152348,9 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         if (readSeen.get(seenKey) === h) {
           return { output: rereadNotice(path, incompleteNow()), isError: false };
         }
-        readSeen.set(seenKey, h);
-        return { output: clip(lines.slice(s - 1, e).map((l, i) => `${s + i}: ${l}`).join("\n"), cfg.maxToolOutput), isError: false };
+        const page = readPage(lines, s, e, cfg.maxToolOutput);
+        if (!page.truncated) readSeen.set(seenKey, h);
+        return { output: page.text, isError: false };
       }
       case "list_files": {
         const prefix = normPath(a2.prefix);
@@ -170668,7 +170716,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -178616,6 +178663,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
             const loopCeilingUsd = economicCeilingUsd(null, Math.max(buildReservation?.classCostUsd ?? 0, loopSizeEstimate.usd), loopEcon);
             turnStrategy.loopSizeEstimate = { usd: loopSizeEstimate.usd, basis: loopSizeEstimate.basis, samples: loopSizeEstimate.samples, model: defaultFirstBuildModel() };
             const loopSpentBeforeUsd = collected.usage ? turnCallCost(collected.usage, model).costUsd ?? buildReservation?.classCostUsd ?? 0 : 0;
+            let lastPromptTokens = 0;
             const { makeCallModel: makeCallModel2 } = await Promise.resolve().then(() => (init_tool_loop_model(), tool_loop_model_exports));
             const { validateUnitImports: validateUnitImports2, undefinedNames: undefinedNames2 } = await Promise.resolve().then(() => (init_work_unit(), work_unit_exports));
             const { verifyFilesEsbuild: verifyFilesEsbuild2 } = await Promise.resolve().then(() => (init_esbuild_verifier_server(), esbuild_verifier_server_exports));
@@ -178742,11 +178790,14 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                   const c = turnCallCost({ prompt_tokens: r.usage.promptTokens, completion_tokens: r.usage.completionTokens, prompt_tokens_details: { cached_tokens: r.usage.cachedTokens } }, firstBuildModel).costUsd;
                   if (c != null) return c;
                 }
-                return Math.max(buildReservation?.classCostUsd ?? 0.03, loopSizeEstimate.usd);
+                return Math.max(buildReservation?.classCostUsd ?? 0.03, predictCallCostUsd2(lastPromptTokens, loopModelPrice));
               },
               // Checked before EVERY call, including the first: all prompt
               // tokens at the uncached rate plus a typical write's output.
-              predictCallUsd: (promptTokens) => predictCallCostUsd2(promptTokens, loopModelPrice),
+              predictCallUsd: (promptTokens) => {
+                lastPromptTokens = promptTokens;
+                return predictCallCostUsd2(promptTokens, loopModelPrice);
+              },
               goal: lastUserText,
               system: fbContext.system,
               brief: firstBuildBrief(
