@@ -11,7 +11,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
-import { searchDomains } from "@/server/cloudflare-registrar.server";
+import { searchDomains } from "@/server/domain-name-api.server";
 import { checkRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
 
 const Body = z.object({

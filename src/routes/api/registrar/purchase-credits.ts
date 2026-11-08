@@ -13,7 +13,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { searchDomains, applyMarkup } from "@/server/cloudflare-registrar.server";
+import { searchDomains, applyMarkup } from "@/server/domain-name-api.server";
 import { checkRateLimit, rateLimitResponse } from "@/server/rate-limit.server";
 import { economicsValue } from "@/server/economics-config.server";
 import { spendCredit, refundCredit } from "@/server/credits.server";
@@ -90,7 +90,7 @@ export const Route = createFileRoute("/api/registrar/purchase-credits")({
           return new Response("That domain is already being registered.", { status: 409 });
         }
 
-        // Re-quote with Cloudflare so the price can't be tampered with.
+        // Re-quote with the registrar so the price can't be tampered with.
         let wholesaleCents: number;
         try {
           const results = await searchDomains(parsed.hostname);
