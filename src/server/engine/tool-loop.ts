@@ -1,5 +1,5 @@
 /**
- * The persistent tool-calling execution loop (Webby-style), inside Kimble's
+ * The persistent tool-calling execution loop (Webby-style), inside Petal's
  * safety architecture.
  *
  *   ONE model conversation
@@ -413,10 +413,10 @@ function isManagedConfigPath(path: string): boolean {
  */
 export function managedSurfaceRefusal(path: string, tree: Map<string, string>): string | null {
   if (isManagedConfigPath(path)) {
-    return `Refused: ${path} is build configuration managed by Kimble. Tailwind, PostCSS and Vite are already set up — never create or edit a config file. Style with the semantic classes the stylesheet already defines.`;
+    return `Refused: ${path} is build configuration managed by Petal. Tailwind, PostCSS and Vite are already set up — never create or edit a config file. Style with the semantic classes the stylesheet already defines.`;
   }
   if (MANAGED_EXACT_FILES.has(path)) {
-    return `Refused: ${path} is managed by Kimble and cannot be written.`;
+    return `Refused: ${path} is managed by Petal and cannot be written.`;
   }
   if (STYLESHEET_PATHS.includes(path)) {
     const other = STYLESHEET_PATHS.find((p) => p !== path && tree.has(p));
@@ -697,7 +697,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     if (!r) return { content, note: "" };
     stepRepairs += r.repairs.length;
     for (const x of r.repairs) emit({ kind: "kit_import_repaired", path, detail: `${x.symbol}: ${x.from} → ${x.to}` });
-    return { content: r.content, note: `\nKimble corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.` };
+    return { content: r.content, note: `\nPetal corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.` };
   };
 
   let messages: LoopMessage[] = [
@@ -754,7 +754,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   /**
    * Readiness of the CURRENT workspace, computed once per distinct tree. The
    * verdict is pushed to the model after every write step, so it never has
-   * to re-read files to check what Kimble has already verified; finish reuses
+   * to re-read files to check what Petal has already verified; finish reuses
    * the same verdict when nothing changed since.
    */
   let readinessSig = "";
@@ -894,7 +894,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (!path) return { output: fail(name, null, "create_file needs a path."), isError: true };
         const managed = managedSurfaceRefusal(path, tree);
         if (managed) return { output: fail(name, path, managed, "scope_violation"), isError: true };
-        if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Kimble and cannot be written.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Petal and cannot be written.`, "scope_violation"), isError: true };
         const fixed = repairImports(path, String(a.content ?? ""));
         const content = fixed.content;
         if (!content.trim()) return { output: fail(name, path, `Refused: empty content for ${path}.`), isError: true };
@@ -930,7 +930,7 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         if (current === undefined) return { output: fail(name, path, `File not found: ${path}. Use create_file for new files.`), isError: true };
         const managedEdit = managedSurfaceRefusal(path, tree);
         if (managedEdit) return { output: fail(name, path, managedEdit, "scope_violation"), isError: true };
-        if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Kimble and cannot be edited.`, "scope_violation"), isError: true };
+        if (args.isProtected?.(path) || (ref.has(path) && !tree.has(path))) return { output: fail(name, path, `${path} is managed by Petal and cannot be edited.`, "scope_violation"), isError: true };
         if (!state.read.has(path)) return { output: fail(name, path, `Read ${path} with read_file before editing it.`), isError: true };
         const search = String(a.search ?? "");
         const replace = String(a.replace ?? "");
@@ -1130,8 +1130,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         messages.push({
           role: "user",
           content: r.ready
-            ? "Kimble verification (the exact checks finish and the save run) passes for the whole workspace: every file, import, export and required route is verified. Do not re-read files to check them. Call finish now unless the brief still asks for something not yet built."
-            : `Kimble verification of the whole workspace (the exact checks finish runs) — still open:\n${r.findings.slice(0, 8).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}\nEverything not listed is already verified; do not re-read files to check it. Continue with the open items.`,
+            ? "Petal verification (the exact checks finish and the save run) passes for the whole workspace: every file, import, export and required route is verified. Do not re-read files to check them. Call finish now unless the brief still asks for something not yet built."
+            : `Petal verification of the whole workspace (the exact checks finish runs) — still open:\n${r.findings.slice(0, 8).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}\nEverything not listed is already verified; do not re-read files to check it. Continue with the open items.`,
         });
       }
 
