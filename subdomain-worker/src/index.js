@@ -66,15 +66,15 @@ function placeholder(kind) {
   const isPrivate = kind === "private";
   const isUnknown = kind === "unknown";
   const title = isUnknown
-    ? "This Kimble app doesn't exist"
+    ? "This site doesn't exist"
     : isPrivate
       ? "This site is private"
       : "This site isn't published yet";
   const body = isUnknown
     ? "No app is connected to this subdomain. If you're the owner, claim it from your project's Publish dialog."
     : isPrivate
-      ? "The owner of this app has restricted access."
-      : "The owner is still working on this app. Check back soon.";
+      ? "The owner of this site has restricted access."
+      : "The owner is still working on this site. Check back soon.";
   const status = isUnknown ? 404 : isPrivate ? 403 : 404;
   const html = `<!doctype html>
 <html lang="en">
@@ -101,7 +101,6 @@ function placeholder(kind) {
     <span class="badge">${isUnknown ? "Not found" : isPrivate ? "Private" : "Coming soon"}</span>
     <h1>${title}</h1>
     <p>${body}</p>
-    <div class="footer">Built with Kimble</div>
   </main>
 </body>
 </html>`;
@@ -114,7 +113,7 @@ function placeholder(kind) {
   });
 }
 
-async function proxy(request, target, projectId, meta) {
+async function proxy(request, target, projectId, meta, buildId) {
   const incoming = new URL(request.url);
   const upstreamUrl = new URL(incoming.pathname + incoming.search, target);
 
@@ -155,14 +154,13 @@ async function proxy(request, target, projectId, meta) {
   });
 
   // Inject the page-view tracker AND site meta (favicon/title/description/og)
-  // into HTML responses only. We inject meta even when the project hasn't
-  // customized anything so every Petal app ships with the Petal logo as its
-  // favicon by default.
+  // into HTML responses only. Sites never show the builder's brand: with no
+  // saved icon they get a letter icon made from the site name.
   const ct = (respHeaders.get("content-type") || "").toLowerCase();
   if (projectId && ct.includes("text/html") && upstream.status >= 200 && upstream.status < 300) {
     const rewriter = new HTMLRewriter()
       .on("head", new TrackerInjector(projectId))
-      .on("head", new SiteMetaInjector(meta || {}, new URL(request.url).host));
+      .on("head", new SiteMetaInjector(meta || {}, new URL(request.url).host, buildId));
     // We also drop any pre-existing <title>/<link rel="icon">/og tags so our
     // overrides actually win — generated apps usually ship with their own
     // generic ones.
@@ -222,21 +220,45 @@ function escapeHtml(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+/** Rounded-square letter icon from the site name, as a data: URL. Null when
+ *  the name has no letter or digit (the site then has no icon). */
+export function letterIcon(title) {
+  const m = String(title || "").trim().match(/[\p{L}\p{N}]/u);
+  if (!m) return null;
+  const ch = escapeHtml(m[0].toUpperCase());
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#18181b"/><text x="32" y="44" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="34" font-weight="600" fill="#fafafa" text-anchor="middle">${ch}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+/** The share image URL for a page: the saved one, else this site's own
+ *  screenshot card. The site's own card carries the live build id so social
+ *  apps fetch a fresh picture after every published build. */
+export function shareImageUrl(saved, host, buildId) {
+  const own = host ? `https://${host}/og-image.png` : null;
+  const v = buildId ? `?v=${String(buildId).slice(0, 8)}` : "";
+  if (!saved) return own ? own + v : null;
+  if (own && saved.split("?")[0] === own) return own + v;
+  return saved;
+}
+
 /** Injects favicon + title + description + Open Graph / Twitter card tags
- *  at the start of <head>. Defaults the favicon to the Petal logo so every
- *  generated app gets the Petal flower in browser tabs until the owner
- *  uploads their own. */
+ *  at the start of <head>. */
 class SiteMetaInjector {
-  constructor(meta, host) {
+  constructor(meta, host, buildId) {
     this.meta = meta;
     this.host = host;
+    this.buildId = buildId;
   }
   element(el) {
     const m = this.meta || {};
-    const iconUrl = m.iconUrl || `${CONTROL_PLANE}/kimble-logo.png`;
     const parts = [];
-    parts.push(`<link rel="icon" href="${escapeAttr(iconUrl)}" />`);
-    parts.push(`<link rel="apple-touch-icon" href="${escapeAttr(iconUrl)}" />`);
+    if (m.iconUrl) {
+      parts.push(`<link rel="icon" href="${escapeAttr(m.iconUrl)}" />`);
+      parts.push(`<link rel="apple-touch-icon" href="${escapeAttr(m.iconUrl)}" />`);
+    } else {
+      const letter = letterIcon(m.title);
+      if (letter) parts.push(`<link rel="icon" type="image/svg+xml" href="${escapeAttr(letter)}" />`);
+    }
     if (m.title) {
       parts.push(`<title>${escapeHtml(m.title)}</title>`);
       parts.push(`<meta property="og:title" content="${escapeAttr(m.title)}" />`);
@@ -248,8 +270,8 @@ class SiteMetaInjector {
       parts.push(`<meta name="twitter:description" content="${escapeAttr(m.description)}" />`);
     }
     // Share image: the saved one, else this site's own screenshot card —
-    // never the Petal logo.
-    const ogImage = m.ogImageUrl || (this.host ? `https://${this.host}/og-image.png` : null);
+    // never the builder's logo.
+    const ogImage = shareImageUrl(m.ogImageUrl, this.host, this.buildId);
     if (ogImage) {
       parts.push(`<meta property="og:image" content="${escapeAttr(ogImage)}" />`);
       parts.push(`<meta name="twitter:image" content="${escapeAttr(ogImage)}" />`);
@@ -259,9 +281,10 @@ class SiteMetaInjector {
   }
 }
 
-/** 1200×630 screenshot card for this site, cached for one hour. */
-async function ogImage(projectId) {
-  const cacheKey = new Request(`https://og.internal/${projectId}.png`);
+/** 1200×630 screenshot card for this site's live build, cached for one hour
+ *  per build so a new publish never serves the old picture. */
+async function ogImage(projectId, buildId) {
+  const cacheKey = new Request(`https://og.internal/${projectId}/${buildId || "none"}.png`);
   const cached = await caches.default.match(cacheKey);
   if (cached) return cached;
   const res = await fetch(`${CONTROL_PLANE}/api/public/og-image/${projectId}`);
@@ -281,6 +304,12 @@ export default {
     const url = new URL(request.url);
     const host = url.host.toLowerCase();
 
+    // Bare partner root (no site name in front): send visitors to the
+    // partner's own home page.
+    if (host === "sites.custardai.dev" || host === "www.sites.custardai.dev") {
+      return Response.redirect("https://custardai.dev/", 302);
+    }
+
     const reserved = PETAL_ROOTS.some(
       (root) =>
         host === root || host === `www.${root}` || host === `fallback.${root}`,
@@ -291,9 +320,9 @@ export default {
 
     const result = await lookup(host);
     if (result.kind === "proxy" && url.pathname === "/og-image.png" && request.method === "GET") {
-      return ogImage(result.projectId);
+      return ogImage(result.projectId, result.buildId);
     }
-    if (result.kind === "proxy") return proxy(request, result.target, result.projectId, result.meta);
+    if (result.kind === "proxy") return proxy(request, result.target, result.projectId, result.meta, result.buildId);
     return placeholder(result.kind);
   },
 };
