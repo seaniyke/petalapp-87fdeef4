@@ -373,7 +373,7 @@ export const Route = createFileRoute("/api/builds/trigger")({
              files: withEnv,
              hideBadge,
              custardWidget: await (await import("@/server/custard-widget.server")).isCustardOwned(project.owner_id),
-      custardWidgetTag: await (await import("@/server/custard-widget.server")).readCustardWidgetTag(projectId),
+             custardWidgetTag: await (await import("@/server/custard-widget.server")).readCustardWidgetTag(projectId),
              verify,
              cleanupPaths: parsed.data.changedPaths ?? [],
              cleanupMeta: {
