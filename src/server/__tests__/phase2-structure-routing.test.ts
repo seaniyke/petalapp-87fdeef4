@@ -28,7 +28,10 @@ describe("difficulty model routing", () => {
     expect(modelForDifficulty("hard")).toBe(defaultFirstBuildModel());
   });
   it("keeps small edits on the fast code model", () => {
-    expect(classifyTaskDifficulty({ scope: "micro", promptChars: 40 })).toBe("standard");
+    expect(classifyTaskDifficulty({ scope: "micro", promptChars: 40 })).toBe("micro");
+    expect(modelForDifficulty("micro")).toBe(defaultTextModel());
+    expect(classifyTaskDifficulty({ scope: "micro", promptChars: 900 })).toBe("standard");
+    expect(classifyTaskDifficulty({ scope: "targeted", promptChars: 40 })).toBe("standard");
     expect(modelForDifficulty("standard")).toBe(defaultTextModel());
   });
   it("only routes to configured models (never silently coerced)", () => {
