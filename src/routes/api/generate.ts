@@ -2303,7 +2303,7 @@ async function handleGenerateRequestCore(
                 sse({
                   type: "error",
                   message:
-                    "Kimble couldn't draft a plan for that request. Try sending again without Plan first.",
+                    "Petal couldn't draft a plan for that request. Try sending again without Plan first.",
                   kind: classifyRawError(raw),
                   raw: raw.slice(0, 240),
                 }),
@@ -4910,7 +4910,7 @@ async function handleGenerateRequestCore(
                 ),
                 extras: {
                   "Design taste manual": designTasteBlock,
-                  "Kimble craft skills for this request": skillsBlock,
+                  "Petal craft skills for this request": skillsBlock,
                   "Colour guide": loadColorGuide(),
                   "Request-specific reference snippets": dynamic.text,
                   "Past learning": learningBlock,

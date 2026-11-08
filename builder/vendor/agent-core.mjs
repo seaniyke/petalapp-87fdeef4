@@ -47154,41 +47154,53 @@ export function NavBar({
       : Array.isArray(items)
         ? items
         : []) as NavLink[];
+  // Lock page scroll and close on Escape while the mobile menu is open.
+  React.useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
   return (
-    <header className={cn("sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur", className)}>
+    <header className={cn("sticky top-0 z-40 w-full border-b border-border/60 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70", className)}>
       <Container size="xl">
-        <div className="flex h-14 items-center justify-between">
-          <a href={brandHref} className="text-base font-semibold text-foreground">{slotNode(brandNode)}</a>
-          <nav className="hidden items-center gap-6 md:flex">
+        <div className="flex h-16 items-center justify-between gap-6">
+          <a href={brandHref} className="shrink-0 text-base font-semibold tracking-tight text-foreground">{slotNode(brandNode)}</a>
+          <nav className="hidden items-center gap-7 md:flex" aria-label="Main">
             {navItems.map((l, i) => (
-              <a key={i} href={l.href} className="text-sm text-muted-foreground transition hover:text-foreground">
+              <a key={i} href={l.href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
                 {l.label}
               </a>
             ))}
-            {slotNode(cta)}
           </nav>
-
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)} aria-label="Toggle menu">
+          <div className="hidden md:block">{slotNode(cta)}</div>
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setOpen((v) => !v)} aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open}>
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
-        {open && (
-          <nav className="grid gap-1 border-t border-border py-3 md:hidden">
+      </Container>
+      {open && (
+        <div className="fixed inset-x-0 bottom-0 top-16 z-40 flex flex-col bg-background md:hidden">
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-6 py-6" aria-label="Mobile">
             {navItems.map((l, i) => (
               <a
                 key={i}
                 href={l.href}
                 onClick={() => setOpen(false)}
-                className="rounded-md px-2 py-2 text-sm text-foreground hover:bg-muted"
+                className="border-b border-border/60 py-4 text-2xl font-medium tracking-tight text-foreground"
               >
                 {l.label}
               </a>
             ))}
-            {cta ? <div className="px-2 pt-2">{slotNode(cta)}</div> : null}
           </nav>
-
-        )}
-      </Container>
+          {cta ? <div className="border-t border-border/60 p-6 [&_a]:w-full [&_button]:w-full">{slotNode(cta)}</div> : null}
+        </div>
+      )}
     </header>
   );
 }
@@ -51091,7 +51103,7 @@ var init_scaffold_kit_motion = __esm({
   "src/server/scaffold-kit-motion.ts"() {
     "use strict";
     init_define_import_meta_env();
-    MOTION_INDEX = `// Kimble motion primitives. Import from "@/components/motion".
+    MOTION_INDEX = `// Petal motion primitives. Import from "@/components/motion".
 export { FadeIn } from "./fade-in";
 export { SlideUp } from "./slide-up";
 export { Stagger, StaggerItem } from "./stagger";
@@ -54036,8 +54048,8 @@ function buildTemplateContract() {
   return `${JSON.stringify(
     {
       id: "kimble-react",
-      name: "Kimble React App",
-      description: "Vite + React + TypeScript + Tailwind v4 scaffold. The UI kit, styling tokens, build config and entry point are pre-installed and owned by Kimble; app code (pages, sections, shared modules, the router in src/App.tsx) is yours to write.",
+      name: "Petal React App",
+      description: "Vite + React + TypeScript + Tailwind v4 scaffold. The UI kit, styling tokens, build config and entry point are pre-installed and owned by Petal; app code (pages, sections, shared modules, the router in src/App.tsx) is yours to write.",
       categories: ["website", "app"],
       file_structure: {
         pages_dir: "src/pages",
@@ -58338,7 +58350,7 @@ export { Grid } from "./grid";
       ...KIT_BLOCK_FILES_4,
       // Mobile-feel primitives: SafeArea/MobileHeader/BottomTabBar/PullToRefresh
       // + MobileScreen wrapper + ExampleMobileApp shell. Use when the user asks
-      // for a native iOS/Android app (Kimble ships as Capacitor under the hood).
+      // for a native iOS/Android app (paused behind site flags).
       ...KIT_BLOCK_FILES_MOBILE,
       ...KIT_BLOCK_FILES_MOBILE_2,
       // Phase 10 — Motion baseline. framer-motion primitives every app can compose:
@@ -68810,7 +68822,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -69016,7 +69027,7 @@ var init_authority = __esm({
       { accent: "mono", re: /\b(portfolio|architect|gallery|photograph|minimalist|editorial|magazine|journal)\w*/i },
       { accent: "indigo", re: /\b(saas|dashboard|analytic|platform|developer|software|crm|startup|workspace|automation)\w*/i }
     ];
-    DARK_EDITORIAL = /\b(luxur|couture|fine dining|michelin|whisky|whiskey|spirits|cinematic|noir|dark mode only|dark[- ]first|high[- ]end|premium brand|gallery|architect|photograph)\w*/i;
+    DARK_EDITORIAL = /\b(dark|noir|black[- ]and[- ]gold|moody|nightclub|cocktail bar|speakeasy|whisky|whiskey|spirits|michelin|cinematic)\w*/i;
     STUDIO_RULES = [
       {
         slug: "haven",
@@ -94985,8 +94996,8 @@ function pick(sections, prefixes) {
   return sections.filter((s) => prefixes.some((p2) => norm(s.title).startsWith(norm(p2))));
 }
 function conditionalSkills(subtype, productSurface) {
-  if (subtype === "marketing" || subtype === "fullstack") return ["page-composition"];
-  if (productSurface === "public" || productSurface === "public+app") return ["page-composition"];
+  if (subtype === "marketing" || subtype === "fullstack") return PUBLIC_SITE_SKILLS;
+  if (productSurface === "public" || productSurface === "public+app") return PUBLIC_SITE_SKILLS;
   return [];
 }
 function assembleFirstBuildContext(args) {
@@ -95063,7 +95074,7 @@ function classifyWorkUnit(toolCalls, writtenPaths) {
   if (toolCalls.some((t) => t === "read_file" || t === "list_files" || t === "search")) return "read";
   return "none";
 }
-var PROMPT_HEADING, norm, BASE_ALWAYS, BASE_WITH_BACKEND, BASE_WITHOUT_BACKEND, BASE_ON_DEMAND, MANUAL_ALWAYS, MANUAL_FIRST_BUILD, KNOWLEDGE_DIR, TOOL_MODE_READING;
+var PROMPT_HEADING, norm, BASE_ALWAYS, BASE_WITH_BACKEND, BASE_WITHOUT_BACKEND, BASE_ON_DEMAND, MANUAL_ALWAYS, MANUAL_FIRST_BUILD, PUBLIC_SITE_SKILLS, KNOWLEDGE_DIR, TOOL_MODE_READING;
 var init_first_build_context = __esm({
   "src/server/engine/first-build-context.ts"() {
     init_define_import_meta_env();
@@ -95096,6 +95107,7 @@ var init_first_build_context = __esm({
       "home page is the primary canvas",
       "design quality standards"
     ];
+    PUBLIC_SITE_SKILLS = ["page-composition", "section-architectures", "motion"];
     KNOWLEDGE_DIR = "knowledge";
     TOOL_MODE_READING = '## Kimble build rules (tool mode)\nYou are Kimble, building a Vite + React + TypeScript app on a pre-installed UI kit (Tailwind CSS v4 + a curated shadcn-style component library). You build the app with tools, one validated write at a time. Where a rule below says "this response" or "this turn", read it as "before you call finish". Styling, config, package.json and index.html are already set up and writes to them are refused \u2014 the stylesheet is never yours to emit.';
   }
@@ -141253,7 +141265,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -176894,7 +176905,7 @@ async function handleGenerateRequestCore(request, turnId, workSignal, onStage) {
               planEncoder.encode(
                 sse({
                   type: "error",
-                  message: "Kimble couldn't draft a plan for that request. Try sending again without Plan first.",
+                  message: "Petal couldn't draft a plan for that request. Try sending again without Plan first.",
                   kind: classifyRawError(raw),
                   raw: raw.slice(0, 240)
                 })
@@ -178725,7 +178736,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                 ),
                 extras: {
                   "Design taste manual": designTasteBlock,
-                  "Kimble craft skills for this request": skillsBlock,
+                  "Petal craft skills for this request": skillsBlock,
                   "Colour guide": loadColorGuide(),
                   "Request-specific reference snippets": dynamic.text,
                   "Past learning": learningBlock

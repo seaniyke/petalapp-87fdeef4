@@ -4223,7 +4223,7 @@ export const KIT_FILES: KitFile[] = [
   ...KIT_BLOCK_FILES_4,
   // Mobile-feel primitives: SafeArea/MobileHeader/BottomTabBar/PullToRefresh
   // + MobileScreen wrapper + ExampleMobileApp shell. Use when the user asks
-  // for a native iOS/Android app (Kimble ships as Capacitor under the hood).
+  // for a native iOS/Android app (paused behind site flags).
   ...KIT_BLOCK_FILES_MOBILE,
   ...KIT_BLOCK_FILES_MOBILE_2,
   // Phase 10 — Motion baseline. framer-motion primitives every app can compose:
@@ -4298,10 +4298,10 @@ function buildTemplateContract(): string {
   return `${JSON.stringify(
     {
       id: "kimble-react",
-      name: "Kimble React App",
+      name: "Petal React App",
       description:
         "Vite + React + TypeScript + Tailwind v4 scaffold. The UI kit, styling tokens, " +
-        "build config and entry point are pre-installed and owned by Kimble; app code " +
+        "build config and entry point are pre-installed and owned by Petal; app code " +
         "(pages, sections, shared modules, the router in src/App.tsx) is yours to write.",
       categories: ["website", "app"],
       file_structure: {

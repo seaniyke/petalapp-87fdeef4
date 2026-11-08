@@ -101,7 +101,7 @@ describe("streamGenerate — plan turns end cleanly", () => {
   it("a plan-stream error surfaces the real error, not a reconnect failure", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       sseResponse([
-        { type: "error", message: "Kimble couldn't draft a plan for that request." },
+        { type: "error", message: "Petal couldn't draft a plan for that request." },
         { type: "done", status: "failed" },
       ]),
     );

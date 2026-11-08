@@ -47,7 +47,11 @@ const ACCENT_RULES: Array<{ accent: string; re: RegExp }> = [
 
 ];
 
-const DARK_EDITORIAL = /\b(luxur|couture|fine dining|michelin|whisky|whiskey|spirits|cinematic|noir|dark mode only|dark[- ]first|high[- ]end|premium brand|gallery|architect|photograph)\w*/i;
+// Only an explicit dark request (or a nightlife/spirits domain) selects the
+// dark package. "Luxury", "premium" and "high-end" do NOT: premium brands
+// (Apple, Aesop, Mercury, medspas) are overwhelmingly light, and the old rule
+// turned a bright luxury clinic into a black-and-gold site.
+const DARK_EDITORIAL = /\b(dark|noir|black[- ]and[- ]gold|moody|nightclub|cocktail bar|speakeasy|whisky|whiskey|spirits|michelin|cinematic)\w*/i;
 
 /**
  * Studio packages chosen by the brief's domain, after the dark-editorial rule

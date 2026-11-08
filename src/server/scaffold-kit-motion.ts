@@ -24,7 +24,7 @@ type KitFile = ProjectFile & { overwrite: boolean };
 // ---------------------------------------------------------------------------
 // src/components/motion/index.ts — single barrel export
 // ---------------------------------------------------------------------------
-const MOTION_INDEX = `// Kimble motion primitives. Import from "@/components/motion".
+const MOTION_INDEX = `// Petal motion primitives. Import from "@/components/motion".
 export { FadeIn } from "./fade-in";
 export { SlideUp } from "./slide-up";
 export { Stagger, StaggerItem } from "./stagger";

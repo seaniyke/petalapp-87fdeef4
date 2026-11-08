@@ -73,6 +73,11 @@ describe("tiered first-build knowledge", () => {
     const site = build({ subtype: "marketing" });
     expect(site.system).toContain("## Skill: page-composition");
     expect(site.tiers.conditional).toContain("skill:page-composition");
+    // Public sites always get the named section layouts and motion rules up front.
+    expect(site.system).toContain("## Skill: section-architectures");
+    expect(site.system).toContain("## Skill: motion");
+    expect(build({ subtype: "app", productSurface: "public+app" }).system).toContain("## Skill: section-architectures");
+    expect(build({ subtype: "app" }).system).not.toContain("## Skill: section-architectures");
     const app = build({ subtype: "app" });
     expect(app.system).not.toContain("## Skill: page-composition");
     expect(app.reference.some((r) => r.path === `${KNOWLEDGE_DIR}/skill-page-composition.md`)).toBe(true);
@@ -84,7 +89,7 @@ describe("tiered first-build knowledge", () => {
   it("4. on-demand knowledge is complete, indexed and never lost", () => {
     const ctx = build();
     const paths = ctx.reference.map((r) => r.path);
-    expect(paths).toContain(`${KNOWLEDGE_DIR}/skill-motion.md`);
+    expect(paths).toContain(`${KNOWLEDGE_DIR}/skill-redesign-safety.md`);
     expect(paths).toContain(`${KNOWLEDGE_DIR}/design-taste-manual.md`);
     expect(paths.some((p) => p.includes("prerequisite-gating"))).toBe(true);
     expect(paths.some((p) => p.includes("empty"))).toBe(false);
@@ -95,12 +100,12 @@ describe("tiered first-build knowledge", () => {
       const inDocs = ctx.reference.some((r) => r.content.includes(s.text));
       expect(inSystem || inDocs, s.title).toBe(true);
     }
-    expect(ctx.reference.find((r) => r.path.endsWith("skill-motion.md"))!.content.trim()).toBe(skills.motion!.trim());
+    expect(ctx.reference.find((r) => r.path.endsWith("skill-redesign-safety.md"))!.content.trim()).toBe(skills["redesign-safety"]!.trim());
   });
 
   it("4b. the loop can retrieve an on-demand doc with read_file, and cannot write it", async () => {
     const ctx = build();
-    const doc = ctx.reference.find((r) => r.path.endsWith("skill-motion.md"))!;
+    const doc = ctx.reference.find((r) => r.path.endsWith("skill-redesign-safety.md"))!;
     const seen: LoopMessage[][] = [];
     const steps = [
       reply(call("read_file", { path: doc.path })),
