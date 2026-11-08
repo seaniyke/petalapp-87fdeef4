@@ -4,7 +4,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
-export const PETAL_ROOT_DOMAIN = "kimble.cloud";
+export const PETAL_ROOT_DOMAIN = "sites.custardai.dev";
 
 export type CheckResult = {
   available: boolean;

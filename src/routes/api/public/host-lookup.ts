@@ -28,7 +28,7 @@ function pagesProjectName(projectId: string): string {
  * Roots whose subdomains are Kimble-claimed slugs (never customer domains).
  * Both are live: the original SaaS root and the current brand root.
  */
-const PETAL_ROOTS = ["buildwithpetal.com", "kimble.cloud"];
+const PETAL_ROOTS = ["sites.custardai.dev", "buildwithpetal.com", "kimble.cloud"];
 
 /** Site meta the worker injects into served HTML so each Kimble app gets a
  *  proper title/favicon/social card without the user having to wire it up. */

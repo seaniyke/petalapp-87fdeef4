@@ -27,14 +27,14 @@
 import { deleteCustomHostname } from "@/server/cloudflare-saas.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export const PETAL_ROOT_DOMAIN = "kimble.cloud";
+export const PETAL_ROOT_DOMAIN = "sites.custardai.dev";
 
 /**
- * Older apps were handed `<slug>.buildwithpetal.com`. That zone still routes
+ * Older apps were handed `<slug>.buildwithpetal.com` / `<slug>.kimble.cloud`. That zone still routes
  * (the edge router resolves both roots), so nothing goes dark — but any
  * hostname bookkeeping has to look under both roots.
  */
-export const LEGACY_ROOT_DOMAINS = ["buildwithpetal.com"] as const;
+export const LEGACY_ROOT_DOMAINS = ["buildwithpetal.com", "kimble.cloud"] as const;
 
 /** Every hostname a slug may be registered under, new root first. */
 export function slugHostnames(slug: string): string[] {
