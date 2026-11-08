@@ -27,7 +27,7 @@ function fmt(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-async function emailAdmins(name: string, balance: number, threshold: number): Promise<string | null> {
+export async function emailAdmins(name: string, balance: number, threshold: number): Promise<string | null> {
   const { resolveAdminRecipients } = await import("@/server/self-learning-digest.server");
   const to = await resolveAdminRecipients();
   const apiKey = process.env.RESEND_API_KEY;

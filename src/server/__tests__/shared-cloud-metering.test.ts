@@ -6,6 +6,7 @@ import { activityRange } from "@/routes/api/public/v1/projects/$id.backend";
 import { iconExtension, isOwnSiteImageUrl, isPartnerAssetUrl } from "@/lib/site-image-url";
 import { ogRenderUrl } from "@/routes/api/public/og-image.$projectId";
 import { ECONOMICS_DEFAULTS } from "@/server/economics-config.server";
+import { alertDecision, PARTNER_LOW_BALANCE_CREDITS } from "@/server/balance-alert.server";
 
 const base = {
   costs: [{ resource: "cloud_shared", quantity: 10, unit: "rows", costUsd: 0.001, basis: "ALLOCATED" as const }],
@@ -91,6 +92,19 @@ describe("active days per site", () => {
     expect(activityRange(new URL("https://x/api?from=2026-11-01&to=2026-11-07"), now)).toEqual({ from: "2026-11-01", to: "2026-11-07" });
     expect(activityRange(new URL("https://x/api?from=2025-01-01&to=2026-11-07"), now)).toBeNull();
     expect(activityRange(new URL("https://x/api?from=2026-11-07&to=2026-11-01"), now)).toBeNull();
+  });
+});
+
+describe("partner low-balance email", () => {
+  it("emails once when the balance drops below 1,000 credits", () => {
+    expect(PARTNER_LOW_BALANCE_CREDITS).toBe(1000);
+    expect(alertDecision(999.5, 1000, null)).toBe("send");
+    expect(alertDecision(999.5, 1000, "2026-11-08T00:00:00Z")).toBe("none");
+  });
+  it("stays quiet above 1,000 and re-arms after a top-up", () => {
+    expect(alertDecision(10450.96, 1000, null)).toBe("none");
+    expect(alertDecision(1000, 1000, null)).toBe("none");
+    expect(alertDecision(5000, 1000, "2026-11-08T00:00:00Z")).toBe("rearm");
   });
 });
 
