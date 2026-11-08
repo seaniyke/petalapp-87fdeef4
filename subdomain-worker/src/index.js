@@ -30,7 +30,7 @@
 const PETAL_ROOTS = ["sites.custardai.dev", "buildwithpetal.com", "kimble.cloud"];
 const FRAME_ANCESTORS_CSP =
   "frame-ancestors 'self' https://custardai.dev https://*.custardai.dev https://*.lovable.app https://usefuljohn.com https://www.usefuljohn.com https://buildwithpetal.com https://*.buildwithpetal.com;";
-const CONTROL_PLANE = "https://kimble.cloud";
+const CONTROL_PLANE = "https://petalapp.lovable.app";
 const HOP_BY_HOP = new Set([
   "host",
   "connection",
