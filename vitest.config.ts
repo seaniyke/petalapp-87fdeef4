@@ -14,6 +14,7 @@ export default defineConfig({
       "src/server/__tests__/delete-file-tool.test.ts",
       "src/server/__tests__/aesthetic-clinic-intent.test.ts",
       "src/server/__tests__/read-page.test.ts",
+      "src/server/__tests__/shared-kit-auth-args.test.ts",
       "src/server/__tests__/finish-rules.test.ts",
       "src/server/__tests__/legacy-cleanup.test.ts",
       "src/server/__tests__/website-restraint.test.ts",
