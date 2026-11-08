@@ -44,6 +44,9 @@ const BodySchema = z.object({
   /** Project code revision the caller committed. Optional; when given and
    *  already superseded, no build is started (the newer revision builds). */
   revision: z.number().int().positive().optional(),
+  /** Ship the same revision again (e.g. branding changed). Still reuses an
+   *  in-flight build — never two jobs for one project. */
+  reship: z.boolean().optional(),
 });
 
 async function authorize(request: Request): Promise<string | Response> {
@@ -152,7 +155,8 @@ export const Route = createFileRoute("/api/builds/trigger")({
           // settles) picks up any newer edits.
           const sameRevision = latest?.project_revision != null && Number(latest.project_revision) === projectRevision;
           const justStarted = inFlight && sameRevision && Date.now() - latestCreatedAt < 120_000;
-          if (latest && (inFlight || latest.status === "ready") && (justStarted || sameRevision)) {
+          const reshipReady = parsed.data.reship === true && !inFlight;
+          if (!reshipReady && latest && (inFlight || latest.status === "ready") && (justStarted || sameRevision)) {
             return Response.json({
               buildId: latest.id,
               status: latest.status === "ready" ? "ready" as const : "pending" as const,

@@ -278,7 +278,7 @@ export async function getProjectBuild(projectId: string, buildId: string): Promi
 export async function triggerProjectBuild(
   selfOrigin: string,
   projectId: string,
-  opts: { turnId?: string | null; revision?: number | null } = {},
+  opts: { turnId?: string | null; revision?: number | null; reship?: boolean } = {},
 ): Promise<{ ok: true; buildId: string | null; status: string; superseded?: boolean; reused?: boolean } | { ok: false; status: number; error: string }> {
   const secret = process.env.BUILDER_SHARED_SECRET;
   if (!secret) return { ok: false, status: 500, error: "builder_not_configured" };
@@ -290,6 +290,7 @@ export async function triggerProjectBuild(
       projectId,
       ...(opts.turnId ? { turnId: opts.turnId } : {}),
       ...(opts.revision != null ? { revision: Number(opts.revision) } : {}),
+      ...(opts.reship ? { reship: true } : {}),
     }),
   }).catch((e: Error) => ({ ok: false, status: 0, json: async () => ({ error: e.message }) }) as unknown as Response);
   const out = (await res.json().catch(() => null)) as
