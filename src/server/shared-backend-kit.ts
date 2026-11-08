@@ -181,6 +181,50 @@ export const db = {
   },
 };
 
+export type PetalFile = { key: string; url: string; size: number; contentType: string };
+
+/** File uploads (images up to 5 MB, PDFs). Returns a public URL to save on a record. */
+export const storage = {
+  async upload(file: File | Blob, name?: string): Promise<PetalFile> {
+    const fileName = name || (file as File).name || "file";
+    const token = getToken();
+    const first = pickedBase();
+    const order = [first, ...BASES.filter((b) => b !== first)];
+    let lastError: Error | null = null;
+    for (const base of order) {
+      let res: Response;
+      try {
+        res = await fetch(base + "/uploads?name=" + encodeURIComponent(fileName), {
+          method: "POST",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+            "x-petal-key": API_KEY,
+            ...(token ? { Authorization: "Bearer " + token } : {}),
+          },
+          body: file,
+        });
+      } catch (e) {
+        lastError = e instanceof Error ? e : new Error("Network error");
+        continue;
+      }
+      const body = (await res.json().catch(() => ({}))) as any;
+      if (!res.ok) {
+        lastError = new Error(body?.error || "Upload failed (" + res.status + ")");
+        if ([401, 404, 502, 503, 504].includes(res.status)) continue;
+        throw lastError;
+      }
+      rememberBase(base);
+      return body.file as PetalFile;
+    }
+    throw lastError || new Error("Upload failed");
+  },
+  remove(key: string): Promise<{ ok: true }> {
+    return request("/uploads/" + key.split("/").map(encodeURIComponent).join("/"), {
+      method: "DELETE",
+    });
+  },
+};
+
 export const auth = {
   async signUp(email: string, password: string, name?: string) {
     const r = await request<{ token: string; user: PetalUser }>("/auth/signup", {
