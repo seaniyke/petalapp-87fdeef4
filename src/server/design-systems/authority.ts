@@ -56,9 +56,9 @@ const DARK_EDITORIAL = /\b(luxur|couture|fine dining|michelin|whisky|whiskey|spi
 const STUDIO_RULES: Array<{ slug: string; re: RegExp; accents: Array<{ accent: string; re: RegExp }> }> = [
   {
     slug: "haven",
-    re: /\b(clinic|hospital|health|medical|dental|dentist|doctor|patient|pharmac|therap|physio|care home|nursing|counsel|tutor|school|charity)\w*/i,
+    re: /\b(clinic|hospital|health|medical|dental|dentist|doctor|patient|pharmac|therap|physio|care home|nursing|counsel|charity)\w*/i,
     accents: [
-      { accent: "ocean", re: /\b(hospital|pharmac|school)\w*/i },
+      { accent: "ocean", re: /\b(hospital|pharmac)\w*/i },
       { accent: "sage", re: /\b(therap|counsel|care home|nursing|charity)\w*/i },
     ],
   },
