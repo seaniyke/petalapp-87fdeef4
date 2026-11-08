@@ -111,6 +111,7 @@ import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lova
 import { Route as ApiPublicV1DomainsSearchRouteImport } from './routes/api/public/v1/domains.search'
 import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
 import { Route as ApiPublicV1ProjectsIdBillingRouteImport } from './routes/api/public/v1/projects/$id.billing'
+import { Route as ApiPublicV1ProjectsIdBrandingRouteImport } from './routes/api/public/v1/projects/$id.branding'
 import { Route as ApiPublicV1ProjectsIdBuildRouteImport } from './routes/api/public/v1/projects/$id.build'
 import { Route as ApiPublicV1ProjectsIdBuildsRouteImport } from './routes/api/public/v1/projects/$id.builds'
 import { Route as ApiPublicV1ProjectsIdDomainsRouteImport } from './routes/api/public/v1/projects/$id.domains'
@@ -660,6 +661,12 @@ const ApiPublicV1ProjectsIdBillingRoute =
     path: '/$id/billing',
     getParentRoute: () => ApiPublicV1ProjectsRoute,
   } as any)
+const ApiPublicV1ProjectsIdBrandingRoute =
+  ApiPublicV1ProjectsIdBrandingRouteImport.update({
+    id: '/$id/branding',
+    path: '/$id/branding',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
 const ApiPublicV1ProjectsIdBuildRoute =
   ApiPublicV1ProjectsIdBuildRouteImport.update({
     id: '/$id/build',
@@ -830,6 +837,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
+  '/api/public/v1/projects/$id/branding': typeof ApiPublicV1ProjectsIdBrandingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
@@ -945,6 +953,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
+  '/api/public/v1/projects/$id/branding': typeof ApiPublicV1ProjectsIdBrandingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
@@ -1061,6 +1070,7 @@ export interface FileRoutesById {
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
+  '/api/public/v1/projects/$id/branding': typeof ApiPublicV1ProjectsIdBrandingRoute
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
@@ -1178,6 +1188,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/billing'
+    | '/api/public/v1/projects/$id/branding'
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/domains'
@@ -1293,6 +1304,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/billing'
+    | '/api/public/v1/projects/$id/branding'
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/domains'
@@ -1408,6 +1420,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/billing'
+    | '/api/public/v1/projects/$id/branding'
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/domains'
@@ -2239,6 +2252,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1ProjectsIdBillingRouteImport
       parentRoute: typeof ApiPublicV1ProjectsRoute
     }
+    '/api/public/v1/projects/$id/branding': {
+      id: '/api/public/v1/projects/$id/branding'
+      path: '/$id/branding'
+      fullPath: '/api/public/v1/projects/$id/branding'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdBrandingRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
     '/api/public/v1/projects/$id/build': {
       id: '/api/public/v1/projects/$id/build'
       path: '/$id/build'
@@ -2365,6 +2385,7 @@ const ApiPublicV1ProjectsIdDomainsRouteWithChildren =
 
 interface ApiPublicV1ProjectsRouteChildren {
   ApiPublicV1ProjectsIdBillingRoute: typeof ApiPublicV1ProjectsIdBillingRoute
+  ApiPublicV1ProjectsIdBrandingRoute: typeof ApiPublicV1ProjectsIdBrandingRoute
   ApiPublicV1ProjectsIdBuildRoute: typeof ApiPublicV1ProjectsIdBuildRoute
   ApiPublicV1ProjectsIdBuildsRoute: typeof ApiPublicV1ProjectsIdBuildsRoute
   ApiPublicV1ProjectsIdDomainsRoute: typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
@@ -2375,6 +2396,7 @@ interface ApiPublicV1ProjectsRouteChildren {
 
 const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
   ApiPublicV1ProjectsIdBillingRoute: ApiPublicV1ProjectsIdBillingRoute,
+  ApiPublicV1ProjectsIdBrandingRoute: ApiPublicV1ProjectsIdBrandingRoute,
   ApiPublicV1ProjectsIdBuildRoute: ApiPublicV1ProjectsIdBuildRoute,
   ApiPublicV1ProjectsIdBuildsRoute: ApiPublicV1ProjectsIdBuildsRoute,
   ApiPublicV1ProjectsIdDomainsRoute:
