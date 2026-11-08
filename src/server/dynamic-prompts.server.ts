@@ -1,4 +1,4 @@
-import { MOBILE_APPS_ENABLED } from "@/lib/site-flags";
+import { MOBILE_APPS_ENABLED, API_BACKENDS_ENABLED, CHROME_EXTENSIONS_ENABLED } from "@/lib/site-flags";
 /**
  * Dynamic system-prompt snippets (Tier 2 reliability).
  *
