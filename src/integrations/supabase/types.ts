@@ -3876,6 +3876,33 @@ export type Database = {
           },
         ]
       }
+      project_embeds: {
+        Row: {
+          allowed_origin: string
+          created_at: string
+          created_by_key: string | null
+          expires_at: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          allowed_origin: string
+          created_at?: string
+          created_by_key?: string | null
+          expires_at: string
+          id: string
+          project_id: string
+        }
+        Update: {
+          allowed_origin?: string
+          created_at?: string
+          created_by_key?: string | null
+          expires_at?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: []
+      }
       project_files: {
         Row: {
           content: string

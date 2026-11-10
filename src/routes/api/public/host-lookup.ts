@@ -17,6 +17,8 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { EMBED_PARAM, EMBED_ROOT, frameAncestorsCsp, isEmbedToken, projectIdFromPreviewSlug } from "@/server/embed-preview";
+import { previewUrlFor } from "@/server/service-api.server";
 
 /** Mirrors builder/src/build.ts → projectNameFor() / host-routing.server.ts. */
 function pagesProjectName(projectId: string): string {
@@ -41,10 +43,37 @@ type SiteMeta = {
 
 type Result =
   | { kind: "proxy"; target: string; projectId: string; buildId: string | null; meta: SiteMeta }
+  | { kind: "embed"; target: string; frameAncestors: string }
   | { kind: "unpublished" | "private"; projectId: string }
   | { kind: "unknown" };
 
-async function lookup(host: string): Promise<Result> {
+/**
+ * Preview address: the project's latest ready build (the same public
+ * pages.dev content). A live embed token for this project narrows framing to
+ * its one allowed origin; otherwise the build's default policy applies.
+ */
+async function previewLookup(projectId: string, embedToken: string | null): Promise<Result> {
+  const target = await previewUrlFor(projectId, null);
+  if (!target) return { kind: "unknown" };
+  let frameAncestors = DEFAULT_FRAME_ANCESTORS;
+  if (isEmbedToken(embedToken)) {
+    const { data: embed } = await supabaseAdmin
+      .from("project_embeds")
+      .select("project_id, allowed_origin, expires_at")
+      .eq("id", embedToken)
+      .maybeSingle();
+    if (embed && embed.project_id === projectId && new Date(embed.expires_at).getTime() > Date.now()) {
+      frameAncestors = frameAncestorsCsp(embed.allowed_origin);
+    }
+  }
+  return { kind: "embed", target: target.replace(/\/$/, ""), frameAncestors };
+}
+
+/** Same list the builder writes into every deploy's _headers. */
+const DEFAULT_FRAME_ANCESTORS =
+  "frame-ancestors 'self' https://custardai.dev https://*.custardai.dev https://*.lovable.app https://usefuljohn.com https://www.usefuljohn.com https://buildwithpetal.com https://*.buildwithpetal.com http://localhost:* http://127.0.0.1:*;";
+
+async function lookup(host: string, embedToken: string | null = null): Promise<Result> {
   const h = host.toLowerCase().split(":")[0];
   let projectId: string | null = null;
 
@@ -54,6 +83,8 @@ async function lookup(host: string): Promise<Result> {
     if (!slug || slug.includes(".")) return { kind: "unknown" };
     // Infrastructure hosts are never project slugs.
     if (slug === "www" || slug === "fallback") return { kind: "unknown" };
+    const previewProjectId = root === EMBED_ROOT ? projectIdFromPreviewSlug(slug) : null;
+    if (previewProjectId) return previewLookup(previewProjectId, embedToken);
     const { data: project } = await supabaseAdmin
       .from("projects")
       .select("id")
@@ -126,13 +157,15 @@ export const Route = createFileRoute("/api/public/host-lookup")({
             headers: { "Content-Type": "application/json" },
           });
         }
-        const result = await lookup(host);
+        const embedToken = url.searchParams.get(EMBED_PARAM);
+        const result = await lookup(host, embedToken);
         return new Response(JSON.stringify(result), {
           status: 200,
           headers: {
             "Content-Type": "application/json",
             // 60s edge cache — matches the in-memory cache used for custom domains.
-            "Cache-Control": "public, max-age=60, s-maxage=60",
+            // Embed-token answers are short-lived and never shared-cached.
+            "Cache-Control": embedToken ? "private, max-age=30" : "public, max-age=60, s-maxage=60",
           },
         });
       },

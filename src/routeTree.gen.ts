@@ -102,6 +102,7 @@ import { Route as ApiPublicV1BillingRouteImport } from './routes/api/public/v1/b
 import { Route as ApiPublicV1GenerateRouteImport } from './routes/api/public/v1/generate'
 import { Route as ApiPublicV1HealthRouteImport } from './routes/api/public/v1/health'
 import { Route as ApiPublicV1KeysRouteImport } from './routes/api/public/v1/keys'
+import { Route as ApiPublicV1OpenapiDotjsonRouteImport } from './routes/api/public/v1/openapi[.]json'
 import { Route as ApiPublicV1ProjectsRouteImport } from './routes/api/public/v1/projects'
 import { Route as ApiTurnsIdCancelRouteImport } from './routes/api/turns.$id.cancel'
 import { Route as ApiTurnsIdEventsRouteImport } from './routes/api/turns.$id.events'
@@ -121,6 +122,7 @@ import { Route as ApiPublicV1ProjectsIdBrandingRouteImport } from './routes/api/
 import { Route as ApiPublicV1ProjectsIdBuildRouteImport } from './routes/api/public/v1/projects/$id.build'
 import { Route as ApiPublicV1ProjectsIdBuildsRouteImport } from './routes/api/public/v1/projects/$id.builds'
 import { Route as ApiPublicV1ProjectsIdDomainsRouteImport } from './routes/api/public/v1/projects/$id.domains'
+import { Route as ApiPublicV1ProjectsIdEmbedPreviewRouteImport } from './routes/api/public/v1/projects/$id.embed-preview'
 import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/public/v1/projects/$id.files'
 import { Route as ApiPublicV1ProjectsIdOverviewRouteImport } from './routes/api/public/v1/projects/$id.overview'
 import { Route as ApiPublicV1ProjectsIdPublishRouteImport } from './routes/api/public/v1/projects/$id.publish'
@@ -621,6 +623,12 @@ const ApiPublicV1KeysRoute = ApiPublicV1KeysRouteImport.update({
   path: '/api/public/v1/keys',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1OpenapiDotjsonRoute =
+  ApiPublicV1OpenapiDotjsonRouteImport.update({
+    id: '/api/public/v1/openapi.json',
+    path: '/api/public/v1/openapi.json',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicV1ProjectsRoute = ApiPublicV1ProjectsRouteImport.update({
   id: '/api/public/v1/projects',
   path: '/api/public/v1/projects',
@@ -726,6 +734,12 @@ const ApiPublicV1ProjectsIdDomainsRoute =
   ApiPublicV1ProjectsIdDomainsRouteImport.update({
     id: '/$id/domains',
     path: '/$id/domains',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
+const ApiPublicV1ProjectsIdEmbedPreviewRoute =
+  ApiPublicV1ProjectsIdEmbedPreviewRouteImport.update({
+    id: '/$id/embed-preview',
+    path: '/$id/embed-preview',
     getParentRoute: () => ApiPublicV1ProjectsRoute,
   } as any)
 const ApiPublicV1ProjectsIdFilesRoute =
@@ -889,6 +903,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
@@ -908,6 +923,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
+  '/api/public/v1/projects/$id/embed-preview': typeof ApiPublicV1ProjectsIdEmbedPreviewRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
@@ -1014,6 +1030,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
@@ -1033,6 +1050,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
+  '/api/public/v1/projects/$id/embed-preview': typeof ApiPublicV1ProjectsIdEmbedPreviewRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
@@ -1140,6 +1158,7 @@ export interface FileRoutesById {
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
+  '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
@@ -1159,6 +1178,7 @@ export interface FileRoutesById {
   '/api/public/v1/projects/$id/build': typeof ApiPublicV1ProjectsIdBuildRoute
   '/api/public/v1/projects/$id/builds': typeof ApiPublicV1ProjectsIdBuildsRoute
   '/api/public/v1/projects/$id/domains': typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
+  '/api/public/v1/projects/$id/embed-preview': typeof ApiPublicV1ProjectsIdEmbedPreviewRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
@@ -1267,6 +1287,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/keys'
+    | '/api/public/v1/openapi.json'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
@@ -1286,6 +1307,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/domains'
+    | '/api/public/v1/projects/$id/embed-preview'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
     | '/api/public/v1/projects/$id/publish'
@@ -1392,6 +1414,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/keys'
+    | '/api/public/v1/openapi.json'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
@@ -1411,6 +1434,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/domains'
+    | '/api/public/v1/projects/$id/embed-preview'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
     | '/api/public/v1/projects/$id/publish'
@@ -1517,6 +1541,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/keys'
+    | '/api/public/v1/openapi.json'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
@@ -1536,6 +1561,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/build'
     | '/api/public/v1/projects/$id/builds'
     | '/api/public/v1/projects/$id/domains'
+    | '/api/public/v1/projects/$id/embed-preview'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
     | '/api/public/v1/projects/$id/publish'
@@ -1641,6 +1667,7 @@ export interface RootRouteChildren {
   ApiPublicV1GenerateRoute: typeof ApiPublicV1GenerateRoute
   ApiPublicV1HealthRoute: typeof ApiPublicV1HealthRoute
   ApiPublicV1KeysRoute: typeof ApiPublicV1KeysRouteWithChildren
+  ApiPublicV1OpenapiDotjsonRoute: typeof ApiPublicV1OpenapiDotjsonRoute
   ApiPublicV1ProjectsRoute: typeof ApiPublicV1ProjectsRouteWithChildren
   ApiTurnsIdCancelRoute: typeof ApiTurnsIdCancelRoute
   ApiTurnsIdEventsRoute: typeof ApiTurnsIdEventsRoute
@@ -2308,6 +2335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1KeysRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/openapi.json': {
+      id: '/api/public/v1/openapi.json'
+      path: '/api/public/v1/openapi.json'
+      fullPath: '/api/public/v1/openapi.json'
+      preLoaderRoute: typeof ApiPublicV1OpenapiDotjsonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/projects': {
       id: '/api/public/v1/projects'
       path: '/api/public/v1/projects'
@@ -2439,6 +2473,13 @@ declare module '@tanstack/react-router' {
       path: '/$id/domains'
       fullPath: '/api/public/v1/projects/$id/domains'
       preLoaderRoute: typeof ApiPublicV1ProjectsIdDomainsRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
+    '/api/public/v1/projects/$id/embed-preview': {
+      id: '/api/public/v1/projects/$id/embed-preview'
+      path: '/$id/embed-preview'
+      fullPath: '/api/public/v1/projects/$id/embed-preview'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdEmbedPreviewRouteImport
       parentRoute: typeof ApiPublicV1ProjectsRoute
     }
     '/api/public/v1/projects/$id/files': {
@@ -2584,6 +2625,7 @@ interface ApiPublicV1ProjectsRouteChildren {
   ApiPublicV1ProjectsIdBuildRoute: typeof ApiPublicV1ProjectsIdBuildRoute
   ApiPublicV1ProjectsIdBuildsRoute: typeof ApiPublicV1ProjectsIdBuildsRoute
   ApiPublicV1ProjectsIdDomainsRoute: typeof ApiPublicV1ProjectsIdDomainsRouteWithChildren
+  ApiPublicV1ProjectsIdEmbedPreviewRoute: typeof ApiPublicV1ProjectsIdEmbedPreviewRoute
   ApiPublicV1ProjectsIdFilesRoute: typeof ApiPublicV1ProjectsIdFilesRoute
   ApiPublicV1ProjectsIdOverviewRoute: typeof ApiPublicV1ProjectsIdOverviewRoute
   ApiPublicV1ProjectsIdPublishRoute: typeof ApiPublicV1ProjectsIdPublishRoute
@@ -2600,6 +2642,8 @@ const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
   ApiPublicV1ProjectsIdBuildsRoute: ApiPublicV1ProjectsIdBuildsRoute,
   ApiPublicV1ProjectsIdDomainsRoute:
     ApiPublicV1ProjectsIdDomainsRouteWithChildren,
+  ApiPublicV1ProjectsIdEmbedPreviewRoute:
+    ApiPublicV1ProjectsIdEmbedPreviewRoute,
   ApiPublicV1ProjectsIdFilesRoute: ApiPublicV1ProjectsIdFilesRoute,
   ApiPublicV1ProjectsIdOverviewRoute: ApiPublicV1ProjectsIdOverviewRoute,
   ApiPublicV1ProjectsIdPublishRoute: ApiPublicV1ProjectsIdPublishRoute,
@@ -2718,6 +2762,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1GenerateRoute: ApiPublicV1GenerateRoute,
   ApiPublicV1HealthRoute: ApiPublicV1HealthRoute,
   ApiPublicV1KeysRoute: ApiPublicV1KeysRouteWithChildren,
+  ApiPublicV1OpenapiDotjsonRoute: ApiPublicV1OpenapiDotjsonRoute,
   ApiPublicV1ProjectsRoute: ApiPublicV1ProjectsRouteWithChildren,
   ApiTurnsIdCancelRoute: ApiTurnsIdCancelRoute,
   ApiTurnsIdEventsRoute: ApiTurnsIdEventsRoute,

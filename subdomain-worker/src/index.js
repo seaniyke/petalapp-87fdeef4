@@ -44,7 +44,16 @@ const HOP_BY_HOP = new Set([
   "content-length",
 ]);
 
-async function lookup(host) {
+async function lookup(host, embedToken) {
+  // Embed tokens (preview addresses only) are checked fresh, never cached.
+  if (embedToken && /^[a-z0-9]{24}$/.test(embedToken)) {
+    const res = await fetch(
+      `${CONTROL_PLANE}/api/public/host-lookup?host=${encodeURIComponent(host)}&petal_embed=${embedToken}`,
+      { headers: { Accept: "application/json" } },
+    );
+    if (!res.ok) return { kind: "unknown" };
+    return await res.json();
+  }
   const cacheKey = new Request(
     `https://lookup.internal/?host=${encodeURIComponent(host)}`,
   );
@@ -113,7 +122,7 @@ function placeholder(kind) {
   });
 }
 
-async function proxy(request, target, projectId, meta, buildId) {
+async function proxy(request, target, projectId, meta, buildId, cspOverride) {
   const incoming = new URL(request.url);
   const upstreamUrl = new URL(incoming.pathname + incoming.search, target);
 
@@ -145,7 +154,9 @@ async function proxy(request, target, projectId, meta, buildId) {
     respHeaders.set(key, value);
   });
   // Let Custard AI's in-app canvas embed every site in an iframe.
-  respHeaders.set("Content-Security-Policy", FRAME_ANCESTORS_CSP);
+  // Embed hosts carry their own one-origin policy from host-lookup.
+  respHeaders.set("Content-Security-Policy", cspOverride || FRAME_ANCESTORS_CSP);
+  if (cspOverride) respHeaders.set("X-Robots-Tag", "noindex");
 
   const response = new Response(upstream.body, {
     status: upstream.status,
@@ -318,11 +329,15 @@ export default {
       return new Response("Not found", { status: 404 });
     }
 
-    const result = await lookup(host);
+    const result = await lookup(host, request.method === "GET" ? url.searchParams.get("petal_embed") : null);
     if (result.kind === "proxy" && url.pathname === "/og-image.png" && request.method === "GET") {
       return ogImage(result.projectId, result.buildId);
     }
     if (result.kind === "proxy") return proxy(request, result.target, result.projectId, result.meta, result.buildId);
+    // Embeddable preview: no visit tracking or meta injection, one framing origin.
+    if (result.kind === "embed" && typeof result.frameAncestors === "string") {
+      return proxy(request, result.target, null, null, null, result.frameAncestors);
+    }
     return placeholder(result.kind);
   },
 };

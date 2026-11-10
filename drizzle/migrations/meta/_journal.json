@@ -64,6 +64,13 @@
       "when": 1794315501402,
       "tag": "0008_developer_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794315882867,
+      "tag": "0009_project_embeds",
+      "breakpoints": true
     }
   ]
 }
