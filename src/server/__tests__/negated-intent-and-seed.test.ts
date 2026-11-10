@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { detectIntents, isNegatedAt } from "@/lib/intent-registry";
-import { sharedBackendKitFiles } from "@/server/shared-backend-kit";
+import { sharedBackendKit } from "@/server/shared-backend-kit";
 
 const MIRA =
   "Build a website for a beauty shop called Mira Beauty. Main action: book appointments and buy products online. " +
@@ -23,7 +23,7 @@ describe("explicit 'no database' wins over keyword guesses", () => {
 
 describe("starter rows are written all-or-nothing", () => {
   it("the shipped client seeds through one batch request, never a per-row loop", () => {
-    const files = sharedBackendKitFiles({ projectId: "p", apiKey: "k", baseUrl: "https://x.dev" });
+    const files = sharedBackendKit({ projectId: "p", apiKey: "k", baseUrl: "https://x.dev" });
     const client = files.find((f) => f.path.endsWith("client.ts"))!.content;
     expect(client).toContain("/_seed");
     expect(client).not.toContain("catch { break; }");
