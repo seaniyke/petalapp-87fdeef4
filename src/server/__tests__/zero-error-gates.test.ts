@@ -44,3 +44,39 @@ describe("repeated refusal breaker", () => {
     expect(calls).toBe(REPEATED_REFUSAL_LIMIT);
   });
 });
+
+import { addMissingImports, buildProviders, detectRouterModule, importCandidates } from "@/server/engine/missing-import-repair";
+
+describe("missing import repair", () => {
+  const providers = buildProviders({ routerModule: "react-router-dom" });
+  it("adds a React hook import after the existing imports", () => {
+    const src = `import { Button } from "@/components/ui/button";\nexport default function A(){ const [x] = useState(0); return <Button>{x}</Button>; }\n`;
+    const r = addMissingImports(src, ["useState"], providers)!;
+    expect(r.content.split("\n")[1]).toBe(`import { useState } from "react";`);
+  });
+  it("merges into an existing import from the same module", () => {
+    const src = `import { useState } from "react";\nexport default function A(){ useEffect(()=>{},[]); const [x]=useState(0); return x; }\n`;
+    expect(addMissingImports(src, ["useEffect"], providers)!.content).toContain(`import { useState, useEffect } from "react";`);
+  });
+  it("never adds an import for an unknown name", () => {
+    expect(addMissingImports("export const a = Sparkles;", ["Sparkles"], providers)).toBeNull();
+  });
+  it("router names come only from the router the project already uses", () => {
+    expect(detectRouterModule([["src/App.tsx", `import { Routes, Route } from "react-router-dom";`]])).toBe("react-router-dom");
+    expect(buildProviders({ routerModule: null }).has("Link")).toBe(false);
+  });
+  it("candidates skip names already imported", () => {
+    expect(importCandidates(`import { Link } from "react-router-dom";\n<Link/>; useState(1);`, providers)).toEqual(["useState"]);
+  });
+  it("the tool loop adds a missing import while writing (Amara Glow class of failure)", async () => {
+    const page = `export default function Home(){ const [n, setN] = useState(0); return <button onClick={() => setN(n + 1)}>{n}</button>; }\n`;
+    const steps = [reply(call("create_file", { path: "src/pages/Home.tsx", content: page })), reply(call("finish", {}))];
+    const r = await runToolLoop({
+      goal: "g", system: "s", brief: "b", files: [],
+      validate: () => [],
+      readiness: () => ({ ready: true, findings: [] }),
+      callModel: async () => steps.shift() ?? reply(call("finish", {})),
+    });
+    expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toContain(`import { useState } from "react";`);
+  });
+});

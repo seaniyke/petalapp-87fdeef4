@@ -69134,7 +69134,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -141275,7 +141274,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -151891,6 +151889,491 @@ var init_kit_import_repair = __esm({
   }
 });
 
+// src/server/engine/missing-import-repair.ts
+function buildProviders(args) {
+  const out = /* @__PURE__ */ new Map();
+  const ambiguous = /* @__PURE__ */ new Set();
+  const add = (name, spec) => {
+    if (ambiguous.has(name)) return;
+    const prev = out.get(name);
+    if (prev && prev !== spec) {
+      out.delete(name);
+      ambiguous.add(name);
+      return;
+    }
+    out.set(name, spec);
+  };
+  for (const n of REACT_NAMES) add(n, "react");
+  if (args.routerModule) for (const n of ROUTER_NAMES) add(n, args.routerModule);
+  for (const [name, specs] of args.kitOwners ?? []) {
+    if (specs.length !== 1) continue;
+    if (REACT_NAMES.includes(name)) continue;
+    if (ROUTER_NAMES.includes(name)) {
+      if (args.routerModule && specs[0] === args.routerModule) add(name, specs[0]);
+      continue;
+    }
+    add(name, specs[0]);
+  }
+  return out;
+}
+function detectRouterModule2(files) {
+  const found = /* @__PURE__ */ new Set();
+  const rx = /import\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
+  for (const [, c] of files) {
+    rx.lastIndex = 0;
+    let m;
+    while (m = rx.exec(c)) {
+      const names = m[1].split(",").map((s) => s.trim().split(/\s+as\s+/)[0].replace(/^type\s+/, ""));
+      if (names.some((n) => n === "Routes" || n === "Route" || n === "Link" || n === "useNavigate")) found.add(m[2]);
+    }
+  }
+  return found.size === 1 ? [...found][0] : null;
+}
+function importCandidates(content, providers) {
+  const imported = /* @__PURE__ */ new Set();
+  for (const m of content.matchAll(/import\s+(?:type\s+)?(?:([A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{([^}]*)\})?\s*from/g)) {
+    if (m[1]) imported.add(m[1]);
+    for (const p2 of (m[2] ?? "").split(",")) {
+      const local = p2.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop()?.trim();
+      if (local) imported.add(local);
+    }
+  }
+  const out = [];
+  for (const name of providers.keys()) {
+    if (imported.has(name)) continue;
+    if (new RegExp(`(?<![\\w$.])${name.replace(/\$/g, "\\$")}(?![\\w$])`).test(content)) out.push(name);
+  }
+  return out;
+}
+function addMissingImports(content, undefinedNames2, providers) {
+  const bySpec = /* @__PURE__ */ new Map();
+  for (const n of new Set(undefinedNames2)) {
+    const spec = providers.get(n);
+    if (!spec) continue;
+    (bySpec.get(spec) ?? bySpec.set(spec, []).get(spec)).push(n);
+  }
+  if (!bySpec.size) return null;
+  let next = content;
+  const added = [];
+  for (const [spec, names] of bySpec) {
+    const esc = spec.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+    const existing = new RegExp(`import\\s+(?:([A-Za-z_$][\\w$]*)\\s*,\\s*)?\\{([^}]*)\\}\\s*from\\s*(["'])${esc}\\3`).exec(next);
+    if (existing) {
+      const body = existing[2].trim().replace(/,\s*$/, "");
+      const merged = body ? `${body}, ${names.join(", ")}` : names.join(", ");
+      const stmt = existing[0].replace(/\{[^}]*\}/, `{ ${merged} }`);
+      next = next.slice(0, existing.index) + stmt + next.slice(existing.index + existing[0].length);
+    } else {
+      const line = `import { ${names.join(", ")} } from "${spec}";
+`;
+      const lines = next.split("\n");
+      let at = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i].trim();
+        if (/^import\s/.test(l) || /^["']use (client|strict)["'];?$/.test(l)) {
+          let j = i;
+          while (j < lines.length && !/from\s*["'][^"']+["'];?\s*$|^import\s*["'][^"']+["'];?\s*$/.test(lines[j].trim())) j++;
+          at = Math.min(j, lines.length - 1) + 1;
+          i = j;
+        } else if (l && !l.startsWith("//") && !l.startsWith("/*") && !l.startsWith("*")) break;
+      }
+      lines.splice(at, 0, line.trimEnd());
+      next = lines.join("\n");
+    }
+    for (const n of names) added.push({ name: n, spec });
+  }
+  return { content: next, added };
+}
+var REACT_NAMES, ROUTER_NAMES;
+var init_missing_import_repair = __esm({
+  "src/server/engine/missing-import-repair.ts"() {
+    "use strict";
+    init_define_import_meta_env();
+    REACT_NAMES = [
+      "useState",
+      "useEffect",
+      "useMemo",
+      "useRef",
+      "useCallback",
+      "useContext",
+      "useReducer",
+      "useLayoutEffect",
+      "useId",
+      "useTransition",
+      "useDeferredValue",
+      "Fragment",
+      "createContext",
+      "forwardRef",
+      "memo",
+      "lazy",
+      "Suspense"
+    ];
+    ROUTER_NAMES = [
+      "Link",
+      "NavLink",
+      "Navigate",
+      "Outlet",
+      "useNavigate",
+      "useParams",
+      "useLocation",
+      "useSearchParams"
+    ];
+  }
+});
+
+// src/server/verification/identifiers.server.ts
+var identifiers_server_exports = {};
+__export(identifiers_server_exports, {
+  IDENTIFIER_CHECK_BUDGET_MS: () => IDENTIFIER_CHECK_BUDGET_MS,
+  checkUndefinedIdentifiers: () => checkUndefinedIdentifiers,
+  isPlatformGlobal: () => isPlatformGlobal
+});
+import ts from "typescript";
+function isPlatformGlobal(name) {
+  return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
+}
+function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
+  if (!TS_RUNTIME_READY) return { status: "unavailable", issues: [], reason: "typescript runtime not ready" };
+  const targets = changedPaths.filter((p2) => PARSEABLE2.test(p2));
+  if (targets.length === 0) return { status: "verified", issues: [] };
+  const now = opts.now ?? (() => Date.now());
+  const started = now();
+  const budget = opts.budgetMs ?? IDENTIFIER_CHECK_BUDGET_MS;
+  try {
+    const files = new Map(tree.map((f) => [`/${f.path}`, f.content]));
+    const options = {
+      noEmit: true,
+      noLib: true,
+      allowJs: true,
+      checkJs: false,
+      jsx: ts.JsxEmit.ReactJSX,
+      target: ts.ScriptTarget.ESNext,
+      module: ts.ModuleKind.ESNext,
+      moduleResolution: ts.ModuleResolutionKind.Bundler,
+      skipLibCheck: true,
+      types: []
+      // React 17+ JSX transform: tag names are not value identifiers, so
+      // untyped JSX never produces a TS2304 false positive.
+    };
+    const host = {
+      getSourceFile: (name, languageVersion) => {
+        const content = name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name);
+        if (content === void 0) return void 0;
+        return ts.createSourceFile(name, content, languageVersion, true);
+      },
+      getDefaultLibFileName: () => AMBIENT_PATH,
+      writeFile: () => {
+      },
+      getCurrentDirectory: () => "/",
+      getDirectories: () => [],
+      getCanonicalFileName: (f) => f,
+      useCaseSensitiveFileNames: () => true,
+      getNewLine: () => "\n",
+      fileExists: (name) => name === AMBIENT_PATH || files.has(name),
+      readFile: (name) => name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name)
+    };
+    const program = ts.createProgram([AMBIENT_PATH, ...files.keys()], options, host);
+    const wanted = new Set(targets.map((p2) => `/${p2}`));
+    const seen = /* @__PURE__ */ new Set();
+    const issues = [];
+    const diagnostics = [];
+    for (const path of wanted) {
+      const sf = program.getSourceFile(path);
+      if (!sf) return { status: "unavailable", issues: [], reason: `changed file ${path.slice(1)} missing from the proposed tree` };
+      diagnostics.push(...program.getSemanticDiagnostics(sf));
+      if (now() - started > budget) return { status: "unavailable", issues: [], reason: `semantic check exceeded ${budget}ms` };
+    }
+    for (const d of diagnostics) {
+      if (d.code !== CANNOT_FIND_NAME) continue;
+      const file = d.file?.fileName;
+      if (!file || !wanted.has(file)) continue;
+      const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
+      const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
+      if (name && isPlatformGlobal(name)) continue;
+      if (d.file && d.start !== void 0 && inTypePosition(ts, d.file, d.start)) continue;
+      const key = `${file}::${message}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const { line } = d.file.getLineAndCharacterOfPosition(d.start ?? 0);
+      issues.push({ path: file.slice(1), line: line + 1, message });
+    }
+    return { status: issues.length ? "failed" : "verified", issues };
+  } catch (e) {
+    const reason = `semantic checker could not run: ${e instanceof Error ? e.message : String(e)}`;
+    console.warn("[identifier-gate] unavailable:", reason);
+    return { status: "unavailable", issues: [], reason };
+  }
+}
+function inTypePosition(ts2, sf, pos) {
+  let hit;
+  const visit = (n) => {
+    if (pos >= n.getStart(sf) && pos < n.getEnd()) {
+      hit = n;
+      ts2.forEachChild(n, visit);
+    }
+  };
+  ts2.forEachChild(sf, visit);
+  for (let n = hit; n; n = n.parent) {
+    if (ts2.isTypeNode(n) || ts2.isInterfaceDeclaration(n) || ts2.isTypeAliasDeclaration(n)) return true;
+    if (ts2.isExpressionWithTypeArguments(n) && n.parent && ts2.isHeritageClause(n.parent) && n.parent.token === ts2.SyntaxKind.ImplementsKeyword) return true;
+    if (ts2.isStatement(n) || ts2.isExpression(n) && !ts2.isIdentifier(n)) break;
+  }
+  return false;
+}
+var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, ES_AND_DOM_GLOBALS, DOM_NAME, AMBIENT_PATH;
+var init_identifiers_server = __esm({
+  "src/server/verification/identifiers.server.ts"() {
+    init_define_import_meta_env();
+    init_ts_runtime_shim();
+    IDENTIFIER_CHECK_BUDGET_MS = 8e3;
+    CANNOT_FIND_NAME = 2304;
+    PARSEABLE2 = /\.(tsx?|jsx?)$/i;
+    AMBIENT_GLOBALS = `
+declare var console: any;
+declare var window: any;
+declare var document: any;
+declare var navigator: any;
+declare var location: any;
+declare var history: any;
+declare var localStorage: any;
+declare var sessionStorage: any;
+declare var fetch: any;
+declare var setTimeout: any;
+declare var setInterval: any;
+declare var clearTimeout: any;
+declare var clearInterval: any;
+declare var setImmediate: any;
+declare var clearImmediate: any;
+declare var requestAnimationFrame: any;
+declare var cancelAnimationFrame: any;
+declare var requestIdleCallback: any;
+declare var queueMicrotask: any;
+declare var structuredClone: any;
+declare var alert: any;
+declare var confirm: any;
+declare var prompt: any;
+declare var atob: any;
+declare var btoa: any;
+declare var crypto: any;
+declare var performance: any;
+declare var globalThis: any;
+declare var process: any;
+declare var Buffer: any;
+declare var module: any;
+declare var require: any;
+declare var exports: any;
+declare var __dirname: any;
+declare var __filename: any;
+declare var global: any;
+declare var undefined: undefined;
+declare var NaN: number;
+declare var Infinity: number;
+declare var parseInt: any;
+declare var parseFloat: any;
+declare var isNaN: any;
+declare var isFinite: any;
+declare var encodeURI: any;
+declare var decodeURI: any;
+declare var encodeURIComponent: any;
+declare var decodeURIComponent: any;
+declare type Console = any;
+declare type Window = any;
+declare type Document = any;
+declare type Navigator = any;
+declare type Storage = any;
+declare type Response = any;
+declare type Request = any;
+declare type Headers = any;
+declare type URL = any;
+declare type URLSearchParams = any;
+declare type FormData = any;
+declare type Blob = any;
+declare type File = any;
+declare type FileReader = any;
+declare type Event = any;
+declare type EventTarget = any;
+declare type CustomEvent = any;
+declare type KeyboardEvent = any;
+declare type MouseEvent = any;
+declare type PointerEvent = any;
+declare type TouchEvent = any;
+declare type DragEvent = any;
+declare type FocusEvent = any;
+declare type InputEvent = any;
+declare type SubmitEvent = any;
+declare type AnimationEvent = any;
+declare type TransitionEvent = any;
+declare type WheelEvent = any;
+declare type ClipboardEvent = any;
+declare type MediaQueryList = any;
+declare type HTMLElement = any;
+declare type HTMLInputElement = any;
+declare type HTMLTextAreaElement = any;
+declare type HTMLSelectElement = any;
+declare type HTMLFormElement = any;
+declare type HTMLAnchorElement = any;
+declare type HTMLButtonElement = any;
+declare type HTMLImageElement = any;
+declare type HTMLVideoElement = any;
+declare type HTMLCanvasElement = any;
+declare type HTMLDivElement = any;
+declare type HTMLSpanElement = any;
+declare type SVGElement = any;
+declare type SVGSVGElement = any;
+declare type Element = any;
+declare type Node = any;
+declare type NodeList = any;
+declare type NodeListOf<T> = any;
+declare type MutationObserver = any;
+declare type ResizeObserver = any;
+declare type ResizeObserverEntry = any;
+declare type IntersectionObserver = any;
+declare type IntersectionObserverEntry = any;
+declare type AbortController = any;
+declare type AbortSignal = any;
+declare type TextEncoder = any;
+declare type TextDecoder = any;
+declare type WebSocket = any;
+declare type Worker = any;
+declare type Image = any;
+declare type Audio = any;
+declare type Geolocation = any;
+declare type CanvasRenderingContext2D = any;
+declare type WebGLRenderingContext = any;
+declare type RequestInit = any;
+declare type ResponseInit = any;
+declare type HeadersInit = any;
+declare type BodyInit = any;
+declare type Timer = any;
+declare type Timeout = any;
+declare namespace NodeJS {
+  type Timeout = any;
+  type Timer = any;
+  type ProcessEnv = any;
+}
+declare namespace JSX {
+  interface IntrinsicElements { [elemName: string]: any }
+  interface Element {}
+  interface ElementChildrenAttribute { children: {} }
+}
+declare module "*";
+`;
+    ES_AND_DOM_GLOBALS = /* @__PURE__ */ new Set([
+      "Date",
+      "Math",
+      "JSON",
+      "Intl",
+      "Reflect",
+      "Proxy",
+      "Symbol",
+      "Object",
+      "Array",
+      "String",
+      "Number",
+      "Boolean",
+      "BigInt",
+      "Function",
+      "RegExp",
+      "Error",
+      "TypeError",
+      "RangeError",
+      "SyntaxError",
+      "ReferenceError",
+      "EvalError",
+      "URIError",
+      "AggregateError",
+      "Map",
+      "Set",
+      "WeakMap",
+      "WeakSet",
+      "WeakRef",
+      "FinalizationRegistry",
+      "Promise",
+      "ArrayBuffer",
+      "SharedArrayBuffer",
+      "DataView",
+      "Int8Array",
+      "Uint8Array",
+      "Uint8ClampedArray",
+      "Int16Array",
+      "Uint16Array",
+      "Int32Array",
+      "Uint32Array",
+      "Float32Array",
+      "Float64Array",
+      "BigInt64Array",
+      "BigUint64Array",
+      "Atomics",
+      "Iterator",
+      "Record",
+      "Partial",
+      "Required",
+      "Readonly",
+      "Pick",
+      "Omit",
+      "Exclude",
+      "Extract",
+      "NonNullable",
+      "ReturnType",
+      "Parameters",
+      "InstanceType",
+      "Awaited",
+      "PropertyKey",
+      "ArrayLike",
+      "PromiseLike",
+      "Iterable",
+      "AsyncIterable",
+      "screen",
+      "innerWidth",
+      "innerHeight",
+      "scrollX",
+      "scrollY",
+      "scrollTo",
+      "matchMedia",
+      "getComputedStyle",
+      "open",
+      "close",
+      "print",
+      "self",
+      "top",
+      "parent",
+      "frames",
+      "customElements",
+      "indexedDB",
+      "caches",
+      "origin",
+      "devicePixelRatio",
+      "speechSynthesis",
+      "Notification",
+      "DOMParser",
+      "XMLHttpRequest",
+      "Option",
+      "Range",
+      "Selection",
+      "ShadowRoot",
+      "DocumentFragment",
+      "DOMRect",
+      "Touch",
+      "EventSource",
+      "BroadcastChannel",
+      "MessageChannel",
+      "PerformanceObserver",
+      "CSS",
+      "CSSStyleDeclaration",
+      "ImageData",
+      "OffscreenCanvas",
+      "ReadableStream",
+      "WritableStream",
+      "TransformStream",
+      "Deno",
+      "Bun",
+      "NodeJS"
+    ]);
+    DOM_NAME = /^(HTML\w*Element|SVG\w*Element|\w+Event|\w+Observer(Entry)?|\w+Element|\w+List|DOM\w+|Media\w+|Speech\w+|RTC\w+|WebGL\w+|Web\w+|GPU\w+|Canvas\w+|Audio\w+|Video\w+|Clipboard\w*|Intl\w*)$/;
+    AMBIENT_PATH = "/petal-ambient-globals.d.ts";
+  }
+});
+
 // src/server/engine/tool-loop.ts
 var tool_loop_exports = {};
 __export(tool_loop_exports, {
@@ -152248,18 +152731,46 @@ async function runToolLoop(args) {
   let kitIndexSig = "";
   let stepRepairs = 0;
   const repairImports = (path, content) => {
-    if (!ref.size || !/\.(t|j)sx?$/.test(path)) return { content, note: "" };
-    const sig = [...ref.keys()].filter((p2) => tree.has(p2)).join("|");
-    if (!kitIndex || sig !== kitIndexSig) {
-      kitIndex = buildKitExportIndex([...ref].map(([p2, c]) => ({ path: p2, content: c })), (p2) => tree.has(p2));
-      kitIndexSig = sig;
+    if (!/\.(t|j)sx?$/.test(path)) return { content, note: "" };
+    let next = content;
+    let note = "";
+    if (ref.size) {
+      const sig = [...ref.keys()].filter((p2) => tree.has(p2)).join("|");
+      if (!kitIndex || sig !== kitIndexSig) {
+        kitIndex = buildKitExportIndex([...ref].map(([p2, c]) => ({ path: p2, content: c })), (p2) => tree.has(p2));
+        kitIndexSig = sig;
+      }
+      const r = repairKitImports(next, kitIndex);
+      if (r) {
+        next = r.content;
+        stepRepairs += r.repairs.length;
+        for (const x of r.repairs) emit({ kind: "kit_import_repaired", path, detail: `${x.symbol}: ${x.from} \u2192 ${x.to}` });
+        note += `
+Petal corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.`;
+      }
     }
-    const r = repairKitImports(content, kitIndex);
-    if (!r) return { content, note: "" };
-    stepRepairs += r.repairs.length;
-    for (const x of r.repairs) emit({ kind: "kit_import_repaired", path, detail: `${x.symbol}: ${x.from} \u2192 ${x.to}` });
-    return { content: r.content, note: `
-Petal corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.` };
+    try {
+      const view = new Map([...ref, ...tree]);
+      view.set(path, next);
+      const providers = buildProviders({ routerModule: detectRouterModule2(view), kitOwners: kitIndex?.owners });
+      const candidates = importCandidates(next, providers);
+      if (candidates.length) {
+        const check = checkUndefinedIdentifiers([...view].map(([p2, c]) => ({ path: p2, content: c })), [path]);
+        if (check.status === "failed") {
+          const undeclared = check.issues.filter((i) => i.path === path).map((i) => /Cannot find name '([^']+)'/.exec(i.message)?.[1] ?? "").filter((n) => candidates.includes(n));
+          const added = addMissingImports(next, undeclared, providers);
+          if (added) {
+            next = added.content;
+            stepRepairs += added.added.length;
+            for (const x of added.added) emit({ kind: "missing_import_added", path, detail: `${x.name} from ${x.spec}` });
+            note += `
+Petal added missing import(s): ${added.added.map((x) => `${x.name} from "${x.spec}"`).join("; ")}.`;
+          }
+        }
+      }
+    } catch {
+    }
+    return { content: next, note };
   };
   let messages = [
     { role: "system", content: args.system },
@@ -152805,6 +153316,8 @@ var init_tool_loop = __esm({
     init_first_build_context();
     init_readiness();
     init_kit_import_repair();
+    init_missing_import_repair();
+    init_identifiers_server();
     init_circuit_breaker();
     FULL_CONFIG = {
       maxIterations: 100,
@@ -153413,359 +153926,6 @@ var init_work_unit = __esm({
     isSource2 = (p2) => /\.(tsx?|jsx?)$/.test(p2);
     isPage = (p2) => p2.startsWith("src/pages/");
     IMPORT = /import\s+(type\s+)?([\w$]+)?\s*,?\s*(\{[^}]*\})?\s*(?:\*\s+as\s+[\w$]+\s*)?from\s*["']([^"']+)["']/g;
-  }
-});
-
-// src/server/verification/identifiers.server.ts
-var identifiers_server_exports = {};
-__export(identifiers_server_exports, {
-  IDENTIFIER_CHECK_BUDGET_MS: () => IDENTIFIER_CHECK_BUDGET_MS,
-  checkUndefinedIdentifiers: () => checkUndefinedIdentifiers,
-  isPlatformGlobal: () => isPlatformGlobal
-});
-import ts from "typescript";
-function isPlatformGlobal(name) {
-  return ES_AND_DOM_GLOBALS.has(name) || DOM_NAME.test(name) || name in globalThis;
-}
-function checkUndefinedIdentifiers(tree, changedPaths, opts = {}) {
-  if (!TS_RUNTIME_READY) return { status: "unavailable", issues: [], reason: "typescript runtime not ready" };
-  const targets = changedPaths.filter((p2) => PARSEABLE2.test(p2));
-  if (targets.length === 0) return { status: "verified", issues: [] };
-  const now = opts.now ?? (() => Date.now());
-  const started = now();
-  const budget = opts.budgetMs ?? IDENTIFIER_CHECK_BUDGET_MS;
-  try {
-    const files = new Map(tree.map((f) => [`/${f.path}`, f.content]));
-    const options = {
-      noEmit: true,
-      noLib: true,
-      allowJs: true,
-      checkJs: false,
-      jsx: ts.JsxEmit.ReactJSX,
-      target: ts.ScriptTarget.ESNext,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      skipLibCheck: true,
-      types: []
-      // React 17+ JSX transform: tag names are not value identifiers, so
-      // untyped JSX never produces a TS2304 false positive.
-    };
-    const host = {
-      getSourceFile: (name, languageVersion) => {
-        const content = name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name);
-        if (content === void 0) return void 0;
-        return ts.createSourceFile(name, content, languageVersion, true);
-      },
-      getDefaultLibFileName: () => AMBIENT_PATH,
-      writeFile: () => {
-      },
-      getCurrentDirectory: () => "/",
-      getDirectories: () => [],
-      getCanonicalFileName: (f) => f,
-      useCaseSensitiveFileNames: () => true,
-      getNewLine: () => "\n",
-      fileExists: (name) => name === AMBIENT_PATH || files.has(name),
-      readFile: (name) => name === AMBIENT_PATH ? AMBIENT_GLOBALS : files.get(name)
-    };
-    const program = ts.createProgram([AMBIENT_PATH, ...files.keys()], options, host);
-    const wanted = new Set(targets.map((p2) => `/${p2}`));
-    const seen = /* @__PURE__ */ new Set();
-    const issues = [];
-    const diagnostics = [];
-    for (const path of wanted) {
-      const sf = program.getSourceFile(path);
-      if (!sf) return { status: "unavailable", issues: [], reason: `changed file ${path.slice(1)} missing from the proposed tree` };
-      diagnostics.push(...program.getSemanticDiagnostics(sf));
-      if (now() - started > budget) return { status: "unavailable", issues: [], reason: `semantic check exceeded ${budget}ms` };
-    }
-    for (const d of diagnostics) {
-      if (d.code !== CANNOT_FIND_NAME) continue;
-      const file = d.file?.fileName;
-      if (!file || !wanted.has(file)) continue;
-      const message = ts.flattenDiagnosticMessageText(d.messageText, " ");
-      const name = /Cannot find name '([^']+)'/.exec(message)?.[1];
-      if (name && isPlatformGlobal(name)) continue;
-      if (d.file && d.start !== void 0 && inTypePosition(ts, d.file, d.start)) continue;
-      const key = `${file}::${message}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const { line } = d.file.getLineAndCharacterOfPosition(d.start ?? 0);
-      issues.push({ path: file.slice(1), line: line + 1, message });
-    }
-    return { status: issues.length ? "failed" : "verified", issues };
-  } catch (e) {
-    const reason = `semantic checker could not run: ${e instanceof Error ? e.message : String(e)}`;
-    console.warn("[identifier-gate] unavailable:", reason);
-    return { status: "unavailable", issues: [], reason };
-  }
-}
-function inTypePosition(ts2, sf, pos) {
-  let hit;
-  const visit = (n) => {
-    if (pos >= n.getStart(sf) && pos < n.getEnd()) {
-      hit = n;
-      ts2.forEachChild(n, visit);
-    }
-  };
-  ts2.forEachChild(sf, visit);
-  for (let n = hit; n; n = n.parent) {
-    if (ts2.isTypeNode(n) || ts2.isInterfaceDeclaration(n) || ts2.isTypeAliasDeclaration(n)) return true;
-    if (ts2.isExpressionWithTypeArguments(n) && n.parent && ts2.isHeritageClause(n.parent) && n.parent.token === ts2.SyntaxKind.ImplementsKeyword) return true;
-    if (ts2.isStatement(n) || ts2.isExpression(n) && !ts2.isIdentifier(n)) break;
-  }
-  return false;
-}
-var IDENTIFIER_CHECK_BUDGET_MS, CANNOT_FIND_NAME, PARSEABLE2, AMBIENT_GLOBALS, ES_AND_DOM_GLOBALS, DOM_NAME, AMBIENT_PATH;
-var init_identifiers_server = __esm({
-  "src/server/verification/identifiers.server.ts"() {
-    init_define_import_meta_env();
-    init_ts_runtime_shim();
-    IDENTIFIER_CHECK_BUDGET_MS = 8e3;
-    CANNOT_FIND_NAME = 2304;
-    PARSEABLE2 = /\.(tsx?|jsx?)$/i;
-    AMBIENT_GLOBALS = `
-declare var console: any;
-declare var window: any;
-declare var document: any;
-declare var navigator: any;
-declare var location: any;
-declare var history: any;
-declare var localStorage: any;
-declare var sessionStorage: any;
-declare var fetch: any;
-declare var setTimeout: any;
-declare var setInterval: any;
-declare var clearTimeout: any;
-declare var clearInterval: any;
-declare var setImmediate: any;
-declare var clearImmediate: any;
-declare var requestAnimationFrame: any;
-declare var cancelAnimationFrame: any;
-declare var requestIdleCallback: any;
-declare var queueMicrotask: any;
-declare var structuredClone: any;
-declare var alert: any;
-declare var confirm: any;
-declare var prompt: any;
-declare var atob: any;
-declare var btoa: any;
-declare var crypto: any;
-declare var performance: any;
-declare var globalThis: any;
-declare var process: any;
-declare var Buffer: any;
-declare var module: any;
-declare var require: any;
-declare var exports: any;
-declare var __dirname: any;
-declare var __filename: any;
-declare var global: any;
-declare var undefined: undefined;
-declare var NaN: number;
-declare var Infinity: number;
-declare var parseInt: any;
-declare var parseFloat: any;
-declare var isNaN: any;
-declare var isFinite: any;
-declare var encodeURI: any;
-declare var decodeURI: any;
-declare var encodeURIComponent: any;
-declare var decodeURIComponent: any;
-declare type Console = any;
-declare type Window = any;
-declare type Document = any;
-declare type Navigator = any;
-declare type Storage = any;
-declare type Response = any;
-declare type Request = any;
-declare type Headers = any;
-declare type URL = any;
-declare type URLSearchParams = any;
-declare type FormData = any;
-declare type Blob = any;
-declare type File = any;
-declare type FileReader = any;
-declare type Event = any;
-declare type EventTarget = any;
-declare type CustomEvent = any;
-declare type KeyboardEvent = any;
-declare type MouseEvent = any;
-declare type PointerEvent = any;
-declare type TouchEvent = any;
-declare type DragEvent = any;
-declare type FocusEvent = any;
-declare type InputEvent = any;
-declare type SubmitEvent = any;
-declare type AnimationEvent = any;
-declare type TransitionEvent = any;
-declare type WheelEvent = any;
-declare type ClipboardEvent = any;
-declare type MediaQueryList = any;
-declare type HTMLElement = any;
-declare type HTMLInputElement = any;
-declare type HTMLTextAreaElement = any;
-declare type HTMLSelectElement = any;
-declare type HTMLFormElement = any;
-declare type HTMLAnchorElement = any;
-declare type HTMLButtonElement = any;
-declare type HTMLImageElement = any;
-declare type HTMLVideoElement = any;
-declare type HTMLCanvasElement = any;
-declare type HTMLDivElement = any;
-declare type HTMLSpanElement = any;
-declare type SVGElement = any;
-declare type SVGSVGElement = any;
-declare type Element = any;
-declare type Node = any;
-declare type NodeList = any;
-declare type NodeListOf<T> = any;
-declare type MutationObserver = any;
-declare type ResizeObserver = any;
-declare type ResizeObserverEntry = any;
-declare type IntersectionObserver = any;
-declare type IntersectionObserverEntry = any;
-declare type AbortController = any;
-declare type AbortSignal = any;
-declare type TextEncoder = any;
-declare type TextDecoder = any;
-declare type WebSocket = any;
-declare type Worker = any;
-declare type Image = any;
-declare type Audio = any;
-declare type Geolocation = any;
-declare type CanvasRenderingContext2D = any;
-declare type WebGLRenderingContext = any;
-declare type RequestInit = any;
-declare type ResponseInit = any;
-declare type HeadersInit = any;
-declare type BodyInit = any;
-declare type Timer = any;
-declare type Timeout = any;
-declare namespace NodeJS {
-  type Timeout = any;
-  type Timer = any;
-  type ProcessEnv = any;
-}
-declare namespace JSX {
-  interface IntrinsicElements { [elemName: string]: any }
-  interface Element {}
-  interface ElementChildrenAttribute { children: {} }
-}
-declare module "*";
-`;
-    ES_AND_DOM_GLOBALS = /* @__PURE__ */ new Set([
-      "Date",
-      "Math",
-      "JSON",
-      "Intl",
-      "Reflect",
-      "Proxy",
-      "Symbol",
-      "Object",
-      "Array",
-      "String",
-      "Number",
-      "Boolean",
-      "BigInt",
-      "Function",
-      "RegExp",
-      "Error",
-      "TypeError",
-      "RangeError",
-      "SyntaxError",
-      "ReferenceError",
-      "EvalError",
-      "URIError",
-      "AggregateError",
-      "Map",
-      "Set",
-      "WeakMap",
-      "WeakSet",
-      "WeakRef",
-      "FinalizationRegistry",
-      "Promise",
-      "ArrayBuffer",
-      "SharedArrayBuffer",
-      "DataView",
-      "Int8Array",
-      "Uint8Array",
-      "Uint8ClampedArray",
-      "Int16Array",
-      "Uint16Array",
-      "Int32Array",
-      "Uint32Array",
-      "Float32Array",
-      "Float64Array",
-      "BigInt64Array",
-      "BigUint64Array",
-      "Atomics",
-      "Iterator",
-      "Record",
-      "Partial",
-      "Required",
-      "Readonly",
-      "Pick",
-      "Omit",
-      "Exclude",
-      "Extract",
-      "NonNullable",
-      "ReturnType",
-      "Parameters",
-      "InstanceType",
-      "Awaited",
-      "PropertyKey",
-      "ArrayLike",
-      "PromiseLike",
-      "Iterable",
-      "AsyncIterable",
-      "screen",
-      "innerWidth",
-      "innerHeight",
-      "scrollX",
-      "scrollY",
-      "scrollTo",
-      "matchMedia",
-      "getComputedStyle",
-      "open",
-      "close",
-      "print",
-      "self",
-      "top",
-      "parent",
-      "frames",
-      "customElements",
-      "indexedDB",
-      "caches",
-      "origin",
-      "devicePixelRatio",
-      "speechSynthesis",
-      "Notification",
-      "DOMParser",
-      "XMLHttpRequest",
-      "Option",
-      "Range",
-      "Selection",
-      "ShadowRoot",
-      "DocumentFragment",
-      "DOMRect",
-      "Touch",
-      "EventSource",
-      "BroadcastChannel",
-      "MessageChannel",
-      "PerformanceObserver",
-      "CSS",
-      "CSSStyleDeclaration",
-      "ImageData",
-      "OffscreenCanvas",
-      "ReadableStream",
-      "WritableStream",
-      "TransformStream",
-      "Deno",
-      "Bun",
-      "NodeJS"
-    ]);
-    DOM_NAME = /^(HTML\w*Element|SVG\w*Element|\w+Event|\w+Observer(Entry)?|\w+Element|\w+List|DOM\w+|Media\w+|Speech\w+|RTC\w+|WebGL\w+|Web\w+|GPU\w+|Canvas\w+|Audio\w+|Video\w+|Clipboard\w*|Intl\w*)$/;
-    AMBIENT_PATH = "/petal-ambient-globals.d.ts";
   }
 });
 

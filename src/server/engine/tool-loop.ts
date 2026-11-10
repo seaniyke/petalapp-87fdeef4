@@ -25,6 +25,8 @@ import type { ProjectFile } from "@/server/generate.server";
 import type { Readiness, ReadinessFinding } from "@/server/verification/readiness";
 import { findingKey } from "@/server/verification/readiness";
 import { buildKitExportIndex, repairKitImports, type KitExportIndex } from "./kit-import-repair";
+import { addMissingImports, buildProviders, detectRouterModule, importCandidates } from "./missing-import-repair";
+import { checkUndefinedIdentifiers } from "@/server/verification/identifiers.server";
 import { AgentCircuitBreaker, BREAKER_THRESHOLDS, type BreakerThresholds } from "@/server/execution/circuit-breaker";
 
 /* ------------------------------------------------------------------ */
@@ -757,17 +759,48 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   let kitIndexSig = "";
   let stepRepairs = 0;
   const repairImports = (path: string, content: string): { content: string; note: string } => {
-    if (!ref.size || !/\.(t|j)sx?$/.test(path)) return { content, note: "" };
-    const sig = [...ref.keys()].filter((p) => tree.has(p)).join("|");
-    if (!kitIndex || sig !== kitIndexSig) {
-      kitIndex = buildKitExportIndex([...ref].map(([p, c]) => ({ path: p, content: c })), (p) => tree.has(p));
-      kitIndexSig = sig;
+    if (!/\.(t|j)sx?$/.test(path)) return { content, note: "" };
+    let next = content;
+    let note = "";
+    if (ref.size) {
+      const sig = [...ref.keys()].filter((p) => tree.has(p)).join("|");
+      if (!kitIndex || sig !== kitIndexSig) {
+        kitIndex = buildKitExportIndex([...ref].map(([p, c]) => ({ path: p, content: c })), (p) => tree.has(p));
+        kitIndexSig = sig;
+      }
+      const r = repairKitImports(next, kitIndex);
+      if (r) {
+        next = r.content;
+        stepRepairs += r.repairs.length;
+        for (const x of r.repairs) emit({ kind: "kit_import_repaired", path, detail: `${x.symbol}: ${x.from} → ${x.to}` });
+        note += `\nPetal corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.`;
+      }
     }
-    const r = repairKitImports(content, kitIndex);
-    if (!r) return { content, note: "" };
-    stepRepairs += r.repairs.length;
-    for (const x of r.repairs) emit({ kind: "kit_import_repaired", path, detail: `${x.symbol}: ${x.from} → ${x.to}` });
-    return { content: r.content, note: `\nPetal corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is exported by ${x.to}, not ${x.from}`).join("; ")}.` };
+    // Missing imports with exactly one known provider, confirmed undeclared
+    // by the real TypeScript checker before anything is added.
+    try {
+      const view = new Map<string, string>([...ref, ...tree]);
+      view.set(path, next);
+      const providers = buildProviders({ routerModule: detectRouterModule(view), kitOwners: kitIndex?.owners });
+      const candidates = importCandidates(next, providers);
+      if (candidates.length) {
+        const check = checkUndefinedIdentifiers([...view].map(([p, c]) => ({ path: p, content: c })), [path]);
+        if (check.status === "failed") {
+          const undeclared = check.issues
+            .filter((i) => i.path === path)
+            .map((i) => /Cannot find name '([^']+)'/.exec(i.message)?.[1] ?? "")
+            .filter((n) => candidates.includes(n));
+          const added = addMissingImports(next, undeclared, providers);
+          if (added) {
+            next = added.content;
+            stepRepairs += added.added.length;
+            for (const x of added.added) emit({ kind: "missing_import_added", path, detail: `${x.name} from ${x.spec}` });
+            note += `\nPetal added missing import(s): ${added.added.map((x) => `${x.name} from "${x.spec}"`).join("; ")}.`;
+          }
+        }
+      }
+    } catch { /* repair is best-effort; validation still reports the real error */ }
+    return { content: next, note };
   };
 
   let messages: LoopMessage[] = [
