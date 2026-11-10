@@ -358,6 +358,14 @@ export function isNegatedAt(text: string, index: number): boolean {
 const BACKEND_OPT_OUT =
   /\b(?:no|without|don'?t (?:need|want|add|use)|do not (?:need|want|add|use)|never (?:add|use))\b[^.!?:;\n]{0,60}\b(?:database|backend)\b/i;
 
+/**
+ * The user explicitly ruled out a database/backend. This is a veto over EVERY
+ * path that could switch one on (keyword rules and the product planner alike).
+ */
+export function userOptedOutOfBackend(text: string | null | undefined): boolean {
+  return Boolean(text) && BACKEND_OPT_OUT.test(text as string);
+}
+
 /** Run a single intent rule against one piece of text. */
 export function detectIntent(id: SimpleIntentId, text: string | null | undefined): IntentResult {
   if (!text) return { detected: false };
