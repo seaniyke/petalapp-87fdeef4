@@ -127,10 +127,13 @@ function asRecord<T>(record: PetalRecord<T>): RecordResult<T> {
 export const db = {
   async list<T = Record<string, unknown>>(
     collection: string,
-    opts: { mine?: boolean; limit?: number; offset?: number } = {},
+    opts: { mine?: boolean; everyone?: boolean; limit?: number; offset?: number } = {},
   ): Promise<RecordList<T>> {
     const q = new URLSearchParams();
+    // Default: the signed-in user's rows + rows added by guests (starter rows).
+    // everyone: every user's rows — for content meant to be public.
     if (opts.mine) q.set("mine", "1");
+    else if (opts.everyone) q.set("scope", "all");
     if (opts.limit) q.set("limit", String(opts.limit));
     if (opts.offset) q.set("offset", String(opts.offset));
     const qs = q.toString();
@@ -438,7 +441,7 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 
 ## Rules
 
-- Rows created while signed in are owned by that user; pass \`{ mine: true }\` to list only theirs.
+- Rows created while signed in are owned by that user. A plain \`db.list\` returns the visitor's own rows plus starter/guest rows — NOT other users' rows. For content meant for everyone (community posts, shared recipes, listings, reviews, a public catalogue) list with \`{ everyone: true }\`; for a user's own page ("My recipes", "My orders") use \`{ mine: true }\`. Private data (orders, bookings, messages, profiles) never uses \`everyone\`.
 - Every "Sign out" control must be a button that calls \`await signOut()\` and then navigates to \`/login\`. Never a plain link to \`/login\` — that leaves the user signed in.
 - Guard the signed-in area once, at its layout route: \`<Route path="dashboard" element={<RequireAuth><AppShell /></RequireAuth>}>\` (\`RequireAuth\` from \`@/integrations/backend/auth\`). Signed-out visitors are sent to \`/login\`.
 - Links must use the page's full address. Pages nested under \`<Route path="dashboard">\` live at \`/dashboard/services\`, not \`/services\`. The build fails on links to addresses no page serves.
