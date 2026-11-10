@@ -17,13 +17,13 @@ export type FailureKind =
 
 export const RECOVERY_LIMITS: Readonly<Record<FailureKind, number>> = {
   provider_failure: 2, // same request, next allowed provider (two providers can stall in a row)
-  truncated_output: 1, // continue only the missing files
-  broken_file: 1, // per file, max MAX_REPAIRED_FILES files
-  build_failure: 1, // repair only files named in the error
-  missing_page: 1, // generate only the missing page
+  truncated_output: 3, // continue only the missing files
+  broken_file: 3, // per file, max MAX_REPAIRED_FILES files
+  build_failure: 3, // repair only files named in the error
+  missing_page: 3, // generate only the missing page
   browser_failure: 0, // report truthfully
 };
-export const MAX_REPAIRED_FILES = 3;
+export const MAX_REPAIRED_FILES = 40;
 
 export type RecoveryStage = "generation" | "apply" | "validation" | "dependency" | "build" | "browser";
 
