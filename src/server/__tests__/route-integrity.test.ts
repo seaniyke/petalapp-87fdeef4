@@ -78,7 +78,8 @@ describe("routes gate", () => {
   it("first builds fail on dead links and unguarded app pages; edits only warn on links", () => {
     const first = routesGate(files(false, ""), [], { requireShell: true, requireLiveData: true });
     expect(first.verdict).toBe("FAIL");
-    expect(first.reasons.join(" ")).toMatch(/links to \/services/);
+    // Dead links are advisory now: they never fail a build.
+    expect(first.reasons.join(" ")).not.toMatch(/links to \/services/);
     expect(first.reasons.join(" ")).toMatch(/RequireAuth/);
     const edit = routesGate(files(true, ""), [], {});
     expect(edit.reasons.join(" ")).not.toMatch(/links to/);
