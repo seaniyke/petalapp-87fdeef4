@@ -11,12 +11,12 @@ describe("non-blocking checks", () => {
   it("a link to a page that does not exist is a warning, never a failure", () => {
     const home = `import { Link } from "react-router-dom";\nexport default function Home(){return <main><h1>Welcome to our shop</h1><p>Fresh goods daily for everyone.</p><Link to="/bookng">Book</Link></main>}\n`;
     const r = routesGate([{ path: "src/App.tsx", content: app }, { path: "src/pages/Home.tsx", content: home }], ["/"], { requireShell: true });
-    expect(r.status).not.toBe("FAIL");
+    expect(r.verdict).toBe("WARNING");
   });
   it("a page with its own header nav is a warning, never a failure", () => {
     const home = `export default function Home(){return <main><header><nav><a href="/">Home</a></nav></header><h1>Welcome to our shop</h1><p>Fresh goods daily for everyone.</p></main>}\n`;
     const r = routesGate([{ path: "src/App.tsx", content: app }, { path: "src/pages/Home.tsx", content: home }], ["/"], { requireShell: true });
-    expect(r.status).not.toBe("FAIL");
+    expect(r.verdict).toBe("WARNING");
   });
 });
 
