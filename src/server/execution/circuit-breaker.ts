@@ -128,10 +128,10 @@ export interface BreakerThresholds {
 
 export const BREAKER_THRESHOLDS: Readonly<BreakerThresholds> = {
   maxIdenticalError: 3,
-  maxConsecutiveFailures: 5,
-  maxToolFailures: 4,
-  maxFileFailures: 4,
-  maxTotalFailures: 10,
+  maxConsecutiveFailures: 8,
+  maxToolFailures: 8,
+  maxFileFailures: 8,
+  maxTotalFailures: 40,
   guidanceAtIdentical: 2,
 };
 
