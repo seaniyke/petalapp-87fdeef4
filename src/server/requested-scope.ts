@@ -25,6 +25,8 @@ function slugify(name: string): string {
 
 function cleanName(raw: string): string | null {
   const words = raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[“”"'`()]/g, " ")
     .split(/\s+/)
@@ -43,8 +45,31 @@ function cleanName(raw: string): string | null {
  * Returns [] when no explicit page list is present.
  */
 export function extractRequestedPages(prompt: string): string[] {
-  const raw = prompt.replace(/\s+/g, " ");
   const found: string[] = [];
+  // A bulleted page list ("Pages:\n- Home: hero, our story, a call to visit")
+  // names one page per bullet — the label before ":" / "—". What follows the
+  // label describes what goes ON that page: sections, never pages.
+  const lines = (prompt || "").split(/\r?\n/);
+  const listed: string[] = [];
+  const consumed = new Set<number>();
+  for (let i = 0; i < lines.length; i++) {
+    if (!/\bpages?\b[^:\n]{0,40}:\s*$/i.test(lines[i]!)) continue;
+    for (let j = i + 1; j < lines.length; j++) {
+      const m = lines[j]!.match(/^\s*(?:[-*•]|\d+[.)])\s*([^:—–\n]{1,40}?)\s*(?::|—|–|\s-\s|$)/);
+      if (!m) break;
+      listed.push(m[1]!);
+      consumed.add(j);
+    }
+    if (listed.length) consumed.add(i);
+  }
+  for (const label of listed) {
+    const n = cleanName(label);
+    if (n && !found.includes(n)) found.push(n);
+  }
+  const raw = lines
+    .filter((_, i) => !consumed.has(i))
+    .join("\n")
+    .replace(/\s+/g, " ");
   const push = (raw: string) => {
     for (const part of raw.split(/,|\/|\band\b|\+|;/i)) {
       // Layout words describe the site's shape, not a page ("a one-page
