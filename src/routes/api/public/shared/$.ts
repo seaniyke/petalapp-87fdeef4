@@ -9,6 +9,10 @@
  *   POST   /api/public/shared/:projectId/auth/signup   { email, password, name? }
  *   POST   /api/public/shared/:projectId/auth/signin   { email, password }
  *   GET    /api/public/shared/:projectId/auth/me
+ *   GET    /api/public/shared/:projectId/auth/providers        → { google, passwordReset }
+ *   POST   /api/public/shared/:projectId/auth/reset-request    { email, redirectTo }
+ *   POST   /api/public/shared/:projectId/auth/reset-confirm    { token, password }
+ *   POST   /api/public/shared/:projectId/auth/password         { password } (signed in)
  *   GET    /api/public/shared/:projectId/records/:collection?mine=1&limit=&offset=
  *   POST   /api/public/shared/:projectId/records/:collection    { ...fields }
  *   PATCH  /api/public/shared/:projectId/records/:collection/:id
@@ -50,6 +54,13 @@ const Credentials = z.object({
   name: z.string().trim().max(120).optional(),
 });
 
+const NewPassword = z.object({ password: z.string().min(6).max(200) });
+const ResetRequest = z.object({
+  email: z.string().trim().email().max(255),
+  redirectTo: z.string().url().max(2000),
+});
+const ResetConfirm = z.object({ token: z.string().min(20).max(200), password: z.string().min(6).max(200) });
+
 function segments(request: Request): string[] {
   const path = new URL(request.url).pathname;
   const after = path.split("/api/public/shared/")[1] ?? "";
@@ -90,6 +101,39 @@ async function handle(request: Request): Promise<Response> {
     if (op === "me") {
       if (!userId) return json({ user: null });
       return json({ user: await getUserById(projectId, userId) });
+    }
+    if (op === "providers") {
+      const { googleConfigured } = await import("@/server/shared-auth-rules");
+      return json({ google: googleConfigured(process.env), passwordReset: true });
+    }
+    if (op === "reset-request" || op === "reset-confirm" || op === "password") {
+      if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
+      const sa = await import("@/server/shared-auth.server");
+      const body = await request.json().catch(() => null);
+      try {
+        if (op === "reset-request") {
+          const p = ResetRequest.safeParse(body);
+          if (!p.success) return json({ error: p.error.issues[0]?.message ?? "Invalid input" }, 400);
+          const r = await sa.requestPasswordReset({ projectId, email: p.data.email, redirectTo: p.data.redirectTo });
+          return r.ok ? json({ ok: true }) : json({ error: r.error }, r.status);
+        }
+        if (op === "reset-confirm") {
+          const p = ResetConfirm.safeParse(body);
+          if (!p.success) return json({ error: p.error.issues[0]?.message ?? "Invalid input" }, 400);
+          const r = await sa.confirmPasswordReset({ projectId, token: p.data.token, password: p.data.password });
+          if (!r) return json({ error: "This reset link has expired or was already used. Ask for a new one." }, 400);
+          return json(r);
+        }
+        if (!userId) return json({ error: "Sign in required" }, 401);
+        const p = NewPassword.safeParse(body);
+        if (!p.success) return json({ error: p.error.issues[0]?.message ?? "Invalid input" }, 400);
+        const user = await sa.changePassword(projectId, userId, p.data.password);
+        if (!user) return json({ error: "Account not found" }, 404);
+        return json({ user });
+      } catch (e) {
+        console.error("[shared/auth]", op, e instanceof Error ? e.message : String(e));
+        return json({ error: "Couldn't complete that right now. Please try again." }, 503);
+      }
     }
     if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
     const parsed = Credentials.safeParse(await request.json().catch(() => null));
