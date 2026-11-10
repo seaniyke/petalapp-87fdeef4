@@ -114,15 +114,6 @@ export const native = {
       window.open(url, "_blank", "noopener");
     });
   },
-  async location(): Promise<{ lat: number; lng: number } | null> {
-    const pos = await call<any>("Geolocation", "getCurrentPosition", { enableHighAccuracy: true }, () =>
-      new Promise((resolve) => {
-        if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
-        navigator.geolocation.getCurrentPosition((p) => resolve(p), () => resolve(null), { timeout: 10_000 });
-      }),
-    );
-    return pos?.coords ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null;
-  },
   storage: {
     async get(key: string): Promise<string | null> {
       const r = await call<any>("Preferences", "get", { key }, () => ({ value: localStorage.getItem(key) }));

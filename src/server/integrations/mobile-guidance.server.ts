@@ -59,7 +59,6 @@ the shell. Each call works in the preview too (web fallback), so no guards.
 | Haptic tap / success buzz | \`native.haptics.impact()\`, \`native.haptics.success()\` | — |
 | Share sheet | \`await native.share({ title, text, url })\` | bare \`navigator.share\` |
 | Open an outside link | \`native.openUrl(url)\` | \`window.open\` (kills app on iOS) |
-| GPS position | \`await native.location()\` → \`{ lat, lng } \| null\` | bare \`navigator.geolocation\` |
 | Small saved settings | \`native.storage.get/set\` | \`localStorage\` for anything important |
 | Platform-specific UI | \`native.platform()\` (\`ios\`/\`android\`/\`web\`), \`native.isApp()\` | user-agent sniffing |
 | Photo pick | \`<input type="file" accept="image/*">\` behind a tap button | drag-and-drop only |

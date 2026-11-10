@@ -40910,15 +40910,6 @@ export const native = {
       window.open(url, "_blank", "noopener");
     });
   },
-  async location(): Promise<{ lat: number; lng: number } | null> {
-    const pos = await call<any>("Geolocation", "getCurrentPosition", { enableHighAccuracy: true }, () =>
-      new Promise((resolve) => {
-        if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
-        navigator.geolocation.getCurrentPosition((p) => resolve(p), () => resolve(null), { timeout: 10_000 });
-      }),
-    );
-    return pos?.coords ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null;
-  },
   storage: {
     async get(key: string): Promise<string | null> {
       const r = await call<any>("Preferences", "get", { key }, () => ({ value: localStorage.getItem(key) }));
@@ -69214,6 +69205,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -140746,6 +140738,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140910,6 +140903,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140953,6 +140947,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -151386,7 +151381,6 @@ the shell. Each call works in the preview too (web fallback), so no guards.
 | Haptic tap / success buzz | \`native.haptics.impact()\`, \`native.haptics.success()\` | \u2014 |
 | Share sheet | \`await native.share({ title, text, url })\` | bare \`navigator.share\` |
 | Open an outside link | \`native.openUrl(url)\` | \`window.open\` (kills app on iOS) |
-| GPS position | \`await native.location()\` \u2192 \`{ lat, lng } | null\` | bare \`navigator.geolocation\` |
 | Small saved settings | \`native.storage.get/set\` | \`localStorage\` for anything important |
 | Platform-specific UI | \`native.platform()\` (\`ios\`/\`android\`/\`web\`), \`native.isApp()\` | user-agent sniffing |
 | Photo pick | \`<input type="file" accept="image/*">\` behind a tap button | drag-and-drop only |

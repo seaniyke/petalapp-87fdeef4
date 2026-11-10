@@ -52,7 +52,7 @@ workflows:
           npm run build
       - name: Add Capacitor shell
         script: |
-          npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android @capacitor/app @capacitor/haptics @capacitor/share @capacitor/browser @capacitor/geolocation @capacitor/preferences @aparajita/capacitor-biometric-auth --save
+          npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android @capacitor/app @capacitor/haptics @capacitor/share @capacitor/browser @capacitor/preferences @aparajita/capacitor-biometric-auth --save
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
           npx cap add "$PETAL_PLATFORM"
@@ -178,7 +178,7 @@ workflows:
         script: npm run build
       - name: Add Capacitor shell
         script: |
-          npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android @capacitor/app @capacitor/haptics @capacitor/share @capacitor/browser @capacitor/geolocation @capacitor/preferences @aparajita/capacitor-biometric-auth --save
+          npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android @capacitor/app @capacitor/haptics @capacitor/share @capacitor/browser @capacitor/preferences @aparajita/capacitor-biometric-auth --save
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
           npx cap add "$PETAL_PLATFORM"

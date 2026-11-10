@@ -36,7 +36,6 @@ describe("Petal native bridge (mobile kit)", () => {
     expect(await native.share({ url: "https://x.test" })).toBe(false);
     await native.storage.set("k", "v");
     expect(await native.storage.get("k")).toBe("v");
-    expect(await native.location()).toBeNull();
   });
 
   it("inside the store app, calls reach the shell's plugins", async () => {
@@ -56,8 +55,13 @@ describe("Petal native bridge (mobile kit)", () => {
 
   it("the store build installs every plugin the bridge uses", () => {
     const used = [...bridgeSource().matchAll(/(?:call(?:<[^>]*>)?\(|plugin\()"(\w+)"/g)].map((m) => m[1]);
-    const pkg: Record<string, string> = { Haptics: "haptics", Share: "share", Browser: "browser", Geolocation: "geolocation", Preferences: "preferences", App: "app" };
+    const pkg: Record<string, string> = { Haptics: "haptics", Share: "share", Browser: "browser", Preferences: "preferences", App: "app" };
     for (const name of new Set(used)) expect(CODEMAGIC_YAML).toContain(`@capacitor/${pkg[name]}`);
+  });
+
+  it("phone apps never include location tracking", () => {
+    expect(CODEMAGIC_YAML).not.toContain("@capacitor/geolocation");
+    expect(bridgeSource()).not.toContain("Geolocation");
   });
 
   it("mobile guidance tells the model to use the bridge, never native packages", () => {
