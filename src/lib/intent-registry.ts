@@ -341,6 +341,23 @@ const RULES: Record<SimpleIntentId, Rule> = {
   },
 };
 
+/**
+ * True when the clause containing `index` negates what follows
+ * ("No customer accounts, sign-in or database"). A clause ends at . ! ? ; : or
+ * a newline, so an unrelated "no" earlier in a long brief never suppresses a
+ * genuine request.
+ */
+export function isNegatedAt(text: string, index: number): boolean {
+  const before = text.slice(0, index);
+  const start = Math.max(...[".", "!", "?", ";", ":", "\n"].map((c) => before.lastIndexOf(c))) + 1;
+  const clause = before.slice(start).slice(-80);
+  return /\b(?:no|not|without|don'?t|do not|doesn'?t|does not|never|avoid|skip)\b/i.test(clause);
+}
+
+/** "no database", "no customer accounts, sign-in or database", "without a backend". */
+const BACKEND_OPT_OUT =
+  /\b(?:no|without|don'?t (?:need|want|add|use)|do not (?:need|want|add|use)|never (?:add|use))\b[^.!?:;\n]{0,60}\b(?:database|backend|sign[- ]?in|log[- ]?in|accounts?)\b/i;
+
 /** Run a single intent rule against one piece of text. */
 export function detectIntent(id: SimpleIntentId, text: string | null | undefined): IntentResult {
   if (!text) return { detected: false };
@@ -350,9 +367,15 @@ export function detectIntent(id: SimpleIntentId, text: string | null | undefined
   const rule = RULES[id];
   if (t.length < rule.minLength) return { detected: false };
 
+  // An explicit "no database / no accounts" outranks every keyword guess.
+  if (id === "backend" && BACKEND_OPT_OUT.test(t)) return { detected: false };
+
   for (const re of rule.signals) {
-    const m = t.match(re);
-    if (m) return { detected: true, reason: m[0].toLowerCase() };
+    const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    for (const m of t.matchAll(g)) {
+      if (isNegatedAt(t, m.index ?? 0)) continue;
+      return { detected: true, reason: m[0].toLowerCase() };
+    }
   }
   if (rule.augment) {
     const aug = rule.augment(t);
