@@ -29,14 +29,7 @@ import {
   type MobilePlatform,
 } from "@/server/mobile-service.server";
 import { chargeRuntime } from "@/server/runtime-wallet.server";
-import {
-  ensureMirrorRepo,
-  pushSnapshot,
-  repoNameForProject,
-} from "@/server/mobile-github.server";
 import { encryptForProject } from "@/server/mobile-crypto.server";
-import { CODEMAGIC_YAML } from "@/server/mobile-codemagic-template.server";
-import type { ProjectFile } from "@/server/generate.server";
 
 const PROJECT_ID = z.string().uuid();
 
@@ -170,7 +163,6 @@ async function ensurePetalMobileApp(projectId: string): Promise<{
   codemagicAppId: string;
   workflowId: string;
   defaultBranch: string;
-  githubRepo: string;
   signingProfileId: string | null;
 }> {
   // Read first — happy path skips the provisioning entirely.
@@ -182,42 +174,12 @@ async function ensurePetalMobileApp(projectId: string): Promise<{
     .eq("project_id", projectId)
     .maybeSingle();
 
-  if (
-    existing &&
-    existing.bundle_id &&
-    existing.codemagic_app_id &&
-    existing.github_repo
-  ) {
-    return {
-      id: existing.id,
-      bundleId: existing.bundle_id,
-      codemagicAppId: existing.codemagic_app_id,
-      workflowId: existing.workflow_id,
-      defaultBranch: existing.default_branch,
-      githubRepo: existing.github_repo,
-      signingProfileId: existing.signing_profile_id,
-    };
-  }
-
-  // Provision: GitHub mirror first (cheap if already exists).
-  const repo = await ensureMirrorRepo(projectId);
-  // Then Codemagic app (idempotent at the repo URL — re-creating returns
-  // a duplicate-error which we map by re-reading mobile_apps).
-  let codemagicAppId = existing?.codemagic_app_id ?? "";
-  if (!codemagicAppId) {
-    try {
-      const created = await codemagicProvider.createApp({
-        projectId,
-        githubFullName: repo.fullName,
-      });
-      codemagicAppId = created.codemagicAppId;
-    } catch (err) {
-      // If Codemagic returns "already exists", we can safely continue —
-      // the mirror repo URL is unique per project.
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!/already.*exists|duplicate/i.test(msg)) throw err;
-    }
-  }
+  // One shared Codemagic app builds every project: it points at Petal's own
+  // repository (root codemagic.yaml) and downloads each project's files
+  // from a signed link. No per-project GitHub mirror.
+  const codemagicAppId = process.env.CODEMAGIC_APP_ID;
+  if (!codemagicAppId) throw new Error("CODEMAGIC_APP_ID is not configured");
+  const branch = process.env.CODEMAGIC_BRANCH || "main";
   const bundleId = existing?.bundle_id ?? autoBundleId(projectId);
 
   const { data: row, error } = await supabaseAdmin
@@ -227,16 +189,14 @@ async function ensurePetalMobileApp(projectId: string): Promise<{
         project_id: projectId,
         bundle_id: bundleId,
         codemagic_app_id: codemagicAppId,
-        workflow_id: existing?.workflow_id ?? "petal-default",
-        default_branch: repo.defaultBranch,
-        github_repo: repo.fullName,
-        github_default_branch: repo.defaultBranch,
+        workflow_id: "petal-default",
+        default_branch: branch,
+        github_repo: null,
+        github_default_branch: branch,
       },
       { onConflict: "project_id" },
     )
-    .select(
-      "id, bundle_id, codemagic_app_id, workflow_id, default_branch, github_repo, signing_profile_id",
-    )
+    .select("id, bundle_id, codemagic_app_id, workflow_id, default_branch, signing_profile_id")
     .single();
   if (error || !row) {
     throw new Error(`mobile_apps upsert failed: ${error?.message ?? "no row"}`);
@@ -244,44 +204,11 @@ async function ensurePetalMobileApp(projectId: string): Promise<{
   return {
     id: row.id,
     bundleId: row.bundle_id ?? bundleId,
-    codemagicAppId: row.codemagic_app_id ?? codemagicAppId,
+    codemagicAppId,
     workflowId: row.workflow_id,
     defaultBranch: row.default_branch,
-    githubRepo: row.github_repo ?? repo.fullName,
     signingProfileId: row.signing_profile_id,
   };
-}
-
-/**
- * Snapshot the project's source files to the mirror repo. The first commit
- * also injects the petal-mobile-shell `codemagic.yaml` so Codemagic can
- * discover the build workflow.
- */
-async function pushProjectSnapshot(args: {
-  projectId: string;
-  fullName: string;
-  branch: string;
-}): Promise<void> {
-  const { data: rows, error } = await supabaseAdmin
-    .from("project_files")
-    .select("path, content")
-    .eq("project_id", args.projectId);
-  if (error) throw new Error(`project_files read failed: ${error.message}`);
-  const files: ProjectFile[] = (rows ?? []).map((r) => ({
-    path: r.path,
-    content: r.content ?? "",
-  }));
-  // Always include the codemagic config — overrides any user-authored one
-  // so the workflow definitions stay under Kimble control.
-  const withCodemagic = files
-    .filter((f) => f.path !== "codemagic.yaml")
-    .concat({ path: "codemagic.yaml", content: CODEMAGIC_YAML });
-  await pushSnapshot({
-    fullName: args.fullName,
-    branch: args.branch,
-    files: withCodemagic,
-    message: `petal: snapshot for build ${new Date().toISOString()}`,
-  });
 }
 
 /**
@@ -408,22 +335,16 @@ export const startMobileBuild = createServerFn({ method: "POST" })
       signingEnv = env;
     }
 
-    // 4. Push a fresh snapshot of project files to the mirror so Codemagic
-    //    builds the latest version, not whatever was there last time.
-    try {
-      await pushProjectSnapshot({
-        projectId: data.projectId,
-        fullName: app.githubRepo,
-        branch: app.defaultBranch,
-      });
-    } catch (err) {
-      console.error("[mobile] snapshot push failed", err);
-      return {
-        ok: false,
-        reason: "provider_error",
-        message: err instanceof Error ? err.message : String(err),
-      };
-    }
+    // 4. Mint a signed, expiring link the build machine uses to download
+    //    the project's current files.
+    const secret = process.env.MOBILE_CODEMAGIC_WEBHOOK_SECRET;
+    if (!secret) return { ok: false, reason: "provider_error", message: "Build link secret missing" };
+    const { signSourceLink } = await import("@/server/mobile-source-token");
+    const sourceUrl = await signSourceLink({
+      baseUrl: process.env.PETAL_PUBLIC_BASE_URL || "https://petalapp.lovable.app",
+      projectId: data.projectId,
+      secret,
+    });
 
     // 5. Kick the Codemagic build. Use the signed workflow when applicable
     //    so the YAML can branch on signing steps.
@@ -440,6 +361,7 @@ export const startMobileBuild = createServerFn({ method: "POST" })
           kind === "signed" ? `${app.workflowId}-signed` : app.workflowId,
         branch: app.defaultBranch,
         signingEnv,
+        sourceUrl,
       });
       codemagicBuildId = result.id;
       estimatedCostUsd = result.estimatedCostUsd;

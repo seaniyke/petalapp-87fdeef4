@@ -41,6 +41,8 @@ export interface MobileBuildRequest {
    * and feed fastlane / gradle. Empty/undefined for unsigned builds.
    */
   signingEnv?: Record<string, string>;
+  /** Signed, expiring link the build machine downloads project files from. */
+  sourceUrl?: string;
 }
 
 export interface MobileBuildResult {
@@ -147,7 +149,7 @@ export const codemagicProvider: BuildProvider = {
 
   async startBuild(req) {
     const callbackBase =
-      process.env.PETAL_PUBLIC_BASE_URL ?? "https://buildwithpetal.com";
+      process.env.PETAL_PUBLIC_BASE_URL || "https://petalapp.lovable.app";
     const baseVars = {
       PETAL_PROJECT_ID: req.projectId,
       PETAL_BUNDLE_ID: req.bundleId,
@@ -155,6 +157,7 @@ export const codemagicProvider: BuildProvider = {
       PETAL_BUILD_KIND: req.kind,
       PETAL_CALLBACK_URL: `${callbackBase}/api/public/mobile/callback`,
       PETAL_WEBHOOK_SECRET: process.env.MOBILE_CODEMAGIC_WEBHOOK_SECRET ?? "",
+      PETAL_SOURCE_URL: req.sourceUrl ?? "",
     } as Record<string, string>;
     const variables = req.signingEnv
       ? { ...baseVars, ...req.signingEnv }

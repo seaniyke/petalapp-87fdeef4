@@ -66,3 +66,24 @@ describe("Petal native bridge (mobile kit)", () => {
     expect(block).toContain("NEVER import");
   });
 });
+
+describe("one-runner mobile pipeline", () => {
+  it("repository codemagic.yaml matches the template", async () => {
+    const { readFileSync } = await import("node:fs");
+    expect(readFileSync("codemagic.yaml", "utf8")).toBe(CODEMAGIC_YAML);
+    expect(CODEMAGIC_YAML).toContain('curl -fsS "$PETAL_SOURCE_URL"');
+  });
+
+  it("source links verify, and reject other projects, wrong secret and expiry", async () => {
+    const { signSourceLink, verifySourceLink } = await import("@/server/mobile-source-token");
+    const projectId = "11111111-1111-4111-8111-111111111111";
+    const url = new URL(await signSourceLink({ baseUrl: "https://x.test", projectId, secret: "s3", nowSeconds: 1000 }));
+    const exp = Number(url.searchParams.get("e"));
+    const sig = url.searchParams.get("s")!;
+    expect(exp).toBe(1000 + 7200);
+    expect(await verifySourceLink({ projectId, exp, sig, secret: "s3", nowSeconds: 1000 })).toBe(true);
+    expect(await verifySourceLink({ projectId: "22222222-2222-4222-8222-222222222222", exp, sig, secret: "s3", nowSeconds: 1000 })).toBe(false);
+    expect(await verifySourceLink({ projectId, exp, sig, secret: "other", nowSeconds: 1000 })).toBe(false);
+    expect(await verifySourceLink({ projectId, exp, sig, secret: "s3", nowSeconds: exp + 1 })).toBe(false);
+  });
+});
