@@ -34,6 +34,8 @@ function cleanName(raw: string): string | null {
   if (words.length === 0 || words.length > 3) return null;
   const n = words.join(" ");
   if (!/^[a-z][a-z0-9 &-]*$/.test(n)) return null;
+  // "a short story section", "the hero" describe a part of a page.
+  if (/\b(section|hero|banner|band|strip)\b/.test(n)) return null;
   return n;
 }
 
