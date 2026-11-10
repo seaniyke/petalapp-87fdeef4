@@ -28,9 +28,17 @@ export async function handleBuildWatchdog(request: Request): Promise<Response> {
     return new Response("Unauthorized", { status: 401 });
   }
 
+  // Same tick also retries partner notifications whose receiver was down.
+  const webhooks = await import("@/server/service-api.server")
+    .then((m) => m.drainWebhookOutbox())
+    .catch((e) => {
+      console.error("[cron/build-watchdog] webhook outbox", e instanceof Error ? e.message : String(e));
+      return null;
+    });
+
   const stalled = await listStalledBuilds(QUIET_MS, MAX_PER_TICK);
   if (stalled.length === 0) {
-    return Response.json({ ok: true, checked: 0, retried: 0 });
+    return Response.json({ ok: true, checked: 0, retried: 0, webhooks });
   }
 
   // Ask the build service what it is actually doing before assuming the worst:
@@ -67,6 +75,7 @@ export async function handleBuildWatchdog(request: Request): Promise<Response> {
     checked: stalled.length,
     retried: outcomes.filter((o) => o === "retried").length,
     failed: outcomes.filter((o) => o === "failed").length,
+    webhooks,
   });
 }
 
