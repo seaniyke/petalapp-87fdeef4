@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { json, preflight, serviceUserId, verifyApiCaller } from "@/server/service-api.server";
+import { json, preflight, serviceUserId, verifyApiCaller, callerCanAccessProject } from "@/server/service-api.server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -21,6 +21,7 @@ export const Route = createFileRoute("/api/public/v1/turns/$id")({
           .eq("id", params.id)
           .maybeSingle();
         if (!data || data.user_id !== owner) return json({ error: "not_found" }, 404);
+        if (!(await callerCanAccessProject(request, data.project_id))) return json({ error: "not_found" }, 404);
         const { user_id: _omit, ...turn } = data;
         const { previewUrlFor, previewFields } = await import("@/server/service-api.server");
         const { turnBill } = await import("@/server/service-billing.server");
