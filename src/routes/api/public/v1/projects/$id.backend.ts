@@ -14,7 +14,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { json, loadOwnedProject, preflight, serviceUserId, verifyServiceKey } from "@/server/service-api.server";
+import { json, loadOwnedProject, preflight, serviceUserId, verifyApiCaller } from "@/server/service-api.server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -74,19 +74,19 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/backend")({
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         if (!UUID.test(params.id)) return json({ error: "bad_project_id" }, 400);
         const range = activityRange(new URL(request.url));
         if (!range) return json({ error: "bad_range", expected: "from/to as YYYY-MM-DD, from <= to, at most 366 days" }, 400);
-        if (!(await loadOwnedProject(params.id))) return json({ error: "not_found" }, 404);
+        if (!(await loadOwnedProject(params.id, request))) return json({ error: "not_found" }, 404);
         return json(await status(params.id, range));
       },
       POST: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         if (!UUID.test(params.id)) return json({ error: "bad_project_id" }, 400);
-        if (!(await loadOwnedProject(params.id))) return json({ error: "not_found" }, 404);
+        if (!(await loadOwnedProject(params.id, request))) return json({ error: "not_found" }, 404);
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return json({ error: "invalid_body", expected: { action: "pause | resume" } }, 400);
         const range = activityRange(new URL(request.url))!;

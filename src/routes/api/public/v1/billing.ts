@@ -4,7 +4,7 @@
  * a per-project breakdown. `?from=&to=` (ISO) default to this month.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { json, preflight, serviceUserId, verifyServiceKey } from "@/server/service-api.server";
+import { json, preflight, serviceUserId, verifyApiCaller, requireServiceCaller } from "@/server/service-api.server";
 import { accountBilling } from "@/server/service-billing.server";
 import { parseRange } from "@/server/service-billing-range";
 
@@ -13,8 +13,10 @@ export const Route = createFileRoute("/api/public/v1/billing")({
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
+        const notService = requireServiceCaller(request);
+        if (notService) return notService;
         const range = parseRange(new URL(request.url));
         if ("error" in range) return json({ error: range.error }, 400);
         return json(await accountBilling(await serviceUserId(), range));

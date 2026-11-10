@@ -12,7 +12,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { json, loadOwnedProject, preflight, verifyServiceKey } from "@/server/service-api.server";
+import { json, loadOwnedProject, preflight, verifyApiCaller } from "@/server/service-api.server";
 import { isOwnSiteImageUrl, isPartnerAssetUrl } from "@/lib/site-image-url";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -28,10 +28,10 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/site-info")({
     handlers: {
       OPTIONS: async () => preflight(),
       PUT: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         if (!UUID.test(params.id)) return json({ error: "bad_project_id" }, 400);
-        if (!(await loadOwnedProject(params.id))) return json({ error: "not_found" }, 404);
+        if (!(await loadOwnedProject(params.id, request))) return json({ error: "not_found" }, 404);
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return json({ error: "invalid_body", issues: parsed.error.issues }, 400);
         const { title, description, ogImageUrl, iconUrl } = parsed.data;

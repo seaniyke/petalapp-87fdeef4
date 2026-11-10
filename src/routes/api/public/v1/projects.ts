@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { json, preflight, serviceUserId, verifyServiceKey } from "@/server/service-api.server";
+import { json, preflight, serviceUserId, verifyApiCaller, callerOf, linkProjectToCaller } from "@/server/service-api.server";
 
 const ExternalId = z.string().trim().min(1).max(128);
 const CreateBody = z.object({
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/public/v1/projects")({
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         const ext = new URL(request.url).searchParams.get("externalUserId");
         if (ext !== null && !ExternalId.safeParse(ext).success) return json({ error: "invalid_external_user_id" }, 400);
@@ -22,12 +22,20 @@ export const Route = createFileRoute("/api/public/v1/projects")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         let q = supabaseAdmin.from("projects").select(COLS).eq("owner_id", owner);
         if (ext !== null) q = q.eq("external_user_id", ext.trim());
+        const caller = callerOf(request);
+        if (caller?.kind === "developer") {
+          const { data: links } = await supabaseAdmin
+            .from("developer_key_projects")
+            .select("project_id")
+            .eq("key_id", caller.keyId);
+          q = q.in("id", (links ?? []).map((l) => l.project_id));
+        }
         const { data, error } = await q.order("updated_at", { ascending: false }).limit(200);
         if (error) return json({ error: "list_failed" }, 500);
         return json({ projects: data ?? [] });
       },
       POST: async ({ request }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         const parsed = CreateBody.safeParse(await request.json().catch(() => ({})));
         if (!parsed.success) return json({ error: "invalid_body", issues: parsed.error.issues }, 400);
@@ -44,6 +52,12 @@ export const Route = createFileRoute("/api/public/v1/projects")({
           .select(COLS)
           .single();
         if (error || !data) return json({ error: "create_failed", detail: error?.message }, 500);
+        try {
+          await linkProjectToCaller(request, data.id);
+        } catch {
+          await supabaseAdmin.from("projects").delete().eq("id", data.id);
+          return json({ error: "create_failed" }, 500);
+        }
         return json({ project: data }, 201);
       },
     },

@@ -1,13 +1,13 @@
 /** GET /api/public/v1/domains/search?q=brand → { query, results: [...] } (no project needed) */
 import { createFileRoute } from "@tanstack/react-router";
-import { json, preflight, verifyServiceKey } from "@/server/service-api.server";
+import { json, preflight, verifyApiCaller } from "@/server/service-api.server";
 
 export const Route = createFileRoute("/api/public/v1/domains/search")({
   server: {
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         const q = (new URL(request.url).searchParams.get("q") ?? "").trim().slice(0, 253);
         if (!q) return json({ error: "missing_query" }, 400);

@@ -1,7 +1,7 @@
 /** POST /api/public/v1/projects/:id/domains/purchase { hostname, termYears?, sandbox? } */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { json, loadOwnedProject, preflight, verifyServiceKey } from "@/server/service-api.server";
+import { json, loadOwnedProject, preflight, verifyApiCaller } from "@/server/service-api.server";
 
 const Body = z.object({
   hostname: z.string().min(4).max(253),
@@ -14,9 +14,9 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/domains/purcha
     handlers: {
       OPTIONS: async () => preflight(),
       POST: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
-        if (!(await loadOwnedProject(params.id))) return json({ error: "project_not_found" }, 404);
+        if (!(await loadOwnedProject(params.id, request))) return json({ error: "project_not_found" }, 404);
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return json({ error: "invalid_name", issues: parsed.error.issues }, 400);
         const { partnerPurchase } = await import("@/server/partner-domains.server");
