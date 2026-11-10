@@ -5035,6 +5035,7 @@ async function handleGenerateRequestCore(
                   requestedRoutes: requestedRoutesFor(lastUserText, plannedRoutes),
                   requireShell: true,
                   requireLiveData: Boolean(sharedBackend),
+                  surface: intentContract?.surface ?? null,
                 });
                 return readinessOf(v);
               },
@@ -7319,6 +7320,7 @@ async function handleGenerateRequestCore(
               requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
               requireShell: isInitial,
               requireLiveData: isInitial && Boolean(sharedBackend),
+              surface: intentContract?.surface ?? null,
             });
           },
           fallbackFor: (path, tree) => resilientFallback(path, tree, turnBaselineFiles),
