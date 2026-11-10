@@ -228,7 +228,10 @@ export function assessRouteCoverage(args: {
       continue;
     }
     if (/[:$*]/.test(slug)) continue; // dynamic params — covered by their parent
-    if (!haystack.includes(slug)) {
+    // Multi-word routes ("/terms-and-privacy") are written as PascalCase files
+    // ("TermsAndPrivacy.tsx"), so also match the slug with separators removed.
+    const compact = slug.replace(/[-_]/g, "");
+    if (!haystack.includes(slug) && !haystack.includes(compact)) {
       missing.push(route);
       continue;
     }
