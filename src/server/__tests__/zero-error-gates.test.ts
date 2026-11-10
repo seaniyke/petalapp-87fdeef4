@@ -80,3 +80,17 @@ describe("missing import repair", () => {
     expect(r.files.find((f) => f.path === "src/pages/Home.tsx")!.content).toContain(`import { useState } from "react";`);
   });
 });
+
+import { buildProviders as bp2, addMissingImports as ami2 } from "@/server/engine/missing-import-repair";
+describe("icon auto-import", () => {
+  it("adds a known lucide icon only when the project uses lucide-react", () => {
+    expect(bp2({ routerModule: null, usesLucide: true }).get("ArrowRight")).toBe("lucide-react");
+    expect(bp2({ routerModule: null }).get("ArrowRight")).toBeUndefined();
+    const r = ami2("export default () => <ArrowRight />;", ["ArrowRight"], bp2({ routerModule: null, usesLucide: true }));
+    expect(r?.content).toContain('import { ArrowRight } from "lucide-react";');
+  });
+  it("a kit module exporting the same name wins over the icon", () => {
+    const p = bp2({ routerModule: null, usesLucide: true, kitOwners: new Map([["Star", ["@/components/kit/star"]]]) });
+    expect(p.get("Star")).toBe("@/components/kit/star");
+  });
+});
