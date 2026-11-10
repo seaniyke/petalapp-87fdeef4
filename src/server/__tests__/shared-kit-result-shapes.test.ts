@@ -13,7 +13,7 @@ import { sharedBackendKit } from "../shared-backend-kit";
  */
 type Rec = { id: string; data: { name: string }; created_at: string; updated_at: string };
 let db: {
-  list: (c: string, o?: { mine?: boolean; everyone?: boolean }) => Promise<Rec[] & { records: Rec[] }>;
+  list: (c: string, o?: Record<string, unknown>) => Promise<Rec[] & { records: Rec[] }>;
   create: (c: string, d: unknown) => Promise<Rec & { record: Rec }>;
   update: (c: string, id: string, d: unknown) => Promise<Rec & { record: Rec }>;
   seedOnce: (c: string, rows: unknown[]) => Promise<Rec[] & { records: Rec[] }>;
@@ -58,7 +58,8 @@ beforeAll(async () => {
     }
     listUrls.push(url);
     const limit = Number(new URL(url).searchParams.get("limit") || 0);
-    return new Response(JSON.stringify({ records: limit ? store.slice(0, limit) : store }), { status: 200 });
+    const total = new URL(url).searchParams.get("count") === "1" ? { total: 42 } : {};
+    return new Response(JSON.stringify({ records: limit ? store.slice(0, limit) : store, ...total }), { status: 200 });
   });
   db = (await import(/* @vite-ignore */ pathToFileURL(file).href)).db;
 });
@@ -104,5 +105,31 @@ describe("who a list shows", () => {
     const q = new URL(listUrls.at(-1)!).searchParams;
     expect(q.get("mine")).toBe("1");
     expect(q.get("scope")).toBeNull();
+  });
+});
+
+describe("server-side filtering from the site", () => {
+  it("sends where, sort, paging and count to the server", async () => {
+    const res = await db.list("recipes", {
+      everyone: true,
+      where: { category: "dessert", minutes: { lte: 30 } },
+      sort: "-createdAt",
+      limit: 12,
+      offset: 24,
+      count: true,
+    });
+    const q = new URL(listUrls.at(-1)!).searchParams;
+    expect(JSON.parse(q.get("where")!)).toEqual({ category: "dessert", minutes: { lte: 30 } });
+    expect(q.get("sort")).toBe("-createdAt");
+    expect(q.get("limit")).toBe("12");
+    expect(q.get("offset")).toBe("24");
+    expect(q.get("count")).toBe("1");
+    expect((res as unknown as { total: number }).total).toBe(42);
+  });
+  it("a plain list sends no filter", async () => {
+    await db.list("recipes");
+    const q = new URL(listUrls.at(-1)!).searchParams;
+    expect(q.get("where")).toBeNull();
+    expect(q.get("sort")).toBeNull();
   });
 });

@@ -40062,14 +40062,36 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   throw lastError || new Error("Request failed");
 }
 
-/** A list of records that can also be read as { records } \u2014 both styles work. */
-export type RecordList<T> = PetalRecord<T>[] & { records: PetalRecord<T>[] };
+/** A list of records that can also be read as { records } \u2014 both styles work.
+ *  \`total\` is set when the list was asked for with \`{ count: true }\`. */
+export type RecordList<T> = PetalRecord<T>[] & { records: PetalRecord<T>[]; total?: number };
+
+type FieldValue = string | number | boolean | null;
+/** Server-side filter on a record's fields. A plain value means "equals". */
+export type Where = Record<
+  string,
+  | FieldValue
+  | { eq?: FieldValue; ne?: FieldValue; gt?: FieldValue; gte?: FieldValue; lt?: FieldValue; lte?: FieldValue; in?: FieldValue[]; contains?: string }
+>;
+export type ListOptions = {
+  mine?: boolean;
+  everyone?: boolean;
+  /** e.g. { category: "dessert", price: { lte: 20 }, title: { contains: "cake" } } */
+  where?: Where;
+  /** Field name, "-" in front for descending: "price", "-createdAt". Default newest first. */
+  sort?: string;
+  limit?: number;
+  offset?: number;
+  /** Also return how many records match, as list.total. */
+  count?: boolean;
+};
 /** One record that can also be read as { record } \u2014 both styles work. */
 export type RecordResult<T> = PetalRecord<T> & { record: PetalRecord<T> };
 
-function asList<T>(records: PetalRecord<T>[] | undefined): RecordList<T> {
+function asList<T>(records: PetalRecord<T>[] | undefined, total?: number): RecordList<T> {
   const arr = (Array.isArray(records) ? records.slice() : []) as RecordList<T>;
   Object.defineProperty(arr, "records", { value: arr, enumerable: false });
+  if (typeof total === "number") Object.defineProperty(arr, "total", { value: total, enumerable: false });
   return arr;
 }
 
@@ -40081,20 +40103,24 @@ function asRecord<T>(record: PetalRecord<T>): RecordResult<T> {
 export const db = {
   async list<T = Record<string, unknown>>(
     collection: string,
-    opts: { mine?: boolean; everyone?: boolean; limit?: number; offset?: number } = {},
+    opts: ListOptions = {},
   ): Promise<RecordList<T>> {
     const q = new URLSearchParams();
     // Default: the signed-in user's rows + rows added by guests (starter rows).
     // everyone: every user's rows \u2014 for content meant to be public.
     if (opts.mine) q.set("mine", "1");
     else if (opts.everyone) q.set("scope", "all");
+    // Filtering, sorting and paging run on the server \u2014 only matching rows travel.
+    if (opts.where && Object.keys(opts.where).length) q.set("where", JSON.stringify(opts.where));
+    if (opts.sort) q.set("sort", opts.sort);
     if (opts.limit) q.set("limit", String(opts.limit));
     if (opts.offset) q.set("offset", String(opts.offset));
+    if (opts.count) q.set("count", "1");
     const qs = q.toString();
-    const body = await request<{ records: PetalRecord<T>[] }>(
+    const body = await request<{ records: PetalRecord<T>[]; total?: number }>(
       "/records/" + encodeURIComponent(collection) + (qs ? "?" + qs : ""),
     );
-    return asList(body.records);
+    return asList(body.records, body.total);
   },
   async create<T = Record<string, unknown>>(collection: string, data: T): Promise<RecordResult<T>> {
     const body = await request<{ record: PetalRecord<T> }>("/records/" + encodeURIComponent(collection), {
@@ -40389,6 +40415,15 @@ import { AuthProvider, useAuth } from "@/integrations/backend/auth";
 const { records } = await db.list<{ title: string; done: boolean }>("tasks", { mine: true });
 const created = await db.create("tasks", { title: "Ship it", done: false }); // created.id, created.data
 await db.update("tasks", id, { done: true });
+// Filter, sort and page on the server (only matching rows are downloaded):
+const desserts = await db.list("recipes", {
+  everyone: true,
+  where: { category: "dessert", minutes: { lte: 30 }, title: { contains: "cake" } },
+  sort: "-createdAt", // "price" = low\u2192high, "-price" = high\u2192low
+  limit: 12, offset: 0, count: true, // desserts.total = how many match in all
+});
+// Filters: plain value = equals; { ne, gt, gte, lt, lte, in: [...], contains: "text" }.
+// Field names are the keys you saved (plus createdAt / updatedAt / id).
 // Starter rows, written only into an empty collection; returns the current records.
 const tasks = await db.seedOnce("tasks", [{ title: "Book venue", done: false }]);
 // Lists can be used directly as arrays (tasks.map) or as { records }; a single
@@ -40406,6 +40441,7 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 ## Rules
 
 - Rows created while signed in are owned by that user. A plain \`db.list\` returns the visitor's own rows plus starter/guest rows \u2014 NOT other users' rows. For content meant for everyone (community posts, shared recipes, listings, reviews, a public catalogue) list with \`{ everyone: true }\`; for a user's own page ("My recipes", "My orders") use \`{ mine: true }\`. Private data (orders, bookings, messages, profiles) never uses \`everyone\`.
+- Search boxes, category/price filters, sorting and "next page" use \`db.list\` with \`where\` / \`sort\` / \`limit\` / \`offset\` \u2014 never download a whole collection to filter or count it in the browser. Use \`count: true\` when the page shows a total or page numbers.
 - Every "Sign out" control must be a button that calls \`await signOut()\` and then navigates to \`/login\`. Never a plain link to \`/login\` \u2014 that leaves the user signed in.
 - Guard the signed-in area once, at its layout route: \`<Route path="dashboard" element={<RequireAuth><AppShell /></RequireAuth>}>\` (\`RequireAuth\` from \`@/integrations/backend/auth\`). Signed-out visitors are sent to \`/login\`.
 - Links must use the page's full address. Pages nested under \`<Route path="dashboard">\` live at \`/dashboard/services\`, not \`/services\`. The build fails on links to addresses no page serves.
@@ -59381,6 +59417,32 @@ ALTER TABLE public.app_records ENABLE ROW LEVEL SECURITY;
   }
 });
 
+// src/server/shared-query.ts
+function columnFor(field, value) {
+  if (COLUMN_FIELDS[field]) return COLUMN_FIELDS[field];
+  const sample = Array.isArray(value) ? value[0] : value;
+  return typeof sample === "number" || typeof sample === "boolean" ? `data->${field}` : `data->>${field}`;
+}
+function likePattern(v) {
+  return `%${v.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+function sortColumn(field) {
+  return COLUMN_FIELDS[field] ?? `data->${field}`;
+}
+var COLUMN_FIELDS;
+var init_shared_query = __esm({
+  "src/server/shared-query.ts"() {
+    init_define_import_meta_env();
+    COLUMN_FIELDS = {
+      id: "id",
+      createdAt: "created_at",
+      created_at: "created_at",
+      updatedAt: "updated_at",
+      updated_at: "updated_at"
+    };
+  }
+});
+
 // src/server/shared-backend.server.ts
 var shared_backend_server_exports = {};
 __export(shared_backend_server_exports, {
@@ -59543,17 +59605,38 @@ async function resolveProjectByKey(projectId, apiKey) {
 }
 async function listRecords(opts) {
   const store2 = await storeFor(opts.projectId);
-  const limit = Math.min(opts.limit ?? 50, SHARED_LIMITS.maxPageSize);
-  let q = store2.client.from(store2.records).select("id, collection, owner_key, data, created_at, updated_at").eq("project_id", opts.projectId).eq("collection", opts.collection).order("created_at", { ascending: false }).range(opts.offset ?? 0, (opts.offset ?? 0) + limit - 1);
+  const limit = Math.max(1, Math.min(Number.isFinite(opts.limit) ? opts.limit : 50, SHARED_LIMITS.maxPageSize));
+  const offset = Math.max(0, Number.isFinite(opts.offset) ? Math.floor(opts.offset) : 0);
+  let q = store2.client.from(store2.records).select("id, collection, owner_key, data, created_at, updated_at", opts.withTotal ? { count: "exact" } : void 0).eq("project_id", opts.projectId).eq("collection", opts.collection);
+  for (const f of opts.filters ?? []) q = applyFilter(q, f);
+  q = opts.sort ? q.order(sortColumn(opts.sort.field), { ascending: opts.sort.ascending, nullsFirst: false }).order("created_at", { ascending: false }) : q.order("created_at", { ascending: false });
+  q = q.range(offset, offset + limit - 1);
   const scope = opts.scope ?? "shared";
   if (scope === "own") {
     q = opts.ownerKey ? q.eq("owner_key", opts.ownerKey) : q.is("owner_key", null).limit(0);
   } else if (scope === "shared") {
     q = opts.ownerKey ? q.or(`owner_key.is.null,owner_key.eq.${opts.ownerKey}`) : q.is("owner_key", null);
   }
-  const { data: data2, error } = await q;
+  const { data: data2, error, count } = await q;
   if (error) throw new Error(error.message);
-  return (data2 ?? []).map(shape);
+  const rows = (data2 ?? []).map(shape);
+  if (opts.withTotal) rows.total = count ?? rows.length;
+  return rows;
+}
+function applyFilter(q, f) {
+  const col = columnFor(f.field, f.value);
+  switch (f.op) {
+    case "in":
+      return q.in(col, f.value);
+    case "contains":
+      return q.ilike(col, likePattern(String(f.value)));
+    case "eq":
+      return f.value === null ? q.is(col, null) : q.eq(col, f.value);
+    case "ne":
+      return f.value === null ? q.not(col, "is", null) : q.neq(col, f.value);
+    default:
+      return q[f.op](col, f.value);
+  }
 }
 async function createRecord(opts) {
   const store2 = await storeFor(opts.projectId);
@@ -59688,6 +59771,7 @@ var init_shared_backend_server = __esm({
     init_define_import_meta_env();
     init_client_server_shim();
     init_project_store_server();
+    init_shared_query();
     SHARED_LIMITS = {
       maxRowsPerProject: 5e3,
       maxCollections: 25,
@@ -69200,6 +69284,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139343,6 +139428,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140430,6 +140516,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140594,6 +140681,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140637,6 +140725,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141336,6 +141425,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {

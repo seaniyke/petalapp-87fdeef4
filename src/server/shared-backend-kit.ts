@@ -108,14 +108,36 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   throw lastError || new Error("Request failed");
 }
 
-/** A list of records that can also be read as { records } — both styles work. */
-export type RecordList<T> = PetalRecord<T>[] & { records: PetalRecord<T>[] };
+/** A list of records that can also be read as { records } — both styles work.
+ *  \`total\` is set when the list was asked for with \`{ count: true }\`. */
+export type RecordList<T> = PetalRecord<T>[] & { records: PetalRecord<T>[]; total?: number };
+
+type FieldValue = string | number | boolean | null;
+/** Server-side filter on a record's fields. A plain value means "equals". */
+export type Where = Record<
+  string,
+  | FieldValue
+  | { eq?: FieldValue; ne?: FieldValue; gt?: FieldValue; gte?: FieldValue; lt?: FieldValue; lte?: FieldValue; in?: FieldValue[]; contains?: string }
+>;
+export type ListOptions = {
+  mine?: boolean;
+  everyone?: boolean;
+  /** e.g. { category: "dessert", price: { lte: 20 }, title: { contains: "cake" } } */
+  where?: Where;
+  /** Field name, "-" in front for descending: "price", "-createdAt". Default newest first. */
+  sort?: string;
+  limit?: number;
+  offset?: number;
+  /** Also return how many records match, as list.total. */
+  count?: boolean;
+};
 /** One record that can also be read as { record } — both styles work. */
 export type RecordResult<T> = PetalRecord<T> & { record: PetalRecord<T> };
 
-function asList<T>(records: PetalRecord<T>[] | undefined): RecordList<T> {
+function asList<T>(records: PetalRecord<T>[] | undefined, total?: number): RecordList<T> {
   const arr = (Array.isArray(records) ? records.slice() : []) as RecordList<T>;
   Object.defineProperty(arr, "records", { value: arr, enumerable: false });
+  if (typeof total === "number") Object.defineProperty(arr, "total", { value: total, enumerable: false });
   return arr;
 }
 
@@ -127,20 +149,24 @@ function asRecord<T>(record: PetalRecord<T>): RecordResult<T> {
 export const db = {
   async list<T = Record<string, unknown>>(
     collection: string,
-    opts: { mine?: boolean; everyone?: boolean; limit?: number; offset?: number } = {},
+    opts: ListOptions = {},
   ): Promise<RecordList<T>> {
     const q = new URLSearchParams();
     // Default: the signed-in user's rows + rows added by guests (starter rows).
     // everyone: every user's rows — for content meant to be public.
     if (opts.mine) q.set("mine", "1");
     else if (opts.everyone) q.set("scope", "all");
+    // Filtering, sorting and paging run on the server — only matching rows travel.
+    if (opts.where && Object.keys(opts.where).length) q.set("where", JSON.stringify(opts.where));
+    if (opts.sort) q.set("sort", opts.sort);
     if (opts.limit) q.set("limit", String(opts.limit));
     if (opts.offset) q.set("offset", String(opts.offset));
+    if (opts.count) q.set("count", "1");
     const qs = q.toString();
-    const body = await request<{ records: PetalRecord<T>[] }>(
+    const body = await request<{ records: PetalRecord<T>[]; total?: number }>(
       "/records/" + encodeURIComponent(collection) + (qs ? "?" + qs : ""),
     );
-    return asList(body.records);
+    return asList(body.records, body.total);
   },
   async create<T = Record<string, unknown>>(collection: string, data: T): Promise<RecordResult<T>> {
     const body = await request<{ record: PetalRecord<T> }>("/records/" + encodeURIComponent(collection), {
@@ -425,6 +451,15 @@ import { AuthProvider, useAuth } from "@/integrations/backend/auth";
 const { records } = await db.list<{ title: string; done: boolean }>("tasks", { mine: true });
 const created = await db.create("tasks", { title: "Ship it", done: false }); // created.id, created.data
 await db.update("tasks", id, { done: true });
+// Filter, sort and page on the server (only matching rows are downloaded):
+const desserts = await db.list("recipes", {
+  everyone: true,
+  where: { category: "dessert", minutes: { lte: 30 }, title: { contains: "cake" } },
+  sort: "-createdAt", // "price" = low→high, "-price" = high→low
+  limit: 12, offset: 0, count: true, // desserts.total = how many match in all
+});
+// Filters: plain value = equals; { ne, gt, gte, lt, lte, in: [...], contains: "text" }.
+// Field names are the keys you saved (plus createdAt / updatedAt / id).
 // Starter rows, written only into an empty collection; returns the current records.
 const tasks = await db.seedOnce("tasks", [{ title: "Book venue", done: false }]);
 // Lists can be used directly as arrays (tasks.map) or as { records }; a single
@@ -442,6 +477,7 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 ## Rules
 
 - Rows created while signed in are owned by that user. A plain \`db.list\` returns the visitor's own rows plus starter/guest rows — NOT other users' rows. For content meant for everyone (community posts, shared recipes, listings, reviews, a public catalogue) list with \`{ everyone: true }\`; for a user's own page ("My recipes", "My orders") use \`{ mine: true }\`. Private data (orders, bookings, messages, profiles) never uses \`everyone\`.
+- Search boxes, category/price filters, sorting and "next page" use \`db.list\` with \`where\` / \`sort\` / \`limit\` / \`offset\` — never download a whole collection to filter or count it in the browser. Use \`count: true\` when the page shows a total or page numbers.
 - Every "Sign out" control must be a button that calls \`await signOut()\` and then navigates to \`/login\`. Never a plain link to \`/login\` — that leaves the user signed in.
 - Guard the signed-in area once, at its layout route: \`<Route path="dashboard" element={<RequireAuth><AppShell /></RequireAuth>}>\` (\`RequireAuth\` from \`@/integrations/backend/auth\`). Signed-out visitors are sent to \`/login\`.
 - Links must use the page's full address. Pages nested under \`<Route path="dashboard">\` live at \`/dashboard/services\`, not \`/services\`. The build fails on links to addresses no page serves.
