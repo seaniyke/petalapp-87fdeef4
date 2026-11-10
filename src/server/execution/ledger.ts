@@ -8,14 +8,16 @@
 export type ToolKind = "ai_call" | "read" | "write" | "delete" | "dependency" | "repair" | "build" | "browser";
 
 export const TURN_LIMITS: Readonly<Record<ToolKind, number>> = {
-  ai_call: 12,
-  read: 80,
-  write: 40,
-  delete: 10,
-  dependency: 6,
-  repair: 3,
-  build: 2,
-  browser: 1,
+  // Runaway guards only, sized well above a large multi-page build — a
+  // normal build must never reach them (the economic ceiling bounds spend).
+  ai_call: 80,
+  read: 400,
+  write: 240,
+  delete: 60,
+  dependency: 20,
+  repair: 30,
+  build: 6,
+  browser: 3,
 };
 
 export type Refusal = "cancelled" | "limit" | "duplicate_read" | "no_op_write" | "foreign_writer" | "committed" | "unread_write";

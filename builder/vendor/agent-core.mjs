@@ -38594,18 +38594,18 @@ var init_recovery_policy = __esm({
     RECOVERY_LIMITS = {
       provider_failure: 2,
       // same request, next allowed provider (two providers can stall in a row)
-      truncated_output: 1,
+      truncated_output: 3,
       // continue only the missing files
-      broken_file: 1,
+      broken_file: 3,
       // per file, max MAX_REPAIRED_FILES files
-      build_failure: 1,
+      build_failure: 3,
       // repair only files named in the error
-      missing_page: 1,
+      missing_page: 3,
       // generate only the missing page
       browser_failure: 0
       // report truthfully
     };
-    MAX_REPAIRED_FILES = 3;
+    MAX_REPAIRED_FILES = 40;
     RecoveryBudget = class {
       used = /* @__PURE__ */ new Map();
       attempts = [];
@@ -39321,10 +39321,10 @@ var init_circuit_breaker = __esm({
     init_define_import_meta_env();
     BREAKER_THRESHOLDS = {
       maxIdenticalError: 3,
-      maxConsecutiveFailures: 5,
-      maxToolFailures: 4,
-      maxFileFailures: 4,
-      maxTotalFailures: 10,
+      maxConsecutiveFailures: 8,
+      maxToolFailures: 8,
+      maxFileFailures: 8,
+      maxTotalFailures: 40,
       guidanceAtIdentical: 2
     };
     GUIDANCE = {
@@ -139277,7 +139277,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140365,7 +140364,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140530,7 +140528,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140574,7 +140571,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -140796,7 +140792,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -142432,49 +142427,6 @@ var init_router_provider_server = __esm({
   }
 });
 
-// src/server/turn-lease.ts
-var turn_lease_exports = {};
-__export(turn_lease_exports, {
-  HEARTBEAT_INTERVAL_MS: () => HEARTBEAT_INTERVAL_MS,
-  startHeartbeat: () => startHeartbeat
-});
-function startHeartbeat(args) {
-  const si = args.setIntervalFn ?? setInterval;
-  const ci = args.clearIntervalFn ?? clearInterval;
-  let stopped = false;
-  let timer = null;
-  const stop = () => {
-    stopped = true;
-    if (timer) ci(timer);
-    timer = null;
-  };
-  const tick = async () => {
-    if (stopped) return "ok";
-    let state = "ok";
-    try {
-      state = await args.beat(args.turnId, args.lease);
-    } catch {
-      state = "ok";
-    }
-    if (state !== "ok" && !stopped) {
-      stop();
-      args.onLost(state);
-    }
-    return state;
-  };
-  void tick();
-  timer = si(() => void tick(), args.intervalMs ?? HEARTBEAT_INTERVAL_MS);
-  timer.unref?.();
-  return { stop, tick };
-}
-var HEARTBEAT_INTERVAL_MS;
-var init_turn_lease = __esm({
-  "src/server/turn-lease.ts"() {
-    init_define_import_meta_env();
-    HEARTBEAT_INTERVAL_MS = 2e4;
-  }
-});
-
 // src/server/engine/structural-deps.ts
 var structural_deps_exports = {};
 __export(structural_deps_exports, {
@@ -142568,6 +142520,49 @@ var init_structural_deps = __esm({
     init_define_import_meta_env();
     EXTS3 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"];
     IMPORT_RE6 = /(?:import|export)\s[^'"]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s*["']([^"']+)["']/g;
+  }
+});
+
+// src/server/turn-lease.ts
+var turn_lease_exports = {};
+__export(turn_lease_exports, {
+  HEARTBEAT_INTERVAL_MS: () => HEARTBEAT_INTERVAL_MS,
+  startHeartbeat: () => startHeartbeat
+});
+function startHeartbeat(args) {
+  const si = args.setIntervalFn ?? setInterval;
+  const ci = args.clearIntervalFn ?? clearInterval;
+  let stopped = false;
+  let timer = null;
+  const stop = () => {
+    stopped = true;
+    if (timer) ci(timer);
+    timer = null;
+  };
+  const tick = async () => {
+    if (stopped) return "ok";
+    let state = "ok";
+    try {
+      state = await args.beat(args.turnId, args.lease);
+    } catch {
+      state = "ok";
+    }
+    if (state !== "ok" && !stopped) {
+      stop();
+      args.onLost(state);
+    }
+    return state;
+  };
+  void tick();
+  timer = si(() => void tick(), args.intervalMs ?? HEARTBEAT_INTERVAL_MS);
+  timer.unref?.();
+  return { stop, tick };
+}
+var HEARTBEAT_INTERVAL_MS;
+var init_turn_lease = __esm({
+  "src/server/turn-lease.ts"() {
+    init_define_import_meta_env();
+    HEARTBEAT_INTERVAL_MS = 2e4;
   }
 });
 
@@ -143125,7 +143120,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144330,7 +144324,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145456,7 +145449,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -145468,14 +145460,16 @@ var init_ledger = __esm({
     "use strict";
     init_define_import_meta_env();
     TURN_LIMITS = {
-      ai_call: 12,
-      read: 80,
-      write: 40,
-      delete: 10,
-      dependency: 6,
-      repair: 3,
-      build: 2,
-      browser: 1
+      // Runaway guards only, sized well above a large multi-page build — a
+      // normal build must never reach them (the economic ceiling bounds spend).
+      ai_call: 80,
+      read: 400,
+      write: 240,
+      delete: 60,
+      dependency: 20,
+      repair: 30,
+      build: 6,
+      browser: 3
     };
     TurnLedger = class {
       constructor(limits = TURN_LIMITS) {
@@ -145685,6 +145679,7 @@ async function commitTurn(args) {
   }
   const rejections = [];
   const noOps = [];
+  const substituted = [];
   const refusalReason = () => {
     const last2 = args.ledger.summary().refusals.at(-1) ?? "";
     if (last2.includes(":limit")) return "limit";
@@ -145766,6 +145761,32 @@ async function commitTurn(args) {
           repairTargets: []
         };
       }
+      if (verification.status === "FAILED" && args.fallbackFor && verification.repairTargets.length) {
+        const swaps = /* @__PURE__ */ new Map();
+        for (const p2 of verification.repairTargets) {
+          const r = args.fallbackFor(p2, tree);
+          if (r === null) {
+            swaps.clear();
+            break;
+          }
+          swaps.set(p2, r);
+        }
+        if (swaps.size) {
+          const reason = verification.reason ?? `${verification.failedGate} failed`;
+          for (const [p2, c] of swaps) tx.stage(p2, c, "resilient fallback", { system: true });
+          const tree2 = tx.proposedTree();
+          const changed2 = tree2.filter((f) => base.get(f.path) !== f.content).map((f) => f.path);
+          try {
+            const v2 = await args.verifySource(tree2, changed2);
+            if (v2.status !== "FAILED") {
+              verification = v2;
+              for (const p2 of swaps.keys()) substituted.push({ path: p2, reason });
+            }
+          } catch {
+          }
+          if (!substituted.length) for (const p2 of swaps.keys()) tx.stage(p2, next.get(p2) ?? base.get(p2) ?? "", "undo fallback", { system: true });
+        }
+      }
       for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
       const ready = readinessOf(verification);
       if (!ready.ready && verification.status === "FAILED") {
@@ -145807,7 +145828,7 @@ async function commitTurn(args) {
       next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry"
     });
   }
-  return { outcome, rejections, noOps, verification };
+  return { outcome, rejections, noOps, verification, substituted };
 }
 var init_commit = __esm({
   "src/server/execution/commit.ts"() {
@@ -170944,6 +170965,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -174867,8 +174889,8 @@ function runAllRepairs(input, opts) {
 // src/server/turn-cost-ceiling.server.ts
 init_define_import_meta_env();
 init_budget();
-var TURN_REPAIR_COST_CEILING_USD = 0.35;
-var TURN_REPAIR_COST_WARN_USD = 0.22;
+var TURN_REPAIR_COST_CEILING_USD = 4;
+var TURN_REPAIR_COST_WARN_USD = 3;
 var BLENDED_RATE_PER_MTOK = {
   "google/gemini-3.1-flash-lite": 3.5,
   "google/gemini-3.8-flash": 9,
@@ -174930,6 +174952,41 @@ var TurnCostMeter = class {
     return `repair spend $${this.spent.toFixed(4)} over ${this.entries.length} call(s)`;
   }
 };
+
+// src/server/engine/resilient-fallback.ts
+init_define_import_meta_env();
+init_structural_deps();
+var PAGE_RE = /^src\/pages\/(?:[\w-]+\/)*([\w-]+)\.tsx$/;
+function titleFor(path) {
+  const m = PAGE_RE.exec(path);
+  const base = (m?.[1] ?? "Page").replace(/[-_]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
+  return base.replace(/\b\w/g, (c) => c.toUpperCase()).trim() || "Page";
+}
+function placeholderPage(path) {
+  const title = titleFor(path);
+  const name = title.replace(/[^A-Za-z0-9]/g, "") || "Page";
+  const comp = /^[A-Za-z]/.test(name) ? `${name}Page` : `Page${name}`;
+  return `export default function ${comp}() {
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-24 text-center">
+      <h1 className="text-4xl font-semibold tracking-tight">${title.replace(/[{}<>`]/g, "")}</h1>
+      <p className="mt-4 text-muted-foreground">This page is being finished. Please check back shortly.</p>
+    </main>
+  );
+}
+`;
+}
+function resilientFallback(path, tree, baseline) {
+  const prior = baseline.find((f) => f.path === path);
+  const current2 = tree.find((f) => f.path === path);
+  if (!current2) return null;
+  if (structurallyCriticalPaths(tree, [path]).has(path)) {
+    return prior && prior.content !== current2.content ? prior.content : null;
+  }
+  if (prior && prior.content !== current2.content) return prior.content;
+  if (PAGE_RE.test(path) && /export\s+default\b/.test(current2.content)) return placeholderPage(path);
+  return null;
+}
 
 // src/server/repair-ledger.server.ts
 init_define_import_meta_env();
@@ -180772,8 +180829,13 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               requireShell: isInitial,
               requireLiveData: isInitial && Boolean(sharedBackend)
             });
-          }
+          },
+          fallbackFor: (path, tree) => resilientFallback(path, tree, turnBaselineFiles)
         });
+        if (txResult.substituted.length) {
+          turnStrategy.resilientFallback = txResult.substituted;
+          console.warn(`[resilient-fallback] substituted ${txResult.substituted.map((s) => s.path).join(", ")}`);
+        }
         const txCommitted = txResult.outcome.status === "committed";
         {
           const loopOutcome = turnStrategy.toolLoop?.outcome;

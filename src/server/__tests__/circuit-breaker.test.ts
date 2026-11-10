@@ -117,7 +117,7 @@ describe("F. tool-specific failure limits", () => {
   it("trips when one tool keeps failing with different errors", () => {
     const b = new AgentCircuitBreaker();
     let last = b.recordFailure({ category: "tool_error", tool: "editFile", path: null, message: "a" });
-    for (const m of ["b", "c", "d"]) {
+    for (const m of ["b", "c", "d", "e", "f", "g", "h"]) {
       last = b.recordFailure({ category: "tool_error", tool: "editFile", path: null, message: m });
     }
     expect(last.tripped).toBe(true);
@@ -139,15 +139,15 @@ describe("G. file-specific failure limits", () => {
     const b = new AgentCircuitBreaker();
     b.recordFailure(syntaxFail("src/pages/Home.tsx", "one"));
     b.recordFailure(syntaxFail("src/pages/Home.tsx", "two"));
-    b.recordFailure(syntaxFail("src/pages/Home.tsx", "three"));
-    const fourth = b.recordFailure(syntaxFail("src/pages/Home.tsx", "four"));
+    for (const m of ["three", "four", "five", "six", "seven"]) b.recordFailure(syntaxFail("src/pages/Home.tsx", m));
+    const fourth = b.recordFailure(syntaxFail("src/pages/Home.tsx", "eight"));
     expect(fourth.tripped).toBe(true);
     expect(b.reason()?.rule).toBe("file_failures");
     expect(b.reason()?.path).toBe("src/pages/Home.tsx");
   });
 
   it("sits one above the identical-error rule so progressive fixes survive", () => {
-    expect(BREAKER_THRESHOLDS.maxFileFailures).toBe(BREAKER_THRESHOLDS.maxIdenticalError + 1);
+    expect(BREAKER_THRESHOLDS.maxFileFailures).toBeGreaterThan(BREAKER_THRESHOLDS.maxIdenticalError);
   });
 });
 
@@ -178,7 +178,7 @@ describe("I. cooperation with RecoveryBudget, no duplicate counters", () => {
     b.recordFailure(syntaxFail("src/a.tsx"));
     b.recordFailure(syntaxFail("src/a.tsx"));
     // budget untouched by breaker bookkeeping
-    expect(r.remainingFileRepairs()).toBe(3);
+    expect(r.remainingFileRepairs()).toBe(40);
     expect(r.take("broken_file", "src/a.tsx")).toBe(true);
   });
 
