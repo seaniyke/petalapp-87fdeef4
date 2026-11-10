@@ -6,6 +6,9 @@ export default defineConfig({
   test: {
     // Design-system packages load tokens.css as raw text; keep CSS real in tests.
     css: { include: [/design-systems\/packages\//] },
+    // Several suites run the real TypeScript checker; under full parallel load
+    // a single check can exceed the 5s default without being slow on its own.
+    testTimeout: 20_000,
     // Some older regression harnesses are standalone Bun scripts. Let
     // Vitest run only files that use an actual test-runner API instead of
     // importing scripts that call process.exit at module scope.
