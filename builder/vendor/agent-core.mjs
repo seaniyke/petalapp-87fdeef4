@@ -38925,8 +38925,8 @@ __export(requested_scope_exports, {
 function slugify(name) {
   return name.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
-function cleanName(raw) {
-  const words2 = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[“”"'`()]/g, " ").split(/\s+/).filter((w) => w && !STOP.has(w));
+function cleanName(raw, opts) {
+  const words2 = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[“”"'`()]/g, " ").split(/\s+/).filter((w) => w && (!STOP.has(w) || opts?.label && POSSESSIVE.has(w)));
   if (words2.length === 0 || words2.length > 3) return null;
   const n = words2.join(" ");
   if (!/^[a-z][a-z0-9 &-]*$/.test(n)) return null;
@@ -38949,7 +38949,7 @@ function extractRequestedPages(prompt) {
     if (listed.length) consumed.add(i);
   }
   for (const label2 of listed) {
-    const n = cleanName(label2);
+    const n = cleanName(label2, { label: true });
     if (n && !found.includes(n)) found.push(n);
   }
   const raw = lines.filter((_, i) => !consumed.has(i)).join("\n").replace(/\s+/g, " ");
@@ -39062,7 +39062,7 @@ Finish every file you start. Never stop mid-file.
 `
   };
 }
-var STOP, HOME, OUTPUT_CEILING, SAFE_UNIT_BUDGET, UNIT_BUDGET_FRACTION, SHELL_TOKENS, HOME_TOKENS, PAGE_TOKENS, UNIT_OVERHEAD, APP_SIGNAL;
+var STOP, HOME, POSSESSIVE, OUTPUT_CEILING, SAFE_UNIT_BUDGET, UNIT_BUDGET_FRACTION, SHELL_TOKENS, HOME_TOKENS, PAGE_TOKENS, UNIT_OVERHEAD, APP_SIGNAL;
 var init_requested_scope = __esm({
   "src/server/requested-scope.ts"() {
     init_define_import_meta_env();
@@ -39111,6 +39111,7 @@ var init_requested_scope = __esm({
       "seven"
     ]);
     HOME = /^(home|homepage|landing|index|front)$/;
+    POSSESSIVE = /* @__PURE__ */ new Set(["my", "our", "your"]);
     OUTPUT_CEILING = 18e3;
     SAFE_UNIT_BUDGET = 11e3;
     UNIT_BUDGET_FRACTION = 0.8;
@@ -69195,6 +69196,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139338,6 +139340,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -144388,6 +144391,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
