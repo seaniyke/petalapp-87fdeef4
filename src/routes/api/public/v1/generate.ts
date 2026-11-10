@@ -42,7 +42,8 @@ const Body = z.object({
     .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().max(60_000) }))
     .max(100)
     .optional(),
-  webhookUrl: z.string().url().max(2000).optional(),
+  // null = send no finish notification (callers that poll, e.g. the MCP server).
+  webhookUrl: z.string().url().max(2000).nullable().optional(),
   planFirst: z.boolean().optional(),
   agentId: z.string().trim().regex(/^[A-Za-z0-9_\-.:]{1,200}$/).optional(),
   widgetTag: z.string().max(2000).optional(),
@@ -59,7 +60,8 @@ export const Route = createFileRoute("/api/public/v1/generate")({
         if (!parsed.success) return json({ error: "invalid_body", issues: parsed.error.issues }, 400);
         const { projectId, prompt, history, planFirst } = parsed.data;
         // Custard AI's agreed receiver is the default when the call omits one.
-        const webhookUrl = parsed.data.webhookUrl ?? "https://custardai.dev/api/public/petal/webhook";
+        const webhookUrl =
+          parsed.data.webhookUrl === null ? null : (parsed.data.webhookUrl ?? "https://custardai.dev/api/public/petal/webhook");
         if (webhookUrl && !isAllowedWebhookUrl(webhookUrl)) {
           return json({ error: "webhook_url_not_allowed" }, 400);
         }

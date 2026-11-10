@@ -25,12 +25,28 @@ export const Route = createFileRoute("/api/public/v1/turns/$id")({
         const { user_id: _omit, ...turn } = data;
         const { previewUrlFor, previewFields } = await import("@/server/service-api.server");
         const { turnBill } = await import("@/server/service-billing.server");
-        const [url, billing] = await Promise.all([
+        // Latest human-readable step while running (progress_label is rarely set).
+        const latestStatus = async (): Promise<string | null> => {
+          if (data.status !== "running") return null;
+          const { data: ev } = await supabaseAdmin
+            .from("turn_events")
+            .select("payload")
+            .eq("turn_id", data.id)
+            .eq("kind", "status")
+            .order("seq", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const msg = (ev?.payload as { message?: unknown } | null)?.message;
+          return typeof msg === "string" ? msg.slice(0, 200) : null;
+        };
+        const [url, billing, status] = await Promise.all([
           data.status === "succeeded" ? previewUrlFor(data.project_id, data.id) : Promise.resolve(null),
           turnBill(owner, data.id),
+          data.progress_label ? Promise.resolve(data.progress_label) : latestStatus().catch(() => null),
         ]);
         return json({
           turn: { ...turn, ...previewFields(url) },
+          progress: status,
           creditsUsed: billing.net,
           billing,
           ...previewFields(url),

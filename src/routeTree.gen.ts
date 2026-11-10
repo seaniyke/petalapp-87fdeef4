@@ -102,6 +102,7 @@ import { Route as ApiPublicV1BillingRouteImport } from './routes/api/public/v1/b
 import { Route as ApiPublicV1GenerateRouteImport } from './routes/api/public/v1/generate'
 import { Route as ApiPublicV1HealthRouteImport } from './routes/api/public/v1/health'
 import { Route as ApiPublicV1KeysRouteImport } from './routes/api/public/v1/keys'
+import { Route as ApiPublicV1McpRouteImport } from './routes/api/public/v1/mcp'
 import { Route as ApiPublicV1OpenapiDotjsonRouteImport } from './routes/api/public/v1/openapi[.]json'
 import { Route as ApiPublicV1ProjectsRouteImport } from './routes/api/public/v1/projects'
 import { Route as ApiTurnsIdCancelRouteImport } from './routes/api/turns.$id.cancel'
@@ -623,6 +624,11 @@ const ApiPublicV1KeysRoute = ApiPublicV1KeysRouteImport.update({
   path: '/api/public/v1/keys',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1McpRoute = ApiPublicV1McpRouteImport.update({
+  id: '/api/public/v1/mcp',
+  path: '/api/public/v1/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1OpenapiDotjsonRoute =
   ApiPublicV1OpenapiDotjsonRouteImport.update({
     id: '/api/public/v1/openapi.json',
@@ -903,6 +909,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
+  '/api/public/v1/mcp': typeof ApiPublicV1McpRoute
   '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
@@ -1030,6 +1037,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
+  '/api/public/v1/mcp': typeof ApiPublicV1McpRoute
   '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
@@ -1158,6 +1166,7 @@ export interface FileRoutesById {
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
   '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
+  '/api/public/v1/mcp': typeof ApiPublicV1McpRoute
   '/api/public/v1/openapi.json': typeof ApiPublicV1OpenapiDotjsonRoute
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
@@ -1287,6 +1296,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/keys'
+    | '/api/public/v1/mcp'
     | '/api/public/v1/openapi.json'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
@@ -1414,6 +1424,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/keys'
+    | '/api/public/v1/mcp'
     | '/api/public/v1/openapi.json'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
@@ -1541,6 +1552,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
     | '/api/public/v1/keys'
+    | '/api/public/v1/mcp'
     | '/api/public/v1/openapi.json'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
@@ -1667,6 +1679,7 @@ export interface RootRouteChildren {
   ApiPublicV1GenerateRoute: typeof ApiPublicV1GenerateRoute
   ApiPublicV1HealthRoute: typeof ApiPublicV1HealthRoute
   ApiPublicV1KeysRoute: typeof ApiPublicV1KeysRouteWithChildren
+  ApiPublicV1McpRoute: typeof ApiPublicV1McpRoute
   ApiPublicV1OpenapiDotjsonRoute: typeof ApiPublicV1OpenapiDotjsonRoute
   ApiPublicV1ProjectsRoute: typeof ApiPublicV1ProjectsRouteWithChildren
   ApiTurnsIdCancelRoute: typeof ApiTurnsIdCancelRoute
@@ -2335,6 +2348,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1KeysRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/mcp': {
+      id: '/api/public/v1/mcp'
+      path: '/api/public/v1/mcp'
+      fullPath: '/api/public/v1/mcp'
+      preLoaderRoute: typeof ApiPublicV1McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/openapi.json': {
       id: '/api/public/v1/openapi.json'
       path: '/api/public/v1/openapi.json'
@@ -2762,6 +2782,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1GenerateRoute: ApiPublicV1GenerateRoute,
   ApiPublicV1HealthRoute: ApiPublicV1HealthRoute,
   ApiPublicV1KeysRoute: ApiPublicV1KeysRouteWithChildren,
+  ApiPublicV1McpRoute: ApiPublicV1McpRoute,
   ApiPublicV1OpenapiDotjsonRoute: ApiPublicV1OpenapiDotjsonRoute,
   ApiPublicV1ProjectsRoute: ApiPublicV1ProjectsRouteWithChildren,
   ApiTurnsIdCancelRoute: ApiTurnsIdCancelRoute,

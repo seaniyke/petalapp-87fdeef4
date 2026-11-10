@@ -24,6 +24,7 @@ export function openApiSpec(origin: string) {
       { name: "Generation" },
       { name: "Builds & publishing" },
       { name: "Embedding" },
+      { name: "MCP", description: "For AI assistants (Claude, Cursor, VS Code, ChatGPT…)." },
       { name: "Keys", description: "Master key only." },
     ],
     paths: {
@@ -64,6 +65,20 @@ export function openApiSpec(origin: string) {
           },
         },
       },
+      "/mcp": {
+        post: {
+          tags: ["MCP"],
+          summary: "Model Context Protocol endpoint for AI assistants",
+          description:
+            "Streamable HTTP MCP server (stateless, JSON responses). Same bearer key as the REST API; each tool keeps the key's scope and project access. Tools: custard_create_web_app, custard_edit_web_app, custard_get_build_status, custard_list_web_apps, custard_get_preview, custard_publish_web_app, custard_cancel_build. Local stdio clients can use the @custardai/mcp package.",
+          requestBody: { required: true, content: { "application/json": { schema: { type: "object", description: "A JSON-RPC 2.0 message or batch." } } } },
+          responses: {
+            "200": { description: "JSON-RPC response", content: { "application/json": { schema: { type: "object" } } } },
+            "202": { description: "Notification accepted (no body)." },
+            "401": err,
+          },
+        },
+      },
       "/generate": {
         post: {
           tags: ["Generation"],
@@ -85,7 +100,11 @@ export function openApiSpec(origin: string) {
                       maxItems: 100,
                       items: { type: "object", properties: { role: { enum: ["user", "assistant"] }, content: { type: "string" } } },
                     },
-                    webhookUrl: { type: "string", format: "uri" },
+                    webhookUrl: {
+                      type: ["string", "null"],
+                      format: "uri",
+                      description: "Where to send the signed finish notification. null sends none (poll GET /turns/{id} instead).",
+                    },
                     planFirst: { type: "boolean" },
                   },
                 },

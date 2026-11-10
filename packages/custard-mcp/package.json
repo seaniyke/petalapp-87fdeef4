@@ -1,0 +1,25 @@
+{
+  "name": "@custardai/mcp",
+  "version": "1.0.0",
+  "description": "Custard AI MCP server: let any AI assistant build, preview and publish web apps.",
+  "type": "module",
+  "bin": {
+    "custard-mcp": "bin/custard-mcp.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "custard-ai",
+    "app-generation",
+    "website-builder"
+  ],
+  "license": "MIT",
+  "author": "Custard AI"
+}

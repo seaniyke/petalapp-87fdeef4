@@ -80,3 +80,11 @@
 - [ ] P1.2c Create the saved-connections table — blocked: database unreachable right now, retry next turn
 - [ ] P1.3/5/6 First one-click connectors, in-chat connect card, health monitor — after P1.2
 - [ ] Phase 2 Speed, Phase 3 Coverage, Phase 4 Launch Kit
+
+## Custard AI developer platform (parent brand)
+- [x] Phase 1: developer API keys (sk_custard_), per-key project scoping
+- [x] Phase 2: embeddable preview links + OpenAPI description
+- [x] Phase 3: hosted MCP server (/api/public/v1/mcp, 7 tools) + @custardai/mcp stdio bridge + partner memo and developer guide
+- [ ] Publish @custardai/mcp to npm — needs Custard's npm organisation
+- [ ] Switch package/docs default to api.custardai.dev — needs that address connected
+- [ ] Check hosted MCP from outside — needs Petal published

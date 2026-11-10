@@ -38,6 +38,7 @@ export default defineConfig({
       "src/server/__tests__/custard-badge.test.ts",
       "src/server/__tests__/service-billing.test.ts",
       "src/server/__tests__/service-api.test.ts",
+      "src/server/__tests__/custard-mcp.test.ts",
       "src/components/__tests__/robot-activity.test.ts",
       "src/lib/__tests__/cloud-pricing.test.ts",
       "src/server/__tests__/cloud-metering.test.ts",
