@@ -34,6 +34,29 @@ const BASE = BASES[0];
 const API_KEY = ${JSON.stringify(o.apiKey)};
 const TOKEN_KEY = "petal.session";
 const BASE_KEY = "petal.api-base";
+const PROJECT_ID = ${JSON.stringify(o.projectId)};
+const RESET_KEY = "petal.reset";
+const AUTH_ERROR_KEY = "petal.auth-error";
+
+// Returning from Google sign-in or a password-reset email: the secret arrives in
+// the #fragment. Keep it, then remove it from the address bar.
+if (typeof window !== "undefined" && window.location.hash) {
+  const h = new URLSearchParams(window.location.hash.slice(1));
+  const tok = h.get("petal_token");
+  const reset = h.get("petal_reset");
+  const err = h.get("petal_auth_error");
+  if (tok || reset || err) {
+    if (tok) window.localStorage.setItem(TOKEN_KEY, tok);
+    if (reset) window.sessionStorage.setItem(RESET_KEY, reset);
+    if (err) window.sessionStorage.setItem(AUTH_ERROR_KEY, err);
+    window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+  }
+}
+
+function siteUrl(to?: string): string {
+  if (typeof window === "undefined") return to || "";
+  return new URL(to || window.location.pathname + window.location.search, window.location.origin).toString();
+}
 
 function pickedBase(): string {
   if (typeof window === "undefined") return BASE;
@@ -284,6 +307,57 @@ export const auth = {
   signOut() {
     setToken(null);
   },
+  /** Which extra sign-in options this site can offer right now. */
+  async providers(): Promise<{ google: boolean; passwordReset: boolean }> {
+    try {
+      return await request<{ google: boolean; passwordReset: boolean }>("/auth/providers");
+    } catch {
+      return { google: false, passwordReset: false };
+    }
+  },
+  /** Emails a reset link that opens \`redirectTo\` (default /reset-password) on this site. */
+  async requestPasswordReset(email: string, redirectTo?: string): Promise<void> {
+    await request("/auth/reset-request", {
+      method: "POST",
+      body: JSON.stringify({ email, redirectTo: siteUrl(redirectTo || "/reset-password") }),
+    });
+  },
+  /** True after arriving from a reset email, until the new password is saved. */
+  isRecovery(): boolean {
+    return typeof window !== "undefined" && !!window.sessionStorage.getItem(RESET_KEY);
+  },
+  /** Saves a new password: from a reset link if one was opened, otherwise for the signed-in visitor. */
+  async updatePassword(password: string): Promise<PetalUser> {
+    const reset = typeof window !== "undefined" ? window.sessionStorage.getItem(RESET_KEY) : null;
+    if (reset) {
+      const r = await request<{ token: string; user: PetalUser }>("/auth/reset-confirm", {
+        method: "POST",
+        body: JSON.stringify({ token: reset, password }),
+      });
+      window.sessionStorage.removeItem(RESET_KEY);
+      setToken(r.token);
+      return r.user;
+    }
+    const r = await request<{ user: PetalUser }>("/auth/password", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+    return r.user;
+  },
+  /** Leaves for Google, then returns to \`redirectTo\` (default: this page) signed in. */
+  signInWithGoogle(redirectTo?: string): void {
+    if (typeof window === "undefined") return;
+    const origin = pickedBase().replace(/\/api\/public\/shared\/.*$/, "");
+    const q = new URLSearchParams({ project: PROJECT_ID, key: API_KEY, redirect: siteUrl(redirectTo) });
+    window.location.assign(origin + "/api/public/shared-oauth/google/start?" + q.toString());
+  },
+  /** A Google sign-in problem to show once ("cancelled", "unverified_email", "failed"), then cleared. */
+  takeAuthError(): string | null {
+    if (typeof window === "undefined") return null;
+    const e = window.sessionStorage.getItem(AUTH_ERROR_KEY);
+    if (e) window.sessionStorage.removeItem(AUTH_ERROR_KEY);
+    return e;
+  },
 
   // --- Parity aliases: same names + \`{ error }\` shape as the dedicated tier,
   // so page code written against either backend works unchanged.
@@ -338,8 +412,14 @@ type AuthCtx = {
   signInWithPassword: (email: string | Creds, password?: string) => Promise<AuthResult>;
   signUpWithPassword: (email: string | Creds, password?: string, name?: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
-  resetPasswordForEmail: (email: string) => Promise<AuthResult>;
+  /** Emails a reset link; the link opens redirectTo (default "/reset-password"). */
+  resetPasswordForEmail: (email: string, opts?: { redirectTo?: string }) => Promise<AuthResult>;
+  /** On the reset page (after the email link) or for a signed-in visitor. */
   updatePassword: (newPassword: string) => Promise<AuthResult>;
+  /** True when the visitor arrived from a password-reset email. */
+  recovery: boolean;
+  /** A Google sign-in problem to show (shown once), or null. */
+  authError: string | null;
   signInWithOtp: (email: string) => Promise<AuthResult>;
   verifyOtp: (email: string, token: string, type?: string) => Promise<AuthResult>;
   verifySignupOtp: (email: string, token: string) => Promise<AuthResult>;
@@ -362,6 +442,22 @@ const unsupported = (what: string): Promise<AuthResult> =>
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PetalUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recovery, setRecovery] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRecovery(auth.isRecovery());
+    const e = auth.takeAuthError();
+    if (e) {
+      setAuthError(
+        e === "cancelled"
+          ? "Google sign-in was cancelled."
+          : e === "unverified_email"
+            ? "That Google account has no verified email address."
+            : "Google sign-in didn't work. Please try again.",
+      );
+    }
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -392,13 +488,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       auth.signOut();
       setUser(null);
     },
-    resetPasswordForEmail: () => unsupported("Password reset"),
-    updatePassword: () => unsupported("Changing your password"),
+    recovery,
+    authError,
+    resetPasswordForEmail: async (email, opts) => {
+      try {
+        await auth.requestPasswordReset(email, opts?.redirectTo);
+        return { error: null };
+      } catch (e) {
+        return { error: e instanceof Error ? e : new Error("Couldn't send the reset email") };
+      }
+    },
+    updatePassword: async (newPassword) => {
+      try {
+        setUser(await auth.updatePassword(newPassword));
+        setRecovery(false);
+        return { error: null };
+      } catch (e) {
+        return { error: e instanceof Error ? e : new Error("Couldn't save the new password") };
+      }
+    },
     signInWithOtp: () => unsupported("Email code sign-in"),
     verifyOtp: () => unsupported("Email code sign-in"),
     verifySignupOtp: () => unsupported("Email code sign-in"),
     resendSignupOtp: () => unsupported("Email code sign-in"),
-    signInWithGoogle: () => unsupported("Google sign-in"),
+    signInWithGoogle: async (opts) => {
+      const p = await auth.providers();
+      if (!p.google) return unsupported("Google sign-in");
+      auth.signInWithGoogle(opts?.redirectTo);
+      return { error: null };
+    },
     signIn: async (email, password) => setUser(await auth.signIn(email, password)),
     signUp: async (email, password, name) => setUser(await auth.signUp(email, password, name)),
   };
@@ -429,6 +547,42 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   }
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return <>{children}</>;
+}
+
+/**
+ * "Continue with Google" — renders nothing until Google sign-in is available
+ * for this site, so it is always safe to place on sign-in / sign-up pages.
+ * redirectTo: page to land on after signing in (e.g. "/dashboard"); default this page.
+ */
+export function GoogleSignInButton({
+  redirectTo,
+  label = "Continue with Google",
+  className = "",
+}: {
+  redirectTo?: string;
+  label?: string;
+  className?: string;
+}) {
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    auth.providers().then((p) => alive && setEnabled(p.google));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!enabled) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => auth.signInWithGoogle(redirectTo)}
+      className={"inline-flex w-full items-center justify-center gap-[10px] rounded-md px-3 py-2 text-sm font-medium " + className}
+      style={{ background: "#FFFFFF", border: "1px solid #747775", color: "#1F1F1F", lineHeight: "20px" }}
+    >
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.930-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.290s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+      {label}
+    </button>
+  );
 }
 `;
 
@@ -467,7 +621,7 @@ const tasks = await db.seedOnce("tasks", [{ title: "Book venue", done: false }])
 await db.remove("tasks", id);
 
 // Auth — same helper names and \`{ error }\` shape as the dedicated tier.
-const { user, loading, signInWithPassword, signUpWithPassword, signOut } = useAuth();
+const { user, loading, signInWithPassword, signUpWithPassword, signOut, resetPasswordForEmail, updatePassword, recovery, authError } = useAuth();
 const { error } = await signInWithPassword(email, password);
 if (error) setError(error.message);
 \`\`\`
@@ -482,7 +636,9 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 - Guard the signed-in area once, at its layout route: \`<Route path="dashboard" element={<RequireAuth><AppShell /></RequireAuth>}>\` (\`RequireAuth\` from \`@/integrations/backend/auth\`). Signed-out visitors are sent to \`/login\`.
 - Links must use the page's full address. Pages nested under \`<Route path="dashboard">\` live at \`/dashboard/services\`, not \`/services\`. The build fails on links to addresses no page serves.
 - Limits: 5,000 rows and 25 collections per project. Upgrade for a dedicated database with no caps.
-- Password reset, email codes and Google sign-in are NOT available on this tier — they return \`{ error }\`. Use email + password.
+- Forgot password: a "Forgot password?" link on the sign-in page opens a small form that calls \`resetPasswordForEmail(email)\` and then always says "If that email has an account, a reset link is on its way". The email link opens \`/reset-password\` — whenever you add "Forgot password?", also add a public \`/reset-password\` page with a new-password form that calls \`updatePassword(newPassword)\` and then navigates to the signed-in area. \`recovery\` from \`useAuth()\` is true when the visitor arrived from the email.
+- Google sign-in: place \`<GoogleSignInButton redirectTo="/dashboard" />\` (from \`@/integrations/backend/auth\`) on sign-in and sign-up pages, above the email form with an "or" divider. It renders nothing until Google is available for the site, so it is always safe. Show \`authError\` from \`useAuth()\` near the form when set. Do not build your own Google button.
+- Email codes (one-time sign-in codes) are NOT available on this tier — they return \`{ error }\`.
 - Do NOT install \`@supabase/supabase-js\`, call \`createClient\`, or write SQL — there is no SQL layer on this tier.
 - Do NOT edit anything under \`src/integrations/backend/\` — protected, regenerated every build.
 
