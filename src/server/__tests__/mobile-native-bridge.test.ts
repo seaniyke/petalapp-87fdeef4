@@ -87,3 +87,10 @@ describe("one-runner mobile pipeline", () => {
     expect(await verifySourceLink({ projectId, exp, sig, secret: "s3", nowSeconds: exp + 1 })).toBe(false);
   });
 });
+
+describe("store build: fingerprint / Face ID", () => {
+  it("installs the biometric plugin and the Face ID permission text", () => {
+    expect(CODEMAGIC_YAML).toContain("@aparajita/capacitor-biometric-auth");
+    expect(CODEMAGIC_YAML).toContain("NSFaceIDUsageDescription");
+  });
+});
