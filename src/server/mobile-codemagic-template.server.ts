@@ -28,6 +28,7 @@ workflows:
     max_build_duration: 30
     environment:
       flutter: stable
+      java: 21
       node: 20
       xcode: latest
       cocoapods: default
@@ -95,6 +96,7 @@ workflows:
     max_build_duration: 60
     environment:
       flutter: stable
+      java: 21
       node: 20
       xcode: latest
       cocoapods: default
