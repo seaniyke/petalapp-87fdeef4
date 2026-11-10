@@ -75,6 +75,81 @@ export function verifyServiceKey(request: Request): Response | null {
   return null;
 }
 
+/**
+ * Who is calling the public API. `service` = Custard AI's master key (full
+ * access, unchanged behaviour). `developer` = an `sk_custard_…` key that can
+ * only reach the projects it created. Both act through the one service
+ * account, so ownership, credits and billing stay exactly as before.
+ */
+export type ApiCaller =
+  | { kind: "service" }
+  | { kind: "developer"; keyId: string; scopes: string[] };
+
+const callers = new WeakMap<Request, ApiCaller>();
+
+export function callerOf(request: Request): ApiCaller | null {
+  return callers.get(request) ?? null;
+}
+
+/** Accepts the master key or a valid developer key with the scope the method needs. */
+export async function verifyApiCaller(request: Request): Promise<Response | null> {
+  const auth = request.headers.get("authorization") ?? "";
+  if (!auth.startsWith("Bearer ")) return json({ error: "unauthorized" }, 401);
+  const presented = auth.slice(7).trim();
+  const { looksLikeDeveloperKey, hashKey, hasScope, requiredScope } = await import("@/server/developer-keys");
+  if (looksLikeDeveloperKey(presented)) {
+    const sb = await admin();
+    const { data } = await sb
+      .from("developer_api_keys")
+      .select("id, scopes, revoked_at")
+      .eq("key_hash", await hashKey(presented))
+      .maybeSingle();
+    if (!data || data.revoked_at) return json({ error: "unauthorized" }, 401);
+    if (!hasScope(data.scopes ?? [], requiredScope(request.method))) {
+      return json({ error: "insufficient_scope", needed: requiredScope(request.method) }, 403);
+    }
+    callers.set(request, { kind: "developer", keyId: data.id, scopes: data.scopes ?? [] });
+    void sb.from("developer_api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", data.id).then(
+      () => undefined,
+      () => undefined,
+    );
+    return null;
+  }
+  const denied = verifyServiceKey(request);
+  if (denied) return denied;
+  callers.set(request, { kind: "service" });
+  return null;
+}
+
+/** Account-wide endpoints (billing, key management) are for the master key only. */
+export function requireServiceCaller(request: Request): Response | null {
+  return callerOf(request)?.kind === "service" ? null : json({ error: "forbidden" }, 403);
+}
+
+/** Developer keys may only reach projects they created; the master key reaches all. */
+export async function callerCanAccessProject(request: Request, projectId: string): Promise<boolean> {
+  const caller = callerOf(request);
+  if (!caller) return false;
+  if (caller.kind === "service") return true;
+  const sb = await admin();
+  const { data } = await sb
+    .from("developer_key_projects")
+    .select("project_id")
+    .eq("key_id", caller.keyId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  return !!data;
+}
+
+/** Records that a developer key created this project (no-op for the master key). */
+export async function linkProjectToCaller(request: Request, projectId: string): Promise<void> {
+  const caller = callerOf(request);
+  if (caller?.kind !== "developer") return;
+  const sb = await admin();
+  const { error } = await sb.from("developer_key_projects").insert({ key_id: caller.keyId, project_id: projectId });
+  if (error) throw new Error(`could not link project to key: ${error.message}`);
+}
+
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
@@ -129,7 +204,8 @@ export async function serviceAccessToken(): Promise<string> {
 }
 
 /** Project must exist and belong to the service account. */
-export async function loadOwnedProject(projectId: string) {
+export async function loadOwnedProject(projectId: string, request?: Request) {
+  if (request && !(await callerCanAccessProject(request, projectId))) return null;
   const sb = await admin();
   const owner = await serviceUserId();
   const { data } = await sb
