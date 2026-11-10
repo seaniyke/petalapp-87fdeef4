@@ -224,3 +224,37 @@ export async function visitorForGoogle(opts: {
   }
   return { id: data.id as string, email: data.email as string, displayName: (data.display_name as string | null) ?? null };
 }
+
+/* ---------------- signed OAuth state ---------------- */
+
+export type GoogleState = { p: string; r: string; n: string; e: number };
+
+function stateSecret(): string {
+  return process.env.PETAL_SIGNING_MASTER_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "petal-shared-dev-secret";
+}
+
+async function hmac(message: string): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", enc.encode(stateSecret()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return b64url(new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode("google-state:" + message))));
+}
+
+export async function signGoogleState(projectId: string, redirect: string): Promise<{ state: string; nonce: string }> {
+  const nonce = randomToken(16);
+  const payload = b64url(enc.encode(JSON.stringify({ p: projectId, r: redirect, n: nonce, e: Date.now() + 10 * 60_000 } satisfies GoogleState)));
+  return { state: `${payload}.${await hmac(payload)}`, nonce };
+}
+
+export async function verifyGoogleState(state: string | null, nonceCookie: string | null): Promise<GoogleState | null> {
+  if (!state || !nonceCookie) return null;
+  const [payload, sig] = state.split(".");
+  if (!payload || !sig || (await hmac(payload)) !== sig) return null;
+  try {
+    const pad = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = new TextDecoder().decode(Uint8Array.from(atob(pad + "=".repeat((4 - (pad.length % 4)) % 4)), (c) => c.charCodeAt(0)));
+    const s = JSON.parse(json) as GoogleState;
+    if (Date.now() > s.e || s.n !== nonceCookie) return null;
+    return s;
+  } catch {
+    return null;
+  }
+}
