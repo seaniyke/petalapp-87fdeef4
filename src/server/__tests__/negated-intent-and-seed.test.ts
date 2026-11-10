@@ -4,6 +4,7 @@ import { sharedBackendKit } from "@/server/shared-backend-kit";
 import { deriveIntentContract } from "@/server/prd/intent-contract";
 import { resolveIntentActions } from "@/server/intent-actions.server";
 import { extractRequestedPages } from "@/server/requested-scope";
+import { unguardedAppRoutes } from "@/server/engine/route-paths";
 
 const MIRA =
   "Build a website for a beauty shop called Mira Beauty. Main action: book appointments and buy products online. " +
@@ -59,6 +60,35 @@ describe("a bulleted page list names one page per bullet", () => {
   it("'My recipes' stays its own page next to 'Recipes'", () => {
     const t = "Pages:\n- Home: hero and a call to join.\n- Recipes: all recipes.\n- My recipes: your own recipes.";
     expect(extractRequestedPages(t)).toEqual(["home", "recipes", "my recipes"]);
+  });
+});
+
+describe("a website with sign-up keeps its public pages public", () => {
+  const RECIPES =
+    'Build "Hearth & Herb", a recipe sharing website where home cooks sign up and share their recipes.\n' +
+    "Pages:\n- Home: newest recipes.\n- Recipes: every recipe.\n- Sign in: sign up and sign in.\n- My recipes: for signed-in cooks only.";
+  const router = `import { Routes, Route } from "@/components/ui/router";
+import { RequireAuth } from "@/integrations/backend/auth";
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<SignIn />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/recipes" element={<Recipes />} />
+        <Route path="/my-recipes" element={<RequireAuth><MyRecipes /></RequireAuth>} />
+      </Route>
+    </Routes>
+  );
+}`;
+  it("is a public site with a members area, not an app behind a wall", () => {
+    expect(deriveIntentContract(RECIPES, null).surface).toBe("public+app");
+  });
+  it("the sign-in check does not demand that Home and Recipes be locked", () => {
+    expect(unguardedAppRoutes(router, [], "public+app")).toEqual([]);
+  });
+  it("an app-only product still has every page locked", () => {
+    expect(unguardedAppRoutes(router, [], "app")).toEqual(["/", "/recipes"]);
   });
 });
 
