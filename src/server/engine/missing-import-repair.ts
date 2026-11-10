@@ -6,8 +6,9 @@
  *   - React hooks/helpers → "react"
  *   - router names → the router this project already uses
  *   - starter-kit symbols exported by exactly one kit module
+ *   - a fixed list of real lucide-react icons, only when the project already uses lucide-react
  * Anything unknown or ambiguous is left for the writer. Never renames,
- * never guesses icon names, never touches application modules.
+ * never invents icon names outside that list, never touches application modules.
  */
 
 export const REACT_NAMES = [
@@ -21,12 +22,25 @@ export const ROUTER_NAMES = [
   "useLocation", "useSearchParams",
 ];
 
+/** Real, stable lucide-react export names (not guessed: a fixed list of the library's own exports). */
+export const LUCIDE_NAMES = [
+  "ArrowRight", "ArrowLeft", "ArrowUpRight", "Check", "CheckCircle", "CheckCircle2", "ChevronDown",
+  "ChevronUp", "ChevronLeft", "ChevronRight", "Menu", "X", "Search", "Plus", "Minus", "Star", "Heart",
+  "Mail", "Phone", "MapPin", "Clock", "Calendar", "User", "Users", "Settings", "Home", "LogOut", "LogIn",
+  "Trash2", "Pencil", "Edit", "Eye", "EyeOff", "Lock", "Shield", "ShieldCheck", "Sparkles", "Loader2",
+  "Info", "AlertCircle", "AlertTriangle", "ExternalLink", "Download", "Upload", "Filter", "Bell",
+  "ShoppingCart", "ShoppingBag", "CreditCard", "Instagram", "Facebook", "Twitter", "Linkedin", "Youtube",
+  "Globe", "Quote", "Award", "Zap", "TrendingUp", "BarChart3", "FileText", "Image", "Send", "MessageCircle",
+];
+
 /** name → module specifier, only for names with exactly one provider. */
 export function buildProviders(args: {
   /** Router module the project already imports router names from, or null. */
   routerModule: string | null;
   /** symbol → kit specs exporting it (non-barrel). */
   kitOwners?: Map<string, string[]>;
+  /** True when the project already imports from lucide-react. */
+  usesLucide?: boolean;
 }): Map<string, string> {
   const out = new Map<string, string>();
   const ambiguous = new Set<string>();
@@ -49,6 +63,8 @@ export function buildProviders(args: {
     }
     add(name, specs[0]!);
   }
+  // Icons last: a kit module exporting the same name makes it ambiguous → left to the writer.
+  if (args.usesLucide) for (const n of LUCIDE_NAMES) if (!(args.kitOwners?.has(n))) add(n, "lucide-react");
   return out;
 }
 
