@@ -6826,7 +6826,10 @@ async function handleGenerateRequestCore(
                 // otherwise the provider cost is not reported here → UNKNOWN.
                 const reused = seenPictureUrls.has(url);
                 seenPictureUrls.add(url);
-                void import("@/server/cost-events.server").then(({ recordCostEvents }) =>
+                void Promise.all([
+                  import("@/server/cost-events.server"),
+                  import("@/server/economics-config.server").then((m) => m.economicsValue("image_generation_usd")).catch(() => null),
+                ]).then(([{ recordCostEvents }, unitUsd]) =>
                   recordCostEvents([
                     {
                       sourceRef: `image:${logicalTurnId}:${index}`,
@@ -6838,8 +6841,8 @@ async function handleGenerateRequestCore(
                       resource: url.slice(0, 300),
                       quantity: 1,
                       unit: "image",
-                      costUsd: reused ? 0 : null,
-                      basis: reused ? "ACTUAL" : "UNKNOWN",
+                      costUsd: reused ? 0 : unitUsd,
+                      basis: reused ? "ACTUAL" : unitUsd != null ? "ESTIMATED" : "UNKNOWN",
                       metadata: { reused, index },
                     },
                   ]),
