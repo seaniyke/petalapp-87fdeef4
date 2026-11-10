@@ -512,6 +512,9 @@ function clip(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, max)}\n…[truncated ${s.length - max} chars]`;
 }
 
+/** Identical finish refusals in a row before the loop stops thrashing. */
+export const REPEATED_REFUSAL_LIMIT = 3;
+
 function countOccurrences(hay: string, needle: string): number[] {
   const at: number[] = [];
   if (!needle) return at;
@@ -899,6 +902,13 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       ? `Written, but ${path} FAILS validation (fix it before finish):\n${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}`
       : `OK: ${path} written and validated.`;
 
+  // Repeated-refusal breaker: the same verification findings refusing finish
+  // three times in a row means more model calls cannot clear them (often a
+  // checker defect). Stop instead of burning the remaining budget.
+  let lastRefusal = "";
+  let sameRefusals = 0;
+  let deadlocked = false;
+
   async function exec(call: ToolCallMsg): Promise<{ output: string; isError: boolean; miss?: boolean }> {
     const name = call.function.name as ToolName;
     if (!allowed.has(name)) return { output: fail(name, null, `Unknown or unavailable tool: ${name}`), isError: true };
@@ -1080,7 +1090,15 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
       }
       case "finish": {
         const notReady = await finishGate();
-        if (notReady) return { output: `finish refused.\n${notReady}`, isError: true };
+        if (notReady) {
+          sameRefusals = notReady === lastRefusal ? sameRefusals + 1 : 1;
+          lastRefusal = notReady;
+          if (sameRefusals >= REPEATED_REFUSAL_LIMIT) {
+            deadlocked = true;
+            emit({ kind: "repeated_refusal", detail: notReady.slice(0, 400) });
+          }
+          return { output: `finish refused.\n${notReady}`, isError: true };
+        }
         state.finished = true;
         return { output: "Finished.", isError: false };
       }
@@ -1109,6 +1127,10 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
   let driftSignalled = false;
 
   while (state.iteration < hardCeiling) {
+    if (deadlocked) {
+      state.stopReason = `same verification findings refused finish ${REPEATED_REFUSAL_LIMIT} times`;
+      return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "no_progress" };
+    }
     if (args.signal?.aborted) {
       state.stopReason = "cancelled";
       return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "cancelled" };
