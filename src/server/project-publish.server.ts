@@ -36,5 +36,13 @@ export async function publishLatestBuild(projectId: string): Promise<PublishResu
     .select("id")
     .maybeSingle();
   if (!updated) return { ok: false, status: 409, error: "project_changed_while_publishing" };
+  // Publishing is the moment the address must answer: (re)request its
+  // certificate if it is missing. Best-effort; never undoes the publish.
+  try {
+    const { ensureSubdomainCertificate } = await import("@/server/petal-subdomain.server");
+    await ensureSubdomainCertificate(projectId);
+  } catch (e) {
+    console.error("[publish] address certificate check failed", projectId, e);
+  }
   return { ok: true, buildId: b.id, revision: Number(p.revision), publishedAt };
 }

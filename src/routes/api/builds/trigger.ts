@@ -116,9 +116,11 @@ export const Route = createFileRoute("/api/builds/trigger")({
           return Response.json({ error: "Not authorized to build this project" }, { status: 403 });
         }
 
-        // Every project gets its own live address + SSL automatically
-        // (best-effort; never blocks or fails the build).
-        void import("@/server/petal-subdomain.server")
+        // Every project gets its own live address + SSL automatically.
+        // Awaited (never fire-and-forget): the Worker stops background work
+        // once the response is sent, which left addresses without a
+        // certificate. Best-effort; never fails the build.
+        await import("@/server/petal-subdomain.server")
           .then((m) => m.ensureProjectSubdomain(projectId))
           .catch((e) => console.error("[subdomain] auto-claim failed", projectId, e));
 

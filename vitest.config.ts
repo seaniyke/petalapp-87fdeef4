@@ -195,6 +195,7 @@ export default defineConfig({
       "src/server/__tests__/webhook-outbox.test.ts",
       "src/server/__tests__/developer-keys.test.ts",
       "src/server/__tests__/embed-preview.test.ts",
+      "src/server/__tests__/publish-address-certificate.test.ts",
       "src/server/__tests__/shared-query.test.ts",
       "src/server/__tests__/shared-auth-rules.test.ts",
 

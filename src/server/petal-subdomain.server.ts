@@ -217,6 +217,25 @@ export async function ensureProjectSubdomain(projectId: string): Promise<string 
 }
 
 /**
+ * Make sure the project's `<slug>.sites.custardai.dev` address has its
+ * Cloudflare for SaaS certificate. Idempotent and awaited by callers: the
+ * claim path used to fire this in the background, and the Worker cut it off
+ * once the response was sent, leaving the address with no certificate (TLS
+ * handshake failure) even though the build was live.
+ */
+export async function ensureSubdomainCertificate(projectId: string): Promise<string | null> {
+  const { data: p } = await supabaseAdmin
+    .from("projects")
+    .select("subdomain")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (!p?.subdomain) return null;
+  const hostname = `${p.subdomain}.${PETAL_ROOT_DOMAIN}`;
+  await ensureCustomHostname(hostname);
+  return hostname;
+}
+
+/**
  * Release the project's current Kimble subdomain (if any). Removes the
  * hostname from Cloudflare, deletes the `project_domains` row, and clears
  * `projects.subdomain`. Best-effort: if Cloudflare delete fails we still
