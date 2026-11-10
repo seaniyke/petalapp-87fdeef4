@@ -136,7 +136,7 @@ export function dependencyGate(files: ProjectFile[]): GateResult {
 
 /* ------------------------ routes / completeness ------------------------ */
 
-export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts: { requireShell?: boolean; requireLiveData?: boolean } = {}): GateResult {
+export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts: { requireShell?: boolean; requireLiveData?: boolean; surface?: "public" | "app" | "public+app" | null } = {}): GateResult {
   const reasons: string[] = [];
   const bad: string[] = [];
   // Advisory findings: reported to the writer, never block a build. A working
@@ -191,7 +191,7 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
   }
   // With Kimble Cloud on, signed-in pages must send signed-out visitors to /login.
   if (opts.requireLiveData && routerSrc) {
-    const open = unguardedAppRoutes(routerSrc, files);
+    const open = unguardedAppRoutes(routerSrc, files, opts.surface ?? null);
     if (open.length) {
       reasons.push(`signed-out visitors can open ${open.join(", ")} — wrap the signed-in area's layout route in <RequireAuth> from "@/integrations/backend/auth"`);
       bad.push(map.routerFile!);
@@ -326,11 +326,12 @@ export function runSourceGates(args: {
   requireShell?: boolean;
   /** Kimble Cloud is enabled for this first build: data pages must use it. */
   requireLiveData?: boolean;
+  surface?: "public" | "app" | "public+app" | null;
 }): GateResult[] {
   return [
     syntaxGate(args.esbuild),
     dependencyGate(args.files),
-    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell, requireLiveData: args.requireLiveData }),
+    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell, requireLiveData: args.requireLiveData, surface: args.surface }),
   ];
 }
 

@@ -179,17 +179,24 @@ export function deadInternalLinks(files: ProjectFile[], routerSrc: string, route
 /**
  * Signed-in area pages that a signed-out visitor can open. The app area is
  * /dashboard and below (public+app products); an app-only product with a
- * /login page guards everything else. A route is guarded when <RequireAuth>
+ * /login page guards everything else. A public website (with or without a
+ * members area) never has its public pages counted as the signed-in area —
+ * only /dashboard and below. A route is guarded when <RequireAuth>
  * (from "@/integrations/backend/auth") wraps it or one of its layouts.
  */
-export function unguardedAppRoutes(routerSrc: string, files: ProjectFile[]): string[] {
+export function unguardedAppRoutes(
+  routerSrc: string,
+  files: ProjectFile[],
+  surface: "public" | "app" | "public+app" | null = null,
+): string[] {
   const routes = resolveRouteTree(routerSrc).filter((r) => !r.catchAll);
   const hasDashboard = routes.some((r) => r.path === "/dashboard" || r.path.startsWith("/dashboard/"));
   const hasLogin = routes.some((r) => r.path === "/login");
   const PUBLIC_AUTH = /^\/(login|signin|sign-in|signup|sign-up|register|auth)(\/|$)/;
+  const publicSite = surface === "public" || surface === "public+app";
   const inApp = (p: string) =>
-    hasDashboard ? p === "/dashboard" || p.startsWith("/dashboard/") : hasLogin && !PUBLIC_AUTH.test(p);
-  if (!hasDashboard && !hasLogin) return [];
+    hasDashboard ? p === "/dashboard" || p.startsWith("/dashboard/") : !publicSite && hasLogin && !PUBLIC_AUTH.test(p);
+  if (!hasDashboard && (publicSite || !hasLogin)) return [];
   const byName = new Map<string, string>();
   for (const f of files) {
     const n = /export\s+(?:default\s+)?function\s+([A-Z]\w*)/g;

@@ -179,6 +179,8 @@ const INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashb
 const SAAS = /\b(saas|software as a service|platform|marketplace)\b/i;
 /** The request asks for signed-in functionality. */
 const APP_WORDS = /\b(management system|management app|system|portal|dashboard|app|application|sign ?in|log ?in|accounts?|saas|platform|crm|erp)\b/i;
+/** The thing being built is described as a website ("a recipe sharing website"). */
+const PRODUCT_IS_SITE = /\b(?:a|an)\s+(?:[\w&'"’-]+\s+){0,4}(?:website|web ?site)\b/i;
 /** Explicit "website only / just a website" — the user ruled out an app. */
 const WEBSITE_ONLY = /\b((web)?site only|only (an? )?(web)?site|just (an? )?(simple )?(web)?site|static (web)?site)\b/i;
 /**
@@ -209,6 +211,9 @@ export function deriveProductSurface(brief: string, roles: string[] = []): Produ
   if (PUBLIC_ONLY.test(t) && !wantsApp) return "public";
   if (!wantsApp) return null;
   if (SAAS.test(t)) return "public+app";
+  // "a recipe sharing website where cooks sign up": the product IS a website,
+  // so its pages stay public and sign-in adds a members area — not a wall.
+  if (PRODUCT_IS_SITE.test(t)) return "public+app";
   if (roles.some((r) => PUBLIC_ROLES.has(r))) return "public+app";
   return "app";
 }

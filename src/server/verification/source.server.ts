@@ -18,6 +18,8 @@ export async function verifyProposedSource(args: {
   requireShell?: boolean;
   /** Kimble Cloud is enabled: routed data pages must use it, not sample data. */
   requireLiveData?: boolean;
+  /** Product structure from the intent contract; decides which pages are the signed-in area. */
+  surface?: "public" | "app" | "public+app" | null;
 }): Promise<VerificationRecord & { semantic: { status: IdentifierCheckStatus | "not_run"; reason?: string }; responsive: ResponsiveWarning[] }> {
   const parseable = args.changedPaths.filter((p) => /\.(tsx?|jsx?|mts|cts)$/i.test(p) && !isVerifierExempt(p));
   const esbuild = await verifyFilesEsbuild(args.tree, parseable);
@@ -54,7 +56,7 @@ export async function verifyProposedSource(args: {
       };
     }
   }
-  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell, requireLiveData: args.requireLiveData }));
+  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell, requireLiveData: args.requireLiveData, surface: args.surface }));
   // Advisory only: never changes the verdict above.
   let responsive: ResponsiveWarning[] = [];
   try {

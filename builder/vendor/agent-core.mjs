@@ -38925,8 +38925,8 @@ __export(requested_scope_exports, {
 function slugify(name) {
   return name.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
-function cleanName(raw) {
-  const words2 = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[“”"'`()]/g, " ").split(/\s+/).filter((w) => w && !STOP.has(w));
+function cleanName(raw, opts) {
+  const words2 = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[“”"'`()]/g, " ").split(/\s+/).filter((w) => w && (!STOP.has(w) || opts?.label && POSSESSIVE.has(w)));
   if (words2.length === 0 || words2.length > 3) return null;
   const n = words2.join(" ");
   if (!/^[a-z][a-z0-9 &-]*$/.test(n)) return null;
@@ -38949,7 +38949,7 @@ function extractRequestedPages(prompt) {
     if (listed.length) consumed.add(i);
   }
   for (const label2 of listed) {
-    const n = cleanName(label2);
+    const n = cleanName(label2, { label: true });
     if (n && !found.includes(n)) found.push(n);
   }
   const raw = lines.filter((_, i) => !consumed.has(i)).join("\n").replace(/\s+/g, " ");
@@ -39062,7 +39062,7 @@ Finish every file you start. Never stop mid-file.
 `
   };
 }
-var STOP, HOME, OUTPUT_CEILING, SAFE_UNIT_BUDGET, UNIT_BUDGET_FRACTION, SHELL_TOKENS, HOME_TOKENS, PAGE_TOKENS, UNIT_OVERHEAD, APP_SIGNAL;
+var STOP, HOME, POSSESSIVE, OUTPUT_CEILING, SAFE_UNIT_BUDGET, UNIT_BUDGET_FRACTION, SHELL_TOKENS, HOME_TOKENS, PAGE_TOKENS, UNIT_OVERHEAD, APP_SIGNAL;
 var init_requested_scope = __esm({
   "src/server/requested-scope.ts"() {
     init_define_import_meta_env();
@@ -39111,6 +39111,7 @@ var init_requested_scope = __esm({
       "seven"
     ]);
     HOME = /^(home|homepage|landing|index|front)$/;
+    POSSESSIVE = /* @__PURE__ */ new Set(["my", "our", "your"]);
     OUTPUT_CEILING = 18e3;
     SAFE_UNIT_BUDGET = 11e3;
     UNIT_BUDGET_FRACTION = 0.8;
@@ -40080,10 +40081,13 @@ function asRecord<T>(record: PetalRecord<T>): RecordResult<T> {
 export const db = {
   async list<T = Record<string, unknown>>(
     collection: string,
-    opts: { mine?: boolean; limit?: number; offset?: number } = {},
+    opts: { mine?: boolean; everyone?: boolean; limit?: number; offset?: number } = {},
   ): Promise<RecordList<T>> {
     const q = new URLSearchParams();
+    // Default: the signed-in user's rows + rows added by guests (starter rows).
+    // everyone: every user's rows \u2014 for content meant to be public.
     if (opts.mine) q.set("mine", "1");
+    else if (opts.everyone) q.set("scope", "all");
     if (opts.limit) q.set("limit", String(opts.limit));
     if (opts.offset) q.set("offset", String(opts.offset));
     const qs = q.toString();
@@ -40401,7 +40405,7 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 
 ## Rules
 
-- Rows created while signed in are owned by that user; pass \`{ mine: true }\` to list only theirs.
+- Rows created while signed in are owned by that user. A plain \`db.list\` returns the visitor's own rows plus starter/guest rows \u2014 NOT other users' rows. For content meant for everyone (community posts, shared recipes, listings, reviews, a public catalogue) list with \`{ everyone: true }\`; for a user's own page ("My recipes", "My orders") use \`{ mine: true }\`. Private data (orders, bookings, messages, profiles) never uses \`everyone\`.
 - Every "Sign out" control must be a button that calls \`await signOut()\` and then navigates to \`/login\`. Never a plain link to \`/login\` \u2014 that leaves the user signed in.
 - Guard the signed-in area once, at its layout route: \`<Route path="dashboard" element={<RequireAuth><AppShell /></RequireAuth>}>\` (\`RequireAuth\` from \`@/integrations/backend/auth\`). Signed-out visitors are sent to \`/login\`.
 - Links must use the page's full address. Pages nested under \`<Route path="dashboard">\` live at \`/dashboard/services\`, not \`/services\`. The build fails on links to addresses no page serves.
@@ -68893,6 +68897,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -140425,7 +140430,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140590,7 +140594,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140634,7 +140637,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -140856,6 +140858,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143184,6 +143187,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144388,6 +144392,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -144888,6 +144893,7 @@ function deriveProductSurface(brief, roles = []) {
   if (PUBLIC_ONLY.test(t) && !wantsApp) return "public";
   if (!wantsApp) return null;
   if (SAAS.test(t)) return "public+app";
+  if (PRODUCT_IS_SITE.test(t)) return "public+app";
   if (roles.some((r) => PUBLIC_ROLES.has(r))) return "public+app";
   return "app";
 }
@@ -145049,7 +145055,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, EXTERNAL_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
+var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, PRODUCT_IS_SITE, WEBSITE_ONLY, NEGATED_APP, EXTERNAL_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -145165,6 +145171,7 @@ var init_intent_contract = __esm({
     INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashboard)|(just|only) (an? |the )?dashboard|dashboard (for|to) (our|my) (staff|team|employees))\b/i;
     SAAS = /\b(saas|software as a service|platform|marketplace)\b/i;
     APP_WORDS = /\b(management system|management app|system|portal|dashboard|app|application|sign ?in|log ?in|accounts?|saas|platform|crm|erp)\b/i;
+    PRODUCT_IS_SITE = /\b(?:a|an)\s+(?:[\w&'"’-]+\s+){0,4}(?:website|web ?site)\b/i;
     WEBSITE_ONLY = /\b((web)?site only|only (an? )?(web)?site|just (an? )?(simple )?(web)?site|static (web)?site)\b/i;
     NEGATED_APP = /\b(no|without|not|don'?t need|doesn'?t need|never|zero)\s+(an?\s+|any\s+|user\s+|customer\s+)?(management system|system|portal|dashboard|app|application|sign[- ]?ins?|sign[- ]?ups?|log[- ]?ins?|accounts?|backend|database|crm|erp)\b/gi;
     EXTERNAL_APP = /\b(?:(?:opens?|launch(?:es)?|in|via|using|through|from)\s+(?:the\s+|a\s+|their\s+|your\s+)?|(?:the\s+)?(?:visitor|user|customer|guest|reader|client)s?'?s?\s+|(?:their|your)\s+(?:own\s+)?)(?:default\s+)?(?:e-?mail|mail|maps?|phone|calendar|messaging|sms|texting|camera|wallet|banking|whatsapp|telegram)\s+apps?\b/gi;
@@ -145514,7 +145521,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -154306,13 +154312,14 @@ function deadInternalLinks(files, routerSrc, routerFile) {
   const live = routerFile ? reachableFrom2(routerFile, files) : null;
   return internalLinks(live ? files.filter((f) => live.has(f.path)) : files).filter((l) => !linkResolves(l.link, routes));
 }
-function unguardedAppRoutes(routerSrc, files) {
+function unguardedAppRoutes(routerSrc, files, surface = null) {
   const routes = resolveRouteTree(routerSrc).filter((r) => !r.catchAll);
   const hasDashboard = routes.some((r) => r.path === "/dashboard" || r.path.startsWith("/dashboard/"));
   const hasLogin = routes.some((r) => r.path === "/login");
   const PUBLIC_AUTH = /^\/(login|signin|sign-in|signup|sign-up|register|auth)(\/|$)/;
-  const inApp = (p2) => hasDashboard ? p2 === "/dashboard" || p2.startsWith("/dashboard/") : hasLogin && !PUBLIC_AUTH.test(p2);
-  if (!hasDashboard && !hasLogin) return [];
+  const publicSite = surface === "public" || surface === "public+app";
+  const inApp = (p2) => hasDashboard ? p2 === "/dashboard" || p2.startsWith("/dashboard/") : !publicSite && hasLogin && !PUBLIC_AUTH.test(p2);
+  if (!hasDashboard && (publicSite || !hasLogin)) return [];
   const byName = /* @__PURE__ */ new Map();
   for (const f of files) {
     const n = /export\s+(?:default\s+)?function\s+([A-Z]\w*)/g;
@@ -154464,7 +154471,7 @@ function routesGate(files, requestedRoutes, opts = {}) {
     for (const d of dead.slice(0, 8)) advisories.push(`${d.file} links to ${d.link}, but no page has that address (pages: ${pages.join(", ")})`);
   }
   if (opts.requireLiveData && routerSrc) {
-    const open = unguardedAppRoutes(routerSrc, files);
+    const open = unguardedAppRoutes(routerSrc, files, opts.surface ?? null);
     if (open.length) {
       reasons.push(`signed-out visitors can open ${open.join(", ")} \u2014 wrap the signed-in area's layout route in <RequireAuth> from "@/integrations/backend/auth"`);
       bad.push(map.routerFile);
@@ -154563,7 +154570,7 @@ function runSourceGates(args) {
   return [
     syntaxGate(args.esbuild),
     dependencyGate(args.files),
-    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell, requireLiveData: args.requireLiveData })
+    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell, requireLiveData: args.requireLiveData, surface: args.surface })
   ];
 }
 function guardCleanup(before, after, allowed) {
@@ -154696,7 +154703,7 @@ async function verifyProposedSource(args) {
       };
     }
   }
-  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell, requireLiveData: args.requireLiveData }));
+  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell, requireLiveData: args.requireLiveData, surface: args.surface }));
   let responsive2 = [];
   try {
     responsive2 = responsiveWarnings(args.tree, args.changedPaths);
@@ -171101,7 +171108,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -177497,7 +177503,8 @@ Imports:
 - import { useAuth, AuthProvider } from "@/integrations/backend/auth"
 
 Data API (collections are created on first write):
-- await db.list<T>("tasks", { mine: true, limit: 50 }) -> { records }
+- await db.list<T>("tasks", { mine: true, limit: 50 }) -> { records }  (only the signed-in user's rows)
+- await db.list<T>("posts", { everyone: true }) -> every user's rows, for content meant to be public (community posts, shared recipes, listings, reviews). A plain db.list returns only the visitor's own rows + starter rows, never other users'. Never use everyone for private data (orders, bookings, messages, profiles).
 - await db.create("tasks", { title, done: false })
 - await db.update("tasks", id, { done: true })
 - await db.remove("tasks", id)
@@ -179237,7 +179244,8 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                   changedPaths: changed.filter((p2) => proposed.some((f) => f.path === p2)),
                   requestedRoutes: requestedRoutesFor(lastUserText, plannedRoutes),
                   requireShell: true,
-                  requireLiveData: Boolean(sharedBackend)
+                  requireLiveData: Boolean(sharedBackend),
+                  surface: intentContract?.surface ?? null
                 });
                 return readinessOf2(v);
               },
@@ -180940,7 +180948,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               changedPaths: changed,
               requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
               requireShell: isInitial,
-              requireLiveData: isInitial && Boolean(sharedBackend)
+              requireLiveData: isInitial && Boolean(sharedBackend),
+              surface: intentContract?.surface ?? null
             });
           },
           fallbackFor: (path, tree) => resilientFallback(path, tree, turnBaselineFiles)
