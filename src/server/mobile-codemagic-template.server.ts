@@ -68,11 +68,13 @@ workflows:
             mkdir -p Payload
             cp -R build/Build/Products/Debug-iphoneos/App.app Payload/
             zip -r petal-preview.ipa Payload
-            mv petal-preview.ipa $CM_BUILD_DIR/
+            cp petal-preview.ipa $CM_BUILD_DIR/
+            mv petal-preview.ipa ../../
           else
             cd android
             ./gradlew assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk $CM_BUILD_DIR/petal-preview.apk
+            cp app/build/outputs/apk/debug/app-debug.apk ../petal-preview.apk
           fi
     artifacts:
       - "*.ipa"
@@ -146,7 +148,8 @@ workflows:
             cd ios/App
             xcode-project use-profiles
             xcode-project build-ipa --workspace App.xcworkspace --scheme App
-            mv build/ios/ipa/App.ipa $CM_BUILD_DIR/petal-release.ipa
+            cp build/ios/ipa/App.ipa $CM_BUILD_DIR/petal-release.ipa
+            mv build/ios/ipa/App.ipa ../../petal-release.ipa
           else
             cd android
             ./gradlew bundleRelease \
@@ -155,6 +158,7 @@ workflows:
               -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
               -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
             cp app/build/outputs/bundle/release/app-release.aab $CM_BUILD_DIR/petal-release.aab
+            cp app/build/outputs/bundle/release/app-release.aab ../petal-release.aab
           fi
     artifacts:
       - "*.ipa"
