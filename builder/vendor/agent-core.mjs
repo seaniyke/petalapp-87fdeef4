@@ -40105,13 +40105,13 @@ export const db = {
     const current = await db.list<T>(collection, { limit: 1 });
     if (current.length > 0 || rows.length === 0) return db.list<T>(collection);
     const flag = "petal_seeded_" + API_KEY.slice(-8) + "_" + collection;
-    if (typeof window !== "undefined") {
-      if (window.localStorage.getItem(flag)) return current;
-      window.localStorage.setItem(flag, "1");
-    }
-    for (const row of rows.slice(0, 20)) {
-      try { await db.create<T>(collection, row); } catch { break; }
-    }
+    if (typeof window !== "undefined" && window.localStorage.getItem(flag)) return current;
+    // One all-or-nothing request: a half-written catalogue is impossible.
+    await request("/records/" + encodeURIComponent(collection) + "/_seed", {
+      method: "POST",
+      body: JSON.stringify({ rows: rows.slice(0, 20) }),
+    });
+    if (typeof window !== "undefined") window.localStorage.setItem(flag, "1");
     return db.list<T>(collection);
   },
 };
@@ -58827,15 +58827,25 @@ var init_client_server_shim = __esm({
 });
 
 // src/lib/intent-registry.ts
+function isNegatedAt(text, index) {
+  const before = text.slice(0, index);
+  const start = Math.max(...[".", "!", "?", ";", ":", "\n"].map((c) => before.lastIndexOf(c))) + 1;
+  const clause = before.slice(start).slice(-80);
+  return /\b(?:no|not|without|don'?t|do not|doesn'?t|does not|never|avoid|skip)\b/i.test(clause);
+}
 function detectIntent(id, text) {
   if (!text) return { detected: false };
   if (id === "mobile" && !MOBILE_APPS_ENABLED) return { detected: false };
   const t = text.trim();
   const rule = RULES3[id];
   if (t.length < rule.minLength) return { detected: false };
+  if (id === "backend" && BACKEND_OPT_OUT.test(t)) return { detected: false };
   for (const re of rule.signals) {
-    const m = t.match(re);
-    if (m) return { detected: true, reason: m[0].toLowerCase() };
+    const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    for (const m of t.matchAll(g)) {
+      if (isNegatedAt(t, m.index ?? 0)) continue;
+      return { detected: true, reason: m[0].toLowerCase() };
+    }
   }
   if (rule.augment) {
     const aug = rule.augment(t);
@@ -58855,7 +58865,7 @@ function detectIntents(userText, assistantText) {
   }
   return out;
 }
-var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3;
+var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3, BACKEND_OPT_OUT;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
     "use strict";
@@ -59125,6 +59135,7 @@ var init_intent_registry = __esm({
         ]
       }
     };
+    BACKEND_OPT_OUT = /\b(?:no|without|don'?t (?:need|want|add|use)|do not (?:need|want|add|use)|never (?:add|use))\b[^.!?:;\n]{0,60}\b(?:database|backend)\b/i;
   }
 });
 
@@ -59361,6 +59372,7 @@ __export(shared_backend_server_exports, {
   listRecords: () => listRecords,
   resolveProjectAccess: () => resolveProjectAccess,
   resolveProjectByKey: () => resolveProjectByKey,
+  seedRecords: () => seedRecords,
   sharedUsage: () => sharedUsage,
   signInUser: () => signInUser,
   signUpUser: () => signUpUser,
@@ -59539,6 +59551,35 @@ async function createRecord(opts) {
   }).select("id, collection, owner_key, data, created_at, updated_at").single();
   if (error) throw new Error(error.message);
   return shape(data2);
+}
+async function seedRecords(opts) {
+  const store2 = await storeFor(opts.projectId);
+  const rows = opts.rows.filter((r) => r && typeof r === "object").slice(0, 20);
+  if (rows.length === 0) return { seeded: false, count: 0 };
+  for (const r of rows) {
+    if (JSON.stringify(r).length > SHARED_LIMITS.maxBytesPerRecord) {
+      throw new Error("Record is too large for the shared tier.");
+    }
+  }
+  const { count: existing } = await store2.client.from(store2.records).select("id", { count: "exact", head: true }).eq("project_id", opts.projectId).eq("collection", opts.collection);
+  if ((existing ?? 0) > 0) return { seeded: false, count: existing ?? 0 };
+  if (!store2.dedicated) {
+    const { count } = await store2.client.from(store2.records).select("id", { count: "exact", head: true }).eq("project_id", opts.projectId);
+    if ((count ?? 0) + rows.length > SHARED_LIMITS.maxRowsPerProject) {
+      throw new Error("This app's starter database is full.");
+    }
+  }
+  const base = Date.now();
+  const payload = rows.map((data2, i) => ({
+    project_id: opts.projectId,
+    collection: opts.collection,
+    owner_key: null,
+    data: data2,
+    created_at: new Date(base + (rows.length - i)).toISOString()
+  }));
+  const { error } = await store2.client.from(store2.records).insert(payload);
+  if (error) throw new Error(error.message);
+  return { seeded: true, count: rows.length };
 }
 async function updateRecord(opts) {
   const store2 = await storeFor(opts.projectId);
@@ -68831,6 +68872,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -139276,7 +139318,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140364,7 +140405,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140529,7 +140569,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140573,7 +140612,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -140795,7 +140833,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -141273,7 +141310,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -143125,7 +143161,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144330,7 +144365,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145456,7 +145490,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -171043,6 +171076,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -180516,8 +180550,11 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               ({ url, index }) => {
                 const reused = seenPictureUrls.has(url);
                 seenPictureUrls.add(url);
-                void Promise.resolve().then(() => (init_cost_events_server(), cost_events_server_exports)).then(
-                  ({ recordCostEvents: recordCostEvents2 }) => recordCostEvents2([
+                void Promise.all([
+                  Promise.resolve().then(() => (init_cost_events_server(), cost_events_server_exports)),
+                  Promise.resolve().then(() => (init_economics_config_server(), economics_config_server_exports)).then((m) => m.economicsValue("image_generation_usd")).catch(() => null)
+                ]).then(
+                  ([{ recordCostEvents: recordCostEvents2 }, unitUsd]) => recordCostEvents2([
                     {
                       sourceRef: `image:${logicalTurnId}:${index}`,
                       userId,
@@ -180528,8 +180565,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
                       resource: url.slice(0, 300),
                       quantity: 1,
                       unit: "image",
-                      costUsd: reused ? 0 : null,
-                      basis: reused ? "ACTUAL" : "UNKNOWN",
+                      costUsd: reused ? 0 : unitUsd,
+                      basis: reused ? "ACTUAL" : unitUsd != null ? "ESTIMATED" : "UNKNOWN",
                       metadata: { reused, index }
                     }
                   ])
