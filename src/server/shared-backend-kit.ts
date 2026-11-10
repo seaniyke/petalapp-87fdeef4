@@ -170,13 +170,13 @@ export const db = {
     const current = await db.list<T>(collection, { limit: 1 });
     if (current.length > 0 || rows.length === 0) return db.list<T>(collection);
     const flag = "petal_seeded_" + API_KEY.slice(-8) + "_" + collection;
-    if (typeof window !== "undefined") {
-      if (window.localStorage.getItem(flag)) return current;
-      window.localStorage.setItem(flag, "1");
-    }
-    for (const row of rows.slice(0, 20)) {
-      try { await db.create<T>(collection, row); } catch { break; }
-    }
+    if (typeof window !== "undefined" && window.localStorage.getItem(flag)) return current;
+    // One all-or-nothing request: a half-written catalogue is impossible.
+    await request("/records/" + encodeURIComponent(collection) + "/_seed", {
+      method: "POST",
+      body: JSON.stringify({ rows: rows.slice(0, 20) }),
+    });
+    if (typeof window !== "undefined") window.localStorage.setItem(flag, "1");
     return db.list<T>(collection);
   },
 };

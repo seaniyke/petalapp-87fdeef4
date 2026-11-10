@@ -355,6 +355,54 @@ export async function createRecord(opts: {
   return shape(data);
 }
 
+/**
+ * Starter rows in ONE insert statement: either every row lands or none do,
+ * and only while the collection is empty. A visitor navigating away mid-seed
+ * can no longer leave a catalogue half-written (the Mira Beauty home shelf
+ * showed 2 of 8 products because a per-row loop was cut off).
+ */
+export async function seedRecords(opts: {
+  projectId: string;
+  collection: string;
+  rows: Record<string, unknown>[];
+}): Promise<{ seeded: boolean; count: number }> {
+  const store = await storeFor(opts.projectId);
+  const rows = opts.rows.filter((r) => r && typeof r === "object").slice(0, 20);
+  if (rows.length === 0) return { seeded: false, count: 0 };
+  for (const r of rows) {
+    if (JSON.stringify(r).length > SHARED_LIMITS.maxBytesPerRecord) {
+      throw new Error("Record is too large for the shared tier.");
+    }
+  }
+  const { count: existing } = await store.client
+    .from(store.records)
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", opts.projectId)
+    .eq("collection", opts.collection);
+  if ((existing ?? 0) > 0) return { seeded: false, count: existing ?? 0 };
+  if (!store.dedicated) {
+    const { count } = await store.client
+      .from(store.records)
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", opts.projectId);
+    if ((count ?? 0) + rows.length > SHARED_LIMITS.maxRowsPerProject) {
+      throw new Error("This app's starter database is full.");
+    }
+  }
+  // Reverse so the first row given is the newest, matching list order (newest first).
+  const base = Date.now();
+  const payload = rows.map((data, i) => ({
+    project_id: opts.projectId,
+    collection: opts.collection,
+    owner_key: null,
+    data: data as never,
+    created_at: new Date(base + (rows.length - i)).toISOString(),
+  }));
+  const { error } = await store.client.from(store.records).insert(payload);
+  if (error) throw new Error(error.message);
+  return { seeded: true, count: rows.length };
+}
+
 export async function updateRecord(opts: {
   projectId: string;
   id: string;

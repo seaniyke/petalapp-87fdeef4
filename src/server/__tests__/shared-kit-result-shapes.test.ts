@@ -34,6 +34,13 @@ beforeAll(async () => {
   writeFileSync(file, js);
   vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
     const method = init?.method ?? "GET";
+    if (method === "POST" && url.includes("/_seed")) {
+      const rows = JSON.parse(String(init!.body)).rows as Record<string, unknown>[];
+      for (const data of rows) {
+        store.push({ id: "r" + (store.length + 1), data, created_at: "2026-11-07", updated_at: "2026-11-07" } as Rec);
+      }
+      return new Response(JSON.stringify({ seeded: true, count: rows.length }), { status: 201 });
+    }
     if (method === "POST") {
       const rec: Rec = {
         id: "r" + (store.length + 1),
