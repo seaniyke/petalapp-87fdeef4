@@ -40811,30 +40811,22 @@ Works in Chrome, Edge, Brave, Arc and Opera.
 function mobileShellKit() {
   return [
     { path: "capacitor.config.ts", content: CAPACITOR_CONFIG },
+    { path: "src/lib/native.ts", content: NATIVE_BRIDGE },
     { path: "src/hooks/use-native-shell.ts", content: NATIVE_RUNTIME }
   ];
 }
-var MOBILE_SHELL_DEPS, CAPACITOR_CONFIG, NATIVE_RUNTIME;
+var MOBILE_SHELL_DEPS, CAPACITOR_CONFIG, NATIVE_BRIDGE, NATIVE_RUNTIME;
 var init_scaffold_kit_mobile_shell = __esm({
   "src/server/scaffold-kit-mobile-shell.ts"() {
     "use strict";
     init_define_import_meta_env();
-    MOBILE_SHELL_DEPS = {
-      "@capacitor/core": "^6.2.0",
-      "@capacitor/app": "^6.0.2",
-      "@capacitor/haptics": "^6.0.2",
-      "@capacitor/keyboard": "^6.0.3",
-      "@capacitor/preferences": "^6.0.3",
-      "@capacitor/status-bar": "^6.0.2"
-    };
-    CAPACITOR_CONFIG = `import type { CapacitorConfig } from "@capacitor/cli";
-
-/**
+    MOBILE_SHELL_DEPS = {};
+    CAPACITOR_CONFIG = `/**
  * Kimble-managed native shell config. The store build (iOS + Android) runs
  * \`vite build\` and then wraps \`dist/\` with Capacitor using this file.
  * Change appName / appId freely; leave \`webDir\` alone.
  */
-const config: CapacitorConfig = {
+const config = {
   appId: "app.petal.mobile",
   appName: "Kimble App",
   webDir: "dist",
@@ -40848,35 +40840,117 @@ const config: CapacitorConfig = {
 
 export default config;
 `;
+    NATIVE_BRIDGE = `/**
+ * Petal native bridge \u2014 the one door from app code to the phone.
+ *
+ * App code calls only \`native.*\`. Inside the store build, calls go to the
+ * open-source shell's plugins through the global plugin registry the shell
+ * injects (\`window.Capacitor.Plugins\`), so the app itself needs NO native
+ * npm packages. In a browser or the Petal preview, every call uses a real
+ * web API or a safe fallback \u2014 nothing throws, nothing hangs.
+ */
+type Plugin = Record<string, (...args: any[]) => Promise<any>>;
+type Shell = { isNativePlatform?: () => boolean; getPlatform?: () => string; Plugins?: Record<string, Plugin> };
+
+function shell(): Shell | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as unknown as { Capacitor?: Shell }).Capacitor;
+}
+function plugin(name: string): Plugin | undefined {
+  const s = shell();
+  return s?.isNativePlatform?.() ? s.Plugins?.[name] : undefined;
+}
+async function call<T>(name: string, method: string, args: unknown, fallback: () => T | Promise<T>): Promise<T> {
+  const fn = plugin(name)?.[method];
+  if (!fn) return fallback();
+  try {
+    return (await fn(args)) as T;
+  } catch {
+    return fallback();
+  }
+}
+
+export type Platform = "ios" | "android" | "web";
+
+export const native = {
+  /** True only inside the installed store app. */
+  isApp(): boolean {
+    return Boolean(shell()?.isNativePlatform?.());
+  },
+  platform(): Platform {
+    const p = shell()?.getPlatform?.();
+    return p === "ios" || p === "android" ? p : "web";
+  },
+  haptics: {
+    impact(style: "light" | "medium" | "heavy" = "medium") {
+      void call("Haptics", "impact", { style: style.toUpperCase() }, () => {
+        if (typeof navigator !== "undefined") navigator.vibrate?.(style === "light" ? 8 : style === "medium" ? 15 : 25);
+      });
+    },
+    success() {
+      void call("Haptics", "notification", { type: "SUCCESS" }, () => {
+        if (typeof navigator !== "undefined") navigator.vibrate?.([10, 40, 10]);
+      });
+    },
+  },
+  async share(data: { title?: string; text?: string; url?: string }): Promise<boolean> {
+    return call("Share", "share", data, async () => {
+      if (typeof navigator === "undefined" || !navigator.share) return false;
+      try {
+        await navigator.share(data);
+        return true;
+      } catch {
+        return false;
+      }
+    }).then((r) => r !== false);
+  },
+  /** Opens an outside link without killing the app on iOS. */
+  async openUrl(url: string): Promise<void> {
+    await call("Browser", "open", { url }, () => {
+      window.open(url, "_blank", "noopener");
+    });
+  },
+  async location(): Promise<{ lat: number; lng: number } | null> {
+    const pos = await call<any>("Geolocation", "getCurrentPosition", { enableHighAccuracy: true }, () =>
+      new Promise((resolve) => {
+        if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
+        navigator.geolocation.getCurrentPosition((p) => resolve(p), () => resolve(null), { timeout: 10_000 });
+      }),
+    );
+    return pos?.coords ? { lat: pos.coords.latitude, lng: pos.coords.longitude } : null;
+  },
+  storage: {
+    async get(key: string): Promise<string | null> {
+      const r = await call<any>("Preferences", "get", { key }, () => ({ value: localStorage.getItem(key) }));
+      return r?.value ?? null;
+    },
+    async set(key: string, value: string): Promise<void> {
+      await call("Preferences", "set", { key, value }, () => localStorage.setItem(key, value));
+    },
+  },
+  /** Runs \`onBack\` for the Android back button. Returns an unsubscribe. */
+  onBack(onBack: () => void): () => void {
+    const app = plugin("App");
+    if (!app?.addListener) return () => {};
+    let handle: { remove?: () => void } | undefined;
+    void app.addListener("backButton", onBack).then((h: { remove?: () => void }) => (handle = h));
+    return () => handle?.remove?.();
+  },
+};
+
+export default native;
+`;
     NATIVE_RUNTIME = `import { useEffect } from "react";
+import { native } from "@/lib/native";
 
 /**
- * Call once from the app root. Applies the small runtime behaviours that
- * make a webview feel like an app: no rubber-band overscroll on the body,
- * no double-tap zoom, and hardware back handling on Android.
- *
- * Safe on the web \u2014 every native call is behind a capability check.
+ * Call once from the app root: no rubber-band overscroll and Android
+ * hardware back. Safe on the web \u2014 the bridge no-ops outside the app.
  */
 export function useNativeShell() {
   useEffect(() => {
     document.body.style.overscrollBehaviorY = "none";
-    let cancelled = false;
-    void (async () => {
-      const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
-      if (!cap?.isNativePlatform?.() || cancelled) return;
-      try {
-        const { App } = await import("@capacitor/app");
-        await App.addListener("backButton", ({ canGoBack }) => {
-          if (canGoBack) window.history.back();
-          else void App.exitApp();
-        });
-      } catch {
-        // Plugin unavailable in this context \u2014 ignore.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    return native.onBack(() => window.history.back());
   }, []);
 }
 `;
@@ -69442,7 +69516,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139586,7 +139659,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140674,7 +140746,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140839,7 +140910,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140883,7 +140953,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141105,7 +141174,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -141583,7 +141651,6 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -143435,7 +143502,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144640,7 +144706,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145769,7 +145834,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -151296,10 +151360,10 @@ function renderMobileGuidanceBlock(text, opts) {
   return `
 
 ### Mobile target detected (signal: "${signal}")
-The user wants this shipped as a real iOS / Android app. Kimble wraps the
-web app with **Capacitor** and builds signed binaries on Codemagic \u2014 the
+The user wants this shipped as a real iOS / Android app. Petal wraps the
+web app in an open-source native shell and builds signed binaries on a Mac runner \u2014 the
 user never installs Xcode, a JDK, or fastlane. Generate code that is
-mobile-first AND Capacitor-ready.
+mobile-first and uses the \`native\` bridge for phone features.
 
 **Layout rules**
 - Mobile-first breakpoints: design at 390\xD7844, scale up.
@@ -151313,45 +151377,23 @@ mobile-first AND Capacitor-ready.
 - Reuse \`src/components/mobile/*\` primitives when they exist \u2014 don't
   duplicate scaffolding.
 
-**Use Capacitor plugins instead of web-only APIs**
+**Talk to the phone only through \`native\` from \`@/lib/native\`**
+Every mobile project already has it. NEVER import \`@capacitor/*\` or any
+native npm package \u2014 the app ships without them and the store build adds
+the shell. Each call works in the preview too (web fallback), so no guards.
 | Need | Use | Avoid |
 |---|---|---|
-| Camera / photo library | \`@capacitor/camera\` | \`<input type=file capture>\` (works but ugly) |
-| Push notifications | \`@capacitor/push-notifications\` | Web Push (no iOS support in webview) |
-| GPS / location | \`@capacitor/geolocation\` | bare \`navigator.geolocation\` (permissions race) |
-| Share sheet | \`@capacitor/share\` | \`navigator.share\` only (fails on iOS webview) |
-| Haptics | \`@capacitor/haptics\` | \u2014 |
-| Local storage that survives reinstall on iOS | \`@capacitor/preferences\` | \`localStorage\` for anything important |
-| Open external URL | \`@capacitor/browser\` | \`window.open\` (kills app on iOS) |
-| Read offline / online | \`@capacitor/network\` | \`navigator.onLine\` only |
-| Filesystem | \`@capacitor/filesystem\` | File System Access API |
-| Status bar styling | \`@capacitor/status-bar\` | meta theme-color only |
-| App lifecycle | \`@capacitor/app\` | \`visibilitychange\` only |
-
-Import the plugin, call it inside a \`useEffect\` or event handler, and
-ALWAYS provide a graceful web fallback (Capacitor.isNativePlatform()) so
-the same code works in the Lovable preview AND in the published app.
-
-\`\`\`ts
-import { Camera, CameraResultType } from "@capacitor/camera";
-import { Capacitor } from "@capacitor/core";
-
-async function takePhoto() {
-  if (!Capacitor.isNativePlatform()) {
-    // web fallback \u2014 file picker
-    return pickFromFileInput();
-  }
-  const photo = await Camera.getPhoto({
-    quality: 80,
-    resultType: CameraResultType.Uri,
-  });
-  return photo.webPath;
-}
-\`\`\`
+| Haptic tap / success buzz | \`native.haptics.impact()\`, \`native.haptics.success()\` | \u2014 |
+| Share sheet | \`await native.share({ title, text, url })\` | bare \`navigator.share\` |
+| Open an outside link | \`native.openUrl(url)\` | \`window.open\` (kills app on iOS) |
+| GPS position | \`await native.location()\` \u2192 \`{ lat, lng } | null\` | bare \`navigator.geolocation\` |
+| Small saved settings | \`native.storage.get/set\` | \`localStorage\` for anything important |
+| Platform-specific UI | \`native.platform()\` (\`ios\`/\`android\`/\`web\`), \`native.isApp()\` | user-agent sniffing |
+| Photo pick | \`<input type="file" accept="image/*">\` behind a tap button | drag-and-drop only |
 
 **Things that silently break in a webview \u2014 do not use**
 - \`window.alert\` / \`window.confirm\` (looks broken on iOS). Use a Dialog.
-- \`window.print\`. Use \`@capacitor/share\` to send a PDF.
+- \`window.print\`. Use \`native.share\` to send a link.
 - Long-running \`setInterval\` for background work \u2014 backgrounded webviews
   pause. Use server cron + push.
 - Drag-and-drop file uploads as the *only* path. Always pair with a
@@ -151359,7 +151401,7 @@ async function takePhoto() {
 - Mouse-only events (\`onMouseEnter\`, \`onContextMenu\`). Use touch / long-press.
 
 **Native-feel UI craft (this is what separates a real app from a website in a phone frame)**
-Compose from the Kimble mobile kit instead of hand-rolling \u2014 these already exist in every project. Import from the exact module named below; there is NO file-per-component layout, so \`@/components/mobile/mobile-empty-state\` does not exist:
+Compose from the Petal mobile kit instead of hand-rolling \u2014 these already exist in every project. Import from the exact module named below; there is NO file-per-component layout, so \`@/components/mobile/mobile-empty-state\` does not exist:
 | Need | Component |
 |---|---|
 | Screen shell (header + tabs + safe area) | \`MobileScreen\` (\`@/components/mobile/mobile-screen\`), \`SafeArea\`, \`MobileHeader\`, \`BottomTabBar\` |
@@ -151389,9 +151431,9 @@ Hard rules for every mobile screen:
   middle segment).
 
 If the user explicitly asks for "Expo" or "React Native", build the app
-exactly as described above and say in one sentence that Kimble ships
-native through Capacitor \u2014 one React codebase, real App Store and Play
-Store binaries. Never scaffold an Expo / React Native project: Kimble's
+exactly as described above and say in one sentence that Petal ships
+native through its own shell \u2014 one React codebase, real App Store and Play
+Store binaries. Never scaffold an Expo / React Native project: Petal's
 build pipeline cannot compile it and the turn will be wasted.
 `;
 }
@@ -171357,6 +171399,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

@@ -39,7 +39,7 @@ workflows:
           npm run build
       - name: Add Capacitor shell
         script: |
-          npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android --no-save
+          npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android @capacitor/app @capacitor/haptics @capacitor/share @capacitor/browser @capacitor/geolocation @capacitor/preferences --no-save
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           npx cap add "$PETAL_PLATFORM"
           npx cap sync "$PETAL_PLATFORM"
@@ -94,7 +94,7 @@ workflows:
         script: npm run build
       - name: Add Capacitor shell
         script: |
-          npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android --no-save
+          npm install @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android @capacitor/app @capacitor/haptics @capacitor/share @capacitor/browser @capacitor/geolocation @capacitor/preferences --no-save
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           npx cap add "$PETAL_PLATFORM"
           npx cap sync "$PETAL_PLATFORM"

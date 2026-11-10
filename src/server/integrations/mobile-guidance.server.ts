@@ -33,10 +33,10 @@ export function renderMobileGuidanceBlock(
   return `
 
 ### Mobile target detected (signal: "${signal}")
-The user wants this shipped as a real iOS / Android app. Kimble wraps the
-web app with **Capacitor** and builds signed binaries on Codemagic — the
+The user wants this shipped as a real iOS / Android app. Petal wraps the
+web app in an open-source native shell and builds signed binaries on a Mac runner — the
 user never installs Xcode, a JDK, or fastlane. Generate code that is
-mobile-first AND Capacitor-ready.
+mobile-first and uses the \`native\` bridge for phone features.
 
 **Layout rules**
 - Mobile-first breakpoints: design at 390×844, scale up.
@@ -50,45 +50,23 @@ mobile-first AND Capacitor-ready.
 - Reuse \`src/components/mobile/*\` primitives when they exist — don't
   duplicate scaffolding.
 
-**Use Capacitor plugins instead of web-only APIs**
+**Talk to the phone only through \`native\` from \`@/lib/native\`**
+Every mobile project already has it. NEVER import \`@capacitor/*\` or any
+native npm package — the app ships without them and the store build adds
+the shell. Each call works in the preview too (web fallback), so no guards.
 | Need | Use | Avoid |
 |---|---|---|
-| Camera / photo library | \`@capacitor/camera\` | \`<input type=file capture>\` (works but ugly) |
-| Push notifications | \`@capacitor/push-notifications\` | Web Push (no iOS support in webview) |
-| GPS / location | \`@capacitor/geolocation\` | bare \`navigator.geolocation\` (permissions race) |
-| Share sheet | \`@capacitor/share\` | \`navigator.share\` only (fails on iOS webview) |
-| Haptics | \`@capacitor/haptics\` | — |
-| Local storage that survives reinstall on iOS | \`@capacitor/preferences\` | \`localStorage\` for anything important |
-| Open external URL | \`@capacitor/browser\` | \`window.open\` (kills app on iOS) |
-| Read offline / online | \`@capacitor/network\` | \`navigator.onLine\` only |
-| Filesystem | \`@capacitor/filesystem\` | File System Access API |
-| Status bar styling | \`@capacitor/status-bar\` | meta theme-color only |
-| App lifecycle | \`@capacitor/app\` | \`visibilitychange\` only |
-
-Import the plugin, call it inside a \`useEffect\` or event handler, and
-ALWAYS provide a graceful web fallback (Capacitor.isNativePlatform()) so
-the same code works in the Lovable preview AND in the published app.
-
-\`\`\`ts
-import { Camera, CameraResultType } from "@capacitor/camera";
-import { Capacitor } from "@capacitor/core";
-
-async function takePhoto() {
-  if (!Capacitor.isNativePlatform()) {
-    // web fallback — file picker
-    return pickFromFileInput();
-  }
-  const photo = await Camera.getPhoto({
-    quality: 80,
-    resultType: CameraResultType.Uri,
-  });
-  return photo.webPath;
-}
-\`\`\`
+| Haptic tap / success buzz | \`native.haptics.impact()\`, \`native.haptics.success()\` | — |
+| Share sheet | \`await native.share({ title, text, url })\` | bare \`navigator.share\` |
+| Open an outside link | \`native.openUrl(url)\` | \`window.open\` (kills app on iOS) |
+| GPS position | \`await native.location()\` → \`{ lat, lng } \| null\` | bare \`navigator.geolocation\` |
+| Small saved settings | \`native.storage.get/set\` | \`localStorage\` for anything important |
+| Platform-specific UI | \`native.platform()\` (\`ios\`/\`android\`/\`web\`), \`native.isApp()\` | user-agent sniffing |
+| Photo pick | \`<input type="file" accept="image/*">\` behind a tap button | drag-and-drop only |
 
 **Things that silently break in a webview — do not use**
 - \`window.alert\` / \`window.confirm\` (looks broken on iOS). Use a Dialog.
-- \`window.print\`. Use \`@capacitor/share\` to send a PDF.
+- \`window.print\`. Use \`native.share\` to send a link.
 - Long-running \`setInterval\` for background work — backgrounded webviews
   pause. Use server cron + push.
 - Drag-and-drop file uploads as the *only* path. Always pair with a
@@ -96,7 +74,7 @@ async function takePhoto() {
 - Mouse-only events (\`onMouseEnter\`, \`onContextMenu\`). Use touch / long-press.
 
 **Native-feel UI craft (this is what separates a real app from a website in a phone frame)**
-Compose from the Kimble mobile kit instead of hand-rolling — these already exist in every project. Import from the exact module named below; there is NO file-per-component layout, so \`@/components/mobile/mobile-empty-state\` does not exist:
+Compose from the Petal mobile kit instead of hand-rolling — these already exist in every project. Import from the exact module named below; there is NO file-per-component layout, so \`@/components/mobile/mobile-empty-state\` does not exist:
 | Need | Component |
 |---|---|
 | Screen shell (header + tabs + safe area) | \`MobileScreen\` (\`@/components/mobile/mobile-screen\`), \`SafeArea\`, \`MobileHeader\`, \`BottomTabBar\` |
@@ -126,9 +104,9 @@ Hard rules for every mobile screen:
   middle segment).
 
 If the user explicitly asks for "Expo" or "React Native", build the app
-exactly as described above and say in one sentence that Kimble ships
-native through Capacitor — one React codebase, real App Store and Play
-Store binaries. Never scaffold an Expo / React Native project: Kimble's
+exactly as described above and say in one sentence that Petal ships
+native through its own shell — one React codebase, real App Store and Play
+Store binaries. Never scaffold an Expo / React Native project: Petal's
 build pipeline cannot compile it and the turn will be wasted.
 `;
 }
