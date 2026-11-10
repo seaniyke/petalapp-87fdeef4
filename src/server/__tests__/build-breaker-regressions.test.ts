@@ -328,6 +328,30 @@ describe("route coverage", () => {
     expect(a.remainingSteps.join(" ")).toContain("/signin");
   });
 
+  it("accepts hyphenated routes written as PascalCase page files", async () => {
+    const { assessRouteCoverage } = await import("../chunked-generation.server");
+    const a = assessRouteCoverage({
+      expectedRoutes: ["/terms-and-privacy", "/what-members-get"],
+      files: [
+        { path: "src/pages/TermsAndPrivacy.tsx", content: "" },
+        { path: "src/pages/WhatMembersGet.tsx", content: "" },
+      ],
+      routerSource: '<Route path="/terms-and-privacy" /><Route path="/what-members-get" />',
+    });
+    expect(a.needed).toBe(false);
+    expect(a.remainingSteps).toEqual([]);
+  });
+
+  it("still flags a hyphenated route with no page file", async () => {
+    const { assessRouteCoverage } = await import("../chunked-generation.server");
+    const a = assessRouteCoverage({
+      expectedRoutes: ["/terms-and-privacy"],
+      files: [{ path: "src/pages/Home.tsx", content: "" }],
+      routerSource: '<Route path="/" />',
+    });
+    expect(a.remainingSteps.join(" ")).toContain("/terms-and-privacy");
+  });
+
   it("accepts registered routes", async () => {
     const { assessRouteCoverage } = await import("../chunked-generation.server");
     const a = assessRouteCoverage({

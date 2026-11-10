@@ -38773,7 +38773,8 @@ function assessRouteCoverage(args) {
       continue;
     }
     if (/[:$*]/.test(slug3)) continue;
-    if (!haystack.includes(slug3)) {
+    const compact3 = slug3.replace(/[-_]/g, "");
+    if (!haystack.includes(slug3) && !haystack.includes(compact3)) {
       missing.push(route);
       continue;
     }
@@ -59486,6 +59487,12 @@ async function resolveProjectAccess(projectId, apiKey) {
   }
   if (!backend2) return "no_backend";
   if (backend2.apiKey !== apiKey) return "bad_key";
+  try {
+    const { data: proj } = await supabaseAdmin.from("projects").select("runtime_paused, partner_paused").eq("id", projectId).maybeSingle();
+    if (proj?.runtime_paused || proj?.partner_paused) return "paused";
+  } catch {
+    return "unavailable";
+  }
   void supabaseAdmin.from("shared_backends").update({ last_active_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("project_id", projectId).then(() => void 0);
   return "ok";
 }
@@ -59740,6 +59747,8 @@ var init_economics_config_server = __esm({
       // published Supabase / Railway rates; margin is GROSS margin.
       cloud_external_margin_pct: 30,
       cloud_shared_discount_pct: 50,
+      // Shared Cloud flat rate: credits per ACTIVE day (0.55 ≈ $2.50 / 30 days).
+      cloud_shared_daily_credits: 0.55,
       supabase_micro_hour_usd: 0.01344,
       supabase_disk_gb_month_usd: 0.125,
       supabase_included_disk_gb: 8,
@@ -69124,7 +69133,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139268,7 +139276,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140356,7 +140363,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140521,7 +140527,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140565,7 +140570,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
