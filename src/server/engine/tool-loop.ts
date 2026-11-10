@@ -520,6 +520,32 @@ function countOccurrences(hay: string, needle: string): number[] {
   return at;
 }
 
+/**
+ * Whitespace-tolerant fallback for edit_file: when the exact text is not
+ * found, match the same lines ignoring leading/trailing whitespace per line.
+ * Returns the exact original span only when it is unique; otherwise null.
+ */
+export function tolerantMatch(hay: string, needle: string): { start: number; end: number } | null {
+  const want = needle.split("\n").map((l) => l.trim());
+  while (want.length && !want[0]) want.shift();
+  while (want.length && !want[want.length - 1]) want.pop();
+  if (!want.length) return null;
+  const lines = hay.split("\n");
+  const offsets: number[] = [];
+  let o = 0;
+  for (const l of lines) { offsets.push(o); o += l.length + 1; }
+  let found: { start: number; end: number } | null = null;
+  for (let i = 0; i + want.length <= lines.length; i++) {
+    let ok = true;
+    for (let j = 0; j < want.length; j++) if (lines[i + j]!.trim() !== want[j]) { ok = false; break; }
+    if (!ok) continue;
+    if (found) return null; // ambiguous
+    const last = i + want.length - 1;
+    found = { start: offsets[i]!, end: offsets[last]! + lines[last]!.length };
+  }
+  return found;
+}
+
 /* ------------------------------------------------------------------ */
 /* Workspace evidence: dependency graph + stability                    */
 /* ------------------------------------------------------------------ */
@@ -1002,13 +1028,19 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
         const id = opId("edit", path, `${search}\u0000${replace}`);
         if (state.completedOps.has(id)) return { output: `Already applied this exact edit to ${path}.`, isError: false };
         const at = countOccurrences(current, search);
-        if (at.length === 0) return { output: fail(name, path, `search text not found in ${path}. Re-read the file and copy the exact text.`), isError: true };
-        const occ = Number(a.occurrence) || 0;
-        if (at.length > 1 && !(occ >= 1 && occ <= at.length)) {
-          return { output: fail(name, path, `search text matches ${at.length} places in ${path}. Add surrounding lines to make it unique, or pass occurrence (1-${at.length}).`), isError: true };
+        let span: { start: number; end: number } | null = null;
+        if (at.length === 0) {
+          span = tolerantMatch(current, search);
+          if (!span) return { output: fail(name, path, `search text not found in ${path}. Re-read the file and copy the exact text.`), isError: true };
+        } else {
+          const occ = Number(a.occurrence) || 0;
+          if (at.length > 1 && !(occ >= 1 && occ <= at.length)) {
+            return { output: fail(name, path, `search text matches ${at.length} places in ${path}. Add surrounding lines to make it unique, or pass occurrence (1-${at.length}).`), isError: true };
+          }
+          const pos = at[at.length > 1 ? occ - 1 : 0]!;
+          span = { start: pos, end: pos + search.length };
         }
-        const pos = at[at.length > 1 ? occ - 1 : 0]!;
-        const edited = repairImports(path, current.slice(0, pos) + replace + current.slice(pos + search.length));
+        const edited = repairImports(path, current.slice(0, span.start) + replace + current.slice(span.end));
         const next = edited.content;
         // Deletion protection: an edit may not silently drop most of a file.
         if (current.length > 400 && next.trim().length < current.trim().length * 0.5 && replace.length < search.length * 0.5) {
