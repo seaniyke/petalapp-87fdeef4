@@ -101,6 +101,7 @@ import { Route as ApiPublicSharedSplatRouteImport } from './routes/api/public/sh
 import { Route as ApiPublicV1BillingRouteImport } from './routes/api/public/v1/billing'
 import { Route as ApiPublicV1GenerateRouteImport } from './routes/api/public/v1/generate'
 import { Route as ApiPublicV1HealthRouteImport } from './routes/api/public/v1/health'
+import { Route as ApiPublicV1KeysRouteImport } from './routes/api/public/v1/keys'
 import { Route as ApiPublicV1ProjectsRouteImport } from './routes/api/public/v1/projects'
 import { Route as ApiTurnsIdCancelRouteImport } from './routes/api/turns.$id.cancel'
 import { Route as ApiTurnsIdEventsRouteImport } from './routes/api/turns.$id.events'
@@ -112,6 +113,7 @@ import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lova
 import { Route as ApiPublicSharedOauthGoogleCallbackRouteImport } from './routes/api/public/shared-oauth/google/callback'
 import { Route as ApiPublicSharedOauthGoogleStartRouteImport } from './routes/api/public/shared-oauth/google/start'
 import { Route as ApiPublicV1DomainsSearchRouteImport } from './routes/api/public/v1/domains.search'
+import { Route as ApiPublicV1KeysIdRouteImport } from './routes/api/public/v1/keys.$id'
 import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
 import { Route as ApiPublicV1ProjectsIdBackendRouteImport } from './routes/api/public/v1/projects/$id.backend'
 import { Route as ApiPublicV1ProjectsIdBillingRouteImport } from './routes/api/public/v1/projects/$id.billing'
@@ -614,6 +616,11 @@ const ApiPublicV1HealthRoute = ApiPublicV1HealthRouteImport.update({
   path: '/api/public/v1/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicV1KeysRoute = ApiPublicV1KeysRouteImport.update({
+  id: '/api/public/v1/keys',
+  path: '/api/public/v1/keys',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicV1ProjectsRoute = ApiPublicV1ProjectsRouteImport.update({
   id: '/api/public/v1/projects',
   path: '/api/public/v1/projects',
@@ -675,6 +682,11 @@ const ApiPublicV1DomainsSearchRoute =
     path: '/api/public/v1/domains/search',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicV1KeysIdRoute = ApiPublicV1KeysIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiPublicV1KeysRoute,
+} as any)
 const ApiPublicV1TurnsIdRoute = ApiPublicV1TurnsIdRouteImport.update({
   id: '/api/public/v1/turns/$id',
   path: '/api/public/v1/turns/$id',
@@ -876,6 +888,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
+  '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
@@ -887,6 +900,7 @@ export interface FileRoutesByFullPath {
   '/api/public/shared-oauth/google/callback': typeof ApiPublicSharedOauthGoogleCallbackRoute
   '/api/public/shared-oauth/google/start': typeof ApiPublicSharedOauthGoogleStartRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
+  '/api/public/v1/keys/$id': typeof ApiPublicV1KeysIdRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
@@ -999,6 +1013,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
+  '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
@@ -1010,6 +1025,7 @@ export interface FileRoutesByTo {
   '/api/public/shared-oauth/google/callback': typeof ApiPublicSharedOauthGoogleCallbackRoute
   '/api/public/shared-oauth/google/start': typeof ApiPublicSharedOauthGoogleStartRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
+  '/api/public/v1/keys/$id': typeof ApiPublicV1KeysIdRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
@@ -1123,6 +1139,7 @@ export interface FileRoutesById {
   '/api/public/v1/billing': typeof ApiPublicV1BillingRoute
   '/api/public/v1/generate': typeof ApiPublicV1GenerateRoute
   '/api/public/v1/health': typeof ApiPublicV1HealthRoute
+  '/api/public/v1/keys': typeof ApiPublicV1KeysRouteWithChildren
   '/api/public/v1/projects': typeof ApiPublicV1ProjectsRouteWithChildren
   '/api/turns/$id/cancel': typeof ApiTurnsIdCancelRoute
   '/api/turns/$id/events': typeof ApiTurnsIdEventsRoute
@@ -1134,6 +1151,7 @@ export interface FileRoutesById {
   '/api/public/shared-oauth/google/callback': typeof ApiPublicSharedOauthGoogleCallbackRoute
   '/api/public/shared-oauth/google/start': typeof ApiPublicSharedOauthGoogleStartRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
+  '/api/public/v1/keys/$id': typeof ApiPublicV1KeysIdRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
   '/api/public/v1/projects/$id/billing': typeof ApiPublicV1ProjectsIdBillingRoute
@@ -1248,6 +1266,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/billing'
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
+    | '/api/public/v1/keys'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
@@ -1259,6 +1278,7 @@ export interface FileRouteTypes {
     | '/api/public/shared-oauth/google/callback'
     | '/api/public/shared-oauth/google/start'
     | '/api/public/v1/domains/search'
+    | '/api/public/v1/keys/$id'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/backend'
     | '/api/public/v1/projects/$id/billing'
@@ -1371,6 +1391,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/billing'
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
+    | '/api/public/v1/keys'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
@@ -1382,6 +1403,7 @@ export interface FileRouteTypes {
     | '/api/public/shared-oauth/google/callback'
     | '/api/public/shared-oauth/google/start'
     | '/api/public/v1/domains/search'
+    | '/api/public/v1/keys/$id'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/backend'
     | '/api/public/v1/projects/$id/billing'
@@ -1494,6 +1516,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/billing'
     | '/api/public/v1/generate'
     | '/api/public/v1/health'
+    | '/api/public/v1/keys'
     | '/api/public/v1/projects'
     | '/api/turns/$id/cancel'
     | '/api/turns/$id/events'
@@ -1505,6 +1528,7 @@ export interface FileRouteTypes {
     | '/api/public/shared-oauth/google/callback'
     | '/api/public/shared-oauth/google/start'
     | '/api/public/v1/domains/search'
+    | '/api/public/v1/keys/$id'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/backend'
     | '/api/public/v1/projects/$id/billing'
@@ -1616,6 +1640,7 @@ export interface RootRouteChildren {
   ApiPublicV1BillingRoute: typeof ApiPublicV1BillingRoute
   ApiPublicV1GenerateRoute: typeof ApiPublicV1GenerateRoute
   ApiPublicV1HealthRoute: typeof ApiPublicV1HealthRoute
+  ApiPublicV1KeysRoute: typeof ApiPublicV1KeysRouteWithChildren
   ApiPublicV1ProjectsRoute: typeof ApiPublicV1ProjectsRouteWithChildren
   ApiTurnsIdCancelRoute: typeof ApiTurnsIdCancelRoute
   ApiTurnsIdEventsRoute: typeof ApiTurnsIdEventsRoute
@@ -2276,6 +2301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/v1/keys': {
+      id: '/api/public/v1/keys'
+      path: '/api/public/v1/keys'
+      fullPath: '/api/public/v1/keys'
+      preLoaderRoute: typeof ApiPublicV1KeysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/projects': {
       id: '/api/public/v1/projects'
       path: '/api/public/v1/projects'
@@ -2352,6 +2384,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/v1/domains/search'
       preLoaderRoute: typeof ApiPublicV1DomainsSearchRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/v1/keys/$id': {
+      id: '/api/public/v1/keys/$id'
+      path: '/$id'
+      fullPath: '/api/public/v1/keys/$id'
+      preLoaderRoute: typeof ApiPublicV1KeysIdRouteImport
+      parentRoute: typeof ApiPublicV1KeysRoute
     }
     '/api/public/v1/turns/$id': {
       id: '/api/public/v1/turns/$id'
@@ -2504,6 +2543,18 @@ const ApiBillingCryptoRouteChildren: ApiBillingCryptoRouteChildren = {
 
 const ApiBillingCryptoRouteWithChildren =
   ApiBillingCryptoRoute._addFileChildren(ApiBillingCryptoRouteChildren)
+
+interface ApiPublicV1KeysRouteChildren {
+  ApiPublicV1KeysIdRoute: typeof ApiPublicV1KeysIdRoute
+}
+
+const ApiPublicV1KeysRouteChildren: ApiPublicV1KeysRouteChildren = {
+  ApiPublicV1KeysIdRoute: ApiPublicV1KeysIdRoute,
+}
+
+const ApiPublicV1KeysRouteWithChildren = ApiPublicV1KeysRoute._addFileChildren(
+  ApiPublicV1KeysRouteChildren,
+)
 
 interface ApiPublicV1ProjectsIdDomainsRouteChildren {
   ApiPublicV1ProjectsIdDomainsManageRoute: typeof ApiPublicV1ProjectsIdDomainsManageRoute
@@ -2666,6 +2717,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicV1BillingRoute: ApiPublicV1BillingRoute,
   ApiPublicV1GenerateRoute: ApiPublicV1GenerateRoute,
   ApiPublicV1HealthRoute: ApiPublicV1HealthRoute,
+  ApiPublicV1KeysRoute: ApiPublicV1KeysRouteWithChildren,
   ApiPublicV1ProjectsRoute: ApiPublicV1ProjectsRouteWithChildren,
   ApiTurnsIdCancelRoute: ApiTurnsIdCancelRoute,
   ApiTurnsIdEventsRoute: ApiTurnsIdEventsRoute,
