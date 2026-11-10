@@ -139,10 +139,12 @@ export function dependencyGate(files: ProjectFile[]): GateResult {
 export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts: { requireShell?: boolean; requireLiveData?: boolean } = {}): GateResult {
   const reasons: string[] = [];
   const bad: string[] = [];
+  // Advisory findings: reported to the writer, never block a build. A working
+  // app with a cosmetic or data-source imperfection must still ship.
+  const advisories: string[] = [];
   if (opts.requireLiveData) {
     for (const f of sampleOnlyPages(files)) {
-      reasons.push(`${f} shows only sample data — Kimble Cloud is on, so load and save its records with db from "@/integrations/backend/client" instead of the sample-data module`);
-      bad.push(f);
+      advisories.push(`${f} shows only sample data — load and save its records with db from "@/integrations/backend/client"`);
     }
   }
   // First builds must ship the shared frame (routed App with nav + footer).
@@ -153,10 +155,7 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
   }
   // New apps: pages never stack a second header/announcement bar over the frame's.
   if (opts.requireShell) {
-    for (const c of duplicateChromeFindings(files)) {
-      reasons.push(c.reason);
-      bad.push(c.path);
-    }
+    for (const c of duplicateChromeFindings(files)) advisories.push(c.reason);
   }
   const completeness = assessCompleteness({ requestedRoutes, files });
   if (!completeness.complete) {
@@ -187,9 +186,8 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
   const dead = routerSrc ? deadInternalLinks(files, routerSrc, map.routerFile!) : [];
   const pages = routerSrc ? resolveRouteTree(routerSrc).filter((r) => !r.catchAll).map((r) => r.path) : [];
   // New apps must be internally consistent; older apps' existing links never block an edit.
-  if (dead.length && opts.requireShell) {
-    for (const d of dead.slice(0, 8)) reasons.push(`${d.file} links to ${d.link}, but no page has that address (pages: ${pages.join(", ")})`);
-    bad.push(...dead.map((d) => d.file));
+  if (dead.length) {
+    for (const d of dead.slice(0, 8)) advisories.push(`${d.file} links to ${d.link}, but no page has that address (pages: ${pages.join(", ")})`);
   }
   // With Kimble Cloud on, signed-in pages must send signed-out visitors to /login.
   if (opts.requireLiveData && routerSrc) {
@@ -200,7 +198,7 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
     }
   }
   if (reasons.length) return gate("routes", "FAIL", reasons, uniq(bad));
-  if (dead.length) return gate("routes", "WARNING", [`links without a page: ${uniq(dead.map((d) => d.link)).join(", ")}`]);
+  if (advisories.length) return gate("routes", "WARNING", advisories.slice(0, 10));
   return gate("routes", "PASS");
 }
 

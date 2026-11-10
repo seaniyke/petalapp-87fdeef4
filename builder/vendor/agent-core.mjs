@@ -68831,6 +68831,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -69133,6 +69134,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139276,6 +139278,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140363,6 +140366,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140527,6 +140531,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140570,6 +140575,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141269,6 +141275,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -151890,6 +151897,7 @@ __export(tool_loop_exports, {
   EXPLORATION_DRIFT_SIGNAL: () => EXPLORATION_DRIFT_SIGNAL,
   FULL_CONFIG: () => FULL_CONFIG,
   LIGHT_CONFIG: () => LIGHT_CONFIG,
+  REPEATED_REFUSAL_LIMIT: () => REPEATED_REFUSAL_LIMIT,
   TOOLS: () => TOOLS,
   actionOf: () => actionOf,
   blockedByReadiness: () => blockedByReadiness,
@@ -151910,6 +151918,7 @@ __export(tool_loop_exports, {
   runToolLoop: () => runToolLoop,
   snapshotEvidence: () => snapshotEvidence,
   stableFoundations: () => stableFoundations,
+  tolerantMatch: () => tolerantMatch,
   toolsFor: () => toolsFor
 });
 function actionOf(call, o) {
@@ -152062,6 +152071,32 @@ function countOccurrences3(hay, needle) {
     i = hay.indexOf(needle, i + needle.length);
   }
   return at;
+}
+function tolerantMatch(hay, needle) {
+  const want = needle.split("\n").map((l) => l.trim());
+  while (want.length && !want[0]) want.shift();
+  while (want.length && !want[want.length - 1]) want.pop();
+  if (!want.length) return null;
+  const lines = hay.split("\n");
+  const offsets = [];
+  let o = 0;
+  for (const l of lines) {
+    offsets.push(o);
+    o += l.length + 1;
+  }
+  let found = null;
+  for (let i = 0; i + want.length <= lines.length; i++) {
+    let ok = true;
+    for (let j = 0; j < want.length; j++) if (lines[i + j].trim() !== want[j]) {
+      ok = false;
+      break;
+    }
+    if (!ok) continue;
+    if (found) return null;
+    const last2 = i + want.length - 1;
+    found = { start: offsets[i], end: offsets[last2] + lines[last2].length };
+  }
+  return found;
 }
 function resolveImport2(from, spec, files) {
   let base;
@@ -152335,6 +152370,9 @@ Guidance: ${o.guidance}` : message;
   };
   const report = (path, errs) => errs.length ? `Written, but ${path} FAILS validation (fix it before finish):
 ${errs.slice(0, 8).map((e) => `- ${e}`).join("\n")}` : `OK: ${path} written and validated.`;
+  let lastRefusal = "";
+  let sameRefusals = 0;
+  let deadlocked = false;
   async function exec(call) {
     const name = call.function.name;
     if (!allowed.has(name)) return { output: fail(name, null, `Unknown or unavailable tool: ${name}`), isError: true };
@@ -152456,13 +152494,19 @@ Did you mean: ${near.join(", ")}` : ""}`, isError: true, miss: true };
         const id = opId("edit", path, `${search}\0${replace}`);
         if (state.completedOps.has(id)) return { output: `Already applied this exact edit to ${path}.`, isError: false };
         const at = countOccurrences3(current2, search);
-        if (at.length === 0) return { output: fail(name, path, `search text not found in ${path}. Re-read the file and copy the exact text.`), isError: true };
-        const occ = Number(a2.occurrence) || 0;
-        if (at.length > 1 && !(occ >= 1 && occ <= at.length)) {
-          return { output: fail(name, path, `search text matches ${at.length} places in ${path}. Add surrounding lines to make it unique, or pass occurrence (1-${at.length}).`), isError: true };
+        let span = null;
+        if (at.length === 0) {
+          span = tolerantMatch(current2, search);
+          if (!span) return { output: fail(name, path, `search text not found in ${path}. Re-read the file and copy the exact text.`), isError: true };
+        } else {
+          const occ = Number(a2.occurrence) || 0;
+          if (at.length > 1 && !(occ >= 1 && occ <= at.length)) {
+            return { output: fail(name, path, `search text matches ${at.length} places in ${path}. Add surrounding lines to make it unique, or pass occurrence (1-${at.length}).`), isError: true };
+          }
+          const pos = at[at.length > 1 ? occ - 1 : 0];
+          span = { start: pos, end: pos + search.length };
         }
-        const pos = at[at.length > 1 ? occ - 1 : 0];
-        const edited = repairImports(path, current2.slice(0, pos) + replace + current2.slice(pos + search.length));
+        const edited = repairImports(path, current2.slice(0, span.start) + replace + current2.slice(span.end));
         const next = edited.content;
         if (current2.length > 400 && next.trim().length < current2.trim().length * 0.5 && replace.length < search.length * 0.5) {
           return { output: fail(name, path, `Refused: this edit would remove more than half of ${path}. Use create_file to replace the file deliberately.`), isError: true };
@@ -152500,8 +152544,16 @@ ${regressions.slice(0, 6).map((f) => `- [${f.gate}] ${f.reason}`).join("\n")}`, 
       }
       case "finish": {
         const notReady = await finishGate();
-        if (notReady) return { output: `finish refused.
+        if (notReady) {
+          sameRefusals = notReady === lastRefusal ? sameRefusals + 1 : 1;
+          lastRefusal = notReady;
+          if (sameRefusals >= REPEATED_REFUSAL_LIMIT) {
+            deadlocked = true;
+            emit({ kind: "repeated_refusal", detail: notReady.slice(0, 400) });
+          }
+          return { output: `finish refused.
 ${notReady}`, isError: true };
+        }
         state.finished = true;
         return { output: "Finished.", isError: false };
       }
@@ -152522,6 +152574,10 @@ ${notReady}`, isError: true };
   const explored = /* @__PURE__ */ new Set();
   let driftSignalled = false;
   while (state.iteration < hardCeiling) {
+    if (deadlocked) {
+      state.stopReason = `same verification findings refused finish ${REPEATED_REFUSAL_LIMIT} times`;
+      return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "no_progress" };
+    }
     if (args.signal?.aborted) {
       state.stopReason = "cancelled";
       return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "cancelled" };
@@ -152742,7 +152798,7 @@ ${errs.slice(0, 15).map((e) => `- ${e}`).join("\n")}` });
   state.stopReason = "iteration budget exhausted";
   return { files: treeFiles(), state, traces, incomplete: incompleteNow(), outcome: "incomplete" };
 }
-var FULL_CONFIG, LIGHT_CONFIG, EXPLORATION_DRIFT_SIGNAL, MANAGED_CONFIG_STEMS, MANAGED_EXACT_FILES, STYLESHEET_PATHS, fn, TOOLS, READ_ONLY, normPath, IMPORT_RX, EXTS4, UNDELETABLE;
+var FULL_CONFIG, LIGHT_CONFIG, EXPLORATION_DRIFT_SIGNAL, MANAGED_CONFIG_STEMS, MANAGED_EXACT_FILES, STYLESHEET_PATHS, fn, TOOLS, READ_ONLY, normPath, REPEATED_REFUSAL_LIMIT, IMPORT_RX, EXTS4, UNDELETABLE;
 var init_tool_loop = __esm({
   "src/server/engine/tool-loop.ts"() {
     init_define_import_meta_env();
@@ -152804,6 +152860,7 @@ var init_tool_loop = __esm({
     };
     READ_ONLY = /* @__PURE__ */ new Set(["read_file", "list_files", "search"]);
     normPath = (p2) => String(p2 ?? "").trim().replace(/^\.?\/+/, "");
+    REPEATED_REFUSAL_LIMIT = 3;
     IMPORT_RX = /(?:import|export)\s+(?:[^'";]*?\s+from\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
     EXTS4 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.js"];
     UNDELETABLE = /^(src\/(main|App|router|start)\.(t|j)sx?|src\/routes\/__root\.(t|j)sx?|index\.html|src\/(index|styles)\.css)$/;
@@ -154048,10 +154105,10 @@ function dependencyGate(files) {
 function routesGate(files, requestedRoutes, opts = {}) {
   const reasons = [];
   const bad = [];
+  const advisories = [];
   if (opts.requireLiveData) {
     for (const f of sampleOnlyPages(files)) {
-      reasons.push(`${f} shows only sample data \u2014 Kimble Cloud is on, so load and save its records with db from "@/integrations/backend/client" instead of the sample-data module`);
-      bad.push(f);
+      advisories.push(`${f} shows only sample data \u2014 load and save its records with db from "@/integrations/backend/client"`);
     }
   }
   if (opts.requireShell && !frameIsComplete(files, requestedRoutes.length)) {
@@ -154059,10 +154116,7 @@ function routesGate(files, requestedRoutes, opts = {}) {
     bad.push("src/App.tsx");
   }
   if (opts.requireShell) {
-    for (const c of duplicateChromeFindings(files)) {
-      reasons.push(c.reason);
-      bad.push(c.path);
-    }
+    for (const c of duplicateChromeFindings(files)) advisories.push(c.reason);
   }
   const completeness = assessCompleteness({ requestedRoutes, files });
   if (!completeness.complete) {
@@ -154089,9 +154143,8 @@ function routesGate(files, requestedRoutes, opts = {}) {
   const routerSrc = map.routerFile && (map.router === "kit-router" || map.router === "react-router-dom") ? byPath.get(map.routerFile) ?? "" : "";
   const dead = routerSrc ? deadInternalLinks(files, routerSrc, map.routerFile) : [];
   const pages = routerSrc ? resolveRouteTree(routerSrc).filter((r) => !r.catchAll).map((r) => r.path) : [];
-  if (dead.length && opts.requireShell) {
-    for (const d of dead.slice(0, 8)) reasons.push(`${d.file} links to ${d.link}, but no page has that address (pages: ${pages.join(", ")})`);
-    bad.push(...dead.map((d) => d.file));
+  if (dead.length) {
+    for (const d of dead.slice(0, 8)) advisories.push(`${d.file} links to ${d.link}, but no page has that address (pages: ${pages.join(", ")})`);
   }
   if (opts.requireLiveData && routerSrc) {
     const open = unguardedAppRoutes(routerSrc, files);
@@ -154101,7 +154154,7 @@ function routesGate(files, requestedRoutes, opts = {}) {
     }
   }
   if (reasons.length) return gate("routes", "FAIL", reasons, uniq2(bad));
-  if (dead.length) return gate("routes", "WARNING", [`links without a page: ${uniq2(dead.map((d) => d.link)).join(", ")}`]);
+  if (advisories.length) return gate("routes", "WARNING", advisories.slice(0, 10));
   return gate("routes", "PASS");
 }
 function localImports2(from, content, paths) {
