@@ -1,43 +1,43 @@
 import { describe, it, expect } from "vitest";
 import { TurnLedger, commitTurn } from "@/server/execution";
-import { resilientFallback, placeholderPage } from "@/server/engine/resilient-fallback";
+import { resilientFallback } from "@/server/engine/resilient-fallback";
 import { TURN_LIMITS } from "@/server/execution/ledger";
 import { MAX_REPAIRED_FILES, RECOVERY_LIMITS } from "@/server/engine/recovery-policy";
 
 const main = { path: "src/main.tsx", content: 'import App from "./App";\nApp;' };
 const app = { path: "src/App.tsx", content: 'import Home from "./pages/Home";\nimport About from "./pages/About";\nexport default function App(){return null}' };
 const home = { path: "src/pages/Home.tsx", content: "export default function Home(){return null}" };
-const about = { path: "src/pages/About.tsx", content: "export default function About(){ broken" };
+const aboutGood = { path: "src/pages/About.tsx", content: "export default function About(){return null}" };
+const aboutBroken = { path: "src/pages/About.tsx", content: "export default function About(){ broken" };
 
-describe("resilient delivery", () => {
-  it("replaces one broken optional page and still commits the build", async () => {
-    const ledger = new TurnLedger();
+const verifySource = async (tree: Array<{ path: string; content: string }>) => {
+  const bad = tree.find((f) => f.content.includes("broken"));
+  return bad
+    ? { status: "FAILED" as const, gates: [], failedGate: "syntax", reason: "parse error", repairTargets: [bad.path] }
+    : { status: "READY" as const, gates: [], failedGate: null, reason: null, repairTargets: [] };
+};
+
+describe("resilient delivery (prior verified content only)", () => {
+  it("a broken edit to an existing page returns to its previous working version and the rest lands", async () => {
+    const baseline = [main, app, home, aboutGood];
+    const newHome = { ...home, content: "export default function Home(){return 1}" };
     const r = await commitTurn({
-      baseline: [main],
-      proposed: [main, app, home, about],
-      ledger,
-      isSystemPath: () => false,
+      baseline,
+      proposed: [main, app, newHome, aboutBroken],
+      ledger: new TurnLedger(),
+      isSystemPath: () => true,
       protectionReason: () => null,
       checks: [],
       cancelled: () => false,
-      verifySource: async (tree) => {
-        const bad = tree.find((f) => f.path === about.path && f.content.includes("broken"));
-        return bad
-          ? { status: "FAILED", gates: [], failedGate: "syntax", reason: "parse error", repairTargets: [about.path] }
-          : { status: "READY", gates: [], failedGate: null, reason: null, repairTargets: [] };
-      },
-      fallbackFor: (p, tree) => resilientFallback(p, tree, [main]),
+      verifySource,
+      fallbackFor: (p, tree) => resilientFallback(p, tree, baseline),
     });
     expect(r.outcome.status).toBe("committed");
-    expect(r.substituted.map((s) => s.path)).toEqual([about.path]);
+    expect(r.substituted.map((s) => s.path)).toEqual([aboutGood.path]);
   });
 
-  it("never substitutes the app shell", () => {
-    expect(resilientFallback(app.path, [main, app, home, about], [main])).toBeNull();
-  });
-
-  it("placeholder is a default-export page with the page title", () => {
-    expect(placeholderPage("src/pages/TermsAndPrivacy.tsx")).toContain("Terms And Privacy");
+  it("never invents a stand-in for a page that did not exist before", () => {
+    expect(resilientFallback(aboutBroken.path, [main, app, home, aboutBroken], [main])).toBeNull();
   });
 
   it("limits sit far above a large multi-page build", () => {

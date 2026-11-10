@@ -68831,7 +68831,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -139277,6 +139276,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140364,6 +140364,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140528,6 +140529,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140571,6 +140573,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -140792,6 +140795,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -141269,6 +141273,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -142427,6 +142432,49 @@ var init_router_provider_server = __esm({
   }
 });
 
+// src/server/turn-lease.ts
+var turn_lease_exports = {};
+__export(turn_lease_exports, {
+  HEARTBEAT_INTERVAL_MS: () => HEARTBEAT_INTERVAL_MS,
+  startHeartbeat: () => startHeartbeat
+});
+function startHeartbeat(args) {
+  const si = args.setIntervalFn ?? setInterval;
+  const ci = args.clearIntervalFn ?? clearInterval;
+  let stopped = false;
+  let timer = null;
+  const stop = () => {
+    stopped = true;
+    if (timer) ci(timer);
+    timer = null;
+  };
+  const tick = async () => {
+    if (stopped) return "ok";
+    let state = "ok";
+    try {
+      state = await args.beat(args.turnId, args.lease);
+    } catch {
+      state = "ok";
+    }
+    if (state !== "ok" && !stopped) {
+      stop();
+      args.onLost(state);
+    }
+    return state;
+  };
+  void tick();
+  timer = si(() => void tick(), args.intervalMs ?? HEARTBEAT_INTERVAL_MS);
+  timer.unref?.();
+  return { stop, tick };
+}
+var HEARTBEAT_INTERVAL_MS;
+var init_turn_lease = __esm({
+  "src/server/turn-lease.ts"() {
+    init_define_import_meta_env();
+    HEARTBEAT_INTERVAL_MS = 2e4;
+  }
+});
+
 // src/server/engine/structural-deps.ts
 var structural_deps_exports = {};
 __export(structural_deps_exports, {
@@ -142520,49 +142568,6 @@ var init_structural_deps = __esm({
     init_define_import_meta_env();
     EXTS3 = ["", ".tsx", ".ts", ".jsx", ".js", "/index.tsx", "/index.ts", "/index.jsx", "/index.js"];
     IMPORT_RE6 = /(?:import|export)\s[^'"]*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|import\s*["']([^"']+)["']/g;
-  }
-});
-
-// src/server/turn-lease.ts
-var turn_lease_exports = {};
-__export(turn_lease_exports, {
-  HEARTBEAT_INTERVAL_MS: () => HEARTBEAT_INTERVAL_MS,
-  startHeartbeat: () => startHeartbeat
-});
-function startHeartbeat(args) {
-  const si = args.setIntervalFn ?? setInterval;
-  const ci = args.clearIntervalFn ?? clearInterval;
-  let stopped = false;
-  let timer = null;
-  const stop = () => {
-    stopped = true;
-    if (timer) ci(timer);
-    timer = null;
-  };
-  const tick = async () => {
-    if (stopped) return "ok";
-    let state = "ok";
-    try {
-      state = await args.beat(args.turnId, args.lease);
-    } catch {
-      state = "ok";
-    }
-    if (state !== "ok" && !stopped) {
-      stop();
-      args.onLost(state);
-    }
-    return state;
-  };
-  void tick();
-  timer = si(() => void tick(), args.intervalMs ?? HEARTBEAT_INTERVAL_MS);
-  timer.unref?.();
-  return { stop, tick };
-}
-var HEARTBEAT_INTERVAL_MS;
-var init_turn_lease = __esm({
-  "src/server/turn-lease.ts"() {
-    init_define_import_meta_env();
-    HEARTBEAT_INTERVAL_MS = 2e4;
   }
 });
 
@@ -143120,6 +143125,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144324,6 +144330,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145449,6 +145456,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -151935,6 +151943,9 @@ function buildProviders(args) {
     }
     add(name, specs[0]);
   }
+  if (args.usesLucide) {
+    for (const n of LUCIDE_NAMES) if (!args.kitOwners?.has(n)) add(n, "lucide-react");
+  }
   return out;
 }
 function detectRouterModule2(files) {
@@ -152005,7 +152016,7 @@ function addMissingImports(content, undefinedNames2, providers) {
   }
   return { content: next, added };
 }
-var REACT_NAMES, ROUTER_NAMES;
+var REACT_NAMES, ROUTER_NAMES, LUCIDE_NAMES;
 var init_missing_import_repair = __esm({
   "src/server/engine/missing-import-repair.ts"() {
     "use strict";
@@ -152038,6 +152049,72 @@ var init_missing_import_repair = __esm({
       "useParams",
       "useLocation",
       "useSearchParams"
+    ];
+    LUCIDE_NAMES = [
+      "ArrowRight",
+      "ArrowLeft",
+      "ArrowUpRight",
+      "Check",
+      "CheckCircle",
+      "CheckCircle2",
+      "ChevronDown",
+      "ChevronUp",
+      "ChevronLeft",
+      "ChevronRight",
+      "Menu",
+      "X",
+      "Search",
+      "Plus",
+      "Minus",
+      "Star",
+      "Heart",
+      "Mail",
+      "Phone",
+      "MapPin",
+      "Clock",
+      "Calendar",
+      "User",
+      "Users",
+      "Settings",
+      "Home",
+      "LogOut",
+      "LogIn",
+      "Trash2",
+      "Pencil",
+      "Edit",
+      "Eye",
+      "EyeOff",
+      "Lock",
+      "Shield",
+      "ShieldCheck",
+      "Sparkles",
+      "Loader2",
+      "Info",
+      "AlertCircle",
+      "AlertTriangle",
+      "ExternalLink",
+      "Download",
+      "Upload",
+      "Filter",
+      "Bell",
+      "ShoppingCart",
+      "ShoppingBag",
+      "CreditCard",
+      "Instagram",
+      "Facebook",
+      "Twitter",
+      "Linkedin",
+      "Youtube",
+      "Globe",
+      "Quote",
+      "Award",
+      "Zap",
+      "TrendingUp",
+      "BarChart3",
+      "FileText",
+      "Image",
+      "Send",
+      "MessageCircle"
     ];
   }
 });
@@ -152773,7 +152850,8 @@ Petal corrected starter-kit import(s): ${r.repairs.map((x) => `${x.symbol} is ex
     try {
       const view = new Map([...ref, ...tree]);
       view.set(path, next);
-      const providers = buildProviders({ routerModule: detectRouterModule2(view), kitOwners: kitIndex?.owners });
+      const usesLucide = [...view].some(([p2, c]) => p2 === "package.json" ? c.includes('"lucide-react"') : /from\s*["']lucide-react["']/.test(c));
+      const providers = buildProviders({ routerModule: detectRouterModule2(view), kitOwners: kitIndex?.owners, usesLucide });
       const candidates = importCandidates(next, providers);
       if (candidates.length) {
         const check = checkUndefinedIdentifiers([...view].map(([p2, c]) => ({ path: p2, content: c })), [path]);
@@ -170965,7 +171043,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -174955,37 +175032,11 @@ var TurnCostMeter = class {
 
 // src/server/engine/resilient-fallback.ts
 init_define_import_meta_env();
-init_structural_deps();
-var PAGE_RE = /^src\/pages\/(?:[\w-]+\/)*([\w-]+)\.tsx$/;
-function titleFor(path) {
-  const m = PAGE_RE.exec(path);
-  const base = (m?.[1] ?? "Page").replace(/[-_]+/g, " ").replace(/([a-z])([A-Z])/g, "$1 $2");
-  return base.replace(/\b\w/g, (c) => c.toUpperCase()).trim() || "Page";
-}
-function placeholderPage(path) {
-  const title = titleFor(path);
-  const name = title.replace(/[^A-Za-z0-9]/g, "") || "Page";
-  const comp = /^[A-Za-z]/.test(name) ? `${name}Page` : `Page${name}`;
-  return `export default function ${comp}() {
-  return (
-    <main className="mx-auto max-w-3xl px-6 py-24 text-center">
-      <h1 className="text-4xl font-semibold tracking-tight">${title.replace(/[{}<>`]/g, "")}</h1>
-      <p className="mt-4 text-muted-foreground">This page is being finished. Please check back shortly.</p>
-    </main>
-  );
-}
-`;
-}
 function resilientFallback(path, tree, baseline) {
   const prior = baseline.find((f) => f.path === path);
   const current2 = tree.find((f) => f.path === path);
-  if (!current2) return null;
-  if (structurallyCriticalPaths(tree, [path]).has(path)) {
-    return prior && prior.content !== current2.content ? prior.content : null;
-  }
-  if (prior && prior.content !== current2.content) return prior.content;
-  if (PAGE_RE.test(path) && /export\s+default\b/.test(current2.content)) return placeholderPage(path);
-  return null;
+  if (!current2 || !prior) return null;
+  return prior.content !== current2.content ? prior.content : null;
 }
 
 // src/server/repair-ledger.server.ts

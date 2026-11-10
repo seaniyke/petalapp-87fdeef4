@@ -45,11 +45,11 @@ describe("product surface", () => {
 
 describe("page-composition skill", () => {
   it("unchanged for existing subtypes", () => {
-    expect(conditionalSkills("marketing")).toEqual(["page-composition"]);
+    expect(conditionalSkills("marketing")).toEqual(["page-composition", "section-architectures", "motion"]);
     expect(conditionalSkills("app")).toEqual([]);
   });
   it("loaded for an app whose product also has a public site", () => {
-    expect(conditionalSkills("app", "public+app")).toEqual(["page-composition"]);
+    expect(conditionalSkills("app", "public+app")).toEqual(["page-composition", "section-architectures", "motion"]);
     expect(conditionalSkills("app", "app")).toEqual([]);
   });
 });

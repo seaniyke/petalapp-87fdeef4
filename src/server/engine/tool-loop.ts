@@ -781,7 +781,8 @@ export async function runToolLoop(args: ToolLoopArgs): Promise<ToolLoopResult> {
     try {
       const view = new Map<string, string>([...ref, ...tree]);
       view.set(path, next);
-      const providers = buildProviders({ routerModule: detectRouterModule(view), kitOwners: kitIndex?.owners });
+      const usesLucide = [...view].some(([p, c]) => (p === "package.json" ? c.includes('"lucide-react"') : /from\s*["']lucide-react["']/.test(c)));
+      const providers = buildProviders({ routerModule: detectRouterModule(view), kitOwners: kitIndex?.owners, usesLucide });
       const candidates = importCandidates(next, providers);
       if (candidates.length) {
         const check = checkUndefinedIdentifiers([...view].map(([p, c]) => ({ path: p, content: c })), [path]);
