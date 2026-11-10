@@ -145,6 +145,15 @@ async function handle(request: Request): Promise<Response> {
 
     try {
       if (request.method === "GET") {
+        const { parseRecordQuery, QueryError } = await import("@/server/shared-query");
+        let query;
+        try {
+          query = parseRecordQuery(url.searchParams);
+        } catch (e) {
+          if (e instanceof QueryError) return json({ error: e.message }, 400);
+          throw e;
+        }
+        const withTotal = url.searchParams.get("count") === "1";
         const rows = await listRecords({
           projectId,
           collection,
@@ -152,8 +161,11 @@ async function handle(request: Request): Promise<Response> {
           scope,
           limit: Number(url.searchParams.get("limit") ?? 50),
           offset: Number(url.searchParams.get("offset") ?? 0),
+          filters: query.filters,
+          sort: query.sort,
+          withTotal,
         });
-        return json({ records: rows });
+        return json(withTotal ? { records: rows, total: rows.total } : { records: rows });
       }
       if (request.method === "POST" && recordId === "_seed") {
         const body = (await request.json().catch(() => null)) as { rows?: unknown } | null;

@@ -19,6 +19,7 @@
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { storeFor } from "@/server/project-store.server";
+import { columnFor, likePattern, sortColumn, type Filter, type Sort } from "@/server/shared-query";
 
 /** Hard limits so one free app can't eat the shared instance. */
 export const SHARED_LIMITS = {
@@ -287,16 +288,26 @@ export async function listRecords(opts: {
   scope?: RecordScope;
   limit?: number;
   offset?: number;
-}): Promise<RecordRow[]> {
+  /** Validated filters over `data` (see `shared-query.ts`). */
+  filters?: Filter[];
+  /** Validated sort; default newest first. */
+  sort?: Sort | null;
+  /** Also return how many records match (for "page 2 of 7"). */
+  withTotal?: boolean;
+}): Promise<RecordRow[] & { total?: number }> {
   const store = await storeFor(opts.projectId);
-  const limit = Math.min(opts.limit ?? 50, SHARED_LIMITS.maxPageSize);
+  const limit = Math.max(1, Math.min(Number.isFinite(opts.limit) ? (opts.limit as number) : 50, SHARED_LIMITS.maxPageSize));
+  const offset = Math.max(0, Number.isFinite(opts.offset) ? Math.floor(opts.offset as number) : 0);
   let q = store.client
     .from(store.records)
-    .select("id, collection, owner_key, data, created_at, updated_at")
+    .select("id, collection, owner_key, data, created_at, updated_at", opts.withTotal ? { count: "exact" } : undefined)
     .eq("project_id", opts.projectId)
-    .eq("collection", opts.collection)
-    .order("created_at", { ascending: false })
-    .range(opts.offset ?? 0, (opts.offset ?? 0) + limit - 1);
+    .eq("collection", opts.collection);
+  for (const f of opts.filters ?? []) q = applyFilter(q, f);
+  q = opts.sort
+    ? q.order(sortColumn(opts.sort.field), { ascending: opts.sort.ascending, nullsFirst: false }).order("created_at", { ascending: false })
+    : q.order("created_at", { ascending: false });
+  q = q.range(offset, offset + limit - 1);
 
   const scope: RecordScope = opts.scope ?? "shared";
   if (scope === "own") {
@@ -308,9 +319,28 @@ export async function listRecords(opts: {
       ? q.or(`owner_key.is.null,owner_key.eq.${opts.ownerKey}`)
       : q.is("owner_key", null);
   }
-  const { data, error } = await q;
+  const { data, error, count } = await q;
   if (error) throw new Error(error.message);
-  return (data ?? []).map(shape);
+  const rows = (data ?? []).map(shape) as RecordRow[] & { total?: number };
+  if (opts.withTotal) rows.total = count ?? rows.length;
+  return rows;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyFilter(q: any, f: Filter): any {
+  const col = columnFor(f.field, f.value);
+  switch (f.op) {
+    case "in":
+      return q.in(col, f.value);
+    case "contains":
+      return q.ilike(col, likePattern(String(f.value)));
+    case "eq":
+      return f.value === null ? q.is(col, null) : q.eq(col, f.value);
+    case "ne":
+      return f.value === null ? q.not(col, "is", null) : q.neq(col, f.value);
+    default:
+      return q[f.op](col, f.value);
+  }
 }
 
 export async function createRecord(opts: {
