@@ -189,7 +189,7 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
           } catch {
             /* keep the original verdict */
           }
-          if (!substituted.length) for (const p of swaps.keys()) tx.stage(p, next.get(p) ?? "", "undo fallback", { system: true });
+          if (!substituted.length) for (const p of swaps.keys()) tx.stage(p, next.get(p) ?? base.get(p) ?? "", "undo fallback", { system: true });
         }
       }
       for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);

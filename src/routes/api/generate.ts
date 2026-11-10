@@ -188,6 +188,7 @@ import { loadLabsFlagsForRequest } from "@/server/labs-flags.server";
 import { ensureRenderableShell } from "@/server/renderable-shell.server";
 import { runAllRepairs } from "@/server/repair-all.server";
 import { TurnCostMeter } from "@/server/turn-cost-ceiling.server";
+import { resilientFallback } from "@/server/engine/resilient-fallback";
 import { entriesFromRepairNotes, recordRepairs, signatureOf } from "@/server/repair-ledger.server";
 import {
   analyzeEditScope,
@@ -7317,7 +7318,12 @@ async function handleGenerateRequestCore(
               requireLiveData: isInitial && Boolean(sharedBackend),
             });
           },
+          fallbackFor: (path, tree) => resilientFallback(path, tree, turnBaselineFiles),
         });
+        if (txResult.substituted.length) {
+          turnStrategy.resilientFallback = txResult.substituted;
+          console.warn(`[resilient-fallback] substituted ${txResult.substituted.map((s) => s.path).join(", ")}`);
+        }
         const txCommitted = txResult.outcome.status === "committed";
         // Agent said finished (readiness passed) but commit verification did
         // not: an ARCHITECTURAL error (both read the same authority), never
