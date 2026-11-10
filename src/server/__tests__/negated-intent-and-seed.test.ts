@@ -56,6 +56,10 @@ describe("a bulleted page list names one page per bullet", () => {
   it("sections described on a page never become pages", () => {
     expect(extractRequestedPages(TIDEWATER)).toEqual(["home", "coffees", "cafe", "about", "contact"]);
   });
+  it("'My recipes' stays its own page next to 'Recipes'", () => {
+    const t = "Pages:\n- Home: hero and a call to join.\n- Recipes: all recipes.\n- My recipes: your own recipes.";
+    expect(extractRequestedPages(t)).toEqual(["home", "recipes", "my recipes"]);
+  });
 });
 
 describe("starter rows are written all-or-nothing", () => {

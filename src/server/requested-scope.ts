@@ -23,14 +23,17 @@ function slugify(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-function cleanName(raw: string): string | null {
+/** A page LABEL keeps "my"/"our"/"your": "My recipes" is not "Recipes". */
+const POSSESSIVE = new Set(["my", "our", "your"]);
+
+function cleanName(raw: string, opts?: { label?: boolean }): string | null {
   const words = raw
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[“”"'`()]/g, " ")
     .split(/\s+/)
-    .filter((w) => w && !STOP.has(w));
+    .filter((w) => w && (!STOP.has(w) || (opts?.label && POSSESSIVE.has(w))));
   if (words.length === 0 || words.length > 3) return null;
   const n = words.join(" ");
   if (!/^[a-z][a-z0-9 &-]*$/.test(n)) return null;
@@ -65,7 +68,7 @@ export function extractRequestedPages(prompt: string): string[] {
     if (listed.length) consumed.add(i);
   }
   for (const label of listed) {
-    const n = cleanName(label);
+    const n = cleanName(label, { label: true });
     if (n && !found.includes(n)) found.push(n);
   }
   const raw = lines
