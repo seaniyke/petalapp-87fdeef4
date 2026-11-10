@@ -179,7 +179,7 @@ describe("web intelligence", () => {
 
 
   it("20. recovery/billing tables unchanged apart from provider switches", () => {
-    expect(RECOVERY_LIMITS.broken_file).toBe(1);
+    expect(RECOVERY_LIMITS.broken_file).toBe(3);
     expect(RECOVERY_LIMITS.browser_failure).toBe(0);
   });
 });

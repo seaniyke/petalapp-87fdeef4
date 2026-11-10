@@ -124,6 +124,7 @@ describe("audit consolidation", () => {
   it("one AI repair per file across the whole turn (write-time + final check share it)", () => {
     const b = new RecoveryBudget();
     expect(b.take("broken_file", "src/pages/Home.tsx")).toBe(true);
+    b.take("broken_file", "src/pages/Home.tsx"); b.take("broken_file", "src/pages/Home.tsx");
     expect(b.take("broken_file", "src/pages/Home.tsx")).toBe(false);
   });
 

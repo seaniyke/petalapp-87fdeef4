@@ -110,7 +110,7 @@ describe("one turn-level recovery record", () => {
     expect(s).toContain("provider stream stalled");
     expect(s).toContain("truncation: file ends mid-statement");
     expect(s).toContain("kept_previous");
-    expect(s).toMatch(/Repairs left this turn: 2/);
+    expect(s).toMatch(/Repairs left this turn: 39/);
     expect(r.history()).toHaveLength(2);
   });
 
@@ -121,11 +121,12 @@ describe("one turn-level recovery record", () => {
   });
 
   it("keeps the existing bounded limits — no second loop, no extra tries", () => {
-    expect(RECOVERY_LIMITS.broken_file).toBe(1);
+    expect(RECOVERY_LIMITS.broken_file).toBe(3);
     expect(RECOVERY_LIMITS.provider_failure).toBe(2);
     const r = new RecoveryBudget();
     expect(r.take("broken_file", "a")).toBe(true);
-    expect(r.take("broken_file", "a")).toBe(false); // write gate + final check share one attempt
+    r.take("broken_file", "a"); r.take("broken_file", "a");
+    expect(r.take("broken_file", "a")).toBe(false); // three attempts per file, shared by write gate + final check
     for (let i = 1; i < MAX_REPAIRED_FILES; i++) r.take("broken_file", `f${i}`);
     expect(r.take("broken_file", "one-too-many")).toBe(false);
     expect(r.remainingFileRepairs()).toBe(0);

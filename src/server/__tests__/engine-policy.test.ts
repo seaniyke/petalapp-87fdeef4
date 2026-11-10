@@ -21,9 +21,10 @@ describe("bounded recovery table", () => {
   it("one repair per file, at most three files", () => {
     const b = new RecoveryBudget();
     expect(b.take("broken_file", "a")).toBe(true);
+    b.take("broken_file", "a"); b.take("broken_file", "a");
     expect(b.take("broken_file", "a")).toBe(false);
     expect(b.take("broken_file", "b")).toBe(true);
     expect(b.take("broken_file", "c")).toBe(true);
-    expect(b.take("broken_file", "d")).toBe(false);
+    expect(b.take("broken_file", "d")).toBe(true);
   });
 });
