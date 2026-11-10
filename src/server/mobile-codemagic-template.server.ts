@@ -76,7 +76,6 @@ workflows:
     publishing:
       scripts:
         - name: Notify Petal
-          when: always
           script: |
             STATUS="succeeded"
             if [ "$CM_BUILD_STEP_STATUS" != "success" ] && [ "$CM_BUILD_STEP_STATUS" != "" ]; then STATUS="failed"; fi
@@ -155,7 +154,6 @@ workflows:
     publishing:
       scripts:
         - name: Notify Petal
-          when: always
           script: |
             STATUS="succeeded"
             if [ "$CM_BUILD_STEP_STATUS" != "success" ] && [ "$CM_BUILD_STEP_STATUS" != "" ]; then STATUS="failed"; fi
