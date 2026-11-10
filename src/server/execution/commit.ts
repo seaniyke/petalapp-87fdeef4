@@ -41,7 +41,19 @@ export interface CommitTurnArgs {
    * else (IN_PROGRESS = source passed, build pending) permits the commit.
    */
   verifySource?: (proposedTree: TxFile[], changedPaths: string[]) => Promise<SourceVerification>;
+  /**
+   * Resilient delivery: replacement content for a file that failed source
+   * verification (prior verified content or a clean placeholder page), or
+   * null when the file must not be substituted (entry, shell, shared module).
+   * When every failing file has a replacement, they are swapped in and the
+   * tree is verified once more, so one broken optional page never discards
+   * the whole build.
+   */
+  fallbackFor?: (path: string, tree: TxFile[]) => string | null;
 }
+
+/** Files that were replaced by their fallback during commit. */
+export type SubstitutedFile = { path: string; reason: string };
 
 export type { SourceVerification } from "@/server/verification/readiness";
 import type { SourceVerification } from "@/server/verification/readiness";
@@ -53,6 +65,8 @@ export interface CommitTurnResult {
   noOps: string[];
   /** Source verification of the proposed tree (null when not run). */
   verification: SourceVerification | null;
+  /** Files swapped for their fallback so the rest of the build could land. */
+  substituted: SubstitutedFile[];
 }
 
 export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult> {
@@ -65,6 +79,7 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
   }
   const rejections: CommitRejection[] = [];
   const noOps: string[] = [];
+  const substituted: SubstitutedFile[] = [];
 
   const refusalReason = (): CommitRejection["reason"] => {
     const last = args.ledger.summary().refusals.at(-1) ?? "";
@@ -152,6 +167,31 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
           repairTargets: [],
         };
       }
+      // Resilient delivery: substitute failing non-critical files once.
+      if (verification.status === "FAILED" && args.fallbackFor && verification.repairTargets.length) {
+        const swaps = new Map<string, string>();
+        for (const p of verification.repairTargets) {
+          const r = args.fallbackFor(p, tree);
+          if (r === null) { swaps.clear(); break; }
+          swaps.set(p, r);
+        }
+        if (swaps.size) {
+          const reason = verification.reason ?? `${verification.failedGate} failed`;
+          for (const [p, c] of swaps) tx.stage(p, c, "resilient fallback", { system: true });
+          const tree2 = tx.proposedTree();
+          const changed2 = tree2.filter((f) => base.get(f.path) !== f.content).map((f) => f.path);
+          try {
+            const v2 = await args.verifySource(tree2, changed2);
+            if (v2.status !== "FAILED") {
+              verification = v2;
+              for (const p of swaps.keys()) substituted.push({ path: p, reason });
+            }
+          } catch {
+            /* keep the original verdict */
+          }
+          if (!substituted.length) for (const p of swaps.keys()) tx.stage(p, next.get(p) ?? "", "undo fallback", { system: true });
+        }
+      }
       for (const g of verification.gates) tx.recordCheck(`source:${g.gate}`, g.verdict, g.reasons[0]);
       // ONE readiness verdict (shared with the execution loop's finish).
       const ready = readinessOf(verification);
@@ -196,5 +236,5 @@ export async function commitTurn(args: CommitTurnArgs): Promise<CommitTurnResult
       next: outcome.reason === "cancelled" ? "stop" : "fix the failing check and retry",
     });
   }
-  return { outcome, rejections, noOps, verification };
+  return { outcome, rejections, noOps, verification, substituted };
 }
