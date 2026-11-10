@@ -1267,6 +1267,68 @@ export type Database = {
         }
         Relationships: []
       }
+      developer_api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          owner_label: string | null
+          revoked_at: string | null
+          scopes: string[]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          owner_label?: string | null
+          revoked_at?: string | null
+          scopes?: string[]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          owner_label?: string | null
+          revoked_at?: string | null
+          scopes?: string[]
+        }
+        Relationships: []
+      }
+      developer_key_projects: {
+        Row: {
+          created_at: string
+          key_id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          key_id: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          key_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developer_key_projects_key_id_fkey"
+            columns: ["key_id"]
+            isOneToOne: false
+            referencedRelation: "developer_api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domain_renewals: {
         Row: {
           charged_cents: number | null
