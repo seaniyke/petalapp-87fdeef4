@@ -20,6 +20,19 @@ let db: {
 };
 const store: Rec[] = [];
 const listUrls: string[] = [];
+const authCalls: { url: string; body: Record<string, unknown> | null }[] = [];
+const storage = new Map<string, string>();
+const session = new Map<string, string>();
+let replaced = "";
+let assigned = "";
+let authApi: {
+  requestPasswordReset: (e: string, r?: string) => Promise<void>;
+  updatePassword: (p: string) => Promise<unknown>;
+  isRecovery: () => boolean;
+  signInWithGoogle: (r?: string) => void;
+  takeAuthError: () => string | null;
+};
+let getToken: () => string | null;
 
 beforeAll(async () => {
   const client = sharedBackendKit({
@@ -35,6 +48,14 @@ beforeAll(async () => {
   writeFileSync(file, js);
   vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
     const method = init?.method ?? "GET";
+    if (url.includes("/auth/")) {
+      authCalls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : null });
+      if (url.endsWith("/auth/reset-confirm")) {
+        return new Response(JSON.stringify({ token: "new-session", user: { id: "u1", email: "a@b.c", name: null } }), { status: 200 });
+      }
+      if (url.endsWith("/auth/providers")) return new Response(JSON.stringify({ google: false, passwordReset: true }), { status: 200 });
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
     if (method === "POST" && url.includes("/_seed")) {
       const rows = JSON.parse(String(init!.body)).rows as Record<string, unknown>[];
       for (const data of rows) {
@@ -61,7 +82,21 @@ beforeAll(async () => {
     const total = new URL(url).searchParams.get("count") === "1" ? { total: 42 } : {};
     return new Response(JSON.stringify({ records: limit ? store.slice(0, limit) : store, ...total }), { status: 200 });
   });
-  db = (await import(/* @vite-ignore */ pathToFileURL(file).href)).db;
+  const mkStore = (m: Map<string, string>) => ({
+    getItem: (k: string) => m.get(k) ?? null,
+    setItem: (k: string, v: string) => void m.set(k, v),
+    removeItem: (k: string) => void m.delete(k),
+  });
+  vi.stubGlobal("window", {
+    location: { hash: "#petal_reset=reset-abc", pathname: "/reset-password", search: "", origin: "https://hearth.buildwithpetal.com", assign: (u: string) => (assigned = u) },
+    history: { state: null, replaceState: (_s: unknown, _t: string, u: string) => (replaced = u) },
+    localStorage: mkStore(storage),
+    sessionStorage: mkStore(session),
+  });
+  const mod = await import(/* @vite-ignore */ pathToFileURL(file).href);
+  db = mod.db;
+  authApi = mod.auth;
+  getToken = mod.getToken;
 });
 
 describe("generated data helper result shapes", () => {
@@ -131,5 +166,39 @@ describe("server-side filtering from the site", () => {
     const q = new URL(listUrls.at(-1)!).searchParams;
     expect(q.get("where")).toBeNull();
     expect(q.get("sort")).toBeNull();
+  });
+});
+
+describe("password reset from the site", () => {
+  it("keeps the reset secret from the email link and clears it from the address bar", () => {
+    expect(authApi.isRecovery()).toBe(true);
+    expect(replaced).toBe("/reset-password");
+  });
+  it("asks for the reset email with a link back to this site's /reset-password", async () => {
+    await authApi.requestPasswordReset("a@b.c");
+    const call = authCalls.find((c) => c.url.endsWith("/auth/reset-request"))!;
+    expect(call.body).toEqual({ email: "a@b.c", redirectTo: "https://hearth.buildwithpetal.com/reset-password" });
+  });
+  it("saving the new password uses the link once and signs the visitor in", async () => {
+    await authApi.updatePassword("new-password-1");
+    const call = authCalls.find((c) => c.url.endsWith("/auth/reset-confirm"))!;
+    expect(call.body).toEqual({ token: "reset-abc", password: "new-password-1" });
+    expect(getToken()).toBe("new-session");
+    expect(authApi.isRecovery()).toBe(false);
+  });
+  it("a later password change goes through the signed-in route", async () => {
+    await authApi.updatePassword("another-pass");
+    expect(authCalls.at(-1)!.url.endsWith("/auth/password")).toBe(true);
+  });
+});
+
+describe("Google sign-in from the site", () => {
+  it("opens Petal's Google start with this site, its key and the return page", () => {
+    authApi.signInWithGoogle("/dashboard");
+    const u = new URL(assigned);
+    expect(u.origin + u.pathname).toBe("https://petalapp.lovable.app/api/public/shared-oauth/google/start");
+    expect(u.searchParams.get("project")).toBe("p1");
+    expect(u.searchParams.get("key")).toBe("key-12345678");
+    expect(u.searchParams.get("redirect")).toBe("https://hearth.buildwithpetal.com/dashboard");
   });
 });

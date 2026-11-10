@@ -270,7 +270,10 @@ import { useAuth } from "@/integrations/backend/auth";
  * behind your auth gate).
  */
 export default function ResetPassword() {
-  const { updatePassword, session, loading: authLoading } = useAuth();
+  const authCtx = useAuth();
+  const { updatePassword, session, loading: authLoading } = authCtx;
+  // Starter backend: the link sets \`recovery\` instead of a session.
+  const recovery = Boolean((authCtx as { recovery?: boolean }).recovery);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -278,10 +281,10 @@ export default function ResetPassword() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && !session) {
+    if (!authLoading && !session && !recovery) {
       setErrorMsg("This reset link has expired. Request a new one.");
     }
-  }, [authLoading, session]);
+  }, [authLoading, session, recovery]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

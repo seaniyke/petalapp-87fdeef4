@@ -109,6 +109,8 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as ApiPublicSharedOauthGoogleCallbackRouteImport } from './routes/api/public/shared-oauth/google/callback'
+import { Route as ApiPublicSharedOauthGoogleStartRouteImport } from './routes/api/public/shared-oauth/google/start'
 import { Route as ApiPublicV1DomainsSearchRouteImport } from './routes/api/public/v1/domains.search'
 import { Route as ApiPublicV1TurnsIdRouteImport } from './routes/api/public/v1/turns/$id'
 import { Route as ApiPublicV1ProjectsIdBackendRouteImport } from './routes/api/public/v1/projects/$id.backend'
@@ -655,6 +657,18 @@ const LovableEmailTransactionalSendRoute =
     path: '/lovable/email/transactional/send',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicSharedOauthGoogleCallbackRoute =
+  ApiPublicSharedOauthGoogleCallbackRouteImport.update({
+    id: '/api/public/shared-oauth/google/callback',
+    path: '/api/public/shared-oauth/google/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicSharedOauthGoogleStartRoute =
+  ApiPublicSharedOauthGoogleStartRouteImport.update({
+    id: '/api/public/shared-oauth/google/start',
+    path: '/api/public/shared-oauth/google/start',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicV1DomainsSearchRoute =
   ApiPublicV1DomainsSearchRouteImport.update({
     id: '/api/public/v1/domains/search',
@@ -870,6 +884,8 @@ export interface FileRoutesByFullPath {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/shared-oauth/google/callback': typeof ApiPublicSharedOauthGoogleCallbackRoute
+  '/api/public/shared-oauth/google/start': typeof ApiPublicSharedOauthGoogleStartRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
@@ -991,6 +1007,8 @@ export interface FileRoutesByTo {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/shared-oauth/google/callback': typeof ApiPublicSharedOauthGoogleCallbackRoute
+  '/api/public/shared-oauth/google/start': typeof ApiPublicSharedOauthGoogleStartRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
@@ -1113,6 +1131,8 @@ export interface FileRoutesById {
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/api/public/shared-oauth/google/callback': typeof ApiPublicSharedOauthGoogleCallbackRoute
+  '/api/public/shared-oauth/google/start': typeof ApiPublicSharedOauthGoogleStartRoute
   '/api/public/v1/domains/search': typeof ApiPublicV1DomainsSearchRoute
   '/api/public/v1/turns/$id': typeof ApiPublicV1TurnsIdRouteWithChildren
   '/api/public/v1/projects/$id/backend': typeof ApiPublicV1ProjectsIdBackendRoute
@@ -1236,6 +1256,8 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/shared-oauth/google/callback'
+    | '/api/public/shared-oauth/google/start'
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/backend'
@@ -1357,6 +1379,8 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/shared-oauth/google/callback'
+    | '/api/public/shared-oauth/google/start'
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/backend'
@@ -1478,6 +1502,8 @@ export interface FileRouteTypes {
     | '/lovable/email/queue/process'
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
+    | '/api/public/shared-oauth/google/callback'
+    | '/api/public/shared-oauth/google/start'
     | '/api/public/v1/domains/search'
     | '/api/public/v1/turns/$id'
     | '/api/public/v1/projects/$id/backend'
@@ -1598,6 +1624,8 @@ export interface RootRouteChildren {
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
+  ApiPublicSharedOauthGoogleCallbackRoute: typeof ApiPublicSharedOauthGoogleCallbackRoute
+  ApiPublicSharedOauthGoogleStartRoute: typeof ApiPublicSharedOauthGoogleStartRoute
   ApiPublicV1DomainsSearchRoute: typeof ApiPublicV1DomainsSearchRoute
   ApiPublicV1TurnsIdRoute: typeof ApiPublicV1TurnsIdRouteWithChildren
 }
@@ -2304,6 +2332,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/shared-oauth/google/callback': {
+      id: '/api/public/shared-oauth/google/callback'
+      path: '/api/public/shared-oauth/google/callback'
+      fullPath: '/api/public/shared-oauth/google/callback'
+      preLoaderRoute: typeof ApiPublicSharedOauthGoogleCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/shared-oauth/google/start': {
+      id: '/api/public/shared-oauth/google/start'
+      path: '/api/public/shared-oauth/google/start'
+      fullPath: '/api/public/shared-oauth/google/start'
+      preLoaderRoute: typeof ApiPublicSharedOauthGoogleStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/v1/domains/search': {
       id: '/api/public/v1/domains/search'
       path: '/api/public/v1/domains/search'
@@ -2632,6 +2674,9 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
+  ApiPublicSharedOauthGoogleCallbackRoute:
+    ApiPublicSharedOauthGoogleCallbackRoute,
+  ApiPublicSharedOauthGoogleStartRoute: ApiPublicSharedOauthGoogleStartRoute,
   ApiPublicV1DomainsSearchRoute: ApiPublicV1DomainsSearchRoute,
   ApiPublicV1TurnsIdRoute: ApiPublicV1TurnsIdRouteWithChildren,
 }

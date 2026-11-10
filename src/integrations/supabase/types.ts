@@ -4770,6 +4770,36 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_app_password_resets: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          project_id: string
+          token_hash: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          project_id: string
+          token_hash: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          project_id?: string
+          token_hash?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       shared_app_records: {
         Row: {
           collection: string
