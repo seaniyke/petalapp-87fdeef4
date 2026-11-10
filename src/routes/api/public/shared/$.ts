@@ -154,6 +154,16 @@ async function handle(request: Request): Promise<Response> {
         });
         return json({ records: rows });
       }
+      if (request.method === "POST" && recordId === "_seed") {
+        const body = (await request.json().catch(() => null)) as { rows?: unknown } | null;
+        if (!body || !Array.isArray(body.rows)) return json({ error: "Invalid body" }, 400);
+        const result = await seedRecords({
+          projectId,
+          collection,
+          rows: body.rows as Record<string, unknown>[],
+        });
+        return json(result, result.seeded ? 201 : 200);
+      }
       if (request.method === "POST") {
         const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
         if (!body || typeof body !== "object") return json({ error: "Invalid body" }, 400);
