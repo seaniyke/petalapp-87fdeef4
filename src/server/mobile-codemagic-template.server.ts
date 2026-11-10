@@ -56,6 +56,9 @@ workflows:
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           npx cap add "$PETAL_PLATFORM"
           npx cap sync "$PETAL_PLATFORM"
+          if [ "$PETAL_PLATFORM" = "android" ]; then
+            printf '\nconfigurations.all {\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"\n}\n' >> android/app/build.gradle
+          fi
       - name: Build native artifact (unsigned)
         script: |
           if [ "$PETAL_PLATFORM" = "ios" ]; then
@@ -122,6 +125,9 @@ workflows:
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           npx cap add "$PETAL_PLATFORM"
           npx cap sync "$PETAL_PLATFORM"
+          if [ "$PETAL_PLATFORM" = "android" ]; then
+            printf '\nconfigurations.all {\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"\n}\n' >> android/app/build.gradle
+          fi
       - name: Decrypt signing materials
         script: |
           if [ "$PETAL_PLATFORM" = "ios" ]; then
