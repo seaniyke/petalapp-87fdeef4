@@ -347,7 +347,7 @@ export const auth = {
   /** Leaves for Google, then returns to \`redirectTo\` (default: this page) signed in. */
   signInWithGoogle(redirectTo?: string): void {
     if (typeof window === "undefined") return;
-    const origin = pickedBase().replace(/\/api\/public\/shared\/.*$/, "");
+    const origin = pickedBase().split("/api/public/shared/")[0];
     const q = new URLSearchParams({ project: PROJECT_ID, key: API_KEY, redirect: siteUrl(redirectTo) });
     window.location.assign(origin + "/api/public/shared-oauth/google/start?" + q.toString());
   },
