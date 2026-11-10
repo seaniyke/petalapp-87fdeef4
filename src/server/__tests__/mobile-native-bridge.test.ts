@@ -94,3 +94,11 @@ describe("store build: fingerprint / Face ID", () => {
     expect(CODEMAGIC_YAML).toContain("NSFaceIDUsageDescription");
   });
 });
+
+describe("store build: phone features are registered", () => {
+  it("saves the shell's add-ons to package.json so the phone app actually includes them", () => {
+    // `cap sync` only registers add-ons listed in package.json; --no-save shipped an app with none.
+    expect(CODEMAGIC_YAML).not.toMatch(/@capacitor\/haptics[^\n]*--no-save/);
+    expect(CODEMAGIC_YAML).toMatch(/@capacitor\/haptics[^\n]*--save/);
+  });
+});
