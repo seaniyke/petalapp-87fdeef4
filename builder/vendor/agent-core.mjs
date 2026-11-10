@@ -139340,7 +139340,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140859,6 +140858,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -144391,7 +144391,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -144892,6 +144891,7 @@ function deriveProductSurface(brief, roles = []) {
   if (PUBLIC_ONLY.test(t) && !wantsApp) return "public";
   if (!wantsApp) return null;
   if (SAAS.test(t)) return "public+app";
+  if (PRODUCT_IS_SITE.test(t)) return "public+app";
   if (roles.some((r) => PUBLIC_ROLES.has(r))) return "public+app";
   return "app";
 }
@@ -145053,7 +145053,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, EXTERNAL_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
+var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, PRODUCT_IS_SITE, WEBSITE_ONLY, NEGATED_APP, EXTERNAL_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -145169,6 +145169,7 @@ var init_intent_contract = __esm({
     INTERNAL_ONLY = /\b(internal|staff[- ]only|back ?office|admin (panel|dashboard)|(just|only) (an? |the )?dashboard|dashboard (for|to) (our|my) (staff|team|employees))\b/i;
     SAAS = /\b(saas|software as a service|platform|marketplace)\b/i;
     APP_WORDS = /\b(management system|management app|system|portal|dashboard|app|application|sign ?in|log ?in|accounts?|saas|platform|crm|erp)\b/i;
+    PRODUCT_IS_SITE = /\b(?:a|an)\s+(?:[\w&'"’-]+\s+){0,4}(?:website|web ?site)\b/i;
     WEBSITE_ONLY = /\b((web)?site only|only (an? )?(web)?site|just (an? )?(simple )?(web)?site|static (web)?site)\b/i;
     NEGATED_APP = /\b(no|without|not|don'?t need|doesn'?t need|never|zero)\s+(an?\s+|any\s+|user\s+|customer\s+)?(management system|system|portal|dashboard|app|application|sign[- ]?ins?|sign[- ]?ups?|log[- ]?ins?|accounts?|backend|database|crm|erp)\b/gi;
     EXTERNAL_APP = /\b(?:(?:opens?|launch(?:es)?|in|via|using|through|from)\s+(?:the\s+|a\s+|their\s+|your\s+)?|(?:the\s+)?(?:visitor|user|customer|guest|reader|client)s?'?s?\s+|(?:their|your)\s+(?:own\s+)?)(?:default\s+)?(?:e-?mail|mail|maps?|phone|calendar|messaging|sms|texting|camera|wallet|banking|whatsapp|telegram)\s+apps?\b/gi;
@@ -154310,13 +154311,14 @@ function deadInternalLinks(files, routerSrc, routerFile) {
   const live = routerFile ? reachableFrom2(routerFile, files) : null;
   return internalLinks(live ? files.filter((f) => live.has(f.path)) : files).filter((l) => !linkResolves(l.link, routes));
 }
-function unguardedAppRoutes(routerSrc, files) {
+function unguardedAppRoutes(routerSrc, files, surface = null) {
   const routes = resolveRouteTree(routerSrc).filter((r) => !r.catchAll);
   const hasDashboard = routes.some((r) => r.path === "/dashboard" || r.path.startsWith("/dashboard/"));
   const hasLogin = routes.some((r) => r.path === "/login");
   const PUBLIC_AUTH = /^\/(login|signin|sign-in|signup|sign-up|register|auth)(\/|$)/;
-  const inApp = (p2) => hasDashboard ? p2 === "/dashboard" || p2.startsWith("/dashboard/") : hasLogin && !PUBLIC_AUTH.test(p2);
-  if (!hasDashboard && !hasLogin) return [];
+  const publicSite = surface === "public" || surface === "public+app";
+  const inApp = (p2) => hasDashboard ? p2 === "/dashboard" || p2.startsWith("/dashboard/") : !publicSite && hasLogin && !PUBLIC_AUTH.test(p2);
+  if (!hasDashboard && (publicSite || !hasLogin)) return [];
   const byName = /* @__PURE__ */ new Map();
   for (const f of files) {
     const n = /export\s+(?:default\s+)?function\s+([A-Z]\w*)/g;
@@ -154468,7 +154470,7 @@ function routesGate(files, requestedRoutes, opts = {}) {
     for (const d of dead.slice(0, 8)) advisories.push(`${d.file} links to ${d.link}, but no page has that address (pages: ${pages.join(", ")})`);
   }
   if (opts.requireLiveData && routerSrc) {
-    const open = unguardedAppRoutes(routerSrc, files);
+    const open = unguardedAppRoutes(routerSrc, files, opts.surface ?? null);
     if (open.length) {
       reasons.push(`signed-out visitors can open ${open.join(", ")} \u2014 wrap the signed-in area's layout route in <RequireAuth> from "@/integrations/backend/auth"`);
       bad.push(map.routerFile);
@@ -154567,7 +154569,7 @@ function runSourceGates(args) {
   return [
     syntaxGate(args.esbuild),
     dependencyGate(args.files),
-    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell, requireLiveData: args.requireLiveData })
+    routesGate(args.files, args.requestedRoutes, { requireShell: args.requireShell, requireLiveData: args.requireLiveData, surface: args.surface })
   ];
 }
 function guardCleanup(before, after, allowed) {
@@ -154700,7 +154702,7 @@ async function verifyProposedSource(args) {
       };
     }
   }
-  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell, requireLiveData: args.requireLiveData }));
+  const record = finalizeVerification(runSourceGates({ files: args.tree, requestedRoutes: args.requestedRoutes, esbuild: merged, requireShell: args.requireShell, requireLiveData: args.requireLiveData, surface: args.surface }));
   let responsive2 = [];
   try {
     responsive2 = responsiveWarnings(args.tree, args.changedPaths);
@@ -171105,7 +171107,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -179241,7 +179242,8 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
                   changedPaths: changed.filter((p2) => proposed.some((f) => f.path === p2)),
                   requestedRoutes: requestedRoutesFor(lastUserText, plannedRoutes),
                   requireShell: true,
-                  requireLiveData: Boolean(sharedBackend)
+                  requireLiveData: Boolean(sharedBackend),
+                  surface: intentContract?.surface ?? null
                 });
                 return readinessOf2(v);
               },
@@ -180944,7 +180946,8 @@ ${currentContent.slice(0, 24e3)}${currentContent.length > 24e3 ? "\n/* ...trimme
               changedPaths: changed,
               requestedRoutes: isInitial ? requestedRoutesFor(lastUserText, plannedRoutes) : [],
               requireShell: isInitial,
-              requireLiveData: isInitial && Boolean(sharedBackend)
+              requireLiveData: isInitial && Boolean(sharedBackend),
+              surface: intentContract?.surface ?? null
             });
           },
           fallbackFor: (path, tree) => resilientFallback(path, tree, turnBaselineFiles)
