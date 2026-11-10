@@ -43,6 +43,13 @@
       "when": 1794163377167,
       "tag": "0005_partner_balance_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794312866645,
+      "tag": "0006_migration",
+      "breakpoints": true
     }
   ]
 }

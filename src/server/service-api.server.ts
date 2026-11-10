@@ -180,26 +180,109 @@ export function isAllowedWebhookUrl(raw: string): boolean {
   }
 }
 
-/** Signed POST: header `X-Petal-Signature: sha256=<hex HMAC of body with CUSTARD_API_KEY>`. */
-export async function deliverWebhook(url: string, payload: unknown): Promise<void> {
-  const body = JSON.stringify(payload);
+/** One signed POST. Returns the HTTP status, or null on a network error/timeout. */
+async function postSigned(url: string, body: string, event: string, deliveryId: string): Promise<number | null> {
   const sig = await hmacHex(serviceKey(), body);
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Petal-Signature": `sha256=${sig}`, "X-Petal-Event": String((payload as { event?: string })?.event ?? "") },
-        body,
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (res.ok) return;
-      if (res.status < 500 && res.status !== 429) return;
-    } catch {
-      /* retry */
-    }
-    await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Petal-Signature": `sha256=${sig}`,
+        "X-Petal-Event": event,
+        // Stable across retries so the receiver can ignore duplicates.
+        "X-Petal-Delivery": deliveryId,
+      },
+      body,
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.status;
+  } catch {
+    return null;
   }
-  console.warn("[service-api] webhook delivery failed", new URL(url).host);
+}
+
+/**
+ * Signed POST: header `X-Petal-Signature: sha256=<hex HMAC of body with CUSTARD_API_KEY>`.
+ * Tried inline 3 times; if the receiver is still down the notification is kept
+ * in `webhook_deliveries` and retried with backoff by the watchdog cron.
+ */
+export async function deliverWebhook(url: string, payload: unknown): Promise<void> {
+  const { isRetryableStatus, nextRetryDelayMs } = await import("@/server/webhook-outbox");
+  const body = JSON.stringify(payload);
+  const event = String((payload as { event?: string })?.event ?? "");
+  const deliveryId = crypto.randomUUID();
+  let status: number | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    status = await postSigned(url, body, event, deliveryId);
+    if (status !== null && !isRetryableStatus(status)) return; // delivered, or rejected for good
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+  }
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("webhook_deliveries").insert({
+      id: deliveryId,
+      url,
+      event,
+      body,
+      attempts: 0,
+      last_status: status,
+      next_retry_at: new Date(Date.now() + (nextRetryDelayMs(0) ?? 60_000)).toISOString(),
+    });
+    if (error) throw error;
+    console.warn("[service-api] webhook queued for retry", new URL(url).host, event);
+  } catch (e) {
+    console.error("[service-api] webhook delivery lost", new URL(url).host, e instanceof Error ? e.message : String(e));
+  }
+}
+
+/** Retry due outbox notifications. Called from the build-watchdog cron tick. */
+export async function drainWebhookOutbox(limit = 20): Promise<{ delivered: number; retrying: number; dead: number }> {
+  const { isRetryableStatus, nextRetryDelayMs } = await import("@/server/webhook-outbox");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("webhook_deliveries")
+    .select("id, url, event, body, attempts")
+    .eq("status", "pending")
+    .lte("next_retry_at", new Date().toISOString())
+    .order("next_retry_at")
+    .limit(limit);
+  const out = { delivered: 0, retrying: 0, dead: 0 };
+  for (const row of data ?? []) {
+    const attempts = row.attempts + 1;
+    // Claim: push next_retry_at forward only if nobody else touched this attempt.
+    const { data: claimed } = await supabaseAdmin
+      .from("webhook_deliveries")
+      .update({ attempts, next_retry_at: new Date(Date.now() + 600_000).toISOString() })
+      .eq("id", row.id)
+      .eq("attempts", row.attempts)
+      .eq("status", "pending")
+      .select("id");
+    if (!claimed?.length) continue;
+    const status = await postSigned(row.url, row.body, row.event, row.id);
+    if (status !== null && !isRetryableStatus(status)) {
+      const ok = status >= 200 && status < 300;
+      await supabaseAdmin
+        .from("webhook_deliveries")
+        .update({ status: ok ? "delivered" : "rejected", last_status: status, delivered_at: ok ? new Date().toISOString() : null })
+        .eq("id", row.id);
+      if (ok) out.delivered++;
+      else out.dead++;
+      continue;
+    }
+    const delay = nextRetryDelayMs(attempts);
+    await supabaseAdmin
+      .from("webhook_deliveries")
+      .update(
+        delay === null
+          ? { status: "dead", last_status: status }
+          : { last_status: status, next_retry_at: new Date(Date.now() + delay).toISOString() },
+      )
+      .eq("id", row.id);
+    if (delay === null) out.dead++;
+    else out.retrying++;
+  }
+  return out;
 }
 
 /** A build as Custard AI sees it. `deploymentUrl` is set only once live. */
