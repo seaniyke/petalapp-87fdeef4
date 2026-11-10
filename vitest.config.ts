@@ -191,6 +191,7 @@ export default defineConfig({
       "src/server/__tests__/zero-error-gates.test.ts",
       "src/server/__tests__/negated-intent-and-seed.test.ts",
       "src/server/__tests__/webhook-outbox.test.ts",
+      "src/server/__tests__/developer-keys.test.ts",
       "src/server/__tests__/shared-query.test.ts",
       "src/server/__tests__/shared-auth-rules.test.ts",
 
