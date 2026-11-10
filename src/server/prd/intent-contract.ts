@@ -186,8 +186,13 @@ const WEBSITE_ONLY = /\b((web)?site only|only (an? )?(web)?site|just (an? )?(sim
  * "doesn't need a dashboard") so they never count as asking for an app.
  */
 const NEGATED_APP = /\b(no|without|not|don'?t need|doesn'?t need|never|zero)\s+(an?\s+|any\s+|user\s+|customer\s+)?(management system|system|portal|dashboard|app|application|sign[- ]?ins?|sign[- ]?ups?|log[- ]?ins?|accounts?|backend|database|crm|erp)\b/gi;
+/**
+ * An app the VISITOR already owns ("opens the visitor's email app", "in their
+ * maps app") is not the product being asked for.
+ */
+const EXTERNAL_APP = /\b(?:(?:opens?|launch(?:es)?|in|via|using|through|from)\s+(?:the\s+|a\s+|their\s+|your\s+)?|(?:the\s+)?(?:visitor|user|customer|guest|reader|client)s?'?s?\s+|(?:their|your)\s+(?:own\s+)?)(?:default\s+)?(?:e-?mail|mail|maps?|phone|calendar|messaging|sms|texting|camera|wallet|banking|whatsapp|telegram)\s+apps?\b/gi;
 export function withoutNegatedAppWords(text: string): string {
-  return (text || "").replace(NEGATED_APP, " ");
+  return (text || "").replace(NEGATED_APP, " ").replace(EXTERNAL_APP, " ");
 }
 
 /**

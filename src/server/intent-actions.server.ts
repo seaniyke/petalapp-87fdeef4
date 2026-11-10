@@ -18,7 +18,7 @@
  * degrades to today's behaviour (no auto-enable, no extra prompt text).
  */
 
-import { detectIntents, type SimpleIntentId } from "@/lib/intent-registry";
+import { detectIntents, userOptedOutOfBackend, type SimpleIntentId } from "@/lib/intent-registry";
 import {
   detectSurfaceIntent,
   renderSurfaceBlock,
@@ -138,7 +138,9 @@ export async function resolveIntentActions(
   } catch {
     intents = [];
   }
-  const product = args.productNeedsBackend ?? null;
+  // "No database" from the user outranks the product planner's guess too —
+  // not only the keyword rules (they already honour it).
+  const product = userOptedOutOfBackend(args.prompt) ? null : (args.productNeedsBackend ?? null);
   if (intents.length === 0 && !product) return { ...EMPTY, surface, promptBlock: surfaceBlock };
 
   const keywordNeed = intents.some((i) => BACKEND_IMPLYING.includes(i));
