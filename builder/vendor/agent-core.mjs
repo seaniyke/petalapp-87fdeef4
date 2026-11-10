@@ -40081,10 +40081,13 @@ function asRecord<T>(record: PetalRecord<T>): RecordResult<T> {
 export const db = {
   async list<T = Record<string, unknown>>(
     collection: string,
-    opts: { mine?: boolean; limit?: number; offset?: number } = {},
+    opts: { mine?: boolean; everyone?: boolean; limit?: number; offset?: number } = {},
   ): Promise<RecordList<T>> {
     const q = new URLSearchParams();
+    // Default: the signed-in user's rows + rows added by guests (starter rows).
+    // everyone: every user's rows \u2014 for content meant to be public.
     if (opts.mine) q.set("mine", "1");
+    else if (opts.everyone) q.set("scope", "all");
     if (opts.limit) q.set("limit", String(opts.limit));
     if (opts.offset) q.set("offset", String(opts.offset));
     const qs = q.toString();
@@ -40402,7 +40405,7 @@ Wrap the app once with \`<AuthProvider>\`, then read \`const { user, loading } =
 
 ## Rules
 
-- Rows created while signed in are owned by that user; pass \`{ mine: true }\` to list only theirs.
+- Rows created while signed in are owned by that user. A plain \`db.list\` returns the visitor's own rows plus starter/guest rows \u2014 NOT other users' rows. For content meant for everyone (community posts, shared recipes, listings, reviews, a public catalogue) list with \`{ everyone: true }\`; for a user's own page ("My recipes", "My orders") use \`{ mine: true }\`. Private data (orders, bookings, messages, profiles) never uses \`everyone\`.
 - Every "Sign out" control must be a button that calls \`await signOut()\` and then navigates to \`/login\`. Never a plain link to \`/login\` \u2014 that leaves the user signed in.
 - Guard the signed-in area once, at its layout route: \`<Route path="dashboard" element={<RequireAuth><AppShell /></RequireAuth>}>\` (\`RequireAuth\` from \`@/integrations/backend/auth\`). Signed-out visitors are sent to \`/login\`.
 - Links must use the page's full address. Pages nested under \`<Route path="dashboard">\` live at \`/dashboard/services\`, not \`/services\`. The build fails on links to addresses no page serves.
@@ -68894,6 +68897,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -69196,7 +69200,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140427,7 +140430,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140592,7 +140594,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140636,7 +140637,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -143187,6 +143187,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144391,6 +144392,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -145519,7 +145521,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -177502,7 +177503,8 @@ Imports:
 - import { useAuth, AuthProvider } from "@/integrations/backend/auth"
 
 Data API (collections are created on first write):
-- await db.list<T>("tasks", { mine: true, limit: 50 }) -> { records }
+- await db.list<T>("tasks", { mine: true, limit: 50 }) -> { records }  (only the signed-in user's rows)
+- await db.list<T>("posts", { everyone: true }) -> every user's rows, for content meant to be public (community posts, shared recipes, listings, reviews). A plain db.list returns only the visitor's own rows + starter rows, never other users'. Never use everyone for private data (orders, bookings, messages, profiles).
 - await db.create("tasks", { title, done: false })
 - await db.update("tasks", id, { done: true })
 - await db.remove("tasks", id)

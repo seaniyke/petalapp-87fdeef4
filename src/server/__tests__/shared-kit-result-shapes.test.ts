@@ -13,12 +13,13 @@ import { sharedBackendKit } from "../shared-backend-kit";
  */
 type Rec = { id: string; data: { name: string }; created_at: string; updated_at: string };
 let db: {
-  list: (c: string) => Promise<Rec[] & { records: Rec[] }>;
+  list: (c: string, o?: { mine?: boolean; everyone?: boolean }) => Promise<Rec[] & { records: Rec[] }>;
   create: (c: string, d: unknown) => Promise<Rec & { record: Rec }>;
   update: (c: string, id: string, d: unknown) => Promise<Rec & { record: Rec }>;
   seedOnce: (c: string, rows: unknown[]) => Promise<Rec[] & { records: Rec[] }>;
 };
 const store: Rec[] = [];
+const listUrls: string[] = [];
 
 beforeAll(async () => {
   const client = sharedBackendKit({
@@ -55,6 +56,7 @@ beforeAll(async () => {
       const rec = { ...store[0]!, data: { ...store[0]!.data, ...JSON.parse(String(init!.body)) } };
       return new Response(JSON.stringify({ record: rec }), { status: 200 });
     }
+    listUrls.push(url);
     const limit = Number(new URL(url).searchParams.get("limit") || 0);
     return new Response(JSON.stringify({ records: limit ? store.slice(0, limit) : store }), { status: 200 });
   });
@@ -85,5 +87,22 @@ describe("generated data helper result shapes", () => {
     const res = await db.update("products", "r1", { name: "Dew Cheek Tint — Rose" });
     expect(res.data.name).toBe("Dew Cheek Tint — Rose");
     expect(res.record.data.name).toBe("Dew Cheek Tint — Rose");
+  });
+});
+
+describe("who a list shows", () => {
+  it("everyone: true asks for every user's rows (public content like shared recipes)", async () => {
+    await db.list("recipes", { everyone: true });
+    expect(new URL(listUrls.at(-1)!).searchParams.get("scope")).toBe("all");
+  });
+  it("a plain list never asks for other users' rows", async () => {
+    await db.list("orders");
+    expect(new URL(listUrls.at(-1)!).searchParams.get("scope")).toBeNull();
+  });
+  it("mine: true wins over everyone", async () => {
+    await db.list("recipes", { mine: true, everyone: true });
+    const q = new URL(listUrls.at(-1)!).searchParams;
+    expect(q.get("mine")).toBe("1");
+    expect(q.get("scope")).toBeNull();
   });
 });
