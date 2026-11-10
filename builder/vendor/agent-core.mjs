@@ -38926,15 +38926,33 @@ function slugify(name) {
   return name.toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 function cleanName(raw) {
-  const words2 = raw.toLowerCase().replace(/[“”"'`()]/g, " ").split(/\s+/).filter((w) => w && !STOP.has(w));
+  const words2 = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[“”"'`()]/g, " ").split(/\s+/).filter((w) => w && !STOP.has(w));
   if (words2.length === 0 || words2.length > 3) return null;
   const n = words2.join(" ");
   if (!/^[a-z][a-z0-9 &-]*$/.test(n)) return null;
+  if (/\b(section|hero|banner|band|strip)\b/.test(n)) return null;
   return n;
 }
 function extractRequestedPages(prompt) {
-  const raw = prompt.replace(/\s+/g, " ");
   const found = [];
+  const lines = (prompt || "").split(/\r?\n/);
+  const listed = [];
+  const consumed = /* @__PURE__ */ new Set();
+  for (let i = 0; i < lines.length; i++) {
+    if (!/\bpages?\b[^:\n]{0,40}:\s*$/i.test(lines[i])) continue;
+    for (let j = i + 1; j < lines.length; j++) {
+      const m = lines[j].match(/^\s*(?:[-*•]|\d+[.)])\s*([^:—–\n]{1,40}?)\s*(?::|—|–|\s-\s|$)/);
+      if (!m) break;
+      listed.push(m[1]);
+      consumed.add(j);
+    }
+    if (listed.length) consumed.add(i);
+  }
+  for (const label2 of listed) {
+    const n = cleanName(label2);
+    if (n && !found.includes(n)) found.push(n);
+  }
+  const raw = lines.filter((_, i) => !consumed.has(i)).join("\n").replace(/\s+/g, " ");
   const push = (raw2) => {
     for (const part of raw2.split(/,|\/|\band\b|\+|;/i)) {
       const stripped = part.replace(/\b(one|single)[- ]?page(r)?\b|\b(landing|simple|small|web|website|single|one)\b/gi, " ").trim();
@@ -58833,6 +58851,9 @@ function isNegatedAt(text, index) {
   const clause = before.slice(start).slice(-80);
   return /\b(?:no|not|without|don'?t|do not|doesn'?t|does not|never|avoid|skip)\b/i.test(clause);
 }
+function userOptedOutOfBackend(text) {
+  return Boolean(text) && BACKEND_OPT_OUT.test(text);
+}
 function detectIntent(id, text) {
   if (!text) return { detected: false };
   if (id === "mobile" && !MOBILE_APPS_ENABLED) return { detected: false };
@@ -68872,7 +68893,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -140405,6 +140425,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140569,6 +140590,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -140612,6 +140634,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -144855,7 +144878,7 @@ __export(intent_contract_exports, {
   withoutNegatedAppWords: () => withoutNegatedAppWords
 });
 function withoutNegatedAppWords(text) {
-  return (text || "").replace(NEGATED_APP, " ");
+  return (text || "").replace(NEGATED_APP, " ").replace(EXTERNAL_APP, " ");
 }
 function deriveProductSurface(brief, roles = []) {
   const t = withoutNegatedAppWords(brief || "");
@@ -145026,7 +145049,7 @@ function stripRoutesFromRouter(app, pageFiles) {
   }
   return out;
 }
-var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
+var p, FAMILIES, PUBLIC_ROLES, PUBLIC_ONLY, INTERNAL_ONLY, SAAS, APP_WORDS, WEBSITE_ONLY, NEGATED_APP, EXTERNAL_APP, PUBLIC_PAGES, APP_REQUEST, COMMERCE_PAGE, COMMERCE_ORDERS, AESTHETIC_CLINIC, HOSPITAL_ONLY, ALWAYS_ALLOWED, SURFACE_LINE, slug2;
 var init_intent_contract = __esm({
   "src/server/prd/intent-contract.ts"() {
     init_define_import_meta_env();
@@ -145144,6 +145167,7 @@ var init_intent_contract = __esm({
     APP_WORDS = /\b(management system|management app|system|portal|dashboard|app|application|sign ?in|log ?in|accounts?|saas|platform|crm|erp)\b/i;
     WEBSITE_ONLY = /\b((web)?site only|only (an? )?(web)?site|just (an? )?(simple )?(web)?site|static (web)?site)\b/i;
     NEGATED_APP = /\b(no|without|not|don'?t need|doesn'?t need|never|zero)\s+(an?\s+|any\s+|user\s+|customer\s+)?(management system|system|portal|dashboard|app|application|sign[- ]?ins?|sign[- ]?ups?|log[- ]?ins?|accounts?|backend|database|crm|erp)\b/gi;
+    EXTERNAL_APP = /\b(?:(?:opens?|launch(?:es)?|in|via|using|through|from)\s+(?:the\s+|a\s+|their\s+|your\s+)?|(?:the\s+)?(?:visitor|user|customer|guest|reader|client)s?'?s?\s+|(?:their|your)\s+(?:own\s+)?)(?:default\s+)?(?:e-?mail|mail|maps?|phone|calendar|messaging|sms|texting|camera|wallet|banking|whatsapp|telegram)\s+apps?\b/gi;
     PUBLIC_PAGES = [p("/", "Home"), p("/login", "Sign in")];
     APP_REQUEST = /\b(management system|management app|system|platform|portal|dashboard|admin panel|back ?office|crm|erp|software|tool)\b/i;
     COMMERCE_PAGE = /(^|\/|\b)(shop|store|storefront|cart|checkout|products?|wishlist|catalog(ue)?)(\b|\/|$)/i;
@@ -145490,6 +145514,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -157644,7 +157669,7 @@ async function resolveIntentActions(args) {
   } catch {
     intents = [];
   }
-  const product2 = args.productNeedsBackend ?? null;
+  const product2 = userOptedOutOfBackend(args.prompt) ? null : args.productNeedsBackend ?? null;
   if (intents.length === 0 && !product2) return { ...EMPTY2, surface, promptBlock: surfaceBlock };
   const keywordNeed = intents.some((i) => BACKEND_IMPLYING.includes(i));
   const needsBackend = keywordNeed || Boolean(product2);
