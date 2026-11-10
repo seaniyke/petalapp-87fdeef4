@@ -6,7 +6,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { json, loadOwnedProject, preflight, verifyServiceKey } from "@/server/service-api.server";
+import { json, loadOwnedProject, preflight, verifyApiCaller } from "@/server/service-api.server";
 
 const Query = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
@@ -22,12 +22,12 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/records/$colle
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         if (!COLLECTION_RE.test(params.collection)) return json({ error: "invalid_collection" }, 400);
         const q = Query.safeParse(Object.fromEntries(new URL(request.url).searchParams));
         if (!q.success) return json({ error: "invalid_query", issues: q.error.issues }, 400);
-        if (!(await loadOwnedProject(params.id))) return json({ error: "project_not_found" }, 404);
+        if (!(await loadOwnedProject(params.id, request))) return json({ error: "project_not_found" }, 404);
         const { getSharedBackend, listRecords } = await import("@/server/shared-backend.server");
         if (!(await getSharedBackend(params.id))) return json({ records: [], backend: false });
         const { parseWhere, parseSort, QueryError } = await import("@/server/shared-query");

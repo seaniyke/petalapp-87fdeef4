@@ -5,7 +5,7 @@
  * caps the turn list (max 200). `?turnId=` returns one turn's full bill.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { json, loadOwnedProject, preflight, serviceUserId, verifyServiceKey } from "@/server/service-api.server";
+import { json, loadOwnedProject, preflight, serviceUserId, verifyApiCaller } from "@/server/service-api.server";
 import { projectBilling, turnBill } from "@/server/service-billing.server";
 import { parseRange } from "@/server/service-billing-range";
 
@@ -16,10 +16,10 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/billing")({
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         if (!UUID.test(params.id)) return json({ error: "bad_project_id" }, 400);
-        const project = await loadOwnedProject(params.id);
+        const project = await loadOwnedProject(params.id, request);
         if (!project) return json({ error: "not_found" }, 404);
         const owner = await serviceUserId();
         const url = new URL(request.url);

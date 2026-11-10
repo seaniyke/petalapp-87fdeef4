@@ -1,6 +1,6 @@
 /** GET /api/public/v1/turns/$id/events?after=<seq> — replay + live-tail a turn (reconnects). */
 import { createFileRoute } from "@tanstack/react-router";
-import { CORS_HEADERS, json, preflight, serviceUserId, tailTurnEvents, verifyServiceKey } from "@/server/service-api.server";
+import { CORS_HEADERS, json, preflight, serviceUserId, tailTurnEvents, verifyApiCaller } from "@/server/service-api.server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/public/v1/turns/$id/events")({
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         if (!UUID.test(params.id)) return json({ error: "bad_turn_id" }, 400);
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

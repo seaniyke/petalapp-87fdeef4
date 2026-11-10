@@ -31,7 +31,7 @@ import {
   serviceAccessToken,
   serviceUserId,
   tailTurnEvents,
-  verifyServiceKey,
+  verifyApiCaller,
 } from "@/server/service-api.server";
 import { turnBill, type TurnBill } from "@/server/service-billing.server";
 
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/api/public/v1/generate")({
     handlers: {
       OPTIONS: async () => preflight(),
       POST: async ({ request }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return json({ error: "invalid_body", issues: parsed.error.issues }, 400);
@@ -63,7 +63,7 @@ export const Route = createFileRoute("/api/public/v1/generate")({
         if (webhookUrl && !isAllowedWebhookUrl(webhookUrl)) {
           return json({ error: "webhook_url_not_allowed" }, 400);
         }
-        const project = await loadOwnedProject(projectId);
+        const project = await loadOwnedProject(projectId, request);
         if (!project) return json({ error: "project_not_found" }, 404);
 
         // Remember which Custard staff member this site belongs to, so every

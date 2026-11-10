@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { json, preflight, serviceUserId, verifyServiceKey } from "@/server/service-api.server";
+import { json, preflight, serviceUserId, verifyApiCaller } from "@/server/service-api.server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -8,7 +8,7 @@ export const Route = createFileRoute("/api/public/v1/turns/$id/cancel")({
     handlers: {
       OPTIONS: async () => preflight(),
       POST: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         if (!UUID.test(params.id)) return json({ error: "bad_turn_id" }, 400);
         const { requestTurnCancel } = await import("@/server/turn-cancel.server");

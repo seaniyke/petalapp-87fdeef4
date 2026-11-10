@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { json, preflight, serviceUserId, verifyServiceKey } from "@/server/service-api.server";
+import { json, preflight, serviceUserId, verifyApiCaller } from "@/server/service-api.server";
 
 const ExternalId = z.string().trim().min(1).max(128);
 const CreateBody = z.object({
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/api/public/v1/projects")({
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         const ext = new URL(request.url).searchParams.get("externalUserId");
         if (ext !== null && !ExternalId.safeParse(ext).success) return json({ error: "invalid_external_user_id" }, 400);
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/api/public/v1/projects")({
         return json({ projects: data ?? [] });
       },
       POST: async ({ request }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         const parsed = CreateBody.safeParse(await request.json().catch(() => ({})));
         if (!parsed.success) return json({ error: "invalid_body", issues: parsed.error.issues }, 400);

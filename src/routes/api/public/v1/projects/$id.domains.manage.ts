@@ -11,7 +11,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { json, loadOwnedProject, preflight, verifyServiceKey } from "@/server/service-api.server";
+import { json, loadOwnedProject, preflight, verifyApiCaller } from "@/server/service-api.server";
 
 const Record_ = z.object({
   name: z.string().max(253),
@@ -68,9 +68,9 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/domains/manage
     handlers: {
       OPTIONS: async () => preflight(),
       GET: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
-        if (!(await loadOwnedProject(params.id))) return json({ error: "project_not_found" }, 404);
+        if (!(await loadOwnedProject(params.id, request))) return json({ error: "project_not_found" }, 404);
         const dom = await ownedDomain(params.id, new URL(request.url).searchParams.get("hostname") ?? "");
         if (!dom) return json({ error: "domain_not_found" }, 404);
         const dna = await import("@/server/domain-name-api.server");
@@ -101,9 +101,9 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/domains/manage
         }
       },
       POST: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
-        if (!(await loadOwnedProject(params.id))) return json({ error: "project_not_found" }, 404);
+        if (!(await loadOwnedProject(params.id, request))) return json({ error: "project_not_found" }, 404);
         const parsed = Body.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return json({ error: "invalid_request", issues: parsed.error.issues }, 400);
         const b = parsed.data;

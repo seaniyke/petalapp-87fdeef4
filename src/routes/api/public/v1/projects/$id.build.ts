@@ -9,7 +9,7 @@ import {
   loadOwnedProject,
   preflight,
   triggerProjectBuild,
-  verifyServiceKey,
+  verifyApiCaller,
 } from "@/server/service-api.server";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -19,10 +19,10 @@ export const Route = createFileRoute("/api/public/v1/projects/$id/build")({
     handlers: {
       OPTIONS: async () => preflight(),
       POST: async ({ request, params }) => {
-        const denied = verifyServiceKey(request);
+        const denied = await verifyApiCaller(request);
         if (denied) return denied;
         if (!UUID.test(params.id)) return json({ error: "bad_project_id" }, 400);
-        const project = await loadOwnedProject(params.id);
+        const project = await loadOwnedProject(params.id, request);
         if (!project) return json({ error: "not_found" }, 404);
         const started = await triggerProjectBuild(new URL(request.url).origin, params.id);
         if (!started.ok) return json({ error: started.error }, started.status >= 400 ? started.status : 502);

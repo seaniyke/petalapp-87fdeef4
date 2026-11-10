@@ -11,13 +11,13 @@ import {
   loadOwnedProject,
   preflight,
   serviceUserId,
-  verifyServiceKey,
+  verifyApiCaller,
 } from "@/server/service-api.server";
 
 async function guard(request: Request, projectId: string) {
-  const denied = verifyServiceKey(request);
+  const denied = await verifyApiCaller(request);
   if (denied) return denied;
-  if (!(await loadOwnedProject(projectId))) return json({ error: "project_not_found" }, 404);
+  if (!(await loadOwnedProject(projectId, request))) return json({ error: "project_not_found" }, 404);
   return null;
 }
 
