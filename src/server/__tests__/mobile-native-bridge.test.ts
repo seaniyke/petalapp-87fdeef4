@@ -59,6 +59,12 @@ describe("Petal native bridge (mobile kit)", () => {
     for (const name of new Set(used)) expect(CODEMAGIC_YAML).toContain(`@capacitor/${pkg[name]}`);
   });
 
+  it("phone builds run on Node 22 with one Capacitor major so every add-on matches", () => {
+    expect(CODEMAGIC_YAML).not.toContain("node: 20");
+    expect(CODEMAGIC_YAML.match(/node: 22/g)?.length).toBe(2);
+    for (const m of CODEMAGIC_YAML.matchAll(/@capacitor\/[a-z]+(@\S+)?/g)) expect(m[1]).toBe("@^8");
+  });
+
   it("phone apps never include location tracking", () => {
     expect(CODEMAGIC_YAML).not.toContain("@capacitor/geolocation");
     expect(bridgeSource()).not.toContain("Geolocation");
