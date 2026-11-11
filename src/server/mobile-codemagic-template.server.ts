@@ -35,6 +35,7 @@ const APP_SETTINGS_STEP = String.raw`      - name: Apply app settings
           FEATURES = {
               'microphone': (['android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS'], 'NSMicrophoneUsageDescription', 'Uses the microphone for voice calls.'),
               'camera': (['android.permission.CAMERA'], 'NSCameraUsageDescription', 'Uses the camera to take photos.'),
+              'push': (['android.permission.POST_NOTIFICATIONS'], '', ''),
           }
           feats = [f for f in extra.get('features', []) if f in FEATURES]
           hosts = [h for h in extra.get('linkHosts', []) if re.fullmatch(r'[a-z0-9-]+(\.[a-z0-9-]+)+', h)]
@@ -65,7 +66,16 @@ const APP_SETTINGS_STEP = String.raw`      - name: Apply app settings
               pl = 'ios/App/App/Info.plist'
               pb = lambda c: subprocess.run(['/usr/libexec/PlistBuddy', '-c', c, pl], capture_output=True)
               for f in feats:
-                  pb('Add :' + FEATURES[f][1] + ' string ' + FEATURES[f][2])
+                  if FEATURES[f][1]:
+                      pb('Add :' + FEATURES[f][1] + ' string ' + FEATURES[f][2])
+              if 'push' in feats:
+                  pb('Add :UIBackgroundModes array'); pb('Add :UIBackgroundModes:0 string remote-notification')
+                  open('ios/App/App/App.entitlements', 'w').write('<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>aps-environment</key><string>production</string></dict></plist>\n')
+                  pj = 'ios/App/App.xcodeproj/project.pbxproj'
+                  t = open(pj).read()
+                  if 'CODE_SIGN_ENTITLEMENTS' not in t:
+                      t = t.replace('INFOPLIST_FILE = App/Info.plist;', 'CODE_SIGN_ENTITLEMENTS = App/App.entitlements; INFOPLIST_FILE = App/Info.plist;')
+                  open(pj, 'w').write(t)
               if schemes:
                   pb('Add :CFBundleURLTypes array'); pb('Add :CFBundleURLTypes:0 dict'); pb('Add :CFBundleURLTypes:0:CFBundleURLSchemes array')
                   for i, s in enumerate(schemes):
@@ -110,9 +120,11 @@ workflows:
       - name: Add Capacitor shell
         script: |
           npm install @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/android@^8 @capacitor/app@^8 @capacitor/haptics@^8 @capacitor/share@^8 @capacitor/browser@^8 @capacitor/preferences@^8 @aparajita/capacitor-biometric-auth@^10 --save
+          if grep -q '"push"' petal.native.json 2>/dev/null && { [ "$PETAL_PLATFORM" = "ios" ] || [ -f google-services.json ]; }; then npm install @capacitor/push-notifications@^8 --save; fi
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
           npx cap add "$PETAL_PLATFORM"
+          if [ "$PETAL_PLATFORM" = "android" ] && [ -f google-services.json ]; then cp google-services.json android/app/; fi
           npx cap sync "$PETAL_PLATFORM"
           if [ "$PETAL_PLATFORM" = "ios" ] && [ -f ios/App/App/Info.plist ]; then
             /usr/libexec/PlistBuddy -c "Add :NSFaceIDUsageDescription string Use Face ID to unlock the app securely." ios/App/App/Info.plist || true
@@ -236,9 +248,11 @@ ${APP_SETTINGS_STEP}      - name: Build native artifact (unsigned)
       - name: Add Capacitor shell
         script: |
           npm install @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/android@^8 @capacitor/app@^8 @capacitor/haptics@^8 @capacitor/share@^8 @capacitor/browser@^8 @capacitor/preferences@^8 @aparajita/capacitor-biometric-auth@^10 --save
+          if grep -q '"push"' petal.native.json 2>/dev/null && { [ "$PETAL_PLATFORM" = "ios" ] || [ -f google-services.json ]; }; then npm install @capacitor/push-notifications@^8 --save; fi
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
           npx cap add "$PETAL_PLATFORM"
+          if [ "$PETAL_PLATFORM" = "android" ] && [ -f google-services.json ]; then cp google-services.json android/app/; fi
           npx cap sync "$PETAL_PLATFORM"
           if [ "$PETAL_PLATFORM" = "ios" ] && [ -f ios/App/App/Info.plist ]; then
             /usr/libexec/PlistBuddy -c "Add :NSFaceIDUsageDescription string Use Face ID to unlock the app securely." ios/App/App/Info.plist || true
@@ -378,9 +392,11 @@ ${APP_SETTINGS_STEP}      - name: Decrypt signing materials
       - name: Add Capacitor shell
         script: |
           npm install @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/android@^8 @capacitor/app@^8 @capacitor/haptics@^8 @capacitor/share@^8 @capacitor/browser@^8 @capacitor/preferences@^8 @aparajita/capacitor-biometric-auth@^10 --save
+          if grep -q '"push"' petal.native.json 2>/dev/null && { [ "$PETAL_PLATFORM" = "ios" ] || [ -f google-services.json ]; }; then npm install @capacitor/push-notifications@^8 --save; fi
           npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
           python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
           npx cap add "$PETAL_PLATFORM"
+          if [ "$PETAL_PLATFORM" = "android" ] && [ -f google-services.json ]; then cp google-services.json android/app/; fi
           npx cap sync "$PETAL_PLATFORM"
           if [ "$PETAL_PLATFORM" = "ios" ] && [ -f ios/App/App/Info.plist ]; then
             /usr/libexec/PlistBuddy -c "Add :NSFaceIDUsageDescription string Use Face ID to unlock the app securely." ios/App/App/Info.plist || true
@@ -442,6 +458,10 @@ ${APP_SETTINGS_STEP}      - name: Decrypt signing materials
 ${APP_SETTINGS_STEP}      - name: Set up Apple signing
         script: |
           keychain initialize
+          if grep -q '"push"' petal.native.json 2>/dev/null; then
+            BID=$(app-store-connect bundle-ids list --bundle-id-identifier "$PETAL_BUNDLE_ID" --strict-match-identifier --json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['id'] if d else '')")
+            if [ -n "$BID" ]; then app-store-connect bundle-ids enable-capabilities "$BID" --capability PUSH_NOTIFICATIONS || true; fi
+          fi
           app-store-connect fetch-signing-files "$PETAL_BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
           xcode-project use-profiles

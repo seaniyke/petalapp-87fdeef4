@@ -165,6 +165,39 @@ export const native = {
       await call("Preferences", "set", { key, value }, () => localStorage.setItem(key, value));
     },
   },
+  push: {
+    /**
+     * Asks permission and registers this phone for notifications. Resolves the
+     * token to send to your server (APNs on iPhone, FCM on Android), or null.
+     */
+    async register(): Promise<{ token: string; platform: Platform } | null> {
+      if (!shell()) return null;
+      const perm = await call<any>("PushNotifications", "requestPermissions", {}, () => null);
+      if (perm?.receive !== "granted") return null;
+      return new Promise((resolve) => {
+        let done = false;
+        const finish = (v: { token: string; platform: Platform } | null) => {
+          if (done) return;
+          done = true;
+          offOk();
+          offErr();
+          resolve(v);
+        };
+        const offOk = listen("PushNotifications", "registration", (t: { value?: string }) => finish(t?.value ? { token: t.value, platform: native.platform() } : null));
+        const offErr = listen("PushNotifications", "registrationError", () => finish(null));
+        void call("PushNotifications", "register", {}, () => finish(null));
+        setTimeout(() => finish(null), 15000);
+      });
+    },
+    /** A notification arrived while the app was open. */
+    onReceived(cb: (n: { title?: string; body?: string; data?: Record<string, unknown> }) => void): () => void {
+      return listen("PushNotifications", "pushNotificationReceived", cb);
+    },
+    /** The person tapped a notification. Opens \`data.url\` in the app by default. */
+    onTap(cb: (n: { title?: string; body?: string; data?: Record<string, unknown> }) => void = (n) => typeof n?.data?.url === "string" && openInApp(n.data.url)): () => void {
+      return listen("PushNotifications", "pushNotificationActionPerformed", (e: { notification?: any }) => cb(e?.notification ?? {}));
+    },
+  },
   /** Runs \`onBack\` for the Android back button. Returns an unsubscribe. */
   onBack(onBack: () => void): () => void {
     return listen("App", "backButton", onBack);

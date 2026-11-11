@@ -124,6 +124,7 @@ describe("Petal native bridge (mobile kit)", () => {
       Preferences: "@capacitor/preferences",
       App: "@capacitor/app",
       BiometricAuthNative: "@aparajita/capacitor-biometric-auth",
+      PushNotifications: "@capacitor/push-notifications",
     };
     expect(used).toContain("BiometricAuthNative");
     for (const name of new Set(used)) expect(CODEMAGIC_YAML).toContain(pkg[name]);
@@ -132,7 +133,7 @@ describe("Petal native bridge (mobile kit)", () => {
   it("phone builds run on Node 22 with one Capacitor major so every add-on matches", () => {
     expect(CODEMAGIC_YAML).not.toContain("node: 20");
     expect(CODEMAGIC_YAML.match(/node: 22/g)?.length).toBe(3);
-    for (const m of CODEMAGIC_YAML.matchAll(/@capacitor\/[a-z]+(@\S+)?/g)) expect(m[1]).toBe("@^8");
+    for (const m of CODEMAGIC_YAML.matchAll(/@capacitor\/[a-z-]+(@\S+)?/g)) expect(m[1]).toBe("@^8");
   });
 
   it("phone apps never include location tracking", () => {
@@ -195,5 +196,20 @@ describe("store build: per-app phone settings", () => {
     expect(step).toContain("windowSplashScreenBackground");
     // Store-safe list only: no location, phone-state or ad permissions can be switched on.
     expect(step).not.toMatch(/LOCATION|READ_PHONE_STATE|AD_ID/);
+  });
+});
+
+describe("push notifications", () => {
+  it("are opt-in per app and need Firebase on Android", async () => {
+    const { CODEMAGIC_YAML } = await import("../mobile-codemagic-template.server");
+    expect(CODEMAGIC_YAML).toContain("'push': (['android.permission.POST_NOTIFICATIONS']");
+    expect(CODEMAGIC_YAML).toMatch(/grep -q '"push"' petal\.native\.json .*google-services\.json.*push-notifications@\^8/);
+    expect(CODEMAGIC_YAML).toContain("aps-environment");
+    expect(CODEMAGIC_YAML).toContain("--capability PUSH_NOTIFICATIONS");
+  });
+  it("bridge returns null outside the app", async () => {
+    const src = mobileShellKit().find((f) => f.path === "src/lib/native.ts")!.content;
+    expect(src).toContain('"PushNotifications", "register"');
+    expect(src).toContain("pushNotificationActionPerformed");
   });
 });

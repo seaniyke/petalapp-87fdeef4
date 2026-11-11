@@ -40961,6 +40961,39 @@ export const native = {
       await call("Preferences", "set", { key, value }, () => localStorage.setItem(key, value));
     },
   },
+  push: {
+    /**
+     * Asks permission and registers this phone for notifications. Resolves the
+     * token to send to your server (APNs on iPhone, FCM on Android), or null.
+     */
+    async register(): Promise<{ token: string; platform: Platform } | null> {
+      if (!shell()) return null;
+      const perm = await call<any>("PushNotifications", "requestPermissions", {}, () => null);
+      if (perm?.receive !== "granted") return null;
+      return new Promise((resolve) => {
+        let done = false;
+        const finish = (v: { token: string; platform: Platform } | null) => {
+          if (done) return;
+          done = true;
+          offOk();
+          offErr();
+          resolve(v);
+        };
+        const offOk = listen("PushNotifications", "registration", (t: { value?: string }) => finish(t?.value ? { token: t.value, platform: native.platform() } : null));
+        const offErr = listen("PushNotifications", "registrationError", () => finish(null));
+        void call("PushNotifications", "register", {}, () => finish(null));
+        setTimeout(() => finish(null), 15000);
+      });
+    },
+    /** A notification arrived while the app was open. */
+    onReceived(cb: (n: { title?: string; body?: string; data?: Record<string, unknown> }) => void): () => void {
+      return listen("PushNotifications", "pushNotificationReceived", cb);
+    },
+    /** The person tapped a notification. Opens \`data.url\` in the app by default. */
+    onTap(cb: (n: { title?: string; body?: string; data?: Record<string, unknown> }) => void = (n) => typeof n?.data?.url === "string" && openInApp(n.data.url)): () => void {
+      return listen("PushNotifications", "pushNotificationActionPerformed", (e: { notification?: any }) => cb(e?.notification ?? {}));
+    },
+  },
   /** Runs \`onBack\` for the Android back button. Returns an unsubscribe. */
   onBack(onBack: () => void): () => void {
     return listen("App", "backButton", onBack);
@@ -69260,7 +69293,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -139706,7 +139738,6 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140794,7 +140825,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -140959,7 +140989,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141003,7 +141032,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -143554,6 +143582,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145887,7 +145916,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
