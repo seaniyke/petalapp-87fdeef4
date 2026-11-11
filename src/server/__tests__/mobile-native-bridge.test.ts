@@ -213,3 +213,11 @@ describe("push notifications", () => {
     expect(src).toContain("pushNotificationActionPerformed");
   });
 });
+
+import { readFileSync as __rf } from "node:fs";
+describe("native scroll polish", () => {
+  it("phone builds hide scrollbars and edge glow/bounce", () => {
+    const y = __rf("codemagic.yaml", "utf8");
+    for (const s of ["setVerticalScrollBarEnabled(false)", "setHorizontalScrollBarEnabled(false)", "OVER_SCROLL_NEVER", "showsVerticalScrollIndicator = false", "showsHorizontalScrollIndicator = false", "bounces = false"]) expect(y).toContain(s);
+  });
+});

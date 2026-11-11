@@ -44,6 +44,34 @@ workflows:
           if [ "$PETAL_PLATFORM" = "android" ]; then
             printf '\nconfigurations.all {\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"\n}\n' >> android/app/build.gradle
           fi
+      - name: Native scroll polish
+        script: |
+          python3 - <<'PY'
+          import os, re
+          plat = os.environ['PETAL_PLATFORM']
+          if plat == 'android':
+              for root, _, files in os.walk('android/app/src/main/java'):
+                  if 'MainActivity.java' in files:
+                      f = os.path.join(root, 'MainActivity.java'); s = open(f).read()
+                      if 'OVER_SCROLL_NEVER' not in s:
+                          body = ('{\n    @Override\n    public void onCreate(android.os.Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n'
+                                  '        android.webkit.WebView w = this.bridge != null ? this.bridge.getWebView() : null;\n'
+                                  '        if (w != null) {\n            w.setVerticalScrollBarEnabled(false);\n            w.setHorizontalScrollBarEnabled(false);\n'
+                                  '            w.setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);\n        }\n    }\n}\n')
+                          s = re.sub(r'\{\s*\}\s*$', body, s.rstrip() + '\n')
+                          open(f, 'w').write(s); print('patched', f)
+          if plat == 'ios':
+              f = 'ios/App/App/AppDelegate.swift'
+              if os.path.isfile(f):
+                  s = open(f).read()
+                  if 'bounces = false' not in s:
+                      hook = ('-> Bool {\n        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {\n'
+                              '            if let vc = self.window?.rootViewController as? CAPBridgeViewController, let sv = vc.webView?.scrollView {\n'
+                              '                sv.showsVerticalScrollIndicator = false\n                sv.showsHorizontalScrollIndicator = false\n                sv.bounces = false\n            }\n        }\n')
+                      s = s.replace('-> Bool {\n', hook, 1)
+                      if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
+                      open(f, 'w').write(s); print('patched', f)
+          PY
       - name: Set app icon
         script: |
           python3 - <<'PY'
@@ -232,6 +260,34 @@ workflows:
           if [ "$PETAL_PLATFORM" = "android" ]; then
             printf '\nconfigurations.all {\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"\n}\n' >> android/app/build.gradle
           fi
+      - name: Native scroll polish
+        script: |
+          python3 - <<'PY'
+          import os, re
+          plat = os.environ['PETAL_PLATFORM']
+          if plat == 'android':
+              for root, _, files in os.walk('android/app/src/main/java'):
+                  if 'MainActivity.java' in files:
+                      f = os.path.join(root, 'MainActivity.java'); s = open(f).read()
+                      if 'OVER_SCROLL_NEVER' not in s:
+                          body = ('{\n    @Override\n    public void onCreate(android.os.Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n'
+                                  '        android.webkit.WebView w = this.bridge != null ? this.bridge.getWebView() : null;\n'
+                                  '        if (w != null) {\n            w.setVerticalScrollBarEnabled(false);\n            w.setHorizontalScrollBarEnabled(false);\n'
+                                  '            w.setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);\n        }\n    }\n}\n')
+                          s = re.sub(r'\{\s*\}\s*$', body, s.rstrip() + '\n')
+                          open(f, 'w').write(s); print('patched', f)
+          if plat == 'ios':
+              f = 'ios/App/App/AppDelegate.swift'
+              if os.path.isfile(f):
+                  s = open(f).read()
+                  if 'bounces = false' not in s:
+                      hook = ('-> Bool {\n        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {\n'
+                              '            if let vc = self.window?.rootViewController as? CAPBridgeViewController, let sv = vc.webView?.scrollView {\n'
+                              '                sv.showsVerticalScrollIndicator = false\n                sv.showsHorizontalScrollIndicator = false\n                sv.bounces = false\n            }\n        }\n')
+                      s = s.replace('-> Bool {\n', hook, 1)
+                      if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
+                      open(f, 'w').write(s); print('patched', f)
+          PY
       - name: Set app icon
         script: |
           python3 - <<'PY'
@@ -436,6 +492,34 @@ workflows:
           if [ "$PETAL_PLATFORM" = "android" ]; then
             printf '\nconfigurations.all {\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"\n}\n' >> android/app/build.gradle
           fi
+      - name: Native scroll polish
+        script: |
+          python3 - <<'PY'
+          import os, re
+          plat = os.environ['PETAL_PLATFORM']
+          if plat == 'android':
+              for root, _, files in os.walk('android/app/src/main/java'):
+                  if 'MainActivity.java' in files:
+                      f = os.path.join(root, 'MainActivity.java'); s = open(f).read()
+                      if 'OVER_SCROLL_NEVER' not in s:
+                          body = ('{\n    @Override\n    public void onCreate(android.os.Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n'
+                                  '        android.webkit.WebView w = this.bridge != null ? this.bridge.getWebView() : null;\n'
+                                  '        if (w != null) {\n            w.setVerticalScrollBarEnabled(false);\n            w.setHorizontalScrollBarEnabled(false);\n'
+                                  '            w.setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);\n        }\n    }\n}\n')
+                          s = re.sub(r'\{\s*\}\s*$', body, s.rstrip() + '\n')
+                          open(f, 'w').write(s); print('patched', f)
+          if plat == 'ios':
+              f = 'ios/App/App/AppDelegate.swift'
+              if os.path.isfile(f):
+                  s = open(f).read()
+                  if 'bounces = false' not in s:
+                      hook = ('-> Bool {\n        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {\n'
+                              '            if let vc = self.window?.rootViewController as? CAPBridgeViewController, let sv = vc.webView?.scrollView {\n'
+                              '                sv.showsVerticalScrollIndicator = false\n                sv.showsHorizontalScrollIndicator = false\n                sv.bounces = false\n            }\n        }\n')
+                      s = s.replace('-> Bool {\n', hook, 1)
+                      if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
+                      open(f, 'w').write(s); print('patched', f)
+          PY
       - name: Set app icon
         script: |
           python3 - <<'PY'
