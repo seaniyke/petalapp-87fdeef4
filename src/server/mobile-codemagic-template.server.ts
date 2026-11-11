@@ -456,8 +456,10 @@ ${APP_SETTINGS_STEP}      - name: Set up Apple signing
             xcode-project build-ipa --project App.xcodeproj --scheme App
           fi
           cp build/ios/ipa/*.ipa $CM_BUILD_DIR/petal-release.ipa
+          cp build/ios/ipa/*.ipa ../../petal-release.ipa
     artifacts:
       - "*.ipa"
+      - petal-app/ios/App/build/ios/ipa/*.ipa
     publishing:
       app_store_connect:
         auth: integration
