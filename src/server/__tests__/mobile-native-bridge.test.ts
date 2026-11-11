@@ -205,12 +205,23 @@ describe("push notifications", () => {
     expect(CODEMAGIC_YAML).toContain("'push': (['android.permission.POST_NOTIFICATIONS']");
     expect(CODEMAGIC_YAML).toMatch(/grep -q '"push"' petal\.native\.json .*google-services\.json.*push-notifications@\^8/);
     expect(CODEMAGIC_YAML).toContain("aps-environment");
-    expect(CODEMAGIC_YAML).toContain("--capability PUSH_NOTIFICATIONS");
+    expect(CODEMAGIC_YAML).toContain("PUSH_NOTIFICATIONS");
   });
   it("bridge returns null outside the app", async () => {
     const src = mobileShellKit().find((f) => f.path === "src/lib/native.ts")!.content;
     expect(src).toContain('"PushNotifications", "register"');
     expect(src).toContain("pushNotificationActionPerformed");
+  });
+});
+
+describe("sign in with Apple", () => {
+  it("is opt-in per app: iPhone entitlement plus the Apple capability, nothing on Android", async () => {
+    const { CODEMAGIC_YAML } = await import("../mobile-codemagic-template.server");
+    expect(CODEMAGIC_YAML).toContain("'apple-signin': ([], '', '')");
+    expect(CODEMAGIC_YAML).toContain("<key>com.apple.developer.applesignin</key><array><string>Default</string></array>");
+    expect(CODEMAGIC_YAML).toContain('grep -q \'"apple-signin"\' petal.native.json 2>/dev/null; then CAPS="$CAPS APPLE_ID_AUTH"');
+    // Push keeps working alongside it in the same entitlements file.
+    expect(CODEMAGIC_YAML).toContain('CAPS="$CAPS PUSH_NOTIFICATIONS"');
   });
 });
 

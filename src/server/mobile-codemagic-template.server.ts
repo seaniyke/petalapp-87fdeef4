@@ -36,6 +36,7 @@ const APP_SETTINGS_STEP = String.raw`      - name: Apply app settings
               'microphone': (['android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS'], 'NSMicrophoneUsageDescription', 'Uses the microphone for voice calls.'),
               'camera': (['android.permission.CAMERA'], 'NSCameraUsageDescription', 'Uses the camera to take photos.'),
               'push': (['android.permission.POST_NOTIFICATIONS'], '', ''),
+              'apple-signin': ([], '', ''),
           }
           feats = [f for f in extra.get('features', []) if f in FEATURES]
           hosts = [h for h in extra.get('linkHosts', []) if re.fullmatch(r'[a-z0-9-]+(\.[a-z0-9-]+)+', h)]
@@ -68,9 +69,14 @@ const APP_SETTINGS_STEP = String.raw`      - name: Apply app settings
               for f in feats:
                   if FEATURES[f][1]:
                       pb('Add :' + FEATURES[f][1] + ' string ' + FEATURES[f][2])
+              ents = ''
               if 'push' in feats:
                   pb('Add :UIBackgroundModes array'); pb('Add :UIBackgroundModes:0 string remote-notification')
-                  open('ios/App/App/App.entitlements', 'w').write('<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>aps-environment</key><string>production</string></dict></plist>\n')
+                  ents += '<key>aps-environment</key><string>production</string>'
+              if 'apple-signin' in feats:
+                  ents += '<key>com.apple.developer.applesignin</key><array><string>Default</string></array>'
+              if ents:
+                  open('ios/App/App/App.entitlements', 'w').write('<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict>' + ents + '</dict></plist>\n')
                   pj = 'ios/App/App.xcodeproj/project.pbxproj'
                   t = open(pj).read()
                   if 'CODE_SIGN_ENTITLEMENTS' not in t:
@@ -542,9 +548,12 @@ ${APP_SETTINGS_STEP}      - name: Decrypt signing materials
 ${APP_SETTINGS_STEP}      - name: Set up Apple signing
         script: |
           keychain initialize
-          if grep -q '"push"' petal.native.json 2>/dev/null; then
+          CAPS=""
+          if grep -q '"push"' petal.native.json 2>/dev/null; then CAPS="$CAPS PUSH_NOTIFICATIONS"; fi
+          if grep -q '"apple-signin"' petal.native.json 2>/dev/null; then CAPS="$CAPS APPLE_ID_AUTH"; fi
+          if [ -n "$CAPS" ]; then
             BID=$(app-store-connect bundle-ids list --bundle-id-identifier "$PETAL_BUNDLE_ID" --strict-match-identifier --json | python3 -c "import sys,json;d=json.load(sys.stdin);print(d[0]['id'] if d else '')")
-            if [ -n "$BID" ]; then app-store-connect bundle-ids enable-capabilities "$BID" --capability PUSH_NOTIFICATIONS || true; fi
+            if [ -n "$BID" ]; then for C in $CAPS; do app-store-connect bundle-ids enable-capabilities "$BID" --capability "$C" || true; done; fi
           fi
           app-store-connect fetch-signing-files "$PETAL_BUNDLE_ID" --type IOS_APP_STORE --create
           keychain add-certificates
