@@ -56,6 +56,7 @@ native npm package — the app ships without them and the store build adds
 the shell. Each call works in the preview too (web fallback), so no guards.
 | Need | Use | Avoid |
 |---|---|---|
+| Fingerprint / Face ID unlock | \`await native.biometrics.isAvailable()\`, \`await native.biometrics.authenticate("Unlock")\` (true only when passed) | building your own prompt |
 | Haptic tap / success buzz | \`native.haptics.impact()\`, \`native.haptics.success()\` | — |
 | Share sheet | \`await native.share({ title, text, url })\` | bare \`navigator.share\` |
 | Open an outside link | \`native.openUrl(url)\` | \`window.open\` (kills app on iOS) |

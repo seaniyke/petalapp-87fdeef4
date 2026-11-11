@@ -53,10 +53,80 @@ describe("Petal native bridge (mobile kit)", () => {
     expect(share).toHaveBeenCalledWith({ title: "t" });
   });
 
+  it("works when the app loads a live website (no plugin registry, only the shell's native channel)", async () => {
+    const nativePromise = vi.fn(async (plugin: string, method: string) => {
+      if (plugin === "BiometricAuthNative" && method === "checkBiometry") return { isAvailable: true };
+      if (plugin === "BiometricAuthNative" && method === "internalAuthenticate") return undefined;
+      return {};
+    });
+    vi.stubGlobal("window", {
+      Capacitor: {
+        isNativePlatform: () => true,
+        getPlatform: () => "android",
+        Plugins: {},
+        PluginHeaders: [{ name: "Haptics" }, { name: "BiometricAuthNative" }, { name: "App" }],
+        nativePromise,
+      },
+    });
+    const native = await loadBridge();
+    native.haptics.impact("light");
+    expect(nativePromise).toHaveBeenCalledWith("Haptics", "impact", { style: "LIGHT" });
+    expect(await native.biometrics.isAvailable()).toBe(true);
+    expect(await native.biometrics.authenticate("Unlock Custard")).toBe(true);
+    expect(nativePromise).toHaveBeenCalledWith("BiometricAuthNative", "internalAuthenticate", expect.objectContaining({ reason: "Unlock Custard" }));
+    // Add-ons the app doesn't include fall back instead of calling into nothing.
+    expect(await native.share({ url: "https://x.test" })).toBe(false);
+  });
+
+  it("a failed or cancelled fingerprint / Face ID check never counts as passed", async () => {
+    vi.stubGlobal("window", {
+      Capacitor: { isNativePlatform: () => true, getPlatform: () => "ios", Plugins: {}, nativePromise: vi.fn(async () => Promise.reject(new Error("userCancel"))) },
+    });
+    const native = await loadBridge();
+    expect(await native.biometrics.authenticate()).toBe(false);
+    vi.stubGlobal("window", {});
+    expect(await (await loadBridge()).biometrics.authenticate()).toBe(false);
+  });
+
+  it("links that open the app (https or app scheme) go to the matching page, launch link only once", async () => {
+    const assign = vi.fn();
+    const session = new Map<string, string>();
+    let urlOpen: ((e: { url: string }) => void) | undefined;
+    vi.stubGlobal("location", { pathname: "/", search: "", hash: "", assign });
+    vi.stubGlobal("sessionStorage", { getItem: (k: string) => session.get(k) ?? null, setItem: (k: string, v: string) => session.set(k, v) });
+    vi.stubGlobal("window", {
+      Capacitor: {
+        isNativePlatform: () => true,
+        getPlatform: () => "android",
+        Plugins: {},
+        nativePromise: vi.fn(async (_p: string, m: string) => (m === "getLaunchUrl" ? { url: "https://custardai.dev/pay/done?ref=9" } : {})),
+        nativeCallback: vi.fn((_p: string, _m: string, _a: unknown, cb: (e: { url: string }) => void) => ((urlOpen = cb), "id1")),
+      },
+    });
+    const native = await loadBridge();
+    native.onLinkOpen();
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("/pay/done?ref=9"));
+    urlOpen!({ url: "custardai://auth/callback?code=abc" });
+    expect(assign).toHaveBeenLastCalledWith("/auth/callback?code=abc");
+    // A later page load must not jump back to the launch link.
+    assign.mockClear();
+    native.onLinkOpen();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(assign).not.toHaveBeenCalled();
+  });
+
   it("the store build installs every plugin the bridge uses", () => {
-    const used = [...bridgeSource().matchAll(/(?:call(?:<[^>]*>)?\(|plugin\()"(\w+)"/g)].map((m) => m[1]);
-    const pkg: Record<string, string> = { Haptics: "haptics", Share: "share", Browser: "browser", Preferences: "preferences", App: "app" };
-    for (const name of new Set(used)) expect(CODEMAGIC_YAML).toContain(`@capacitor/${pkg[name]}`);
+    const used = [...bridgeSource().matchAll(/(?:call(?:<[^>]*>)?\(|listen\()"(\w+)"/g)].map((m) => m[1]);
+    const pkg: Record<string, string> = {
+      Haptics: "@capacitor/haptics",
+      Share: "@capacitor/share",
+      Browser: "@capacitor/browser",
+      Preferences: "@capacitor/preferences",
+      App: "@capacitor/app",
+      BiometricAuthNative: "@aparajita/capacitor-biometric-auth",
+    };
+    expect(used).toContain("BiometricAuthNative");
+    for (const name of new Set(used)) expect(CODEMAGIC_YAML).toContain(pkg[name]);
   });
 
   it("phone builds run on Node 22 with one Capacitor major so every add-on matches", () => {
@@ -110,5 +180,20 @@ describe("store build: phone features are registered", () => {
     // `cap sync` only registers add-ons listed in package.json; --no-save shipped an app with none.
     expect(CODEMAGIC_YAML).not.toMatch(/@capacitor\/haptics[^\n]*--no-save/);
     expect(CODEMAGIC_YAML).toMatch(/@capacitor\/haptics[^\n]*--save/);
+  });
+});
+
+describe("store build: per-app phone settings", () => {
+  it("adds microphone, app links and launch colour only from the app's own settings", () => {
+    const step = CODEMAGIC_YAML.split("- name: Apply app settings")[1].split("- name:")[0];
+    expect(CODEMAGIC_YAML.match(/- name: Apply app settings/g)?.length).toBe(2);
+    expect(step).toContain("petal.native.json");
+    expect(step).toContain("android.permission.RECORD_AUDIO");
+    expect(step).toContain("android.permission.MODIFY_AUDIO_SETTINGS");
+    expect(step).toContain("NSMicrophoneUsageDescription");
+    expect(step).toContain('android:autoVerify="true"');
+    expect(step).toContain("windowSplashScreenBackground");
+    // Store-safe list only: no location, phone-state or ad permissions can be switched on.
+    expect(step).not.toMatch(/LOCATION|READ_PHONE_STATE|AD_ID/);
   });
 });

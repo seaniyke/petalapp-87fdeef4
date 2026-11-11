@@ -93,6 +93,56 @@ workflows:
                       size(1024, d + '/' + f)
           print('App icon applied for', plat)
           PY
+      - name: Apply app settings
+        script: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          plat = os.environ['PETAL_PLATFORM']
+          cfg = json.load(open('capacitor.config.json'))
+          extra = json.load(open('petal.native.json')) if os.path.isfile('petal.native.json') else {}
+          # Only these phone features can be switched on; tracking-type permissions are never added.
+          FEATURES = {
+              'microphone': (['android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS'], 'NSMicrophoneUsageDescription', 'Uses the microphone for voice calls.'),
+              'camera': (['android.permission.CAMERA'], 'NSCameraUsageDescription', 'Uses the camera to take photos.'),
+          }
+          feats = [f for f in extra.get('features', []) if f in FEATURES]
+          hosts = [h for h in extra.get('linkHosts', []) if re.fullmatch(r'[a-z0-9-]+(\.[a-z0-9-]+)+', h)]
+          schemes = [s for s in extra.get('linkSchemes', []) if re.fullmatch(r'[a-z][a-z0-9+.-]*', s) and s not in ('http', 'https')]
+          color = cfg.get('backgroundColor') or cfg.get('android', {}).get('backgroundColor') or ''
+          color = color if re.fullmatch(r'#[0-9a-fA-F]{6}', color) else ''
+          if plat == 'android':
+              mf = 'android/app/src/main/AndroidManifest.xml'
+              x = open(mf).read()
+              for f in feats:
+                  for p in FEATURES[f][0]:
+                      if p not in x:
+                          x = x.replace('</manifest>', '    <uses-permission android:name="' + p + '" />\n</manifest>')
+              view = '<action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" />'
+              filters = ''.join('<intent-filter android:autoVerify="true">' + view + '<data android:scheme="https" android:host="' + h + '" /></intent-filter>\n' for h in hosts)
+              filters += ''.join('<intent-filter>' + view + '<data android:scheme="' + s + '" /></intent-filter>\n' for s in schemes)
+              if filters:
+                  x = x.replace('</activity>', filters + '</activity>', 1)
+              open(mf, 'w').write(x)
+              if color:
+                  res = 'android/app/src/main/res/values/'
+                  open(res + 'petal_launch.xml', 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources><color name="petal_launch_bg">' + color + '</color></resources>\n')
+                  st = open(res + 'styles.xml').read()
+                  st = st.replace('<item name="android:background">@drawable/splash</item>', '<item name="android:background">@color/petal_launch_bg</item><item name="windowSplashScreenBackground">@color/petal_launch_bg</item>')
+                  st = st.replace('<item name="android:background">@null</item>', '<item name="android:background">@null</item><item name="android:windowBackground">@color/petal_launch_bg</item>')
+                  open(res + 'styles.xml', 'w').write(st)
+          else:
+              pl = 'ios/App/App/Info.plist'
+              pb = lambda c: subprocess.run(['/usr/libexec/PlistBuddy', '-c', c, pl], capture_output=True)
+              for f in feats:
+                  pb('Add :' + FEATURES[f][1] + ' string ' + FEATURES[f][2])
+              if schemes:
+                  pb('Add :CFBundleURLTypes array'); pb('Add :CFBundleURLTypes:0 dict'); pb('Add :CFBundleURLTypes:0:CFBundleURLSchemes array')
+                  for i, s in enumerate(schemes):
+                      pb('Add :CFBundleURLTypes:0:CFBundleURLSchemes:' + str(i) + ' string ' + s)
+              if hosts:
+                  print('iPhone web links need the signed build (Associated Domains); app links work now.')
+          print('App settings applied:', plat, feats, hosts, schemes, color)
+          PY
       - name: Build native artifact (unsigned)
         script: |
           if [ "$PETAL_PLATFORM" = "ios" ]; then
@@ -218,6 +268,56 @@ workflows:
                   if f.endswith('.png'):
                       size(1024, d + '/' + f)
           print('App icon applied for', plat)
+          PY
+      - name: Apply app settings
+        script: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          plat = os.environ['PETAL_PLATFORM']
+          cfg = json.load(open('capacitor.config.json'))
+          extra = json.load(open('petal.native.json')) if os.path.isfile('petal.native.json') else {}
+          # Only these phone features can be switched on; tracking-type permissions are never added.
+          FEATURES = {
+              'microphone': (['android.permission.RECORD_AUDIO', 'android.permission.MODIFY_AUDIO_SETTINGS'], 'NSMicrophoneUsageDescription', 'Uses the microphone for voice calls.'),
+              'camera': (['android.permission.CAMERA'], 'NSCameraUsageDescription', 'Uses the camera to take photos.'),
+          }
+          feats = [f for f in extra.get('features', []) if f in FEATURES]
+          hosts = [h for h in extra.get('linkHosts', []) if re.fullmatch(r'[a-z0-9-]+(\.[a-z0-9-]+)+', h)]
+          schemes = [s for s in extra.get('linkSchemes', []) if re.fullmatch(r'[a-z][a-z0-9+.-]*', s) and s not in ('http', 'https')]
+          color = cfg.get('backgroundColor') or cfg.get('android', {}).get('backgroundColor') or ''
+          color = color if re.fullmatch(r'#[0-9a-fA-F]{6}', color) else ''
+          if plat == 'android':
+              mf = 'android/app/src/main/AndroidManifest.xml'
+              x = open(mf).read()
+              for f in feats:
+                  for p in FEATURES[f][0]:
+                      if p not in x:
+                          x = x.replace('</manifest>', '    <uses-permission android:name="' + p + '" />\n</manifest>')
+              view = '<action android:name="android.intent.action.VIEW" /><category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" />'
+              filters = ''.join('<intent-filter android:autoVerify="true">' + view + '<data android:scheme="https" android:host="' + h + '" /></intent-filter>\n' for h in hosts)
+              filters += ''.join('<intent-filter>' + view + '<data android:scheme="' + s + '" /></intent-filter>\n' for s in schemes)
+              if filters:
+                  x = x.replace('</activity>', filters + '</activity>', 1)
+              open(mf, 'w').write(x)
+              if color:
+                  res = 'android/app/src/main/res/values/'
+                  open(res + 'petal_launch.xml', 'w').write('<?xml version="1.0" encoding="utf-8"?>\n<resources><color name="petal_launch_bg">' + color + '</color></resources>\n')
+                  st = open(res + 'styles.xml').read()
+                  st = st.replace('<item name="android:background">@drawable/splash</item>', '<item name="android:background">@color/petal_launch_bg</item><item name="windowSplashScreenBackground">@color/petal_launch_bg</item>')
+                  st = st.replace('<item name="android:background">@null</item>', '<item name="android:background">@null</item><item name="android:windowBackground">@color/petal_launch_bg</item>')
+                  open(res + 'styles.xml', 'w').write(st)
+          else:
+              pl = 'ios/App/App/Info.plist'
+              pb = lambda c: subprocess.run(['/usr/libexec/PlistBuddy', '-c', c, pl], capture_output=True)
+              for f in feats:
+                  pb('Add :' + FEATURES[f][1] + ' string ' + FEATURES[f][2])
+              if schemes:
+                  pb('Add :CFBundleURLTypes array'); pb('Add :CFBundleURLTypes:0 dict'); pb('Add :CFBundleURLTypes:0:CFBundleURLSchemes array')
+                  for i, s in enumerate(schemes):
+                      pb('Add :CFBundleURLTypes:0:CFBundleURLSchemes:' + str(i) + ' string ' + s)
+              if hosts:
+                  print('iPhone web links need the signed build (Associated Domains); app links work now.')
+          print('App settings applied:', plat, feats, hosts, schemes, color)
           PY
       - name: Decrypt signing materials
         script: |
