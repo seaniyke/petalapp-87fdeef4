@@ -166,7 +166,7 @@ workflows:
       - name: Native scroll polish
         script: |
           python3 - <<'PY'
-          import os, re
+          import json, os, re
           plat = os.environ['PETAL_PLATFORM']
           if plat == 'android':
               for root, _, files in os.walk('android/app/src/main/java'):
@@ -190,6 +190,20 @@ workflows:
                       s = s.replace('-> Bool {\n', hook, 1)
                       if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
                       open(f, 'w').write(s); print('patched', f)
+                  # Push: forward Apple's device token to Capacitor, or iOS drops it and JS never gets 'registration'.
+                  if os.path.isfile('petal.native.json') and 'push' in json.load(open('petal.native.json')).get('features', []):
+                      s = open(f).read()
+                      if 'capacitorDidRegisterForRemoteNotifications' not in s:
+                          cb = ('    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {\n'
+                                '        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)\n    }\n\n'
+                                '    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {\n'
+                                '        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)\n    }\n\n')
+                          if '    func applicationWillResignActive' in s:
+                              s = s.replace('    func applicationWillResignActive', cb + '    func applicationWillResignActive', 1)
+                          else:
+                              s = re.sub(r'\}\s*$', cb + '}\n', s.rstrip() + '\n')
+                          if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
+                          open(f, 'w').write(s); print('push callbacks added', f)
           PY
       - name: Set app icon
         script: |
@@ -327,7 +341,7 @@ ${APP_SETTINGS_STEP}      - name: Build native artifact (unsigned)
       - name: Native scroll polish
         script: |
           python3 - <<'PY'
-          import os, re
+          import json, os, re
           plat = os.environ['PETAL_PLATFORM']
           if plat == 'android':
               for root, _, files in os.walk('android/app/src/main/java'):
@@ -351,6 +365,20 @@ ${APP_SETTINGS_STEP}      - name: Build native artifact (unsigned)
                       s = s.replace('-> Bool {\n', hook, 1)
                       if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
                       open(f, 'w').write(s); print('patched', f)
+                  # Push: forward Apple's device token to Capacitor, or iOS drops it and JS never gets 'registration'.
+                  if os.path.isfile('petal.native.json') and 'push' in json.load(open('petal.native.json')).get('features', []):
+                      s = open(f).read()
+                      if 'capacitorDidRegisterForRemoteNotifications' not in s:
+                          cb = ('    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {\n'
+                                '        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)\n    }\n\n'
+                                '    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {\n'
+                                '        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)\n    }\n\n')
+                          if '    func applicationWillResignActive' in s:
+                              s = s.replace('    func applicationWillResignActive', cb + '    func applicationWillResignActive', 1)
+                          else:
+                              s = re.sub(r'\}\s*$', cb + '}\n', s.rstrip() + '\n')
+                          if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
+                          open(f, 'w').write(s); print('push callbacks added', f)
           PY
       - name: Set app icon
         script: |
@@ -507,7 +535,7 @@ ${APP_SETTINGS_STEP}      - name: Decrypt signing materials
       - name: Native scroll polish
         script: |
           python3 - <<'PY'
-          import os, re
+          import json, os, re
           plat = os.environ['PETAL_PLATFORM']
           if plat == 'android':
               for root, _, files in os.walk('android/app/src/main/java'):
@@ -531,6 +559,20 @@ ${APP_SETTINGS_STEP}      - name: Decrypt signing materials
                       s = s.replace('-> Bool {\n', hook, 1)
                       if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
                       open(f, 'w').write(s); print('patched', f)
+                  # Push: forward Apple's device token to Capacitor, or iOS drops it and JS never gets 'registration'.
+                  if os.path.isfile('petal.native.json') and 'push' in json.load(open('petal.native.json')).get('features', []):
+                      s = open(f).read()
+                      if 'capacitorDidRegisterForRemoteNotifications' not in s:
+                          cb = ('    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {\n'
+                                '        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)\n    }\n\n'
+                                '    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {\n'
+                                '        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)\n    }\n\n')
+                          if '    func applicationWillResignActive' in s:
+                              s = s.replace('    func applicationWillResignActive', cb + '    func applicationWillResignActive', 1)
+                          else:
+                              s = re.sub(r'\}\s*$', cb + '}\n', s.rstrip() + '\n')
+                          if 'import Capacitor' not in s: s = 'import Capacitor\n' + s
+                          open(f, 'w').write(s); print('push callbacks added', f)
           PY
       - name: Set app icon
         script: |

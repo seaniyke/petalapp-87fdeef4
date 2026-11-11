@@ -233,6 +233,16 @@ describe("native scroll polish", () => {
   });
 });
 
+describe("iPhone push token callbacks", () => {
+  it("every iPhone workflow forwards Apple's device token to Capacitor when push is on", () => {
+    for (const y of [__rf("codemagic.yaml", "utf8"), CODEMAGIC_YAML_SRC()]) {
+      expect(y.split("capacitorDidRegisterForRemoteNotifications, object: deviceToken").length - 1).toBe(3);
+      expect(y.split("capacitorDidFailToRegisterForRemoteNotifications, object: error").length - 1).toBe(3);
+    }
+  });
+});
+function CODEMAGIC_YAML_SRC() { return __rf("src/server/mobile-codemagic-template.server.ts", "utf8"); }
+
 describe("sign-in add-ons: Google (GoogleAuth) and Apple (SignInWithApple)", () => {
   it("installs each add-on only when the app's settings ask for it", () => {
     expect(CODEMAGIC_YAML.match(/grep -q '"apple-signin"' petal\.native\.json 2>\/dev\/null; then npm install @capacitor-community\/apple-sign-in@\^7 --save/g)?.length).toBe(3);
