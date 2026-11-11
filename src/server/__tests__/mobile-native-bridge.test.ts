@@ -232,3 +232,52 @@ describe("native scroll polish", () => {
     for (const s of ["setVerticalScrollBarEnabled(false)", "setHorizontalScrollBarEnabled(false)", "OVER_SCROLL_NEVER", "showsVerticalScrollIndicator = false", "showsHorizontalScrollIndicator = false", "bounces = false"]) expect(y).toContain(s);
   });
 });
+
+describe("sign-in add-ons: Google (GoogleAuth) and Apple (SignInWithApple)", () => {
+  it("installs each add-on only when the app's settings ask for it", () => {
+    expect(CODEMAGIC_YAML.match(/grep -q '"apple-signin"' petal\.native\.json 2>\/dev\/null; then npm install @capacitor-community\/apple-sign-in@\^7 --save/g)?.length).toBe(3);
+    expect(CODEMAGIC_YAML.match(/grep -q '"google-signin"' petal\.native\.json 2>\/dev\/null; then npm install @codetrix-studio\/capacitor-google-auth@3\.4\.0-rc\.4 --save --legacy-peer-deps/g)?.length).toBe(3);
+    // Its Android build file still points at the retired jcenter repository.
+    expect(CODEMAGIC_YAML).toContain("s/jcenter()/mavenCentral()/g");
+  });
+
+  it("uses CocoaPods on iPhone for Google sign-in (the add-on has no Swift package) and builds either project type", () => {
+    expect(CODEMAGIC_YAML.match(/grep -q '"google-signin"' petal\.native\.json 2>\/dev\/null; then PM="--packagemanager CocoaPods"; fi/g)?.length).toBe(3);
+    expect(CODEMAGIC_YAML.match(/npx cap add "\$PETAL_PLATFORM" \$PM/g)?.length).toBe(3);
+    expect(CODEMAGIC_YAML).not.toMatch(/xcodebuild -workspace App\.xcworkspace/);
+    expect(CODEMAGIC_YAML.match(/build-ipa --project App\.xcodeproj/g)?.length).toBe(2);
+  });
+
+  it("writes the Google client IDs into the Android app, using the Web client ID for sign-in", async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync, readFileSync } = await import("node:fs");
+    const { spawnSync } = await import("node:child_process");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const step = CODEMAGIC_YAML.split("- name: Apply app settings")[1];
+    const py = step.split("python3 - <<'PY'\n")[1].split("\n          PY")[0].replace(/^ {10}/gm, "");
+    const dir = mkdtempSync(join(tmpdir(), "petal-google-"));
+    mkdirSync(join(dir, "android/app/src/main/assets"), { recursive: true });
+    const ios = "111111111111-iosabc.apps.googleusercontent.com";
+    const web = "111111111111-webxyz.apps.googleusercontent.com";
+    writeFileSync(join(dir, "capacitor.config.json"), JSON.stringify({ appId: "dev.custardai.app" }));
+    writeFileSync(join(dir, "android/app/src/main/assets/capacitor.config.json"), JSON.stringify({ appId: "dev.custardai.app" }));
+    writeFileSync(join(dir, "android/app/src/main/AndroidManifest.xml"), "<manifest><application><activity></activity></application></manifest>");
+    writeFileSync(join(dir, "petal.native.json"), JSON.stringify({
+      features: ["push", "apple-signin", "google-signin"],
+      google: { iosClientId: ios, androidClientId: "not-a-client-id", webClientId: web },
+    }));
+    const r = spawnSync("python3", ["-"], { cwd: dir, input: py, env: { ...process.env, PETAL_PLATFORM: "android" }, encoding: "utf8" });
+    expect(r.status, r.stderr).toBe(0);
+    const g = JSON.parse(readFileSync(join(dir, "android/app/src/main/assets/capacitor.config.json"), "utf8")).plugins.GoogleAuth;
+    expect(g.androidClientId).toBe(web);
+    expect(g.serverClientId).toBe(web);
+    expect(g.iosClientId).toBe(ios);
+    expect(g.scopes).toEqual(["profile", "email"]);
+    // Malformed values are never written, and no Google URL scheme is added on Android.
+    expect(readFileSync(join(dir, "android/app/src/main/AndroidManifest.xml"), "utf8")).not.toContain("googleusercontent");
+  });
+
+  it("adds the reversed iPhone client ID as the app's Google return scheme", () => {
+    expect(CODEMAGIC_YAML).toContain("schemes.append('com.googleusercontent.apps.' + g['iosClientId'][:-len('.apps.googleusercontent.com')])");
+  });
+});
