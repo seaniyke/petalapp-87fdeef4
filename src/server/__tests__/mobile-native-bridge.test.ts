@@ -131,7 +131,7 @@ describe("Petal native bridge (mobile kit)", () => {
 
   it("phone builds run on Node 22 with one Capacitor major so every add-on matches", () => {
     expect(CODEMAGIC_YAML).not.toContain("node: 20");
-    expect(CODEMAGIC_YAML.match(/node: 22/g)?.length).toBe(2);
+    expect(CODEMAGIC_YAML.match(/node: 22/g)?.length).toBe(3);
     for (const m of CODEMAGIC_YAML.matchAll(/@capacitor\/[a-z]+(@\S+)?/g)) expect(m[1]).toBe("@^8");
   });
 
@@ -186,7 +186,7 @@ describe("store build: phone features are registered", () => {
 describe("store build: per-app phone settings", () => {
   it("adds microphone, app links and launch colour only from the app's own settings", () => {
     const step = CODEMAGIC_YAML.split("- name: Apply app settings")[1].split("- name:")[0];
-    expect(CODEMAGIC_YAML.match(/- name: Apply app settings/g)?.length).toBe(2);
+    expect(CODEMAGIC_YAML.match(/- name: Apply app settings/g)?.length).toBe(3);
     expect(step).toContain("petal.native.json");
     expect(step).toContain("android.permission.RECORD_AUDIO");
     expect(step).toContain("android.permission.MODIFY_AUDIO_SETTINGS");

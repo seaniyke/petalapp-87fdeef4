@@ -345,4 +345,120 @@ ${APP_SETTINGS_STEP}      - name: Decrypt signing materials
               -H "x-petal-timestamp: $TS" \
               -H "x-petal-signature: $SIG" \
               --data "$BODY" || true
+  petal-ios-testflight:
+    name: Petal iPhone (TestFlight)
+    integrations:
+      app_store_connect: Petal
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      groups:
+        - apple_signing
+      flutter: stable
+      java: 21
+      node: 22
+      xcode: latest
+      cocoapods: default
+    working_directory: petal-app
+    scripts:
+      - name: Fetch Petal project
+        working_directory: .
+        script: |
+          rm -rf petal-app && mkdir petal-app
+          curl -fsS "$PETAL_SOURCE_URL" -o /tmp/petal-source.json
+          python3 -c "import json,os;d=json.load(open('/tmp/petal-source.json'))
+          for f in d['files']:
+              p=os.path.normpath(os.path.join('petal-app',f['path']))
+              assert p.startswith('petal-app'+os.sep)
+              os.makedirs(os.path.dirname(p),exist_ok=True); open(p,'w').write(f['content'])"
+      - name: Install JS dependencies
+        script: npm install --no-audit --no-fund
+      - name: Build web bundle
+        script: npm run build
+      - name: Add Capacitor shell
+        script: |
+          npm install @capacitor/core@^8 @capacitor/cli@^8 @capacitor/ios@^8 @capacitor/android@^8 @capacitor/app@^8 @capacitor/haptics@^8 @capacitor/share@^8 @capacitor/browser@^8 @capacitor/preferences@^8 @aparajita/capacitor-biometric-auth@^10 --save
+          npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
+          python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
+          npx cap add "$PETAL_PLATFORM"
+          npx cap sync "$PETAL_PLATFORM"
+          if [ "$PETAL_PLATFORM" = "ios" ] && [ -f ios/App/App/Info.plist ]; then
+            /usr/libexec/PlistBuddy -c "Add :NSFaceIDUsageDescription string Use Face ID to unlock the app securely." ios/App/App/Info.plist || true
+          fi
+          if [ "$PETAL_PLATFORM" = "android" ]; then
+            printf '\nconfigurations.all {\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk7"\n    exclude group: "org.jetbrains.kotlin", module: "kotlin-stdlib-jdk8"\n}\n' >> android/app/build.gradle
+          fi
+      - name: Set app icon
+        script: |
+          python3 - <<'PY'
+          import json, os, re, subprocess, urllib.request, urllib.parse
+          out = '/tmp/petal-icon.png'
+          src = next((p for p in ['public/icon.png','public/app-icon.png','public/apple-touch-icon.png','resources/icon.png','assets/icon.png','public/logo.png'] if os.path.isfile(p)), None)
+          def fetch(u):
+              req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0 PetalBuild'})
+              return urllib.request.urlopen(req, timeout=20).read()
+          if not src:
+              cands = [os.environ.get('PETAL_ICON_URL', '')]
+              base = json.load(open('capacitor.config.json')).get('server', {}).get('url', '')
+              if base:
+                  try:
+                      html = fetch(base).decode('utf-8', 'ignore')
+                      for rel in ['apple-touch-icon', 'icon']:
+                          for tag in re.findall(r'<link[^>]+>', html, re.I):
+                              if re.search(r'rel=["\'][^"\']*' + rel, tag, re.I):
+                                  m = re.search(r'href=["\']([^"\']+)', tag, re.I)
+                                  if m and not m.group(1).endswith(('.svg', '.ico')):
+                                      cands.append(urllib.parse.urljoin(base, m.group(1)))
+                  except Exception as e:
+                      print('icon page fetch failed', e)
+              for u in [c for c in cands if c]:
+                  try:
+                      data = fetch(u)
+                      if data[:8] == b'\x89PNG\r\n\x1a\n' or data[:3] == b'\xff\xd8\xff':
+                          open('/tmp/petal-icon-src', 'wb').write(data); src = '/tmp/petal-icon-src'; print('icon from', u); break
+                  except Exception as e:
+                      print('icon fetch failed', u, e)
+          if not src:
+              print('No app icon found; keeping default'); raise SystemExit(0)
+          def size(px, dest):
+              os.makedirs(os.path.dirname(dest), exist_ok=True)
+              subprocess.run(['sips', '-s', 'format', 'png', '-z', str(px), str(px), src, '--out', dest], check=True, capture_output=True)
+          plat = os.environ['PETAL_PLATFORM']
+          if plat == 'android':
+              res = 'android/app/src/main/res'
+              for d, px in {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}.items():
+                  for n in ['ic_launcher.png', 'ic_launcher_round.png']:
+                      size(px, res + '/mipmap-' + d + '/' + n)
+                  size(round(px * 2.25), res + '/mipmap-' + d + '/ic_launcher_foreground.png')
+              # Adaptive icons crop the edges; use the full-bleed legacy icons instead.
+              subprocess.run(['rm', '-rf', res + '/mipmap-anydpi-v26'])
+          else:
+              d = 'ios/App/App/Assets.xcassets/AppIcon.appiconset'
+              for f in os.listdir(d):
+                  if f.endswith('.png'):
+                      size(1024, d + '/' + f)
+          print('App icon applied for', plat)
+          PY
+${APP_SETTINGS_STEP}      - name: Set up Apple signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$PETAL_BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Build signed iPhone app
+        script: |
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist || true
+          cd ios/App
+          agvtool new-version -all $(date -u +%Y%m%d%H%M)
+          if [ -d App.xcworkspace ]; then
+            xcode-project build-ipa --workspace App.xcworkspace --scheme App
+          else
+            xcode-project build-ipa --project App.xcodeproj --scheme App
+          fi
+          cp build/ios/ipa/*.ipa $CM_BUILD_DIR/petal-release.ipa
+    artifacts:
+      - "*.ipa"
+    publishing:
+      app_store_connect:
+        auth: integration
 `;
