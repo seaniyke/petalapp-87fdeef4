@@ -41053,7 +41053,16 @@ export function AppSurfaceSwitch({
   children: React.ReactNode;
 }) {
   const [inApp, setInApp] = React.useState<boolean | null>(null);
-  React.useEffect(() => setInApp(native.isApp()), []);
+  React.useEffect(() => {
+    // Custard Go (the preview app) is a real phone shell, so isApp() is true there.
+    // \`?petal_app=1\` (camera-scan fallback) or a home-screen install also show the app.
+    let preview = false;
+    try {
+      if (new URLSearchParams(location.search).get("petal_app") === "1") sessionStorage.setItem("petal_app", "1");
+      preview = sessionStorage.getItem("petal_app") === "1" || matchMedia("(display-mode: standalone)").matches;
+    } catch { /* storage blocked */ }
+    setInApp(native.isApp() || preview);
+  }, []);
   React.useEffect(() => {
     if (inApp && isSignedIn) window.location.replace(appHome);
   }, [inApp, isSignedIn, appHome]);
@@ -50833,43 +50842,62 @@ import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * iOS/Android-style sticky header. Title is centered, back button on left,
- * optional action on right. Sits below the safe-area top inset.
+ * iOS-style header. With \`large\`, a 34px bold title sits under the bar and
+ * collapses into the frosted 44px bar as the page scrolls (iOS large titles).
  */
 export function MobileHeader({
   title,
   onBack,
   right,
+  large = false,
   className,
 }: {
   title?: React.ReactNode;
   onBack?: () => void;
   right?: React.ReactNode;
+  large?: boolean;
   className?: string;
 }) {
+  const [scrolled, setScrolled] = React.useState(!large);
+  React.useEffect(() => {
+    if (!large) return;
+    const on = () => setScrolled(window.scrollY > 40);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, [large]);
+  const back = () => {
+    try { (window as any).Capacitor?.Plugins?.Haptics?.impact?.({ style: "LIGHT" }); } catch { /* no phone add-on */ }
+    onBack?.();
+  };
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-border bg-background/85 px-3 backdrop-blur",
-        className,
-      )}
-      style={{ paddingTop: "env(safe-area-inset-top)" }}
-    >
-      <div className="flex w-12 items-center">
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back"
-            className="grid h-9 w-9 place-items-center rounded-full text-foreground hover:bg-muted"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-        ) : null}
-      </div>
-      <h1 className="flex-1 truncate text-center text-base font-semibold">{title}</h1>
-      <div className="flex w-12 items-center justify-end">{right}</div>
-    </header>
+    <>
+      <header
+        className={cn(
+          "sticky top-0 z-40 transition-colors duration-200",
+          scrolled ? "border-b border-border/40 bg-background/75 backdrop-blur-2xl" : "border-b border-transparent bg-background",
+          className,
+        )}
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
+        <div className="flex h-11 items-center justify-between gap-2 px-2">
+          <div className="flex w-16 items-center">
+            {onBack ? (
+              <button type="button" onClick={back} aria-label="Back" className="flex h-11 items-center text-primary active:opacity-50">
+                <ChevronLeft className="h-7 w-7" />
+              </button>
+            ) : null}
+          </div>
+          <h1 className={cn("flex-1 truncate text-center text-[17px] font-semibold transition-opacity duration-200", scrolled ? "opacity-100" : "opacity-0")}>{title}</h1>
+          <div className="flex w-16 items-center justify-end">{right}</div>
+        </div>
+      </header>
+      {large ? (
+        <div className="px-4 pb-2 pt-1">
+          <h2 className="text-[34px] font-bold leading-tight tracking-tight text-foreground">{title}</h2>
+        </div>
+      ) : null}
+    </>
   );
 }
 `;
@@ -50884,9 +50912,17 @@ export interface BottomTab {
   href?: string;
 }
 
+function tick() {
+  try {
+    const h = (window as any).Capacitor?.Plugins?.Haptics;
+    if (h?.selectionChanged) { h.selectionStart?.(); h.selectionChanged(); h.selectionEnd?.(); }
+    else navigator.vibrate?.(8);
+  } catch { /* no haptics */ }
+}
+
 /**
- * Fixed iOS/Android bottom tab bar. Pass 3-5 tabs. Active tab is highlighted
- * with the primary color. Sits above safe-area-inset-bottom automatically.
+ * Frosted iOS/Android tab bar. Pass 3-5 tabs. Ticks the phone's haptics on
+ * tab change and sits above the home indicator automatically.
  */
 export function BottomTabBar({
   tabs,
@@ -50899,39 +50935,25 @@ export function BottomTabBar({
 }) {
   return (
     <nav
-      className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur",
-        className,
-      )}
+      className={cn("fixed inset-x-0 bottom-0 z-40 border-t border-border/30 bg-card/75 backdrop-blur-2xl", className)}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="mx-auto flex max-w-md items-stretch justify-around">
         {tabs.map((tab) => {
           const active = tab.key === activeKey;
           const inner = (
-            <div
-              className={cn(
-                "flex flex-col items-center gap-0.5 px-2 py-2 text-[10px] font-medium transition",
-                active ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              <tab.Icon className={cn("h-5 w-5", active && "scale-110")} />
+            <div className={cn("flex flex-col items-center gap-0.5 px-2 pb-1 pt-2 text-[10px] font-medium transition-transform active:scale-90", active ? "text-primary" : "text-muted-foreground")}>
+              <tab.Icon className="h-6 w-6" />
               <span>{tab.label}</span>
             </div>
           );
+          const press = () => { if (!active) tick(); tab.onClick?.(); };
           return (
             <li key={tab.key} className="flex-1">
               {tab.href ? (
-                <a href={tab.href} className="flex w-full justify-center">{inner}</a>
+                <a href={tab.href} onClick={() => { if (!active) tick(); }} className="flex w-full justify-center" aria-current={active ? "page" : undefined}>{inner}</a>
               ) : (
-                <button
-                  type="button"
-                  onClick={tab.onClick}
-                  className="flex w-full justify-center"
-                  aria-current={active ? "page" : undefined}
-                >
-                  {inner}
-                </button>
+                <button type="button" onClick={press} className="flex w-full justify-center" aria-current={active ? "page" : undefined}>{inner}</button>
               )}
             </li>
           );
@@ -69374,6 +69396,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -141334,6 +141357,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -171563,7 +171587,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

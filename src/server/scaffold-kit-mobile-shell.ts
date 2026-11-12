@@ -264,7 +264,16 @@ export function AppSurfaceSwitch({
   children: React.ReactNode;
 }) {
   const [inApp, setInApp] = React.useState<boolean | null>(null);
-  React.useEffect(() => setInApp(native.isApp()), []);
+  React.useEffect(() => {
+    // Custard Go (the preview app) is a real phone shell, so isApp() is true there.
+    // \`?petal_app=1\` (camera-scan fallback) or a home-screen install also show the app.
+    let preview = false;
+    try {
+      if (new URLSearchParams(location.search).get("petal_app") === "1") sessionStorage.setItem("petal_app", "1");
+      preview = sessionStorage.getItem("petal_app") === "1" || matchMedia("(display-mode: standalone)").matches;
+    } catch { /* storage blocked */ }
+    setInApp(native.isApp() || preview);
+  }, []);
   React.useEffect(() => {
     if (inApp && isSignedIn) window.location.replace(appHome);
   }, [inApp, isSignedIn, appHome]);

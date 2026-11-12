@@ -127,6 +127,7 @@ import { Route as ApiPublicV1ProjectsIdDomainsRouteImport } from './routes/api/p
 import { Route as ApiPublicV1ProjectsIdEmbedPreviewRouteImport } from './routes/api/public/v1/projects/$id.embed-preview'
 import { Route as ApiPublicV1ProjectsIdFilesRouteImport } from './routes/api/public/v1/projects/$id.files'
 import { Route as ApiPublicV1ProjectsIdOverviewRouteImport } from './routes/api/public/v1/projects/$id.overview'
+import { Route as ApiPublicV1ProjectsIdPhonePreviewRouteImport } from './routes/api/public/v1/projects/$id.phone-preview'
 import { Route as ApiPublicV1ProjectsIdPublishRouteImport } from './routes/api/public/v1/projects/$id.publish'
 import { Route as ApiPublicV1ProjectsIdSiteInfoRouteImport } from './routes/api/public/v1/projects/$id.site-info'
 import { Route as ApiPublicV1ProjectsIdSubdomainRouteImport } from './routes/api/public/v1/projects/$id.subdomain'
@@ -766,6 +767,12 @@ const ApiPublicV1ProjectsIdOverviewRoute =
     path: '/$id/overview',
     getParentRoute: () => ApiPublicV1ProjectsRoute,
   } as any)
+const ApiPublicV1ProjectsIdPhonePreviewRoute =
+  ApiPublicV1ProjectsIdPhonePreviewRouteImport.update({
+    id: '/$id/phone-preview',
+    path: '/$id/phone-preview',
+    getParentRoute: () => ApiPublicV1ProjectsRoute,
+  } as any)
 const ApiPublicV1ProjectsIdPublishRoute =
   ApiPublicV1ProjectsIdPublishRouteImport.update({
     id: '/$id/publish',
@@ -940,6 +947,7 @@ export interface FileRoutesByFullPath {
   '/api/public/v1/projects/$id/embed-preview': typeof ApiPublicV1ProjectsIdEmbedPreviewRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
+  '/api/public/v1/projects/$id/phone-preview': typeof ApiPublicV1ProjectsIdPhonePreviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
   '/api/public/v1/projects/$id/site-info': typeof ApiPublicV1ProjectsIdSiteInfoRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
@@ -1069,6 +1077,7 @@ export interface FileRoutesByTo {
   '/api/public/v1/projects/$id/embed-preview': typeof ApiPublicV1ProjectsIdEmbedPreviewRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
+  '/api/public/v1/projects/$id/phone-preview': typeof ApiPublicV1ProjectsIdPhonePreviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
   '/api/public/v1/projects/$id/site-info': typeof ApiPublicV1ProjectsIdSiteInfoRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
@@ -1199,6 +1208,7 @@ export interface FileRoutesById {
   '/api/public/v1/projects/$id/embed-preview': typeof ApiPublicV1ProjectsIdEmbedPreviewRoute
   '/api/public/v1/projects/$id/files': typeof ApiPublicV1ProjectsIdFilesRoute
   '/api/public/v1/projects/$id/overview': typeof ApiPublicV1ProjectsIdOverviewRoute
+  '/api/public/v1/projects/$id/phone-preview': typeof ApiPublicV1ProjectsIdPhonePreviewRoute
   '/api/public/v1/projects/$id/publish': typeof ApiPublicV1ProjectsIdPublishRoute
   '/api/public/v1/projects/$id/site-info': typeof ApiPublicV1ProjectsIdSiteInfoRoute
   '/api/public/v1/projects/$id/subdomain': typeof ApiPublicV1ProjectsIdSubdomainRoute
@@ -1330,6 +1340,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/embed-preview'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
+    | '/api/public/v1/projects/$id/phone-preview'
     | '/api/public/v1/projects/$id/publish'
     | '/api/public/v1/projects/$id/site-info'
     | '/api/public/v1/projects/$id/subdomain'
@@ -1459,6 +1470,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/embed-preview'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
+    | '/api/public/v1/projects/$id/phone-preview'
     | '/api/public/v1/projects/$id/publish'
     | '/api/public/v1/projects/$id/site-info'
     | '/api/public/v1/projects/$id/subdomain'
@@ -1588,6 +1600,7 @@ export interface FileRouteTypes {
     | '/api/public/v1/projects/$id/embed-preview'
     | '/api/public/v1/projects/$id/files'
     | '/api/public/v1/projects/$id/overview'
+    | '/api/public/v1/projects/$id/phone-preview'
     | '/api/public/v1/projects/$id/publish'
     | '/api/public/v1/projects/$id/site-info'
     | '/api/public/v1/projects/$id/subdomain'
@@ -2536,6 +2549,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicV1ProjectsIdOverviewRouteImport
       parentRoute: typeof ApiPublicV1ProjectsRoute
     }
+    '/api/public/v1/projects/$id/phone-preview': {
+      id: '/api/public/v1/projects/$id/phone-preview'
+      path: '/$id/phone-preview'
+      fullPath: '/api/public/v1/projects/$id/phone-preview'
+      preLoaderRoute: typeof ApiPublicV1ProjectsIdPhonePreviewRouteImport
+      parentRoute: typeof ApiPublicV1ProjectsRoute
+    }
     '/api/public/v1/projects/$id/publish': {
       id: '/api/public/v1/projects/$id/publish'
       path: '/$id/publish'
@@ -2668,6 +2688,7 @@ interface ApiPublicV1ProjectsRouteChildren {
   ApiPublicV1ProjectsIdEmbedPreviewRoute: typeof ApiPublicV1ProjectsIdEmbedPreviewRoute
   ApiPublicV1ProjectsIdFilesRoute: typeof ApiPublicV1ProjectsIdFilesRoute
   ApiPublicV1ProjectsIdOverviewRoute: typeof ApiPublicV1ProjectsIdOverviewRoute
+  ApiPublicV1ProjectsIdPhonePreviewRoute: typeof ApiPublicV1ProjectsIdPhonePreviewRoute
   ApiPublicV1ProjectsIdPublishRoute: typeof ApiPublicV1ProjectsIdPublishRoute
   ApiPublicV1ProjectsIdSiteInfoRoute: typeof ApiPublicV1ProjectsIdSiteInfoRoute
   ApiPublicV1ProjectsIdSubdomainRoute: typeof ApiPublicV1ProjectsIdSubdomainRoute
@@ -2686,6 +2707,8 @@ const ApiPublicV1ProjectsRouteChildren: ApiPublicV1ProjectsRouteChildren = {
     ApiPublicV1ProjectsIdEmbedPreviewRoute,
   ApiPublicV1ProjectsIdFilesRoute: ApiPublicV1ProjectsIdFilesRoute,
   ApiPublicV1ProjectsIdOverviewRoute: ApiPublicV1ProjectsIdOverviewRoute,
+  ApiPublicV1ProjectsIdPhonePreviewRoute:
+    ApiPublicV1ProjectsIdPhonePreviewRoute,
   ApiPublicV1ProjectsIdPublishRoute: ApiPublicV1ProjectsIdPublishRoute,
   ApiPublicV1ProjectsIdSiteInfoRoute: ApiPublicV1ProjectsIdSiteInfoRoute,
   ApiPublicV1ProjectsIdSubdomainRoute: ApiPublicV1ProjectsIdSubdomainRoute,
