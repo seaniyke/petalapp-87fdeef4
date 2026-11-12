@@ -151,6 +151,7 @@ export const STARTER_DATA_RULE =
   "never show add, edit or delete controls for the catalogue there, whatever the button is called (no 'Add to store', 'New formula', 'Bespoke blend' forms). " +
   "Visitors never see other people's bookings, orders or messages: seed only what the business sells, never sample bookings or orders with customer names; " +
   "after a visitor books or orders, db.create the record and show only that visitor's own confirmation from component state — never a list of everyone's bookings, and no reschedule/cancel buttons on others' records. " +
+  "Carts, bags and wishlists always start empty on first open, with an empty-state message and a shop link; never pre-fill them. " +
   "Owner tools exist only inside a signed-in area, and only when the user asked for one.";
 
 export function firstBuildBrief(

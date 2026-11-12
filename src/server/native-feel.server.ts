@@ -22,6 +22,7 @@ const CSS = [
   "html.petal-app *{overscroll-behavior-x:contain}",
   "html.petal-app .sticky.top-0,html.petal-app header.sticky{top:env(safe-area-inset-top)!important}",
   "html.petal-app .fixed.top-0{top:env(safe-area-inset-top)!important}",
+  "html.petal-app #petal-badge{display:none!important}",
   "#petal-status-bar{position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top);background:var(--background,#fff);z-index:2147483645;pointer-events:none}",
 ].join("");
 

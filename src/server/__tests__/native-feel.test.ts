@@ -18,3 +18,14 @@ describe("native feel", () => {
     expect(ensureNativeFeel(once)[0].content).toBe(once[0].content);
   });
 });
+
+import { renderMobileGuidanceBlock } from "@/server/integrations/mobile-guidance.server";
+describe("phone app polish", () => {
+  it("hides the Powered-by badge inside the phone app", () => {
+    const out = ensureNativeFeel([{ path: "index.html", content: "<html><head></head><body></body></html>" } as any]);
+    expect(out[0].content).toContain("html.petal-app #petal-badge{display:none!important}");
+  });
+  it("tells mobile builds that carts start empty", () => {
+    expect(renderMobileGuidanceBlock("x", { force: true })).toContain("start EMPTY");
+  });
+});

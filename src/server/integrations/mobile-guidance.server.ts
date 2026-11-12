@@ -43,6 +43,7 @@ mobile-first and uses the \`native\` bridge for phone features.
 - Never render marketing nav, hero, pricing or footer when \`native.isApp()\` is true.
 
 **Layout rules**
+- Carts, bags, wishlists and saved lists start EMPTY on first open (`useState([])`) with a friendly empty screen ("Your bag is empty" + a Start shopping button). Never pre-fill them with sample items.
 - Mobile-first breakpoints: design at 390×844, scale up.
 - Use \`pt-[env(safe-area-inset-top)]\` and \`pb-[env(safe-area-inset-bottom)]\`
   on full-screen containers. Never let primary CTAs sit under the home
