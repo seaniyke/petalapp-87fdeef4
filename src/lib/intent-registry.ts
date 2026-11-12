@@ -61,6 +61,14 @@ const BACKEND_ENTITY_WORDS =
 const BACKEND_PERSIST_VERBS =
   /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
 
+/** "no sign-in needed", "without accounts", "no login". */
+const ACCOUNTS_OPT_OUT =
+  /\b(?:no|without|don'?t need|doesn'?t need|do not need|never)\s+(?:an?\s+|any\s+|user\s+|customer\s+)?(?:sign[- ]?ins?|sign[- ]?ups?|log[- ]?ins?|accounts?)\b/i;
+/** Data kept on the visitor's own device (cart/wishlist in the browser). */
+const DEVICE_ONLY = /\b(?:saved|stored|kept|keep|save|store)\b[^.!?\n]{0,40}\b(?:on|in)\s+(?:the|this|their|your)\s+(?:device|phone|browser)\b|\blocal ?storage\b/i;
+/** Shopping buttons that use "add"/"save" without asking for a database. */
+const SHOP_BUTTONS = /\b(?:add|save)\s+(?:it\s+)?to\s+(?:cart|bag|basket|wishlist|favou?rites)\b/gi;
+
 // ---------------------------------------------------------------------------
 // ai-feature — provider names + action verbs as an augment
 // ---------------------------------------------------------------------------
@@ -99,7 +107,12 @@ const RULES: Record<SimpleIntentId, Rule> = {
       /\bcontact\s+form\b/i,
       /\b(?:rsvp|waitlist|wait-list)\b/i,
     ],
-    augment: (t) => {
+    augment: (raw) => {
+      // The user ruled out accounts, or keeps things on the device: a verb +
+      // entity pair ("add … products") is not a request for a database then.
+      if (ACCOUNTS_OPT_OUT.test(raw) || DEVICE_ONLY.test(raw)) return null;
+      // Shop buttons are not persistence verbs ("Add to cart").
+      const t = raw.replace(SHOP_BUTTONS, " ");
       if (BACKEND_PERSIST_VERBS.test(t) && BACKEND_ENTITY_WORDS.test(t)) {
         const entity = t.match(BACKEND_ENTITY_WORDS)?.[0]?.toLowerCase();
         return { detected: true, reason: entity ? `manage ${entity}` : undefined };

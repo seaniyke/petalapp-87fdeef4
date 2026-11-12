@@ -114,3 +114,16 @@ describe("a shop's checkout delivery details do not make it a logistics system",
     expect(deriveIntentContract("Build a delivery management app where admins assign drivers to parcels", null).archetype).toBe("delivery");
   });
 });
+
+describe("a shop with 'Add to cart' and device-saved cart needs no database", () => {
+  it("no sign-in + cart saved on the device does not switch on a backend", () => {
+    const t = "Product details with quantity and Add to cart. Account screen with orders list. Keep cart and wishlist saved on the device; no sign-in needed.";
+    expect(detectIntents(t, null)).not.toContain("backend");
+  });
+  it("'Add to cart' alone is not a persistence request", () => {
+    expect(detectIntents("A hair shop with products and an Add to cart button", null)).not.toContain("backend");
+  });
+  it("a real 'let customers save orders' app still does", () => {
+    expect(detectIntents("Build an app where customers create and track their orders", null)).toContain("backend");
+  });
+});

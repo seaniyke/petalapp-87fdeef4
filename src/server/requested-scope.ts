@@ -6,6 +6,8 @@
  * Templates may shape style and layout; they may never add pages.
  */
 
+import { isNegatedAt } from "@/lib/intent-registry";
+
 const STOP = new Set([
   "a", "an", "the", "with", "and", "or", "of", "for", "my", "our", "your",
   "separate", "multiple", "several", "different", "these", "following", "all",
@@ -106,6 +108,8 @@ export function extractRequestedPages(prompt: string): string[] {
   }
   // single "X page" mentions ("a menu page", "the contact page")
   for (const m of text.matchAll(/\b(?:a|an|the|with|plus|and)\s+([A-Za-z][\w&-]*(?:\s+[A-Za-z][\w&-]*)?)\s+page\b/gi)) {
+    // "Do NOT build a marketing landing page" rules a page out.
+    if (isNegatedAt(text, m.index ?? 0)) continue;
     push(m[1]);
   }
   return found;

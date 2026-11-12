@@ -38907,6 +38907,356 @@ var init_chunked_generation_server = __esm({
   }
 });
 
+// src/lib/site-flags.ts
+function isTargetEnabled(id) {
+  switch (id) {
+    case "mobile":
+    case "ios":
+    case "android":
+    case "web-mobile":
+      return MOBILE_APPS_ENABLED;
+    case "backend":
+      return API_BACKENDS_ENABLED;
+    case "extension":
+      return CHROME_EXTENSIONS_ENABLED;
+    default:
+      return true;
+  }
+}
+function isPausedKitPath(path) {
+  if (!MOBILE_APPS_ENABLED && (path.startsWith("src/components/mobile/") || path === "src/components/examples/mobile-app-shell.tsx")) return true;
+  return false;
+}
+var MOBILE_APPS_ENABLED, API_BACKENDS_ENABLED, CHROME_EXTENSIONS_ENABLED;
+var init_site_flags = __esm({
+  "src/lib/site-flags.ts"() {
+    init_define_import_meta_env();
+    MOBILE_APPS_ENABLED = false;
+    API_BACKENDS_ENABLED = false;
+    CHROME_EXTENSIONS_ENABLED = false;
+  }
+});
+
+// src/lib/intent-registry.ts
+function isNegatedAt(text, index) {
+  const before = text.slice(0, index);
+  const start = Math.max(...[".", "!", "?", ";", ":", "\n"].map((c) => before.lastIndexOf(c))) + 1;
+  const clause = before.slice(start).slice(-80);
+  return /\b(?:no|not|without|don'?t|do not|doesn'?t|does not|never|avoid|skip)\b/i.test(clause);
+}
+function userOptedOutOfBackend(text) {
+  return Boolean(text) && BACKEND_OPT_OUT.test(text);
+}
+function detectIntent(id, text) {
+  if (!text) return { detected: false };
+  if (id === "mobile" && !MOBILE_APPS_ENABLED) return { detected: false };
+  const t = text.trim();
+  const rule = RULES[id];
+  if (t.length < rule.minLength) return { detected: false };
+  if (id === "backend" && BACKEND_OPT_OUT.test(t)) return { detected: false };
+  for (const re of rule.signals) {
+    const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+    for (const m of t.matchAll(g)) {
+      if (isNegatedAt(t, m.index ?? 0)) continue;
+      return { detected: true, reason: m[0].toLowerCase() };
+    }
+  }
+  if (rule.augment) {
+    const aug = rule.augment(t);
+    if (aug && aug.detected) return aug;
+  }
+  return { detected: false };
+}
+function detectIntentInTurn(id, userText, assistantText) {
+  const a2 = detectIntent(id, userText);
+  if (a2.detected) return a2;
+  return detectIntent(id, assistantText);
+}
+function detectIntents(userText, assistantText) {
+  const out = [];
+  for (const id of Object.keys(RULES)) {
+    if (detectIntentInTurn(id, userText, assistantText).detected) out.push(id);
+  }
+  return out;
+}
+var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, ACCOUNTS_OPT_OUT, DEVICE_ONLY, SHOP_BUTTONS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES, BACKEND_OPT_OUT;
+var init_intent_registry = __esm({
+  "src/lib/intent-registry.ts"() {
+    init_define_import_meta_env();
+    init_site_flags();
+    BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
+    BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
+    ACCOUNTS_OPT_OUT = /\b(?:no|without|don'?t need|doesn'?t need|do not need|never)\s+(?:an?\s+|any\s+|user\s+|customer\s+)?(?:sign[- ]?ins?|sign[- ]?ups?|log[- ]?ins?|accounts?)\b/i;
+    DEVICE_ONLY = /\b(?:saved|stored|kept|keep|save|store)\b[^.!?\n]{0,40}\b(?:on|in)\s+(?:the|this|their|your)\s+(?:device|phone|browser)\b|\blocal ?storage\b/i;
+    SHOP_BUTTONS = /\b(?:add|save)\s+(?:it\s+)?to\s+(?:cart|bag|basket|wishlist|favou?rites)\b/gi;
+    AI_PROVIDER_NAMES = /\b(?:OpenAI|GPT-?[345]|ChatGPT|Claude|Anthropic|Gemini|Google AI|Mistral|Llama|DeepSeek|Perplexity)\b/i;
+    AI_ACTION_VERBS = /\b(?:add|build|integrate|use|wire|set ?up|connect|call|hook (?:up|into)|via|with|using)\b/i;
+    RULES = {
+      backend: {
+        id: "backend",
+        minLength: 12,
+        signals: [
+          /\bsign[- ]?(?:up|in|on)\b/i,
+          /\b(?:log[- ]?in|logout|sign[- ]?out)\b/i,
+          /\bauth(?:entication)?\b/i,
+          /\b(?:user|customer|member)s?\s+(?:account|profile|login|signup)/i,
+          /\bdatabase\b/i,
+          /\bsupabase\b/i,
+          /\bbackend\b/i,
+          /\bserver[- ]?side\b/i,
+          /\bpersist(?:ent|ence|ed|ing)?\b/i,
+          /\bsave (?:to|the|in) (?:cloud|database|server|backend)/i,
+          /\bstore (?:data|records|users|posts|comments|messages|orders)/i,
+          /\bsync (?:across|between) devices?/i,
+          /\b(?:upload|store) (?:files?|images?|photos?|documents?)\b/i,
+          /\b(?:CRUD|REST API|edge function|webhook)\b/i,
+          /\bRow Level Security\b/i,
+          /\bpayments?\b.*\b(?:stripe|paddle|paystack)\b/i,
+          /\bemail (?:notifications?|magic link)/i,
+          // Visitors sending something to the business must actually reach it —
+          // otherwise the site fakes a "sent" screen from the browser only.
+          /\b(?:stay|booking|reservation|appointment|quote|viewing|callback|table|event|catering)\s+(?:requests?|enquir(?:y|ies)|inquir(?:y|ies))\b/i,
+          /\b(?:send|submit|make|place|leave)\s+(?:a|an|their|your)?\s*(?:request|enquiry|inquiry|message)\b/i,
+          /\b(?:request|book|reserve)\s+(?:a|an)\s+(?:table|stay|room|quote|viewing|callback|consultation|appointment|session|class)\b/i,
+          /\bcontact\s+form\b/i,
+          /\b(?:rsvp|waitlist|wait-list)\b/i
+        ],
+        augment: (raw) => {
+          if (ACCOUNTS_OPT_OUT.test(raw) || DEVICE_ONLY.test(raw)) return null;
+          const t = raw.replace(SHOP_BUTTONS, " ");
+          if (BACKEND_PERSIST_VERBS.test(t) && BACKEND_ENTITY_WORDS.test(t)) {
+            const entity = t.match(BACKEND_ENTITY_WORDS)?.[0]?.toLowerCase();
+            return { detected: true, reason: entity ? `manage ${entity}` : void 0 };
+          }
+          return null;
+        }
+      },
+      payment: {
+        id: "payment",
+        minLength: 8,
+        signals: [
+          /\b(stripe|paddle|paystack|flutterwave|lemon ?squeezy|shopify pay|paypal)\b/i,
+          /\baccept(?:ing)? payments?\b/i,
+          /\btake (?:credit )?cards?\b/i,
+          /\bcollect(?:ing)? payments?\b/i,
+          /\bcharge (?:my |the )?(?:user|customer|client|visitor)s?\b/i,
+          /\b(?:add|enable|set up|setup) (?:a )?(?:checkout|paywall|payment|payments|billing)\b/i,
+          /\bcheckout (?:flow|page|button|session)\b/i,
+          /\bpay(?:ment)?(?:s)? (?:flow|page|gateway|provider|integration|button|link)\b/i,
+          /\bsubscriptions?\b/i,
+          /\brecurring (?:billing|payments?|charges?)\b/i,
+          /\b(?:monthly|yearly|annual) (?:plan|subscription|billing)\b/i,
+          /\bpricing (?:tier|plan|page)s?\b/i,
+          /\bpaywall\b/i,
+          /\bupgrade (?:to )?(?:pro|premium|paid)\b/i,
+          /\bfree trial\b/i,
+          /\bsell (?:my |a |an |this )?(?:product|service|course|ebook|template|subscription|access|membership)\b/i,
+          /\b(?:online )?(?:store|storefront|shop)\b/i,
+          /\bdigital downloads?\b/i,
+          /\b(?:e-?commerce|ecommerce)\b/i,
+          /\b(?:add|build) (?:a )?(?:cart|shopping cart)\b/i,
+          /\b(?:invoice|invoicing|receipt|refund|payout|donation|tip jar)s?\b/i
+        ]
+      },
+      email: {
+        id: "email",
+        minLength: 8,
+        signals: [
+          /\bsend (an? |the )?email\b/i,
+          /\bemail (the |a )?(user|customer|client|admin|recipient|me|them|user's)\b/i,
+          /\b(contact|booking|order|signup|welcome|reservation|inquiry) (form )?(email|notification|confirm(ation)?)/i,
+          /\bnotify (the )?(user|customer|admin|me) (by|via) email\b/i,
+          /\b(mailgun|sendgrid|postmark|mandrill|aws ses|amazon ses|brevo|sendinblue)\b/i,
+          /\bnewsletter\b/i,
+          /\btransactional emails?\b/i,
+          /\bemail receipts?\b/i,
+          /\bemail (notification|confirmation|reminder|digest|report)s?\b/i,
+          /\bsmtp\b/i,
+          /\bemail (api|service|provider)\b/i,
+          /\b(petal email|resend)\b/i,
+          /\bcontact form (and )?email\b/i
+        ]
+      },
+      domain: {
+        id: "domain",
+        minLength: 8,
+        signals: [
+          /\bcustom domain\b/i,
+          /\bown domain\b/i,
+          /\bmy (?:own )?domain\b/i,
+          /\b(?:buy|purchase|register) (?:a |an |my )?(?:custom |new )?domain\b/i,
+          /\b(?:connect|hook up|point|link) (?:a |my |the )?(?:custom )?domain\b/i,
+          /\b(?:use|set up|setup) (?:a |my )?(?:custom )?domain\b/i,
+          /\bDNS (?:records?|setup|config(?:uration)?)\b/i,
+          /\bnameservers?\b/i,
+          /\bpoint (?:my )?domain (?:to|at)\b/i
+        ]
+      },
+      seo: {
+        id: "seo",
+        minLength: 6,
+        signals: [
+          /\bSEO\b/i,
+          /\bsearch engine\b/i,
+          /\b(?:rank|ranking) (?:on |in )?Google\b/i,
+          /\bgoogle (?:indexing|index|search|results)\b/i,
+          /\bget(?:ting)? indexed\b/i,
+          /\bmeta (?:tags?|description|title)\b/i,
+          /\bopen ?graph\b/i,
+          /\bog (?:image|tags?|title)\b/i,
+          /\bshare (?:preview|card|image)\b/i,
+          /\bsocial (?:preview|card|sharing)\b/i,
+          /\btwitter card\b/i,
+          /\bsitemap(?:\.xml)?\b/i,
+          /\brobots\.txt\b/i,
+          /\bcanonical (?:url|tag)\b/i,
+          /\bstructured data\b/i,
+          /\bJSON-?LD\b/i,
+          /\bschema\.org\b/i,
+          /\bdiscoverab(?:le|ility)\b/i
+        ]
+      },
+      addPage: {
+        id: "addPage",
+        minLength: 6,
+        signals: [
+          /\babout (?:us|page|section)\b/i,
+          /\bpricing page\b/i,
+          /\bcontact (?:us|page|form page)\b/i,
+          /\bblog (?:page|index|section)?\b/i,
+          /\bfaq page\b/i,
+          /\bservices page\b/i,
+          /\bportfolio page\b/i,
+          /\bcareers? page\b/i,
+          /\bteam page\b/i,
+          /\bcase stud(?:y|ies)\b/i,
+          /\bmulti[- ]?page\b/i,
+          /\bseparate pages?\b/i,
+          /\bits own page\b/i,
+          /\bnew page\b/i,
+          /\badd (?:an?|another) page\b/i,
+          /\/(?:about|pricing|contact|blog|faq|services|portfolio|team|careers)\b/i
+        ]
+      },
+      mobile: {
+        id: "mobile",
+        minLength: 6,
+        signals: [
+          /\b(?:mobile|native) app\b/i,
+          /\b(?:ios|iphone|ipad) app\b/i,
+          /\bandroid app\b/i,
+          /\bplay store\b/i,
+          /\bapp store\b/i,
+          /\btestflight\b/i,
+          /\bpush notifications?\b/i,
+          /\bapp icon\b/i,
+          /\bsplash screen\b/i,
+          /\binstall (?:it|this|the app) on (?:my )?phone\b/i,
+          /\bship (?:to|on) (?:the )?app store\b/i,
+          /\bpublish (?:to|on) (?:the )?(?:app|play) store\b/i,
+          /\bapk\b/i,
+          /\bipa\b/i,
+          /\baab\b/i,
+          /\bsigned build\b/i,
+          /\bbundle id\b/i,
+          /\bcapacitor\b/i,
+          /\breact native\b/i,
+          /\bwrap (?:as|in)(?: a)? (?:mobile|native) app\b/i,
+          /\bturn (?:this|it) into (?:a )?(?:mobile|native|phone) app\b/i
+        ]
+      },
+      analytics: {
+        id: "analytics",
+        minLength: 6,
+        signals: [
+          /\b(?:track|tracking) (?:visitors?|users?|page ?views?|clicks?|events?|conversions?)\b/i,
+          /\b(?:visitor|page ?view|click|event|conversion) (?:tracking|analytics)\b/i,
+          /\banalytics (?:dashboard|integration|tool|service|provider)?\b/i,
+          /\b(?:plausible|posthog|mixpanel|amplitude|fathom|umami|simple ?analytics)\b/i,
+          /\bgoogle analytics\b/i,
+          /\bGA4?\b/,
+          /\bheatmaps?\b/i,
+          /\bfunnel(?:s| analysis)\b/i,
+          /\bA\/?B test(?:ing|s)?\b/i,
+          /\bsee (?:how many|who) (?:visit|visited|viewed|using)\b/i,
+          /\bmeasure (?:traffic|engagement|usage)\b/i
+        ]
+      },
+      aiFeature: {
+        id: "aiFeature",
+        minLength: 8,
+        signals: [
+          /\b(?:add|build|integrate|wire (?:up|in)|set up|setup|implement) (?:an? )?(?:AI|chatbot|assistant|copilot|agent)/i,
+          /\b(?:add|build|integrate|wire (?:up|in)|set up|setup|implement) (?:an? )?(?:chat|chatbot|assistant)\b/i,
+          /\b(?:summari[sz]e|translate|paraphrase|rewrite|classify|extract|transcribe|moderate|generate|caption) (?:the |a |this |these )?(?:text|content|article|email|image|images?|audio|file|comment|review|message)/i,
+          /\bAI[- ]powered\b/i,
+          /\bask (?:an? )?AI\b/i,
+          /\b(?:LLM|large language model)\b/i,
+          /\b(?:image|text|content|copy) generation\b/i,
+          /\b(?:auto|automatically) (?:summari[sz]e|translate|tag|caption|reply|respond)/i,
+          /\bsemantic search\b/i,
+          /\bembeddings?\b/i
+        ],
+        augment: (t) => {
+          if (AI_PROVIDER_NAMES.test(t) && AI_ACTION_VERBS.test(t)) {
+            const provider = t.match(AI_PROVIDER_NAMES)?.[0]?.toLowerCase();
+            return { detected: true, reason: provider ? `use ${provider}` : "use AI" };
+          }
+          return null;
+        }
+      },
+      storage: {
+        id: "storage",
+        minLength: 8,
+        signals: [
+          /\b(?:upload|uploading) (?:an? |the )?(?:image|images?|photo|photos?|picture|pictures?|video|videos?|file|files?|pdf|document|documents?|attachment|attachments?|avatar|profile pic(?:ture)?)/i,
+          /\b(?:user|profile) (?:avatar|photo|picture|image)\b/i,
+          /\bdrag (?:and |&\s*)drop (?:upload|files?|images?)\b/i,
+          /\battach(?: a)? file\b/i,
+          /\b(?:image|file|media) (?:upload|hosting|storage|library|gallery)\b/i,
+          /\bstore (?:images?|photos?|files?|pdfs?|videos?|user[- ]uploaded)/i,
+          /\b(?:S3 bucket|cloud storage|object storage|CDN upload)\b/i,
+          /\bsupabase storage\b/i
+        ]
+      },
+      realtime: {
+        id: "realtime",
+        minLength: 6,
+        signals: [
+          /\breal[- ]?time\b/i,
+          /\blive (?:chat|messaging|messages|updates?|feed|comments?|cursor|typing|reactions?|notifications?)\b/i,
+          /\b(?:online|active) (?:users?|members?|presence)\b/i,
+          /\bpresence (?:indicator|state|tracking)?\b/i,
+          /\bcollabora(?:tive|tion)\b/i,
+          /\b(?:multiplayer|co[- ]?editing|shared cursor)/i,
+          /\btyping indicator\b/i,
+          /\b(?:websocket|ws|server[- ]sent events|SSE)\b/i,
+          /\b(?:pusher|ably|socket\.io|liveblocks)\b/i,
+          /\bsupabase realtime\b/i,
+          /\bauto[- ]?refresh (?:the )?(?:list|feed|messages?|data)\b/i,
+          /\bpush updates? (?:to|when)/i
+        ]
+      },
+      cron: {
+        id: "cron",
+        minLength: 8,
+        signals: [
+          /\b(?:every|each) (?:minute|hour|day|night|morning|week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
+          /\b(?:daily|nightly|weekly|monthly|hourly) (?:digest|email|report|summary|reminder|sync|backup|cleanup|job|cron|task)\b/i,
+          /\b(?:scheduled|schedule a|recurring) (?:email|job|task|reminder|report|notification|digest)\b/i,
+          /\b(?:cron|cronjob|cron job|pg_?cron)\b/i,
+          /\bbackground (?:job|task|worker|process)\b/i,
+          /\b(?:auto|automatically) (?:send|email|notify|reset|clean ?up|expire|archive|sync|run)/i,
+          /\b(?:reminder|digest) (?:email|notification)s?\b/i,
+          /\brun (?:this |the |a )?(?:job|task|script) (?:every|once|on a schedule|periodically)/i,
+          /\bperiodic(?:ally)?\b/i
+        ]
+      }
+    };
+    BACKEND_OPT_OUT = /\b(?:no|without|don'?t (?:need|want|add|use)|do not (?:need|want|add|use)|never (?:add|use))\b[^.!?:;\n]{0,60}\b(?:database|backend)\b/i;
+  }
+});
+
 // src/server/requested-scope.ts
 var requested_scope_exports = {};
 __export(requested_scope_exports, {
@@ -38972,6 +39322,7 @@ function extractRequestedPages(prompt) {
     push(m[1]);
   }
   for (const m of text.matchAll(/\b(?:a|an|the|with|plus|and)\s+([A-Za-z][\w&-]*(?:\s+[A-Za-z][\w&-]*)?)\s+page\b/gi)) {
+    if (isNegatedAt(text, m.index ?? 0)) continue;
     push(m[1]);
   }
   return found;
@@ -39066,6 +39417,7 @@ var STOP, HOME, POSSESSIVE, OUTPUT_CEILING, SAFE_UNIT_BUDGET, UNIT_BUDGET_FRACTI
 var init_requested_scope = __esm({
   "src/server/requested-scope.ts"() {
     init_define_import_meta_env();
+    init_intent_registry();
     STOP = /* @__PURE__ */ new Set([
       "a",
       "an",
@@ -58909,36 +59261,6 @@ export { Grid } from "./grid";
   }
 });
 
-// src/lib/site-flags.ts
-function isTargetEnabled(id) {
-  switch (id) {
-    case "mobile":
-    case "ios":
-    case "android":
-    case "web-mobile":
-      return MOBILE_APPS_ENABLED;
-    case "backend":
-      return API_BACKENDS_ENABLED;
-    case "extension":
-      return CHROME_EXTENSIONS_ENABLED;
-    default:
-      return true;
-  }
-}
-function isPausedKitPath(path) {
-  if (!MOBILE_APPS_ENABLED && (path.startsWith("src/components/mobile/") || path === "src/components/examples/mobile-app-shell.tsx")) return true;
-  return false;
-}
-var MOBILE_APPS_ENABLED, API_BACKENDS_ENABLED, CHROME_EXTENSIONS_ENABLED;
-var init_site_flags = __esm({
-  "src/lib/site-flags.ts"() {
-    init_define_import_meta_env();
-    MOBILE_APPS_ENABLED = false;
-    API_BACKENDS_ENABLED = false;
-    CHROME_EXTENSIONS_ENABLED = false;
-  }
-});
-
 // src/lib/target-inference.ts
 function inferBuildTarget(prompt) {
   const text = (prompt ?? "").trim();
@@ -58948,7 +59270,7 @@ function inferBuildTarget(prompt) {
   }
   const scores = /* @__PURE__ */ new Map();
   const signals = [];
-  for (const rule of RULES) {
+  for (const rule of RULES2) {
     if (!rule.re.test(text)) continue;
     scores.set(rule.target, (scores.get(rule.target) ?? 0) + rule.weight);
     signals.push(rule.label);
@@ -58979,12 +59301,12 @@ function resolveBuildTargetRaw(headerTarget, prompt) {
   }
   return { target: "web", source: header ? "header" : "default", confidence: 1 };
 }
-var RULES, BOTH_RE;
+var RULES2, BOTH_RE;
 var init_target_inference = __esm({
   "src/lib/target-inference.ts"() {
     init_define_import_meta_env();
     init_site_flags();
-    RULES = [
+    RULES2 = [
       // ---- Chrome / browser extension -------------------------------------
       { re: /\bchrome extension\b/i, target: "extension", weight: 6, label: "chrome extension" },
       { re: /\bbrowser extension\b/i, target: "extension", weight: 6, label: "browser extension" },
@@ -59038,7 +59360,7 @@ function inferWebSubtype(prompt) {
     return "tool";
   }
   const scores = { marketing: 0, app: 0, fullstack: 0, tool: 0 };
-  for (const rule of RULES2) {
+  for (const rule of RULES3) {
     for (const re of rule.patterns) {
       if (re.test(text)) scores[rule.subtype] += rule.weight;
     }
@@ -59094,7 +59416,7 @@ function resolveWebSubtype(prompt, shape2) {
   }
   return { subtype: keywordSubtype, keywordSubtype, reason: "keyword rules only" };
 }
-var TOOL_PATTERNS, RULES2, MARKETING_ADDENDUM, APP_ADDENDUM, FULLSTACK_ADDENDUM, TOOL_ADDENDUM, BROCHURE_CATEGORIES, PLATFORM_CATEGORIES;
+var TOOL_PATTERNS, RULES3, MARKETING_ADDENDUM, APP_ADDENDUM, FULLSTACK_ADDENDUM, TOOL_ADDENDUM, BROCHURE_CATEGORIES, PLATFORM_CATEGORIES;
 var init_web_subtype = __esm({
   "src/lib/web-subtype.ts"() {
     init_define_import_meta_env();
@@ -59110,7 +59432,7 @@ var init_web_subtype = __esm({
       /\b(checker|validator|analyzer|estimator|planner\s+tool)\b/i,
       /\b(bmi|mortgage|loan|tax|tip|pregnancy|ovulation|due[-\s]?date|currency|unit)\s+(calculator|converter|tool)\b/i
     ];
-    RULES2 = [
+    RULES3 = [
       // Marketing surfaces
       {
         subtype: "marketing",
@@ -59296,322 +59618,6 @@ var init_client_server_shim = __esm({
         }
       }
     );
-  }
-});
-
-// src/lib/intent-registry.ts
-function isNegatedAt(text, index) {
-  const before = text.slice(0, index);
-  const start = Math.max(...[".", "!", "?", ";", ":", "\n"].map((c) => before.lastIndexOf(c))) + 1;
-  const clause = before.slice(start).slice(-80);
-  return /\b(?:no|not|without|don'?t|do not|doesn'?t|does not|never|avoid|skip)\b/i.test(clause);
-}
-function userOptedOutOfBackend(text) {
-  return Boolean(text) && BACKEND_OPT_OUT.test(text);
-}
-function detectIntent(id, text) {
-  if (!text) return { detected: false };
-  if (id === "mobile" && !MOBILE_APPS_ENABLED) return { detected: false };
-  const t = text.trim();
-  const rule = RULES3[id];
-  if (t.length < rule.minLength) return { detected: false };
-  if (id === "backend" && BACKEND_OPT_OUT.test(t)) return { detected: false };
-  for (const re of rule.signals) {
-    const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
-    for (const m of t.matchAll(g)) {
-      if (isNegatedAt(t, m.index ?? 0)) continue;
-      return { detected: true, reason: m[0].toLowerCase() };
-    }
-  }
-  if (rule.augment) {
-    const aug = rule.augment(t);
-    if (aug && aug.detected) return aug;
-  }
-  return { detected: false };
-}
-function detectIntentInTurn(id, userText, assistantText) {
-  const a2 = detectIntent(id, userText);
-  if (a2.detected) return a2;
-  return detectIntent(id, assistantText);
-}
-function detectIntents(userText, assistantText) {
-  const out = [];
-  for (const id of Object.keys(RULES3)) {
-    if (detectIntentInTurn(id, userText, assistantText).detected) out.push(id);
-  }
-  return out;
-}
-var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES3, BACKEND_OPT_OUT;
-var init_intent_registry = __esm({
-  "src/lib/intent-registry.ts"() {
-    "use strict";
-    init_define_import_meta_env();
-    init_site_flags();
-    BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
-    BACKEND_PERSIST_VERBS = /\b(save|store|create|add|persist|track|manage|fetch|load|sync|update|delete)\b/i;
-    AI_PROVIDER_NAMES = /\b(?:OpenAI|GPT-?[345]|ChatGPT|Claude|Anthropic|Gemini|Google AI|Mistral|Llama|DeepSeek|Perplexity)\b/i;
-    AI_ACTION_VERBS = /\b(?:add|build|integrate|use|wire|set ?up|connect|call|hook (?:up|into)|via|with|using)\b/i;
-    RULES3 = {
-      backend: {
-        id: "backend",
-        minLength: 12,
-        signals: [
-          /\bsign[- ]?(?:up|in|on)\b/i,
-          /\b(?:log[- ]?in|logout|sign[- ]?out)\b/i,
-          /\bauth(?:entication)?\b/i,
-          /\b(?:user|customer|member)s?\s+(?:account|profile|login|signup)/i,
-          /\bdatabase\b/i,
-          /\bsupabase\b/i,
-          /\bbackend\b/i,
-          /\bserver[- ]?side\b/i,
-          /\bpersist(?:ent|ence|ed|ing)?\b/i,
-          /\bsave (?:to|the|in) (?:cloud|database|server|backend)/i,
-          /\bstore (?:data|records|users|posts|comments|messages|orders)/i,
-          /\bsync (?:across|between) devices?/i,
-          /\b(?:upload|store) (?:files?|images?|photos?|documents?)\b/i,
-          /\b(?:CRUD|REST API|edge function|webhook)\b/i,
-          /\bRow Level Security\b/i,
-          /\bpayments?\b.*\b(?:stripe|paddle|paystack)\b/i,
-          /\bemail (?:notifications?|magic link)/i,
-          // Visitors sending something to the business must actually reach it —
-          // otherwise the site fakes a "sent" screen from the browser only.
-          /\b(?:stay|booking|reservation|appointment|quote|viewing|callback|table|event|catering)\s+(?:requests?|enquir(?:y|ies)|inquir(?:y|ies))\b/i,
-          /\b(?:send|submit|make|place|leave)\s+(?:a|an|their|your)?\s*(?:request|enquiry|inquiry|message)\b/i,
-          /\b(?:request|book|reserve)\s+(?:a|an)\s+(?:table|stay|room|quote|viewing|callback|consultation|appointment|session|class)\b/i,
-          /\bcontact\s+form\b/i,
-          /\b(?:rsvp|waitlist|wait-list)\b/i
-        ],
-        augment: (t) => {
-          if (BACKEND_PERSIST_VERBS.test(t) && BACKEND_ENTITY_WORDS.test(t)) {
-            const entity = t.match(BACKEND_ENTITY_WORDS)?.[0]?.toLowerCase();
-            return { detected: true, reason: entity ? `manage ${entity}` : void 0 };
-          }
-          return null;
-        }
-      },
-      payment: {
-        id: "payment",
-        minLength: 8,
-        signals: [
-          /\b(stripe|paddle|paystack|flutterwave|lemon ?squeezy|shopify pay|paypal)\b/i,
-          /\baccept(?:ing)? payments?\b/i,
-          /\btake (?:credit )?cards?\b/i,
-          /\bcollect(?:ing)? payments?\b/i,
-          /\bcharge (?:my |the )?(?:user|customer|client|visitor)s?\b/i,
-          /\b(?:add|enable|set up|setup) (?:a )?(?:checkout|paywall|payment|payments|billing)\b/i,
-          /\bcheckout (?:flow|page|button|session)\b/i,
-          /\bpay(?:ment)?(?:s)? (?:flow|page|gateway|provider|integration|button|link)\b/i,
-          /\bsubscriptions?\b/i,
-          /\brecurring (?:billing|payments?|charges?)\b/i,
-          /\b(?:monthly|yearly|annual) (?:plan|subscription|billing)\b/i,
-          /\bpricing (?:tier|plan|page)s?\b/i,
-          /\bpaywall\b/i,
-          /\bupgrade (?:to )?(?:pro|premium|paid)\b/i,
-          /\bfree trial\b/i,
-          /\bsell (?:my |a |an |this )?(?:product|service|course|ebook|template|subscription|access|membership)\b/i,
-          /\b(?:online )?(?:store|storefront|shop)\b/i,
-          /\bdigital downloads?\b/i,
-          /\b(?:e-?commerce|ecommerce)\b/i,
-          /\b(?:add|build) (?:a )?(?:cart|shopping cart)\b/i,
-          /\b(?:invoice|invoicing|receipt|refund|payout|donation|tip jar)s?\b/i
-        ]
-      },
-      email: {
-        id: "email",
-        minLength: 8,
-        signals: [
-          /\bsend (an? |the )?email\b/i,
-          /\bemail (the |a )?(user|customer|client|admin|recipient|me|them|user's)\b/i,
-          /\b(contact|booking|order|signup|welcome|reservation|inquiry) (form )?(email|notification|confirm(ation)?)/i,
-          /\bnotify (the )?(user|customer|admin|me) (by|via) email\b/i,
-          /\b(mailgun|sendgrid|postmark|mandrill|aws ses|amazon ses|brevo|sendinblue)\b/i,
-          /\bnewsletter\b/i,
-          /\btransactional emails?\b/i,
-          /\bemail receipts?\b/i,
-          /\bemail (notification|confirmation|reminder|digest|report)s?\b/i,
-          /\bsmtp\b/i,
-          /\bemail (api|service|provider)\b/i,
-          /\b(petal email|resend)\b/i,
-          /\bcontact form (and )?email\b/i
-        ]
-      },
-      domain: {
-        id: "domain",
-        minLength: 8,
-        signals: [
-          /\bcustom domain\b/i,
-          /\bown domain\b/i,
-          /\bmy (?:own )?domain\b/i,
-          /\b(?:buy|purchase|register) (?:a |an |my )?(?:custom |new )?domain\b/i,
-          /\b(?:connect|hook up|point|link) (?:a |my |the )?(?:custom )?domain\b/i,
-          /\b(?:use|set up|setup) (?:a |my )?(?:custom )?domain\b/i,
-          /\bDNS (?:records?|setup|config(?:uration)?)\b/i,
-          /\bnameservers?\b/i,
-          /\bpoint (?:my )?domain (?:to|at)\b/i
-        ]
-      },
-      seo: {
-        id: "seo",
-        minLength: 6,
-        signals: [
-          /\bSEO\b/i,
-          /\bsearch engine\b/i,
-          /\b(?:rank|ranking) (?:on |in )?Google\b/i,
-          /\bgoogle (?:indexing|index|search|results)\b/i,
-          /\bget(?:ting)? indexed\b/i,
-          /\bmeta (?:tags?|description|title)\b/i,
-          /\bopen ?graph\b/i,
-          /\bog (?:image|tags?|title)\b/i,
-          /\bshare (?:preview|card|image)\b/i,
-          /\bsocial (?:preview|card|sharing)\b/i,
-          /\btwitter card\b/i,
-          /\bsitemap(?:\.xml)?\b/i,
-          /\brobots\.txt\b/i,
-          /\bcanonical (?:url|tag)\b/i,
-          /\bstructured data\b/i,
-          /\bJSON-?LD\b/i,
-          /\bschema\.org\b/i,
-          /\bdiscoverab(?:le|ility)\b/i
-        ]
-      },
-      addPage: {
-        id: "addPage",
-        minLength: 6,
-        signals: [
-          /\babout (?:us|page|section)\b/i,
-          /\bpricing page\b/i,
-          /\bcontact (?:us|page|form page)\b/i,
-          /\bblog (?:page|index|section)?\b/i,
-          /\bfaq page\b/i,
-          /\bservices page\b/i,
-          /\bportfolio page\b/i,
-          /\bcareers? page\b/i,
-          /\bteam page\b/i,
-          /\bcase stud(?:y|ies)\b/i,
-          /\bmulti[- ]?page\b/i,
-          /\bseparate pages?\b/i,
-          /\bits own page\b/i,
-          /\bnew page\b/i,
-          /\badd (?:an?|another) page\b/i,
-          /\/(?:about|pricing|contact|blog|faq|services|portfolio|team|careers)\b/i
-        ]
-      },
-      mobile: {
-        id: "mobile",
-        minLength: 6,
-        signals: [
-          /\b(?:mobile|native) app\b/i,
-          /\b(?:ios|iphone|ipad) app\b/i,
-          /\bandroid app\b/i,
-          /\bplay store\b/i,
-          /\bapp store\b/i,
-          /\btestflight\b/i,
-          /\bpush notifications?\b/i,
-          /\bapp icon\b/i,
-          /\bsplash screen\b/i,
-          /\binstall (?:it|this|the app) on (?:my )?phone\b/i,
-          /\bship (?:to|on) (?:the )?app store\b/i,
-          /\bpublish (?:to|on) (?:the )?(?:app|play) store\b/i,
-          /\bapk\b/i,
-          /\bipa\b/i,
-          /\baab\b/i,
-          /\bsigned build\b/i,
-          /\bbundle id\b/i,
-          /\bcapacitor\b/i,
-          /\breact native\b/i,
-          /\bwrap (?:as|in)(?: a)? (?:mobile|native) app\b/i,
-          /\bturn (?:this|it) into (?:a )?(?:mobile|native|phone) app\b/i
-        ]
-      },
-      analytics: {
-        id: "analytics",
-        minLength: 6,
-        signals: [
-          /\b(?:track|tracking) (?:visitors?|users?|page ?views?|clicks?|events?|conversions?)\b/i,
-          /\b(?:visitor|page ?view|click|event|conversion) (?:tracking|analytics)\b/i,
-          /\banalytics (?:dashboard|integration|tool|service|provider)?\b/i,
-          /\b(?:plausible|posthog|mixpanel|amplitude|fathom|umami|simple ?analytics)\b/i,
-          /\bgoogle analytics\b/i,
-          /\bGA4?\b/,
-          /\bheatmaps?\b/i,
-          /\bfunnel(?:s| analysis)\b/i,
-          /\bA\/?B test(?:ing|s)?\b/i,
-          /\bsee (?:how many|who) (?:visit|visited|viewed|using)\b/i,
-          /\bmeasure (?:traffic|engagement|usage)\b/i
-        ]
-      },
-      aiFeature: {
-        id: "aiFeature",
-        minLength: 8,
-        signals: [
-          /\b(?:add|build|integrate|wire (?:up|in)|set up|setup|implement) (?:an? )?(?:AI|chatbot|assistant|copilot|agent)/i,
-          /\b(?:add|build|integrate|wire (?:up|in)|set up|setup|implement) (?:an? )?(?:chat|chatbot|assistant)\b/i,
-          /\b(?:summari[sz]e|translate|paraphrase|rewrite|classify|extract|transcribe|moderate|generate|caption) (?:the |a |this |these )?(?:text|content|article|email|image|images?|audio|file|comment|review|message)/i,
-          /\bAI[- ]powered\b/i,
-          /\bask (?:an? )?AI\b/i,
-          /\b(?:LLM|large language model)\b/i,
-          /\b(?:image|text|content|copy) generation\b/i,
-          /\b(?:auto|automatically) (?:summari[sz]e|translate|tag|caption|reply|respond)/i,
-          /\bsemantic search\b/i,
-          /\bembeddings?\b/i
-        ],
-        augment: (t) => {
-          if (AI_PROVIDER_NAMES.test(t) && AI_ACTION_VERBS.test(t)) {
-            const provider = t.match(AI_PROVIDER_NAMES)?.[0]?.toLowerCase();
-            return { detected: true, reason: provider ? `use ${provider}` : "use AI" };
-          }
-          return null;
-        }
-      },
-      storage: {
-        id: "storage",
-        minLength: 8,
-        signals: [
-          /\b(?:upload|uploading) (?:an? |the )?(?:image|images?|photo|photos?|picture|pictures?|video|videos?|file|files?|pdf|document|documents?|attachment|attachments?|avatar|profile pic(?:ture)?)/i,
-          /\b(?:user|profile) (?:avatar|photo|picture|image)\b/i,
-          /\bdrag (?:and |&\s*)drop (?:upload|files?|images?)\b/i,
-          /\battach(?: a)? file\b/i,
-          /\b(?:image|file|media) (?:upload|hosting|storage|library|gallery)\b/i,
-          /\bstore (?:images?|photos?|files?|pdfs?|videos?|user[- ]uploaded)/i,
-          /\b(?:S3 bucket|cloud storage|object storage|CDN upload)\b/i,
-          /\bsupabase storage\b/i
-        ]
-      },
-      realtime: {
-        id: "realtime",
-        minLength: 6,
-        signals: [
-          /\breal[- ]?time\b/i,
-          /\blive (?:chat|messaging|messages|updates?|feed|comments?|cursor|typing|reactions?|notifications?)\b/i,
-          /\b(?:online|active) (?:users?|members?|presence)\b/i,
-          /\bpresence (?:indicator|state|tracking)?\b/i,
-          /\bcollabora(?:tive|tion)\b/i,
-          /\b(?:multiplayer|co[- ]?editing|shared cursor)/i,
-          /\btyping indicator\b/i,
-          /\b(?:websocket|ws|server[- ]sent events|SSE)\b/i,
-          /\b(?:pusher|ably|socket\.io|liveblocks)\b/i,
-          /\bsupabase realtime\b/i,
-          /\bauto[- ]?refresh (?:the )?(?:list|feed|messages?|data)\b/i,
-          /\bpush updates? (?:to|when)/i
-        ]
-      },
-      cron: {
-        id: "cron",
-        minLength: 8,
-        signals: [
-          /\b(?:every|each) (?:minute|hour|day|night|morning|week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i,
-          /\b(?:daily|nightly|weekly|monthly|hourly) (?:digest|email|report|summary|reminder|sync|backup|cleanup|job|cron|task)\b/i,
-          /\b(?:scheduled|schedule a|recurring) (?:email|job|task|reminder|report|notification|digest)\b/i,
-          /\b(?:cron|cronjob|cron job|pg_?cron)\b/i,
-          /\bbackground (?:job|task|worker|process)\b/i,
-          /\b(?:auto|automatically) (?:send|email|notify|reset|clean ?up|expire|archive|sync|run)/i,
-          /\b(?:reminder|digest) (?:email|notification)s?\b/i,
-          /\brun (?:this |the |a )?(?:job|task|script) (?:every|once|on a schedule|periodically)/i,
-          /\bperiodic(?:ally)?\b/i
-        ]
-      }
-    };
-    BACKEND_OPT_OUT = /\b(?:no|without|don'?t (?:need|want|add|use)|do not (?:need|want|add|use)|never (?:add|use))\b[^.!?:;\n]{0,60}\b(?:database|backend)\b/i;
   }
 });
 
@@ -139842,6 +139848,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -140929,6 +140936,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141093,6 +141101,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141136,6 +141145,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -146022,7 +146032,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });

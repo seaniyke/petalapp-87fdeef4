@@ -80,3 +80,12 @@ describe("a named page's colon lists its contents, not more pages", () => {
     expect(extractRequestedPages("Build a cafe site with pages: Home, Menu and Contact.")).toEqual(["home", "menu", "contact"]);
   });
 });
+
+describe("a page the user rules out is never required", () => {
+  it("'Do NOT build a marketing landing page' asks for no /marketing", () => {
+    expect(extractRequestedPages("This is a phone app. Do NOT build a marketing landing page, hero banner or footer.")).toEqual([]);
+  });
+  it("'add a contact page' still asks for /contact", () => {
+    expect(extractRequestedPages("Please add a contact page.")).toEqual(["contact"]);
+  });
+});
