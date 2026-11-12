@@ -78,6 +78,25 @@ const PETAL_BADGE_HTML = `
     a.addEventListener('mouseenter', function(){ a.style.opacity='1'; a.style.transform='translateY(-1px)'; });
     a.addEventListener('mouseleave', function(){ a.style.opacity='0.92'; a.style.transform='none'; });
     document.body.appendChild(a);
+    // Phone apps pin a tab bar to the bottom: sit just above it, never on it.
+    function place(){
+      var lift = 0, vh = window.innerHeight, vw = window.innerWidth;
+      var els = document.querySelectorAll('nav,footer,[role="tablist"],[role="navigation"],[class*="bottom-0"]');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (el === a || a.contains(el)) continue;
+        var pos = getComputedStyle(el).position;
+        if (pos !== 'fixed' && pos !== 'sticky') continue;
+        var r = el.getBoundingClientRect();
+        if (r.height > 0 && r.bottom >= vh - 2 && r.height < vh * 0.4 && r.width > vw * 0.5) lift = Math.max(lift, vh - r.top);
+      }
+      a.style.bottom = (lift ? Math.round(lift) + 10 : 14) + 'px';
+    }
+    var queued = false;
+    function schedule(){ if (queued) return; queued = true; requestAnimationFrame(function(){ queued = false; place(); }); }
+    place();
+    window.addEventListener('resize', schedule);
+    if (window.MutationObserver) new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function(){ setTimeout(mount, 0); });
