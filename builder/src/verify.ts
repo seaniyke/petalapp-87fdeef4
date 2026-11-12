@@ -32,6 +32,7 @@ import {
   type ConsoleMessage,
 } from "playwright";
 import { isTransientEdgeStatus } from "./deploy-status.js";
+import { splitSelector } from "./selector.js";
 import { Heartbeat } from "./progress.js";
 
 export class VerifyError extends Error {}
@@ -296,6 +297,14 @@ function decodeReactError(text: string): string {
   if (explain) parts.push(explain);
   if (args.length > 0) parts.push(`details: ${args.join(", ")}`);
   return parts.join(" — ");
+}
+
+
+function locate(page: Page, selector: string) {
+  const parts = splitSelector(selector);
+  const mixed = parts.length > 1 && parts.some((x) => /^(text|role|xpath|id|data-testid)=/.test(x) || x.startsWith("//"));
+  if (!mixed) return page.locator(selector);
+  return parts.slice(1).reduce((acc, x) => acc.or(page.locator(x)), page.locator(parts[0]));
 }
 
 function watchPage(page: Page): PageWatch {
@@ -718,20 +727,18 @@ async function runFlow(
           break;
         case "click":
           if (!step.selector) throw new Error("click step needs a selector");
-          await page.locator(step.selector).first().click({ timeout: STEP_TIMEOUT_MS });
+          await locate(page, step.selector).first().click({ timeout: STEP_TIMEOUT_MS });
           await page.waitForTimeout(900);
           break;
         case "fill":
           if (!step.selector) throw new Error("fill step needs a selector");
-          await page
-            .locator(step.selector)
+          await locate(page, step.selector)
             .first()
             .fill(step.value ?? "", { timeout: STEP_TIMEOUT_MS });
           break;
         case "select":
           if (!step.selector) throw new Error("select step needs a selector");
-          await page
-            .locator(step.selector)
+          await locate(page, step.selector)
             .first()
             .selectOption(step.value ?? "", { timeout: STEP_TIMEOUT_MS });
           break;
