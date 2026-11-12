@@ -87,6 +87,13 @@ const APP_SETTINGS_STEP = String.raw`      - name: Apply app settings
           else:
               pl = 'ios/App/App/Info.plist'
               pb = lambda c: subprocess.run(['/usr/libexec/PlistBuddy', '-c', c, pl], capture_output=True)
+              # Apple privacy manifest for the app itself: the bundled add-ons read app settings (UserDefaults, reason CA92.1), no tracking.
+              # Apple refuses uploads whose required-reason API use is undeclared (ITMS-91053).
+              open('ios/App/App/PrivacyInfo.xcprivacy', 'w').write('<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>NSPrivacyTracking</key><false/><key>NSPrivacyTrackingDomains</key><array/><key>NSPrivacyCollectedDataTypes</key><array/><key>NSPrivacyAccessedAPITypes</key><array><dict><key>NSPrivacyAccessedAPIType</key><string>NSPrivacyAccessedAPICategoryUserDefaults</string><key>NSPrivacyAccessedAPITypeReasons</key><array><string>CA92.1</string></array></dict></array></dict></plist>\n')
+              rb = "require 'xcodeproj'; pr = Xcodeproj::Project.open('ios/App/App.xcodeproj'); t = pr.targets.find { |x| x.name == 'App' }; g = pr.main_group['App']; unless g.files.any? { |f| f.path == 'PrivacyInfo.xcprivacy' }; t.resources_build_phase.add_file_reference(g.new_reference('PrivacyInfo.xcprivacy')); pr.save; end"
+              if subprocess.run(['ruby', '-e', rb]).returncode != 0:
+                  raise SystemExit('Could not add the Apple privacy manifest to the iPhone project.')
+              print('Apple privacy manifest added')
               for f in feats:
                   if FEATURES[f][1]:
                       pb('Add :' + FEATURES[f][1] + ' string ' + FEATURES[f][2])
@@ -151,7 +158,9 @@ workflows:
           if grep -q '"apple-signin"' petal.native.json 2>/dev/null; then npm install @capacitor-community/apple-sign-in@^7 --save; fi
           # Google sign-in add-on (GoogleAuth) predates Capacitor 8: allow its old peer range, swap its retired jcenter repo, and use CocoaPods on iPhone (it has no Swift package).
           if grep -q '"google-signin"' petal.native.json 2>/dev/null; then npm install @codetrix-studio/capacitor-google-auth@3.4.0-rc.4 --save --legacy-peer-deps && sed -i.bak 's/jcenter()/mavenCentral()/g' node_modules/@codetrix-studio/capacitor-google-auth/android/build.gradle; fi
-          npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
+          # Keep the app name from the project's own capacitor.config.json; cap init would otherwise rename the app to the project ID.
+          APP_NAME=$(python3 -c "import json;print(json.load(open('capacitor.config.json')).get('appName',''))" 2>/dev/null || true); [ -n "$APP_NAME" ] || APP_NAME="$PETAL_PROJECT_ID"
+          npx cap init "$APP_NAME" "$PETAL_BUNDLE_ID" --web-dir=dist
           python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
           PM=""; if [ "$PETAL_PLATFORM" = "ios" ] && grep -q '"google-signin"' petal.native.json 2>/dev/null; then PM="--packagemanager CocoaPods"; fi
           npx cap add "$PETAL_PLATFORM" $PM
@@ -326,7 +335,9 @@ ${APP_SETTINGS_STEP}      - name: Build native artifact (unsigned)
           if grep -q '"apple-signin"' petal.native.json 2>/dev/null; then npm install @capacitor-community/apple-sign-in@^7 --save; fi
           # Google sign-in add-on (GoogleAuth) predates Capacitor 8: allow its old peer range, swap its retired jcenter repo, and use CocoaPods on iPhone (it has no Swift package).
           if grep -q '"google-signin"' petal.native.json 2>/dev/null; then npm install @codetrix-studio/capacitor-google-auth@3.4.0-rc.4 --save --legacy-peer-deps && sed -i.bak 's/jcenter()/mavenCentral()/g' node_modules/@codetrix-studio/capacitor-google-auth/android/build.gradle; fi
-          npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
+          # Keep the app name from the project's own capacitor.config.json; cap init would otherwise rename the app to the project ID.
+          APP_NAME=$(python3 -c "import json;print(json.load(open('capacitor.config.json')).get('appName',''))" 2>/dev/null || true); [ -n "$APP_NAME" ] || APP_NAME="$PETAL_PROJECT_ID"
+          npx cap init "$APP_NAME" "$PETAL_BUNDLE_ID" --web-dir=dist
           python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
           PM=""; if [ "$PETAL_PLATFORM" = "ios" ] && grep -q '"google-signin"' petal.native.json 2>/dev/null; then PM="--packagemanager CocoaPods"; fi
           npx cap add "$PETAL_PLATFORM" $PM
@@ -520,7 +531,9 @@ ${APP_SETTINGS_STEP}      - name: Decrypt signing materials
           if grep -q '"apple-signin"' petal.native.json 2>/dev/null; then npm install @capacitor-community/apple-sign-in@^7 --save; fi
           # Google sign-in add-on (GoogleAuth) predates Capacitor 8: allow its old peer range, swap its retired jcenter repo, and use CocoaPods on iPhone (it has no Swift package).
           if grep -q '"google-signin"' petal.native.json 2>/dev/null; then npm install @codetrix-studio/capacitor-google-auth@3.4.0-rc.4 --save --legacy-peer-deps && sed -i.bak 's/jcenter()/mavenCentral()/g' node_modules/@codetrix-studio/capacitor-google-auth/android/build.gradle; fi
-          npx cap init "$PETAL_PROJECT_ID" "$PETAL_BUNDLE_ID" --web-dir=dist
+          # Keep the app name from the project's own capacitor.config.json; cap init would otherwise rename the app to the project ID.
+          APP_NAME=$(python3 -c "import json;print(json.load(open('capacitor.config.json')).get('appName',''))" 2>/dev/null || true); [ -n "$APP_NAME" ] || APP_NAME="$PETAL_PROJECT_ID"
+          npx cap init "$APP_NAME" "$PETAL_BUNDLE_ID" --web-dir=dist
           python3 -c "import json,os,urllib.parse as u;f='capacitor.config.json';c=json.load(open(f));p=os.environ['PETAL_PLATFORM'];ua=c.get('appendUserAgent','');ua=ua if 'PetalNative' in ua else (ua+' PetalNative petal-'+p).strip();c['appendUserAgent']=ua;s=c.setdefault('server',{});h=u.urlparse(s.get('url','')).hostname;a=s.setdefault('allowNavigation',[]);[a.append(x) for x in ([h,'*.'+h] if h else []) if x not in a];json.dump(c,open(f,'w'),indent=2)"
           PM=""; if [ "$PETAL_PLATFORM" = "ios" ] && grep -q '"google-signin"' petal.native.json 2>/dev/null; then PM="--packagemanager CocoaPods"; fi
           npx cap add "$PETAL_PLATFORM" $PM

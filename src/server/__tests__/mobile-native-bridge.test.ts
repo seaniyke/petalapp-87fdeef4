@@ -305,3 +305,29 @@ describe("phone app hides the website", () => {
   });
 });
 
+
+describe("Apple App Store checks", () => {
+  it("every iPhone build ships the app's own privacy manifest declaring settings storage (UserDefaults CA92.1)", () => {
+    const step = CODEMAGIC_YAML.split("- name: Apply app settings")[1].split("- name:")[0];
+    expect(step).toContain("ios/App/App/PrivacyInfo.xcprivacy");
+    expect(step).toContain("<string>NSPrivacyAccessedAPICategoryUserDefaults</string>");
+    expect(step).toContain("<string>CA92.1</string>");
+    expect(step).toContain("<key>NSPrivacyTracking</key><false/>");
+    // Registered in the Xcode project's resources, and the build stops if that fails.
+    expect(step).toContain("resources_build_phase.add_file_reference");
+    expect(step).toContain("raise SystemExit('Could not add the Apple privacy manifest");
+  });
+
+  it("Google's native sign-in frameworks are only added when the app asks for google-signin", () => {
+    const shell = CODEMAGIC_YAML.split("- name: Add Capacitor shell")[1].split("- name:")[0];
+    for (const line of shell.split("\n").filter((l) => l.includes("capacitor-google-auth"))) {
+      expect(line).toContain(`grep -q '"google-signin"' petal.native.json`);
+    }
+  });
+
+  it("keeps the app name from the project's capacitor.config.json instead of the project ID", () => {
+    expect(CODEMAGIC_YAML.match(/npx cap init "\$APP_NAME" "\$PETAL_BUNDLE_ID"/g)?.length).toBe(3);
+    expect(CODEMAGIC_YAML).not.toContain('npx cap init "$PETAL_PROJECT_ID"');
+    expect(CODEMAGIC_YAML).toContain('[ -n "$APP_NAME" ] || APP_NAME="$PETAL_PROJECT_ID"');
+  });
+});
