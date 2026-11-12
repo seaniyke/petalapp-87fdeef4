@@ -13,9 +13,12 @@ button:active{transform:scale(.98)}.err{color:#f87171;font-size:14px;min-height:
 li{list-style:none;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.08)}ul{padding:0;margin:0}
 </style></head><body>
 <h1>Custard Go</h1>
-<p>Open your Custard project on this phone. Scan its QR code with your camera, or paste the link.</p>
+<p>Open your Custard project on this phone. Scan its QR code, or paste the link.</p>
+<button id="scan" style="margin:0 0 20px">Scan QR code</button>
+<div id="sv" style="display:none;position:fixed;inset:0;background:#000;z-index:9"><video id="vid" playsinline muted style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;top:50%;left:50%;width:240px;height:240px;margin:-120px;border:3px solid #f59e0b;border-radius:24px"></div><button id="cl" style="position:absolute;left:20px;right:20px;width:auto;bottom:calc(env(safe-area-inset-bottom) + 24px)">Cancel</button></div>
 <div class="card"><input id="u" placeholder="Paste project link" autocomplete="off"><button id="go">Open project</button><div class="err" id="e"></div></div>
 <div class="card"><strong>Recent</strong><ul id="r"></ul></div>
+<script src="jsqr.js"></script>
 <script>
 var ALLOWED=/^https:\/\/preview--[a-z0-9]+\.sites\.custardai\.dev(\/|$)/;
 function norm(raw){try{var u=new URL(raw.trim());if(u.protocol==='custardgo:'){u=new URL(u.searchParams.get('url')||'')}
@@ -27,4 +30,9 @@ document.getElementById('go').onclick=function(){open(document.getElementById('u
 recent().forEach(function(u){var li=document.createElement('li');li.textContent=new URL(u).hostname.split('.')[0].replace('preview--','Project ').slice(0,20);li.onclick=function(){open(u)};document.getElementById('r').appendChild(li)});
 var C=window.Capacitor;if(C&&C.Plugins&&C.Plugins.App){C.Plugins.App.addListener('appUrlOpen',function(e){open(e.url)});
 C.Plugins.App.getLaunchUrl&&C.Plugins.App.getLaunchUrl().then(function(l){if(l&&l.url)open(l.url)})}
+var stream=null,cv=document.createElement('canvas'),cx=cv.getContext('2d',{willReadFrequently:true});
+function stop(){if(stream)stream.getTracks().forEach(function(t){t.stop()});stream=null;document.getElementById('sv').style.display='none'}
+function tick(){var v=document.getElementById('vid');if(!stream)return;if(v.readyState>=2){cv.width=v.videoWidth;cv.height=v.videoHeight;cx.drawImage(v,0,0);var c=jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height);if(c&&c.data){if(norm(c.data)){try{navigator.vibrate&&navigator.vibrate(30)}catch(x){}stop();open(c.data);return}document.getElementById('e').textContent='That QR code is not a Custard project.'}}requestAnimationFrame(tick)}
+document.getElementById('scan').onclick=function(){document.getElementById('e').textContent='';navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}).then(function(s){stream=s;var v=document.getElementById('vid');v.srcObject=s;document.getElementById('sv').style.display='block';v.play();tick()}).catch(function(){document.getElementById('e').textContent='Allow camera access in Settings to scan.'})};
+document.getElementById('cl').onclick=stop;
 </script></body></html>
