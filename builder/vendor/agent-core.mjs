@@ -69704,7 +69704,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140935,7 +140934,6 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141100,7 +141098,6 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141144,7 +141141,6 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141366,7 +141362,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -151565,6 +151560,7 @@ mobile-first and uses the \`native\` bridge for phone features.
 - Never render marketing nav, hero, pricing or footer when \`native.isApp()\` is true.
 
 **Layout rules**
+- Carts, bags, wishlists and saved lists start EMPTY on first open (\`useState([])\`) with a friendly empty screen ("Your bag is empty" + a Start shopping button). Never pre-fill them with sample items.
 - Mobile-first breakpoints: design at 390\xD7844, scale up.
 - Use \`pt-[env(safe-area-inset-top)]\` and \`pb-[env(safe-area-inset-bottom)]\`
   on full-screen containers. Never let primary CTAs sit under the home
@@ -168314,7 +168310,7 @@ Styling is already fully set up: never create or edit a stylesheet, a Tailwind c
 ${d.playbook.trim()}
 `;
 }
-var STARTER_DATA_RULE = "Each list/table page loads its collection with `db.seedOnce(collection, rows)` from `@/integrations/backend/client` instead of `db.list` on first load, passing 5-8 realistic, domain-specific rows (real-sounding names, dates, amounts, statuses). seedOnce writes them to the database only when the collection is empty, so the app opens alive and the data is real. seedOnce and db.list return an array of records (`rows.map(r => ({ id: r.id, ...r.data }))`); db.create/db.update return the saved record (`saved.id`, `saved.data`). Never hardcode sample arrays in pages. On customer-facing pages (shop, product, menu, treatments, booking, cart) visitors only browse, add to bag, book and pay: never show add, edit or delete controls for the catalogue there, whatever the button is called (no 'Add to store', 'New formula', 'Bespoke blend' forms). Visitors never see other people's bookings, orders or messages: seed only what the business sells, never sample bookings or orders with customer names; after a visitor books or orders, db.create the record and show only that visitor's own confirmation from component state \u2014 never a list of everyone's bookings, and no reschedule/cancel buttons on others' records. Owner tools exist only inside a signed-in area, and only when the user asked for one.";
+var STARTER_DATA_RULE = "Each list/table page loads its collection with `db.seedOnce(collection, rows)` from `@/integrations/backend/client` instead of `db.list` on first load, passing 5-8 realistic, domain-specific rows (real-sounding names, dates, amounts, statuses). seedOnce writes them to the database only when the collection is empty, so the app opens alive and the data is real. seedOnce and db.list return an array of records (`rows.map(r => ({ id: r.id, ...r.data }))`); db.create/db.update return the saved record (`saved.id`, `saved.data`). Never hardcode sample arrays in pages. On customer-facing pages (shop, product, menu, treatments, booking, cart) visitors only browse, add to bag, book and pay: never show add, edit or delete controls for the catalogue there, whatever the button is called (no 'Add to store', 'New formula', 'Bespoke blend' forms). Visitors never see other people's bookings, orders or messages: seed only what the business sells, never sample bookings or orders with customer names; after a visitor books or orders, db.create the record and show only that visitor's own confirmation from component state \u2014 never a list of everyone's bookings, and no reschedule/cancel buttons on others' records. Carts, bags and wishlists always start empty on first open, with an empty-state message and a shop link; never pre-fill them. Owner tools exist only inside a signed-in area, and only when the user asked for one.";
 function firstBuildBrief(request, planned, existing, design3, data2) {
   const pages = planned.map((p2) => `${p2.route} \u2192 ${p2.file}`).join(", ");
   const workspace = existing.length ? `The workspace already holds ${existing.length} saved files from an interrupted run: ${existing.join(", ")}. Do not rewrite them; write what is still missing.` : `No app code has been written yet. The scaffold below is already installed, so you know the workspace \u2014 do not list or read files before writing. Start writing immediately.`;
@@ -171598,6 +171594,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
