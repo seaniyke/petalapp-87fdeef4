@@ -100,3 +100,17 @@ describe("starter rows are written all-or-nothing", () => {
     expect(client).not.toContain("catch { break; }");
   });
 });
+
+describe("a shop's checkout delivery details do not make it a logistics system", () => {
+  const SHOP =
+    "Build a phone shopping app for hair: wigs and bundles. Cart with subtotal, delivery fee and total, " +
+    "and a checkout screen with delivery address. No sign-in needed.";
+  it("stays an online store and asks for no accounts", () => {
+    const c = deriveIntentContract(SHOP, null);
+    expect(c.archetype).toBe("commerce");
+    expect(c.surface ?? null).toBeNull();
+  });
+  it("a real courier dispatch app is still delivery", () => {
+    expect(deriveIntentContract("Build a delivery management app where admins assign drivers to parcels", null).archetype).toBe("delivery");
+  });
+});

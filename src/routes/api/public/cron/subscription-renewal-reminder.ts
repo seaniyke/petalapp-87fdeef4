@@ -13,6 +13,7 @@
  * other Kimble crons. Schedule via pg_cron, daily at 09:00 UTC.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { internalOrigin } from "@/server/internal-origin";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getSubscriptionManageLink } from "@/server/paystack.server";
 import { sendBillingEmail, formatMinorAmount } from "@/server/billing-email.server";
@@ -217,7 +218,7 @@ export const Route = createFileRoute(
         const provided = request.headers.get("x-petal-cron-secret");
         if (!secretsMatch(provided, secret)) return unauthorized();
         try {
-          const origin = new URL(request.url).origin;
+          const origin = internalOrigin(request.url);
           const result = await processSubscriptions(origin);
           return Response.json({ ok: true, ...result });
         } catch (e) {
@@ -234,7 +235,7 @@ export const Route = createFileRoute(
           new URL(request.url).searchParams.get("secret");
         if (!secretsMatch(provided, secret)) return unauthorized();
         try {
-          const origin = new URL(request.url).origin;
+          const origin = internalOrigin(request.url);
           const result = await processSubscriptions(origin);
           return Response.json({ ok: true, ...result });
         } catch (e) {

@@ -233,6 +233,9 @@ const AESTHETIC_CLINIC = /\b(aesthetics?|cosmetic|med ?spas?|medspas?|skin ?care
 /** Words that only a medical facility uses — keep the healthcare family then. */
 const HOSPITAL_ONLY = /\b(hospital|wards?|inpatient|outpatient|ehr|emr|medical records?|prescriptions?|pharmacy|nurs(e|es|ing))\b/i;
 
+/** Delivery words that only describe a shop's checkout (fee, address, free/same-day delivery). */
+const INCIDENTAL_DELIVERY = /\b(?:(?:free|same[- ]day|next[- ]day|express|fast|nationwide|home|doorstep|standard)\s+)?deliver(?:y|ies)\s+(?:fees?|charges?|costs?|prices?|address(?:es)?|options?|times?|dates?|details?|info(?:rmation)?|zones?|areas?|methods?|estimates?)\b|\b(?:free|same[- ]day|next[- ]day|express|fast|nationwide|home|doorstep)\s+deliver(?:y|ies)\b/gi;
+
 export function deriveIntentContract(brief: string, prd?: Prd | null): IntentContract {
   const text = withoutNegatedAppWords(brief || "");
   const commerceFamily = FAMILIES.find((f) => f.id === "commerce")!;
@@ -242,7 +245,10 @@ export function deriveIntentContract(brief: string, prd?: Prd | null): IntentCon
   // Aesthetic / beauty / wellness clinics are appointment businesses, not
   // hospitals: "clinic" alone must not force doctors, records and prescriptions.
   const aestheticClinic = AESTHETIC_CLINIC.test(text) && !HOSPITAL_ONLY.test(text);
-  const family = FAMILIES.find((f) => f.id !== "commerce" && !(aestheticClinic && f.id === "healthcare") && (!f.appOnly || wantsApp) && f.triggers.test(text)) ?? (commerceRequested ? commerceFamily : null);
+  // In a shop, "delivery fee" / "delivery address" are checkout details, not a
+  // request for a courier-dispatch system (Crown & Coil hair app, 12 Nov 2026).
+  const familyText = commerceRequested ? text.replace(INCIDENTAL_DELIVERY, " ") : text;
+  const family = FAMILIES.find((f) => f.id !== "commerce" && !(aestheticClinic && f.id === "healthcare") && (!f.appOnly || wantsApp) && f.triggers.test(familyText)) ?? (commerceRequested ? commerceFamily : null);
   const exclusions = commerceRequested ? [] : ["online shop", "product catalogue", "cart", "checkout"];
   if (!family) {
     const surface = deriveProductSurface(text, prd?.roles ?? []);

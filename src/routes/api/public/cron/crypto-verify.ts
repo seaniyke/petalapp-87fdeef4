@@ -15,6 +15,7 @@
  * Schedule: every 2–5 minutes.
  */
 import { createFileRoute } from "@tanstack/react-router";
+import { internalOrigin } from "@/server/internal-origin";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { verifyCryptoPayment } from "@/server/crypto-verify.server";
 import { creditCryptoPayment, type CryptoPaymentRow } from "@/server/crypto-credit.server";
@@ -139,7 +140,7 @@ async function handle(request: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
   try {
-    const result = await runCryptoVerifier(new URL(request.url).origin);
+    const result = await runCryptoVerifier(internalOrigin(request.url));
     return Response.json({ ok: true, ...result });
   } catch (e) {
     console.error("[cron crypto-verify] failed", e);

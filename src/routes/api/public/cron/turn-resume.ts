@@ -25,6 +25,7 @@ import {
   type CompletionRecord,
 } from "@/server/turn-completion.server";
 import { recoverApplyingCreditPauses } from "@/server/credit-pause.server";
+import { internalOrigin } from "@/server/internal-origin";
 
 /** Never run more than a couple of repairs per tick — this costs money. */
 const MAX_PER_TICK = 3;
@@ -155,7 +156,7 @@ export async function handleTurnResume(request: Request): Promise<Response> {
   // Partner low-balance email (one per dip below the threshold).
   try {
     const { checkPartnerBalance } = await import("@/server/balance-alert.server");
-    const r = await checkPartnerBalance(new URL(request.url).origin);
+    const r = await checkPartnerBalance(internalOrigin(request.url));
     if (r.error) console.warn("[cron/turn-resume] balance alert:", r.error);
   } catch (e) {
     console.warn("[cron/turn-resume] balance alert failed:", (e as Error).message);
@@ -167,7 +168,7 @@ export async function handleTurnResume(request: Request): Promise<Response> {
     creditPausesRecovered = recovered.length;
     const secret = process.env.BUILDER_SHARED_SECRET;
     if (secret) {
-      const origin = new URL(request.url).origin;
+      const origin = internalOrigin(request.url);
       await Promise.all(recovered.map(async (projectId) => {
         const { data: project } = await supabaseAdmin.from("projects").select("owner_id").eq("id", projectId).maybeSingle();
         if (!project?.owner_id) return;
@@ -187,7 +188,7 @@ export async function handleTurnResume(request: Request): Promise<Response> {
     return Response.json({ ok: true, checked: 0, resumed: 0, memoryReplayed, creditPausesRecovered });
   }
 
-  const origin = new URL(request.url).origin;
+  const origin = internalOrigin(request.url);
   const results: string[] = [];
   for (const record of pending) {
     try {
