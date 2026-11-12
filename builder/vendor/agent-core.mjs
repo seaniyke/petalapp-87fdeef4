@@ -63281,7 +63281,7 @@ function ensureRenderableShell(files, subtypeHint) {
       "index.html",
       `<!doctype html>
 <html lang="en">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>App</title></head>
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /><title>App</title></head>
   <body><div id="root"></div><script>(function(){var lastErr=null;window.addEventListener("error",function(e){lastErr=e.error||e.message;});window.addEventListener("unhandledrejection",function(e){lastErr=e.reason;});setTimeout(function(){var r=document.getElementById("root");if(r&&r.childElementCount===0){r.innerHTML='<main style="min-height:100vh;padding:48px 24px;font-family:ui-sans-serif,system-ui;background:#0b0b10;color:#f5f5f7"><div style="max-width:720px;margin:0 auto"><p style="font-size:13px;letter-spacing:1px;text-transform:uppercase;opacity:.6;margin:0">Preview blank</p><h1 style="font-size:28px;font-weight:700;margin:8px 0 16px">The app mounted but rendered nothing.</h1><p style="opacity:.7;margin:0 0 16px">'+(lastErr?String(lastErr.message||lastErr):"No error was thrown \u2014 the root component returned no visible JSX.")+'</p>'+(lastErr&&lastErr.stack?'<pre style="background:#15151c;border:1px solid #2a2a35;border-radius:8px;padding:16px;font-size:12px;overflow:auto;color:#cfcfd6">'+lastErr.stack+'</pre>':"")+'</div></main>';}},2500);})();</script><script type="module" src="/src/main.tsx"></script></body>
 </html>
 `
@@ -69704,6 +69704,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140934,6 +140935,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141098,6 +141100,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141141,6 +141144,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141362,6 +141366,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -171593,7 +171598,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

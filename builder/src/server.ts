@@ -341,7 +341,7 @@ const agentPool = new AgentPool(
   Number(process.env.MAX_AGENT_QUEUE ?? 50),
 );
 // Bump when the vendored agent core changes, so a live check can confirm the deploy.
-const AGENT_CORE_VERSION = "2026-11-12-badge-above-tab-bar";
+const AGENT_CORE_VERSION = "2026-11-12-native-safe-area-scroll";
 // sha256 of the vendored bundle actually on disk in this container — compare
 // with builder/vendor/agent-core.version.json to prove what production runs.
 const AGENT_CORE_HASH: string = await (async () => {

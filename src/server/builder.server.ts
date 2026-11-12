@@ -1,3 +1,4 @@
+import { ensureNativeFeel } from "@/server/native-feel.server";
 /**
  * Client for the external Kimble Builder service running on Railway.
  *
@@ -149,7 +150,7 @@ export async function postBuildToRailway(args: {
   // and some callers may not have passed through the current trigger route.
   // Replacing it here guarantees the exact payload sent to the builder always
   // contains one current, parse-safe guard.
-  const guarded = pinLooseDeps(injectPreviewGuard(brandWired.files, { projectId: args.projectId }).files);
+  const guarded = pinLooseDeps(injectPreviewGuard(ensureNativeFeel(brandWired.files), { projectId: args.projectId }).files);
   const badged = args.hideBadge ? guarded : injectPetalBadge(guarded);
   const filesToShip = args.custardWidget ? injectCustardWidget(badged, args.custardWidgetTag) : badged;
 
