@@ -1,0 +1,7 @@
+{
+  "appId": "dev.custardai.go",
+  "appName": "Custard Go",
+  "webDir": "dist",
+  "backgroundColor": "#0c1411",
+  "server": { "allowNavigation": ["*.sites.custardai.dev"] }
+}

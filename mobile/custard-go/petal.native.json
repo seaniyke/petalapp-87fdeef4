@@ -1,0 +1,5 @@
+{
+  "appId": "dev.custardai.go",
+  "features": ["microphone", "camera", "push"],
+  "linkSchemes": ["custardgo"]
+}

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Custard Go</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#0c1411;color:#f5f1e8;font:17px -apple-system,system-ui,sans-serif;padding:calc(env(safe-area-inset-top) + 48px) 20px 32px}
+h1{font-size:34px;margin:0 0 6px}p{color:#a8b3ad;margin:0 0 24px}
+.card{background:rgba(255,255,255,.06);backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:18px;margin-bottom:20px}
+input{width:100%;padding:14px;border-radius:14px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.3);color:inherit;font-size:16px}
+button{width:100%;margin-top:12px;padding:15px;border:0;border-radius:14px;background:#f59e0b;color:#0c1411;font-weight:600;font-size:17px}
+button:active{transform:scale(.98)}.err{color:#f87171;font-size:14px;min-height:20px;margin-top:8px}
+li{list-style:none;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.08)}ul{padding:0;margin:0}
+</style></head><body>
+<h1>Custard Go</h1>
+<p>Open your Custard project on this phone. Scan its QR code with your camera, or paste the link.</p>
+<div class="card"><input id="u" placeholder="Paste project link" autocomplete="off"><button id="go">Open project</button><div class="err" id="e"></div></div>
+<div class="card"><strong>Recent</strong><ul id="r"></ul></div>
+<script>
+var ALLOWED=/^https:\/\/preview--[a-z0-9]+\.sites\.custardai\.dev(\/|$)/;
+function norm(raw){try{var u=new URL(raw.trim());if(u.protocol==='custardgo:'){u=new URL(u.searchParams.get('url')||'')}
+if(!ALLOWED.test(u.href))return null;u.searchParams.set('petal_app','1');return u.href}catch(x){return null}}
+function recent(){try{return JSON.parse(localStorage.getItem('cg_recent')||'[]')}catch(x){return[]}}
+function open(raw){var u=norm(raw);if(!u){document.getElementById('e').textContent='That is not a Custard project link.';return}
+var r=recent().filter(function(x){return x!==u});r.unshift(u);localStorage.setItem('cg_recent',JSON.stringify(r.slice(0,8)));location.href=u}
+document.getElementById('go').onclick=function(){open(document.getElementById('u').value)};
+recent().forEach(function(u){var li=document.createElement('li');li.textContent=new URL(u).hostname.split('.')[0].replace('preview--','Project ').slice(0,20);li.onclick=function(){open(u)};document.getElementById('r').appendChild(li)});
+var C=window.Capacitor;if(C&&C.Plugins&&C.Plugins.App){C.Plugins.App.addListener('appUrlOpen',function(e){open(e.url)});
+C.Plugins.App.getLaunchUrl&&C.Plugins.App.getLaunchUrl().then(function(l){if(l&&l.url)open(l.url)})}
+</script></body></html>

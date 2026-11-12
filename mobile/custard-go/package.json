@@ -1,0 +1,6 @@
+{
+  "name": "custard-go",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": { "build": "rm -rf dist && mkdir dist && cp -R public/. dist/" }
+}
