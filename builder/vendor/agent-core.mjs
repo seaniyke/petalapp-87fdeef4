@@ -69704,6 +69704,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -141362,6 +141363,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143690,6 +143692,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -144894,6 +144897,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -151595,6 +151599,19 @@ the shell. Each call works in the preview too (web fallback), so no guards.
   tap-to-pick button.
 - Mouse-only events (\`onMouseEnter\`, \`onContextMenu\`). Use touch / long-press.
 
+**Product and item screens (required \u2014 benchmark: Apple Store, Nike, Zara, Sephora)**
+- Tapping a product, item or record card NAVIGATES to its own full-screen detail page (its own route, e.g. \`/product/:id\`). NEVER open details in a bottom sheet, drawer, half-sheet or modal \u2014 sheets are only for short actions, filters and pickers.
+- Detail page: frosted top bar with back chevron (returns to the same scroll position), share + wishlist on the right; edge-to-edge 4:5 image gallery with pill dots; title, price (\`tabular-nums\`), option chips (size/length/colour); collapsible details; a sticky bottom bar above the home indicator (\`pb-[env(safe-area-inset-bottom)]\`) with price + one full-width rounded "Add to Bag" button.
+
+**Visual language (current iOS + Material You, cinematic \u2014 not a website in a phone)**
+- Frosted glass chrome: headers and tab bars \`bg-background/70 backdrop-blur-2xl\` with hairline \`border-border/30\`; content scrolls visibly underneath.
+- Large title (\`text-[32px] font-bold tracking-tight\`) that collapses into the bar on scroll (\`MobileHeader large\`). Kickers \`text-[11px] font-semibold uppercase tracking-wider text-muted-foreground\`.
+- Search is a soft filled pill (\`h-10 rounded-xl bg-muted/70\`, no outline border). Category chips are filled pills, active = solid foreground, not outlined boxes.
+- Promo/hero cards are full-bleed photos, \`rounded-3xl\`, dark gradient scrim (\`bg-gradient-to-t from-black/75 via-black/25 to-transparent\`) with white text on top \u2014 never a flat solid-colour block with text.
+- Product cards: borderless, 4:5 photo \`rounded-2xl\`, wishlist heart on a small blurred circle, name 2 lines, price semibold. No boxed card borders around every item.
+- Motion: \`active:scale-[0.97]\` with \`transition-transform duration-200\`, page and sheet transitions slide/fade (200\u2013350ms, ease-out); haptic tick via \`native.haptics.impact()\` on primary taps.
+- No visible scrollbars anywhere; horizontal rails use \`snap-x snap-mandatory\` with 16px gutters.
+
 **Native-feel UI craft (this is what separates a real app from a website in a phone frame)**
 Compose from the Petal mobile kit instead of hand-rolling \u2014 these already exist in every project. Import from the exact module named below; there is NO file-per-component layout, so \`@/components/mobile/mobile-empty-state\` does not exist:
 | Need | Component |
@@ -151602,7 +151619,7 @@ Compose from the Petal mobile kit instead of hand-rolling \u2014 these already e
 | Screen shell (header + tabs + safe area) | \`MobileScreen\` (\`@/components/mobile/mobile-screen\`), \`SafeArea\`, \`MobileHeader\`, \`BottomTabBar\` |
 | Grouped settings / record lists | \`ListGroup\` + \`ListRow\` from \`@/components/mobile/list-row\` |
 | 2-4 mutually exclusive views | \`SegmentedControl\` |
-| Contextual actions, filters, pickers | \`ActionSheet\` (bottom sheet, opaque, scroll-locked) |
+| Contextual actions, filters, pickers (never product details) | \`ActionSheet\` (bottom sheet, opaque, scroll-locked) |
 | Primary create action | \`FloatingActionButton\`; forms use \`StickyActionBar\` (both from \`@/components/mobile/fab\`) |
 | Delete / archive on a row | \`SwipeRow\` |
 | Loading / empty / error | \`MobileListSkeleton\`, \`MobileEmptyState\`, \`MobileErrorState\` (all three from \`@/components/mobile/mobile-states\`) |
@@ -151612,7 +151629,7 @@ Hard rules for every mobile screen:
 - NEVER put a desktop data table on a phone. Records are \`ListRow\`s or cards with label/value pairs. No horizontal scrolling grids.
 - Every list surface ships all three states (skeleton \u2192 empty with a primary action \u2192 error with retry). A bare spinner is a defect.
 - One primary action per screen, thumb-reachable: FAB, sticky bottom bar, or the header's right slot. Never a primary CTA stranded at the top of a long scroll.
-- Modals are bottom sheets, not centered desktop dialogs. Sheets are opaque (\`bg-card\`), z-50, scrim behind, body scroll locked, dismissible by scrim tap and Escape.
+- Short modals (actions, filters, confirm) are bottom sheets, not centered desktop dialogs; detail views are full pages. Sheets are opaque (\`bg-card\`), z-50, scrim behind, body scroll locked, dismissible by scrim tap and Escape.
 - Type scale: screen title text-[22px]/semibold, row title text-[15px], secondary text-[13px] muted. Numbers \`tabular-nums\`. No text-xs body copy.
 - Feedback is instant: \`active:scale-[0.98]\` on tappables, optimistic UI on toggles, and a toast for anything that mutates data. Buttons disable while pending.
 - Spacing: 16px screen gutters, 12-16px between cards, rounded-2xl surfaces, hairline \`divide-border\` inside grouped lists.
@@ -171594,7 +171611,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

@@ -29,3 +29,16 @@ describe("phone app polish", () => {
     expect(renderMobileGuidanceBlock("x", { force: true })).toContain("start EMPTY");
   });
 });
+
+describe("native app standard", () => {
+  it("hides the page scrollbar itself, not only inner ones", () => {
+    const out = ensureNativeFeel([{ path: "index.html", content: html }])[0].content;
+    expect(out).toContain("html.petal-app::-webkit-scrollbar");
+    expect(out).toContain("html.petal-app body::-webkit-scrollbar");
+  });
+  it("tells mobile builds that product taps open a full page, never a sheet", () => {
+    const g = renderMobileGuidanceBlock("x", { force: true });
+    expect(g).toContain("NAVIGATES to its own full-screen detail page");
+    expect(g).toContain("NEVER open details in a bottom sheet");
+  });
+});
