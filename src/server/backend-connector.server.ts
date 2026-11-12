@@ -31,10 +31,19 @@ export async function lookupBackendForGenerate(projectId: string): Promise<{
  * its sign-in at once. So we ship a primary plus stable backups, and the
  * client walks the list until one answers.
  */
-const PUBLISHED_ORIGIN = "https://petalapp.lovable.app";
+/** Petal's primary address — answers the API (and CORS preflights) directly. */
+const PRIMARY_ORIGIN = "https://api.custardai.dev";
 const STABLE_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app";
-/** Hosts that no longer serve Petal's API — never baked into a generated app. */
-const RETIRED_ORIGINS = /^https?:\/\/(www\.)?(kimble\.cloud|buildwithpetal\.com)\/?$/i;
+/**
+ * Hosts never baked into a generated app:
+ *  - kimble.cloud answers 404; buildwithpetal.com rejects valid project keys.
+ *  - petalapp.lovable.app redirects every request (307) to the primary address.
+ *    Browsers refuse to follow a redirect on a CORS preflight, so every
+ *    record/sign-in call from a site failed and the build server's browser
+ *    check rolled the revision back (amaraglow, 12 Nov 2026).
+ */
+const UNUSABLE_ORIGINS =
+  /^https?:\/\/(www\.)?(kimble\.cloud|buildwithpetal\.com|petalapp\.lovable\.app)\/?$/i;
 
 export function sharedApiOrigins(
   env: Record<string, string | undefined> = process.env,
@@ -48,8 +57,8 @@ export function sharedApiOrigins(
   // serves an older deployment that rejects valid project keys. Either one
   // first in the list made every page log a failed request, and the build
   // server's browser check refused to publish the site.
-  const all = [configured, PUBLISHED_ORIGIN, STABLE_ORIGIN, ...extra]
-    .filter((u) => u && !RETIRED_ORIGINS.test(u))
+  const all = [configured, PRIMARY_ORIGIN, STABLE_ORIGIN, ...extra]
+    .filter((u) => u && !UNUSABLE_ORIGINS.test(u))
     .filter(Boolean)
     .map((u) => u.replace(/\/$/, ""));
   const unique = Array.from(new Set(all));

@@ -69396,7 +69396,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -141357,7 +141356,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -146018,6 +146016,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -157811,13 +157810,13 @@ async function lookupBackendForGenerate(projectId) {
   if (data2.status !== "ready") return null;
   return { url: data2.supabase_url, anonKey: data2.anon_key };
 }
-var PUBLISHED_ORIGIN = "https://petalapp.lovable.app";
+var PRIMARY_ORIGIN = "https://api.custardai.dev";
 var STABLE_ORIGIN = "https://project--fe869ce3-50d8-49d0-b2fe-829b0f7b4b1c.lovable.app";
-var RETIRED_ORIGINS = /^https?:\/\/(www\.)?(kimble\.cloud|buildwithpetal\.com)\/?$/i;
+var UNUSABLE_ORIGINS = /^https?:\/\/(www\.)?(kimble\.cloud|buildwithpetal\.com|petalapp\.lovable\.app)\/?$/i;
 function sharedApiOrigins(env2 = process.env) {
   const configured = (env2.PETAL_PUBLIC_ORIGIN || "").trim();
   const extra = (env2.PETAL_FALLBACK_ORIGINS || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const all = [configured, PUBLISHED_ORIGIN, STABLE_ORIGIN, ...extra].filter((u) => u && !RETIRED_ORIGINS.test(u)).filter(Boolean).map((u) => u.replace(/\/$/, ""));
+  const all = [configured, PRIMARY_ORIGIN, STABLE_ORIGIN, ...extra].filter((u) => u && !UNUSABLE_ORIGINS.test(u)).filter(Boolean).map((u) => u.replace(/\/$/, ""));
   const unique = Array.from(new Set(all));
   return { baseUrl: unique[0], fallbackUrls: unique.slice(1) };
 }
@@ -171587,6 +171586,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
