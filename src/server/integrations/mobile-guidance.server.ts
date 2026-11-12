@@ -38,6 +38,10 @@ web app in an open-source native shell and builds signed binaries on a Mac runne
 user never installs Xcode, a JDK, or fastlane. Generate code that is
 mobile-first and uses the \`native\` bridge for phone features.
 
+**Inside the phone app the website never shows (required)**
+- Wrap the \`/\` route's content in \`AppSurfaceSwitch\` (\`@/components/mobile/app-surface-switch\`): browser visitors get the landing page; the app skips it — signed out → \`MobileAuthScreen\` (\`@/components/mobile/mobile-auth-screen\`, pass appName, transparent logo, and only the sign-in handlers the app really has), signed in → the app home.
+- Never render marketing nav, hero, pricing or footer when \`native.isApp()\` is true.
+
 **Layout rules**
 - Mobile-first breakpoints: design at 390×844, scale up.
 - Use \`pt-[env(safe-area-inset-top)]\` and \`pb-[env(safe-area-inset-bottom)]\`

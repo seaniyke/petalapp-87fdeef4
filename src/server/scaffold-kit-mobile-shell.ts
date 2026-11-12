@@ -240,10 +240,100 @@ export function useNativeShell() {
 }
 `;
 
+
+/**
+ * Inside the phone app the marketing landing page never shows. Wrap the root
+ * route's content: in the app, signed-out people see the welcome/sign-in
+ * screen and signed-in people go to the app home; in a browser nothing changes.
+ */
+const APP_SURFACE_SWITCH = `import * as React from "react";
+import { native } from "@/lib/native";
+
+export function AppSurfaceSwitch({
+  isSignedIn,
+  appHome = "/dashboard",
+  signedOut,
+  children,
+}: {
+  /** null while the session is still loading. */
+  isSignedIn: boolean | null;
+  appHome?: string;
+  /** Shown in the app when signed out — usually <MobileAuthScreen />. */
+  signedOut: React.ReactNode;
+  /** The public website (landing page). Only ever shown in a browser. */
+  children: React.ReactNode;
+}) {
+  const [inApp, setInApp] = React.useState<boolean | null>(null);
+  React.useEffect(() => setInApp(native.isApp()), []);
+  React.useEffect(() => {
+    if (inApp && isSignedIn) window.location.replace(appHome);
+  }, [inApp, isSignedIn, appHome]);
+  if (inApp === null) return null;
+  if (!inApp) return <>{children}</>;
+  if (isSignedIn === false) return <>{signedOut}</>;
+  return <div className="min-h-dvh bg-background" />;
+}
+`;
+
+/** iOS-standard welcome + sign-in: floating logo, frosted card, equal provider buttons. */
+const MOBILE_AUTH_SCREEN = `import * as React from "react";
+import { native } from "@/lib/native";
+
+type Props = {
+  appName: string;
+  /** Transparent logo (PNG/SVG, no background). */
+  logoSrc?: string;
+  tagline?: string;
+  onApple?: () => void;
+  onGoogle?: () => void;
+  onEmail?: () => void;
+  /** Return visit with a saved session: unlock with Face ID / fingerprint. */
+  onBiometricUnlock?: () => void;
+};
+
+export function MobileAuthScreen({ appName, logoSrc, tagline, onApple, onGoogle, onEmail, onBiometricUnlock }: Props) {
+  const [canBio, setCanBio] = React.useState(false);
+  React.useEffect(() => {
+    if (onBiometricUnlock) void native.biometrics.isAvailable().then(setCanBio);
+  }, [onBiometricUnlock]);
+  const tap = (fn?: () => void) => () => { native.haptics.impact(); fn?.(); };
+  const btn = "flex h-[50px] w-full items-center justify-center gap-2 rounded-2xl text-[17px] font-semibold transition-transform active:scale-[0.98]";
+  return (
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-background pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-primary/30 blur-3xl" />
+      <div className="flex flex-1 flex-col items-center justify-center px-8 text-center animate-in fade-in zoom-in-95 duration-700">
+        {logoSrc ? <img src={logoSrc} alt="" className="h-24 w-24 object-contain drop-shadow-xl" /> : null}
+        <h1 className="mt-6 text-[34px] font-bold tracking-tight text-foreground">{appName}</h1>
+        {tagline ? <p className="mt-2 text-[17px] text-muted-foreground">{tagline}</p> : null}
+      </div>
+      <div className="mx-4 mb-4 space-y-3 rounded-[28px] border border-border/40 bg-card/70 p-5 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-bottom-8 duration-500">
+        {canBio && onBiometricUnlock ? (
+          <button type="button" onClick={tap(onBiometricUnlock)} className={btn + " bg-primary text-primary-foreground"}>Unlock with Face ID</button>
+        ) : null}
+        {onApple && native.platform() !== "android" ? (
+          <button type="button" onClick={tap(onApple)} className={btn + " bg-foreground text-background"}>Continue with Apple</button>
+        ) : null}
+        {onGoogle ? (
+          <button type="button" onClick={tap(onGoogle)} className={btn + " border border-border bg-background text-foreground"}>Continue with Google</button>
+        ) : null}
+        {onEmail ? (
+          <>
+            <div className="flex items-center gap-3 py-1 text-[13px] text-muted-foreground"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
+            <button type="button" onClick={tap(onEmail)} className={btn + " bg-muted text-foreground"}>Continue with email</button>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+`;
+
 export function mobileShellKit(): ProjectFile[] {
   return [
     { path: "capacitor.config.ts", content: CAPACITOR_CONFIG },
     { path: "src/lib/native.ts", content: NATIVE_BRIDGE },
     { path: "src/hooks/use-native-shell.ts", content: NATIVE_RUNTIME },
+    { path: "src/components/mobile/app-surface-switch.tsx", content: APP_SURFACE_SWITCH },
+    { path: "src/components/mobile/mobile-auth-screen.tsx", content: MOBILE_AUTH_SCREEN },
   ];
 }

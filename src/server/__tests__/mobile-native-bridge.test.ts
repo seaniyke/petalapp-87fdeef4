@@ -291,3 +291,17 @@ describe("sign-in add-ons: Google (GoogleAuth) and Apple (SignInWithApple)", () 
     expect(CODEMAGIC_YAML).toContain("schemes.append('com.googleusercontent.apps.' + g['iosClientId'][:-len('.apps.googleusercontent.com')])");
   });
 });
+
+describe("phone app hides the website", () => {
+  it("ships the app/website switch and the native sign-in screen", () => {
+    const paths = mobileShellKit().map((f) => f.path);
+    expect(paths).toContain("src/components/mobile/app-surface-switch.tsx");
+    expect(paths).toContain("src/components/mobile/mobile-auth-screen.tsx");
+  });
+  it("tells the builder never to show the landing page inside the app", () => {
+    const g = renderMobileGuidanceBlock("x", { force: true });
+    expect(g).toContain("AppSurfaceSwitch");
+    expect(g).toContain("MobileAuthScreen");
+  });
+});
+
