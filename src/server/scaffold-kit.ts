@@ -1969,7 +1969,7 @@ const ROUTER = `/**
  * active styling.
  */
 import * as React from "react";
-import { BrowserRouter as RRBrowserRouter, useNavigate } from "react-router-dom";
+import { BrowserRouter as RRBrowserRouter, useNavigate, useLocation, useNavigationType } from "react-router-dom";
 
 export {
   Routes,
@@ -2023,9 +2023,35 @@ function InternalLinkNavigation({ children }: { children?: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * App-style scrolling between pages: a new page opens at the top, and going
+ * back returns to the exact spot the user left (like a native app's back).
+ */
+function ScrollManager() {
+  const location = useLocation();
+  const type = useNavigationType();
+  const saved = React.useRef(new Map<string, number>());
+  const current = React.useRef(location.key);
+  React.useEffect(() => {
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    const onScroll = () => saved.current.set(current.current, window.scrollY);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  React.useLayoutEffect(() => {
+    current.current = location.key;
+    if (location.hash) return;
+    const y = type === "POP" ? saved.current.get(location.key) ?? 0 : 0;
+    window.scrollTo(0, y);
+    if (y > 0) requestAnimationFrame(() => window.scrollTo(0, y));
+  }, [location.key]);
+  return null;
+}
+
 export function BrowserRouter({ children, ...props }: React.ComponentProps<typeof RRBrowserRouter>) {
   return (
     <RRBrowserRouter {...props}>
+      <ScrollManager />
       <InternalLinkNavigation>{children}</InternalLinkNavigation>
     </RRBrowserRouter>
   );

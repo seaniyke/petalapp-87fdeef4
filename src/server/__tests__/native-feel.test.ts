@@ -42,3 +42,13 @@ describe("native app standard", () => {
     expect(g).toContain("NEVER open details in a bottom sheet");
   });
 });
+
+
+import { KIT_FILES } from "@/server/scaffold-kit";
+describe("page changes", () => {
+  it("opens new pages at the top and restores the spot on back", () => {
+    const router = KIT_FILES.find((f) => f.path === "src/components/ui/router.tsx")!.content;
+    expect(router).toContain("<ScrollManager />");
+    expect(router).toContain('type === "POP"');
+  });
+});
