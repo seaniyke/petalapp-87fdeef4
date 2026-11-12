@@ -93,8 +93,10 @@ export function extractRequestedPages(prompt: string): string[] {
   // Everywhere else a parenthetical describes what goes ON a page
   // ("Home (hero, testimonials, call to action)"): sections, never pages.
   const text = raw.replace(/\bpages?\s*\([^)]*\)/gi, " ").replace(/\([^()]*\)/g, " ");
-  // "pages: A, B and C" / "pages — A, B"
-  for (const m of text.matchAll(/\bpages?\s*(?::|—|-|including|include)\s*([^.!?\n)]{2,160})/gi)) {
+  // "pages: A, B and C" / "pages — A, B". A NAMED single page followed by a
+  // colon ("Product page: large photo, name, price") lists what goes on that
+  // page, never more pages (Crown & Coil, 12 Nov 2026).
+  for (const m of text.matchAll(/\b(?:pages|(?<![A-Za-z][\w&-]*\s)page)\s*(?::|—|-|including|include)\s*([^.!?\n)]{2,160})/gi)) {
     push(m[1]);
   }
   // "A, B, C and D pages" — also the Oxford comma "A, B, and C pages"

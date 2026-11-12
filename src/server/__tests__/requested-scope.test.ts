@@ -66,3 +66,17 @@ describe("bounded first-build generation units", () => {
     expect(u.instruction).toMatch(/\/careers/);
   });
 });
+
+describe("a named page's colon lists its contents, not more pages", () => {
+  it("'Product page: large photo, name, price' asks for no /large-photo or /name pages", () => {
+    const pages = extractRequestedPages(
+      "Screens:\n- Home: search and shelves.\n- Product page: large photo, name, price in Naira, rating, quantity, Add to cart.",
+    );
+    expect(pages).not.toContain("large photo");
+    expect(pages).not.toContain("name");
+    expect(pages).not.toContain("add to cart");
+  });
+  it("'pages: Home, Menu and Contact' still lists three pages", () => {
+    expect(extractRequestedPages("Build a cafe site with pages: Home, Menu and Contact.")).toEqual(["home", "menu", "contact"]);
+  });
+});
