@@ -31,7 +31,6 @@ import {
   isLayoutArchetype,
   isPublicLook,
   sanitizeStyleChoice,
-  type DesignStyleChoice,
   type LayoutArchetypeId,
 } from "@/server/design/style-catalog";
 import {
@@ -311,7 +310,7 @@ export function withCommittedStyle(
   d: DesignDirection,
   brief: string,
   seed: string | null | undefined,
-  style?: DesignStyleChoice | null,
+  style?: { layout?: string; look?: string } | null,
 ): DesignDirection {
   const choice = sanitizeStyleChoice(style);
   const layout = choice?.layout ?? (isLayoutArchetype(d.layout_archetype) ? d.layout_archetype : pickLayoutArchetype(brief, seed ?? brief));
@@ -527,8 +526,9 @@ export async function pickDesignDirection(args: {
   projectId: string | undefined;
   brief: string;
   memoryEntries: MemoryEntry[];
-  /** Optional caller style choice (public API). Applies only before a direction is committed. */
-  style?: DesignStyleChoice | null;
+  /** Optional caller style choice (public API). Unknown values are dropped.
+   *  Applies only before a direction is committed. */
+  style?: { layout?: string; look?: string } | null;
 }): Promise<DesignDirection | null> {
   const cached = readDirectionFromMemory(args.memoryEntries);
   if (cached) return cached;
