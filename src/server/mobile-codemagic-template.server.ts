@@ -63,6 +63,13 @@ const APP_SETTINGS_STEP = String.raw`      - name: Apply app settings
                   schemes.append('com.googleusercontent.apps.' + g['iosClientId'][:-len('.apps.googleusercontent.com')])
               if plat == 'android' and not web:
                   print('Google sign-in on Android needs the Web client ID (google.webClientId) in petal.native.json.')
+              if plat == 'android' and web:
+                  # The Android add-on reads server_client_id from string resources and crashes without it.
+                  sx = 'android/app/src/main/res/values/strings.xml'
+                  if os.path.isfile(sx):
+                      s = open(sx).read()
+                      if 'server_client_id' not in s:
+                          open(sx, 'w').write(s.replace('</resources>', '    <string name="server_client_id">' + web + '</string>\n</resources>'))
               print('Google sign-in set:', sorted(k for k in g if k.endswith('ClientId')))
           if plat == 'android':
               mf = 'android/app/src/main/AndroidManifest.xml'
