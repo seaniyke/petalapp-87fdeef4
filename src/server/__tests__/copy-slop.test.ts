@@ -22,6 +22,13 @@ describe("copy slop scanner", () => {
     expect(phrases).toContain("john doe");
   });
 
+  it("flags visible placeholder text but not a placeholder comment", () => {
+    const src = `export const D = () => (<section>{/* REVIEWS PLACEHOLDER */}<h2>Client reviews placeholder</h2></section>);`;
+    const hits = findCopySlop(src).map((h) => h.phrase.toLowerCase());
+    expect(hits).toContain("placeholder");
+    expect(findCopySlop(`export const E = () => (<section>{/* GALLERY PLACEHOLDER */}<h2>Gallery</h2></section>);`).map((h) => h.phrase.toLowerCase())).not.toContain("placeholder");
+  });
+
   it("ignores identifiers, imports and comments", () => {
     const src = `
       // never write "cutting-edge" in copy

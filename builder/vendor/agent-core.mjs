@@ -38982,7 +38982,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, ACCOUNTS_OPT_OUT, DEVICE_ONLY, SHOP_BUTTONS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES, BACKEND_OPT_OUT;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -69429,6 +69428,7 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -69829,7 +69829,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -146165,7 +146164,6 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
-    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -169821,6 +169819,7 @@ var FILLER_RULES = [
 ];
 var PLACEHOLDER_RULES = [
   { rx: /\bFeature (?:One|Two|Three|1|2|3)\b/g, guidance: "unnamed feature placeholder" },
+  { rx: /\bplaceholder\b/gi, guidance: 'visible "placeholder" text \u2014 ship finished content or leave the block out' },
   { rx: /\bYour (?:Company|Brand|Product|Logo)\b/g, guidance: "brand placeholder \u2014 use the real product name" },
   { rx: /\b(?:Acme|Company Name|Brand Name)\b/g, guidance: "brand placeholder \u2014 use the real product name" },
   { rx: /\b(?:hello|info|contact|support)@(?:example|yourcompany|company|domain)\.com\b/gi, guidance: "placeholder email address" },

@@ -20,6 +20,7 @@ import { healMaterializedProject } from "./fs-helpers.js";
 import { startPreviewServer } from "./preview-server.js";
 import { partitionVerificationDefects } from "./verification-report.js";
 import { Heartbeat } from "./progress.js";
+import { sign } from "./signing.js";
 
 /** Origins allowed to embed deployed sites (Custard AI canvas + Petal). */
 const FRAME_ANCESTORS_CSP =
@@ -606,6 +607,11 @@ async function ensurePagesProject(
       createRes.status === 429 ||
       createRes.status >= 500 ||
       /"code"\s*:\s*8000000/.test(lastBody);
+    if (!retryable && attempt === 0 && /limit of projects/i.test(lastBody)) {
+      const freed = await reclaimUnusedPagesProjects(base, headers, projectName);
+      console.warn(`[deploy] hosting project limit reached; reclaimed ${freed} unused slot(s)`);
+      if (freed > 0) continue;
+    }
     if (!retryable) {
       throw new BuildError(
         `Cloudflare Pages create project failed (${createRes.status})`,
@@ -623,4 +629,67 @@ async function ensurePagesProject(
     `Cloudflare Pages create project failed after retries (${lastStatus})`,
     lastBody
   );
+}
+
+/**
+ * The hosting account caps how many sites it holds. Free only slots named
+ * `petal-<12 hex>` that Petal confirms no longer belong to any project and that
+ * carry no custom domain. If Petal cannot answer, nothing is deleted.
+ */
+async function reclaimUnusedPagesProjects(
+  base: string,
+  headers: Record<string, string>,
+  keep: string,
+  max = 10,
+): Promise<number> {
+  const callback = process.env.PETAL_CALLBACK_URL;
+  const secret = process.env.BUILDER_SHARED_SECRET;
+  if (!callback || !secret) return 0;
+  type Slot = { name: string; domains?: string[]; created_on?: string };
+  const slots: Slot[] = [];
+  for (let page = 1; page <= 100; page++) {
+    const res = await cfFetch(`${base}?page=${page}&per_page=10`, { headers });
+    if (!res.ok) return 0;
+    const json = (await res.json()) as { result?: Slot[] };
+    const batch = json.result ?? [];
+    slots.push(...batch);
+    if (batch.length < 10) break;
+  }
+  const candidates = slots.filter(
+    (s) =>
+      /^petal-[0-9a-f]{12}$/.test(s.name) &&
+      s.name !== keep &&
+      (s.domains ?? []).every((d) => d.endsWith(".pages.dev")),
+  );
+  if (candidates.length === 0) return 0;
+  const url = new URL(callback);
+  url.pathname = "/api/public/builds/pages-in-use";
+  const body = JSON.stringify({ names: candidates.map((c) => c.name) });
+  const { timestamp, signature } = sign(secret, body);
+  let inUse: Set<string>;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-petal-timestamp": timestamp, "x-petal-signature": signature },
+      body,
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!res.ok) return 0;
+    const json = (await res.json()) as { inUse?: unknown };
+    if (!Array.isArray(json.inUse)) return 0;
+    inUse = new Set(json.inUse.map(String));
+  } catch {
+    return 0;
+  }
+  const unused = candidates
+    .filter((c) => !inUse.has(c.name))
+    .sort((a, b) => String(a.created_on ?? "").localeCompare(String(b.created_on ?? "")))
+    .slice(0, max);
+  let freed = 0;
+  for (const slot of unused) {
+    const res = await cfFetch(`${base}/${slot.name}`, { method: "DELETE", headers });
+    if (res.ok) freed++;
+    else console.warn(`[deploy] could not free ${slot.name}: ${res.status}`);
+  }
+  return freed;
 }

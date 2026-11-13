@@ -170,5 +170,7 @@ export function renderLandingChecklistBlock(): string {
 Available sections, in canonical order: NavBar · Hero · Social proof · Features · How it works · Showcase · Testimonials · Pricing · FAQ · Final CTA · Footer.
 - Nav, hero and footer are the baseline. Any section the user named is required.
 - Add other sections only when they serve this brief. Never add a section to meet a count.
+- Testimonials/reviews ship only when the user supplied real quotes. With none, leave the section out entirely — no invented quotes, no "reviews coming soon", no placeholder block.
+- Never write the word "placeholder" (or "swap with your photos") in visible text; every block ships finished.
 - Keep each section concise (≤120 lines) in its own file under \`src/components/sections/\`; short sample content (3-6 items), no huge inline SVGs, no long mock data.`;
 }

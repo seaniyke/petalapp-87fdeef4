@@ -75,6 +75,7 @@ import { Route as ApiBillingSubscriptionStatusRouteImport } from './routes/api/b
 import { Route as ApiPublicAgentOpsRouteImport } from './routes/api/public/agent/ops'
 import { Route as ApiPublicBuildsCallbackRouteImport } from './routes/api/public/builds/callback'
 import { Route as ApiPublicBuildsHeartbeatRouteImport } from './routes/api/public/builds/heartbeat'
+import { Route as ApiPublicBuildsPagesInUseRouteImport } from './routes/api/public/builds/pages-in-use'
 import { Route as ApiPublicConnectorsCallbackRouteImport } from './routes/api/public/connectors/callback'
 import { Route as ApiPublicCronBackendAutoscaleRouteImport } from './routes/api/public/cron/backend-autoscale'
 import { Route as ApiPublicCronBackendHibernateRouteImport } from './routes/api/public/cron/backend-hibernate'
@@ -472,6 +473,12 @@ const ApiPublicBuildsHeartbeatRoute =
   ApiPublicBuildsHeartbeatRouteImport.update({
     id: '/api/public/builds/heartbeat',
     path: '/api/public/builds/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicBuildsPagesInUseRoute =
+  ApiPublicBuildsPagesInUseRouteImport.update({
+    id: '/api/public/builds/pages-in-use',
+    path: '/api/public/builds/pages-in-use',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicConnectorsCallbackRoute =
@@ -895,6 +902,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
+  '/api/public/builds/pages-in-use': typeof ApiPublicBuildsPagesInUseRoute
   '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
@@ -1025,6 +1033,7 @@ export interface FileRoutesByTo {
   '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
+  '/api/public/builds/pages-in-use': typeof ApiPublicBuildsPagesInUseRoute
   '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
@@ -1156,6 +1165,7 @@ export interface FileRoutesById {
   '/api/public/agent/ops': typeof ApiPublicAgentOpsRoute
   '/api/public/builds/callback': typeof ApiPublicBuildsCallbackRoute
   '/api/public/builds/heartbeat': typeof ApiPublicBuildsHeartbeatRoute
+  '/api/public/builds/pages-in-use': typeof ApiPublicBuildsPagesInUseRoute
   '/api/public/connectors/callback': typeof ApiPublicConnectorsCallbackRoute
   '/api/public/cron/backend-autoscale': typeof ApiPublicCronBackendAutoscaleRoute
   '/api/public/cron/backend-hibernate': typeof ApiPublicCronBackendHibernateRoute
@@ -1288,6 +1298,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
+    | '/api/public/builds/pages-in-use'
     | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
@@ -1418,6 +1429,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
+    | '/api/public/builds/pages-in-use'
     | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
@@ -1548,6 +1560,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/ops'
     | '/api/public/builds/callback'
     | '/api/public/builds/heartbeat'
+    | '/api/public/builds/pages-in-use'
     | '/api/public/connectors/callback'
     | '/api/public/cron/backend-autoscale'
     | '/api/public/cron/backend-hibernate'
@@ -1677,6 +1690,7 @@ export interface RootRouteChildren {
   ApiPublicAgentOpsRoute: typeof ApiPublicAgentOpsRoute
   ApiPublicBuildsCallbackRoute: typeof ApiPublicBuildsCallbackRoute
   ApiPublicBuildsHeartbeatRoute: typeof ApiPublicBuildsHeartbeatRoute
+  ApiPublicBuildsPagesInUseRoute: typeof ApiPublicBuildsPagesInUseRoute
   ApiPublicConnectorsCallbackRoute: typeof ApiPublicConnectorsCallbackRoute
   ApiPublicCronBackendAutoscaleRoute: typeof ApiPublicCronBackendAutoscaleRoute
   ApiPublicCronBackendHibernateRoute: typeof ApiPublicCronBackendHibernateRoute
@@ -2183,6 +2197,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/builds/heartbeat'
       fullPath: '/api/public/builds/heartbeat'
       preLoaderRoute: typeof ApiPublicBuildsHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/builds/pages-in-use': {
+      id: '/api/public/builds/pages-in-use'
+      path: '/api/public/builds/pages-in-use'
+      fullPath: '/api/public/builds/pages-in-use'
+      preLoaderRoute: typeof ApiPublicBuildsPagesInUseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/connectors/callback': {
@@ -2797,6 +2818,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentOpsRoute: ApiPublicAgentOpsRoute,
   ApiPublicBuildsCallbackRoute: ApiPublicBuildsCallbackRoute,
   ApiPublicBuildsHeartbeatRoute: ApiPublicBuildsHeartbeatRoute,
+  ApiPublicBuildsPagesInUseRoute: ApiPublicBuildsPagesInUseRoute,
   ApiPublicConnectorsCallbackRoute: ApiPublicConnectorsCallbackRoute,
   ApiPublicCronBackendAutoscaleRoute: ApiPublicCronBackendAutoscaleRoute,
   ApiPublicCronBackendHibernateRoute: ApiPublicCronBackendHibernateRoute,

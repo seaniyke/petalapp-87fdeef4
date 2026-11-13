@@ -63,6 +63,7 @@ const FILLER_RULES: SlopRule[] = [
  */
 const PLACEHOLDER_RULES: SlopRule[] = [
   { rx: /\bFeature (?:One|Two|Three|1|2|3)\b/g, guidance: "unnamed feature placeholder" },
+  { rx: /\bplaceholder\b/gi, guidance: "visible \"placeholder\" text — ship finished content or leave the block out" },
   { rx: /\bYour (?:Company|Brand|Product|Logo)\b/g, guidance: "brand placeholder — use the real product name" },
   { rx: /\b(?:Acme|Company Name|Brand Name)\b/g, guidance: "brand placeholder — use the real product name" },
   { rx: /\b(?:hello|info|contact|support)@(?:example|yourcompany|company|domain)\.com\b/gi, guidance: "placeholder email address" },
@@ -169,4 +170,4 @@ Every line of visible copy must be specific to THIS product. Banned outright:
 - Invented proof: "trusted by thousands", "join millions of users", fabricated testimonials, made-up logos, star ratings nobody gave, statistics with no source. If there is no real number, write a fact instead ("built on X", "exports to Y").
 - Placeholders: "Feature One", "Your Company", "Acme", "Lorem ipsum", "John Doe", hello@example.com, example.com links, "Coming soon", "TODO".
 - Mad-lib taglines: "Where X meets Y", "The future of X is here", "Whether you're a A or a B, ...".
-Write instead: concrete nouns and verbs, the actual capability, who it is for, and what changes after using it. Headlines are short and declarative. A testimonial only ships if the user supplied it.`;
+Write instead: concrete nouns and verbs, the actual capability, who it is for, and what changes after using it. Headlines are short and declarative. A testimonial only ships if the user supplied it; with none, omit the testimonials/reviews section entirely (no placeholder or "coming soon" block). Visible text never says "placeholder".`;
