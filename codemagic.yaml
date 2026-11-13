@@ -189,6 +189,18 @@ workflows:
                       s = open(sx).read()
                       if 'server_client_id' not in s:
                           open(sx, 'w').write(s.replace('</resources>', '    <string name="server_client_id">' + web + '</string>\n</resources>'))
+                  # Harden the Google add-on: create its client on load and never sign in with a missing one.
+                  jf = 'node_modules/@codetrix-studio/capacitor-google-auth/android/src/main/java/com/codetrixstudio/capacitor/GoogleAuth/GoogleAuth.java'
+                  if os.path.isfile(jf):
+                      j = open(jf).read()
+                      if 'PETAL_SAFE_GOOGLE' not in j:
+                          safe = 'loadSignInClient(null, false, new String[] { "profile", "email" });'
+                          j = j.replace('public void loadSignInClient (String clientId, boolean forceCodeForRefreshToken, String[] scopeArray) {', 'public void loadSignInClient (String clientId, boolean forceCodeForRefreshToken, String[] scopeArray) {\n    // PETAL_SAFE_GOOGLE\n    try { clientId = this.getContext().getString(R.string.server_client_id); } catch (Exception ignored) {}\n    if (scopeArray == null || scopeArray.length == 0 || scopeArray[0].isEmpty()) scopeArray = new String[] { "profile", "email" };')
+                          j = j.replace('public void load() {}', 'public void load() {\n    try { ' + safe + ' } catch (Exception ignored) {}\n  }')
+                          j = j.replace('public void signIn(PluginCall call) {\n', 'public void signIn(PluginCall call) {\n    if (googleSignInClient == null) { try { ' + safe + ' } catch (Exception e) { call.reject("Google sign-in is not set up", e); return; } }\n')
+                          j = j.replace('public void signOut(final PluginCall call) {\n', 'public void signOut(final PluginCall call) {\n    if (googleSignInClient == null) { call.resolve(); return; }\n')
+                          open(jf, 'w').write(j)
+                          print('Google add-on hardened')
               print('Google sign-in set:', sorted(k for k in g if k.endswith('ClientId')))
           if plat == 'android':
               mf = 'android/app/src/main/AndroidManifest.xml'
@@ -467,6 +479,18 @@ workflows:
                       s = open(sx).read()
                       if 'server_client_id' not in s:
                           open(sx, 'w').write(s.replace('</resources>', '    <string name="server_client_id">' + web + '</string>\n</resources>'))
+                  # Harden the Google add-on: create its client on load and never sign in with a missing one.
+                  jf = 'node_modules/@codetrix-studio/capacitor-google-auth/android/src/main/java/com/codetrixstudio/capacitor/GoogleAuth/GoogleAuth.java'
+                  if os.path.isfile(jf):
+                      j = open(jf).read()
+                      if 'PETAL_SAFE_GOOGLE' not in j:
+                          safe = 'loadSignInClient(null, false, new String[] { "profile", "email" });'
+                          j = j.replace('public void loadSignInClient (String clientId, boolean forceCodeForRefreshToken, String[] scopeArray) {', 'public void loadSignInClient (String clientId, boolean forceCodeForRefreshToken, String[] scopeArray) {\n    // PETAL_SAFE_GOOGLE\n    try { clientId = this.getContext().getString(R.string.server_client_id); } catch (Exception ignored) {}\n    if (scopeArray == null || scopeArray.length == 0 || scopeArray[0].isEmpty()) scopeArray = new String[] { "profile", "email" };')
+                          j = j.replace('public void load() {}', 'public void load() {\n    try { ' + safe + ' } catch (Exception ignored) {}\n  }')
+                          j = j.replace('public void signIn(PluginCall call) {\n', 'public void signIn(PluginCall call) {\n    if (googleSignInClient == null) { try { ' + safe + ' } catch (Exception e) { call.reject("Google sign-in is not set up", e); return; } }\n')
+                          j = j.replace('public void signOut(final PluginCall call) {\n', 'public void signOut(final PluginCall call) {\n    if (googleSignInClient == null) { call.resolve(); return; }\n')
+                          open(jf, 'w').write(j)
+                          print('Google add-on hardened')
               print('Google sign-in set:', sorted(k for k in g if k.endswith('ClientId')))
           if plat == 'android':
               mf = 'android/app/src/main/AndroidManifest.xml'
@@ -764,6 +788,18 @@ workflows:
                       s = open(sx).read()
                       if 'server_client_id' not in s:
                           open(sx, 'w').write(s.replace('</resources>', '    <string name="server_client_id">' + web + '</string>\n</resources>'))
+                  # Harden the Google add-on: create its client on load and never sign in with a missing one.
+                  jf = 'node_modules/@codetrix-studio/capacitor-google-auth/android/src/main/java/com/codetrixstudio/capacitor/GoogleAuth/GoogleAuth.java'
+                  if os.path.isfile(jf):
+                      j = open(jf).read()
+                      if 'PETAL_SAFE_GOOGLE' not in j:
+                          safe = 'loadSignInClient(null, false, new String[] { "profile", "email" });'
+                          j = j.replace('public void loadSignInClient (String clientId, boolean forceCodeForRefreshToken, String[] scopeArray) {', 'public void loadSignInClient (String clientId, boolean forceCodeForRefreshToken, String[] scopeArray) {\n    // PETAL_SAFE_GOOGLE\n    try { clientId = this.getContext().getString(R.string.server_client_id); } catch (Exception ignored) {}\n    if (scopeArray == null || scopeArray.length == 0 || scopeArray[0].isEmpty()) scopeArray = new String[] { "profile", "email" };')
+                          j = j.replace('public void load() {}', 'public void load() {\n    try { ' + safe + ' } catch (Exception ignored) {}\n  }')
+                          j = j.replace('public void signIn(PluginCall call) {\n', 'public void signIn(PluginCall call) {\n    if (googleSignInClient == null) { try { ' + safe + ' } catch (Exception e) { call.reject("Google sign-in is not set up", e); return; } }\n')
+                          j = j.replace('public void signOut(final PluginCall call) {\n', 'public void signOut(final PluginCall call) {\n    if (googleSignInClient == null) { call.resolve(); return; }\n')
+                          open(jf, 'w').write(j)
+                          print('Google add-on hardened')
               print('Google sign-in set:', sorted(k for k in g if k.endswith('ClientId')))
           if plat == 'android':
               mf = 'android/app/src/main/AndroidManifest.xml'
