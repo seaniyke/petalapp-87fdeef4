@@ -88,3 +88,10 @@
 - [ ] Publish @custardai/mcp to npm — needs Custard's npm organisation
 - [ ] Switch package/docs default to api.custardai.dev — needs that address connected
 - [ ] Check hosted MCP from outside — needs Petal published
+
+## Design variety pipeline (approved 13 Nov)
+- [ ] Four new looks (Kinetic, Monolith, Brutalist, Bloom) as design-system packages
+- [ ] Look rotation per project within the brief's family (same brief, different projects → different looks); explicit style words lock the look
+- [ ] Six layout archetypes chosen per project and rendered into the design direction; manual's fixed Hero→Features→Testimonials→Pricing→FAQ order neutralised
+- [ ] Custard API + MCP: optional `style: { layout, look }` on first build
+- [ ] Tests, full suite, agent-core rebuild + version bump

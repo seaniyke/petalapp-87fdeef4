@@ -11,6 +11,7 @@
  * a turn id at once and agents poll `custard_get_build_status`.
  */
 import { z } from "zod";
+import { LAYOUT_ARCHETYPE_IDS, PUBLIC_LOOK_SLUGS } from "@/server/design/style-catalog";
 
 export type ApiCall = (method: "GET" | "POST", path: string, body?: unknown) => Promise<Response>;
 
@@ -116,9 +117,12 @@ export async function readTurnId(res: Response, timeoutMs = START_TIMEOUT_MS): P
   }
 }
 
-async function startBuild(call: ApiCall, projectId: string, prompt: string): Promise<string> {
+type StyleChoice = { layout?: (typeof LAYOUT_ARCHETYPE_IDS)[number]; look?: (typeof PUBLIC_LOOK_SLUGS)[number] };
+
+async function startBuild(call: ApiCall, projectId: string, prompt: string, style?: StyleChoice): Promise<string> {
   // MCP callers poll for status; no finish notification is sent anywhere.
-  const res = await call("POST", "/generate", { projectId, prompt, webhookUrl: null });
+  const hasStyle = !!style && (!!style.layout || !!style.look);
+  const res = await call("POST", "/generate", { projectId, prompt, webhookUrl: null, ...(hasStyle ? { style } : {}) });
   return readTurnId(res);
 }
 
@@ -138,6 +142,9 @@ type ToolDef = {
 const uuid = z.string().uuid();
 const prompt = z.string().trim().min(1).max(60_000);
 const externalUserId = z.string().trim().min(1).max(128);
+const styleChoice = z
+  .object({ layout: z.enum(LAYOUT_ARCHETYPE_IDS).optional(), look: z.enum(PUBLIC_LOOK_SLUGS).optional() })
+  .strict();
 
 const S = {
   uuid: (description: string) => ({ type: "string", format: "uuid", description }),
@@ -180,12 +187,29 @@ export const TOOLS: ToolDef[] = [
         prompt: S.prompt,
         title: { type: "string", maxLength: 120, description: "Project name (optional)." },
         externalUserId: S.externalUserId,
+        style: {
+          type: "object",
+          additionalProperties: false,
+          description:
+            "Optional look and page layout. Omit to let Custard AI choose a fitting, varied style for this brief.",
+          properties: {
+            layout: { type: "string", enum: [...LAYOUT_ARCHETYPE_IDS], description: "How the public pages are composed." },
+            look: { type: "string", enum: [...PUBLIC_LOOK_SLUGS], description: "Colours, fonts and shapes." },
+          },
+        },
       },
       ["prompt"],
     ),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
-    parse: z.object({ prompt, title: z.string().trim().min(1).max(120).optional(), externalUserId: externalUserId.optional() }).strict(),
-    run: async (input: { prompt: string; title?: string; externalUserId?: string }, call) => {
+    parse: z
+      .object({
+        prompt,
+        title: z.string().trim().min(1).max(120).optional(),
+        externalUserId: externalUserId.optional(),
+        style: styleChoice.optional(),
+      })
+      .strict(),
+    run: async (input: { prompt: string; title?: string; externalUserId?: string; style?: StyleChoice }, call) => {
       const created = await api(call, "POST", "/projects", {
         ...(input.title ? { title: input.title } : {}),
         ...(input.externalUserId ? { externalUserId: input.externalUserId } : {}),
@@ -193,7 +217,7 @@ export const TOOLS: ToolDef[] = [
       const projectId = String((created.project as { id?: string } | undefined)?.id ?? "");
       if (!projectId) throw new ToolError("The project could not be created. Try again.");
       try {
-        const turnId = await startBuild(call, projectId, input.prompt);
+        const turnId = await startBuild(call, projectId, input.prompt, input.style);
         return { projectId, turnId, status: "building", next: NEXT_STEP };
       } catch (e) {
         const why = e instanceof Error ? e.message : "unknown error";

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "brutalist",
+  "name": "Brutalist",
+  "description": "Modern technical style: monospace display and labels, high-contrast 1\u20132px borders, hard offset shadows, raw grid structure and one loud accent.",
+  "when_to_use": "AI infrastructure, APIs, developer tools, data products, web3, hackathons, indie software and technical brands that want a raw, honest, engineered feel.",
+  "version": "1.0.0",
+  "default_accent": "ultramarine",
+  "accents": [
+    "ultramarine",
+    "acid",
+    "orange"
+  ],
+  "capabilities": [
+    "light",
+    "dark",
+    "mono",
+    "technical",
+    "high-contrast"
+  ],
+  "token_categories": [
+    "color",
+    "typography",
+    "radius",
+    "shadow",
+    "motion",
+    "spacing"
+  ],
+  "fonts": [
+    "JetBrains Mono",
+    "Work Sans"
+  ],
+  "has_components": false
+}

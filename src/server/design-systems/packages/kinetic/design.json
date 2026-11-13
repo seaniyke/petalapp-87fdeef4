@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "kinetic",
+  "name": "Kinetic",
+  "description": "High-energy vibrant style: a wide expressive display face, oversized type, punchy colour-block panels, big confident radii and quick springy motion.",
+  "when_to_use": "Fitness, sport, events, festivals, music, gaming, creator platforms, youth brands and startups that want energy and momentum over restraint.",
+  "version": "1.0.0",
+  "default_accent": "flame",
+  "accents": [
+    "flame",
+    "volt",
+    "electric"
+  ],
+  "capabilities": [
+    "light",
+    "dark",
+    "motion",
+    "colour-block",
+    "expressive"
+  ],
+  "token_categories": [
+    "color",
+    "typography",
+    "radius",
+    "shadow",
+    "motion",
+    "spacing"
+  ],
+  "fonts": [
+    "Syne",
+    "Plus Jakarta Sans"
+  ],
+  "has_components": false
+}

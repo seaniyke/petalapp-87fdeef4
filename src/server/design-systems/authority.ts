@@ -84,11 +84,139 @@ const STUDIO_RULES: Array<{ slug: string; re: RegExp; accents: Array<{ accent: s
   },
 ];
 
-export function resolvePackageForIntent(brief: string | null | undefined): { pkg: DesignSystemPackage; accent: string } | null {
+/**
+ * Explicit style words lock the look regardless of domain. Checked after the
+ * dark-editorial rule. Words a brief expander might add on its own
+ * ("vibrant", "modern", "bold") are deliberately absent.
+ */
+const EXPLICIT_LOOK_RULES: Array<{ slug: string; re: RegExp }> = [
+  { slug: "brutalist", re: /\b(brutalis[tm]|monospace|terminal[- ]style|hacker[- ]style|retro[- ]computer)\w*/i },
+  { slug: "monolith", re: /\b(swiss|bauhaus|international[- ]style|grid[- ]based)\b/i },
+  { slug: "bloom", re: /\b(playful|pastel|bubbly|whimsical|kawaii)\b/i },
+  { slug: "kinetic", re: /\b(high[- ]energy|energetic|punchy)\b/i },
+];
+
+/**
+ * Look families. When a project seed is given, the look is chosen from the
+ * brief's family (always including the rule-based primary pick), so similar
+ * briefs on different projects get different looks while one project always
+ * keeps its own. First matching family wins.
+ */
+type LookPick = { slug: string; accent: string };
+const LOOK_FAMILIES: Array<{ id: string; re: RegExp; picks: LookPick[] }> = [
+  {
+    id: "care",
+    re: /\b(clinic|hospital|health|medical|dental|dentist|doctor|patient|pharmac|therap|physio|care home|nursing|counsel|charity)\w*/i,
+    picks: [{ slug: "haven", accent: "teal" }, { slug: "haven", accent: "ocean" }, { slug: "haven", accent: "sage" }],
+  },
+  {
+    id: "lifestyle",
+    re: /\b(salon|beauty|spa|skincare|nail|barber|lash|brow|boutique|wedding|bridal|florist|flower|hotel|retreat|resort|wellness|fashion|jewel)\w*/i,
+    picks: [{ slug: "atelier", accent: "rose" }, { slug: "atelier", accent: "bronze" }, { slug: "bloom", accent: "berry" }, { slug: "monolith", accent: "graphite" }],
+  },
+  {
+    id: "product",
+    re: /\b(saas|dashboard|analytic|developer|fintech|crm|startup|ai (tool|product|platform|app)|admin panel|software|api|devtool|crypto|web3|blockchain|automation)\w*/i,
+    picks: [{ slug: "meridian", accent: "cobalt" }, { slug: "brutalist", accent: "ultramarine" }, { slug: "kinetic", accent: "electric" }, { slug: "monolith", accent: "cobalt" }],
+  },
+  {
+    id: "authority",
+    re: /\b(bank|finance|insurance|legal|law firm|lawyer|attorney|accounting|logistic|freight|engineering|construction|architect|consult|government|enterprise|research)\w*/i,
+    picks: [{ slug: "monolith", accent: "graphite" }, { slug: "meridian", accent: "cobalt" }, { slug: "substrate", accent: "blue" }, { slug: "monolith", accent: "signal" }],
+  },
+  {
+    id: "food",
+    re: /\b(bakery|baker|bread|pastr|patisserie|cafe|caf\u00e9|coffee|restaurant|bistro|diner|kitchen|catering|deli|pizzeria|brunch|butcher|grocer|food|snack|juice|ice cream|dessert)\w*/i,
+    picks: [{ slug: "substrate", accent: "terracotta" }, { slug: "bloom", accent: "tangerine" }, { slug: "atelier", accent: "bronze" }, { slug: "kinetic", accent: "flame" }],
+  },
+  {
+    id: "energy",
+    re: /\b(fitness|gym|sports?|athlet|crossfit|dance|esports|gaming|festivals?|music|concert|events?|nightlife)\b/i,
+    picks: [{ slug: "kinetic", accent: "flame" }, { slug: "kinetic", accent: "volt" }, { slug: "bloom", accent: "berry" }, { slug: "brutalist", accent: "acid" }],
+  },
+  {
+    id: "editorial",
+    re: /\b(portfolio|gallery|photograph|minimalist|editorial|magazine|journal|artist|studio)\w*/i,
+    picks: [{ slug: "substrate", accent: "mono" }, { slug: "monolith", accent: "graphite" }, { slug: "atelier", accent: "bronze" }, { slug: "brutalist", accent: "orange" }],
+  },
+  {
+    id: "outdoor",
+    re: /\b(sustainab|organic|garden|recycl|solar|environment|outdoor|hiking|yoga|nursery|landscap|farm)\w*/i,
+    picks: [{ slug: "substrate", accent: "emerald" }, { slug: "bloom", accent: "mint" }, { slug: "atelier", accent: "sage" }],
+  },
+  {
+    id: "consumer",
+    re: /\b(shops?|stores?|ecommerce|e-commerce|marketplace|kids|toys?|pets?|social|community|school|course|tutor|education|club)\b/i,
+    picks: [{ slug: "bloom", accent: "tangerine" }, { slug: "kinetic", accent: "electric" }, { slug: "substrate", accent: "indigo" }, { slug: "atelier", accent: "rose" }],
+  },
+];
+const DEFAULT_FAMILY: LookPick[] = [
+  { slug: "substrate", accent: "indigo" },
+  { slug: "meridian", accent: "cobalt" },
+  { slug: "monolith", accent: "signal" },
+  { slug: "bloom", accent: "berry" },
+  { slug: "kinetic", accent: "electric" },
+  { slug: "atelier", accent: "rose" },
+];
+
+export interface PackageIntentOptions {
+  /** Per-project seed (the project id). Without it the pick is the rule-based primary. */
+  seed?: string | null;
+  /** A look the caller chose explicitly (public API `style.look`). Wins when installed. */
+  look?: string | null;
+}
+
+type Resolved = { pkg: DesignSystemPackage; accent: string };
+
+function seedHash(seed: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+/** Accent for a locked package: the seed rotates among its accents, else its default. */
+function lockedAccent(pkg: DesignSystemPackage, seed?: string | null): string {
+  const accents = pkg.meta.accents.filter((a) => pkg.accents[a]);
+  if (!seed || !accents.length) return pkg.meta.default_accent;
+  return accents[seedHash(`accent:${pkg.meta.slug}:${seed}`) % accents.length]!;
+}
+
+/** The rule-based pick (no seed). Unchanged behaviour for existing briefs. */
+function primaryPackageForIntent(text: string, byslug: (slug: string) => DesignSystemPackage | null): Resolved | null {
+  for (const rule of STUDIO_RULES) {
+    if (!text || !rule.re.test(text)) continue;
+    const pkg = byslug(rule.slug);
+    if (!pkg) continue;
+    const hit = rule.accents.find((a) => a.re.test(text));
+    const accent = hit && pkg.accents[hit.accent] ? hit.accent : pkg.meta.default_accent;
+    return { pkg, accent };
+  }
+  const house = byslug(DEFAULT_PACKAGE_SLUG);
+  if (!house) return resolveDefaultPackage();
+  const hit = text ? ACCENT_RULES.find((r) => r.re.test(text)) : undefined;
+  const accent = hit && house.accents[hit.accent] ? hit.accent : house.meta.default_accent;
+  return { pkg: house, accent };
+}
+
+export function resolvePackageForIntent(
+  brief: string | null | undefined,
+  opts: PackageIntentOptions = {},
+): Resolved | null {
   const text = (brief ?? "").slice(0, 4000);
   const installed = listDesignSystems();
   const byslug = (slug: string) => installed.find((p) => p.meta.slug === slug) ?? null;
+  const seed = opts.seed ? String(opts.seed) : null;
 
+  // 1. An explicit caller choice wins.
+  if (opts.look) {
+    const chosen = byslug(opts.look);
+    if (chosen) return { pkg: chosen, accent: lockedAccent(chosen, seed) };
+  }
+
+  // 2. A dark request.
   if (text && DARK_EDITORIAL.test(text)) {
     const obsidian = byslug("obsidian");
     if (obsidian) {
@@ -97,22 +225,30 @@ export function resolvePackageForIntent(brief: string | null | undefined): { pkg
     }
   }
 
+  // 3. Explicit style words.
   if (text) {
-    for (const rule of STUDIO_RULES) {
+    for (const rule of EXPLICIT_LOOK_RULES) {
       if (!rule.re.test(text)) continue;
       const pkg = byslug(rule.slug);
-      if (!pkg) continue;
-      const hit = rule.accents.find((a) => a.re.test(text));
-      const accent = hit && pkg.accents[hit.accent] ? hit.accent : pkg.meta.default_accent;
-      return { pkg, accent };
+      if (pkg) return { pkg, accent: lockedAccent(pkg, seed) };
     }
   }
 
-  const house = byslug(DEFAULT_PACKAGE_SLUG);
-  if (!house) return resolveDefaultPackage();
-  const hit = text ? ACCENT_RULES.find((r) => r.re.test(text)) : undefined;
-  const accent = hit && house.accents[hit.accent] ? hit.accent : house.meta.default_accent;
-  return { pkg: house, accent };
+  // 4. Domain rules. Without a seed this is the whole answer.
+  const primary = primaryPackageForIntent(text, byslug);
+  if (!seed || !primary) return primary;
+
+  // 5. With a seed, rotate within the brief's family (primary always a candidate).
+  const family = (text && LOOK_FAMILIES.find((f) => f.re.test(text))) || null;
+  const picks = family?.picks ?? DEFAULT_FAMILY;
+  const candidates: Resolved[] = [primary];
+  for (const p of picks) {
+    const pkg = byslug(p.slug);
+    if (!pkg || !pkg.accents[p.accent]) continue;
+    if (candidates.some((c) => c.pkg.meta.slug === pkg.meta.slug && c.accent === p.accent)) continue;
+    candidates.push({ pkg, accent: p.accent });
+  }
+  return candidates[seedHash(`look:${family?.id ?? "default"}:${seed}`) % candidates.length]!;
 }
 
 

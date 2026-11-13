@@ -260,6 +260,10 @@ type Body = {
    *  (the composer sends this when the user picked "Just build it", or when
    *  they turned auto-plan off in settings). Defaults to true. */
   autoPlan?: boolean;
+  /** Public API: optional style choice ({ layout, look }) for a project's
+   *  first build. Unknown values are dropped; ignored once a design
+   *  direction is committed. */
+  designStyle?: { layout?: string; look?: string };
   /** Canonical restatement from triage. Supplementary context only; the
    * original user message remains authoritative for detail. */
   intentBrief?: string;
@@ -2429,7 +2433,7 @@ async function handleGenerateRequestCore(
       : latestUserMessage(messages);
     // A repair classification later simply ignores these (see isRepairTurn uses).
     if (userJwt) {
-      earlyDesign = pickDesignDirection({ jwt: userJwt, projectId: body.projectId, brief: setupBrief, memoryEntries });
+      earlyDesign = pickDesignDirection({ jwt: userJwt, projectId: body.projectId, brief: setupBrief, memoryEntries, style: body.designStyle ?? null });
       earlyDesign.catch(() => {});
     }
     if (process.env.PETAL_PIC_DISABLED !== "1") {
@@ -2802,6 +2806,7 @@ async function handleGenerateRequestCore(
             projectId: body.projectId,
             brief: lastUserContent,
             memoryEntries,
+            style: body.designStyle ?? null,
           }))
     : null;
   // The person's own words outrank anything auto-picked, on every turn.
@@ -2823,6 +2828,8 @@ async function handleGenerateRequestCore(
       ? renderDesignDirectionBlock(designDirection, {
           detail: isStructuralTurn ? "full" : "compact",
           packageOwnsVisuals,
+          // Phone apps follow the native app shell, not a web page layout.
+          includeLayout: buildTargetId !== "mobile",
         })
       : "";
   const directionPart = renderDirection(false);

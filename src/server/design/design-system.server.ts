@@ -49,7 +49,7 @@ const TYPE_SCALES = {
 export function deterministicDesignSystem(
   _brief: string,
   understanding: PicUnderstanding,
-  _opts: { seed?: string } = {},
+  _opts: { seed?: string; look?: string | null } = {},
 ): PicDesignSystem {
   const density: PicDesignSystem["density"] =
     understanding.surfaces.application || understanding.surfaces.admin ? "compact" : "comfortable";
@@ -119,7 +119,9 @@ export function deterministicDesignSystem(
   // Colours, typography and radii always come from the design system package.
   // Which package + accent is a deterministic read of the brief, so a bakery
   // gets warm terracotta and a clinic gets clinical blue without an AI call.
-  const def = resolvePackageForIntent(_brief) ?? resolveDefaultPackage();
+  // With a project seed, similar briefs on different projects rotate within
+  // the brief's family of fitting looks; an explicit caller look wins.
+  const def = resolvePackageForIntent(_brief, { seed: _opts.seed, look: _opts.look }) ?? resolveDefaultPackage();
   return def ? withPackageVisuals(base, def.pkg, def.accent) : base;
 
 }
@@ -135,7 +137,7 @@ export function designSystemFromDirection(
   direction: DesignDirection,
   seed?: string,
 ): PicDesignSystem {
-  const base = deterministicDesignSystem(brief, understanding, { seed });
+  const base = deterministicDesignSystem(brief, understanding, { seed, look: direction.look ?? null });
   const density: PicDesignSystem["density"] =
     direction.density === "minimal"
       ? "spacious"

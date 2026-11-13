@@ -2,7 +2,8 @@
  * POST /api/public/v1/generate — start a build for an API-owned project.
  *
  * Body: { projectId, prompt, history?: [{role, content}], webhookUrl?, planFirst?,
- *         agentId?, widgetTag? }
+ *         agentId?, widgetTag?, style?: { layout?, look? } }
+ * `style` picks the page layout and look for the project's first build only.
  * `agentId` / `widgetTag` (or a Custard widget <script> pasted in the prompt)
  * pick the AI staff member; the tag is kept with its data-* attributes and
  * ?agent= query and added to every published build of the project.
@@ -34,6 +35,7 @@ import {
   verifyApiCaller,
 } from "@/server/service-api.server";
 import { turnBill, type TurnBill } from "@/server/service-billing.server";
+import { LAYOUT_ARCHETYPE_IDS, PUBLIC_LOOK_SLUGS } from "@/server/design/style-catalog";
 
 const Body = z.object({
   projectId: z.string().uuid(),
@@ -47,6 +49,12 @@ const Body = z.object({
   planFirst: z.boolean().optional(),
   agentId: z.string().trim().regex(/^[A-Za-z0-9_\-.:]{1,200}$/).optional(),
   widgetTag: z.string().max(2000).optional(),
+  // Optional look + page layout for the project's FIRST build. Ignored once
+  // the project's design is committed, so later edits keep the same style.
+  style: z
+    .object({ layout: z.enum(LAYOUT_ARCHETYPE_IDS).optional(), look: z.enum(PUBLIC_LOOK_SLUGS).optional() })
+    .strict()
+    .optional(),
 });
 
 export const Route = createFileRoute("/api/public/v1/generate")({
@@ -93,6 +101,9 @@ export const Route = createFileRoute("/api/public/v1/generate")({
             currentFiles: files,
             autoPlan: planFirst ?? false,
             planFirst: planFirst ?? false,
+            ...(parsed.data.style && (parsed.data.style.layout || parsed.data.style.look)
+              ? { designStyle: parsed.data.style }
+              : {}),
           }),
         });
 

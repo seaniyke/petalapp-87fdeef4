@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { getDesignSystem } from "@/server/design-systems/registry";
+import { visualsFromPackage } from "@/server/design-systems/authority";
 import { deterministicUnderstanding, renderUnderstandingBlock } from "@/server/understanding.server";
 import {
   deterministicDesignSystem,
@@ -64,7 +66,8 @@ describe("design system contract", () => {
   it("renders an enforceable prompt block", () => {
     const block = renderDesignSystemBlock(ds);
     // Package projects: structure-only contract; colours/fonts live in the package block.
-    expect(ds.package?.systemId).toBe("substrate");
+    // A seeded project gets an installed look from its brief's family.
+    expect(getDesignSystem(ds.package?.systemId)).toBeTruthy();
     expect(block).toContain("DESIGN CONTRACT — STRUCTURE");
     expect(block).not.toMatch(/oklch/);
     expect(block).toContain("Empty states:");
@@ -76,7 +79,8 @@ describe("design system contract", () => {
     expect(committed.direction).toBe(direction.vibe);
     // The director owns composition; fonts/colours come from the package.
     expect(committed.source).toBe("package");
-    expect(committed.typography.displayFont).toBe("Newsreader");
+    const pkg = getDesignSystem(committed.package?.systemId)!;
+    expect(committed.typography.displayFont).toBe(visualsFromPackage(pkg, committed.package!.accent).typography.displayFont);
     expect(committed.imagery).toContain(direction.design_moves[0]);
   });
 

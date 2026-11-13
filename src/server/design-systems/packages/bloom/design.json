@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "slug": "bloom",
+  "name": "Bloom",
+  "description": "Playful consumer style: a characterful variable grotesque, warm cream surfaces, soft pastel tints behind saturated accents, big friendly curves and bouncy motion.",
+  "when_to_use": "Food and drink, bakeries, caf\u00e9s, kids, pets, social apps, events, consumer shops and community brands that should feel warm, friendly and fun.",
+  "version": "1.0.0",
+  "default_accent": "tangerine",
+  "accents": [
+    "tangerine",
+    "berry",
+    "mint"
+  ],
+  "capabilities": [
+    "light",
+    "dark",
+    "motion",
+    "friendly",
+    "playful"
+  ],
+  "token_categories": [
+    "color",
+    "typography",
+    "radius",
+    "shadow",
+    "motion",
+    "spacing"
+  ],
+  "fonts": [
+    "Bricolage Grotesque",
+    "DM Sans"
+  ],
+  "has_components": false
+}

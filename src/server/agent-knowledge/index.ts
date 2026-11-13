@@ -108,10 +108,33 @@ function normHeading(line: string): string {
  * A dropped H2 removes everything up to the next H2; a dropped H3 removes
  * everything up to the next H2/H3.
  */
+/**
+ * The vendored manual hard-codes one home-page section list (Hero → Features
+ * → Testimonials → Pricing → FAQ → CTA). Stated verbatim it stamped the same
+ * page on every brief; the committed layout archetype now decides the shape.
+ * Exact-text rewrites only, so the rest of the manual stays untouched.
+ */
+const FIXED_SECTION_FORMULA: Array<[RegExp, string]> = [
+  [
+    /It typically contains SECTIONS like:\n- Hero Section \(headline, description, CTA buttons\)\n- Features Section \(feature cards\/grid\)\n- Testimonials Section\n- Pricing Section\n- FAQ Section\n- CTA\/Contact Section\n/,
+    "Its sections are the ones the request needs, composed in the project's committed layout archetype (see the Design Direction). There is no fixed section list.\n",
+  ],
+  [
+    /3\. Place the new section logically: Hero → Features → Testimonials → Pricing → FAQ → CTA → Footer/,
+    "3. Place the new section where it fits the page's existing order and layout archetype",
+  ],
+];
+
+export function neutralizeFixedSectionFormula(md: string): string {
+  let out = md;
+  for (const [re, to] of FIXED_SECTION_FORMULA) out = out.replace(re, to);
+  return out;
+}
+
 export function filterWebbyOnly(md: string): string {
   const out: string[] = [];
   let skipLevel = 0; // 0 = not skipping; else heading level being skipped
-  for (const raw of md.split("\n")) {
+  for (const raw of neutralizeFixedSectionFormula(md).split("\n")) {
     const h = /^(#{2,3})\s/.exec(raw);
     if (h) {
       const level = h[1].length;

@@ -4,6 +4,8 @@
  * filled from the request origin so the spec always points at the host that served it.
  */
 
+import { LAYOUT_ARCHETYPE_IDS, PUBLIC_LOOK_SLUGS } from "@/server/design/style-catalog";
+
 const err = { $ref: "#/components/responses/Error" };
 const projectId = { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } };
 const turnId = { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } };
@@ -106,6 +108,16 @@ export function openApiSpec(origin: string) {
                       description: "Where to send the signed finish notification. null sends none (poll GET /turns/{id} instead).",
                     },
                     planFirst: { type: "boolean" },
+                    style: {
+                      type: "object",
+                      additionalProperties: false,
+                      description:
+                        "Optional look and page layout for the project's first build. Omit to let Custard AI choose (similar briefs on different projects get different styles). Ignored once the project's design is set, so later changes keep the same style.",
+                      properties: {
+                        layout: { enum: [...LAYOUT_ARCHETYPE_IDS], description: "How public pages are composed." },
+                        look: { enum: [...PUBLIC_LOOK_SLUGS], description: "Colours, fonts and shapes." },
+                      },
+                    },
                   },
                 },
               },

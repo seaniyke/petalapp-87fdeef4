@@ -1,0 +1,50 @@
+{
+  "flame": {
+    "light": {
+      "primary": "oklch(0.57 0.21 35)",
+      "primary-foreground": "oklch(0.99 0.004 35)",
+      "ring": "oklch(0.57 0.21 35)",
+      "accent": "oklch(0.93 0.05 40)",
+      "accent-foreground": "oklch(0.33 0.12 35)"
+    },
+    "dark": {
+      "primary": "oklch(0.7 0.19 38)",
+      "primary-foreground": "oklch(0.15 0.03 35)",
+      "ring": "oklch(0.7 0.19 38)",
+      "accent": "oklch(0.3 0.08 38)",
+      "accent-foreground": "oklch(0.94 0.03 40)"
+    }
+  },
+  "volt": {
+    "light": {
+      "primary": "oklch(0.88 0.2 125)",
+      "primary-foreground": "oklch(0.18 0.03 125)",
+      "ring": "oklch(0.88 0.2 125)",
+      "accent": "oklch(0.95 0.07 125)",
+      "accent-foreground": "oklch(0.3 0.09 125)"
+    },
+    "dark": {
+      "primary": "oklch(0.88 0.2 125)",
+      "primary-foreground": "oklch(0.16 0.03 125)",
+      "ring": "oklch(0.88 0.2 125)",
+      "accent": "oklch(0.3 0.07 125)",
+      "accent-foreground": "oklch(0.94 0.06 125)"
+    }
+  },
+  "electric": {
+    "light": {
+      "primary": "oklch(0.53 0.23 265)",
+      "primary-foreground": "oklch(0.99 0.004 265)",
+      "ring": "oklch(0.53 0.23 265)",
+      "accent": "oklch(0.93 0.05 265)",
+      "accent-foreground": "oklch(0.32 0.14 265)"
+    },
+    "dark": {
+      "primary": "oklch(0.7 0.18 265)",
+      "primary-foreground": "oklch(0.15 0.03 265)",
+      "ring": "oklch(0.7 0.18 265)",
+      "accent": "oklch(0.3 0.08 265)",
+      "accent-foreground": "oklch(0.94 0.03 265)"
+    }
+  }
+}

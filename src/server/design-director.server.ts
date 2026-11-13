@@ -26,6 +26,14 @@ import type { Database } from "@/integrations/supabase/types";
 import type { MemoryEntry } from "@/server/project-memory.server";
 import { aiChatCompletions } from "@/server/ai-provider.server";
 import { resolveDefaultPackage } from "@/server/design-systems/authority";
+import { pickLayoutArchetype, renderLayoutArchetypeBlock } from "@/server/design/layout-archetypes";
+import {
+  isLayoutArchetype,
+  isPublicLook,
+  sanitizeStyleChoice,
+  type DesignStyleChoice,
+  type LayoutArchetypeId,
+} from "@/server/design/style-catalog";
 import {
   pickTemplateForBrief,
   renderTemplatePlanBlock,
@@ -159,6 +167,13 @@ export type DesignDirection = {
   theme?: string;
   /** Hidden template key — drives the route + section plan. Never surfaced to the user. */
   template?: TemplateKey | null;
+  /**
+   * How public pages are composed (bento, editorial, split screen …). Chosen
+   * once on the first build; older records without it simply omit the block.
+   */
+  layout_archetype?: LayoutArchetypeId;
+  /** Look (design-system package slug) the caller chose explicitly via the public API. */
+  look?: string;
 };
 
 /**
@@ -283,7 +298,27 @@ export function fallbackDesignDirection(brief: string, seed?: string): DesignDir
     fx_recipe: pickFxRecipe(cleanBrief, motion),
     design_moves: designMoves,
     template: pickTemplateForBrief(cleanBrief, seed ?? cleanBrief),
+    layout_archetype: pickLayoutArchetype(cleanBrief, seed ?? cleanBrief),
   };
+}
+
+/**
+ * Commit the composition choices that are deterministic: the layout archetype
+ * (caller's choice, else picked from the brief + project seed) and an
+ * explicit look. Never changes fonts/colours on the direction itself.
+ */
+export function withCommittedStyle(
+  d: DesignDirection,
+  brief: string,
+  seed: string | null | undefined,
+  style?: DesignStyleChoice | null,
+): DesignDirection {
+  const choice = sanitizeStyleChoice(style);
+  const layout = choice?.layout ?? (isLayoutArchetype(d.layout_archetype) ? d.layout_archetype : pickLayoutArchetype(brief, seed ?? brief));
+  const next: DesignDirection = { ...d, layout_archetype: layout };
+  if (choice?.look) next.look = choice.look;
+  else if (next.look && !isPublicLook(next.look)) delete next.look;
+  return next;
 }
 
 const DIRECTOR_SYSTEM = `You are Kimble's Design Director. Before the builder writes any code, you commit to ONE bold, specific visual direction for the app.
@@ -384,10 +419,11 @@ const DIRECTOR_TOOL = {
  */
 export function renderDesignDirectionBlock(
   d: DesignDirection,
-  opts?: { detail?: "full" | "compact"; packageOwnsVisuals?: boolean },
+  opts?: { detail?: "full" | "compact"; packageOwnsVisuals?: boolean; includeLayout?: boolean },
 ): string {
   const compact = opts?.detail === "compact";
   const pkg = opts?.packageOwnsVisuals === true;
+  const layoutId = opts?.includeLayout === false || !isLayoutArchetype(d.layout_archetype) ? null : d.layout_archetype;
   const moves = d.design_moves.map((m) => `  - ${m}`).join("\n");
   const templateBlock = !compact && d.template ? renderTemplatePlanBlock(d.template) : "";
   if (compact) {
@@ -400,7 +436,8 @@ export function renderDesignDirectionBlock(
           `- palette mood: ${d.palette_mood}. Use the existing oklch tokens in src/styles.css; do not introduce new raw colors.\n`) +
       `- density: ${d.density}\n` +
       `- motion: ${d.motion}. Match the motion level already used on the page; do not add new motion primitives for a small edit.\n` +
-      `- design moves to preserve:\n${moves}\n`
+      `- design moves to preserve:\n${moves}\n` +
+      renderLayoutArchetypeBlock(layoutId, "compact")
     );
   }
   return (
@@ -427,6 +464,7 @@ export function renderDesignDirectionBlock(
 ` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +
+    renderLayoutArchetypeBlock(layoutId, "full") +
     templateBlock
   );
 }
@@ -489,6 +527,8 @@ export async function pickDesignDirection(args: {
   projectId: string | undefined;
   brief: string;
   memoryEntries: MemoryEntry[];
+  /** Optional caller style choice (public API). Applies only before a direction is committed. */
+  style?: DesignStyleChoice | null;
 }): Promise<DesignDirection | null> {
   const cached = readDirectionFromMemory(args.memoryEntries);
   if (cached) return cached;
@@ -499,7 +539,8 @@ export async function pickDesignDirection(args: {
   // system, while re-running a turn on one project stays consistent.
   const designSeed = args.projectId ?? trimmedBrief;
   if (trimmedBrief.length < 4) return null;
-  const fallback = () => fallbackDesignDirection(trimmedBrief, designSeed);
+  const commitStyle = (d: DesignDirection) => withCommittedStyle(d, trimmedBrief, designSeed, args.style);
+  const fallback = () => commitStyle(fallbackDesignDirection(trimmedBrief, designSeed));
   const persist = (picked: DesignDirection): DesignDirection => {
     if (args.projectId) {
       void saveDirectionToMemory({
@@ -638,7 +679,7 @@ export async function pickDesignDirection(args: {
     if (parsed.motion === "cinematic" && parsed.fx_recipe !== "awwwards-3d") {
       parsed.fx_recipe = "awwwards-3d";
     }
-    direction = parsed;
+    direction = commitStyle(parsed);
   } catch (e) {
     console.warn("[design-director] threw:", e, "— using deterministic direction");
     return persist(fallback());
