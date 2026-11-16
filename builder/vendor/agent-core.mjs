@@ -140357,7 +140357,7 @@ function findMatchingBrace(src2, openIndex) {
   return -1;
 }
 function bodyHasUnsafeAccess(body, propName) {
-  const escaped = escapeRe2(propName);
+  const escaped = escapeRe3(propName);
   for (const method of ARRAY_METHODS2) {
     const re = new RegExp(
       `(?<![A-Za-z0-9_$?])${escaped}\\.${method}\\b`,
@@ -140379,7 +140379,7 @@ function bodyHasUnsafeAccess(body, propName) {
   }
   return null;
 }
-function escapeRe2(s) {
+function escapeRe3(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function findConditionalHooks(clean) {
@@ -140515,7 +140515,7 @@ function findForwardRefIconRenders(src2, clean) {
   if (iconNames.size === 0) return issues;
   for (const ident of iconNames) {
     const re = new RegExp(
-      `(^|[^A-Za-z0-9_$=:.])\\{\\s*${escapeRe2(ident)}\\s*\\}`,
+      `(^|[^A-Za-z0-9_$=:.])\\{\\s*${escapeRe3(ident)}\\s*\\}`,
       "g"
     );
     let m;
@@ -140530,7 +140530,7 @@ function findForwardRefIconRenders(src2, clean) {
     }
   }
   const hasIconField = [...iconNames].some(
-    (n) => new RegExp(`\\bicon\\s*:\\s*${escapeRe2(n)}\\b`).test(clean)
+    (n) => new RegExp(`\\bicon\\s*:\\s*${escapeRe3(n)}\\b`).test(clean)
   );
   if (hasIconField) {
     const dotRe = /(^|[^A-Za-z0-9_$=:.])\{\s*[A-Za-z_$][\w$]*\.icon\s*\}/g;
@@ -140600,7 +140600,7 @@ function findObjectAsJsxChild(src2, clean) {
   if (bindings.size === 0) return issues;
   for (const ident of bindings) {
     const re = new RegExp(
-      `(^|[^A-Za-z0-9_$=:.\\\`])\\{\\s*(${escapeRe2(ident)}(?:\\.[A-Za-z_$][\\w$]*)*)\\s*\\}`,
+      `(^|[^A-Za-z0-9_$=:.\\\`])\\{\\s*(${escapeRe3(ident)}(?:\\.[A-Za-z_$][\\w$]*)*)\\s*\\}`,
       "g"
     );
     let m;
@@ -140608,7 +140608,7 @@ function findObjectAsJsxChild(src2, clean) {
       const expr = m[2];
       const before = clean.slice(Math.max(0, m.index - 120), m.index + m[1].length);
       if (!/>[^<{]*$/.test(before)) continue;
-      if (new RegExp(`(?:JSON\\.stringify|String)\\s*\\(\\s*${escapeRe2(ident)}\\b`).test(clean)) continue;
+      if (new RegExp(`(?:JSON\\.stringify|String)\\s*\\(\\s*${escapeRe3(ident)}\\b`).test(clean)) continue;
       issues.push({ ident, expr });
       break;
     }
@@ -140622,12 +140622,12 @@ function findUnsafeMappedNestedAccess(src2) {
   while (match = mapRe.exec(src2)) {
     const item = match[1];
     const body = src2.slice(match.index + match[0].length, match.index + match[0].length + 1600);
-    const chainRe = new RegExp(`\\b${escapeRe2(item)}\\.([A-Za-z_$][\\w$]*)\\.([A-Za-z_$][\\w$]*)`, "g");
+    const chainRe = new RegExp(`\\b${escapeRe3(item)}\\.([A-Za-z_$][\\w$]*)\\.([A-Za-z_$][\\w$]*)`, "g");
     const chain = chainRe.exec(body);
     if (!chain) continue;
     const nested = chain[1];
     const before = body.slice(0, chain.index);
-    const guarded = new RegExp(`\\b${escapeRe2(item)}\\.${escapeRe2(nested)}\\s*&&`).test(before) || new RegExp(`if\\s*\\(\\s*!?${escapeRe2(item)}\\.${escapeRe2(nested)}\\s*\\)`).test(before) || new RegExp(`\\b${escapeRe2(item)}\\?\\.${escapeRe2(nested)}\\?\\.`).test(body) || new RegExp(`\\b${escapeRe2(item)}\\.${escapeRe2(nested)}\\?\\.`).test(body) || new RegExp(`const\\s+${escapeRe2(nested)}\\s*=`).test(before);
+    const guarded = new RegExp(`\\b${escapeRe3(item)}\\.${escapeRe3(nested)}\\s*&&`).test(before) || new RegExp(`if\\s*\\(\\s*!?${escapeRe3(item)}\\.${escapeRe3(nested)}\\s*\\)`).test(before) || new RegExp(`\\b${escapeRe3(item)}\\?\\.${escapeRe3(nested)}\\?\\.`).test(body) || new RegExp(`\\b${escapeRe3(item)}\\.${escapeRe3(nested)}\\?\\.`).test(body) || new RegExp(`const\\s+${escapeRe3(nested)}\\s*=`).test(before);
     if (!guarded) issues.push({ chain: `${item}.${nested}.${chain[2]}` });
   }
   return issues;
@@ -157750,15 +157750,11 @@ ${call}${render.before.slice(1)}`)
 
 // src/server/content-edit.server.ts
 init_define_import_meta_env();
-var DESIGN_RE = /\b(design|redesign|re-?style|restyle|theme|re-?theme|colou?rs?|palette|font|fonts|typography|layout|look(?:\s+and\s+feel)?|style|styling|responsive|mobile[-\s]?friendly|spacing|padding|margin|animations?|dark\s+mode|light\s+mode|background|gradient|shadow)\b/i;
 var NEW_SURFACE_RE = /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(pages?|screens?|routes?|dashboard)\b|\b(database|login|log in|sign ?up|sign ?in|auth|payments?|checkout|api|backend)\b/i;
 var CONTENT_VERB_RE = /\b(remove|delete|drop|take\s+out|rename|change|replace|update|swap|add|show|display|list|set|correct|fix)\b/i;
 var CONTENT_TARGET_RE = /\b(price[sd]?|pricing|cost|menu|items?|dish(?:es)?|meals?|services?|products?|phone|number|whatsapp|e-?mail|address|hours|opening|name|business|brand|title|text|copy|wording|headline|label|contact|faq)\b|[₦$€£]\s?\d|\+?\d[\d\s()-]{7,}\d|wa\.me|tel:|mailto:/i;
 function isContentOnlyEdit(prompt) {
-  const text = (prompt ?? "").slice(0, 4e3);
-  if (!text.trim()) return false;
-  if (DESIGN_RE.test(text) || NEW_SURFACE_RE.test(text)) return false;
-  return CONTENT_VERB_RE.test(text) && CONTENT_TARGET_RE.test(text);
+  return isContentOnlyChange(prompt);
 }
 var PRICE_RE = /[₦$€£]\s?\d|\b(price[sd]?|pricing|cost|NGN|naira)\b/i;
 var PHONE_RE = /\+?\d[\d\s()-]{7,}\d|\b(phone|whatsapp|call|number|tel)\b|wa\.me/i;
@@ -157796,6 +157792,7 @@ var SOURCE_RE = /\.(tsx?|jsx?|json|html|md)$/;
 function planContentEdit(prompt, files, maxFiles = 16) {
   if (!isContentOnlyEdit(prompt)) return null;
   const owned = files.filter((f) => SOURCE_RE.test(f.path) && !SCAFFOLD_RE2.test(f.path) && f.path !== "package.json");
+  prompt = changeSection(prompt);
   const phrases = extractNamedPhrases(prompt);
   const brand = RENAME_BRAND_RE.test(prompt) ? currentBrandName(files) : null;
   const score = /* @__PURE__ */ new Map();
@@ -157814,13 +157811,13 @@ function planContentEdit(prompt, files, maxFiles = 16) {
   if (paths.length === 0) return null;
   return { paths, phrases, brand };
 }
-function contentEditAddendum(plan) {
+function contentEditAddendum(plan, alreadyDone = []) {
   const lines = [
     "",
     "",
     "This is a CONTENT edit \u2014 change words, items, prices, names and contact details exactly where they already live.",
     "Rules for this turn:",
-    "1. For every EXISTING file, use `replace` ops that quote the exact lines to change (menu/service arrays, price fields, contact constants, names). Never re-send an existing file with `update`. Use `create` only for a genuinely new file.",
+    "1. Use ONLY `replace` ops that quote the exact lines to change (menu/service arrays, price fields, contact constants). NEVER use `update` on an existing file. Use `create` only for a genuinely new file.",
     "2. Do not add new sections, components or pages. Edit content where it already is.",
     "3. Removing an item means removing it from every file below that contains it (data arrays, cards, navigation, footer, page titles and descriptions).",
     "4. Handle every clause of the request. Keep each `replace` small \u2014 one per region.",
@@ -157828,7 +157825,8 @@ function contentEditAddendum(plan) {
     `Files that hold this content: ${plan.paths.join(", ")}.`
   ];
   if (plan.phrases.length) lines.push(`Named content to find: ${plan.phrases.map((p2) => `"${p2}"`).join(", ")}.`);
-  if (plan.brand) lines.push(`The current business name is "${plan.brand}" \u2014 rename every occurrence the request covers.`);
+  if (alreadyDone.length) lines.push(`ALREADY APPLIED automatically (do NOT emit ops for these; the files above still show the old text): ${alreadyDone.join("; ")}. Do only the remaining changes.`);
+  if (plan.brand && !alreadyDone.some((d) => d.startsWith("renamed"))) lines.push(`The current business name is "${plan.brand}" \u2014 rename every occurrence the request covers.`);
   return lines.join("\n");
 }
 var MAX_DIFF_LINES = 2e3;
@@ -157927,6 +157925,186 @@ function updatesToReplaceOps(ops, currentFiles) {
     }
   }
   return { ops: out, converted };
+}
+function changeSection(prompt) {
+  const text = prompt ?? "";
+  const m = /^#{1,6}\s*the\s+change\b[^\n]*\n([\s\S]*?)(?=^#{1,6}\s|$(?![\s\S]))/im.exec(text);
+  return m ? m[1].trim() : text;
+}
+var DESIGN_CHANGE_RE = new RegExp(
+  String.raw`\b(redesign|re-?style|restyle|re-?theme)\b|\b(change|make|update|switch|use|new|different|darker|lighter|bigger|smaller|improve|modernize|modernise)\b[^.!?\n]{0,30}\b(design|theme|colou?rs?|palette|fonts?|typography|layout|look(?:\s+and\s+feel)?|style|styling|spacing|padding|margin|animations?|dark\s+mode|light\s+mode|background|gradient|shadow)\b`,
+  "i"
+);
+var KEEP_STYLE_RE = /\b(keep|same|existing|current|match(?:ing)?|in\s+the\s+same)\b[^.!?\n]{0,25}\b(style|design|look|theme|colou?rs?|fonts?|layout)\b/gi;
+function isContentOnlyChange(prompt) {
+  const text = changeSection(prompt).slice(0, 4e3);
+  if (!text.trim()) return false;
+  const stripped = text.replace(KEEP_STYLE_RE, " ");
+  if (DESIGN_CHANGE_RE.test(stripped) || NEW_SURFACE_RE.test(stripped)) return false;
+  return CONTENT_VERB_RE.test(stripped) && CONTENT_TARGET_RE.test(stripped);
+}
+function escapeRe2(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function extractRename(prompt, brand) {
+  const text = changeSection(prompt);
+  const q = `["\u201C'\u2018]`, qe = `["\u201D'\u2019]`;
+  let m = new RegExp(`\\brename\\s+${q}([^"\u201D'\u2019\\n]{2,80})${qe}\\s+to\\s+${q}?([^"\u201D\\n]{2,80}?)${qe}?(?=\\s+everywhere\\b|[,.;\\n]|$)`, "i").exec(text);
+  if (m) return { from: m[1].trim(), to: m[2].trim() };
+  m = /\brename\b[^.\n]{0,40}?\bto\s+["“]?(.{2,80}?)["”]?(?=\s+everywhere\b|\s*,|\.\s|\.$|;|\n|\s+replacing\b|$)/i.exec(text);
+  if (!m) return null;
+  const to = m[1].trim();
+  const om = /\b(?:replacing|instead\s+of|from)\s+(?:["“]([^"”\n]{2,80})["”]|[‘']([^’'\n]{2,80})[’'](?!\w))/i.exec(text);
+  const old = (om?.[1] ?? om?.[2])?.trim() ?? brand;
+  if (!old || old === to) return null;
+  return { from: old, to };
+}
+function extractRemovals(prompt) {
+  const text = changeSection(prompt);
+  const out = /* @__PURE__ */ new Set();
+  for (const m of text.matchAll(/\b(?:remove|delete|drop|take\s+out)\s+(?:the\s+)?(.{2,160}?)(?=\s+(?:from|everywhere|across)\b|[.;\n]|$)/gi)) {
+    for (const part of m[1].split(/\s*(?:,|\band\b)\s*/i)) {
+      const p2 = part.trim().replace(/^["“'‘]|["”'’]$/g, "").replace(/^(?:the|a|an|our|my)\s+/i, "").trim();
+      if (p2.length >= 3 && !/^(it|them|this|that|items?|section|page)$/i.test(p2)) out.add(p2);
+    }
+  }
+  return [...out];
+}
+function removeEntry(content, phrase) {
+  const lines = content.split("\n");
+  const lit = new RegExp(`["'\`]${escapeRe2(phrase)}["'\`]`, "i");
+  for (let guard = 0; guard < 20; guard++) {
+    const idx = lines.findIndex((l) => lit.test(l));
+    if (idx < 0) break;
+    const line = lines[idx];
+    const t = line.trim();
+    let start = -1, end = -1;
+    if (new RegExp(`^["'\`]${escapeRe2(phrase)}["'\`],?$`, "i").test(t) || /^\{[^{}]*\},?$/.test(t)) {
+      start = end = idx;
+    } else {
+      let depth = 0;
+      for (let i = idx; i >= Math.max(0, idx - 20); i--) {
+        const s = lines[i];
+        depth += (s.match(/\}/g) ?? []).length - (s.match(/\{/g) ?? []).length;
+        if (i !== idx && depth < 0 && /^\s*\{\s*$/.test(s)) {
+          start = i;
+          break;
+        }
+        if (depth < -1) break;
+      }
+      if (start >= 0) {
+        let d = 0;
+        for (let i = start; i < Math.min(lines.length, start + 25); i++) {
+          d += (lines[i].match(/\{/g) ?? []).length - (lines[i].match(/\}/g) ?? []).length;
+          if (d === 0) {
+            if (/^\s*\},?\s*$/.test(lines[i])) end = i;
+            break;
+          }
+        }
+      }
+    }
+    if (start < 0 || end < 0) break;
+    lines.splice(start, end - start + 1);
+  }
+  return lines.join("\n");
+}
+function deterministicContentOps(prompt, files, plan) {
+  const rename = extractRename(prompt, plan.brand ?? currentBrandName(files));
+  const removals = extractRemovals(prompt);
+  const owned = files.filter((f) => SOURCE_RE.test(f.path) && !SCAFFOLD_RE2.test(f.path) && f.path !== "package.json");
+  const ops = [];
+  const done = /* @__PURE__ */ new Set();
+  const leftover = /* @__PURE__ */ new Set();
+  for (const f of owned) {
+    let next = f.content;
+    if (rename && next.includes(rename.from)) {
+      next = next.split(rename.from).join(rename.to);
+      done.add(`renamed "${rename.from}" to "${rename.to}"`);
+    }
+    for (const r of removals) {
+      const after = removeEntry(next, r);
+      if (after !== next) done.add(`removed "${r}"`);
+      next = after;
+      if (next.toLowerCase().includes(r.toLowerCase())) leftover.add(r);
+    }
+    if (next === f.content) continue;
+    const replaces = diffToReplaceOps(f.path, f.content, next) ?? spanReplace(f.path, f.content, next);
+    if (replaces) ops.push(...replaces);
+  }
+  return { ops, done: [...done], leftover: [...leftover] };
+}
+function mergeContentOps(det, model, currentFiles) {
+  const state = new Map(currentFiles.map((f) => [f.path, f.content]));
+  const out = [];
+  let dropped = 0;
+  for (const op of [...det, ...model]) {
+    if (op.op === "replace") {
+      const cur = state.get(op.path);
+      if (cur == null || !cur.includes(op.search)) {
+        dropped++;
+        continue;
+      }
+      state.set(op.path, cur.replace(op.search, op.replace));
+    } else if ((op.op === "update" || op.op === "create") && "content" in op) {
+      state.set(op.path, op.content);
+    }
+    out.push(op);
+  }
+  return { ops: out, dropped };
+}
+function salvageCompleteOps(rawArgs) {
+  const at = rawArgs.indexOf('"ops"');
+  if (at < 0) return [];
+  const open = rawArgs.indexOf("[", at);
+  if (open < 0) return [];
+  const out = [];
+  let depth = 0, start = -1, inStr = false, esc = false;
+  for (let i = open + 1; i < rawArgs.length; i++) {
+    const c = rawArgs[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      continue;
+    }
+    if (c === "{") {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0 && start >= 0) {
+        try {
+          const op = JSON.parse(rawArgs.slice(start, i + 1));
+          if (op && (op.op === "replace" && typeof op.search === "string" && typeof op.replace === "string" || op.op === "create" && typeof op.content === "string") && typeof op.path === "string") out.push(op);
+        } catch {
+        }
+        start = -1;
+      }
+    } else if (c === "]" && depth === 0) break;
+  }
+  return out;
+}
+function spanReplace(path, prev, next) {
+  const a2 = prev.split("\n"), b = next.split("\n");
+  let pre = 0;
+  while (pre < a2.length && pre < b.length && a2[pre] === b[pre]) pre++;
+  let suf = 0;
+  while (suf < a2.length - pre && suf < b.length - pre && a2[a2.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
+  for (let pad = 0; pad <= a2.length; pad++) {
+    const lo = Math.max(0, pre - pad), hiA = Math.min(a2.length, a2.length - suf + pad), hiB = b.length - (a2.length - hiA);
+    const search = a2.slice(lo, hiA).join("\n");
+    if (!search) continue;
+    if (prev.indexOf(search) !== prev.lastIndexOf(search)) continue;
+    const replace = b.slice(lo, hiB).join("\n");
+    const at = prev.indexOf(search);
+    if (prev.slice(0, at) + replace + prev.slice(at + search.length) !== next) return null;
+    return [{ op: "replace", path, search, replace }];
+  }
+  return null;
 }
 
 // src/server/critic-agent.server.ts
@@ -178851,9 +179029,11 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   }
   const isCrossCutting = turnClassification.crossCutting;
   const contentEdit = isInitial ? null : planContentEdit(lastUserContent, editablePromptFiles);
+  const contentDet = contentEdit ? deterministicContentOps(lastUserContent, editablePromptFiles, contentEdit) : null;
+  const contentEditStatus = contentEdit ? `Content edit: on \u2014 ${contentEdit.paths.length} file(s) sent, ${contentDet?.ops.length ?? 0} exact change(s) applied directly${contentDet?.done.length ? ` (${contentDet.done.join("; ")})` : ""}` : isInitial ? null : "Content edit: off";
   if (contentEdit) {
     console.info(
-      `[content-edit] ${contentEdit.paths.length} file(s) hold the content: ${contentEdit.paths.slice(0, 8).join(", ")}`
+      `[content-edit] ${contentEdit.paths.length} file(s) hold the content: ${contentEdit.paths.slice(0, 8).join(", ")}; deterministic ops=${contentDet?.ops.length ?? 0}`
     );
   }
   let pinnedPaths = contentEdit ? [...contentEdit.paths] : isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
@@ -179121,7 +179301,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   console.info(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`
   );
-  const crossCuttingAddendum = contentEdit ? contentEditAddendum(contentEdit) : isCrossCutting ? `
+  const crossCuttingAddendum = contentEdit ? contentEditAddendum(contentEdit, contentDet?.done ?? []) : isCrossCutting ? `
 
 This is a cross-cutting request \u2014 the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.
 
@@ -179839,6 +180019,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
         const recovery = new RecoveryBudget();
         recovery.setTurn({ request: lastUserContent, targets: resolvedTargetPaths });
         const breaker = new AgentCircuitBreaker();
+        if (contentEditStatus) controller.enqueue(encoder.encode(sse({ type: "status", message: contentEditStatus })));
         let breakerGuidance = null;
         let infraFailure = null;
         const turnContextFor = (path) => [recovery.summarize(path), breakerGuidance, appMapRepairBlock].filter(Boolean).join("\n\n");
@@ -180008,6 +180189,11 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   );
                   smallChunk = null;
                 }
+              }
+              const salvaged = contentEdit ? [...contentDet?.ops ?? [], ...salvageCompleteOps(firstCollected.args)] : [];
+              if (!smallChunk && salvaged.length > 0) {
+                controller.enqueue(encoder.encode(sse({ type: "status", message: `Content edit: kept ${salvaged.length} complete change(s) from the answer` })));
+                smallChunk = { parsed: { ops: salvaged }, summary: "" };
               }
               if (smallChunk) {
                 payload = smallChunk;
@@ -180506,12 +180692,16 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
           });
           nextFiles = ensureRenderableShell(nextFiles, detectedWebSubtype).files;
         } else {
-          if (contentEdit && Array.isArray(parsed.ops) && parsed.ops.length > 0) {
-            const patched2 = updatesToReplaceOps(parsed.ops, currentFiles);
-            if (patched2.converted.length > 0 || patched2.ops.length !== parsed.ops.length) {
-              console.info(`[content-edit] whole-file writes turned into patches: ${patched2.converted.join(", ") || "(no-op writes dropped)"}`);
-              parsed.ops = patched2.ops;
+          if (contentEdit) {
+            const modelOps = Array.isArray(parsed.ops) ? parsed.ops : [];
+            const patched2 = updatesToReplaceOps(modelOps, currentFiles);
+            if (patched2.converted.length > 0) {
+              console.info(`[content-edit] whole-file writes turned into patches: ${patched2.converted.join(", ")}`);
             }
+            const merged = mergeContentOps(contentDet?.ops ?? [], patched2.ops, currentFiles);
+            if (merged.dropped) console.info(`[content-edit] dropped ${merged.dropped} op(s) already covered or not matching`);
+            parsed.ops = merged.ops;
+            controller.enqueue(encoder.encode(sse({ type: "status", message: `Content edit: applying ${merged.ops.length} change(s)` })));
           }
           if (!Array.isArray(parsed.ops) || parsed.ops.length === 0) {
             console.warn(

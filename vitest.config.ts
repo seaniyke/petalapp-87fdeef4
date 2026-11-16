@@ -136,6 +136,7 @@ export default defineConfig({
       "src/server/__tests__/web-intel.test.ts",
       "src/server/__tests__/section-expansion.test.ts",
       "src/server/__tests__/edit-honest-failure.test.ts",
+      "src/server/__tests__/content-edit-partner.test.ts",
       "src/server/__tests__/test-repair.test.ts",
       "src/server/__tests__/readiness.test.ts",
       "src/server/__tests__/test-safety.test.ts",

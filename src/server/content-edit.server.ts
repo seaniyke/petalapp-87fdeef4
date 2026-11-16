@@ -15,8 +15,6 @@
  */
 import type { FileOp, ProjectFile } from "./generate.server";
 
-const DESIGN_RE =
-  /\b(design|redesign|re-?style|restyle|theme|re-?theme|colou?rs?|palette|font|fonts|typography|layout|look(?:\s+and\s+feel)?|style|styling|responsive|mobile[-\s]?friendly|spacing|padding|margin|animations?|dark\s+mode|light\s+mode|background|gradient|shadow)\b/i;
 const NEW_SURFACE_RE =
   /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(pages?|screens?|routes?|dashboard)\b|\b(database|login|log in|sign ?up|sign ?in|auth|payments?|checkout|api|backend)\b/i;
 const CONTENT_VERB_RE = /\b(remove|delete|drop|take\s+out|rename|change|replace|update|swap|add|show|display|list|set|correct|fix)\b/i;
@@ -25,10 +23,7 @@ const CONTENT_TARGET_RE =
 
 /** True for an edit that only changes content (items, prices, names, contacts). */
 export function isContentOnlyEdit(prompt: string): boolean {
-  const text = (prompt ?? "").slice(0, 4000);
-  if (!text.trim()) return false;
-  if (DESIGN_RE.test(text) || NEW_SURFACE_RE.test(text)) return false;
-  return CONTENT_VERB_RE.test(text) && CONTENT_TARGET_RE.test(text);
+  return isContentOnlyChange(prompt);
 }
 
 const PRICE_RE = /[₦$€£]\s?\d|\b(price[sd]?|pricing|cost|NGN|naira)\b/i;
@@ -87,6 +82,7 @@ export interface ContentEditPlan {
 export function planContentEdit(prompt: string, files: ProjectFile[], maxFiles = 16): ContentEditPlan | null {
   if (!isContentOnlyEdit(prompt)) return null;
   const owned = files.filter((f) => SOURCE_RE.test(f.path) && !SCAFFOLD_RE.test(f.path) && f.path !== "package.json");
+  prompt = changeSection(prompt);
   const phrases = extractNamedPhrases(prompt);
   const brand = RENAME_BRAND_RE.test(prompt) ? currentBrandName(files) : null;
   const score = new Map<string, number>();
@@ -111,13 +107,13 @@ export function planContentEdit(prompt: string, files: ProjectFile[], maxFiles =
 }
 
 /** Prompt block for a content edit: patch in place, never re-send files. */
-export function contentEditAddendum(plan: ContentEditPlan): string {
+export function contentEditAddendum(plan: ContentEditPlan, alreadyDone: string[] = []): string {
   const lines = [
     "",
     "",
     "This is a CONTENT edit — change words, items, prices, names and contact details exactly where they already live.",
     "Rules for this turn:",
-    "1. For every EXISTING file, use `replace` ops that quote the exact lines to change (menu/service arrays, price fields, contact constants, names). Never re-send an existing file with `update`. Use `create` only for a genuinely new file.",
+    "1. Use ONLY `replace` ops that quote the exact lines to change (menu/service arrays, price fields, contact constants). NEVER use `update` on an existing file. Use `create` only for a genuinely new file.",
     "2. Do not add new sections, components or pages. Edit content where it already is.",
     "3. Removing an item means removing it from every file below that contains it (data arrays, cards, navigation, footer, page titles and descriptions).",
     "4. Handle every clause of the request. Keep each `replace` small — one per region.",
@@ -125,7 +121,8 @@ export function contentEditAddendum(plan: ContentEditPlan): string {
     `Files that hold this content: ${plan.paths.join(", ")}.`,
   ];
   if (plan.phrases.length) lines.push(`Named content to find: ${plan.phrases.map((p) => `"${p}"`).join(", ")}.`);
-  if (plan.brand) lines.push(`The current business name is "${plan.brand}" — rename every occurrence the request covers.`);
+  if (alreadyDone.length) lines.push(`ALREADY APPLIED automatically (do NOT emit ops for these; the files above still show the old text): ${alreadyDone.join("; ")}. Do only the remaining changes.`);
+  if (plan.brand && !alreadyDone.some((d) => d.startsWith("renamed"))) lines.push(`The current business name is "${plan.brand}" — rename every occurrence the request covers.`);
   return lines.join("\n");
 }
 
@@ -239,4 +236,203 @@ export function updatesToReplaceOps(ops: FileOp[], currentFiles: ProjectFile[]):
     }
   }
   return { ops: out, converted };
+}
+
+// ───────────────────── partner prompts: classify only the change ───────────
+
+/**
+ * Partner prompts carry standing context (build rules, business facts, "in
+ * the same style"). Only the text under a "# The change" heading decides the
+ * edit type; without that heading the whole prompt is used.
+ */
+export function changeSection(prompt: string): string {
+  const text = prompt ?? "";
+  const m = /^#{1,6}\s*the\s+change\b[^\n]*\n([\s\S]*?)(?=^#{1,6}\s|$(?![\s\S]))/im.exec(text);
+  return m ? m[1].trim() : text;
+}
+
+/** Design words count only when they are the thing being changed. */
+const DESIGN_CHANGE_RE = new RegExp(
+  String.raw`\b(redesign|re-?style|restyle|re-?theme)\b|\b(change|make|update|switch|use|new|different|darker|lighter|bigger|smaller|improve|modernize|modernise)\b[^.!?\n]{0,30}\b(design|theme|colou?rs?|palette|fonts?|typography|layout|look(?:\s+and\s+feel)?|style|styling|spacing|padding|margin|animations?|dark\s+mode|light\s+mode|background|gradient|shadow)\b`,
+  "i",
+);
+const KEEP_STYLE_RE = /\b(keep|same|existing|current|match(?:ing)?|in\s+the\s+same)\b[^.!?\n]{0,25}\b(style|design|look|theme|colou?rs?|fonts?|layout)\b/gi;
+
+export function isContentOnlyChange(prompt: string): boolean {
+  const text = changeSection(prompt).slice(0, 4000);
+  if (!text.trim()) return false;
+  const stripped = text.replace(KEEP_STYLE_RE, " ");
+  if (DESIGN_CHANGE_RE.test(stripped) || NEW_SURFACE_RE.test(stripped)) return false;
+  return CONTENT_VERB_RE.test(stripped) && CONTENT_TARGET_RE.test(stripped);
+}
+
+// ─────────────────── deterministic renames and removals ───────────────────
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** "rename … to NEW …, replacing "OLD"" / "rename "OLD" to "NEW"". */
+export function extractRename(prompt: string, brand: string | null): { from: string; to: string } | null {
+  const text = changeSection(prompt);
+  const q = `["“'‘]`, qe = `["”'’]`;
+  let m = new RegExp(`\\brename\\s+${q}([^"”'’\\n]{2,80})${qe}\\s+to\\s+${q}?([^"”\\n]{2,80}?)${qe}?(?=\\s+everywhere\\b|[,.;\\n]|$)`, "i").exec(text);
+  if (m) return { from: m[1].trim(), to: m[2].trim() };
+  m = /\brename\b[^.\n]{0,40}?\bto\s+["“]?(.{2,80}?)["”]?(?=\s+everywhere\b|\s*,|\.\s|\.$|;|\n|\s+replacing\b|$)/i.exec(text);
+  if (!m) return null;
+  const to = m[1].trim();
+  const om = /\b(?:replacing|instead\s+of|from)\s+(?:["“]([^"”\n]{2,80})["”]|[‘']([^’'\n]{2,80})[’'](?!\w))/i.exec(text);
+  const old = (om?.[1] ?? om?.[2])?.trim() ?? brand;
+  if (!old || old === to) return null;
+  return { from: old, to };
+}
+
+/** Items named after "remove/delete … from" (quoted or plain list). */
+export function extractRemovals(prompt: string): string[] {
+  const text = changeSection(prompt);
+  const out = new Set<string>();
+  for (const m of text.matchAll(/\b(?:remove|delete|drop|take\s+out)\s+(?:the\s+)?(.{2,160}?)(?=\s+(?:from|everywhere|across)\b|[.;\n]|$)/gi)) {
+    for (const part of m[1].split(/\s*(?:,|\band\b)\s*/i)) {
+      const p = part.trim().replace(/^["“'‘]|["”'’]$/g, "").replace(/^(?:the|a|an|our|my)\s+/i, "").trim();
+      if (p.length >= 3 && !/^(it|them|this|that|items?|section|page)$/i.test(p)) out.add(p);
+    }
+  }
+  return [...out];
+}
+
+/** Remove array entries (string or object) whose name is exactly `phrase`. */
+function removeEntry(content: string, phrase: string): string {
+  const lines = content.split("\n");
+  const lit = new RegExp(`["'\`]${escapeRe(phrase)}["'\`]`, "i");
+  for (let guard = 0; guard < 20; guard++) {
+    const idx = lines.findIndex((l) => lit.test(l));
+    if (idx < 0) break;
+    const line = lines[idx];
+    const t = line.trim();
+    let start = -1, end = -1;
+    if (new RegExp(`^["'\`]${escapeRe(phrase)}["'\`],?$`, "i").test(t) || /^\{[^{}]*\},?$/.test(t)) {
+      start = end = idx;
+    } else {
+      // enclosing multi-line object literal { … } of at most 20 lines
+      let depth = 0;
+      for (let i = idx; i >= Math.max(0, idx - 20); i--) {
+        const s = lines[i];
+        depth += (s.match(/\}/g) ?? []).length - (s.match(/\{/g) ?? []).length;
+        if (i !== idx && depth < 0 && /^\s*\{\s*$/.test(s)) { start = i; break; }
+        if (depth < -1) break;
+      }
+      if (start >= 0) {
+        let d = 0;
+        for (let i = start; i < Math.min(lines.length, start + 25); i++) {
+          d += (lines[i].match(/\{/g) ?? []).length - (lines[i].match(/\}/g) ?? []).length;
+          if (d === 0) { if (/^\s*\},?\s*$/.test(lines[i])) end = i; break; }
+        }
+      }
+    }
+    if (start < 0 || end < 0) break; // not a removable entry: leave it to the model
+    lines.splice(start, end - start + 1);
+  }
+  return lines.join("\n");
+}
+
+export interface DeterministicContent {
+  ops: Array<{ op: "replace"; path: string; search: string; replace: string }>;
+  done: string[];
+  /** Removal phrases that still appear somewhere after the deterministic pass. */
+  leftover: string[];
+}
+
+/**
+ * Renames and removals of literal text, applied as exact verified replace ops
+ * across the content files — no model rewrite needed.
+ */
+export function deterministicContentOps(prompt: string, files: ProjectFile[], plan: ContentEditPlan): DeterministicContent {
+  const rename = extractRename(prompt, plan.brand ?? currentBrandName(files));
+  const removals = extractRemovals(prompt);
+  const owned = files.filter((f) => SOURCE_RE.test(f.path) && !SCAFFOLD_RE.test(f.path) && f.path !== "package.json");
+  const ops: DeterministicContent["ops"] = [];
+  const done = new Set<string>();
+  const leftover = new Set<string>();
+  for (const f of owned) {
+    let next = f.content;
+    if (rename && next.includes(rename.from)) {
+      next = next.split(rename.from).join(rename.to);
+      done.add(`renamed "${rename.from}" to "${rename.to}"`);
+    }
+    for (const r of removals) {
+      const after = removeEntry(next, r);
+      if (after !== next) done.add(`removed "${r}"`);
+      next = after;
+      if (next.toLowerCase().includes(r.toLowerCase())) leftover.add(r);
+    }
+    if (next === f.content) continue;
+    const replaces = diffToReplaceOps(f.path, f.content, next) ?? spanReplace(f.path, f.content, next);
+    if (replaces) ops.push(...replaces);
+  }
+  return { ops, done: [...done], leftover: [...leftover] };
+}
+
+/** Apply replace ops in order; returns the ops that still matched. */
+export function mergeContentOps(det: FileOp[], model: FileOp[], currentFiles: ProjectFile[]): { ops: FileOp[]; dropped: number } {
+  const state = new Map(currentFiles.map((f) => [f.path, f.content]));
+  const out: FileOp[] = [];
+  let dropped = 0;
+  for (const op of [...det, ...model]) {
+    if (op.op === "replace") {
+      const cur = state.get(op.path);
+      if (cur == null || !cur.includes(op.search)) { dropped++; continue; }
+      state.set(op.path, cur.replace(op.search, op.replace));
+    } else if ((op.op === "update" || op.op === "create") && "content" in op) {
+      state.set(op.path, op.content);
+    }
+    out.push(op);
+  }
+  return { ops: out, dropped };
+}
+
+/** Every complete replace/create op already present in a (possibly cut-off) answer. */
+export function salvageCompleteOps(rawArgs: string): FileOp[] {
+  const at = rawArgs.indexOf('"ops"');
+  if (at < 0) return [];
+  const open = rawArgs.indexOf("[", at);
+  if (open < 0) return [];
+  const out: FileOp[] = [];
+  let depth = 0, start = -1, inStr = false, esc = false;
+  for (let i = open + 1; i < rawArgs.length; i++) {
+    const c = rawArgs[i];
+    if (inStr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') inStr = false; continue; }
+    if (c === '"') { inStr = true; continue; }
+    if (c === "{") { if (depth === 0) start = i; depth++; }
+    else if (c === "}") {
+      depth--;
+      if (depth === 0 && start >= 0) {
+        try {
+          const op = JSON.parse(rawArgs.slice(start, i + 1));
+          if (op && (op.op === "replace" && typeof op.search === "string" && typeof op.replace === "string" || op.op === "create" && typeof op.content === "string") && typeof op.path === "string") out.push(op);
+        } catch { /* incomplete */ }
+        start = -1;
+      }
+    } else if (c === "]" && depth === 0) break;
+  }
+  return out;
+}
+
+/** One replace covering the changed line span, widened until its search text is unique. */
+function spanReplace(path: string, prev: string, next: string): Array<{ op: "replace"; path: string; search: string; replace: string }> | null {
+  const a = prev.split("\n"), b = next.split("\n");
+  let pre = 0;
+  while (pre < a.length && pre < b.length && a[pre] === b[pre]) pre++;
+  let suf = 0;
+  while (suf < a.length - pre && suf < b.length - pre && a[a.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
+  for (let pad = 0; pad <= a.length; pad++) {
+    const lo = Math.max(0, pre - pad), hiA = Math.min(a.length, a.length - suf + pad), hiB = b.length - (a.length - hiA);
+    const search = a.slice(lo, hiA).join("\n");
+    if (!search) continue;
+    if (prev.indexOf(search) !== prev.lastIndexOf(search)) continue;
+    const replace = b.slice(lo, hiB).join("\n");
+    const at = prev.indexOf(search);
+    if (prev.slice(0, at) + replace + prev.slice(at + search.length) !== next) return null;
+    return [{ op: "replace", path, search, replace }];
+  }
+  return null;
 }

@@ -32,7 +32,7 @@ import { pickPinnedPaths } from "@/server/intent-targets.server";
 import { resolveEditIntent } from "@/server/edit-intent.server";
 import { buildSectionExpansionPatch } from "@/server/section-expansion.server";
 import { conversationalFallbackEvents, fallbackMayApply, noSafeEditOutcome } from "@/server/edit-fallback.server";
-import { contentEditAddendum, planContentEdit, updatesToReplaceOps } from "@/server/content-edit.server";
+import { contentEditAddendum, deterministicContentOps, mergeContentOps, planContentEdit, salvageCompleteOps, updatesToReplaceOps } from "@/server/content-edit.server";
 
 import {
   runCritic,
@@ -3072,9 +3072,13 @@ async function handleGenerateRequestCore(
   // hold that content — never "every page", even when the request says
   // "from every page". Sending the whole project made medium edits overflow.
   const contentEdit = isInitial ? null : planContentEdit(lastUserContent, editablePromptFiles);
+  const contentDet = contentEdit ? deterministicContentOps(lastUserContent, editablePromptFiles, contentEdit) : null;
+  const contentEditStatus = contentEdit
+    ? `Content edit: on — ${contentEdit.paths.length} file(s) sent, ${contentDet?.ops.length ?? 0} exact change(s) applied directly${contentDet?.done.length ? ` (${contentDet.done.join("; ")})` : ""}`
+    : isInitial ? null : "Content edit: off";
   if (contentEdit) {
     console.info(
-      `[content-edit] ${contentEdit.paths.length} file(s) hold the content: ${contentEdit.paths.slice(0, 8).join(", ")}`,
+      `[content-edit] ${contentEdit.paths.length} file(s) hold the content: ${contentEdit.paths.slice(0, 8).join(", ")}; deterministic ops=${contentDet?.ops.length ?? 0}`,
     );
   }
   let pinnedPaths = contentEdit
@@ -3449,7 +3453,7 @@ async function handleGenerateRequestCore(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`,
   );
   const crossCuttingAddendum = contentEdit
-    ? contentEditAddendum(contentEdit)
+    ? contentEditAddendum(contentEdit, contentDet?.done ?? [])
     : isCrossCutting
     ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.\n\nCompleteness contract for this turn — a partial answer counts as a failure:\n1. If the ask mentions the design/look/theme/palette: rewrite the design tokens in \`src/styles.css\` (colours, fonts, radii, surfaces) AND restyle EVERY page and app-level component listed above so nothing is left on the old look. Touching one or two files is not a redesign.\n2. Handle EVERY separate clause in the user's message (they are often joined by "and"). If they also asked for a new element such as a footer, header, nav or section, create that component and render it on every page it belongs on in the SAME turn.\n3. In your recap, list one bullet per file you changed so the user can see the full sweep.`
 
@@ -4485,6 +4489,7 @@ async function handleGenerateRequestCore(
         // whether the agent is making useful progress at all. A fresh one per
         // turn — it never survives into an unrelated request.
         const breaker = new AgentCircuitBreaker();
+        if (contentEditStatus) controller.enqueue(encoder.encode(sse({ type: "status", message: contentEditStatus })));
         /** Guidance the breaker wants the next repair attempt to see. */
         let breakerGuidance: string | null = null;
         // Set when an AI-backed recovery step failed because the PROVIDER
@@ -4699,6 +4704,15 @@ async function handleGenerateRequestCore(
                 );
                 smallChunk = null;
               }
+            }
+            // Content edits: keep every complete op already in the cut-off
+            // answer, plus the exact renames/removals, instead of failing.
+            const salvaged = contentEdit
+              ? [...(contentDet?.ops ?? []), ...salvageCompleteOps(firstCollected.args)]
+              : [];
+            if (!smallChunk && salvaged.length > 0) {
+              controller.enqueue(encoder.encode(sse({ type: "status", message: `Content edit: kept ${salvaged.length} complete change(s) from the answer` })));
+              smallChunk = { parsed: { ops: salvaged }, summary: "" } as unknown as ParsedProjectPayload;
             }
             if (smallChunk) {
               payload = smallChunk;
@@ -5331,12 +5345,16 @@ async function handleGenerateRequestCore(
           // got filtered out below.
           // Content edits patch in place: a whole-file rewrite of an existing
           // file becomes the exact replace ops it amounts to (verified).
-          if (contentEdit && Array.isArray(parsed.ops) && parsed.ops.length > 0) {
-            const patched = updatesToReplaceOps(parsed.ops as FileOp[], currentFiles);
-            if (patched.converted.length > 0 || patched.ops.length !== parsed.ops.length) {
-              console.info(`[content-edit] whole-file writes turned into patches: ${patched.converted.join(", ") || "(no-op writes dropped)"}`);
-              parsed.ops = patched.ops as unknown as ParsedProjectPayload["parsed"]["ops"];
+          if (contentEdit) {
+            const modelOps = Array.isArray(parsed.ops) ? (parsed.ops as FileOp[]) : [];
+            const patched = updatesToReplaceOps(modelOps, currentFiles);
+            if (patched.converted.length > 0) {
+              console.info(`[content-edit] whole-file writes turned into patches: ${patched.converted.join(", ")}`);
             }
+            const merged = mergeContentOps((contentDet?.ops ?? []) as FileOp[], patched.ops, currentFiles);
+            if (merged.dropped) console.info(`[content-edit] dropped ${merged.dropped} op(s) already covered or not matching`);
+            parsed.ops = merged.ops as unknown as ParsedProjectPayload["parsed"]["ops"];
+            controller.enqueue(encoder.encode(sse({ type: "status", message: `Content edit: applying ${merged.ops.length} change(s)` })));
           }
           if (!Array.isArray(parsed.ops) || parsed.ops.length === 0) {
             console.warn(
