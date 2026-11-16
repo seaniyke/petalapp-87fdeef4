@@ -95,3 +95,10 @@
 - [x] Six layout archetypes chosen per project and rendered into the design direction; manual's fixed Hero→Features→Testimonials→Pricing→FAQ order neutralised
 - [x] Custard API + MCP: optional `style: { layout, look }` on first build
 - [x] Tests, full suite, agent-core rebuild + version bump
+
+## Custard: honest edit failures (16 Nov)
+- [x] Section-expansion fallback only for a plain "add sections" ask; Mama Kay request never creates MoreSections
+- [x] Unfinishable edits end failed / no_safe_edit, no revision, no charge
+- [x] Content edits send only the files holding the content and patch in place
+- [x] wa.me / tel / mailto / own domains are not reference sites
+- [ ] Re-run Mama Kay's request live — needs Petal published and build server updated (owner action)

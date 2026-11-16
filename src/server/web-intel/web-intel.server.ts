@@ -57,22 +57,64 @@ const BARE_DOMAIN_RE = new RegExp(
 const MIGRATE_RE =
   /\b(rebuild|recreate|migrate|clone|copy|redo|remake|move)\b[^.]{0,60}\b(my|our|existing|current|this)\b[^.]{0,30}\b(site|website|web ?page|homepage)\b|\b(based on|from|using)\b[^.]{0,40}\b(my|our|existing|current)\b[^.]{0,20}\b(site|website)\b/i;
 
-/** Deterministic: runs only when the user supplied a URL. No AI call. */
-export function detectWebIntelNeed(message: string): { need: WebIntelNeed; url: string | null } {
-  const m = message.match(URL_RE);
-  let url: string | null = null;
-  if (m) {
-    url = m[0].replace(/[.,;:!?]+$/, "");
-  } else {
-    // No scheme given — accept a bare domain and normalise it to https://.
-    const b = message.match(BARE_DOMAIN_RE);
-    if (b) {
-      const whole = b[0].replace(/^[\s(<"'`]+/, "").replace(/[.,;:!?]+$/, "");
-      url = `https://${whole}`;
-    }
-  }
+/**
+ * Links that are CONTENT, never a reference site: chat links (wa.me,
+ * WhatsApp, Telegram, Messenger) and the project's own addresses (preview,
+ * published and custom domains). `tel:` and `mailto:` never match URL_RE.
+ */
+const CONTENT_LINK_HOST_RE =
+  /(^|\.)(wa\.me|whatsapp\.com|t\.me|m\.me)$/i;
+const OWN_PLATFORM_HOST_RE =
+  /(^|\.)(custardai\.dev|buildwithpetal\.com|lovable\.app|lovableproject\.com|kimble\.cloud)$/i;
+
+/** Wording that asks to use a link as a reference (use, copy, match, migrate…). */
+const REFERENCE_RE =
+  /\b(like|similar\s+to|inspired\s+by|inspiration|based\s+on|use|using|copy|clone|match|mirror|mimic|replicate|reference|style\s+of|look\s+(?:at|of)|see|check\s+out|from|migrate|rebuild|recreate|redo|remake|import|scrape|read|follow)\b/i;
+
+const REFERENCE_AFTER_RE = /\b(like|style|look|vibe|similar|copy|match|inspiration|reference)\b/i;
+
+const URL_RE_G = new RegExp(URL_RE.source, "gi");
+const BARE_DOMAIN_RE_G = new RegExp(BARE_DOMAIN_RE.source, "gi");
+
+function hostOf(url: string): string {
+  try { return new URL(url).hostname.toLowerCase().replace(/^www\./, ""); } catch { return ""; }
+}
+
+export interface DetectOptions {
+  /** The project's own hosts (published, preview, custom domains). */
+  ownHosts?: string[];
+}
+
+/** Deterministic: runs only when the user supplied a reference URL. No AI call. */
+export function detectWebIntelNeed(message: string, opts: DetectOptions = {}): { need: WebIntelNeed; url: string | null } {
+  const own = new Set((opts.ownHosts ?? []).map((h) => h.toLowerCase().replace(/^www\./, "")).filter(Boolean));
+  const isContentLink = (url: string) => {
+    const host = hostOf(url);
+    return !host || CONTENT_LINK_HOST_RE.test(host) || OWN_PLATFORM_HOST_RE.test(host) || own.has(host);
+  };
+  const schemed = [...message.matchAll(URL_RE_G)].map((m) => m[0].replace(/[.,;:!?]+$/, ""));
+  // No scheme given — accept a bare domain and normalise it to https://.
+  const bare = [...message.matchAll(BARE_DOMAIN_RE_G)].map(
+    (b) => `https://${b[0].replace(/^[\s(<"'`]+/, "").replace(/[.,;:!?]+$/, "")}`,
+  );
+  const url = [...schemed, ...bare].find((u) => !isContentLink(u)) ?? null;
   if (!url) return { need: "none", url: null };
-  return { need: MIGRATE_RE.test(message) ? "required" : "optional", url };
+  if (MIGRATE_RE.test(message)) return { need: "required", url };
+  // A reference only when the words around the link ask to use it (use,
+  // copy, match, like, migrate…), or the message is little more than the
+  // link itself. A link mentioned as content ("show our Instagram …") is not.
+  const rest = message.replace(URL_RE_G, " ").replace(BARE_DOMAIN_RE_G, " ");
+  const otherWords = rest.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length;
+  if (otherWords <= 2) return { need: "optional", url };
+  const lower = message.toLowerCase();
+  let at = lower.indexOf(url.toLowerCase());
+  if (at < 0) at = lower.indexOf(url.replace(/^https:\/\//, "").toLowerCase());
+  if (at >= 0) {
+    const before = message.slice(Math.max(0, at - 60), at);
+    const after = message.slice(at + url.length, at + url.length + 50);
+    if (REFERENCE_RE.test(before) || REFERENCE_AFTER_RE.test(after)) return { need: "optional", url };
+  }
+  return { need: "none", url: null };
 }
 
 
@@ -279,6 +321,8 @@ export function __resetWebIntelForTests() { cache.clear(); inFlight = 0; }
 export interface GatherArgs {
   message: string;
   signal: AbortSignal;
+  /** The project's own hosts; links to them are never reference sites. */
+  ownHosts?: string[];
   turnId?: string | null;
   projectId?: string | null;
   fetchImpl?: Fetch;
@@ -291,7 +335,7 @@ function log(rec: Record<string, unknown>) {
 }
 
 export async function gatherWebIntel(args: GatherArgs): Promise<WebIntelOutcome> {
-  const { need, url } = detectWebIntelNeed(args.message);
+  const { need, url } = detectWebIntelNeed(args.message, { ownHosts: args.ownHosts });
   if (need === "none" || !url) return { status: "skipped", need: "none" };
   const L = webIntelLimits();
   const started = Date.now();

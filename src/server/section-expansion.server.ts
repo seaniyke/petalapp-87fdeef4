@@ -20,6 +20,7 @@
  */
 
 import type { ProjectFile } from "./generate.server";
+import { fallbackMayApply } from "./edit-fallback.server";
 
 export interface SectionExpansionPatch {
   plan: string;
@@ -31,14 +32,31 @@ export interface SectionExpansionPatch {
   >;
 }
 
-const ADD_RE = /\b(add|more|extra|additional|expand|extend|new|another|fill\s+out|flesh\s+out|richer)\b/i;
-const SURFACE_RE =
-  /\b(sections?|blocks?|content|contents|landing|home\s?page|homepage|main\s+page|front\s+page|page|site|website|web\s?site|app)\b/i;
+// The add word must directly govern the section word ("add more sections",
+// "add another section", "expand the landing page"). Two words anywhere in a
+// long message ("Never add a new extra section") never trigger it.
+const GENERIC_FILLER = "(?:a|an|the|some|few|couple|of|more|extra|additional|another|new|other|several|two|three|four|2|3|4|useful|relevant|good)";
+const ADD_SECTIONS_PHRASE_RE = new RegExp(
+  `\\b(?:add|adding|include|more|extra|additional|another)\\b(?:\\s+${GENERIC_FILLER})*\\s+(?:sections?|blocks?|content)\\b`,
+  "i",
+);
+const EXPAND_SURFACE_RE =
+  /\b(?:expand|extend|fill\s+out|flesh\s+out|enrich)\s+(?:the\s+|my\s+|our\s+|this\s+)?(?:landing\s+page|home\s?page|homepage|main\s+page|front\s+page|page|site|website|web\s?site|app)\b/i;
+const NEGATED_SECTIONS_RE =
+  /\b(?:never|don'?t|do\s+not|no|not|without|avoid|stop)\b[^.!?\n]{0,40}\b(?:sections?|blocks?)\b/i;
 
+/**
+ * True only for a short, explicit ask to add generic sections, with no other
+ * instruction (remove, change, rename, price, phone, email, address…). The
+ * patch this module builds adds generic sections and nothing else, so it may
+ * only stand in for a request that asked for exactly that.
+ */
 export function wantsMoreSections(prompt: string): boolean {
   if (!prompt) return false;
-  const text = prompt.slice(0, 2000);
-  return ADD_RE.test(text) && SURFACE_RE.test(text);
+  const text = prompt.trim();
+  if (!fallbackMayApply("section_expansion", text)) return false;
+  if (NEGATED_SECTIONS_RE.test(text)) return false;
+  return ADD_SECTIONS_PHRASE_RE.test(text) || EXPAND_SURFACE_RE.test(text);
 }
 
 const SCAFFOLD_RE = /^src\/(components\/(ui|blocks|examples|mobile)\/|integrations\/)/;
@@ -135,12 +153,6 @@ const steps = [
   { step: "03", title: "Book in a minute", body: "Instant confirmation and everything in your inbox." },
 ];
 
-const testimonials = [
-  { quote: "Booked in under five minutes and the whole trip just worked.", name: "Amara O." },
-  { quote: "The clearest pricing I've seen anywhere. No surprises at all.", name: "Daniel K." },
-  { quote: "Support replied in minutes when my plans changed. Rare these days.", name: "Priya S." },
-];
-
 const faqs = [
   { q: "How soon is my booking confirmed?", a: "Instantly — you'll get a confirmation the moment you finish checkout." },
   { q: "Can I change my dates later?", a: "Yes. Most bookings can be moved or cancelled free up to 24 hours before." },
@@ -182,20 +194,6 @@ export default function ${component}() {
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2 className="max-w-2xl text-3xl font-bold md:text-5xl">Loved by people who travel often</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {testimonials.map((item) => (
-              <figure key={item.name} className="rounded-2xl border border-border bg-card p-6">
-                <blockquote className="text-lg">"{item.quote}"</blockquote>
-                <figcaption className="mt-4 text-sm font-medium text-muted-foreground">{item.name}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="border-t border-border py-20">
         <div className="mx-auto max-w-3xl px-4">
           <h2 className="text-3xl font-bold md:text-5xl">Questions, answered</h2>
@@ -216,7 +214,7 @@ export default function ${component}() {
 }
 
 /**
- * Returns a ready-to-apply patch that adds four new sections to the app's
+ * Returns a ready-to-apply patch that adds three new sections to the app's
  * main page, or null when the intent doesn't apply / no safe anchor exists.
  */
 export function buildSectionExpansionPatch(args: {
@@ -237,12 +235,12 @@ export function buildSectionExpansionPatch(args: {
   const call = `${render.indent}<${component} />\n`;
 
   const summary =
-    "I added four new sections to the page — a features block, a how-it-works walkthrough, testimonials, and an FAQ — matching the existing design.";
+    "I added three new sections to the page — a features block, a how-it-works walkthrough and an FAQ — matching the existing design.";
 
   return {
     plan: "I’ll add a set of new sections to the main page in their own component, so the existing layout stays untouched.",
     summary,
-    recap: `- \`${path}\` — new features, how-it-works, testimonials and FAQ sections\n- \`${target.path}\` — rendered the new sections on the page`,
+    recap: `- \`${path}\` — new features, how-it-works and FAQ sections\n- \`${target.path}\` — rendered the new sections on the page`,
     ops: [
       { op: "create", path, content: sectionsFile(component) },
       {

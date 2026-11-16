@@ -31,6 +31,8 @@ import {
 import { pickPinnedPaths } from "@/server/intent-targets.server";
 import { resolveEditIntent } from "@/server/edit-intent.server";
 import { buildSectionExpansionPatch } from "@/server/section-expansion.server";
+import { conversationalFallbackEvents, fallbackMayApply, noSafeEditOutcome } from "@/server/edit-fallback.server";
+import { contentEditAddendum, planContentEdit, updatesToReplaceOps } from "@/server/content-edit.server";
 
 import {
   runCritic,
@@ -1432,33 +1434,11 @@ function emitConversationalFallback(
     streamSummary?: boolean;
   },
 ): void {
-  if (args.streamSummary !== false) {
-    controller.enqueue(
-      encoder.encode(sse({ type: "summary_delta", delta: args.summary })),
-    );
+  // One shape for every turn that changes nothing: summary, the
+  // authoritative turn_outcome, and a result with no credits and no changes.
+  for (const event of conversationalFallbackEvents(args)) {
+    controller.enqueue(encoder.encode(sse(event as unknown as StreamEvent)));
   }
-  emitTurnOutcome(controller, encoder, {
-    outcome: args.outcome ?? "answered",
-    changedPaths: [],
-    blockedPaths: args.blockedPaths,
-    reason: args.reason,
-  });
-  controller.enqueue(
-    encoder.encode(
-      sse({
-        type: "result",
-        files: args.files,
-        summary: args.summary,
-        plan: undefined,
-        recap: undefined,
-        creditsCharged: 0,
-        noFileChanges: true,
-        ...(args.suggestions && args.suggestions.length > 0
-          ? { suggestions: args.suggestions }
-          : {}),
-      }),
-    ),
-  );
 }
 
 function emitDeterministicRepair(
@@ -1790,11 +1770,19 @@ function deterministicPatchFallback(args: {
   currentFiles: ProjectFile[];
   latestUserContent: string;
 }): ParsedProjectPayload | null {
-  const brandMark = deterministicBrandMarkFallback(args);
-  if (brandMark) return brandMark;
+  // A fallback may only apply a patch that does what was asked: a short,
+  // single-purpose request with no other instruction. Anything else fails
+  // honestly upstream instead of shipping a different change as "applied".
+  const prompt = args.latestUserContent;
+  if (fallbackMayApply("brand_mark", prompt)) {
+    const brandMark = deterministicBrandMarkFallback(args);
+    if (brandMark) return brandMark;
+  }
 
-  const heroBackground = deterministicHeroBackgroundFallback(args);
-  if (heroBackground) return heroBackground;
+  if (fallbackMayApply("hero_background", prompt)) {
+    const heroBackground = deterministicHeroBackgroundFallback(args);
+    if (heroBackground) return heroBackground;
+  }
 
   // "Add more sections to the website" and friends. Handled by a dedicated
   // module so the intent lands on any generated app shape, not just the
@@ -3080,8 +3068,21 @@ async function handleGenerateRequestCore(
   }
 
   const isCrossCutting = turnClassification.crossCutting;
-  let pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
-  if (isCrossCutting) {
+  // Content edits (items, prices, names, contact details) patch the files that
+  // hold that content — never "every page", even when the request says
+  // "from every page". Sending the whole project made medium edits overflow.
+  const contentEdit = isInitial ? null : planContentEdit(lastUserContent, editablePromptFiles);
+  if (contentEdit) {
+    console.info(
+      `[content-edit] ${contentEdit.paths.length} file(s) hold the content: ${contentEdit.paths.slice(0, 8).join(", ")}`,
+    );
+  }
+  let pinnedPaths = contentEdit
+    ? [...contentEdit.paths]
+    : isCrossCutting
+      ? pickPinnedPaths(editablePromptFiles)
+      : [];
+  if (isCrossCutting && !contentEdit) {
     console.info(
       `[intent-targets] cross-cutting ask detected — pinning ${pinnedPaths.length} file(s) into prompt context`,
     );
@@ -3407,7 +3408,16 @@ async function handleGenerateRequestCore(
     !isCrossCutting &&
     resolvedTargetPaths.length > 0 &&
     (editClassification?.scope === "micro" || editClassification?.scope === "targeted");
-  const contextFiles = strictScope
+  const contextFiles = contentEdit && !strictScope
+    ? (() => {
+        // Only the files the change touches (plus anything the user is
+        // looking at or explicitly targeted).
+        const keep = new Set<string>([...contentEdit.paths, ...pinnedPaths, ...resolvedTargetPaths]);
+        const narrowed = editablePromptFiles.filter((f) => keep.has(f.path));
+        console.info(`[content-edit] sending ${narrowed.length} of ${editablePromptFiles.length} file(s)`);
+        return narrowed.length > 0 ? narrowed : editablePromptFiles;
+      })()
+    : strictScope
     ? (() => {
         const keep = new Set<string>(resolvedTargetPaths);
         if (editClassification?.scope === "targeted") {
@@ -3438,7 +3448,9 @@ async function handleGenerateRequestCore(
   console.info(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`,
   );
-  const crossCuttingAddendum = isCrossCutting
+  const crossCuttingAddendum = contentEdit
+    ? contentEditAddendum(contentEdit)
+    : isCrossCutting
     ? `\n\nThis is a cross-cutting request — the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.\n\nCompleteness contract for this turn — a partial answer counts as a failure:\n1. If the ask mentions the design/look/theme/palette: rewrite the design tokens in \`src/styles.css\` (colours, fonts, radii, surfaces) AND restyle EVERY page and app-level component listed above so nothing is left on the old look. Touching one or two files is not a redesign.\n2. Handle EVERY separate clause in the user's message (they are often joined by "and"). If they also asked for a new element such as a footer, header, nav or section, create that component and render it on every page it belongs on in the SAME turn.\n3. In your recap, list one bullet per file you changed so the user can see the full sweep.`
 
     : (() => {
@@ -4105,8 +4117,22 @@ async function handleGenerateRequestCore(
   // URL; its sole output is one bounded system block placed before the
   // latest user message. It never writes files or calls a model.
   stage("pre_web_intel");
+  // Links to the project's own addresses are content, never a site to copy.
+  let ownHosts: string[] = [];
+  if (body.projectId && !isInitial && /https?:\/\/|\.[a-z]{2,}\b/i.test(lastUserContent)) {
+    try {
+      const { data: domainRows } = await supabaseAdmin
+        .from("project_domains")
+        .select("hostname")
+        .eq("project_id", body.projectId);
+      ownHosts = (domainRows ?? []).map((r) => String(r.hostname ?? "")).filter(Boolean);
+    } catch {
+      ownHosts = [];
+    }
+  }
   const webIntel = await gatherWebIntel({
     message: lastUserContent,
+    ownHosts,
     signal: abortSignal,
     turnId: logicalTurnId,
     projectId: body.projectId ?? null,
@@ -4699,11 +4725,11 @@ async function handleGenerateRequestCore(
               "[generate] both attempts produced no usable output, falling back conversationally:",
               retryErr instanceof Error ? retryErr.message : String(retryErr),
             );
+            // Undone work is never "answered" or "applied": the turn fails,
+            // nothing is saved as a new version and nothing is charged.
             emitConversationalFallback(controller, encoder, {
               files: currentFiles,
-              summary: "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
-              outcome: "answered",
-              reason: "no_safe_edit",
+              ...noSafeEditOutcome(),
             });
             return;
             }
@@ -5303,6 +5329,15 @@ async function handleGenerateRequestCore(
           // instead of throwing a red error card. Same treatment when
           // every op the model proposed touched a protected path and
           // got filtered out below.
+          // Content edits patch in place: a whole-file rewrite of an existing
+          // file becomes the exact replace ops it amounts to (verified).
+          if (contentEdit && Array.isArray(parsed.ops) && parsed.ops.length > 0) {
+            const patched = updatesToReplaceOps(parsed.ops as FileOp[], currentFiles);
+            if (patched.converted.length > 0 || patched.ops.length !== parsed.ops.length) {
+              console.info(`[content-edit] whole-file writes turned into patches: ${patched.converted.join(", ") || "(no-op writes dropped)"}`);
+              parsed.ops = patched.ops as unknown as ParsedProjectPayload["parsed"]["ops"];
+            }
+          }
           if (!Array.isArray(parsed.ops) || parsed.ops.length === 0) {
             console.warn(
               `[generate] patch_files returned ${Array.isArray(parsed.ops) ? "empty" : "missing"} ops — replying conversationally`,

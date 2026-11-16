@@ -69829,6 +69829,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -139987,6 +139988,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141074,6 +141076,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141238,6 +141241,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141281,6 +141285,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141502,6 +141507,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -143830,6 +143836,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145034,6 +145041,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146164,6 +146172,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -157501,12 +157510,69 @@ function renderEditTargetBlock(args) {
 
 // src/server/section-expansion.server.ts
 init_define_import_meta_env();
-var ADD_RE = /\b(add|more|extra|additional|expand|extend|new|another|fill\s+out|flesh\s+out|richer)\b/i;
-var SURFACE_RE = /\b(sections?|blocks?|content|contents|landing|home\s?page|homepage|main\s+page|front\s+page|page|site|website|web\s?site|app)\b/i;
+
+// src/server/edit-fallback.server.ts
+init_define_import_meta_env();
+var CONTENT_SIGNAL_RE = /\b(remove|delete|drop|rename|price[sd]?|pricing|cost|phone|whatsapp|e-?mail|address|hours|menu|testimonials?|reviews?)\b|[₦$€£]\s?\d|\+?\d[\d\s()-]{7,}\d|https?:\/\/|\bwa\.me\b|\btel:|\bmailto:|@/i;
+var EDIT_VERB_RE = /\b(change|replace|swap|edit|update|move|fix|rewrite)\b/i;
+function isShortSingleAsk(prompt, maxChars = 240) {
+  const text = (prompt ?? "").trim();
+  if (!text || text.length > maxChars) return false;
+  const sentences = text.split(/[.!?]+(?:\s+|$)|\n+/).filter((s) => s.trim().length > 0);
+  return sentences.length <= 2;
+}
+function hasOtherInstructions(prompt, opts = {}) {
+  const text = prompt ?? "";
+  if (CONTENT_SIGNAL_RE.test(text)) return true;
+  if (!opts.allowEditVerbs && EDIT_VERB_RE.test(text)) return true;
+  return false;
+}
+function fallbackMayApply(kind, prompt) {
+  if (!isShortSingleAsk(prompt)) return false;
+  return !hasOtherInstructions(prompt, { allowEditVerbs: kind === "hero_background" });
+}
+var NO_SAFE_EDIT_SUMMARY = "I couldn't finish that change, so nothing on your site was changed and you weren't charged. Send it again, or split it into smaller requests.";
+function noSafeEditOutcome() {
+  return { outcome: "failed", reason: "no_safe_edit", summary: NO_SAFE_EDIT_SUMMARY };
+}
+function conversationalFallbackEvents(args) {
+  const events = [];
+  if (args.streamSummary !== false) events.push({ type: "summary_delta", delta: args.summary });
+  const blocked = args.blockedPaths && args.blockedPaths.length ? { blockedPaths: Array.from(new Set(args.blockedPaths)).slice(0, 20) } : {};
+  events.push({
+    type: "turn_outcome",
+    outcome: args.outcome ?? "answered",
+    changedPaths: [],
+    ...blocked,
+    ...args.reason ? { reason: args.reason } : {}
+  });
+  events.push({
+    type: "result",
+    files: args.files,
+    summary: args.summary,
+    plan: void 0,
+    recap: void 0,
+    creditsCharged: 0,
+    noFileChanges: true,
+    ...args.suggestions && args.suggestions.length > 0 ? { suggestions: args.suggestions } : {}
+  });
+  return events;
+}
+
+// src/server/section-expansion.server.ts
+var GENERIC_FILLER = "(?:a|an|the|some|few|couple|of|more|extra|additional|another|new|other|several|two|three|four|2|3|4|useful|relevant|good)";
+var ADD_SECTIONS_PHRASE_RE = new RegExp(
+  `\\b(?:add|adding|include|more|extra|additional|another)\\b(?:\\s+${GENERIC_FILLER})*\\s+(?:sections?|blocks?|content)\\b`,
+  "i"
+);
+var EXPAND_SURFACE_RE = /\b(?:expand|extend|fill\s+out|flesh\s+out|enrich)\s+(?:the\s+|my\s+|our\s+|this\s+)?(?:landing\s+page|home\s?page|homepage|main\s+page|front\s+page|page|site|website|web\s?site|app)\b/i;
+var NEGATED_SECTIONS_RE = /\b(?:never|don'?t|do\s+not|no|not|without|avoid|stop)\b[^.!?\n]{0,40}\b(?:sections?|blocks?)\b/i;
 function wantsMoreSections(prompt) {
   if (!prompt) return false;
-  const text = prompt.slice(0, 2e3);
-  return ADD_RE.test(text) && SURFACE_RE.test(text);
+  const text = prompt.trim();
+  if (!fallbackMayApply("section_expansion", text)) return false;
+  if (NEGATED_SECTIONS_RE.test(text)) return false;
+  return ADD_SECTIONS_PHRASE_RE.test(text) || EXPAND_SURFACE_RE.test(text);
 }
 var SCAFFOLD_RE = /^src\/(components\/(ui|blocks|examples|mobile)\/|integrations\/)/;
 function isAppOwned2(path) {
@@ -157586,12 +157652,6 @@ const steps = [
   { step: "03", title: "Book in a minute", body: "Instant confirmation and everything in your inbox." },
 ];
 
-const testimonials = [
-  { quote: "Booked in under five minutes and the whole trip just worked.", name: "Amara O." },
-  { quote: "The clearest pricing I've seen anywhere. No surprises at all.", name: "Daniel K." },
-  { quote: "Support replied in minutes when my plans changed. Rare these days.", name: "Priya S." },
-];
-
 const faqs = [
   { q: "How soon is my booking confirmed?", a: "Instantly \u2014 you'll get a confirmation the moment you finish checkout." },
   { q: "Can I change my dates later?", a: "Yes. Most bookings can be moved or cancelled free up to 24 hours before." },
@@ -157633,20 +157693,6 @@ export default function ${component}() {
         </div>
       </section>
 
-      <section className="py-20">
-        <div className="mx-auto max-w-6xl px-4">
-          <h2 className="max-w-2xl text-3xl font-bold md:text-5xl">Loved by people who travel often</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {testimonials.map((item) => (
-              <figure key={item.name} className="rounded-2xl border border-border bg-card p-6">
-                <blockquote className="text-lg">"{item.quote}"</blockquote>
-                <figcaption className="mt-4 text-sm font-medium text-muted-foreground">{item.name}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="border-t border-border py-20">
         <div className="mx-auto max-w-3xl px-4">
           <h2 className="text-3xl font-bold md:text-5xl">Questions, answered</h2>
@@ -157677,11 +157723,11 @@ function buildSectionExpansionPatch(args) {
 `;
   const call = `${render.indent}<${component} />
 `;
-  const summary = "I added four new sections to the page \u2014 a features block, a how-it-works walkthrough, testimonials, and an FAQ \u2014 matching the existing design.";
+  const summary = "I added three new sections to the page \u2014 a features block, a how-it-works walkthrough and an FAQ \u2014 matching the existing design.";
   return {
     plan: "I\u2019ll add a set of new sections to the main page in their own component, so the existing layout stays untouched.",
     summary,
-    recap: `- \`${path}\` \u2014 new features, how-it-works, testimonials and FAQ sections
+    recap: `- \`${path}\` \u2014 new features, how-it-works and FAQ sections
 - \`${target.path}\` \u2014 rendered the new sections on the page`,
     ops: [
       { op: "create", path, content: sectionsFile(component) },
@@ -157700,6 +157746,187 @@ ${call}${render.before.slice(1)}`)
       }
     ]
   };
+}
+
+// src/server/content-edit.server.ts
+init_define_import_meta_env();
+var DESIGN_RE = /\b(design|redesign|re-?style|restyle|theme|re-?theme|colou?rs?|palette|font|fonts|typography|layout|look(?:\s+and\s+feel)?|style|styling|responsive|mobile[-\s]?friendly|spacing|padding|margin|animations?|dark\s+mode|light\s+mode|background|gradient|shadow)\b/i;
+var NEW_SURFACE_RE = /\b(add|create|build|make|new)\b[^.!?]{0,40}\b(pages?|screens?|routes?|dashboard)\b|\b(database|login|log in|sign ?up|sign ?in|auth|payments?|checkout|api|backend)\b/i;
+var CONTENT_VERB_RE = /\b(remove|delete|drop|take\s+out|rename|change|replace|update|swap|add|show|display|list|set|correct|fix)\b/i;
+var CONTENT_TARGET_RE = /\b(price[sd]?|pricing|cost|menu|items?|dish(?:es)?|meals?|services?|products?|phone|number|whatsapp|e-?mail|address|hours|opening|name|business|brand|title|text|copy|wording|headline|label|contact|faq)\b|[₦$€£]\s?\d|\+?\d[\d\s()-]{7,}\d|wa\.me|tel:|mailto:/i;
+function isContentOnlyEdit(prompt) {
+  const text = (prompt ?? "").slice(0, 4e3);
+  if (!text.trim()) return false;
+  if (DESIGN_RE.test(text) || NEW_SURFACE_RE.test(text)) return false;
+  return CONTENT_VERB_RE.test(text) && CONTENT_TARGET_RE.test(text);
+}
+var PRICE_RE = /[₦$€£]\s?\d|\b(price[sd]?|pricing|cost|NGN|naira)\b/i;
+var PHONE_RE = /\+?\d[\d\s()-]{7,}\d|\b(phone|whatsapp|call|number|tel)\b|wa\.me/i;
+var EMAIL_RE = /\b(e-?mail|mailto)\b|[\w.+-]+@[\w-]+\.[\w.]+/i;
+var ADDRESS_RE = /\b(address|location|located)\b/i;
+var RENAME_BRAND_RE = /\b(rename|change|call)\b[^.!?]{0,30}\b(business|brand|company|site|website|restaurant|shop|store|name)\b/i;
+function extractNamedPhrases(prompt) {
+  const out = /* @__PURE__ */ new Set();
+  for (const m of prompt.matchAll(/["“'‘]([^"”'’\n]{2,60})["”'’]/g)) out.add(m[1].trim());
+  const objectRe = /\b(?:remove|delete|drop|take\s+out|rename|replace|change)\s+(?:the\s+)?(.{2,120}?)(?=\s+(?:from|to|with|in|on|at|everywhere|across)\b|[.!?;\n]|$)/gi;
+  for (const m of prompt.matchAll(objectRe)) {
+    for (const part of m[1].split(/\s*(?:,|\band\b|&)\s*/i)) {
+      const phrase = part.trim().replace(/^(?:the|a|an|our|my)\s+/i, "");
+      if (phrase.length < 3 || /^(business|brand|name|site|website|item|items|it|them|this|that)$/i.test(phrase)) continue;
+      out.add(phrase);
+    }
+  }
+  return [...out].slice(0, 12);
+}
+function currentBrandName(files) {
+  const html = files.find((f) => f.path === "index.html")?.content ?? "";
+  const title = /<title>([^<]{2,80})<\/title>/i.exec(html)?.[1];
+  const fromTitle = title?.split(/\s[|–—-]\s|\s·\s/)[0]?.trim();
+  if (fromTitle && fromTitle.length >= 2 && !/^(vite|react|app|lovable)/i.test(fromTitle)) return fromTitle;
+  for (const f of files) {
+    if (!/src\/(lib|config|data)\/[^/]*(site|brand|config|business)[^/]*\.(t|j)sx?$/i.test(f.path)) continue;
+    const m = /\b(?:name|brandName|businessName|siteName)\s*:\s*["'`]([^"'`\n]{2,60})["'`]/.exec(f.content);
+    if (m) return m[1].trim();
+  }
+  return null;
+}
+var SCAFFOLD_RE2 = /^src\/(components\/(ui|blocks|examples|mobile)\/|integrations\/)/;
+var DATA_FILE_RE = /^src\/(data\/|content\/|config\/|lib\/[^/]*(site|config|content|data|menu|brand|contact|business|constants?)[^/]*\.(t|j)sx?$)/i;
+var SOURCE_RE = /\.(tsx?|jsx?|json|html|md)$/;
+function planContentEdit(prompt, files, maxFiles = 16) {
+  if (!isContentOnlyEdit(prompt)) return null;
+  const owned = files.filter((f) => SOURCE_RE.test(f.path) && !SCAFFOLD_RE2.test(f.path) && f.path !== "package.json");
+  const phrases = extractNamedPhrases(prompt);
+  const brand = RENAME_BRAND_RE.test(prompt) ? currentBrandName(files) : null;
+  const score = /* @__PURE__ */ new Map();
+  const bump = (path, n) => score.set(path, (score.get(path) ?? 0) + n);
+  for (const f of owned) {
+    const lower = f.content.toLowerCase();
+    for (const p2 of phrases) if (lower.includes(p2.toLowerCase())) bump(f.path, 10);
+    if (brand && f.content.includes(brand)) bump(f.path, 8);
+    if (PRICE_RE.test(prompt) && /[₦$€£]\s?\d|\bprice\s*:/i.test(f.content)) bump(f.path, 4);
+    if (PHONE_RE.test(prompt) && /tel:|wa\.me|whatsapp|\bphone\b/i.test(f.content)) bump(f.path, 4);
+    if (EMAIL_RE.test(prompt) && /mailto:|\bemail\b/i.test(f.content)) bump(f.path, 3);
+    if (ADDRESS_RE.test(prompt) && /\baddress\b/i.test(f.content)) bump(f.path, 3);
+    if (DATA_FILE_RE.test(f.path)) bump(f.path, 2);
+  }
+  const paths = [...score.entries()].filter(([, n]) => n >= 3).sort((a2, b) => b[1] - a2[1] || a2[0].localeCompare(b[0])).slice(0, maxFiles).map(([p2]) => p2);
+  if (paths.length === 0) return null;
+  return { paths, phrases, brand };
+}
+function contentEditAddendum(plan) {
+  const lines = [
+    "",
+    "",
+    "This is a CONTENT edit \u2014 change words, items, prices, names and contact details exactly where they already live.",
+    "Rules for this turn:",
+    "1. For every EXISTING file, use `replace` ops that quote the exact lines to change (menu/service arrays, price fields, contact constants, names). Never re-send an existing file with `update`. Use `create` only for a genuinely new file.",
+    "2. Do not add new sections, components or pages. Edit content where it already is.",
+    "3. Removing an item means removing it from every file below that contains it (data arrays, cards, navigation, footer, page titles and descriptions).",
+    "4. Handle every clause of the request. Keep each `replace` small \u2014 one per region.",
+    "5. In your recap, give one bullet per requested change.",
+    `Files that hold this content: ${plan.paths.join(", ")}.`
+  ];
+  if (plan.phrases.length) lines.push(`Named content to find: ${plan.phrases.map((p2) => `"${p2}"`).join(", ")}.`);
+  if (plan.brand) lines.push(`The current business name is "${plan.brand}" \u2014 rename every occurrence the request covers.`);
+  return lines.join("\n");
+}
+var MAX_DIFF_LINES = 2e3;
+var MAX_SEARCH_LINES = 120;
+function lineHunks(a2, b) {
+  let pre = 0;
+  while (pre < a2.length && pre < b.length && a2[pre] === b[pre]) pre++;
+  let suf = 0;
+  while (suf < a2.length - pre && suf < b.length - pre && a2[a2.length - 1 - suf] === b[b.length - 1 - suf]) suf++;
+  const A = a2.slice(pre, a2.length - suf);
+  const B = b.slice(pre, b.length - suf);
+  if (A.length > MAX_DIFF_LINES || B.length > MAX_DIFF_LINES) return null;
+  const n = A.length, m = B.length;
+  const dp = new Uint32Array((n + 1) * (m + 1));
+  for (let i2 = n - 1; i2 >= 0; i2--) {
+    for (let j2 = m - 1; j2 >= 0; j2--) {
+      dp[i2 * (m + 1) + j2] = A[i2] === B[j2] ? dp[(i2 + 1) * (m + 1) + j2 + 1] + 1 : Math.max(dp[(i2 + 1) * (m + 1) + j2], dp[i2 * (m + 1) + j2 + 1]);
+    }
+  }
+  const hunks = [];
+  let i = 0, j = 0;
+  let open = null;
+  while (i < n || j < m) {
+    if (i < n && j < m && A[i] === B[j]) {
+      if (open) {
+        hunks.push({ a0: open.a0 + pre, a1: i + pre, b0: open.b0 + pre, b1: j + pre });
+        open = null;
+      }
+      i++;
+      j++;
+    } else {
+      if (!open) open = { a0: i, b0: j };
+      if (j < m && (i >= n || dp[i * (m + 1) + j + 1] >= dp[(i + 1) * (m + 1) + j])) j++;
+      else i++;
+    }
+  }
+  if (open) hunks.push({ a0: open.a0 + pre, a1: n + pre, b0: open.b0 + pre, b1: m + pre });
+  return hunks;
+}
+function diffToReplaceOps(path, prev, next) {
+  if (prev === next) return [];
+  const a2 = prev.split("\n");
+  const b = next.split("\n");
+  const hunks = lineHunks(a2, b);
+  if (!hunks || hunks.length === 0) return null;
+  const changed = hunks.reduce((n, h) => n + Math.max(h.a1 - h.a0, h.b1 - h.b0), 0);
+  if (changed > Math.max(4, a2.length * 0.4)) return null;
+  const ops = [];
+  let working = prev;
+  for (const h of [...hunks].reverse()) {
+    let done = false;
+    for (let ctx = 1; ctx <= 8 && !done; ctx++) {
+      const s0 = Math.max(0, h.a0 - ctx);
+      const s1 = Math.min(a2.length, h.a1 + ctx);
+      if (s1 - s0 > MAX_SEARCH_LINES) break;
+      const search = a2.slice(s0, s1).join("\n");
+      if (!search.trim()) continue;
+      const first = working.indexOf(search);
+      if (first < 0 || first !== working.lastIndexOf(search)) continue;
+      const replace = [...a2.slice(s0, h.a0), ...b.slice(h.b0, h.b1), ...a2.slice(h.a1, s1)].join("\n");
+      working = working.slice(0, first) + replace + working.slice(first + search.length);
+      ops.unshift({ op: "replace", path, search, replace });
+      done = true;
+    }
+    if (!done) return null;
+  }
+  let check = prev;
+  for (const op of ops) {
+    const at = check.indexOf(op.search);
+    if (at < 0 || at !== check.lastIndexOf(op.search)) return null;
+    check = check.slice(0, at) + op.replace + check.slice(at + op.search.length);
+  }
+  return check === next ? ops : null;
+}
+function updatesToReplaceOps(ops, currentFiles) {
+  const byPath = new Map(currentFiles.map((f) => [f.path, f.content]));
+  const out = [];
+  const converted = [];
+  for (const op of ops) {
+    if (op.op === "update" && byPath.has(op.path)) {
+      const prev = byPath.get(op.path);
+      const replaces = diffToReplaceOps(op.path, prev, op.content);
+      if (replaces && replaces.length > 0) {
+        out.push(...replaces);
+        converted.push(op.path);
+        byPath.set(op.path, op.content);
+        continue;
+      }
+      if (replaces && replaces.length === 0) continue;
+    }
+    out.push(op);
+    if ((op.op === "update" || op.op === "create") && "content" in op) byPath.set(op.path, op.content);
+    if (op.op === "replace" && byPath.has(op.path)) {
+      const cur = byPath.get(op.path);
+      if (cur.includes(op.search)) byPath.set(op.path, cur.replace(op.search, op.replace));
+    }
+  }
+  return { ops: out, converted };
 }
 
 // src/server/critic-agent.server.ts
@@ -169584,8 +169811,8 @@ async function saveProjectBlueprint(projectId, blueprint) {
 // src/server/architecture-doc.server.ts
 init_define_import_meta_env();
 init_client_server_shim();
-var SOURCE_RE = /\.(tsx|jsx)$/;
-var isAppSource = (p2) => SOURCE_RE.test(p2) && !p2.startsWith("src/components/ui/") && !p2.startsWith("src/components/examples/");
+var SOURCE_RE2 = /\.(tsx|jsx)$/;
+var isAppSource = (p2) => SOURCE_RE2.test(p2) && !p2.startsWith("src/components/ui/") && !p2.startsWith("src/components/examples/");
 var ROUTE_DECL_RE = /<Route\b[^>]*>/g;
 var ROUTE_PATH_ATTR_RE = /\bpath\s*=\s*(?:["']([^"']+)["']|\{\s*["']([^"']+)["']\s*\})/;
 var ROUTE_ELEMENT_ATTR_RE = /\belement\s*=\s*\{\s*<\s*([A-Z][A-Za-z0-9_]*)/;
@@ -169604,7 +169831,7 @@ function componentFromPath(p2) {
   return m ? m[1] : void 0;
 }
 function deriveArchitectureDoc(files) {
-  const src2 = files.filter((f) => SOURCE_RE.test(f.path) || /\.(ts|js|json)$/.test(f.path));
+  const src2 = files.filter((f) => SOURCE_RE2.test(f.path) || /\.(ts|js|json)$/.test(f.path));
   const appSrc = files.filter((f) => isAppSource(f.path));
   const all = src2.map((f) => f.content).join("\n");
   let router = "unknown";
@@ -169881,7 +170108,7 @@ function findCopySlopIssues(files) {
 
 // src/server/composition-contract.server.ts
 init_define_import_meta_env();
-var SURFACE_RE2 = /\b(?:rounded-(?:md|lg|xl|2xl|3xl|full)|shadow-(?:sm|md|lg|xl|2xl)|border(?:-[trbl])?\b[^"']*\bp[xy]?-\d|bg-(?:card|surface|muted|secondary|popover|accent))\b|<Card\b|CardContent|CardHeader|Panel\b/;
+var SURFACE_RE = /\b(?:rounded-(?:md|lg|xl|2xl|3xl|full)|shadow-(?:sm|md|lg|xl|2xl)|border(?:-[trbl])?\b[^"']*\bp[xy]?-\d|bg-(?:card|surface|muted|secondary|popover|accent))\b|<Card\b|CardContent|CardHeader|Panel\b/;
 var GRID_RE = /\bgrid-cols-\d|\bmd:grid-cols-\d|\bsm:grid-cols-\d|\blg:grid-cols-\d|\bcolumns-\d|\bflex-row\b[^"']*\bgap-\d/;
 var TYPE_SCALE_RE = /\btext-(?:3xl|4xl|5xl|6xl|7xl|8xl|9xl)\b/;
 var EMPHASIS_RE = /\bfont-(?:semibold|bold|extrabold|black)\b|\btracking-(?:tight|tighter|wide|widest)\b|<Badge\b|\brounded-full\b[^"']*\b(?:px|py)-\d|\btext-primary\b|\bbg-primary\b|\bbg-gradient-to-/;
@@ -169904,7 +170131,7 @@ function isSubstantial(content) {
 }
 function findMissingComposition(content) {
   const missing = [];
-  if (!SURFACE_RE2.test(content)) missing.push("surface");
+  if (!SURFACE_RE.test(content)) missing.push("surface");
   if (!GRID_RE.test(content)) missing.push("grid");
   if (!TYPE_SCALE_RE.test(content)) missing.push("type-scale");
   if (!EMPHASIS_RE.test(content)) missing.push("emphasis");
@@ -171911,7 +172138,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
@@ -176410,20 +176636,44 @@ var BARE_DOMAIN_RE = new RegExp(
   "i"
 );
 var MIGRATE_RE = /\b(rebuild|recreate|migrate|clone|copy|redo|remake|move)\b[^.]{0,60}\b(my|our|existing|current|this)\b[^.]{0,30}\b(site|website|web ?page|homepage)\b|\b(based on|from|using)\b[^.]{0,40}\b(my|our|existing|current)\b[^.]{0,20}\b(site|website)\b/i;
-function detectWebIntelNeed(message) {
-  const m = message.match(URL_RE3);
-  let url = null;
-  if (m) {
-    url = m[0].replace(/[.,;:!?]+$/, "");
-  } else {
-    const b = message.match(BARE_DOMAIN_RE);
-    if (b) {
-      const whole = b[0].replace(/^[\s(<"'`]+/, "").replace(/[.,;:!?]+$/, "");
-      url = `https://${whole}`;
-    }
+var CONTENT_LINK_HOST_RE = /(^|\.)(wa\.me|whatsapp\.com|t\.me|m\.me)$/i;
+var OWN_PLATFORM_HOST_RE = /(^|\.)(custardai\.dev|buildwithpetal\.com|lovable\.app|lovableproject\.com|kimble\.cloud)$/i;
+var REFERENCE_RE = /\b(like|similar\s+to|inspired\s+by|inspiration|based\s+on|use|using|copy|clone|match|mirror|mimic|replicate|reference|style\s+of|look\s+(?:at|of)|see|check\s+out|from|migrate|rebuild|recreate|redo|remake|import|scrape|read|follow)\b/i;
+var REFERENCE_AFTER_RE = /\b(like|style|look|vibe|similar|copy|match|inspiration|reference)\b/i;
+var URL_RE_G = new RegExp(URL_RE3.source, "gi");
+var BARE_DOMAIN_RE_G = new RegExp(BARE_DOMAIN_RE.source, "gi");
+function hostOf(url) {
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "";
   }
+}
+function detectWebIntelNeed(message, opts = {}) {
+  const own = new Set((opts.ownHosts ?? []).map((h) => h.toLowerCase().replace(/^www\./, "")).filter(Boolean));
+  const isContentLink = (url2) => {
+    const host = hostOf(url2);
+    return !host || CONTENT_LINK_HOST_RE.test(host) || OWN_PLATFORM_HOST_RE.test(host) || own.has(host);
+  };
+  const schemed = [...message.matchAll(URL_RE_G)].map((m) => m[0].replace(/[.,;:!?]+$/, ""));
+  const bare2 = [...message.matchAll(BARE_DOMAIN_RE_G)].map(
+    (b) => `https://${b[0].replace(/^[\s(<"'`]+/, "").replace(/[.,;:!?]+$/, "")}`
+  );
+  const url = [...schemed, ...bare2].find((u) => !isContentLink(u)) ?? null;
   if (!url) return { need: "none", url: null };
-  return { need: MIGRATE_RE.test(message) ? "required" : "optional", url };
+  if (MIGRATE_RE.test(message)) return { need: "required", url };
+  const rest = message.replace(URL_RE_G, " ").replace(BARE_DOMAIN_RE_G, " ");
+  const otherWords = rest.split(/\s+/).filter((w) => /[a-z0-9]/i.test(w)).length;
+  if (otherWords <= 2) return { need: "optional", url };
+  const lower = message.toLowerCase();
+  let at = lower.indexOf(url.toLowerCase());
+  if (at < 0) at = lower.indexOf(url.replace(/^https:\/\//, "").toLowerCase());
+  if (at >= 0) {
+    const before = message.slice(Math.max(0, at - 60), at);
+    const after = message.slice(at + url.length, at + url.length + 50);
+    if (REFERENCE_RE.test(before) || REFERENCE_AFTER_RE.test(after)) return { need: "optional", url };
+  }
+  return { need: "none", url: null };
 }
 function ipv4Private(ip) {
   const p2 = ip.split(".").map(Number);
@@ -176558,7 +176808,7 @@ function log(rec) {
   console.log(`[web-intel] ${JSON.stringify(rec)}`);
 }
 async function gatherWebIntel(args) {
-  const { need, url } = detectWebIntelNeed(args.message);
+  const { need, url } = detectWebIntelNeed(args.message, { ownHosts: args.ownHosts });
   if (need === "none" || !url) return { status: "skipped", need: "none" };
   const L = webIntelLimits();
   const started = Date.now();
@@ -177533,31 +177783,9 @@ function emitTurnOutcome(controller, encoder, args) {
   );
 }
 function emitConversationalFallback(controller, encoder, args) {
-  if (args.streamSummary !== false) {
-    controller.enqueue(
-      encoder.encode(sse({ type: "summary_delta", delta: args.summary }))
-    );
+  for (const event of conversationalFallbackEvents(args)) {
+    controller.enqueue(encoder.encode(sse(event)));
   }
-  emitTurnOutcome(controller, encoder, {
-    outcome: args.outcome ?? "answered",
-    changedPaths: [],
-    blockedPaths: args.blockedPaths,
-    reason: args.reason
-  });
-  controller.enqueue(
-    encoder.encode(
-      sse({
-        type: "result",
-        files: args.files,
-        summary: args.summary,
-        plan: void 0,
-        recap: void 0,
-        creditsCharged: 0,
-        noFileChanges: true,
-        ...args.suggestions && args.suggestions.length > 0 ? { suggestions: args.suggestions } : {}
-      })
-    )
-  );
 }
 function emitDeterministicRepair(controller, encoder, args) {
   controller.enqueue(encoder.encode(sse({ type: "summary_delta", delta: args.summary })));
@@ -177763,10 +177991,15 @@ function deterministicBrandMarkFallback(args) {
   };
 }
 function deterministicPatchFallback(args) {
-  const brandMark = deterministicBrandMarkFallback(args);
-  if (brandMark) return brandMark;
-  const heroBackground = deterministicHeroBackgroundFallback(args);
-  if (heroBackground) return heroBackground;
+  const prompt = args.latestUserContent;
+  if (fallbackMayApply("brand_mark", prompt)) {
+    const brandMark = deterministicBrandMarkFallback(args);
+    if (brandMark) return brandMark;
+  }
+  if (fallbackMayApply("hero_background", prompt)) {
+    const heroBackground = deterministicHeroBackgroundFallback(args);
+    if (heroBackground) return heroBackground;
+  }
   const expansion = buildSectionExpansionPatch({
     currentFiles: args.currentFiles,
     prompt: args.latestUserContent
@@ -178616,8 +178849,14 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     );
   }
   const isCrossCutting = turnClassification.crossCutting;
-  let pinnedPaths = isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
-  if (isCrossCutting) {
+  const contentEdit = isInitial ? null : planContentEdit(lastUserContent, editablePromptFiles);
+  if (contentEdit) {
+    console.info(
+      `[content-edit] ${contentEdit.paths.length} file(s) hold the content: ${contentEdit.paths.slice(0, 8).join(", ")}`
+    );
+  }
+  let pinnedPaths = contentEdit ? [...contentEdit.paths] : isCrossCutting ? pickPinnedPaths(editablePromptFiles) : [];
+  if (isCrossCutting && !contentEdit) {
     console.info(
       `[intent-targets] cross-cutting ask detected \u2014 pinning ${pinnedPaths.length} file(s) into prompt context`
     );
@@ -178851,7 +179090,12 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
     promptTokenCeiling({ model: null, completionBudgetTokens: 16e3 }) * 0.55
   );
   const strictScope = !isInitial && !isCrossCutting && resolvedTargetPaths.length > 0 && (editClassification?.scope === "micro" || editClassification?.scope === "targeted");
-  const contextFiles = strictScope ? (() => {
+  const contextFiles = contentEdit && !strictScope ? (() => {
+    const keep2 = /* @__PURE__ */ new Set([...contentEdit.paths, ...pinnedPaths, ...resolvedTargetPaths]);
+    const narrowed = editablePromptFiles.filter((f) => keep2.has(f.path));
+    console.info(`[content-edit] sending ${narrowed.length} of ${editablePromptFiles.length} file(s)`);
+    return narrowed.length > 0 ? narrowed : editablePromptFiles;
+  })() : strictScope ? (() => {
     const keep2 = new Set(resolvedTargetPaths);
     if (editClassification?.scope === "targeted") {
       for (const p2 of impactNeighbourPaths) keep2.add(p2);
@@ -178876,7 +179120,7 @@ ${renderPicBlock2(assembled.pic, { detail: isStructural ? "full" : "summary" })}
   console.info(
     `[prompt-budget] files_sent=${promptBudget.files.length} omitted=${promptBudget.omitted} est_tokens=${promptBudget.estimatedTokens} ceiling=${fileBlockCeiling}${promptBudget.ceilingHit ? " (ceiling hit)" : ""}`
   );
-  const crossCuttingAddendum = isCrossCutting ? `
+  const crossCuttingAddendum = contentEdit ? contentEditAddendum(contentEdit) : isCrossCutting ? `
 
 This is a cross-cutting request \u2014 the user wants the change applied across ${pinnedPaths.length} app file(s). The current contents of every page, route, and app-level component are included in full above. This is enough scope: DO NOT ask the user to name a smaller element. For each existing file you materially redesign, emit ONE \`update\` op with the COMPLETE new file contents. For large existing files, a full-page/whole-component redesign is allowed even if it replaces most of the file; otherwise split the redesigned surface into new smaller components and update the parent imports. Skip files that already satisfy the request rather than emitting no-op edits.
 
@@ -179306,8 +179550,18 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
   }
   const reasoningField = preset === "deep" ? { reasoning: { effort: "high" } } : { reasoning: { enabled: false } };
   stage("pre_web_intel");
+  let ownHosts = [];
+  if (body.projectId && !isInitial && /https?:\/\/|\.[a-z]{2,}\b/i.test(lastUserContent)) {
+    try {
+      const { data: domainRows } = await supabaseAdmin.from("project_domains").select("hostname").eq("project_id", body.projectId);
+      ownHosts = (domainRows ?? []).map((r) => String(r.hostname ?? "")).filter(Boolean);
+    } catch {
+      ownHosts = [];
+    }
+  }
   const webIntel = await gatherWebIntel({
     message: lastUserContent,
+    ownHosts,
     signal: abortSignal,
     turnId: logicalTurnId,
     projectId: body.projectId ?? null
@@ -179777,9 +180031,7 @@ Satisfy this exact outcome. Use the original user message for detail, but do not
                   );
                   emitConversationalFallback(controller, encoder, {
                     files: currentFiles,
-                    summary: "That one didn't land, and nothing in your app was changed. Send it again and Kimble will pick it straight back up.",
-                    outcome: "answered",
-                    reason: "no_safe_edit"
+                    ...noSafeEditOutcome()
                   });
                   return;
                 }
@@ -180253,6 +180505,13 @@ Satisfy this exact outcome; do not substitute a different feature, page, or prod
           });
           nextFiles = ensureRenderableShell(nextFiles, detectedWebSubtype).files;
         } else {
+          if (contentEdit && Array.isArray(parsed.ops) && parsed.ops.length > 0) {
+            const patched2 = updatesToReplaceOps(parsed.ops, currentFiles);
+            if (patched2.converted.length > 0 || patched2.ops.length !== parsed.ops.length) {
+              console.info(`[content-edit] whole-file writes turned into patches: ${patched2.converted.join(", ") || "(no-op writes dropped)"}`);
+              parsed.ops = patched2.ops;
+            }
+          }
           if (!Array.isArray(parsed.ops) || parsed.ops.length === 0) {
             console.warn(
               `[generate] patch_files returned ${Array.isArray(parsed.ops) ? "empty" : "missing"} ops \u2014 replying conversationally`

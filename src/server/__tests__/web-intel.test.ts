@@ -163,6 +163,19 @@ describe("web intelligence", () => {
     expect(detectWebIntelNeed("airbnb.com and https://b.com").url).toBe("https://b.com");
   });
 
+  it("links that are content are never reference sites", () => {
+    expect(detectWebIntelNeed("https://wa.me/2349034921189").need).toBe("none");
+    expect(detectWebIntelNeed("Show +234 903 492 1189 with the WhatsApp link https://wa.me/2349034921189").need).toBe("none");
+    expect(detectWebIntelNeed("Our number is wa.me/2349034921189").need).toBe("none");
+    expect(detectWebIntelNeed("email hello@mamakay.com or call tel:+2349034921189").need).toBe("none");
+    expect(detectWebIntelNeed("fix the menu on https://mamakay.sites.custardai.dev please").need).toBe("none");
+    expect(detectWebIntelNeed("the footer on https://mamakayz.com is wrong, fix it", { ownHosts: ["mamakayz.com"] }).need).toBe("none");
+    expect(detectWebIntelNeed("Put our Instagram https://instagram.com/mamakay in the footer next to the phone").need).toBe("none");
+    // A real reference next to a content link is still found.
+    const both = detectWebIntelNeed("Add https://wa.me/2349034921189 and make the menu look like https://stripe.com");
+    expect(both).toEqual({ need: "optional", url: "https://stripe.com" });
+  });
+
   it("never mistakes file names or plain words for websites", () => {
     for (const m of [
       "fix App.tsx",
