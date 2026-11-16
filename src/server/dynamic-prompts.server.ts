@@ -561,7 +561,7 @@ In your reply: tell the user which marketing pages AND which app routes you scaf
     body: `\n\n[Reinforcement — Design quality floor (non-negotiable)]
 These rules apply to EVERY visual file you write this turn. Violating any of them ships obviously-AI output.
 
-1. Responsive is mandatory, mobile-first. Every layout MUST work at 375px wide without horizontal scroll. Start with the single-column mobile layout, then add \`sm:\` / \`md:\` / \`lg:\` modifiers to upgrade. Never write \`grid-cols-3\` without a \`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3\` progression. Hero headings: \`text-4xl sm:text-5xl md:text-6xl lg:text-7xl\`. Section padding: \`py-16 md:py-24 lg:py-32\`. Container: always \`<Container>\` or \`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8\` — never edge-to-edge content on desktop.
+1. Responsive is mandatory, mobile-first. Every layout MUST work at 375px wide without horizontal scroll. Start with the single-column mobile layout, then add \`sm:\` / \`md:\` / \`lg:\` modifiers to upgrade. Never write \`grid-cols-3\` without a \`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3\` progression. Hero headings: fluid \`text-hero\` (section titles \`text-headline\`) when src/styles.css defines --text-hero; otherwise \`text-4xl sm:text-5xl md:text-6xl lg:text-7xl\`. Section padding: \`py-16 md:py-24 lg:py-32\`. Container: always \`<Container>\` or \`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8\` — never edge-to-edge content on desktop.
 
 2. Icons: \`lucide-react\` ONLY. Never emoji in UI chrome, never raw inline \`<svg>\`, never \`react-icons\` / \`heroicons\` / \`@radix-ui/react-icons\`. Render as \`<Icon className="h-5 w-5" />\`, never as a bare value.
 

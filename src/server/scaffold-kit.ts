@@ -191,6 +191,24 @@ export const STYLES_CSS = `@import "tailwindcss";
   --text-step-5:  clamp(2.5rem, 1.75rem + 4.58vw, 4rem);
   --text-step-6:  clamp(3rem, 1.83rem + 7.08vw, 5.5rem);
 
+  /* Semantic fluid sizes — Tailwind v4 turns each into a text-* utility
+     (text-hero, text-display, text-headline, text-subhead) with matched
+     line-height and tracking. One class scales 320px → 1440px, no breakpoints. */
+  --text-hero: clamp(2.75rem, 1.6rem + 5.2vw, 6.5rem);
+  --text-hero--line-height: 0.98;
+  --text-hero--letter-spacing: -0.04em;
+  --text-display: clamp(2.25rem, 1.4rem + 3.8vw, 4.5rem);
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.035em;
+  --text-headline: clamp(1.75rem, 1.25rem + 2.2vw, 3rem);
+  --text-headline--line-height: 1.12;
+  --text-headline--letter-spacing: -0.02em;
+  --text-subhead: clamp(1.125rem, 0.95rem + 0.8vw, 1.5rem);
+  --text-subhead--line-height: 1.45;
+
+  /* Motion tokens shared by the hover utilities below. */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+
   /* Tracking (letter-spacing) presets — display type wants tighter. */
   --tracking-tightest: -0.04em;
   --tracking-tighter:  -0.03em;
@@ -276,6 +294,64 @@ body {
 .text-step-4  { font-size: var(--text-step-4);  line-height: 1.1; letter-spacing: var(--tracking-tighter); }
 .text-step-5  { font-size: var(--text-step-5);  line-height: 1.05; letter-spacing: var(--tracking-tighter); }
 .text-step-6  { font-size: var(--text-step-6);  line-height: 1; letter-spacing: var(--tracking-tightest); }
+
+/* ---------------------------------------------------------------------
+ * Micro-motion utilities (CSS only, zero runtime cost).
+ *   hover-lift   cards: lift + soft shadow on hover
+ *   hover-zoom   put on an overflow-hidden wrapper; its <img> zooms on hover
+ *   press        buttons: subtle shrink when pressed
+ *   surface-grain  faint film-grain texture over a section (pointer-safe)
+ *   ambient-glow   soft brand-tinted wash behind a hero
+ * All of them switch off for visitors who ask for reduced motion.
+ * ------------------------------------------------------------------- */
+@utility hover-lift {
+  transition: transform 300ms var(--ease-out-expo), box-shadow 300ms var(--ease-out-expo);
+  &:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -18px color-mix(in oklab, var(--color-foreground) 28%, transparent); }
+}
+@utility hover-zoom {
+  overflow: hidden;
+  & img { transition: transform 600ms var(--ease-out-expo); }
+  &:hover img { transform: scale(1.05); }
+}
+@utility press {
+  transition: transform 150ms var(--ease-out-expo);
+  &:active { transform: scale(0.98); }
+}
+@utility surface-grain {
+  position: relative;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+@utility ambient-glow {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: -6rem;
+    width: min(42rem, 90vw);
+    height: 26rem;
+    transform: translateX(-50%);
+    z-index: -1;
+    pointer-events: none;
+    border-radius: 9999px;
+    filter: blur(64px);
+    background: color-mix(in oklab, var(--color-primary) 14%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
 `;
 
 

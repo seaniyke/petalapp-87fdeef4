@@ -217,8 +217,7 @@ Design for mobile first, then enhance for larger screens:
 - Always use: className="max-w-6xl mx-auto px-4"
 
 **Text Sizing:**
-- Mobile: text-2xl or text-3xl
-- Desktop: md:text-4xl or lg:text-5xl
+- Use the fluid classes (text-hero, text-display, text-headline, text-subhead); they scale from phone to desktop without breakpoint prefixes
 
 ## ACCESSIBILITY REQUIREMENTS
 
@@ -673,7 +672,7 @@ Long landing pages need **visual rhythm**, not one uniform background. Alternate
 ### Typography pairings that look intentional
 
 - **One** font pairing per site (max 2 families total). Mixing 3+ fonts looks amateur.
-- Headings: display/sans-serif at dramatic scale (`text-4xl md:text-6xl lg:text-7xl`). Tight leading (`leading-tight` or `leading-none`).
+- Headings: display/sans-serif at dramatic fluid scale (`text-hero` / `text-display`). Tight leading (`leading-tight` or `leading-none`).
 - Body: readable sans-serif (`text-base md:text-lg`), loose leading (`leading-relaxed`), constrained width (`max-w-prose`).
 - Weight contrast: heading `font-bold` or `font-black` + body `font-normal`. If everything is `font-semibold`, nothing feels emphasized.
 
@@ -719,7 +718,7 @@ Every text/background pair must hit **4.5:1 contrast** (3:1 for large text ≥24
 ## Design Quality Standards — Every Page Must Look Professional
 
 **Typography:**
-- Use responsive headings: text-3xl md:text-5xl lg:text-6xl (dramatic scale)
+- Use fluid headings: text-hero (h1), text-headline (h2), text-subhead (lead) — no breakpoint chains
 - Body text line-height: leading-relaxed (1.625) minimum
 - Constrain text width: max-w-prose or max-w-2xl on paragraphs
 - Use font-weight variation: font-light for subtle, font-semibold for emphasis, font-bold for headings

@@ -453,9 +453,9 @@ export function renderDesignDirectionBlock(
       (d.motion === "still"
         ? `motion=still → do NOT import these. Type and color do the work.`
         : d.motion === "subtle"
-          ? `motion=subtle → FadeIn / SlideUp / BlurFade on the hero and major sections only. No SplitText, no Magnetic.`
+          ? `motion=subtle → FadeIn / SlideUp / BlurFade on the hero and major sections, Stagger + StaggerItem on card grids, CountUp on stat numbers, CSS hover-lift / hover-zoom / press on cards, photos and buttons. No SplitText, no Magnetic.`
           : d.motion === "expressive"
-            ? `motion=expressive → Stagger + SplitText on the hero, gentle Parallax on hero media. Layer 2-3 across the page, not on every element.`
+            ? `motion=expressive → Stagger + SplitText on the hero, gentle Parallax on hero media, Magnetic on the main hero button, CountUp on stats, hover-lift / hover-zoom on cards and photos. Layer 2-3 across the page, not on every element.`
             : `motion=cinematic → wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) +
       `\n` +
     `- fx recipe: ${d.fx_recipe ?? "(unset)"} — ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}\n` +
