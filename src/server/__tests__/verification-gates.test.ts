@@ -120,7 +120,7 @@ describe("dependency and route defects", () => {
     const real = `export default function A(){return <main>${"<section><h2>Menu</h2><p>Sourdough, rye and seasonal loaves baked daily.</p></section>".repeat(12)}<p>New pastries coming soon.</p></main>}`;
     expect(isUnfinishedPage(real)).toBe(false);
     const withPlaceholder = [pkg, app, home, { path: "src/pages/About.tsx", content: `export default function About(){return <div>Lorem ipsum</div>}` }];
-    expect(routesGate(withPlaceholder, []).verdict).toBe("FAIL");
+    expect(routesGate(withPlaceholder, ["/about"]).verdict).toBe("FAIL");
   });
 });
 

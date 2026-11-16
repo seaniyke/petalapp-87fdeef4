@@ -176,8 +176,14 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
     }
     const content = byPath.get(r.file) ?? "";
     if (isUnfinishedPage(content)) {
-      reasons.push(`route ${r.path} is an unfinished placeholder page`);
-      bad.push(r.file);
+      // Only the home page and pages the user asked for must be finished; an
+      // extra page the writer added on its own is advisory and never blocks.
+      if (isRequiredPage(r.path, requestedRoutes)) {
+        reasons.push(`route ${r.path} is an unfinished placeholder page`);
+        bad.push(r.file);
+      } else {
+        advisories.push(`route ${r.path} is an unfinished placeholder page (not requested — fill it or remove it)`);
+      }
     }
   }
   // Real addresses come from the <Route> nesting (a child "services" under
@@ -200,6 +206,14 @@ export function routesGate(files: ProjectFile[], requestedRoutes: string[], opts
   if (reasons.length) return gate("routes", "FAIL", reasons, uniq(bad));
   if (advisories.length) return gate("routes", "WARNING", advisories.slice(0, 10));
   return gate("routes", "PASS");
+}
+
+const normRoute = (p: string) => ("/" + (p ?? "").trim().replace(/^\/+|\/+$/g, "")).toLowerCase();
+
+/** Home and user/intent-requested pages are required; any other page is optional. */
+export function isRequiredPage(path: string, requestedRoutes: string[]): boolean {
+  const n = normRoute(path);
+  return n === "/" || requestedRoutes.some((r) => normRoute(r) === n);
 }
 
 /* --------------------------- live data --------------------------- */
