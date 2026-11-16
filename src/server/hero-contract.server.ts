@@ -19,13 +19,13 @@ export interface HeroContractOpts {
 export const HERO_CONTRACT = `
 
 ### Hero Contract (home page, initial build)
-Modern studio hero: one picture, one headline, one action. Restraint is the look.
+Design the hero for THIS business and brief — bold centred type, a full-bleed photograph, an editorial split or a quiet type-only header are all fine. Restraint is the look.
 
-1. **Optional kicker** — plain text only: \`text-xs uppercase tracking-[0.18em] text-muted-foreground\`. Never a pill, badge, chip or icon.
+1. **Optional kicker** — usually leave it out. If used: plain text only (\`text-xs uppercase tracking-[0.18em] text-muted-foreground\`), never a pill, badge, chip or icon, and NEVER the address, location, opening hours or rating — those go in the hours/contact section or the footer.
 2. **H1** — display font, \`text-4xl sm:text-5xl lg:text-7xl leading-[1.02] tracking-tight\`, max 2 lines on desktop, 3 on phone, one colour. Never colour, italicise, highlight or gradient a single word.
 3. **Subhead** — optional, one sentence, \`text-base md:text-lg text-muted-foreground max-w-xl\`.
 4. **Action** — ONE primary \`<Button size="lg">\`; an optional second action is a quiet text link with an arrow, never a second filled or outlined button. Buttons are rectangles (rounded-md); never rounded-full pills.
-5. **Visual** — a large, sharp \`petal-image://\` photograph (full-bleed or a 7/5 split), \`object-cover\` with an explicit aspect ratio. For SaaS: one framed product screenshot, no floating cards.
+5. **Visual** — usually a large, sharp \`petal-image://\` photograph (full-bleed or a split), \`object-cover\` with an explicit aspect ratio; a type-led hero with no picture is fine when the brand suits it. For SaaS: one framed product screenshot, no floating cards.
 6. **Nothing else in the fold** — no booking or time-slot widgets, availability cards, tickers, marquees, product grids, stats, forms, calculators or badges. Those belong in their own sections below.`;
 
 const SAAS_ADDENDUM = `

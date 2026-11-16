@@ -488,7 +488,7 @@ export function renderShapeBlock(shape: AppShape): string {
       ? `Domain feature pack (ALSO required — these turn the screen into a product, not a demo): ${featurePack.map((c) => `\`${c}\``).join(", ")}. Build them as sibling components alongside the core list above.`
       : "",
     shape.category === "saas" || shape.category === "fintech" || shape.category === "marketplace" || shape.category === "ecommerce" || shape.category === "ai-tool" || shape.category === "social" || shape.category === "booking"
-      ? "Marketing surface bar (build ALL seven for the landing page, in this order): `Navbar`, `Hero` (eyebrow badge + gradient text accent + dual CTA + trust row + mocked product visual panel), `Features` (bento 3-col grid, 6 icon cards), `SocialProof` (3 testimonial cards), `Pricing` (3 tiers with feature checklists, Pro highlighted), `Faq` (accordion), `Footer` (4 columns + bottom row). NEVER ship a landing page that is just a centered headline with Login/Sign-Up buttons and three plain bordered cards — that is a placeholder, not a marketing site."
+      ? "Marketing surface: the landing page needs a real navbar, a hero and a footer; add only the other sections this business and request actually need. Design the hero for this brand and brief — no fixed formula (no required label, badge, trust row or second button). A landing page that is just a centred headline with Login/Sign-Up buttons and three plain bordered cards is a placeholder, not a marketing site."
       : "",
     `Why: ${shape.rationale}`,
     "",

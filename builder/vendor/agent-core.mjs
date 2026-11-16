@@ -46600,6 +46600,7 @@ export function HeroCentered({
   secondaryCta,
   className,
 }: {
+  /** Optional \u2014 usually leave empty. Never the address, location, opening hours or rating. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -46671,6 +46672,7 @@ export function HeroSplitImage({
   reverse = false,
   className,
 }: {
+  /** Optional \u2014 usually leave empty. Never the address, location, opening hours or rating. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -46758,7 +46760,7 @@ export function HeroEditorial({
 }: {
   /** Optional issue/section marker rendered as oversized numerals. */
   number?: React.ReactNode;
-  /** Small label above the headline. */
+  /** Optional \u2014 usually leave empty. Never the address, location, opening hours or rating. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   lede?: React.ReactNode;
@@ -46858,6 +46860,7 @@ export function HeroSplitWithDashboardMock({
   kpis,
   className,
 }: {
+  /** Optional \u2014 usually leave empty. Never the address, location, opening hours or rating. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -70513,7 +70516,7 @@ function renderShapeBlock(shape2) {
     shape2.integrationsLikely.length ? `Likely integrations: ${shape2.integrationsLikely.map((i) => `\`${i}\``).join(", ")}. Check the integration briefs above before improvising.` : "",
     domainComponents && domainComponents.length ? `Required product components (build ALL of these \u2014 generic KPI cards do not satisfy this list): ${domainComponents.map((c) => `\`${c}\``).join(", ")}.` : "",
     featurePack.length ? `Domain feature pack (ALSO required \u2014 these turn the screen into a product, not a demo): ${featurePack.map((c) => `\`${c}\``).join(", ")}. Build them as sibling components alongside the core list above.` : "",
-    shape2.category === "saas" || shape2.category === "fintech" || shape2.category === "marketplace" || shape2.category === "ecommerce" || shape2.category === "ai-tool" || shape2.category === "social" || shape2.category === "booking" ? "Marketing surface bar (build ALL seven for the landing page, in this order): `Navbar`, `Hero` (eyebrow badge + gradient text accent + dual CTA + trust row + mocked product visual panel), `Features` (bento 3-col grid, 6 icon cards), `SocialProof` (3 testimonial cards), `Pricing` (3 tiers with feature checklists, Pro highlighted), `Faq` (accordion), `Footer` (4 columns + bottom row). NEVER ship a landing page that is just a centered headline with Login/Sign-Up buttons and three plain bordered cards \u2014 that is a placeholder, not a marketing site." : "",
+    shape2.category === "saas" || shape2.category === "fintech" || shape2.category === "marketplace" || shape2.category === "ecommerce" || shape2.category === "ai-tool" || shape2.category === "social" || shape2.category === "booking" ? "Marketing surface: the landing page needs a real navbar, a hero and a footer; add only the other sections this business and request actually need. Design the hero for this brand and brief \u2014 no fixed formula (no required label, badge, trust row or second button). A landing page that is just a centred headline with Login/Sign-Up buttons and three plain bordered cards is a placeholder, not a marketing site." : "",
     `Why: ${shape2.rationale}`,
     "",
     "Use this shape as the floor, not the ceiling \u2014 if the user asked for more, build more. But never produce fewer surfaces than predicted: a fintech app missing /admin or /webhooks is incomplete, and a CRM missing ContactsTable + Pipeline is not a CRM."
@@ -139986,6 +139989,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141073,6 +141077,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -141237,6 +141242,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -141280,6 +141286,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -141501,6 +141508,7 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -141978,6 +141986,7 @@ function withRequiredPeers(names) {
 var KNOWN_PACKAGES, PACKAGE_ALIASES, COMMON_LUCIDE_ICONS, SAFE_ICON_FALLBACK, REACT_ICONS_TO_LUCIDE, REQUIRED_PEERS;
 var init_known_packages = __esm({
   "src/server/known-packages.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_dynamicIconImports2();
     KNOWN_PACKAGES = {
@@ -143829,6 +143838,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -145033,6 +145043,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -146163,6 +146174,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -148480,13 +148492,13 @@ var init_hero_contract_server = __esm({
     HERO_CONTRACT = `
 
 ### Hero Contract (home page, initial build)
-Modern studio hero: one picture, one headline, one action. Restraint is the look.
+Design the hero for THIS business and brief \u2014 bold centred type, a full-bleed photograph, an editorial split or a quiet type-only header are all fine. Restraint is the look.
 
-1. **Optional kicker** \u2014 plain text only: \`text-xs uppercase tracking-[0.18em] text-muted-foreground\`. Never a pill, badge, chip or icon.
+1. **Optional kicker** \u2014 usually leave it out. If used: plain text only (\`text-xs uppercase tracking-[0.18em] text-muted-foreground\`), never a pill, badge, chip or icon, and NEVER the address, location, opening hours or rating \u2014 those go in the hours/contact section or the footer.
 2. **H1** \u2014 display font, \`text-4xl sm:text-5xl lg:text-7xl leading-[1.02] tracking-tight\`, max 2 lines on desktop, 3 on phone, one colour. Never colour, italicise, highlight or gradient a single word.
 3. **Subhead** \u2014 optional, one sentence, \`text-base md:text-lg text-muted-foreground max-w-xl\`.
 4. **Action** \u2014 ONE primary \`<Button size="lg">\`; an optional second action is a quiet text link with an arrow, never a second filled or outlined button. Buttons are rectangles (rounded-md); never rounded-full pills.
-5. **Visual** \u2014 a large, sharp \`petal-image://\` photograph (full-bleed or a 7/5 split), \`object-cover\` with an explicit aspect ratio. For SaaS: one framed product screenshot, no floating cards.
+5. **Visual** \u2014 usually a large, sharp \`petal-image://\` photograph (full-bleed or a split), \`object-cover\` with an explicit aspect ratio; a type-led hero with no picture is fine when the brand suits it. For SaaS: one framed product screenshot, no floating cards.
 6. **Nothing else in the fold** \u2014 no booking or time-slot widgets, availability cards, tickers, marquees, product grids, stats, forms, calculators or badges. Those belong in their own sections below.`;
     SAAS_ADDENDUM = `
 - SaaS: primary action is "Get started"/"Start free"; the visual is one clean product screenshot in a simple rounded frame.`;
@@ -164994,7 +165006,7 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - design_moves: 2\u20134 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" \u2014 those aren't moves.
 
 Calibration \u2014 two recent Kimble outputs, same builder, very different results:
-\u2705 GOOD ("Flowy", period tracker): magenta brand-dot logo + wordmark, pink eyebrow pill, bold sans display H1 with marker-highlight on one word, 3-line subhead in muted ink, filled pink pill primary CTA + outlined pill secondary, real hero photo of a person with a floating "5 Days to Flow" status card overlapping the photo. Feels like a real product.
+\u2705 GOOD ("Flowy", period tracker): magenta brand-dot logo + wordmark, bold sans display H1 with no label above it, 2-line subhead in muted ink, one filled primary button, real hero photo of a person filling half the fold. Feels like a real product.
 \u274C BAD ("PipelinePilot", SaaS CRM): generic sparkle icon, "Streamline Your Sales" rendered as a body-sized eyebrow with no real H1, body paragraph centered in dead space, two bare text+arrow "Start Your Free Trial \u2192" / "Learn More" links with no button chrome, DotPattern occupying ~70% of the fold, dashboard mockup buried below. Looks like a placeholder.
 The difference is composition discipline, not the kit. SaaS briefs deserve Flowy-tier execution too \u2014 pick vibes and moves that demand it.
 
@@ -165588,7 +165600,7 @@ NEVER hand-roll overlays with fixed positioning.`
     body: `
 
 [Reinforcement \u2014 Section blocks (the look-different fix)]
-Compose pages by picking ONE variant per section from "@/components/blocks/*". Do NOT hand-roll a hero, feature grid, pricing card, FAQ, CTA, footer, or nav from scratch \u2014 pick a block, theme it via className.
+The blocks in "@/components/blocks/*" are a starting point, not a requirement. Use one when it fits the business; write your own section whenever the brief or the brand calls for something the blocks do not give you \u2014 especially the hero (bold centred type, a full-bleed photograph, a quiet header with no label, an editorial split, whatever suits this business). A restaurant, salon, boutique or personal brand should not look like a SaaS launch page.
 
 Available section blocks:
 - Nav: <NavBar>, <NavWithCta>, <NavWithSearch>
@@ -165627,7 +165639,8 @@ Composition rules \u2014 this is the difference between forgettable and memorabl
    - docs / dashboard / app interior \u2192 NavWithSearch + content + EmptyState
 3. Supporting atoms for spaces between blocks: <Section eyebrow title description>, <Stat>, <Timeline>, <Rating>, <FeatureIcon>, <Prose>, <Divider label>, <EmptyState>.
 4. Each block accepts \`className\`. Sharper corners \u2192 override rounded-2xl. Different type \u2192 override in styles.css and blocks inherit.
-5. NEVER reinvent a section the kit already provides. If you're writing \`<section><div className="grid grid-cols-3">\u2026three cards\u2026</div></section>\`, stop and use <FeaturesGrid3>. If you're writing a sticky <header> with mobile toggle, use <NavWithCta>. If you're writing a footer with link columns, use <FooterColumns>.`
+5. Reuse a block when it saves effort and fits (a sticky <header> with mobile toggle \u2192 <NavWithCta>; a footer with link columns \u2192 <FooterColumns>). Hand-write any section, including the hero, when a bespoke layout serves the brand better.
+6. Hero labels are optional. Leave the small label above the headline out unless it adds something. Never use it (or any badge) for the address, location, opening hours or rating \u2014 those belong in the hours/contact section or the footer.`
   },
   // Fires on landing/marketing/site requests. The default failure mode for
   // AI builders is "stuff everything onto index.tsx with hash anchors" —
@@ -168996,7 +169009,7 @@ var COMPOSITION_RULES = [
   "Two, at most three calls to action across an entire page. The final CTA is its own section; the footer is not a CTA.",
   "Every image needs a real alt description, an explicit aspect ratio and object-cover. Text over an image always sits on a scrim.",
   'Real photography comes ONLY from the image tool: write src="petal-image://<cinematic-specific-prompt>" (subject, setting, light, lens, mood \u2014 e.g. petal-image://limestone-villa-at-dusk-warm-grazing-light-wide-architectural-photo). Petal generates each one after you finish. Never write any other image URL (unsplash, picsum, pexels or any https photo link) \u2014 invented links are broken and show as empty boxes. Give every distinct picture slot (each project card, team member, room, product) its own distinct prompt \u2014 every one is made; repeat a URL only when the very same picture is shown again (e.g. a card and its detail view). Never write data:image URIs, inline SVG pictures, gradient boxes standing in for photos, or stock/unsplash/picsum URLs.',
-  "Marketing sites lead with imagery, not tools: the hero is a large photograph or full-bleed visual with one headline and one primary action. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
+  "Marketing sites lead with the brand, not tools: design the hero for this business (a large photograph, a full-bleed visual or bold type), with one clear headline and one primary action. A label above the headline is optional and never holds the address, location or opening hours. Never put calculators, sliders, simulators or spec tables in the hero of a website unless the user asked for that tool.",
   "Studio, portfolio, architecture, luxury and hospitality sites are editorial: big photographs, generous negative space, few words per section, serif display headings. Keep technical detail off the homepage.",
   "Restraint over density. A website is not a dashboard: every section has one idea, a short heading, at most two short sentences, and white space around it. Fewer, larger pictures beat many small ones.",
   "Card anatomy is fixed: picture, title, one meta line (category \xB7 year or role), optionally one short sentence. No chips, badges, spec rows, numbers, credits or buttons inside a card \u2014 the whole card is the link.",
@@ -172316,7 +172329,6 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
-init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();

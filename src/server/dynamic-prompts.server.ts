@@ -157,7 +157,7 @@ NEVER hand-roll overlays with fixed positioning.`,
     triggers:
       /\b(landing|landing page|home ?page|marketing site|hero|features?|testimonials?|pricing|faq|call to action|cta|footer|nav|navbar|header|portfolio|agency|product page|saas|about page|blog|stats|kpi)\b/i,
     body: `\n\n[Reinforcement — Section blocks (the look-different fix)]
-Compose pages by picking ONE variant per section from "@/components/blocks/*". Do NOT hand-roll a hero, feature grid, pricing card, FAQ, CTA, footer, or nav from scratch — pick a block, theme it via className.
+The blocks in "@/components/blocks/*" are a starting point, not a requirement. Use one when it fits the business; write your own section whenever the brief or the brand calls for something the blocks do not give you — especially the hero (bold centred type, a full-bleed photograph, a quiet header with no label, an editorial split, whatever suits this business). A restaurant, salon, boutique or personal brand should not look like a SaaS launch page.
 
 Available section blocks:
 - Nav: <NavBar>, <NavWithCta>, <NavWithSearch>
@@ -196,7 +196,8 @@ Composition rules — this is the difference between forgettable and memorable:
    - docs / dashboard / app interior → NavWithSearch + content + EmptyState
 3. Supporting atoms for spaces between blocks: <Section eyebrow title description>, <Stat>, <Timeline>, <Rating>, <FeatureIcon>, <Prose>, <Divider label>, <EmptyState>.
 4. Each block accepts \`className\`. Sharper corners → override rounded-2xl. Different type → override in styles.css and blocks inherit.
-5. NEVER reinvent a section the kit already provides. If you're writing \`<section><div className="grid grid-cols-3">…three cards…</div></section>\`, stop and use <FeaturesGrid3>. If you're writing a sticky <header> with mobile toggle, use <NavWithCta>. If you're writing a footer with link columns, use <FooterColumns>.`,
+5. Reuse a block when it saves effort and fits (a sticky <header> with mobile toggle → <NavWithCta>; a footer with link columns → <FooterColumns>). Hand-write any section, including the hero, when a bespoke layout serves the brand better.
+6. Hero labels are optional. Leave the small label above the headline out unless it adds something. Never use it (or any badge) for the address, location, opening hours or rating — those belong in the hours/contact section or the footer.`,
   },
   // Fires on landing/marketing/site requests. The default failure mode for
   // AI builders is "stuff everything onto index.tsx with hash anchors" —

@@ -458,6 +458,7 @@ export function HeroCentered({
   secondaryCta,
   className,
 }: {
+  /** Optional — usually leave empty. Never the address, location, opening hours or rating. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -530,6 +531,7 @@ export function HeroSplitImage({
   reverse = false,
   className,
 }: {
+  /** Optional — usually leave empty. Never the address, location, opening hours or rating. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -618,7 +620,7 @@ export function HeroEditorial({
 }: {
   /** Optional issue/section marker rendered as oversized numerals. */
   number?: React.ReactNode;
-  /** Small label above the headline. */
+  /** Optional — usually leave empty. Never the address, location, opening hours or rating. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   lede?: React.ReactNode;
@@ -726,6 +728,7 @@ export function HeroSplitWithDashboardMock({
   kpis,
   className,
 }: {
+  /** Optional — usually leave empty. Never the address, location, opening hours or rating. */
   eyebrow?: React.ReactNode;
   title: React.ReactNode;
   description?: React.ReactNode;

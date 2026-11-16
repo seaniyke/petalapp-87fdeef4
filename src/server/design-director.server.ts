@@ -339,7 +339,7 @@ Output a SINGLE call to the "set_design_direction" tool with:
 - design_moves: 2–4 SHORT, concrete moves that make this app unforgettable. Examples: "oversized numerals as section markers", "asymmetric hero with off-center photo", "thin underline accents instead of borders", "monospace metadata under serif headings". NEVER "use cards" or "use a grid" — those aren't moves.
 
 Calibration — two recent Kimble outputs, same builder, very different results:
-✅ GOOD ("Flowy", period tracker): magenta brand-dot logo + wordmark, pink eyebrow pill, bold sans display H1 with marker-highlight on one word, 3-line subhead in muted ink, filled pink pill primary CTA + outlined pill secondary, real hero photo of a person with a floating "5 Days to Flow" status card overlapping the photo. Feels like a real product.
+✅ GOOD ("Flowy", period tracker): magenta brand-dot logo + wordmark, bold sans display H1 with no label above it, 2-line subhead in muted ink, one filled primary button, real hero photo of a person filling half the fold. Feels like a real product.
 ❌ BAD ("PipelinePilot", SaaS CRM): generic sparkle icon, "Streamline Your Sales" rendered as a body-sized eyebrow with no real H1, body paragraph centered in dead space, two bare text+arrow "Start Your Free Trial →" / "Learn More" links with no button chrome, DotPattern occupying ~70% of the fold, dashboard mockup buried below. Looks like a placeholder.
 The difference is composition discipline, not the kit. SaaS briefs deserve Flowy-tier execution too — pick vibes and moves that demand it.
 

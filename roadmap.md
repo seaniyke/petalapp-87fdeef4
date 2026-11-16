@@ -102,3 +102,9 @@
 - [x] Content edits send only the files holding the content and patch in place
 - [x] wa.me / tel / mailto / own domains are not reference sites
 - [ ] Re-run Mama Kay's request live — needs Petal published and build server updated (owner action)
+
+## Custard: hero freedom (16 Nov)
+- [x] Blocks optional, bespoke heroes allowed
+- [x] Removed SaaS hero formula from landing guidance
+- [x] Hero label optional; never address/hours
+- [ ] Live check on a new restaurant/salon site after the build server updates
