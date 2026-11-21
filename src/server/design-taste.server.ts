@@ -25,17 +25,7 @@ Kimble is being judged on whether the landing looks like it was made by a person
 
 3. Locked palette. Use the LOCKED PALETTE (below) verbatim. Define these four hex values as semantic tokens in \`src/styles.css\` (\`--background\`, \`--surface\`, \`--primary\`, \`--primary-glow\`) using oklch conversion where possible; derive \`--foreground\`, \`--muted\`, \`--border\`, \`--card\` from them. Never inject a random indigo, purple, or blue-500 into the palette.
 
-4. Refused clichés — DO NOT ship any of these:
-   - Purple-to-pink gradient on white background.
-   - Indigo-500 primary with Inter typography.
-   - Centered hero with three equal-weight feature cards as the only page content.
-   - Generic stock-photo placeholder ("smiling person at laptop", "team high-fiving").
-   - Generic "AI" abstract 3D blob/orb backgrounds and purple-pink rainbow washes.
-   - Mid-page black \`text-white bg-black\` band inside an otherwise light page.
-   - Lorem ipsum in any live copy.
-   - Placeholder logos rendered as gray rectangles in a row (either use real generated brand marks or skip the logo strip).
-   - \`© 2024\` in the footer — the current year is passed to you separately, use it.
-   - Every h1 the same size and weight across pages.
+4. Make it unmistakably this business: a real photograph or art direction chosen for this brand, a palette from its world, a hero composed for its story, real copy, the current year in the footer, headings that vary in scale between pages. Real brand marks or no logo strip.
 
 5. Crafted depth, not flat boxes. Depth comes from photography, type scale and LAYERED surfaces: use \`glass\` (frosted panel over imagery or colour), \`mesh-backdrop\` (slow-drifting brand-tinted light field behind a hero), \`edge-light\` (1px top highlight on dark cards), \`ambient-glow\` and \`surface-grain\` where the direction calls for atmosphere. Keep it intentional: one or two atmospheric layers per page, always brand-tinted from tokens, always \`pointer-events-none\` behind content, text contrast never compromised. Ban only the cheap versions: rainbow purple-pink blobs, random 3D orbs, glow on every element.
 
@@ -62,7 +52,7 @@ If your draft violates ANY of the above, REWRITE before emitting. The goal is th
 /** Taste body with the colour/type rules handed to the design system package. */
 function packageTasteBody(): string {
   const a = TASTE_BODY.indexOf("1. Commit to ONE clear direction");
-  const b = TASTE_BODY.indexOf("4. Refused");
+  const b = TASTE_BODY.indexOf("4. Make it");
   if (a < 0 || b < a) return TASTE_BODY;
   return (
     TASTE_BODY.slice(0, a) +

@@ -60,11 +60,10 @@ NEVER render a list, table or count from a `submit` table — it is unreadable f
 `add()` returns a truthy value on success in every mode and `null` ONLY on failure: `if (await add(values)) { setSubmitted(true) } else { showError() }`.
 
 ## DESIGN QUALITY
-- Typography: text-3xl md:text-5xl headings, max-w-prose body, leading-relaxed
-- Color: NEVER text-black/bg-white — use text-foreground/bg-background. Alternate light/dark sections.
-- Spacing: py-16 md:py-24 minimum for sections. Use gap not margins.
-- Hover states: EVERY button/link needs hover feedback. Cards: hover:-translate-y-1 hover:shadow-lg
-- Quality: Must look like a professional agency built it.
+- Compose like an agency: fluid, asymmetric or full-bleed layouts, generous space, one signature moment per page.
+- Type: huge tight display lines (`text-hero`/`text-display`, `tracking-tight`) against calm body copy (`leading-relaxed`, `max-w-prose`).
+- Depth and motion: glass, mesh-backdrop, edge-light, spring and scroll reveals from `@/components/motion` where they fit.
+- Colour through semantic tokens (text-foreground/bg-background); body text at 4.5:1 contrast.
 ## DEFAULTS (follow unless the user asks otherwise)
 - Content language: write ALL user-facing site copy (headlines, buttons, nav, alt text, `<title>`) in the same language as the user's messages — a Russian request gets a Russian website. Keep the established language on follow-ups; switch only if the user explicitly asks. Code (identifiers, class names, paths, routes) stays English.
 - Prefer semantic colors (bg-primary, text-foreground) over hardcoded ones (bg-blue-500). If the user names a specific color, use it.

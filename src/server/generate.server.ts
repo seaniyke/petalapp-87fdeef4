@@ -40,14 +40,9 @@ Files YOU MUST emit (the actual app):
 - (Optional) "src/styles.css" — the scaffold provides one with light + dark theme tokens; only emit if you need to ADD styles. See "STYLES.CSS SAFETY RULES" below — invalid CSS here aborts the entire build.
 - (Optional) Any feature components under "src/components/*" (NOT in src/components/ui/ — that's reserved for the kit).
 
-REUSE-FIRST PROTOCOL (most important rule):
-Before writing ANY JSX element, ask: "Is there a kit component for this?" If yes, you MUST use it. If you find yourself styling a primitive HTML element to look like a UI control, STOP and import the kit equivalent. Specific component signatures relevant to THIS turn appear in the [Reinforcement — ...] sections appended below — defer to those for exact API.
-
-ESSENTIAL substitutions (always true):
-- <button> → <Button>. <input>/<textarea> → <Input>/<Textarea>. <label> → <Label htmlFor>.
-- div-styled-as-card → <Card>/<CardContent>. span-styled-as-pill → <Badge>. <hr> → <Separator>.
-- Hand-rolled modal/menu → <Dialog>/<DropdownMenu>. Custom alert div → toast.success/.error.
-- Layout: wrap pages in <Container>; use <Stack>/<Inline>/<Grid> instead of raw flex/gap chains.
+BUILDING BLOCKS (how you compose):
+- Controls come from the kit so they are accessible and consistent: <Button>, <Input>/<Textarea>, <Label htmlFor>, <Select>, <Dialog>/<Sheet>/<DropdownMenu>, <Badge>, toast.success/.error. Exact signatures for this turn appear in the [Reinforcement — ...] sections below.
+- Layout and visual containers are yours to design: full-bleed bands, asymmetric splits, borderless groups, soft rounded panels, glass over imagery — with Tailwind directly or with <Container>/<Stack>/<Grid>/<Card> when they fit.
 
 Hard rules:
 - FINISH WHAT YOU START (read this FIRST):
@@ -55,21 +50,12 @@ Hard rules:
   • Write what the call asks for and nothing more. When a call names one file, that call emits exactly that file.
   • Genuinely shared UI (navigation, footer, brand mark, repeated cards) lives in its own file under \`src/components/\` and is imported. A page's own sections stay in the page file.
 - MUST use Tailwind utility classes for ALL styling. NEVER write inline \`style={{}}\` (except for truly dynamic values like \`style={{ width: progress + '%' }}\`) or custom CSS classes outside src/styles.css.
-- MUST import kit components from "@/components/ui/*". If you find yourself writing a styled <button>, <input>, or <div className="card-like">, STOP and use the kit equivalent.
+- Interactive controls come from "@/components/ui/*" (a styled raw <button> or <input> loses focus, keyboard and theme behaviour).
 - MUST use semantic Tailwind tokens: \`bg-background\`, \`text-foreground\`, \`bg-primary\`, \`text-primary-foreground\`, \`bg-muted\`, \`text-muted-foreground\`, \`bg-accent\`, \`border-border\`, \`bg-destructive\`. NEVER hardcode colors like \`bg-purple-500\`, \`text-white\`, \`bg-gray-100\` — they break the theme.
 - MUST use \`lucide-react\` icons. NEVER use emoji as functional UI icons (decorative emoji in copy is fine).
 - MUST use the \`cn()\` helper from "@/lib/utils" when merging conditional class names.
-- MUST compose layouts from kit components. A "feature card" is <Card>, not a custom div. A "settings row" is <Label> + <Switch> inside a <Card>.
 - Keep the project under ~15 app files (not counting the scaffold).
-- Make it look polished: generous spacing (p-6, gap-4, space-y-4), rounded corners, subtle borders, clear hierarchy.
-
-ANTI-PATTERNS (do NOT do these):
-- BAD: <button className="bg-blue-500 text-white px-4 py-2 rounded">  GOOD: <Button>
-- BAD: <div className="bg-white rounded-lg shadow p-6">               GOOD: <Card><CardContent className="p-6">
-- BAD: <input className="border rounded px-3 py-2" />                 GOOD: <Input />
-- BAD: <span className="bg-green-100 text-green-800 px-2 rounded">    GOOD: <Badge variant="secondary">
-- BAD: style={{ backgroundColor: '#3b82f6' }}                         GOOD: className="bg-primary"
-- BAD: hand-rolled modal with fixed positioning                       GOOD: <Dialog>
+- Make it feel crafted: generous space, confident type scale, depth and motion where the direction calls for it.
 
 STYLES.CSS SAFETY RULES (Tailwind v4 aborts the build on ANY invalid CSS):
 - The FIRST line MUST be \`@import "tailwindcss";\` — never anything else, never a bare token.

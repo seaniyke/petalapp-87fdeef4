@@ -99,10 +99,8 @@ function pick(sections: Section[], prefixes: readonly string[]): Section[] {
  */
 export const BASE_ALWAYS = [
   "BRAND IDENTITY",
-  "REUSE-FIRST PROTOCOL",
-  "ESSENTIAL substitutions",
+  "BUILDING BLOCKS",
   "Hard rules",
-  "ANTI-PATTERNS",
   "DECLARE-BEFORE-USE",
   "IMAGES",
   "MULTI-PAGE ROUTING",
@@ -127,7 +125,7 @@ export const MANUAL_ALWAYS = [
 /** Manual sections for building a new multi-page site from scratch. */
 export const MANUAL_FIRST_BUILD = [
   "home page is the primary canvas",
-  "design quality standards",
+  "design excellence",
 ] as const;
 
 /** Agent-knowledge skills preloaded for a given kind of site. */

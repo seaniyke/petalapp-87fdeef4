@@ -58,7 +58,6 @@ In order of impact per unit of risk:
 4. **One consistent radius and one shadow step**, used everywhere, instead of five of each.
 5. **States.** Hover and active feedback on everything interactive.
 
-Atmosphere effects — grain overlays, glows, blend modes — are the *last* thing to reach for and usually unnecessary. Do not add them to fix a layout problem.
 
 ## Before you finish
 

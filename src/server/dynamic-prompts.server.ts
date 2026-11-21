@@ -118,8 +118,9 @@ This turn looks like a multi-section page.
     triggers:
       /\b(layout|page|section|hero|landing|grid|stack|inline|container|sidebar|header|footer|two[- ]column|split|columns?)\b/i,
     body: `\n\n[Reinforcement — Layout primitives]
-- <Container size="sm|md|lg|xl|full"> — outermost wrapper for every page section (default "lg").
-- <Stack gap={4} align="start|center|end|stretch" justify="..."> — vertical columns. <Inline gap={2} align wrap> — horizontal rows. Use these instead of writing flex/gap utility chains by hand.
+Optional helpers — use them when they fit, write Tailwind directly when the composition calls for full-bleed or asymmetric layouts:
+- <Container size="sm|md|lg|xl|full"> — a centred content width.
+- <Stack gap={4} align="start|center|end|stretch" justify="..."> — vertical columns. <Inline gap={2} align wrap> — horizontal rows.
 - <Grid preset="stats|kpis|dashboard|cards|features|pricing|split|gallery"> for instant dashboard layouts. Or compose: <Grid cols={1} sm={2} md={3} lg={4} gap={6}>. Allowed cols: 1, 2, 3, 4, 6, 12.
 Read "src/components/examples/LAYOUT.md" before laying out any new page.`,
   },
