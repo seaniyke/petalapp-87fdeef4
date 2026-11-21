@@ -38982,7 +38982,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, ACCOUNTS_OPT_OUT, DEVICE_ONLY, SHOP_BUTTONS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES, BACKEND_OPT_OUT;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -51928,7 +51927,7 @@ export function MobileErrorState({
 });
 
 // src/server/scaffold-kit-motion.ts
-var MOTION_INDEX, FADE_IN, SLIDE_UP, STAGGER, REVEAL, MAGNETIC, TILT, PARALLAX, SPLIT_TEXT, COUNT_UP, WORD_ROTATE, BLUR_FADE, KIT_MOTION_FILES;
+var MOTION_INDEX, FADE_IN, SLIDE_UP, STAGGER, REVEAL, MAGNETIC, TILT, PARALLAX, SPLIT_TEXT, COUNT_UP, WORD_ROTATE, BLUR_FADE, SPRING, SCROLL_SCALE, SPOTLIGHT, MARQUEE, KIT_MOTION_FILES;
 var init_scaffold_kit_motion = __esm({
   "src/server/scaffold-kit-motion.ts"() {
     "use strict";
@@ -51945,6 +51944,10 @@ export { SplitText } from "./split-text";
 export { CountUp } from "./count-up";
 export { WordRotate } from "./word-rotate";
 export { BlurFade } from "./blur-fade";
+export { Spring } from "./spring";
+export { ScrollScale } from "./scroll-scale";
+export { Spotlight } from "./spotlight";
+export { Marquee } from "./marquee";
 `;
     FADE_IN = `"use client";
 import * as React from "react";
@@ -52383,6 +52386,119 @@ export const BlurFade = React.forwardRef<HTMLDivElement, BlurFadeProps>(
 );
 BlurFade.displayName = "BlurFade";
 `;
+    SPRING = `"use client";
+import * as React from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
+
+export interface SpringProps extends HTMLMotionProps<"div"> {
+  delay?: number;
+  /** Starting offset in px (y). */
+  from?: number;
+  stiffness?: number;
+  damping?: number;
+  once?: boolean;
+}
+
+export const Spring = React.forwardRef<HTMLDivElement, SpringProps>(
+  ({ delay = 0, from = 32, stiffness = 140, damping = 18, once = true, children, ...rest }, ref) => (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: from, scale: 0.98 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once, margin: "-10% 0px" }}
+      transition={{ type: "spring", stiffness, damping, mass: 0.9, delay }}
+      {...rest}
+    >
+      {children}
+    </motion.div>
+  ),
+);
+Spring.displayName = "Spring";
+`;
+    SCROLL_SCALE = `"use client";
+import * as React from "react";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
+
+export interface ScrollScaleProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Scale at the start of the scroll range. */
+  fromScale?: number;
+  /** Corner radius (px) at the start; eases to 0 when full. */
+  fromRadius?: number;
+}
+
+export const ScrollScale: React.FC<ScrollScaleProps> = ({ fromScale = 0.86, fromRadius = 32, children, style, ...rest }) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] });
+  const scale = useTransform(scrollYProgress, [0, 1], [reduce ? 1 : fromScale, 1]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [reduce ? 1 : 0.4, 1, 1]);
+  const borderRadius = useTransform(scrollYProgress, [0, 1], [fromRadius, 0]);
+  return (
+    <motion.div ref={ref} style={{ scale, opacity, borderRadius, overflow: "hidden", ...style }} {...(rest as object)}>
+      {children}
+    </motion.div>
+  );
+};
+`;
+    SPOTLIGHT = `"use client";
+import * as React from "react";
+
+export interface SpotlightProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Light radius in px. */
+  size?: number;
+}
+
+export const Spotlight = React.forwardRef<HTMLDivElement, SpotlightProps>(
+  ({ size = 420, className, children, onPointerMove, style, ...rest }, ref) => {
+    const [pos, setPos] = React.useState({ x: -9999, y: -9999 });
+    return (
+      <div
+        ref={ref}
+        className={["relative isolate overflow-hidden", className].filter(Boolean).join(" ")}
+        onPointerMove={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setPos({ x: e.clientX - r.left, y: e.clientY - r.top });
+          onPointerMove?.(e);
+        }}
+        onPointerLeave={() => setPos({ x: -9999, y: -9999 })}
+        style={style}
+        {...rest}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 transition-opacity duration-300"
+          style={{
+            background: \`radial-gradient(\${size}px circle at \${pos.x}px \${pos.y}px, color-mix(in oklab, var(--color-primary) 18%, transparent), transparent 70%)\`,
+          }}
+        />
+        {children}
+      </div>
+    );
+  },
+);
+Spotlight.displayName = "Spotlight";
+`;
+    MARQUEE = `"use client";
+import * as React from "react";
+
+export interface MarqueeProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Seconds per loop. */
+  duration?: number;
+  reverse?: boolean;
+}
+
+export const Marquee: React.FC<MarqueeProps> = ({ duration = 30, reverse = false, className, children, ...rest }) => (
+  <div className={["group relative flex overflow-hidden", className].filter(Boolean).join(" ")} {...rest}>
+    <div
+      className="flex w-max shrink-0 items-center gap-12 pr-12 group-hover:[animation-play-state:paused]"
+      style={{ animation: \`marquee-x \${duration}s linear infinite\`, animationDirection: reverse ? "reverse" : "normal" }}
+    >
+      {children}
+      <div aria-hidden className="flex items-center gap-12">{children}</div>
+    </div>
+  </div>
+);
+`;
     KIT_MOTION_FILES = [
       { path: "src/components/motion/index.ts", content: MOTION_INDEX, overwrite: true },
       { path: "src/components/motion/fade-in.tsx", content: FADE_IN, overwrite: true },
@@ -52395,7 +52511,11 @@ BlurFade.displayName = "BlurFade";
       { path: "src/components/motion/split-text.tsx", content: SPLIT_TEXT, overwrite: true },
       { path: "src/components/motion/count-up.tsx", content: COUNT_UP, overwrite: true },
       { path: "src/components/motion/word-rotate.tsx", content: WORD_ROTATE, overwrite: true },
-      { path: "src/components/motion/blur-fade.tsx", content: BLUR_FADE, overwrite: true }
+      { path: "src/components/motion/blur-fade.tsx", content: BLUR_FADE, overwrite: true },
+      { path: "src/components/motion/spring.tsx", content: SPRING, overwrite: true },
+      { path: "src/components/motion/scroll-scale.tsx", content: SCROLL_SCALE, overwrite: true },
+      { path: "src/components/motion/spotlight.tsx", content: SPOTLIGHT, overwrite: true },
+      { path: "src/components/motion/marquee.tsx", content: MARQUEE, overwrite: true }
     ];
   }
 });
@@ -55392,6 +55512,46 @@ body {
     filter: blur(64px);
     background: color-mix(in oklab, var(--color-primary) 14%, transparent);
   }
+}
+
+/* Depth surfaces (agency-grade, brand-tinted, pointer-safe).
+ *   glass         frosted panel over imagery or colour
+ *   edge-light    1px top highlight for dark/elevated cards
+ *   mesh-backdrop slow-drifting brand light field behind a section
+ */
+@utility glass {
+  background: color-mix(in oklab, var(--color-background) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid color-mix(in oklab, var(--color-foreground) 10%, transparent);
+}
+@utility edge-light {
+  box-shadow: inset 0 1px 0 0 color-mix(in oklab, var(--color-foreground) 14%, transparent), 0 24px 60px -30px color-mix(in oklab, var(--color-foreground) 35%, transparent);
+}
+@utility mesh-backdrop {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(40% 50% at 20% 30%, color-mix(in oklab, var(--color-primary) 22%, transparent), transparent 70%),
+      radial-gradient(35% 45% at 80% 20%, color-mix(in oklab, var(--color-accent, var(--color-primary)) 16%, transparent), transparent 70%),
+      radial-gradient(45% 55% at 60% 90%, color-mix(in oklab, var(--color-primary) 12%, transparent), transparent 70%);
+    filter: blur(40px);
+    animation: mesh-drift 24s ease-in-out infinite alternate;
+  }
+}
+@keyframes mesh-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(3%, -2%, 0) scale(1.06); }
+}
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -70288,7 +70448,6 @@ function applyDesignSystem(files, pkg, accent) {
 var TOKENS_START, TOKENS_END, FONTS_START, FONTS_END, HTML_FONTS_START, HTML_FONTS_END, LEGACY, STYLE_PATHS, ROOT_PATH, HTML_PATH;
 var init_apply = __esm({
   "src/server/design-systems/apply.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_loader();
     TOKENS_START = "/* petal-design-system:start */";
@@ -70689,7 +70848,6 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140848,6 +141006,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -141935,6 +142094,7 @@ function fixMarkdownFences(files) {
 var CODE_FILE, FENCE, CONTENT_FENCE, TEMPLATE_CLOSE;
 var init_markdown_fence_fixer_server = __esm({
   "src/server/markdown-fence-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     CODE_FILE = /\.(tsx?|jsx?|mjs|cjs)$/;
     FENCE = /^\s*(`{3,}|~{3,})/;
@@ -142099,6 +142259,7 @@ function fixSourceEscapes(files) {
 var SOURCE_RX2;
 var init_source_escape_fixer_server = __esm({
   "src/server/source-escape-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX2 = /\.(tsx?|jsx?|mts|cts)$/i;
   }
@@ -142142,6 +142303,7 @@ function fixImportSyntax(files) {
 var SOURCE_RX3, FROM_TYPOS, MISSING_FROM_PATTERNS;
 var init_import_syntax_fixer_server = __esm({
   "src/server/import-syntax-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX3 = /\.(tsx?|jsx?|mts|cts)$/i;
     FROM_TYPOS = /^(\s*import\s+(?![\s'"])[^;'"\n]*?)(?:\s*(?:\b[A-Za-z_$]*from[A-Za-z_$]*\b|\b(?:form|fom|frm|rom)\b|=>|=|:))+\s*(['"])/gm;
@@ -147025,6 +147187,7 @@ function blocksCommit(v) {
 }
 var init_verdict = __esm({
   "src/server/execution/verdict.ts"() {
+    "use strict";
     init_define_import_meta_env();
   }
 });
@@ -165602,11 +165765,12 @@ function renderLayoutArchetypeBlock(id, detail = "full") {
   }
   return `
 
-### Layout archetype (committed for this project \u2014 compose public pages this way)
+### Layout archetype (a starting direction for public pages \u2014 the person's own words win)
 ${a2.name}: ${a2.summary}.
 ` + a2.rules.map((r) => `- ${r}`).join("\n") + `
 - This decides HOW the requested content is arranged. It never adds pages, sections or features the person did not ask for.
 - It replaces the generic stack of centred hero \u2192 three icon cards \u2192 testimonials \u2192 pricing \u2192 FAQ. Keep only the sections the request needs; the archetype changes their SHAPE, not the visitor's question order.
+- This is a starting direction, not a template. If the person described a layout, feel, motion or reference, follow their description and invent a bespoke composition \u2014 break the archetype freely. Asymmetry, overlap, scroll-driven scenes and full-bleed moments are welcome when they serve the brief.
 - Signed-in app screens and dashboards keep the app layout rules; this applies to public pages.
 `;
 }
@@ -167737,7 +167901,7 @@ Kimble is being judged on whether the landing looks like it was made by a person
 
 1. Commit to ONE clear direction and execute it with conviction across every section: quiet editorial, warm natural, crisp monochrome, confident colour-block or technical. Restrained, neutral or cream palettes are welcome when they fit the business. Body text at 4.5:1 contrast and button labels that contrast against their own fill.
 
-2. Distinctive typography, always. Never Inter + Inter. Never Poppins for both heading and body. Use the LOCKED FONT PAIR (below) verbatim \u2014 load it from Google Fonts via a \`<link rel="stylesheet">\` in the \`<head>\` of \`index.html\`, expose it as \`--font-display\` and \`--font-body\` inside the \`@theme\` block in \`src/styles.css\`, set \`body { font-family: var(--font-body) }\` and \`h1,h2,h3 { font-family: var(--font-display) }\`, then use \`font-display\` and \`font-body\` in components. A declared font variable with no <link> renders in system sans \u2014 that is a defect, not a style choice. Display headings use the FLUID scale already in src/styles.css: \`text-hero\` (hero h1), \`text-display\` (big section statements), \`text-headline\` (h2), \`text-subhead\` (lead paragraphs) \u2014 each scales smoothly from phone to wide screen with matched leading and tracking, so never stack breakpoint sizes on them. (Older projects whose src/styles.css has no --text-hero keep their existing responsive sizes.) Never accept default browser typography.
+2. Distinctive typography, always \u2014 set like an agency: display headings tight (\`tracking-tight\` or tighter, leading ~0.95-1.05), contrast a huge display line with small tracked uppercase labels, and let type scale do the hierarchy. Never Inter + Inter. Never Poppins for both heading and body. Use the LOCKED FONT PAIR (below) verbatim \u2014 load it from Google Fonts via a \`<link rel="stylesheet">\` in the \`<head>\` of \`index.html\`, expose it as \`--font-display\` and \`--font-body\` inside the \`@theme\` block in \`src/styles.css\`, set \`body { font-family: var(--font-body) }\` and \`h1,h2,h3 { font-family: var(--font-display) }\`, then use \`font-display\` and \`font-body\` in components. A declared font variable with no <link> renders in system sans \u2014 that is a defect, not a style choice. Display headings use the FLUID scale already in src/styles.css: \`text-hero\` (hero h1), \`text-display\` (big section statements), \`text-headline\` (h2), \`text-subhead\` (lead paragraphs) \u2014 each scales smoothly from phone to wide screen with matched leading and tracking, so never stack breakpoint sizes on them. (Older projects whose src/styles.css has no --text-hero keep their existing responsive sizes.) Never accept default browser typography.
 
 3. Locked palette. Use the LOCKED PALETTE (below) verbatim. Define these four hex values as semantic tokens in \`src/styles.css\` (\`--background\`, \`--surface\`, \`--primary\`, \`--primary-glow\`) using oklch conversion where possible; derive \`--foreground\`, \`--muted\`, \`--border\`, \`--card\` from them. Never inject a random indigo, purple, or blue-500 into the palette.
 
@@ -167746,20 +167910,20 @@ Kimble is being judged on whether the landing looks like it was made by a person
    - Indigo-500 primary with Inter typography.
    - Centered hero with three equal-weight feature cards as the only page content.
    - Generic stock-photo placeholder ("smiling person at laptop", "team high-fiving").
-   - "AI-generated" abstract 3D blob backgrounds when the product isn't 3D-related.
+   - Generic "AI" abstract 3D blob/orb backgrounds and purple-pink rainbow washes.
    - Mid-page black \`text-white bg-black\` band inside an otherwise light page.
    - Lorem ipsum in any live copy.
    - Placeholder logos rendered as gray rectangles in a row (either use real generated brand marks or skip the logo strip).
    - \`\xA9 2024\` in the footer \u2014 the current year is passed to you separately, use it.
    - Every h1 the same size and weight across pages.
 
-5. Calm surfaces. Depth comes from real photography, type scale and spacing \u2014 not decoration. No gradient blobs, radial glows, mesh washes, glassmorphism, blur or floating pills. Shadows only where elevation helps (menus, a card on hover).
+5. Crafted depth, not flat boxes. Depth comes from photography, type scale and LAYERED surfaces: use \`glass\` (frosted panel over imagery or colour), \`mesh-backdrop\` (slow-drifting brand-tinted light field behind a hero), \`edge-light\` (1px top highlight on dark cards), \`ambient-glow\` and \`surface-grain\` where the direction calls for atmosphere. Keep it intentional: one or two atmospheric layers per page, always brand-tinted from tokens, always \`pointer-events-none\` behind content, text contrast never compromised. Ban only the cheap versions: rainbow purple-pink blobs, random 3D orbs, glow on every element.
 
-6. Quiet motion. If motion is used, a single gentle fade/slide on the hero and as sections enter view. No marquees, tickers, rotating words, shimmer or glow effects. Do NOT animate every card and every icon.
+6. Physical motion. Modern sites move like objects with mass. From \`@/components/motion\`: \`<Spring>\` for spring-physics entrances, \`<ScrollScale>\` for scroll-linked scale/fade of a hero image or showcase panel, \`<Spotlight>\` for a cursor-following light on dark cards or hero, \`<Magnetic>\` on the primary action, \`<Tilt>\` on product/feature cards, \`<Parallax>\` on layered imagery, \`<SplitText>\`/\`<BlurFade>\` for headline reveals, \`<Marquee>\` for a genuine logo/press/product strip. Pick the moments that fit the direction (a calm clinic gets soft springs; a studio or product launch can use scroll-linked scenes and spotlight). Motion uses springs or ease-out-expo, never linear; every primitive already respects reduced motion. Do NOT animate every element \u2014 motion should guide the eye to the 2-4 moments that matter.
 
-7. Let one thing lead. The memorable moment on a website is a strong photograph with a confident headline \u2014 never an unrequested widget, calculator, live chart, slider or ticker.
+7. Let one thing lead. Each page has one signature moment \u2014 a striking photograph with a confident headline, a scroll-linked product reveal, an interactive showcase \u2014 chosen to fit the brief. Never add unrequested business features (calculators, live charts, pricing widgets) just to look busy.
 
-8. Density matches vision. Minimalist commitment = generous whitespace, few sections, single accent. Bolder commitment = larger type and stronger colour blocks, still with one accent and no decorative gradients. Do not build a maximalist hero followed by a minimalist features section.
+8. Density matches vision. Minimalist commitment = generous whitespace, few sections, single accent. Bolder commitment = larger type, stronger colour blocks, richer depth and motion. Keep one direction across the whole page.
 
 9. Layout hygiene \u2014 NO empty bands, NO overlapping components. Every section must be sized by its content:
    - NEVER put \`h-screen\` or \`min-h-screen\` on a section. Sections are sized with \`py-16 md:py-24\` (or \`py-20 md:py-28\` for the hero). \`min-h-screen\` belongs only on the page shell wrapper.

@@ -36,6 +36,10 @@ export { SplitText } from "./split-text";
 export { CountUp } from "./count-up";
 export { WordRotate } from "./word-rotate";
 export { BlurFade } from "./blur-fade";
+export { Spring } from "./spring";
+export { ScrollScale } from "./scroll-scale";
+export { Spotlight } from "./spotlight";
+export { Marquee } from "./marquee";
 `;
 
 // ---------------------------------------------------------------------------
@@ -525,6 +529,136 @@ export const BlurFade = React.forwardRef<HTMLDivElement, BlurFadeProps>(
 BlurFade.displayName = "BlurFade";
 `;
 
+
+// ---------------------------------------------------------------------------
+// Spring — physics-based entrance (mass + stiffness, not a timed curve).
+// ---------------------------------------------------------------------------
+const SPRING = `"use client";
+import * as React from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
+
+export interface SpringProps extends HTMLMotionProps<"div"> {
+  delay?: number;
+  /** Starting offset in px (y). */
+  from?: number;
+  stiffness?: number;
+  damping?: number;
+  once?: boolean;
+}
+
+export const Spring = React.forwardRef<HTMLDivElement, SpringProps>(
+  ({ delay = 0, from = 32, stiffness = 140, damping = 18, once = true, children, ...rest }, ref) => (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: from, scale: 0.98 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once, margin: "-10% 0px" }}
+      transition={{ type: "spring", stiffness, damping, mass: 0.9, delay }}
+      {...rest}
+    >
+      {children}
+    </motion.div>
+  ),
+);
+Spring.displayName = "Spring";
+`;
+
+// ---------------------------------------------------------------------------
+// ScrollScale — scroll-linked scale + fade + radius (product reveal scenes).
+// ---------------------------------------------------------------------------
+const SCROLL_SCALE = `"use client";
+import * as React from "react";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
+
+export interface ScrollScaleProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Scale at the start of the scroll range. */
+  fromScale?: number;
+  /** Corner radius (px) at the start; eases to 0 when full. */
+  fromRadius?: number;
+}
+
+export const ScrollScale: React.FC<ScrollScaleProps> = ({ fromScale = 0.86, fromRadius = 32, children, style, ...rest }) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] });
+  const scale = useTransform(scrollYProgress, [0, 1], [reduce ? 1 : fromScale, 1]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [reduce ? 1 : 0.4, 1, 1]);
+  const borderRadius = useTransform(scrollYProgress, [0, 1], [fromRadius, 0]);
+  return (
+    <motion.div ref={ref} style={{ scale, opacity, borderRadius, overflow: "hidden", ...style }} {...(rest as object)}>
+      {children}
+    </motion.div>
+  );
+};
+`;
+
+// ---------------------------------------------------------------------------
+// Spotlight — cursor-following light inside a card/section (brand-tinted).
+// ---------------------------------------------------------------------------
+const SPOTLIGHT = `"use client";
+import * as React from "react";
+
+export interface SpotlightProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Light radius in px. */
+  size?: number;
+}
+
+export const Spotlight = React.forwardRef<HTMLDivElement, SpotlightProps>(
+  ({ size = 420, className, children, onPointerMove, style, ...rest }, ref) => {
+    const [pos, setPos] = React.useState({ x: -9999, y: -9999 });
+    return (
+      <div
+        ref={ref}
+        className={["relative isolate overflow-hidden", className].filter(Boolean).join(" ")}
+        onPointerMove={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setPos({ x: e.clientX - r.left, y: e.clientY - r.top });
+          onPointerMove?.(e);
+        }}
+        onPointerLeave={() => setPos({ x: -9999, y: -9999 })}
+        style={style}
+        {...rest}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 transition-opacity duration-300"
+          style={{
+            background: \`radial-gradient(\${size}px circle at \${pos.x}px \${pos.y}px, color-mix(in oklab, var(--color-primary) 18%, transparent), transparent 70%)\`,
+          }}
+        />
+        {children}
+      </div>
+    );
+  },
+);
+Spotlight.displayName = "Spotlight";
+`;
+
+// ---------------------------------------------------------------------------
+// Marquee — seamless CSS loop for logo/press/product strips. Pauses on hover.
+// ---------------------------------------------------------------------------
+const MARQUEE = `"use client";
+import * as React from "react";
+
+export interface MarqueeProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Seconds per loop. */
+  duration?: number;
+  reverse?: boolean;
+}
+
+export const Marquee: React.FC<MarqueeProps> = ({ duration = 30, reverse = false, className, children, ...rest }) => (
+  <div className={["group relative flex overflow-hidden", className].filter(Boolean).join(" ")} {...rest}>
+    <div
+      className="flex w-max shrink-0 items-center gap-12 pr-12 group-hover:[animation-play-state:paused]"
+      style={{ animation: \`marquee-x \${duration}s linear infinite\`, animationDirection: reverse ? "reverse" : "normal" }}
+    >
+      {children}
+      <div aria-hidden className="flex items-center gap-12">{children}</div>
+    </div>
+  </div>
+);
+`;
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
@@ -541,4 +675,8 @@ export const KIT_MOTION_FILES: KitFile[] = [
   { path: "src/components/motion/count-up.tsx", content: COUNT_UP, overwrite: true },
   { path: "src/components/motion/word-rotate.tsx", content: WORD_ROTATE, overwrite: true },
   { path: "src/components/motion/blur-fade.tsx", content: BLUR_FADE, overwrite: true },
+  { path: "src/components/motion/spring.tsx", content: SPRING, overwrite: true },
+  { path: "src/components/motion/scroll-scale.tsx", content: SCROLL_SCALE, overwrite: true },
+  { path: "src/components/motion/spotlight.tsx", content: SPOTLIGHT, overwrite: true },
+  { path: "src/components/motion/marquee.tsx", content: MARQUEE, overwrite: true },
 ];

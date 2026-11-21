@@ -349,6 +349,46 @@ body {
   }
 }
 
+/* Depth surfaces (agency-grade, brand-tinted, pointer-safe).
+ *   glass         frosted panel over imagery or colour
+ *   edge-light    1px top highlight for dark/elevated cards
+ *   mesh-backdrop slow-drifting brand light field behind a section
+ */
+@utility glass {
+  background: color-mix(in oklab, var(--color-background) 62%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid color-mix(in oklab, var(--color-foreground) 10%, transparent);
+}
+@utility edge-light {
+  box-shadow: inset 0 1px 0 0 color-mix(in oklab, var(--color-foreground) 14%, transparent), 0 24px 60px -30px color-mix(in oklab, var(--color-foreground) 35%, transparent);
+}
+@utility mesh-backdrop {
+  position: relative;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -20%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(40% 50% at 20% 30%, color-mix(in oklab, var(--color-primary) 22%, transparent), transparent 70%),
+      radial-gradient(35% 45% at 80% 20%, color-mix(in oklab, var(--color-accent, var(--color-primary)) 16%, transparent), transparent 70%),
+      radial-gradient(45% 55% at 60% 90%, color-mix(in oklab, var(--color-primary) 12%, transparent), transparent 70%);
+    filter: blur(40px);
+    animation: mesh-drift 24s ease-in-out infinite alternate;
+  }
+}
+@keyframes mesh-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(3%, -2%, 0) scale(1.06); }
+}
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

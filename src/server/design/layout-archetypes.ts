@@ -126,11 +126,12 @@ export function renderLayoutArchetypeBlock(id: LayoutArchetypeId | null | undefi
     return `- layout archetype: ${a.name} (${a.summary}). New content on public pages follows this composition.\n`;
   }
   return (
-    `\n\n### Layout archetype (committed for this project — compose public pages this way)\n` +
+    `\n\n### Layout archetype (a starting direction for public pages — the person's own words win)\n` +
     `${a.name}: ${a.summary}.\n` +
     a.rules.map((r) => `- ${r}`).join("\n") +
     `\n- This decides HOW the requested content is arranged. It never adds pages, sections or features the person did not ask for.` +
     `\n- It replaces the generic stack of centred hero → three icon cards → testimonials → pricing → FAQ. Keep only the sections the request needs; the archetype changes their SHAPE, not the visitor's question order.` +
+    `\n- This is a starting direction, not a template. If the person described a layout, feel, motion or reference, follow their description and invent a bespoke composition — break the archetype freely. Asymmetry, overlap, scroll-driven scenes and full-bleed moments are welcome when they serve the brief.` +
     `\n- Signed-in app screens and dashboards keep the app layout rules; this applies to public pages.\n`
   );
 }
