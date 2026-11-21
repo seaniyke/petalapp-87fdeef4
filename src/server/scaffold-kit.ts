@@ -196,14 +196,14 @@ export const STYLES_CSS = `@import "tailwindcss";
      (text-hero, text-display, text-headline, text-subhead) with matched
      line-height and tracking. One class scales 320px → 1440px, no breakpoints. */
   --text-hero: clamp(2.75rem, 1.6rem + 5.2vw, 6.5rem);
-  --text-hero--line-height: 0.98;
-  --text-hero--letter-spacing: -0.04em;
+  --text-hero--line-height: 1.06;
+  --text-hero--letter-spacing: -0.018em;
   --text-display: clamp(2.25rem, 1.4rem + 3.8vw, 4.5rem);
-  --text-display--line-height: 1.04;
-  --text-display--letter-spacing: -0.035em;
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.015em;
   --text-headline: clamp(1.75rem, 1.25rem + 2.2vw, 3rem);
   --text-headline--line-height: 1.12;
-  --text-headline--letter-spacing: -0.02em;
+  --text-headline--letter-spacing: -0.01em;
   --text-subhead: clamp(1.125rem, 0.95rem + 0.8vw, 1.5rem);
   --text-subhead--line-height: 1.45;
 
@@ -211,9 +211,9 @@ export const STYLES_CSS = `@import "tailwindcss";
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Tracking (letter-spacing) presets — display type wants tighter. */
-  --tracking-tightest: -0.04em;
-  --tracking-tighter:  -0.03em;
-  --tracking-tight:    -0.015em;
+  --tracking-tightest: -0.02em;
+  --tracking-tighter:  -0.015em;
+  --tracking-tight:    -0.01em;
 }
 
 :root {
@@ -358,7 +358,6 @@ body {
 @utility glass {
   background: color-mix(in oklab, var(--color-background) 62%, transparent);
   backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
   border: 1px solid color-mix(in oklab, var(--color-foreground) 10%, transparent);
 }
 @utility edge-light {
@@ -449,7 +448,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,transform] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -459,6 +458,7 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        glass: "glass edge-light text-foreground hover:bg-foreground/10",
       },
       size: {
         default: "h-10 px-4 py-2",

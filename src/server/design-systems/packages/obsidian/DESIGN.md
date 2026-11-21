@@ -1,6 +1,6 @@
 # Obsidian — playbook
 
-Dark-first editorial luxury. Near-black surfaces, a high-contrast serif display (Instrument Serif) against a geometric sans (Plus Jakarta Sans), soft layered depth, almost no colour. Calm, warm and spacious — luxury, never a terminal.
+Dark-first editorial luxury. Near-black surfaces, an open modern sans display (Geist) over a warm geometric body (Plus Jakarta Sans), soft layered depth, almost no colour. Calm, warm and spacious — luxury, never a terminal.
 
 ## Non-negotiable
 
@@ -12,12 +12,16 @@ Dark-first editorial luxury. Near-black surfaces, a high-contrast serif display 
 
 | Role | Classes |
 |---|---|
-| Hero headline | `font-serif text-5xl md:text-7xl leading-[1.02]` |
-| Section heading | `font-serif text-3xl md:text-5xl` |
-| Eyebrow / label | `text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground` |
+| Hero headline | `font-display font-semibold text-hero` (open letter spacing, never squeezed) |
+| Section heading | `font-display font-semibold text-headline` |
+| Label | `text-sm font-medium text-muted-foreground` (sentence case) |
 | Body | `text-base leading-relaxed text-muted-foreground max-w-2xl` |
 
-Use small uppercase eyebrows sparingly (one per section at most), in plain words — never codes, numbering like `01 //`, or monospace spec labels.
+Labels are sentence case at normal letter spacing. No wide-spaced capitals, no codes, no `01 //` numbering.
+
+## Buttons
+
+Primary action: `<Button size="lg">`. Secondary actions and buttons over photos or dark panels: `<Button variant="glass">` (frosted, soft edge light).
 
 ## Rhythm
 
