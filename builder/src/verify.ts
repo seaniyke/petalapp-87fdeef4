@@ -32,7 +32,7 @@ import {
   type ConsoleMessage,
 } from "playwright";
 import { isTransientEdgeStatus } from "./deploy-status.js";
-import { splitSelector } from "./selector.js";
+import { normalizeSelectorPart, splitSelector } from "./selector.js";
 import { Heartbeat } from "./progress.js";
 
 export class VerifyError extends Error {}
@@ -301,9 +301,10 @@ function decodeReactError(text: string): string {
 
 
 function locate(page: Page, selector: string) {
-  const parts = splitSelector(selector);
-  const mixed = parts.length > 1 && parts.some((x) => /^(text|role|xpath|id|data-testid)=/.test(x) || x.startsWith("//"));
-  if (!mixed) return page.locator(selector);
+  const parts = splitSelector(selector).map(normalizeSelectorPart);
+  const engine = (x: string) => /(^|>> )(text|role|xpath|id|data-testid)=/.test(x) || x.startsWith("//");
+  if (parts.length === 1) return page.locator(parts[0]);
+  if (!parts.some(engine)) return page.locator(selector);
   return parts.slice(1).reduce((acc, x) => acc.or(page.locator(x)), page.locator(parts[0]));
 }
 
