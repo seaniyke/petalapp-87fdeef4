@@ -1,9 +1,13 @@
 # Execution-engine replacement roadmap
+## Atelier Lace v5 completion (21 Nov)
+- [x] Confirm latest builder version, claim atelier-lace-v5 address, and publish current ready revision.
+- [x] Inspect logo and imagery on all four phone/desktop pages; no overflow or page errors. Verify entrance motion, mobile menu navigation, reduced-motion visibility, and on-screen booking confirmation. Submission is in-memory only: no appointment is saved or sent to the salon.
+- [ ] Named-address HTTPS activation — atelier-lace-v5 claim is active and revision 2 published, but its certificate still fails; direct deployment address serves correctly. Waiting on host certificate activation.
 ## Atelier Lace final polish (21 Nov)
 - [x] Refine visitor-facing wording in the canonical agency guide; existing design tests pass and agent core rebuilt.
 - [x] Publish the two salon price-label edits; verified phone/desktop rendering, service-to-booking navigation and actual entrance motion. Booking submission not exercised; no live appointment created.
 - [x] Prepare a sendable Custard AI letter explaining the brief and verification expectations.
-- [ ] Activate the new natural-voice guidance for future builds — waits for the automatic builder deployment to report version 2026-11-21-natural-visitor-voice.
+- [x] Activate the new natural-voice guidance for future builds — builder now reports the newer 2026-11-21-consistent-craft-logos version.
 
 ## Custard reply (8 Nov): billing/pause follow-ups
 - [x] og-image.png serves a real 1200×630 PNG on every site, refreshed per published build (router redeploy)
