@@ -1,11 +1,11 @@
 # Obsidian — playbook
 
-Dark-first editorial luxury. Near-black surfaces, a high-contrast serif display (Instrument Serif) against a geometric sans (Plus Jakarta Sans), hairline rules instead of shadows, almost no colour. Restraint is the entire look.
+Dark-first editorial luxury. Near-black surfaces, a high-contrast serif display (Instrument Serif) against a geometric sans (Plus Jakarta Sans), soft layered depth, almost no colour. Calm, warm and spacious — luxury, never a terminal.
 
 ## Non-negotiable
 
 - **Semantic tokens only.** `bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary text-primary-foreground`. Never a hex value, never `text-white`.
-- **Separation by hairline, not by shadow.** `border-t border-border` between sections and around cards. `shadow-md` only for overlays.
+- **Layered depth, not boxes.** Soft rounded surfaces (`rounded-2xl`/`rounded-3xl`), `glass` panels over imagery, `edge-light` on dark cards, one `mesh-backdrop` or `ambient-glow` behind the hero. Hairlines only where a quiet divider helps.
 - **Colour is an event.** At most one accent moment per screen — usually the single primary button. Everything else is neutral.
 
 ## Type scale
@@ -17,7 +17,7 @@ Dark-first editorial luxury. Near-black surfaces, a high-contrast serif display 
 | Eyebrow / label | `text-[0.7rem] uppercase tracking-[0.22em] text-muted-foreground` |
 | Body | `text-base leading-relaxed text-muted-foreground max-w-2xl` |
 
-Wide letter-spaced uppercase labels are the signature. Use them for section eyebrows, nav, and metric captions.
+Use small uppercase eyebrows sparingly (one per section at most), in plain words — never codes, numbering like `01 //`, or monospace spec labels.
 
 ## Rhythm
 
@@ -33,4 +33,4 @@ Full-bleed, high-contrast, `object-cover` with an explicit aspect ratio. Text ov
 
 ## Never
 
-Rounded-full buttons. Bright saturated fills. Gradient text. Drop shadows on cards. Three equal icon-cards. More than one accent hue on a screen.
+Developer/console tropes on consumer sites (`01 //`, `SRV-01`, coordinates, monospace spec sheets, 'protocol'/'dispatch' wording). Harsh red warning banners for policies. Bright saturated fills. Three equal icon-cards. More than one accent hue on a screen.

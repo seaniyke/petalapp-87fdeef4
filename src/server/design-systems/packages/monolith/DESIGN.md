@@ -6,7 +6,7 @@ Swiss and architectural. Archivo Black for display (it has one heavy weight), Ar
 
 - **Semantic tokens only.** `bg-background`, `bg-card`, `bg-muted`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-primary text-primary-foreground`. Never hex or raw palette utilities.
 - **Square corners.** Every radius token is zero — do not add `rounded-*` classes (except `rounded-full` on avatars).
-- **Rules, not shadows.** Separate content with `border-t border-border` / `divide-y divide-border`. No drop shadows on cards.
+- **Rules, not shadows.** Separate content with `border-t border-border` / `divide-y divide-border`. Depth may come from photography and layered imagery; keep card shadows off.
 - **Two faces, fixed roles.** `font-serif` (Archivo Black) for headlines and big index numbers; `font-sans` (Archivo) for everything else.
 
 ## Type scale
@@ -28,7 +28,7 @@ Swiss and architectural. Archivo Black for display (it has one heavy weight), Ar
 
 ## Motion — precise
 
-120–180ms, standard ease. Underline wipes on links, row highlight on hover (`hover:bg-muted`). No bounce, no parallax.
+120–180ms, standard ease. Underline wipes on links, row highlight on hover (`hover:bg-muted`). Scroll-linked image reveals (`ScrollScale`, `Parallax`) are welcome on photography; no bounce.
 
 ## Never
 
