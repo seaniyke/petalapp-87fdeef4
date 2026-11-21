@@ -70872,7 +70872,7 @@ var init_authority = __esm({
       { accent: "mono", re: /\b(portfolio|architect|gallery|photograph|minimalist|editorial|magazine|journal)\w*/i },
       { accent: "indigo", re: /\b(saas|dashboard|analytic|platform|developer|software|crm|startup|workspace|automation)\w*/i }
     ];
-    DARK_EDITORIAL = /\b(dark|noir|black[- ]and[- ]gold|moody|nightclub|cocktail bar|speakeasy|whisky|whiskey|spirits|michelin|cinematic)\w*/i;
+    DARK_EDITORIAL = /\b(dark|noir|black[- ]and[- ]gold|moody|nightclub|cocktail bar|speakeasy|whisky|whiskey|spirits|michelin|cinematic|near[- ]black|black (canvas|background|theme|site|website)|all[- ]black|pitch[- ]black|vercel|linear\.app|apple[- ]style dark)\w*/i;
     STUDIO_RULES = [
       {
         slug: "haven",
@@ -70914,7 +70914,7 @@ var init_authority = __esm({
       {
         id: "lifestyle",
         re: /\b(salon|beauty|spa|skincare|nail|barber|lash|brow|boutique|wedding|bridal|florist|flower|hotel|retreat|resort|wellness|fashion|jewel)\w*/i,
-        picks: [{ slug: "atelier", accent: "rose" }, { slug: "atelier", accent: "bronze" }, { slug: "bloom", accent: "berry" }, { slug: "monolith", accent: "graphite" }]
+        picks: [{ slug: "atelier", accent: "rose" }, { slug: "atelier", accent: "bronze" }, { slug: "bloom", accent: "berry" }, { slug: "atelier", accent: "sage" }]
       },
       {
         id: "product",
@@ -142705,7 +142705,6 @@ function checkProductUsefulness(prd, files) {
 var SURFACE_EVIDENCE, ROUTE_SURFACES, CORE_SURFACES, HARD_CODED_RESULT, SIDEBAR_SHELL2, STATE_EVIDENCE, INTERACTIVE, DEAD_HANDLER, DEAD_LINK, PLACEHOLDER_COPY;
 var init_prd_acceptance_server = __esm({
   "src/server/prd/prd-acceptance.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     SURFACE_EVIDENCE = {
       // A landing surface is whatever renders "/". Generators name it Home.tsx,
@@ -145034,7 +145033,6 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -146239,7 +146237,6 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -173475,6 +173472,7 @@ init_define_import_meta_env();
 // src/server/verify-plan.server.ts
 init_define_import_meta_env();
 init_ai_provider_server();
+init_prd_acceptance_server();
 
 // src/server/verify-scope.server.ts
 init_define_import_meta_env();
