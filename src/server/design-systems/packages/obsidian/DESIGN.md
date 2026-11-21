@@ -14,7 +14,7 @@ Dark-first editorial luxury. Near-black surfaces, an open modern sans display (G
 |---|---|
 | Hero headline | `font-display font-semibold text-hero` (open letter spacing, never squeezed) |
 | Section heading | `font-display font-semibold text-headline` |
-| Label | `text-sm font-medium text-muted-foreground` (sentence case) |
+| Label | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) (sentence case) |
 | Body | `text-base leading-relaxed text-muted-foreground max-w-2xl` |
 
 Labels are sentence case at normal letter spacing. No wide-spaced capitals, no codes, no `01 //` numbering.

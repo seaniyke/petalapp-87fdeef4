@@ -7,7 +7,7 @@ Warm editorial studio. Linen paper tones, Fraunces at light weight for display, 
 |---|---|
 | Hero headline | `font-serif font-light text-5xl md:text-7xl lg:text-8xl leading-[1.02] tracking-tight` |
 | Section heading | `font-serif text-3xl md:text-5xl leading-[1.08]` |
-| Eyebrow | `text-xs uppercase tracking-[0.2em] text-muted-foreground` |
+| Eyebrow | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) |
 | Body | `text-base md:text-lg leading-relaxed text-muted-foreground max-w-prose` |
 
 ## Layout signatures

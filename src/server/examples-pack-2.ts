@@ -11,7 +11,6 @@
  *  - Semantic tokens only (no raw hex / Tailwind colour names)
  *  - Light + dark friendly
  *  - No data fetching, no router — presentational refs only
- *  - Demo-only domains include a visible "Demo" notice
  */
 import type { ProjectFile } from "./generate.server";
 

@@ -183,17 +183,17 @@ const FX_RECIPE_DETAILS: Record<FxRecipe, string> = {
   "vivid-color":
     "Confident colour-block sections (full-bleed brand-hue panel alternating with a light tint), bold display type, real photography, quiet FadeIn reveals. No gradient meshes, glow cards or shimmer buttons.",
   "modern-saas":
-    "Clean split hero: headline, one sentence, one filled <Button size=\"lg\"> plus optional outline button; real product screenshot on a plain surface. No floating decorative cards, no mesh washes, no beams. FadeIn on major sections only.",
+    "Clean split hero: headline, one sentence, one filled <Button size=\"lg\"> plus optional outline button; real product screenshot on a plain surface. Soft depth (glass panels, a gentle mesh-backdrop) and spring entrances on major sections.",
   "agency-portfolio":
-    "Full-bleed photographic hero, plain image-led project tiles (picture, title, one meta line), generous white space, quiet FadeIn/Stagger reveals only. No marquees, tilt, glow or magnetic effects — the photographs carry the page.",
+    "Full-bleed photographic hero, plain image-led project tiles (picture, title, one meta line), generous white space, Spring and ScrollScale reveals on photography; a Marquee for a real client strip; the photographs lead.",
   "cyberpunk-crypto":
     "Dark solid surfaces, mono accents for numbers, crisp hairline borders, one saturated accent. No retro grids, meteors, rainbow or shimmer buttons.",
   "ai-product":
     "Plain product surface as the hero visual (the real chat/workspace UI), clear capability rows with icon + title + sentence, solid primary button. No beams, sparkles or gradient text.",
   "playful-consumer":
-    "Warm colour blocks, rounded-but-restrained cards, friendly display type, real photography, gentle FadeIn. No marquees, flickering grids, ripples or rotating words.",
+    "Warm colour blocks, rounded-but-restrained cards, friendly display type, real photography, bouncy Spring entrances and tactile press feedback.",
   "luxury-brand":
-    "Oversized serif headlines, slow subtle reveals on product imagery, generous white space, solid neutral surfaces. No beams, grids, noise or shiny text — silence is luxury.",
+    "Oversized serif headlines, slow subtle reveals on product imagery, generous white space, solid neutral surfaces. Soft glass and gentle glow behind content; restraint is luxury.",
   "data-dashboard":
     "Plain surfaces, KPI tiles with CountUp, FadeIn on cards, no background patterns. Density over flash.",
   "awwwards-3d":
@@ -459,7 +459,7 @@ export function renderDesignDirectionBlock(
             : `motion=cinematic → wrap the app in LenisProvider (\`@/components/scroll/lenis-provider\`). Use useScrollScene (\`@/hooks/use-scroll-scene\`) for pinned reveal sequences and useHorizontalScroll for the showcase strip. Hero: R3F HeroSphere (\`@/components/three/hero-sphere\`) OR SplineEmbed. SplitText on the headline. View transitions via \`@/lib/view-transitions\` on route changes. canvas-confetti via \`@/lib/confetti\` on success moments.`) +
       `\n` +
     `- fx recipe: ${d.fx_recipe ?? "(unset)"} — ${d.fx_recipe ? FX_RECIPE_DETAILS[d.fx_recipe] : "no specific recipe"}\n` +
-    `- there is no \`@/components/fx\` folder and no marquee or gradient-text component: never import them or hand-build glowing/shimmer buttons, scrolling strips or colour-fade text. Photography, type and spacing carry the page.
+    `- depth & motion tools: \`glass\`, \`edge-light\`, \`mesh-backdrop\`, \`<Button variant="glass">\`, and from \`@/components/motion\` Spring, ScrollScale, Spotlight, Marquee, Tilt, Magnetic. (There is no \`@/components/fx\` folder.)
 ` +
     `- design moves to land:\n${moves}\n` +
     `Do not silently revert to a generic "clean SaaS" look. If a kit component feels too neutral for the vibe, restyle it via className overrides while keeping the component itself.\n` +

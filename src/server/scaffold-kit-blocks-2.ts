@@ -343,7 +343,7 @@ export function FaqTwoColumn({
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
           <div className="lg:col-span-5">
             {eyebrow && (
-              <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</div>
+              <div className="mb-3 text-xs font-medium text-primary">{eyebrow}</div>
             )}
             <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">{title}</h2>
             {description && <p className="mt-4 text-base text-muted-foreground">{description}</p>}
@@ -396,7 +396,7 @@ export function CtaCentered({
       <Container size="md">
         <div className="rounded-3xl border border-border bg-muted/40 p-10 text-center md:p-16">
           {eyebrow && (
-            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</div>
+            <div className="mb-3 text-xs font-medium text-primary">{eyebrow}</div>
           )}
           <h2 className="text-3xl font-semibold tracking-tight text-foreground md:text-4xl">{title}</h2>
           {description && (
@@ -1097,7 +1097,7 @@ export function LogosGrid({
     <section className={cn("py-12 md:py-16", className)}>
       <Container size="xl">
         {eyebrow && (
-          <p className="text-center text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">{eyebrow}</p>
+          <p className="text-center text-xs font-medium text-muted-foreground">{eyebrow}</p>
         )}
         <div className="mt-8 grid grid-cols-2 items-center gap-x-10 gap-y-8 sm:grid-cols-3 md:grid-cols-6">
           {list.map((l, i) =>
@@ -1707,7 +1707,7 @@ export default function BlogPostDetailReference() {
       <NavBar brand="Field Notes" links={[{label:"Writing",href:"#"},{label:"About",href:"#"}]} />
       <Container size="md" className="py-16">
         <header className="mb-10">
-          <div className="text-xs uppercase tracking-[0.2em] text-primary">Essay</div>
+          <div className="text-xs text-primary">Essay</div>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight text-foreground md:text-5xl">Ship more, meet less</h1>
           <p className="mt-3 text-sm text-muted-foreground">Apr 12, 2026 · 6 min read</p>
         </header>

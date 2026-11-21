@@ -22,10 +22,10 @@ export function renderBrandContractBlock(opts: { isInitial: boolean }): string {
 ### Brand Identity Contract (non-negotiable)
 Every app you build is a real product with a real brand. Never ship placeholder identity.
 
-- **Logo**: create \`src/components/brand-mark.tsx\` exporting \`<BrandMark className="…" />\`. For websites (beauty, fashion, studio, hospitality, editorial, luxury) the logo is a confident typographic wordmark: the brand name alone in the display font, one line, no tagline under it. Apps and SaaS may add a small simple geometric monogram (one or two letters, a single shape) beside the name. Never an illustrative drawing (drops, leaves, faces, circles with lines through them).
-- **BANNED as a logo**: bare lucide glyphs (\`Square\`, \`Box\`, \`Circle\`, \`Hexagon\`, \`Sparkles\`, \`Shapes\`), emoji, clip-art SVG, or a tagline stacked under the name in the header.
-- **Favicon**: index.html must carry \`<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,…">\` using the same mark, plus \`apple-touch-icon\` and a \`theme-color\` meta. Never leave the framework default.
-- **Wordmark**: the brand name next to the mark uses the display font, tight tracking, and semibold-or-heavier weight.
+- **Logo**: create \`src/components/brand-mark.tsx\` exporting \`<BrandMark className="…" />\`. Choose the identity that fits THIS business, in any industry: a bold typographic wordmark, a wordmark with a simple relevant SVG mark, or a confident monogram. When the person describes a logo, build exactly that.
+- **Make it read and hold**: bold or semibold weight, one line, the display font, normal-to-slightly-tight letter spacing (never squeezed), high contrast against the header. A mark is one or two clean geometric shapes drawn as plain SVG paths in \`currentColor\`/\`text-primary\`, relevant to the business (a salon: a lace curve or crown line; a bakery: a wheat stalk or loaf arc; a finance app: an upward stroke), legible at 16px.
+- **Keep it clean**: a mark is drawn for this brand, so skip generic placeholder glyphs (\`Square\`, \`Box\`, \`Circle\`, \`Sparkles\`), emoji, gradients inside the mark, or a tagline stacked under the name in the header.
+- **Favicon**: index.html carries \`<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,…">\` using the same mark, plus \`apple-touch-icon\` and a \`theme-color\` meta.
 - **App shells**: if you use a sidebar/app shell, the brand lockup MUST also be visible in the mobile top bar — a mobile header showing only a hamburger and empty space is a bug.
 
 ### Section Block Prop Contract (prevents blank bands)

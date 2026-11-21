@@ -26,7 +26,7 @@ Design the hero for THIS business and brief — bold centred type, a full-bleed 
 3. **Subhead** — optional, one sentence, \`text-base md:text-lg text-muted-foreground max-w-xl\`.
 4. **Action** — ONE primary \`<Button size="lg">\`; an optional second action is \`<Button size="lg" variant="glass">\` or a quiet text link with an arrow.
 5. **Visual** — usually a large, sharp \`petal-image://\` photograph (full-bleed or a split), \`object-cover\` with an explicit aspect ratio; a type-led hero with no picture is fine when the brand suits it. For SaaS: one framed product screenshot, no floating cards.
-6. **Nothing else in the fold** — no booking or time-slot widgets, availability cards, tickers, marquees, product grids, stats, forms, calculators or badges. Those belong in their own sections below.`;
+6. **Keep the fold focused** — when the layout direction puts a booking flow, live product moment or selector beside the headline (split screen, bento), that is welcome; otherwise supporting content lives in its own sections below.`;
 
 const SAAS_ADDENDUM = `
 - SaaS: primary action is "Get started"/"Start free"; the visual is one clean product screenshot in a simple rounded frame.`;

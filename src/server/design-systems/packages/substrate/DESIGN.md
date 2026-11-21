@@ -16,7 +16,7 @@ Warm-neutral paper surfaces, a serif display face (Newsreader) against a clean g
 | Section heading | `font-serif text-3xl md:text-4xl tracking-tight` |
 | Sub-heading | `text-xl md:text-2xl` |
 | Body | `text-base leading-relaxed text-muted-foreground` |
-| Eyebrow / label | `text-xs uppercase tracking-[0.14em] text-muted-foreground` |
+| Eyebrow / label | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) |
 
 Section headings must not all be the same size. Vary between `text-3xl` and `text-5xl` down the page.
 

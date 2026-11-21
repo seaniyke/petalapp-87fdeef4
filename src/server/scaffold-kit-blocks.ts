@@ -323,7 +323,7 @@ export function Section({
         {hasHeader && (
           <header className={cn("flex flex-col gap-3", a, "mb-10 max-w-3xl", align === "center" && "mx-auto")}>
             {eyebrow && (
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</span>
+              <span className="text-xs font-medium text-primary">{eyebrow}</span>
             )}
             {title && (
               <h2 className={cn("font-display font-semibold tracking-tight text-foreground", titleSize)}>{title}</h2>
@@ -647,13 +647,13 @@ export function HeroEditorial({
                 {number}
               </div>
               {meta && (
-                <div className="mt-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">{meta}</div>
+                <div className="mt-3 text-xs text-muted-foreground">{meta}</div>
               )}
             </div>
           )}
           <div className={cn("col-span-12", copySpan)}>
             {eyebrow && (
-              <div className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">{eyebrow}</div>
+              <div className="mb-5 text-xs font-medium text-primary">{eyebrow}</div>
             )}
             <h1 className="text-balance font-display text-4xl font-semibold leading-[1.05] tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
               {title}
@@ -662,7 +662,7 @@ export function HeroEditorial({
               <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl">{body}</p>
             )}
             {number == null && meta && (
-              <div className="mt-6 text-xs uppercase tracking-[0.2em] text-muted-foreground">{meta}</div>
+              <div className="mt-6 text-xs text-muted-foreground">{meta}</div>
             )}
             {(primaryCta || secondaryCta) && (
               <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -1010,7 +1010,7 @@ export function FeaturesAlternatingRows({
               <div key={i} className={cn("grid items-center gap-10 md:grid-cols-2 md:gap-16", flip && "md:[&>*:first-child]:order-2")}>
                 <div>
                   {it.eyebrow && (
-                    <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">{it.eyebrow}</div>
+                    <div className="mb-3 text-xs font-medium text-primary">{it.eyebrow}</div>
                   )}
                   <h3 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">{it.title}</h3>
                   <p className="mt-4 text-base text-muted-foreground">{it.description}</p>

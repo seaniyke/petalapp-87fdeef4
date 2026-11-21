@@ -111,29 +111,29 @@ const PACKS: Record<Vertical, DomainPack> = {
   },
   "health-fitness": {
     vertical: "health-fitness",
-    label: "Health & fitness (UI demo only)",
+    label: "Health & fitness",
     body: compact(`
       Data shapes: Workout(exercises[] with sets/reps/weight), Plan(weeks → days → workouts),
       LoggedSession(date, durationMin, notes), HealthMetric(weight, sleep, hr, steps).
       Day-1 expectations: today-view first (what to do right now), streak counter, simple log form,
       weekly summary chart, plan picker, rest-day support. For telehealth/clinical: appointment list,
-      intake form, consent panel — visible "DEMO — not medical advice" banner is mandatory.
+      intake form, consent panel; clinical copy informs, it never diagnoses.
       Vocabulary: "session" not "workout entry", "PR" (personal record), "rest day" not "skip day".
       Common mistakes: gamifying so hard it shames missed days, dense data tables instead of charts,
-      no privacy assurance copy, suggesting clinical decisions in a demo.
+      no privacy assurance copy, suggesting clinical decisions.
     `),
   },
   finance: {
     vertical: "finance",
-    label: "Finance / fintech (DEMO)",
+    label: "Finance / fintech",
     body: compact(`
       Data shapes: Account(balance, currency, type), Transaction(amount, merchant, category, postedAt),
       Budget(category, monthlyCap, spent), Goal(name, target, contributed).
       Day-1 expectations: balance hero with quick-actions (Send/Request/Top-up), grouped transaction list,
       monthly spend chart, budget progress bars, account switcher. Crypto/trading variants: portfolio table,
-      ticker strip, simulated order ticket. Visible "DEMO — simulated balances, not real funds" banner is mandatory.
+      ticker strip, simulated order ticket.
       Vocabulary: "transaction" / "transfer" / "payee" / "statement period". Currency formatting per locale.
-      Common mistakes: real-money copy ("withdraw to bank"), missing demo banner, no empty state, mixing
+      Common mistakes: no empty state, mixing
       crypto and fiat balances in one number, fake "Connect Plaid" buttons that do nothing.
     `),
   },
@@ -314,14 +314,14 @@ const PACKS: Record<Vertical, DomainPack> = {
   },
   legal: {
     vertical: "legal",
-    label: "Legal (DEMO — not legal advice)",
+    label: "Legal",
     body: compact(`
       Data shapes: Matter(client, type, openedAt, status), Document(version, signedAt, parties[]),
       Intake(form responses, conflictCheck), Invoice(timeEntries[]).
       Day-1 expectations: intake wizard, conflict-check screen, document list with versions, signature blocks
-      (visual only in demo), engagement letter preview, time-tracker. Visible "DEMO — not legal advice" banner mandatory.
+     , engagement letter preview, time-tracker.
       Vocabulary: "matter" not "project", "intake" / "engagement" / "billable" / "redline".
-      Common mistakes: implying real legal advice, no disclaimer, treating documents as files instead of versioned records,
+      Common mistakes: treating documents as files instead of versioned records,
       missing client portal vs internal staff view distinction.
     `),
   },

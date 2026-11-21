@@ -17,7 +17,7 @@ Swiss and architectural. Archivo Black for display (it has one heavy weight), Ar
 | Section heading | `font-serif text-3xl md:text-5xl tracking-tight uppercase` |
 | Index number | `font-serif text-sm tabular-nums` (01, 02, 03 before each section title) |
 | Body | `text-base leading-relaxed text-muted-foreground max-w-prose` |
-| Label | `text-[11px] font-semibold uppercase tracking-[0.2em]` |
+| Label | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) |
 
 ## Layout signatures
 

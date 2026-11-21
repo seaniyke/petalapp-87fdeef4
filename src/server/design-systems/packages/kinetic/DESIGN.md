@@ -12,11 +12,11 @@ Energy first. Syne (wide, expressive) for display at huge sizes, Plus Jakarta Sa
 
 | Role | Classes |
 |---|---|
-| Hero headline | `font-serif font-extrabold text-5xl md:text-8xl leading-[0.95] tracking-tighter uppercase` |
+| Hero headline | `font-serif font-extrabold text-5xl md:text-8xl leading-[0.95] tracking-tight uppercase` |
 | Section heading | `font-serif font-bold text-4xl md:text-6xl tracking-tight` |
 | Big number | `font-serif font-extrabold text-6xl md:text-7xl tabular-nums` |
 | Body | `text-base md:text-lg leading-relaxed text-muted-foreground` |
-| Label | `text-xs font-semibold uppercase tracking-[0.18em]` |
+| Label | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) |
 
 ## Layout signatures
 

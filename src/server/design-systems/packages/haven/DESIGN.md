@@ -7,7 +7,7 @@ Calm care studio. Sora for display, Nunito Sans for body at a generous size. Eve
 |---|---|
 | Hero headline | `font-serif font-medium text-4xl md:text-6xl leading-[1.08] tracking-tight` |
 | Section heading | `font-serif font-medium text-3xl md:text-4xl` |
-| Label | `text-xs font-semibold uppercase tracking-[0.16em] text-primary` |
+| Label | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) |
 | Body | `text-base md:text-lg leading-relaxed text-muted-foreground max-w-prose` (never below 16px) |
 
 ## Layout signatures

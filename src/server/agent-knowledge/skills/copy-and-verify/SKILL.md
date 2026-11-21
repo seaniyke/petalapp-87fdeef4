@@ -32,7 +32,7 @@ Run this after the build verifies and before your closing message. Most of these
 
 **Composition**
 - No three grid-shaped sections in a row.
-- Adjacent sections differ in layout direction and background tone.
+- Adjacent sections differ in layout shape or surface.
 - Section headings vary in scale rather than all being identical.
 - Exactly one hero. One final CTA section. No CTA in every section.
 

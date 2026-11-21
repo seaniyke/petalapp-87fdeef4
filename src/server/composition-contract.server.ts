@@ -51,7 +51,7 @@ const SIGNAL_FIXES: Record<CompositionSignal, string> = {
     "no card/panel surfaces — wrap grouped content in elevated cards (rounded-2xl, border, bg-card, padding)",
   grid: "no multi-column composition — lay peers out on a responsive grid instead of one long stack",
   "type-scale":
-    "no display-scale heading — the page title must jump to text-3xl+ (hero text-5xl+) with tight tracking",
+    "no display-scale heading — the page title must jump to text-3xl+ (hero text-5xl+) with comfortable letter spacing",
   emphasis:
     "no emphasis styling — add weight contrast, an accent chip/badge, or an accented primary action",
   rhythm: "no vertical rhythm — sections need generous padding (py-16 md:py-24) and consistent gaps",

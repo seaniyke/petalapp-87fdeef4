@@ -16,7 +16,7 @@ Warm, friendly and a little bit silly. Bricolage Grotesque (characterful, chunky
 | Section heading | `font-serif font-bold text-3xl md:text-5xl tracking-tight` |
 | Product name / price | `font-serif font-bold text-xl` |
 | Body | `text-base md:text-lg leading-relaxed text-muted-foreground` |
-| Label | `text-sm font-medium` (sentence case, never shouting caps) |
+| Label | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) (sentence case, never shouting caps) |
 
 ## Layout signatures
 

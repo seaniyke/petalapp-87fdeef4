@@ -14,7 +14,7 @@ Engineered and raw. JetBrains Mono for headlines, labels, numbers and code; Work
 |---|---|
 | Hero headline | `font-serif font-extrabold text-4xl md:text-7xl leading-none tracking-tight` |
 | Section heading | `font-serif font-bold text-2xl md:text-4xl` with a `// ` or `[01]` prefix |
-| Metadata | `font-serif text-xs uppercase tracking-wider text-muted-foreground` |
+| Metadata | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) |
 | Body | `text-base leading-relaxed` |
 | Code | `font-serif text-sm bg-muted border border-border px-1.5` |
 

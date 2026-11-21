@@ -6,7 +6,7 @@ import { classifyAppShape, renderShapeBlock } from "@/lib/app-shape-classifier";
 describe("modern hero rules", () => {
   const hero = renderHeroContractBlock({ isInitial: true, webSubtype: "marketing", brief: "a beauty bar" });
   it("bans hero widgets and pills", () => {
-    expect(hero).toMatch(/no booking or time-slot widgets/);
+    expect(hero).toMatch(/Keep the fold focused/);
     expect(hero).toMatch(/variant=\"glass\"/);
     expect(hero).not.toMatch(/Eyebrow badge/);
   });

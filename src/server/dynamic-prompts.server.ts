@@ -369,9 +369,9 @@ CRITICAL — no gratuitous photo grids: do NOT add a generic "Gallery / Recent W
   navbarBrand: {
     triggers: /\b(nav|navbar|header|landing|marketing site|site|website|portfolio|saas|product page|app|dashboard|home ?page)\b/i,
     body: `\n\n[Reinforcement — Navbar brand mark is REQUIRED]
-Every NavBar / NavWithCta / NavWithSearch MUST render a visible brand mark on the left: an icon (lucide-react icon themed via primary color OR a small <img> logo) PAIRED WITH the brand name as text. Never pass an empty string, null, or only an icon to \`brand\`. Pattern:
+Every NavBar / NavWithCta / NavWithSearch renders the brand on the left: the bold wordmark, optionally with the project's <BrandMark /> SVG beside it. Never pass an empty string, null, or only an icon to \`brand\`. Pattern:
 
-  <NavBar brand={<span className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /><span className="font-semibold">BrandName</span></span>} links={...} />
+  <NavBar brand={<span className="flex items-center gap-2"><BrandMark className="h-6 w-6 text-primary" /><span className="font-display text-lg font-bold">BrandName</span></span>} links={...} />
 
 If the user provided a business name, use it verbatim. If not, infer one from the brief and tell the user in the summary that they can rename it. A header with only a hamburger menu and no brand is a render-quality FAILURE.`,
   },

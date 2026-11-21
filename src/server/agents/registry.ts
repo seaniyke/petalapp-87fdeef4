@@ -201,7 +201,7 @@ const design: AgentSpec = {
     decisions.push({
       kind: "design",
       claim:
-        "Reject generic-AI output: no wall of identical rounded cards, no purple-on-white gradient hero, no glassmorphism by default, no decorative element without a job.",
+        "Reject generic-AI output: no wall of identical rounded cards, no purple-on-white gradient hero, every layer of depth or motion has a job.",
     });
     return { decisions };
   },

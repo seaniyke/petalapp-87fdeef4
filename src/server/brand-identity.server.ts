@@ -7,9 +7,8 @@
  * (or none at all). The result reads as a placeholder, not a product.
  *
  * This pass makes brand identity structural instead of hopeful:
- *   1. Writes `src/components/brand-mark.tsx` — a real, themed SVG mark
- *      (rounded gradient tile + petal glyph + monogram) driven by design
- *      tokens, so it works in light and dark themes.
+ *   1. Only when the model wrote no mark: a clean, bold monogram in the
+ *      brand colour and display font (no gradient, no decorative glyph).
  *   2. Swaps placeholder lucide glyphs used AS the logo for <BrandMark/>.
  *   3. Injects a matching inline-SVG favicon + apple-touch-icon + theme-color
  *      into index.html when the project has none (or still points at the
@@ -95,35 +94,22 @@ export function BrandMark({
   className?: string;
   initials?: string;
 }) {
-  const id = React.useId();
   return (
     <svg
       viewBox="0 0 48 48"
       role="img"
       aria-label="Logo"
-      className={cn("h-8 w-8 shrink-0", className)}
+      className={cn("h-8 w-8 shrink-0 text-primary", className)}
     >
-      <defs>
-        <linearGradient id={\`bm-\${id}\`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="currentColor" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="currentColor" stopOpacity="0.55" />
-        </linearGradient>
-      </defs>
-      <rect width="48" height="48" rx="13" fill={\`url(#bm-\${id})\`} className="text-primary" />
-      <path
-        d="M24 10c6.2 3.1 9.5 7.6 9.5 12.6 0 5.3-4.2 9.4-9.5 9.4s-9.5-4.1-9.5-9.4C14.5 17.6 17.8 13.1 24 10Z"
-        fill="currentColor"
-        opacity="0.16"
-      />
+      <rect width="48" height="48" rx="12" fill="currentColor" />
       <text
         x="24"
-        y="31"
+        y="32.5"
         textAnchor="middle"
-        fontSize="18"
-        fontWeight="700"
-        letterSpacing="-0.5"
+        fontSize={initials.length > 1 ? 19 : 24}
+        fontWeight="800"
         fill="hsl(var(--primary-foreground, 0 0% 100%))"
-        style={{ fontFamily: "inherit" }}
+        style={{ fontFamily: "var(--font-display, inherit)" }}
       >
         {initials}
       </text>

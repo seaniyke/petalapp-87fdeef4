@@ -5,10 +5,10 @@ Precise product studio (Linear / Stripe tier). Space Grotesk tight for display, 
 ## Type scale
 | Role | Classes |
 |---|---|
-| Hero headline | `font-serif font-semibold text-5xl md:text-7xl leading-[1.02] tracking-tighter` |
+| Hero headline | `font-serif font-semibold text-5xl md:text-7xl leading-[1.02] tracking-tight` |
 | Section heading | `font-serif font-semibold text-3xl md:text-5xl tracking-tight` |
 | Metric | `font-serif text-4xl md:text-5xl tabular-nums tracking-tight` |
-| Label | `text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground` |
+| Label | `text-sm font-medium text-muted-foreground` (sentence case, normal letter spacing) |
 | Body | `text-[15px] leading-relaxed text-muted-foreground` |
 
 ## Layout signatures
