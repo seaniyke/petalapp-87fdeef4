@@ -294,6 +294,9 @@ function ensureFavicon(
   if (/<title>\s*(vite(\s*\+\s*react(\s*\+\s*ts)?)?|react app|app|document|untitled)?\s*<\/title>/i.test(out) && brand !== "Studio") {
     out = out.replace(/<title>[^<]*<\/title>/i, `<title>${brand}</title>`);
   }
+  // Filler words the model appends to a real brand ("Atelier Lace Site")
+  // never belong in the tab — any industry, any page.
+  out = out.replace(/<title>([^<]*?\S)\s+(?:site|website|homepage|official site|web app)\s*<\/title>/i, "<title>$1</title>");
   return out;
 }
 

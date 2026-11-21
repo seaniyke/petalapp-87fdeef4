@@ -14,5 +14,8 @@ export const CRAFT_BASELINE = `### Universal craft baseline (applies to every pa
 - Breathing room: generous section spacing, wide gutters, imagery allowed to go full-bleed. Content is never cramped inside bordered boxes.
 - Full-bleed canvas: section backgrounds, glows, photography and video run edge to edge; only content sits in \`<Container>\` (1280px default, wider sizes for showcases). Never box the whole page into a narrow column.
 - Forms feel like Apple: \`<StepFlow>\` for anything over four fields, \`<ChoiceGrid>\` or \`<SegmentedControl>\` for choices instead of selects/radios, related fields grouped in one \`<FieldGroup>\`, the kit's large soft inputs (never shrink them to h-9/text-sm), a label above each field, gentle inline errors, one decision per step.
+- Navigation lists every page the site has, including the booking/contact page, on desktop and in the phone menu; a header button never replaces a menu link.
+- Image grids leave no dead space: in asymmetric or mixed-size galleries every tile fills its cell (\`h-full w-full object-cover\` with explicit aspect ratios or matched row spans), so smaller photos never sit above empty background.
+- Tab titles are the brand alone or "Page — Brand"; never append filler like "Site" or "Website".
 - Logos and marks inherit \`text-foreground\` so they read on every surface.
 - Depth and motion follow the package's tempo, but every page has at least one moment of movement and one layered surface (\`<Surface>\`, \`glass\`, imagery behind content).`;

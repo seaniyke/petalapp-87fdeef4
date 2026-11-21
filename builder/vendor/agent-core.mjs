@@ -38968,7 +38968,6 @@ function detectIntents(userText, assistantText) {
 var BACKEND_ENTITY_WORDS, BACKEND_PERSIST_VERBS, ACCOUNTS_OPT_OUT, DEVICE_ONLY, SHOP_BUTTONS, AI_PROVIDER_NAMES, AI_ACTION_VERBS, RULES, BACKEND_OPT_OUT;
 var init_intent_registry = __esm({
   "src/lib/intent-registry.ts"() {
-    "use strict";
     init_define_import_meta_env();
     init_site_flags();
     BACKEND_ENTITY_WORDS = /\b(post|posts|comment|comments|order|orders|booking|bookings|invoice|invoices|task|tasks|todo|todos|note|notes|message|messages|product|products|listing|listings|review|reviews|appointment|appointments|reservation|reservations|customer|customers|client|clients|profile|profiles|account|accounts)\b/i;
@@ -71126,6 +71125,7 @@ function pickTemplateForBrief(brief, seed) {
 var TEMPLATES;
 var init_templates_server = __esm({
   "src/server/templates.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     TEMPLATES = {
       "saas-landing": {
@@ -140959,6 +140959,7 @@ function ensureFavicon(html, initials, brand, primary, glyph) {
   if (/<title>\s*(vite(\s*\+\s*react(\s*\+\s*ts)?)?|react app|app|document|untitled)?\s*<\/title>/i.test(out) && brand !== "Studio") {
     out = out.replace(/<title>[^<]*<\/title>/i, `<title>${brand}</title>`);
   }
+  out = out.replace(/<title>([^<]*?\S)\s+(?:site|website|homepage|official site|web app)\s*<\/title>/i, "<title>$1</title>");
   return out;
 }
 function ensureBrandMarkWired(files) {
@@ -141270,6 +141271,7 @@ function fixJsxAttrLiterals(files) {
 var SOURCE_RX;
 var init_jsx_attr_literal_fixer_server = __esm({
   "src/server/jsx-attr-literal-fixer.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     SOURCE_RX = /\.(tsx|jsx)$/i;
   }
@@ -145117,6 +145119,7 @@ function deterministicPrd(brief) {
 var CALCULATORS, GENERIC_UTILITY, TYPE_RULES, SURFACES2, PERSISTENCE, AUTH, MULTI_USER, ENTITY_RULES, STOP_WORDS, TYPE_LABEL;
 var init_prd_deterministic = __esm({
   "src/server/prd/prd-deterministic.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_prompt_limits();
     CALCULATORS = [
@@ -146321,6 +146324,7 @@ async function saveProjectPrd(projectId, prd, sourcePrompt, previous) {
 }
 var init_prd_store_server = __esm({
   "src/server/prd/prd-store.server.ts"() {
+    "use strict";
     init_define_import_meta_env();
     init_client_server_shim();
   }
@@ -148337,6 +148341,9 @@ var init_craft_baseline = __esm({
 - Breathing room: generous section spacing, wide gutters, imagery allowed to go full-bleed. Content is never cramped inside bordered boxes.
 - Full-bleed canvas: section backgrounds, glows, photography and video run edge to edge; only content sits in \`<Container>\` (1280px default, wider sizes for showcases). Never box the whole page into a narrow column.
 - Forms feel like Apple: \`<StepFlow>\` for anything over four fields, \`<ChoiceGrid>\` or \`<SegmentedControl>\` for choices instead of selects/radios, related fields grouped in one \`<FieldGroup>\`, the kit's large soft inputs (never shrink them to h-9/text-sm), a label above each field, gentle inline errors, one decision per step.
+- Navigation lists every page the site has, including the booking/contact page, on desktop and in the phone menu; a header button never replaces a menu link.
+- Image grids leave no dead space: in asymmetric or mixed-size galleries every tile fills its cell (\`h-full w-full object-cover\` with explicit aspect ratios or matched row spans), so smaller photos never sit above empty background.
+- Tab titles are the brand alone or "Page \u2014 Brand"; never append filler like "Site" or "Website".
 - Logos and marks inherit \`text-foreground\` so they read on every surface.
 - Depth and motion follow the package's tempo, but every page has at least one moment of movement and one layered surface (\`<Surface>\`, \`glass\`, imagery behind content).`;
   }
@@ -174964,7 +174971,9 @@ function healClassList(raw, ctx) {
     if (!tokens2.includes("top-0")) tokens2.push("top-0");
     if (!has2(/^z-/)) tokens2.push("z-40");
   }
-  if (has2(/^min-h-\[(?:\d+svh|\d+vh|\d+dvh|\d{3,4}px)\]$/) && !has2(/^(py-|pt-|pb-|p-)/) && ctx.tag !== "html" && !ctx.selfClosing && !shell) {
+  if (has2(/^min-h-\[(?:\d+svh|\d+vh|\d+dvh|\d{3,4}px)\]$/) && !has2(/^(py-|pt-|pb-|p-)/) && ctx.tag !== "html" && !ctx.selfClosing && !shell && // Media tiles and cards (rounded, or links/figures/buttons) are filled by
+  // their photo; padding them pushes the image down and leaves a dark band.
+  !has2(/^rounded/) && !/^(a|link|figure|button|picture|img|video)$/i.test(ctx.tag)) {
     tokens2.push("py-16", "md:py-24");
   }
   if (!ctx.selfClosing && !shell && tokens2.includes("overflow-hidden") && has2(/^min-h-/) && (tokens2.includes("items-center") || tokens2.includes("justify-center"))) {

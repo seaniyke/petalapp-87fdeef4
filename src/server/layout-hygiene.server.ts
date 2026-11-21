@@ -131,7 +131,11 @@ function healClassList(raw: string, ctx: Ctx): string {
     !has(/^(py-|pt-|pb-|p-)/) &&
     ctx.tag !== "html" &&
     !ctx.selfClosing &&
-    !shell
+    !shell &&
+    // Media tiles and cards (rounded, or links/figures/buttons) are filled by
+    // their photo; padding them pushes the image down and leaves a dark band.
+    !has(/^rounded/) &&
+    !/^(a|link|figure|button|picture|img|video)$/i.test(ctx.tag)
   ) {
     tokens.push("py-16", "md:py-24");
   }
